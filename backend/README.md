@@ -99,12 +99,12 @@ ADMIN_PASSWORD=secure-password
 
 ### Plans et quotas (core/config.py)
 
-| Plan     | Crédits/mois | Chat/jour | Playlists | Web Search |
-|----------|--------------|-----------|-----------|------------|
-| Free     | 10           | 10        | ❌        | ❌         |
-| Starter  | 50           | 40        | ❌        | ❌         |
-| Pro      | 150          | 100       | ✅ (50)   | ✅ (30)    |
-| Expert   | 400          | ∞         | ✅ (100)  | ✅ (100)   |
+| Plan    | Crédits/mois | Chat/jour | Playlists | Web Search |
+| ------- | ------------ | --------- | --------- | ---------- |
+| Free    | 10           | 10        | ❌        | ❌         |
+| Starter | 50           | 40        | ❌        | ❌         |
+| Pro     | 150          | 100       | ✅ (50)   | ✅ (30)    |
+| Expert  | 400          | ∞         | ✅ (100)  | ✅ (100)   |
 
 ## 🚂 Déploiement Railway
 
@@ -123,6 +123,7 @@ ADMIN_PASSWORD=secure-password
 ### 2. Variables d'environnement Railway
 
 Configurer dans Railway Dashboard :
+
 - `DATABASE_URL` (fourni automatiquement avec PostgreSQL)
 - `JWT_SECRET_KEY`
 - `MISTRAL_API_KEY`
@@ -137,68 +138,68 @@ Ajouter le service PostgreSQL dans Railway. La `DATABASE_URL` est automatiquemen
 
 ### 🔐 Authentication (`/api/auth`)
 
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| POST | `/register` | Inscription |
-| POST | `/login` | Connexion → JWT |
-| POST | `/refresh` | Rafraîchir token |
-| POST | `/verify-email` | Vérifier code |
-| POST | `/forgot-password` | Initier reset |
-| POST | `/reset-password` | Reset avec code |
-| GET | `/me` | Profil utilisateur |
-| GET | `/quota` | Quotas détaillés |
-| GET | `/google/login` | URL OAuth Google |
-| GET | `/google/callback` | Callback Google |
+| Méthode | Endpoint           | Description        |
+| ------- | ------------------ | ------------------ |
+| POST    | `/register`        | Inscription        |
+| POST    | `/login`           | Connexion → JWT    |
+| POST    | `/refresh`         | Rafraîchir token   |
+| POST    | `/verify-email`    | Vérifier code      |
+| POST    | `/forgot-password` | Initier reset      |
+| POST    | `/reset-password`  | Reset avec code    |
+| GET     | `/me`              | Profil utilisateur |
+| GET     | `/quota`           | Quotas détaillés   |
+| GET     | `/google/login`    | URL OAuth Google   |
+| GET     | `/google/callback` | Callback Google    |
 
 ### 📹 Videos (`/api/videos`)
 
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| POST | `/analyze` | Lancer analyse → task_id |
-| GET | `/status/{task_id}` | Polling status |
-| GET | `/history` | Historique paginé |
-| GET | `/summary/{id}` | Détails résumé |
-| PUT | `/summary/{id}` | Update (favoris, notes) |
-| DELETE | `/summary/{id}` | Supprimer |
-| GET | `/summary/{id}/export` | Export MD/PDF/DOCX |
-| GET | `/info?url=` | Info vidéo sans analyse |
-| GET | `/categories` | Liste catégories |
-| GET | `/stats` | Statistiques user |
-| POST | `/playlist/analyze` | Analyse playlist (Pro) |
-| GET | `/playlists` | Liste playlists |
+| Méthode | Endpoint               | Description              |
+| ------- | ---------------------- | ------------------------ |
+| POST    | `/analyze`             | Lancer analyse → task_id |
+| GET     | `/status/{task_id}`    | Polling status           |
+| GET     | `/history`             | Historique paginé        |
+| GET     | `/summary/{id}`        | Détails résumé           |
+| PUT     | `/summary/{id}`        | Update (favoris, notes)  |
+| DELETE  | `/summary/{id}`        | Supprimer                |
+| GET     | `/summary/{id}/export` | Export MD/PDF/DOCX       |
+| GET     | `/info?url=`           | Info vidéo sans analyse  |
+| GET     | `/categories`          | Liste catégories         |
+| GET     | `/stats`               | Statistiques user        |
+| POST    | `/playlist/analyze`    | Analyse playlist (Pro)   |
+| GET     | `/playlists`           | Liste playlists          |
 
 ### 💬 Chat (`/api/chat`)
 
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| POST | `/ask` | Question → réponse |
-| POST | `/ask/stream` | Question → SSE stream |
-| GET | `/history/{summary_id}` | Historique chat |
-| DELETE | `/history/{summary_id}` | Effacer chat |
-| GET | `/quota` | Quotas chat |
+| Méthode | Endpoint                | Description           |
+| ------- | ----------------------- | --------------------- |
+| POST    | `/ask`                  | Question → réponse    |
+| POST    | `/ask/stream`           | Question → SSE stream |
+| GET     | `/history/{summary_id}` | Historique chat       |
+| DELETE  | `/history/{summary_id}` | Effacer chat          |
+| GET     | `/quota`                | Quotas chat           |
 
 ### 💳 Billing (`/api/billing`)
 
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/plans` | Liste des plans |
-| GET | `/info` | Info facturation |
-| POST | `/checkout` | Créer session Stripe |
-| GET | `/portal` | Portail client Stripe |
-| GET | `/transactions` | Historique transactions |
-| POST | `/webhook` | Webhook Stripe |
+| Méthode | Endpoint        | Description             |
+| ------- | --------------- | ----------------------- |
+| GET     | `/plans`        | Liste des plans         |
+| GET     | `/info`         | Info facturation        |
+| POST    | `/checkout`     | Créer session Stripe    |
+| GET     | `/portal`       | Portail client Stripe   |
+| GET     | `/transactions` | Historique transactions |
+| POST    | `/webhook`      | Webhook Stripe          |
 
 ### 👑 Admin (`/api/admin`)
 
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/stats` | Dashboard stats |
-| GET | `/users` | Liste users paginée |
-| GET | `/users/{id}` | Détails user |
-| PUT | `/users/{id}` | Update user |
-| POST | `/users/{id}/credits` | Ajouter crédits |
-| DELETE | `/users/{id}` | Supprimer user |
-| GET | `/logs` | Logs admin |
+| Méthode | Endpoint              | Description         |
+| ------- | --------------------- | ------------------- |
+| GET     | `/stats`              | Dashboard stats     |
+| GET     | `/users`              | Liste users paginée |
+| GET     | `/users/{id}`         | Détails user        |
+| PUT     | `/users/{id}`         | Update user         |
+| POST    | `/users/{id}/credits` | Ajouter crédits     |
+| DELETE  | `/users/{id}`         | Supprimer user      |
+| GET     | `/logs`               | Logs admin          |
 
 ## ✨ Fonctionnalités
 

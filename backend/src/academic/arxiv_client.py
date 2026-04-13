@@ -30,22 +30,42 @@ ARXIV_CATEGORIES = {
     "q-fin": "Quantitative Finance",
 }
 
-# Rate limiting: 1 request per 3 seconds
-# TODO(REDIS-MIGRATION): _last_request_time is process-local. With multiple Uvicorn workers,
-# each worker tracks its own last request time, meaning the effective rate limit is multiplied
-# by the number of workers (e.g. 4 workers × 1 req/3s = up to 4 req/3s). This may violate
-# arXiv's API rate limit policy. Migration plan: use a Redis atomic counter/TTL key shared
-# across all workers to enforce a global rate limit of 1 request per 3 seconds.
-_last_request_time: float = 0
+# Rate limiting: 1 request per 3 seconds (Redis-backed, cross-worker)
+_RATE_LIMIT_KEY = "deepsight:arxiv:last_request"
+_RATE_LIMIT_INTERVAL = 3.0
+_last_request_time: float = 0  # Fallback local si Redis indisponible
+_redis_client = None  # Initialisé par init_arxiv_redis()
+
+
+async def init_arxiv_redis(redis_client):
+    """Connecte le rate limiter arXiv au client Redis partagé."""
+    global _redis_client
+    _redis_client = redis_client
 
 
 async def _rate_limit():
-    """Ensure minimum 3 second delay between requests"""
+    """Ensure minimum 3 second delay between requests (distributed via Redis)."""
     global _last_request_time
+    import time
+
+    if _redis_client:
+        try:
+            now = time.time()
+            last = await _redis_client.get(_RATE_LIMIT_KEY)
+            if last:
+                elapsed = now - float(last)
+                if elapsed < _RATE_LIMIT_INTERVAL:
+                    await asyncio.sleep(_RATE_LIMIT_INTERVAL - elapsed)
+            await _redis_client.set(_RATE_LIMIT_KEY, str(time.time()), ex=10)
+            return
+        except Exception:
+            pass  # Fallback to local
+
+    # Fallback: rate limiting local (comportement d'origine)
     current_time = asyncio.get_event_loop().time()
     elapsed = current_time - _last_request_time
-    if elapsed < 3.0:
-        await asyncio.sleep(3.0 - elapsed)
+    if elapsed < _RATE_LIMIT_INTERVAL:
+        await asyncio.sleep(_RATE_LIMIT_INTERVAL - elapsed)
     _last_request_time = asyncio.get_event_loop().time()
 
 

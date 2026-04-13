@@ -470,8 +470,8 @@ async def get_api_analysis_status(
             "message": f"Task {task_id} not found"
         })
 
-    # Chercher dans le task store via public API
-    task = get_task_status(task_id)
+    # Chercher dans le task store via public API (async — cross-worker Redis)
+    task = await get_task_status(task_id)
     if not task:
         raise HTTPException(status_code=404, detail={
             "error": "not_found",

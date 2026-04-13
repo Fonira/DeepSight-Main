@@ -135,20 +135,11 @@ except ImportError:
 
 router = APIRouter()
 
-# TODO(REDIS-MIGRATION): _task_store and _guest_usage are process-local in-memory stores.
-# With 4 Uvicorn workers, each worker has its own copy, meaning:
-# - Task status updates from worker A are invisible to worker B.
-# - Guest rate limiting (3 analyses/IP/24h) can be bypassed by round-robining across workers.
-# Migration plan:
-#   1. Replace _task_store with Redis HASH (key: task_id, TTL: 24h).
-#   2. Replace _guest_usage with Redis ZSET per IP (trim by time window).
-#   3. Use the existing redis_url from core.config / CACHE_CONFIG.
-#   4. Wrap all read/write in try/except to fall back gracefully if Redis is unavailable.
-# Store en mémoire pour les tâches (en production: Redis)
-_task_store: Dict[str, Dict[str, Any]] = {}
+# 🔴 REDIS-BACKED: TaskStore proxy dict + GuestLimiter (cross-worker)
+# Voir core/task_store.py pour l'implémentation.
+# _task_store se comporte comme un dict normal mais sync vers Redis en background.
+from core.task_store import task_store as _task_store, guest_limiter as _guest_limiter
 
-# 🆓 Guest demo rate limiting (3 analyses/IP/24h)
-_guest_usage: Dict[str, list] = {}  # IP → list of timestamps
 MAX_GUEST_ANALYSES = 3
 MAX_VIDEO_DURATION_GUEST = 300  # 5 minutes
 
@@ -191,20 +182,18 @@ async def _save_structured_index(
         print(f"⚠️ [v4.0] Structured index failed (non-blocking): {e}", flush=True)
 
 
-def get_task_status(task_id: str) -> Optional[Dict[str, Any]]:
+async def get_task_status(task_id: str) -> Optional[Dict[str, Any]]:
     """
-    Public accessor for task status from the in-memory _task_store.
-    External modules (e.g. api_public/router.py) should import and use this
-    function instead of directly importing the private _task_store dict.
-    Returns None if the task_id is not found.
+    Public accessor for task status — Redis-backed (cross-worker).
+    Utilise aget() pour lire depuis Redis si absent du cache local.
     """
-    return _task_store.get(task_id)
+    return await _task_store.aget(task_id)
 
 
 def set_task_status(task_id: str, data: Dict[str, Any]) -> None:
     """
-    Public mutator for task status in the in-memory _task_store.
-    External modules should use this instead of directly accessing _task_store.
+    Public mutator for task status — écrit dans le cache local + sync Redis.
+    Reste synchrone car le flush Redis est batché en background.
     """
     _task_store[task_id] = data
 
@@ -569,13 +558,10 @@ async def analyze_video_guest(
     if "," in client_ip:
         client_ip = client_ip.split(",")[0].strip()
 
-    now = time.time()
-    # Nettoyer les timestamps > 24h pour cette IP
-    ip_timestamps = _guest_usage.get(client_ip, [])
-    ip_timestamps = [ts for ts in ip_timestamps if now - ts < 86400]
-    _guest_usage[client_ip] = ip_timestamps
+    # 🔴 Redis-backed guest rate limiting (cross-worker)
+    allowed, used_count = await _guest_limiter.check(client_ip)
 
-    if len(ip_timestamps) >= MAX_GUEST_ANALYSES:
+    if not allowed:
         raise HTTPException(
             status_code=429,
             detail="Vous avez utilisé vos 3 analyses gratuites. Créez un compte pour continuer !"
@@ -671,14 +657,9 @@ async def analyze_video_guest(
     if not summary:
         raise HTTPException(status_code=500, detail="Le résumé n'a pas pu être généré.")
 
-    # 6. Marquer IP comme utilisée
-    _guest_usage[client_ip].append(now)
-    remaining = MAX_GUEST_ANALYSES - len(_guest_usage[client_ip])
-
-    # 7. Cleanup vieilles entrées (éviter fuite mémoire)
-    expired = [ip for ip, timestamps in _guest_usage.items() if all(now - ts > 86400 for ts in timestamps)]
-    for ip in expired:
-        del _guest_usage[ip]
+    # 6. Marquer IP comme utilisée (Redis-backed)
+    await _guest_limiter.record(client_ip)
+    remaining = await _guest_limiter.get_remaining(client_ip)
 
     word_count = len(summary.split())
 
@@ -2636,7 +2617,7 @@ async def _analyze_video_background_v6(
                                 model="mistral-small-2603",
                                 max_tokens=6000,
                                 timeout=120.0,
-                                fallback_models=["pixtral-large-2411", "pixtral-12b-2409"],
+                                fallback_models=["pixtral-large-2411", "pixtral-12b-2409", "mistral-small-latest", "mistral-medium-2508", "mistral-large-latest"],
                             )
                             if _slide_result:
                                 transcript = "[SLIDESHOW — " + str(len(_slideshow_frames)) + " slides]" + chr(10) + chr(10) + _slide_result
@@ -3095,14 +3076,14 @@ async def cancel_task(
     current_user: User = Depends(get_current_user),
 ):
     """Annule une tâche d'analyse en cours."""
-    if task_id in _task_store:
-        task = _task_store[task_id]
+    task = await _task_store.aget(task_id)
+    if task is not None:
         if task.get("user_id") != current_user.id:
             raise HTTPException(status_code=404, detail="Task not found")
 
-        # Mark as cancelled
-        _task_store[task_id]["status"] = "cancelled"
-        _task_store[task_id]["message"] = "Analyse annulée par l'utilisateur"
+        # Mark as cancelled (la mutation sync vers Redis via le proxy)
+        task["status"] = "cancelled"
+        task["message"] = "Analyse annulée par l'utilisateur"
         print(f"🚫 [CANCEL] Task {task_id[:12]} cancelled by user {current_user.id}", flush=True)
         return {"status": "cancelled", "task_id": task_id}
 
@@ -3140,14 +3121,13 @@ async def get_task_status(
             pass
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # Vérifier le cache mémoire d'abord
-    if task_id in _task_store:
-        task = _task_store[task_id]
-        
+    # 🔴 Redis-backed: lecture cross-worker via aget()
+    task = await _task_store.aget(task_id)
+    if task is not None:
         # Vérifier que c'est bien la tâche de cet utilisateur
         if task.get("user_id") != current_user.id:
             raise HTTPException(status_code=404, detail="Task not found")
-        
+
         return TaskStatusResponse(
             task_id=task_id,
             status=task.get("status", "unknown"),
@@ -5098,8 +5078,8 @@ async def _detect_video_screenshot_vision(
             "video_url": video_url,
         }
 
-    # ── Try Mistral models (pixtral-12b first, then small) ──
-    mistral_models = ["pixtral-12b-2409", "pixtral-large-2411", "mistral-small-2603"]
+    # ── Try Mistral models (chaîne complète alignée avec _mistral_vision_request) ──
+    mistral_models = ["pixtral-12b-2409", "pixtral-large-2411", "mistral-small-2603", "mistral-small-latest", "mistral-medium-2508"]
     for model in mistral_models:
         try:
             async with httpx_client.AsyncClient(timeout=30.0) as client:
@@ -5129,7 +5109,10 @@ async def _detect_video_screenshot_vision(
                 )
 
                 if response.status_code == 429:
-                    print(f"[SCREENSHOT_VISION] {model} rate-limited, trying next...", flush=True)
+                    import asyncio as _aio
+                    wait = 15 if "pixtral" in model else 5
+                    print(f"[SCREENSHOT_VISION] {model} rate-limited, retrying in {wait}s...", flush=True)
+                    await _aio.sleep(wait)
                     continue
                 if response.status_code != 200:
                     print(f"[SCREENSHOT_VISION] {model} error: {response.status_code}", flush=True)
@@ -5625,7 +5608,7 @@ async def _analyze_images_background(
         )
 
         if not vision_result:
-            raise Exception("L'analyse d'image n'a pas pu être complétée. Veuillez réessayer.")
+            raise Exception("Mistral Vision : l'API est temporairement surchargée. Réessayez dans 1-2 minutes.")
 
         print(f"📸 [IMAGES] Vision analysis complete: {len(vision_result)} chars", flush=True)
 

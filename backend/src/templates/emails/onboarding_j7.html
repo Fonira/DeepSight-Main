@@ -1,88 +1,210 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Votre premiere semaine avec {{ app_name }}</title>
-<style>
-  body { margin: 0; padding: 0; background-color: #0a0a0f; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #e2e8f0; -webkit-text-size-adjust: 100%; }
-  .wrapper { width: 100%; padding: 40px 16px; background-color: #0a0a0f; }
-  .container { max-width: 560px; margin: 0 auto; background-color: #12121a; border-radius: 16px; border: 1px solid rgba(255,255,255,0.06); overflow: hidden; }
-  .header { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%); padding: 40px 32px; text-align: center; }
-  .header-icon { font-size: 40px; margin-bottom: 8px; }
-  .header-title { font-size: 24px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px; }
-  .header-sub { font-size: 14px; color: rgba(255,255,255,0.85); margin-top: 4px; }
-  .body { padding: 36px 32px; }
-  .greeting { font-size: 20px; font-weight: 600; color: #f1f5f9; margin: 0 0 16px 0; }
-  .text { font-size: 15px; line-height: 1.7; color: #94a3b8; margin: 0 0 20px 0; }
-  .tip-box { background-color: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); border-radius: 12px; padding: 20px; margin: 24px 0; }
-  .tip-title { font-size: 16px; font-weight: 600; color: #f59e0b; margin: 0 0 8px 0; }
-  .tip-text { font-size: 14px; line-height: 1.7; color: #94a3b8; margin: 0; }
-  .tip-text em { color: #cbd5e1; font-style: italic; }
-  .upgrade-box { background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1)); border: 1px solid rgba(59,130,246,0.2); border-radius: 12px; padding: 24px; margin: 24px 0; }
-  .upgrade-title { font-size: 16px; font-weight: 600; color: #3b82f6; margin: 0 0 8px 0; }
-  .upgrade-text { font-size: 14px; line-height: 1.7; color: #94a3b8; margin: 0 0 16px 0; }
-  .cta { display: inline-block; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: #ffffff !important; text-decoration: none; font-weight: 600; font-size: 15px; padding: 12px 24px; border-radius: 10px; }
-  .footer { background-color: rgba(255,255,255,0.02); border-top: 1px solid rgba(255,255,255,0.06); padding: 24px 32px; text-align: center; }
-  .footer p { margin: 0; font-size: 12px; color: #475569; line-height: 1.6; }
-  .footer a { color: #3b82f6; text-decoration: none; }
-  @media only screen and (max-width: 600px) {
-    .wrapper { padding: 16px 8px; }
-    .body { padding: 28px 20px; }
-    .header { padding: 32px 20px; }
-  }
-</style>
-</head>
-<body>
-<div class="wrapper">
-  <div class="container">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Votre premiere semaine avec {{ app_name }}</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #0a0a0f;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        color: #e2e8f0;
+        -webkit-text-size-adjust: 100%;
+      }
+      .wrapper {
+        width: 100%;
+        padding: 40px 16px;
+        background-color: #0a0a0f;
+      }
+      .container {
+        max-width: 560px;
+        margin: 0 auto;
+        background-color: #12121a;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        overflow: hidden;
+      }
+      .header {
+        background: linear-gradient(
+          135deg,
+          #3b82f6 0%,
+          #8b5cf6 50%,
+          #06b6d4 100%
+        );
+        padding: 40px 32px;
+        text-align: center;
+      }
+      .header-icon {
+        font-size: 40px;
+        margin-bottom: 8px;
+      }
+      .header-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: -0.5px;
+      }
+      .header-sub {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 4px;
+      }
+      .body {
+        padding: 36px 32px;
+      }
+      .greeting {
+        font-size: 20px;
+        font-weight: 600;
+        color: #f1f5f9;
+        margin: 0 0 16px 0;
+      }
+      .text {
+        font-size: 15px;
+        line-height: 1.7;
+        color: #94a3b8;
+        margin: 0 0 20px 0;
+      }
+      .tip-box {
+        background-color: rgba(245, 158, 11, 0.08);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 24px 0;
+      }
+      .tip-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #f59e0b;
+        margin: 0 0 8px 0;
+      }
+      .tip-text {
+        font-size: 14px;
+        line-height: 1.7;
+        color: #94a3b8;
+        margin: 0;
+      }
+      .tip-text em {
+        color: #cbd5e1;
+        font-style: italic;
+      }
+      .upgrade-box {
+        background: linear-gradient(
+          135deg,
+          rgba(59, 130, 246, 0.1),
+          rgba(139, 92, 246, 0.1)
+        );
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: 12px;
+        padding: 24px;
+        margin: 24px 0;
+      }
+      .upgrade-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #3b82f6;
+        margin: 0 0 8px 0;
+      }
+      .upgrade-text {
+        font-size: 14px;
+        line-height: 1.7;
+        color: #94a3b8;
+        margin: 0 0 16px 0;
+      }
+      .cta {
+        display: inline-block;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        color: #ffffff !important;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 15px;
+        padding: 12px 24px;
+        border-radius: 10px;
+      }
+      .footer {
+        background-color: rgba(255, 255, 255, 0.02);
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 24px 32px;
+        text-align: center;
+      }
+      .footer p {
+        margin: 0;
+        font-size: 12px;
+        color: #475569;
+        line-height: 1.6;
+      }
+      .footer a {
+        color: #3b82f6;
+        text-decoration: none;
+      }
+      @media only screen and (max-width: 600px) {
+        .wrapper {
+          padding: 16px 8px;
+        }
+        .body {
+          padding: 28px 20px;
+        }
+        .header {
+          padding: 32px 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="container">
+        <div class="header">
+          <div class="header-icon">📊</div>
+          <div class="header-title">Votre premiere semaine</div>
+          <div class="header-sub">Bilan et astuces pour aller plus loin</div>
+        </div>
 
-    <div class="header">
-      <div class="header-icon">📊</div>
-      <div class="header-title">Votre premiere semaine</div>
-      <div class="header-sub">Bilan et astuces pour aller plus loin</div>
-    </div>
+        <div class="body">
+          <h2 class="greeting">{{ username }}, bravo !</h2>
 
-    <div class="body">
-      <h2 class="greeting">{{ username }}, bravo !</h2>
+          <p class="text">
+            Cela fait maintenant une semaine que vous utilisez {{ app_name }}.
+            Nous esperons que l'outil vous aide a mieux comprendre le contenu
+            video !
+          </p>
 
-      <p class="text">
-        Cela fait maintenant une semaine que vous utilisez {{ app_name }}.
-        Nous esperons que l'outil vous aide a mieux comprendre le contenu video !
-      </p>
+          <div class="tip-box">
+            <h3 class="tip-title">💡 Astuce de la semaine</h3>
+            <p class="tip-text">
+              Utilisez le chat contextuel pour poser des questions precises. Par
+              exemple :
+              <em>"Quelles sont les sources citees dans cette video ?"</em>
+            </p>
+          </div>
 
-      <div class="tip-box">
-        <h3 class="tip-title">💡 Astuce de la semaine</h3>
-        <p class="tip-text">
-          Utilisez le chat contextuel pour poser des questions precises.
-          Par exemple : <em>"Quelles sont les sources citees dans cette video ?"</em>
-        </p>
+          {% if plan == "free" %}
+          <div class="upgrade-box">
+            <h3 class="upgrade-title">
+              Saviez-vous que Pro debloque le fact-check ?
+            </h3>
+            <p class="upgrade-text">
+              Verifiez automatiquement les affirmations de n'importe quelle
+              video. Plus de 30 analyses/mois, videos de 2h, et cartes mentales.
+            </p>
+            <a href="{{ frontend_url }}/upgrade" class="cta">Decouvrir Pro</a>
+          </div>
+          {% endif %}
+
+          <p class="text">
+            Une question ? Repondez directement a cet email, nous lisons tout.
+          </p>
+        </div>
+
+        <div class="footer">
+          <p>
+            {{ app_name }} — Analyse video par IA<br />
+            <a href="{{ frontend_url }}">deepsightsynthesis.com</a>
+          </p>
+        </div>
       </div>
-
-      {% if plan == "free" %}
-      <div class="upgrade-box">
-        <h3 class="upgrade-title">Saviez-vous que Pro debloque le fact-check ?</h3>
-        <p class="upgrade-text">
-          Verifiez automatiquement les affirmations de n'importe quelle video.
-          Plus de 30 analyses/mois, videos de 2h, et cartes mentales.
-        </p>
-        <a href="{{ frontend_url }}/upgrade" class="cta">Decouvrir Pro</a>
-      </div>
-      {% endif %}
-
-      <p class="text">
-        Une question ? Repondez directement a cet email, nous lisons tout.
-      </p>
     </div>
-
-    <div class="footer">
-      <p>
-        {{ app_name }} — Analyse video par IA<br>
-        <a href="{{ frontend_url }}">deepsightsynthesis.com</a>
-      </p>
-    </div>
-
-  </div>
-</div>
-</body>
+  </body>
 </html>

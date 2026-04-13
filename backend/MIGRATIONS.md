@@ -4,13 +4,13 @@
 
 DeepSight uses **Alembic** for database schema migrations and **pg_dump** for backups.
 
-| Component | Tool | Location |
-|-----------|------|----------|
-| Migrations | Alembic | `backend/alembic/` |
-| Backup | pg_dump + gzip | `backend/scripts/backup_db.py` |
-| Restore | psql | `backend/scripts/restore_db.py` |
-| Cron backup | GitHub Actions | `.github/workflows/db-backup.yml` |
-| In-process backup | APScheduler | `backend/src/main.py` (lifespan) |
+| Component         | Tool           | Location                          |
+| ----------------- | -------------- | --------------------------------- |
+| Migrations        | Alembic        | `backend/alembic/`                |
+| Backup            | pg_dump + gzip | `backend/scripts/backup_db.py`    |
+| Restore           | psql           | `backend/scripts/restore_db.py`   |
+| Cron backup       | GitHub Actions | `.github/workflows/db-backup.yml` |
+| In-process backup | APScheduler    | `backend/src/main.py` (lifespan)  |
 
 ---
 
@@ -106,14 +106,14 @@ Two mechanisms run backups:
 
 Set these environment variables (or Railway secrets):
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AWS_ACCESS_KEY_ID` | S3 access key | — |
-| `AWS_SECRET_ACCESS_KEY` | S3 secret key | — |
-| `AWS_REGION` | S3 region | `eu-west-3` |
-| `BACKUP_S3_BUCKET` | Bucket name | `deepsight-backups` |
-| `BACKUP_S3_PREFIX` | Key prefix | `db-backups/` |
-| `BACKUP_RETENTION_DAYS` | Auto-cleanup age | `30` |
+| Variable                | Description      | Default             |
+| ----------------------- | ---------------- | ------------------- |
+| `AWS_ACCESS_KEY_ID`     | S3 access key    | —                   |
+| `AWS_SECRET_ACCESS_KEY` | S3 secret key    | —                   |
+| `AWS_REGION`            | S3 region        | `eu-west-3`         |
+| `BACKUP_S3_BUCKET`      | Bucket name      | `deepsight-backups` |
+| `BACKUP_S3_PREFIX`      | Key prefix       | `db-backups/`       |
+| `BACKUP_RETENTION_DAYS` | Auto-cleanup age | `30`                |
 
 ### Retention
 
@@ -188,6 +188,7 @@ python -m scripts.restore_db --latest --confirm
 ### "pg_dump not found"
 
 Install PostgreSQL client tools:
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get install postgresql-client
@@ -203,6 +204,7 @@ Railway's public proxy requires SSL. The scripts handle this automatically for `
 ### Migration conflicts
 
 If two developers create migrations at the same time:
+
 ```bash
 # Show branches
 alembic branches

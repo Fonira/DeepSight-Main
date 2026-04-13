@@ -33,7 +33,7 @@ from auth.dependencies import get_current_user_optional
 from core.config import get_mistral_key, get_perplexity_key
 from core.cache import cache, get_cache
 from core.http_client import shared_http_client
-from transcripts.youtube import get_transcript_with_timestamps
+from transcripts.youtube import get_transcript_with_timestamps, get_video_info
 
 # 🌐 Web enrichment pré-analyse (Perplexity)
 try:
@@ -488,12 +488,20 @@ async def analysis_stream_generator(
         # 📊 METADATA
         # ═══════════════════════════════════════════════════════════════════════
         metadata = await get_video_metadata(video_id)
-        
+        # Récupérer la vraie durée via get_video_info (Supadata/Invidious)
+        video_duration = 0
+        try:
+            full_info = await get_video_info(video_id)
+            if full_info:
+                video_duration = full_info.get("duration", 0) or 0
+        except Exception:
+            pass  # Fallback: durée 0 si impossible à récupérer
+
         yield format_sse_event(StreamEventType.METADATA, {
             "title": metadata.get("title", ""),
             "channel": metadata.get("channel", ""),
             "thumbnail": metadata.get("thumbnail", ""),
-            "duration": 0,  # TODO: Get actual duration
+            "duration": video_duration,
         })
         
         session.progress = 10
@@ -732,7 +740,7 @@ async def analysis_stream_generator(
             lang=lang,
             model=model,
             web_context=web_context,
-            video_duration=metadata.get("duration", 0),
+            video_duration=video_duration,
             transcript_timestamped=transcript if "[" in transcript[:200] else None,
             video_description=metadata.get("description", ""),
             video_tags=metadata.get("tags", []),

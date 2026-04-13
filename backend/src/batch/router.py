@@ -328,17 +328,47 @@ async def process_batch(batch_id: str, user_id: int):
                 item["status"] = "processing"
 
                 # Créer une tâche pour cette vidéo
-                task_id = f"task_{uuid4().hex[:12]}"
+                task_id = f"batch_{uuid4().hex[:12]}"
                 item["task_id"] = task_id
 
-                # Simuler l'analyse (dans une vraie implémentation,
-                # appeler run_analysis_task ou la logique d'analyse)
-                await asyncio.sleep(0.5)  # Placeholder
+                # Extraire video_id depuis l'URL
+                from transcripts import extract_video_id
+                vid = extract_video_id(video_config.url)
+                if not vid:
+                    raise ValueError(f"URL invalide: {video_config.url}")
 
-                # Pour l'instant, marquer comme complété
-                # TODO: Intégrer avec le système d'analyse réel
-                item["status"] = "completed"
-                batch["completed"] += 1
+                # Lancer l'analyse réelle via le pipeline v6
+                from videos.router import _analyze_video_background_v6, set_task_status
+                set_task_status(task_id, {
+                    "status": "pending", "progress": 0,
+                    "message": "Queued (batch)", "user_id": user_id,
+                    "video_id": vid, "credit_cost": 1,
+                })
+                await _analyze_video_background_v6(
+                    task_id=task_id,
+                    video_id=vid,
+                    url=video_config.url,
+                    mode=video_config.mode,
+                    category=video_config.category,
+                    lang=video_config.lang,
+                    model="mistral-small-2603",
+                    user_id=user_id,
+                    user_plan=user.plan or "free",
+                    credit_cost=1,
+                    deep_research=False,
+                )
+
+                # Vérifier le résultat
+                from videos.router import get_task_status as _get_ts
+                result = await _get_ts(task_id)
+                if result and result.get("status") == "completed":
+                    item["status"] = "completed"
+                    item["summary_id"] = result.get("result", {}).get("summary_id")
+                    batch["completed"] += 1
+                else:
+                    item["status"] = "failed"
+                    item["error"] = (result or {}).get("message", "Analyse échouée")
+                    batch["failed"] += 1
 
             except Exception as e:
                 item["status"] = "failed"

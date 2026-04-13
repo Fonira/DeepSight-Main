@@ -1,993 +1,1055 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>{{ title }} — DeepSight</title>
     <style>
-        /* ═══════════════════════════════════════════════════════════════
+      /* ═══════════════════════════════════════════════════════════════
            DeepSight — Premium PDF Export Template v3.0
            Dark-cover + Light-content design matching app identity
            WeasyPrint optimized (inline CSS, no flexbox in paged context)
            ═══════════════════════════════════════════════════════════════ */
 
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-        @page {
-            size: A4;
-            margin: 1.8cm 2cm 2.2cm 2cm;
-
-            @bottom-center {
-                content: "DeepSight — deepsightsynthesis.com";
-                font-family: 'Inter', sans-serif;
-                font-size: 7.5pt;
-                color: #94A3B8;
-                letter-spacing: 0.5px;
-            }
-
-            @bottom-right {
-                content: counter(page) " / " counter(pages);
-                font-family: 'Inter', sans-serif;
-                font-size: 7.5pt;
-                color: #94A3B8;
-            }
-        }
-
-        @page:first {
-            margin: 0;
-            @bottom-center { content: none; }
-            @bottom-right { content: none; }
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            font-size: 10.5pt;
-            line-height: 1.7;
-            color: #1E293B;
-            background: #FFFFFF;
-        }
-
-        /* ═══════════════════ COVER PAGE (DARK) ═══════════════════ */
-
-        .cover {
-            page-break-after: always;
-            width: 210mm;
-            height: 297mm;
-            background: linear-gradient(135deg, #0a0a0f 0%, #12121a 40%, #1a1a2e 100%);
-            color: #FFFFFF;
-            padding: 3cm 2.5cm;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .cover::before {
-            content: '';
-            position: absolute;
-            top: -100px;
-            right: -100px;
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
-            border-radius: 50%;
-        }
-
-        .cover::after {
-            content: '';
-            position: absolute;
-            bottom: -80px;
-            left: -80px;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 70%);
-            border-radius: 50%;
-        }
-
-        .cover-brand {
-            margin-bottom: 0.6cm;
-        }
-
-        .cover-brand-logo {
-            font-size: 14pt;
-            font-weight: 700;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: #6366F1;
-        }
-
-        .cover-brand-sub {
-            font-size: 8.5pt;
-            color: rgba(255,255,255,0.4);
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            margin-top: 0.15cm;
-        }
-
-        .cover-divider {
-            width: 60px;
-            height: 2px;
-            background: linear-gradient(90deg, #6366F1, #06B6D4);
-            margin: 1.5cm 0;
-            border: none;
-        }
-
-        .cover-title {
-            font-size: 26pt;
-            font-weight: 800;
-            line-height: 1.2;
-            color: #FFFFFF;
-            margin-bottom: 0.6cm;
-            max-width: 90%;
-        }
-
-        .cover-channel {
-            font-size: 13pt;
-            font-weight: 500;
-            color: #6366F1;
-            margin-bottom: 2cm;
-        }
-
-        .cover-meta-grid {
-            border-top: 1px solid rgba(255,255,255,0.08);
-            padding-top: 0.6cm;
-        }
-
-        .cover-meta-row {
-            margin-bottom: 0.35cm;
-        }
-
-        .cover-meta-label {
-            font-size: 7pt;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: rgba(255,255,255,0.35);
-            margin-bottom: 0.08cm;
-        }
-
-        .cover-meta-value {
-            font-size: 10.5pt;
-            font-weight: 600;
-            color: rgba(255,255,255,0.85);
-        }
-
-        .cover-footer {
-            position: absolute;
-            bottom: 2.5cm;
-            left: 2.5cm;
-            right: 2.5cm;
-        }
-
-        .cover-footer-line {
-            border-top: 1px solid rgba(255,255,255,0.06);
-            padding-top: 0.4cm;
-        }
-
-        .cover-footer-url {
-            font-size: 8pt;
-            color: rgba(255,255,255,0.3);
-            word-break: break-all;
-        }
-
-        .cover-footer-date {
-            font-size: 8pt;
-            color: rgba(255,255,255,0.25);
-            margin-top: 0.15cm;
-        }
-
-        .cover-badge {
-            display: inline-block;
-            font-size: 7pt;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 0.12cm 0.35cm;
-            border-radius: 3px;
-            font-weight: 600;
-            margin-top: 0.3cm;
-        }
-
-        .cover-badge-ai {
-            background: rgba(99,102,241,0.15);
-            color: #818CF8;
-            border: 1px solid rgba(99,102,241,0.25);
-        }
-
-        /* ═══════════════════ TABLE OF CONTENTS ═══════════════════ */
-
-        .toc {
-            page-break-after: always;
-            padding-top: 0.5cm;
-        }
-
-        .toc-heading {
-            font-size: 20pt;
-            font-weight: 800;
-            color: #0F172A;
-            margin-bottom: 0.3cm;
-        }
-
-        .toc-accent-bar {
-            width: 50px;
-            height: 3px;
-            background: linear-gradient(90deg, #6366F1, #06B6D4);
-            border: none;
-            margin-bottom: 1cm;
-        }
-
-        .toc-list {
-            list-style: none;
-        }
-
-        .toc-item {
-            padding: 0.35cm 0;
-            border-bottom: 1px solid #F1F5F9;
-        }
-
-        .toc-num {
-            display: inline-block;
-            width: 2cm;
-            font-weight: 700;
-            color: #6366F1;
-            font-size: 11pt;
-        }
-
-        .toc-text {
-            color: #334155;
-            font-weight: 500;
-            font-size: 11pt;
-        }
-
-        /* ═══════════════════ SECTION STYLING ═══════════════════ */
-
-        .section {
-            margin-bottom: 1cm;
-        }
-
-        .section-header {
-            margin-bottom: 0.5cm;
-            padding-bottom: 0.3cm;
-            border-bottom: 2px solid #6366F1;
-        }
-
-        .section-icon {
-            font-size: 11pt;
-        }
-
-        .section-title {
-            font-size: 16pt;
-            font-weight: 700;
-            color: #0F172A;
-        }
-
-        .section-subtitle {
-            font-size: 9pt;
-            color: #94A3B8;
-            font-weight: 400;
-            margin-top: 0.1cm;
-        }
-
-        .section-content {
-            padding: 0.2cm 0;
-        }
-
-        /* ═══════════════════ VERDICT BOX ═══════════════════ */
-
-        .verdict-box {
-            background: #F8FAFC;
-            border: 1px solid #E2E8F0;
-            border-left: 4px solid #6366F1;
-            border-radius: 0 8px 8px 0;
-            padding: 0.5cm 0.6cm;
-            margin-bottom: 0.8cm;
-        }
-
-        .verdict-label {
-            font-size: 7.5pt;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #6366F1;
-            font-weight: 700;
-            margin-bottom: 0.15cm;
-        }
-
-        .verdict-text {
-            font-size: 11pt;
-            line-height: 1.6;
-            color: #1E293B;
-            font-weight: 500;
-        }
-
-        /* ═══════════════════ SYNTHESIS PROSE ═══════════════════ */
-
-        .synthesis h1 {
-            font-size: 15pt;
-            font-weight: 700;
-            color: #0F172A;
-            margin-top: 0.8cm;
-            margin-bottom: 0.3cm;
-        }
-
-        .synthesis h2 {
-            font-size: 13pt;
-            font-weight: 700;
-            color: #6366F1;
-            margin-top: 0.7cm;
-            margin-bottom: 0.25cm;
-            padding-bottom: 0.12cm;
-            border-bottom: 1px solid #EEF2FF;
-        }
-
-        .synthesis h3 {
-            font-size: 11.5pt;
-            font-weight: 600;
-            color: #4338CA;
-            margin-top: 0.5cm;
-            margin-bottom: 0.2cm;
-        }
-
-        .synthesis h4 {
-            font-size: 10.5pt;
-            font-weight: 600;
-            color: #475569;
-            margin-top: 0.4cm;
-            margin-bottom: 0.15cm;
-        }
-
-        .synthesis p {
-            margin-bottom: 0.35cm;
-            text-align: justify;
-            color: #334155;
-        }
-
-        .synthesis ul, .synthesis ol {
-            margin: 0.25cm 0 0.35cm 0;
-            padding-left: 0.7cm;
-        }
-
-        .synthesis li {
-            margin-bottom: 0.12cm;
-            color: #334155;
-        }
-
-        .synthesis li::marker {
-            color: #6366F1;
-        }
-
-        .synthesis blockquote {
-            margin: 0.4cm 0;
-            padding: 0.35cm 0.6cm;
-            border-left: 3px solid #6366F1;
-            background: #F8FAFC;
-            border-radius: 0 6px 6px 0;
-            color: #475569;
-            font-style: italic;
-        }
-
-        .synthesis strong {
-            color: #1E293B;
-            font-weight: 600;
-        }
-
-        .synthesis code {
-            font-family: 'JetBrains Mono', 'Fira Code', monospace;
-            font-size: 9pt;
-            background: #F1F5F9;
-            padding: 0.05cm 0.15cm;
-            border-radius: 3px;
-            color: #6366F1;
-        }
-
-        .synthesis pre {
-            background: #0F172A;
-            color: #E2E8F0;
-            padding: 0.4cm;
-            border-radius: 6px;
-            font-size: 9pt;
-            overflow-x: auto;
-            margin: 0.4cm 0;
-        }
-
-        .synthesis pre code {
-            background: none;
-            padding: 0;
-            color: inherit;
-        }
-
-        .synthesis table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 0.4cm 0;
-            font-size: 9.5pt;
-        }
-
-        .synthesis th {
-            background: #6366F1;
-            color: white;
-            padding: 0.2cm 0.3cm;
-            text-align: left;
-            font-weight: 600;
-            font-size: 9pt;
-        }
-
-        .synthesis td {
-            padding: 0.2cm 0.3cm;
-            border-bottom: 1px solid #E2E8F0;
-            color: #334155;
-        }
-
-        .synthesis tr:nth-child(even) td {
-            background: #F8FAFC;
-        }
-
-        /* ═══════════════════ CONCEPTS / TAGS ═══════════════════ */
-
-        .concepts-grid {
-            margin-top: 0.2cm;
-        }
-
-        .concept-tag {
-            display: inline-block;
-            padding: 0.1cm 0.35cm;
-            margin: 0.08cm 0.08cm;
-            background: #EEF2FF;
-            border: 1px solid #C7D2FE;
-            border-radius: 20px;
-            font-size: 8.5pt;
-            color: #4338CA;
-            font-weight: 500;
-        }
-
-        .concept-tag.person {
-            background: #F0FDF4;
-            border-color: #BBF7D0;
-            color: #15803D;
-        }
-
-        .concept-tag.org {
-            background: #FAF5FF;
-            border-color: #E9D5FF;
-            color: #7C3AED;
-        }
-
-        .entity-category-label {
-            font-size: 8pt;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
-            color: #64748B;
-            margin-bottom: 0.15cm;
-            margin-top: 0.4cm;
-        }
-
-        /* ═══════════════════ TIMESTAMPS ═══════════════════ */
-
-        .timestamps-list {
-            list-style: none;
-        }
-
-        .timestamp-item {
-            padding: 0.2cm 0;
-            border-bottom: 1px solid #F1F5F9;
-            page-break-inside: avoid;
-        }
-
-        .timestamp-time {
-            display: inline-block;
-            font-family: 'JetBrains Mono', 'Fira Code', monospace;
-            font-size: 9pt;
-            font-weight: 600;
-            color: #6366F1;
-            background: #EEF2FF;
-            padding: 0.06cm 0.2cm;
-            border-radius: 4px;
-            margin-right: 0.3cm;
-            min-width: 1.5cm;
-            text-align: center;
-        }
-
-        .timestamp-text {
-            color: #334155;
-            font-size: 10pt;
-        }
-
-        /* ═══════════════════ FLASHCARDS ═══════════════════ */
-
-        .flashcard {
-            border: 1px solid #E2E8F0;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 0.4cm;
-            page-break-inside: avoid;
-        }
-
-        .flashcard-front {
-            background: linear-gradient(135deg, #4338CA, #6366F1);
-            color: white;
-            padding: 0.35cm 0.5cm;
-        }
-
-        .flashcard-front-label {
-            font-size: 7pt;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: rgba(255,255,255,0.6);
-            font-weight: 600;
-            margin-bottom: 0.08cm;
-        }
-
-        .flashcard-front-text {
-            font-size: 10pt;
-            font-weight: 600;
-            line-height: 1.5;
-        }
-
-        .flashcard-back {
-            background: #F8FAFC;
-            padding: 0.35cm 0.5cm;
-        }
-
-        .flashcard-back-label {
-            font-size: 7pt;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #94A3B8;
-            font-weight: 600;
-            margin-bottom: 0.08cm;
-        }
-
-        .flashcard-back-text {
-            font-size: 10pt;
-            color: #334155;
-            line-height: 1.5;
-        }
-
-        .flashcard-number {
-            font-size: 8pt;
-            color: rgba(255,255,255,0.4);
-            font-weight: 700;
-            float: right;
-        }
-
-        /* ═══════════════════ QUIZ ═══════════════════ */
-
-        .quiz-item {
-            margin-bottom: 0.6cm;
-            page-break-inside: avoid;
-        }
-
-        .quiz-question {
-            font-weight: 600;
-            color: #1E293B;
-            margin-bottom: 0.2cm;
-            font-size: 10.5pt;
-        }
-
-        .quiz-question-num {
-            color: #6366F1;
-            font-weight: 800;
-        }
-
-        .quiz-options {
-            list-style: none;
-            padding-left: 0.5cm;
-        }
-
-        .quiz-option {
-            padding: 0.12cm 0.3cm;
-            margin-bottom: 0.08cm;
-            border-radius: 4px;
-            font-size: 10pt;
-        }
-
-        .quiz-option.correct {
-            background: #F0FDF4;
-            color: #15803D;
-            font-weight: 600;
-            border-left: 3px solid #16A34A;
-        }
-
-        .quiz-option.incorrect {
-            color: #64748B;
-        }
-
-        /* ═══════════════════ RELIABILITY SCORE ═══════════════════ */
-
-        .reliability-box {
-            padding: 0.5cm;
-            background: #F8FAFC;
-            border: 1px solid #E2E8F0;
-            border-radius: 8px;
-            page-break-inside: avoid;
-        }
-
-        .reliability-score-display {
-            font-size: 32pt;
-            font-weight: 800;
-            display: inline-block;
-            vertical-align: middle;
-            margin-right: 0.5cm;
-        }
-
-        .reliability-score-display.high { color: #16A34A; }
-        .reliability-score-display.medium { color: #F59E0B; }
-        .reliability-score-display.low { color: #EF4444; }
-
-        .reliability-info {
-            display: inline-block;
-            vertical-align: middle;
-        }
-
-        .reliability-label {
-            font-size: 10pt;
-            color: #64748B;
-            margin-bottom: 0.15cm;
-        }
-
-        .reliability-bar {
-            width: 8cm;
-            height: 8px;
-            background: #E2E8F0;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .reliability-fill {
-            height: 100%;
-            border-radius: 4px;
-        }
-
-        .reliability-fill.high { background: linear-gradient(90deg, #16A34A, #22C55E); }
-        .reliability-fill.medium { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
-        .reliability-fill.low { background: linear-gradient(90deg, #EF4444, #F87171); }
-
-        /* ═══════════════════ SOURCES ═══════════════════ */
-
-        .sources-list {
-            list-style: none;
-        }
-
-        .source-item {
-            padding: 0.25cm 0;
-            border-bottom: 1px solid #F1F5F9;
-            page-break-inside: avoid;
-        }
-
-        .source-num {
-            display: inline-block;
-            font-weight: 700;
-            color: #6366F1;
-            font-size: 9pt;
-            width: 0.8cm;
-        }
-
-        .source-title {
-            font-weight: 500;
-            color: #1E293B;
-            font-size: 10pt;
-        }
-
-        .source-url {
-            font-size: 8pt;
-            color: #6366F1;
-            word-break: break-all;
-            margin-top: 0.05cm;
-        }
-
-        /* ═══════════════════ DOCUMENT FOOTER ═══════════════════ */
-
-        .doc-footer {
-            margin-top: 1.5cm;
-            padding-top: 0.4cm;
-            border-top: 2px solid #E2E8F0;
-            text-align: center;
-        }
-
-        .doc-footer-text {
-            font-size: 8pt;
-            color: #94A3B8;
-        }
-
-        .doc-footer-brand {
-            font-size: 10pt;
-            color: #6366F1;
-            font-weight: 700;
-            letter-spacing: 1px;
-        }
-
-        .doc-footer-flag {
-            font-size: 7.5pt;
-            color: #94A3B8;
-            margin-top: 0.1cm;
-        }
-
-        /* ═══════════════════ UTILITIES ═══════════════════ */
-
-        .page-break { page-break-before: always; }
-        .no-break { page-break-inside: avoid; }
-        .separator { border: 0; border-top: 1px solid #E2E8F0; margin: 0.6cm 0; }
-        .mt-1 { margin-top: 0.3cm; }
-        .mb-1 { margin-bottom: 0.3cm; }
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+
+      @page {
+        size: A4;
+        margin: 1.8cm 2cm 2.2cm 2cm;
+
+        @bottom-center {
+          content: "DeepSight — deepsightsynthesis.com";
+          font-family: "Inter", sans-serif;
+          font-size: 7.5pt;
+          color: #94a3b8;
+          letter-spacing: 0.5px;
+        }
+
+        @bottom-right {
+          content: counter(page) " / " counter(pages);
+          font-family: "Inter", sans-serif;
+          font-size: 7.5pt;
+          color: #94a3b8;
+        }
+      }
+
+      @page:first {
+        margin: 0;
+        @bottom-center {
+          content: none;
+        }
+        @bottom-right {
+          content: none;
+        }
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        font-size: 10.5pt;
+        line-height: 1.7;
+        color: #1e293b;
+        background: #ffffff;
+      }
+
+      /* ═══════════════════ COVER PAGE (DARK) ═══════════════════ */
+
+      .cover {
+        page-break-after: always;
+        width: 210mm;
+        height: 297mm;
+        background: linear-gradient(
+          135deg,
+          #0a0a0f 0%,
+          #12121a 40%,
+          #1a1a2e 100%
+        );
+        color: #ffffff;
+        padding: 3cm 2.5cm;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .cover::before {
+        content: "";
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(
+          circle,
+          rgba(99, 102, 241, 0.12) 0%,
+          transparent 70%
+        );
+        border-radius: 50%;
+      }
+
+      .cover::after {
+        content: "";
+        position: absolute;
+        bottom: -80px;
+        left: -80px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(
+          circle,
+          rgba(6, 182, 212, 0.08) 0%,
+          transparent 70%
+        );
+        border-radius: 50%;
+      }
+
+      .cover-brand {
+        margin-bottom: 0.6cm;
+      }
+
+      .cover-brand-logo {
+        font-size: 14pt;
+        font-weight: 700;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #6366f1;
+      }
+
+      .cover-brand-sub {
+        font-size: 8.5pt;
+        color: rgba(255, 255, 255, 0.4);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-top: 0.15cm;
+      }
+
+      .cover-divider {
+        width: 60px;
+        height: 2px;
+        background: linear-gradient(90deg, #6366f1, #06b6d4);
+        margin: 1.5cm 0;
+        border: none;
+      }
+
+      .cover-title {
+        font-size: 26pt;
+        font-weight: 800;
+        line-height: 1.2;
+        color: #ffffff;
+        margin-bottom: 0.6cm;
+        max-width: 90%;
+      }
+
+      .cover-channel {
+        font-size: 13pt;
+        font-weight: 500;
+        color: #6366f1;
+        margin-bottom: 2cm;
+      }
+
+      .cover-meta-grid {
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-top: 0.6cm;
+      }
+
+      .cover-meta-row {
+        margin-bottom: 0.35cm;
+      }
+
+      .cover-meta-label {
+        font-size: 7pt;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: rgba(255, 255, 255, 0.35);
+        margin-bottom: 0.08cm;
+      }
+
+      .cover-meta-value {
+        font-size: 10.5pt;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.85);
+      }
+
+      .cover-footer {
+        position: absolute;
+        bottom: 2.5cm;
+        left: 2.5cm;
+        right: 2.5cm;
+      }
+
+      .cover-footer-line {
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        padding-top: 0.4cm;
+      }
+
+      .cover-footer-url {
+        font-size: 8pt;
+        color: rgba(255, 255, 255, 0.3);
+        word-break: break-all;
+      }
+
+      .cover-footer-date {
+        font-size: 8pt;
+        color: rgba(255, 255, 255, 0.25);
+        margin-top: 0.15cm;
+      }
+
+      .cover-badge {
+        display: inline-block;
+        font-size: 7pt;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 0.12cm 0.35cm;
+        border-radius: 3px;
+        font-weight: 600;
+        margin-top: 0.3cm;
+      }
+
+      .cover-badge-ai {
+        background: rgba(99, 102, 241, 0.15);
+        color: #818cf8;
+        border: 1px solid rgba(99, 102, 241, 0.25);
+      }
+
+      /* ═══════════════════ TABLE OF CONTENTS ═══════════════════ */
+
+      .toc {
+        page-break-after: always;
+        padding-top: 0.5cm;
+      }
+
+      .toc-heading {
+        font-size: 20pt;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.3cm;
+      }
+
+      .toc-accent-bar {
+        width: 50px;
+        height: 3px;
+        background: linear-gradient(90deg, #6366f1, #06b6d4);
+        border: none;
+        margin-bottom: 1cm;
+      }
+
+      .toc-list {
+        list-style: none;
+      }
+
+      .toc-item {
+        padding: 0.35cm 0;
+        border-bottom: 1px solid #f1f5f9;
+      }
+
+      .toc-num {
+        display: inline-block;
+        width: 2cm;
+        font-weight: 700;
+        color: #6366f1;
+        font-size: 11pt;
+      }
+
+      .toc-text {
+        color: #334155;
+        font-weight: 500;
+        font-size: 11pt;
+      }
+
+      /* ═══════════════════ SECTION STYLING ═══════════════════ */
+
+      .section {
+        margin-bottom: 1cm;
+      }
+
+      .section-header {
+        margin-bottom: 0.5cm;
+        padding-bottom: 0.3cm;
+        border-bottom: 2px solid #6366f1;
+      }
+
+      .section-icon {
+        font-size: 11pt;
+      }
+
+      .section-title {
+        font-size: 16pt;
+        font-weight: 700;
+        color: #0f172a;
+      }
+
+      .section-subtitle {
+        font-size: 9pt;
+        color: #94a3b8;
+        font-weight: 400;
+        margin-top: 0.1cm;
+      }
+
+      .section-content {
+        padding: 0.2cm 0;
+      }
+
+      /* ═══════════════════ VERDICT BOX ═══════════════════ */
+
+      .verdict-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-left: 4px solid #6366f1;
+        border-radius: 0 8px 8px 0;
+        padding: 0.5cm 0.6cm;
+        margin-bottom: 0.8cm;
+      }
+
+      .verdict-label {
+        font-size: 7.5pt;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #6366f1;
+        font-weight: 700;
+        margin-bottom: 0.15cm;
+      }
+
+      .verdict-text {
+        font-size: 11pt;
+        line-height: 1.6;
+        color: #1e293b;
+        font-weight: 500;
+      }
+
+      /* ═══════════════════ SYNTHESIS PROSE ═══════════════════ */
+
+      .synthesis h1 {
+        font-size: 15pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 0.8cm;
+        margin-bottom: 0.3cm;
+      }
+
+      .synthesis h2 {
+        font-size: 13pt;
+        font-weight: 700;
+        color: #6366f1;
+        margin-top: 0.7cm;
+        margin-bottom: 0.25cm;
+        padding-bottom: 0.12cm;
+        border-bottom: 1px solid #eef2ff;
+      }
+
+      .synthesis h3 {
+        font-size: 11.5pt;
+        font-weight: 600;
+        color: #4338ca;
+        margin-top: 0.5cm;
+        margin-bottom: 0.2cm;
+      }
+
+      .synthesis h4 {
+        font-size: 10.5pt;
+        font-weight: 600;
+        color: #475569;
+        margin-top: 0.4cm;
+        margin-bottom: 0.15cm;
+      }
+
+      .synthesis p {
+        margin-bottom: 0.35cm;
+        text-align: justify;
+        color: #334155;
+      }
+
+      .synthesis ul,
+      .synthesis ol {
+        margin: 0.25cm 0 0.35cm 0;
+        padding-left: 0.7cm;
+      }
+
+      .synthesis li {
+        margin-bottom: 0.12cm;
+        color: #334155;
+      }
+
+      .synthesis li::marker {
+        color: #6366f1;
+      }
+
+      .synthesis blockquote {
+        margin: 0.4cm 0;
+        padding: 0.35cm 0.6cm;
+        border-left: 3px solid #6366f1;
+        background: #f8fafc;
+        border-radius: 0 6px 6px 0;
+        color: #475569;
+        font-style: italic;
+      }
+
+      .synthesis strong {
+        color: #1e293b;
+        font-weight: 600;
+      }
+
+      .synthesis code {
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: 9pt;
+        background: #f1f5f9;
+        padding: 0.05cm 0.15cm;
+        border-radius: 3px;
+        color: #6366f1;
+      }
+
+      .synthesis pre {
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 0.4cm;
+        border-radius: 6px;
+        font-size: 9pt;
+        overflow-x: auto;
+        margin: 0.4cm 0;
+      }
+
+      .synthesis pre code {
+        background: none;
+        padding: 0;
+        color: inherit;
+      }
+
+      .synthesis table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0.4cm 0;
+        font-size: 9.5pt;
+      }
+
+      .synthesis th {
+        background: #6366f1;
+        color: white;
+        padding: 0.2cm 0.3cm;
+        text-align: left;
+        font-weight: 600;
+        font-size: 9pt;
+      }
+
+      .synthesis td {
+        padding: 0.2cm 0.3cm;
+        border-bottom: 1px solid #e2e8f0;
+        color: #334155;
+      }
+
+      .synthesis tr:nth-child(even) td {
+        background: #f8fafc;
+      }
+
+      /* ═══════════════════ CONCEPTS / TAGS ═══════════════════ */
+
+      .concepts-grid {
+        margin-top: 0.2cm;
+      }
+
+      .concept-tag {
+        display: inline-block;
+        padding: 0.1cm 0.35cm;
+        margin: 0.08cm 0.08cm;
+        background: #eef2ff;
+        border: 1px solid #c7d2fe;
+        border-radius: 20px;
+        font-size: 8.5pt;
+        color: #4338ca;
+        font-weight: 500;
+      }
+
+      .concept-tag.person {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        color: #15803d;
+      }
+
+      .concept-tag.org {
+        background: #faf5ff;
+        border-color: #e9d5ff;
+        color: #7c3aed;
+      }
+
+      .entity-category-label {
+        font-size: 8pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: #64748b;
+        margin-bottom: 0.15cm;
+        margin-top: 0.4cm;
+      }
+
+      /* ═══════════════════ TIMESTAMPS ═══════════════════ */
+
+      .timestamps-list {
+        list-style: none;
+      }
+
+      .timestamp-item {
+        padding: 0.2cm 0;
+        border-bottom: 1px solid #f1f5f9;
+        page-break-inside: avoid;
+      }
+
+      .timestamp-time {
+        display: inline-block;
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: 9pt;
+        font-weight: 600;
+        color: #6366f1;
+        background: #eef2ff;
+        padding: 0.06cm 0.2cm;
+        border-radius: 4px;
+        margin-right: 0.3cm;
+        min-width: 1.5cm;
+        text-align: center;
+      }
+
+      .timestamp-text {
+        color: #334155;
+        font-size: 10pt;
+      }
+
+      /* ═══════════════════ FLASHCARDS ═══════════════════ */
+
+      .flashcard {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 0.4cm;
+        page-break-inside: avoid;
+      }
+
+      .flashcard-front {
+        background: linear-gradient(135deg, #4338ca, #6366f1);
+        color: white;
+        padding: 0.35cm 0.5cm;
+      }
+
+      .flashcard-front-label {
+        font-size: 7pt;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: rgba(255, 255, 255, 0.6);
+        font-weight: 600;
+        margin-bottom: 0.08cm;
+      }
+
+      .flashcard-front-text {
+        font-size: 10pt;
+        font-weight: 600;
+        line-height: 1.5;
+      }
+
+      .flashcard-back {
+        background: #f8fafc;
+        padding: 0.35cm 0.5cm;
+      }
+
+      .flashcard-back-label {
+        font-size: 7pt;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #94a3b8;
+        font-weight: 600;
+        margin-bottom: 0.08cm;
+      }
+
+      .flashcard-back-text {
+        font-size: 10pt;
+        color: #334155;
+        line-height: 1.5;
+      }
+
+      .flashcard-number {
+        font-size: 8pt;
+        color: rgba(255, 255, 255, 0.4);
+        font-weight: 700;
+        float: right;
+      }
+
+      /* ═══════════════════ QUIZ ═══════════════════ */
+
+      .quiz-item {
+        margin-bottom: 0.6cm;
+        page-break-inside: avoid;
+      }
+
+      .quiz-question {
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 0.2cm;
+        font-size: 10.5pt;
+      }
+
+      .quiz-question-num {
+        color: #6366f1;
+        font-weight: 800;
+      }
+
+      .quiz-options {
+        list-style: none;
+        padding-left: 0.5cm;
+      }
+
+      .quiz-option {
+        padding: 0.12cm 0.3cm;
+        margin-bottom: 0.08cm;
+        border-radius: 4px;
+        font-size: 10pt;
+      }
+
+      .quiz-option.correct {
+        background: #f0fdf4;
+        color: #15803d;
+        font-weight: 600;
+        border-left: 3px solid #16a34a;
+      }
+
+      .quiz-option.incorrect {
+        color: #64748b;
+      }
+
+      /* ═══════════════════ RELIABILITY SCORE ═══════════════════ */
+
+      .reliability-box {
+        padding: 0.5cm;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        page-break-inside: avoid;
+      }
+
+      .reliability-score-display {
+        font-size: 32pt;
+        font-weight: 800;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 0.5cm;
+      }
+
+      .reliability-score-display.high {
+        color: #16a34a;
+      }
+      .reliability-score-display.medium {
+        color: #f59e0b;
+      }
+      .reliability-score-display.low {
+        color: #ef4444;
+      }
+
+      .reliability-info {
+        display: inline-block;
+        vertical-align: middle;
+      }
+
+      .reliability-label {
+        font-size: 10pt;
+        color: #64748b;
+        margin-bottom: 0.15cm;
+      }
+
+      .reliability-bar {
+        width: 8cm;
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .reliability-fill {
+        height: 100%;
+        border-radius: 4px;
+      }
+
+      .reliability-fill.high {
+        background: linear-gradient(90deg, #16a34a, #22c55e);
+      }
+      .reliability-fill.medium {
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+      }
+      .reliability-fill.low {
+        background: linear-gradient(90deg, #ef4444, #f87171);
+      }
+
+      /* ═══════════════════ SOURCES ═══════════════════ */
+
+      .sources-list {
+        list-style: none;
+      }
+
+      .source-item {
+        padding: 0.25cm 0;
+        border-bottom: 1px solid #f1f5f9;
+        page-break-inside: avoid;
+      }
+
+      .source-num {
+        display: inline-block;
+        font-weight: 700;
+        color: #6366f1;
+        font-size: 9pt;
+        width: 0.8cm;
+      }
+
+      .source-title {
+        font-weight: 500;
+        color: #1e293b;
+        font-size: 10pt;
+      }
+
+      .source-url {
+        font-size: 8pt;
+        color: #6366f1;
+        word-break: break-all;
+        margin-top: 0.05cm;
+      }
+
+      /* ═══════════════════ DOCUMENT FOOTER ═══════════════════ */
+
+      .doc-footer {
+        margin-top: 1.5cm;
+        padding-top: 0.4cm;
+        border-top: 2px solid #e2e8f0;
+        text-align: center;
+      }
+
+      .doc-footer-text {
+        font-size: 8pt;
+        color: #94a3b8;
+      }
+
+      .doc-footer-brand {
+        font-size: 10pt;
+        color: #6366f1;
+        font-weight: 700;
+        letter-spacing: 1px;
+      }
+
+      .doc-footer-flag {
+        font-size: 7.5pt;
+        color: #94a3b8;
+        margin-top: 0.1cm;
+      }
+
+      /* ═══════════════════ UTILITIES ═══════════════════ */
+
+      .page-break {
+        page-break-before: always;
+      }
+      .no-break {
+        page-break-inside: avoid;
+      }
+      .separator {
+        border: 0;
+        border-top: 1px solid #e2e8f0;
+        margin: 0.6cm 0;
+      }
+      .mt-1 {
+        margin-top: 0.3cm;
+      }
+      .mb-1 {
+        margin-bottom: 0.3cm;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <!-- ═══════════════════ COVER PAGE (DARK) ═══════════════════ -->
     <div class="cover">
-        <div class="cover-brand">
-            <div class="cover-brand-logo">DeepSight</div>
-            <div class="cover-brand-sub">Analyse Intelligente de Vidéos</div>
+      <div class="cover-brand">
+        <div class="cover-brand-logo">DeepSight</div>
+        <div class="cover-brand-sub">Analyse Intelligente de Vidéos</div>
+      </div>
+
+      <hr class="cover-divider" />
+
+      <div class="cover-title">{{ title }}</div>
+
+      {% if channel %}
+      <div class="cover-channel">{{ channel }}</div>
+      {% endif %}
+
+      <div class="cover-meta-grid">
+        {% if duration %}
+        <div class="cover-meta-row">
+          <div class="cover-meta-label">Durée</div>
+          <div class="cover-meta-value">{{ duration_formatted }}</div>
         </div>
-
-        <hr class="cover-divider">
-
-        <div class="cover-title">{{ title }}</div>
-
-        {% if channel %}
-        <div class="cover-channel">{{ channel }}</div>
         {% endif %}
-
-        <div class="cover-meta-grid">
-            {% if duration %}
-            <div class="cover-meta-row">
-                <div class="cover-meta-label">Durée</div>
-                <div class="cover-meta-value">{{ duration_formatted }}</div>
-            </div>
-            {% endif %}
-            <div class="cover-meta-row">
-                <div class="cover-meta-label">Catégorie</div>
-                <div class="cover-meta-value">{{ category }}</div>
-            </div>
-            <div class="cover-meta-row">
-                <div class="cover-meta-label">Mode d'analyse</div>
-                <div class="cover-meta-value">{{ mode }}</div>
-            </div>
-            {% if reliability_score %}
-            <div class="cover-meta-row">
-                <div class="cover-meta-label">Fiabilité</div>
-                <div class="cover-meta-value">{{ reliability_score }}/100</div>
-            </div>
-            {% endif %}
+        <div class="cover-meta-row">
+          <div class="cover-meta-label">Catégorie</div>
+          <div class="cover-meta-value">{{ category }}</div>
         </div>
-
-        <div class="cover-badge cover-badge-ai">Propulsé par Mistral AI</div>
-
-        <div class="cover-footer">
-            <div class="cover-footer-line">
-                {% if video_url %}
-                <div class="cover-footer-url">{{ video_url }}</div>
-                {% endif %}
-                <div class="cover-footer-date">Exporté le {{ date }}</div>
-            </div>
+        <div class="cover-meta-row">
+          <div class="cover-meta-label">Mode d'analyse</div>
+          <div class="cover-meta-value">{{ mode }}</div>
         </div>
+        {% if reliability_score %}
+        <div class="cover-meta-row">
+          <div class="cover-meta-label">Fiabilité</div>
+          <div class="cover-meta-value">{{ reliability_score }}/100</div>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="cover-badge cover-badge-ai">Propulsé par Mistral AI</div>
+
+      <div class="cover-footer">
+        <div class="cover-footer-line">
+          {% if video_url %}
+          <div class="cover-footer-url">{{ video_url }}</div>
+          {% endif %}
+          <div class="cover-footer-date">Exporté le {{ date }}</div>
+        </div>
+      </div>
     </div>
 
     <!-- ═══════════════════ TABLE OF CONTENTS ═══════════════════ -->
     {% if show_toc %}
     <div class="toc">
-        <h2 class="toc-heading">Sommaire</h2>
-        <hr class="toc-accent-bar">
-        <ul class="toc-list">
-            <li class="toc-item">
-                <span class="toc-num">01</span>
-                <span class="toc-text">Synthèse de l'analyse</span>
-            </li>
-            {% if show_concepts and entities and entities.concepts %}
-            <li class="toc-item">
-                <span class="toc-num">02</span>
-                <span class="toc-text">Concepts clés</span>
-            </li>
-            {% endif %}
-            {% if show_timestamps and timestamps %}
-            <li class="toc-item">
-                <span class="toc-num">03</span>
-                <span class="toc-text">Chapitres &amp; Timestamps</span>
-            </li>
-            {% endif %}
-            {% if entities and (entities.persons or entities.organizations) %}
-            <li class="toc-item">
-                <span class="toc-num">04</span>
-                <span class="toc-text">Entités mentionnées</span>
-            </li>
-            {% endif %}
-            {% if show_flashcards and flashcards %}
-            <li class="toc-item">
-                <span class="toc-num">05</span>
-                <span class="toc-text">Flashcards de révision</span>
-            </li>
-            {% endif %}
-            {% if show_quiz and quiz %}
-            <li class="toc-item">
-                <span class="toc-num">06</span>
-                <span class="toc-text">Quiz</span>
-            </li>
-            {% endif %}
-            {% if reliability_score %}
-            <li class="toc-item">
-                <span class="toc-num">07</span>
-                <span class="toc-text">Score de fiabilité</span>
-            </li>
-            {% endif %}
-            {% if sources %}
-            <li class="toc-item">
-                <span class="toc-num">08</span>
-                <span class="toc-text">Sources</span>
-            </li>
-            {% endif %}
-        </ul>
+      <h2 class="toc-heading">Sommaire</h2>
+      <hr class="toc-accent-bar" />
+      <ul class="toc-list">
+        <li class="toc-item">
+          <span class="toc-num">01</span>
+          <span class="toc-text">Synthèse de l'analyse</span>
+        </li>
+        {% if show_concepts and entities and entities.concepts %}
+        <li class="toc-item">
+          <span class="toc-num">02</span>
+          <span class="toc-text">Concepts clés</span>
+        </li>
+        {% endif %} {% if show_timestamps and timestamps %}
+        <li class="toc-item">
+          <span class="toc-num">03</span>
+          <span class="toc-text">Chapitres &amp; Timestamps</span>
+        </li>
+        {% endif %} {% if entities and (entities.persons or
+        entities.organizations) %}
+        <li class="toc-item">
+          <span class="toc-num">04</span>
+          <span class="toc-text">Entités mentionnées</span>
+        </li>
+        {% endif %} {% if show_flashcards and flashcards %}
+        <li class="toc-item">
+          <span class="toc-num">05</span>
+          <span class="toc-text">Flashcards de révision</span>
+        </li>
+        {% endif %} {% if show_quiz and quiz %}
+        <li class="toc-item">
+          <span class="toc-num">06</span>
+          <span class="toc-text">Quiz</span>
+        </li>
+        {% endif %} {% if reliability_score %}
+        <li class="toc-item">
+          <span class="toc-num">07</span>
+          <span class="toc-text">Score de fiabilité</span>
+        </li>
+        {% endif %} {% if sources %}
+        <li class="toc-item">
+          <span class="toc-num">08</span>
+          <span class="toc-text">Sources</span>
+        </li>
+        {% endif %}
+      </ul>
     </div>
     {% endif %}
 
     <!-- ═══════════════════ SYNTHESIS ═══════════════════ -->
     <div class="section">
-        <div class="section-header">
-            <h2 class="section-title">Synthèse</h2>
-            <div class="section-subtitle">Analyse complète du contenu vidéo</div>
-        </div>
-        <div class="section-content synthesis">
-            {{ summary_html | safe }}
-        </div>
+      <div class="section-header">
+        <h2 class="section-title">Synthèse</h2>
+        <div class="section-subtitle">Analyse complète du contenu vidéo</div>
+      </div>
+      <div class="section-content synthesis">{{ summary_html | safe }}</div>
     </div>
 
     <!-- ═══════════════════ KEY CONCEPTS ═══════════════════ -->
     {% if show_concepts and entities and entities.concepts %}
     <div class="section">
-        <div class="section-header">
-            <h2 class="section-title">Concepts clés</h2>
+      <div class="section-header">
+        <h2 class="section-title">Concepts clés</h2>
+      </div>
+      <div class="section-content">
+        <div class="concepts-grid">
+          {% for concept in entities.concepts[:25] %}
+          <span class="concept-tag">{{ concept }}</span>
+          {% endfor %}
         </div>
-        <div class="section-content">
-            <div class="concepts-grid">
-                {% for concept in entities.concepts[:25] %}
-                <span class="concept-tag">{{ concept }}</span>
-                {% endfor %}
-            </div>
-        </div>
+      </div>
     </div>
     {% endif %}
 
     <!-- ═══════════════════ TIMESTAMPS ═══════════════════ -->
     {% if show_timestamps and timestamps %}
     <div class="section">
-        <div class="section-header">
-            <h2 class="section-title">Chapitres &amp; Timestamps</h2>
-        </div>
-        <div class="section-content">
-            <ul class="timestamps-list">
-                {% for ts in timestamps %}
-                <li class="timestamp-item no-break">
-                    <span class="timestamp-time">{{ ts.time }}</span>
-                    <span class="timestamp-text">{{ ts.text }}</span>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
+      <div class="section-header">
+        <h2 class="section-title">Chapitres &amp; Timestamps</h2>
+      </div>
+      <div class="section-content">
+        <ul class="timestamps-list">
+          {% for ts in timestamps %}
+          <li class="timestamp-item no-break">
+            <span class="timestamp-time">{{ ts.time }}</span>
+            <span class="timestamp-text">{{ ts.text }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
     </div>
     {% endif %}
 
     <!-- ═══════════════════ ENTITIES ═══════════════════ -->
     {% if entities and (entities.persons or entities.organizations) %}
     <div class="section">
-        <div class="section-header">
-            <h2 class="section-title">Entités mentionnées</h2>
+      <div class="section-header">
+        <h2 class="section-title">Entités mentionnées</h2>
+      </div>
+      <div class="section-content">
+        {% if entities.persons %}
+        <div class="entity-category-label">Personnes</div>
+        <div class="concepts-grid">
+          {% for person in entities.persons[:15] %}
+          <span class="concept-tag person">{{ person }}</span>
+          {% endfor %}
         </div>
-        <div class="section-content">
-            {% if entities.persons %}
-            <div class="entity-category-label">Personnes</div>
-            <div class="concepts-grid">
-                {% for person in entities.persons[:15] %}
-                <span class="concept-tag person">{{ person }}</span>
-                {% endfor %}
-            </div>
-            {% endif %}
-            {% if entities.organizations %}
-            <div class="entity-category-label">Organisations</div>
-            <div class="concepts-grid">
-                {% for org in entities.organizations[:15] %}
-                <span class="concept-tag org">{{ org }}</span>
-                {% endfor %}
-            </div>
-            {% endif %}
+        {% endif %} {% if entities.organizations %}
+        <div class="entity-category-label">Organisations</div>
+        <div class="concepts-grid">
+          {% for org in entities.organizations[:15] %}
+          <span class="concept-tag org">{{ org }}</span>
+          {% endfor %}
         </div>
+        {% endif %}
+      </div>
     </div>
     {% endif %}
 
     <!-- ═══════════════════ FLASHCARDS ═══════════════════ -->
     {% if show_flashcards and flashcards %}
     <div class="section page-break">
-        <div class="section-header">
-            <h2 class="section-title">Flashcards de révision</h2>
-            <div class="section-subtitle">{{ flashcards|length }} carte{{ 's' if flashcards|length > 1 else '' }} générée{{ 's' if flashcards|length > 1 else '' }}</div>
+      <div class="section-header">
+        <h2 class="section-title">Flashcards de révision</h2>
+        <div class="section-subtitle">
+          {{ flashcards|length }} carte{{ 's' if flashcards|length > 1 else ''
+          }} générée{{ 's' if flashcards|length > 1 else '' }}
         </div>
-        <div class="section-content">
-            {% for card in flashcards[:20] %}
-            <div class="flashcard">
-                <div class="flashcard-front">
-                    <span class="flashcard-number">#{{ loop.index }}</span>
-                    <div class="flashcard-front-label">Question</div>
-                    <div class="flashcard-front-text">{{ card.front }}</div>
-                </div>
-                <div class="flashcard-back">
-                    <div class="flashcard-back-label">Réponse</div>
-                    <div class="flashcard-back-text">{{ card.back }}</div>
-                </div>
-            </div>
-            {% endfor %}
+      </div>
+      <div class="section-content">
+        {% for card in flashcards[:20] %}
+        <div class="flashcard">
+          <div class="flashcard-front">
+            <span class="flashcard-number">#{{ loop.index }}</span>
+            <div class="flashcard-front-label">Question</div>
+            <div class="flashcard-front-text">{{ card.front }}</div>
+          </div>
+          <div class="flashcard-back">
+            <div class="flashcard-back-label">Réponse</div>
+            <div class="flashcard-back-text">{{ card.back }}</div>
+          </div>
         </div>
+        {% endfor %}
+      </div>
     </div>
     {% endif %}
 
     <!-- ═══════════════════ QUIZ ═══════════════════ -->
     {% if show_quiz and quiz %}
     <div class="section page-break">
-        <div class="section-header">
-            <h2 class="section-title">Quiz</h2>
-            <div class="section-subtitle">{{ quiz|length }} question{{ 's' if quiz|length > 1 else '' }}</div>
+      <div class="section-header">
+        <h2 class="section-title">Quiz</h2>
+        <div class="section-subtitle">
+          {{ quiz|length }} question{{ 's' if quiz|length > 1 else '' }}
         </div>
-        <div class="section-content">
-            {% for q in quiz[:15] %}
-            <div class="quiz-item">
-                <div class="quiz-question">
-                    <span class="quiz-question-num">Q{{ loop.index }}.</span> {{ q.question }}
-                </div>
-                {% if q.options %}
-                <ul class="quiz-options">
-                    {% for opt in q.options %}
-                    <li class="quiz-option {{ 'correct' if opt == q.answer else 'incorrect' }}">
-                        {{ '✓' if opt == q.answer else '○' }} {{ opt }}
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-            </div>
+      </div>
+      <div class="section-content">
+        {% for q in quiz[:15] %}
+        <div class="quiz-item">
+          <div class="quiz-question">
+            <span class="quiz-question-num">Q{{ loop.index }}.</span> {{
+            q.question }}
+          </div>
+          {% if q.options %}
+          <ul class="quiz-options">
+            {% for opt in q.options %}
+            <li
+              class="quiz-option {{ 'correct' if opt == q.answer else 'incorrect' }}"
+            >
+              {{ '✓' if opt == q.answer else '○' }} {{ opt }}
+            </li>
             {% endfor %}
+          </ul>
+          {% endif %}
         </div>
+        {% endfor %}
+      </div>
     </div>
     {% endif %}
 
     <!-- ═══════════════════ RELIABILITY SCORE ═══════════════════ -->
     {% if reliability_score %}
     <div class="section">
-        <div class="section-header">
-            <h2 class="section-title">Score de fiabilité</h2>
-        </div>
-        <div class="section-content">
-            <div class="reliability-box">
-                <span class="reliability-score-display {{ reliability_class }}">{{ reliability_score }}/100</span>
-                <div class="reliability-info">
-                    <div class="reliability-label">{{ reliability_label }}</div>
-                    <div class="reliability-bar">
-                        <div class="reliability-fill {{ reliability_class }}" style="width: {{ reliability_score }}%;"></div>
-                    </div>
-                </div>
+      <div class="section-header">
+        <h2 class="section-title">Score de fiabilité</h2>
+      </div>
+      <div class="section-content">
+        <div class="reliability-box">
+          <span class="reliability-score-display {{ reliability_class }}"
+            >{{ reliability_score }}/100</span
+          >
+          <div class="reliability-info">
+            <div class="reliability-label">{{ reliability_label }}</div>
+            <div class="reliability-bar">
+              <div
+                class="reliability-fill {{ reliability_class }}"
+                style="width: {{ reliability_score }}%;"
+              ></div>
             </div>
+          </div>
         </div>
+      </div>
     </div>
     {% endif %}
 
     <!-- ═══════════════════ SOURCES ═══════════════════ -->
     {% if sources %}
     <div class="section">
-        <div class="section-header">
-            <h2 class="section-title">Sources</h2>
-        </div>
-        <div class="section-content">
-            <ul class="sources-list">
-                {% for source in sources %}
-                <li class="source-item no-break">
-                    <span class="source-num">[{{ loop.index }}]</span>
-                    <span class="source-title">{{ source.title }}</span>
-                    {% if source.url %}
-                    <div class="source-url" style="margin-left: 0.8cm;">{{ source.url }}</div>
-                    {% endif %}
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
+      <div class="section-header">
+        <h2 class="section-title">Sources</h2>
+      </div>
+      <div class="section-content">
+        <ul class="sources-list">
+          {% for source in sources %}
+          <li class="source-item no-break">
+            <span class="source-num">[{{ loop.index }}]</span>
+            <span class="source-title">{{ source.title }}</span>
+            {% if source.url %}
+            <div class="source-url" style="margin-left: 0.8cm">
+              {{ source.url }}
+            </div>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
     </div>
     {% endif %}
 
     <!-- ═══════════════════ DOCUMENT FOOTER ═══════════════════ -->
     <div class="doc-footer">
-        <div class="doc-footer-brand">DeepSight</div>
-        <div class="doc-footer-text">Analyse intelligente propulsée par IA — deepsightsynthesis.com</div>
-        <div class="doc-footer-flag">🇫🇷🇪🇺 IA 100% Française &amp; Européenne — Mistral AI</div>
+      <div class="doc-footer-brand">DeepSight</div>
+      <div class="doc-footer-text">
+        Analyse intelligente propulsée par IA — deepsightsynthesis.com
+      </div>
+      <div class="doc-footer-flag">
+        🇫🇷🇪🇺 IA 100% Française &amp; Européenne — Mistral AI
+      </div>
     </div>
-</body>
+  </body>
 </html>

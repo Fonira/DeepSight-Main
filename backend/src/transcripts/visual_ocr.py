@@ -27,8 +27,9 @@ from core.config import get_mistral_key
 
 logger = logging.getLogger(__name__)
 
-# Pixtral 12B — modèle vision Mistral, même API, même clé
-PIXTRAL_MODEL = "pixtral-12b-2409"
+# Pixtral — modèles vision Mistral avec fallback chain
+PIXTRAL_MODELS = ["pixtral-12b-2409", "pixtral-large-2411", "mistral-small-latest"]
+PIXTRAL_MODEL = PIXTRAL_MODELS[0]  # Primary
 MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
 
 # Limites
@@ -190,49 +191,56 @@ async def _call_pixtral_ocr(
         ),
     })
 
-    payload = {
-        "model": PIXTRAL_MODEL,
-        "messages": [{"role": "user", "content": content}],
-        "temperature": 0.1,
-        "max_tokens": 4000,
-    }
+    # Fallback chain: essayer chaque modèle en séquence
+    for model in PIXTRAL_MODELS:
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": content}],
+            "temperature": 0.1,
+            "max_tokens": 4000,
+        }
 
-    try:
-        async with httpx.AsyncClient(timeout=PIXTRAL_TIMEOUT) as client:
-            response = await client.post(
-                MISTRAL_CHAT_URL,
-                headers={
-                    "Authorization": f"Bearer {mistral_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-
-            if response.status_code != 200:
-                logger.error(
-                    f"[VISUAL_OCR] Pixtral API error {response.status_code}: "
-                    f"{response.text[:300]}"
+        try:
+            async with httpx.AsyncClient(timeout=PIXTRAL_TIMEOUT) as client:
+                response = await client.post(
+                    MISTRAL_CHAT_URL,
+                    headers={
+                        "Authorization": f"Bearer {mistral_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
                 )
-                return None, None
 
-            result = response.json()
-            text = result["choices"][0]["message"]["content"]
+                if response.status_code == 429:
+                    logger.warning(f"[VISUAL_OCR] {model} rate-limited, trying next...")
+                    continue
+                if response.status_code != 200:
+                    logger.error(
+                        f"[VISUAL_OCR] {model} API error {response.status_code}: "
+                        f"{response.text[:300]}"
+                    )
+                    continue
 
-            # Détecter la langue à partir du texte
-            lang = _detect_lang_simple(text)
+                result = response.json()
+                text = result["choices"][0]["message"]["content"]
 
-            logger.info(
-                f"[VISUAL_OCR] Pixtral response for {video_id}: "
-                f"{len(text)} chars, detected_lang={lang}"
-            )
-            return text, lang
+                lang = _detect_lang_simple(text)
 
-    except httpx.TimeoutException:
-        logger.error(f"[VISUAL_OCR] Pixtral timeout for {video_id}")
-        return None, None
-    except Exception as e:
-        logger.error(f"[VISUAL_OCR] Pixtral error for {video_id}: {e}")
-        return None, None
+                logger.info(
+                    f"[VISUAL_OCR] {model} response for {video_id}: "
+                    f"{len(text)} chars, detected_lang={lang}"
+                )
+                return text, lang
+
+        except httpx.TimeoutException:
+            logger.error(f"[VISUAL_OCR] {model} timeout for {video_id}")
+            continue
+        except Exception as e:
+            logger.error(f"[VISUAL_OCR] {model} error for {video_id}: {e}")
+            continue
+
+    logger.error(f"[VISUAL_OCR] All models exhausted for {video_id}")
+    return None, None
 
 
 def _detect_lang_simple(text: str) -> str:

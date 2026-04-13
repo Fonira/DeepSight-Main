@@ -21,16 +21,16 @@ backend/tests/
 
 ### Contenu
 
-| Module | Tests | Couvre |
-|--------|-------|--------|
-| **Auth** | 58 | Register, Login, JWT, OAuth, Email verification, Password reset, Sessions |
-| **Videos** | 50 | Analysis, Streaming, Transcript extraction, History, Export, Analysis engine |
-| **Chat** | 32 | Ask, Web search, History, Sources tracking, Streaming, Rate limiting |
-| **Billing** | 43 | Checkout, Subscriptions, Stripe webhooks, Upgrade/downgrade, Invoices |
-| **Core** | 40 | Credits, Rate limiting, Cache, Health check, Logging, Security headers |
-| **Playlists** | 22 | Create, List, Add/remove videos, Analysis, Export |
-| **Study** | 32 | Flashcards, Quiz, Mind maps, Progress tracking, SRS algorithm |
-| **TOTAL** | **219** | **Tous les modules avec couverture complète** |
+| Module        | Tests   | Couvre                                                                       |
+| ------------- | ------- | ---------------------------------------------------------------------------- |
+| **Auth**      | 58      | Register, Login, JWT, OAuth, Email verification, Password reset, Sessions    |
+| **Videos**    | 50      | Analysis, Streaming, Transcript extraction, History, Export, Analysis engine |
+| **Chat**      | 32      | Ask, Web search, History, Sources tracking, Streaming, Rate limiting         |
+| **Billing**   | 43      | Checkout, Subscriptions, Stripe webhooks, Upgrade/downgrade, Invoices        |
+| **Core**      | 40      | Credits, Rate limiting, Cache, Health check, Logging, Security headers       |
+| **Playlists** | 22      | Create, List, Add/remove videos, Analysis, Export                            |
+| **Study**     | 32      | Flashcards, Quiz, Mind maps, Progress tracking, SRS algorithm                |
+| **TOTAL**     | **219** | **Tous les modules avec couverture complète**                                |
 
 ### Structure de chaque test
 
@@ -62,6 +62,7 @@ async def test_feature_name():
 ## Démarrage rapide
 
 ### 1. Installation
+
 ```bash
 cd backend
 python -m venv venv
@@ -70,6 +71,7 @@ pip install -r requirements.txt
 ```
 
 ### 2. Exécuter les tests
+
 ```bash
 # Tous les tests
 pytest tests/ -v
@@ -88,6 +90,7 @@ pytest tests/ -m integration -v
 ```
 
 ### 3. Voir la couverture HTML
+
 ```bash
 pytest tests/ --cov=src --cov-report=html
 open htmlcov/index.html  # macOS
@@ -97,6 +100,7 @@ open htmlcov/index.html  # macOS
 ## Fixtures principales
 
 ### Créateurs de données
+
 ```python
 # Utilisateur avec plan configurable
 user = create_test_user(plan="pro", credits=15000)
@@ -115,6 +119,7 @@ transaction = create_test_credit_transaction(amount=-10)
 ```
 
 ### JWT & Auth
+
 ```python
 # Token JWT valide
 token = create_valid_jwt_token(user_id=1)
@@ -127,6 +132,7 @@ expired = create_expired_jwt_token(user_id=1)
 ```
 
 ### Mocks externes
+
 ```python
 # Redis mock
 mock_redis.get = AsyncMock(return_value=b'cached_value')
@@ -143,6 +149,7 @@ mock_mistral_client.chat.complete = AsyncMock(return_value={...})
 Les tests sont écrits avec sections `# TODO:` prêtes à être implémentées :
 
 1. **Fixtures existantes à utiliser**
+
    ```python
    # Fourni par conftest_enhanced.py
    user = create_test_user(plan="pro")
@@ -150,6 +157,7 @@ Les tests sont écrits avec sections `# TODO:` prêtes à être implémentées :
    ```
 
 2. **Appels d'API à implémenter**
+
    ```python
    # TODO: Appeler POST /api/videos/analyze
    response = await app_client.post("/api/videos/analyze", json=payload, headers=headers)
@@ -194,6 +202,7 @@ Study            → test_study_comprehensive.py
 ## Bonnes pratiques
 
 ### ✅ Faire
+
 ```python
 # Utiliser les factories
 user = create_test_user(plan="pro")
@@ -217,6 +226,7 @@ async def test_something():
 ```
 
 ### ❌ Ne pas faire
+
 ```python
 # Hardcoder les données
 user_id = 1
@@ -236,21 +246,25 @@ async def test_xyz():
 ## Débogage
 
 ### Voir les logs pendant les tests
+
 ```bash
 pytest tests/test_auth_comprehensive.py -v -s
 ```
 
 ### Exécuter un seul test
+
 ```bash
 pytest tests/test_auth_comprehensive.py::test_login_success -v
 ```
 
 ### Mode watch (re-exécute on file change)
+
 ```bash
 pytest-watch tests/
 ```
 
 ### Profiling
+
 ```bash
 pytest tests/ --profile
 ```
