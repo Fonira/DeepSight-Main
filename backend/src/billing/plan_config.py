@@ -108,6 +108,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "debate_enabled": False,
             "debate_monthly": 0,
             "tts_enabled": False,
+            "geo_enabled": False,
+            "geo_monthly": 0,
         },
         "features_display": [
             {"text": "5 analyses / mois", "icon": "📊"},
@@ -140,6 +142,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "voice_chat": False,
                 "debate": False,
                 "deep_research": False,
+                "geo": False,
             },
             "mobile": {
                 "analyse": True,
@@ -156,6 +159,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "voice_chat": False,
                 "debate": False,
                 "deep_research": False,
+                "geo": False,
             },
             "extension": {
                 "analyse": True,
@@ -172,6 +176,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "voice_chat": False,
                 "debate": False,
                 "deep_research": False,
+                "geo": False,
             },
         },
     },
@@ -224,6 +229,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "debate_enabled": True,
             "debate_monthly": 3,
             "tts_enabled": False,
+            "geo_enabled": True,
+            "geo_monthly": 10,
         },
         "features_display": [
             {"text": "25 analyses / mois", "icon": "📊"},
@@ -262,6 +269,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "voice_chat": False,
                 "debate": True,
                 "deep_research": False,
+                "geo": True,
             },
             "mobile": {
                 "analyse": True,
@@ -278,6 +286,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "voice_chat": False,
                 "debate": False,
                 "deep_research": False,
+                "geo": True,
             },
             "extension": {
                 "analyse": True,
@@ -294,6 +303,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "voice_chat": False,
                 "debate": False,
                 "deep_research": False,
+                "geo": False,
             },
         },
     },
@@ -347,6 +357,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "debate_enabled": True,
             "debate_monthly": 20,
             "tts_enabled": True,
+            "geo_enabled": True,
+            "geo_monthly": -1,
         },
         "features_display": [
             {"text": "100 analyses / mois", "icon": "📊"},
@@ -387,6 +399,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "voice_chat": True,
                 "debate": True,
                 "deep_research": True,
+                "geo": True,
             },
             "mobile": {
                 "analyse": True,
@@ -403,6 +416,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "voice_chat": True,
                 "debate": False,
                 "deep_research": False,
+                "geo": True,
             },
             "extension": {
                 "analyse": True,
@@ -419,6 +433,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "voice_chat": False,
                 "debate": False,
                 "deep_research": False,
+                "geo": False,
             },
         },
     },

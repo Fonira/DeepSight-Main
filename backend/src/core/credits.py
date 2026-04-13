@@ -86,6 +86,7 @@ FEATURE_COSTS = {
     "export_audio": 50,         # Export audio TTS
     "playlist_per_video": 30,   # Par vidéo dans une playlist
     "comparison": 75,            # Comparaison entre 2 vidéos (VS Mode)
+    "geo_score": 0,              # Score GEO (gratuit — utilise données existantes)
 }
 
 # Modificateurs selon la longueur du contenu

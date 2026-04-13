@@ -91,6 +91,14 @@ from exports.router import router as exports_router
 from playlists.router import router as playlists_router
 from history.history_router import router as history_router
 from demo.router import router as demo_router
+
+# 🎯 GEO (Generative Engine Optimization)
+try:
+    from geo.router import router as geo_router
+    GEO_ROUTER_AVAILABLE = True
+except ImportError as e:
+    GEO_ROUTER_AVAILABLE = False
+    print(f"⚠️ GEO router not available: {e}", flush=True)
 from db.database import init_db, close_db
 from core.http_client import init_http_client, close_http_client
 
@@ -465,6 +473,25 @@ async def initialize_database_background():
             redis_url = os.environ.get("REDIS_URL")
             await init_rate_limiter(redis_url)
             logger.info("Rate limiter initialized")
+
+        # Étape 4b: 🔴 Initialiser TaskStore + GuestLimiter + arXiv rate limiter (Redis)
+        try:
+            redis_url = os.environ.get("REDIS_URL")
+            if redis_url and CACHE_AVAILABLE and cache_service.is_redis:
+                redis_client = cache_service.backend.redis
+                from core.task_store import task_store, guest_limiter
+                await task_store.init_redis(redis_client)
+                await guest_limiter.init_redis(redis_client)
+                try:
+                    from academic.arxiv_client import init_arxiv_redis
+                    await init_arxiv_redis(redis_client)
+                except ImportError:
+                    pass
+                logger.info("TaskStore + GuestLimiter + arXiv Redis initialized")
+            else:
+                logger.info("TaskStore + GuestLimiter using in-memory fallback (no Redis)")
+        except Exception as ts_err:
+            logger.warning(f"TaskStore Redis init failed (non-blocking): {ts_err}")
 
         # Étape 5: Démarrer la queue email (throttled Resend)
         try:
@@ -884,6 +911,11 @@ if BATCH_ROUTER_AVAILABLE:
 if ACADEMIC_ROUTER_AVAILABLE:
     app.include_router(academic_router, tags=["Academic"])
     print("📚 Academic router loaded (Semantic Scholar, OpenAlex, arXiv)", flush=True)
+
+# 🎯 NOUVEAU: GEO router (Generative Engine Optimization)
+if GEO_ROUTER_AVAILABLE:
+    app.include_router(geo_router, prefix="/api/geo", tags=["GEO"])
+    print("🎯 GEO router loaded (score, quotes)", flush=True)
 
 # 🩺 Monitoring router (health checks, status)
 if MONITORING_AVAILABLE:
