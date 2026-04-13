@@ -4,30 +4,35 @@
  * Synthèse | Quiz | Flashcards | Fiabilité
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { BookOpen, Brain, BookMarked, Shield } from 'lucide-react';
-import { SynthesisTab } from './SynthesisTab';
-import { QuizTab } from './QuizTab';
-import { FlashcardsTab } from './FlashcardsTab';
-import { ReliabilityTab } from './ReliabilityTab';
-import { studyApi } from '../../services/api';
-import type { Summary, EnrichedConcept, ReliabilityResult } from '../../services/api';
-import type { QuizQuestionData } from '../Study';
-import type { Flashcard } from '../Study';
-import type { TimecodeInfo } from '../TimecodeRenderer';
+import React, { useState, useEffect, useCallback } from "react";
+import { BookOpen, Brain, BookMarked, Shield, Target } from "lucide-react";
+import { SynthesisTab } from "./SynthesisTab";
+import { QuizTab } from "./QuizTab";
+import { FlashcardsTab } from "./FlashcardsTab";
+import { ReliabilityTab } from "./ReliabilityTab";
+import { GeoTab } from "./GeoTab";
+import { studyApi } from "../../services/api";
+import type {
+  Summary,
+  EnrichedConcept,
+  ReliabilityResult,
+} from "../../services/api";
+import type { QuizQuestionData } from "../Study";
+import type { Flashcard } from "../Study";
+import type { TimecodeInfo } from "../TimecodeRenderer";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type TabType = 'synthesis' | 'quiz' | 'flashcards' | 'reliability';
+type TabType = "synthesis" | "quiz" | "flashcards" | "reliability" | "geo";
 
 interface AnalysisHubProps {
   selectedSummary: Summary;
   reliabilityData: ReliabilityResult | null;
   reliabilityLoading: boolean;
   user: { plan?: string; credits?: number };
-  language: 'fr' | 'en';
+  language: "fr" | "en";
   concepts: EnrichedConcept[];
   onTimecodeClick: (seconds: number, info?: TimecodeInfo) => void;
   onOpenChat: (prefillMessage?: string) => void;
@@ -50,11 +55,54 @@ interface AnalysisHubProps {
 // 🎨 TAB STYLES (static classes — no dynamic Tailwind)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const TABS: { id: TabType; labelFr: string; labelEn: string; icon: typeof BookOpen; activeColor: string; activeBorder: string }[] = [
-  { id: 'synthesis', labelFr: 'Synthèse', labelEn: 'Summary', icon: BookOpen, activeColor: 'text-blue-400', activeBorder: 'border-blue-500' },
-  { id: 'quiz', labelFr: 'Quiz', labelEn: 'Quiz', icon: Brain, activeColor: 'text-amber-400', activeBorder: 'border-amber-500' },
-  { id: 'flashcards', labelFr: 'Flashcards', labelEn: 'Flashcards', icon: BookMarked, activeColor: 'text-emerald-400', activeBorder: 'border-emerald-500' },
-  { id: 'reliability', labelFr: 'Fiabilité', labelEn: 'Reliability', icon: Shield, activeColor: 'text-violet-400', activeBorder: 'border-violet-500' },
+const TABS: {
+  id: TabType;
+  labelFr: string;
+  labelEn: string;
+  icon: typeof BookOpen;
+  activeColor: string;
+  activeBorder: string;
+}[] = [
+  {
+    id: "synthesis",
+    labelFr: "Synthèse",
+    labelEn: "Summary",
+    icon: BookOpen,
+    activeColor: "text-blue-400",
+    activeBorder: "border-blue-500",
+  },
+  {
+    id: "quiz",
+    labelFr: "Quiz",
+    labelEn: "Quiz",
+    icon: Brain,
+    activeColor: "text-amber-400",
+    activeBorder: "border-amber-500",
+  },
+  {
+    id: "flashcards",
+    labelFr: "Flashcards",
+    labelEn: "Flashcards",
+    icon: BookMarked,
+    activeColor: "text-emerald-400",
+    activeBorder: "border-emerald-500",
+  },
+  {
+    id: "reliability",
+    labelFr: "Fiabilité",
+    labelEn: "Reliability",
+    icon: Shield,
+    activeColor: "text-violet-400",
+    activeBorder: "border-violet-500",
+  },
+  {
+    id: "geo",
+    labelFr: "GEO",
+    labelEn: "GEO",
+    icon: Target,
+    activeColor: "text-teal-400",
+    activeBorder: "border-teal-500",
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -78,10 +126,12 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
   voiceEnabled,
   onOpenVoice,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('synthesis');
+  const [activeTab, setActiveTab] = useState<TabType>("synthesis");
 
   // Quiz state (lazy)
-  const [quizQuestions, setQuizQuestions] = useState<QuizQuestionData[] | null>(null);
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestionData[] | null>(
+    null,
+  );
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizError, setQuizError] = useState<string | null>(null);
 
@@ -98,7 +148,7 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
     setFlashcards(null);
     setFlashcardsLoading(false);
     setFlashcardsError(null);
-    setActiveTab('synthesis');
+    setActiveTab("synthesis");
   }, [selectedSummary.id]);
 
   // Generate quiz
@@ -117,10 +167,19 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
         }));
         setQuizQuestions(mapped);
       } else {
-        setQuizError(language === 'fr' ? 'Impossible de générer le quiz.' : 'Failed to generate quiz.');
+        setQuizError(
+          language === "fr"
+            ? "Impossible de générer le quiz."
+            : "Failed to generate quiz.",
+        );
       }
     } catch (err: any) {
-      setQuizError(err?.message || (language === 'fr' ? 'Erreur lors de la génération.' : 'Generation error.'));
+      setQuizError(
+        err?.message ||
+          (language === "fr"
+            ? "Erreur lors de la génération."
+            : "Generation error."),
+      );
     } finally {
       setQuizLoading(false);
     }
@@ -141,10 +200,19 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
         }));
         setFlashcards(mapped);
       } else {
-        setFlashcardsError(language === 'fr' ? 'Impossible de générer les flashcards.' : 'Failed to generate flashcards.');
+        setFlashcardsError(
+          language === "fr"
+            ? "Impossible de générer les flashcards."
+            : "Failed to generate flashcards.",
+        );
       }
     } catch (err: any) {
-      setFlashcardsError(err?.message || (language === 'fr' ? 'Erreur lors de la génération.' : 'Generation error.'));
+      setFlashcardsError(
+        err?.message ||
+          (language === "fr"
+            ? "Erreur lors de la génération."
+            : "Generation error."),
+      );
     } finally {
       setFlashcardsLoading(false);
     }
@@ -152,57 +220,66 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
 
   // Badges
   const getTabBadge = (tabId: TabType): string | null => {
-    if (tabId === 'quiz' && quizQuestions) return `${quizQuestions.length}`;
-    if (tabId === 'flashcards' && flashcards) return `${flashcards.length}`;
-    if (tabId === 'reliability' && reliabilityData?.fact_check_lite?.high_risk_claims?.length) {
+    if (tabId === "quiz" && quizQuestions) return `${quizQuestions.length}`;
+    if (tabId === "flashcards" && flashcards) return `${flashcards.length}`;
+    if (
+      tabId === "reliability" &&
+      reliabilityData?.fact_check_lite?.high_risk_claims?.length
+    ) {
       return `${reliabilityData.fact_check_lite.high_risk_claims.length}`;
     }
     return null;
   };
 
-  const visibleTabs = enabledTabs ? TABS.filter(t => enabledTabs.includes(t.id)) : TABS;
+  const visibleTabs = enabledTabs
+    ? TABS.filter((t) => enabledTabs.includes(t.id))
+    : TABS;
 
   return (
     <div className="card overflow-hidden">
       {/* Tab Bar — hidden if only one tab */}
       {visibleTabs.length > 1 && (
-      <div className="flex border-b border-border-subtle overflow-x-auto scrollbar-hide">
-        {visibleTabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          const Icon = tab.icon;
-          const label = language === 'fr' ? tab.labelFr : tab.labelEn;
-          const badge = getTabBadge(tab.id);
+        <div className="flex border-b border-border-subtle overflow-x-auto scrollbar-hide">
+          {visibleTabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
+            const label = language === "fr" ? tab.labelFr : tab.labelEn;
+            const badge = getTabBadge(tab.id);
 
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
                 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-3 text-sm font-medium
                 border-b-2 transition-all duration-200 whitespace-nowrap flex-shrink-0
-                ${isActive
-                  ? `${tab.activeBorder} ${tab.activeColor}`
-                  : 'border-transparent text-text-tertiary hover:text-text-secondary hover:border-white/10'}
+                ${
+                  isActive
+                    ? `${tab.activeBorder} ${tab.activeColor}`
+                    : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-white/10"
+                }
               `}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{label}</span>
-              {badge && (
-                <span className={`
+              >
+                <Icon className="w-4 h-4" />
+                <span>{label}</span>
+                {badge && (
+                  <span
+                    className={`
                   text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center
-                  ${tab.id === 'reliability' ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-text-secondary'}
-                `}>
-                  {badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+                  ${tab.id === "reliability" ? "bg-red-500/20 text-red-400" : "bg-white/10 text-text-secondary"}
+                `}
+                  >
+                    {badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {/* Tab Content */}
-      {activeTab === 'synthesis' && (
+      {activeTab === "synthesis" && (
         <SynthesisTab
           selectedSummary={selectedSummary}
           user={user}
@@ -218,7 +295,7 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
         />
       )}
 
-      {activeTab === 'quiz' && (
+      {activeTab === "quiz" && (
         <QuizTab
           questions={quizQuestions}
           loading={quizLoading}
@@ -228,7 +305,7 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
         />
       )}
 
-      {activeTab === 'flashcards' && (
+      {activeTab === "flashcards" && (
         <FlashcardsTab
           flashcards={flashcards}
           loading={flashcardsLoading}
@@ -238,7 +315,7 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
         />
       )}
 
-      {activeTab === 'reliability' && (
+      {activeTab === "reliability" && (
         <ReliabilityTab
           selectedSummary={selectedSummary}
           reliabilityData={reliabilityData}
@@ -246,6 +323,14 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
           language={language}
           onOpenChat={onOpenChat}
           onNavigate={onNavigate}
+        />
+      )}
+
+      {activeTab === "geo" && (
+        <GeoTab
+          selectedSummary={selectedSummary}
+          user={user}
+          language={language}
         />
       )}
     </div>
