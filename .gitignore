@@ -79,3 +79,8 @@ frontend/vite.config.ts.timestamp-*.mjs
 **/nul
 **/null.txt
 .git.tmp/
+
+# Secrets & local config
+id_hetzner_b64.txt
+.claude/settings.local.json
+extension/dist/*.map
