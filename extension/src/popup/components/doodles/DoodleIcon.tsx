@@ -1,5 +1,5 @@
-import React from 'react';
-import { DOODLE_MAP } from './doodlePaths';
+import React from "react";
+import { DOODLE_MAP } from "./doodlePaths";
 
 interface DoodleIconProps {
   name: string;
@@ -13,9 +13,9 @@ interface DoodleIconProps {
 export const DoodleIcon: React.FC<DoodleIconProps> = ({
   name,
   size = 24,
-  color = 'currentColor',
+  color = "currentColor",
   strokeWidth = 1.5,
-  className = '',
+  className = "",
   style,
 }) => {
   const path = DOODLE_MAP[name];

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import type { PlanInfo } from '../../types';
-import { WEBAPP_URL } from '../../utils/config';
-import { DoodleIcon } from './doodles/DoodleIcon';
-import { useTranslation } from '../../i18n/useTranslation';
+import React, { useState, useEffect } from "react";
+import type { PlanInfo } from "../../types";
+import { WEBAPP_URL } from "../../utils/config";
+import { DoodleIcon } from "./doodles/DoodleIcon";
+import { useTranslation } from "../../i18n/useTranslation";
 
 interface Promo {
   id: string;
@@ -12,42 +12,72 @@ interface Promo {
 }
 
 const GRADIENTS = {
-  goldDark: 'linear-gradient(135deg, rgba(200,144,58,0.15), rgba(155,107,74,0.15))',
-  goldStrong: 'linear-gradient(135deg, rgba(200,144,58,0.2), rgba(200,144,58,0.08))',
-  violetGold: 'linear-gradient(135deg, rgba(155,107,74,0.15), rgba(200,144,58,0.1))',
+  goldDark:
+    "linear-gradient(135deg, rgba(200,144,58,0.15), rgba(155,107,74,0.15))",
+  goldStrong:
+    "linear-gradient(135deg, rgba(200,144,58,0.2), rgba(200,144,58,0.08))",
+  violetGold:
+    "linear-gradient(135deg, rgba(155,107,74,0.15), rgba(200,144,58,0.1))",
 };
 
 const PROMOS_FREE: Promo[] = [
-  { id: 'free-flashcards', textKey: 0, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.goldStrong },
-  { id: 'free-mindmap', textKey: 1, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.violetGold },
-  { id: 'free-quota', textKey: 2, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.goldDark },
+  {
+    id: "free-flashcards",
+    textKey: 0,
+    url: `${WEBAPP_URL}/upgrade`,
+    gradient: GRADIENTS.goldStrong,
+  },
+  {
+    id: "free-mindmap",
+    textKey: 1,
+    url: `${WEBAPP_URL}/upgrade`,
+    gradient: GRADIENTS.violetGold,
+  },
+  {
+    id: "free-quota",
+    textKey: 2,
+    url: `${WEBAPP_URL}/upgrade`,
+    gradient: GRADIENTS.goldDark,
+  },
 ];
 
 const PROMOS_PRO: Promo[] = [
-  { id: 'pro-mobile', textKey: 0, url: `${WEBAPP_URL}/mobile`, gradient: GRADIENTS.goldDark },
-  { id: 'pro-web', textKey: 1, url: WEBAPP_URL, gradient: GRADIENTS.goldStrong },
+  {
+    id: "pro-mobile",
+    textKey: 0,
+    url: `${WEBAPP_URL}/mobile`,
+    gradient: GRADIENTS.goldDark,
+  },
+  {
+    id: "pro-web",
+    textKey: 1,
+    url: WEBAPP_URL,
+    gradient: GRADIENTS.goldStrong,
+  },
 ];
 
-type PromoTier = 'free' | 'pro';
+type PromoTier = "free" | "pro";
 
 function getPromoTier(planId?: string): PromoTier {
   switch (planId) {
-    case 'plus':
-    case 'pro':
-    case 'expert':
-    case 'etudiant':
-    case 'student':
-    case 'starter':
-      return 'pro';
+    case "plus":
+    case "pro":
+    case "expert":
+    case "etudiant":
+    case "student":
+    case "starter":
+      return "pro";
     default:
-      return 'free';
+      return "free";
   }
 }
 
 function getPromosForPlan(planId?: string): Promo[] {
   switch (getPromoTier(planId)) {
-    case 'pro': return PROMOS_PRO;
-    default: return PROMOS_FREE;
+    case "pro":
+      return PROMOS_PRO;
+    default:
+      return PROMOS_FREE;
   }
 }
 
@@ -65,11 +95,11 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ planInfo }) => {
   const promoTexts = t.promos[tier];
 
   useEffect(() => {
-    chrome.storage.local.get(['promoDismissedAt']).then((data) => {
+    chrome.storage.local.get(["promoDismissedAt"]).then((data) => {
       if (data.promoDismissedAt) {
         const elapsed = Date.now() - data.promoDismissedAt;
         if (elapsed > 24 * 60 * 60 * 1000) {
-          chrome.storage.local.remove(['promoDismissedAt']);
+          chrome.storage.local.remove(["promoDismissedAt"]);
         } else {
           setDismissed(true);
         }
@@ -100,27 +130,33 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ planInfo }) => {
   const promo = promos[idx];
   const textData = promoTexts[idx] || promoTexts[0];
 
-  const doodleNames = ['sparkle4pt', 'star', 'crown'];
+  const doodleNames = ["sparkle4pt", "star", "crown"];
 
   return (
     <div
       className="promo-banner"
       style={{
         background: promo.gradient,
-        borderTop: '1px solid var(--border-accent)',
+        borderTop: "1px solid var(--border-accent)",
       }}
     >
       <div className="promo-content">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <DoodleIcon name={doodleNames[idx % doodleNames.length]} size={16} color="var(--accent-primary)" />
-          <span className="promo-text" style={{ color: 'var(--text-primary)' }}>{textData.text}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <DoodleIcon
+            name={doodleNames[idx % doodleNames.length]}
+            size={16}
+            color="var(--accent-primary)"
+          />
+          <span className="promo-text" style={{ color: "var(--text-primary)" }}>
+            {textData.text}
+          </span>
         </div>
         <a
           href={promo.url}
           target="_blank"
           rel="noreferrer"
           className="promo-cta"
-          style={{ color: 'var(--accent-primary)' }}
+          style={{ color: "var(--accent-primary)" }}
           onClick={(e) => {
             e.preventDefault();
             chrome.tabs.create({ url: promo.url });
@@ -133,7 +169,10 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ planInfo }) => {
         className="promo-close"
         onClick={handleDismiss}
         title={t.common.hide}
-        style={{ background: 'var(--accent-primary-muted)', color: 'var(--accent-primary)' }}
+        style={{
+          background: "var(--accent-primary-muted)",
+          color: "var(--accent-primary)",
+        }}
       >
         &times;
       </button>

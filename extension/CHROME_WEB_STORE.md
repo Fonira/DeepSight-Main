@@ -1,9 +1,11 @@
 # Chrome Web Store Listing — DeepSight
 
 ## Nom
+
 DeepSight - AI Video Analysis
 
 ## Description courte (132 caracteres max)
+
 Analyze YouTube & TikTok videos with AI. Fact-checked summaries, contextual chat, flashcards. Powered by Mistral AI.
 
 ## Description longue (EN)
@@ -22,6 +24,7 @@ KEY FEATURES:
 - TikTok Support: Analyze TikTok videos too, not just YouTube
 
 STUDY TOOLS (on the web app):
+
 - Auto-generated flashcards with FSRS spaced repetition (same algorithm as Anki)
 - Interactive quizzes from video content
 - Mind maps showing concept relationships (Pro)
@@ -36,11 +39,13 @@ WHAT MAKES DEEPSIGHT DIFFERENT:
 5. Tri-platform — web + mobile + extension, one account
 
 FREE TO START:
+
 - 3 free analyses without an account
 - 5 analyses/month with a free account
 - No credit card required
 
 PLANS:
+
 - Free: 5 analyses/month, chat, flashcards
 - Pro (5.99 EUR/month): 30 analyses, fact-checking, mind maps, voice chat, PDF export
 - Expert (14.99 EUR/month): 100 analyses, deep research, unlimited chat, priority queue
@@ -48,7 +53,6 @@ PLANS:
 Built by an independent European developer. Made in France.
 
 Website: https://www.deepsightsynthesis.com
-
 
 ## Description longue (FR)
 
@@ -66,6 +70,7 @@ FONCTIONNALITES CLES :
 - Support TikTok : Analysez aussi les videos TikTok, pas seulement YouTube
 
 OUTILS D'ETUDE (sur l'app web) :
+
 - Flashcards automatiques avec repetition espacee FSRS (meme algorithme qu'Anki)
 - Quiz interactifs generes depuis le contenu video
 - Cartes mentales montrant les relations entre concepts (Pro)
@@ -80,11 +85,13 @@ CE QUI REND DEEPSIGHT DIFFERENT :
 5. Tri-plateforme — web + mobile + extension, un seul compte
 
 GRATUIT POUR COMMENCER :
+
 - 3 analyses gratuites sans compte
 - 5 analyses/mois avec un compte gratuit
 - Pas de carte bancaire requise
 
 PLANS :
+
 - Gratuit : 5 analyses/mois, chat, flashcards
 - Pro (5,99 EUR/mois) : 30 analyses, fact-checking, cartes mentales, chat vocal, export PDF
 - Expert (14,99 EUR/mois) : 100 analyses, recherche approfondie, chat illimite, file prioritaire
@@ -93,20 +100,24 @@ Developpe par un developpeur independant europeen. Made in France.
 
 Site web : https://www.deepsightsynthesis.com
 
-
 ## Categorie
+
 Productivity
 
 ## Langue
+
 Francais, English
 
 ## Mots-cles (tags)
+
 youtube summary, video analysis, AI, fact-check, flashcards, TikTok, Mistral AI, study tool, transcript, European AI
 
 ## Politique de confidentialite
+
 https://www.deepsightsynthesis.com/privacy
 
 ## Screenshots a preparer
+
 1. Sidebar d'analyse sur YouTube (synthese structuree)
 2. Chat contextuel en action (question + reponse)
 3. Quick Chat (0 credits, chat rapide)

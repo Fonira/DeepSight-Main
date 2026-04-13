@@ -1,0 +1,150 @@
+/* ============================================================
+   DeepSight Widget — Scoped Design Tokens (--ds-* prefix)
+   Maps to design-tokens.css values for Shadow DOM isolation.
+   ============================================================ */
+
+:host,
+:root {
+  /* === Text === */
+  --ds-text-primary: #f5f0e8;
+  --ds-text-secondary: #b5a89b;
+  --ds-text-muted: #7a7068;
+  --ds-text-inverse: #0a0a0f;
+
+  /* === Font (system stack — no @import possible in closed Shadow DOM) === */
+  --ds-font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --ds-font-display: Georgia, "Times New Roman", serif;
+  --ds-font-mono: ui-monospace, "Cascadia Code", "Fira Code", monospace;
+
+  /* === Font sizes === */
+  --ds-text-xs: 11px;
+  --ds-text-sm: 13px;
+  --ds-text-md: 15px;
+  --ds-text-lg: 18px;
+
+  /* === Font weights === */
+  --ds-weight-normal: 400;
+  --ds-weight-medium: 500;
+  --ds-weight-semi: 600;
+  --ds-weight-bold: 700;
+
+  /* === Line heights === */
+  --ds-leading-tight: 1.3;
+  --ds-leading-normal: 1.5;
+  --ds-leading-relaxed: 1.6;
+
+  /* === Border radius === */
+  --ds-radius-xs: 4px;
+  --ds-radius-sm: 6px;
+  --ds-radius-md: 10px;
+  --ds-radius-lg: 14px;
+  --ds-radius-card: 14px;
+  --ds-radius-pill: 9999px;
+  --ds-radius-input: 8px;
+
+  /* === Borders === */
+  --ds-border: rgba(200, 144, 58, 0.08);
+  --ds-border-hover: rgba(200, 144, 58, 0.2);
+  --ds-border-focus: rgba(200, 144, 58, 0.4);
+  --ds-border-gold: rgba(200, 144, 58, 0.3);
+
+  /* === Gold accents === */
+  --ds-gold-mid: #c8903a;
+  --ds-gold-gradient: linear-gradient(135deg, #c8903a, #e5b86a);
+
+  /* === Glassmorphism === */
+  --ds-glass-bg: rgba(10, 10, 15, 0.85);
+  --ds-glass-border: rgba(200, 144, 58, 0.06);
+
+  /* === Status colors === */
+  --ds-success: #10b981;
+  --ds-success-bg: rgba(16, 185, 129, 0.1);
+  --ds-warning: #f59e0b;
+  --ds-warning-bg: rgba(245, 158, 11, 0.1);
+  --ds-error: #ef4444;
+  --ds-error-bg: rgba(239, 68, 68, 0.1);
+  --ds-info: #3b82f6;
+  --ds-info-bg: rgba(59, 130, 246, 0.1);
+
+  /* === Transitions === */
+  --ds-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --ds-transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --ds-transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* === Z-index === */
+  --ds-z-widget: 9999;
+
+  /* === Plan badge colors === */
+  --ds-plan-free: #9ca3af;
+  --ds-plan-decouverte: #9ca3af;
+  --ds-plan-student: #3b82f6;
+  --ds-plan-etudiant: #3b82f6;
+  --ds-plan-starter: #8b5cf6;
+  --ds-plan-plus: #8b5cf6;
+  --ds-plan-pro: #c8903a;
+  --ds-plan-expert: #c8903a;
+}
+
+/* ── Keyframes (ds-* prefixed for Shadow DOM isolation) ── */
+
+@keyframes ds-slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes ds-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ds-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(200, 144, 58, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(200, 144, 58, 0.3);
+  }
+}
+
+@keyframes ds-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ds-phraseOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes ds-phraseIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

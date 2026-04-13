@@ -1,9 +1,11 @@
 // ── État: ready (authentifié, en attente d'analyse) ──
 
-import { WEBAPP_URL } from '../../utils/config';
-import { setWidgetBody } from '../widget';
-import { escapeHtml } from '../../utils/sanitize';
-import type { TournesolData } from '../../types';
+import { WEBAPP_URL } from "../../utils/config";
+import { setWidgetBody } from "../widget";
+import { escapeHtml } from "../../utils/sanitize";
+import { $id } from "../shadow";
+import { detectTournesolExtension } from "../tournesol";
+import type { TournesolData } from "../../types";
 
 interface ReadyOptions {
   user: { username: string; plan: string; credits: number };
@@ -19,10 +21,16 @@ function spinnerSmall(): string {
 }
 
 function tournesolBadgeHtml(tournesol: TournesolData | null): string {
-  if (!tournesol?.found || tournesol.tournesol_score === null) return '';
+  if (!tournesol?.found || tournesol.tournesol_score === null) return "";
   const score = Math.round(tournesol.tournesol_score);
-  const color = score >= 50 ? 'var(--ds-success)' : score >= 0 ? 'var(--ds-warning)' : 'var(--ds-error)';
-  return `<div class="ds-tournesol-badge" style="font-size:10px;color:${color};margin-top:4px">🌻 Tournesol: ${score > 0 ? '+' : ''}${score}</div>`;
+  const color =
+    score >= 50
+      ? "var(--ds-success)"
+      : score >= 0
+        ? "var(--ds-warning)"
+        : "var(--ds-error)";
+  const topMargin = detectTournesolExtension() ? "32px" : "4px";
+  return `<div class="ds-tournesol-badge" style="font-size:10px;color:${color};margin-top:${topMargin}">🌻 Tournesol: ${score > 0 ? "+" : ""}${score}</div>`;
 }
 
 export function renderReadyState(opts: ReadyOptions): void {
@@ -67,18 +75,21 @@ export function renderReadyState(opts: ReadyOptions): void {
 
   setWidgetBody(html);
 
-  document.getElementById('ds-analyze-btn')?.addEventListener('click', () => {
-    const mode = (document.getElementById('ds-mode') as HTMLSelectElement).value;
-    const lang = (document.getElementById('ds-lang') as HTMLSelectElement).value;
+  $id("ds-analyze-btn")?.addEventListener("click", () => {
+    const mode = $id<HTMLSelectElement>("ds-mode")!.value;
+    const lang = $id<HTMLSelectElement>("ds-lang")!.value;
     onAnalyze(mode, lang);
   });
 
-  document.getElementById('ds-quickchat-btn')?.addEventListener('click', async () => {
-    const btn = document.getElementById('ds-quickchat-btn') as HTMLButtonElement | null;
-    const lang = (document.getElementById('ds-lang') as HTMLSelectElement)?.value || 'fr';
-    if (btn) { btn.disabled = true; btn.innerHTML = `${spinnerSmall()} Préparation...`; }
+  $id("ds-quickchat-btn")?.addEventListener("click", async () => {
+    const btn = $id<HTMLButtonElement>("ds-quickchat-btn");
+    const lang = $id<HTMLSelectElement>("ds-lang")?.value || "fr";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `${spinnerSmall()} Préparation...`;
+    }
     onQuickChat(lang);
   });
 
-  document.getElementById('ds-logout')?.addEventListener('click', onLogout);
+  $id("ds-logout")?.addEventListener("click", onLogout);
 }

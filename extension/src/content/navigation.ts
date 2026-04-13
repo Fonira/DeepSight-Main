@@ -1,10 +1,10 @@
 // ── Navigation helpers for YouTube SPA ──
 
-import { extractVideoId } from '../utils/video';
+import { extractVideoId } from "../utils/video";
 
 export function isVideoPage(): boolean {
   const url = window.location.href;
-  return url.includes('youtube.com/watch') || url.includes('tiktok.com/');
+  return url.includes("youtube.com/watch") || url.includes("tiktok.com/");
 }
 
 export function getCurrentVideoId(): string | null {
@@ -30,7 +30,7 @@ export function watchNavigation(callback: NavCallback): void {
     handleNav();
   };
 
-  window.addEventListener('popstate', handleNav);
-  document.addEventListener('yt-navigate-finish', handleNav);
-  document.addEventListener('yt-page-data-updated', handleNav);
+  window.addEventListener("popstate", handleNav);
+  document.addEventListener("yt-navigate-finish", handleNav);
+  document.addEventListener("yt-page-data-updated", handleNav);
 }

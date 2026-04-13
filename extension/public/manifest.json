@@ -42,20 +42,15 @@
         "https://m.tiktok.com/*"
       ],
       "js": ["content.js"],
-      "css": ["content.css"],
       "run_at": "document_idle"
     },
     {
-      "matches": [
-        "https://www.deepsightsynthesis.com/*"
-      ],
+      "matches": ["https://www.deepsightsynthesis.com/*"],
       "js": ["authSync.js"],
       "run_at": "document_end"
     },
     {
-      "matches": [
-        "https://www.deepsightsynthesis.com/*"
-      ],
+      "matches": ["https://www.deepsightsynthesis.com/*"],
       "js": ["authSyncMain.js"],
       "run_at": "document_end",
       "world": "MAIN"
@@ -82,7 +77,14 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["icons/*", "assets/*", "platforms/*"],
+      "resources": [
+        "icons/*",
+        "assets/*",
+        "platforms/*",
+        "widget.css",
+        "content.css",
+        "tokens.css"
+      ],
       "matches": [
         "https://www.youtube.com/*",
         "https://youtube.com/*",

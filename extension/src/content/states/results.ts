@@ -1,12 +1,29 @@
 // ── État: résultats d'analyse ──
 
-import { WEBAPP_URL } from '../../utils/config';
-import { setWidgetBody } from '../widget';
-import { escapeHtml, markdownToSafeHtml, markdownToFullHtml, parseAnalysisToSummary } from '../../utils/sanitize';
-import type { KeyPoint } from '../../utils/sanitize';
-import { parseFactsToVerify, renderFactCheckList } from '../factcheck';
-import { getSuggestions, renderSuggestions, bindSuggestionClicks } from '../suggestions';
-import { ttsButtonHtml, ttsLockedButtonHtml, ttsToolbarHtml, bindTTSButtons, bindTTSToolbar, isTTSPremium } from '../tts';
+import { WEBAPP_URL } from "../../utils/config";
+import { setWidgetBody } from "../widget";
+import {
+  escapeHtml,
+  markdownToSafeHtml,
+  markdownToFullHtml,
+  parseAnalysisToSummary,
+} from "../../utils/sanitize";
+import type { KeyPoint } from "../../utils/sanitize";
+import { parseFactsToVerify, renderFactCheckList } from "../factcheck";
+import {
+  getSuggestions,
+  renderSuggestions,
+  bindSuggestionClicks,
+} from "../suggestions";
+import {
+  ttsButtonHtml,
+  ttsLockedButtonHtml,
+  ttsToolbarHtml,
+  bindTTSButtons,
+  bindTTSToolbar,
+  isTTSPremium,
+} from "../tts";
+import { $id, $qsa } from "../shadow";
 
 interface ResultsOptions {
   summary: {
@@ -24,23 +41,44 @@ interface ResultsOptions {
   onShare: () => void;
 }
 
-const PLAN_RANK: Record<string, number> = { free: 0, decouverte: 0, plus: 1, pro: 2, expert: 2, etudiant: 1, student: 1, starter: 1 };
+const PLAN_RANK: Record<string, number> = {
+  free: 0,
+  decouverte: 0,
+  plus: 1,
+  pro: 2,
+  expert: 2,
+  etudiant: 1,
+  student: 1,
+  starter: 1,
+};
 const CATEGORY_ICON: Record<string, string> = {
-  tech: '💻', science: '🔬', education: '📚', news: '📰',
-  entertainment: '🎬', gaming: '🎮', music: '🎵', sports: '⚽',
-  business: '💼', lifestyle: '🌟', other: '📋',
+  tech: "💻",
+  science: "🔬",
+  education: "📚",
+  news: "📰",
+  entertainment: "🎬",
+  gaming: "🎮",
+  music: "🎵",
+  sports: "⚽",
+  business: "💼",
+  lifestyle: "🌟",
+  other: "📋",
 };
 
 function scoreClass(score: number): string {
-  return score >= 80 ? 'ds-score-high' : score >= 60 ? 'ds-score-mid' : 'ds-score-low';
+  return score >= 80
+    ? "ds-score-high"
+    : score >= 60
+      ? "ds-score-mid"
+      : "ds-score-low";
 }
 
 function scoreIcon(score: number): string {
-  return score >= 80 ? '✅' : score >= 60 ? '⚠️' : '❓';
+  return score >= 80 ? "✅" : score >= 60 ? "⚠️" : "❓";
 }
 
 function parseTimestamp(ts: string): number {
-  const parts = ts.split(':').map(Number);
+  const parts = ts.split(":").map(Number);
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
   return parts[0] * 60 + parts[1];
 }
@@ -48,35 +86,41 @@ function parseTimestamp(ts: string): number {
 function processTimestamps(html: string): string {
   return html.replace(
     /\[(\d{1,2}:\d{2}(?::\d{2})?)\]/g,
-    (_m, ts) => `<a href="#" class="ds-timestamp" data-time="${parseTimestamp(ts)}">[${ts}]</a>`,
+    (_m, ts) =>
+      `<a href="#" class="ds-timestamp" data-time="${parseTimestamp(ts)}">[${ts}]</a>`,
   );
 }
 
-function keyPointIcon(type: KeyPoint['type']): string {
-  return type === 'solid' ? '✅' : type === 'weak' ? '⚠️' : '💡';
+function keyPointIcon(type: KeyPoint["type"]): string {
+  return type === "solid" ? "✅" : type === "weak" ? "⚠️" : "💡";
 }
 
 function buildPremiumTeasers(userPlan: string): string {
   const userRank = PLAN_RANK[userPlan] ?? 0;
   const teasers = [
-    { icon: '🃏', label: 'Flashcards IA', minPlan: 'pro', price: '5,99€' },
-    { icon: '🧠', label: 'Carte mentale', minPlan: 'pro', price: '5,99€' },
-    { icon: '🌐', label: 'Recherche web IA', minPlan: 'pro', price: '5,99€' },
-    { icon: '📦', label: 'Export PDF/DOCX', minPlan: 'pro', price: '5,99€' },
-  ].filter(t => (PLAN_RANK[t.minPlan] ?? 0) > userRank);
+    { icon: "🃏", label: "Flashcards IA", minPlan: "pro", price: "5,99€" },
+    { icon: "🧠", label: "Carte mentale", minPlan: "pro", price: "5,99€" },
+    { icon: "🌐", label: "Recherche web IA", minPlan: "pro", price: "5,99€" },
+    { icon: "📦", label: "Export PDF/DOCX", minPlan: "pro", price: "5,99€" },
+  ].filter((t) => (PLAN_RANK[t.minPlan] ?? 0) > userRank);
 
   if (teasers.length === 0) {
     return `<div class="ds-teaser-pro-cta"><span>📱 Révisez sur mobile —</span><a href="${WEBAPP_URL}/mobile" target="_blank" rel="noreferrer" class="ds-teaser-link">Télécharger l'app</a></div>`;
   }
 
-  const items = teasers.slice(0, 3).map(t => `
+  const items = teasers
+    .slice(0, 3)
+    .map(
+      (t) => `
     <a href="${WEBAPP_URL}/upgrade" target="_blank" rel="noreferrer" class="ds-teaser-item" title="Dès ${t.price}/mois">
       <span class="ds-teaser-icon">${t.icon}</span>
       <span class="ds-teaser-label">${t.label}</span>
       <span class="ds-teaser-lock">🔒</span>
       <span class="ds-teaser-price">${t.price}/m</span>
     </a>
-  `).join('');
+  `,
+    )
+    .join("");
 
   return `
     <div class="ds-teasers-section">
@@ -109,36 +153,50 @@ function buildEcosystemBridge(summaryId: number): string {
 export async function renderResultsState(opts: ResultsOptions): Promise<void> {
   const { summary, userPlan, onChat } = opts;
   const parsed = parseAnalysisToSummary(summary.summary_content);
-  const detailedHtml = processTimestamps(markdownToFullHtml(escapeHtml(summary.summary_content)));
-  const catIcon = CATEGORY_ICON[summary.category] ?? '📋';
+  const detailedHtml = processTimestamps(
+    markdownToFullHtml(escapeHtml(summary.summary_content)),
+  );
+  const catIcon = CATEGORY_ICON[summary.category] ?? "📋";
   const sc = scoreClass(summary.reliability_score);
   const si = scoreIcon(summary.reliability_score);
 
   // TTS: check premium + build button
   const hasTTS = await isTTSPremium();
   const ttsBtn = hasTTS
-    ? ttsButtonHtml(parsed.verdict || summary.summary_content.slice(0, 2000), 'md')
+    ? ttsButtonHtml(
+        parsed.verdict || summary.summary_content.slice(0, 2000),
+        "md",
+      )
     : ttsLockedButtonHtml();
-  const ttsToolbar = hasTTS ? ttsToolbarHtml() : '';
+  const ttsToolbar = hasTTS ? ttsToolbarHtml() : "";
 
-  const keyPointsHtml = parsed.keyPoints.map(kp =>
-    `<div class="ds-kp ds-kp-${kp.type}">
+  const keyPointsHtml = parsed.keyPoints
+    .map(
+      (kp) =>
+        `<div class="ds-kp ds-kp-${kp.type}">
       <span class="ds-kp-icon">${keyPointIcon(kp.type)}</span>
       <span class="ds-kp-text">${escapeHtml(kp.text)}</span>
-    </div>`
-  ).join('');
+    </div>`,
+    )
+    .join("");
 
-  const tagsHtml = parsed.tags.length > 0
-    ? `<div class="ds-tags">${parsed.tags.map(t => `<span class="ds-tag-pill">${escapeHtml(t)}</span>`).join('')}</div>`
-    : '';
+  const tagsHtml =
+    parsed.tags.length > 0
+      ? `<div class="ds-tags">${parsed.tags.map((t) => `<span class="ds-tag-pill">${escapeHtml(t)}</span>`).join("")}</div>`
+      : "";
 
   const factItems = parseFactsToVerify(summary.facts_to_verify ?? []);
-  const factCheckHtml = factItems.length > 0
-    ? `<div style="margin-top:8px">${renderFactCheckList(factItems, 2)}</div>`
-    : '';
+  const factCheckHtml =
+    factItems.length > 0
+      ? `<div style="margin-top:8px">${renderFactCheckList(factItems, 2)}</div>`
+      : "";
 
   const suggestions = getSuggestions(summary.category, 4);
-  const suggestionsHtml = renderSuggestions(suggestions, () => {}, 'ds-results-suggestions');
+  const suggestionsHtml = renderSuggestions(
+    suggestions,
+    () => {},
+    "ds-results-suggestions",
+  );
 
   const premiumHtml = buildPremiumTeasers(userPlan);
   const bridgeHtml = buildEcosystemBridge(summary.id);
@@ -159,8 +217,8 @@ export async function renderResultsState(opts: ResultsOptions): Promise<void> {
           <span class="${sc}" style="font-weight:600">${summary.reliability_score}/100</span>
         </div>
         <div class="ds-progress" style="height:6px">
-          <div class="ds-progress-bar ds-fill-bar" data-score="${sc.replace('ds-score-','')}"
-               style="width:${summary.reliability_score}%;background:${summary.reliability_score >= 80 ? 'var(--ds-success)' : summary.reliability_score >= 60 ? 'var(--ds-warning)' : 'var(--ds-error)'}">
+          <div class="ds-progress-bar ds-fill-bar" data-score="${sc.replace("ds-score-", "")}"
+               style="width:${summary.reliability_score}%;background:${summary.reliability_score >= 80 ? "var(--ds-success)" : summary.reliability_score >= 60 ? "var(--ds-warning)" : "var(--ds-error)"}">
           </div>
         </div>
       </div>
@@ -173,7 +231,7 @@ export async function renderResultsState(opts: ResultsOptions): Promise<void> {
       </div>
       ${ttsToolbar}
 
-      ${keyPointsHtml ? `<div class="ds-keypoints ds-stagger">${keyPointsHtml}</div>` : ''}
+      ${keyPointsHtml ? `<div class="ds-keypoints ds-stagger">${keyPointsHtml}</div>` : ""}
       ${tagsHtml}
       ${factCheckHtml}
 
@@ -216,54 +274,60 @@ export async function renderResultsState(opts: ResultsOptions): Promise<void> {
 }
 
 function bindResultsHandlers(
-  summary: ResultsOptions['summary'],
+  summary: ResultsOptions["summary"],
   opts: ResultsOptions,
   suggestions: string[],
 ): void {
   // Toggle détail
-  document.getElementById('ds-toggle-detail')?.addEventListener('click', () => {
-    const panel = document.getElementById('ds-detail-panel');
-    const btn = document.getElementById('ds-toggle-detail');
+  $id("ds-toggle-detail")?.addEventListener("click", () => {
+    const panel = $id("ds-detail-panel");
+    const btn = $id("ds-toggle-detail");
     if (!panel || !btn) return;
-    const isHidden = panel.classList.contains('hidden');
-    panel.classList.toggle('hidden');
-    const arrow = btn.querySelector('.ds-toggle-arrow');
-    const text = btn.querySelector('.ds-toggle-text');
-    if (arrow) arrow.textContent = isHidden ? '▲' : '▼';
-    if (text) text.textContent = isHidden ? 'Masquer l\'analyse' : 'Voir l\'analyse détaillée';
+    const isHidden = panel.classList.contains("hidden");
+    panel.classList.toggle("hidden");
+    const arrow = btn.querySelector(".ds-toggle-arrow");
+    const text = btn.querySelector(".ds-toggle-text");
+    if (arrow) arrow.textContent = isHidden ? "▲" : "▼";
+    if (text)
+      text.textContent = isHidden
+        ? "Masquer l'analyse"
+        : "Voir l'analyse détaillée";
   });
 
-  // Timestamps
-  document.querySelectorAll('.ds-timestamp').forEach((el) => {
-    el.addEventListener('click', (e) => {
+  // Timestamps — note: video element is in the main document, not shadow
+  $qsa(".ds-timestamp").forEach((el) => {
+    el.addEventListener("click", (e) => {
       e.preventDefault();
-      const t = parseInt((el as HTMLElement).dataset.time ?? '0', 10);
-      const video = document.querySelector('video') as HTMLVideoElement | null;
-      if (video) { video.currentTime = t; video.play(); }
+      const t = parseInt((el as HTMLElement).dataset.time ?? "0", 10);
+      const video = document.querySelector("video") as HTMLVideoElement | null;
+      if (video) {
+        video.currentTime = t;
+        video.play();
+      }
     });
   });
 
   // Chat button
-  document.getElementById('ds-chat-btn')?.addEventListener('click', () => {
+  $id("ds-chat-btn")?.addEventListener("click", () => {
     opts.onChat(summary.id, summary.video_title);
   });
 
   // Suggestions → open chat
-  bindSuggestionClicks('ds-results-suggestions', suggestions, (q) => {
+  bindSuggestionClicks("ds-results-suggestions", suggestions, (q) => {
     opts.onChat(summary.id, summary.video_title);
     // Message auto envoyé dans renderChatState
     setTimeout(() => {
-      const input = document.getElementById('ds-chat-input') as HTMLInputElement | null;
+      const input = $id<HTMLInputElement>("ds-chat-input");
       if (input) {
         input.value = q;
-        document.getElementById('ds-chat-send')?.click();
+        $id("ds-chat-send")?.click();
       }
     }, 100);
   });
 
   // Copy
-  document.getElementById('ds-copy-btn')?.addEventListener('click', opts.onCopyLink);
+  $id("ds-copy-btn")?.addEventListener("click", opts.onCopyLink);
 
   // Share
-  document.getElementById('ds-share-btn')?.addEventListener('click', opts.onShare);
+  $id("ds-share-btn")?.addEventListener("click", opts.onShare);
 }

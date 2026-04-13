@@ -5,7 +5,7 @@ export interface User {
   username: string;
   email: string;
   avatar_url?: string;
-  plan: 'free' | 'pro';
+  plan: "free" | "pro";
   credits: number;
   credits_monthly: number;
   default_lang?: string;
@@ -26,8 +26,8 @@ export interface LoginResponse {
 // ── Analysis ──
 
 export interface AnalyzeOptions {
-  mode?: 'accessible' | 'standard' | 'expert';
-  lang?: 'fr' | 'en' | 'es' | 'de';
+  mode?: "accessible" | "standard" | "expert";
+  lang?: "fr" | "en" | "es" | "de";
   category?: string;
   model?: string;
   force_refresh?: boolean;
@@ -38,7 +38,7 @@ export interface AnalyzeResponse {
 }
 
 export interface TaskStatus {
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   progress: number;
   message: string;
   result?: {
@@ -50,7 +50,7 @@ export interface TaskStatus {
 
 export interface TournesolData {
   found: boolean;
-  tournesol_score: number | null;   // Score brut (-100 à +100)
+  tournesol_score: number | null; // Score brut (-100 à +100)
   n_comparisons: number;
   n_contributors: number;
   criteria_scores?: { criteria: string; score: number }[];
@@ -73,7 +73,7 @@ export interface Summary {
   // 📊 Engagement metadata
   view_count?: number;
   like_count?: number;
-  content_type?: 'video' | 'carousel' | 'short' | 'live';
+  content_type?: "video" | "carousel" | "short" | "live";
 }
 
 export interface Concept {
@@ -86,13 +86,13 @@ export interface RecentAnalysis {
   summaryId: number;
   title: string;
   timestamp: number;
-  platform?: 'youtube' | 'tiktok';
+  platform?: "youtube" | "tiktok";
 }
 
 // ── Chat ──
 
 export interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   web_search_used?: boolean;
 }
@@ -131,7 +131,7 @@ export interface PlanFeatures {
 
 export interface PlanInfo {
   plan_name: string;
-  plan_id: 'free' | 'pro';
+  plan_id: "free" | "pro";
   monthly_analyses: number;
   analyses_this_month: number;
   credits: number;
@@ -142,39 +142,39 @@ export interface PlanInfo {
 // ── Settings ──
 
 export interface ExtensionSettings {
-  defaultMode: 'accessible' | 'standard' | 'expert';
-  defaultLang: 'fr' | 'en' | 'es' | 'de';
+  defaultMode: "accessible" | "standard" | "expert";
+  defaultLang: "fr" | "en" | "es" | "de";
   showNotifications: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
-  defaultMode: 'standard',
-  defaultLang: 'fr',
+  defaultMode: "standard",
+  defaultLang: "fr",
   showNotifications: true,
 };
 
 // ── Message Passing ──
 
 export type MessageAction =
-  | 'CHECK_AUTH'
-  | 'GET_USER'
-  | 'LOGIN'
-  | 'GOOGLE_LOGIN'
-  | 'LOGOUT'
-  | 'START_ANALYSIS'
-  | 'ANALYZE_VIDEO'
-  | 'GET_TASK_STATUS'
-  | 'GET_SUMMARY'
-  | 'ASK_QUESTION'
-  | 'GET_CHAT_HISTORY'
-  | 'OPEN_POPUP'
-  | 'SYNC_AUTH_FROM_WEBSITE'
-  | 'ANALYSIS_PROGRESS'
-  | 'GET_PLAN'
-  | 'START_GUEST_ANALYSIS'
-  | 'SHARE_ANALYSIS'
-  | 'QUICK_CHAT'
-  | 'CANCEL_ANALYSIS';
+  | "CHECK_AUTH"
+  | "GET_USER"
+  | "LOGIN"
+  | "GOOGLE_LOGIN"
+  | "LOGOUT"
+  | "START_ANALYSIS"
+  | "ANALYZE_VIDEO"
+  | "GET_TASK_STATUS"
+  | "GET_SUMMARY"
+  | "ASK_QUESTION"
+  | "GET_CHAT_HISTORY"
+  | "OPEN_POPUP"
+  | "SYNC_AUTH_FROM_WEBSITE"
+  | "ANALYSIS_PROGRESS"
+  | "GET_PLAN"
+  | "START_GUEST_ANALYSIS"
+  | "SHARE_ANALYSIS"
+  | "QUICK_CHAT"
+  | "CANCEL_ANALYSIS";
 
 export interface ExtensionMessage {
   action: MessageAction;
@@ -196,15 +196,15 @@ export interface MessageResponse {
 // ── Category Icons ──
 
 export const CATEGORY_ICONS: Record<string, string> = {
-  tech: '\u{1F4BB}',
-  science: '\u{1F52C}',
-  education: '\u{1F4DA}',
-  news: '\u{1F4F0}',
-  entertainment: '\u{1F3AC}',
-  gaming: '\u{1F3AE}',
-  music: '\u{1F3B5}',
-  sports: '\u26BD',
-  business: '\u{1F4BC}',
-  lifestyle: '\u{1F31F}',
-  other: '\u{1F4CB}',
+  tech: "\u{1F4BB}",
+  science: "\u{1F52C}",
+  education: "\u{1F4DA}",
+  news: "\u{1F4F0}",
+  entertainment: "\u{1F3AC}",
+  gaming: "\u{1F3AE}",
+  music: "\u{1F3B5}",
+  sports: "\u26BD",
+  business: "\u{1F4BC}",
+  lifestyle: "\u{1F31F}",
+  other: "\u{1F4CB}",
 };

@@ -1,11 +1,19 @@
-// ── Tournesol score fetch ──
+// ── Tournesol score fetch + extension detection ──
 
-import type { TournesolData } from '../types';
+import type { TournesolData } from "../types";
 
-export async function fetchTournesolScore(videoId: string): Promise<TournesolData | null> {
+export function detectTournesolExtension(): boolean {
+  return !!document.querySelector(
+    'tournesol-entity-context, [class*="tournesol"], #tournesol-rate',
+  );
+}
+
+export async function fetchTournesolScore(
+  videoId: string,
+): Promise<TournesolData | null> {
   try {
     const resp = await chrome.runtime.sendMessage({
-      action: 'GET_TOURNESOL',
+      action: "GET_TOURNESOL",
       data: { videoId },
     });
     if (resp?.success && resp.data) return resp.data as TournesolData;

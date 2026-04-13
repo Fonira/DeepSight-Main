@@ -1,39 +1,25 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type {
-  User,
-  Summary,
-  RecentAnalysis,
-  PlanInfo,
-  QuickChatResponse,
-} from "../../types";
-import {
-  extractVideoId,
-  getThumbnailUrl,
-  detectPlatform,
-  type VideoPlatform,
-} from "../../utils/video";
+import type { User, Summary, PlanInfo, QuickChatResponse } from "../../types";
+import { extractVideoId, detectPlatform } from "../../utils/video";
 import {
   addRecentAnalysis,
-  getRecentAnalyses,
   getFreeAnalysisCount,
   incrementFreeAnalysisCount,
 } from "../../utils/storage";
 import { WEBAPP_URL } from "../../utils/config";
-import { LogoutIcon, PlayIcon, ExternalLinkIcon } from "./Icons";
-import { SynthesisView } from "./SynthesisView";
-import { ChatDrawer } from "./ChatDrawer";
-import { PromoBanner } from "./PromoBanner";
+import { LogoutIcon, ExternalLinkIcon } from "./Icons";
 import { DeepSightSpinner } from "./DeepSightSpinner";
 import { DoodleIcon } from "./doodles/DoodleIcon";
 import { useTranslation } from "../../i18n/useTranslation";
 
-interface MainViewProps {
+interface AnalysisViewProps {
   user: User | null;
   planInfo: PlanInfo | null;
   isGuest: boolean;
   onLogout: () => void;
   onLoginRedirect: () => void;
   onError: (msg: string) => void;
+  onAnalysisComplete: (summaryId: number, summary: Summary) => void;
 }
 
 interface VideoInfo {
@@ -42,30 +28,25 @@ interface VideoInfo {
   title: string;
 }
 
-type AnalysisPhase =
-  | { phase: "idle" }
-  | { phase: "analyzing"; progress: number; message: string }
-  | { phase: "complete"; summaryId: number; summary: Summary }
-  | { phase: "error"; message: string };
-
-export const MainView: React.FC<MainViewProps> = ({
+export const AnalysisView: React.FC<AnalysisViewProps> = ({
   user,
   planInfo,
   isGuest,
   onLogout,
   onLoginRedirect,
   onError,
+  onAnalysisComplete,
 }) => {
   const { t, language } = useTranslation();
   const [video, setVideo] = useState<VideoInfo | null>(null);
   const [mode, setMode] = useState<string>(user?.default_mode || "standard");
   const [lang, setLang] = useState<string>(user?.default_lang || "fr");
-  const [analysis, setAnalysis] = useState<AnalysisPhase>({ phase: "idle" });
-  const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [phase, setPhase] = useState<"idle" | "analyzing" | "error">("idle");
+  const [progress, setProgress] = useState(0);
+  const [progressMsg, setProgressMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   const [guestUsed, setGuestUsed] = useState(false);
   const [quickChatLoading, setQuickChatLoading] = useState(false);
-  const [showYtBanner, setShowYtBanner] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -75,17 +56,6 @@ export const MainView: React.FC<MainViewProps> = ({
       });
     }
   }, [isGuest]);
-
-  useEffect(() => {
-    chrome.storage.local.get("showYouTubeRecommendation", (result) => {
-      if (result.showYouTubeRecommendation) setShowYtBanner(true);
-    });
-  }, []);
-
-  const dismissYtBanner = () => {
-    setShowYtBanner(false);
-    chrome.storage.local.remove("showYouTubeRecommendation");
-  };
 
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -98,17 +68,10 @@ export const MainView: React.FC<MainViewProps> = ({
         setVideo({ url, videoId, title: tabs[0]?.title || fallbackTitle });
       }
     });
-    if (!isGuest) loadRecentAnalyses();
-
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [isGuest]);
-
-  async function loadRecentAnalyses(): Promise<void> {
-    const items = await getRecentAnalyses();
-    setRecentAnalyses(items);
-  }
+  }, []);
 
   const isQuotaExceeded = planInfo
     ? planInfo.analyses_this_month >= planInfo.monthly_analyses
@@ -124,26 +87,21 @@ export const MainView: React.FC<MainViewProps> = ({
 
   const creditsTotal = planInfo?.credits_monthly || user?.credits_monthly || 0;
   const creditsRemaining = planInfo?.credits ?? user?.credits ?? 0;
-  const creditsLow = creditsTotal > 0 && creditsRemaining / creditsTotal < 0.3;
   const creditsCritical =
     creditsTotal > 0 && creditsRemaining / creditsTotal < 0.1;
 
   const userPlanId = planInfo?.plan_id || user?.plan || "free";
-  const nextPlan = t.upsell[userPlanId as keyof typeof t.upsell] || null;
 
   const startQuickChat = useCallback(async () => {
     if (!video) return;
     setQuickChatLoading(true);
-
     try {
       const response = await chrome.runtime.sendMessage({
         action: "QUICK_CHAT",
         data: { url: video.url, lang },
       });
-
       if (!response.success)
         throw new Error(response.error || "Quick Chat failed");
-
       const result = response.result as QuickChatResponse;
       chrome.tabs.create({
         url: `${WEBAPP_URL}/chat?summary=${result.summary_id}`,
@@ -166,11 +124,9 @@ export const MainView: React.FC<MainViewProps> = ({
       }
     }
 
-    setAnalysis({
-      phase: "analyzing",
-      progress: 0,
-      message: t.analysis.starting,
-    });
+    setPhase("analyzing");
+    setProgress(0);
+    setProgressMsg(t.analysis.starting);
 
     try {
       const startRes = await chrome.runtime.sendMessage({
@@ -179,10 +135,8 @@ export const MainView: React.FC<MainViewProps> = ({
       });
 
       if (!startRes.success) {
-        setAnalysis({
-          phase: "error",
-          message: startRes.error || t.analysis.startFailed,
-        });
+        setPhase("error");
+        setErrorMsg(startRes.error || t.analysis.startFailed);
         return;
       }
 
@@ -218,66 +172,41 @@ export const MainView: React.FC<MainViewProps> = ({
             });
 
             if (summaryRes.success && summaryRes.summary) {
-              setAnalysis({
-                phase: "complete",
-                summaryId: status.result.summary_id,
-                summary: summaryRes.summary,
-              });
-              loadRecentAnalyses();
+              onAnalysisComplete(status.result.summary_id, summaryRes.summary);
             }
           } else if (status.status === "failed") {
             if (pollRef.current) clearInterval(pollRef.current);
-            setAnalysis({
-              phase: "error",
-              message: status.error || t.analysis.failed,
-            });
+            setPhase("error");
+            setErrorMsg(status.error || t.analysis.failed);
           } else {
-            setAnalysis({
-              phase: "analyzing",
-              progress: status.progress || 0,
-              message: status.message || t.analysis.processing,
-            });
+            setProgress(status.progress || 0);
+            setProgressMsg(status.message || t.analysis.processing);
           }
         } catch {
           // Polling error — will retry
         }
       }, 2500);
     } catch (e) {
-      setAnalysis({ phase: "error", message: (e as Error).message });
+      setPhase("error");
+      setErrorMsg((e as Error).message);
     }
-  }, [video, mode, lang, isGuest, t]);
-
-  // Chat view
-  if (chatOpen && analysis.phase === "complete") {
-    return (
-      <ChatDrawer
-        summaryId={analysis.summaryId}
-        videoTitle={analysis.summary.video_title}
-        onClose={() => setChatOpen(false)}
-        onSessionExpired={onLogout}
-        userPlan={planInfo?.plan_id || user?.plan || "free"}
-      />
-    );
-  }
+  }, [video, mode, lang, isGuest, t, onAnalysisComplete]);
 
   const planName = planInfo
     ? t.plans[planInfo.plan_id as keyof typeof t.plans] || planInfo.plan_name
     : null;
-  const isFree = !user || user.plan === "free";
 
   return (
-    <div className="main-view">
+    <div className="analysis-view">
       {/* Header */}
       <div className="main-header">
         <div className="main-header-left">
-          <DeepSightSpinner size="xs" speed="slow" />
-          {isGuest ? (
-            <h1>DeepSight</h1>
-          ) : isFree ? (
-            <h1>DeepSight {planName || t.plans.free}</h1>
-          ) : (
-            <h1>DeepSight {planName}</h1>
-          )}
+          <img
+            src={chrome.runtime.getURL("assets/deepsight-logo-cosmic.png")}
+            alt="DeepSight"
+            className="header-logo-img"
+          />
+          <h1>DeepSight</h1>
         </div>
         <div className="main-header-actions">
           <button
@@ -303,34 +232,38 @@ export const MainView: React.FC<MainViewProps> = ({
         </div>
       </div>
 
-      {/* User/Plan bar */}
+      {/* Platform logos strip */}
+      <div className="platform-logos-strip">
+        <img
+          src={chrome.runtime.getURL("platforms/youtube-icon-red.svg")}
+          alt="YouTube"
+        />
+        <img
+          src={chrome.runtime.getURL("platforms/tiktok-note-color.svg")}
+          alt="TikTok"
+        />
+        <img
+          src={chrome.runtime.getURL("platforms/mistral-icon.svg")}
+          alt="Mistral AI"
+        />
+        <img
+          src={chrome.runtime.getURL("platforms/tournesol-logo.png")}
+          alt="Tournesol"
+        />
+      </div>
+
+      {/* User bar */}
       {!isGuest && user && (
         <div className="user-bar">
           <span className={`plan-badge plan-${user.plan}`}>
             {t.plans[user.plan as keyof typeof t.plans] || user.plan}
           </span>
-          {planInfo ? (
+          {planInfo && (
             <span
               className={`user-quota ${quotaWarning ? "quota-warning" : ""}`}
             >
               {planInfo.analyses_this_month}/{planInfo.monthly_analyses}{" "}
               {t.common.analyses}
-            </span>
-          ) : (
-            <span className="user-credits">
-              {user.credits} {t.common.credits}
-            </span>
-          )}
-          {creditsLow && (
-            <span
-              className={`credits-urgency ${creditsCritical ? "credits-critical" : "credits-low"}`}
-              title={t.credits.remaining.replace(
-                "{count}",
-                String(creditsRemaining),
-              )}
-            >
-              {creditsCritical ? "\u{1F6A8}" : "\u26A0\uFE0F"}{" "}
-              {creditsRemaining} {t.credits.low}
             </span>
           )}
         </div>
@@ -362,35 +295,9 @@ export const MainView: React.FC<MainViewProps> = ({
         </div>
       )}
 
-      {/* YouTube recommendation banner */}
-      {showYtBanner && (
-        <div className="yt-recommend-banner">
-          <div className="yt-recommend-content">
-            <img
-              src={chrome.runtime.getURL("platforms/youtube-icon-red.png")}
-              alt="YouTube"
-              style={{ height: 18, width: "auto", flexShrink: 0 }}
-            />
-            <div className="yt-recommend-text">
-              <span className="yt-recommend-title">{t.ytRecommend.title}</span>
-              <span className="yt-recommend-subtitle">
-                {t.ytRecommend.subtitle}
-              </span>
-            </div>
-          </div>
-          <button
-            className="yt-recommend-dismiss"
-            onClick={dismissYtBanner}
-            title={t.ytRecommend.dismiss}
-          >
-            {"\u2715"}
-          </button>
-        </div>
-      )}
-
       {/* Content */}
       <div className="main-content">
-        {/* Video status */}
+        {/* Video card */}
         {video ? (
           (() => {
             const platform = detectPlatform(video.url);
@@ -413,15 +320,7 @@ export const MainView: React.FC<MainViewProps> = ({
                     }}
                   />
                 ) : (
-                  <div
-                    className="video-thumbnail"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(200,144,58,0.1)",
-                    }}
-                  >
+                  <div className="video-thumbnail video-thumbnail-placeholder">
                     <DoodleIcon
                       name="waveform"
                       size={20}
@@ -452,8 +351,8 @@ export const MainView: React.FC<MainViewProps> = ({
           </div>
         )}
 
-        {/* Analysis controls */}
-        {video && analysis.phase === "idle" && (
+        {/* Analysis controls — idle state */}
+        {video && phase === "idle" && (
           <>
             {!isGuest && isQuotaExceeded ? (
               <div className="quota-exceeded">
@@ -461,10 +360,7 @@ export const MainView: React.FC<MainViewProps> = ({
                   {t.analysis.quotaExceeded} ({planInfo?.analyses_this_month}/
                   {planInfo?.monthly_analyses}) — {t.analysis.quotaExceededText}
                 </p>
-                <button
-                  className="analyze-btn analyze-btn-disabled btn-shimmer"
-                  disabled
-                >
+                <button className="analyze-btn analyze-btn-disabled" disabled>
                   {t.analysis.analyzeButton}
                 </button>
                 <button
@@ -478,8 +374,6 @@ export const MainView: React.FC<MainViewProps> = ({
                 </button>
                 <a
                   href={`${WEBAPP_URL}/upgrade`}
-                  target="_blank"
-                  rel="noreferrer"
                   className="btn-upgrade-cta"
                   onClick={(e) => {
                     e.preventDefault();
@@ -533,6 +427,9 @@ export const MainView: React.FC<MainViewProps> = ({
                     </select>
                   </div>
                 </div>
+                <button className="analyze-btn" onClick={startAnalysis}>
+                  {t.analysis.analyzeButton}
+                </button>
                 <button
                   className="quickchat-btn"
                   onClick={startQuickChat}
@@ -542,15 +439,12 @@ export const MainView: React.FC<MainViewProps> = ({
                     ? t.analysis.quickChatPreparing
                     : t.analysis.quickChatButton}
                 </button>
-                <button
-                  className="analyze-btn btn-shimmer"
-                  onClick={startAnalysis}
-                  style={{ animation: "float 3s ease-in-out infinite" }}
-                >
-                  {t.analysis.analyzeButton}
-                </button>
                 <div className="mistral-badge">
-                  <span>{"\uD83C\uDDEB\uD83C\uDDF7"}</span>
+                  <img
+                    src={chrome.runtime.getURL("platforms/mistral-icon.svg")}
+                    alt=""
+                    style={{ height: 12, width: "auto" }}
+                  />
                   <span>{t.mistral.badge}</span>
                 </div>
               </>
@@ -558,158 +452,33 @@ export const MainView: React.FC<MainViewProps> = ({
           </>
         )}
 
-        {/* Progress */}
-        {analysis.phase === "analyzing" && (
+        {/* Progress — analyzing state */}
+        {phase === "analyzing" && (
           <div className="progress-container">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                marginBottom: 8,
-              }}
-            >
-              <DeepSightSpinner size="sm" speed="fast" />
+            <div className="hero-spinner">
+              <DeepSightSpinner size="md" speed="fast" showLogos />
             </div>
             <div className="progress-bar">
               <div
                 className="progress-fill"
-                style={{ width: `${analysis.progress}%` }}
+                style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="progress-text">{analysis.message}</p>
+            <p className="progress-text">{progressMsg}</p>
+            <p className="progress-percent">{progress}%</p>
           </div>
         )}
 
-        {/* Error */}
-        {analysis.phase === "error" && (
-          <div style={{ textAlign: "center", padding: "12px" }}>
-            <p
-              style={{
-                color: "var(--error)",
-                fontSize: "13px",
-                marginBottom: "8px",
-              }}
-            >
-              {analysis.message}
-            </p>
-            <button
-              className="analyze-btn btn-shimmer"
-              onClick={() => setAnalysis({ phase: "idle" })}
-              style={{
-                height: "40px",
-                fontSize: "13px",
-                animation: "float 3s ease-in-out infinite",
-              }}
-            >
+        {/* Error state */}
+        {phase === "error" && (
+          <div className="error-container">
+            <p className="error-message">{errorMsg}</p>
+            <button className="analyze-btn" onClick={() => setPhase("idle")}>
               {t.common.retry}
             </button>
           </div>
         )}
-
-        {/* Synthesis */}
-        {analysis.phase === "complete" && (
-          <>
-            <SynthesisView
-              summary={analysis.summary}
-              summaryId={analysis.summaryId}
-              planInfo={planInfo}
-              onOpenChat={() => setChatOpen(true)}
-            />
-
-            {!isGuest && nextPlan && userPlanId !== "pro" && (
-              <div className="post-analysis-upsell">
-                <div className="upsell-content">
-                  <DoodleIcon
-                    name="sparkle4pt"
-                    size={18}
-                    color="var(--accent-primary)"
-                  />
-                  <div className="upsell-text">
-                    <span className="upsell-headline">{nextPlan.feature}</span>
-                    <span className="upsell-sub">
-                      Plan {nextPlan.label} — {nextPlan.price}/
-                      {language === "fr" ? "mois" : "mo"}
-                    </span>
-                  </div>
-                </div>
-                <a
-                  href={`${WEBAPP_URL}/upgrade`}
-                  className="upsell-btn"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
-                  }}
-                >
-                  {t.common.unlock} {"\u2197"}
-                </a>
-              </div>
-            )}
-
-            {isGuest && (
-              <div className="guest-post-analysis">
-                <p>{t.guest.exhaustedText}</p>
-                <button
-                  className="btn-create-account"
-                  onClick={() =>
-                    chrome.tabs.create({ url: `${WEBAPP_URL}/register` })
-                  }
-                >
-                  {t.common.createAccount} {"\u2197"}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Recent */}
-        {!isGuest && analysis.phase === "idle" && recentAnalyses.length > 0 && (
-          <div className="recent-section">
-            <h3>{t.analysis.recent}</h3>
-            <div className="recent-list">
-              {recentAnalyses.slice(0, 5).map((item) => (
-                <a
-                  key={item.videoId}
-                  href={`${WEBAPP_URL}/summary/${item.summaryId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="recent-item"
-                >
-                  {item.platform === "tiktok" ? (
-                    <div
-                      style={{
-                        width: 48,
-                        height: 36,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background: "rgba(200,144,58,0.1)",
-                        borderRadius: 4,
-                        flexShrink: 0,
-                      }}
-                    >
-                      <DoodleIcon
-                        name="waveform"
-                        size={16}
-                        color="var(--accent-primary)"
-                      />
-                    </div>
-                  ) : (
-                    <img
-                      src={getThumbnailUrl(item.videoId, "youtube") || ""}
-                      alt=""
-                      loading="lazy"
-                    />
-                  )}
-                  <span className="recent-title">{item.title}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* Promo Banner */}
-      <PromoBanner planInfo={planInfo} />
     </div>
   );
 };

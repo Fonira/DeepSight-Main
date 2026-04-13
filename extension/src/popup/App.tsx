@@ -1,19 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import type { User, PlanInfo } from '../types';
-import { LoginView } from './components/LoginView';
-import { MainView } from './components/MainView';
-import { DeepSightSpinner } from './components/DeepSightSpinner';
-import MicroDoodleBackground from './components/MicroDoodleBackground';
+import React, { useState, useEffect, useCallback } from "react";
+import type { User, PlanInfo } from "../types";
+import { LoginView } from "./components/LoginView";
+import { MainView } from "./components/MainView";
+import { DeepSightSpinner } from "./components/DeepSightSpinner";
+import MicroDoodleBackground from "./components/MicroDoodleBackground";
 
-type ViewName = 'loading' | 'login' | 'main';
+type ViewName = "loading" | "login" | "main";
 
 export const App: React.FC = () => {
-  const [view, setView] = useState<ViewName>('loading');
+  const [view, setView] = useState<ViewName>("loading");
   const [user, setUser] = useState<User | null>(null);
   const [planInfo, setPlanInfo] = useState<PlanInfo | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "error" | "success";
+  } | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -28,23 +31,25 @@ export const App: React.FC = () => {
 
   async function checkAuth(): Promise<void> {
     try {
-      const response = await chrome.runtime.sendMessage({ action: 'CHECK_AUTH' });
+      const response = await chrome.runtime.sendMessage({
+        action: "CHECK_AUTH",
+      });
       if (response.authenticated && response.user) {
         setUser(response.user);
         setIsGuest(false);
         await loadPlanInfo();
-        setView('main');
+        setView("main");
       } else {
-        setView('login');
+        setView("login");
       }
     } catch {
-      setView('login');
+      setView("login");
     }
   }
 
   async function loadPlanInfo(): Promise<void> {
     try {
-      const response = await chrome.runtime.sendMessage({ action: 'GET_PLAN' });
+      const response = await chrome.runtime.sendMessage({ action: "GET_PLAN" });
       if (response.success && response.plan) {
         setPlanInfo(response.plan);
       }
@@ -53,34 +58,39 @@ export const App: React.FC = () => {
     }
   }
 
-  const handleLogin = useCallback(async (email: string, password: string): Promise<void> => {
+  const handleLogin = useCallback(
+    async (email: string, password: string): Promise<void> => {
+      setError(null);
+      const response = await chrome.runtime.sendMessage({
+        action: "LOGIN",
+        data: { email, password },
+      });
+
+      if (response.success && response.user) {
+        setUser(response.user);
+        setIsGuest(false);
+        await loadPlanInfo();
+        setView("main");
+      } else {
+        throw new Error(response.error || "Login failed");
+      }
+    },
+    [],
+  );
+
+  const handleGoogleLogin = useCallback(async (): Promise<void> => {
     setError(null);
     const response = await chrome.runtime.sendMessage({
-      action: 'LOGIN',
-      data: { email, password },
+      action: "GOOGLE_LOGIN",
     });
 
     if (response.success && response.user) {
       setUser(response.user);
       setIsGuest(false);
       await loadPlanInfo();
-      setView('main');
+      setView("main");
     } else {
-      throw new Error(response.error || 'Login failed');
-    }
-  }, []);
-
-  const handleGoogleLogin = useCallback(async (): Promise<void> => {
-    setError(null);
-    const response = await chrome.runtime.sendMessage({ action: 'GOOGLE_LOGIN' });
-
-    if (response.success && response.user) {
-      setUser(response.user);
-      setIsGuest(false);
-      await loadPlanInfo();
-      setView('main');
-    } else {
-      throw new Error(response.error || 'Google login failed');
+      throw new Error(response.error || "Google login failed");
     }
   }, []);
 
@@ -88,72 +98,80 @@ export const App: React.FC = () => {
     setIsGuest(true);
     setUser(null);
     setPlanInfo(null);
-    setView('main');
+    setView("main");
   }, []);
 
   const handleLogout = useCallback(async (): Promise<void> => {
-    await chrome.runtime.sendMessage({ action: 'LOGOUT' });
+    await chrome.runtime.sendMessage({ action: "LOGOUT" });
     setUser(null);
     setPlanInfo(null);
     setIsGuest(false);
-    setView('login');
+    setView("login");
   }, []);
 
   const handleLoginRedirect = useCallback(() => {
     setIsGuest(false);
-    setView('login');
+    setView("login");
   }, []);
 
   const showError = useCallback((msg: string) => {
-    setToast({ message: msg, type: 'error' });
+    setToast({ message: msg, type: "error" });
   }, []);
 
   function getCurrentVariant() {
-    if (view === 'loading') return 'default';
-    if (view === 'login') return 'default';
-    if (view === 'main') return 'AI';
-    return 'default';
+    if (view === "loading") return "default";
+    if (view === "login") return "default";
+    if (view === "main") return "AI";
+    return "default";
   }
 
   return (
-    <div className="app-container noise-overlay ambient-glow" style={{ position: 'relative' }}>
+    <div
+      className="app-container noise-overlay ambient-glow"
+      style={{ position: "relative" }}
+    >
       <MicroDoodleBackground variant={getCurrentVariant()} />
-      <div style={{ position: 'relative', zIndex: 1 }}>
-      {/* Toast notification */}
-      {toast && (
-        <div
-          className={`ds-toast ds-toast-${toast.type}`}
-          onClick={() => setToast(null)}
-        >
-          {toast.message}
-        </div>
-      )}
+      <div style={{ position: "relative", zIndex: 1 }}>
+        {/* Toast notification */}
+        {toast && (
+          <div
+            className={`ds-toast ds-toast-${toast.type}`}
+            onClick={() => setToast(null)}
+          >
+            {toast.message}
+          </div>
+        )}
 
-      {view === 'loading' && (
-        <div className="loading-view">
-          <DeepSightSpinner size="md" speed="normal" showLabel label="DeepSight" />
-        </div>
-      )}
+        {view === "loading" && (
+          <div className="loading-view">
+            <DeepSightSpinner
+              size="md"
+              speed="normal"
+              showLabel
+              label="DeepSight"
+            />
+          </div>
+        )}
 
-      {view === 'login' && (
-        <LoginView
-          onLogin={handleLogin}
-          onGoogleLogin={handleGoogleLogin}
-          onGuestMode={handleGuestMode}
-          error={error}
-        />
-      )}
+        {view === "login" && (
+          <LoginView
+            onLogin={handleLogin}
+            onGoogleLogin={handleGoogleLogin}
+            onGuestMode={handleGuestMode}
+            error={error}
+          />
+        )}
 
-      {view === 'main' && (
-        <MainView
-          user={user}
-          planInfo={planInfo}
-          isGuest={isGuest}
-          onLogout={handleLogout}
-          onLoginRedirect={handleLoginRedirect}
-          onError={showError}
-        />
-      )}
+        {view === "main" && (
+          <MainView
+            user={user}
+            planInfo={planInfo}
+            isGuest={isGuest}
+            onLogout={handleLogout}
+            onLoginRedirect={handleLoginRedirect}
+            onError={showError}
+          />
+        )}
       </div>
     </div>
   );

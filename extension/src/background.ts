@@ -1,4 +1,4 @@
-import { API_BASE_URL, GOOGLE_CLIENT_ID, WEBAPP_URL } from './utils/config';
+import { API_BASE_URL, GOOGLE_CLIENT_ID, WEBAPP_URL } from "./utils/config";
 import {
   getStoredTokens,
   setStoredTokens,
@@ -6,8 +6,8 @@ import {
   clearStoredAuth,
   getStoredUser,
   addRecentAnalysis,
-} from './utils/storage';
-import { extractVideoId } from './utils/video';
+} from "./utils/storage";
+import { extractVideoId } from "./utils/video";
 import type {
   ExtensionMessage,
   MessageResponse,
@@ -22,20 +22,23 @@ import type {
   ChatMessage,
   PlanInfo,
   QuickChatResponse,
-} from './types';
+} from "./types";
 
 // ── Core API Request ──
 
-async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function apiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
   const { accessToken } = await getStoredTokens();
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
 
   if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
+    headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -47,7 +50,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     const refreshed = await tryRefreshToken();
     if (refreshed) {
       const { accessToken: newToken } = await getStoredTokens();
-      headers['Authorization'] = `Bearer ${newToken}`;
+      headers["Authorization"] = `Bearer ${newToken}`;
       const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers,
@@ -58,11 +61,13 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
       return retryResponse.json();
     }
     await clearStoredAuth();
-    throw new Error('SESSION_EXPIRED');
+    throw new Error("SESSION_EXPIRED");
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({ detail: 'Unknown error' }));
+    const errorBody = await response
+      .json()
+      .catch(() => ({ detail: "Unknown error" }));
     throw new Error(errorBody.detail || `API Error: ${response.status}`);
   }
 
@@ -79,8 +84,8 @@ async function tryRefreshToken(): Promise<boolean> {
 
   try {
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
 
@@ -104,14 +109,16 @@ async function tryRefreshToken(): Promise<boolean> {
 
 async function login(email: string, password: string): Promise<User> {
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({ detail: 'Login failed' }));
-    throw new Error(errorBody.detail || 'Login failed');
+    const errorBody = await response
+      .json()
+      .catch(() => ({ detail: "Login failed" }));
+    throw new Error(errorBody.detail || "Login failed");
   }
 
   const data: LoginResponse = await response.json();
@@ -122,7 +129,7 @@ async function login(email: string, password: string): Promise<User> {
 
 async function loginWithGoogle(): Promise<User> {
   if (!GOOGLE_CLIENT_ID) {
-    throw new Error('Google OAuth not configured. Use email/password login.');
+    throw new Error("Google OAuth not configured. Use email/password login.");
   }
 
   const redirectUrl = chrome.identity.getRedirectURL();
@@ -132,7 +139,7 @@ async function loginWithGoogle(): Promise<User> {
     `?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
     `&redirect_uri=${encodeURIComponent(redirectUrl)}` +
     `&response_type=token` +
-    `&scope=${encodeURIComponent('email profile')}` +
+    `&scope=${encodeURIComponent("email profile")}` +
     `&prompt=select_account`;
 
   const responseUrl = await chrome.identity.launchWebAuthFlow({
@@ -140,22 +147,25 @@ async function loginWithGoogle(): Promise<User> {
     interactive: true,
   });
 
-  if (!responseUrl) throw new Error('Google login cancelled');
+  if (!responseUrl) throw new Error("Google login cancelled");
 
-  const hashParams = new URLSearchParams(responseUrl.split('#')[1]);
-  const googleAccessToken = hashParams.get('access_token');
+  const hashParams = new URLSearchParams(responseUrl.split("#")[1]);
+  const googleAccessToken = hashParams.get("access_token");
 
-  if (!googleAccessToken) throw new Error('No access token received from Google');
+  if (!googleAccessToken)
+    throw new Error("No access token received from Google");
 
   const response = await fetch(`${API_BASE_URL}/auth/google/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ access_token: googleAccessToken }),
   });
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({ detail: 'Google login failed' }));
-    throw new Error(errorBody.detail || 'Google login failed on server');
+    const errorBody = await response
+      .json()
+      .catch(() => ({ detail: "Google login failed" }));
+    throw new Error(errorBody.detail || "Google login failed on server");
   }
 
   const data: LoginResponse = await response.json();
@@ -166,7 +176,7 @@ async function loginWithGoogle(): Promise<User> {
 
 async function logout(): Promise<void> {
   try {
-    await apiRequest('/auth/logout', { method: 'POST' });
+    await apiRequest("/auth/logout", { method: "POST" });
   } catch {
     // Ignore errors on logout
   }
@@ -174,7 +184,7 @@ async function logout(): Promise<void> {
 }
 
 async function getCurrentUser(): Promise<User> {
-  const user = await apiRequest<User>('/auth/me');
+  const user = await apiRequest<User>("/auth/me");
   await setStoredUser(user);
   return user;
 }
@@ -182,19 +192,22 @@ async function getCurrentUser(): Promise<User> {
 // ── Plan API ──
 
 async function fetchPlan(): Promise<PlanInfo> {
-  return apiRequest<PlanInfo>('/billing/my-plan?platform=extension');
+  return apiRequest<PlanInfo>("/billing/my-plan?platform=extension");
 }
 
 // ── Video API ──
 
-async function analyzeVideo(url: string, options: AnalyzeOptions = {}): Promise<AnalyzeResponse> {
-  return apiRequest<AnalyzeResponse>('/videos/analyze', {
-    method: 'POST',
+async function analyzeVideo(
+  url: string,
+  options: AnalyzeOptions = {},
+): Promise<AnalyzeResponse> {
+  return apiRequest<AnalyzeResponse>("/videos/analyze", {
+    method: "POST",
     body: JSON.stringify({
       url,
-      mode: options.mode || 'standard',
-      lang: options.lang || 'fr',
-      category: options.category || 'auto',
+      mode: options.mode || "standard",
+      lang: options.lang || "fr",
+      category: options.category || "auto",
       model: options.model,
       force_refresh: options.force_refresh || false,
     }),
@@ -205,10 +218,15 @@ async function getTaskStatus(taskId: string): Promise<TaskStatus> {
   return apiRequest<TaskStatus>(`/videos/status/${taskId}`);
 }
 
-async function cancelTask(taskId: string): Promise<{ status: string; task_id: string }> {
-  return apiRequest<{ status: string; task_id: string }>(`/videos/cancel/${taskId}`, {
-    method: 'POST',
-  });
+async function cancelTask(
+  taskId: string,
+): Promise<{ status: string; task_id: string }> {
+  return apiRequest<{ status: string; task_id: string }>(
+    `/videos/cancel/${taskId}`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 async function getSummary(summaryId: number): Promise<Summary> {
@@ -249,18 +267,23 @@ async function getSummary(summaryId: number): Promise<Summary> {
 
 // ── Share API ──
 
-async function shareAnalysis(videoId: string): Promise<{ share_url: string; share_token: string }> {
-  return apiRequest<{ share_url: string; share_token: string }>('/share', {
-    method: 'POST',
+async function shareAnalysis(
+  videoId: string,
+): Promise<{ share_url: string; share_token: string }> {
+  return apiRequest<{ share_url: string; share_token: string }>("/share", {
+    method: "POST",
     body: JSON.stringify({ video_id: videoId }),
   });
 }
 
 // ── Quick Chat API ──
 
-async function quickChat(url: string, lang: string = 'fr'): Promise<QuickChatResponse> {
-  return apiRequest<QuickChatResponse>('/videos/quick-chat', {
-    method: 'POST',
+async function quickChat(
+  url: string,
+  lang: string = "fr",
+): Promise<QuickChatResponse> {
+  return apiRequest<QuickChatResponse>("/videos/quick-chat", {
+    method: "POST",
     body: JSON.stringify({ url, lang }),
   });
 }
@@ -272,12 +295,12 @@ async function askQuestion(
   question: string,
   options: ChatOptions = {},
 ): Promise<ChatResponse> {
-  return apiRequest<ChatResponse>('/chat/ask', {
-    method: 'POST',
+  return apiRequest<ChatResponse>("/chat/ask", {
+    method: "POST",
     body: JSON.stringify({
       question,
       summary_id: summaryId,
-      mode: options.mode || 'standard',
+      mode: options.mode || "standard",
       use_web_search: options.use_web_search || false,
     }),
   });
@@ -285,7 +308,9 @@ async function askQuestion(
 
 async function getChatHistory(summaryId: number): Promise<ChatMessage[]> {
   try {
-    const result = await apiRequest<{ messages: ChatMessage[] }>(`/chat/${summaryId}/history`);
+    const result = await apiRequest<{ messages: ChatMessage[] }>(
+      `/chat/${summaryId}/history`,
+    );
     return result.messages || [];
   } catch {
     return [];
@@ -299,7 +324,10 @@ async function isAuthenticated(): Promise<boolean> {
   return !!accessToken;
 }
 
-async function pollAnalysis(taskId: string, originTabId?: number): Promise<unknown> {
+async function pollAnalysis(
+  taskId: string,
+  originTabId?: number,
+): Promise<unknown> {
   const MAX_DURATION_MS = 30 * 60 * 1000;
   const startTime = Date.now();
   let pollInterval = 2000;
@@ -307,16 +335,22 @@ async function pollAnalysis(taskId: string, originTabId?: number): Promise<unkno
   while (Date.now() - startTime < MAX_DURATION_MS) {
     const status = await getTaskStatus(taskId);
 
-    if (status.status === 'completed' || status.status === 'failed' || status.status === 'cancelled') {
+    if (
+      status.status === "completed" ||
+      status.status === "failed" ||
+      status.status === "cancelled"
+    ) {
       return status;
     }
 
     // Send progress only to the originating tab (Bug #8 fix)
     if (originTabId !== undefined) {
-      chrome.tabs.sendMessage(originTabId, {
-        action: 'ANALYSIS_PROGRESS',
-        data: { taskId, progress: status.progress, message: status.message },
-      }).catch(() => {});
+      chrome.tabs
+        .sendMessage(originTabId, {
+          action: "ANALYSIS_PROGRESS",
+          data: { taskId, progress: status.progress, message: status.message },
+        })
+        .catch(() => {});
     }
 
     const elapsed = Date.now() - startTime;
@@ -327,17 +361,23 @@ async function pollAnalysis(taskId: string, originTabId?: number): Promise<unkno
     await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
-  throw new Error('Analysis timeout — video may be too long');
+  throw new Error("Analysis timeout — video may be too long");
 }
 
 // ── Message Handler ──
 
-async function handleMessage(message: ExtensionMessage, senderTabId?: number): Promise<MessageResponse> {
+async function handleMessage(
+  message: ExtensionMessage,
+  senderTabId?: number,
+): Promise<MessageResponse> {
   switch (message.action) {
-    case 'CHECK_AUTH': {
+    case "CHECK_AUTH": {
       if (await isAuthenticated()) {
         try {
-          return { authenticated: true, user: await getStoredUser() ?? undefined };
+          return {
+            authenticated: true,
+            user: (await getStoredUser()) ?? undefined,
+          };
         } catch {
           return { authenticated: false };
         }
@@ -345,7 +385,7 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       return { authenticated: false };
     }
 
-    case 'GET_USER': {
+    case "GET_USER": {
       try {
         const user = await getCurrentUser();
         return { success: true, user };
@@ -354,8 +394,11 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'LOGIN': {
-      const { email, password } = message.data as { email: string; password: string };
+    case "LOGIN": {
+      const { email, password } = message.data as {
+        email: string;
+        password: string;
+      };
       try {
         const user = await login(email, password);
         return { success: true, user };
@@ -364,7 +407,7 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'GOOGLE_LOGIN': {
+    case "GOOGLE_LOGIN": {
       try {
         const user = await loginWithGoogle();
         return { success: true, user };
@@ -373,8 +416,11 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'START_ANALYSIS': {
-      const { url, options } = message.data as { url: string; options: AnalyzeOptions };
+    case "START_ANALYSIS": {
+      const { url, options } = message.data as {
+        url: string;
+        options: AnalyzeOptions;
+      };
       try {
         const { task_id } = await analyzeVideo(url, options);
         return { success: true, result: { task_id } };
@@ -383,22 +429,25 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'ANALYZE_VIDEO': {
-      const { url, options } = message.data as { url: string; options: AnalyzeOptions };
+    case "ANALYZE_VIDEO": {
+      const { url, options } = message.data as {
+        url: string;
+        options: AnalyzeOptions;
+      };
       try {
         const { task_id } = await analyzeVideo(url, options);
-        const result = await pollAnalysis(task_id, senderTabId) as {
+        const result = (await pollAnalysis(task_id, senderTabId)) as {
           status: string;
           result?: { summary_id: number; video_title?: string };
         };
 
-        if (result.status === 'completed' && result.result?.summary_id) {
+        if (result.status === "completed" && result.result?.summary_id) {
           const videoId = extractVideoId(url);
           if (videoId) {
             await addRecentAnalysis({
               videoId,
               summaryId: result.result.summary_id,
-              title: result.result.video_title || 'Unknown',
+              title: result.result.video_title || "Unknown",
             });
           }
         }
@@ -409,7 +458,7 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'GET_TASK_STATUS': {
+    case "GET_TASK_STATUS": {
       const { taskId } = message.data as { taskId: string };
       try {
         const status = await getTaskStatus(taskId);
@@ -419,7 +468,7 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'CANCEL_ANALYSIS': {
+    case "CANCEL_ANALYSIS": {
       const { taskId } = message.data as { taskId: string };
       try {
         const result = await cancelTask(taskId);
@@ -429,7 +478,7 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'GET_SUMMARY': {
+    case "GET_SUMMARY": {
       const { summaryId } = message.data as { summaryId: number };
       try {
         const summary = await getSummary(summaryId);
@@ -439,7 +488,7 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'ASK_QUESTION': {
+    case "ASK_QUESTION": {
       const { summaryId, question, options } = message.data as {
         summaryId: number;
         question: string;
@@ -453,7 +502,7 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'GET_CHAT_HISTORY': {
+    case "GET_CHAT_HISTORY": {
       const { summaryId } = message.data as { summaryId: number };
       try {
         const messages = await getChatHistory(summaryId);
@@ -463,7 +512,7 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'GET_PLAN': {
+    case "GET_PLAN": {
       try {
         const plan = await fetchPlan();
         return { success: true, plan };
@@ -472,7 +521,7 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'SHARE_ANALYSIS': {
+    case "SHARE_ANALYSIS": {
       const { videoId } = message.data as { videoId: string };
       try {
         const result = await shareAnalysis(videoId);
@@ -482,44 +531,52 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
-    case 'QUICK_CHAT': {
+    case "QUICK_CHAT": {
       const { url, lang } = message.data as { url: string; lang?: string };
       try {
-        const result = await quickChat(url, lang || 'fr');
+        const result = await quickChat(url, lang || "fr");
         return { success: true, result };
       } catch (e) {
         return { success: false, error: (e as Error).message };
       }
     }
 
-    case 'LOGOUT': {
+    case "LOGOUT": {
       await logout();
       return { success: true };
     }
 
-    case 'OPEN_POPUP': {
-      chrome.action.setBadgeText({ text: '!' });
-      chrome.action.setBadgeBackgroundColor({ color: '#6366f1' });
+    case "OPEN_POPUP": {
+      chrome.action.setBadgeText({ text: "!" });
+      chrome.action.setBadgeBackgroundColor({ color: "#6366f1" });
       return { success: true };
     }
 
-    case 'SYNC_AUTH_FROM_WEBSITE': {
-      const { accessToken, refreshToken: rt, user } = message.data as {
+    case "SYNC_AUTH_FROM_WEBSITE": {
+      const {
+        accessToken,
+        refreshToken: rt,
+        user,
+      } = message.data as {
         accessToken: string;
         refreshToken: string;
         user: Record<string, unknown>;
       };
       // Bug #9: validate before storing
-      if (!accessToken || typeof accessToken !== 'string') {
-        return { success: false, error: 'Invalid accessToken' };
+      if (!accessToken || typeof accessToken !== "string") {
+        return { success: false, error: "Invalid accessToken" };
       }
-      if (!user || typeof user.id === 'undefined' || typeof user.plan !== 'string') {
-        return { success: false, error: 'Invalid user data' };
+      if (
+        !user ||
+        typeof user.id === "undefined" ||
+        typeof user.plan !== "string"
+      ) {
+        return { success: false, error: "Invalid user data" };
       }
       try {
         await setStoredTokens(accessToken, rt);
         await setStoredUser(user as never);
-        chrome.action.setBadgeText({ text: '' });
+        chrome.action.setBadgeText({ text: "" });
         return { success: true };
       } catch (e) {
         return { success: false, error: (e as Error).message };
@@ -527,14 +584,18 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
     }
 
     default:
-      return { error: 'Unknown action' };
+      return { error: "Unknown action" };
   }
 }
 
 // ── Message Listener ──
 
 chrome.runtime.onMessage.addListener(
-  (message: ExtensionMessage, sender, sendResponse: (response: MessageResponse) => void) => {
+  (
+    message: ExtensionMessage,
+    sender,
+    sendResponse: (response: MessageResponse) => void,
+  ) => {
     const senderTabId = sender.tab?.id;
     handleMessage(message, senderTabId)
       .then(sendResponse)
@@ -546,7 +607,7 @@ chrome.runtime.onMessage.addListener(
 // ── Lifecycle Events ──
 
 chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') {
+  if (details.reason === "install") {
     chrome.tabs.create({ url: WEBAPP_URL });
     chrome.storage.local.set({ showYouTubeRecommendation: true });
   }
@@ -554,11 +615,11 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // ── Alarms ──
 
-chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 });
-chrome.alarms.create('refreshToken', { periodInMinutes: 50 }); // Refresh avant expiration (access_token = 60min)
+chrome.alarms.create("keepAlive", { periodInMinutes: 0.5 });
+chrome.alarms.create("refreshToken", { periodInMinutes: 50 }); // Refresh avant expiration (access_token = 60min)
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === 'refreshToken' && (await isAuthenticated())) {
+  if (alarm.name === "refreshToken" && (await isAuthenticated())) {
     await tryRefreshToken();
   }
 });
@@ -566,12 +627,12 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 // ── Badge Updates ──
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes.accessToken) {
+  if (areaName === "local" && changes.accessToken) {
     if (changes.accessToken.newValue) {
-      chrome.action.setBadgeText({ text: '' });
+      chrome.action.setBadgeText({ text: "" });
     } else {
-      chrome.action.setBadgeText({ text: '!' });
-      chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
+      chrome.action.setBadgeText({ text: "!" });
+      chrome.action.setBadgeBackgroundColor({ color: "#ef4444" });
     }
   }
 });

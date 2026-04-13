@@ -2,7 +2,7 @@
  * 🎬 VIDEO UTILS — YouTube + TikTok detection & extraction
  */
 
-export type VideoPlatform = 'youtube' | 'tiktok';
+export type VideoPlatform = "youtube" | "tiktok";
 
 // ── YouTube ──
 
@@ -42,18 +42,18 @@ export function extractTikTokVideoId(url: string): string | null {
 }
 
 export function isTikTokUrl(url: string): boolean {
-  return TIKTOK_PATTERNS.some(p => p.test(url));
+  return TIKTOK_PATTERNS.some((p) => p.test(url));
 }
 
 export function isYouTubeUrl(url: string): boolean {
-  return YOUTUBE_ID_PATTERNS.some(p => p.test(url));
+  return YOUTUBE_ID_PATTERNS.some((p) => p.test(url));
 }
 
 // ── Multi-platform ──
 
 export function detectPlatform(url: string): VideoPlatform | null {
-  if (isYouTubeUrl(url)) return 'youtube';
-  if (isTikTokUrl(url)) return 'tiktok';
+  if (isYouTubeUrl(url)) return "youtube";
+  if (isTikTokUrl(url)) return "tiktok";
   return null;
 }
 
@@ -61,19 +61,26 @@ export function extractVideoId(url: string): string | null {
   return extractYouTubeVideoId(url) || extractTikTokVideoId(url);
 }
 
-export function getThumbnailUrl(videoId: string, platform?: VideoPlatform): string | null {
-  if (platform === 'tiktok') return null; // TikTok thumbnails come from backend
+export function getThumbnailUrl(
+  videoId: string,
+  platform?: VideoPlatform,
+): string | null {
+  if (platform === "tiktok") return null; // TikTok thumbnails come from backend
   return `https://img.youtube.com/vi/${videoId}/default.jpg`;
 }
 
-export function getVideoUrl(videoId: string, platform: VideoPlatform = 'youtube'): string {
-  if (platform === 'tiktok') return `https://www.tiktok.com/video/${videoId}`;
+export function getVideoUrl(
+  videoId: string,
+  platform: VideoPlatform = "youtube",
+): string {
+  if (platform === "tiktok") return `https://www.tiktok.com/video/${videoId}`;
   return `https://www.youtube.com/watch?v=${videoId}`;
 }
 
 export function detectCurrentPagePlatform(): VideoPlatform | null {
   const hostname = window.location.hostname;
-  if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return 'youtube';
-  if (hostname.includes('tiktok.com')) return 'tiktok';
+  if (hostname.includes("youtube.com") || hostname.includes("youtu.be"))
+    return "youtube";
+  if (hostname.includes("tiktok.com")) return "tiktok";
   return null;
 }

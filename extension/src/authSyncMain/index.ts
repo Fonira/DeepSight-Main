@@ -14,14 +14,14 @@ window.__DEEPSIGHT_EXTENSION_PRESENT__ = true;
 
 function syncAuth(): void {
   try {
-    const accessToken = localStorage.getItem('accessToken');
-    const refreshToken = localStorage.getItem('refreshToken');
-    const userStr = localStorage.getItem('user');
+    const accessToken = localStorage.getItem("accessToken");
+    const refreshToken = localStorage.getItem("refreshToken");
+    const userStr = localStorage.getItem("user");
 
     if (accessToken && refreshToken && userStr) {
       window.postMessage(
         {
-          type: 'DEEPSIGHT_AUTH_SUCCESS',
+          type: "DEEPSIGHT_AUTH_SUCCESS",
           payload: {
             accessToken,
             refreshToken,
@@ -32,7 +32,7 @@ function syncAuth(): void {
       );
     }
   } catch (e) {
-    console.error('[DeepSight] Failed to read localStorage:', e);
+    console.error("[DeepSight] Failed to read localStorage:", e);
   }
 }
 

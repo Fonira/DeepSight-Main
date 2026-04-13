@@ -13,7 +13,10 @@
  */
 
 type StorageData = Record<string, unknown>;
-type StorageCallback = (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, areaName: string) => void;
+type StorageCallback = (
+  changes: Record<string, { oldValue?: unknown; newValue?: unknown }>,
+  areaName: string,
+) => void;
 
 // ── In-memory storage ──
 const localStore: StorageData = {};
@@ -23,7 +26,7 @@ const storageListeners: StorageCallback[] = [];
 function createStorageArea(store: StorageData, areaName: string) {
   return {
     get: jest.fn((keys: string | string[]) => {
-      const keyArray = typeof keys === 'string' ? [keys] : keys;
+      const keyArray = typeof keys === "string" ? [keys] : keys;
       const result: StorageData = {};
       for (const key of keyArray) {
         if (key in store) {
@@ -34,7 +37,10 @@ function createStorageArea(store: StorageData, areaName: string) {
     }),
 
     set: jest.fn((items: StorageData) => {
-      const changes: Record<string, { oldValue?: unknown; newValue?: unknown }> = {};
+      const changes: Record<
+        string,
+        { oldValue?: unknown; newValue?: unknown }
+      > = {};
       for (const [key, value] of Object.entries(items)) {
         changes[key] = { oldValue: store[key], newValue: value };
         store[key] = value;
@@ -47,8 +53,11 @@ function createStorageArea(store: StorageData, areaName: string) {
     }),
 
     remove: jest.fn((keys: string | string[]) => {
-      const keyArray = typeof keys === 'string' ? [keys] : keys;
-      const changes: Record<string, { oldValue?: unknown; newValue?: unknown }> = {};
+      const keyArray = typeof keys === "string" ? [keys] : keys;
+      const changes: Record<
+        string,
+        { oldValue?: unknown; newValue?: unknown }
+      > = {};
       for (const key of keyArray) {
         if (key in store) {
           changes[key] = { oldValue: store[key] };
@@ -71,15 +80,29 @@ function createStorageArea(store: StorageData, areaName: string) {
 }
 
 // ── chrome.runtime ──
-const messageListeners: Array<(message: unknown, sender: unknown, sendResponse: (response: unknown) => void) => boolean | void> = [];
+const messageListeners: Array<
+  (
+    message: unknown,
+    sender: unknown,
+    sendResponse: (response: unknown) => void,
+  ) => boolean | void
+> = [];
 
 const chromeRuntime = {
   sendMessage: jest.fn((_message: unknown) => Promise.resolve({})),
   getURL: jest.fn((path: string) => `chrome-extension://mock-id/${path}`),
   onMessage: {
-    addListener: jest.fn((callback: (message: unknown, sender: unknown, sendResponse: (response: unknown) => void) => boolean | void) => {
-      messageListeners.push(callback);
-    }),
+    addListener: jest.fn(
+      (
+        callback: (
+          message: unknown,
+          sender: unknown,
+          sendResponse: (response: unknown) => void,
+        ) => boolean | void,
+      ) => {
+        messageListeners.push(callback);
+      },
+    ),
     removeListener: jest.fn(),
     hasListener: jest.fn(() => false),
   },
@@ -87,32 +110,47 @@ const chromeRuntime = {
     addListener: jest.fn(),
     removeListener: jest.fn(),
   },
-  id: 'mock-extension-id',
+  id: "mock-extension-id",
   getManifest: jest.fn(() => ({
-    name: 'DeepSight',
-    version: '2.0.0',
+    name: "DeepSight",
+    version: "2.0.0",
     manifest_version: 3,
   })),
 };
 
 // ── chrome.tabs ──
 const chromeTabs = {
-  query: jest.fn((_queryInfo: unknown, callback?: (tabs: Array<{ id?: number; url?: string; title?: string }>) => void) => {
-    const result = [{ id: 1, url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', title: 'Test Video' }];
-    if (callback) {
-      callback(result);
-      return undefined;
-    }
-    return Promise.resolve(result);
-  }),
+  query: jest.fn(
+    (
+      _queryInfo: unknown,
+      callback?: (
+        tabs: Array<{ id?: number; url?: string; title?: string }>,
+      ) => void,
+    ) => {
+      const result = [
+        {
+          id: 1,
+          url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          title: "Test Video",
+        },
+      ];
+      if (callback) {
+        callback(result);
+        return undefined;
+      }
+      return Promise.resolve(result);
+    },
+  ),
   sendMessage: jest.fn(() => Promise.resolve()),
   create: jest.fn(() => Promise.resolve({ id: 2 })),
 };
 
 // ── chrome.identity ──
 const chromeIdentity = {
-  getRedirectURL: jest.fn(() => 'https://mock-extension-id.chromiumapp.org/'),
-  launchWebAuthFlow: jest.fn(() => Promise.resolve('https://redirect#access_token=mock-token')),
+  getRedirectURL: jest.fn(() => "https://mock-extension-id.chromiumapp.org/"),
+  launchWebAuthFlow: jest.fn(() =>
+    Promise.resolve("https://redirect#access_token=mock-token"),
+  ),
 };
 
 // ── chrome.action ──
@@ -137,8 +175,8 @@ const chromeAlarms = {
 // ── Assemble global chrome object ──
 const chromeMock = {
   storage: {
-    local: createStorageArea(localStore, 'local'),
-    sync: createStorageArea(syncStore, 'sync'),
+    local: createStorageArea(localStore, "local"),
+    sync: createStorageArea(syncStore, "sync"),
     onChanged: {
       addListener: jest.fn((callback: StorageCallback) => {
         storageListeners.push(callback);

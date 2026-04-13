@@ -1,8 +1,9 @@
 // ── État: login ──
 
-import { WEBAPP_URL } from '../../utils/config';
-import { setWidgetBody } from '../widget';
-import { escapeHtml } from '../../utils/sanitize';
+import { WEBAPP_URL } from "../../utils/config";
+import { setWidgetBody } from "../widget";
+import { escapeHtml } from "../../utils/sanitize";
+import { $id } from "../shadow";
 
 function spinnerSmall(): string {
   return `<svg class="ds-gouvernail-spinner ds-gouvernail-spinner-sm" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" width="14" height="14"><circle cx="24" cy="24" r="20" opacity="0.3"/><circle cx="24" cy="24" r="3"/><line x1="24" y1="4" x2="24" y2="11"/></svg>`;
@@ -42,45 +43,69 @@ export function renderLoginState(onLogin: () => void): void {
 
   setWidgetBody(html);
 
-  document.getElementById('ds-google-login')?.addEventListener('click', async () => {
-    const btn = document.getElementById('ds-google-login') as HTMLButtonElement | null;
-    if (btn) { btn.disabled = true; btn.innerHTML = `${spinnerSmall()} Connexion...`; }
+  $id("ds-google-login")?.addEventListener("click", async () => {
+    const btn = $id<HTMLButtonElement>("ds-google-login");
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `${spinnerSmall()} Connexion...`;
+    }
     try {
-      const resp = await chrome.runtime.sendMessage({ action: 'GOOGLE_LOGIN' });
+      const resp = await chrome.runtime.sendMessage({ action: "GOOGLE_LOGIN" });
       if (resp?.success && resp.user) {
         onLogin();
       } else {
-        showError(resp?.error || 'Connexion Google échouée');
-        if (btn) { btn.disabled = false; btn.textContent = 'Connexion avec Google'; }
+        showError(resp?.error || "Connexion Google échouée");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Connexion avec Google";
+        }
       }
     } catch (e) {
       showError((e as Error).message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Connexion avec Google'; }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Connexion avec Google";
+      }
     }
   });
 
-  document.getElementById('ds-login-form')?.addEventListener('submit', async (e) => {
+  $id("ds-login-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email = (document.getElementById('ds-email') as HTMLInputElement).value;
-    const password = (document.getElementById('ds-password') as HTMLInputElement).value;
-    const btn = document.getElementById('ds-login-btn') as HTMLButtonElement | null;
-    if (btn) { btn.disabled = true; btn.textContent = 'Connexion...'; }
+    const email = $id<HTMLInputElement>("ds-email")!.value;
+    const password = $id<HTMLInputElement>("ds-password")!.value;
+    const btn = $id<HTMLButtonElement>("ds-login-btn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Connexion...";
+    }
     try {
-      const resp = await chrome.runtime.sendMessage({ action: 'LOGIN', data: { email, password } });
+      const resp = await chrome.runtime.sendMessage({
+        action: "LOGIN",
+        data: { email, password },
+      });
       if (resp?.success && resp.user) {
         onLogin();
       } else {
-        showError(resp?.error || 'Connexion échouée');
-        if (btn) { btn.disabled = false; btn.textContent = 'Connexion'; }
+        showError(resp?.error || "Connexion échouée");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Connexion";
+        }
       }
     } catch (err) {
       showError(escapeHtml((err as Error).message));
-      if (btn) { btn.disabled = false; btn.textContent = 'Connexion'; }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Connexion";
+      }
     }
   });
 }
 
 function showError(msg: string): void {
-  const el = document.getElementById('ds-login-error');
-  if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+  const el = $id("ds-login-error");
+  if (el) {
+    el.textContent = msg;
+    el.classList.remove("hidden");
+  }
 }

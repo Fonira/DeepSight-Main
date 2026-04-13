@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { ChatMessage, ChatOptions } from '../../types';
-import { escapeHtml, markdownToFullHtml } from '../../utils/sanitize';
-import { BackIcon, SendIcon } from './Icons';
-import { DoodleIcon } from './doodles/DoodleIcon';
-import { DeepSightSpinner } from './DeepSightSpinner';
-import { useTranslation } from '../../i18n/useTranslation';
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import type { ChatMessage, ChatOptions } from "../../types";
+import { escapeHtml, markdownToFullHtml } from "../../utils/sanitize";
+import { BackIcon, SendIcon } from "./Icons";
+import { DoodleIcon } from "./doodles/DoodleIcon";
+import { DeepSightSpinner } from "./DeepSightSpinner";
+import { useTranslation } from "../../i18n/useTranslation";
 
 // ── [ask:] parser ──────────────────────────────────────────────────
 interface ParsedContent {
@@ -20,16 +20,25 @@ function parseAskQuestions(content: string): ParsedContent {
     const q = match[1].trim();
     if (q) questions.push(q);
   }
-  const text = content.replace(regex, '').trim();
+  const text = content.replace(regex, "").trim();
   return { text, questions };
 }
 
 function cleanQuestion(q: string): string {
-  return q.replace(/\[\[([^\]]+)\]\]/g, '$1').trim();
+  return q.replace(/\[\[([^\]]+)\]\]/g, "$1").trim();
 }
 
 // ── Plan helpers ──────────────────────────────────────────────────
-const PAID_PLANS = ['plus', 'pro', 'starter', 'student', 'etudiant', 'expert', 'team', 'equipe'];
+const PAID_PLANS = [
+  "plus",
+  "pro",
+  "starter",
+  "student",
+  "etudiant",
+  "expert",
+  "team",
+  "equipe",
+];
 function canUseWebSearch(plan?: string): boolean {
   if (!plan) return false;
   return PAID_PLANS.includes(plan.toLowerCase());
@@ -53,7 +62,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
 }) => {
   const { t } = useTranslation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -76,7 +85,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   async function loadHistory(): Promise<void> {
     try {
       const response = await chrome.runtime.sendMessage({
-        action: 'GET_CHAT_HISTORY',
+        action: "GET_CHAT_HISTORY",
         data: { summaryId },
       });
       if (response.success && Array.isArray(response.result)) {
@@ -89,12 +98,15 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     }
   }
 
-  async function sendMessage(customQuestion?: string, forceWebSearch?: boolean): Promise<void> {
+  async function sendMessage(
+    customQuestion?: string,
+    forceWebSearch?: boolean,
+  ): Promise<void> {
     const question = customQuestion || input.trim();
     if (!question || loading) return;
 
-    if (!customQuestion) setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: question }]);
+    if (!customQuestion) setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: question }]);
     setLoading(true);
 
     const options: ChatOptions = {};
@@ -104,39 +116,48 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
 
     try {
       const response = await chrome.runtime.sendMessage({
-        action: 'ASK_QUESTION',
+        action: "ASK_QUESTION",
         data: { summaryId, question, options },
       });
 
       if (response.success) {
-        const result = response.result as { response: string; web_search_used: boolean };
+        const result = response.result as {
+          response: string;
+          web_search_used: boolean;
+        };
         setMessages((prev) => [
           ...prev,
           {
-            role: 'assistant',
+            role: "assistant",
             content: result.response,
             web_search_used: result.web_search_used,
           },
         ]);
       } else {
-        const errorMsg = response.error || '';
-        if (errorMsg.includes('SESSION_EXPIRED')) {
+        const errorMsg = response.error || "";
+        if (errorMsg.includes("SESSION_EXPIRED")) {
           setSessionExpired(true);
         } else {
           setMessages((prev) => [
             ...prev,
-            { role: 'assistant', content: `${t.common.error}\u00a0: ${errorMsg || t.chat.unavailable}` },
+            {
+              role: "assistant",
+              content: `${t.common.error}\u00a0: ${errorMsg || t.chat.unavailable}`,
+            },
           ]);
         }
       }
     } catch (e) {
-      const errorMsg = (e as Error).message || '';
-      if (errorMsg.includes('SESSION_EXPIRED')) {
+      const errorMsg = (e as Error).message || "";
+      if (errorMsg.includes("SESSION_EXPIRED")) {
         setSessionExpired(true);
       } else {
         setMessages((prev) => [
           ...prev,
-          { role: 'assistant', content: `${t.common.error}\u00a0: ${errorMsg}` },
+          {
+            role: "assistant",
+            content: `${t.common.error}\u00a0: ${errorMsg}`,
+          },
         ]);
       }
     } finally {
@@ -145,7 +166,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   }
 
   function handleKeyDown(e: React.KeyboardEvent): void {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
@@ -159,7 +180,8 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     sendMessage(question);
   }
 
-  const truncatedTitle = videoTitle.length > 30 ? videoTitle.substring(0, 30) + '...' : videoTitle;
+  const truncatedTitle =
+    videoTitle.length > 30 ? videoTitle.substring(0, 30) + "..." : videoTitle;
 
   return (
     <div className="chat-view">
@@ -168,7 +190,9 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
         <button className="icon-btn" onClick={onClose} title={t.common.back}>
           <BackIcon size={18} />
         </button>
-        <span className="chat-header-title">{t.synthesis.chat}&nbsp;: &laquo;&nbsp;{truncatedTitle}&nbsp;&raquo;</span>
+        <span className="chat-header-title">
+          {t.synthesis.chat}&nbsp;: &laquo;&nbsp;{truncatedTitle}&nbsp;&raquo;
+        </span>
       </div>
 
       {/* Messages */}
@@ -179,7 +203,12 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           </div>
         ) : messages.length === 0 ? (
           <div className="chat-welcome">
-            <DoodleIcon name="robot" size={32} color="var(--accent-primary)" style={{ opacity: 0.6 }} />
+            <DoodleIcon
+              name="robot"
+              size={32}
+              color="var(--accent-primary)"
+              style={{ opacity: 0.6 }}
+            />
             <p>{t.chat.welcome}</p>
             <div className="chat-suggestions">
               {suggestions.map((q, i) => (
@@ -189,7 +218,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
                   onClick={() => handleSuggestionClick(q)}
                   disabled={loading || sessionExpired}
                 >
-                  <span className="chat-suggestion-arrow">{'\u2192'}</span>
+                  <span className="chat-suggestion-arrow">{"\u2192"}</span>
                   {q}
                 </button>
               ))}
@@ -219,7 +248,9 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
       {/* Session expired */}
       {sessionExpired && (
         <div className="chat-session-expired">
-          <span>{'\u{1F512}'} {t.chat.sessionExpired}</span>
+          <span>
+            {"\u{1F512}"} {t.chat.sessionExpired}
+          </span>
           <button
             className="chat-reconnect-btn"
             onClick={() => {
@@ -238,17 +269,28 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
       {/* Input area */}
       <div className="chat-input-area">
         <button
-          className={`chat-ws-toggle ${webSearchEnabled && canWs ? 'chat-ws-active' : ''}`}
+          className={`chat-ws-toggle ${webSearchEnabled && canWs ? "chat-ws-active" : ""}`}
           onClick={() => {
             if (canWs) setWebSearchEnabled(!webSearchEnabled);
           }}
-          title={canWs
-            ? (webSearchEnabled ? t.chat.webSearchDisable : t.chat.webSearchEnable)
-            : t.chat.webSearchLocked
+          title={
+            canWs
+              ? webSearchEnabled
+                ? t.chat.webSearchDisable
+                : t.chat.webSearchEnable
+              : t.chat.webSearchLocked
           }
           style={{ opacity: canWs ? 1 : 0.4 }}
         >
-          <DoodleIcon name="globe" size={14} color={webSearchEnabled && canWs ? 'var(--accent-primary)' : 'var(--text-muted)'} />
+          <DoodleIcon
+            name="globe"
+            size={14}
+            color={
+              webSearchEnabled && canWs
+                ? "var(--accent-primary)"
+                : "var(--text-muted)"
+            }
+          />
         </button>
         <input
           type="text"
@@ -256,7 +298,9 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={sessionExpired ? t.chat.expiredPlaceholder : t.chat.inputPlaceholder}
+          placeholder={
+            sessionExpired ? t.chat.expiredPlaceholder : t.chat.inputPlaceholder
+          }
           disabled={loading || sessionExpired}
           autoFocus
         />
@@ -280,19 +324,32 @@ interface MessageBubbleProps {
   webEnrichedLabel: string;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onQuestionClick, webEnrichedLabel }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({
+  msg,
+  onQuestionClick,
+  webEnrichedLabel,
+}) => {
   const parsed = useMemo(() => {
-    if (msg.role === 'user') return { text: msg.content, questions: [] };
+    if (msg.role === "user") return { text: msg.content, questions: [] };
     return parseAskQuestions(msg.content);
   }, [msg.content, msg.role]);
 
   return (
     <div className={`chat-msg chat-msg-${msg.role}`}>
-      {msg.role === 'assistant' ? (
+      {msg.role === "assistant" ? (
         <>
           {msg.web_search_used && (
             <div className="chat-web-badge">
-              <DoodleIcon name="globe" size={12} color="var(--accent-primary)" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} />
+              <DoodleIcon
+                name="globe"
+                size={12}
+                color="var(--accent-primary)"
+                style={{
+                  display: "inline-block",
+                  verticalAlign: "middle",
+                  marginRight: 4,
+                }}
+              />
               {webEnrichedLabel}
             </div>
           )}
@@ -310,7 +367,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onQuestionClick, web
                   className="chat-ask-pill"
                   onClick={() => onQuestionClick(q)}
                 >
-                  <span className="chat-ask-arrow">{'\u2192'}</span>
+                  <span className="chat-ask-arrow">{"\u2192"}</span>
                   {cleanQuestion(q)}
                 </button>
               ))}

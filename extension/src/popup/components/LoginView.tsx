@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { GoogleIcon } from './Icons';
-import { DoodleIcon } from './doodles/DoodleIcon';
-import { DeepSightSpinner } from './DeepSightSpinner';
-import { useTranslation } from '../../i18n/useTranslation';
+import React, { useState } from "react";
+import { GoogleIcon } from "./Icons";
+import { DoodleIcon } from "./doodles/DoodleIcon";
+import { DeepSightSpinner } from "./DeepSightSpinner";
+import { useTranslation } from "../../i18n/useTranslation";
 
 interface LoginViewProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -11,10 +11,15 @@ interface LoginViewProps {
   error: string | null;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, onGuestMode, error }) => {
+export const LoginView: React.FC<LoginViewProps> = ({
+  onLogin,
+  onGoogleLogin,
+  onGuestMode,
+  error,
+}) => {
   const { t, language, setLanguage } = useTranslation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -51,22 +56,42 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
   return (
     <div className="login-view">
       {/* Doodle decorations */}
-      <DoodleIcon name="sparkles" size={32} className="doodle-decoration" style={{ top: 20, left: 16, transform: 'rotate(-15deg)' }} />
-      <DoodleIcon name="brain" size={28} className="doodle-decoration" style={{ top: 60, right: 20, transform: 'rotate(10deg)' }} />
-      <DoodleIcon name="lightning" size={24} className="doodle-decoration" style={{ bottom: 80, left: 24, transform: 'rotate(-25deg)' }} />
-      <DoodleIcon name="star" size={20} className="doodle-decoration" style={{ bottom: 120, right: 30, transform: 'rotate(20deg)' }} />
+      <DoodleIcon
+        name="sparkles"
+        size={32}
+        className="doodle-decoration"
+        style={{ top: 20, left: 16, transform: "rotate(-15deg)" }}
+      />
+      <DoodleIcon
+        name="brain"
+        size={28}
+        className="doodle-decoration"
+        style={{ top: 60, right: 20, transform: "rotate(10deg)" }}
+      />
+      <DoodleIcon
+        name="lightning"
+        size={24}
+        className="doodle-decoration"
+        style={{ bottom: 80, left: 24, transform: "rotate(-25deg)" }}
+      />
+      <DoodleIcon
+        name="star"
+        size={20}
+        className="doodle-decoration"
+        style={{ bottom: 120, right: 30, transform: "rotate(20deg)" }}
+      />
 
       {/* Language toggle */}
       <div className="login-lang-toggle">
         <button
-          className={`login-lang-btn ${language === 'fr' ? 'login-lang-active' : ''}`}
-          onClick={() => setLanguage('fr')}
+          className={`login-lang-btn ${language === "fr" ? "login-lang-active" : ""}`}
+          onClick={() => setLanguage("fr")}
         >
           FR
         </button>
         <button
-          className={`login-lang-btn ${language === 'en' ? 'login-lang-active' : ''}`}
-          onClick={() => setLanguage('en')}
+          className={`login-lang-btn ${language === "en" ? "login-lang-active" : ""}`}
+          onClick={() => setLanguage("en")}
         >
           EN
         </button>
@@ -86,41 +111,43 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
       {/* Platform logos */}
       <div className="login-platforms">
         <img
-          src={chrome.runtime.getURL('platforms/youtube-icon-red.png')}
+          src={chrome.runtime.getURL("platforms/youtube-icon-red.png")}
           alt="YouTube"
           className="login-platform-logo"
-          style={{ height: 20, width: 'auto' }}
+          style={{ height: 20, width: "auto" }}
         />
         <span className="login-platform-sep" />
         <img
-          src={chrome.runtime.getURL('platforms/tiktok-note-white.png')}
+          src={chrome.runtime.getURL("platforms/tiktok-note-white.png")}
           alt="TikTok"
           className="login-platform-logo"
-          style={{ height: 18, width: 'auto' }}
+          style={{ height: 18, width: "auto" }}
         />
         <span className="login-platform-sep" />
         <img
-          src={chrome.runtime.getURL('platforms/mistral-logo-white.png')}
+          src={chrome.runtime.getURL("platforms/mistral-logo-white.png")}
           alt="Mistral AI"
           className="login-platform-logo"
-          style={{ height: 15, width: 'auto' }}
+          style={{ height: 15, width: "auto" }}
         />
         <span className="login-platform-sep" />
         <img
-          src={chrome.runtime.getURL('platforms/tournesol-logo.png')}
+          src={chrome.runtime.getURL("platforms/tournesol-logo.png")}
           alt="Tournesol"
           className="login-platform-logo"
-          style={{ height: 16, width: 'auto' }}
+          style={{ height: 16, width: "auto" }}
         />
       </div>
 
       {/* Trust badges */}
       <div className="login-badges">
         <span className="login-badge">
-          <span className="login-badge-flag">{'\uD83C\uDDEB\uD83C\uDDF7'}</span> {t.login.badgeFr}
+          <span className="login-badge-flag">{"\uD83C\uDDEB\uD83C\uDDF7"}</span>{" "}
+          {t.login.badgeFr}
         </span>
         <span className="login-badge">
-          <span className="login-badge-flag">{'\uD83C\uDDEA\uD83C\uDDFA'}</span> {t.login.badgeEu}
+          <span className="login-badge-flag">{"\uD83C\uDDEA\uD83C\uDDFA"}</span>{" "}
+          {t.login.badgeEu}
         </span>
       </div>
 
@@ -130,7 +157,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
         onClick={handleGoogle}
         disabled={googleLoading || loading}
       >
-        {googleLoading ? t.login.googleLoading : <><GoogleIcon /> {t.login.googleButton}</>}
+        {googleLoading ? (
+          t.login.googleLoading
+        ) : (
+          <>
+            <GoogleIcon /> {t.login.googleButton}
+          </>
+        )}
       </button>
 
       {/* Divider */}
@@ -155,7 +188,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
           disabled={loading}
         />
         {displayError && <div className="login-error">{displayError}</div>}
-        <button type="submit" className="btn-login" disabled={loading || !email || !password}>
+        <button
+          type="submit"
+          className="btn-login"
+          disabled={loading || !email || !password}
+        >
           {loading ? t.login.loginLoading : t.common.login}
         </button>
       </form>
@@ -167,22 +204,38 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
 
       {/* Footer */}
       <div className="login-footer">
-        <a href="https://www.deepsightsynthesis.com/register" target="_blank" rel="noreferrer">
+        <a
+          href="https://www.deepsightsynthesis.com/register"
+          target="_blank"
+          rel="noreferrer"
+        >
           {t.common.createAccount}
         </a>
         <span>&middot;</span>
-        <a href="https://www.deepsightsynthesis.com" target="_blank" rel="noreferrer">
+        <a
+          href="https://www.deepsightsynthesis.com"
+          target="_blank"
+          rel="noreferrer"
+        >
           deepsightsynthesis.com
         </a>
       </div>
 
       {/* Legal */}
       <div className="login-legal">
-        <a href="https://www.deepsightsynthesis.com/legal/privacy" target="_blank" rel="noreferrer">
+        <a
+          href="https://www.deepsightsynthesis.com/legal/privacy"
+          target="_blank"
+          rel="noreferrer"
+        >
           {t.login.privacy}
         </a>
         <span>&middot;</span>
-        <a href="https://www.deepsightsynthesis.com/legal/cgu" target="_blank" rel="noreferrer">
+        <a
+          href="https://www.deepsightsynthesis.com/legal/cgu"
+          target="_blank"
+          rel="noreferrer"
+        >
           {t.login.terms}
         </a>
       </div>

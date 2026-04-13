@@ -14,24 +14,24 @@
   --bg-surface: rgba(17, 17, 24, 0.8);
 
   /* === Text === */
-  --text-primary: #F5F0E8;
-  --text-secondary: #B5A89B;
-  --text-tertiary: #7A7068;
+  --text-primary: #f5f0e8;
+  --text-secondary: #b5a89b;
+  --text-tertiary: #7a7068;
   --text-muted: #45455a;
   --text-inverse: #0a0a0f;
 
   /* === Accent — Gold/Amber === */
-  --accent-primary: #C8903A;
-  --accent-primary-hover: #D4A054;
+  --accent-primary: #c8903a;
+  --accent-primary-hover: #d4a054;
   --accent-primary-muted: rgba(200, 144, 58, 0.12);
   --accent-primary-glow: rgba(200, 144, 58, 0.25);
-  --accent-primary-strong: #B07D2E;
+  --accent-primary-strong: #b07d2e;
 
   /* === Secondary accents === */
-  --accent-violet: #9B6B4A;
+  --accent-violet: #9b6b4a;
   --accent-violet-muted: rgba(155, 107, 74, 0.12);
   --accent-violet-glow: rgba(155, 107, 74, 0.2);
-  --accent-cyan: #C48B7C;
+  --accent-cyan: #c48b7c;
   --accent-cyan-muted: rgba(196, 139, 124, 0.12);
   --accent-cyan-glow: rgba(196, 139, 124, 0.2);
   --accent-secondary: #f59e0b;
@@ -72,9 +72,11 @@
   --radius-full: 9999px;
 
   /* === Font families === */
-  --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  --font-body: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-body:
+    "DM Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
   /* === Transitions === */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -102,82 +104,172 @@
    ═══════════════════════════════════════════════════ */
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes fadeInDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 @keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(200, 144, 58, 0.15); }
-  50% { box-shadow: 0 0 30px rgba(200, 144, 58, 0.3); }
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(200, 144, 58, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(200, 144, 58, 0.3);
+  }
 }
 
 @keyframes gouvernailSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 @keyframes typingDot {
-  0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
-  30% { opacity: 1; transform: scale(1); }
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(200, 144, 58, 0.15); }
-  50% { box-shadow: 0 0 30px rgba(200, 144, 58, 0.3); }
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(200, 144, 58, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(200, 144, 58, 0.3);
+  }
 }
 
 @keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 @keyframes scaleIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes slideInRight {
-  from { transform: translateX(20px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 @keyframes colorCycle {
-  0%   { filter: hue-rotate(0deg) brightness(1.2); }
-  25%  { filter: hue-rotate(30deg) brightness(1.3); }
-  50%  { filter: hue-rotate(60deg) brightness(1.2); }
-  75%  { filter: hue-rotate(30deg) brightness(1.1); }
-  100% { filter: hue-rotate(0deg) brightness(1.2); }
+  0% {
+    filter: hue-rotate(0deg) brightness(1.2);
+  }
+  25% {
+    filter: hue-rotate(30deg) brightness(1.3);
+  }
+  50% {
+    filter: hue-rotate(60deg) brightness(1.2);
+  }
+  75% {
+    filter: hue-rotate(30deg) brightness(1.1);
+  }
+  100% {
+    filter: hue-rotate(0deg) brightness(1.2);
+  }
 }
 
 @keyframes logoPulse {
-  0%, 100% { opacity: 0.7; transform: scale(1); filter: drop-shadow(0 0 6px rgba(200,144,58,0.3)); }
-  50% { opacity: 1; transform: scale(1.1); filter: drop-shadow(0 0 10px rgba(200,144,58,0.5)); }
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+    filter: drop-shadow(0 0 6px rgba(200, 144, 58, 0.3));
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 10px rgba(200, 144, 58, 0.5));
+  }
 }
 
 /* ═══════════════════════════════════════════════════
@@ -204,11 +296,11 @@
 }
 
 .gold-gradient-bg {
-  background: linear-gradient(135deg, #C8903A, #D4A054);
+  background: linear-gradient(135deg, #c8903a, #d4a054);
 }
 
 .gold-gradient-text {
-  background: linear-gradient(135deg, #C8903A, #E5B86A);
+  background: linear-gradient(135deg, #c8903a, #e5b86a);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -216,7 +308,7 @@
 
 /* === Noise overlay utility === */
 .noise-overlay::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   opacity: 0.015;
@@ -229,13 +321,25 @@
 
 /* === Ambient glow effect === */
 .ambient-glow::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(200, 144, 58, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 90% 80%, rgba(155, 107, 74, 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse 40% 30% at 10% 90%, rgba(196, 139, 124, 0.02) 0%, transparent 50%);
+    radial-gradient(
+      ellipse 80% 50% at 50% -10%,
+      rgba(200, 144, 58, 0.06) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 90% 80%,
+      rgba(155, 107, 74, 0.03) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 40% 30% at 10% 90%,
+      rgba(196, 139, 124, 0.02) 0%,
+      transparent 50%
+    );
 }

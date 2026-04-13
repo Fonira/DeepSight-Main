@@ -10,13 +10,13 @@
 
 ### 1.1 Informations Generales
 
-| Champ | Valeur |
-|-------|--------|
-| **Manifest** | v3 (Chrome Manifest V3) |
-| **Version** | 1.1.0 |
-| **Framework** | React 18.2 + TypeScript 5.4 |
-| **Build** | Webpack 5.91 |
-| **Nom** | "DeepSight - AI Video Analysis" |
+| Champ         | Valeur                          |
+| ------------- | ------------------------------- |
+| **Manifest**  | v3 (Chrome Manifest V3)         |
+| **Version**   | 1.1.0                           |
+| **Framework** | React 18.2 + TypeScript 5.4     |
+| **Build**     | Webpack 5.91                    |
+| **Nom**       | "DeepSight - AI Video Analysis" |
 
 ### 1.2 Arborescence Actuelle
 
@@ -79,17 +79,18 @@ extension/
 
 ### 1.3 Points d'Entree Webpack (5 bundles)
 
-| Bundle | Fichier | Role |
-|--------|---------|------|
-| `background.js` | `src/background/index.ts` | Service Worker (API, auth, alarms) |
-| `content.js` | `src/content/index.ts` | Injection sidebar YouTube |
-| `authSync.js` | `src/authSync/index.ts` | Relais auth (ISOLATED world) |
-| `authSyncMain.js` | `src/authSyncMain/index.ts` | Sync auth (MAIN world) |
-| `popup.js` | `src/popup/index.tsx` | UI React du popup |
+| Bundle            | Fichier                     | Role                               |
+| ----------------- | --------------------------- | ---------------------------------- |
+| `background.js`   | `src/background/index.ts`   | Service Worker (API, auth, alarms) |
+| `content.js`      | `src/content/index.ts`      | Injection sidebar YouTube          |
+| `authSync.js`     | `src/authSync/index.ts`     | Relais auth (ISOLATED world)       |
+| `authSyncMain.js` | `src/authSyncMain/index.ts` | Sync auth (MAIN world)             |
+| `popup.js`        | `src/popup/index.tsx`       | UI React du popup                  |
 
 ### 1.4 Fonctionnalites Actuelles
 
 **Service Worker :**
+
 - Message routing (popup <-> background)
 - Gestion tokens JWT (access 15min + refresh 7j)
 - Auto-refresh token via chrome.alarms (14min)
@@ -97,6 +98,7 @@ extension/
 - Polling de progression d'analyse
 
 **Content Script YouTube :**
+
 - Detection theme YouTube (dark/light)
 - Extraction metadata video
 - Injection carte sidebar dans `#secondary-inner`
@@ -107,6 +109,7 @@ extension/
 - Login inline (email + Google redirect)
 
 **Popup React :**
+
 - 4 vues : Loading -> Login -> Main -> History/Settings
 - Avatar + username + badge plan
 - Barre de credits
@@ -115,24 +118,25 @@ extension/
 - Parametres (mode, langue, notifications)
 
 **Auth Sync (cross-origin) :**
+
 - MAIN world ecoute les events auth du site web
 - ISOLATED world relaye vers le service worker
 - Validation d'origine securisee
 
 ### 1.5 Problemes Identifies
 
-| # | Probleme | Severite |
-|---|----------|----------|
-| 1 | **Content script monolithique** - 665 lignes de DOM manipulation imperative | Critique |
-| 2 | **Pas de composants React dans content script** - tout en `innerHTML` | Critique |
-| 3 | **Duplication CSS** - popup.css et content.css partagent des tokens sans source commune | Majeur |
-| 4 | **Pas de design system unifie** - couleurs hardcodees, inconsistances entre popup et content | Majeur |
-| 5 | **Google OAuth non configure** - Client ID vide dans config.ts | Majeur |
-| 6 | **Pas de tests** - zero test unitaire ou E2E | Majeur |
-| 7 | **Pas de state management** - useState brut dans App.tsx | Mineur |
-| 8 | **Pas d'internationalisation** - textes hardcodes en anglais | Mineur |
-| 9 | **Spinner CSS basique** - pas le DeepSight spinner cosmique | Cosmetique |
-| 10 | **Pas d'animations premium** - stagger basique, pas de glassmorphism reel | Cosmetique |
+| #   | Probleme                                                                                     | Severite   |
+| --- | -------------------------------------------------------------------------------------------- | ---------- |
+| 1   | **Content script monolithique** - 665 lignes de DOM manipulation imperative                  | Critique   |
+| 2   | **Pas de composants React dans content script** - tout en `innerHTML`                        | Critique   |
+| 3   | **Duplication CSS** - popup.css et content.css partagent des tokens sans source commune      | Majeur     |
+| 4   | **Pas de design system unifie** - couleurs hardcodees, inconsistances entre popup et content | Majeur     |
+| 5   | **Google OAuth non configure** - Client ID vide dans config.ts                               | Majeur     |
+| 6   | **Pas de tests** - zero test unitaire ou E2E                                                 | Majeur     |
+| 7   | **Pas de state management** - useState brut dans App.tsx                                     | Mineur     |
+| 8   | **Pas d'internationalisation** - textes hardcodes en anglais                                 | Mineur     |
+| 9   | **Spinner CSS basique** - pas le DeepSight spinner cosmique                                  | Cosmetique |
+| 10  | **Pas d'animations premium** - stagger basique, pas de glassmorphism reel                    | Cosmetique |
 
 ---
 
@@ -140,24 +144,25 @@ extension/
 
 ### 2.1 Logo DeepSight (Compass Rose Cosmique)
 
-| Asset | Chemin | Format | Taille |
-|-------|--------|--------|--------|
+| Asset          | Chemin                                | Format      | Taille |
+| -------------- | ------------------------------------- | ----------- | ------ |
 | Logo principal | `frontend/public/deep-sight-logo.png` | PNG 512x512 | 2.1 MB |
-| Logo standard | `frontend/public/logo.png` | PNG | 94 KB |
-| Logo dark | `frontend/public/logo-dark.png` | PNG | 94 KB |
-| Logo dark bg | `frontend/public/logo-dark-bg.png` | PNG | 94 KB |
-| Logo original | `frontend/public/logo-original.png` | PNG | 950 KB |
+| Logo standard  | `frontend/public/logo.png`            | PNG         | 94 KB  |
+| Logo dark      | `frontend/public/logo-dark.png`       | PNG         | 94 KB  |
+| Logo dark bg   | `frontend/public/logo-dark-bg.png`    | PNG         | 94 KB  |
+| Logo original  | `frontend/public/logo-original.png`   | PNG         | 950 KB |
 
 ### 2.2 Spinner DeepSight
 
-| Asset | Chemin | Usage |
-|-------|--------|-------|
-| Spinner cosmic flames | `frontend/public/spinner-cosmic.jpg` | Fond fixe (800x800) |
-| Spinner wheel | `frontend/public/spinner-wheel.jpg` | Roue rotative (1024x1024) |
-| Composant React | `frontend/src/components/ui/DeepSightSpinner.tsx` | Logique d'animation |
-| Composant Loading | `frontend/src/components/LoadingSpinner.tsx` | Variantes + progress bar |
+| Asset                 | Chemin                                            | Usage                     |
+| --------------------- | ------------------------------------------------- | ------------------------- |
+| Spinner cosmic flames | `frontend/public/spinner-cosmic.jpg`              | Fond fixe (800x800)       |
+| Spinner wheel         | `frontend/public/spinner-wheel.jpg`               | Roue rotative (1024x1024) |
+| Composant React       | `frontend/src/components/ui/DeepSightSpinner.tsx` | Logique d'animation       |
+| Composant Loading     | `frontend/src/components/LoadingSpinner.tsx`      | Variantes + progress bar  |
 
 **SVG Fallback Spinner (gradient tricolore) :**
+
 ```
 Bleu:   #5B8DB8 (0%)
 Gold:   #C4935A (50%)
@@ -166,10 +171,10 @@ Violet: #6B4380 (100%)
 
 ### 2.3 Icones PWA (pour favicon extension)
 
-| Taille | Chemin |
-|--------|--------|
-| 72x72 | `frontend/public/icons/icon-72x72.png` |
-| 96x96 | `frontend/public/icons/icon-96x96.png` |
+| Taille  | Chemin                                   |
+| ------- | ---------------------------------------- |
+| 72x72   | `frontend/public/icons/icon-72x72.png`   |
+| 96x96   | `frontend/public/icons/icon-96x96.png`   |
 | 128x128 | `frontend/public/icons/icon-128x128.png` |
 | 144x144 | `frontend/public/icons/icon-144x144.png` |
 | 192x192 | `frontend/public/icons/icon-192x192.png` |
@@ -183,18 +188,18 @@ Violet: #6B4380 (100%)
 
 ### 2.5 Composants UI Web (reference)
 
-| Composant | Chemin Web | A adapter pour extension |
-|-----------|------------|--------------------------|
-| Button | `frontend/src/components/Button.tsx` | Oui - variantes primary/secondary/ghost |
-| Card | `frontend/src/components/Card.tsx` | Oui - glass + elevated |
-| Input | `frontend/src/components/Input.tsx` | Oui - floating label |
-| Badge | `frontend/src/components/Badge.tsx` | Oui - plans colors |
-| Modal | `frontend/src/components/Modal.tsx` | Oui - pour chat |
-| Toggle | `frontend/src/components/ui/Toggle.tsx` | Oui - settings |
-| Skeleton | `frontend/src/components/ui/Skeleton.tsx` | Oui - shimmer loading |
-| Tooltip | `frontend/src/components/ui/Tooltip.tsx` | Oui - hover info |
-| ThemeToggle | `frontend/src/components/ThemeToggle.tsx` | Non - YouTube sync |
-| DeepSightSpinner | `frontend/src/components/ui/DeepSightSpinner.tsx` | Oui - loading states |
+| Composant        | Chemin Web                                        | A adapter pour extension                |
+| ---------------- | ------------------------------------------------- | --------------------------------------- |
+| Button           | `frontend/src/components/Button.tsx`              | Oui - variantes primary/secondary/ghost |
+| Card             | `frontend/src/components/Card.tsx`                | Oui - glass + elevated                  |
+| Input            | `frontend/src/components/Input.tsx`               | Oui - floating label                    |
+| Badge            | `frontend/src/components/Badge.tsx`               | Oui - plans colors                      |
+| Modal            | `frontend/src/components/Modal.tsx`               | Oui - pour chat                         |
+| Toggle           | `frontend/src/components/ui/Toggle.tsx`           | Oui - settings                          |
+| Skeleton         | `frontend/src/components/ui/Skeleton.tsx`         | Oui - shimmer loading                   |
+| Tooltip          | `frontend/src/components/ui/Tooltip.tsx`          | Oui - hover info                        |
+| ThemeToggle      | `frontend/src/components/ThemeToggle.tsx`         | Non - YouTube sync                      |
+| DeepSightSpinner | `frontend/src/components/ui/DeepSightSpinner.tsx` | Oui - loading states                    |
 
 ---
 
@@ -204,81 +209,81 @@ Violet: #6B4380 (100%)
 
 ```css
 /* Fond */
---ds-bg-primary:     #0a0a0f;     /* Deep black */
---ds-bg-secondary:   #12121a;     /* Almost black */
---ds-bg-tertiary:    #1a1a24;     /* Dark slate */
---ds-bg-elevated:    #1e1e2a;     /* Elevated surface */
+--ds-bg-primary: #0a0a0f; /* Deep black */
+--ds-bg-secondary: #12121a; /* Almost black */
+--ds-bg-tertiary: #1a1a24; /* Dark slate */
+--ds-bg-elevated: #1e1e2a; /* Elevated surface */
 
 /* Texte */
---ds-text-primary:   #f5f5f7;     /* Off-white */
---ds-text-secondary: #a1a1b5;     /* Medium gray */
---ds-text-tertiary:  #6b6b80;     /* Darker gray */
---ds-text-muted:     #45455a;     /* Muted */
+--ds-text-primary: #f5f5f7; /* Off-white */
+--ds-text-secondary: #a1a1b5; /* Medium gray */
+--ds-text-tertiary: #6b6b80; /* Darker gray */
+--ds-text-muted: #45455a; /* Muted */
 
 /* Accents */
---ds-accent-blue:    #3b82f6;     /* Primary Blue */
---ds-accent-indigo:  #6366f1;     /* Electric Indigo (web primary) */
---ds-accent-violet:  #8b5cf6;     /* Purple */
---ds-accent-cyan:    #06b6d4;     /* Cyan/Teal */
+--ds-accent-blue: #3b82f6; /* Primary Blue */
+--ds-accent-indigo: #6366f1; /* Electric Indigo (web primary) */
+--ds-accent-violet: #8b5cf6; /* Purple */
+--ds-accent-cyan: #06b6d4; /* Cyan/Teal */
 
 /* Semantique */
---ds-success:        #22c55e;     /* Green */
---ds-warning:        #f59e0b;     /* Amber */
---ds-error:          #ef4444;     /* Red */
+--ds-success: #22c55e; /* Green */
+--ds-warning: #f59e0b; /* Amber */
+--ds-error: #ef4444; /* Red */
 
 /* Glass */
---ds-glass-bg:       rgba(255, 255, 255, 0.05);
---ds-glass-border:   rgba(255, 255, 255, 0.10);
---ds-glass-strong:   rgba(17, 17, 24, 0.8);
+--ds-glass-bg: rgba(255, 255, 255, 0.05);
+--ds-glass-border: rgba(255, 255, 255, 0.1);
+--ds-glass-strong: rgba(17, 17, 24, 0.8);
 
 /* Bordures */
---ds-border-subtle:  rgba(255, 255, 255, 0.04);
+--ds-border-subtle: rgba(255, 255, 255, 0.04);
 --ds-border-default: rgba(255, 255, 255, 0.08);
---ds-border-strong:  rgba(255, 255, 255, 0.12);
---ds-border-accent:  rgba(99, 102, 241, 0.3);
+--ds-border-strong: rgba(255, 255, 255, 0.12);
+--ds-border-accent: rgba(99, 102, 241, 0.3);
 
 /* Ombres & Glow */
---ds-shadow-sm:      0 2px 4px rgba(0, 0, 0, 0.4);
---ds-shadow-md:      0 4px 16px rgba(0, 0, 0, 0.5);
---ds-shadow-glow:    0 0 40px rgba(99, 102, 241, 0.35);
---ds-glow-violet:    0 0 40px rgba(139, 92, 246, 0.3);
---ds-glow-cyan:      0 0 40px rgba(6, 182, 212, 0.3);
+--ds-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+--ds-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+--ds-shadow-glow: 0 0 40px rgba(99, 102, 241, 0.35);
+--ds-glow-violet: 0 0 40px rgba(139, 92, 246, 0.3);
+--ds-glow-cyan: 0 0 40px rgba(6, 182, 212, 0.3);
 
 /* Gradients */
 --ds-gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
---ds-gradient-indigo:  linear-gradient(135deg, #6366f1, #8b5cf6);
---ds-gradient-warm:    linear-gradient(90deg, #4A7BA7, #C4935A, #6B4380);
+--ds-gradient-indigo: linear-gradient(135deg, #6366f1, #8b5cf6);
+--ds-gradient-warm: linear-gradient(90deg, #4a7ba7, #c4935a, #6b4380);
 ```
 
 ### 3.2 Couleurs Light Mode
 
 ```css
---ds-bg-primary:     #fafafa;
---ds-bg-elevated:    #ffffff;
---ds-text-primary:   #111118;
+--ds-bg-primary: #fafafa;
+--ds-bg-elevated: #ffffff;
+--ds-text-primary: #111118;
 --ds-text-secondary: #6b7280;
---ds-accent-indigo:  #4f46e5;
+--ds-accent-indigo: #4f46e5;
 --ds-border-default: rgba(0, 0, 0, 0.08);
 ```
 
 ### 3.3 Couleurs Specifiques Plans
 
-| Plan | Couleur |
-|------|---------|
-| Free | `#6b7280` (gray) |
-| Student | `#3b82f6` (blue) |
+| Plan    | Couleur            |
+| ------- | ------------------ |
+| Free    | `#6b7280` (gray)   |
+| Student | `#3b82f6` (blue)   |
 | Starter | `#8b5cf6` (violet) |
-| Pro | `#f59e0b` (amber) |
-| Team | `#06b6d4` (cyan) |
+| Pro     | `#f59e0b` (amber)  |
+| Team    | `#06b6d4` (cyan)   |
 
 ### 3.4 Marqueurs Epistemiques
 
-| Marqueur | Background | Text Color |
-|----------|------------|------------|
-| SOLIDE | `rgba(34,197,94,0.12)` | `#4ade80` |
-| PLAUSIBLE | `rgba(99,102,241,0.12)` | `#a5b4fc` |
-| INCERTAIN | `rgba(245,158,11,0.12)` | `#fbbf24` |
-| A VERIFIER | `rgba(239,68,68,0.12)` | `#f87171` |
+| Marqueur   | Background              | Text Color |
+| ---------- | ----------------------- | ---------- |
+| SOLIDE     | `rgba(34,197,94,0.12)`  | `#4ade80`  |
+| PLAUSIBLE  | `rgba(99,102,241,0.12)` | `#a5b4fc`  |
+| INCERTAIN  | `rgba(245,158,11,0.12)` | `#fbbf24`  |
+| A VERIFIER | `rgba(239,68,68,0.12)`  | `#f87171`  |
 
 ---
 
@@ -286,15 +291,15 @@ Violet: #6B4380 (100%)
 
 ### 4.1 Stack Technique
 
-| Categorie | Actuel | Nouveau | Raison |
-|-----------|--------|---------|--------|
-| Framework | React 18 + Webpack | **React 18 + Vite** | Build 10x plus rapide, HMR, aligne avec le frontend web |
-| CSS | CSS pur (2 fichiers) | **Tailwind CSS 3** | Coherence avec le frontend web, utility-first |
-| State | useState brut | **Zustand** | Leger, aligne avec frontend web, persiste dans storage |
-| Icones | Emojis | **Lucide React** | Icones SVG coherentes, tree-shakeable |
-| Tests | Aucun | **Vitest + Testing Library** | Rapide, compatible Vite |
-| Lint | Aucun | **ESLint + Prettier** | Qualite code |
-| i18n | Hardcode EN | **i18next** | FR/EN/ES/DE comme le web |
+| Categorie | Actuel               | Nouveau                      | Raison                                                  |
+| --------- | -------------------- | ---------------------------- | ------------------------------------------------------- |
+| Framework | React 18 + Webpack   | **React 18 + Vite**          | Build 10x plus rapide, HMR, aligne avec le frontend web |
+| CSS       | CSS pur (2 fichiers) | **Tailwind CSS 3**           | Coherence avec le frontend web, utility-first           |
+| State     | useState brut        | **Zustand**                  | Leger, aligne avec frontend web, persiste dans storage  |
+| Icones    | Emojis               | **Lucide React**             | Icones SVG coherentes, tree-shakeable                   |
+| Tests     | Aucun                | **Vitest + Testing Library** | Rapide, compatible Vite                                 |
+| Lint      | Aucun                | **ESLint + Prettier**        | Qualite code                                            |
+| i18n      | Hardcode EN          | **i18next**                  | FR/EN/ES/DE comme le web                                |
 
 ### 4.2 Nouvelle Arborescence
 
@@ -468,12 +473,12 @@ Le content script utilisera un **Shadow DOM** pour isoler completement les style
 
 ```tsx
 // content/index.tsx
-const host = document.createElement('div');
-host.id = 'deepsight-root';
-const shadow = host.attachShadow({ mode: 'closed' });
+const host = document.createElement("div");
+host.id = "deepsight-root";
+const shadow = host.attachShadow({ mode: "closed" });
 
 // Injecter Tailwind compile dans le Shadow DOM
-const style = document.createElement('style');
+const style = document.createElement("style");
 style.textContent = compiledCSS; // Tailwind compile inline
 shadow.appendChild(style);
 
@@ -482,7 +487,7 @@ const root = createRoot(shadow);
 root.render(<ContentApp />);
 
 // Injecter dans YouTube sidebar
-const target = document.querySelector('#secondary-inner');
+const target = document.querySelector("#secondary-inner");
 target?.prepend(host);
 ```
 
@@ -514,8 +519,8 @@ interface AnalysisState {
 // stores/settingsStore.ts
 interface SettingsState {
   settings: ExtensionSettings;
-  theme: 'dark' | 'light' | 'auto';
-  language: 'fr' | 'en' | 'es' | 'de';
+  theme: "dark" | "light" | "auto";
+  language: "fr" | "en" | "es" | "de";
   updateSettings: (partial: Partial<ExtensionSettings>) => Promise<void>;
   loadSettings: () => Promise<void>;
 }
@@ -527,61 +532,61 @@ interface SettingsState {
 
 ### 5.1 Composants UI de Base (shared)
 
-| Composant | Priorite | Reference Web | Description |
-|-----------|----------|---------------|-------------|
-| `Button` | P0 | `frontend/src/components/Button.tsx` | 5 variantes, 4 tailles, loading state, icon |
-| `Card` | P0 | `frontend/src/components/Card.tsx` | glass, elevated, interactive avec hover gradient |
-| `Input` | P0 | `frontend/src/components/Input.tsx` | Floating label, validation, focus gradient |
-| `Spinner` | P0 | `frontend/src/components/ui/DeepSightSpinner.tsx` | Cosmic spinner avec roue + flammes |
-| `Badge` | P1 | `frontend/src/components/Badge.tsx` | Plan colors, epistemique markers |
-| `Select` | P1 | - | Dropdown stylise (mode, langue) |
-| `Toggle` | P1 | `frontend/src/components/ui/Toggle.tsx` | Switch avec animation |
-| `Skeleton` | P1 | `frontend/src/components/ui/Skeleton.tsx` | Shimmer loading |
-| `ProgressBar` | P1 | - | Credits + analyse progress |
-| `Tooltip` | P2 | `frontend/src/components/ui/Tooltip.tsx` | Hover contextuel |
-| `Avatar` | P2 | - | Initiale + image + gradient fallback |
-| `EmptyState` | P2 | - | Illustration + message |
-| `ErrorState` | P2 | - | Erreur + retry |
+| Composant     | Priorite | Reference Web                                     | Description                                      |
+| ------------- | -------- | ------------------------------------------------- | ------------------------------------------------ |
+| `Button`      | P0       | `frontend/src/components/Button.tsx`              | 5 variantes, 4 tailles, loading state, icon      |
+| `Card`        | P0       | `frontend/src/components/Card.tsx`                | glass, elevated, interactive avec hover gradient |
+| `Input`       | P0       | `frontend/src/components/Input.tsx`               | Floating label, validation, focus gradient       |
+| `Spinner`     | P0       | `frontend/src/components/ui/DeepSightSpinner.tsx` | Cosmic spinner avec roue + flammes               |
+| `Badge`       | P1       | `frontend/src/components/Badge.tsx`               | Plan colors, epistemique markers                 |
+| `Select`      | P1       | -                                                 | Dropdown stylise (mode, langue)                  |
+| `Toggle`      | P1       | `frontend/src/components/ui/Toggle.tsx`           | Switch avec animation                            |
+| `Skeleton`    | P1       | `frontend/src/components/ui/Skeleton.tsx`         | Shimmer loading                                  |
+| `ProgressBar` | P1       | -                                                 | Credits + analyse progress                       |
+| `Tooltip`     | P2       | `frontend/src/components/ui/Tooltip.tsx`          | Hover contextuel                                 |
+| `Avatar`      | P2       | -                                                 | Initiale + image + gradient fallback             |
+| `EmptyState`  | P2       | -                                                 | Illustration + message                           |
+| `ErrorState`  | P2       | -                                                 | Erreur + retry                                   |
 
 ### 5.2 Composants Metier (popup)
 
-| Composant | Priorite | Description |
-|-----------|----------|-------------|
-| `PopupHeader` | P0 | Avatar + nom + plan badge + boutons action |
-| `CreditCard` | P0 | Gradient primary->violet, barre progress, count |
-| `QuickActions` | P0 | Grid 2x2 actions (Analyser, Historique, Chat, Upgrade) |
-| `RecentList` | P1 | Liste scrollable avec thumbnails + date relative |
-| `LoginForm` | P0 | Email/pass + Google button + links |
-| `SettingsPanel` | P1 | Mode, langue, notifications, theme |
+| Composant       | Priorite | Description                                            |
+| --------------- | -------- | ------------------------------------------------------ |
+| `PopupHeader`   | P0       | Avatar + nom + plan badge + boutons action             |
+| `CreditCard`    | P0       | Gradient primary->violet, barre progress, count        |
+| `QuickActions`  | P0       | Grid 2x2 actions (Analyser, Historique, Chat, Upgrade) |
+| `RecentList`    | P1       | Liste scrollable avec thumbnails + date relative       |
+| `LoginForm`     | P0       | Email/pass + Google button + links                     |
+| `SettingsPanel` | P1       | Mode, langue, notifications, theme                     |
 
 ### 5.3 Composants Metier (content script)
 
-| Composant | Priorite | Description |
-|-----------|----------|-------------|
-| `SidebarCard` | P0 | Container avec header gradient + body |
-| `LoginCard` | P0 | Login inline adapte YouTube |
-| `AnalyzeCard` | P0 | Bouton analyser + options (mode, langue) |
-| `ProgressCard` | P0 | Spinner + barre progress + status text |
-| `ResultsCard` | P0 | Resume + score + verdict |
-| `KeyPointsList` | P1 | Points cles avec markers epistemiques |
-| `DetailPanel` | P1 | Collapsible markdown rendu |
-| `ChatView` | P1 | Messages + input + historique |
-| `ChatMessage` | P1 | Bulle user/bot avec markdown |
-| `TimestampLink` | P1 | Lien cliquable seek video |
-| `TagsList` | P2 | Pills categories/tags |
-| `EpistemicMarker` | P1 | Badge SOLIDE/PLAUSIBLE/INCERTAIN/A VERIFIER |
+| Composant         | Priorite | Description                                 |
+| ----------------- | -------- | ------------------------------------------- |
+| `SidebarCard`     | P0       | Container avec header gradient + body       |
+| `LoginCard`       | P0       | Login inline adapte YouTube                 |
+| `AnalyzeCard`     | P0       | Bouton analyser + options (mode, langue)    |
+| `ProgressCard`    | P0       | Spinner + barre progress + status text      |
+| `ResultsCard`     | P0       | Resume + score + verdict                    |
+| `KeyPointsList`   | P1       | Points cles avec markers epistemiques       |
+| `DetailPanel`     | P1       | Collapsible markdown rendu                  |
+| `ChatView`        | P1       | Messages + input + historique               |
+| `ChatMessage`     | P1       | Bulle user/bot avec markdown                |
+| `TimestampLink`   | P1       | Lien cliquable seek video                   |
+| `TagsList`        | P2       | Pills categories/tags                       |
+| `EpistemicMarker` | P1       | Badge SOLIDE/PLAUSIBLE/INCERTAIN/A VERIFIER |
 
 ### 5.4 Hooks Custom
 
-| Hook | Priorite | Description |
-|------|----------|-------------|
-| `useAuth` | P0 | Login/logout/check via message passing |
-| `useAnalysis` | P0 | Start/poll/results d'analyse |
-| `useSettings` | P1 | CRUD settings chrome.storage |
-| `useStorage` | P1 | Hook reactif chrome.storage.local |
-| `useTheme` | P1 | Sync theme YouTube ou toggle |
-| `useYouTube` | P1 | Video ID, metadata, navigation |
-| `useChat` | P1 | Send/receive messages chat |
+| Hook          | Priorite | Description                            |
+| ------------- | -------- | -------------------------------------- |
+| `useAuth`     | P0       | Login/logout/check via message passing |
+| `useAnalysis` | P0       | Start/poll/results d'analyse           |
+| `useSettings` | P1       | CRUD settings chrome.storage           |
+| `useStorage`  | P1       | Hook reactif chrome.storage.local      |
+| `useTheme`    | P1       | Sync theme YouTube ou toggle           |
+| `useYouTube`  | P1       | Video ID, metadata, navigation         |
+| `useChat`     | P1       | Send/receive messages chat             |
 
 ---
 
@@ -676,14 +681,14 @@ Le popup utilise `#3b82f6` et le content script `#6366f1`. La refonte **unifiera
 
 ## 8. RISQUES & MITIGATIONS
 
-| Risque | Impact | Mitigation |
-|--------|--------|------------|
-| Shadow DOM + Tailwind complexe | Moyen | Prototype early, tester sur YouTube reel |
-| Bundle size augmente (React dans content) | Moyen | Code splitting, lazy loading, purge Tailwind |
-| @crxjs/vite-plugin incompatibilites | Faible | Fallback vers rollup-plugin-chrome-extension |
-| YouTube change sa structure DOM | Faible | MutationObserver robuste, selecteurs de fallback |
-| Regression fonctionnelle | Moyen | Tests E2E, checklist manuelle, beta testers |
+| Risque                                    | Impact | Mitigation                                       |
+| ----------------------------------------- | ------ | ------------------------------------------------ |
+| Shadow DOM + Tailwind complexe            | Moyen  | Prototype early, tester sur YouTube reel         |
+| Bundle size augmente (React dans content) | Moyen  | Code splitting, lazy loading, purge Tailwind     |
+| @crxjs/vite-plugin incompatibilites       | Faible | Fallback vers rollup-plugin-chrome-extension     |
+| YouTube change sa structure DOM           | Faible | MutationObserver robuste, selecteurs de fallback |
+| Regression fonctionnelle                  | Moyen  | Tests E2E, checklist manuelle, beta testers      |
 
 ---
 
-*Ce document sera mis a jour au fur et a mesure de l'avancement de la refonte.*
+_Ce document sera mis a jour au fur et a mesure de l'avancement de la refonte._

@@ -1,30 +1,79 @@
-// ── Widget DOM management ──
+// ── Widget DOM management (Shadow DOM) ──
 
-const WIDGET_ID = 'deepsight-card';
-const BODY_CLASS = 'ds-card-body';
+import { getShadowRoot, setShadowRoot, $id, $qs } from "./shadow";
 
-const SIDEBAR_SELECTORS = [
-  '#secondary-inner',
-  '#secondary',
-  'ytd-watch-next-secondary-results-renderer',
+const WIDGET_ID = "deepsight-card";
+const HOST_ID = "deepsight-host";
+const BODY_CLASS = "ds-card-body";
+
+const INJECTION_STRATEGIES = [
+  { selector: "#secondary-inner", position: "prepend" as const },
+  { selector: "#secondary", position: "prepend" as const },
+  {
+    selector: "ytd-watch-next-secondary-results-renderer",
+    position: "prepend" as const,
+  },
+  { selector: "#below", position: "prepend" as const },
+  { selector: "ytd-watch-metadata", position: "afterend" as const },
 ];
 
 const TIKTOK_ANCHORS = [
   '[class*="DivBrowserModeContainer"]',
   '[class*="DivVideoDetailContainer"]',
-  '#app',
-  'body',
+  "#app",
+  "body",
 ];
 
-export function createWidgetShell(theme: 'dark' | 'light', isTikTok: boolean): HTMLDivElement {
-  const el = document.createElement('div');
-  el.id = WIDGET_ID;
-  el.className = `deepsight-card ${theme}`;
+export function createWidgetShell(
+  theme: "dark" | "light",
+  isTikTok: boolean,
+): HTMLDivElement {
+  // Create the outer host element (lives in the page DOM)
+  const host = document.createElement("div");
+  host.id = HOST_ID;
+  // Minimal host styles — just sizing, no visual styles that could be overridden
+  host.style.cssText =
+    "all:initial;display:block;width:100%;max-width:420px;margin-bottom:12px;";
+
   if (isTikTok) {
-    el.classList.add('deepsight-card-floating');
-    el.style.cssText = 'position:fixed;bottom:20px;right:20px;width:360px;max-height:80vh;overflow-y:auto;z-index:99999;box-shadow:0 8px 32px rgba(0,0,0,0.5);border-radius:12px;';
+    host.style.cssText =
+      "all:initial;position:fixed;bottom:20px;right:20px;width:360px;max-height:80vh;z-index:99999;";
   }
-  return el;
+
+  // Attach closed shadow root for full encapsulation
+  const shadow = host.attachShadow({ mode: "closed" });
+  setShadowRoot(shadow);
+
+  // Inject styles into the shadow root (fully isolated from page)
+  // tokens.css uses :host selector so variables work inside the shadow boundary
+  const tokensLink = document.createElement("link");
+  tokensLink.rel = "stylesheet";
+  tokensLink.href = chrome.runtime.getURL("tokens.css");
+  shadow.appendChild(tokensLink);
+
+  const widgetStyleLink = document.createElement("link");
+  widgetStyleLink.rel = "stylesheet";
+  widgetStyleLink.href = chrome.runtime.getURL("widget.css");
+  shadow.appendChild(widgetStyleLink);
+
+  const contentStyleLink = document.createElement("link");
+  contentStyleLink.rel = "stylesheet";
+  contentStyleLink.href = chrome.runtime.getURL("content.css");
+  shadow.appendChild(contentStyleLink);
+
+  // Create the actual widget card inside shadow
+  const el = document.createElement("div");
+  el.id = WIDGET_ID;
+  el.className = `ds-widget deepsight-card ${theme}`;
+  if (isTikTok) {
+    el.classList.add("deepsight-card-floating");
+    el.style.cssText =
+      "overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.5);border-radius:12px;";
+  }
+  shadow.appendChild(el);
+
+  // Return host — callers insert this into the page DOM
+  return host as HTMLDivElement;
 }
 
 export function buildWidgetHeader(logoHtml: string): string {
@@ -39,40 +88,66 @@ export function buildWidgetHeader(logoHtml: string): string {
   `;
 }
 
-export function injectWidget(widget: HTMLDivElement, isTikTok: boolean): boolean {
-  if (document.getElementById(WIDGET_ID)) return true;
+function isSidebarVisible(el: HTMLElement): boolean {
+  return el.offsetHeight > 0 && getComputedStyle(el).display !== "none";
+}
+
+let _floatingMode = false;
+
+export function isWidgetDetached(): boolean {
+  return !document.getElementById(HOST_ID);
+}
+
+export function isFloatingMode(): boolean {
+  return _floatingMode;
+}
+
+export function injectWidget(host: HTMLDivElement, isTikTok: boolean): boolean {
+  // Check if already injected
+  if (document.getElementById(HOST_ID)) return true;
+
+  _floatingMode = false;
 
   if (isTikTok) {
     for (const sel of TIKTOK_ANCHORS) {
       const anchor = document.querySelector(sel);
       if (anchor) {
-        document.body.appendChild(widget);
+        document.body.appendChild(host);
         return true;
       }
     }
     return false;
   }
 
-  for (const sel of SIDEBAR_SELECTORS) {
-    const sidebar = document.querySelector(sel);
-    if (sidebar instanceof HTMLElement) {
-      if (sidebar.firstChild) {
-        sidebar.insertBefore(widget, sidebar.firstChild);
-      } else {
-        sidebar.appendChild(widget);
-      }
-      return true;
+  // Try each strategy in order, skipping invisible elements
+  for (const { selector, position } of INJECTION_STRATEGIES) {
+    const el = document.querySelector(selector);
+    if (!(el instanceof HTMLElement) || !isSidebarVisible(el)) continue;
+
+    if (position === "prepend") {
+      el.insertBefore(host, el.firstChild);
+    } else {
+      // afterend — insert after the element
+      el.parentElement?.insertBefore(host, el.nextSibling);
     }
+    return true;
   }
-  return false;
+
+  // Floating fallback — no sidebar found
+  _floatingMode = true;
+  host.style.cssText =
+    "all:initial;position:fixed;bottom:20px;right:20px;width:380px;max-height:80vh;z-index:99999;";
+  document.body.appendChild(host);
+  return true;
 }
 
 export function removeWidget(): void {
-  document.getElementById(WIDGET_ID)?.remove();
+  document.getElementById(HOST_ID)?.remove();
 }
 
 export function getExistingWidget(): HTMLDivElement | null {
-  return document.getElementById(WIDGET_ID) as HTMLDivElement | null;
+  // The widget card is inside the shadow root
+  return $id<HTMLDivElement>(WIDGET_ID);
 }
 
 export function setWidgetBody(html: string): void {
@@ -81,18 +156,48 @@ export function setWidgetBody(html: string): void {
 }
 
 export function getWidgetBody(): HTMLElement | null {
-  return document.querySelector(`#${WIDGET_ID} .${BODY_CLASS}`);
+  return $qs(`#${WIDGET_ID} .${BODY_CLASS}`);
+}
+
+export function setWidgetInnerHTML(html: string): void {
+  const widget = getExistingWidget();
+  if (widget) widget.innerHTML = html;
+}
+
+function collapseWidget(): void {
+  const widget = getExistingWidget();
+  const btn = $id("ds-minimize-btn");
+  if (!widget) return;
+  widget.classList.add("ds-collapsed");
+  if (btn) btn.textContent = "+";
+}
+
+function expandWidget(): void {
+  const widget = getExistingWidget();
+  const btn = $id("ds-minimize-btn");
+  if (!widget) return;
+  widget.classList.remove("ds-collapsed");
+  if (btn) btn.textContent = "−";
 }
 
 export function bindMinimizeButton(): void {
-  const btn = document.getElementById('ds-minimize-btn');
+  const btn = $id("ds-minimize-btn");
   const widget = getExistingWidget();
   if (!btn || !widget) return;
-  btn.addEventListener('click', () => {
-    const body = getWidgetBody();
-    if (!body) return;
-    const isHidden = body.style.display === 'none';
-    body.style.display = isHidden ? '' : 'none';
-    btn.textContent = isHidden ? '−' : '+';
+
+  // Restore persisted state
+  chrome.storage.local.get(["ds_minimized"]).then((data) => {
+    if (data.ds_minimized) collapseWidget();
+  });
+
+  btn.addEventListener("click", () => {
+    const isCollapsed = widget.classList.contains("ds-collapsed");
+    if (isCollapsed) {
+      expandWidget();
+      chrome.storage.local.set({ ds_minimized: false });
+    } else {
+      collapseWidget();
+      chrome.storage.local.set({ ds_minimized: true });
+    }
   });
 }

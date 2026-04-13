@@ -1,19 +1,53 @@
 /**
  * DEEPSIGHT EXTENSION — POPUP STYLES
  * Premium dark-first design aligned with deepsightsynthesis.com
+ * Enhanced with glassmorphism, glow effects, and polished interactions
  */
 
 /* ═══════════════════════════════════════════════════
-   BASE
+   BASE & ANIMATIONS
    ═══════════════════════════════════════════════════ */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 body {
+  position: relative;
   width: 400px;
   min-height: 500px;
   max-height: 600px;
@@ -24,6 +58,31 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle noise texture overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ambient glow gradient */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 50% at 50% -10%,
+    rgba(200, 144, 58, 0.04) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 0;
 }
 
 a {
@@ -76,9 +135,10 @@ a:hover {
   font-weight: 500;
   z-index: var(--z-toast);
   cursor: pointer;
-  animation: slideIn 0.25s ease-out;
+  animation: slideInRight 0.3s ease-out;
   box-shadow: var(--shadow-md);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
 }
 
 .ds-toast-error {
@@ -134,7 +194,11 @@ a:hover {
   align-items: center;
   justify-content: center;
   padding: 8px 0 4px;
-  background: radial-gradient(ellipse at center top, rgba(200,144,58,0.08), transparent 70%);
+  background: radial-gradient(
+    ellipse at center top,
+    rgba(200, 144, 58, 0.08),
+    transparent 70%
+  );
   width: 100%;
 }
 
@@ -251,7 +315,7 @@ a:hover {
 
 .login-badge:hover {
   border-color: var(--border-accent);
-  box-shadow: 0 0 12px rgba(200,144,58,0.15);
+  box-shadow: 0 0 12px rgba(200, 144, 58, 0.15);
 }
 
 .login-badge-flag {
@@ -299,7 +363,7 @@ a:hover {
 
 .login-divider::before,
 .login-divider::after {
-  content: '';
+  content: "";
   flex: 1;
   height: 1px;
   background: var(--border-default);
@@ -352,7 +416,7 @@ a:hover {
   padding: 11px 16px;
   border-radius: var(--radius-md);
   border: none;
-  background: linear-gradient(135deg, #C8903A, #D4A054);
+  background: linear-gradient(135deg, #c8903a, #d4a054);
   color: var(--text-inverse);
   font-size: 14px;
   font-weight: 600;
@@ -363,7 +427,7 @@ a:hover {
 }
 
 .btn-login:hover:not(:disabled) {
-  background: linear-gradient(135deg, #D4A054, #E5B86A);
+  background: linear-gradient(135deg, #d4a054, #e5b86a);
   box-shadow: var(--shadow-glow-sm);
   transform: translateY(-1px);
 }
@@ -442,14 +506,30 @@ a:hover {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: rgba(17, 17, 24, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid transparent;
-  border-image: linear-gradient(to right, transparent, var(--border-accent), transparent) 1;
+  background: rgba(17, 17, 24, 0.65);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-bottom: 1px solid var(--border-default);
   position: sticky;
   top: 0;
   z-index: var(--z-sticky, 100);
+}
+
+/* Golden accent bar at bottom of header */
+.main-header::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent-primary),
+    transparent
+  );
+  opacity: 0.5;
 }
 
 .main-header-left {
@@ -465,7 +545,9 @@ a:hover {
 
 .main-header-left .ds-spinner-wrapper {
   border-radius: 50%;
-  box-shadow: 0 0 0 2px rgba(200,144,58,0.2), 0 0 12px rgba(200,144,58,0.15);
+  box-shadow:
+    0 0 0 2px rgba(200, 144, 58, 0.2),
+    0 0 12px rgba(200, 144, 58, 0.15);
 }
 
 .main-header h1 {
@@ -574,21 +656,27 @@ a:hover {
   border: 1px solid var(--border-default);
 }
 
-.plan-pro, .plan-starter, .plan-etudiant, .plan-student {
-  background: linear-gradient(135deg, #C8903A, #D4A054);
+.plan-pro,
+.plan-starter,
+.plan-etudiant,
+.plan-student {
+  background: linear-gradient(135deg, #c8903a, #d4a054);
   color: var(--text-inverse);
   border: none;
-  box-shadow: 0 0 10px rgba(200,144,58,0.2);
+  box-shadow: 0 0 10px rgba(200, 144, 58, 0.2);
 }
 
-.plan-expert, .plan-team, .plan-equipe {
-  background: linear-gradient(135deg, #9B6B4A, #B07D2E);
+.plan-expert,
+.plan-team,
+.plan-equipe {
+  background: linear-gradient(135deg, #9b6b4a, #b07d2e);
   color: var(--text-inverse);
   border: none;
-  box-shadow: 0 0 10px rgba(155,107,74,0.2);
+  box-shadow: 0 0 10px rgba(155, 107, 74, 0.2);
 }
 
-.user-quota, .user-credits {
+.user-quota,
+.user-credits {
   color: var(--text-secondary);
   font-size: 12px;
 }
@@ -704,11 +792,18 @@ a:hover {
   gap: 10px;
   padding: 10px;
   border-radius: var(--radius-md);
-  background: rgba(17, 17, 24, 0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border-default);
+  background: rgba(17, 17, 24, 0.65);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(200, 144, 58, 0.08);
   border-left: 3px solid var(--accent-primary);
   animation: fadeInUp 0.3s ease-out;
+  transition: all var(--transition-base);
+}
+
+.video-status-card:hover {
+  border-color: rgba(200, 144, 58, 0.14);
+  box-shadow: 0 0 20px rgba(200, 144, 58, 0.1);
 }
 
 .video-thumbnail {
@@ -753,14 +848,27 @@ a:hover {
   height: 8px;
   border-radius: 50%;
   background: var(--accent-success);
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5), 0 0 16px rgba(16, 185, 129, 0.3);
+  box-shadow:
+    0 0 8px rgba(16, 185, 129, 0.5),
+    0 0 16px rgba(16, 185, 129, 0.3);
   flex-shrink: 0;
   animation: liveDotPulse 2s ease-in-out infinite;
 }
 
 @keyframes liveDotPulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(16, 185, 129, 0.5), 0 0 16px rgba(16, 185, 129, 0.2); transform: scale(1); }
-  50% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.7), 0 0 24px rgba(16, 185, 129, 0.4); transform: scale(1.2); }
+  0%,
+  100% {
+    box-shadow:
+      0 0 8px rgba(16, 185, 129, 0.5),
+      0 0 16px rgba(16, 185, 129, 0.2);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 12px rgba(16, 185, 129, 0.7),
+      0 0 24px rgba(16, 185, 129, 0.4);
+    transform: scale(1.2);
+  }
 }
 
 .video-status {
@@ -806,18 +914,19 @@ a:hover {
 .ds-select {
   padding: 8px 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: 1px solid rgba(200, 144, 58, 0.08);
   background: var(--bg-secondary);
   color: var(--text-primary);
   font-size: 13px;
   font-family: var(--font-body);
   cursor: pointer;
   outline: none;
-  transition: border-color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .ds-select:focus {
   border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(200, 144, 58, 0.1);
 }
 
 /* Buttons */
@@ -826,39 +935,41 @@ a:hover {
   padding: 14px 16px;
   border-radius: var(--radius-md);
   border: none;
-  background: linear-gradient(135deg, #C8903A, #D4A054);
+  background: linear-gradient(135deg, #c8903a, #d4a054);
+  background-size: 200% 200%;
   color: var(--text-inverse);
   font-size: 15px;
   font-weight: 600;
   font-family: var(--font-body);
   cursor: pointer;
   transition: all var(--transition-base);
-  box-shadow: var(--shadow-sm), var(--shadow-glow-sm);
+  box-shadow: 0 4px 15px rgba(200, 144, 58, 0.25);
   letter-spacing: 0.01em;
   min-height: 48px;
   position: relative;
   overflow: hidden;
+  animation: gradient-shift 8s ease infinite;
 }
 
 .analyze-btn::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-  transition: left 0.5s ease;
-}
-
-.analyze-btn:hover::after {
-  left: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  animation: shimmer 2s infinite;
 }
 
 .analyze-btn:hover {
-  background: linear-gradient(135deg, #D4A054, #E5B86A);
-  box-shadow: var(--shadow-md), var(--shadow-glow);
   transform: translateY(-1px);
+  box-shadow: 0 0 25px rgba(200, 144, 58, 0.35);
 }
 
 .analyze-btn-disabled {
@@ -925,7 +1036,11 @@ a:hover {
 .progress-fill {
   height: 100%;
   border-radius: var(--radius-full);
-  background: linear-gradient(90deg, var(--accent-primary), var(--accent-primary-hover));
+  background: linear-gradient(
+    90deg,
+    var(--accent-primary),
+    var(--accent-primary-hover)
+  );
   transition: width 0.5s ease-out;
   box-shadow: 0 0 10px var(--accent-primary-glow);
 }
@@ -937,7 +1052,8 @@ a:hover {
 }
 
 /* Quota/Guest states */
-.quota-exceeded, .guest-exhausted {
+.quota-exceeded,
+.guest-exhausted {
   text-align: center;
   padding: 4px 0;
   display: flex;
@@ -945,20 +1061,22 @@ a:hover {
   gap: 10px;
 }
 
-.quota-exceeded-text, .guest-exhausted-text {
+.quota-exceeded-text,
+.guest-exhausted-text {
   font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.5;
 }
 
-.btn-upgrade-cta, .btn-create-account {
+.btn-upgrade-cta,
+.btn-create-account {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 10px 20px;
   border-radius: var(--radius-md);
   border: none;
-  background: linear-gradient(135deg, #C8903A, #D4A054);
+  background: linear-gradient(135deg, #c8903a, #d4a054);
   color: var(--text-inverse);
   font-size: 13px;
   font-weight: 600;
@@ -968,7 +1086,8 @@ a:hover {
   text-decoration: none;
 }
 
-.btn-upgrade-cta:hover, .btn-create-account:hover {
+.btn-upgrade-cta:hover,
+.btn-create-account:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-glow-sm);
 }
@@ -999,15 +1118,16 @@ a:hover {
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid rgba(200, 144, 58, 0.04);
   text-decoration: none;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-base);
 }
 
 .recent-item:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--border-default);
-  box-shadow: var(--shadow-xs);
+  background: rgba(17, 17, 24, 0.8);
+  border-color: rgba(200, 144, 58, 0.12);
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(200, 144, 58, 0.08);
 }
 
 .recent-item img {
@@ -1068,7 +1188,7 @@ a:hover {
 .upsell-btn {
   padding: 6px 12px;
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, #C8903A, #D4A054);
+  background: linear-gradient(135deg, #c8903a, #d4a054);
   color: var(--text-inverse);
   font-size: 11px;
   font-weight: 600;
@@ -1190,10 +1310,17 @@ a:hover {
 .synthesis-verdict {
   padding: 12px 14px;
   border-radius: var(--radius-md);
-  background: rgba(17, 17, 24, 0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border-default);
+  background: rgba(17, 17, 24, 0.65);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(200, 144, 58, 0.08);
   border-left: 3px solid var(--accent-primary);
+  transition: all var(--transition-base);
+}
+
+.synthesis-verdict:hover {
+  border-color: rgba(200, 144, 58, 0.14);
+  box-shadow: 0 0 20px rgba(200, 144, 58, 0.1);
 }
 
 .synthesis-verdict p {
@@ -1321,17 +1448,26 @@ a:hover {
   overflow-y: auto;
 }
 
-.detail-panel h1, .detail-panel h2, .detail-panel h3 {
+.detail-panel h1,
+.detail-panel h2,
+.detail-panel h3 {
   font-family: var(--font-display);
   color: var(--accent-primary);
   margin: 12px 0 6px;
 }
 
-.detail-panel h1 { font-size: 18px; }
-.detail-panel h2 { font-size: 16px; }
-.detail-panel h3 { font-size: 14px; }
+.detail-panel h1 {
+  font-size: 18px;
+}
+.detail-panel h2 {
+  font-size: 16px;
+}
+.detail-panel h3 {
+  font-size: 14px;
+}
 
-.detail-panel ul, .detail-panel ol {
+.detail-panel ul,
+.detail-panel ol {
   padding-left: 20px;
   margin: 6px 0;
 }
@@ -1372,7 +1508,7 @@ a:hover {
 }
 
 .btn-action-primary {
-  background: linear-gradient(135deg, #C8903A, #D4A054);
+  background: linear-gradient(135deg, #c8903a, #d4a054);
   color: var(--text-inverse);
 }
 
@@ -1480,10 +1616,28 @@ a:hover {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: rgba(17, 17, 24, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border-strong);
+  background: rgba(17, 17, 24, 0.65);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-bottom: 1px solid var(--border-default);
+  position: relative;
+}
+
+/* Golden accent bar at bottom of chat header */
+.chat-header::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent-primary),
+    transparent
+  );
+  opacity: 0.5;
 }
 
 .chat-header-title {
@@ -1613,7 +1767,8 @@ a:hover {
   background: var(--bg-tertiary);
 }
 
-.chat-md-content ul, .chat-md-content ol {
+.chat-md-content ul,
+.chat-md-content ol {
   padding-left: 18px;
   margin: 4px 0;
 }
@@ -1661,7 +1816,7 @@ a:hover {
   height: 6px;
   border-radius: 50%;
   background: var(--accent-primary);
-  box-shadow: 0 0 6px rgba(200,144,58,0.3);
+  box-shadow: 0 0 6px rgba(200, 144, 58, 0.3);
   animation: typingDot 1.4s ease-in-out infinite;
 }
 
@@ -1707,11 +1862,28 @@ a:hover {
   align-items: center;
   gap: 6px;
   padding: 10px 14px;
-  background: rgba(17, 17, 24, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid transparent;
-  border-image: linear-gradient(to right, transparent, var(--accent-primary-glow), transparent) 1;
+  background: rgba(17, 17, 24, 0.65);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-top: 1px solid var(--border-default);
+  position: relative;
+}
+
+/* Golden accent bar at top of chat input */
+.chat-input-area::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent-primary),
+    transparent
+  );
+  opacity: 0.5;
 }
 
 .chat-ws-toggle {
@@ -1737,17 +1909,18 @@ a:hover {
   flex: 1;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: 1px solid rgba(200, 144, 58, 0.08);
   background: var(--bg-secondary);
   color: var(--text-primary);
   font-size: 13px;
   font-family: var(--font-body);
   outline: none;
-  transition: border-color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .chat-input:focus {
   border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(200, 144, 58, 0.1);
 }
 
 .chat-input::placeholder {
@@ -1766,15 +1939,16 @@ a:hover {
   height: 34px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #C8903A, #D4A054);
+  background: linear-gradient(135deg, #c8903a, #d4a054);
   color: var(--text-inverse);
   cursor: pointer;
   transition: all var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(200, 144, 58, 0.2);
 }
 
 .chat-send-btn:hover:not(:disabled) {
-  box-shadow: var(--shadow-glow-sm);
-  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(200, 144, 58, 0.3);
+  transform: scale(1.08);
 }
 
 .chat-send-btn:disabled {

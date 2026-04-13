@@ -1,10 +1,18 @@
-import type { AuthTokens, User, RecentAnalysis, ExtensionSettings } from '../types';
+import type {
+  AuthTokens,
+  User,
+  RecentAnalysis,
+  ExtensionSettings,
+} from "../types";
 
 // ── Token Storage ──
 
 export async function getStoredTokens(): Promise<AuthTokens> {
   try {
-    const data = await chrome.storage.local.get(['accessToken', 'refreshToken']);
+    const data = await chrome.storage.local.get([
+      "accessToken",
+      "refreshToken",
+    ]);
     return {
       accessToken: data.accessToken || null,
       refreshToken: data.refreshToken || null,
@@ -14,7 +22,10 @@ export async function getStoredTokens(): Promise<AuthTokens> {
   }
 }
 
-export async function setStoredTokens(accessToken: string, refreshToken: string): Promise<void> {
+export async function setStoredTokens(
+  accessToken: string,
+  refreshToken: string,
+): Promise<void> {
   // Bug #10: guard against undefined values
   const payload: Record<string, string> = { accessToken };
   if (refreshToken) payload.refreshToken = refreshToken;
@@ -27,7 +38,7 @@ export async function setStoredTokens(accessToken: string, refreshToken: string)
 
 export async function clearStoredAuth(): Promise<void> {
   try {
-    await chrome.storage.local.remove(['accessToken', 'refreshToken', 'user']);
+    await chrome.storage.local.remove(["accessToken", "refreshToken", "user"]);
   } catch {
     // Ignore errors on clear
   }
@@ -37,7 +48,7 @@ export async function clearStoredAuth(): Promise<void> {
 
 export async function getStoredUser(): Promise<User | null> {
   try {
-    const data = await chrome.storage.local.get(['user']);
+    const data = await chrome.storage.local.get(["user"]);
     return data.user || null;
   } catch {
     return null;
@@ -55,22 +66,32 @@ export async function setStoredUser(user: User): Promise<void> {
 // ── Settings Storage ──
 
 export async function getStoredSettings(): Promise<ExtensionSettings> {
-  const data = await chrome.storage.local.get(['settings']);
-  return data.settings || { defaultMode: 'standard', defaultLang: 'fr', showNotifications: true };
+  const data = await chrome.storage.local.get(["settings"]);
+  return (
+    data.settings || {
+      defaultMode: "standard",
+      defaultLang: "fr",
+      showNotifications: true,
+    }
+  );
 }
 
-export async function setStoredSettings(settings: ExtensionSettings): Promise<void> {
+export async function setStoredSettings(
+  settings: ExtensionSettings,
+): Promise<void> {
   await chrome.storage.local.set({ settings });
 }
 
 // ── Recent Analyses Storage ──
 
 export async function getRecentAnalyses(): Promise<RecentAnalysis[]> {
-  const data = await chrome.storage.local.get(['recentAnalyses']);
+  const data = await chrome.storage.local.get(["recentAnalyses"]);
   return data.recentAnalyses || [];
 }
 
-export async function addRecentAnalysis(analysis: Omit<RecentAnalysis, 'timestamp'>): Promise<void> {
+export async function addRecentAnalysis(
+  analysis: Omit<RecentAnalysis, "timestamp">,
+): Promise<void> {
   const existing = await getRecentAnalyses();
   const filtered = existing.filter((a) => a.videoId !== analysis.videoId);
   filtered.unshift({ ...analysis, timestamp: Date.now() });
@@ -80,7 +101,7 @@ export async function addRecentAnalysis(analysis: Omit<RecentAnalysis, 'timestam
 // ── Free (Guest) Analysis Counter ──
 
 export async function getFreeAnalysisCount(): Promise<number> {
-  const data = await chrome.storage.local.get(['deepsight_free_analyses']);
+  const data = await chrome.storage.local.get(["deepsight_free_analyses"]);
   return data.deepsight_free_analyses || 0;
 }
 

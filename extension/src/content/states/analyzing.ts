@@ -1,7 +1,7 @@
 // ── État: analyse en cours ──
 
-import { setWidgetBody, getWidgetBody } from '../widget';
-import { escapeHtml } from '../../utils/sanitize';
+import { setWidgetBody, getWidgetBody } from "../widget";
+import { escapeHtml } from "../../utils/sanitize";
 
 function spinnerHtml(): string {
   return `
@@ -21,7 +21,11 @@ function spinnerHtml(): string {
     </div>`;
 }
 
-export function renderAnalyzingState(message: string, progress: number, onCancel?: () => void): void {
+export function renderAnalyzingState(
+  message: string,
+  progress: number,
+  onCancel?: () => void,
+): void {
   const html = `
     <div class="ds-analyzing-container">
       <div class="ds-loading" style="text-align:center;padding:16px 0">
@@ -44,28 +48,31 @@ export function renderAnalyzingState(message: string, progress: number, onCancel
   // Bind cancel button
   if (onCancel) {
     const body = getWidgetBody();
-    const btn = body?.querySelector<HTMLButtonElement>('#ds-cancel-btn');
+    const btn = body?.querySelector<HTMLButtonElement>("#ds-cancel-btn");
     if (btn) {
-      btn.addEventListener('click', onCancel);
-      btn.addEventListener('mouseenter', () => {
-        btn.style.color = '#ef4444';
-        btn.style.borderColor = 'rgba(239,68,68,0.3)';
-        btn.style.background = 'rgba(239,68,68,0.1)';
+      btn.addEventListener("click", onCancel);
+      btn.addEventListener("mouseenter", () => {
+        btn.style.color = "#ef4444";
+        btn.style.borderColor = "rgba(239,68,68,0.3)";
+        btn.style.background = "rgba(239,68,68,0.1)";
       });
-      btn.addEventListener('mouseleave', () => {
-        btn.style.color = 'rgba(255,255,255,0.5)';
-        btn.style.borderColor = 'rgba(255,255,255,0.15)';
-        btn.style.background = 'transparent';
+      btn.addEventListener("mouseleave", () => {
+        btn.style.color = "rgba(255,255,255,0.5)";
+        btn.style.borderColor = "rgba(255,255,255,0.15)";
+        btn.style.background = "transparent";
       });
     }
   }
 }
 
-export function updateAnalyzingProgress(message: string, progress: number): void {
+export function updateAnalyzingProgress(
+  message: string,
+  progress: number,
+): void {
   const body = getWidgetBody();
   if (!body) return;
-  const bar = body.querySelector<HTMLElement>('#ds-progress-bar');
-  const text = body.querySelector<HTMLElement>('#ds-progress-text');
+  const bar = body.querySelector<HTMLElement>("#ds-progress-bar");
+  const text = body.querySelector<HTMLElement>("#ds-progress-text");
   if (bar) bar.style.width = `${progress}%`;
   if (text) text.textContent = message;
 }

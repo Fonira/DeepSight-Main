@@ -6,19 +6,19 @@ AI-powered YouTube video analysis extension with premium dark mode design.
 
 ### Color Palette
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--ds-bg-primary` | `#0a0a0f` | Main background |
-| `--ds-bg-secondary` | `#12121a` | Cards, surfaces |
-| `--ds-bg-tertiary` | `#1a1a2e` | Elevated surfaces |
-| `--ds-border` | `#2a2a3e` | Borders, dividers |
-| `--ds-text-primary` | `#e8e8f0` | Body text |
-| `--ds-text-secondary` | `#8888a0` | Muted text |
-| `--ds-accent-blue` | `#4a9eff` | Primary accent |
-| `--ds-accent-purple` | `#8b5cf6` | Secondary accent |
-| `--ds-accent-orange` | `#f59e0b` | Tertiary accent |
-| `--ds-success` | `#22c55e` | Success states |
-| `--ds-error` | `#ef4444` | Error states |
+| Token                 | Value     | Usage             |
+| --------------------- | --------- | ----------------- |
+| `--ds-bg-primary`     | `#0a0a0f` | Main background   |
+| `--ds-bg-secondary`   | `#12121a` | Cards, surfaces   |
+| `--ds-bg-tertiary`    | `#1a1a2e` | Elevated surfaces |
+| `--ds-border`         | `#2a2a3e` | Borders, dividers |
+| `--ds-text-primary`   | `#e8e8f0` | Body text         |
+| `--ds-text-secondary` | `#8888a0` | Muted text        |
+| `--ds-accent-blue`    | `#4a9eff` | Primary accent    |
+| `--ds-accent-purple`  | `#8b5cf6` | Secondary accent  |
+| `--ds-accent-orange`  | `#f59e0b` | Tertiary accent   |
+| `--ds-success`        | `#22c55e` | Success states    |
+| `--ds-error`          | `#ef4444` | Error states      |
 
 ### Gradients
 
@@ -37,14 +37,14 @@ AI-powered YouTube video analysis extension with premium dark mode design.
 
 ### Animations
 
-| Name | Duration | Usage |
-|------|----------|-------|
-| `ds-spin` | 2s linear | Logo spinner rotation |
-| `ds-pulse-glow` | 3s ease | Logo glow pulsation |
-| `ds-shimmer` | 3s ease | Analyze button gradient |
-| `ds-fade-in` | 200ms | Popup entrance |
-| `ds-slide-up` | 200ms | Toast/view transitions |
-| `ds-stagger-in` | 300ms | History item cascade |
+| Name            | Duration  | Usage                   |
+| --------------- | --------- | ----------------------- |
+| `ds-spin`       | 2s linear | Logo spinner rotation   |
+| `ds-pulse-glow` | 3s ease   | Logo glow pulsation     |
+| `ds-shimmer`    | 3s ease   | Analyze button gradient |
+| `ds-fade-in`    | 200ms     | Popup entrance          |
+| `ds-slide-up`   | 200ms     | Toast/view transitions  |
+| `ds-stagger-in` | 300ms     | History item cascade    |
 
 All animations use `transform` and `opacity` only for GPU acceleration.
 
@@ -82,6 +82,7 @@ src/popup/
 ## Icons
 
 SVG compass rose icons at 4 sizes in `icons/`:
+
 - `icon16.svg` — Toolbar
 - `icon32.svg` — Extensions page
 - `icon48.svg` — Chrome Web Store
@@ -91,10 +92,10 @@ Design: Compass rose with gradient (blue > purple > orange) on `#0a0a0f` dark ba
 
 ## Styles
 
-| File | Purpose |
-|------|---------|
-| `src/styles/popup.css` | Popup UI design system (variables, reset, animations, all views) |
-| `src/styles/content.css` | YouTube sidebar card (same design tokens, dark-only) |
+| File                     | Purpose                                                          |
+| ------------------------ | ---------------------------------------------------------------- |
+| `src/styles/popup.css`   | Popup UI design system (variables, reset, animations, all views) |
+| `src/styles/content.css` | YouTube sidebar card (same design tokens, dark-only)             |
 
 ## Build
 
