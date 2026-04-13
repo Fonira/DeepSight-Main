@@ -5,25 +5,25 @@
  */
 
 export const fontFamily = {
-  display: 'CormorantGaramond-Bold',
-  body: 'DMSans-Regular',
-  bodyMedium: 'DMSans-Medium',
-  bodySemiBold: 'DMSans-SemiBold',
-  bodyBold: 'DMSans-Bold',
-  mono: 'JetBrainsMono-Regular',
+  display: "CormorantGaramond-Bold",
+  body: "DMSans-Regular",
+  bodyMedium: "DMSans-Medium",
+  bodySemiBold: "DMSans-SemiBold",
+  bodyBold: "DMSans-Bold",
+  mono: "JetBrainsMono-Regular",
 } as const;
 
 export const fontSize = {
-  '2xs': 10,
+  "2xs": 10,
   xs: 12,
   sm: 14,
   base: 16,
   lg: 18,
   xl: 20,
-  '2xl': 24,
-  '3xl': 30,
-  '4xl': 36,
-  '5xl': 48,
+  "2xl": 24,
+  "3xl": 30,
+  "4xl": 36,
+  "5xl": 48,
 } as const;
 
 export const lineHeight = {
@@ -55,26 +55,26 @@ export const letterSpacing = {
 export const textStyles = {
   displayLg: {
     fontFamily: fontFamily.display,
-    fontSize: fontSize['5xl'],
-    lineHeight: fontSize['5xl'] * lineHeight.tight,
+    fontSize: fontSize["5xl"],
+    lineHeight: fontSize["5xl"] * lineHeight.tight,
     letterSpacing: letterSpacing.tighter,
   },
   displayMd: {
     fontFamily: fontFamily.display,
-    fontSize: fontSize['4xl'],
-    lineHeight: fontSize['4xl'] * lineHeight.tight,
+    fontSize: fontSize["4xl"],
+    lineHeight: fontSize["4xl"] * lineHeight.tight,
     letterSpacing: letterSpacing.tighter,
   },
   displaySm: {
     fontFamily: fontFamily.display,
-    fontSize: fontSize['3xl'],
-    lineHeight: fontSize['3xl'] * lineHeight.tight,
+    fontSize: fontSize["3xl"],
+    lineHeight: fontSize["3xl"] * lineHeight.tight,
     letterSpacing: letterSpacing.tight,
   },
   headingLg: {
     fontFamily: fontFamily.bodyBold,
-    fontSize: fontSize['2xl'],
-    lineHeight: fontSize['2xl'] * lineHeight.snug,
+    fontSize: fontSize["2xl"],
+    lineHeight: fontSize["2xl"] * lineHeight.snug,
     letterSpacing: letterSpacing.tight,
   },
   headingMd: {

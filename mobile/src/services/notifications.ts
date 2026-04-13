@@ -3,25 +3,25 @@
  * Integrates with expo-notifications for local and push notifications
  */
 
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
+import { Platform } from "react-native";
+import Constants from "expo-constants";
 
 // Expo Go doesn't support remote push notifications (SDK 53+)
-const IS_EXPO_GO = Constants.appOwnership === 'expo';
+const IS_EXPO_GO = Constants.appOwnership === "expo";
 
 // Notification types
 export type NotificationType =
-  | 'analysis_complete'
-  | 'analysis_failed'
+  | "analysis_complete"
+  | "analysis_failed"
   // DISABLED: Playlist feature moved to web-only (Feb 2026)
   // | 'playlist_complete'
-  | 'credits_low'
-  | 'credits_empty'
-  | 'subscription_expiring'
-  | 'new_feature'
-  | 'weekly_summary';
+  | "credits_low"
+  | "credits_empty"
+  | "subscription_expiring"
+  | "new_feature"
+  | "weekly_summary";
 
 export interface NotificationPayload {
   type: NotificationType;
@@ -53,12 +53,12 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 
-  if (existingStatus !== 'granted') {
+  if (existingStatus !== "granted") {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
 
-  if (finalStatus !== 'granted') {
+  if (finalStatus !== "granted") {
     // Notification permissions not granted
     return false;
   }
@@ -88,7 +88,9 @@ export async function getPushToken(): Promise<string | null> {
 
     return tokenData.data;
   } catch (error) {
-    if (__DEV__) { console.error('Failed to get push token:', error); }
+    if (__DEV__) {
+      console.error("Failed to get push token:", error);
+    }
     return null;
   }
 }
@@ -97,29 +99,29 @@ export async function getPushToken(): Promise<string | null> {
  * Configure notification channels (Android)
  */
 export async function setupNotificationChannels(): Promise<void> {
-  if (Platform.OS === 'android') {
+  if (Platform.OS === "android") {
     // Analysis notifications
-    await Notifications.setNotificationChannelAsync('analysis', {
-      name: 'Analysis Updates',
-      description: 'Notifications about video analysis progress',
+    await Notifications.setNotificationChannelAsync("analysis", {
+      name: "Analysis Updates",
+      description: "Notifications about video analysis progress",
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#7C3AED',
-      sound: 'default',
+      lightColor: "#7C3AED",
+      sound: "default",
     });
 
     // Credit notifications
-    await Notifications.setNotificationChannelAsync('credits', {
-      name: 'Credit Alerts',
-      description: 'Notifications about credit usage',
+    await Notifications.setNotificationChannelAsync("credits", {
+      name: "Credit Alerts",
+      description: "Notifications about credit usage",
       importance: Notifications.AndroidImportance.DEFAULT,
-      lightColor: '#F59E0B',
+      lightColor: "#F59E0B",
     });
 
     // General notifications
-    await Notifications.setNotificationChannelAsync('general', {
-      name: 'General Updates',
-      description: 'General app notifications',
+    await Notifications.setNotificationChannelAsync("general", {
+      name: "General Updates",
+      description: "General app notifications",
       importance: Notifications.AndroidImportance.DEFAULT,
     });
   }
@@ -130,16 +132,16 @@ export async function setupNotificationChannels(): Promise<void> {
  */
 function getChannelForType(type: NotificationType): string {
   switch (type) {
-    case 'analysis_complete':
-    case 'analysis_failed':
-    // DISABLED: Playlist feature moved to web-only (Feb 2026)
-    // case 'playlist_complete':
-      return 'analysis';
-    case 'credits_low':
-    case 'credits_empty':
-      return 'credits';
+    case "analysis_complete":
+    case "analysis_failed":
+      // DISABLED: Playlist feature moved to web-only (Feb 2026)
+      // case 'playlist_complete':
+      return "analysis";
+    case "credits_low":
+    case "credits_empty":
+      return "credits";
     default:
-      return 'general';
+      return "general";
   }
 }
 
@@ -148,25 +150,25 @@ function getChannelForType(type: NotificationType): string {
  */
 function getIconForType(type: NotificationType): string {
   switch (type) {
-    case 'analysis_complete':
-      return 'checkmark-circle';
-    case 'analysis_failed':
-      return 'close-circle';
+    case "analysis_complete":
+      return "checkmark-circle";
+    case "analysis_failed":
+      return "close-circle";
     // DISABLED: Playlist feature moved to web-only (Feb 2026)
     // case 'playlist_complete':
     //   return 'albums';
-    case 'credits_low':
-      return 'warning';
-    case 'credits_empty':
-      return 'alert-circle';
-    case 'subscription_expiring':
-      return 'time';
-    case 'new_feature':
-      return 'sparkles';
-    case 'weekly_summary':
-      return 'analytics';
+    case "credits_low":
+      return "warning";
+    case "credits_empty":
+      return "alert-circle";
+    case "subscription_expiring":
+      return "time";
+    case "new_feature":
+      return "sparkles";
+    case "weekly_summary":
+      return "analytics";
     default:
-      return 'notifications';
+      return "notifications";
   }
 }
 
@@ -175,7 +177,7 @@ function getIconForType(type: NotificationType): string {
  */
 export async function scheduleLocalNotification(
   payload: NotificationPayload,
-  trigger?: Notifications.NotificationTriggerInput
+  trigger?: Notifications.NotificationTriggerInput,
 ): Promise<string> {
   const notificationContent: Notifications.NotificationContentInput = {
     title: payload.title,
@@ -184,12 +186,12 @@ export async function scheduleLocalNotification(
       type: payload.type,
       ...payload.data,
     },
-    sound: 'default',
+    sound: "default",
     priority: Notifications.AndroidNotificationPriority.HIGH,
   };
 
   // Add channel for Android
-  if (Platform.OS === 'android') {
+  if (Platform.OS === "android") {
     (notificationContent as any).channelId = getChannelForType(payload.type);
   }
 
@@ -208,7 +210,7 @@ export async function showNotification(
   type: NotificationType,
   title: string,
   body: string,
-  data?: Record<string, unknown>
+  data?: Record<string, unknown>,
 ): Promise<string> {
   return scheduleLocalNotification({
     type,
@@ -223,13 +225,13 @@ export async function showNotification(
  */
 export async function notifyAnalysisComplete(
   videoTitle: string,
-  summaryId: string
+  summaryId: string,
 ): Promise<string> {
   return showNotification(
-    'analysis_complete',
-    'Analysis Complete! ✓',
+    "analysis_complete",
+    "Analysis Complete! ✓",
     `"${videoTitle}" is ready to view`,
-    { summaryId, screen: 'Analysis' }
+    { summaryId, screen: "Analysis" },
   );
 }
 
@@ -238,13 +240,13 @@ export async function notifyAnalysisComplete(
  */
 export async function notifyAnalysisFailed(
   videoTitle: string,
-  error?: string
+  error?: string,
 ): Promise<string> {
   return showNotification(
-    'analysis_failed',
-    'Analysis Failed',
+    "analysis_failed",
+    "Analysis Failed",
     error || `Could not analyze "${videoTitle}"`,
-    { screen: 'Dashboard' }
+    { screen: "Dashboard" },
   );
 }
 
@@ -270,13 +272,13 @@ export async function notifyAnalysisFailed(
  * Schedule notification for low credits
  */
 export async function notifyCreditsLow(
-  remainingCredits: number
+  remainingCredits: number,
 ): Promise<string> {
   return showNotification(
-    'credits_low',
-    'Credits Running Low',
+    "credits_low",
+    "Credits Running Low",
     `You have ${remainingCredits} credits remaining. Upgrade for more!`,
-    { screen: 'Upgrade' }
+    { screen: "Upgrade" },
   );
 }
 
@@ -285,10 +287,10 @@ export async function notifyCreditsLow(
  */
 export async function notifyCreditsEmpty(): Promise<string> {
   return showNotification(
-    'credits_empty',
-    'Credits Depleted',
-    'Upgrade your plan to continue analyzing videos',
-    { screen: 'Upgrade' }
+    "credits_empty",
+    "Credits Depleted",
+    "Upgrade your plan to continue analyzing videos",
+    { screen: "Upgrade" },
   );
 }
 
@@ -296,13 +298,13 @@ export async function notifyCreditsEmpty(): Promise<string> {
  * Schedule notification for subscription expiring
  */
 export async function notifySubscriptionExpiring(
-  daysRemaining: number
+  daysRemaining: number,
 ): Promise<string> {
   return showNotification(
-    'subscription_expiring',
-    'Subscription Expiring Soon',
+    "subscription_expiring",
+    "Subscription Expiring Soon",
     `Your subscription expires in ${daysRemaining} days`,
-    { screen: 'Account' }
+    { screen: "Account" },
   );
 }
 
@@ -323,7 +325,9 @@ export async function cancelAllNotifications(): Promise<void> {
 /**
  * Get all scheduled notifications
  */
-export async function getScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
+export async function getScheduledNotifications(): Promise<
+  Notifications.NotificationRequest[]
+> {
   return Notifications.getAllScheduledNotificationsAsync();
 }
 
@@ -352,7 +356,7 @@ export async function clearBadge(): Promise<void> {
  * Add notification received listener
  */
 export function addNotificationReceivedListener(
-  handler: (notification: Notifications.Notification) => void
+  handler: (notification: Notifications.Notification) => void,
 ): Notifications.Subscription {
   return Notifications.addNotificationReceivedListener(handler);
 }
@@ -361,7 +365,7 @@ export function addNotificationReceivedListener(
  * Add notification response listener (when user taps notification)
  */
 export function addNotificationResponseListener(
-  handler: (response: Notifications.NotificationResponse) => void
+  handler: (response: Notifications.NotificationResponse) => void,
 ): Notifications.Subscription {
   return Notifications.addNotificationResponseReceivedListener(handler);
 }
@@ -388,7 +392,8 @@ export async function initializeNotifications(): Promise<{
   const permissionGranted = await requestNotificationPermissions();
 
   // Push token — only in real builds
-  const pushToken = (permissionGranted && !IS_EXPO_GO) ? await getPushToken() : null;
+  const pushToken =
+    permissionGranted && !IS_EXPO_GO ? await getPushToken() : null;
 
   return { permissionGranted, pushToken };
 }

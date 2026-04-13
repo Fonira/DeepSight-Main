@@ -1,16 +1,22 @@
-import React, { useCallback, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet, LayoutChangeEvent } from 'react-native';
+import React, { useCallback, useEffect } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  LayoutChangeEvent,
+} from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   interpolateColor,
-} from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../contexts/ThemeContext';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
 
 export interface TabItem {
   id: string;
@@ -99,17 +105,20 @@ export const AnimatedTabBar: React.FC<AnimatedTabBarProps> = ({
   // Store tab layouts
   const tabLayouts = React.useRef<{ x: number; width: number }[]>([]);
 
-  const handleTabLayout = useCallback((e: LayoutChangeEvent, index: number) => {
-    const { x, width } = e.nativeEvent.layout;
-    tabLayouts.current[index] = { x, width };
+  const handleTabLayout = useCallback(
+    (e: LayoutChangeEvent, index: number) => {
+      const { x, width } = e.nativeEvent.layout;
+      tabLayouts.current[index] = { x, width };
 
-    // If this is the active tab, position the indicator
-    const activeIndex = tabs.findIndex((t) => t.id === activeTab);
-    if (index === activeIndex) {
-      indicatorX.value = x;
-      indicatorWidth.value = width;
-    }
-  }, [activeTab, tabs, indicatorX, indicatorWidth]);
+      // If this is the active tab, position the indicator
+      const activeIndex = tabs.findIndex((t) => t.id === activeTab);
+      if (index === activeIndex) {
+        indicatorX.value = x;
+        indicatorWidth.value = width;
+      }
+    },
+    [activeTab, tabs, indicatorX, indicatorWidth],
+  );
 
   // Animate indicator when active tab changes
   useEffect(() => {
@@ -126,13 +135,18 @@ export const AnimatedTabBar: React.FC<AnimatedTabBarProps> = ({
     width: indicatorWidth.value,
   }));
 
-  const handleTabPress = useCallback((tabId: string) => {
-    Haptics.selectionAsync();
-    onTabPress(tabId);
-  }, [onTabPress]);
+  const handleTabPress = useCallback(
+    (tabId: string) => {
+      Haptics.selectionAsync();
+      onTabPress(tabId);
+    },
+    [onTabPress],
+  );
 
   return (
-    <View style={[styles.container, { borderBottomColor: colors.border }, style]}>
+    <View
+      style={[styles.container, { borderBottomColor: colors.border }, style]}
+    >
       {tabs.map((tab, index) => (
         <TabButton
           key={tab.id}
@@ -165,15 +179,15 @@ export const AnimatedTabBar: React.FC<AnimatedTabBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderBottomWidth: 1,
-    position: 'relative',
+    position: "relative",
   },
   tab: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: sp.md,
     gap: sp.xs,
   },
@@ -181,13 +195,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
   },
   indicator: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -1,
     height: 2.5,
     borderRadius: 2,
   },
   indicatorGlow: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -1,
     height: 4,
     borderRadius: 4,

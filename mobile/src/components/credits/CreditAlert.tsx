@@ -3,21 +3,21 @@
  * S'affiche automatiquement selon les seuils configurés
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Animated,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
-import type { RootStackParamList } from '../../types';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
+import type { RootStackParamList } from "../../types";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -26,7 +26,7 @@ interface CreditAlertProps {
   maxCredits: number;
   warningThreshold?: number; // percentage
   criticalThreshold?: number; // percentage
-  position?: 'top' | 'bottom' | 'inline';
+  position?: "top" | "bottom" | "inline";
   onDismiss?: () => void;
   onUpgrade?: () => void;
   visible?: boolean;
@@ -37,7 +37,7 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
   maxCredits,
   warningThreshold = 25,
   criticalThreshold = 10,
-  position = 'inline',
+  position = "inline",
   onDismiss,
   onUpgrade,
   visible = true,
@@ -51,13 +51,14 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
   const percentage = maxCredits > 0 ? (credits / maxCredits) * 100 : 0;
 
   // Determine alert level
-  const alertLevel = credits <= 0
-    ? 'empty'
-    : percentage <= criticalThreshold
-    ? 'critical'
-    : percentage <= warningThreshold
-    ? 'warning'
-    : null;
+  const alertLevel =
+    credits <= 0
+      ? "empty"
+      : percentage <= criticalThreshold
+        ? "critical"
+        : percentage <= warningThreshold
+          ? "warning"
+          : null;
 
   // Show/hide animation
   useEffect(() => {
@@ -83,34 +84,40 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
 
   const alertConfig = {
     empty: {
-      icon: 'alert-circle' as const,
+      icon: "alert-circle" as const,
       color: colors.accentError,
       bgColor: `${colors.accentError}15`,
       borderColor: `${colors.accentError}30`,
-      title: language === 'fr' ? 'Crédits épuisés' : 'Out of credits',
-      message: language === 'fr'
-        ? 'Rechargez vos crédits pour continuer vos analyses'
-        : 'Recharge your credits to continue analyzing',
+      title: language === "fr" ? "Crédits épuisés" : "Out of credits",
+      message:
+        language === "fr"
+          ? "Rechargez vos crédits pour continuer vos analyses"
+          : "Recharge your credits to continue analyzing",
     },
     critical: {
-      icon: 'warning' as const,
+      icon: "warning" as const,
       color: colors.accentWarning,
       bgColor: `${colors.accentWarning}15`,
       borderColor: `${colors.accentWarning}30`,
-      title: language === 'fr' ? 'Crédits presque épuisés' : 'Credits almost depleted',
-      message: language === 'fr'
-        ? `Il vous reste ${credits} crédits`
-        : `You have ${credits} credits remaining`,
+      title:
+        language === "fr"
+          ? "Crédits presque épuisés"
+          : "Credits almost depleted",
+      message:
+        language === "fr"
+          ? `Il vous reste ${credits} crédits`
+          : `You have ${credits} credits remaining`,
     },
     warning: {
-      icon: 'information-circle' as const,
+      icon: "information-circle" as const,
       color: colors.accentWarning,
       bgColor: `${colors.accentWarning}15`,
       borderColor: `${colors.accentWarning}30`,
-      title: language === 'fr' ? 'Crédits limités' : 'Limited credits',
-      message: language === 'fr'
-        ? `Il vous reste ${credits} crédits (${Math.round(percentage)}%)`
-        : `You have ${credits} credits remaining (${Math.round(percentage)}%)`,
+      title: language === "fr" ? "Crédits limités" : "Limited credits",
+      message:
+        language === "fr"
+          ? `Il vous reste ${credits} crédits (${Math.round(percentage)}%)`
+          : `You have ${credits} credits remaining (${Math.round(percentage)}%)`,
     },
   };
 
@@ -120,7 +127,7 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
     if (onUpgrade) {
       onUpgrade();
     } else {
-      navigation.navigate('Upgrade');
+      navigation.navigate("Upgrade");
     }
   };
 
@@ -133,8 +140,8 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
     <Animated.View
       style={[
         styles.container,
-        position === 'top' && styles.positionTop,
-        position === 'bottom' && styles.positionBottom,
+        position === "top" && styles.positionTop,
+        position === "bottom" && styles.positionBottom,
         {
           backgroundColor: config.bgColor,
           borderColor: config.borderColor,
@@ -161,7 +168,7 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
         >
           <Ionicons name="flash" size={16} color="#FFFFFF" />
           <Text style={styles.upgradeButtonText}>
-            {language === 'fr' ? 'Recharger' : 'Recharge'}
+            {language === "fr" ? "Recharger" : "Recharge"}
           </Text>
         </TouchableOpacity>
 
@@ -180,9 +187,9 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
@@ -190,7 +197,7 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.sm,
   },
   positionTop: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
@@ -201,7 +208,7 @@ const styles = StyleSheet.create({
     marginVertical: 0,
   },
   positionBottom: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
@@ -213,8 +220,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
   },
   textContainer: {
@@ -230,21 +237,21 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     marginLeft: Spacing.md,
   },
   upgradeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
   },
   upgradeButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },

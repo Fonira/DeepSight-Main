@@ -1,2 +1,2 @@
-export { AnimatedTabBarIcon } from './AnimatedTabBarIcon';
-export { CustomTabBar } from './CustomTabBar';
+export { AnimatedTabBarIcon } from "./AnimatedTabBarIcon";
+export { CustomTabBar } from "./CustomTabBar";

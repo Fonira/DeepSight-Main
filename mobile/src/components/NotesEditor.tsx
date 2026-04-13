@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Keyboard,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { videoApi } from '../services/api';
-import { Colors, Spacing, BorderRadius, Typography } from '../constants/theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../contexts/ThemeContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { videoApi } from "../services/api";
+import { Colors, Spacing, BorderRadius, Typography } from "../constants/theme";
 
 interface NotesEditorProps {
   summaryId: string;
@@ -24,13 +24,13 @@ interface NotesEditorProps {
 
 export const NotesEditor: React.FC<NotesEditorProps> = ({
   summaryId,
-  initialNotes = '',
+  initialNotes = "",
   onSave,
   compact = false,
 }) => {
   const { colors, isDark } = useTheme();
   const { language } = useLanguage();
-  const isEn = language === 'en';
+  const isEn = language === "en";
 
   const [notes, setNotes] = useState(initialNotes);
   const [isEditing, setIsEditing] = useState(false);
@@ -56,7 +56,9 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
       onSave?.(notes);
       setIsEditing(false);
     } catch (error) {
-      if (__DEV__) { console.error('Failed to save notes:', error); }
+      if (__DEV__) {
+        console.error("Failed to save notes:", error);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsSaving(false);
@@ -72,12 +74,25 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
   if (compact && !isEditing) {
     return (
       <TouchableOpacity
-        style={[styles.compactContainer, { backgroundColor: colors.bgElevated }]}
+        style={[
+          styles.compactContainer,
+          { backgroundColor: colors.bgElevated },
+        ]}
         onPress={() => setIsEditing(true)}
       >
-        <Ionicons name="document-text-outline" size={16} color={colors.accentPrimary} />
-        <Text style={[styles.compactText, { color: notes ? colors.textSecondary : colors.textMuted }]} numberOfLines={1}>
-          {notes || (isEn ? 'Add notes...' : 'Ajouter des notes...')}
+        <Ionicons
+          name="document-text-outline"
+          size={16}
+          color={colors.accentPrimary}
+        />
+        <Text
+          style={[
+            styles.compactText,
+            { color: notes ? colors.textSecondary : colors.textMuted },
+          ]}
+          numberOfLines={1}
+        >
+          {notes || (isEn ? "Add notes..." : "Ajouter des notes...")}
         </Text>
         <Ionicons name="pencil" size={14} color={colors.textTertiary} />
       </TouchableOpacity>
@@ -89,9 +104,13 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTitle}>
-          <Ionicons name="document-text" size={18} color={colors.accentPrimary} />
+          <Ionicons
+            name="document-text"
+            size={18}
+            color={colors.accentPrimary}
+          />
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            {isEn ? 'Personal Notes' : 'Notes personnelles'}
+            {isEn ? "Personal Notes" : "Notes personnelles"}
           </Text>
         </View>
         {!isEditing ? (
@@ -100,7 +119,10 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
           </TouchableOpacity>
         ) : (
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={handleCancel} style={styles.headerButton}>
+            <TouchableOpacity
+              onPress={handleCancel}
+              style={styles.headerButton}
+            >
               <Ionicons name="close" size={18} color={colors.accentError} />
             </TouchableOpacity>
             <TouchableOpacity
@@ -135,7 +157,9 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
           ]}
           value={notes}
           onChangeText={setNotes}
-          placeholder={isEn ? 'Write your notes here...' : 'Écrivez vos notes ici...'}
+          placeholder={
+            isEn ? "Write your notes here..." : "Écrivez vos notes ici..."
+          }
           placeholderTextColor={colors.textMuted}
           multiline
           textAlignVertical="top"
@@ -152,7 +176,9 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
             </Text>
           ) : (
             <Text style={[styles.placeholderText, { color: colors.textMuted }]}>
-              {isEn ? 'Tap to add personal notes about this video...' : 'Appuyez pour ajouter des notes personnelles sur cette vidéo...'}
+              {isEn
+                ? "Tap to add personal notes about this video..."
+                : "Appuyez pour ajouter des notes personnelles sur cette vidéo..."}
             </Text>
           )}
         </TouchableOpacity>
@@ -175,8 +201,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   compactContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
@@ -188,13 +214,13 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   title: {
@@ -202,7 +228,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   headerActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.md,
   },
   headerButton: {
@@ -230,12 +256,12 @@ const styles = StyleSheet.create({
   placeholderText: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   charCount: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'right',
+    textAlign: "right",
   },
 });
 

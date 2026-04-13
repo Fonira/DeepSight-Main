@@ -17,12 +17,14 @@ Website: https://www.deepsightsynthesis.com
 ## 3. Data We Collect
 
 ### 3.1 Account Data
+
 - Email address
 - Encrypted password (hashed with bcrypt)
 - Display name (optional)
 - Account creation date
 
 ### 3.2 Usage Data
+
 - YouTube video URLs submitted for analysis
 - AI-generated analysis results (summaries, fact-checks, study tools)
 - Chat conversation history with the AI assistant
@@ -30,12 +32,14 @@ Website: https://www.deepsightsynthesis.com
 - Subscription plan and billing status
 
 ### 3.3 Technical Data
+
 - Device type and operating system version
 - App version
 - Crash reports and error logs (via Sentry)
 - Anonymous usage analytics
 
 ### 3.4 Data We Do NOT Collect
+
 - Location data
 - Contacts or address book
 - Photos, camera, or microphone access
@@ -45,14 +49,14 @@ Website: https://www.deepsightsynthesis.com
 
 ## 4. How We Use Your Data
 
-| Purpose | Legal Basis (GDPR) |
-|---------|-------------------|
-| Provide the analysis service | Contract performance (Art. 6(1)(b)) |
-| Manage your account and subscription | Contract performance (Art. 6(1)(b)) |
+| Purpose                                                  | Legal Basis (GDPR)                  |
+| -------------------------------------------------------- | ----------------------------------- |
+| Provide the analysis service                             | Contract performance (Art. 6(1)(b)) |
+| Manage your account and subscription                     | Contract performance (Art. 6(1)(b)) |
 | Send transactional emails (verification, password reset) | Contract performance (Art. 6(1)(b)) |
-| Improve the service and fix bugs | Legitimate interest (Art. 6(1)(f)) |
-| Crash reporting and error monitoring | Legitimate interest (Art. 6(1)(f)) |
-| Respond to support requests | Legitimate interest (Art. 6(1)(f)) |
+| Improve the service and fix bugs                         | Legitimate interest (Art. 6(1)(f))  |
+| Crash reporting and error monitoring                     | Legitimate interest (Art. 6(1)(f))  |
+| Respond to support requests                              | Legitimate interest (Art. 6(1)(f))  |
 
 We do NOT use your data for advertising, profiling, or selling to third parties.
 
@@ -64,10 +68,12 @@ DeepSight uses third-party AI services to provide its core functionality:
 - **Perplexity AI** (San Francisco, USA) — Performs fact-checking by verifying claims against external sources.
 
 ### What is sent to AI services:
+
 - YouTube video transcript text (publicly available content)
 - Your chat messages when using the contextual chat feature
 
 ### What is NOT sent to AI services:
+
 - Your email, password, or personal information
 - Your browsing history or device data
 - Data from other users
@@ -76,14 +82,14 @@ AI-generated content is clearly labeled with certainty markers. We encourage use
 
 ## 6. Third-Party Services
 
-| Service | Purpose | Data Shared | Location |
-|---------|---------|-------------|----------|
-| Stripe | Payment processing | Email, plan selection | USA (PCI DSS compliant) |
-| Sentry | Error monitoring | Crash reports, device info | USA |
-| Railway | Backend hosting | All backend data | EU (Germany) |
-| Vercel | Frontend hosting | Static assets only | Global CDN |
-| YouTube Data API | Video metadata | YouTube URLs | USA (Google) |
-| Resend | Transactional email | Email address | USA |
+| Service          | Purpose             | Data Shared                | Location                |
+| ---------------- | ------------------- | -------------------------- | ----------------------- |
+| Stripe           | Payment processing  | Email, plan selection      | USA (PCI DSS compliant) |
+| Sentry           | Error monitoring    | Crash reports, device info | USA                     |
+| Railway          | Backend hosting     | All backend data           | EU (Germany)            |
+| Vercel           | Frontend hosting    | Static assets only         | Global CDN              |
+| YouTube Data API | Video metadata      | YouTube URLs               | USA (Google)            |
+| Resend           | Transactional email | Email address              | USA                     |
 
 ## 7. Data Storage and Security
 
@@ -96,13 +102,13 @@ AI-generated content is clearly labeled with certainty markers. We encourage use
 
 ## 8. Data Retention
 
-| Data Type | Retention Period |
-|-----------|-----------------|
-| Account data | Until account deletion |
+| Data Type        | Retention Period                                                             |
+| ---------------- | ---------------------------------------------------------------------------- |
+| Account data     | Until account deletion                                                       |
 | Analysis history | Based on plan (3 days Free, 30 days Student, 60 days Starter, unlimited Pro) |
-| Chat history | Same as analysis history |
-| Crash reports | 90 days |
-| Server logs | 30 days |
+| Chat history     | Same as analysis history                                                     |
+| Crash reports    | 90 days                                                                      |
+| Server logs      | 30 days                                                                      |
 
 ## 9. Your Rights (GDPR)
 
@@ -117,6 +123,7 @@ As a user in the European Union, you have the following rights:
 - **Right to Withdraw Consent** — Withdraw consent at any time (where applicable)
 
 ### How to Exercise Your Rights
+
 - **Delete account**: Settings > Delete Account (in the app)
 - **Data export**: Contact privacy@deepsightsynthesis.com
 - **Other requests**: Email privacy@deepsightsynthesis.com
@@ -130,6 +137,7 @@ DeepSight is not intended for children under 16 years of age. We do not knowingl
 ## 11. International Data Transfers
 
 Some of our third-party service providers are located outside the EU (see Section 6). For these transfers, we rely on:
+
 - Standard Contractual Clauses (SCCs) approved by the European Commission
 - Adequacy decisions where applicable
 - Service providers' compliance with equivalent data protection standards
@@ -137,6 +145,7 @@ Some of our third-party service providers are located outside the EU (see Sectio
 ## 12. Cookies and Tracking
 
 The mobile app does not use cookies. The web platform uses:
+
 - **Essential cookies** — Session management and authentication (no consent required)
 - **No advertising or tracking cookies** — We do not use any
 
@@ -154,4 +163,4 @@ Address: DeepSight SAS, France
 
 ---
 
-*This privacy policy was last updated on February 12, 2026.*
+_This privacy policy was last updated on February 12, 2026._

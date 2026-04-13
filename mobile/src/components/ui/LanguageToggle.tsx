@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage, Language } from '../../contexts/LanguageContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage, Language } from "../../contexts/LanguageContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
 interface LanguageToggleProps {
   compact?: boolean;
@@ -26,8 +26,8 @@ interface LanguageOption {
 }
 
 const languages: LanguageOption[] = [
-  { code: 'fr', label: 'French', flag: '🇫🇷', nativeLabel: 'Français' },
-  { code: 'en', label: 'English', flag: '🇬🇧', nativeLabel: 'English' },
+  { code: "fr", label: "French", flag: "🇫🇷", nativeLabel: "Français" },
+  { code: "en", label: "English", flag: "🇬🇧", nativeLabel: "English" },
 ];
 
 export const LanguageToggle: React.FC<LanguageToggleProps> = ({
@@ -38,7 +38,8 @@ export const LanguageToggle: React.FC<LanguageToggleProps> = ({
   const { language, setLanguage, t } = useLanguage();
   const [showModal, setShowModal] = useState(false);
 
-  const currentLanguage = languages.find(l => l.code === language) || languages[0];
+  const currentLanguage =
+    languages.find((l) => l.code === language) || languages[0];
 
   const handleSelectLanguage = (lang: Language) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -87,7 +88,9 @@ export const LanguageToggle: React.FC<LanguageToggleProps> = ({
             style={[styles.modalContent, { backgroundColor: colors.bgPrimary }]}
             onStartShouldSetResponder={() => true}
           >
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <View
+              style={[styles.modalHeader, { borderBottomColor: colors.border }]}
+            >
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
                 {t.settings.selectLanguage}
               </Text>
@@ -108,21 +111,37 @@ export const LanguageToggle: React.FC<LanguageToggleProps> = ({
                   <TouchableOpacity
                     style={[
                       styles.languageOption,
-                      isSelected && { backgroundColor: `${colors.accentPrimary}10` },
+                      isSelected && {
+                        backgroundColor: `${colors.accentPrimary}10`,
+                      },
                     ]}
                     onPress={() => handleSelectLanguage(item.code)}
                   >
                     <Text style={styles.optionFlag}>{item.flag}</Text>
                     <View style={styles.optionLabels}>
-                      <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                      <Text
+                        style={[
+                          styles.optionLabel,
+                          { color: colors.textPrimary },
+                        ]}
+                      >
                         {item.nativeLabel}
                       </Text>
-                      <Text style={[styles.optionSubLabel, { color: colors.textTertiary }]}>
+                      <Text
+                        style={[
+                          styles.optionSubLabel,
+                          { color: colors.textTertiary },
+                        ]}
+                      >
                         {item.label}
                       </Text>
                     </View>
                     {isSelected && (
-                      <Ionicons name="checkmark-circle" size={24} color={colors.accentPrimary} />
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={24}
+                        color={colors.accentPrimary}
+                      />
                     )}
                   </TouchableOpacity>
                 );
@@ -137,8 +156,8 @@ export const LanguageToggle: React.FC<LanguageToggleProps> = ({
 
 const styles = StyleSheet.create({
   toggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
@@ -148,8 +167,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   flag: {
     fontSize: 20,
@@ -160,21 +179,21 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: Spacing.xl,
   },
   modalContent: {
-    width: '100%',
+    width: "100%",
     maxWidth: 320,
     borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: Spacing.md,
     borderBottomWidth: 1,
   },
@@ -186,8 +205,8 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
   },
   languageOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     gap: Spacing.md,
   },

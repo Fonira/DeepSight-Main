@@ -4,11 +4,11 @@
  * All colors now aligned with web design system
  */
 
-import { darkColors, lightColors, gradients } from '../theme/colors';
-import { fontFamily, fontSize, lineHeight } from '../theme/typography';
-import { sp, borderRadius } from '../theme/spacing';
-import { shadows } from '../theme/shadows';
-import { duration } from '../theme/animations';
+import { darkColors, lightColors, gradients } from "../theme/colors";
+import { fontFamily, fontSize, lineHeight } from "../theme/typography";
+import { sp, borderRadius } from "../theme/spacing";
+import { shadows } from "../theme/shadows";
+import { duration } from "../theme/animations";
 
 export const Colors = {
   // Dark theme (default) - aligned with web
@@ -31,8 +31,8 @@ export const Spacing = {
   md: sp.md,
   lg: sp.lg,
   xl: sp.xl,
-  xxl: sp['2xl'],
-  xxxl: sp['3xl'],
+  xxl: sp["2xl"],
+  xxxl: sp["3xl"],
 };
 
 export const BorderRadius = {
@@ -40,7 +40,7 @@ export const BorderRadius = {
   md: borderRadius.md,
   lg: borderRadius.lg,
   xl: borderRadius.xl,
-  xxl: borderRadius['2xl'],
+  xxl: borderRadius["2xl"],
   full: borderRadius.full,
 };
 
@@ -52,10 +52,10 @@ export const Typography = {
     base: fontSize.base,
     lg: fontSize.lg,
     xl: fontSize.xl,
-    xxl: fontSize['2xl'],
-    '2xl': fontSize['2xl'],
-    '3xl': fontSize['3xl'],
-    '4xl': fontSize['4xl'],
+    xxl: fontSize["2xl"],
+    "2xl": fontSize["2xl"],
+    "3xl": fontSize["3xl"],
+    "4xl": fontSize["4xl"],
   },
   lineHeight,
 };

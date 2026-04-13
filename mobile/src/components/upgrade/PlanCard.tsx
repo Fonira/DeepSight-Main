@@ -1,13 +1,13 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/contexts/ThemeContext';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { Button } from '@/components/ui/Button';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { gradients } from '@/theme/colors';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/contexts/ThemeContext";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { Button } from "@/components/ui/Button";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
+import { gradients } from "@/theme/colors";
 
 interface Plan {
   id: string;
@@ -51,7 +51,9 @@ export const PlanCard: React.FC<PlanCardProps> = ({
           </LinearGradient>
         )}
         {isCurrentPlan && (
-          <View style={[styles.currentBadge, { borderColor: colors.accentSuccess }]}>
+          <View
+            style={[styles.currentBadge, { borderColor: colors.accentSuccess }]}
+          >
             <Text style={[styles.currentText, { color: colors.accentSuccess }]}>
               Actuel
             </Text>
@@ -94,8 +96,8 @@ export const PlanCard: React.FC<PlanCardProps> = ({
       {/* CTA */}
       <View style={styles.ctaContainer}>
         <Button
-          title={isCurrentPlan ? 'Plan actuel' : 'Choisir ce plan'}
-          variant={isCurrentPlan ? 'secondary' : 'primary'}
+          title={isCurrentPlan ? "Plan actuel" : "Choisir ce plan"}
+          variant={isCurrentPlan ? "secondary" : "primary"}
           onPress={() => onSelect(plan.id)}
           disabled={isCurrentPlan}
           fullWidth
@@ -109,10 +111,10 @@ export const PlanCard: React.FC<PlanCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   badgeRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: sp.sm,
     marginBottom: sp.lg,
     minHeight: 28,
@@ -125,7 +127,7 @@ const styles = StyleSheet.create({
   popularText: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.xs,
-    color: '#ffffff',
+    color: "#ffffff",
   },
   currentBadge: {
     paddingVertical: sp.xs,
@@ -139,17 +141,17 @@ const styles = StyleSheet.create({
   },
   planName: {
     fontFamily: fontFamily.display,
-    fontSize: fontSize['3xl'],
+    fontSize: fontSize["3xl"],
     marginBottom: sp.sm,
   },
   priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    alignItems: "baseline",
     marginBottom: sp.xl,
   },
   price: {
     fontFamily: fontFamily.bodyBold,
-    fontSize: fontSize['2xl'],
+    fontSize: fontSize["2xl"],
   },
   period: {
     fontFamily: fontFamily.body,
@@ -161,8 +163,8 @@ const styles = StyleSheet.create({
     marginBottom: sp.xl,
   },
   featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: sp.md,
   },
   featureIcon: {
@@ -174,7 +176,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   ctaContainer: {
-    marginTop: 'auto' as const,
+    marginTop: "auto" as const,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState, forwardRef, useEffect } from 'react';
+import React, { useState, forwardRef, useEffect } from "react";
 import {
   View,
   TextInput,
@@ -7,19 +7,19 @@ import {
   Pressable,
   TextInputProps,
   ViewStyle,
-} from 'react-native';
+} from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   interpolate,
   interpolateColor,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../contexts/ThemeContext';
-import { borderRadius, sp } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
-import { timings } from '../../theme/animations';
+} from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
+import { borderRadius, sp } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
+import { timings } from "../../theme/animations";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -51,7 +51,7 @@ export const Input = forwardRef<TextInput, InputProps>(
       onBlur: onBlurProp,
       ...props
     },
-    ref
+    ref,
   ) => {
     const { colors } = useTheme();
     const [isFocused, setIsFocused] = useState(false);
@@ -93,8 +93,8 @@ export const Input = forwardRef<TextInput, InputProps>(
     const borderColor = error
       ? colors.accentError
       : isFocused
-      ? colors.borderFocus
-      : colors.border;
+        ? colors.borderFocus
+        : colors.border;
 
     const handleFocus = (e: any) => {
       setIsFocused(true);
@@ -117,8 +117,8 @@ export const Input = forwardRef<TextInput, InputProps>(
                 color: error
                   ? colors.accentError
                   : isFocused
-                  ? colors.accentPrimary
-                  : colors.textTertiary,
+                    ? colors.accentPrimary
+                    : colors.textTertiary,
               },
             ]}
           >
@@ -173,13 +173,13 @@ export const Input = forwardRef<TextInput, InputProps>(
 
           {isPassword && (
             <Pressable
-              testID={testID ? `${testID}-password-toggle` : 'password-toggle'}
+              testID={testID ? `${testID}-password-toggle` : "password-toggle"}
               onPress={() => setIsPasswordVisible(!isPasswordVisible)}
               style={styles.rightIcon}
               hitSlop={8}
             >
               <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
                 color={colors.textTertiary}
               />
@@ -188,7 +188,7 @@ export const Input = forwardRef<TextInput, InputProps>(
 
           {rightIcon && !isPassword && (
             <Pressable
-              testID={testID ? `${testID}-right-icon` : 'right-icon-button'}
+              testID={testID ? `${testID}-right-icon` : "right-icon-button"}
               onPress={onRightIconPress}
               style={styles.rightIcon}
               hitSlop={8}
@@ -216,24 +216,24 @@ export const Input = forwardRef<TextInput, InputProps>(
         )}
       </View>
     );
-  }
+  },
 );
 
-Input.displayName = 'Input';
+Input.displayName = "Input";
 
 const styles = StyleSheet.create({
   container: {
     marginBottom: sp.lg,
-    position: 'relative',
+    position: "relative",
   },
   floatingLabel: {
-    position: 'absolute',
+    position: "absolute",
     left: sp.lg,
     top: sp.lg,
     fontSize: fontSize.base,
     fontFamily: fontFamily.bodyMedium,
     zIndex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   staticLabel: {
     fontSize: fontSize.sm,
@@ -241,8 +241,8 @@ const styles = StyleSheet.create({
     marginBottom: sp.sm,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
     borderRadius: borderRadius.lg,
     paddingHorizontal: sp.md,

@@ -5,22 +5,28 @@
  * Integrates with crash reporting (Sentry) in production.
  */
 
-import React, { createContext, useContext, useCallback, useState, ReactNode } from 'react';
-import { ApiError } from '../services/api';
+import React, {
+  createContext,
+  useContext,
+  useCallback,
+  useState,
+  ReactNode,
+} from "react";
+import { ApiError } from "../services/api";
 
 // Error severity levels
-export type ErrorSeverity = 'info' | 'warning' | 'error' | 'fatal';
+export type ErrorSeverity = "info" | "warning" | "error" | "fatal";
 
 // Error types for categorization
 export type ErrorType =
-  | 'network'
-  | 'auth'
-  | 'validation'
-  | 'server'
-  | 'timeout'
-  | 'quota'
-  | 'permission'
-  | 'unknown';
+  | "network"
+  | "auth"
+  | "validation"
+  | "server"
+  | "timeout"
+  | "quota"
+  | "permission"
+  | "unknown";
 
 // Structured error interface
 export interface AppError {
@@ -50,86 +56,97 @@ const ErrorContext = createContext<ErrorContextType | undefined>(undefined);
 // Error message translations (French)
 const ERROR_MESSAGES: Record<ErrorType, Record<string, string>> = {
   network: {
-    default: 'Connexion perdue — on réessaie dans un instant',
-    offline: 'Vous êtes hors ligne. Vos données se synchroniseront à la reconnexion.',
+    default: "Connexion perdue — on réessaie dans un instant",
+    offline:
+      "Vous êtes hors ligne. Vos données se synchroniseront à la reconnexion.",
   },
   auth: {
-    default: 'Session interrompue — reconnectez-vous pour continuer.',
-    expired: 'Votre session a expiré — reconnectez-vous pour continuer.',
-    invalid: 'Identifiants incorrects.',
+    default: "Session interrompue — reconnectez-vous pour continuer.",
+    expired: "Votre session a expiré — reconnectez-vous pour continuer.",
+    invalid: "Identifiants incorrects.",
   },
   validation: {
-    default: 'Certaines données semblent incorrectes.',
+    default: "Certaines données semblent incorrectes.",
   },
   server: {
-    default: 'Quelque chose a planté de notre côté. On s\'en occupe.',
-    maintenance: 'Maintenance en cours — on revient dans quelques minutes.',
+    default: "Quelque chose a planté de notre côté. On s'en occupe.",
+    maintenance: "Maintenance en cours — on revient dans quelques minutes.",
   },
   timeout: {
-    default: 'Ça prend plus de temps que prévu — réessayez.',
+    default: "Ça prend plus de temps que prévu — réessayez.",
   },
   quota: {
-    default: 'Vous avez atteint votre limite. Débloquez plus avec un forfait supérieur.',
-    credits: 'Plus de crédits pour l\'instant. Renouvellement automatique bientôt.',
-    analyses: 'Quota d\'analyses du mois atteint.',
+    default:
+      "Vous avez atteint votre limite. Débloquez plus avec un forfait supérieur.",
+    credits:
+      "Plus de crédits pour l'instant. Renouvellement automatique bientôt.",
+    analyses: "Quota d'analyses du mois atteint.",
   },
   permission: {
-    default: 'Cette fonctionnalité n\'est pas disponible avec votre plan.',
-    plan: 'Débloquez cette fonctionnalité avec un forfait supérieur.',
+    default: "Cette fonctionnalité n'est pas disponible avec votre plan.",
+    plan: "Débloquez cette fonctionnalité avec un forfait supérieur.",
   },
   unknown: {
-    default: 'Quelque chose s\'est mal passé. Réessayez.',
+    default: "Quelque chose s'est mal passé. Réessayez.",
   },
 };
 
 // Categorize error from API error or generic error
-function categorizeError(error: unknown): { type: ErrorType; severity: ErrorSeverity; code?: string } {
+function categorizeError(error: unknown): {
+  type: ErrorType;
+  severity: ErrorSeverity;
+  code?: string;
+} {
   if (error instanceof ApiError) {
     const { status, code } = error;
 
     // Network errors
-    if (status === 0 || code === 'NETWORK_ERROR') {
-      return { type: 'network', severity: 'warning', code };
+    if (status === 0 || code === "NETWORK_ERROR") {
+      return { type: "network", severity: "warning", code };
     }
 
     // Timeout
-    if (status === 408 || code === 'TIMEOUT') {
-      return { type: 'timeout', severity: 'warning', code };
+    if (status === 408 || code === "TIMEOUT") {
+      return { type: "timeout", severity: "warning", code };
     }
 
     // Auth errors
-    if (status === 401 || code === 'SESSION_EXPIRED' || code === 'UNAUTHORIZED') {
-      return { type: 'auth', severity: 'error', code };
+    if (
+      status === 401 ||
+      code === "SESSION_EXPIRED" ||
+      code === "UNAUTHORIZED"
+    ) {
+      return { type: "auth", severity: "error", code };
     }
 
     // Forbidden / Permission
     if (status === 403) {
-      if (code === 'QUOTA_EXCEEDED' || code === 'CREDITS_EXHAUSTED') {
-        return { type: 'quota', severity: 'warning', code };
+      if (code === "QUOTA_EXCEEDED" || code === "CREDITS_EXHAUSTED") {
+        return { type: "quota", severity: "warning", code };
       }
-      if (code === 'PLAN_REQUIRED' || code === 'FEATURE_LOCKED') {
-        return { type: 'permission', severity: 'info', code };
+      if (code === "PLAN_REQUIRED" || code === "FEATURE_LOCKED") {
+        return { type: "permission", severity: "info", code };
       }
-      return { type: 'permission', severity: 'warning', code };
+      return { type: "permission", severity: "warning", code };
     }
 
     // Validation errors
     if (status === 400 || status === 422) {
-      return { type: 'validation', severity: 'warning', code };
+      return { type: "validation", severity: "warning", code };
     }
 
     // Server errors
     if (status >= 500) {
-      return { type: 'server', severity: 'error', code };
+      return { type: "server", severity: "error", code };
     }
 
     // Rate limiting
     if (status === 429) {
-      return { type: 'quota', severity: 'warning', code: 'RATE_LIMITED' };
+      return { type: "quota", severity: "warning", code: "RATE_LIMITED" };
     }
   }
 
-  return { type: 'unknown', severity: 'error' };
+  return { type: "unknown", severity: "error" };
 }
 
 // Get user-friendly message
@@ -147,7 +164,9 @@ function generateErrorId(): string {
 }
 
 // Provider component
-export const ErrorProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const ErrorProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [lastError, setLastError] = useState<AppError | null>(null);
   const [errorHistory, setErrorHistory] = useState<AppError[]>([]);
 
@@ -155,7 +174,7 @@ export const ErrorProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const reportError = useCallback((appError: AppError) => {
     // Log in development
     if (__DEV__) {
-      console.error('[ErrorContext]', {
+      console.error("[ErrorContext]", {
         type: appError.type,
         severity: appError.severity,
         message: appError.message,
@@ -169,33 +188,37 @@ export const ErrorProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   // Main error handler
-  const handleError = useCallback((error: unknown, context?: Record<string, unknown>): AppError => {
-    const { type, severity, code } = categorizeError(error);
+  const handleError = useCallback(
+    (error: unknown, context?: Record<string, unknown>): AppError => {
+      const { type, severity, code } = categorizeError(error);
 
-    const originalMessage = error instanceof Error ? error.message : String(error);
-    const userMessage = getUserMessage(type, code);
+      const originalMessage =
+        error instanceof Error ? error.message : String(error);
+      const userMessage = getUserMessage(type, code);
 
-    const appError: AppError = {
-      id: generateErrorId(),
-      type,
-      severity,
-      message: originalMessage,
-      userMessage,
-      code,
-      timestamp: new Date(),
-      context,
-      originalError: error instanceof Error ? error : undefined,
-    };
+      const appError: AppError = {
+        id: generateErrorId(),
+        type,
+        severity,
+        message: originalMessage,
+        userMessage,
+        code,
+        timestamp: new Date(),
+        context,
+        originalError: error instanceof Error ? error : undefined,
+      };
 
-    // Update state
-    setLastError(appError);
-    setErrorHistory(prev => [appError, ...prev].slice(0, 50)); // Keep last 50 errors
+      // Update state
+      setLastError(appError);
+      setErrorHistory((prev) => [appError, ...prev].slice(0, 50)); // Keep last 50 errors
 
-    // Report to monitoring
-    reportError(appError);
+      // Report to monitoring
+      reportError(appError);
 
-    return appError;
-  }, [reportError]);
+      return appError;
+    },
+    [reportError],
+  );
 
   // Clear current error
   const clearError = useCallback(() => {
@@ -227,7 +250,7 @@ export const ErrorProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 export const useError = (): ErrorContextType => {
   const context = useContext(ErrorContext);
   if (!context) {
-    throw new Error('useError must be used within ErrorProvider');
+    throw new Error("useError must be used within ErrorProvider");
   }
   return context;
 };
@@ -241,7 +264,7 @@ export const useErrorHandler = () => {
       const appError = handleError(error, context);
       return appError.userMessage;
     },
-    [handleError]
+    [handleError],
   );
 };
 

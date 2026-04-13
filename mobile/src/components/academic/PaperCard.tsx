@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,16 +6,16 @@ import {
   TouchableOpacity,
   Linking,
   Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Card, Badge } from '../ui';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
-import type { AcademicPaper } from '../../services/api';
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Card, Badge } from "../ui";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
+import type { AcademicPaper } from "../../services/api";
 
 interface PaperCardProps {
   paper: AcademicPaper;
@@ -25,15 +25,15 @@ interface PaperCardProps {
 }
 
 const SOURCE_COLORS: Record<string, string> = {
-  semantic_scholar: '#1857B6',
-  openalex: '#C93C20',
-  arxiv: '#B31B1B',
+  semantic_scholar: "#1857B6",
+  openalex: "#C93C20",
+  arxiv: "#B31B1B",
 };
 
 const SOURCE_NAMES: Record<string, string> = {
-  semantic_scholar: 'Semantic Scholar',
-  openalex: 'OpenAlex',
-  arxiv: 'arXiv',
+  semantic_scholar: "Semantic Scholar",
+  openalex: "OpenAlex",
+  arxiv: "arXiv",
 };
 
 export const PaperCard: React.FC<PaperCardProps> = ({
@@ -47,7 +47,7 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   const [showAbstract, setShowAbstract] = useState(false);
 
   const formatAuthors = (authors: Array<{ name: string }>) => {
-    if (!authors.length) return tr('Auteur inconnu', 'Unknown author');
+    if (!authors.length) return tr("Auteur inconnu", "Unknown author");
     if (authors.length === 1) return authors[0].name;
     if (authors.length === 2) return `${authors[0].name} & ${authors[1].name}`;
     return `${authors[0].name} et al.`;
@@ -74,14 +74,18 @@ export const PaperCard: React.FC<PaperCardProps> = ({
 
   const handleCopyCitation = async () => {
     const authors = formatAuthors(paper.authors);
-    const year = paper.year || 'n.d.';
-    const citation = `${authors} (${year}). ${paper.title}. ${paper.venue || ''}`.trim();
+    const year = paper.year || "n.d.";
+    const citation =
+      `${authors} (${year}). ${paper.title}. ${paper.venue || ""}`.trim();
 
     await Clipboard.setStringAsync(citation);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
-      tr('Citation copiée', 'Citation copied'),
-      tr('La citation a été copiée dans le presse-papiers', 'Citation copied to clipboard')
+      tr("Citation copiée", "Citation copied"),
+      tr(
+        "La citation a été copiée dans le presse-papiers",
+        "Citation copied to clipboard",
+      ),
     );
   };
 
@@ -107,12 +111,21 @@ export const PaperCard: React.FC<PaperCardProps> = ({
           <Badge
             label={SOURCE_NAMES[paper.source] || paper.source}
             variant="default"
-            style={{ backgroundColor: SOURCE_COLORS[paper.source] || colors.surfaceSecondary }}
-            textStyle={{ color: '#FFFFFF', fontSize: 10 }}
+            style={{
+              backgroundColor:
+                SOURCE_COLORS[paper.source] || colors.surfaceSecondary,
+            }}
+            textStyle={{ color: "#FFFFFF", fontSize: 10 }}
           />
           <View style={styles.citationBadge}>
-            <Ionicons name="document-text-outline" size={12} color={colors.textSecondary} />
-            <Text style={[styles.citationCount, { color: colors.textSecondary }]}>
+            <Ionicons
+              name="document-text-outline"
+              size={12}
+              color={colors.textSecondary}
+            />
+            <Text
+              style={[styles.citationCount, { color: colors.textSecondary }]}
+            >
               {formatCitations(paper.citation_count)}
             </Text>
           </View>
@@ -127,13 +140,19 @@ export const PaperCard: React.FC<PaperCardProps> = ({
         </Text>
 
         {/* Authors and year */}
-        <Text style={[styles.authors, { color: colors.textSecondary }]} numberOfLines={1}>
-          {formatAuthors(paper.authors)} {paper.year ? `(${paper.year})` : ''}
+        <Text
+          style={[styles.authors, { color: colors.textSecondary }]}
+          numberOfLines={1}
+        >
+          {formatAuthors(paper.authors)} {paper.year ? `(${paper.year})` : ""}
         </Text>
 
         {/* Venue */}
         {paper.venue && !compact && (
-          <Text style={[styles.venue, { color: colors.textTertiary }]} numberOfLines={1}>
+          <Text
+            style={[styles.venue, { color: colors.textTertiary }]}
+            numberOfLines={1}
+          >
             {paper.venue}
           </Text>
         )}
@@ -147,8 +166,12 @@ export const PaperCard: React.FC<PaperCardProps> = ({
             >
               {paper.abstract}
             </Text>
-            <Text style={[styles.toggleAbstract, { color: colors.accentPrimary }]}>
-              {showAbstract ? tr('Voir moins', 'Show less') : tr('Voir plus', 'Show more')}
+            <Text
+              style={[styles.toggleAbstract, { color: colors.accentPrimary }]}
+            >
+              {showAbstract
+                ? tr("Voir moins", "Show less")
+                : tr("Voir plus", "Show more")}
             </Text>
           </TouchableOpacity>
         )}
@@ -157,7 +180,7 @@ export const PaperCard: React.FC<PaperCardProps> = ({
         <View style={styles.actions}>
           {paper.is_open_access && (
             <Badge
-              label={tr('Accès libre', 'Open Access')}
+              label={tr("Accès libre", "Open Access")}
               variant="success"
               style={styles.oaBadge}
             />
@@ -165,23 +188,46 @@ export const PaperCard: React.FC<PaperCardProps> = ({
 
           <View style={styles.actionButtons}>
             {paper.pdf_url && (
-              <TouchableOpacity onPress={handleOpenPdf} style={styles.actionButton}>
-                <Ionicons name="document-outline" size={18} color={colors.accentPrimary} />
-                <Text style={[styles.actionText, { color: colors.accentPrimary }]}>PDF</Text>
+              <TouchableOpacity
+                onPress={handleOpenPdf}
+                style={styles.actionButton}
+              >
+                <Ionicons
+                  name="document-outline"
+                  size={18}
+                  color={colors.accentPrimary}
+                />
+                <Text
+                  style={[styles.actionText, { color: colors.accentPrimary }]}
+                >
+                  PDF
+                </Text>
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity onPress={handleCopyCitation} style={styles.actionButton}>
-              <Ionicons name="copy-outline" size={18} color={colors.textSecondary} />
-              <Text style={[styles.actionText, { color: colors.textSecondary }]}>
-                {tr('Citer', 'Cite')}
+            <TouchableOpacity
+              onPress={handleCopyCitation}
+              style={styles.actionButton}
+            >
+              <Ionicons
+                name="copy-outline"
+                size={18}
+                color={colors.textSecondary}
+              />
+              <Text
+                style={[styles.actionText, { color: colors.textSecondary }]}
+              >
+                {tr("Citer", "Cite")}
               </Text>
             </TouchableOpacity>
 
             {onSelect && (
-              <TouchableOpacity onPress={handleSelect} style={styles.actionButton}>
+              <TouchableOpacity
+                onPress={handleSelect}
+                style={styles.actionButton}
+              >
                 <Ionicons
-                  name={isSelected ? 'checkmark-circle' : 'add-circle-outline'}
+                  name={isSelected ? "checkmark-circle" : "add-circle-outline"}
                   size={18}
                   color={isSelected ? colors.success : colors.textSecondary}
                 />
@@ -200,14 +246,14 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.xs,
   },
   citationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   citationCount: {
@@ -228,7 +274,7 @@ const styles = StyleSheet.create({
   venue: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     marginBottom: Spacing.xs,
   },
   abstract: {
@@ -243,26 +289,26 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: Spacing.sm,
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(128,128,128,0.2)',
+    borderTopColor: "rgba(128,128,128,0.2)",
   },
   oaBadge: {
     paddingHorizontal: Spacing.xs,
     paddingVertical: 2,
   },
   actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     padding: Spacing.xs,
   },

@@ -1,17 +1,17 @@
 /**
  * DeepSight Mobile V2 - Simplified Types
  */
-import { PlanType } from '../constants/config';
+import { PlanType } from "../constants/config";
 
 // ─── Analysis Options (simplified for mobile) ───
 export interface AnalysisOptionsV2 {
-  mode: 'accessible' | 'standard' | 'expert';
+  mode: "accessible" | "standard" | "expert";
   language: string;
 }
 
 export const DEFAULT_ANALYSIS_OPTIONS: AnalysisOptionsV2 = {
-  mode: 'standard',
-  language: 'fr',
+  mode: "standard",
+  language: "fr",
 };
 
 // ─── Study Tools ───
@@ -19,7 +19,7 @@ export interface Flashcard {
   id: string;
   front: string;
   back: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: "easy" | "medium" | "hard";
   lastReviewed?: string;
   nextReview?: string;
   repetitions: number;
@@ -72,4 +72,4 @@ export interface PlanInfo {
 }
 
 // ─── Tab Routes ───
-export type TabRoute = 'index' | 'library' | 'study' | 'profile';
+export type TabRoute = "index" | "library" | "study" | "profile";

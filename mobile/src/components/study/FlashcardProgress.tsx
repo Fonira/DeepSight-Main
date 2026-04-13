@@ -6,9 +6,9 @@
  * Supports count labels (e.g., "3/10") or percentage display.
  */
 
-import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import React, { useEffect } from "react";
+import { View, StyleSheet } from "react-native";
+import Svg, { Circle } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
@@ -17,10 +17,10 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   interpolateColor,
-} from 'react-native-reanimated';
-import { useTheme } from '../../contexts/ThemeContext';
-import { palette } from '../../theme/colors';
-import { fontFamily, fontSize } from '../../theme/typography';
+} from "react-native-reanimated";
+import { useTheme } from "../../contexts/ThemeContext";
+import { palette } from "../../theme/colors";
+import { fontFamily, fontSize } from "../../theme/typography";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -72,9 +72,13 @@ export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
   const pulseScale = useSharedValue(1);
   useEffect(() => {
     if (progress >= 1) {
-      pulseScale.value = withSpring(1.08, { damping: 8, stiffness: 200 }, () => {
-        pulseScale.value = withSpring(1, { damping: 12, stiffness: 150 });
-      });
+      pulseScale.value = withSpring(
+        1.08,
+        { damping: 8, stiffness: 200 },
+        () => {
+          pulseScale.value = withSpring(1, { damping: 12, stiffness: 150 });
+        },
+      );
     }
   }, [progress, pulseScale]);
 
@@ -87,7 +91,7 @@ export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
     const color = interpolateColor(
       animatedProgress.value,
       [0, 0.8, 1],
-      [colors.textPrimary, colors.textPrimary, palette.green]
+      [colors.textPrimary, colors.textPrimary, palette.green],
     );
     return { color };
   });
@@ -96,7 +100,13 @@ export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
   const activeStroke = strokeColor ?? palette.indigo;
 
   return (
-    <Animated.View style={[styles.container, { width: size, height: size }, containerAnimStyle]}>
+    <Animated.View
+      style={[
+        styles.container,
+        { width: size, height: size },
+        containerAnimStyle,
+      ]}
+    >
       <Svg width={size} height={size}>
         {/* Background track */}
         <Circle
@@ -125,11 +135,7 @@ export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
       {showLabel && (
         <View style={styles.labelContainer}>
           <Animated.Text
-            style={[
-              styles.label,
-              { fontSize: labelFontSize },
-              labelAnimStyle,
-            ]}
+            style={[styles.label, { fontSize: labelFontSize }, labelAnimStyle]}
           >
             {displayLabel}
           </Animated.Text>
@@ -141,13 +147,13 @@ export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   labelContainer: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   label: {
     fontFamily: fontFamily.bodySemiBold,

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   FlatList,
   ViewToken,
   TouchableOpacity,
-} from 'react-native';
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -18,26 +18,26 @@ import Animated, {
   FadeIn,
   FadeInUp,
   SlideInRight,
-} from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Haptics from 'expo-haptics';
+} from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
 
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { Button } from '../components/ui';
+import { useTheme } from "../contexts/ThemeContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { Button } from "../components/ui";
 import {
   OnboardingAnalyzeIllustration,
   OnboardingInsightsIllustration,
   OnboardingChatIllustration,
   OnboardingExportIllustration,
-} from '../components/illustrations';
-import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
+} from "../components/illustrations";
+import { Colors, Spacing, Typography, BorderRadius } from "../constants/theme";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const ONBOARDING_KEY = 'deepsight_has_seen_onboarding';
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const ONBOARDING_KEY = "deepsight_has_seen_onboarding";
 
 interface OnboardingSlide {
   id: string;
@@ -49,56 +49,73 @@ interface OnboardingSlide {
 
 const slides: OnboardingSlide[] = [
   {
-    id: '1',
-    titleKey: 'onboarding.slide1Title',
-    descriptionKey: 'onboarding.slide1Desc',
+    id: "1",
+    titleKey: "onboarding.slide1Title",
+    descriptionKey: "onboarding.slide1Desc",
     illustration: OnboardingAnalyzeIllustration,
     gradientColors: Colors.gradientPrimary,
   },
   {
-    id: '2',
-    titleKey: 'onboarding.slide2Title',
-    descriptionKey: 'onboarding.slide2Desc',
+    id: "2",
+    titleKey: "onboarding.slide2Title",
+    descriptionKey: "onboarding.slide2Desc",
     illustration: OnboardingInsightsIllustration,
-    gradientColors: ['#F59E0B', '#EF4444'] as const,
+    gradientColors: ["#F59E0B", "#EF4444"] as const,
   },
   {
-    id: '3',
-    titleKey: 'onboarding.slide3Title',
-    descriptionKey: 'onboarding.slide3Desc',
+    id: "3",
+    titleKey: "onboarding.slide3Title",
+    descriptionKey: "onboarding.slide3Desc",
     illustration: OnboardingChatIllustration,
-    gradientColors: ['#10B981', '#059669'] as const,
+    gradientColors: ["#10B981", "#059669"] as const,
   },
   {
-    id: '4',
-    titleKey: 'onboarding.slide4Title',
-    descriptionKey: 'onboarding.slide4Desc',
+    id: "4",
+    titleKey: "onboarding.slide4Title",
+    descriptionKey: "onboarding.slide4Desc",
     illustration: OnboardingExportIllustration,
-    gradientColors: ['#3B82F6', '#6366F1'] as const,
+    gradientColors: ["#3B82F6", "#6366F1"] as const,
   },
 ];
 
 // Default translations if not in i18n
 const defaultTranslations: Record<string, { title: string; desc: string }> = {
-  'onboarding.slide1Title': { title: 'Analysez n\'importe quelle vidéo', desc: '' },
-  'onboarding.slide1Desc': { title: '', desc: 'Collez un lien YouTube ou TikTok et laissez l\'IA extraire les informations clés en quelques secondes.' },
-  'onboarding.slide2Title': { title: 'Des insights approfondis', desc: '' },
-  'onboarding.slide2Desc': { title: '', desc: 'Obtenez des résumés, concepts clés, et analyses détaillées adaptés à votre domaine.' },
-  'onboarding.slide3Title': { title: 'Discutez avec le contenu', desc: '' },
-  'onboarding.slide3Desc': { title: '', desc: 'Posez des questions sur la vidéo et obtenez des réponses précises avec références.' },
-  'onboarding.slide4Title': { title: 'Exportez et partagez', desc: '' },
-  'onboarding.slide4Desc': { title: '', desc: 'Sauvegardez vos analyses, créez des playlists et partagez vos découvertes.' },
+  "onboarding.slide1Title": {
+    title: "Analysez n'importe quelle vidéo",
+    desc: "",
+  },
+  "onboarding.slide1Desc": {
+    title: "",
+    desc: "Collez un lien YouTube ou TikTok et laissez l'IA extraire les informations clés en quelques secondes.",
+  },
+  "onboarding.slide2Title": { title: "Des insights approfondis", desc: "" },
+  "onboarding.slide2Desc": {
+    title: "",
+    desc: "Obtenez des résumés, concepts clés, et analyses détaillées adaptés à votre domaine.",
+  },
+  "onboarding.slide3Title": { title: "Discutez avec le contenu", desc: "" },
+  "onboarding.slide3Desc": {
+    title: "",
+    desc: "Posez des questions sur la vidéo et obtenez des réponses précises avec références.",
+  },
+  "onboarding.slide4Title": { title: "Exportez et partagez", desc: "" },
+  "onboarding.slide4Desc": {
+    title: "",
+    desc: "Sauvegardez vos analyses, créez des playlists et partagez vos découvertes.",
+  },
 };
 
 interface OnboardingScreenProps {
   onComplete: () => void;
 }
 
-export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
+export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
+  onComplete,
+}) => {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('creative');
+  useScreenDoodleVariant("creative");
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useSharedValue(0);
@@ -106,9 +123,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   const handleComplete = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     try {
-      await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+      await AsyncStorage.setItem(ONBOARDING_KEY, "true");
     } catch (error) {
-      if (__DEV__) { console.error('Failed to save onboarding state:', error); }
+      if (__DEV__) {
+        console.error("Failed to save onboarding state:", error);
+      }
     }
     onComplete();
   };
@@ -116,7 +135,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   const handleNext = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (currentIndex < slides.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+      flatListRef.current?.scrollToIndex({
+        index: currentIndex + 1,
+        animated: true,
+      });
     } else {
       handleComplete();
     }
@@ -133,40 +155,51 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
         setCurrentIndex(viewableItems[0].index);
       }
     },
-    []
+    [],
   );
 
-  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
+  const viewabilityConfig = useRef({
+    viewAreaCoveragePercentThreshold: 50,
+  }).current;
 
   const getTranslation = (key: string): string => {
     // Try to get from i18n first
-    const parts = key.split('.');
+    const parts = key.split(".");
     let value: any = t;
     for (const part of parts) {
       value = value?.[part];
     }
-    if (typeof value === 'string') return value;
+    if (typeof value === "string") return value;
 
     // Fall back to defaults
     const defaultValue = defaultTranslations[key];
-    if (key.includes('Title')) return defaultValue?.title || key;
-    if (key.includes('Desc')) return defaultValue?.desc || key;
+    if (key.includes("Title")) return defaultValue?.title || key;
+    if (key.includes("Desc")) return defaultValue?.desc || key;
     return key;
   };
 
-  const renderSlide = ({ item, index }: { item: OnboardingSlide; index: number }) => {
+  const renderSlide = ({
+    item,
+    index,
+  }: {
+    item: OnboardingSlide;
+    index: number;
+  }) => {
     const Illustration = item.illustration;
 
     return (
       <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
-        <Animated.View 
+        <Animated.View
           entering={FadeIn.delay(200)}
           style={styles.illustrationContainer}
         >
-          <Illustration size={SCREEN_WIDTH * 0.7} primaryColor={item.gradientColors[0]} />
+          <Illustration
+            size={SCREEN_WIDTH * 0.7}
+            primaryColor={item.gradientColors[0]}
+          />
         </Animated.View>
 
-        <Animated.View 
+        <Animated.View
           entering={FadeInUp.delay(300)}
           style={styles.textContainer}
         >
@@ -176,11 +209,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
             end={{ x: 1, y: 0 }}
             style={styles.titleGradient}
           >
-            <Text style={styles.title}>
-              {getTranslation(item.titleKey)}
-            </Text>
+            <Text style={styles.title}>{getTranslation(item.titleKey)}</Text>
           </LinearGradient>
-          
+
           <Text style={[styles.description, { color: colors.textSecondary }]}>
             {getTranslation(item.descriptionKey)}
           </Text>
@@ -204,14 +235,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
             scrollX.value,
             inputRange,
             [8, 24, 8],
-            Extrapolation.CLAMP
+            Extrapolation.CLAMP,
           );
 
           const opacity = interpolate(
             scrollX.value,
             inputRange,
             [0.3, 1, 0.3],
-            Extrapolation.CLAMP
+            Extrapolation.CLAMP,
           );
 
           return {
@@ -237,13 +268,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   return (
     <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
       {/* Skip button */}
-      <Animated.View 
+      <Animated.View
         entering={FadeIn.delay(500)}
         style={[styles.skipContainer, { paddingTop: insets.top + Spacing.md }]}
       >
         <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
           <Text style={[styles.skipText, { color: colors.textSecondary }]}>
-            {t.common?.skip || 'Passer'}
+            {t.common?.skip || "Passer"}
           </Text>
         </TouchableOpacity>
       </Animated.View>
@@ -267,24 +298,29 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
       />
 
       {/* Bottom section */}
-      <Animated.View 
+      <Animated.View
         entering={FadeInUp.delay(400)}
-        style={[styles.bottomContainer, { paddingBottom: insets.bottom + Spacing.lg }]}
+        style={[
+          styles.bottomContainer,
+          { paddingBottom: insets.bottom + Spacing.lg },
+        ]}
       >
         <PaginationDots />
 
         <View style={styles.buttonContainer}>
           <Button
-            title={currentIndex === slides.length - 1 
-              ? (t.common?.start || 'Commencer') 
-              : (t.common?.next || 'Suivant')}
+            title={
+              currentIndex === slides.length - 1
+                ? t.common?.start || "Commencer"
+                : t.common?.next || "Suivant"
+            }
             onPress={handleNext}
             size="lg"
             fullWidth
             icon={
-              currentIndex === slides.length - 1 
-                ? undefined 
-                : <Text style={{ color: 'white' }}>→</Text>
+              currentIndex === slides.length - 1 ? undefined : (
+                <Text style={{ color: "white" }}>→</Text>
+              )
             }
             iconPosition="right"
           />
@@ -292,7 +328,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
         {/* Progress indicator */}
         <View style={styles.progressContainer}>
-          <View style={[styles.progressBackground, { backgroundColor: colors.bgElevated }]}>
+          <View
+            style={[
+              styles.progressBackground,
+              { backgroundColor: colors.bgElevated },
+            ]}
+          >
             <Animated.View
               style={[
                 styles.progressBar,
@@ -311,16 +352,20 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
 // Hook to check if user has seen onboarding
 export const useOnboardingStatus = () => {
-  const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   React.useEffect(() => {
     const checkOnboarding = async () => {
       try {
         const value = await AsyncStorage.getItem(ONBOARDING_KEY);
-        setHasSeenOnboarding(value === 'true');
+        setHasSeenOnboarding(value === "true");
       } catch (error) {
-        if (__DEV__) { console.error('Failed to check onboarding status:', error); }
+        if (__DEV__) {
+          console.error("Failed to check onboarding status:", error);
+        }
         setHasSeenOnboarding(true); // Default to true on error
       } finally {
         setIsLoading(false);
@@ -331,10 +376,12 @@ export const useOnboardingStatus = () => {
 
   const markAsSeen = async () => {
     try {
-      await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+      await AsyncStorage.setItem(ONBOARDING_KEY, "true");
       setHasSeenOnboarding(true);
     } catch (error) {
-      if (__DEV__) { console.error('Failed to mark onboarding as seen:', error); }
+      if (__DEV__) {
+        console.error("Failed to mark onboarding as seen:", error);
+      }
     }
   };
 
@@ -343,7 +390,9 @@ export const useOnboardingStatus = () => {
       await AsyncStorage.removeItem(ONBOARDING_KEY);
       setHasSeenOnboarding(false);
     } catch (error) {
-      if (__DEV__) { console.error('Failed to reset onboarding:', error); }
+      if (__DEV__) {
+        console.error("Failed to reset onboarding:", error);
+      }
     }
   };
 
@@ -355,7 +404,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   skipContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     right: 0,
     zIndex: 10,
@@ -370,18 +419,18 @@ const styles = StyleSheet.create({
   },
   slide: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: Spacing.xxl,
   },
   illustrationContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 60,
   },
   textContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingBottom: Spacing.xxxl,
   },
   titleGradient: {
@@ -393,13 +442,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: Typography.fontSize.xxl,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    color: 'white',
-    textAlign: 'center',
+    color: "white",
+    textAlign: "center",
   },
   description: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: Typography.fontSize.base * Typography.lineHeight.relaxed,
     paddingHorizontal: Spacing.lg,
   },
@@ -407,9 +456,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xxl,
   },
   pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: Spacing.xl,
   },
   dot: {
@@ -421,16 +470,16 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   progressContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   progressBackground: {
-    width: '60%',
+    width: "60%",
     height: 4,
     borderRadius: 2,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressBar: {
-    height: '100%',
+    height: "100%",
     borderRadius: 2,
   },
 });

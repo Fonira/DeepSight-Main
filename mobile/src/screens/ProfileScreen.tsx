@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
@@ -6,30 +6,42 @@ import {
   ScrollView,
   Pressable,
   Alert,
-} from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as Haptics from 'expo-haptics';
-import Constants from 'expo-constants';
-import { Linking } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { Header } from '../components/Header';
-import { Card, Avatar, Badge, LanguageToggle, CreditDisplay, AnimatedToggle, SectionHeader, AnimatedProgressBar } from '../components/ui';
-import { PlanBadge } from '../components/PlanBadge';
-import { sp, borderRadius } from '../theme/spacing';
-import { fontFamily, fontSize } from '../theme/typography';
-import { formatNumber } from '../utils/formatters';
-import { normalizePlanId, getPlanInfo } from '../config/planPrivileges';
-import { usePlan } from '../hooks/usePlan';
-import type { RootStackParamList } from '../types';
+} from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as Haptics from "expo-haptics";
+import Constants from "expo-constants";
+import { Linking } from "react-native";
+import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { Header } from "../components/Header";
+import {
+  Card,
+  Avatar,
+  Badge,
+  LanguageToggle,
+  CreditDisplay,
+  AnimatedToggle,
+  SectionHeader,
+  AnimatedProgressBar,
+} from "../components/ui";
+import { PlanBadge } from "../components/PlanBadge";
+import { sp, borderRadius } from "../theme/spacing";
+import { fontFamily, fontSize } from "../theme/typography";
+import { formatNumber } from "../utils/formatters";
+import { normalizePlanId, getPlanInfo } from "../config/planPrivileges";
+import { usePlan } from "../hooks/usePlan";
+import type { RootStackParamList } from "../types";
 
-type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
+type ProfileNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "MainTabs"
+>;
 
 interface MenuItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -59,14 +71,28 @@ const MenuItem: React.FC<MenuItemProps> = ({
       }}
     >
       <View style={styles.menuItemLeft}>
-        <View style={[styles.menuIcon, { backgroundColor: danger ? `${colors.accentError}15` : colors.glassBg }]}>
+        <View
+          style={[
+            styles.menuIcon,
+            {
+              backgroundColor: danger
+                ? `${colors.accentError}15`
+                : colors.glassBg,
+            },
+          ]}
+        >
           <Ionicons
             name={icon}
             size={20}
             color={danger ? colors.accentError : colors.accentPrimary}
           />
         </View>
-        <Text style={[styles.menuLabel, { color: danger ? colors.accentError : colors.textPrimary }]}>
+        <Text
+          style={[
+            styles.menuLabel,
+            { color: danger ? colors.accentError : colors.textPrimary },
+          ]}
+        >
           {label}
         </Text>
       </View>
@@ -76,9 +102,7 @@ const MenuItem: React.FC<MenuItemProps> = ({
             {rightText}
           </Text>
         )}
-        {rightBadge && (
-          <Badge label={rightBadge} variant="primary" size="sm" />
-        )}
+        {rightBadge && <Badge label={rightBadge} variant="primary" size="sm" />}
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </View>
     </Pressable>
@@ -91,40 +115,39 @@ export const ProfileScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const navigation = useNavigation<ProfileNavigationProp>();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('default');
+  useScreenDoodleVariant("default");
 
   const userPlan = normalizePlanId(user?.plan);
   const planInfo = getPlanInfo(userPlan);
   const { planName, planIcon, planColor, limits, usage } = usePlan();
 
   const handleLogout = () => {
-    Alert.alert(
-      t.auth.signOut,
-      t.auth.signOutConfirm,
-      [
-        { text: t.common.cancel, style: 'cancel' },
-        {
-          text: t.auth.signOut,
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-          },
+    Alert.alert(t.auth.signOut, t.auth.signOutConfirm, [
+      { text: t.common.cancel, style: "cancel" },
+      {
+        text: t.auth.signOut,
+        style: "destructive",
+        onPress: async () => {
+          await logout();
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const getPlanLabel = () => {
-    return language === 'fr' ? planInfo.name.fr : planInfo.name.en;
+    return language === "fr" ? planInfo.name.fr : planInfo.name.en;
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
       <Header title={t.nav.profile} />
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 80 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 80 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Card */}
@@ -133,15 +156,19 @@ export const ProfileScreen: React.FC = () => {
             <View style={styles.profileHeader}>
               <Avatar uri={user?.avatar_url} name={user?.username} size="xl" />
               <View style={styles.profileInfo}>
-                <Text style={[styles.profileName, { color: colors.textPrimary }]}>
+                <Text
+                  style={[styles.profileName, { color: colors.textPrimary }]}
+                >
                   {user?.username || t.admin.user}
                 </Text>
-                <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.profileEmail, { color: colors.textSecondary }]}
+                >
                   {user?.email}
                 </Text>
                 <Badge
                   label={getPlanLabel()}
-                  variant={userPlan === 'free' ? 'default' : 'primary'}
+                  variant={userPlan === "free" ? "default" : "primary"}
                   style={{ marginTop: sp.sm }}
                 />
               </View>
@@ -149,30 +176,45 @@ export const ProfileScreen: React.FC = () => {
 
             <CreditDisplay variant="full" />
 
-            <View style={[styles.statsRow, { borderTopColor: colors.border, marginTop: sp.md }]}>
+            <View
+              style={[
+                styles.statsRow,
+                { borderTopColor: colors.border, marginTop: sp.md },
+              ]}
+            >
               <View style={styles.stat}>
                 <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                   {formatNumber(user?.total_videos || 0)}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+                <Text
+                  style={[styles.statLabel, { color: colors.textTertiary }]}
+                >
                   {t.playlists.videos}
                 </Text>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View
+                style={[styles.statDivider, { backgroundColor: colors.border }]}
+              />
               <View style={styles.stat}>
                 <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                   {formatNumber(user?.total_words || 0)}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+                <Text
+                  style={[styles.statLabel, { color: colors.textTertiary }]}
+                >
                   {t.admin.wordsGenerated}
                 </Text>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View
+                style={[styles.statDivider, { backgroundColor: colors.border }]}
+              />
               <View style={styles.stat}>
                 <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                   {formatNumber(user?.total_playlists || 0)}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+                <Text
+                  style={[styles.statLabel, { color: colors.textTertiary }]}
+                >
                   {t.playlists.title}
                 </Text>
               </View>
@@ -182,23 +224,27 @@ export const ProfileScreen: React.FC = () => {
 
         {/* Account Section */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-          <SectionHeader title={t.settings.account} variant="uppercase" style={{ marginTop: sp.lg }} />
+          <SectionHeader
+            title={t.settings.account}
+            variant="uppercase"
+            style={{ marginTop: sp.lg }}
+          />
           <Card variant="elevated" style={styles.menuCard}>
             <MenuItem
               icon="person-outline"
               label={t.settings.account}
-              onPress={() => navigation.navigate('Account')}
+              onPress={() => navigation.navigate("Account")}
             />
             <MenuItem
               icon="star-outline"
               label={t.settings.subscription}
-              onPress={() => navigation.navigate('Upgrade')}
+              onPress={() => navigation.navigate("Upgrade")}
               rightBadge={getPlanLabel()}
             />
             <MenuItem
               icon="analytics-outline"
               label={t.settings.usage}
-              onPress={() => navigation.navigate('Usage')}
+              onPress={() => navigation.navigate("Usage")}
               rightText={`${user?.credits || 0}/${user?.credits_monthly || 20}`}
             />
           </Card>
@@ -207,7 +253,7 @@ export const ProfileScreen: React.FC = () => {
         {/* Subscription Section */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)}>
           <SectionHeader
-            title={language === 'fr' ? 'MON ABONNEMENT' : 'MY SUBSCRIPTION'}
+            title={language === "fr" ? "MON ABONNEMENT" : "MY SUBSCRIPTION"}
             variant="uppercase"
             style={{ marginTop: sp.lg }}
           />
@@ -218,15 +264,20 @@ export const ProfileScreen: React.FC = () => {
                 planIcon={planIcon}
                 planColor={planColor}
               />
-              <Text style={[styles.subscriptionPrice, { color: colors.textSecondary }]}>
-                {planInfo.priceDisplay[language === 'fr' ? 'fr' : 'en']}
+              <Text
+                style={[
+                  styles.subscriptionPrice,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {planInfo.priceDisplay[language === "fr" ? "fr" : "en"]}
               </Text>
             </View>
 
             {/* Analyses progress bar — animated */}
             {limits.monthlyAnalyses !== -1 && (
               <AnimatedProgressBar
-                label={language === 'fr' ? 'Analyses' : 'Analyses'}
+                label={language === "fr" ? "Analyses" : "Analyses"}
                 value={usage.analyses_this_month}
                 max={limits.monthlyAnalyses}
                 gradientColors={[planColor, planColor]}
@@ -238,7 +289,9 @@ export const ProfileScreen: React.FC = () => {
             {/* Chat progress bar — animated */}
             {limits.chatDailyLimit !== -1 && (
               <AnimatedProgressBar
-                label={language === 'fr' ? 'Chat (aujourd\'hui)' : 'Chat (today)'}
+                label={
+                  language === "fr" ? "Chat (aujourd'hui)" : "Chat (today)"
+                }
                 value={usage.chat_messages_today}
                 max={limits.chatDailyLimit}
                 gradientColors={[colors.accentTertiary, colors.accentSecondary]}
@@ -249,15 +302,32 @@ export const ProfileScreen: React.FC = () => {
 
             {/* Manage subscription button */}
             <Pressable
-              style={[styles.manageButton, { backgroundColor: colors.glassBg, borderColor: colors.glassBorder }]}
+              style={[
+                styles.manageButton,
+                {
+                  backgroundColor: colors.glassBg,
+                  borderColor: colors.glassBorder,
+                },
+              ]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                Linking.openURL('https://www.deepsightsynthesis.com/account');
+                Linking.openURL("https://www.deepsightsynthesis.com/account");
               }}
             >
-              <Ionicons name="settings-outline" size={18} color={colors.accentPrimary} />
-              <Text style={[styles.manageButtonText, { color: colors.accentPrimary }]}>
-                {language === 'fr' ? 'Gérer mon abonnement' : 'Manage subscription'}
+              <Ionicons
+                name="settings-outline"
+                size={18}
+                color={colors.accentPrimary}
+              />
+              <Text
+                style={[
+                  styles.manageButtonText,
+                  { color: colors.accentPrimary },
+                ]}
+              >
+                {language === "fr"
+                  ? "Gérer mon abonnement"
+                  : "Manage subscription"}
               </Text>
             </Pressable>
           </Card>
@@ -265,25 +335,35 @@ export const ProfileScreen: React.FC = () => {
           {/* Link to web */}
           <Pressable
             style={styles.webLink}
-            onPress={() => Linking.openURL('https://www.deepsightsynthesis.com')}
+            onPress={() =>
+              Linking.openURL("https://www.deepsightsynthesis.com")
+            }
           >
             <Text style={[styles.webLinkText, { color: colors.textTertiary }]}>
-              {language === 'fr'
-                ? 'Plus de fonctionnalités sur deepsightsynthesis.com'
-                : 'More features on deepsightsynthesis.com'}
+              {language === "fr"
+                ? "Plus de fonctionnalités sur deepsightsynthesis.com"
+                : "More features on deepsightsynthesis.com"}
             </Text>
-            <Ionicons name="open-outline" size={14} color={colors.textTertiary} />
+            <Ionicons
+              name="open-outline"
+              size={14}
+              color={colors.textTertiary}
+            />
           </Pressable>
         </Animated.View>
 
         {/* Preferences Section */}
         <Animated.View entering={FadeInDown.delay(200).duration(400)}>
-          <SectionHeader title={t.settings.preferences} variant="uppercase" style={{ marginTop: sp.lg }} />
+          <SectionHeader
+            title={t.settings.preferences}
+            variant="uppercase"
+            style={{ marginTop: sp.lg }}
+          />
           <Card variant="elevated" style={styles.menuCard}>
             <MenuItem
               icon="settings-outline"
               label={t.nav.settings}
-              onPress={() => navigation.navigate('Settings')}
+              onPress={() => navigation.navigate("Settings")}
             />
             <Pressable
               style={[styles.menuItem, { borderBottomColor: colors.border }]}
@@ -293,9 +373,11 @@ export const ProfileScreen: React.FC = () => {
               }}
             >
               <View style={styles.menuItemLeft}>
-                <View style={[styles.menuIcon, { backgroundColor: colors.glassBg }]}>
+                <View
+                  style={[styles.menuIcon, { backgroundColor: colors.glassBg }]}
+                >
                   <Ionicons
-                    name={isDark ? 'moon' : 'sunny'}
+                    name={isDark ? "moon" : "sunny"}
                     size={20}
                     color={colors.accentPrimary}
                   />
@@ -309,9 +391,13 @@ export const ProfileScreen: React.FC = () => {
                 onValueChange={() => toggleTheme()}
               />
             </Pressable>
-            <View style={[styles.menuItem, { borderBottomColor: colors.border }]}>
+            <View
+              style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            >
               <View style={styles.menuItemLeft}>
-                <View style={[styles.menuIcon, { backgroundColor: colors.glassBg }]}>
+                <View
+                  style={[styles.menuIcon, { backgroundColor: colors.glassBg }]}
+                >
                   <Ionicons
                     name="language-outline"
                     size={20}
@@ -329,29 +415,36 @@ export const ProfileScreen: React.FC = () => {
 
         {/* Support Section */}
         <Animated.View entering={FadeInDown.delay(300).duration(400)}>
-          <SectionHeader title={t.settings.support} variant="uppercase" style={{ marginTop: sp.lg }} />
+          <SectionHeader
+            title={t.settings.support}
+            variant="uppercase"
+            style={{ marginTop: sp.lg }}
+          />
           <Card variant="elevated" style={styles.menuCard}>
             <MenuItem
               icon="help-circle-outline"
               label={t.settings.helpFaq}
-              onPress={() => navigation.navigate('Legal', { type: 'about' })}
+              onPress={() => navigation.navigate("Legal", { type: "about" })}
             />
             <MenuItem
               icon="chatbubble-outline"
               label={t.settings.contactUs}
-              onPress={() => navigation.navigate('Legal', { type: 'about' })}
+              onPress={() => navigation.navigate("Legal", { type: "about" })}
             />
             <MenuItem
               icon="document-text-outline"
               label={t.settings.termsOfService}
-              onPress={() => navigation.navigate('Legal', { type: 'terms' })}
+              onPress={() => navigation.navigate("Legal", { type: "terms" })}
             />
           </Card>
         </Animated.View>
 
         {/* Logout */}
         <Animated.View entering={FadeInDown.delay(400).duration(400)}>
-          <Card variant="elevated" style={[styles.menuCard, { marginTop: sp.lg }]}>
+          <Card
+            variant="elevated"
+            style={[styles.menuCard, { marginTop: sp.lg }]}
+          >
             <MenuItem
               icon="log-out-outline"
               label={t.auth.signOut}
@@ -363,7 +456,7 @@ export const ProfileScreen: React.FC = () => {
 
         {/* App Version */}
         <Text style={[styles.version, { color: colors.textMuted }]}>
-          Deep Sight v{Constants.expoConfig?.version || '1.0.0'}
+          Deep Sight v{Constants.expoConfig?.version || "1.0.0"}
         </Text>
       </ScrollView>
     </View>
@@ -385,8 +478,8 @@ const styles = StyleSheet.create({
     marginBottom: sp.xl,
   },
   profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: sp.lg,
   },
   profileInfo: {
@@ -403,14 +496,14 @@ const styles = StyleSheet.create({
     marginTop: sp.xs,
   },
   statsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderTopWidth: 1,
     paddingVertical: sp.lg,
     paddingHorizontal: sp.md,
   },
   stat: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statValue: {
     fontSize: fontSize.xl,
@@ -423,12 +516,12 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    height: '100%',
+    height: "100%",
   },
   sectionTitle: {
     fontSize: fontSize.xs,
     fontFamily: fontFamily.bodySemiBold,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: sp.sm,
     marginTop: sp.lg,
@@ -438,17 +531,17 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: sp.md,
     paddingHorizontal: sp.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
     minHeight: 52,
   },
   menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
     marginRight: sp.md,
   },
@@ -456,8 +549,8 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: sp.md,
   },
   menuLabel: {
@@ -465,8 +558,8 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
   },
   menuItemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.sm,
   },
   menuRightText: {
@@ -476,7 +569,7 @@ const styles = StyleSheet.create({
   version: {
     fontSize: fontSize.sm,
     fontFamily: fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: sp.xl,
     marginBottom: sp.lg,
   },
@@ -484,9 +577,9 @@ const styles = StyleSheet.create({
     padding: sp.lg,
   },
   subscriptionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: sp.lg,
   },
   subscriptionPrice: {
@@ -497,9 +590,9 @@ const styles = StyleSheet.create({
     marginBottom: sp.md,
   },
   progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: sp.xs,
   },
   progressLabel: {
@@ -513,16 +606,16 @@ const styles = StyleSheet.create({
   progressBarBg: {
     height: 6,
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressBarFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
   },
   manageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: sp.md,
     borderRadius: borderRadius.md,
     borderWidth: 1,
@@ -534,9 +627,9 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
   },
   webLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: sp.md,
     gap: sp.xs,
   },

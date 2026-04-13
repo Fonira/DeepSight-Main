@@ -5,7 +5,7 @@
  * instructions personnalisées et options de style.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,13 +16,18 @@ import {
   TextInput,
   Animated,
   Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../../contexts/ThemeContext';
-import { BorderRadius, Spacing, Typography, Shadows } from '../../constants/theme';
-import { storage } from '../../utils/storage';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "../../contexts/ThemeContext";
+import {
+  BorderRadius,
+  Spacing,
+  Typography,
+  Shadows,
+} from "../../constants/theme";
+import { storage } from "../../utils/storage";
 import {
   AnalysisCustomization,
   WritingStyle,
@@ -31,7 +36,7 @@ import {
   WRITING_STYLE_CONFIG,
   LENGTH_CONFIG,
   CUSTOMIZATION_STORAGE_KEY,
-} from '../../types/analysis';
+} from "../../types/analysis";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -41,7 +46,7 @@ interface CustomizationPanelProps {
   onCustomizationChange: (customization: AnalysisCustomization) => void;
   initialCustomization?: Partial<AnalysisCustomization>;
   compact?: boolean;
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
   disabled?: boolean;
 }
 
@@ -53,7 +58,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   onCustomizationChange,
   initialCustomization = {},
   compact = false,
-  language = 'fr',
+  language = "fr",
   disabled = false,
 }) => {
   const { colors } = useTheme();
@@ -66,8 +71,8 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
 
   const t = useCallback(
-    (fr: string, en: string) => (language === 'fr' ? fr : en),
-    [language]
+    (fr: string, en: string) => (language === "fr" ? fr : en),
+    [language],
   );
 
   // Load saved preferences
@@ -75,15 +80,21 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
     const loadPreferences = async () => {
       try {
         const saved = await storage.getObject<Partial<AnalysisCustomization>>(
-          CUSTOMIZATION_STORAGE_KEY
+          CUSTOMIZATION_STORAGE_KEY,
         );
         if (saved) {
-          const merged = { ...DEFAULT_CUSTOMIZATION, ...saved, ...initialCustomization };
+          const merged = {
+            ...DEFAULT_CUSTOMIZATION,
+            ...saved,
+            ...initialCustomization,
+          };
           setCustomization(merged);
           onCustomizationChange(merged);
         }
       } catch (error) {
-        if (__DEV__) { console.error('Failed to load customization:', error); }
+        if (__DEV__) {
+          console.error("Failed to load customization:", error);
+        }
       } finally {
         setIsLoaded(true);
       }
@@ -97,7 +108,9 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
       const { userPrompt, ...prefsToSave } = prefs;
       await storage.setObject(CUSTOMIZATION_STORAGE_KEY, prefsToSave);
     } catch (error) {
-      if (__DEV__) { console.error('Failed to save customization:', error); }
+      if (__DEV__) {
+        console.error("Failed to save customization:", error);
+      }
     }
   }, []);
 
@@ -109,15 +122,23 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
       onCustomizationChange(newCustomization);
       savePreferences(newCustomization);
     },
-    [customization, onCustomizationChange, savePreferences]
+    [customization, onCustomizationChange, savePreferences],
   );
 
   // Toggle Anti-AI with animation
   const toggleAntiAI = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
-      Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
     ]).start();
     updateCustomization({ antiAIDetection: !customization.antiAIDetection });
   }, [customization.antiAIDetection, updateCustomization, scaleAnim]);
@@ -138,10 +159,14 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
             activeOpacity={0.8}
             accessibilityRole="switch"
             accessibilityState={{ checked: isActive }}
-            accessibilityLabel={t('Anti-Détection IA', 'Anti-AI Detection')}
+            accessibilityLabel={t("Anti-Détection IA", "Anti-AI Detection")}
           >
             <LinearGradient
-              colors={isActive ? ['#10B981', '#059669'] : [colors.bgTertiary, colors.bgSecondary]}
+              colors={
+                isActive
+                  ? ["#10B981", "#059669"]
+                  : [colors.bgTertiary, colors.bgSecondary]
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[
@@ -155,44 +180,80 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                 <View
                   style={[
                     styles.antiAIIconContainer,
-                    { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : colors.accentPrimary + '20' },
+                    {
+                      backgroundColor: isActive
+                        ? "rgba(255,255,255,0.2)"
+                        : colors.accentPrimary + "20",
+                    },
                   ]}
                 >
                   <Ionicons
-                    name={isActive ? 'shield-checkmark' : 'shield-outline'}
+                    name={isActive ? "shield-checkmark" : "shield-outline"}
                     size={28}
-                    color={isActive ? '#FFFFFF' : colors.accentPrimary}
+                    color={isActive ? "#FFFFFF" : colors.accentPrimary}
                   />
                 </View>
                 <View style={styles.antiAITextContainer}>
-                  <Text style={[styles.antiAITitle, { color: isActive ? '#FFFFFF' : colors.textPrimary }]}>
-                    {t('Anti-Détection IA', 'Anti-AI Detection')}
+                  <Text
+                    style={[
+                      styles.antiAITitle,
+                      { color: isActive ? "#FFFFFF" : colors.textPrimary },
+                    ]}
+                  >
+                    {t("Anti-Détection IA", "Anti-AI Detection")}
                   </Text>
-                  <Text style={[styles.antiAISubtitle, { color: isActive ? 'rgba(255,255,255,0.85)' : colors.textSecondary }]}>
-                    {t('Humanise le texte pour éviter la détection', 'Humanizes text to avoid detection')}
+                  <Text
+                    style={[
+                      styles.antiAISubtitle,
+                      {
+                        color: isActive
+                          ? "rgba(255,255,255,0.85)"
+                          : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {t(
+                      "Humanise le texte pour éviter la détection",
+                      "Humanizes text to avoid detection",
+                    )}
                   </Text>
                 </View>
               </View>
               <View
                 style={[
                   styles.antiAIBadge,
-                  { backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : colors.accentPrimary + '20' },
+                  {
+                    backgroundColor: isActive
+                      ? "rgba(255,255,255,0.3)"
+                      : colors.accentPrimary + "20",
+                  },
                 ]}
               >
-                <Text style={[styles.antiAIBadgeText, { color: isActive ? '#FFFFFF' : colors.accentPrimary }]}>
-                  {isActive ? 'ON' : 'OFF'}
+                <Text
+                  style={[
+                    styles.antiAIBadgeText,
+                    { color: isActive ? "#FFFFFF" : colors.accentPrimary },
+                  ]}
+                >
+                  {isActive ? "ON" : "OFF"}
                 </Text>
               </View>
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
 
-        <View style={[styles.antiAIInfo, { backgroundColor: colors.bgTertiary }]}>
-          <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
+        <View
+          style={[styles.antiAIInfo, { backgroundColor: colors.bgTertiary }]}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={14}
+            color={colors.textMuted}
+          />
           <Text style={[styles.antiAIInfoText, { color: colors.textMuted }]}>
             {t(
-              'Réécrit le texte avec des variations naturelles pour le rendre indétectable par GPTZero, Turnitin, etc.',
-              'Rewrites text with natural variations to make it undetectable by GPTZero, Turnitin, etc.'
+              "Réécrit le texte avec des variations naturelles pour le rendre indétectable par GPTZero, Turnitin, etc.",
+              "Rewrites text with natural variations to make it undetectable by GPTZero, Turnitin, etc.",
             )}
           </Text>
         </View>
@@ -207,9 +268,18 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   const renderUserPrompt = () => (
     <View style={styles.section}>
       <View style={styles.promptHeader}>
-        <Ionicons name="create-outline" size={18} color={colors.accentPrimary} />
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginLeft: Spacing.xs }]}>
-          {t('Instructions personnalisées', 'Custom Instructions')}
+        <Ionicons
+          name="create-outline"
+          size={18}
+          color={colors.accentPrimary}
+        />
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: colors.textPrimary, marginLeft: Spacing.xs },
+          ]}
+        >
+          {t("Instructions personnalisées", "Custom Instructions")}
         </Text>
       </View>
       <TextInput
@@ -218,15 +288,17 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
           {
             backgroundColor: colors.bgTertiary,
             color: colors.textPrimary,
-            borderColor: customization.userPrompt ? colors.accentPrimary : colors.border,
+            borderColor: customization.userPrompt
+              ? colors.accentPrimary
+              : colors.border,
           },
         ]}
         placeholder={t(
           'Ex: "Concentre-toi sur les aspects techniques"...',
-          'E.g.: "Focus on technical aspects"...'
+          'E.g.: "Focus on technical aspects"...',
         )}
         placeholderTextColor={colors.textMuted}
-        value={customization.userPrompt || ''}
+        value={customization.userPrompt || ""}
         onChangeText={(text) => updateCustomization({ userPrompt: text })}
         multiline
         numberOfLines={3}
@@ -235,7 +307,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
         editable={!disabled}
       />
       <Text style={[styles.charCount, { color: colors.textMuted }]}>
-        {(customization.userPrompt || '').length}/500
+        {(customization.userPrompt || "").length}/500
       </Text>
     </View>
   );
@@ -247,9 +319,14 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   const renderStyleSelector = () => (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-        {t("Style d'écriture", 'Writing Style')}
+        {t("Style d'écriture", "Writing Style")}
       </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardDismissMode="on-drag" contentContainerStyle={styles.styleScroll}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={styles.styleScroll}
+      >
         {Object.entries(WRITING_STYLE_CONFIG).map(([key, config]) => {
           const isSelected = customization.writingStyle === key;
           return (
@@ -263,8 +340,12 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
               style={[
                 styles.styleOption,
                 {
-                  backgroundColor: isSelected ? colors.accentPrimary : colors.bgTertiary,
-                  borderColor: isSelected ? colors.accentPrimary : colors.border,
+                  backgroundColor: isSelected
+                    ? colors.accentPrimary
+                    : colors.bgTertiary,
+                  borderColor: isSelected
+                    ? colors.accentPrimary
+                    : colors.border,
                 },
                 disabled && styles.disabled,
               ]}
@@ -272,9 +353,14 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
               <Ionicons
                 name={config.icon as keyof typeof Ionicons.glyphMap}
                 size={20}
-                color={isSelected ? '#FFFFFF' : colors.textSecondary}
+                color={isSelected ? "#FFFFFF" : colors.textSecondary}
               />
-              <Text style={[styles.styleLabel, { color: isSelected ? '#FFFFFF' : colors.textPrimary }]}>
+              <Text
+                style={[
+                  styles.styleLabel,
+                  { color: isSelected ? "#FFFFFF" : colors.textPrimary },
+                ]}
+              >
                 {config.label[language]}
               </Text>
             </TouchableOpacity>
@@ -291,7 +377,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   const renderLengthSelector = () => (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-        {t('Longueur cible', 'Target Length')}
+        {t("Longueur cible", "Target Length")}
       </Text>
       <View style={styles.lengthContainer}>
         {(Object.keys(LENGTH_CONFIG) as TargetLength[]).map((length) => {
@@ -308,16 +394,34 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
               style={[
                 styles.lengthOption,
                 {
-                  backgroundColor: isSelected ? colors.accentPrimary : colors.bgTertiary,
-                  borderColor: isSelected ? colors.accentPrimary : colors.border,
+                  backgroundColor: isSelected
+                    ? colors.accentPrimary
+                    : colors.bgTertiary,
+                  borderColor: isSelected
+                    ? colors.accentPrimary
+                    : colors.border,
                 },
                 disabled && styles.disabled,
               ]}
             >
-              <Text style={[styles.lengthLabel, { color: isSelected ? '#FFFFFF' : colors.textPrimary }]}>
+              <Text
+                style={[
+                  styles.lengthLabel,
+                  { color: isSelected ? "#FFFFFF" : colors.textPrimary },
+                ]}
+              >
                 {config.label[language]}
               </Text>
-              <Text style={[styles.lengthDesc, { color: isSelected ? 'rgba(255,255,255,0.8)' : colors.textMuted }]}>
+              <Text
+                style={[
+                  styles.lengthDesc,
+                  {
+                    color: isSelected
+                      ? "rgba(255,255,255,0.8)"
+                      : colors.textMuted,
+                  },
+                ]}
+              >
                 {config.description[language]}
               </Text>
             </TouchableOpacity>
@@ -334,14 +438,18 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   const renderOptions = () => (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-        {t('Options', 'Options')}
+        {t("Options", "Options")}
       </Text>
 
       <View style={[styles.optionRow, { borderBottomColor: colors.border }]}>
         <View style={styles.optionLeft}>
-          <Ionicons name="bulb-outline" size={20} color={colors.textSecondary} />
+          <Ionicons
+            name="bulb-outline"
+            size={20}
+            color={colors.textSecondary}
+          />
           <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-            {t('Inclure des exemples', 'Include Examples')}
+            {t("Inclure des exemples", "Include Examples")}
           </Text>
         </View>
         <Switch
@@ -358,9 +466,13 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
 
       <View style={styles.optionRow}>
         <View style={styles.optionLeft}>
-          <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
+          <Ionicons
+            name="person-outline"
+            size={20}
+            color={colors.textSecondary}
+          />
           <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
-            {t('Ton personnel (Je/Nous)', 'Personal Tone')}
+            {t("Ton personnel (Je/Nous)", "Personal Tone")}
           </Text>
         </View>
         <Switch
@@ -383,17 +495,24 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
 
   if (compact) {
     return (
-      <View style={[styles.compactContainer, { backgroundColor: colors.bgSecondary }]}>
+      <View
+        style={[
+          styles.compactContainer,
+          { backgroundColor: colors.bgSecondary },
+        ]}
+      >
         {renderAntiAISwitch()}
         <TouchableOpacity
           style={[styles.advancedToggle, { borderTopColor: colors.border }]}
           onPress={() => setShowAdvanced(!showAdvanced)}
         >
-          <Text style={[styles.advancedToggleText, { color: colors.textSecondary }]}>
-            {t('Plus d\'options', 'More Options')}
+          <Text
+            style={[styles.advancedToggleText, { color: colors.textSecondary }]}
+          >
+            {t("Plus d'options", "More Options")}
           </Text>
           <Ionicons
-            name={showAdvanced ? 'chevron-up' : 'chevron-down'}
+            name={showAdvanced ? "chevron-up" : "chevron-down"}
             size={18}
             color={colors.textSecondary}
           />
@@ -416,11 +535,16 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   if (!isLoaded) return null;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.bgSecondary, borderColor: colors.border },
+      ]}
+    >
       <View style={styles.header}>
         <Ionicons name="options" size={20} color={colors.accentPrimary} />
         <Text style={[styles.title, { color: colors.textPrimary }]}>
-          {t('Personnalisation', 'Customization')}
+          {t("Personnalisation", "Customization")}
         </Text>
       </View>
 
@@ -436,11 +560,13 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
           setShowAdvanced(!showAdvanced);
         }}
       >
-        <Text style={[styles.advancedToggleText, { color: colors.textSecondary }]}>
-          {t('Options avancées', 'Advanced Options')}
+        <Text
+          style={[styles.advancedToggleText, { color: colors.textSecondary }]}
+        >
+          {t("Options avancées", "Advanced Options")}
         </Text>
         <Ionicons
-          name={showAdvanced ? 'chevron-up' : 'chevron-down'}
+          name={showAdvanced ? "chevron-up" : "chevron-down"}
           size={18}
           color={colors.textSecondary}
         />
@@ -467,8 +593,8 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
   },
@@ -484,27 +610,27 @@ const styles = StyleSheet.create({
   antiAIButton: {
     height: 72,
     borderRadius: BorderRadius.xl,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.lg,
     ...Shadows.lg,
   },
   antiAIButtonActive: {
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: "rgba(255,255,255,0.3)",
   },
   antiAIContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   antiAIIconContainer: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: Spacing.md,
   },
   antiAITextContainer: {
@@ -529,8 +655,8 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodyBold,
   },
   antiAIInfo: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginTop: Spacing.sm,
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
@@ -555,8 +681,8 @@ const styles = StyleSheet.create({
 
   // User Prompt
   promptHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Spacing.xs,
   },
   promptInput: {
@@ -571,7 +697,7 @@ const styles = StyleSheet.create({
   charCount: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'right',
+    textAlign: "right",
     marginTop: Spacing.xs,
   },
 
@@ -581,8 +707,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   styleOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.lg,
@@ -597,12 +723,12 @@ const styles = StyleSheet.create({
 
   // Length Selector
   lengthContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.sm,
   },
   lengthOption: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
@@ -619,15 +745,15 @@ const styles = StyleSheet.create({
 
   // Options
   optionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
   },
   optionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   optionLabel: {
@@ -637,9 +763,9 @@ const styles = StyleSheet.create({
 
   // Advanced Toggle
   advancedToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.xs,
     paddingVertical: Spacing.md,
     borderTopWidth: 1,

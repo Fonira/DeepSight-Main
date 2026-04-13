@@ -6,7 +6,7 @@
 export const spacing = {
   0: 0,
   px: 1,
-  '0.5': 2,
+  "0.5": 2,
   1: 4,
   1.5: 6,
   2: 8,
@@ -33,10 +33,10 @@ export const sp = {
   md: 12,
   lg: 16,
   xl: 20,
-  '2xl': 24,
-  '3xl': 32,
-  '4xl': 48,
-  '5xl': 64,
+  "2xl": 24,
+  "3xl": 32,
+  "4xl": 48,
+  "5xl": 64,
 } as const;
 
 export const borderRadius = {
@@ -45,7 +45,7 @@ export const borderRadius = {
   md: 10,
   lg: 16,
   xl: 20,
-  '2xl': 24,
+  "2xl": 24,
   full: 9999,
 } as const;
 

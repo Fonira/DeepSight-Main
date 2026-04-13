@@ -10,13 +10,13 @@
  * Requires: expo-share-intent (dev builds only, NOT Expo Go)
  */
 
-import { useEffect, useCallback, useRef } from 'react';
-import { Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useShareIntent as useExpoShareIntent } from 'expo-share-intent';
-import { validateYouTubeUrl } from '../utils/formatters';
-import { videoApi } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
+import { useEffect, useCallback, useRef } from "react";
+import { Alert } from "react-native";
+import { useRouter } from "expo-router";
+import { useShareIntent as useExpoShareIntent } from "expo-share-intent";
+import { validateYouTubeUrl } from "../utils/formatters";
+import { videoApi } from "../services/api";
+import { useAuth } from "../contexts/AuthContext";
 
 /**
  * Extract a URL from shared text content.
@@ -60,77 +60,82 @@ export function useDeepSightShareIntent(): void {
   const isProcessingRef = useRef(false);
 
   // expo-share-intent hook — handles both cold start and foreground shares
-  const { hasShareIntent, shareIntent, resetShareIntent, error } = useExpoShareIntent({
-    debug: __DEV__,
-    resetOnBackground: true,
-  });
+  const { hasShareIntent, shareIntent, resetShareIntent, error } =
+    useExpoShareIntent({
+      debug: __DEV__,
+      resetOnBackground: true,
+    });
 
-  const handleSharedUrl = useCallback(async (url: string) => {
-    // Deduplicate — don't process the same URL twice in quick succession
-    if (processedUrlsRef.current.has(url)) return;
-    if (isProcessingRef.current) return;
-    processedUrlsRef.current.add(url);
-    isProcessingRef.current = true;
+  const handleSharedUrl = useCallback(
+    async (url: string) => {
+      // Deduplicate — don't process the same URL twice in quick succession
+      if (processedUrlsRef.current.has(url)) return;
+      if (isProcessingRef.current) return;
+      processedUrlsRef.current.add(url);
+      isProcessingRef.current = true;
 
-    // Auto-clear dedup after 15s
-    setTimeout(() => processedUrlsRef.current.delete(url), 15_000);
+      // Auto-clear dedup after 15s
+      setTimeout(() => processedUrlsRef.current.delete(url), 15_000);
 
-    try {
-      const validation = validateYouTubeUrl(url);
-      if (!validation.isValid) {
-        if (__DEV__) console.log('[ShareIntent] URL not valid YouTube/TikTok:', url);
-        return;
+      try {
+        const validation = validateYouTubeUrl(url);
+        if (!validation.isValid) {
+          if (__DEV__)
+            console.log("[ShareIntent] URL not valid YouTube/TikTok:", url);
+          return;
+        }
+
+        // If not authenticated — prompt to login
+        if (!isAuthenticated) {
+          Alert.alert(
+            "DeepSight",
+            "Connectez-vous pour analyser cette vidéo.",
+            [{ text: "OK" }],
+          );
+          return;
+        }
+
+        // Launch Quick Chat (zero credit, ~2-5s response)
+        if (__DEV__)
+          console.log("[ShareIntent] Launching Quick Chat for:", url);
+
+        const result = await videoApi.quickChat(url, "fr");
+
+        if (!result?.summary_id) {
+          throw new Error("No summary_id returned");
+        }
+
+        // Navigate directly to Quick Chat screen
+        router.push({
+          pathname: "/(tabs)/analysis/[id]",
+          params: {
+            id: String(result.summary_id),
+            quickChat: "true",
+          },
+        } as any);
+      } catch (err: any) {
+        if (__DEV__) console.error("[ShareIntent] Quick Chat failed:", err);
+
+        const status = err?.status || err?.statusCode;
+        if (status === 402 || status === 403) {
+          Alert.alert(
+            "Quota dépassé",
+            "Passez à un plan supérieur pour analyser plus de vidéos.",
+            [{ text: "OK" }],
+          );
+        } else {
+          Alert.alert(
+            "Erreur",
+            "Impossible de préparer le chat. Réessayez depuis l'app.",
+            [{ text: "OK" }],
+          );
+        }
+      } finally {
+        isProcessingRef.current = false;
       }
-
-      // If not authenticated — prompt to login
-      if (!isAuthenticated) {
-        Alert.alert(
-          'DeepSight',
-          'Connectez-vous pour analyser cette vidéo.',
-          [{ text: 'OK' }],
-        );
-        return;
-      }
-
-      // Launch Quick Chat (zero credit, ~2-5s response)
-      if (__DEV__) console.log('[ShareIntent] Launching Quick Chat for:', url);
-
-      const result = await videoApi.quickChat(url, 'fr');
-
-      if (!result?.summary_id) {
-        throw new Error('No summary_id returned');
-      }
-
-      // Navigate directly to Quick Chat screen
-      router.push({
-        pathname: '/(tabs)/analysis/[id]',
-        params: {
-          id: String(result.summary_id),
-          quickChat: 'true',
-        },
-      } as any);
-
-    } catch (err: any) {
-      if (__DEV__) console.error('[ShareIntent] Quick Chat failed:', err);
-
-      const status = err?.status || err?.statusCode;
-      if (status === 402 || status === 403) {
-        Alert.alert(
-          'Quota dépassé',
-          'Passez à un plan supérieur pour analyser plus de vidéos.',
-          [{ text: 'OK' }],
-        );
-      } else {
-        Alert.alert(
-          'Erreur',
-          'Impossible de préparer le chat. Réessayez depuis l\'app.',
-          [{ text: 'OK' }],
-        );
-      }
-    } finally {
-      isProcessingRef.current = false;
-    }
-  }, [isAuthenticated, router]);
+    },
+    [isAuthenticated, router],
+  );
 
   // React to new share intents
   useEffect(() => {
@@ -152,7 +157,7 @@ export function useDeepSightShareIntent(): void {
     if (url) {
       handleSharedUrl(url);
     } else if (__DEV__) {
-      console.log('[ShareIntent] No valid URL found in shared content:', {
+      console.log("[ShareIntent] No valid URL found in shared content:", {
         text: shareIntent.text?.slice(0, 100),
         webUrl: shareIntent.webUrl,
         type: shareIntent.type,
@@ -166,7 +171,7 @@ export function useDeepSightShareIntent(): void {
   // Log errors in dev
   useEffect(() => {
     if (error && __DEV__) {
-      console.warn('[ShareIntent] Error:', error);
+      console.warn("[ShareIntent] Error:", error);
     }
   }, [error]);
 }

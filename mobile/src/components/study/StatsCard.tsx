@@ -3,22 +3,22 @@
  * Affiche vidéos étudiées, score moyen, streak
  */
 
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
   withTiming,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Card } from '../ui/Card';
-import { sp } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
-import { duration } from '../../theme/animations';
-import type { StudyStats } from '../../types/v2';
+} from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
+import { Card } from "../ui/Card";
+import { sp } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
+import { duration } from "../../theme/animations";
+import type { StudyStats } from "../../types/v2";
 
 interface StatsCardProps {
   stats: StudyStats;
@@ -33,10 +33,10 @@ const FlameIcon: React.FC<{ active: boolean }> = ({ active }) => {
       scale.value = withRepeat(
         withSequence(
           withTiming(1.2, { duration: duration.slow }),
-          withTiming(1, { duration: duration.slow })
+          withTiming(1, { duration: duration.slow }),
         ),
         -1,
-        true
+        true,
       );
     }
   }, [active, scale]);
@@ -65,11 +65,18 @@ const ScoreMini: React.FC<{ score: number }> = ({ score }) => {
   const progress = Math.min(score, 100) / 100;
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       {/* Background circle via border */}
       <View
         style={{
-          position: 'absolute',
+          position: "absolute",
           width: size,
           height: size,
           borderRadius: size / 2,
@@ -80,7 +87,7 @@ const ScoreMini: React.FC<{ score: number }> = ({ score }) => {
       {/* Fake progress via border + clip (simplified) */}
       <View
         style={{
-          position: 'absolute',
+          position: "absolute",
           width: size,
           height: size,
           borderRadius: size / 2,
@@ -153,12 +160,12 @@ export const StatsCard: React.FC<StatsCardProps> = ({ stats }) => {
 
 const styles = StyleSheet.create({
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
   },
   stat: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: sp.xs,
     flex: 1,
   },
@@ -169,21 +176,21 @@ const styles = StyleSheet.create({
   statLabel: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
-    textAlign: 'center',
+    textAlign: "center",
   },
   scoreMiniText: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize["2xs"],
   },
   divider: {
     width: 1,
     height: 40,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   emptyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: sp.sm,
     paddingVertical: sp.sm,
   },

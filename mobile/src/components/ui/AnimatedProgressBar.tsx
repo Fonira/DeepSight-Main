@@ -1,16 +1,16 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect } from "react";
+import { View, Text, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withDelay,
   Easing,
-} from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../../contexts/ThemeContext';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
+} from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "../../contexts/ThemeContext";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
 
 interface AnimatedProgressBarProps {
   /** Current value */
@@ -54,7 +54,7 @@ export const AnimatedProgressBar: React.FC<AnimatedProgressBarProps> = ({
       withTiming(percentage, {
         duration: 800,
         easing: Easing.out(Easing.cubic),
-      })
+      }),
     );
   }, [percentage, animationDelay, progress, opacity]);
 
@@ -71,8 +71,8 @@ export const AnimatedProgressBar: React.FC<AnimatedProgressBarProps> = ({
 
   // Determine color based on percentage
   const getBarColor = (): readonly [string, string, ...string[]] => {
-    if (percentage >= 90) return ['#ef4444', '#f87171'];
-    if (percentage >= 70) return ['#f59e0b', '#fbbf24'];
+    if (percentage >= 90) return ["#ef4444", "#f87171"];
+    if (percentage >= 70) return ["#f59e0b", "#fbbf24"];
     return defaultGradient;
   };
 
@@ -96,7 +96,13 @@ export const AnimatedProgressBar: React.FC<AnimatedProgressBarProps> = ({
           { backgroundColor: colors.glassBg, height, borderRadius: height / 2 },
         ]}
       >
-        <Animated.View style={[styles.fillContainer, { height, borderRadius: height / 2 }, barAnimatedStyle]}>
+        <Animated.View
+          style={[
+            styles.fillContainer,
+            { height, borderRadius: height / 2 },
+            barAnimatedStyle,
+          ]}
+        >
           <LinearGradient
             colors={[...getBarColor()]}
             start={{ x: 0, y: 0 }}
@@ -114,7 +120,7 @@ export const AnimatedProgressBar: React.FC<AnimatedProgressBarProps> = ({
             ]}
           >
             <LinearGradient
-              colors={['transparent', 'rgba(255,255,255,0.3)', 'transparent']}
+              colors={["transparent", "rgba(255,255,255,0.3)", "transparent"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[styles.fill, { height, borderRadius: height / 2 }]}
@@ -131,9 +137,9 @@ const styles = StyleSheet.create({
     marginBottom: sp.md,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: sp.xs,
   },
   label: {
@@ -145,14 +151,14 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
   },
   track: {
-    overflow: 'hidden',
-    position: 'relative',
+    overflow: "hidden",
+    position: "relative",
   },
   fillContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   fill: {
     flex: 1,

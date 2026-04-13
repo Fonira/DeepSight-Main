@@ -2,4 +2,4 @@
  * Customization Components
  */
 
-export { CustomizationPanel, default } from './CustomizationPanel';
+export { CustomizationPanel, default } from "./CustomizationPanel";

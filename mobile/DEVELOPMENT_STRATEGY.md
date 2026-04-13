@@ -10,29 +10,29 @@ Ce document définit la stratégie pour créer une application mobile DeepSight 
 
 ### Design System
 
-| Élément | Web | Mobile Actuel | Action |
-|---------|-----|---------------|--------|
-| **Police Display** | Cormorant Garamond | Non chargée | Ajouter via expo-font |
-| **Police Body** | DM Sans | Non chargée | Ajouter via expo-font |
-| **Police Code** | JetBrains Mono | Non chargée | Ajouter via expo-font |
-| **DoodleBackground** | 200+ icônes SVG | Absent | Implémenter avec react-native-svg |
-| **Glass Effect** | backdrop-filter blur | Absent | Simuler avec LinearGradient + opacity |
-| **Animations** | CSS transitions | Basiques | Améliorer avec Reanimated |
+| Élément              | Web                  | Mobile Actuel | Action                                |
+| -------------------- | -------------------- | ------------- | ------------------------------------- |
+| **Police Display**   | Cormorant Garamond   | Non chargée   | Ajouter via expo-font                 |
+| **Police Body**      | DM Sans              | Non chargée   | Ajouter via expo-font                 |
+| **Police Code**      | JetBrains Mono       | Non chargée   | Ajouter via expo-font                 |
+| **DoodleBackground** | 200+ icônes SVG      | Absent        | Implémenter avec react-native-svg     |
+| **Glass Effect**     | backdrop-filter blur | Absent        | Simuler avec LinearGradient + opacity |
+| **Animations**       | CSS transitions      | Basiques      | Améliorer avec Reanimated             |
 
 ### Fonctionnalités
 
-| Fonctionnalité | Web | Mobile | Priorité |
-|----------------|-----|--------|----------|
-| Analyse vidéo | ✅ | ✅ | - |
-| Chat IA | ✅ | ✅ | - |
-| Flashcards | ✅ | ✅ | - |
-| **Mind Map** | ✅ | ❌ | Haute |
-| **Quiz** | ✅ | ❌ | Haute |
-| **Export PDF** | ✅ | ❌ | Moyenne |
-| **TTS Audio** | ✅ | ❌ | Moyenne |
-| **Playlists** | ✅ | Stub | Haute |
-| **Fact-checking** | ✅ | ❌ | Moyenne |
-| **Tournesol** | ✅ | ❌ | Basse |
+| Fonctionnalité    | Web | Mobile | Priorité |
+| ----------------- | --- | ------ | -------- |
+| Analyse vidéo     | ✅  | ✅     | -        |
+| Chat IA           | ✅  | ✅     | -        |
+| Flashcards        | ✅  | ✅     | -        |
+| **Mind Map**      | ✅  | ❌     | Haute    |
+| **Quiz**          | ✅  | ❌     | Haute    |
+| **Export PDF**    | ✅  | ❌     | Moyenne  |
+| **TTS Audio**     | ✅  | ❌     | Moyenne  |
+| **Playlists**     | ✅  | Stub   | Haute    |
+| **Fact-checking** | ✅  | ❌     | Moyenne  |
+| **Tournesol**     | ✅  | ❌     | Basse    |
 
 ---
 
@@ -193,21 +193,29 @@ Créer un fichier `shared-tokens.ts` identique web/mobile :
 ```typescript
 // Couleurs identiques
 export const SharedColors = {
-  bgPrimary: '#0a0a0b',
-  bgSecondary: '#111113',
-  accentPrimary: '#6366F1',
-  accentSecondary: '#F59E0B',
+  bgPrimary: "#0a0a0b",
+  bgSecondary: "#111113",
+  accentPrimary: "#6366F1",
+  accentSecondary: "#F59E0B",
   // ...
 };
 
 // Espacements identiques
 export const SharedSpacing = {
-  xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
 };
 
 // Rayons identiques
 export const SharedRadius = {
-  sm: 6, md: 10, lg: 14, xl: 20
+  sm: 6,
+  md: 10,
+  lg: 14,
+  xl: 20,
 };
 ```
 
@@ -272,15 +280,18 @@ npx expo start --clear
 ## 7. Ressources
 
 ### Documentation
+
 - [Expo SDK 54](https://docs.expo.dev/)
 - [React Native SVG](https://github.com/software-mansion/react-native-svg)
 - [Reanimated 3](https://docs.swmansion.com/react-native-reanimated/)
 
 ### Design System
+
 - [Gluestack UI](https://gluestack.io/) - Composants cross-platform
 - [NativeWind](https://www.nativewind.dev/) - Tailwind pour React Native
 
 ### Sources de Recherche
+
 - [React Native Expo Guide](https://reactnativeexpert.com/blog/react-native-expo-complete-guide/)
 - [Cross-Platform Design Systems](https://bit.dev/blog/creating-a-cross-platform-design-system-for-react-and-react-native-with-bit-l7i3qgmw/)
 - [SVG Animations in React Native](https://medium.com/tribalscale/intro-to-svg-animations-with-react-native-reanimated-2-78bd87438129)

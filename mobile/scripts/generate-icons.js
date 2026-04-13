@@ -10,57 +10,59 @@
  * node scripts/generate-icons.js
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 // Check if sharp is available
 let sharp;
 try {
-  sharp = require('sharp');
+  sharp = require("sharp");
 } catch (e) {
-  console.log('Sharp not installed. Please run: npm install sharp');
-  console.log('\nAlternatively, you can convert SVGs manually using online tools:');
-  console.log('1. https://cloudconvert.com/svg-to-png');
-  console.log('2. https://svgtopng.com/');
-  console.log('\nRequired files:');
-  console.log('- icon.png: 1024x1024');
-  console.log('- splash.png: 1284x2778');
-  console.log('- adaptive-icon.png: 1024x1024');
-  console.log('- favicon.png: 48x48');
+  console.log("Sharp not installed. Please run: npm install sharp");
+  console.log(
+    "\nAlternatively, you can convert SVGs manually using online tools:",
+  );
+  console.log("1. https://cloudconvert.com/svg-to-png");
+  console.log("2. https://svgtopng.com/");
+  console.log("\nRequired files:");
+  console.log("- icon.png: 1024x1024");
+  console.log("- splash.png: 1284x2778");
+  console.log("- adaptive-icon.png: 1024x1024");
+  console.log("- favicon.png: 48x48");
   process.exit(0);
 }
 
-const assetsDir = path.join(__dirname, '..', 'src', 'assets', 'images');
+const assetsDir = path.join(__dirname, "..", "src", "assets", "images");
 
 const icons = [
   {
-    input: 'icon.svg',
-    output: 'icon.png',
+    input: "icon.svg",
+    output: "icon.png",
     width: 1024,
     height: 1024,
   },
   {
-    input: 'splash.svg',
-    output: 'splash.png',
+    input: "splash.svg",
+    output: "splash.png",
     width: 1284,
     height: 2778,
   },
   {
-    input: 'adaptive-icon.svg',
-    output: 'adaptive-icon.png',
+    input: "adaptive-icon.svg",
+    output: "adaptive-icon.png",
     width: 1024,
     height: 1024,
   },
   {
-    input: 'icon.svg',
-    output: 'favicon.png',
+    input: "icon.svg",
+    output: "favicon.png",
     width: 48,
     height: 48,
   },
 ];
 
 async function generateIcons() {
-  console.log('Generating icons...\n');
+  console.log("Generating icons...\n");
 
   for (const icon of icons) {
     const inputPath = path.join(assetsDir, icon.input);
@@ -83,7 +85,7 @@ async function generateIcons() {
     }
   }
 
-  console.log('\n✨ Icon generation complete!');
+  console.log("\n✨ Icon generation complete!");
 }
 
 generateIcons();

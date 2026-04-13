@@ -4,11 +4,11 @@
  * Adapté du hook web avec gestion AppState, expo-av, et haptics.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
-import { Audio } from 'expo-av';
-import * as Haptics from 'expo-haptics';
-import { voiceApi } from '../../services/api';
+import { useState, useCallback, useRef, useEffect } from "react";
+import { AppState, type AppStateStatus } from "react-native";
+import { Audio } from "expo-av";
+import * as Haptics from "expo-haptics";
+import { voiceApi } from "../../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -20,17 +20,17 @@ interface UseVoiceChatOptions {
 }
 
 type VoiceChatStatus =
-  | 'idle'
-  | 'connecting'
-  | 'listening'
-  | 'thinking'
-  | 'speaking'
-  | 'error'
-  | 'quota_exceeded';
+  | "idle"
+  | "connecting"
+  | "listening"
+  | "thinking"
+  | "speaking"
+  | "error"
+  | "quota_exceeded";
 
 interface VoiceChatMessage {
   text: string;
-  source: 'user' | 'ai';
+  source: "user" | "ai";
 }
 
 interface SessionResponse {
@@ -73,13 +73,15 @@ const ERROR_MESSAGES = {
     "Autorisez l'accès au micro dans les réglages de votre appareil.",
   MICROPHONE_GENERIC:
     "Impossible d'accéder au microphone. Vérifiez vos permissions.",
-  NETWORK: 'Vérifiez votre connexion internet et réessayez.',
-  QUOTA_EXCEEDED: 'Quota vocal épuisé. Passez à un plan supérieur pour continuer.',
-  SESSION_FAILED: 'Impossible de démarrer la session vocale. Réessayez.',
-  SDK_LOAD_FAILED: 'Impossible de charger le module de conversation vocale.',
-  SESSION_TIMEOUT: 'Session terminée : durée maximale atteinte.',
-  APP_BACKGROUNDED: 'Session arrêtée car l\'application est passée en arrière-plan.',
-  UNKNOWN: 'Une erreur inattendue est survenue. Réessayez.',
+  NETWORK: "Vérifiez votre connexion internet et réessayez.",
+  QUOTA_EXCEEDED:
+    "Quota vocal épuisé. Passez à un plan supérieur pour continuer.",
+  SESSION_FAILED: "Impossible de démarrer la session vocale. Réessayez.",
+  SDK_LOAD_FAILED: "Impossible de charger le module de conversation vocale.",
+  SESSION_TIMEOUT: "Session terminée : durée maximale atteinte.",
+  APP_BACKGROUNDED:
+    "Session arrêtée car l'application est passée en arrière-plan.",
+  UNKNOWN: "Une erreur inattendue est survenue. Réessayez.",
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -90,7 +92,7 @@ export function useVoiceChat({
   summaryId,
   onError,
 }: UseVoiceChatOptions): UseVoiceChatReturn {
-  const [status, setStatus] = useState<VoiceChatStatus>('idle');
+  const [status, setStatus] = useState<VoiceChatStatus>("idle");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [messages, setMessages] = useState<VoiceChatMessage[]>([]);
@@ -112,7 +114,7 @@ export function useVoiceChat({
   const reportError = useCallback(
     (msg: string) => {
       setError(msg);
-      setStatus('error');
+      setStatus("error");
       onError?.(msg);
     },
     [onError],
@@ -152,7 +154,7 @@ export function useVoiceChat({
     }
 
     if (isMountedRef.current) {
-      setStatus('idle');
+      setStatus("idle");
       setIsSpeaking(false);
       setIsMuted(false);
       setElapsedSeconds(0);
@@ -166,9 +168,9 @@ export function useVoiceChat({
   const start = useCallback(async () => {
     // Empêcher les démarrages multiples
     if (
-      status === 'connecting' ||
-      status === 'listening' ||
-      status === 'speaking'
+      status === "connecting" ||
+      status === "listening" ||
+      status === "speaking"
     ) {
       return;
     }
@@ -176,7 +178,7 @@ export function useVoiceChat({
     setError(null);
     setMessages([]);
     setElapsedSeconds(0);
-    setStatus('connecting');
+    setStatus("connecting");
 
     // 1. Demander la permission micro via expo-av
     try {
@@ -206,14 +208,14 @@ export function useVoiceChat({
         return;
       }
 
-      sessionData = await voiceApi.createSession(numericId, 'fr');
+      sessionData = await voiceApi.createSession(numericId, "fr");
       setRemainingMinutes(sessionData.quota_remaining_minutes);
       maxSecondsRef.current = sessionData.max_session_minutes * 60;
     } catch (err: unknown) {
       // Vérifier si c'est une erreur de quota (403/429)
       const apiError = err as { status?: number; message?: string };
       if (apiError.status === 403 || apiError.status === 429) {
-        setStatus('quota_exceeded');
+        setStatus("quota_exceeded");
         setError(ERROR_MESSAGES.QUOTA_EXCEEDED);
         onError?.(ERROR_MESSAGES.QUOTA_EXCEEDED);
         return;
@@ -222,7 +224,7 @@ export function useVoiceChat({
       // Erreur réseau vs autre
       if (
         err instanceof TypeError ||
-        (apiError.message && apiError.message.includes('network'))
+        (apiError.message && apiError.message.includes("network"))
       ) {
         reportError(ERROR_MESSAGES.NETWORK);
       } else {
@@ -233,25 +235,25 @@ export function useVoiceChat({
 
     // 3. Charger le SDK ElevenLabs et démarrer la session
     try {
-      const { Conversation } = await import('@elevenlabs/client');
+      const { Conversation } = await import("@elevenlabs/client");
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conversation = await (Conversation as any).startSession({
         signedUrl: sessionData.signed_url,
         onConnect: () => {
           if (isMountedRef.current) {
-            setStatus('listening');
+            setStatus("listening");
           }
         },
         onDisconnect: () => {
           if (isMountedRef.current) {
             stopTimer();
             isActiveRef.current = false;
-            setStatus('idle');
+            setStatus("idle");
             setIsSpeaking(false);
           }
         },
-        onMessage: (message: { message: string; source: 'user' | 'ai' }) => {
+        onMessage: (message: { message: string; source: "user" | "ai" }) => {
           if (isMountedRef.current) {
             setMessages((prev) => [
               ...prev,
@@ -262,7 +264,7 @@ export function useVoiceChat({
         onError: (err: Error | string) => {
           if (isMountedRef.current) {
             const msg =
-              typeof err === 'string'
+              typeof err === "string"
                 ? err
                 : err.message || ERROR_MESSAGES.UNKNOWN;
             reportError(msg);
@@ -271,18 +273,18 @@ export function useVoiceChat({
         onStatusChange: (statusInfo: { status: string }) => {
           if (!isMountedRef.current) return;
           switch (statusInfo.status) {
-            case 'speaking':
+            case "speaking":
               setIsSpeaking(true);
-              setStatus('speaking');
+              setStatus("speaking");
               break;
-            case 'listening':
+            case "listening":
               setIsSpeaking(false);
-              setStatus('listening');
+              setStatus("listening");
               break;
-            case 'thinking':
-            case 'processing':
+            case "thinking":
+            case "processing":
               setIsSpeaking(false);
-              setStatus('thinking');
+              setStatus("thinking");
               break;
           }
         },
@@ -331,7 +333,7 @@ export function useVoiceChat({
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conv = conversationRef.current as any;
-      if (typeof conv.setVolume === 'function') {
+      if (typeof conv.setVolume === "function") {
         conv.setVolume({ inputVolume: nextMuted ? 0 : 1 });
       }
     } catch {
@@ -354,10 +356,7 @@ export function useVoiceChat({
 
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      if (
-        nextAppState === 'background' ||
-        nextAppState === 'inactive'
-      ) {
+      if (nextAppState === "background" || nextAppState === "inactive") {
         if (isActiveRef.current) {
           stop();
           if (isMountedRef.current) {
@@ -368,7 +367,7 @@ export function useVoiceChat({
     };
 
     const subscription = AppState.addEventListener(
-      'change',
+      "change",
       handleAppStateChange,
     );
 

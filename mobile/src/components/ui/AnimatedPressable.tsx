@@ -1,12 +1,12 @@
-import React, { ReactNode } from 'react';
-import { StyleProp, ViewStyle, Pressable } from 'react-native';
+import React, { ReactNode } from "react";
+import { StyleProp, ViewStyle, Pressable } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
-} from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 
 const AnimatedPressableBase = Animated.createAnimatedComponent(Pressable);
 
@@ -17,7 +17,7 @@ interface AnimatedPressableProps {
   style?: StyleProp<ViewStyle>;
   scaleValue?: number;
   hapticFeedback?: boolean;
-  hapticStyle?: 'light' | 'medium' | 'heavy';
+  hapticStyle?: "light" | "medium" | "heavy";
   disabled?: boolean;
   delayLongPress?: number;
 }
@@ -29,7 +29,7 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
   style,
   scaleValue = 0.97,
   hapticFeedback = true,
-  hapticStyle = 'light',
+  hapticStyle = "light",
   disabled = false,
   delayLongPress = 500,
 }) => {

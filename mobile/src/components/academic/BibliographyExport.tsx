@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,16 +8,16 @@ import {
   ActivityIndicator,
   Alert,
   Share,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Card, Button } from '../ui';
-import { academicApi, BibliographyFormat } from '../../services/api';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Card, Button } from "../ui";
+import { academicApi, BibliographyFormat } from "../../services/api";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
 interface BibliographyExportModalProps {
   visible: boolean;
@@ -35,53 +35,51 @@ interface FormatOption {
 
 const FORMAT_OPTIONS: FormatOption[] = [
   {
-    id: 'bibtex',
-    name: 'BibTeX',
-    description: 'Pour LaTeX et gestionnaires de références',
-    icon: 'code-slash',
+    id: "bibtex",
+    name: "BibTeX",
+    description: "Pour LaTeX et gestionnaires de références",
+    icon: "code-slash",
   },
   {
-    id: 'ris',
-    name: 'RIS',
-    description: 'Compatible Zotero, Mendeley, EndNote',
-    icon: 'document-text',
+    id: "ris",
+    name: "RIS",
+    description: "Compatible Zotero, Mendeley, EndNote",
+    icon: "document-text",
   },
   {
-    id: 'apa',
-    name: 'APA 7e édition',
-    description: 'Style académique standard',
-    icon: 'school',
+    id: "apa",
+    name: "APA 7e édition",
+    description: "Style académique standard",
+    icon: "school",
   },
   {
-    id: 'mla',
-    name: 'MLA 9e édition',
-    description: 'Humanités et littérature',
-    icon: 'book',
+    id: "mla",
+    name: "MLA 9e édition",
+    description: "Humanités et littérature",
+    icon: "book",
   },
   {
-    id: 'chicago',
-    name: 'Chicago',
-    description: 'Sciences sociales et histoire',
-    icon: 'library',
+    id: "chicago",
+    name: "Chicago",
+    description: "Sciences sociales et histoire",
+    icon: "library",
   },
   {
-    id: 'harvard',
-    name: 'Harvard',
-    description: 'Style auteur-date',
-    icon: 'reader',
+    id: "harvard",
+    name: "Harvard",
+    description: "Style auteur-date",
+    icon: "reader",
   },
 ];
 
-export const BibliographyExportModal: React.FC<BibliographyExportModalProps> = ({
-  visible,
-  onClose,
-  paperIds,
-  summaryId,
-}) => {
+export const BibliographyExportModal: React.FC<
+  BibliographyExportModalProps
+> = ({ visible, onClose, paperIds, summaryId }) => {
   const { colors } = useTheme();
   const { tr } = useLanguage();
 
-  const [selectedFormat, setSelectedFormat] = useState<BibliographyFormat>('bibtex');
+  const [selectedFormat, setSelectedFormat] =
+    useState<BibliographyFormat>("bibtex");
   const [loading, setLoading] = useState(false);
   const [exportedContent, setExportedContent] = useState<string | null>(null);
 
@@ -98,10 +96,12 @@ export const BibliographyExportModal: React.FC<BibliographyExportModalProps> = (
 
       setExportedContent(response.content);
     } catch (err: any) {
-      if (__DEV__) { console.error('Export error:', err); }
+      if (__DEV__) {
+        console.error("Export error:", err);
+      }
       Alert.alert(
-        tr('Erreur', 'Error'),
-        err.message || tr('Échec de l\'export', 'Export failed')
+        tr("Erreur", "Error"),
+        err.message || tr("Échec de l'export", "Export failed"),
       );
     } finally {
       setLoading(false);
@@ -114,8 +114,11 @@ export const BibliographyExportModal: React.FC<BibliographyExportModalProps> = (
     await Clipboard.setStringAsync(exportedContent);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
-      tr('Copié !', 'Copied!'),
-      tr('La bibliographie a été copiée dans le presse-papiers.', 'Bibliography copied to clipboard.')
+      tr("Copié !", "Copied!"),
+      tr(
+        "La bibliographie a été copiée dans le presse-papiers.",
+        "Bibliography copied to clipboard.",
+      ),
     );
   };
 
@@ -125,10 +128,12 @@ export const BibliographyExportModal: React.FC<BibliographyExportModalProps> = (
     try {
       await Share.share({
         message: exportedContent,
-        title: tr('Bibliographie DeepSight', 'DeepSight Bibliography'),
+        title: tr("Bibliographie DeepSight", "DeepSight Bibliography"),
       });
     } catch (err) {
-      if (__DEV__) { console.error('Share error:', err); }
+      if (__DEV__) {
+        console.error("Share error:", err);
+      }
     }
   };
 
@@ -148,7 +153,7 @@ export const BibliographyExportModal: React.FC<BibliographyExportModalProps> = (
         {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            {tr('Exporter la bibliographie', 'Export Bibliography')}
+            {tr("Exporter la bibliographie", "Export Bibliography")}
           </Text>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color={colors.textPrimary} />
@@ -157,14 +162,14 @@ export const BibliographyExportModal: React.FC<BibliographyExportModalProps> = (
 
         {/* Info */}
         <Text style={[styles.info, { color: colors.textSecondary }]}>
-          {paperIds.length} {tr('articles sélectionnés', 'papers selected')}
+          {paperIds.length} {tr("articles sélectionnés", "papers selected")}
         </Text>
 
         {!exportedContent ? (
           <>
             {/* Format selection */}
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              {tr('Choisir le format', 'Choose format')}
+              {tr("Choisir le format", "Choose format")}
             </Text>
 
             <View style={styles.formatGrid}>
@@ -184,19 +189,29 @@ export const BibliographyExportModal: React.FC<BibliographyExportModalProps> = (
                   <Ionicons
                     name={format.icon as any}
                     size={24}
-                    color={selectedFormat === format.id ? colors.accentPrimary : colors.textSecondary}
+                    color={
+                      selectedFormat === format.id
+                        ? colors.accentPrimary
+                        : colors.textSecondary
+                    }
                   />
                   <Text
                     style={[
                       styles.formatName,
                       {
-                        color: selectedFormat === format.id ? colors.accentPrimary : colors.textPrimary,
+                        color:
+                          selectedFormat === format.id
+                            ? colors.accentPrimary
+                            : colors.textPrimary,
                       },
                     ]}
                   >
                     {format.name}
                   </Text>
-                  <Text style={[styles.formatDesc, { color: colors.textTertiary }]} numberOfLines={2}>
+                  <Text
+                    style={[styles.formatDesc, { color: colors.textTertiary }]}
+                    numberOfLines={2}
+                  >
                     {format.description}
                   </Text>
                 </TouchableOpacity>
@@ -205,7 +220,11 @@ export const BibliographyExportModal: React.FC<BibliographyExportModalProps> = (
 
             {/* Export button */}
             <Button
-              title={loading ? tr('Export en cours...', 'Exporting...') : tr('Générer', 'Generate')}
+              title={
+                loading
+                  ? tr("Export en cours...", "Exporting...")
+                  : tr("Générer", "Generate")
+              }
               onPress={handleExport}
               variant="primary"
               disabled={loading}
@@ -216,32 +235,43 @@ export const BibliographyExportModal: React.FC<BibliographyExportModalProps> = (
           <>
             {/* Export result */}
             <Card variant="elevated" style={styles.resultCard}>
-              <Text style={[styles.resultContent, { color: colors.textPrimary }]} selectable>
+              <Text
+                style={[styles.resultContent, { color: colors.textPrimary }]}
+                selectable
+              >
                 {exportedContent.substring(0, 500)}
-                {exportedContent.length > 500 && '...'}
+                {exportedContent.length > 500 && "..."}
               </Text>
             </Card>
 
             {/* Actions */}
             <View style={styles.actions}>
               <Button
-                title={tr('Copier', 'Copy')}
+                title={tr("Copier", "Copy")}
                 onPress={handleCopy}
                 variant="secondary"
-                icon={<Ionicons name="copy-outline" size={18} color={colors.accentPrimary} />}
+                icon={
+                  <Ionicons
+                    name="copy-outline"
+                    size={18}
+                    color={colors.accentPrimary}
+                  />
+                }
                 style={styles.actionButton}
               />
               <Button
-                title={tr('Partager', 'Share')}
+                title={tr("Partager", "Share")}
                 onPress={handleShare}
                 variant="primary"
-                icon={<Ionicons name="share-outline" size={18} color="#FFFFFF" />}
+                icon={
+                  <Ionicons name="share-outline" size={18} color="#FFFFFF" />
+                }
                 style={styles.actionButton}
               />
             </View>
 
             <Button
-              title={tr('Changer de format', 'Change format')}
+              title={tr("Changer de format", "Change format")}
               onPress={() => setExportedContent(null)}
               variant="ghost"
               style={styles.changeFormatButton}
@@ -259,9 +289,9 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.md,
   },
   title: {
@@ -282,30 +312,30 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   formatGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
   },
   formatCard: {
-    width: '48%',
+    width: "48%",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
+    alignItems: "center",
     gap: Spacing.xs,
   },
   formatName: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textAlign: 'center',
+    textAlign: "center",
   },
   formatDesc: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
   },
   exportButton: {
-    marginTop: 'auto',
+    marginTop: "auto",
   },
   resultCard: {
     flex: 1,
@@ -315,11 +345,11 @@ const styles = StyleSheet.create({
   },
   resultContent: {
     fontSize: Typography.fontSize.xs,
-    fontFamily: 'Courier',
+    fontFamily: "Courier",
     lineHeight: 18,
   },
   actions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.md,
     marginBottom: Spacing.md,
   },

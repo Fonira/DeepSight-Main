@@ -10,20 +10,20 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Cache configuration
 const CACHE_VERSION = 1;
-const CACHE_PREFIX = '@deepsight_cache_v1_';
-const CACHE_INDEX_KEY = '@deepsight_cache_index';
+const CACHE_PREFIX = "@deepsight_cache_v1_";
+const CACHE_INDEX_KEY = "@deepsight_cache_index";
 const MAX_CACHE_SIZE_MB = 50; // 50MB max cache
 const MAX_CACHE_ENTRIES = 500;
 
 // Priority levels for cache retention
 export enum CachePriority {
-  LOW = 1,      // Can be evicted easily (e.g., thumbnails)
-  NORMAL = 2,   // Standard content (e.g., analysis results)
-  HIGH = 3,     // Important data (e.g., user history)
+  LOW = 1, // Can be evicted easily (e.g., thumbnails)
+  NORMAL = 2, // Standard content (e.g., analysis results)
+  HIGH = 3, // Important data (e.g., user history)
   CRITICAL = 4, // Never auto-evict (e.g., user preferences)
 }
 
@@ -80,7 +80,9 @@ async function getCacheIndex(): Promise<CacheIndex> {
       await clearAllCache();
     }
   } catch (error) {
-    if (__DEV__) { console.warn('[OfflineCache] Failed to load cache index:', error); }
+    if (__DEV__) {
+      console.warn("[OfflineCache] Failed to load cache index:", error);
+    }
   }
 
   return {
@@ -97,7 +99,9 @@ async function saveCacheIndex(index: CacheIndex): Promise<void> {
   try {
     await AsyncStorage.setItem(CACHE_INDEX_KEY, JSON.stringify(index));
   } catch (error) {
-    if (__DEV__) { console.error('[OfflineCache] Failed to save cache index:', error); }
+    if (__DEV__) {
+      console.error("[OfflineCache] Failed to save cache index:", error);
+    }
   }
 }
 
@@ -111,7 +115,10 @@ function getByteSize(str: string): number {
 /**
  * Evict entries to make space using LRU + priority strategy
  */
-async function evictEntries(index: CacheIndex, bytesNeeded: number): Promise<CacheIndex> {
+async function evictEntries(
+  index: CacheIndex,
+  bytesNeeded: number,
+): Promise<CacheIndex> {
   const entries = Object.values(index.entries);
 
   // Sort by priority (ascending) then by last access time (ascending = oldest first)
@@ -140,7 +147,9 @@ async function evictEntries(index: CacheIndex, bytesNeeded: number): Promise<Cac
   }
 
   // Remove entries
-  await AsyncStorage.multiRemove(keysToRemove.map(k => `${CACHE_PREFIX}${k}`));
+  await AsyncStorage.multiRemove(
+    keysToRemove.map((k) => `${CACHE_PREFIX}${k}`),
+  );
 
   // Update index
   for (const key of keysToRemove) {
@@ -149,7 +158,9 @@ async function evictEntries(index: CacheIndex, bytesNeeded: number): Promise<Cac
   index.totalSize -= freedBytes;
 
   if (__DEV__ && keysToRemove.length > 0) {
-    console.log(`[OfflineCache] Evicted ${keysToRemove.length} entries (${(freedBytes / 1024).toFixed(2)} KB)`);
+    console.log(
+      `[OfflineCache] Evicted ${keysToRemove.length} entries (${(freedBytes / 1024).toFixed(2)} KB)`,
+    );
   }
 
   return index;
@@ -171,7 +182,9 @@ async function removeExpiredEntries(index: CacheIndex): Promise<CacheIndex> {
   }
 
   if (expiredKeys.length > 0) {
-    await AsyncStorage.multiRemove(expiredKeys.map(k => `${CACHE_PREFIX}${k}`));
+    await AsyncStorage.multiRemove(
+      expiredKeys.map((k) => `${CACHE_PREFIX}${k}`),
+    );
 
     for (const key of expiredKeys) {
       delete index.entries[key];
@@ -179,7 +192,9 @@ async function removeExpiredEntries(index: CacheIndex): Promise<CacheIndex> {
     index.totalSize -= freedBytes;
 
     if (__DEV__) {
-      console.log(`[OfflineCache] Removed ${expiredKeys.length} expired entries`);
+      console.log(
+        `[OfflineCache] Removed ${expiredKeys.length} expired entries`,
+      );
     }
   }
 
@@ -200,7 +215,7 @@ export async function set<T>(
     priority?: CachePriority;
     ttlMinutes?: number | null; // null = never expires
     tags?: string[];
-  } = {}
+  } = {},
 ): Promise<void> {
   const {
     priority = CachePriority.NORMAL,
@@ -212,7 +227,8 @@ export async function set<T>(
     let index = await getCacheIndex();
 
     // Clean expired entries periodically
-    if (Math.random() < 0.1) { // 10% chance to run cleanup
+    if (Math.random() < 0.1) {
+      // 10% chance to run cleanup
       index = await removeExpiredEntries(index);
     }
 
@@ -257,9 +273,10 @@ export async function set<T>(
       AsyncStorage.setItem(`${CACHE_PREFIX}${key}`, JSON.stringify(entry)),
       saveCacheIndex(index),
     ]);
-
   } catch (error) {
-    if (__DEV__) { console.error('[OfflineCache] Failed to set cache:', error); }
+    if (__DEV__) {
+      console.error("[OfflineCache] Failed to set cache:", error);
+    }
   }
 }
 
@@ -294,9 +311,10 @@ export async function get<T>(key: string): Promise<T | null> {
 
     cacheHits++;
     return entry.data;
-
   } catch (error) {
-    if (__DEV__) { console.error('[OfflineCache] Failed to get cache:', error); }
+    if (__DEV__) {
+      console.error("[OfflineCache] Failed to get cache:", error);
+    }
     cacheMisses++;
     return null;
   }
@@ -335,9 +353,10 @@ export async function remove(key: string): Promise<void> {
       AsyncStorage.removeItem(`${CACHE_PREFIX}${key}`),
       saveCacheIndex(index),
     ]);
-
   } catch (error) {
-    if (__DEV__) { console.error('[OfflineCache] Failed to remove cache:', error); }
+    if (__DEV__) {
+      console.error("[OfflineCache] Failed to remove cache:", error);
+    }
   }
 }
 
@@ -359,15 +378,18 @@ export async function removeByTag(tag: string): Promise<number> {
 
     if (keysToRemove.length > 0) {
       await Promise.all([
-        AsyncStorage.multiRemove(keysToRemove.map(k => `${CACHE_PREFIX}${k}`)),
+        AsyncStorage.multiRemove(
+          keysToRemove.map((k) => `${CACHE_PREFIX}${k}`),
+        ),
         saveCacheIndex(index),
       ]);
     }
 
     return keysToRemove.length;
-
   } catch (error) {
-    if (__DEV__) { console.error('[OfflineCache] Failed to remove by tag:', error); }
+    if (__DEV__) {
+      console.error("[OfflineCache] Failed to remove by tag:", error);
+    }
     return 0;
   }
 }
@@ -378,7 +400,9 @@ export async function removeByTag(tag: string): Promise<number> {
 export async function clearAllCache(): Promise<void> {
   try {
     const keys = await AsyncStorage.getAllKeys();
-    const cacheKeys = keys.filter(k => k.startsWith(CACHE_PREFIX) || k === CACHE_INDEX_KEY);
+    const cacheKeys = keys.filter(
+      (k) => k.startsWith(CACHE_PREFIX) || k === CACHE_INDEX_KEY,
+    );
     await AsyncStorage.multiRemove(cacheKeys);
 
     // Reset stats
@@ -386,11 +410,12 @@ export async function clearAllCache(): Promise<void> {
     cacheMisses = 0;
 
     if (__DEV__) {
-      console.log('[OfflineCache] All cache cleared');
+      console.log("[OfflineCache] All cache cleared");
     }
-
   } catch (error) {
-    if (__DEV__) { console.error('[OfflineCache] Failed to clear cache:', error); }
+    if (__DEV__) {
+      console.error("[OfflineCache] Failed to clear cache:", error);
+    }
   }
 }
 
@@ -432,9 +457,13 @@ export async function preloadForOffline<T>(
     priority?: CachePriority;
     ttlMinutes?: number;
     tags?: string[];
-  } = {}
+  } = {},
 ): Promise<T | null> {
-  const { priority = CachePriority.HIGH, ttlMinutes = 24 * 60, tags = [] } = options;
+  const {
+    priority = CachePriority.HIGH,
+    ttlMinutes = 24 * 60,
+    tags = [],
+  } = options;
 
   // Check cache first
   const cached = await get<T>(key);
@@ -448,7 +477,9 @@ export async function preloadForOffline<T>(
     await set(key, data, { priority, ttlMinutes, tags });
     return data;
   } catch (error) {
-    if (__DEV__) { console.error('[OfflineCache] Preload failed:', error); }
+    if (__DEV__) {
+      console.error("[OfflineCache] Preload failed:", error);
+    }
     return null;
   }
 }
@@ -464,7 +495,7 @@ export async function getOrFetch<T>(
     ttlMinutes?: number;
     tags?: string[];
     forceRefresh?: boolean;
-  } = {}
+  } = {},
 ): Promise<T> {
   const { forceRefresh = false, ...cacheOptions } = options;
 

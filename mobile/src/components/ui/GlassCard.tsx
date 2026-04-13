@@ -1,7 +1,7 @@
-import React from 'react';
-import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
-import { useTheme } from '../../contexts/ThemeContext';
-import { BorderRadius, Spacing } from '../../constants/theme';
+import React from "react";
+import { StyleSheet, View, ViewStyle, StyleProp } from "react-native";
+import { useTheme } from "../../contexts/ThemeContext";
+import { BorderRadius, Spacing } from "../../constants/theme";
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -21,13 +21,16 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   children,
   intensity = 25, // Ignoré maintenant
   style,
-  padding = 'lg',
-  borderRadius = 'lg',
+  padding = "lg",
+  borderRadius = "lg",
 }) => {
   const { colors } = useTheme();
 
-  const paddingValue = typeof padding === 'number' ? padding : Spacing[padding];
-  const borderRadiusValue = typeof borderRadius === 'number' ? borderRadius : BorderRadius[borderRadius];
+  const paddingValue = typeof padding === "number" ? padding : Spacing[padding];
+  const borderRadiusValue =
+    typeof borderRadius === "number"
+      ? borderRadius
+      : BorderRadius[borderRadius];
 
   return (
     <View
@@ -49,7 +52,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
   },
 });

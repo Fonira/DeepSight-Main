@@ -19,9 +19,11 @@ npm run start:dev-client
 ## Testing the Router
 
 ### 1. TypeScript Validation
+
 ```bash
 npm run typecheck
 ```
+
 ✅ Should pass without errors
 
 ### 2. Run in Expo Go
@@ -38,12 +40,14 @@ npm start
 ### 3. Test Navigation Flow
 
 #### Authentication Flow (No user logged in)
+
 1. App opens → Shows welcome screen (app/(auth)/index.tsx)
 2. Click "Se connecter" → Goes to login.tsx
 3. Click "Créer un compte" → Goes to register.tsx
 4. Can navigate back
 
 #### After Login (Simulated)
+
 1. App would redirect to (tabs) group
 2. See 4 tabs: Home, Library, Study, Profile
 3. Tab bar shows with custom styling
@@ -51,11 +55,13 @@ npm start
 5. Try tapping different tabs
 
 #### Dynamic Route Test
+
 In one of the tab screens, you could do:
+
 ```typescript
-import { useRouter } from 'expo-router';
+import { useRouter } from "expo-router";
 const router = useRouter();
-router.push('/(tabs)/analysis/123');
+router.push("/(tabs)/analysis/123");
 ```
 
 ### 4. Test Deep Links
@@ -202,7 +208,7 @@ DeepSight-Main/mobile/
 
 ## Important Notes
 
-1. **App Entry Point** : app/_layout.tsx (NOT src/index.tsx)
+1. **App Entry Point** : app/\_layout.tsx (NOT src/index.tsx)
 2. **Exports** : AuthProvider and useAuth from src/contexts/AuthContext
 3. **Fonts** : Loaded in root layout, must exist in src/assets/fonts/
 4. **Colors** : Use darkColors for consistency
@@ -212,18 +218,23 @@ DeepSight-Main/mobile/
 ## Common Issues
 
 ### Issue: Fonts not loading
+
 **Solution**: Make sure fonts exist in `src/assets/fonts/` with exact filenames
 
 ### Issue: "Cannot find module @/theme"
+
 **Solution**: Check tsconfig.json and babel.config.js have the aliases
 
 ### Issue: Navigation not working
+
 **Solution**: Make sure AuthContext is properly initialized in root layout
 
 ### Issue: TypeScript errors in CustomTabBar
+
 **Solution**: The `any` types are intentional due to React Navigation's complex typing
 
 ### Issue: Expo Go vs Dev Build
+
 **Solution**: Some native modules (Google Sign-In) only work in dev builds, not Expo Go
 
 ## Debugging

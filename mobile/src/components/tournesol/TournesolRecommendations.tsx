@@ -5,7 +5,7 @@
  * Click → lance l'analyse DeepSight de la vidéo
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -14,16 +14,16 @@ import {
   Pressable,
   ActivityIndicator,
   Linking,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '@/contexts/ThemeContext';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { palette } from '@/theme/colors';
+} from "react-native";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "@/contexts/ThemeContext";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
+import { palette } from "@/theme/colors";
 
 // Types Tournesol API
 interface TournesolResult {
@@ -47,10 +47,10 @@ interface TournesolResult {
 }
 
 // API config — utilise le proxy backend (CORS)
-const API_BASE = 'https://api.deepsightsynthesis.com';
+const API_BASE = "https://api.deepsightsynthesis.com";
 
 interface Props {
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
   limit?: number;
   /** Changer cette valeur force un re-fetch avec de nouvelles suggestions */
   refreshTrigger?: number;
@@ -59,7 +59,11 @@ interface Props {
 // Pool total dans lequel on pioche aléatoirement
 const POOL_SIZE = 200;
 
-export function TournesolRecommendations({ language = 'fr', limit = 10, refreshTrigger = 0 }: Props) {
+export function TournesolRecommendations({
+  language = "fr",
+  limit = 10,
+  refreshTrigger = 0,
+}: Props) {
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const [results, setResults] = useState<TournesolResult[]>([]);
@@ -72,10 +76,10 @@ export function TournesolRecommendations({ language = 'fr', limit = 10, refreshT
     try {
       // Offset aléatoire pour varier les suggestions à chaque chargement / pull-to-refresh
       const randomOffset = Math.floor(Math.random() * (POOL_SIZE - limit));
-      const langParam = language === 'fr' ? '&metadata[language]=fr' : '';
+      const langParam = language === "fr" ? "&metadata[language]=fr" : "";
       const url = `${API_BASE}/api/tournesol/recommendations/raw?limit=${limit}&offset=${randomOffset}${langParam}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error('API error');
+      if (!res.ok) throw new Error("API error");
       const data = await res.json();
       // Mélanger les résultats pour encore plus de variété
       const shuffled = (data.results || []).sort(() => Math.random() - 0.5);
@@ -91,28 +95,34 @@ export function TournesolRecommendations({ language = 'fr', limit = 10, refreshT
     fetchRecommendations();
   }, [fetchRecommendations]);
 
-  const handleVideoPress = useCallback((videoId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({
-      pathname: '/(tabs)/analysis/[id]',
-      params: { id: `yt:${videoId}`, videoUrl: `https://www.youtube.com/watch?v=${videoId}` },
-    } as any);
-  }, [router]);
+  const handleVideoPress = useCallback(
+    (videoId: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.push({
+        pathname: "/(tabs)/analysis/[id]",
+        params: {
+          id: `yt:${videoId}`,
+          videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+        },
+      } as any);
+    },
+    [router],
+  );
 
   const handleTournesolPress = useCallback(() => {
-    Linking.openURL('https://tournesol.app');
+    Linking.openURL("https://tournesol.app");
   }, []);
 
   const formatDuration = (seconds?: number) => {
-    if (!seconds) return '';
+    if (!seconds) return "";
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 50) return '#22c55e';
-    if (score >= 20) return '#eab308';
+    if (score >= 50) return "#22c55e";
+    if (score >= 20) return "#eab308";
     return colors.textTertiary;
   };
 
@@ -135,18 +145,34 @@ export function TournesolRecommendations({ language = 'fr', limit = 10, refreshT
 
     return (
       <Pressable
-        style={[styles.card, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}
+        style={[
+          styles.card,
+          { backgroundColor: colors.bgElevated, borderColor: colors.border },
+        ]}
         onPress={() => handleVideoPress(videoId)}
         accessibilityLabel={`Analyser: ${item.entity.metadata.name}`}
       >
         {/* Thumbnail */}
         <View style={styles.thumbnailContainer}>
-          <Image source={{ uri: thumbnail }} style={styles.thumbnail} contentFit="cover" />
+          <Image
+            source={{ uri: thumbnail }}
+            style={styles.thumbnail}
+            contentFit="cover"
+          />
           {/* Score badge */}
-          <View style={[styles.scoreBadge, { backgroundColor: getScoreColor(score) + '20', borderColor: getScoreColor(score) + '40' }]}>
-            <Text style={styles.sunflower}>{'\uD83C\uDF3B'}</Text>
+          <View
+            style={[
+              styles.scoreBadge,
+              {
+                backgroundColor: getScoreColor(score) + "20",
+                borderColor: getScoreColor(score) + "40",
+              },
+            ]}
+          >
+            <Text style={styles.sunflower}>{"\uD83C\uDF3B"}</Text>
             <Text style={[styles.scoreText, { color: getScoreColor(score) }]}>
-              {score > 0 ? '+' : ''}{Math.round(score)}
+              {score > 0 ? "+" : ""}
+              {Math.round(score)}
             </Text>
           </View>
           {/* Duration */}
@@ -161,24 +187,36 @@ export function TournesolRecommendations({ language = 'fr', limit = 10, refreshT
 
         {/* Info */}
         <View style={styles.cardInfo}>
-          <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={2}>
+          <Text
+            style={[styles.cardTitle, { color: colors.textPrimary }]}
+            numberOfLines={2}
+          >
             {item.entity.metadata.name}
           </Text>
-          <Text style={[styles.cardChannel, { color: colors.textTertiary }]} numberOfLines={1}>
-            {item.entity.metadata.uploader || 'YouTube'}
+          <Text
+            style={[styles.cardChannel, { color: colors.textTertiary }]}
+            numberOfLines={1}
+          >
+            {item.entity.metadata.uploader || "YouTube"}
           </Text>
           <View style={styles.cardStats}>
             <Text style={[styles.cardStat, { color: colors.textMuted }]}>
-              {item.collective_rating.n_contributors} {language === 'fr' ? 'votes' : 'votes'}
+              {item.collective_rating.n_contributors}{" "}
+              {language === "fr" ? "votes" : "votes"}
             </Text>
           </View>
         </View>
 
         {/* Analyze CTA */}
-        <View style={[styles.analyzeCta, { backgroundColor: palette.indigo + '15' }]}>
+        <View
+          style={[
+            styles.analyzeCta,
+            { backgroundColor: palette.indigo + "15" },
+          ]}
+        >
           <Ionicons name="sparkles" size={12} color={palette.indigo} />
           <Text style={[styles.analyzeText, { color: palette.indigo }]}>
-            {language === 'fr' ? 'Analyser' : 'Analyze'}
+            {language === "fr" ? "Analyser" : "Analyze"}
           </Text>
         </View>
       </Pressable>
@@ -186,25 +224,30 @@ export function TournesolRecommendations({ language = 'fr', limit = 10, refreshT
   };
 
   return (
-    <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.container}>
+    <Animated.View
+      entering={FadeInDown.delay(400).duration(400)}
+      style={styles.container}
+    >
       {/* Header */}
       <Pressable style={styles.header} onPress={handleTournesolPress}>
         <View style={styles.headerLeft}>
           <Image
-            source={require('@/assets/platforms/tournesol-logo.png')}
+            source={require("@/assets/platforms/tournesol-logo.png")}
             style={styles.tournesolIcon}
             contentFit="contain"
           />
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            {language === 'fr' ? 'Recommandations Tournesol' : 'Tournesol Picks'}
+            {language === "fr"
+              ? "Recommandations Tournesol"
+              : "Tournesol Picks"}
           </Text>
         </View>
         <Ionicons name="open-outline" size={16} color={colors.textTertiary} />
       </Pressable>
       <Text style={[styles.subtitle, { color: colors.textTertiary }]}>
-        {language === 'fr'
-          ? 'Vidéos de qualité sélectionnées par la communauté'
-          : 'Quality videos curated by the community'}
+        {language === "fr"
+          ? "Vidéos de qualité sélectionnées par la communauté"
+          : "Quality videos curated by the community"}
       </Text>
 
       {/* Horizontal carousel */}
@@ -227,18 +270,18 @@ const styles = StyleSheet.create({
     marginTop: sp.xl,
   },
   loadingContainer: {
-    paddingVertical: sp['2xl'],
-    alignItems: 'center',
+    paddingVertical: sp["2xl"],
+    alignItems: "center",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 4,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.sm,
   },
   tournesolIcon: {
@@ -262,21 +305,21 @@ const styles = StyleSheet.create({
     width: 200,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   thumbnailContainer: {
-    position: 'relative',
+    position: "relative",
   },
   thumbnail: {
     width: 200,
     height: 112,
   },
   scoreBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 6,
     left: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 3,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -291,10 +334,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   durationBadge: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 4,
     right: 4,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: "rgba(0,0,0,0.75)",
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 4,
@@ -302,7 +345,7 @@ const styles = StyleSheet.create({
   durationText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: 10,
-    color: '#fff',
+    color: "#fff",
   },
   cardInfo: {
     padding: sp.sm,
@@ -318,7 +361,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   cardStats: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: sp.sm,
     marginTop: 2,
   },
@@ -327,9 +370,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   analyzeCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 4,
     paddingVertical: 6,
     marginHorizontal: sp.sm,

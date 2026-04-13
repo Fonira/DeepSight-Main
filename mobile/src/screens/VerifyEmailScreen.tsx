@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,36 +6,40 @@ import {
   TouchableOpacity,
   TextInput,
   Keyboard,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RouteProp } from '@react-navigation/native';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { Button } from '../components/ui';
-import { Spacing, Typography, BorderRadius } from '../constants/theme';
-import type { RootStackParamList } from '../types';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RouteProp } from "@react-navigation/native";
+import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { Button } from "../components/ui";
+import { Spacing, Typography, BorderRadius } from "../constants/theme";
+import type { RootStackParamList } from "../types";
 
-type VerifyEmailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'VerifyEmail'>;
-type VerifyEmailRouteProp = RouteProp<RootStackParamList, 'VerifyEmail'>;
+type VerifyEmailNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "VerifyEmail"
+>;
+type VerifyEmailRouteProp = RouteProp<RootStackParamList, "VerifyEmail">;
 
 const CODE_LENGTH = 6;
 
 export const VerifyEmailScreen: React.FC = () => {
   const { colors } = useTheme();
   const { t } = useLanguage();
-  const { verifyEmail, resendVerificationCode, isLoading, error, clearError } = useAuth();
+  const { verifyEmail, resendVerificationCode, isLoading, error, clearError } =
+    useAuth();
   const navigation = useNavigation<VerifyEmailNavigationProp>();
   const route = useRoute<VerifyEmailRouteProp>();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('creative');
+  useScreenDoodleVariant("creative");
 
-  const email = route.params?.email || '';
-  const [code, setCode] = useState('');
+  const email = route.params?.email || "";
+  const [code, setCode] = useState("");
   const [isResending, setIsResending] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [verificationSuccess, setVerificationSuccess] = useState(false);
@@ -70,7 +74,7 @@ export const VerifyEmailScreen: React.FC = () => {
       setVerificationSuccess(true);
     } catch (err) {
       // Error handled by AuthContext
-      setCode(''); // Reset code on error
+      setCode(""); // Reset code on error
     }
   };
 
@@ -81,7 +85,7 @@ export const VerifyEmailScreen: React.FC = () => {
     try {
       await resendVerificationCode(email);
       setCountdown(60);
-      setCode('');
+      setCode("");
     } catch (err) {
       // Error handled by AuthContext
     } finally {
@@ -90,27 +94,39 @@ export const VerifyEmailScreen: React.FC = () => {
   };
 
   const handleBackToLogin = () => {
-    navigation.navigate('Login');
+    navigation.navigate("Login");
   };
 
   const handleCodeChange = (value: string) => {
     // Only allow numbers and limit to CODE_LENGTH
-    const cleaned = value.replace(/[^0-9]/g, '').slice(0, CODE_LENGTH);
+    const cleaned = value.replace(/[^0-9]/g, "").slice(0, CODE_LENGTH);
     setCode(cleaned);
   };
 
   // Success screen
   if (verificationSuccess) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.container, { backgroundColor: "transparent" }]}>
         <View
           style={[
             styles.content,
-            { paddingTop: insets.top + Spacing.xxl, paddingBottom: insets.bottom + Spacing.xxl },
+            {
+              paddingTop: insets.top + Spacing.xxl,
+              paddingBottom: insets.bottom + Spacing.xxl,
+            },
           ]}
         >
-          <View style={[styles.iconContainer, { backgroundColor: `${colors.accentSuccess}15` }]}>
-            <Ionicons name="checkmark-circle" size={48} color={colors.accentSuccess} />
+          <View
+            style={[
+              styles.iconContainer,
+              { backgroundColor: `${colors.accentSuccess}15` },
+            ]}
+          >
+            <Ionicons
+              name="checkmark-circle"
+              size={48}
+              color={colors.accentSuccess}
+            />
           </View>
 
           <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -133,15 +149,27 @@ export const VerifyEmailScreen: React.FC = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
       <View
         style={[
           styles.content,
-          { paddingTop: insets.top + Spacing.xxl, paddingBottom: insets.bottom + Spacing.xxl },
+          {
+            paddingTop: insets.top + Spacing.xxl,
+            paddingBottom: insets.bottom + Spacing.xxl,
+          },
         ]}
       >
-        <View style={[styles.iconContainer, { backgroundColor: `${colors.accentPrimary}15` }]}>
-          <Ionicons name="mail-unread-outline" size={48} color={colors.accentPrimary} />
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: `${colors.accentPrimary}15` },
+          ]}
+        >
+          <Ionicons
+            name="mail-unread-outline"
+            size={48}
+            color={colors.accentPrimary}
+          />
         </View>
 
         <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -149,17 +177,33 @@ export const VerifyEmailScreen: React.FC = () => {
         </Text>
 
         <Text style={[styles.description, { color: colors.textSecondary }]}>
-          {t.auth.verificationCodeSent}{' '}
-          <Text style={{ color: colors.accentPrimary, fontFamily: Typography.fontFamily.bodySemiBold }}>
+          {t.auth.verificationCodeSent}{" "}
+          <Text
+            style={{
+              color: colors.accentPrimary,
+              fontFamily: Typography.fontFamily.bodySemiBold,
+            }}
+          >
             {email}
           </Text>
         </Text>
 
         {/* Error message */}
         {error && (
-          <View style={[styles.errorContainer, { backgroundColor: `${colors.accentError}15` }]}>
-            <Ionicons name="alert-circle" size={20} color={colors.accentError} />
-            <Text style={[styles.errorText, { color: colors.accentError }]}>{error}</Text>
+          <View
+            style={[
+              styles.errorContainer,
+              { backgroundColor: `${colors.accentError}15` },
+            ]}
+          >
+            <Ionicons
+              name="alert-circle"
+              size={20}
+              color={colors.accentError}
+            />
+            <Text style={[styles.errorText, { color: colors.accentError }]}>
+              {error}
+            </Text>
           </View>
         )}
 
@@ -181,13 +225,16 @@ export const VerifyEmailScreen: React.FC = () => {
                   styles.codeBox,
                   {
                     backgroundColor: colors.bgSecondary,
-                    borderColor: index === code.length ? colors.accentPrimary : colors.border,
+                    borderColor:
+                      index === code.length
+                        ? colors.accentPrimary
+                        : colors.border,
                     borderWidth: index === code.length ? 2 : 1,
                   },
                 ]}
               >
                 <Text style={[styles.codeDigit, { color: colors.textPrimary }]}>
-                  {code[index] || ''}
+                  {code[index] || ""}
                 </Text>
               </View>
             ))}
@@ -220,7 +267,11 @@ export const VerifyEmailScreen: React.FC = () => {
 
         <View style={styles.actions}>
           <Button
-            title={countdown > 0 ? `${t.auth.resendIn} ${countdown}s` : t.auth.resendCode}
+            title={
+              countdown > 0
+                ? `${t.auth.resendIn} ${countdown}s`
+                : t.auth.resendCode
+            }
             onPress={handleResendEmail}
             loading={isResending}
             disabled={countdown > 0}
@@ -229,8 +280,14 @@ export const VerifyEmailScreen: React.FC = () => {
           />
 
           <TouchableOpacity onPress={handleBackToLogin} style={styles.backLink}>
-            <Ionicons name="arrow-back" size={16} color={colors.accentPrimary} />
-            <Text style={[styles.backLinkText, { color: colors.accentPrimary }]}>
+            <Ionicons
+              name="arrow-back"
+              size={16}
+              color={colors.accentPrimary}
+            />
+            <Text
+              style={[styles.backLinkText, { color: colors.accentPrimary }]}
+            >
               {t.auth.backToLogin}
             </Text>
           </TouchableOpacity>
@@ -247,37 +304,37 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: Spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   iconContainer: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.xl,
   },
   title: {
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize["2xl"],
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.md,
   },
   description: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.lg,
     lineHeight: Typography.fontSize.base * Typography.lineHeight.relaxed,
   },
   errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.lg,
-    width: '100%',
+    width: "100%",
   },
   errorText: {
     flex: 1,
@@ -286,33 +343,33 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   codeContainer: {
-    width: '100%',
+    width: "100%",
     marginBottom: Spacing.lg,
   },
   codeLabel: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.md,
   },
   codeInputContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: Spacing.sm,
   },
   codeBox: {
     width: 48,
     height: 56,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   codeDigit: {
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize["2xl"],
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   hiddenInput: {
-    position: 'absolute',
+    position: "absolute",
     opacity: 0,
     height: 0,
     width: 0,
@@ -323,21 +380,21 @@ const styles = StyleSheet.create({
   instructions: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.xl,
     lineHeight: Typography.fontSize.sm * Typography.lineHeight.relaxed,
     paddingHorizontal: Spacing.md,
   },
   actions: {
-    width: '100%',
+    width: "100%",
   },
   actionButton: {
     marginTop: Spacing.xl,
   },
   backLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: Spacing.xl,
     gap: Spacing.xs,
   },

@@ -6,8 +6,8 @@
  * with 4 colored flame particles orbiting + pulsing.
  */
 
-import React, { useEffect } from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import React, { useEffect } from "react";
+import { View, Image, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,15 +16,15 @@ import Animated, {
   withSequence,
   Easing,
   type SharedValue,
-} from 'react-native-reanimated';
-import { useTheme } from '../../contexts/ThemeContext';
-import { fontFamily, fontSize } from '../../theme/typography';
+} from "react-native-reanimated";
+import { useTheme } from "../../contexts/ThemeContext";
+import { fontFamily, fontSize } from "../../theme/typography";
 
 // Real DeepSight logo asset
-const LOGO_SOURCE = require('../../../assets/images/spinner-cosmic.jpg');
+const LOGO_SOURCE = require("../../../assets/images/spinner-cosmic.jpg");
 
-type SpinnerSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-type SpeedPreset = 'slow' | 'normal' | 'fast';
+type SpinnerSize = "xs" | "sm" | "md" | "lg" | "xl";
+type SpeedPreset = "slow" | "normal" | "fast";
 
 const sizeMap: Record<SpinnerSize, number> = {
   xs: 28,
@@ -40,7 +40,7 @@ const speedMap: Record<SpeedPreset, number> = {
   fast: 1500,
 };
 
-const FLAME_COLORS = ['#8b5cf6', '#f59e0b', '#3b82f6', '#ef4444'] as const;
+const FLAME_COLORS = ["#8b5cf6", "#f59e0b", "#3b82f6", "#ef4444"] as const;
 
 interface DeepSightSpinnerProps {
   size?: SpinnerSize;
@@ -59,8 +59,8 @@ interface DeepSightSpinnerProps {
 }
 
 export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
-  size = 'md',
-  label = 'Chargement...',
+  size = "md",
+  label = "Chargement...",
   showLabel = false,
   duration,
   speed,
@@ -106,8 +106,14 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
       setTimeout(() => {
         scale.value = withRepeat(
           withSequence(
-            withTiming(1.3, { duration: 500, easing: Easing.inOut(Easing.ease) }),
-            withTiming(0.7, { duration: 500, easing: Easing.inOut(Easing.ease) }),
+            withTiming(1.3, {
+              duration: 500,
+              easing: Easing.inOut(Easing.ease),
+            }),
+            withTiming(0.7, {
+              duration: 500,
+              easing: Easing.inOut(Easing.ease),
+            }),
           ),
           -1,
           true,
@@ -120,7 +126,10 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
       labelOpacity.value = withRepeat(
         withSequence(
           withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.5, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.5, {
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+          }),
         ),
         -1,
         true,
@@ -149,7 +158,14 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
 
   return (
     <View style={[styles.container, style]}>
-      <View style={{ width: outerSize, height: outerSize, alignItems: 'center', justifyContent: 'center' }}>
+      <View
+        style={{
+          width: outerSize,
+          height: outerSize,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         {/* Real DeepSight Logo at center — round with glow */}
         <Animated.View style={[styles.logoWrapper, logoAnimStyle]}>
           <Image
@@ -172,15 +188,17 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
             {
               width: outerSize,
               height: outerSize,
-              position: 'absolute',
+              position: "absolute",
             },
             rotationStyle,
           ]}
         >
           {FLAME_COLORS.map((color, i) => {
             const angle = (i / 4) * 2 * Math.PI - Math.PI / 2;
-            const x = Math.cos(angle) * flameRadius + outerSize / 2 - flameSize / 2;
-            const y = Math.sin(angle) * flameRadius + outerSize / 2 - flameSize / 2;
+            const x =
+              Math.cos(angle) * flameRadius + outerSize / 2 - flameSize / 2;
+            const y =
+              Math.sin(angle) * flameRadius + outerSize / 2 - flameSize / 2;
 
             return (
               <FlameParticle
@@ -197,7 +215,9 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
       </View>
 
       {showLabel && (
-        <Animated.Text style={[styles.label, { color: colors.textTertiary }, labelStyle]}>
+        <Animated.Text
+          style={[styles.label, { color: colors.textTertiary }, labelStyle]}
+        >
           {label}
         </Animated.Text>
       )}
@@ -228,7 +248,7 @@ const FlameParticle: React.FC<FlameParticleProps> = ({
     <Animated.View
       style={[
         {
-          position: 'absolute',
+          position: "absolute",
           left: x,
           top: y,
           width: particleSize,
@@ -250,13 +270,13 @@ const FlameParticle: React.FC<FlameParticleProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoWrapper: {
     zIndex: 1,
     // Glow effect around the logo
-    shadowColor: '#8b5cf6',
+    shadowColor: "#8b5cf6",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 16,
@@ -264,13 +284,13 @@ const styles = StyleSheet.create({
   },
   logo: {
     // The image is round-cropped
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   label: {
     marginTop: 16,
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.sm,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });
 
@@ -278,8 +298,9 @@ export const DeepSightSpinnerSmall: React.FC<{ style?: object }> = (props) => (
   <DeepSightSpinner size="sm" {...props} />
 );
 
-export const DeepSightSpinnerLarge: React.FC<{ style?: object; label?: string }> = (props) => (
-  <DeepSightSpinner size="lg" showLabel {...props} />
-);
+export const DeepSightSpinnerLarge: React.FC<{
+  style?: object;
+  label?: string;
+}> = (props) => <DeepSightSpinner size="lg" showLabel {...props} />;
 
 export default DeepSightSpinner;

@@ -1,5 +1,14 @@
-import React from 'react';
-import Svg, { Path, Circle, Rect, G, Defs, LinearGradient, Stop, Ellipse } from 'react-native-svg';
+import React from "react";
+import Svg, {
+  Path,
+  Circle,
+  Rect,
+  G,
+  Defs,
+  LinearGradient,
+  Stop,
+  Ellipse,
+} from "react-native-svg";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -8,9 +17,9 @@ import Animated, {
   withSequence,
   withDelay,
   Easing,
-} from 'react-native-reanimated';
-import { useEffect } from 'react';
-import { Colors } from '../../constants/theme';
+} from "react-native-reanimated";
+import { useEffect } from "react";
+import { Colors } from "../../constants/theme";
 
 const AnimatedG = Animated.createAnimatedComponent(G);
 
@@ -34,29 +43,29 @@ export const EmptyHistoryIllustration: React.FC<IllustrationProps> = ({
     sparkle1.value = withRepeat(
       withSequence(
         withTiming(1, { duration: 800, easing: Easing.out(Easing.ease) }),
-        withTiming(0, { duration: 800, easing: Easing.in(Easing.ease) })
+        withTiming(0, { duration: 800, easing: Easing.in(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
     sparkle2.value = withDelay(
       400,
       withRepeat(
         withSequence(
           withTiming(1, { duration: 800, easing: Easing.out(Easing.ease) }),
-          withTiming(0, { duration: 800, easing: Easing.in(Easing.ease) })
+          withTiming(0, { duration: 800, easing: Easing.in(Easing.ease) }),
         ),
         -1,
-        true
-      )
+        true,
+      ),
     );
     folderBounce.value = withRepeat(
       withSequence(
         withTiming(-3, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(3, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+        withTiming(3, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
   }, []);
 
@@ -100,13 +109,37 @@ export const EmptyHistoryIllustration: React.FC<IllustrationProps> = ({
           fill="url(#folderGrad)"
         />
         {/* Document peek */}
-        <Rect x="20" y="40" width="55" height="8" rx="2" fill="white" opacity="0.8" />
-        <Rect x="20" y="52" width="40" height="8" rx="2" fill="white" opacity="0.6" />
-        <Rect x="20" y="64" width="30" height="8" rx="2" fill="white" opacity="0.4" />
+        <Rect
+          x="20"
+          y="40"
+          width="55"
+          height="8"
+          rx="2"
+          fill="white"
+          opacity="0.8"
+        />
+        <Rect
+          x="20"
+          y="52"
+          width="40"
+          height="8"
+          rx="2"
+          fill="white"
+          opacity="0.6"
+        />
+        <Rect
+          x="20"
+          y="64"
+          width="30"
+          height="8"
+          rx="2"
+          fill="white"
+          opacity="0.4"
+        />
       </G>
 
       {/* Animated sparkles */}
-      <Animated.View style={[{ position: 'absolute' }, sparkle1Style]}>
+      <Animated.View style={[{ position: "absolute" }, sparkle1Style]}>
         <Svg width={size} height={size} viewBox="0 0 200 200">
           <Path
             d="M160 50 L163 56 L170 58 L163 60 L160 66 L157 60 L150 58 L157 56 Z"
@@ -115,7 +148,7 @@ export const EmptyHistoryIllustration: React.FC<IllustrationProps> = ({
         </Svg>
       </Animated.View>
 
-      <Animated.View style={[{ position: 'absolute' }, sparkle2Style]}>
+      <Animated.View style={[{ position: "absolute" }, sparkle2Style]}>
         <Svg width={size} height={size} viewBox="0 0 200 200">
           <Path
             d="M40 75 L42 79 L47 80 L42 81 L40 85 L38 81 L33 80 L38 79 Z"
@@ -142,18 +175,18 @@ export const EmptyFavoritesIllustration: React.FC<IllustrationProps> = ({
         withTiming(1.05, { duration: 300, easing: Easing.out(Easing.ease) }),
         withTiming(1, { duration: 300, easing: Easing.in(Easing.ease) }),
         withTiming(1.08, { duration: 300, easing: Easing.out(Easing.ease) }),
-        withTiming(1, { duration: 600, easing: Easing.in(Easing.ease) })
+        withTiming(1, { duration: 600, easing: Easing.in(Easing.ease) }),
       ),
       -1,
-      false
+      false,
     );
     sparkle.value = withRepeat(
       withSequence(
         withTiming(1, { duration: 600 }),
-        withTiming(0, { duration: 600 })
+        withTiming(0, { duration: 600 }),
       ),
       -1,
-      true
+      true,
     );
   }, []);
 
@@ -225,15 +258,15 @@ export const StartAnalysisIllustration: React.FC<IllustrationProps> = ({
     pulse.value = withRepeat(
       withSequence(
         withTiming(1.1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
     glow.value = withRepeat(
       withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
       -1,
-      true
+      true,
     );
   }, []);
 
@@ -276,13 +309,17 @@ export const StartAnalysisIllustration: React.FC<IllustrationProps> = ({
 
       {/* Play button */}
       <Circle cx="100" cy="92" r="25" fill="white" opacity="0.95" />
-      <Path
-        d="M92 80 L115 92 L92 104 Z"
-        fill="url(#videoGrad)"
-      />
+      <Path d="M92 80 L115 92 L92 104 Z" fill="url(#videoGrad)" />
 
       {/* Video stand */}
-      <Rect x="80" y="140" width="40" height="8" rx="4" fill={`${primaryColor}40`} />
+      <Rect
+        x="80"
+        y="140"
+        width="40"
+        height="8"
+        rx="4"
+        fill={`${primaryColor}40`}
+      />
       <Rect x="95" y="135" width="10" height="12" fill={`${primaryColor}30`} />
 
       {/* Decorative elements */}
@@ -341,10 +378,42 @@ export const EmptyChatIllustration: React.FC<IllustrationProps> = ({
         fill="url(#chatGrad)"
       />
       {/* Content lines */}
-      <Rect x="55" y="65" width="90" height="7" rx="3" fill="white" opacity="0.9" />
-      <Rect x="55" y="80" width="70" height="6" rx="3" fill="white" opacity="0.6" />
-      <Rect x="55" y="94" width="80" height="6" rx="3" fill="white" opacity="0.6" />
-      <Rect x="55" y="108" width="50" height="6" rx="3" fill="white" opacity="0.4" />
+      <Rect
+        x="55"
+        y="65"
+        width="90"
+        height="7"
+        rx="3"
+        fill="white"
+        opacity="0.9"
+      />
+      <Rect
+        x="55"
+        y="80"
+        width="70"
+        height="6"
+        rx="3"
+        fill="white"
+        opacity="0.6"
+      />
+      <Rect
+        x="55"
+        y="94"
+        width="80"
+        height="6"
+        rx="3"
+        fill="white"
+        opacity="0.6"
+      />
+      <Rect
+        x="55"
+        y="108"
+        width="50"
+        height="6"
+        rx="3"
+        fill="white"
+        opacity="0.4"
+      />
 
       {/* Brain sparkle */}
       <Circle cx="155" cy="45" r="12" fill={`${secondaryColor}40`} />
@@ -394,15 +463,70 @@ export const EmptyStudyIllustration: React.FC<IllustrationProps> = ({
       <Circle cx="100" cy="100" r="80" fill={`${secondaryColor}10`} />
 
       {/* Card stack - back cards */}
-      <Rect x="45" y="58" width="110" height="80" rx="10" fill={`${primaryColor}15`} transform="rotate(-8, 100, 98)" />
-      <Rect x="45" y="58" width="110" height="80" rx="10" fill={`${primaryColor}25`} transform="rotate(4, 100, 98)" />
+      <Rect
+        x="45"
+        y="58"
+        width="110"
+        height="80"
+        rx="10"
+        fill={`${primaryColor}15`}
+        transform="rotate(-8, 100, 98)"
+      />
+      <Rect
+        x="45"
+        y="58"
+        width="110"
+        height="80"
+        rx="10"
+        fill={`${primaryColor}25`}
+        transform="rotate(4, 100, 98)"
+      />
 
       {/* Front card */}
-      <Rect x="45" y="58" width="110" height="80" rx="10" fill="url(#studyGrad)" />
-      <Rect x="58" y="73" width="65" height="7" rx="3" fill="white" opacity="0.9" />
-      <Rect x="58" y="86" width="50" height="5" rx="3" fill="white" opacity="0.6" />
-      <Rect x="58" y="97" width="55" height="5" rx="3" fill="white" opacity="0.5" />
-      <Rect x="58" y="108" width="40" height="5" rx="3" fill="white" opacity="0.4" />
+      <Rect
+        x="45"
+        y="58"
+        width="110"
+        height="80"
+        rx="10"
+        fill="url(#studyGrad)"
+      />
+      <Rect
+        x="58"
+        y="73"
+        width="65"
+        height="7"
+        rx="3"
+        fill="white"
+        opacity="0.9"
+      />
+      <Rect
+        x="58"
+        y="86"
+        width="50"
+        height="5"
+        rx="3"
+        fill="white"
+        opacity="0.6"
+      />
+      <Rect
+        x="58"
+        y="97"
+        width="55"
+        height="5"
+        rx="3"
+        fill="white"
+        opacity="0.5"
+      />
+      <Rect
+        x="58"
+        y="108"
+        width="40"
+        height="5"
+        rx="3"
+        fill="white"
+        opacity="0.4"
+      />
 
       {/* Star */}
       <Path
@@ -515,25 +639,79 @@ export const OnboardingAnalyzeIllustration: React.FC<IllustrationProps> = ({
     <Circle cx="125" cy="125" r="100" fill={`${primaryColor}10`} />
 
     {/* Brain/AI representation */}
-    <Ellipse cx="125" cy="110" rx="60" ry="50" fill={`${primaryColor}20`} stroke={primaryColor} strokeWidth="2" />
+    <Ellipse
+      cx="125"
+      cy="110"
+      rx="60"
+      ry="50"
+      fill={`${primaryColor}20`}
+      stroke={primaryColor}
+      strokeWidth="2"
+    />
 
     {/* Neural network nodes */}
-    {[[80, 90], [100, 80], [125, 75], [150, 80], [170, 90], [90, 120], [125, 130], [160, 120]].map(([x, y], i) => (
+    {[
+      [80, 90],
+      [100, 80],
+      [125, 75],
+      [150, 80],
+      [170, 90],
+      [90, 120],
+      [125, 130],
+      [160, 120],
+    ].map(([x, y], i) => (
       <Circle key={i} cx={x} cy={y} r="8" fill="url(#analyzeGrad)" />
     ))}
 
     {/* Connections */}
-    <Path d="M80 90 L100 80 L125 75 L150 80 L170 90" stroke={primaryColor} strokeWidth="1.5" fill="none" opacity="0.5" />
-    <Path d="M90 120 L125 130 L160 120" stroke={primaryColor} strokeWidth="1.5" fill="none" opacity="0.5" />
-    <Path d="M100 80 L90 120 M150 80 L160 120 M125 75 L125 130" stroke={primaryColor} strokeWidth="1" fill="none" opacity="0.3" />
+    <Path
+      d="M80 90 L100 80 L125 75 L150 80 L170 90"
+      stroke={primaryColor}
+      strokeWidth="1.5"
+      fill="none"
+      opacity="0.5"
+    />
+    <Path
+      d="M90 120 L125 130 L160 120"
+      stroke={primaryColor}
+      strokeWidth="1.5"
+      fill="none"
+      opacity="0.5"
+    />
+    <Path
+      d="M100 80 L90 120 M150 80 L160 120 M125 75 L125 130"
+      stroke={primaryColor}
+      strokeWidth="1"
+      fill="none"
+      opacity="0.3"
+    />
 
     {/* Video icon below */}
-    <Rect x="90" y="175" width="70" height="45" rx="6" fill={`${primaryColor}30`} stroke={primaryColor} strokeWidth="2" />
+    <Rect
+      x="90"
+      y="175"
+      width="70"
+      height="45"
+      rx="6"
+      fill={`${primaryColor}30`}
+      stroke={primaryColor}
+      strokeWidth="2"
+    />
     <Path d="M115 192 L135 200 L115 208 Z" fill={primaryColor} />
 
     {/* Arrow connecting */}
-    <Path d="M125 160 L125 175" stroke={primaryColor} strokeWidth="2" strokeDasharray="4 2" />
-    <Path d="M120 170 L125 178 L130 170" fill="none" stroke={primaryColor} strokeWidth="2" />
+    <Path
+      d="M125 160 L125 175"
+      stroke={primaryColor}
+      strokeWidth="2"
+      strokeDasharray="4 2"
+    />
+    <Path
+      d="M120 170 L125 178 L130 170"
+      fill="none"
+      stroke={primaryColor}
+      strokeWidth="2"
+    />
   </Svg>
 );
 
@@ -552,23 +730,89 @@ export const OnboardingInsightsIllustration: React.FC<IllustrationProps> = ({
     <Circle cx="125" cy="125" r="100" fill={`${Colors.accentSecondary}10`} />
 
     {/* Document/Card stack */}
-    <Rect x="60" y="80" width="130" height="100" rx="10" fill={`${primaryColor}15`} transform="rotate(-5, 125, 130)" />
-    <Rect x="60" y="80" width="130" height="100" rx="10" fill={`${primaryColor}25`} transform="rotate(2, 125, 130)" />
-    <Rect x="60" y="80" width="130" height="100" rx="10" fill="url(#insightGrad)" />
+    <Rect
+      x="60"
+      y="80"
+      width="130"
+      height="100"
+      rx="10"
+      fill={`${primaryColor}15`}
+      transform="rotate(-5, 125, 130)"
+    />
+    <Rect
+      x="60"
+      y="80"
+      width="130"
+      height="100"
+      rx="10"
+      fill={`${primaryColor}25`}
+      transform="rotate(2, 125, 130)"
+    />
+    <Rect
+      x="60"
+      y="80"
+      width="130"
+      height="100"
+      rx="10"
+      fill="url(#insightGrad)"
+    />
 
     {/* Content lines */}
-    <Rect x="75" y="100" width="80" height="8" rx="4" fill="white" opacity="0.9" />
-    <Rect x="75" y="115" width="100" height="6" rx="3" fill="white" opacity="0.6" />
-    <Rect x="75" y="128" width="90" height="6" rx="3" fill="white" opacity="0.6" />
-    <Rect x="75" y="141" width="70" height="6" rx="3" fill="white" opacity="0.6" />
+    <Rect
+      x="75"
+      y="100"
+      width="80"
+      height="8"
+      rx="4"
+      fill="white"
+      opacity="0.9"
+    />
+    <Rect
+      x="75"
+      y="115"
+      width="100"
+      height="6"
+      rx="3"
+      fill="white"
+      opacity="0.6"
+    />
+    <Rect
+      x="75"
+      y="128"
+      width="90"
+      height="6"
+      rx="3"
+      fill="white"
+      opacity="0.6"
+    />
+    <Rect
+      x="75"
+      y="141"
+      width="70"
+      height="6"
+      rx="3"
+      fill="white"
+      opacity="0.6"
+    />
 
     {/* Lightbulb icon */}
     <Circle cx="160" cy="160" r="20" fill={Colors.accentSecondary} />
-    <Path d="M160 145 L160 155 M150 165 L160 160 L170 165 M155 175 L165 175" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+    <Path
+      d="M160 145 L160 155 M150 165 L160 160 L170 165 M155 175 L165 175"
+      stroke="white"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    />
 
     {/* Stars */}
-    <Path d="M80 60 L82 66 L88 68 L82 70 L80 76 L78 70 L72 68 L78 66 Z" fill={Colors.accentSecondary} />
-    <Path d="M190 90 L191 94 L195 95 L191 96 L190 100 L189 96 L185 95 L189 94 Z" fill={primaryColor} />
+    <Path
+      d="M80 60 L82 66 L88 68 L82 70 L80 76 L78 70 L72 68 L78 66 Z"
+      fill={Colors.accentSecondary}
+    />
+    <Path
+      d="M190 90 L191 94 L195 95 L191 96 L190 100 L189 96 L185 95 L189 94 Z"
+      fill={primaryColor}
+    />
   </Svg>
 );
 
@@ -586,24 +830,90 @@ export const OnboardingChatIllustration: React.FC<IllustrationProps> = ({
         d="M10 20 Q10 10 20 10 L100 10 Q110 10 110 20 L110 45 Q110 55 100 55 L30 55 L15 70 L20 55 Q10 55 10 45 Z"
         fill={`${primaryColor}30`}
       />
-      <Rect x="20" y="22" width="70" height="6" rx="3" fill={primaryColor} opacity="0.6" />
-      <Rect x="20" y="34" width="50" height="6" rx="3" fill={primaryColor} opacity="0.4" />
+      <Rect
+        x="20"
+        y="22"
+        width="70"
+        height="6"
+        rx="3"
+        fill={primaryColor}
+        opacity="0.6"
+      />
+      <Rect
+        x="20"
+        y="34"
+        width="50"
+        height="6"
+        rx="3"
+        fill={primaryColor}
+        opacity="0.4"
+      />
 
       {/* AI bubble */}
       <Path
         d="M40 85 Q40 75 50 75 L130 75 Q140 75 140 85 L140 130 Q140 140 130 140 L60 140 L45 155 L50 140 Q40 140 40 130 Z"
         fill="url(#analyzeGrad)"
       />
-      <Rect x="50" y="87" width="80" height="6" rx="3" fill="white" opacity="0.9" />
-      <Rect x="50" y="99" width="70" height="6" rx="3" fill="white" opacity="0.7" />
-      <Rect x="50" y="111" width="75" height="6" rx="3" fill="white" opacity="0.7" />
-      <Rect x="50" y="123" width="45" height="6" rx="3" fill="white" opacity="0.5" />
+      <Rect
+        x="50"
+        y="87"
+        width="80"
+        height="6"
+        rx="3"
+        fill="white"
+        opacity="0.9"
+      />
+      <Rect
+        x="50"
+        y="99"
+        width="70"
+        height="6"
+        rx="3"
+        fill="white"
+        opacity="0.7"
+      />
+      <Rect
+        x="50"
+        y="111"
+        width="75"
+        height="6"
+        rx="3"
+        fill="white"
+        opacity="0.7"
+      />
+      <Rect
+        x="50"
+        y="123"
+        width="45"
+        height="6"
+        rx="3"
+        fill="white"
+        opacity="0.5"
+      />
     </G>
 
     {/* Typing indicator dots */}
-    <Circle cx="175" cy="180" r="5" fill={Colors.accentSecondary} opacity="0.8" />
-    <Circle cx="190" cy="180" r="5" fill={Colors.accentSecondary} opacity="0.5" />
-    <Circle cx="205" cy="180" r="5" fill={Colors.accentSecondary} opacity="0.3" />
+    <Circle
+      cx="175"
+      cy="180"
+      r="5"
+      fill={Colors.accentSecondary}
+      opacity="0.8"
+    />
+    <Circle
+      cx="190"
+      cy="180"
+      r="5"
+      fill={Colors.accentSecondary}
+      opacity="0.5"
+    />
+    <Circle
+      cx="205"
+      cy="180"
+      r="5"
+      fill={Colors.accentSecondary}
+      opacity="0.3"
+    />
   </Svg>
 );
 
@@ -616,28 +926,101 @@ export const OnboardingExportIllustration: React.FC<IllustrationProps> = ({
 
     {/* Document */}
     <Rect x="70" y="55" width="110" height="140" rx="8" fill="white" />
-    <Rect x="70" y="55" width="110" height="140" rx="8" fill={`${primaryColor}10`} stroke={primaryColor} strokeWidth="2" />
+    <Rect
+      x="70"
+      y="55"
+      width="110"
+      height="140"
+      rx="8"
+      fill={`${primaryColor}10`}
+      stroke={primaryColor}
+      strokeWidth="2"
+    />
 
     {/* Document content */}
-    <Rect x="85" y="75" width="80" height="8" rx="4" fill={primaryColor} opacity="0.8" />
-    <Rect x="85" y="95" width="70" height="5" rx="2" fill={primaryColor} opacity="0.4" />
-    <Rect x="85" y="108" width="75" height="5" rx="2" fill={primaryColor} opacity="0.4" />
-    <Rect x="85" y="121" width="60" height="5" rx="2" fill={primaryColor} opacity="0.4" />
+    <Rect
+      x="85"
+      y="75"
+      width="80"
+      height="8"
+      rx="4"
+      fill={primaryColor}
+      opacity="0.8"
+    />
+    <Rect
+      x="85"
+      y="95"
+      width="70"
+      height="5"
+      rx="2"
+      fill={primaryColor}
+      opacity="0.4"
+    />
+    <Rect
+      x="85"
+      y="108"
+      width="75"
+      height="5"
+      rx="2"
+      fill={primaryColor}
+      opacity="0.4"
+    />
+    <Rect
+      x="85"
+      y="121"
+      width="60"
+      height="5"
+      rx="2"
+      fill={primaryColor}
+      opacity="0.4"
+    />
 
     {/* Share icons */}
     <Circle cx="100" cy="165" r="15" fill={`${Colors.accentSuccess}30`} />
-    <Path d="M100 155 L100 170 M93 162 L100 155 L107 162" stroke={Colors.accentSuccess} strokeWidth="2.5" strokeLinecap="round" />
+    <Path
+      d="M100 155 L100 170 M93 162 L100 155 L107 162"
+      stroke={Colors.accentSuccess}
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    />
 
     <Circle cx="150" cy="165" r="15" fill={`${Colors.accentInfo}30`} />
-    <Rect x="142" y="158" width="16" height="12" rx="2" stroke={Colors.accentInfo} strokeWidth="2" fill="none" />
-    <Path d="M145 161 L150 165 L155 161" stroke={Colors.accentInfo} strokeWidth="1.5" fill="none" />
+    <Rect
+      x="142"
+      y="158"
+      width="16"
+      height="12"
+      rx="2"
+      stroke={Colors.accentInfo}
+      strokeWidth="2"
+      fill="none"
+    />
+    <Path
+      d="M145 161 L150 165 L155 161"
+      stroke={Colors.accentInfo}
+      strokeWidth="1.5"
+      fill="none"
+    />
 
     {/* Checkmark */}
     <Circle cx="185" cy="70" r="18" fill={Colors.accentSuccess} />
-    <Path d="M177 70 L183 76 L193 64" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <Path
+      d="M177 70 L183 76 L193 64"
+      stroke="white"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
 
     {/* Sparkles */}
-    <Path d="M60 90 L62 95 L67 96 L62 97 L60 102 L58 97 L53 96 L58 95 Z" fill={Colors.accentSecondary} />
-    <Path d="M200 140 L201 144 L205 145 L201 146 L200 150 L199 146 L195 145 L199 144 Z" fill={primaryColor} />
+    <Path
+      d="M60 90 L62 95 L67 96 L62 97 L60 102 L58 97 L53 96 L58 95 Z"
+      fill={Colors.accentSecondary}
+    />
+    <Path
+      d="M200 140 L201 144 L205 145 L201 146 L200 150 L199 146 L195 145 L199 144 Z"
+      fill={primaryColor}
+    />
   </Svg>
 );

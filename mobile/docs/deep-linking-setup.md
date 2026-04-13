@@ -4,31 +4,31 @@
 
 DeepSight supports three types of deep links:
 
-| Type | Prefix | Example |
-|------|--------|---------|
-| Custom scheme | `deepsight://` | `deepsight://analysis/abc123` |
-| Universal Links (iOS) | `https://deepsight.app/` | `https://deepsight.app/analysis/abc123` |
-| App Links (Android) | `https://deepsight.app/` | `https://deepsight.app/analysis/abc123` |
-| Legacy web | `https://www.deepsightsynthesis.com/` | `https://www.deepsightsynthesis.com/analysis/abc123` |
+| Type                  | Prefix                                | Example                                              |
+| --------------------- | ------------------------------------- | ---------------------------------------------------- |
+| Custom scheme         | `deepsight://`                        | `deepsight://analysis/abc123`                        |
+| Universal Links (iOS) | `https://deepsight.app/`              | `https://deepsight.app/analysis/abc123`              |
+| App Links (Android)   | `https://deepsight.app/`              | `https://deepsight.app/analysis/abc123`              |
+| Legacy web            | `https://www.deepsightsynthesis.com/` | `https://www.deepsightsynthesis.com/analysis/abc123` |
 
 ## Route Map
 
-| Path | Screen | Parameters |
-|------|--------|------------|
-| `/analysis/:videoId` | Analysis | `videoId` |
-| `/study/:summaryId` | StudyTools | `summaryId` |
-| `/playlists/:playlistId` | PlaylistDetail | `playlistId` |
-| `/history` | History tab | — |
-| `/settings` | Settings | — |
-| `/profile` | Profile tab | — |
-| `/home` | Dashboard tab | — |
-| `/upgrade` | Upgrade | — |
-| `/login` | Login | — |
-| `/register` | Register | — |
-| `/payment/success` | PaymentSuccess | — |
-| `/payment/cancel` | PaymentCancel | — |
-| `/legal/:type` | Legal | `type` (privacy/terms/legal/about) |
-| `/contact` | Contact | — |
+| Path                     | Screen         | Parameters                         |
+| ------------------------ | -------------- | ---------------------------------- |
+| `/analysis/:videoId`     | Analysis       | `videoId`                          |
+| `/study/:summaryId`      | StudyTools     | `summaryId`                        |
+| `/playlists/:playlistId` | PlaylistDetail | `playlistId`                       |
+| `/history`               | History tab    | —                                  |
+| `/settings`              | Settings       | —                                  |
+| `/profile`               | Profile tab    | —                                  |
+| `/home`                  | Dashboard tab  | —                                  |
+| `/upgrade`               | Upgrade        | —                                  |
+| `/login`                 | Login          | —                                  |
+| `/register`              | Register       | —                                  |
+| `/payment/success`       | PaymentSuccess | —                                  |
+| `/payment/cancel`        | PaymentCancel  | —                                  |
+| `/legal/:type`           | Legal          | `type` (privacy/terms/legal/about) |
+| `/contact`               | Contact        | —                                  |
 
 ## Domain Setup: `deepsight.app`
 
@@ -66,6 +66,7 @@ Host this JSON at `https://deepsight.app/.well-known/apple-app-site-association`
 ```
 
 **Requirements:**
+
 - Served over HTTPS with valid certificate
 - `Content-Type: application/json`
 - No redirects on the `.well-known` path itself
@@ -82,9 +83,7 @@ Host this JSON at `https://deepsight.app/.well-known/assetlinks.json`:
     "target": {
       "namespace": "android_app",
       "package_name": "com.deepsight.app",
-      "sha256_cert_fingerprints": [
-        "YOUR_SIGNING_KEY_SHA256_FINGERPRINT"
-      ]
+      "sha256_cert_fingerprints": ["YOUR_SIGNING_KEY_SHA256_FINGERPRINT"]
     }
   }
 ]
@@ -104,12 +103,14 @@ keytool -list -v -keystore your-keystore.jks -alias your-alias
 ### Legacy domain: `deepsightsynthesis.com`
 
 The same AASA and assetlinks files should also be hosted at:
+
 - `https://www.deepsightsynthesis.com/.well-known/apple-app-site-association`
 - `https://www.deepsightsynthesis.com/.well-known/assetlinks.json`
 
 ## Fallback for Users Without the App
 
 When sharing `https://deepsight.app/analysis/VIDEO_ID`:
+
 1. If the app is installed → opens directly in the app
 2. If not installed → the web server at `deepsight.app` should redirect to:
    - App Store (iOS): `https://apps.apple.com/app/deep-sight/id{APP_ID}`
@@ -121,16 +122,22 @@ Simple server-side implementation (e.g., Vercel edge function):
 ```typescript
 // deepsight.app/analysis/[videoId]/route.ts
 export function GET(request: Request) {
-  const ua = request.headers.get('user-agent') || '';
-  const videoId = request.url.split('/analysis/')[1];
+  const ua = request.headers.get("user-agent") || "";
+  const videoId = request.url.split("/analysis/")[1];
 
   if (/iPhone|iPad|iPod/i.test(ua)) {
-    return Response.redirect('https://apps.apple.com/app/deep-sight/idXXXXXXXXX');
+    return Response.redirect(
+      "https://apps.apple.com/app/deep-sight/idXXXXXXXXX",
+    );
   }
   if (/Android/i.test(ua)) {
-    return Response.redirect('https://play.google.com/store/apps/details?id=com.deepsight.app');
+    return Response.redirect(
+      "https://play.google.com/store/apps/details?id=com.deepsight.app",
+    );
   }
-  return Response.redirect(`https://www.deepsightsynthesis.com/analysis/${videoId}`);
+  return Response.redirect(
+    `https://www.deepsightsynthesis.com/analysis/${videoId}`,
+  );
 }
 ```
 

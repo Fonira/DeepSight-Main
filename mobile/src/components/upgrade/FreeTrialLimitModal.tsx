@@ -14,7 +14,7 @@
  * - CTA: "Voir les plans", "Plus tard"
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -24,27 +24,27 @@ import {
   ScrollView,
   Animated,
   Dimensions,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
-import type { RootStackParamList } from '../../types';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
+import type { RootStackParamList } from "../../types";
 import {
   CONVERSION_TRIGGERS,
   TESTIMONIALS,
   PRO_BENEFITS,
   calculateTimeSaved,
   type Testimonial,
-} from '../../config/planPrivileges';
+} from "../../config/planPrivileges";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface FreeTrialLimitModalProps {
   visible: boolean;
@@ -55,7 +55,7 @@ interface FreeTrialLimitModalProps {
   onUpgrade?: () => void;
 }
 
-type ModalState = 'warning' | 'blocked';
+type ModalState = "warning" | "blocked";
 
 export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
   visible,
@@ -78,12 +78,14 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
   // Determine modal state
-  const modalState: ModalState = analysesUsed >= CONVERSION_TRIGGERS.freeAnalysisLimit
-    ? 'blocked'
-    : 'warning';
+  const modalState: ModalState =
+    analysesUsed >= CONVERSION_TRIGGERS.freeAnalysisLimit
+      ? "blocked"
+      : "warning";
 
   // Calculate time saved
-  const timeSaved = lastVideoDuration > 0 ? calculateTimeSaved(lastVideoDuration) : null;
+  const timeSaved =
+    lastVideoDuration > 0 ? calculateTimeSaved(lastVideoDuration) : null;
 
   // Entry animation
   useEffect(() => {
@@ -118,7 +120,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
     if (!visible) return;
 
     const interval = setInterval(() => {
-      setCurrentTestimonial(prev => (prev + 1) % TESTIMONIALS.length);
+      setCurrentTestimonial((prev) => (prev + 1) % TESTIMONIALS.length);
     }, 5000);
 
     return () => clearInterval(interval);
@@ -130,7 +132,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
     if (onUpgrade) {
       onUpgrade();
     } else {
-      navigation.navigate('Upgrade');
+      navigation.navigate("Upgrade");
     }
   };
 
@@ -141,7 +143,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
   };
 
   const handleClose = () => {
-    if (modalState === 'blocked') {
+    if (modalState === "blocked") {
       // Can't dismiss when blocked
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
@@ -155,7 +157,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
   // Progress bar width animation
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
+    outputRange: ["0%", "100%"],
   });
 
   return (
@@ -181,9 +183,12 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
             contentContainerStyle={styles.scrollContent}
           >
             {/* Close button (only in warning state) */}
-            {modalState === 'warning' && (
+            {modalState === "warning" && (
               <TouchableOpacity
-                style={[styles.closeButton, { backgroundColor: colors.bgTertiary }]}
+                style={[
+                  styles.closeButton,
+                  { backgroundColor: colors.bgTertiary },
+                ]}
                 onPress={handleClose}
               >
                 <Ionicons name="close" size={20} color={colors.textSecondary} />
@@ -191,60 +196,94 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
             )}
 
             {/* Header with icon */}
-            <View style={[
-              styles.headerIcon,
-              {
-                backgroundColor: modalState === 'blocked'
-                  ? `${colors.accentError}20`
-                  : `${colors.accentWarning}20`,
-              },
-            ]}>
+            <View
+              style={[
+                styles.headerIcon,
+                {
+                  backgroundColor:
+                    modalState === "blocked"
+                      ? `${colors.accentError}20`
+                      : `${colors.accentWarning}20`,
+                },
+              ]}
+            >
               <Ionicons
-                name={modalState === 'blocked' ? 'lock-closed' : 'gift'}
+                name={modalState === "blocked" ? "lock-closed" : "gift"}
                 size={40}
-                color={modalState === 'blocked' ? colors.accentError : colors.accentWarning}
+                color={
+                  modalState === "blocked"
+                    ? colors.accentError
+                    : colors.accentWarning
+                }
               />
             </View>
 
             {/* Title */}
             <Text style={[styles.title, { color: colors.textPrimary }]}>
-              {modalState === 'blocked'
-                ? (language === 'fr' ? 'Limite atteinte' : 'Limit reached')
-                : (language === 'fr' ? 'Vous y êtes presque !' : 'You\'re almost there!')}
+              {modalState === "blocked"
+                ? language === "fr"
+                  ? "Limite atteinte"
+                  : "Limit reached"
+                : language === "fr"
+                  ? "Vous y êtes presque !"
+                  : "You're almost there!"}
             </Text>
 
             {/* Subtitle */}
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              {modalState === 'blocked'
-                ? (language === 'fr'
-                    ? 'Vous avez utilisé vos 5 analyses gratuites ce mois-ci.'
-                    : 'You\'ve used your 5 free analyses this month.')
-                : (language === 'fr'
-                    ? `Plus qu'${CONVERSION_TRIGGERS.freeAnalysisLimit - analysesUsed} analyse gratuite ce mois-ci.`
-                    : `Only ${CONVERSION_TRIGGERS.freeAnalysisLimit - analysesUsed} free analysis left this month.`)}
+              {modalState === "blocked"
+                ? language === "fr"
+                  ? "Vous avez utilisé vos 5 analyses gratuites ce mois-ci."
+                  : "You've used your 5 free analyses this month."
+                : language === "fr"
+                  ? `Plus qu'${CONVERSION_TRIGGERS.freeAnalysisLimit - analysesUsed} analyse gratuite ce mois-ci.`
+                  : `Only ${CONVERSION_TRIGGERS.freeAnalysisLimit - analysesUsed} free analysis left this month.`}
             </Text>
 
             {/* Progress bar */}
-            <View style={[styles.progressContainer, { backgroundColor: colors.bgSecondary }]}>
+            <View
+              style={[
+                styles.progressContainer,
+                { backgroundColor: colors.bgSecondary },
+              ]}
+            >
               <View style={styles.progressHeader}>
-                <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
-                  {language === 'fr' ? 'Analyses utilisées' : 'Analyses used'}
+                <Text
+                  style={[
+                    styles.progressLabel,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {language === "fr" ? "Analyses utilisées" : "Analyses used"}
                 </Text>
-                <Text style={[
-                  styles.progressValue,
-                  { color: modalState === 'blocked' ? colors.accentError : colors.accentWarning },
-                ]}>
+                <Text
+                  style={[
+                    styles.progressValue,
+                    {
+                      color:
+                        modalState === "blocked"
+                          ? colors.accentError
+                          : colors.accentWarning,
+                    },
+                  ]}
+                >
                   {analysesUsed} / {CONVERSION_TRIGGERS.freeAnalysisLimit}
                 </Text>
               </View>
-              <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
+              <View
+                style={[
+                  styles.progressBar,
+                  { backgroundColor: colors.bgTertiary },
+                ]}
+              >
                 <Animated.View
                   style={[
                     styles.progressFill,
                     {
-                      backgroundColor: modalState === 'blocked'
-                        ? colors.accentError
-                        : colors.accentWarning,
+                      backgroundColor:
+                        modalState === "blocked"
+                          ? colors.accentError
+                          : colors.accentWarning,
                       width: progressWidth,
                     },
                   ]}
@@ -254,14 +293,35 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
 
             {/* Time saved display */}
             {timeSaved && timeSaved.minutes > 0 && (
-              <View style={[styles.timeSavedCard, { backgroundColor: `${colors.accentSuccess}15` }]}>
-                <Ionicons name="time-outline" size={24} color={colors.accentSuccess} />
+              <View
+                style={[
+                  styles.timeSavedCard,
+                  { backgroundColor: `${colors.accentSuccess}15` },
+                ]}
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={24}
+                  color={colors.accentSuccess}
+                />
                 <View style={styles.timeSavedContent}>
-                  <Text style={[styles.timeSavedValue, { color: colors.accentSuccess }]}>
-                    {timeSaved.minutes} {language === 'fr' ? 'min' : 'min'}
+                  <Text
+                    style={[
+                      styles.timeSavedValue,
+                      { color: colors.accentSuccess },
+                    ]}
+                  >
+                    {timeSaved.minutes} {language === "fr" ? "min" : "min"}
                   </Text>
-                  <Text style={[styles.timeSavedLabel, { color: colors.textSecondary }]}>
-                    {language === 'fr' ? 'économisées avec cette analyse' : 'saved with this analysis'}
+                  <Text
+                    style={[
+                      styles.timeSavedLabel,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {language === "fr"
+                      ? "économisées avec cette analyse"
+                      : "saved with this analysis"}
                   </Text>
                 </View>
               </View>
@@ -271,7 +331,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
             {CONVERSION_TRIGGERS.trialEnabled && onStartTrial && (
               <TouchableOpacity onPress={handleStartTrial} activeOpacity={0.9}>
                 <LinearGradient
-                  colors={['#8B5CF6', '#7C3AED']}
+                  colors={["#8B5CF6", "#7C3AED"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.trialBanner}
@@ -282,14 +342,14 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
                       <Text style={styles.trialBadgeText}>PRO</Text>
                     </View>
                     <Text style={styles.trialTitle}>
-                      {language === 'fr'
+                      {language === "fr"
                         ? `Essayez Pro gratuitement ${CONVERSION_TRIGGERS.trialDays} jours`
                         : `Try Pro free for ${CONVERSION_TRIGGERS.trialDays} days`}
                     </Text>
                     <Text style={styles.trialSubtitle}>
-                      {language === 'fr'
-                        ? 'Sans carte bancaire requise'
-                        : 'No credit card required'}
+                      {language === "fr"
+                        ? "Sans carte bancaire requise"
+                        : "No credit card required"}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
@@ -302,20 +362,35 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
               {PRO_BENEFITS.map((benefit, index) => (
                 <View
                   key={index}
-                  style={[styles.benefitItem, { backgroundColor: colors.bgSecondary }]}
+                  style={[
+                    styles.benefitItem,
+                    { backgroundColor: colors.bgSecondary },
+                  ]}
                 >
-                  <View style={[styles.benefitIcon, { backgroundColor: `${colors.accentPrimary}15` }]}>
+                  <View
+                    style={[
+                      styles.benefitIcon,
+                      { backgroundColor: `${colors.accentPrimary}15` },
+                    ]}
+                  >
                     <Ionicons
                       name={benefit.icon as keyof typeof Ionicons.glyphMap}
                       size={20}
                       color={colors.accentPrimary}
                     />
                   </View>
-                  <Text style={[styles.benefitTitle, { color: colors.textPrimary }]}>
-                    {language === 'fr' ? benefit.title.fr : benefit.title.en}
+                  <Text
+                    style={[styles.benefitTitle, { color: colors.textPrimary }]}
+                  >
+                    {language === "fr" ? benefit.title.fr : benefit.title.en}
                   </Text>
-                  <Text style={[styles.benefitDesc, { color: colors.textTertiary }]} numberOfLines={2}>
-                    {language === 'fr' ? benefit.description.fr : benefit.description.en}
+                  <Text
+                    style={[styles.benefitDesc, { color: colors.textTertiary }]}
+                    numberOfLines={2}
+                  >
+                    {language === "fr"
+                      ? benefit.description.fr
+                      : benefit.description.en}
                   </Text>
                 </View>
               ))}
@@ -323,19 +398,41 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
 
             {/* Testimonial carousel */}
             {testimonial && (
-              <View style={[styles.testimonialCard, { backgroundColor: colors.bgSecondary }]}>
+              <View
+                style={[
+                  styles.testimonialCard,
+                  { backgroundColor: colors.bgSecondary },
+                ]}
+              >
                 <View style={styles.testimonialHeader}>
-                  <View style={[styles.testimonialAvatar, { backgroundColor: colors.accentSecondary }]}>
+                  <View
+                    style={[
+                      styles.testimonialAvatar,
+                      { backgroundColor: colors.accentSecondary },
+                    ]}
+                  >
                     <Text style={styles.testimonialAvatarText}>
                       {testimonial.name.charAt(0)}
                     </Text>
                   </View>
                   <View style={styles.testimonialInfo}>
-                    <Text style={[styles.testimonialName, { color: colors.textPrimary }]}>
+                    <Text
+                      style={[
+                        styles.testimonialName,
+                        { color: colors.textPrimary },
+                      ]}
+                    >
                       {testimonial.name}
                     </Text>
-                    <Text style={[styles.testimonialRole, { color: colors.textTertiary }]}>
-                      {language === 'fr' ? testimonial.role.fr : testimonial.role.en}
+                    <Text
+                      style={[
+                        styles.testimonialRole,
+                        { color: colors.textTertiary },
+                      ]}
+                    >
+                      {language === "fr"
+                        ? testimonial.role.fr
+                        : testimonial.role.en}
                     </Text>
                   </View>
                   <View style={styles.ratingContainer}>
@@ -344,8 +441,17 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
                     ))}
                   </View>
                 </View>
-                <Text style={[styles.testimonialQuote, { color: colors.textSecondary }]}>
-                  "{language === 'fr' ? testimonial.quote.fr : testimonial.quote.en}"
+                <Text
+                  style={[
+                    styles.testimonialQuote,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  "
+                  {language === "fr"
+                    ? testimonial.quote.fr
+                    : testimonial.quote.en}
+                  "
                 </Text>
 
                 {/* Carousel indicators */}
@@ -357,9 +463,10 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
                       style={[
                         styles.indicator,
                         {
-                          backgroundColor: index === currentTestimonial
-                            ? colors.accentPrimary
-                            : colors.bgTertiary,
+                          backgroundColor:
+                            index === currentTestimonial
+                              ? colors.accentPrimary
+                              : colors.bgTertiary,
                         },
                       ]}
                     />
@@ -372,23 +479,31 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
             <View style={styles.actions}>
               {/* Primary: View plans */}
               <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: colors.accentPrimary }]}
+                style={[
+                  styles.primaryButton,
+                  { backgroundColor: colors.accentPrimary },
+                ]}
                 onPress={handleUpgrade}
               >
                 <Ionicons name="rocket-outline" size={20} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>
-                  {language === 'fr' ? 'Voir les plans' : 'View plans'}
+                  {language === "fr" ? "Voir les plans" : "View plans"}
                 </Text>
               </TouchableOpacity>
 
               {/* Secondary: Maybe later (only in warning state) */}
-              {modalState === 'warning' && (
+              {modalState === "warning" && (
                 <TouchableOpacity
                   style={styles.secondaryButton}
                   onPress={handleClose}
                 >
-                  <Text style={[styles.secondaryButtonText, { color: colors.textTertiary }]}>
-                    {language === 'fr' ? 'Plus tard' : 'Maybe later'}
+                  <Text
+                    style={[
+                      styles.secondaryButtonText,
+                      { color: colors.textTertiary },
+                    ]}
+                  >
+                    {language === "fr" ? "Plus tard" : "Maybe later"}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -403,51 +518,51 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: Spacing.md,
   },
   container: {
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
-    maxHeight: '90%',
+    maxHeight: "90%",
     borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   scrollContent: {
     padding: Spacing.xl,
   },
   closeButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     right: 0,
     width: 32,
     height: 32,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 10,
   },
   headerIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
     marginBottom: Spacing.lg,
   },
   title: {
     fontSize: Typography.fontSize.xl,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.sm,
   },
   subtitle: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.lg,
     lineHeight: Typography.fontSize.sm * 1.5,
   },
@@ -457,8 +572,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: Spacing.sm,
   },
   progressLabel: {
@@ -472,15 +587,15 @@ const styles = StyleSheet.create({
   progressBar: {
     height: 8,
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 4,
   },
   timeSavedCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.lg,
@@ -498,8 +613,8 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   trialBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.lg,
@@ -508,29 +623,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   trialBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     marginBottom: Spacing.xs,
   },
   trialBadgeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   trialTitle: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   trialSubtitle: {
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
   },
   benefitsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
   },
@@ -538,26 +653,26 @@ const styles = StyleSheet.create({
     width: (SCREEN_WIDTH - Spacing.xl * 2 - Spacing.md * 2 - Spacing.sm) / 2,
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   benefitIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.sm,
   },
   benefitTitle: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 2,
   },
   benefitDesc: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: Typography.fontSize.xs * 1.3,
   },
   testimonialCard: {
@@ -566,21 +681,21 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   testimonialHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Spacing.md,
   },
   testimonialAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#8B5CF6',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#8B5CF6",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: Spacing.sm,
   },
   testimonialAvatarText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
@@ -596,18 +711,18 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   ratingContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 2,
   },
   testimonialQuote: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     lineHeight: Typography.fontSize.sm * 1.5,
   },
   carouselIndicators: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: Spacing.xs,
     marginTop: Spacing.md,
   },
@@ -620,20 +735,20 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   primaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.sm,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   secondaryButton: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: Spacing.sm,
   },
   secondaryButtonText: {

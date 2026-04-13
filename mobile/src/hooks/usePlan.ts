@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
-import { billingApi } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { AppState, AppStateStatus } from "react-native";
+import { billingApi } from "../services/api";
+import { useAuth } from "../contexts/AuthContext";
 import {
   normalizePlanId,
   getPlanInfo,
@@ -9,7 +9,7 @@ import {
   PLAN_FEATURES,
   type PlanId,
   type PlanLimits,
-} from '../config/planPrivileges';
+} from "../config/planPrivileges";
 
 export interface PlanUsage {
   analyses_this_month: number;
@@ -60,9 +60,13 @@ export function usePlan(): UsePlanReturn {
       // Merge API limits with local config (API is source of truth where available)
       const mergedLimits: PlanLimits = {
         ...planLimits,
-        monthlyAnalyses: data.limits?.monthly_analyses ?? planLimits.monthlyAnalyses,
-        chatDailyLimit: data.limits?.chat_daily_limit ?? planLimits.chatDailyLimit,
-        chatQuestionsPerVideo: data.limits?.chat_questions_per_video ?? planLimits.chatQuestionsPerVideo,
+        monthlyAnalyses:
+          data.limits?.monthly_analyses ?? planLimits.monthlyAnalyses,
+        chatDailyLimit:
+          data.limits?.chat_daily_limit ?? planLimits.chatDailyLimit,
+        chatQuestionsPerVideo:
+          data.limits?.chat_questions_per_video ??
+          planLimits.chatQuestionsPerVideo,
       };
 
       setPlan(planId);
@@ -103,14 +107,17 @@ export function usePlan(): UsePlanReturn {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (
         appStateRef.current.match(/inactive|background/) &&
-        nextAppState === 'active'
+        nextAppState === "active"
       ) {
         fetchPlan();
       }
       appStateRef.current = nextAppState;
     };
 
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange,
+    );
     return () => subscription.remove();
   }, [fetchPlan]);
 

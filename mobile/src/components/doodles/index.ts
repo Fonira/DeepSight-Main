@@ -3,9 +3,9 @@
  * SVG-based decorative icons and components for mobile UI
  */
 
-export { DoodleIcon } from './DoodleIcon';
-export { DoodleDivider } from './DoodleDivider';
-export { DoodleEmptyState } from './DoodleEmptyState';
+export { DoodleIcon } from "./DoodleIcon";
+export { DoodleDivider } from "./DoodleDivider";
+export { DoodleEmptyState } from "./DoodleEmptyState";
 
 export {
   ICONS_VIDEO,
@@ -18,5 +18,5 @@ export {
   SHAPES_DECORATIVE,
   DOODLE_MAP,
   DOODLE_CATEGORIES,
-} from './doodlePaths';
-export type { DoodleName, DoodleCategory } from './doodlePaths';
+} from "./doodlePaths";
+export type { DoodleName, DoodleCategory } from "./doodlePaths";

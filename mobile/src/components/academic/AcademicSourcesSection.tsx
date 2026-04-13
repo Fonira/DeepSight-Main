@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,18 +7,26 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Card, Button, Badge } from '../ui';
-import { PaperCard } from './PaperCard';
-import { BibliographyExportModal } from './BibliographyExport';
-import { academicApi, AcademicPaper, AcademicSearchResponse } from '../../services/api';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
-import { hasFeature, getLimit, normalizePlanId } from '../../config/planPrivileges';
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Card, Button, Badge } from "../ui";
+import { PaperCard } from "./PaperCard";
+import { BibliographyExportModal } from "./BibliographyExport";
+import {
+  academicApi,
+  AcademicPaper,
+  AcademicSearchResponse,
+} from "../../services/api";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
+import {
+  hasFeature,
+  getLimit,
+  normalizePlanId,
+} from "../../config/planPrivileges";
 
 interface AcademicSourcesSectionProps {
   summaryId: string;
@@ -28,7 +36,7 @@ interface AcademicSourcesSectionProps {
 
 export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
   summaryId,
-  userPlan = 'free',
+  userPlan = "free",
   onUpgrade,
 }) => {
   const { colors } = useTheme();
@@ -46,9 +54,9 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
   const [showExportModal, setShowExportModal] = useState(false);
 
   const plan = normalizePlanId(userPlan);
-  const canSearch = hasFeature(plan, 'academicSearch');
-  const canExport = hasFeature(plan, 'bibliographyExport');
-  const paperLimit = getLimit(plan, 'academicPapersPerAnalysis');
+  const canSearch = hasFeature(plan, "academicSearch");
+  const canExport = hasFeature(plan, "bibliographyExport");
+  const paperLimit = getLimit(plan, "academicPapersPerAnalysis");
 
   const handleSearch = useCallback(async () => {
     if (!canSearch) {
@@ -68,8 +76,12 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
       setTierLimit(response.tier_limit || null);
       setSearched(true);
     } catch (err: any) {
-      if (__DEV__) { console.error('Academic search error:', err); }
-      setError(err.message || tr('Erreur lors de la recherche', 'Search failed'));
+      if (__DEV__) {
+        console.error("Academic search error:", err);
+      }
+      setError(
+        err.message || tr("Erreur lors de la recherche", "Search failed"),
+      );
     } finally {
       setLoading(false);
     }
@@ -98,23 +110,23 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
   const handleExport = () => {
     if (!canExport) {
       Alert.alert(
-        tr('Fonctionnalité Premium', 'Premium Feature'),
+        tr("Fonctionnalité Premium", "Premium Feature"),
         tr(
-          'L\'export de bibliographie nécessite un abonnement Pro ou supérieur.',
-          'Bibliography export requires a Pro subscription or higher.'
+          "L'export de bibliographie nécessite un abonnement Pro ou supérieur.",
+          "Bibliography export requires a Pro subscription or higher.",
         ),
         [
-          { text: tr('Annuler', 'Cancel'), style: 'cancel' },
-          { text: tr('Mettre à niveau', 'Upgrade'), onPress: onUpgrade },
-        ]
+          { text: tr("Annuler", "Cancel"), style: "cancel" },
+          { text: tr("Mettre à niveau", "Upgrade"), onPress: onUpgrade },
+        ],
       );
       return;
     }
 
     if (selectedPapers.size === 0) {
       Alert.alert(
-        tr('Aucune sélection', 'No Selection'),
-        tr('Sélectionnez des articles à exporter.', 'Select papers to export.')
+        tr("Aucune sélection", "No Selection"),
+        tr("Sélectionnez des articles à exporter.", "Select papers to export."),
       );
       return;
     }
@@ -127,15 +139,19 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Ionicons name="school-outline" size={20} color={colors.accentPrimary} />
+          <Ionicons
+            name="school-outline"
+            size={20}
+            color={colors.accentPrimary}
+          />
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            {tr('Sources Académiques', 'Academic Sources')}
+            {tr("Sources Académiques", "Academic Sources")}
           </Text>
         </View>
 
         {searched && papers.length > 0 && (
           <Text style={[styles.count, { color: colors.textSecondary }]}>
-            {papers.length} / {totalFound} {tr('articles', 'papers')}
+            {papers.length} / {totalFound} {tr("articles", "papers")}
           </Text>
         )}
       </View>
@@ -145,13 +161,13 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
         <Card variant="elevated" style={styles.searchCard}>
           <Text style={[styles.description, { color: colors.textSecondary }]}>
             {tr(
-              'Trouvez des articles scientifiques liés à cette analyse via Semantic Scholar, OpenAlex et arXiv.',
-              'Find scientific papers related to this analysis from Semantic Scholar, OpenAlex, and arXiv.'
+              "Trouvez des articles scientifiques liés à cette analyse via Semantic Scholar, OpenAlex et arXiv.",
+              "Find scientific papers related to this analysis from Semantic Scholar, OpenAlex, and arXiv.",
             )}
           </Text>
 
           <Button
-            title={tr('Rechercher des sources', 'Find Sources')}
+            title={tr("Rechercher des sources", "Find Sources")}
             onPress={handleSearch}
             variant="primary"
             icon={<Ionicons name="search" size={18} color="#FFFFFF" />}
@@ -161,8 +177,8 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
           {!canSearch && (
             <Text style={[styles.upgradeHint, { color: colors.warning }]}>
               {tr(
-                'Fonctionnalité gratuite - 3 résultats max',
-                'Free feature - 3 results max'
+                "Fonctionnalité gratuite - 3 résultats max",
+                "Free feature - 3 results max",
               )}
             </Text>
           )}
@@ -174,7 +190,7 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
         <Card variant="elevated" style={styles.loadingCard}>
           <ActivityIndicator size="large" color={colors.accentPrimary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            {tr('Recherche en cours...', 'Searching...')}
+            {tr("Recherche en cours...", "Searching...")}
           </Text>
         </Card>
       )}
@@ -183,9 +199,11 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
       {error && (
         <Card variant="elevated" style={styles.errorCard}>
           <Ionicons name="alert-circle" size={24} color={colors.error} />
-          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+          <Text style={[styles.errorText, { color: colors.error }]}>
+            {error}
+          </Text>
           <Button
-            title={tr('Réessayer', 'Retry')}
+            title={tr("Réessayer", "Retry")}
             onPress={handleSearch}
             variant="secondary"
             size="sm"
@@ -198,11 +216,15 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
         <>
           {papers.length === 0 ? (
             <Card variant="elevated" style={styles.emptyCard}>
-              <Ionicons name="document-outline" size={40} color={colors.textTertiary} />
+              <Ionicons
+                name="document-outline"
+                size={40}
+                color={colors.textTertiary}
+              />
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 {tr(
-                  'Aucune source académique trouvée pour ce contenu.',
-                  'No academic sources found for this content.'
+                  "Aucune source académique trouvée pour ce contenu.",
+                  "No academic sources found for this content.",
                 )}
               </Text>
             </Card>
@@ -210,25 +232,43 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
             <>
               {/* Actions bar */}
               <View style={styles.actionsBar}>
-                <TouchableOpacity onPress={handleSelectAll} style={styles.selectAllButton}>
+                <TouchableOpacity
+                  onPress={handleSelectAll}
+                  style={styles.selectAllButton}
+                >
                   <Ionicons
-                    name={selectedPapers.size === papers.length ? 'checkbox' : 'square-outline'}
+                    name={
+                      selectedPapers.size === papers.length
+                        ? "checkbox"
+                        : "square-outline"
+                    }
                     size={20}
                     color={colors.accentPrimary}
                   />
-                  <Text style={[styles.selectAllText, { color: colors.accentPrimary }]}>
+                  <Text
+                    style={[
+                      styles.selectAllText,
+                      { color: colors.accentPrimary },
+                    ]}
+                  >
                     {selectedPapers.size === papers.length
-                      ? tr('Tout désélectionner', 'Deselect all')
-                      : tr('Tout sélectionner', 'Select all')}
+                      ? tr("Tout désélectionner", "Deselect all")
+                      : tr("Tout sélectionner", "Select all")}
                   </Text>
                 </TouchableOpacity>
 
                 <Button
-                  title={tr('Exporter', 'Export')}
+                  title={tr("Exporter", "Export")}
                   onPress={handleExport}
                   variant="secondary"
                   size="sm"
-                  icon={<Ionicons name="download-outline" size={16} color={colors.accentPrimary} />}
+                  icon={
+                    <Ionicons
+                      name="download-outline"
+                      size={16}
+                      color={colors.accentPrimary}
+                    />
+                  }
                   disabled={selectedPapers.size === 0}
                 />
               </View>
@@ -247,24 +287,38 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
               {tierLimitReached && (
                 <Card variant="elevated" style={styles.tierLimitCard}>
                   <View style={styles.tierLimitContent}>
-                    <Ionicons name="lock-closed" size={20} color={colors.warning} />
+                    <Ionicons
+                      name="lock-closed"
+                      size={20}
+                      color={colors.warning}
+                    />
                     <View style={styles.tierLimitText}>
-                      <Text style={[styles.tierLimitTitle, { color: colors.textPrimary }]}>
+                      <Text
+                        style={[
+                          styles.tierLimitTitle,
+                          { color: colors.textPrimary },
+                        ]}
+                      >
                         {tr(
                           `${totalFound - (tierLimit || 0)} résultats supplémentaires disponibles`,
-                          `${totalFound - (tierLimit || 0)} more results available`
+                          `${totalFound - (tierLimit || 0)} more results available`,
                         )}
                       </Text>
-                      <Text style={[styles.tierLimitDesc, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.tierLimitDesc,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {tr(
-                          'Passez à un forfait supérieur pour voir plus de sources.',
-                          'Upgrade to see more sources.'
+                          "Passez à un forfait supérieur pour voir plus de sources.",
+                          "Upgrade to see more sources.",
                         )}
                       </Text>
                     </View>
                   </View>
                   <Button
-                    title={tr('Mettre à niveau', 'Upgrade')}
+                    title={tr("Mettre à niveau", "Upgrade")}
                     onPress={onUpgrade}
                     variant="primary"
                     size="sm"
@@ -293,14 +347,14 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.md,
   },
   titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   title: {
@@ -313,12 +367,12 @@ const styles = StyleSheet.create({
   },
   searchCard: {
     padding: Spacing.lg,
-    alignItems: 'center',
+    alignItems: "center",
   },
   description: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.md,
     lineHeight: 20,
   },
@@ -332,7 +386,7 @@ const styles = StyleSheet.create({
   },
   loadingCard: {
     padding: Spacing.xl,
-    alignItems: 'center',
+    alignItems: "center",
     gap: Spacing.md,
   },
   loadingText: {
@@ -341,33 +395,33 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     padding: Spacing.lg,
-    alignItems: 'center',
+    alignItems: "center",
     gap: Spacing.sm,
   },
   errorText: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptyCard: {
     padding: Spacing.xl,
-    alignItems: 'center',
+    alignItems: "center",
     gap: Spacing.md,
   },
   emptyText: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
   },
   actionsBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.md,
   },
   selectAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     padding: Spacing.xs,
   },
@@ -380,8 +434,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   tierLimitContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: Spacing.sm,
     marginBottom: Spacing.md,
   },
@@ -398,7 +452,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   upgradeButton: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
 });
 

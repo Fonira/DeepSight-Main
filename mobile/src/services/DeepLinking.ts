@@ -9,8 +9,8 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import * as Linking from 'expo-linking';
-import { Platform, Share } from 'react-native';
+import * as Linking from "expo-linking";
+import { Platform, Share } from "react-native";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -24,16 +24,16 @@ export interface ParsedLink {
 }
 
 export enum LinkType {
-  ANALYSIS = 'analysis',
-  YOUTUBE = 'youtube',
-  TIKTOK = 'tiktok',
-  PLAYLIST = 'playlist',
-  HISTORY = 'history',
-  PAYMENT = 'payment',
-  SETTINGS = 'settings',
-  AUTH = 'auth',
-  SHARE = 'share',
-  UNKNOWN = 'unknown',
+  ANALYSIS = "analysis",
+  YOUTUBE = "youtube",
+  TIKTOK = "tiktok",
+  PLAYLIST = "playlist",
+  HISTORY = "history",
+  PAYMENT = "payment",
+  SETTINGS = "settings",
+  AUTH = "auth",
+  SHARE = "share",
+  UNKNOWN = "unknown",
 }
 
 // YouTube URL patterns
@@ -56,7 +56,8 @@ const TIKTOK_PATTERNS = [
 ];
 
 // YouTube playlist pattern
-const PLAYLIST_PATTERN = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([a-zA-Z0-9_-]+)/;
+const PLAYLIST_PATTERN =
+  /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([a-zA-Z0-9_-]+)/;
 
 // DeepSight URL patterns
 // Matches deepsight://, deepsightsynthesis.com, and deepsight.app
@@ -110,7 +111,7 @@ export function extractTikTokVideoId(url: string): string | null {
  * Check if a URL is a TikTok URL
  */
 export function isTikTokUrl(url: string): boolean {
-  return TIKTOK_PATTERNS.some(pattern => pattern.test(url));
+  return TIKTOK_PATTERNS.some((pattern) => pattern.test(url));
 }
 
 /**
@@ -125,7 +126,10 @@ export function extractYouTubePlaylistId(url: string): string | null {
  * Check if a URL is a YouTube URL
  */
 export function isYouTubeUrl(url: string): boolean {
-  return YOUTUBE_PATTERNS.some(pattern => pattern.test(url)) || PLAYLIST_PATTERN.test(url);
+  return (
+    YOUTUBE_PATTERNS.some((pattern) => pattern.test(url)) ||
+    PLAYLIST_PATTERN.test(url)
+  );
 }
 
 /**
@@ -148,16 +152,16 @@ function parseQueryParams(url: string): Record<string, string> {
     return params;
   } catch {
     // Try to parse manually if URL is malformed
-    const queryIndex = url.indexOf('?');
+    const queryIndex = url.indexOf("?");
     if (queryIndex === -1) return {};
 
     const queryString = url.slice(queryIndex + 1);
     const params: Record<string, string> = {};
 
-    queryString.split('&').forEach(pair => {
-      const [key, value] = pair.split('=');
+    queryString.split("&").forEach((pair) => {
+      const [key, value] = pair.split("=");
       if (key) {
-        params[decodeURIComponent(key)] = decodeURIComponent(value || '');
+        params[decodeURIComponent(key)] = decodeURIComponent(value || "");
       }
     });
 
@@ -181,7 +185,7 @@ export function parseDeepLink(url: string): ParsedLink {
   if (videoId) {
     return {
       type: LinkType.YOUTUBE,
-      route: 'Analysis',
+      route: "Analysis",
       params: { videoUrl: buildYouTubeUrl(videoId), videoId },
       originalUrl,
     };
@@ -192,8 +196,8 @@ export function parseDeepLink(url: string): ParsedLink {
   if (tiktokId) {
     return {
       type: LinkType.TIKTOK,
-      route: 'Analysis',
-      params: { videoUrl: originalUrl, videoId: tiktokId, platform: 'tiktok' },
+      route: "Analysis",
+      params: { videoUrl: originalUrl, videoId: tiktokId, platform: "tiktok" },
       originalUrl,
     };
   }
@@ -202,8 +206,8 @@ export function parseDeepLink(url: string): ParsedLink {
   if (playlistId) {
     return {
       type: LinkType.YOUTUBE,
-      route: 'PlaylistDetail',
-      params: { playlistId, isYouTubePlaylist: 'true' },
+      route: "PlaylistDetail",
+      params: { playlistId, isYouTubePlaylist: "true" },
       originalUrl,
     };
   }
@@ -213,81 +217,81 @@ export function parseDeepLink(url: string): ParsedLink {
     const match = url.match(pattern);
     if (match) {
       switch (key) {
-        case 'analysis':
+        case "analysis":
           return {
             type: LinkType.ANALYSIS,
-            route: 'Analysis',
+            route: "Analysis",
             params: { summaryId: match[1], ...params },
             originalUrl,
           };
-        case 'playlist':
+        case "playlist":
           return {
             type: LinkType.PLAYLIST,
-            route: 'PlaylistDetail',
+            route: "PlaylistDetail",
             params: { playlistId: match[1], ...params },
             originalUrl,
           };
-        case 'study':
+        case "study":
           return {
             type: LinkType.ANALYSIS,
-            route: 'StudyTools',
+            route: "StudyTools",
             params: { summaryId: match[1], ...params },
             originalUrl,
           };
-        case 'history':
+        case "history":
           return {
             type: LinkType.HISTORY,
-            route: 'MainTabs',
-            params: { screen: 'History', ...params },
+            route: "MainTabs",
+            params: { screen: "History", ...params },
             originalUrl,
           };
-        case 'settings':
+        case "settings":
           return {
             type: LinkType.SETTINGS,
-            route: 'Settings',
+            route: "Settings",
             params,
             originalUrl,
           };
-        case 'upgrade':
+        case "upgrade":
           return {
             type: LinkType.PAYMENT,
-            route: 'Upgrade',
+            route: "Upgrade",
             params,
             originalUrl,
           };
-        case 'paymentSuccess':
+        case "paymentSuccess":
           return {
             type: LinkType.PAYMENT,
-            route: 'PaymentSuccess',
+            route: "PaymentSuccess",
             params,
             originalUrl,
           };
-        case 'paymentCancel':
+        case "paymentCancel":
           return {
             type: LinkType.PAYMENT,
-            route: 'PaymentCancel',
+            route: "PaymentCancel",
             params,
             originalUrl,
           };
-        case 'login':
+        case "login":
           return {
             type: LinkType.AUTH,
-            route: 'Login',
+            route: "Login",
             params,
             originalUrl,
           };
-        case 'register':
+        case "register":
           return {
             type: LinkType.AUTH,
-            route: 'Register',
+            route: "Register",
             params,
             originalUrl,
           };
-        case 'verifyEmail':
+        case "verifyEmail":
           return {
             type: LinkType.AUTH,
-            route: 'VerifyEmail',
-            params: { email: params.email || '', ...params },
+            route: "VerifyEmail",
+            params: { email: params.email || "", ...params },
             originalUrl,
           };
       }
@@ -297,7 +301,7 @@ export function parseDeepLink(url: string): ParsedLink {
   // Unknown link type
   return {
     type: LinkType.UNKNOWN,
-    route: '',
+    route: "",
     params,
     originalUrl,
   };
@@ -311,7 +315,9 @@ export async function getInitialUrl(): Promise<string | null> {
     const url = await Linking.getInitialURL();
     return url;
   } catch (error) {
-    if (__DEV__) { console.error('[DeepLinking] Error getting initial URL:', error); }
+    if (__DEV__) {
+      console.error("[DeepLinking] Error getting initial URL:", error);
+    }
     return null;
   }
 }
@@ -320,9 +326,9 @@ export async function getInitialUrl(): Promise<string | null> {
  * Subscribe to incoming deep links
  */
 export function subscribeToDeepLinks(
-  callback: (parsedLink: ParsedLink) => void
+  callback: (parsedLink: ParsedLink) => void,
 ): () => void {
-  const subscription = Linking.addEventListener('url', (event) => {
+  const subscription = Linking.addEventListener("url", (event) => {
     const parsedLink = parseDeepLink(event.url);
     callback(parsedLink);
   });
@@ -360,22 +366,25 @@ export function createStudyLink(summaryId: string): string {
 export async function shareAnalysis(
   summaryId: string,
   title: string,
-  message?: string
+  message?: string,
 ): Promise<boolean> {
   try {
     const url = createAnalysisLink(summaryId);
-    const shareMessage = message || `Découvre cette analyse DeepSight: ${title}`;
+    const shareMessage =
+      message || `Découvre cette analyse DeepSight: ${title}`;
 
     const result = await Share.share(
-      Platform.OS === 'ios'
+      Platform.OS === "ios"
         ? { url, message: shareMessage }
         : { message: `${shareMessage}\n\n${url}` },
-      { dialogTitle: 'Partager l\'analyse' }
+      { dialogTitle: "Partager l'analyse" },
     );
 
     return result.action === Share.sharedAction;
   } catch (error) {
-    if (__DEV__) { console.error('[DeepLinking] Share failed:', error); }
+    if (__DEV__) {
+      console.error("[DeepLinking] Share failed:", error);
+    }
     return false;
   }
 }
@@ -392,7 +401,9 @@ export async function openUrl(url: string): Promise<boolean> {
     }
     return false;
   } catch (error) {
-    if (__DEV__) { console.error('[DeepLinking] Failed to open URL:', error); }
+    if (__DEV__) {
+      console.error("[DeepLinking] Failed to open URL:", error);
+    }
     return false;
   }
 }

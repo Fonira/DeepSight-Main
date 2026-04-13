@@ -1,31 +1,36 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '@/contexts/ThemeContext';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { SimpleBottomSheet, type SimpleBottomSheetRef } from '@/components/ui/SimpleBottomSheet';
-import { storage } from '@/utils/storage';
-import { STORAGE_KEYS } from '@/constants/config';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
-import type { ThemeMode } from '@/types';
+import React, { useState, useRef, useEffect } from "react";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "@/contexts/ThemeContext";
+import { GlassCard } from "@/components/ui/GlassCard";
+import {
+  SimpleBottomSheet,
+  type SimpleBottomSheetRef,
+} from "@/components/ui/SimpleBottomSheet";
+import { storage } from "@/utils/storage";
+import { STORAGE_KEYS } from "@/constants/config";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
+import type { ThemeMode } from "@/types";
 
 const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
-  { value: 'system', label: 'Automatique (système)' },
-  { value: 'dark', label: 'Sombre' },
-  { value: 'light', label: 'Clair' },
+  { value: "system", label: "Automatique (système)" },
+  { value: "dark", label: "Sombre" },
+  { value: "light", label: "Clair" },
 ];
 
 const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'fr', label: 'Français' },
-  { value: 'en', label: 'English' },
+  { value: "fr", label: "Français" },
+  { value: "en", label: "English" },
 ];
 
 export const PreferencesSection: React.FC = () => {
   const { colors, theme, setTheme } = useTheme();
-  const [language, setLanguage] = useState('fr');
-  const [activeSheet, setActiveSheet] = useState<'theme' | 'language' | null>(null);
+  const [language, setLanguage] = useState("fr");
+  const [activeSheet, setActiveSheet] = useState<"theme" | "language" | null>(
+    null,
+  );
 
   const sheetRef = useRef<SimpleBottomSheetRef>(null);
 
@@ -36,7 +41,7 @@ export const PreferencesSection: React.FC = () => {
     });
   }, []);
 
-  const openSheet = (type: 'theme' | 'language') => {
+  const openSheet = (type: "theme" | "language") => {
     setActiveSheet(type);
     sheetRef.current?.snapToIndex(0);
   };
@@ -54,23 +59,25 @@ export const PreferencesSection: React.FC = () => {
     sheetRef.current?.close();
   };
 
-  const themeLabel = THEME_OPTIONS.find((o) => o.value === theme)?.label ?? 'Auto';
-  const languageLabel = LANGUAGE_OPTIONS.find((o) => o.value === language)?.label ?? 'Français';
+  const themeLabel =
+    THEME_OPTIONS.find((o) => o.value === theme)?.label ?? "Auto";
+  const languageLabel =
+    LANGUAGE_OPTIONS.find((o) => o.value === language)?.label ?? "Français";
 
-  const renderRow = (
-    label: string,
-    value: string,
-    onPress: () => void,
-  ) => (
+  const renderRow = (label: string, value: string, onPress: () => void) => (
     <Pressable
       style={[styles.row, { borderBottomColor: colors.border }]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${label}: ${value}`}
     >
-      <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>{label}</Text>
+      <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>
+        {label}
+      </Text>
       <View style={styles.rowRight}>
-        <Text style={[styles.rowValue, { color: colors.textTertiary }]}>{value}</Text>
+        <Text style={[styles.rowValue, { color: colors.textTertiary }]}>
+          {value}
+        </Text>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </View>
     </Pressable>
@@ -83,8 +90,8 @@ export const PreferencesSection: React.FC = () => {
           Préférences
         </Text>
 
-        {renderRow('Thème', themeLabel, () => openSheet('theme'))}
-        {renderRow('Langue', languageLabel, () => openSheet('language'))}
+        {renderRow("Thème", themeLabel, () => openSheet("theme"))}
+        {renderRow("Langue", languageLabel, () => openSheet("language"))}
       </GlassCard>
 
       <SimpleBottomSheet
@@ -95,10 +102,10 @@ export const PreferencesSection: React.FC = () => {
       >
         <View style={styles.sheetContent}>
           <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
-            {activeSheet === 'theme' ? 'Thème' : 'Langue'}
+            {activeSheet === "theme" ? "Thème" : "Langue"}
           </Text>
 
-          {activeSheet === 'theme' &&
+          {activeSheet === "theme" &&
             THEME_OPTIONS.map((option) => (
               <Pressable
                 key={option.value}
@@ -113,16 +120,22 @@ export const PreferencesSection: React.FC = () => {
                 accessibilityRole="radio"
                 accessibilityState={{ selected: theme === option.value }}
               >
-                <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                <Text
+                  style={[styles.optionLabel, { color: colors.textPrimary }]}
+                >
                   {option.label}
                 </Text>
                 {theme === option.value && (
-                  <Ionicons name="checkmark" size={20} color={colors.accentPrimary} />
+                  <Ionicons
+                    name="checkmark"
+                    size={20}
+                    color={colors.accentPrimary}
+                  />
                 )}
               </Pressable>
             ))}
 
-          {activeSheet === 'language' &&
+          {activeSheet === "language" &&
             LANGUAGE_OPTIONS.map((option) => (
               <Pressable
                 key={option.value}
@@ -137,11 +150,17 @@ export const PreferencesSection: React.FC = () => {
                 accessibilityRole="radio"
                 accessibilityState={{ selected: language === option.value }}
               >
-                <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>
+                <Text
+                  style={[styles.optionLabel, { color: colors.textPrimary }]}
+                >
                   {option.label}
                 </Text>
                 {language === option.value && (
-                  <Ionicons name="checkmark" size={20} color={colors.accentPrimary} />
+                  <Ionicons
+                    name="checkmark"
+                    size={20}
+                    color={colors.accentPrimary}
+                  />
                 )}
               </Pressable>
             ))}
@@ -161,15 +180,15 @@ const styles = StyleSheet.create({
     marginBottom: sp.md,
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: sp.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   rowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.xs,
   },
   rowLabel: {
@@ -182,18 +201,18 @@ const styles = StyleSheet.create({
   },
   sheetContent: {
     paddingHorizontal: sp.xl,
-    paddingBottom: sp['3xl'],
+    paddingBottom: sp["3xl"],
   },
   sheetTitle: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.lg,
     marginBottom: sp.lg,
-    textAlign: 'center',
+    textAlign: "center",
   },
   optionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: sp.lg,
     paddingHorizontal: sp.md,
     borderBottomWidth: StyleSheet.hairlineWidth,

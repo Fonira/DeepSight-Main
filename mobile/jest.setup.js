@@ -1,59 +1,59 @@
 // Jest setup file
-import '@testing-library/jest-native/extend-expect';
+import "@testing-library/jest-native/extend-expect";
 
 // Mock expo modules
-jest.mock('expo-constants', () => ({
+jest.mock("expo-constants", () => ({
   expoConfig: {
     extra: {},
   },
-  appOwnership: 'standalone',
+  appOwnership: "standalone",
 }));
 
-jest.mock('expo-haptics', () => ({
+jest.mock("expo-haptics", () => ({
   impactAsync: jest.fn(),
   selectionAsync: jest.fn(),
   notificationAsync: jest.fn(),
   ImpactFeedbackStyle: {
-    Light: 'light',
-    Medium: 'medium',
-    Heavy: 'heavy',
+    Light: "light",
+    Medium: "medium",
+    Heavy: "heavy",
   },
   NotificationFeedbackType: {
-    Success: 'success',
-    Warning: 'warning',
-    Error: 'error',
+    Success: "success",
+    Warning: "warning",
+    Error: "error",
   },
 }));
 
-jest.mock('expo-secure-store', () => ({
+jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn(),
   setItemAsync: jest.fn(),
   deleteItemAsync: jest.fn(),
 }));
 
-jest.mock('@react-native-async-storage/async-storage', () =>
-  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
 
-jest.mock('expo-clipboard', () => ({
+jest.mock("expo-clipboard", () => ({
   setStringAsync: jest.fn(),
   getStringAsync: jest.fn(),
 }));
 
-jest.mock('expo-linking', () => ({
+jest.mock("expo-linking", () => ({
   openURL: jest.fn(),
   createURL: jest.fn(),
 }));
 
-jest.mock('expo-image', () => ({
-  Image: 'Image',
+jest.mock("expo-image", () => ({
+  Image: "Image",
 }));
 
-jest.mock('expo-linear-gradient', () => ({
-  LinearGradient: 'LinearGradient',
+jest.mock("expo-linear-gradient", () => ({
+  LinearGradient: "LinearGradient",
 }));
 
-jest.mock('@react-native-google-signin/google-signin', () => ({
+jest.mock("@react-native-google-signin/google-signin", () => ({
   GoogleSignin: {
     configure: jest.fn(),
     hasPlayServices: jest.fn().mockResolvedValue(true),
@@ -62,20 +62,22 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
     signOut: jest.fn(),
   },
   statusCodes: {
-    SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
-    IN_PROGRESS: 'IN_PROGRESS',
-    PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE',
+    SIGN_IN_CANCELLED: "SIGN_IN_CANCELLED",
+    IN_PROGRESS: "IN_PROGRESS",
+    PLAY_SERVICES_NOT_AVAILABLE: "PLAY_SERVICES_NOT_AVAILABLE",
   },
   isSuccessResponse: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('expo-notifications', () => ({
+jest.mock("expo-notifications", () => ({
   setNotificationHandler: jest.fn(),
   addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
-  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
-  getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
-  requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
-  getExpoPushTokenAsync: jest.fn().mockResolvedValue({ data: 'test-token' }),
+  addNotificationResponseReceivedListener: jest.fn(() => ({
+    remove: jest.fn(),
+  })),
+  getPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted" }),
+  requestPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted" }),
+  getExpoPushTokenAsync: jest.fn().mockResolvedValue({ data: "test-token" }),
   AndroidImportance: {
     MAX: 5,
   },
@@ -83,7 +85,7 @@ jest.mock('expo-notifications', () => ({
 }));
 
 // Mock react-native-safe-area-context
-jest.mock('react-native-safe-area-context', () => {
+jest.mock("react-native-safe-area-context", () => {
   const inset = { top: 0, right: 0, bottom: 0, left: 0 };
   return {
     SafeAreaProvider: ({ children }) => children,
@@ -98,8 +100,8 @@ const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
 const mockReset = jest.fn();
 
-jest.mock('@react-navigation/native', () => ({
-  ...jest.requireActual('@react-navigation/native'),
+jest.mock("@react-navigation/native", () => ({
+  ...jest.requireActual("@react-navigation/native"),
   useNavigation: () => ({
     navigate: mockNavigate,
     goBack: mockGoBack,
@@ -121,9 +123,9 @@ global.mockReset = mockReset;
 const originalWarn = console.warn;
 console.warn = (...args) => {
   if (
-    args[0]?.includes?.('Animated') ||
-    args[0]?.includes?.('componentWillReceiveProps') ||
-    args[0]?.includes?.('componentWillMount')
+    args[0]?.includes?.("Animated") ||
+    args[0]?.includes?.("componentWillReceiveProps") ||
+    args[0]?.includes?.("componentWillMount")
   ) {
     return;
   }

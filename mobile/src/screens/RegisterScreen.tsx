@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,20 +7,23 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { Button, Input } from '../components/ui';
-import { Spacing, Typography, BorderRadius } from '../constants/theme';
-import type { RootStackParamList } from '../types';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { Button, Input } from "../components/ui";
+import { Spacing, Typography, BorderRadius } from "../constants/theme";
+import type { RootStackParamList } from "../types";
 
-type RegisterScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Register'>;
+type RegisterScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Register"
+>;
 
 export const RegisterScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -28,17 +31,17 @@ export const RegisterScreen: React.FC = () => {
   const { register, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<RegisterScreenNavigationProp>();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('creative');
+  useScreenDoodleVariant("creative");
 
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
 
   // Clear any stale errors when screen loads
@@ -48,10 +51,10 @@ export const RegisterScreen: React.FC = () => {
 
   const validateForm = (): boolean => {
     const newErrors = {
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
     };
     let isValid = true;
     clearError();
@@ -98,7 +101,7 @@ export const RegisterScreen: React.FC = () => {
     try {
       const result = await register(username, email, password);
       if (result.requiresVerification) {
-        navigation.navigate('VerifyEmail', { email });
+        navigation.navigate("VerifyEmail", { email });
       }
     } catch (err) {
       // Error is handled by AuthContext
@@ -106,19 +109,22 @@ export const RegisterScreen: React.FC = () => {
   };
 
   const handleLogin = () => {
-    navigation.navigate('Login');
+    navigation.navigate("Login");
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xxl },
+            {
+              paddingTop: insets.top + Spacing.xl,
+              paddingBottom: insets.bottom + Spacing.xxl,
+            },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -128,7 +134,11 @@ export const RegisterScreen: React.FC = () => {
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
+            <Ionicons
+              name="chevron-back"
+              size={28}
+              color={colors.textPrimary}
+            />
           </TouchableOpacity>
 
           <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -140,9 +150,20 @@ export const RegisterScreen: React.FC = () => {
 
           {/* Error message */}
           {error && (
-            <View style={[styles.errorContainer, { backgroundColor: `${colors.accentError}15` }]}>
-              <Ionicons name="alert-circle" size={20} color={colors.accentError} />
-              <Text style={[styles.errorText, { color: colors.accentError }]}>{error}</Text>
+            <View
+              style={[
+                styles.errorContainer,
+                { backgroundColor: `${colors.accentError}15` },
+              ]}
+            >
+              <Ionicons
+                name="alert-circle"
+                size={20}
+                color={colors.accentError}
+              />
+              <Text style={[styles.errorText, { color: colors.accentError }]}>
+                {error}
+              </Text>
             </View>
           )}
 
@@ -210,7 +231,7 @@ export const RegisterScreen: React.FC = () => {
           {/* Login link */}
           <View style={styles.loginContainer}>
             <Text style={[styles.loginText, { color: colors.textSecondary }]}>
-              {t.auth.hasAccount}{' '}
+              {t.auth.hasAccount}{" "}
             </Text>
             <TouchableOpacity onPress={handleLogin}>
               <Text style={[styles.loginLink, { color: colors.accentPrimary }]}>
@@ -236,12 +257,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
   },
   backButton: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginBottom: Spacing.lg,
     marginLeft: -Spacing.sm,
   },
   title: {
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize["2xl"],
     fontFamily: Typography.fontFamily.bodySemiBold,
     marginBottom: Spacing.sm,
   },
@@ -252,8 +273,8 @@ const styles = StyleSheet.create({
     lineHeight: Typography.fontSize.base * Typography.lineHeight.relaxed,
   },
   errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.lg,
@@ -273,13 +294,13 @@ const styles = StyleSheet.create({
   terms: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: Typography.fontSize.sm * Typography.lineHeight.relaxed,
     marginBottom: Spacing.xl,
   },
   loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: Spacing.md,
   },
   loginText: {

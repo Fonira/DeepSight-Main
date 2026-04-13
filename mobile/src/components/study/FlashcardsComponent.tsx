@@ -3,7 +3,7 @@
  * Support des gestes swipe et progression
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,14 +12,14 @@ import {
   Animated,
   PanResponder,
   Dimensions,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 100;
 
 interface Flashcard {
@@ -57,12 +57,12 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
   // Flip animation interpolation
   const frontInterpolate = flipAnim.interpolate({
     inputRange: [0, 180],
-    outputRange: ['0deg', '180deg'],
+    outputRange: ["0deg", "180deg"],
   });
 
   const backInterpolate = flipAnim.interpolate({
     inputRange: [0, 180],
-    outputRange: ['180deg', '360deg'],
+    outputRange: ["180deg", "360deg"],
   });
 
   const frontOpacity = flipAnim.interpolate({
@@ -103,35 +103,38 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
   }, [isFlipped, flipAnim]);
 
   // Navigate to next card
-  const goToNext = useCallback((markAs?: 'known' | 'unknown') => {
-    if (markAs === 'known') {
-      setKnownCards(prev => new Set(prev).add(currentIndex));
-      setUnknownCards(prev => {
-        const next = new Set(prev);
-        next.delete(currentIndex);
-        return next;
-      });
-    } else if (markAs === 'unknown') {
-      setUnknownCards(prev => new Set(prev).add(currentIndex));
-      setKnownCards(prev => {
-        const next = new Set(prev);
-        next.delete(currentIndex);
-        return next;
-      });
-    }
+  const goToNext = useCallback(
+    (markAs?: "known" | "unknown") => {
+      if (markAs === "known") {
+        setKnownCards((prev) => new Set(prev).add(currentIndex));
+        setUnknownCards((prev) => {
+          const next = new Set(prev);
+          next.delete(currentIndex);
+          return next;
+        });
+      } else if (markAs === "unknown") {
+        setUnknownCards((prev) => new Set(prev).add(currentIndex));
+        setKnownCards((prev) => {
+          const next = new Set(prev);
+          next.delete(currentIndex);
+          return next;
+        });
+      }
 
-    if (currentIndex < flashcards.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    } else {
-      // Completed all cards
-      onComplete?.();
-    }
-  }, [currentIndex, flashcards.length, onComplete]);
+      if (currentIndex < flashcards.length - 1) {
+        setCurrentIndex((prev) => prev + 1);
+      } else {
+        // Completed all cards
+        onComplete?.();
+      }
+    },
+    [currentIndex, flashcards.length, onComplete],
+  );
 
   // Navigate to previous card
   const goToPrevious = useCallback(() => {
     if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
+      setCurrentIndex((prev) => prev - 1);
     }
   }, [currentIndex]);
 
@@ -178,7 +181,7 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
           }).start(() => {
             panX.setValue(0);
             panY.setValue(0);
-            goToNext('known');
+            goToNext("known");
           });
         } else if (gestureState.dx < -SWIPE_THRESHOLD) {
           // Swipe left - mark as unknown
@@ -190,9 +193,12 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
           }).start(() => {
             panX.setValue(0);
             panY.setValue(0);
-            goToNext('unknown');
+            goToNext("unknown");
           });
-        } else if (Math.abs(gestureState.dy) < 10 && Math.abs(gestureState.dx) < 10) {
+        } else if (
+          Math.abs(gestureState.dy) < 10 &&
+          Math.abs(gestureState.dx) < 10
+        ) {
           // Tap - flip card
           handleFlip();
         }
@@ -207,15 +213,22 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
           useNativeDriver: true,
         }).start();
       },
-    })
+    }),
   ).current;
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.bgElevated }]}>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.bgElevated },
+        ]}
+      >
         <Ionicons name="albums-outline" size={48} color={colors.textTertiary} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          {language === 'fr' ? 'Génération des flashcards...' : 'Generating flashcards...'}
+          {language === "fr"
+            ? "Génération des flashcards..."
+            : "Generating flashcards..."}
         </Text>
       </View>
     );
@@ -223,10 +236,14 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
 
   if (flashcards.length === 0) {
     return (
-      <View style={[styles.emptyContainer, { backgroundColor: colors.bgElevated }]}>
+      <View
+        style={[styles.emptyContainer, { backgroundColor: colors.bgElevated }]}
+      >
         <Ionicons name="albums-outline" size={48} color={colors.textTertiary} />
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-          {language === 'fr' ? 'Aucune flashcard disponible' : 'No flashcards available'}
+          {language === "fr"
+            ? "Aucune flashcard disponible"
+            : "No flashcards available"}
         </Text>
       </View>
     );
@@ -237,14 +254,16 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
 
   const cardRotation = panX.interpolate({
     inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
-    outputRange: ['-15deg', '0deg', '15deg'],
+    outputRange: ["-15deg", "0deg", "15deg"],
   });
 
   return (
     <View style={styles.container}>
       {/* Progress bar */}
       <View style={styles.progressContainer}>
-        <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
+        <View
+          style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}
+        >
           <View
             style={[
               styles.progressFill,
@@ -257,13 +276,27 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
             {currentIndex + 1} / {flashcards.length}
           </Text>
           <View style={styles.statsRow}>
-            <View style={[styles.statBadge, { backgroundColor: `${colors.accentSuccess}20` }]}>
-              <Ionicons name="checkmark" size={12} color={colors.accentSuccess} />
+            <View
+              style={[
+                styles.statBadge,
+                { backgroundColor: `${colors.accentSuccess}20` },
+              ]}
+            >
+              <Ionicons
+                name="checkmark"
+                size={12}
+                color={colors.accentSuccess}
+              />
               <Text style={[styles.statText, { color: colors.accentSuccess }]}>
                 {knownCards.size}
               </Text>
             </View>
-            <View style={[styles.statBadge, { backgroundColor: `${colors.accentError}20` }]}>
+            <View
+              style={[
+                styles.statBadge,
+                { backgroundColor: `${colors.accentError}20` },
+              ]}
+            >
               <Ionicons name="close" size={12} color={colors.accentError} />
               <Text style={[styles.statText, { color: colors.accentError }]}>
                 {unknownCards.size}
@@ -278,14 +311,18 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
         <View style={styles.swipeHint}>
           <Ionicons name="arrow-back" size={16} color={colors.accentError} />
           <Text style={[styles.swipeHintText, { color: colors.accentError }]}>
-            {language === 'fr' ? 'À revoir' : 'Review'}
+            {language === "fr" ? "À revoir" : "Review"}
           </Text>
         </View>
         <View style={styles.swipeHint}>
           <Text style={[styles.swipeHintText, { color: colors.accentSuccess }]}>
-            {language === 'fr' ? 'Maîtrisé' : 'Known'}
+            {language === "fr" ? "Maîtrisé" : "Known"}
           </Text>
-          <Ionicons name="arrow-forward" size={16} color={colors.accentSuccess} />
+          <Ionicons
+            name="arrow-forward"
+            size={16}
+            color={colors.accentSuccess}
+          />
         </View>
       </View>
 
@@ -317,16 +354,25 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
               },
             ]}
           >
-            <View style={[styles.cardLabel, { backgroundColor: `${colors.accentPrimary}20` }]}>
-              <Text style={[styles.cardLabelText, { color: colors.accentPrimary }]}>
-                {language === 'fr' ? 'QUESTION' : 'QUESTION'}
+            <View
+              style={[
+                styles.cardLabel,
+                { backgroundColor: `${colors.accentPrimary}20` },
+              ]}
+            >
+              <Text
+                style={[styles.cardLabelText, { color: colors.accentPrimary }]}
+              >
+                {language === "fr" ? "QUESTION" : "QUESTION"}
               </Text>
             </View>
             <Text style={[styles.cardContent, { color: colors.textPrimary }]}>
               {currentCard.front}
             </Text>
             <Text style={[styles.tapHint, { color: colors.textMuted }]}>
-              {language === 'fr' ? 'Tapez pour voir la réponse' : 'Tap to see answer'}
+              {language === "fr"
+                ? "Tapez pour voir la réponse"
+                : "Tap to see answer"}
             </Text>
           </Animated.View>
 
@@ -343,16 +389,25 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
               },
             ]}
           >
-            <View style={[styles.cardLabel, { backgroundColor: `${colors.accentSuccess}20` }]}>
-              <Text style={[styles.cardLabelText, { color: colors.accentSuccess }]}>
-                {language === 'fr' ? 'RÉPONSE' : 'ANSWER'}
+            <View
+              style={[
+                styles.cardLabel,
+                { backgroundColor: `${colors.accentSuccess}20` },
+              ]}
+            >
+              <Text
+                style={[styles.cardLabelText, { color: colors.accentSuccess }]}
+              >
+                {language === "fr" ? "RÉPONSE" : "ANSWER"}
               </Text>
             </View>
             <Text style={[styles.cardContent, { color: colors.textPrimary }]}>
               {currentCard.back}
             </Text>
             <Text style={[styles.tapHint, { color: colors.textMuted }]}>
-              {language === 'fr' ? 'Glissez gauche ou droite' : 'Swipe left or right'}
+              {language === "fr"
+                ? "Glissez gauche ou droite"
+                : "Swipe left or right"}
             </Text>
           </Animated.View>
         </Animated.View>
@@ -373,8 +428,11 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: `${colors.accentError}20` }]}
-          onPress={() => goToNext('unknown')}
+          style={[
+            styles.actionButton,
+            { backgroundColor: `${colors.accentError}20` },
+          ]}
+          onPress={() => goToNext("unknown")}
         >
           <Ionicons name="close" size={24} color={colors.accentError} />
         </TouchableOpacity>
@@ -387,8 +445,11 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: `${colors.accentSuccess}20` }]}
-          onPress={() => goToNext('known')}
+          style={[
+            styles.actionButton,
+            { backgroundColor: `${colors.accentSuccess}20` },
+          ]}
+          onPress={() => goToNext("known")}
         >
           <Ionicons name="checkmark" size={24} color={colors.accentSuccess} />
         </TouchableOpacity>
@@ -401,7 +462,11 @@ export const FlashcardsComponent: React.FC<FlashcardsComponentProps> = ({
           <Ionicons
             name="chevron-forward"
             size={24}
-            color={currentIndex === flashcards.length - 1 ? colors.textMuted : colors.textPrimary}
+            color={
+              currentIndex === flashcards.length - 1
+                ? colors.textMuted
+                : colors.textPrimary
+            }
           />
         </TouchableOpacity>
       </View>
@@ -416,8 +481,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: BorderRadius.lg,
     padding: Spacing.xl,
   },
@@ -428,8 +493,8 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: BorderRadius.lg,
     padding: Spacing.xl,
   },
@@ -437,7 +502,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
   },
   progressContainer: {
     marginBottom: Spacing.md,
@@ -445,16 +510,16 @@ const styles = StyleSheet.create({
   progressBar: {
     height: 6,
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
   },
   progressStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: Spacing.sm,
   },
   progressText: {
@@ -462,12 +527,12 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodyMedium,
   },
   statsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.sm,
   },
   statBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
@@ -478,14 +543,14 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodyMedium,
   },
   swipeHints: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.sm,
   },
   swipeHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   swipeHintText: {
@@ -494,34 +559,34 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardWrapper: {
     width: SCREEN_WIDTH - Spacing.xl * 2,
     aspectRatio: 0.7,
   },
   card: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
+    position: "absolute",
+    width: "100%",
+    height: "100%",
     borderRadius: BorderRadius.xl,
     borderWidth: 2,
     padding: Spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backfaceVisibility: 'hidden',
-    shadowColor: '#000',
+    alignItems: "center",
+    justifyContent: "center",
+    backfaceVisibility: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
   },
   cardBack: {
-    position: 'absolute',
+    position: "absolute",
   },
   cardLabel: {
-    position: 'absolute',
+    position: "absolute",
     top: Spacing.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
@@ -530,25 +595,25 @@ const styles = StyleSheet.create({
   cardLabelText: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   cardContent: {
     fontSize: Typography.fontSize.lg,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: Typography.fontSize.lg * 1.5,
   },
   tapHint: {
-    position: 'absolute',
+    position: "absolute",
     bottom: Spacing.lg,
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
   },
   navigation: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     gap: Spacing.md,
     paddingTop: Spacing.lg,
   },
@@ -556,22 +621,22 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionButton: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   shuffleButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

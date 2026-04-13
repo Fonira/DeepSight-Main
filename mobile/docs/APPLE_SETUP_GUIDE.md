@@ -11,7 +11,7 @@ Ce guide vous accompagne dans la configuration de votre compte Apple Developer p
 ## Étape 1 : Créer l'App sur App Store Connect
 
 1. Connectez-vous à [App Store Connect](https://appstoreconnect.apple.com)
-2. Cliquez sur "My Apps" → "+"  → "New App"
+2. Cliquez sur "My Apps" → "+" → "New App"
 3. Remplissez les informations :
    - **Platforms** : iOS
    - **Name** : Deep Sight
@@ -25,14 +25,18 @@ Ce guide vous accompagne dans la configuration de votre compte Apple Developer p
 ## Étape 2 : Obtenir vos identifiants
 
 ### Apple ID
+
 Votre email de connexion Apple Developer (ex: `contact@deepsight.app`)
 
 ### ASC App ID
+
 L'ID numérique de votre app sur App Store Connect (ex: `6740123456`)
+
 - Visible dans l'URL de votre app
 - Ou dans "App Information" → "Apple ID"
 
 ### Apple Team ID
+
 1. Allez sur [Apple Developer](https://developer.apple.com/account)
 2. Cliquez sur "Membership details"
 3. Copiez le "Team ID" (format: `XXXXXXXXXX`)
@@ -64,6 +68,7 @@ eas credentials
 ```
 
 EAS va automatiquement :
+
 - Créer les certificats de distribution
 - Créer les profils de provisioning
 - Les stocker de manière sécurisée
@@ -85,6 +90,7 @@ node scripts/generate-icons.js
 ```
 
 Ou convertissez manuellement les SVG en PNG :
+
 - `icon.svg` → `icon.png` (1024x1024)
 - `splash.svg` → `splash.png` (1284x2778)
 - `adaptive-icon.svg` → `adaptive-icon.png` (1024x1024)
@@ -112,11 +118,13 @@ eas submit --platform ios --profile production
 Dans App Store Connect, complétez :
 
 ### Informations Générales
+
 - **Subtitle** : Analyse de vidéos YouTube par IA
 - **Category** : Productivity / Education
 - **Age Rating** : 4+
 
 ### Description (FR)
+
 ```
 Deep Sight transforme n'importe quelle vidéo YouTube en synthèse structurée grâce à l'intelligence artificielle.
 
@@ -137,20 +145,24 @@ Commencez gratuitement avec 20 analyses par mois !
 ```
 
 ### Keywords
+
 ```
 youtube, analyse, IA, synthèse, résumé, vidéo, intelligence artificielle, étude, révision, éducation
 ```
 
 ### Screenshots Requis
+
 - iPhone 6.7" (1290 × 2796)
 - iPhone 6.5" (1284 × 2778)
 - iPhone 5.5" (1242 × 2208)
 - iPad Pro 12.9" (2048 × 2732)
 
 ### URL de Support
+
 https://deepsight.app/support
 
 ### URL Politique de Confidentialité
+
 https://deepsight.app/privacy
 
 ## Checklist Finale
@@ -167,15 +179,18 @@ https://deepsight.app/privacy
 ## Troubleshooting
 
 ### Erreur "No matching provisioning profiles"
+
 ```bash
 eas credentials --platform ios
 # Sélectionnez "Build credentials" puis "Set up new"
 ```
 
 ### Erreur "Bundle ID already exists"
+
 Vérifiez que le Bundle ID dans `app.json` est unique et correspond à celui créé sur Apple Developer Portal.
 
 ### Erreur d'authentification
+
 ```bash
 eas logout
 eas login

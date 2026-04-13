@@ -1,20 +1,20 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/contexts/ThemeContext';
-import { Skeleton } from '@/components/ui/Skeleton';
+import React, { useCallback, useEffect, useState } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import { FlashList } from "@shopify/flash-list";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   formatRelativeTime,
   formatDuration,
   getYouTubeThumbnail,
-} from '@/utils/formatters';
-import type { AnalysisSummary } from '@/types';
-import { palette } from '@/theme/colors';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
+} from "@/utils/formatters";
+import type { AnalysisSummary } from "@/types";
+import { palette } from "@/theme/colors";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
 
 interface RecentCarouselProps {
   title: string;
@@ -36,14 +36,15 @@ const CarouselItem = React.memo(({ item }: { item: AnalysisSummary }) => {
   // TikTok: pas de fallback YouTube — essayer oEmbed côté client
   const staticThumbnail =
     item.thumbnail ||
-    (item.platform !== 'tiktok' && item.videoId
-      ? getYouTubeThumbnail(item.videoId, 'medium')
+    (item.platform !== "tiktok" && item.videoId
+      ? getYouTubeThumbnail(item.videoId, "medium")
       : null);
 
   // TikTok oEmbed fallback: fetch thumbnail côté client (device IP non bloqué)
   const [tiktokThumb, setTiktokThumb] = useState<string | null>(null);
   useEffect(() => {
-    if (staticThumbnail || item.platform !== 'tiktok' || !item.video_url) return;
+    if (staticThumbnail || item.platform !== "tiktok" || !item.video_url)
+      return;
     let cancelled = false;
     (async () => {
       try {
@@ -59,14 +60,16 @@ const CarouselItem = React.memo(({ item }: { item: AnalysisSummary }) => {
         // Silent — placeholder will show
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [staticThumbnail, item.platform, item.video_url]);
 
   const thumbnail = staticThumbnail || tiktokThumb;
 
   const handlePress = useCallback(() => {
     router.push({
-      pathname: '/(tabs)/analysis/[id]',
+      pathname: "/(tabs)/analysis/[id]",
       params: { id: item.id },
     });
   }, [item.id]);
@@ -95,10 +98,13 @@ const CarouselItem = React.memo(({ item }: { item: AnalysisSummary }) => {
           style={[
             styles.cardImage,
             styles.cardImageFallback,
-            { backgroundColor: item.platform === 'tiktok' ? '#010101' : colors.bgTertiary },
+            {
+              backgroundColor:
+                item.platform === "tiktok" ? "#010101" : colors.bgTertiary,
+            },
           ]}
         >
-          {item.platform === 'tiktok' ? (
+          {item.platform === "tiktok" ? (
             <View style={styles.tiktokBadgeLarge}>
               <Text style={styles.tiktokBadgeText}>TikTok</Text>
             </View>
@@ -135,7 +141,7 @@ const CarouselItem = React.memo(({ item }: { item: AnalysisSummary }) => {
   );
 });
 
-CarouselItem.displayName = 'CarouselItem';
+CarouselItem.displayName = "CarouselItem";
 
 // ─── Skeleton loading ───
 
@@ -155,11 +161,7 @@ const SkeletonCards: React.FC = () => {
             },
           ]}
         >
-          <Skeleton
-            width={CARD_WIDTH}
-            height={IMAGE_HEIGHT}
-            borderRadius={0}
-          />
+          <Skeleton width={CARD_WIDTH} height={IMAGE_HEIGHT} borderRadius={0} />
           <View style={styles.cardContent}>
             <Skeleton width="90%" height={12} />
             <Skeleton width="60%" height={10} style={{ marginTop: sp.xs }} />
@@ -187,7 +189,7 @@ const EmptyCard: React.FC = () => {
     >
       <Ionicons name="sparkles-outline" size={28} color={palette.indigo} />
       <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-        Analyse ta{'\n'}première vidéo
+        Analyse ta{"\n"}première vidéo
       </Text>
     </View>
   );
@@ -212,10 +214,7 @@ export const RecentCarousel: React.FC<RecentCarouselProps> = ({
     [],
   );
 
-  const keyExtractor = useCallback(
-    (item: AnalysisSummary) => item.id,
-    [],
-  );
+  const keyExtractor = useCallback((item: AnalysisSummary) => item.id, []);
 
   if (!isLoading && items.length === 0 && !showEmpty) {
     return null;
@@ -264,20 +263,20 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   cardImage: {
     width: CARD_WIDTH,
     height: IMAGE_HEIGHT,
   },
   cardImageFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardContent: {
     flex: 1,
     padding: sp.sm,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   cardTitle: {
     fontFamily: fontFamily.bodyMedium,
@@ -285,8 +284,8 @@ const styles = StyleSheet.create({
     lineHeight: fontSize.xs * 1.3,
   },
   cardMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   cardMetaText: {
     fontFamily: fontFamily.body,
@@ -296,7 +295,7 @@ const styles = StyleSheet.create({
     width: sp.md,
   },
   skeletonRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: sp.md,
   },
   emptyCard: {
@@ -304,24 +303,24 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
     gap: sp.sm,
   },
   emptyText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.xs,
-    textAlign: 'center',
+    textAlign: "center",
   },
   tiktokBadgeLarge: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 6,
   },
   tiktokBadgeText: {
-    color: '#000',
+    color: "#000",
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.sm,
     letterSpacing: -0.3,

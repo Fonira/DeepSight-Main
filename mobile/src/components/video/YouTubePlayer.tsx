@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,16 +6,16 @@ import {
   TouchableOpacity,
   Linking,
   ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { BorderRadius, Spacing, Typography } from '../../constants/theme';
-import { formatDuration } from '../../utils/formatters';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { BorderRadius, Spacing, Typography } from "../../constants/theme";
+import { formatDuration } from "../../utils/formatters";
 
-export type VideoPlatform = 'youtube' | 'tiktok' | 'text';
+export type VideoPlatform = "youtube" | "tiktok" | "text";
 
 interface YouTubePlayerProps {
   videoId: string;
@@ -38,18 +38,18 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   timestamp = 0,
   onTimestampChange,
   compact = false,
-  platform = 'youtube',
+  platform = "youtube",
 }) => {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
 
-  const isTikTok = platform === 'tiktok';
+  const isTikTok = platform === "tiktok";
 
   // Thumbnails : YouTube a un pattern standard, TikTok utilise le thumbnail du backend
   const thumbnailUrl = isTikTok
-    ? (thumbnail || undefined)
-    : (thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`);
+    ? thumbnail || undefined
+    : thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
   const fallbackThumbnailUrl = isTikTok
     ? undefined
     : `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
@@ -65,7 +65,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         await Linking.openURL(tiktokUrl);
       } else {
         // YouTube : ouvrir avec timestamp, essayer l'app d'abord
-        const timeParam = timestamp > 0 ? `&t=${Math.floor(timestamp)}` : '';
+        const timeParam = timestamp > 0 ? `&t=${Math.floor(timestamp)}` : "";
         const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}${timeParam}`;
         const youtubeAppUrl = `vnd.youtube://watch?v=${videoId}${timeParam}`;
 
@@ -77,7 +77,9 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         }
       }
     } catch (error) {
-      if (__DEV__) { console.error(`Failed to open ${platform}:`, error); }
+      if (__DEV__) {
+        console.error(`Failed to open ${platform}:`, error);
+      }
       // Fallback to web URL
       const fallbackUrl = isTikTok
         ? `https://www.tiktok.com/video/${videoId}`
@@ -102,14 +104,19 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     }
   };
 
-  const platformLabel = isTikTok ? 'TikTok' : 'YouTube';
-  const platformColor = isTikTok ? '#06b6d4' : '#FF0000';
-  const platformIcon = isTikTok ? 'musical-notes' as const : 'logo-youtube' as const;
+  const platformLabel = isTikTok ? "TikTok" : "YouTube";
+  const platformColor = isTikTok ? "#06b6d4" : "#FF0000";
+  const platformIcon = isTikTok
+    ? ("musical-notes" as const)
+    : ("logo-youtube" as const);
 
   if (compact) {
     return (
       <TouchableOpacity
-        style={[styles.compactContainer, { backgroundColor: colors.bgElevated }]}
+        style={[
+          styles.compactContainer,
+          { backgroundColor: colors.bgElevated },
+        ]}
         onPress={handlePlay}
         activeOpacity={0.8}
       >
@@ -127,17 +134,28 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
           )}
         </View>
         <View style={styles.compactInfo}>
-          <Text style={[styles.compactTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+          <Text
+            style={[styles.compactTitle, { color: colors.textPrimary }]}
+            numberOfLines={1}
+          >
             {title || t.common.video}
           </Text>
           {channel && (
-            <Text style={[styles.compactChannel, { color: colors.textTertiary }]} numberOfLines={1}>
+            <Text
+              style={[styles.compactChannel, { color: colors.textTertiary }]}
+              numberOfLines={1}
+            >
               {channel}
             </Text>
           )}
         </View>
         {duration && (
-          <View style={[styles.durationBadge, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
+          <View
+            style={[
+              styles.durationBadge,
+              { backgroundColor: "rgba(0,0,0,0.8)" },
+            ]}
+          >
             <Text style={styles.durationText}>{formatDuration(duration)}</Text>
           </View>
         )}
@@ -164,7 +182,9 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         <View style={styles.gradientOverlay} />
 
         {/* Play button */}
-        <View style={[styles.playButton, { backgroundColor: colors.accentPrimary }]}>
+        <View
+          style={[styles.playButton, { backgroundColor: colors.accentPrimary }]}
+        >
           {isLoading ? (
             <ActivityIndicator size="large" color="#FFFFFF" />
           ) : (
@@ -188,13 +208,20 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
       {/* Video Info */}
       <View style={styles.infoContainer}>
         {title && (
-          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+          <Text
+            style={[styles.title, { color: colors.textPrimary }]}
+            numberOfLines={2}
+          >
             {title}
           </Text>
         )}
         {channel && (
           <View style={styles.channelRow}>
-            <Ionicons name="person-circle-outline" size={16} color={colors.textTertiary} />
+            <Ionicons
+              name="person-circle-outline"
+              size={16}
+              color={colors.textTertiary}
+            />
             <Text style={[styles.channel, { color: colors.textSecondary }]}>
               {channel}
             </Text>
@@ -245,14 +272,14 @@ interface TimestampLinkProps {
 export const TimestampLink: React.FC<TimestampLinkProps> = ({
   timestamp,
   videoId,
-  platform = 'youtube',
+  platform = "youtube",
   children,
 }) => {
   const { colors } = useTheme();
 
   const handlePress = () => {
     Haptics.selectionAsync();
-    if (platform === 'tiktok') {
+    if (platform === "tiktok") {
       Linking.openURL(`https://www.tiktok.com/video/${videoId}`);
     } else {
       const timeParam = `&t=${Math.floor(timestamp)}`;
@@ -272,58 +299,58 @@ export const TimestampLink: React.FC<TimestampLinkProps> = ({
 const styles = StyleSheet.create({
   container: {
     borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   thumbnailContainer: {
     aspectRatio: 16 / 9,
-    position: 'relative',
+    position: "relative",
   },
   thumbnail: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   gradientOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: "rgba(0,0,0,0.2)",
   },
   playButton: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
+    position: "absolute",
+    top: "50%",
+    left: "50%",
     width: 64,
     height: 64,
     borderRadius: 32,
     marginLeft: -32,
     marginTop: -32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
   durationBadge: {
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: "rgba(0,0,0,0.8)",
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: BorderRadius.sm,
   },
   durationBadgePosition: {
-    position: 'absolute',
+    position: "absolute",
     bottom: Spacing.sm,
     right: Spacing.sm,
   },
   durationText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodyMedium,
   },
   youtubeLogoContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: Spacing.sm,
     left: Spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: "rgba(255,255,255,0.9)",
     padding: Spacing.xs,
     borderRadius: BorderRadius.sm,
   },
@@ -336,8 +363,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   channelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   channel: {
@@ -345,7 +372,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   controls: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: Spacing.sm,
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
@@ -353,9 +380,9 @@ const styles = StyleSheet.create({
   },
   controlButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
     gap: Spacing.xs,
@@ -366,8 +393,8 @@ const styles = StyleSheet.create({
   },
   // Compact styles
   compactContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
     gap: Spacing.sm,
@@ -378,13 +405,13 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
   compactPlayOverlay: {
-    position: 'absolute',
+    position: "absolute",
     left: Spacing.sm,
     width: 80,
     height: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
     borderRadius: BorderRadius.sm,
   },
   compactInfo: {
@@ -402,7 +429,7 @@ const styles = StyleSheet.create({
   timestampLink: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodyMedium,
-    textDecorationLine: 'underline',
+    textDecorationLine: "underline",
   },
 });
 

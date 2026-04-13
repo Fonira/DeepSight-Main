@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useCallback, useState } from "react";
+import { View, Text, Pressable, Image, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -9,21 +9,21 @@ import Animated, {
   withSequence,
   runOnJS,
   Easing,
-} from 'react-native-reanimated';
-import Svg, { Circle } from 'react-native-svg';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../contexts/ThemeContext';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
-import { palette } from '../../theme/colors';
-import { videoApi } from '../../services/api';
-import { useAnalysisStore } from '../../stores/analysisStore';
+} from "react-native-reanimated";
+import Svg, { Circle } from "react-native-svg";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
+import { palette } from "../../theme/colors";
+import { videoApi } from "../../services/api";
+import { useAnalysisStore } from "../../stores/analysisStore";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // DeepSight spinner assets
-const SPINNER_COSMIC = require('../../../assets/images/spinner-cosmic.jpg');
-const SPINNER_WHEEL = require('../../../assets/images/spinner-wheel.jpg');
+const SPINNER_COSMIC = require("../../../assets/images/spinner-cosmic.jpg");
+const SPINNER_WHEEL = require("../../../assets/images/spinner-wheel.jpg");
 
 interface StreamingOverlayProps {
   taskId: string;
@@ -38,11 +38,23 @@ interface StepConfig {
 }
 
 const STEPS: StepConfig[] = [
-  { label: 'Connexion au serveur', icon: 'cloud-outline', targetProgress: 5 },
-  { label: 'Récupération des métadonnées', icon: 'information-circle-outline', targetProgress: 15 },
-  { label: 'Extraction de la transcription', icon: 'document-text-outline', targetProgress: 40 },
-  { label: 'Analyse IA en cours', icon: 'sparkles-outline', targetProgress: 85 },
-  { label: 'Terminé !', icon: 'checkmark-circle-outline', targetProgress: 100 },
+  { label: "Connexion au serveur", icon: "cloud-outline", targetProgress: 5 },
+  {
+    label: "Récupération des métadonnées",
+    icon: "information-circle-outline",
+    targetProgress: 15,
+  },
+  {
+    label: "Extraction de la transcription",
+    icon: "document-text-outline",
+    targetProgress: 40,
+  },
+  {
+    label: "Analyse IA en cours",
+    icon: "sparkles-outline",
+    targetProgress: 85,
+  },
+  { label: "Terminé !", icon: "checkmark-circle-outline", targetProgress: 100 },
 ];
 
 // Spinner dimensions
@@ -94,12 +106,12 @@ function getActiveStep(progress: number): number {
 }
 
 const MOTIVATIONAL_MESSAGES = [
-  'Patience, la qualité prend du temps...',
-  'Analyse approfondie en cours...',
-  'Extraction des points clés...',
-  'Évaluation de la fiabilité...',
-  'Structuration du résumé...',
-  'Vérification des sources...',
+  "Patience, la qualité prend du temps...",
+  "Analyse approfondie en cours...",
+  "Extraction des points clés...",
+  "Évaluation de la fiabilité...",
+  "Structuration du résumé...",
+  "Vérification des sources...",
 ];
 
 export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
@@ -133,15 +145,15 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
     wheelRotation.value = withRepeat(
       withTiming(360, { duration: 5000, easing: Easing.linear }),
       -1,
-      false
+      false,
     );
     cosmicPulse.value = withRepeat(
       withSequence(
         withTiming(1.03, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.97, { duration: 1200, easing: Easing.inOut(Easing.ease) })
+        withTiming(0.97, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
   }, [wheelRotation, cosmicPulse]);
 
@@ -154,13 +166,16 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
   }, []);
 
   // Update display + animated progress
-  const updateProgress = useCallback((progress: number) => {
-    setDisplayProgress(Math.round(progress));
-    animProgress.value = withTiming(progress / 100, {
-      duration: 800,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [animProgress]);
+  const updateProgress = useCallback(
+    (progress: number) => {
+      setDisplayProgress(Math.round(progress));
+      animProgress.value = withTiming(progress / 100, {
+        duration: 800,
+        easing: Easing.out(Easing.cubic),
+      });
+    },
+    [animProgress],
+  );
 
   // Handle completion animation
   const handleComplete = useCallback(() => {
@@ -206,23 +221,25 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
           summaryIdRef.current = status.summary_id;
         }
 
-        if (status.status === 'cancelled') {
+        if (status.status === "cancelled") {
           if (pollingRef.current) clearInterval(pollingRef.current);
           if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
           onCancel();
           return;
         }
 
-        if (status.status === 'completed') {
+        if (status.status === "completed") {
           summaryIdRef.current = status.summary_id || summaryIdRef.current;
           handleComplete();
-        } else if (status.status === 'failed') {
+        } else if (status.status === "failed") {
           // On ne propage PAS l'échec au store immédiatement pour éviter que
           // [id].tsx tente de fetcher avec le task_id (≠ summary_id) et affiche une erreur.
           // On affiche l'erreur dans l'overlay après 3 échecs consécutifs.
           failCountRef.current += 1;
           if (failCountRef.current >= 3) {
-            setFailedError(status.error || 'L\'analyse a échoué. Veuillez réessayer.');
+            setFailedError(
+              status.error || "L'analyse a échoué. Veuillez réessayer.",
+            );
             if (pollingRef.current) clearInterval(pollingRef.current);
             if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
           }
@@ -230,21 +247,25 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
       } catch (error: unknown) {
         // Log detailed error info for debugging
         if (__DEV__) {
-          const apiErr = error as { status?: number; code?: string; message?: string };
+          const apiErr = error as {
+            status?: number;
+            code?: string;
+            message?: string;
+          };
           console.warn(
-            '[Polling] Status check failed:',
+            "[Polling] Status check failed:",
             JSON.stringify({
               status: apiErr.status,
               code: apiErr.code,
               message: apiErr.message ?? String(error),
               taskId,
-            })
+            }),
           );
         }
 
         // If 401/session expired, don't count as poll failure — token refresh will handle it
         const apiErr = error as { status?: number; code?: string };
-        if (apiErr.status === 401 || apiErr.code === 'SESSION_EXPIRED') {
+        if (apiErr.status === 401 || apiErr.code === "SESSION_EXPIRED") {
           return; // Let RetryService/token refresh handle it
         }
 
@@ -252,7 +273,9 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
         if (apiErr.status === 404) {
           failCountRef.current += 1;
           if (failCountRef.current >= 3) {
-            setFailedError('La tâche d\'analyse n\'a pas été trouvée. Le serveur a peut-être redémarré. Veuillez relancer l\'analyse.');
+            setFailedError(
+              "La tâche d'analyse n'a pas été trouvée. Le serveur a peut-être redémarré. Veuillez relancer l'analyse.",
+            );
             if (pollingRef.current) clearInterval(pollingRef.current);
             if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
           }
@@ -262,7 +285,7 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
         // Network/timeout errors — silently retry next cycle (transient)
         failCountRef.current += 1;
         if (failCountRef.current >= 10) {
-          setFailedError('Connexion perdue — on réessaie dans un instant');
+          setFailedError("Connexion perdue — on réessaie dans un instant");
           if (pollingRef.current) clearInterval(pollingRef.current);
           if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
         }
@@ -327,7 +350,11 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
   if (failedError) {
     return (
       <View style={[styles.overlay, { backgroundColor: colors.bgPrimary }]}>
-        <Ionicons name="alert-circle-outline" size={64} color={palette.red ?? '#ef4444'} />
+        <Ionicons
+          name="alert-circle-outline"
+          size={64}
+          color={palette.red ?? "#ef4444"}
+        />
         <Text style={[styles.errorTitle, { color: colors.textPrimary }]}>
           Analyse échouée
         </Text>
@@ -336,11 +363,16 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
         </Text>
         <Pressable
           onPress={onCancel}
-          style={[styles.cancelButton, { borderColor: colors.border, marginTop: sp['2xl'] }]}
+          style={[
+            styles.cancelButton,
+            { borderColor: colors.border, marginTop: sp["2xl"] },
+          ]}
           accessibilityLabel="Retour"
           accessibilityRole="button"
         >
-          <Text style={[styles.cancelText, { color: colors.textTertiary }]}>Retour</Text>
+          <Text style={[styles.cancelText, { color: colors.textTertiary }]}>
+            Retour
+          </Text>
         </Pressable>
       </View>
     );
@@ -402,15 +434,15 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
 
         {/* Percentage overlay */}
         <View style={styles.percentageContainer}>
-          <Text style={styles.progressText}>
-            {displayProgress}%
-          </Text>
+          <Text style={styles.progressText}>{displayProgress}%</Text>
         </View>
       </View>
 
       {/* Motivational message */}
       <Text style={[styles.motivationalText, { color: colors.textTertiary }]}>
-        {isCompleted ? 'Analyse terminée !' : MOTIVATIONAL_MESSAGES[messageIndex]}
+        {isCompleted
+          ? "Analyse terminée !"
+          : MOTIVATIONAL_MESSAGES[messageIndex]}
       </Text>
 
       {/* Steps */}
@@ -432,9 +464,11 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
           return (
             <View key={step.label} style={styles.stepRow}>
               <Ionicons
-                name={isStepComplete || (isCompleted && index === STEPS.length - 1)
-                  ? 'checkmark-circle'
-                  : step.icon}
+                name={
+                  isStepComplete || (isCompleted && index === STEPS.length - 1)
+                    ? "checkmark-circle"
+                    : step.icon
+                }
                 size={20}
                 color={iconColor}
               />
@@ -448,7 +482,12 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
                 {step.label}
               </Text>
               {isActive && !isCompleted && (
-                <View style={[styles.activeDot, { backgroundColor: palette.indigo }]} />
+                <View
+                  style={[
+                    styles.activeDot,
+                    { backgroundColor: palette.indigo },
+                  ]}
+                />
               )}
             </View>
           );
@@ -475,26 +514,26 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 10,
-    paddingHorizontal: sp['3xl'],
+    paddingHorizontal: sp["3xl"],
   },
   spinnerWrapper: {
     width: RING_SIZE,
     height: RING_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   progressRing: {
-    position: 'absolute',
+    position: "absolute",
   },
   spinnerImageWrapper: {
-    position: 'absolute',
+    position: "absolute",
     width: SPINNER_SIZE,
     height: SPINNER_SIZE,
     borderRadius: SPINNER_SIZE / 2,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   spinnerCosmic: {
     width: SPINNER_SIZE,
@@ -508,17 +547,17 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   percentageContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "center",
     width: SPINNER_SIZE,
     height: SPINNER_SIZE,
   },
   progressText: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize['3xl'],
-    color: '#ffffff',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    fontSize: fontSize["3xl"],
+    color: "#ffffff",
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
   },
@@ -526,17 +565,17 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
     marginTop: sp.md,
-    marginBottom: sp['3xl'],
-    textAlign: 'center',
+    marginBottom: sp["3xl"],
+    textAlign: "center",
     minHeight: 20,
   },
   stepsContainer: {
-    width: '100%',
+    width: "100%",
     gap: sp.lg,
   },
   stepRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.md,
   },
   stepLabel: {
@@ -553,9 +592,9 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   cancelButton: {
-    marginTop: sp['4xl'],
+    marginTop: sp["4xl"],
     paddingVertical: sp.md,
-    paddingHorizontal: sp['2xl'],
+    paddingHorizontal: sp["2xl"],
     borderRadius: borderRadius.lg,
     borderWidth: 1,
   },
@@ -567,12 +606,12 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.xl,
     marginTop: sp.lg,
-    textAlign: 'center',
+    textAlign: "center",
   },
   errorMessage: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: sp.sm,
     lineHeight: fontSize.sm * 1.5,
   },

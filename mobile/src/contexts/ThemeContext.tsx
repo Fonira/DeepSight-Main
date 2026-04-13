@@ -1,9 +1,16 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
-import { storage } from '../utils/storage';
-import { STORAGE_KEYS } from '../constants/config';
-import { darkColors, lightColors, ThemeColors } from '../theme/colors';
-import type { ThemeMode } from '../types';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
+import { useColorScheme } from "react-native";
+import { storage } from "../utils/storage";
+import { STORAGE_KEYS } from "../constants/config";
+import { darkColors, lightColors, ThemeColors } from "../theme/colors";
+import type { ThemeMode } from "../types";
 
 interface ThemeContextType {
   theme: ThemeMode;
@@ -21,11 +28,10 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const systemColorScheme = useColorScheme();
-  const [theme, setThemeState] = useState<ThemeMode>('dark');
+  const [theme, setThemeState] = useState<ThemeMode>("dark");
 
-  const isDark = theme === 'system'
-    ? systemColorScheme === 'dark'
-    : theme === 'dark';
+  const isDark =
+    theme === "system" ? systemColorScheme === "dark" : theme === "dark";
 
   const colors = isDark ? darkColors : lightColors;
 
@@ -34,17 +40,19 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     const loadTheme = async () => {
       try {
         const timeoutPromise = new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('Theme load timeout')), 2000)
+          setTimeout(() => reject(new Error("Theme load timeout")), 2000),
         );
-        const savedTheme = await Promise.race([
+        const savedTheme = (await Promise.race([
           storage.getItem(STORAGE_KEYS.THEME),
-          timeoutPromise
-        ]) as string | null;
-        if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
+          timeoutPromise,
+        ])) as string | null;
+        if (savedTheme && ["light", "dark", "system"].includes(savedTheme)) {
           setThemeState(savedTheme as ThemeMode);
         }
       } catch (e) {
-        if (__DEV__) { console.warn('Theme load failed/timeout, using default'); }
+        if (__DEV__) {
+          console.warn("Theme load failed/timeout, using default");
+        }
       }
     };
     loadTheme();
@@ -56,7 +64,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    const newTheme = isDark ? 'light' : 'dark';
+    const newTheme = isDark ? "light" : "dark";
     setTheme(newTheme);
   }, [isDark, setTheme]);
 
@@ -68,13 +76,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     toggleTheme,
   };
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
 };
 
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    throw new Error("useTheme must be used within a ThemeProvider");
   }
   return context;
 };

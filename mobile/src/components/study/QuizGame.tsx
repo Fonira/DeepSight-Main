@@ -3,8 +3,8 @@
  * Questions à choix multiples, animations Reanimated, haptics
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -12,15 +12,15 @@ import Animated, {
   withSequence,
   withSpring,
   FadeInDown,
-} from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useStudy } from '../../hooks/useStudy';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
-import { springs, duration } from '../../theme/animations';
-import type { QuizQuestionV2 } from '../../types/v2';
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useStudy } from "../../hooks/useStudy";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
+import { springs, duration } from "../../theme/animations";
+import type { QuizQuestionV2 } from "../../types/v2";
 
 interface QuizGameProps {
   summaryId: string;
@@ -67,48 +67,63 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
     };
   }, [generateQuiz]);
 
-  const score = answers.filter(a => a.correct).length;
+  const score = answers.filter((a) => a.correct).length;
 
-  const handleSelect = useCallback((optionIndex: number) => {
-    if (showResult || selected !== null) return;
-    Haptics.selectionAsync();
-    setSelected(optionIndex);
+  const handleSelect = useCallback(
+    (optionIndex: number) => {
+      if (showResult || selected !== null) return;
+      Haptics.selectionAsync();
+      setSelected(optionIndex);
 
-    const isCorrect = optionIndex === questions[index].correctIndex;
+      const isCorrect = optionIndex === questions[index].correctIndex;
 
-    if (isCorrect) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      scoreScale.value = withSequence(
-        withTiming(1.3, { duration: duration.fast }),
-        withSpring(1, springs.gentle)
-      );
-    } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      shake.value = withSequence(
-        withTiming(-8, { duration: 50 }),
-        withTiming(8, { duration: 50 }),
-        withTiming(-8, { duration: 50 }),
-        withTiming(8, { duration: 50 }),
-        withTiming(0, { duration: 50 })
-      );
-    }
-
-    setShowResult(true);
-    setAnswers(prev => [...prev, { questionIndex: index, selected: optionIndex, correct: isCorrect }]);
-
-    // Auto-advance
-    advanceTimer.current = setTimeout(() => {
-      if (index + 1 >= questions.length) {
-        const finalScore = isCorrect ? score + 1 : score;
-        saveProgress({ quizScore: finalScore, quizTotal: questions.length });
-        setFinished(true);
+      if (isCorrect) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        scoreScale.value = withSequence(
+          withTiming(1.3, { duration: duration.fast }),
+          withSpring(1, springs.gentle),
+        );
       } else {
-        setIndex(prev => prev + 1);
-        setSelected(null);
-        setShowResult(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        shake.value = withSequence(
+          withTiming(-8, { duration: 50 }),
+          withTiming(8, { duration: 50 }),
+          withTiming(-8, { duration: 50 }),
+          withTiming(8, { duration: 50 }),
+          withTiming(0, { duration: 50 }),
+        );
       }
-    }, ADVANCE_DELAY);
-  }, [showResult, selected, questions, index, score, saveProgress, shake, scoreScale]);
+
+      setShowResult(true);
+      setAnswers((prev) => [
+        ...prev,
+        { questionIndex: index, selected: optionIndex, correct: isCorrect },
+      ]);
+
+      // Auto-advance
+      advanceTimer.current = setTimeout(() => {
+        if (index + 1 >= questions.length) {
+          const finalScore = isCorrect ? score + 1 : score;
+          saveProgress({ quizScore: finalScore, quizTotal: questions.length });
+          setFinished(true);
+        } else {
+          setIndex((prev) => prev + 1);
+          setSelected(null);
+          setShowResult(false);
+        }
+      }, ADVANCE_DELAY);
+    },
+    [
+      showResult,
+      selected,
+      questions,
+      index,
+      score,
+      saveProgress,
+      shake,
+      scoreScale,
+    ],
+  );
 
   const shakeStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shake.value }],
@@ -131,7 +146,11 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <Header onClose={onClose} label="" />
         <View style={styles.center}>
-          <Ionicons name="help-circle-outline" size={48} color={colors.textMuted} />
+          <Ionicons
+            name="help-circle-outline"
+            size={48}
+            color={colors.textMuted}
+          />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             Génération du quiz...
           </Text>
@@ -145,7 +164,11 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <Header onClose={onClose} label="" />
         <View style={styles.center}>
-          <Ionicons name="alert-circle-outline" size={48} color={colors.textMuted} />
+          <Ionicons
+            name="alert-circle-outline"
+            size={48}
+            color={colors.textMuted}
+          />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             Aucune question disponible
           </Text>
@@ -155,13 +178,14 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
   }
 
   if (finished) {
-    const pct = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
+    const pct =
+      questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
     return (
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <Header onClose={onClose} label="" />
         <ScrollView contentContainerStyle={styles.finishScroll}>
           <Ionicons
-            name={pct >= 60 ? 'trophy' : 'school'}
+            name={pct >= 60 ? "trophy" : "school"}
             size={64}
             color={pct >= 60 ? colors.accentWarning : colors.accentPrimary}
           />
@@ -179,11 +203,18 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
           <View style={styles.reviewList}>
             {answers.map((a, i) => (
               <Animated.View key={i} entering={FadeInDown.delay(i * 80)}>
-                <View style={[styles.reviewItem, { backgroundColor: colors.bgElevated }]}>
+                <View
+                  style={[
+                    styles.reviewItem,
+                    { backgroundColor: colors.bgElevated },
+                  ]}
+                >
                   <Ionicons
-                    name={a.correct ? 'checkmark-circle' : 'close-circle'}
+                    name={a.correct ? "checkmark-circle" : "close-circle"}
                     size={20}
-                    color={a.correct ? colors.accentSuccess : colors.accentError}
+                    color={
+                      a.correct ? colors.accentSuccess : colors.accentError
+                    }
                   />
                   <Text
                     style={[styles.reviewText, { color: colors.textPrimary }]}
@@ -198,7 +229,10 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
 
           <View style={styles.finishActions}>
             <Pressable
-              style={[styles.finishBtn, { backgroundColor: colors.accentPrimary }]}
+              style={[
+                styles.finishBtn,
+                { backgroundColor: colors.accentPrimary },
+              ]}
               onPress={handleRestart}
             >
               <Text style={styles.finishBtnText}>Recommencer</Text>
@@ -207,7 +241,9 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
               style={[styles.finishBtn, { backgroundColor: colors.bgElevated }]}
               onPress={onClose}
             >
-              <Text style={[styles.finishBtnText, { color: colors.textPrimary }]}>
+              <Text
+                style={[styles.finishBtnText, { color: colors.textPrimary }]}
+              >
                 Fermer
               </Text>
             </Pressable>
@@ -223,7 +259,11 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
     <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
       {/* Header + Score */}
       <View style={styles.topBar}>
-        <Pressable onPress={onClose} style={styles.closeBtn} accessibilityLabel="Fermer">
+        <Pressable
+          onPress={onClose}
+          style={styles.closeBtn}
+          accessibilityLabel="Fermer"
+        >
           <Ionicons name="close" size={28} color={colors.textPrimary} />
         </Pressable>
         <Animated.View style={scoreAnimStyle}>
@@ -237,7 +277,9 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
       </View>
 
       {/* Progress bar */}
-      <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
+      <View
+        style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}
+      >
         <View
           style={[
             styles.progressFill,
@@ -249,7 +291,10 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
         />
       </View>
 
-      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Question */}
         <Animated.View style={shakeStyle}>
           <Text style={[styles.questionText, { color: colors.textPrimary }]}>
@@ -261,7 +306,8 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
         {current.options.map((option, optIdx) => {
           const isSelected = selected === optIdx;
           const isCorrect = showResult && optIdx === current.correctIndex;
-          const isWrong = showResult && isSelected && optIdx !== current.correctIndex;
+          const isWrong =
+            showResult && isSelected && optIdx !== current.correctIndex;
 
           let bgColor = colors.bgElevated;
           let borderColor = colors.border;
@@ -279,11 +325,16 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
           return (
             <Pressable
               key={optIdx}
-              style={[styles.optionBtn, { backgroundColor: bgColor, borderColor }]}
+              style={[
+                styles.optionBtn,
+                { backgroundColor: bgColor, borderColor },
+              ]}
               onPress={() => handleSelect(optIdx)}
               disabled={showResult}
             >
-              <View style={[styles.optionLetter, { backgroundColor: borderColor }]}>
+              <View
+                style={[styles.optionLetter, { backgroundColor: borderColor }]}
+              >
                 <Text style={styles.optionLetterText}>
                   {String.fromCharCode(65 + optIdx)}
                 </Text>
@@ -293,7 +344,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
               </Text>
               {(isCorrect || isWrong) && (
                 <Ionicons
-                  name={isCorrect ? 'checkmark-circle' : 'close-circle'}
+                  name={isCorrect ? "checkmark-circle" : "close-circle"}
                   size={22}
                   color={isCorrect ? colors.accentSuccess : colors.accentError}
                 />
@@ -304,35 +355,62 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
 
         {/* Explanation */}
         {showResult && current.explanation ? (
-          <Animated.View entering={FadeInDown.duration(300)} style={styles.explanationBox}>
-            <View style={[styles.explanationCard, { backgroundColor: `${colors.accentWarning}10` }]}>
+          <Animated.View
+            entering={FadeInDown.duration(300)}
+            style={styles.explanationBox}
+          >
+            <View
+              style={[
+                styles.explanationCard,
+                { backgroundColor: `${colors.accentWarning}10` },
+              ]}
+            >
               <View style={styles.explanationHeader}>
                 <Ionicons name="bulb" size={18} color={colors.accentWarning} />
-                <Text style={[styles.explanationTitle, { color: colors.accentWarning }]}>
+                <Text
+                  style={[
+                    styles.explanationTitle,
+                    { color: colors.accentWarning },
+                  ]}
+                >
                   Explication
                 </Text>
               </View>
-              <Text style={[styles.explanationText, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.explanationText,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 {current.explanation}
               </Text>
             </View>
           </Animated.View>
         ) : null}
 
-        <View style={{ height: sp['4xl'] }} />
+        <View style={{ height: sp["4xl"] }} />
       </ScrollView>
     </View>
   );
 };
 
-const Header: React.FC<{ onClose: () => void; label: string }> = ({ onClose, label }) => {
+const Header: React.FC<{ onClose: () => void; label: string }> = ({
+  onClose,
+  label,
+}) => {
   const { colors } = useTheme();
   return (
     <View style={styles.topBar}>
-      <Pressable onPress={onClose} style={styles.closeBtn} accessibilityLabel="Fermer">
+      <Pressable
+        onPress={onClose}
+        style={styles.closeBtn}
+        accessibilityLabel="Fermer"
+      >
         <Ionicons name="close" size={28} color={colors.textPrimary} />
       </Pressable>
-      <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>
+        {label}
+      </Text>
       <View style={{ width: 28 }} />
     </View>
   );
@@ -341,20 +419,20 @@ const Header: React.FC<{ onClose: () => void; label: string }> = ({ onClose, lab
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: sp['4xl'],
+    paddingTop: sp["4xl"],
   },
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: sp.lg,
     paddingBottom: sp.sm,
   },
   closeBtn: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   scoreLabel: {
     fontFamily: fontFamily.bodyMedium,
@@ -368,11 +446,11 @@ const styles = StyleSheet.create({
     height: 4,
     marginHorizontal: sp.lg,
     borderRadius: 2,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: sp.lg,
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 2,
   },
   scrollContent: {
@@ -383,11 +461,11 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.xl,
     lineHeight: fontSize.xl * 1.4,
-    marginBottom: sp['2xl'],
+    marginBottom: sp["2xl"],
   },
   optionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: sp.lg,
     borderRadius: borderRadius.md,
     borderWidth: 2,
@@ -398,11 +476,11 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   optionLetterText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.sm,
   },
@@ -420,8 +498,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
   },
   explanationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.sm,
     marginBottom: sp.sm,
   },
@@ -436,8 +514,8 @@ const styles = StyleSheet.create({
   },
   center: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: sp.md,
   },
   loadingText: {
@@ -445,19 +523,19 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
   },
   finishScroll: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: sp.lg,
-    paddingTop: sp['3xl'],
-    paddingBottom: sp['4xl'],
+    paddingTop: sp["3xl"],
+    paddingBottom: sp["4xl"],
   },
   finishTitle: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize['2xl'],
+    fontSize: fontSize["2xl"],
     marginTop: sp.lg,
   },
   finishScore: {
     fontFamily: fontFamily.display,
-    fontSize: fontSize['5xl'],
+    fontSize: fontSize["5xl"],
     marginTop: sp.sm,
   },
   finishDetail: {
@@ -466,13 +544,13 @@ const styles = StyleSheet.create({
     marginTop: sp.xs,
   },
   reviewList: {
-    width: '100%',
-    marginTop: sp['2xl'],
+    width: "100%",
+    marginTop: sp["2xl"],
     gap: sp.sm,
   },
   reviewItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.sm,
     padding: sp.md,
     borderRadius: borderRadius.md,
@@ -484,18 +562,18 @@ const styles = StyleSheet.create({
   },
   finishActions: {
     gap: sp.md,
-    marginTop: sp['3xl'],
-    width: '100%',
+    marginTop: sp["3xl"],
+    width: "100%",
   },
   finishBtn: {
     paddingVertical: sp.md,
     borderRadius: borderRadius.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   finishBtnText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.base,
-    color: '#ffffff',
+    color: "#ffffff",
   },
 });
 

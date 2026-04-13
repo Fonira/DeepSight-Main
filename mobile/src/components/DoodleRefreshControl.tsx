@@ -6,8 +6,14 @@
  * Animated sparkle rays pulse outward, iris bounces with spring physics.
  */
 
-import React, { useEffect } from 'react';
-import { View, StyleSheet, RefreshControl, RefreshControlProps, Platform } from 'react-native';
+import React, { useEffect } from "react";
+import {
+  View,
+  StyleSheet,
+  RefreshControl,
+  RefreshControlProps,
+  Platform,
+} from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,13 +25,16 @@ import Animated, {
   Easing,
   cancelAnimation,
   interpolate,
-} from 'react-native-reanimated';
-import Svg, { Circle, Path, G } from 'react-native-svg';
-import { useTheme } from '@/contexts/ThemeContext';
-import { palette } from '@/theme/colors';
-import { sp } from '@/theme/spacing';
+} from "react-native-reanimated";
+import Svg, { Circle, Path, G } from "react-native-svg";
+import { useTheme } from "@/contexts/ThemeContext";
+import { palette } from "@/theme/colors";
+import { sp } from "@/theme/spacing";
 
-interface DoodleRefreshControlProps extends Omit<RefreshControlProps, 'tintColor' | 'colors'> {
+interface DoodleRefreshControlProps extends Omit<
+  RefreshControlProps,
+  "tintColor" | "colors"
+> {
   /** Accent color for the doodle (defaults to brand indigo) */
   accentColor?: string;
 }
@@ -89,10 +98,7 @@ const RefreshDoodle: React.FC<{ spinning: boolean }> = ({ spinning }) => {
 
   /** Container: rotates + scales the entire doodle */
   const containerStyle = useAnimatedStyle(() => ({
-    transform: [
-      { rotate: `${rotation.value}deg` },
-      { scale: scale.value },
-    ],
+    transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
     opacity: interpolate(scale.value, [0.7, 0.9], [0.6, 1.0]),
   }));
 
@@ -119,7 +125,11 @@ const RefreshDoodle: React.FC<{ spinning: boolean }> = ({ spinning }) => {
             <Path d="M31 18 L35 18" stroke={palette.violet} strokeWidth={1.5} />
             {/* Diagonal sparkles */}
             <Path d="M6.5 6.5 L9 9" stroke={palette.indigo} strokeWidth={1} />
-            <Path d="M27 27 L29.5 29.5" stroke={palette.indigo} strokeWidth={1} />
+            <Path
+              d="M27 27 L29.5 29.5"
+              stroke={palette.indigo}
+              strokeWidth={1}
+            />
             <Path d="M29.5 6.5 L27 9" stroke={palette.indigo} strokeWidth={1} />
             <Path d="M9 27 L6.5 29.5" stroke={palette.indigo} strokeWidth={1} />
           </G>
@@ -172,13 +182,15 @@ export const DoodleRefreshControl: React.FC<DoodleRefreshControlProps> = ({
     <>
       <RefreshControl
         refreshing={refreshing}
-        tintColor={Platform.OS === 'ios' ? 'transparent' : 'transparent'}
+        tintColor={Platform.OS === "ios" ? "transparent" : "transparent"}
         colors={[color]}
         progressBackgroundColor="transparent"
         {...rest}
       />
       {refreshing && (
-        <View style={[styles.doodleOverlay, { backgroundColor: colors.bgPrimary }]}>
+        <View
+          style={[styles.doodleOverlay, { backgroundColor: colors.bgPrimary }]}
+        >
           <RefreshDoodle spinning={refreshing} />
         </View>
       )}
@@ -192,19 +204,19 @@ const styles = StyleSheet.create({
     height: ICON_SIZE,
   },
   svgLayer: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     width: ICON_SIZE,
     height: ICON_SIZE,
   },
   doodleOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: sp.lg,
     zIndex: 10,
   },

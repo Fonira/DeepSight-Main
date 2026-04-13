@@ -8,7 +8,7 @@
  * - Loading state with spinner
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from "react";
 import {
   View,
   TextInput,
@@ -17,12 +17,12 @@ import {
   StyleSheet,
   Keyboard,
   Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
 interface ChatInputProps {
   value: string;
@@ -73,14 +73,23 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary, borderTopColor: colors.border }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.bgPrimary, borderTopColor: colors.border },
+      ]}
+    >
       {showWebSearch && (
         <Pressable
           style={[
             styles.webSearchToggle,
             {
-              backgroundColor: webSearchEnabled ? `${colors.accentPrimary}20` : colors.bgSecondary,
-              borderColor: webSearchEnabled ? colors.accentPrimary : colors.border,
+              backgroundColor: webSearchEnabled
+                ? `${colors.accentPrimary}20`
+                : colors.bgSecondary,
+              borderColor: webSearchEnabled
+                ? colors.accentPrimary
+                : colors.border,
             },
           ]}
           onPress={onToggleWebSearch}
@@ -134,7 +143,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         style={[
           styles.sendButton,
           {
-            backgroundColor: canSend ? colors.accentTertiary : colors.bgTertiary,
+            backgroundColor: canSend
+              ? colors.accentTertiary
+              : colors.bgTertiary,
           },
         ]}
         onPress={handleSend}
@@ -152,8 +163,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     gap: Spacing.sm,
@@ -173,20 +184,20 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   webSearchToggle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    position: 'relative',
+    position: "relative",
   },
   lockIcon: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 2,
     right: 2,
   },

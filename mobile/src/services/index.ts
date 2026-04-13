@@ -1,3 +1,3 @@
-export * from './api';
-export { tokenManager } from './TokenManager';
-export * from './CrashReporting';
+export * from "./api";
+export { tokenManager } from "./TokenManager";
+export * from "./CrashReporting";

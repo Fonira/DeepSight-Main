@@ -5,20 +5,28 @@
  * and automatic sync when connection is restored.
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNetworkStatus } from '../hooks/useNetworkStatus';
-import { ApiError } from '../services/api';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+  useRef,
+} from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import { ApiError } from "../services/api";
 
 // Storage keys
-const OFFLINE_QUEUE_KEY = '@deepsight_offline_queue';
-const OFFLINE_CACHE_KEY = '@deepsight_offline_cache';
+const OFFLINE_QUEUE_KEY = "@deepsight_offline_queue";
+const OFFLINE_CACHE_KEY = "@deepsight_offline_cache";
 
 // Queued request interface
 export interface QueuedRequest {
   id: string;
   endpoint: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   body?: unknown;
   timestamp: number;
   retryCount: number;
@@ -37,7 +45,9 @@ export interface CacheEntry<T = unknown> {
 interface OfflineContextType {
   isOffline: boolean;
   queuedRequests: QueuedRequest[];
-  queueRequest: (request: Omit<QueuedRequest, 'id' | 'timestamp' | 'retryCount'>) => void;
+  queueRequest: (
+    request: Omit<QueuedRequest, "id" | "timestamp" | "retryCount">,
+  ) => void;
   getCached: <T>(key: string) => Promise<T | null>;
   setCache: <T>(key: string, data: T, ttlMinutes?: number) => Promise<void>;
   clearCache: () => Promise<void>;
@@ -53,7 +63,9 @@ function generateRequestId(): string {
 }
 
 // Provider component
-export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const OfflineProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const { status } = useNetworkStatus();
   const [queuedRequests, setQueuedRequests] = useState<QueuedRequest[]>([]);
   const syncInProgress = useRef(false);
@@ -80,12 +92,14 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
         const queue = JSON.parse(stored) as QueuedRequest[];
         // Filter out expired requests (older than 24 hours)
         const validQueue = queue.filter(
-          req => Date.now() - req.timestamp < 24 * 60 * 60 * 1000
+          (req) => Date.now() - req.timestamp < 24 * 60 * 60 * 1000,
         );
         setQueuedRequests(validQueue);
       }
     } catch (error) {
-      if (__DEV__) { console.error('[OfflineContext] Failed to load queue:', error); }
+      if (__DEV__) {
+        console.error("[OfflineContext] Failed to load queue:", error);
+      }
     }
   };
 
@@ -94,29 +108,34 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
     } catch (error) {
-      if (__DEV__) { console.error('[OfflineContext] Failed to save queue:', error); }
+      if (__DEV__) {
+        console.error("[OfflineContext] Failed to save queue:", error);
+      }
     }
   };
 
   // Queue a request for later execution
-  const queueRequest = useCallback((request: Omit<QueuedRequest, 'id' | 'timestamp' | 'retryCount'>) => {
-    const newRequest: QueuedRequest = {
-      ...request,
-      id: generateRequestId(),
-      timestamp: Date.now(),
-      retryCount: 0,
-    };
+  const queueRequest = useCallback(
+    (request: Omit<QueuedRequest, "id" | "timestamp" | "retryCount">) => {
+      const newRequest: QueuedRequest = {
+        ...request,
+        id: generateRequestId(),
+        timestamp: Date.now(),
+        retryCount: 0,
+      };
 
-    setQueuedRequests(prev => {
-      const updated = [...prev, newRequest];
-      saveQueue(updated);
-      return updated;
-    });
+      setQueuedRequests((prev) => {
+        const updated = [...prev, newRequest];
+        saveQueue(updated);
+        return updated;
+      });
 
-    if (__DEV__) {
-      console.log('[OfflineContext] Request queued:', newRequest.endpoint);
-    }
-  }, []);
+      if (__DEV__) {
+        console.log("[OfflineContext] Request queued:", newRequest.endpoint);
+      }
+    },
+    [],
+  );
 
   // Get cached data
   const getCached = useCallback(async <T,>(key: string): Promise<T | null> => {
@@ -136,40 +155,52 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       return entry.data;
     } catch (error) {
-      if (__DEV__) { console.error('[OfflineContext] Cache read error:', error); }
+      if (__DEV__) {
+        console.error("[OfflineContext] Cache read error:", error);
+      }
       return null;
     }
   }, []);
 
   // Set cache data
-  const setCache = useCallback(async <T,>(key: string, data: T, ttlMinutes: number = 30) => {
-    try {
-      const cacheKey = `${OFFLINE_CACHE_KEY}_${key}`;
-      const entry: CacheEntry<T> = {
-        key,
-        data,
-        timestamp: Date.now(),
-        expiresAt: Date.now() + ttlMinutes * 60 * 1000,
-      };
-      await AsyncStorage.setItem(cacheKey, JSON.stringify(entry));
-    } catch (error) {
-      if (__DEV__) { console.error('[OfflineContext] Cache write error:', error); }
-    }
-  }, []);
+  const setCache = useCallback(
+    async <T,>(key: string, data: T, ttlMinutes: number = 30) => {
+      try {
+        const cacheKey = `${OFFLINE_CACHE_KEY}_${key}`;
+        const entry: CacheEntry<T> = {
+          key,
+          data,
+          timestamp: Date.now(),
+          expiresAt: Date.now() + ttlMinutes * 60 * 1000,
+        };
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(entry));
+      } catch (error) {
+        if (__DEV__) {
+          console.error("[OfflineContext] Cache write error:", error);
+        }
+      }
+    },
+    [],
+  );
 
   // Clear all cached data
   const clearCache = useCallback(async () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const cacheKeys = keys.filter(k => k.startsWith(OFFLINE_CACHE_KEY));
+      const cacheKeys = keys.filter((k) => k.startsWith(OFFLINE_CACHE_KEY));
       await AsyncStorage.multiRemove(cacheKeys);
     } catch (error) {
-      if (__DEV__) { console.error('[OfflineContext] Cache clear error:', error); }
+      if (__DEV__) {
+        console.error("[OfflineContext] Cache clear error:", error);
+      }
     }
   }, []);
 
   // Sync queued requests
-  const syncQueue = useCallback(async (): Promise<{ success: number; failed: number }> => {
+  const syncQueue = useCallback(async (): Promise<{
+    success: number;
+    failed: number;
+  }> => {
     if (syncInProgress.current || isOffline) {
       return { success: 0, failed: 0 };
     }
@@ -184,15 +215,15 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
     for (const request of currentQueue) {
       try {
         // Import API base URL dynamically to avoid circular dependency
-        const { API_BASE_URL } = await import('../constants/config');
-        const { tokenStorage } = await import('../utils/storage');
+        const { API_BASE_URL } = await import("../constants/config");
+        const { tokenStorage } = await import("../utils/storage");
 
         const accessToken = await tokenStorage.getAccessToken();
 
         const response = await fetch(`${API_BASE_URL}${request.endpoint}`, {
           method: request.method,
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
           body: request.body ? JSON.stringify(request.body) : undefined,
@@ -201,10 +232,10 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (response.ok) {
           success++;
           if (__DEV__) {
-            console.log('[OfflineContext] Synced:', request.endpoint);
+            console.log("[OfflineContext] Synced:", request.endpoint);
           }
         } else {
-          throw new ApiError('Sync failed', response.status);
+          throw new ApiError("Sync failed", response.status);
         }
       } catch (error) {
         // Increment retry count
@@ -216,7 +247,10 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
         } else {
           failed++;
           if (__DEV__) {
-            console.error('[OfflineContext] Max retries exceeded:', request.endpoint);
+            console.error(
+              "[OfflineContext] Max retries exceeded:",
+              request.endpoint,
+            );
           }
         }
       }
@@ -229,7 +263,9 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
     syncInProgress.current = false;
 
     if (__DEV__) {
-      console.log(`[OfflineContext] Sync complete: ${success} success, ${failed} failed, ${remainingQueue.length} pending`);
+      console.log(
+        `[OfflineContext] Sync complete: ${success} success, ${failed} failed, ${remainingQueue.length} pending`,
+      );
     }
 
     return { success, failed };
@@ -257,7 +293,7 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
 export const useOffline = (): OfflineContextType => {
   const context = useContext(OfflineContext);
   if (!context) {
-    throw new Error('useOffline must be used within OfflineProvider');
+    throw new Error("useOffline must be used within OfflineProvider");
   }
   return context;
 };
@@ -266,7 +302,7 @@ export const useOffline = (): OfflineContextType => {
 export function useOfflineData<T>(
   key: string,
   fetcher: () => Promise<T>,
-  options: { ttlMinutes?: number; enabled?: boolean } = {}
+  options: { ttlMinutes?: number; enabled?: boolean } = {},
 ) {
   const { isOffline, getCached, setCache } = useOffline();
   const [data, setData] = useState<T | null>(null);
@@ -289,7 +325,7 @@ export function useOfflineData<T>(
           setIsLoading(false);
           return;
         }
-        throw new Error('No cached data available offline');
+        throw new Error("No cached data available offline");
       }
 
       // Fetch fresh data

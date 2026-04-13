@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -11,26 +11,26 @@ import {
   Pressable,
   Alert,
   TextInput,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { ApiError } from '@/services/api';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize, textStyles } from '@/theme/typography';
-import { palette } from '@/theme/colors';
-import { DoodleBackground } from '@/components/ui/DoodleBackground';
+} from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import * as Google from "expo-auth-session/providers/google";
+import * as WebBrowser from "expo-web-browser";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { ApiError } from "@/services/api";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize, textStyles } from "@/theme/typography";
+import { palette } from "@/theme/colors";
+import { DoodleBackground } from "@/components/ui/DoodleBackground";
 import {
   GOOGLE_CLIENT_ID,
   GOOGLE_ANDROID_CLIENT_ID,
   GOOGLE_IOS_CLIENT_ID,
-} from '@/constants/config';
+} from "@/constants/config";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -39,11 +39,13 @@ export default function LoginScreen() {
   const { colors, isDark } = useTheme();
   const { login: contextLogin, loginWithGoogleToken } = useAuth();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+    {},
+  );
 
   const passwordRef = useRef<TextInput>(null);
 
@@ -61,7 +63,10 @@ export default function LoginScreen() {
   });
 
   React.useEffect(() => {
-    if (googleResponse?.type === 'success' && googleResponse.authentication?.accessToken) {
+    if (
+      googleResponse?.type === "success" &&
+      googleResponse.authentication?.accessToken
+    ) {
       handleGoogleLogin(googleResponse.authentication.accessToken);
     }
   }, [googleResponse]);
@@ -69,12 +74,12 @@ export default function LoginScreen() {
   const validate = useCallback((): boolean => {
     const newErrors: { email?: string; password?: string } = {};
     if (!email.trim()) {
-      newErrors.email = 'L\'email est requis';
+      newErrors.email = "L'email est requis";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      newErrors.email = 'Email invalide';
+      newErrors.email = "Email invalide";
     }
     if (!password) {
-      newErrors.password = 'Le mot de passe est requis';
+      newErrors.password = "Le mot de passe est requis";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -93,37 +98,49 @@ export default function LoginScreen() {
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.isEmailNotVerified) {
-          router.push({ pathname: '/(auth)/verify', params: { email: email.trim() } });
+          router.push({
+            pathname: "/(auth)/verify",
+            params: { email: email.trim() },
+          });
           return;
         }
         if (error.status === 401) {
-          setErrors({ password: 'Email ou mot de passe incorrect' });
+          setErrors({ password: "Email ou mot de passe incorrect" });
         } else {
-          Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+          Alert.alert("Erreur", error.message || "Une erreur est survenue");
         }
       } else {
-        Alert.alert('Erreur', 'Impossible de se connecter. Vérifiez votre connexion internet.');
+        Alert.alert(
+          "Erreur",
+          "Impossible de se connecter. Vérifiez votre connexion internet.",
+        );
       }
     } finally {
       setLoading(false);
     }
   }, [email, password, validate, contextLogin, router]);
 
-  const handleGoogleLogin = useCallback(async (accessToken: string) => {
-    setGoogleLoading(true);
-    try {
-      // Use AuthContext's loginWithGoogleToken → sets user → _layout.tsx auto-redirects
-      await loginWithGoogleToken(accessToken);
-    } catch (error) {
-      if (error instanceof ApiError) {
-        Alert.alert('Erreur Google', error.message || 'Échec de la connexion Google');
-      } else {
-        Alert.alert('Erreur', 'Impossible de se connecter avec Google.');
+  const handleGoogleLogin = useCallback(
+    async (accessToken: string) => {
+      setGoogleLoading(true);
+      try {
+        // Use AuthContext's loginWithGoogleToken → sets user → _layout.tsx auto-redirects
+        await loginWithGoogleToken(accessToken);
+      } catch (error) {
+        if (error instanceof ApiError) {
+          Alert.alert(
+            "Erreur Google",
+            error.message || "Échec de la connexion Google",
+          );
+        } else {
+          Alert.alert("Erreur", "Impossible de se connecter avec Google.");
+        }
+      } finally {
+        setGoogleLoading(false);
       }
-    } finally {
-      setGoogleLoading(false);
-    }
-  }, [loginWithGoogleToken]);
+    },
+    [loginWithGoogleToken],
+  );
 
   const handleGooglePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -131,10 +148,12 @@ export default function LoginScreen() {
   }, [promptAsync]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.bgPrimary }]}
+    >
       <DoodleBackground variant="tech" density="low" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
       >
         <ScrollView
@@ -154,14 +173,16 @@ export default function LoginScreen() {
           {/* Logo DeepSight */}
           <View style={styles.logoSection}>
             <Image
-              source={require('@/assets/images/icon.png')}
+              source={require("@/assets/images/icon.png")}
               style={styles.appLogo}
               resizeMode="contain"
             />
           </View>
 
           {/* Header */}
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Connexion</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            Connexion
+          </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Analysez vos vidéos YouTube & TikTok en profondeur
           </Text>
@@ -169,18 +190,25 @@ export default function LoginScreen() {
           {/* Platform logos — YouTube & TikTok prominent */}
           <View style={styles.platformLogos}>
             <Image
-              source={isDark
-                ? require('@/assets/platforms/youtube-logo-white.png')
-                : require('@/assets/platforms/youtube-logo-dark.png')
+              source={
+                isDark
+                  ? require("@/assets/platforms/youtube-logo-white.png")
+                  : require("@/assets/platforms/youtube-logo-dark.png")
               }
               style={styles.platformLogoYt}
               resizeMode="contain"
             />
-            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+            <View
+              style={[
+                styles.platformDivider,
+                { backgroundColor: colors.border },
+              ]}
+            />
             <Image
-              source={isDark
-                ? require('@/assets/platforms/tiktok-logo-white.png')
-                : require('@/assets/platforms/tiktok-logo-black.png')
+              source={
+                isDark
+                  ? require("@/assets/platforms/tiktok-logo-white.png")
+                  : require("@/assets/platforms/tiktok-logo-black.png")
               }
               style={styles.platformLogoTk}
               resizeMode="contain"
@@ -188,15 +216,19 @@ export default function LoginScreen() {
           </View>
           {/* Mistral + Tournesol — separate row, smaller */}
           <View style={styles.poweredRow}>
-            <Text style={[styles.poweredText, { color: colors.textMuted }]}>Propulsé par</Text>
+            <Text style={[styles.poweredText, { color: colors.textMuted }]}>
+              Propulsé par
+            </Text>
             <Image
-              source={require('@/assets/platforms/mistral-logo-white.png')}
-              style={[styles.mistralLogo, !isDark && { tintColor: '#1a1a2e' }]}
+              source={require("@/assets/platforms/mistral-logo-white.png")}
+              style={[styles.mistralLogo, !isDark && { tintColor: "#1a1a2e" }]}
               resizeMode="contain"
             />
-            <View style={[styles.poweredSep, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.poweredSep, { backgroundColor: colors.border }]}
+            />
             <Image
-              source={require('@/assets/platforms/tournesol-logo.png')}
+              source={require("@/assets/platforms/tournesol-logo.png")}
               style={styles.tournesolLogo}
               resizeMode="contain"
             />
@@ -237,7 +269,7 @@ export default function LoginScreen() {
 
             {/* Forgot password */}
             <Pressable
-              onPress={() => router.push('/(auth)/forgot-password')}
+              onPress={() => router.push("/(auth)/forgot-password")}
               style={styles.forgotLink}
               hitSlop={8}
             >
@@ -259,9 +291,21 @@ export default function LoginScreen() {
 
             {/* Separator */}
             <View style={styles.separator}>
-              <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.separatorText, { color: colors.textMuted }]}>ou</Text>
-              <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
+              <View
+                style={[
+                  styles.separatorLine,
+                  { backgroundColor: colors.border },
+                ]}
+              />
+              <Text style={[styles.separatorText, { color: colors.textMuted }]}>
+                ou
+              </Text>
+              <View
+                style={[
+                  styles.separatorLine,
+                  { backgroundColor: colors.border },
+                ]}
+              />
             </View>
 
             {/* Google button */}
@@ -274,7 +318,11 @@ export default function LoginScreen() {
               disabled={loading || googleLoading}
               onPress={handleGooglePress}
               icon={
-                <Ionicons name="logo-google" size={20} color={colors.textPrimary} />
+                <Ionicons
+                  name="logo-google"
+                  size={20}
+                  color={colors.textPrimary}
+                />
               }
             />
           </View>
@@ -282,9 +330,12 @@ export default function LoginScreen() {
           {/* Register link */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: colors.textTertiary }]}>
-              Pas de compte ?{' '}
+              Pas de compte ?{" "}
             </Text>
-            <Pressable onPress={() => router.push('/(auth)/register')} hitSlop={8}>
+            <Pressable
+              onPress={() => router.push("/(auth)/register")}
+              hitSlop={8}
+            >
               <Text style={[styles.footerLink, { color: palette.indigo }]}>
                 Créer un compte
               </Text>
@@ -312,7 +363,7 @@ const styles = StyleSheet.create({
     marginBottom: sp.lg,
   },
   logoSection: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: sp.xl,
   },
   appLogo: {
@@ -326,20 +377,20 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...textStyles.bodyMd,
-    marginBottom: sp['3xl'],
+    marginBottom: sp["3xl"],
   },
   platformLogos: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: sp.lg,
     marginBottom: sp.lg,
     opacity: 0.9,
   },
   poweredRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: sp.sm,
     marginBottom: sp.xl,
     opacity: 0.5,
@@ -347,7 +398,7 @@ const styles = StyleSheet.create({
   poweredText: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   mistralLogo: {
@@ -384,7 +435,7 @@ const styles = StyleSheet.create({
     gap: 0,
   },
   forgotLink: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     marginBottom: sp.xl,
     marginTop: -sp.sm,
   },
@@ -393,8 +444,8 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
   },
   separator: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: sp.xl,
   },
   separatorLine: {
@@ -407,9 +458,9 @@ const styles = StyleSheet.create({
     marginHorizontal: sp.lg,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: sp['3xl'],
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: sp["3xl"],
   },
   footerText: {
     fontFamily: fontFamily.body,

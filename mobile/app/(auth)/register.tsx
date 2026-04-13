@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -10,18 +10,18 @@ import {
   Pressable,
   Alert,
   TextInput,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { useTheme } from '@/contexts/ThemeContext';
-import { authApi, ApiError } from '@/services/api';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize, textStyles } from '@/theme/typography';
-import { palette } from '@/theme/colors';
-import { DoodleBackground } from '@/components/ui/DoodleBackground';
+} from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { useTheme } from "@/contexts/ThemeContext";
+import { authApi, ApiError } from "@/services/api";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize, textStyles } from "@/theme/typography";
+import { palette } from "@/theme/colors";
+import { DoodleBackground } from "@/components/ui/DoodleBackground";
 
 interface FormErrors {
   username?: string;
@@ -35,10 +35,10 @@ export default function RegisterScreen() {
   const router = useRouter();
   const { colors } = useTheme();
 
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [cguAccepted, setCguAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -52,25 +52,25 @@ export default function RegisterScreen() {
     if (!username.trim()) {
       newErrors.username = "Le nom d'utilisateur est requis";
     } else if (username.trim().length < 3) {
-      newErrors.username = 'Minimum 3 caractères';
+      newErrors.username = "Minimum 3 caractères";
     }
     if (!email.trim()) {
       newErrors.email = "L'email est requis";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      newErrors.email = 'Email invalide';
+      newErrors.email = "Email invalide";
     }
     if (!password) {
-      newErrors.password = 'Le mot de passe est requis';
+      newErrors.password = "Le mot de passe est requis";
     } else if (password.length < 8) {
-      newErrors.password = 'Minimum 8 caractères';
+      newErrors.password = "Minimum 8 caractères";
     }
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Confirmez le mot de passe';
+      newErrors.confirmPassword = "Confirmez le mot de passe";
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Les mots de passe ne correspondent pas';
+      newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
     }
     if (!cguAccepted) {
-      newErrors.cgu = 'Vous devez accepter les CGU';
+      newErrors.cgu = "Vous devez accepter les CGU";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -84,16 +84,25 @@ export default function RegisterScreen() {
 
     try {
       await authApi.register(username.trim(), email.trim(), password);
-      router.push({ pathname: '/(auth)/verify', params: { email: email.trim() } });
+      router.push({
+        pathname: "/(auth)/verify",
+        params: { email: email.trim() },
+      });
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.status === 409 || error.message?.toLowerCase().includes('exist')) {
-          setErrors({ email: 'Cet email est déjà utilisé' });
+        if (
+          error.status === 409 ||
+          error.message?.toLowerCase().includes("exist")
+        ) {
+          setErrors({ email: "Cet email est déjà utilisé" });
         } else {
-          Alert.alert('Erreur', error.message || 'Impossible de créer le compte');
+          Alert.alert(
+            "Erreur",
+            error.message || "Impossible de créer le compte",
+          );
         }
       } else {
-        Alert.alert('Erreur', 'Vérifiez votre connexion internet.');
+        Alert.alert("Erreur", "Vérifiez votre connexion internet.");
       }
     } finally {
       setLoading(false);
@@ -101,10 +110,12 @@ export default function RegisterScreen() {
   }, [username, email, password, validate, router]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.bgPrimary }]}
+    >
       <DoodleBackground variant="tech" density="low" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
       >
         <ScrollView
@@ -122,7 +133,9 @@ export default function RegisterScreen() {
           </Pressable>
 
           {/* Header */}
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Créer un compte</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            Créer un compte
+          </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Inscrivez-vous pour commencer à analyser des vidéos
           </Text>
@@ -193,8 +206,15 @@ export default function RegisterScreen() {
               <View
                 style={[
                   styles.checkbox,
-                  { borderColor: errors.cgu ? colors.accentError : colors.borderLight },
-                  cguAccepted && { backgroundColor: palette.indigo, borderColor: palette.indigo },
+                  {
+                    borderColor: errors.cgu
+                      ? colors.accentError
+                      : colors.borderLight,
+                  },
+                  cguAccepted && {
+                    backgroundColor: palette.indigo,
+                    borderColor: palette.indigo,
+                  },
                 ]}
               >
                 {cguAccepted && (
@@ -202,7 +222,7 @@ export default function RegisterScreen() {
                 )}
               </View>
               <Text style={[styles.cguText, { color: colors.textSecondary }]}>
-                J'accepte les{' '}
+                J'accepte les{" "}
                 <Text style={{ color: palette.indigo }}>
                   conditions générales d'utilisation
                 </Text>
@@ -230,9 +250,9 @@ export default function RegisterScreen() {
           {/* Login link */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: colors.textTertiary }]}>
-              Déjà un compte ?{' '}
+              Déjà un compte ?{" "}
             </Text>
-            <Pressable onPress={() => router.push('/(auth)/login')} hitSlop={8}>
+            <Pressable onPress={() => router.push("/(auth)/login")} hitSlop={8}>
               <Text style={[styles.footerLink, { color: palette.indigo }]}>
                 Se connecter
               </Text>
@@ -257,7 +277,7 @@ const styles = StyleSheet.create({
     paddingVertical: sp.xl,
   },
   backButton: {
-    marginBottom: sp['3xl'],
+    marginBottom: sp["3xl"],
   },
   title: {
     ...textStyles.displaySm,
@@ -265,14 +285,14 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...textStyles.bodyMd,
-    marginBottom: sp['3xl'],
+    marginBottom: sp["3xl"],
   },
   form: {
     gap: 0,
   },
   cguRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: sp.xs,
     gap: sp.md,
   },
@@ -281,8 +301,8 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: borderRadius.sm,
     borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   cguText: {
     flex: 1,
@@ -294,15 +314,15 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
     marginTop: sp.xs,
-    marginLeft: sp['3xl'],
+    marginLeft: sp["3xl"],
   },
   registerButton: {
     marginTop: sp.xl,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: sp['3xl'],
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: sp["3xl"],
   },
   footerText: {
     fontFamily: fontFamily.body,

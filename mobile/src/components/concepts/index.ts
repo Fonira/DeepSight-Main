@@ -1,1 +1,4 @@
-export { ConceptsGlossary, default as ConceptsGlossaryDefault } from './ConceptsGlossary';
+export {
+  ConceptsGlossary,
+  default as ConceptsGlossaryDefault,
+} from "./ConceptsGlossary";

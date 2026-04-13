@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,32 +13,32 @@ import {
   Dimensions,
   Easing,
   Keyboard,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { chatApi } from '../../services/api';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
-import { hasFeature, getLimit, isUnlimited } from '../../config/planPrivileges';
-import { SuggestedQuestions } from './SuggestedQuestions';
-import { ChatBubble } from './ChatBubble';
-import { TypingIndicator } from './TypingIndicator';
-import { ChatInput } from './ChatInput';
-import type { ChatMessage } from '../../types';
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { chatApi } from "../../services/api";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
+import { hasFeature, getLimit, isUnlimited } from "../../config/planPrivileges";
+import { SuggestedQuestions } from "./SuggestedQuestions";
+import { ChatBubble } from "./ChatBubble";
+import { TypingIndicator } from "./TypingIndicator";
+import { ChatInput } from "./ChatInput";
+import type { ChatMessage } from "../../types";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CHAT_FAB_SEEN_KEY = 'deepsight_chat_fab_seen';
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const CHAT_FAB_SEEN_KEY = "deepsight_chat_fab_seen";
 
 // FAB Design constants
 const FAB_HEIGHT = 56;
 const FAB_BORDER_RADIUS = FAB_HEIGHT / 2;
-const FAB_GLOW_COLOR = '#00BCD4';
-const FAB_GRADIENT: readonly [string, string] = ['#00BCD4', '#8b5cf6'];
+const FAB_GLOW_COLOR = "#00BCD4";
+const FAB_GRADIENT: readonly [string, string] = ["#00BCD4", "#8b5cf6"];
 
 interface FloatingChatProps {
   summaryId: string;
@@ -51,7 +51,7 @@ interface FloatingChatProps {
 export const FloatingChat: React.FC<FloatingChatProps> = ({
   summaryId,
   videoTitle,
-  category = 'general',
+  category = "general",
   initialMessages = [],
   onMessagesUpdate,
 }) => {
@@ -76,11 +76,13 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [useWebSearch, setUseWebSearch] = useState(false);
-  const [lastSources, setLastSources] = useState<Array<{ url: string; title: string }>>([]);
+  const [lastSources, setLastSources] = useState<
+    Array<{ url: string; title: string }>
+  >([]);
   const [showNewBadge, setShowNewBadge] = useState(false);
 
   // Force blur + dismiss on unmount to prevent orphaned keyboard on iOS
@@ -92,7 +94,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
 
   // Check if first time seeing the FAB
   useEffect(() => {
-    AsyncStorage.getItem(CHAT_FAB_SEEN_KEY).then(val => {
+    AsyncStorage.getItem(CHAT_FAB_SEEN_KEY).then((val) => {
       if (!val) setShowNewBadge(true);
     });
   }, []);
@@ -123,7 +125,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
           useNativeDriver: true,
         }),
         Animated.delay(1500),
-      ])
+      ]),
     );
     animation.start();
     return () => animation.stop();
@@ -146,7 +148,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
             duration: 500,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
       animation.start();
     } else {
@@ -175,7 +177,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     // Dismiss "Nouveau" badge on first tap
     if (showNewBadge) {
       setShowNewBadge(false);
-      AsyncStorage.setItem(CHAT_FAB_SEEN_KEY, 'true');
+      AsyncStorage.setItem(CHAT_FAB_SEEN_KEY, "true");
     }
 
     setIsOpen(true);
@@ -197,26 +199,30 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       content: input.trim(),
       timestamp: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
     setIsLoading(true);
     setLastSources([]);
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     try {
-      const response = await chatApi.sendMessage(summaryId, userMessage.content, {
-        useWebSearch: useWebSearch && canUseWebSearch,
-      });
+      const response = await chatApi.sendMessage(
+        summaryId,
+        userMessage.content,
+        {
+          useWebSearch: useWebSearch && canUseWebSearch,
+        },
+      );
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        role: 'assistant',
+        role: "assistant",
         content: response.response,
         timestamp: new Date().toISOString(),
       };
@@ -225,17 +231,17 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
         setLastSources(response.sources);
       }
 
-      setMessages(prev => {
+      setMessages((prev) => {
         const newMessages = [...prev, assistantMessage];
         onMessagesUpdate?.(newMessages);
         return newMessages;
       });
 
       if (!isOpen) {
-        setUnreadCount(prev => prev + 1);
+        setUnreadCount((prev) => prev + 1);
       }
     } catch (err) {
-      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+      setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
       setInput(userMessage.content);
     } finally {
       setIsLoading(false);
@@ -243,8 +249,8 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   };
 
   // Plan privileges
-  const userPlan = user?.plan || 'free';
-  const canUseWebSearch = hasFeature(userPlan, 'chatWebSearch');
+  const userPlan = user?.plan || "free";
+  const canUseWebSearch = hasFeature(userPlan, "chatWebSearch");
 
   const handleToggleWebSearch = () => {
     if (!canUseWebSearch) {
@@ -255,10 +261,12 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     setUseWebSearch(!useWebSearch);
   };
 
-  const chatQuotaPerVideo = getLimit(userPlan, 'chatQuestionsPerVideo');
-  const isUnlimitedChat = isUnlimited(userPlan, 'chatQuestionsPerVideo');
-  const questionsUsed = messages.filter(m => m.role === 'user').length;
-  const questionsRemaining = isUnlimitedChat ? -1 : chatQuotaPerVideo - questionsUsed;
+  const chatQuotaPerVideo = getLimit(userPlan, "chatQuestionsPerVideo");
+  const isUnlimitedChat = isUnlimited(userPlan, "chatQuestionsPerVideo");
+  const questionsUsed = messages.filter((m) => m.role === "user").length;
+  const questionsRemaining = isUnlimitedChat
+    ? -1
+    : chatQuotaPerVideo - questionsUsed;
 
   const handleSuggestedQuestion = (question: string) => {
     setInput(question);
@@ -293,10 +301,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
             styles.fabWrapper,
             {
               bottom: insets.bottom + 24,
-              transform: [
-                { scale: fabScale },
-                { translateY: fabTranslateY },
-              ],
+              transform: [{ scale: fabScale }, { translateY: fabTranslateY }],
             },
           ]}
           pointerEvents="box-none"
@@ -380,22 +385,32 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
               end={{ x: 1, y: 0 }}
               style={styles.header}
             >
-              <TouchableOpacity onPress={handleMinimize} style={styles.headerButton}>
+              <TouchableOpacity
+                onPress={handleMinimize}
+                style={styles.headerButton}
+              >
                 <Ionicons
-                  name={isMinimized ? 'chevron-up' : 'chevron-down'}
+                  name={isMinimized ? "chevron-up" : "chevron-down"}
                   size={20}
                   color="#FFFFFF"
                 />
               </TouchableOpacity>
 
               <View style={styles.headerTitle}>
-                <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" />
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={18}
+                  color="#FFFFFF"
+                />
                 <Text style={styles.headerText} numberOfLines={1}>
                   {videoTitle || t.chat.title}
                 </Text>
               </View>
 
-              <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+              <TouchableOpacity
+                onPress={handleClose}
+                style={styles.headerButton}
+              >
                 <Ionicons name="close" size={20} color="#FFFFFF" />
               </TouchableOpacity>
             </LinearGradient>
@@ -403,31 +418,61 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
             {!isMinimized && (
               <KeyboardAvoidingView
                 style={styles.chatContent}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
               >
                 {/* Messages */}
                 <FlatList
                   ref={scrollRef}
                   data={messages}
-                  keyExtractor={(item, index) => `float-${index}-${item.id || 'msg'}`}
+                  keyExtractor={(item, index) =>
+                    `float-${index}-${item.id || "msg"}`
+                  }
                   keyboardDismissMode="interactive"
                   keyboardShouldPersistTaps="handled"
                   contentContainerStyle={styles.messagesList}
                   onContentSizeChange={() => scrollRef.current?.scrollToEnd()}
                   ListEmptyComponent={
                     <View style={styles.emptyState}>
-                      <Ionicons name="chatbubble-outline" size={48} color={colors.textTertiary} />
-                      <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                      <Ionicons
+                        name="chatbubble-outline"
+                        size={48}
+                        color={colors.textTertiary}
+                      />
+                      <Text
+                        style={[
+                          styles.emptyTitle,
+                          { color: colors.textPrimary },
+                        ]}
+                      >
                         {t.chat.askQuestion}
                       </Text>
-                      <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.emptyText,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {t.chat.startConversation}
                       </Text>
 
                       {/* Question quota */}
-                      <View style={[styles.quotaContainer, { backgroundColor: colors.bgSecondary }]}>
-                        <Ionicons name="chatbubbles-outline" size={16} color={colors.textTertiary} />
-                        <Text style={[styles.quotaText, { color: colors.textSecondary }]}>
+                      <View
+                        style={[
+                          styles.quotaContainer,
+                          { backgroundColor: colors.bgSecondary },
+                        ]}
+                      >
+                        <Ionicons
+                          name="chatbubbles-outline"
+                          size={16}
+                          color={colors.textTertiary}
+                        />
+                        <Text
+                          style={[
+                            styles.quotaText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           {questionsRemaining === -1
                             ? t.chat.unlimitedQuestions
                             : `${questionsRemaining} ${t.chat.questionsRemaining}`}
@@ -455,28 +500,61 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                 />
 
                 {/* Quota warning */}
-                {questionsRemaining !== -1 && questionsRemaining <= 2 && questionsRemaining > 0 && (
-                  <View style={[styles.quotaWarning, { backgroundColor: `${colors.accentWarning}20` }]}>
-                    <Ionicons name="warning-outline" size={14} color={colors.accentWarning} />
-                    <Text style={[styles.quotaWarningText, { color: colors.accentWarning }]}>
-                      {questionsRemaining} {t.chat.questionsRemaining}
-                    </Text>
-                  </View>
-                )}
+                {questionsRemaining !== -1 &&
+                  questionsRemaining <= 2 &&
+                  questionsRemaining > 0 && (
+                    <View
+                      style={[
+                        styles.quotaWarning,
+                        { backgroundColor: `${colors.accentWarning}20` },
+                      ]}
+                    >
+                      <Ionicons
+                        name="warning-outline"
+                        size={14}
+                        color={colors.accentWarning}
+                      />
+                      <Text
+                        style={[
+                          styles.quotaWarningText,
+                          { color: colors.accentWarning },
+                        ]}
+                      >
+                        {questionsRemaining} {t.chat.questionsRemaining}
+                      </Text>
+                    </View>
+                  )}
 
                 {/* Web search sources */}
                 {lastSources.length > 0 && (
-                  <View style={[styles.sourcesContainer, { backgroundColor: colors.bgSecondary }]}>
+                  <View
+                    style={[
+                      styles.sourcesContainer,
+                      { backgroundColor: colors.bgSecondary },
+                    ]}
+                  >
                     <View style={styles.sourcesHeader}>
-                      <Ionicons name="globe-outline" size={14} color={colors.accentInfo} />
-                      <Text style={[styles.sourcesTitle, { color: colors.textSecondary }]}>
+                      <Ionicons
+                        name="globe-outline"
+                        size={14}
+                        color={colors.accentInfo}
+                      />
+                      <Text
+                        style={[
+                          styles.sourcesTitle,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {t.chat.webSources}
                       </Text>
                     </View>
                     {lastSources.slice(0, 3).map((source, index) => (
                       <Text
                         key={index}
-                        style={[styles.sourceLink, { color: colors.accentPrimary }]}
+                        style={[
+                          styles.sourceLink,
+                          { color: colors.accentPrimary },
+                        ]}
                         numberOfLines={1}
                       >
                         {source.title || source.url}
@@ -490,9 +568,15 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                   onChangeText={setInput}
                   onSend={handleSend}
                   isLoading={isLoading}
-                  placeholder={useWebSearch ? t.chat.webSearchPlaceholder : t.chat.placeholder}
+                  placeholder={
+                    useWebSearch
+                      ? t.chat.webSearchPlaceholder
+                      : t.chat.placeholder
+                  }
                   maxLength={500}
-                  disabled={questionsRemaining !== -1 && questionsRemaining <= 0}
+                  disabled={
+                    questionsRemaining !== -1 && questionsRemaining <= 0
+                  }
                   showWebSearch
                   webSearchEnabled={useWebSearch}
                   onToggleWebSearch={handleToggleWebSearch}
@@ -510,15 +594,15 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
 const styles = StyleSheet.create({
   // === FAB Styles ===
   fabWrapper: {
-    position: 'absolute',
+    position: "absolute",
     right: 16,
     zIndex: 999,
     elevation: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   glowRing: {
-    position: 'absolute',
+    position: "absolute",
     width: 160,
     height: FAB_HEIGHT,
     borderRadius: FAB_BORDER_RADIUS,
@@ -534,76 +618,76 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   fab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     height: FAB_HEIGHT,
     paddingHorizontal: 24,
     borderRadius: FAB_BORDER_RADIUS,
     gap: 10,
   },
   fabText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.3,
   },
   newBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -8,
     right: -4,
-    backgroundColor: '#FF453A',
+    backgroundColor: "#FF453A",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
-    shadowColor: '#FF453A',
+    shadowColor: "#FF453A",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.5,
     shadowRadius: 4,
     elevation: 6,
   },
   newBadgeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   unreadBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -6,
     right: -6,
-    backgroundColor: '#FF453A',
+    backgroundColor: "#FF453A",
     minWidth: 22,
     height: 22,
     borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 6,
     borderWidth: 2,
-    borderColor: '#0a0a0f',
+    borderColor: "#0a0a0f",
   },
   unreadText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 11,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 
   // === Modal Styles ===
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   chatContainer: {
     borderTopLeftRadius: BorderRadius.xl,
     borderTopRightRadius: BorderRadius.xl,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
   },
   headerButton: {
@@ -611,13 +695,13 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.sm,
   },
   headerText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
@@ -629,7 +713,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   emptyState: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: Spacing.xl,
   },
   emptyTitle: {
@@ -640,12 +724,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.md,
   },
   quotaContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
@@ -657,9 +741,9 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   quotaWarning: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.xs,
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.md,
@@ -672,11 +756,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(128,128,128,0.15)',
+    borderTopColor: "rgba(128,128,128,0.15)",
   },
   sourcesHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     marginBottom: Spacing.xs,
   },

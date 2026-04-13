@@ -1,29 +1,33 @@
-import React, { useMemo, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, Keyboard } from 'react-native';
-import { NavigationContainer, LinkingOptions, useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { DeepSightSpinner } from '../components/loading';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import * as Linking from 'expo-linking';
+import React, { useMemo, useEffect, useRef, useCallback } from "react";
+import { View, StyleSheet, Keyboard } from "react-native";
+import {
+  NavigationContainer,
+  LinkingOptions,
+  useNavigation,
+} from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { DeepSightSpinner } from "../components/loading";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import * as Linking from "expo-linking";
 
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import {
   getInitialUrl,
   subscribeToDeepLinks,
   parseDeepLink,
   LinkType,
-} from '../services/DeepLinking';
-import type { ParsedLink } from '../services/DeepLinking';
-import { useShareIntent } from '../hooks/useShareIntent';
+} from "../services/DeepLinking";
+import type { ParsedLink } from "../services/DeepLinking";
+import { useShareIntent } from "../hooks/useShareIntent";
 import {
   addNotificationReceivedListener,
   addNotificationResponseListener,
   getLastNotificationResponse,
   clearBadge,
-} from '../services/notifications';
-import { CustomTabBar } from '../components/navigation';
+} from "../services/notifications";
+import { CustomTabBar } from "../components/navigation";
 import {
   LandingScreen,
   LoginScreen,
@@ -46,8 +50,8 @@ import {
   AnalyticsScreen,
   PlaylistDetailScreen,
   AboutScreen,
-} from '../screens';
-import type { RootStackParamList, MainTabParamList } from '../types';
+} from "../screens";
+import type { RootStackParamList, MainTabParamList } from "../types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -57,7 +61,7 @@ const MainTabs: React.FC = () => {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
-      sceneContainerStyle={{ backgroundColor: 'transparent' }}
+      sceneContainerStyle={{ backgroundColor: "transparent" }}
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
@@ -74,14 +78,14 @@ const AuthStack: React.FC = () => {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: 'transparent' },
-        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: "transparent" },
+        animation: "slide_from_right",
       }}
     >
       <Stack.Screen
         name="Landing"
         component={LandingScreen}
-        options={{ animation: 'fade' }}
+        options={{ animation: "fade" }}
       />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
@@ -97,8 +101,8 @@ const MainStack: React.FC = () => {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: 'transparent' },
-        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: "transparent" },
+        animation: "slide_from_right",
       }}
     >
       <Stack.Screen name="MainTabs" component={MainTabs} />
@@ -106,8 +110,8 @@ const MainStack: React.FC = () => {
         name="Analysis"
         component={AnalysisScreen}
         options={{
-          animation: 'slide_from_bottom',
-          presentation: 'modal',
+          animation: "slide_from_bottom",
+          presentation: "modal",
         }}
       />
       <Stack.Screen name="Settings" component={SettingsScreen} />
@@ -117,25 +121,25 @@ const MainStack: React.FC = () => {
       <Stack.Screen
         name="PaymentSuccess"
         component={PaymentSuccessScreen}
-        options={{ animation: 'fade', gestureEnabled: false }}
+        options={{ animation: "fade", gestureEnabled: false }}
       />
       <Stack.Screen
         name="PaymentCancel"
         component={PaymentCancelScreen}
-        options={{ animation: 'fade' }}
+        options={{ animation: "fade" }}
       />
       <Stack.Screen name="Legal" component={LegalScreen} />
       <Stack.Screen name="Contact" component={ContactScreen} />
       <Stack.Screen
         name="StudyTools"
         component={StudyScreen}
-        options={{ animation: 'slide_from_right' }}
+        options={{ animation: "slide_from_right" }}
       />
       <Stack.Screen name="Analytics" component={AnalyticsScreen} />
       <Stack.Screen
         name="PlaylistDetail"
         component={PlaylistDetailScreen}
-        options={{ animation: 'slide_from_right' }}
+        options={{ animation: "slide_from_right" }}
       />
       <Stack.Screen name="About" component={AboutScreen} />
     </Stack.Navigator>
@@ -145,51 +149,57 @@ const MainStack: React.FC = () => {
 // Deep Linking Configuration
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [
-    Linking.createURL('/'),
-    'deepsight://',
-    'https://deepsightsynthesis.com',
-    'https://www.deepsightsynthesis.com',
-    'https://deepsight.app',
+    Linking.createURL("/"),
+    "deepsight://",
+    "https://deepsightsynthesis.com",
+    "https://www.deepsightsynthesis.com",
+    "https://deepsight.app",
   ],
   config: {
     screens: {
-      Landing: 'welcome',
-      Login: 'login',
-      Register: 'register',
-      ForgotPassword: 'forgot-password',
-      VerifyEmail: 'verify-email',
+      Landing: "welcome",
+      Login: "login",
+      Register: "register",
+      ForgotPassword: "forgot-password",
+      VerifyEmail: "verify-email",
       MainTabs: {
         screens: {
-          Dashboard: 'home',
-          History: 'history',
-          Upgrade: 'plans',
-          Profile: 'profile',
+          Dashboard: "home",
+          History: "history",
+          Upgrade: "plans",
+          Profile: "profile",
         },
       },
-      Analysis: 'analysis/:videoId',
-      Settings: 'settings',
-      Account: 'account',
-      UpgradeModal: 'upgrade',
-      Usage: 'usage',
-      PaymentSuccess: 'payment/success',
-      PaymentCancel: 'payment/cancel',
-      Legal: 'legal/:type',
-      Contact: 'contact',
-      StudyTools: 'study/:summaryId',
-      Analytics: 'analytics',
-      About: 'about',
+      Analysis: "analysis/:videoId",
+      Settings: "settings",
+      Account: "account",
+      UpgradeModal: "upgrade",
+      Usage: "usage",
+      PaymentSuccess: "payment/success",
+      PaymentCancel: "payment/cancel",
+      Legal: "legal/:type",
+      Contact: "contact",
+      StudyTools: "study/:summaryId",
+      Analytics: "analytics",
+      About: "about",
     },
   },
 };
 
 // Auth-aware deep link routes
 const AUTH_REQUIRED_ROUTES = new Set([
-  'Analysis', 'Settings', 'Account', 'Usage', 'StudyTools', 'PlaylistDetail',
+  "Analysis",
+  "Settings",
+  "Account",
+  "Usage",
+  "StudyTools",
+  "PlaylistDetail",
 ]);
 
 // Handles incoming deep links, share intents, and push notifications
 const DeepLinkHandler: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { isAuthenticated } = useAuth();
   const pendingLink = useRef<ParsedLink | null>(null);
 
@@ -202,7 +212,7 @@ const DeepLinkHandler: React.FC = () => {
 
       if (AUTH_REQUIRED_ROUTES.has(parsed.route) && !isAuthenticated) {
         pendingLink.current = parsed;
-        navigation.navigate('Login' as any);
+        navigation.navigate("Login" as any);
         return;
       }
 
@@ -218,7 +228,9 @@ const DeepLinkHandler: React.FC = () => {
       if (cancelled || !url) return;
       navigateToLink(parseDeepLink(url));
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [navigateToLink]);
 
   // Foreground links
@@ -250,18 +262,23 @@ const DeepLinkHandler: React.FC = () => {
 
     // User tapped notification — navigate to appropriate screen
     const responseSub = addNotificationResponseListener((response) => {
-      const data = response.notification.request.content.data as Record<string, unknown>;
+      const data = response.notification.request.content.data as Record<
+        string,
+        unknown
+      >;
       if (!isAuthenticated || !data) return;
 
       const screen = data.screen as string | undefined;
       const summaryId = data.summaryId as string | undefined;
       const videoId = data.videoId as string | undefined;
-      if (screen === 'Analysis' && (summaryId || videoId)) {
-        navigation.navigate('Analysis', { videoId: videoId || summaryId } as any);
-      } else if (screen === 'Dashboard') {
-        navigation.navigate('MainTabs' as any);
-      } else if (screen === 'Upgrade') {
-        navigation.navigate('MainTabs', { screen: 'Upgrade' } as any);
+      if (screen === "Analysis" && (summaryId || videoId)) {
+        navigation.navigate("Analysis", {
+          videoId: videoId || summaryId,
+        } as any);
+      } else if (screen === "Dashboard") {
+        navigation.navigate("MainTabs" as any);
+      } else if (screen === "Upgrade") {
+        navigation.navigate("MainTabs", { screen: "Upgrade" } as any);
       }
 
       clearBadge();
@@ -270,14 +287,19 @@ const DeepLinkHandler: React.FC = () => {
     // Handle cold-start notification tap
     getLastNotificationResponse().then((response) => {
       if (!response || !isAuthenticated) return;
-      const data = response.notification.request.content.data as Record<string, unknown>;
+      const data = response.notification.request.content.data as Record<
+        string,
+        unknown
+      >;
       const screen = data?.screen as string | undefined;
       const summaryId = data?.summaryId as string | undefined;
       const videoId = data?.videoId as string | undefined;
 
-      if (screen === 'Analysis' && (summaryId || videoId)) {
+      if (screen === "Analysis" && (summaryId || videoId)) {
         setTimeout(() => {
-          navigation.navigate('Analysis', { videoId: videoId || summaryId } as any);
+          navigation.navigate("Analysis", {
+            videoId: videoId || summaryId,
+          } as any);
         }, 500);
       }
     });
@@ -296,28 +318,37 @@ export const AppNavigator: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const { colors, isDark } = useTheme();
 
-  const navigationTheme = useMemo(() => ({
-    dark: isDark,
-    colors: {
-      primary: colors.accentPrimary,
-      background: 'transparent',
-      card: colors.bgSecondary,
-      text: colors.textPrimary,
-      border: colors.border,
-      notification: colors.accentError,
-    },
-  }), [isDark, colors]);
+  const navigationTheme = useMemo(
+    () => ({
+      dark: isDark,
+      colors: {
+        primary: colors.accentPrimary,
+        background: "transparent",
+        card: colors.bgSecondary,
+        text: colors.textPrimary,
+        border: colors.border,
+        notification: colors.accentError,
+      },
+    }),
+    [isDark, colors],
+  );
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.bgPrimary }]}>
+      <View
+        style={[styles.loadingContainer, { backgroundColor: colors.bgPrimary }]}
+      >
         <DeepSightSpinner size="lg" showGlow />
       </View>
     );
   }
 
   return (
-    <NavigationContainer linking={linking} theme={navigationTheme} onStateChange={() => Keyboard.dismiss()}>
+    <NavigationContainer
+      linking={linking}
+      theme={navigationTheme}
+      onStateChange={() => Keyboard.dismiss()}
+    >
       <DeepLinkHandler />
       {isAuthenticated ? <MainStack /> : <AuthStack />}
     </NavigationContainer>
@@ -327,8 +358,8 @@ export const AppNavigator: React.FC = () => {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

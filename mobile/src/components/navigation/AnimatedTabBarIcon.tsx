@@ -7,11 +7,11 @@
  * - Support des badges de notification
  */
 
-import React, { useEffect, useRef, memo } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../contexts/ThemeContext';
-import { BorderRadius, Typography } from '../../constants/theme';
+import React, { useEffect, useRef, memo } from "react";
+import { View, StyleSheet, Animated } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
+import { BorderRadius, Typography } from "../../constants/theme";
 
 interface AnimatedTabBarIconProps {
   name: keyof typeof Ionicons.glyphMap;
@@ -21,113 +21,99 @@ interface AnimatedTabBarIconProps {
   badge?: number;
 }
 
-export const AnimatedTabBarIcon: React.FC<AnimatedTabBarIconProps> = memo(({
-  name,
-  focused,
-  color,
-  size = 24,
-  badge,
-}) => {
-  const { colors } = useTheme();
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const prevFocusedRef = useRef(focused);
+export const AnimatedTabBarIcon: React.FC<AnimatedTabBarIconProps> = memo(
+  ({ name, focused, color, size = 24, badge }) => {
+    const { colors } = useTheme();
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const prevFocusedRef = useRef(focused);
 
-  useEffect(() => {
-    // Only animate when becoming focused (not on initial render)
-    if (focused && !prevFocusedRef.current) {
-      // Bounce animation
-      Animated.sequence([
-        Animated.spring(scaleAnim, {
-          toValue: 1.2,
-          useNativeDriver: true,
-          friction: 3,
-          tension: 100,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          friction: 3,
-          tension: 100,
-        }),
-      ]).start();
-    }
+    useEffect(() => {
+      // Only animate when becoming focused (not on initial render)
+      if (focused && !prevFocusedRef.current) {
+        // Bounce animation
+        Animated.sequence([
+          Animated.spring(scaleAnim, {
+            toValue: 1.2,
+            useNativeDriver: true,
+            friction: 3,
+            tension: 100,
+          }),
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            friction: 3,
+            tension: 100,
+          }),
+        ]).start();
+      }
 
-    prevFocusedRef.current = focused;
-  }, [focused, scaleAnim]);
+      prevFocusedRef.current = focused;
+    }, [focused, scaleAnim]);
 
-  return (
-    <View style={styles.container}>
-      <Animated.View
-        style={[
-          styles.iconWrapper,
-          {
-            transform: [{ scale: scaleAnim }],
-          },
-        ]}
-      >
-        <Ionicons name={name} size={size} color={color} />
-
-        {/* Active indicator dot */}
-        {focused && (
-          <View
-            style={[
-              styles.activeIndicator,
-              { backgroundColor: colors.accentPrimary },
-            ]}
-          />
-        )}
-      </Animated.View>
-
-      {/* Badge */}
-      {badge !== undefined && badge > 0 && (
-        <View
+    return (
+      <View style={styles.container}>
+        <Animated.View
           style={[
-            styles.badge,
-            { backgroundColor: colors.accentError },
+            styles.iconWrapper,
+            {
+              transform: [{ scale: scaleAnim }],
+            },
           ]}
         >
-          <Animated.Text
-            style={[
-              styles.badgeText,
-              { color: '#FFFFFF' },
-            ]}
-          >
-            {badge > 99 ? '99+' : badge}
-          </Animated.Text>
-        </View>
-      )}
-    </View>
-  );
-});
+          <Ionicons name={name} size={size} color={color} />
 
-AnimatedTabBarIcon.displayName = 'AnimatedTabBarIcon';
+          {/* Active indicator dot */}
+          {focused && (
+            <View
+              style={[
+                styles.activeIndicator,
+                { backgroundColor: colors.accentPrimary },
+              ]}
+            />
+          )}
+        </Animated.View>
+
+        {/* Badge */}
+        {badge !== undefined && badge > 0 && (
+          <View style={[styles.badge, { backgroundColor: colors.accentError }]}>
+            <Animated.Text style={[styles.badgeText, { color: "#FFFFFF" }]}>
+              {badge > 99 ? "99+" : badge}
+            </Animated.Text>
+          </View>
+        )}
+      </View>
+    );
+  },
+);
+
+AnimatedTabBarIcon.displayName = "AnimatedTabBarIcon";
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
   },
   iconWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   activeIndicator: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -6,
     width: 4,
     height: 4,
     borderRadius: 2,
   },
   badge: {
-    position: 'absolute',
+    position: "absolute",
     top: -4,
     right: -8,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 4,
   },
   badgeText: {

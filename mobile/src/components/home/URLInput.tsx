@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   TextInput,
@@ -7,21 +7,21 @@ import {
   StyleSheet,
   ActivityIndicator,
   Keyboard,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import NetInfo from '@react-native-community/netinfo';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useAnalysisStore } from '@/stores/analysisStore';
-import { videoApi } from '@/services/api';
-import { validateYouTubeUrl, getYouTubeThumbnail } from '@/utils/formatters';
-import { palette } from '@/theme/colors';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import NetInfo from "@react-native-community/netinfo";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useAnalysisStore } from "@/stores/analysisStore";
+import { videoApi } from "@/services/api";
+import { validateYouTubeUrl, getYouTubeThumbnail } from "@/utils/formatters";
+import { palette } from "@/theme/colors";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
 
 interface URLInputProps {
   onOptionsPress: () => void;
@@ -33,18 +33,17 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
   const startAnalysisAction = useAnalysisStore((s) => s.startAnalysis);
   const inputRef = useRef<TextInput>(null);
 
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clipboardUrl, setClipboardUrl] = useState<string | null>(null);
 
   const validation = validateYouTubeUrl(url);
   const videoId = validation.videoId;
-  const platform = validation.platform || 'youtube';
-  const isTikTok = platform === 'tiktok';
-  const thumbnailUri = videoId && !isTikTok
-    ? getYouTubeThumbnail(videoId, 'medium')
-    : null;
+  const platform = validation.platform || "youtube";
+  const isTikTok = platform === "tiktok";
+  const thumbnailUri =
+    videoId && !isTikTok ? getYouTubeThumbnail(videoId, "medium") : null;
 
   // Check clipboard for YouTube URL
   const checkClipboard = useCallback(async () => {
@@ -84,7 +83,7 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
 
     const netState = await NetInfo.fetch();
     if (!netState.isConnected) {
-      setError('Pas de connexion internet. Vérifiez votre réseau.');
+      setError("Pas de connexion internet. Vérifiez votre réseau.");
       return;
     }
 
@@ -97,16 +96,16 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
         url,
         mode: options.mode,
         language: options.language,
-        model: 'mistral',
-        category: 'auto',
+        model: "mistral",
+        category: "auto",
       });
 
       const taskId = response.task_id;
-      if (!taskId) throw new Error('Pas de task_id retourné');
+      if (!taskId) throw new Error("Pas de task_id retourné");
 
       startAnalysisAction(taskId);
       router.push({
-        pathname: '/(tabs)/analysis/[id]',
+        pathname: "/(tabs)/analysis/[id]",
         params: { id: taskId },
       });
     } catch (err: unknown) {
@@ -128,10 +127,11 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
           styles.inputContainer,
           {
             backgroundColor: colors.glassBg,
-            borderColor:
-              validation.isValid
-                ? (isTikTok ? '#06b6d4' : palette.indigo)
-                : url.length > 0 && !validation.isValid
+            borderColor: validation.isValid
+              ? isTikTok
+                ? "#06b6d4"
+                : palette.indigo
+              : url.length > 0 && !validation.isValid
                 ? colors.accentError
                 : colors.glassBorder,
           },
@@ -164,10 +164,7 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
         {clipboardUrl && !url && (
           <Pressable
             onPress={handlePaste}
-            style={[
-              styles.pasteButton,
-              { backgroundColor: colors.bgElevated },
-            ]}
+            style={[styles.pasteButton, { backgroundColor: colors.bgElevated }]}
             accessibilityLabel="Coller le lien vidéo du presse-papier"
           >
             <Text style={[styles.pasteText, { color: palette.indigo }]}>
@@ -202,7 +199,7 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
               <Text
                 style={[
                   styles.analyzeText,
-                  { color: canAnalyze ? '#ffffff' : colors.textMuted },
+                  { color: canAnalyze ? "#ffffff" : colors.textMuted },
                 ]}
               >
                 Analyser
@@ -233,16 +230,30 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
           ) : (
             <View style={[styles.previewThumbnail, styles.platformIconBox]}>
               <Ionicons
-                name={isTikTok ? 'musical-notes' : 'logo-youtube'}
+                name={isTikTok ? "musical-notes" : "logo-youtube"}
                 size={18}
-                color={isTikTok ? '#06b6d4' : '#FF0000'}
+                color={isTikTok ? "#06b6d4" : "#FF0000"}
               />
             </View>
           )}
           <View style={styles.previewMeta}>
-            <View style={[styles.platformBadge, { backgroundColor: isTikTok ? 'rgba(6,182,212,0.15)' : 'rgba(255,0,0,0.10)' }]}>
-              <Text style={[styles.platformBadgeText, { color: isTikTok ? '#06b6d4' : '#FF0000' }]}>
-                {isTikTok ? '🎵 TikTok' : '▶ YouTube'}
+            <View
+              style={[
+                styles.platformBadge,
+                {
+                  backgroundColor: isTikTok
+                    ? "rgba(6,182,212,0.15)"
+                    : "rgba(255,0,0,0.10)",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.platformBadgeText,
+                  { color: isTikTok ? "#06b6d4" : "#FF0000" },
+                ]}
+              >
+                {isTikTok ? "🎵 TikTok" : "▶ YouTube"}
               </Text>
             </View>
             <Text
@@ -282,13 +293,13 @@ const styles = StyleSheet.create({
     marginBottom: sp.lg,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
     borderRadius: borderRadius.lg,
     paddingLeft: sp.md,
     minHeight: 52,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   linkIcon: {
     marginRight: sp.sm,
@@ -310,12 +321,12 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
   },
   analyzeButton: {
-    alignSelf: 'stretch',
+    alignSelf: "stretch",
   },
   analyzeGradient: {
     paddingHorizontal: sp.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     flex: 1,
     minWidth: 100,
   },
@@ -327,8 +338,8 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
   },
   preview: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: sp.sm,
     padding: sp.sm,
     borderRadius: borderRadius.md,
@@ -345,7 +356,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   platformBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 4,
@@ -355,9 +366,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   platformIconBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: borderRadius.sm,
   },
   previewId: {
@@ -371,10 +382,10 @@ const styles = StyleSheet.create({
     marginTop: sp.sm,
   },
   optionsLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: sp.sm,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   optionsText: {
     fontFamily: fontFamily.bodyMedium,

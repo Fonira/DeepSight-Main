@@ -2,11 +2,11 @@
  * useNotifications Hook - React Native notifications management
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as Notifications from 'expo-notifications';
-import type { RootStackParamList } from '../types';
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as Notifications from "expo-notifications";
+import type { RootStackParamList } from "../types";
 import {
   initializeNotifications,
   addNotificationReceivedListener,
@@ -16,7 +16,7 @@ import {
   getBadgeCount,
   clearBadge,
   NotificationType,
-} from '../services/notifications';
+} from "../services/notifications";
 
 interface NotificationState {
   isInitialized: boolean;
@@ -38,8 +38,12 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function useNotifications(): NotificationHookResult {
   const navigation = useNavigation<NavigationProp>();
-  const notificationListener = useRef<Notifications.Subscription | undefined>(undefined);
-  const responseListener = useRef<Notifications.Subscription | undefined>(undefined);
+  const notificationListener = useRef<Notifications.Subscription | undefined>(
+    undefined,
+  );
+  const responseListener = useRef<Notifications.Subscription | undefined>(
+    undefined,
+  );
   const isMountedRef = useRef(true);
 
   const [state, setState] = useState<NotificationState>({
@@ -59,29 +63,31 @@ export function useNotifications(): NotificationHookResult {
       if (!screen) return;
 
       switch (screen) {
-        case 'Analysis':
+        case "Analysis":
           if (data.summaryId) {
-            navigation.navigate('Analysis', { summaryId: data.summaryId as string });
+            navigation.navigate("Analysis", {
+              summaryId: data.summaryId as string,
+            });
           }
           break;
         // DISABLED: Playlist notification navigation removed - web-only feature (Feb 2026)
         // case 'Playlists':
         //   navigation.navigate('MainTabs', { screen: 'Playlists' } as any);
         //   break;
-        case 'Upgrade':
-          navigation.navigate('Upgrade');
+        case "Upgrade":
+          navigation.navigate("Upgrade");
           break;
-        case 'Account':
-          navigation.navigate('Account');
+        case "Account":
+          navigation.navigate("Account");
           break;
-        case 'Dashboard':
-          navigation.navigate('Main');
+        case "Dashboard":
+          navigation.navigate("Main");
           break;
         default:
-          navigation.navigate('Main');
+          navigation.navigate("Main");
       }
     },
-    [navigation]
+    [navigation],
   );
 
   // Initialize notifications
@@ -106,11 +112,16 @@ export function useNotifications(): NotificationHookResult {
       const lastResponse = await getLastNotificationResponse();
       if (lastResponse?.notification.request.content.data) {
         handleNotificationNavigation(
-          lastResponse.notification.request.content.data as Record<string, unknown>
+          lastResponse.notification.request.content.data as Record<
+            string,
+            unknown
+          >,
         );
       }
     } catch (error) {
-      if (__DEV__) { console.error('Failed to initialize notifications:', error); }
+      if (__DEV__) {
+        console.error("Failed to initialize notifications:", error);
+      }
       if (isMountedRef.current) {
         setState((prev) => ({
           ...prev,
@@ -137,18 +148,23 @@ export function useNotifications(): NotificationHookResult {
   useEffect(() => {
     isMountedRef.current = true;
     // Notification received while app is foregrounded
-    notificationListener.current = addNotificationReceivedListener((notification) => {
-      if (!isMountedRef.current) return;
-      setState((prev) => ({
-        ...prev,
-        lastNotification: notification,
-        badgeCount: prev.badgeCount + 1,
-      }));
-    });
+    notificationListener.current = addNotificationReceivedListener(
+      (notification) => {
+        if (!isMountedRef.current) return;
+        setState((prev) => ({
+          ...prev,
+          lastNotification: notification,
+          badgeCount: prev.badgeCount + 1,
+        }));
+      },
+    );
 
     // User tapped on notification
     responseListener.current = addNotificationResponseListener((response) => {
-      const data = response.notification.request.content.data as Record<string, unknown>;
+      const data = response.notification.request.content.data as Record<
+        string,
+        unknown
+      >;
       handleNotificationNavigation(data);
 
       // Clear badge when notification is tapped
@@ -177,22 +193,23 @@ export function useNotifications(): NotificationHookResult {
  */
 export function useAnalysisNotifications() {
   const { state, initialize } = useNotifications();
-  const [activeAnalyses, setActiveAnalyses] = useState<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  const [activeAnalyses, setActiveAnalyses] = useState<
+    Map<string, ReturnType<typeof setInterval>>
+  >(new Map());
 
   // Start monitoring an analysis task
   const monitorAnalysis = useCallback(
     async (taskId: string, videoTitle: string, checkInterval = 5000) => {
       // Import lazily to avoid circular dependencies
-      const { videoApi } = await import('../services/api');
-      const { notifyAnalysisComplete, notifyAnalysisFailed } = await import(
-        '../services/notifications'
-      );
+      const { videoApi } = await import("../services/api");
+      const { notifyAnalysisComplete, notifyAnalysisFailed } =
+        await import("../services/notifications");
 
       const checkStatus = async () => {
         try {
           const status = await videoApi.getStatus(taskId);
 
-          if (status.status === 'completed' && status.summary_id) {
+          if (status.status === "completed" && status.summary_id) {
             // Clear the interval
             const interval = activeAnalyses.get(taskId);
             if (interval) {
@@ -206,7 +223,7 @@ export function useAnalysisNotifications() {
 
             // Show notification
             await notifyAnalysisComplete(videoTitle, status.summary_id);
-          } else if (status.status === 'failed') {
+          } else if (status.status === "failed") {
             // Clear the interval
             const interval = activeAnalyses.get(taskId);
             if (interval) {
@@ -222,7 +239,9 @@ export function useAnalysisNotifications() {
             await notifyAnalysisFailed(videoTitle, status.error);
           }
         } catch (error) {
-          if (__DEV__) { console.error('Error checking analysis status:', error); }
+          if (__DEV__) {
+            console.error("Error checking analysis status:", error);
+          }
         }
       };
 
@@ -233,7 +252,7 @@ export function useAnalysisNotifications() {
       // Initial check
       checkStatus();
     },
-    [activeAnalyses]
+    [activeAnalyses],
   );
 
   // Stop monitoring an analysis
@@ -249,7 +268,7 @@ export function useAnalysisNotifications() {
         });
       }
     },
-    [activeAnalyses]
+    [activeAnalyses],
   );
 
   // Cleanup all on unmount

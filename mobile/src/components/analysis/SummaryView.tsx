@@ -1,27 +1,21 @@
-import React, { useCallback, useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
-import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
+import React, { useCallback, useMemo } from "react";
+import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
   withTiming,
   interpolate,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../contexts/ThemeContext';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize, lineHeight } from '../../theme/typography';
-import { palette } from '../../theme/colors';
-import { Badge } from '../ui/Badge';
-import { AnalysisSkeleton } from '../ui/SkeletonLoader';
+} from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize, lineHeight } from "../../theme/typography";
+import { palette } from "../../theme/colors";
+import { Badge } from "../ui/Badge";
+import { AnalysisSkeleton } from "../ui/SkeletonLoader";
 
 interface SummaryViewProps {
   content: string | undefined;
@@ -32,12 +26,19 @@ interface SummaryViewProps {
   onRetry?: () => void;
 }
 
-const EPISTEMIC_MARKERS: Record<string, { variant: 'success' | 'primary' | 'warning' | 'error'; label: string; emoji: string }> = {
-  '[SOLIDE]': { variant: 'success', label: 'SOLIDE', emoji: '✅' },
-  '[PLAUSIBLE]': { variant: 'primary', label: 'PLAUSIBLE', emoji: '🔵' },
-  '[INCERTAIN]': { variant: 'warning', label: 'INCERTAIN', emoji: '🟡' },
-  '[A VERIFIER]': { variant: 'error', label: 'A VERIFIER', emoji: '🔴' },
-  '[À VÉRIFIER]': { variant: 'error', label: 'À VÉRIFIER', emoji: '🔴' },
+const EPISTEMIC_MARKERS: Record<
+  string,
+  {
+    variant: "success" | "primary" | "warning" | "error";
+    label: string;
+    emoji: string;
+  }
+> = {
+  "[SOLIDE]": { variant: "success", label: "SOLIDE", emoji: "✅" },
+  "[PLAUSIBLE]": { variant: "primary", label: "PLAUSIBLE", emoji: "🔵" },
+  "[INCERTAIN]": { variant: "warning", label: "INCERTAIN", emoji: "🟡" },
+  "[A VERIFIER]": { variant: "error", label: "A VERIFIER", emoji: "🔴" },
+  "[À VÉRIFIER]": { variant: "error", label: "À VÉRIFIER", emoji: "🔴" },
 };
 
 const BlinkingCursor: React.FC = () => {
@@ -54,7 +55,12 @@ const BlinkingCursor: React.FC = () => {
   return (
     <Animated.View
       style={[
-        { width: 2, height: 18, backgroundColor: palette.indigo, marginLeft: 2 },
+        {
+          width: 2,
+          height: 18,
+          backgroundColor: palette.indigo,
+          marginLeft: 2,
+        },
         style,
       ]}
     />
@@ -64,13 +70,13 @@ const BlinkingCursor: React.FC = () => {
 export const SummaryView: React.FC<SummaryViewProps> = ({
   content,
   isStreaming = false,
-  streamingText = '',
+  streamingText = "",
   isLoading = false,
   error,
   onRetry,
 }) => {
   const { colors } = useTheme();
-  const displayText = isStreaming ? streamingText : (content || '');
+  const displayText = isStreaming ? streamingText : content || "";
 
   const handleCopy = useCallback(async () => {
     if (!displayText) return;
@@ -82,25 +88,37 @@ export const SummaryView: React.FC<SummaryViewProps> = ({
   const parsedContent = useMemo(() => {
     if (!displayText) return [];
 
-    const markerPattern = /\[(SOLIDE|PLAUSIBLE|INCERTAIN|A VERIFIER|À VÉRIFIER)\]/g;
-    const segments: Array<{ type: 'text' | 'badge'; value: string; variant?: 'success' | 'primary' | 'warning' | 'error' }> = [];
+    const markerPattern =
+      /\[(SOLIDE|PLAUSIBLE|INCERTAIN|A VERIFIER|À VÉRIFIER)\]/g;
+    const segments: Array<{
+      type: "text" | "badge";
+      value: string;
+      variant?: "success" | "primary" | "warning" | "error";
+    }> = [];
     let lastIndex = 0;
 
     let match: RegExpExecArray | null;
     while ((match = markerPattern.exec(displayText)) !== null) {
       if (match.index > lastIndex) {
-        segments.push({ type: 'text', value: displayText.slice(lastIndex, match.index) });
+        segments.push({
+          type: "text",
+          value: displayText.slice(lastIndex, match.index),
+        });
       }
       const key = `[${match[1]}]`;
       const marker = EPISTEMIC_MARKERS[key];
       if (marker) {
-        segments.push({ type: 'badge', value: marker.label, variant: marker.variant });
+        segments.push({
+          type: "badge",
+          value: marker.label,
+          variant: marker.variant,
+        });
       }
       lastIndex = match.index + match[0].length;
     }
 
     if (lastIndex < displayText.length) {
-      segments.push({ type: 'text', value: displayText.slice(lastIndex) });
+      segments.push({ type: "text", value: displayText.slice(lastIndex) });
     }
 
     return segments;
@@ -113,14 +131,21 @@ export const SummaryView: React.FC<SummaryViewProps> = ({
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle-outline" size={48} color={colors.accentError} />
+        <Ionicons
+          name="alert-circle-outline"
+          size={48}
+          color={colors.accentError}
+        />
         <Text style={[styles.errorText, { color: colors.textSecondary }]}>
           {error}
         </Text>
         {onRetry && (
           <Pressable
             onPress={onRetry}
-            style={[styles.retryButton, { backgroundColor: colors.accentPrimary }]}
+            style={[
+              styles.retryButton,
+              { backgroundColor: colors.accentPrimary },
+            ]}
             accessibilityLabel="Réessayer"
             accessibilityRole="button"
           >
@@ -134,7 +159,11 @@ export const SummaryView: React.FC<SummaryViewProps> = ({
   if (!displayText) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
+        <Ionicons
+          name="document-text-outline"
+          size={48}
+          color={colors.textMuted}
+        />
         <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
           Aucun contenu disponible
         </Text>
@@ -147,7 +176,10 @@ export const SummaryView: React.FC<SummaryViewProps> = ({
       {/* Copy button */}
       <Pressable
         onPress={handleCopy}
-        style={[styles.copyButton, { backgroundColor: colors.glassBg, borderColor: colors.glassBorder }]}
+        style={[
+          styles.copyButton,
+          { backgroundColor: colors.glassBg, borderColor: colors.glassBorder },
+        ]}
         accessibilityLabel="Copier le résumé"
         accessibilityRole="button"
       >
@@ -164,11 +196,17 @@ export const SummaryView: React.FC<SummaryViewProps> = ({
       >
         <Text style={[styles.summaryText, { color: colors.textPrimary }]}>
           {parsedContent.map((segment, index) => {
-            if (segment.type === 'badge') {
-              const marker = Object.values(EPISTEMIC_MARKERS).find(m => m.label === segment.value);
+            if (segment.type === "badge") {
+              const marker = Object.values(EPISTEMIC_MARKERS).find(
+                (m) => m.label === segment.value,
+              );
               return (
                 <View key={index} style={styles.inlineBadge}>
-                  <Badge label={`${marker?.emoji || ''} ${segment.value}`} variant={segment.variant} size="sm" />
+                  <Badge
+                    label={`${marker?.emoji || ""} ${segment.value}`}
+                    variant={segment.variant}
+                    size="sm"
+                  />
                 </View>
               );
             }
@@ -186,9 +224,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   copyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-end",
     gap: 4,
     paddingVertical: sp.xs,
     paddingHorizontal: sp.md,
@@ -219,31 +257,31 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: sp.md,
-    paddingHorizontal: sp['3xl'],
+    paddingHorizontal: sp["3xl"],
   },
   errorText: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.base,
-    textAlign: 'center',
+    textAlign: "center",
   },
   retryButton: {
     paddingVertical: sp.md,
-    paddingHorizontal: sp['2xl'],
+    paddingHorizontal: sp["2xl"],
     borderRadius: borderRadius.lg,
     marginTop: sp.sm,
   },
   retryText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.sm,
-    color: '#ffffff',
+    color: "#ffffff",
   },
   emptyContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: sp.md,
   },
   emptyText: {

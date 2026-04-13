@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,33 +8,36 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 
 const colors = {
-  bgPrimary: '#0a0a0b',
-  bgElevated: '#1f1f23',
-  textPrimary: '#FAFAF9',
-  textSecondary: '#A1A1AA',
-  textTertiary: '#71717A',
-  accentPrimary: '#6366F1',
-  border: '#27272A',
+  bgPrimary: "#0a0a0b",
+  bgElevated: "#1f1f23",
+  textPrimary: "#FAFAF9",
+  textSecondary: "#A1A1AA",
+  textTertiary: "#71717A",
+  accentPrimary: "#6366F1",
+  border: "#27272A",
 };
 
 export default function RegisterScreen({ navigation }) {
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
 
@@ -44,7 +47,11 @@ export default function RegisterScreen({ navigation }) {
         </Text>
 
         <View style={styles.inputContainer}>
-          <Ionicons name="person-outline" size={20} color={colors.textTertiary} />
+          <Ionicons
+            name="person-outline"
+            size={20}
+            color={colors.textTertiary}
+          />
           <TextInput
             style={styles.input}
             placeholder="Nom d'utilisateur"
@@ -69,7 +76,11 @@ export default function RegisterScreen({ navigation }) {
         </View>
 
         <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} />
+          <Ionicons
+            name="lock-closed-outline"
+            size={20}
+            color={colors.textTertiary}
+          />
           <TextInput
             style={styles.input}
             placeholder="Mot de passe"
@@ -81,7 +92,11 @@ export default function RegisterScreen({ navigation }) {
         </View>
 
         <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} />
+          <Ionicons
+            name="lock-closed-outline"
+            size={20}
+            color={colors.textTertiary}
+          />
           <TextInput
             style={styles.input}
             placeholder="Confirmer le mot de passe"
@@ -94,7 +109,7 @@ export default function RegisterScreen({ navigation }) {
 
         <TouchableOpacity>
           <LinearGradient
-            colors={['#6366F1', '#8B5CF6']}
+            colors={["#6366F1", "#8B5CF6"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.registerButton}
@@ -104,8 +119,8 @@ export default function RegisterScreen({ navigation }) {
         </TouchableOpacity>
 
         <Text style={styles.terms}>
-          En vous inscrivant, vous acceptez nos{' '}
-          <Text style={styles.link}>Conditions d'utilisation</Text> et notre{' '}
+          En vous inscrivant, vous acceptez nos{" "}
+          <Text style={styles.link}>Conditions d'utilisation</Text> et notre{" "}
           <Text style={styles.link}>Politique de confidentialité</Text>
         </Text>
 
@@ -135,7 +150,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
     marginBottom: 8,
   },
@@ -146,8 +161,8 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.bgElevated,
     borderRadius: 12,
     borderWidth: 1,
@@ -165,18 +180,18 @@ const styles = StyleSheet.create({
   registerButton: {
     borderRadius: 12,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   registerButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   terms: {
     color: colors.textTertiary,
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 24,
     lineHeight: 22,
   },
@@ -184,8 +199,8 @@ const styles = StyleSheet.create({
     color: colors.accentPrimary,
   },
   loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 24,
   },
   loginText: {
@@ -195,6 +210,6 @@ const styles = StyleSheet.create({
   loginLink: {
     color: colors.accentPrimary,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

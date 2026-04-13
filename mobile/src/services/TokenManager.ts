@@ -5,14 +5,14 @@
  * and session state management.
  */
 
-import { API_BASE_URL } from '../constants/config';
-import { tokenStorage } from '../utils/storage';
+import { API_BASE_URL } from "../constants/config";
+import { tokenStorage } from "../utils/storage";
 
 // Base64 decode function compatible with React Native
 const base64Decode = (str: string): string => {
   try {
     // Try native atob first (available in some RN environments)
-    if (typeof atob === 'function') {
+    if (typeof atob === "function") {
       return atob(str);
     }
   } catch {
@@ -20,11 +20,12 @@ const base64Decode = (str: string): string => {
   }
 
   // Manual base64 decode for React Native
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-  let output = '';
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+  let output = "";
 
   // Remove padding and fix URL-safe base64
-  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  str = str.replace(/-/g, "+").replace(/_/g, "/");
 
   for (let i = 0; i < str.length; i += 4) {
     const enc1 = chars.indexOf(str.charAt(i));
@@ -93,7 +94,7 @@ class TokenManager {
    */
   private parseTokenExpiry(token: string): number | null {
     try {
-      const parts = token.split('.');
+      const parts = token.split(".");
       if (parts.length !== 3) return null;
 
       // Use our base64Decode function for React Native compatibility
@@ -191,7 +192,8 @@ class TokenManager {
     if (!this.state.accessTokenExpiry) return;
 
     const now = Date.now();
-    const timeUntilRefresh = this.state.accessTokenExpiry - now - REFRESH_BUFFER_MS;
+    const timeUntilRefresh =
+      this.state.accessTokenExpiry - now - REFRESH_BUFFER_MS;
 
     if (timeUntilRefresh <= 0) {
       // Token already needs refresh
@@ -200,7 +202,9 @@ class TokenManager {
     }
 
     if (__DEV__) {
-      console.log(`[TokenManager] Scheduling refresh in ${Math.round(timeUntilRefresh / 1000)}s`);
+      console.log(
+        `[TokenManager] Scheduling refresh in ${Math.round(timeUntilRefresh / 1000)}s`,
+      );
     }
 
     this.refreshTimer = setTimeout(() => {
@@ -251,7 +255,8 @@ class TokenManager {
    * Perform the actual token refresh
    */
   private async performRefresh(): Promise<string | null> {
-    const refreshToken = this.state.refreshToken || (await tokenStorage.getRefreshToken());
+    const refreshToken =
+      this.state.refreshToken || (await tokenStorage.getRefreshToken());
 
     if (!refreshToken) {
       this.handleSessionExpired();
@@ -260,8 +265,8 @@ class TokenManager {
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
 
@@ -278,12 +283,14 @@ class TokenManager {
       await this.setTokens(data.access_token, data.refresh_token);
 
       if (__DEV__) {
-        console.log('[TokenManager] Token refreshed successfully');
+        console.log("[TokenManager] Token refreshed successfully");
       }
 
       return data.access_token;
     } catch (error) {
-      if (__DEV__) { console.error('[TokenManager] Refresh failed:', error); }
+      if (__DEV__) {
+        console.error("[TokenManager] Refresh failed:", error);
+      }
       return null;
     }
   }
@@ -295,11 +302,16 @@ class TokenManager {
     await this.clearTokens();
 
     // Notify all registered callbacks
-    this.sessionExpiredCallbacks.forEach(callback => {
+    this.sessionExpiredCallbacks.forEach((callback) => {
       try {
         callback();
       } catch (error) {
-        if (__DEV__) { console.error('[TokenManager] Session expired callback error:', error); }
+        if (__DEV__) {
+          console.error(
+            "[TokenManager] Session expired callback error:",
+            error,
+          );
+        }
       }
     });
   }
@@ -328,7 +340,10 @@ class TokenManager {
     if (!token) return null;
 
     const now = Date.now();
-    if (this.state.accessTokenExpiry && (this.state.accessTokenExpiry - now) < REFRESH_BUFFER_MS) {
+    if (
+      this.state.accessTokenExpiry &&
+      this.state.accessTokenExpiry - now < REFRESH_BUFFER_MS
+    ) {
       try {
         const newToken = await this.refresh();
         return newToken;

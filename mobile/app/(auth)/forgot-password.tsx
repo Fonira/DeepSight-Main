@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,8 @@ import {
   Pressable,
   Alert,
   TextInput,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -18,19 +18,19 @@ import Animated, {
   FadeOut,
   SlideInRight,
   SlideOutLeft,
-} from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { useTheme } from '@/contexts/ThemeContext';
-import { authApi, ApiError } from '@/services/api';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize, textStyles } from '@/theme/typography';
-import { palette } from '@/theme/colors';
-import { timings } from '@/theme/animations';
-import { DoodleBackground } from '@/components/ui/DoodleBackground';
+} from "react-native-reanimated";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { useTheme } from "@/contexts/ThemeContext";
+import { authApi, ApiError } from "@/services/api";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize, textStyles } from "@/theme/typography";
+import { palette } from "@/theme/colors";
+import { timings } from "@/theme/animations";
+import { DoodleBackground } from "@/components/ui/DoodleBackground";
 
 const CODE_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
@@ -44,20 +44,22 @@ export default function ForgotPasswordScreen() {
   const [step, setStep] = useState<Step>(1);
 
   // Step 1
-  const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState('');
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
 
   // Step 2
-  const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
-  const [codeError, setCodeError] = useState('');
+  const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
+  const [codeError, setCodeError] = useState("");
   const [codeLoading, setCodeLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
-  const inputRefs = useRef<Array<TextInput | null>>(Array(CODE_LENGTH).fill(null));
+  const inputRefs = useRef<Array<TextInput | null>>(
+    Array(CODE_LENGTH).fill(null),
+  );
 
   // Step 3
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordErrors, setPasswordErrors] = useState<{
     newPassword?: string;
     confirmPassword?: string;
@@ -66,7 +68,7 @@ export default function ForgotPasswordScreen() {
   const confirmRef = useRef<TextInput>(null);
 
   // The reset token (the code itself, used for resetPassword API)
-  const [resetToken, setResetToken] = useState('');
+  const [resetToken, setResetToken] = useState("");
 
   // Progress bar
   const progress = useSharedValue(0.33);
@@ -95,13 +97,13 @@ export default function ForgotPasswordScreen() {
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setEmailError('Email invalide');
+      setEmailError("Email invalide");
       return;
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setEmailLoading(true);
-    setEmailError('');
+    setEmailError("");
 
     try {
       await authApi.forgotPassword(email.trim());
@@ -110,12 +112,12 @@ export default function ForgotPasswordScreen() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 404) {
-          setEmailError('Aucun compte associé à cet email');
+          setEmailError("Aucun compte associé à cet email");
         } else {
-          Alert.alert('Erreur', err.message || "Impossible d'envoyer le code");
+          Alert.alert("Erreur", err.message || "Impossible d'envoyer le code");
         }
       } else {
-        Alert.alert('Erreur', 'Vérifiez votre connexion internet.');
+        Alert.alert("Erreur", "Vérifiez votre connexion internet.");
       }
     } finally {
       setEmailLoading(false);
@@ -126,7 +128,10 @@ export default function ForgotPasswordScreen() {
   const handleCodeChange = useCallback(
     (text: string, index: number) => {
       if (text.length > 1) {
-        const chars = text.replace(/[^0-9]/g, '').slice(0, CODE_LENGTH).split('');
+        const chars = text
+          .replace(/[^0-9]/g, "")
+          .slice(0, CODE_LENGTH)
+          .split("");
         const newCode = [...code];
         chars.forEach((char, i) => {
           if (index + i < CODE_LENGTH) {
@@ -134,17 +139,17 @@ export default function ForgotPasswordScreen() {
           }
         });
         setCode(newCode);
-        setCodeError('');
+        setCodeError("");
         const nextIndex = Math.min(index + chars.length, CODE_LENGTH - 1);
         inputRefs.current[nextIndex]?.focus();
         return;
       }
 
-      const digit = text.replace(/[^0-9]/g, '');
+      const digit = text.replace(/[^0-9]/g, "");
       const newCode = [...code];
       newCode[index] = digit;
       setCode(newCode);
-      setCodeError('');
+      setCodeError("");
 
       if (digit && index < CODE_LENGTH - 1) {
         inputRefs.current[index + 1]?.focus();
@@ -155,9 +160,9 @@ export default function ForgotPasswordScreen() {
 
   const handleKeyPress = useCallback(
     (key: string, index: number) => {
-      if (key === 'Backspace' && !code[index] && index > 0) {
+      if (key === "Backspace" && !code[index] && index > 0) {
         const newCode = [...code];
-        newCode[index - 1] = '';
+        newCode[index - 1] = "";
         setCode(newCode);
         inputRefs.current[index - 1]?.focus();
       }
@@ -166,9 +171,9 @@ export default function ForgotPasswordScreen() {
   );
 
   const handleVerifyCode = useCallback(async () => {
-    const fullCode = code.join('');
+    const fullCode = code.join("");
     if (fullCode.length !== CODE_LENGTH) {
-      setCodeError('Entrez le code complet');
+      setCodeError("Entrez le code complet");
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -181,9 +186,9 @@ export default function ForgotPasswordScreen() {
     try {
       await authApi.forgotPassword(email.trim());
       setResendTimer(RESEND_COOLDOWN);
-      Alert.alert('Code envoyé', 'Un nouveau code a été envoyé.');
+      Alert.alert("Code envoyé", "Un nouveau code a été envoyé.");
     } catch {
-      Alert.alert('Erreur', 'Impossible de renvoyer le code.');
+      Alert.alert("Erreur", "Impossible de renvoyer le code.");
     }
   }, [resendTimer, email]);
 
@@ -191,14 +196,14 @@ export default function ForgotPasswordScreen() {
   const handleResetPassword = useCallback(async () => {
     const errs: { newPassword?: string; confirmPassword?: string } = {};
     if (!newPassword) {
-      errs.newPassword = 'Le mot de passe est requis';
+      errs.newPassword = "Le mot de passe est requis";
     } else if (newPassword.length < 8) {
-      errs.newPassword = 'Minimum 8 caractères';
+      errs.newPassword = "Minimum 8 caractères";
     }
     if (!confirmPassword) {
-      errs.confirmPassword = 'Confirmez le mot de passe';
+      errs.confirmPassword = "Confirmez le mot de passe";
     } else if (newPassword !== confirmPassword) {
-      errs.confirmPassword = 'Les mots de passe ne correspondent pas';
+      errs.confirmPassword = "Les mots de passe ne correspondent pas";
     }
     if (Object.keys(errs).length > 0) {
       setPasswordErrors(errs);
@@ -212,20 +217,20 @@ export default function ForgotPasswordScreen() {
     try {
       await authApi.resetPassword(resetToken, newPassword);
       Alert.alert(
-        'Mot de passe réinitialisé',
-        'Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.',
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }],
+        "Mot de passe réinitialisé",
+        "Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+        [{ text: "OK", onPress: () => router.replace("/(auth)/login") }],
       );
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 400) {
-          setCodeError('Code invalide ou expiré');
+          setCodeError("Code invalide ou expiré");
           setStep(2);
         } else {
-          Alert.alert('Erreur', err.message || 'Réinitialisation échouée');
+          Alert.alert("Erreur", err.message || "Réinitialisation échouée");
         }
       } else {
-        Alert.alert('Erreur', 'Vérifiez votre connexion internet.');
+        Alert.alert("Erreur", "Vérifiez votre connexion internet.");
       }
     } finally {
       setResetLoading(false);
@@ -241,34 +246,49 @@ export default function ForgotPasswordScreen() {
   }, [step, router]);
 
   const stepTitles: Record<Step, string> = {
-    1: 'Mot de passe oublié',
-    2: 'Vérifier le code',
-    3: 'Nouveau mot de passe',
+    1: "Mot de passe oublié",
+    2: "Vérifier le code",
+    3: "Nouveau mot de passe",
   };
 
   const stepSubtitles: Record<Step, string> = {
-    1: 'Entrez votre email pour recevoir un code de réinitialisation',
+    1: "Entrez votre email pour recevoir un code de réinitialisation",
     2: `Un code a été envoyé à ${email}`,
-    3: 'Choisissez un nouveau mot de passe sécurisé',
+    3: "Choisissez un nouveau mot de passe sécurisé",
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.bgPrimary }]}
+    >
       <DoodleBackground variant="default" density="low" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex}
       >
         <View style={styles.content}>
           {/* Back */}
-          <Pressable onPress={handleBack} style={styles.backButton} hitSlop={12}>
+          <Pressable
+            onPress={handleBack}
+            style={styles.backButton}
+            hitSlop={12}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </Pressable>
 
           {/* Progress bar */}
-          <View style={[styles.progressTrack, { backgroundColor: colors.bgElevated }]}>
+          <View
+            style={[
+              styles.progressTrack,
+              { backgroundColor: colors.bgElevated },
+            ]}
+          >
             <Animated.View
-              style={[styles.progressFill, { backgroundColor: palette.indigo }, progressStyle]}
+              style={[
+                styles.progressFill,
+                { backgroundColor: palette.indigo },
+                progressStyle,
+              ]}
             />
           </View>
 
@@ -289,7 +309,7 @@ export default function ForgotPasswordScreen() {
                 value={email}
                 onChangeText={(t) => {
                   setEmail(t);
-                  setEmailError('');
+                  setEmailError("");
                 }}
                 error={emailError}
                 leftIcon="mail-outline"
@@ -328,14 +348,16 @@ export default function ForgotPasswordScreen() {
                         borderColor: digit
                           ? palette.indigo
                           : codeError
-                          ? colors.accentError
-                          : colors.border,
+                            ? colors.accentError
+                            : colors.border,
                         color: colors.textPrimary,
                       },
                     ]}
                     value={digit}
                     onChangeText={(text) => handleCodeChange(text, index)}
-                    onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
+                    onKeyPress={({ nativeEvent }) =>
+                      handleKeyPress(nativeEvent.key, index)
+                    }
                     keyboardType="number-pad"
                     maxLength={index === 0 ? CODE_LENGTH : 1}
                     selectTextOnFocus
@@ -344,7 +366,9 @@ export default function ForgotPasswordScreen() {
               </View>
 
               {codeError ? (
-                <Text style={[styles.error, { color: colors.accentError }]}>{codeError}</Text>
+                <Text style={[styles.error, { color: colors.accentError }]}>
+                  {codeError}
+                </Text>
               ) : null}
 
               <Button
@@ -353,7 +377,7 @@ export default function ForgotPasswordScreen() {
                 size="lg"
                 fullWidth
                 loading={codeLoading}
-                disabled={codeLoading || code.join('').length !== CODE_LENGTH}
+                disabled={codeLoading || code.join("").length !== CODE_LENGTH}
                 onPress={handleVerifyCode}
               />
 
@@ -366,12 +390,15 @@ export default function ForgotPasswordScreen() {
                 <Text
                   style={[
                     styles.resendText,
-                    { color: resendTimer > 0 ? colors.textMuted : palette.indigo },
+                    {
+                      color:
+                        resendTimer > 0 ? colors.textMuted : palette.indigo,
+                    },
                   ]}
                 >
                   {resendTimer > 0
                     ? `Renvoyer le code (${resendTimer}s)`
-                    : 'Renvoyer le code'}
+                    : "Renvoyer le code"}
                 </Text>
               </Pressable>
             </View>
@@ -445,11 +472,11 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 4,
     borderRadius: borderRadius.full,
-    marginBottom: sp['3xl'],
-    overflow: 'hidden',
+    marginBottom: sp["3xl"],
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: borderRadius.full,
   },
   title: {
@@ -458,15 +485,15 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...textStyles.bodyMd,
-    marginBottom: sp['3xl'],
+    marginBottom: sp["3xl"],
     lineHeight: fontSize.base * 1.6,
   },
   stepContent: {
     gap: 0,
   },
   otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: sp.sm,
     marginBottom: sp.lg,
   },
@@ -475,18 +502,18 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: borderRadius.md,
     borderWidth: 1.5,
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: fontSize.xl,
     fontFamily: fontFamily.bodySemiBold,
   },
   error: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: sp.lg,
   },
   resendContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: sp.xl,
   },
   resendText: {

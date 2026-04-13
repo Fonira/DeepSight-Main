@@ -3,7 +3,7 @@
  */
 export function formatRelativeDate(dateString: string): string {
   const date = new Date(dateString);
-  if (isNaN(date.getTime())) return '';
+  if (isNaN(date.getTime())) return "";
 
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -13,12 +13,22 @@ export function formatRelativeDate(dateString: string): string {
   if (diffMin < 1) return "\u00C0 l'instant";
   if (diffHour < 1) return `Il y a ${diffMin}min`;
   if (diffHour < 24) return `Il y a ${diffHour}h`;
-  if (diffHour < 48) return 'Hier';
+  if (diffHour < 48) return "Hier";
 
   const day = date.getDate();
   const months = [
-    'jan', 'f\u00E9v', 'mar', 'avr', 'mai', 'jun',
-    'jul', 'ao\u00FB', 'sep', 'oct', 'nov', 'd\u00E9c',
+    "jan",
+    "f\u00E9v",
+    "mar",
+    "avr",
+    "mai",
+    "jun",
+    "jul",
+    "ao\u00FB",
+    "sep",
+    "oct",
+    "nov",
+    "d\u00E9c",
   ];
   const month = months[date.getMonth()];
   const year = date.getFullYear();

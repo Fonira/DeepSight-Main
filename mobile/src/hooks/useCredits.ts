@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import type { PlanType } from '../constants/config';
+import { useMemo } from "react";
+import { useAuthStore } from "../stores/authStore";
+import type { PlanType } from "../constants/config";
 
 /** Credit limits per plan (mirrors backend config) */
 const PLAN_CREDITS: Record<string, number> = {
@@ -21,7 +21,7 @@ export function useCredits() {
         percent: 0,
         isLow: false,
         isCritical: false,
-        plan: 'free' as PlanType,
+        plan: "free" as PlanType,
       };
     }
 

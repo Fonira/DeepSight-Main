@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { StudyProgress, StudyStats } from '../types/v2';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { StudyProgress, StudyStats } from "../types/v2";
 
 interface StudyStore {
   progress: Record<string, StudyProgress>;
@@ -37,7 +37,11 @@ export const useStudyStore = create<StudyStore>()(
           return {
             progress: {
               ...state.progress,
-              [videoId]: { ...existing, ...update, lastStudied: new Date().toISOString() },
+              [videoId]: {
+                ...existing,
+                ...update,
+                lastStudied: new Date().toISOString(),
+              },
             },
           };
         }),
@@ -56,8 +60,8 @@ export const useStudyStore = create<StudyStore>()(
         set((state) => ({ stats: { ...state.stats, streak: 0 } })),
     }),
     {
-      name: 'deepsight-study-v2',
+      name: "deepsight-study-v2",
       storage: createJSONStorage(() => AsyncStorage),
-    }
-  )
+    },
+  ),
 );

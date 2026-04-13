@@ -3,9 +3,9 @@
  * Circular 56px button, gold accent, pulse animation, plan-gated
  */
 
-import React, { useCallback } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useCallback } from "react";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -14,12 +14,12 @@ import Animated, {
   withDelay,
   withSequence,
   runOnJS,
-} from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useVoiceChatGate } from '../../contexts/PlanContext';
-import { palette } from '../../theme/colors';
-import { shadows } from '../../theme/shadows';
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useVoiceChatGate } from "../../contexts/PlanContext";
+import { palette } from "../../theme/colors";
+import { shadows } from "../../theme/shadows";
 
 interface VoiceButtonProps {
   summaryId: string;
@@ -75,11 +75,11 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
 
     if (requiresUpgrade) {
       Alert.alert(
-        'Fonctionnalité Premium',
-        'Le chat vocal est disponible avec un abonnement supérieur. Mettez à niveau pour débloquer cette fonctionnalité.',
+        "Fonctionnalité Premium",
+        "Le chat vocal est disponible avec un abonnement supérieur. Mettez à niveau pour débloquer cette fonctionnalité.",
         [
-          { text: 'Plus tard', style: 'cancel' },
-          { text: 'Voir les plans', style: 'default' },
+          { text: "Plus tard", style: "cancel" },
+          { text: "Voir les plans", style: "default" },
         ],
       );
       return;
@@ -88,15 +88,12 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
     onSessionStart?.();
   }, [disabled, requiresUpgrade, onSessionStart]);
 
-  const iconName = requiresUpgrade ? 'lock-closed-outline' : 'mic-outline';
+  const iconName = requiresUpgrade ? "lock-closed-outline" : "mic-outline";
   const buttonOpacity = disabled ? 0.5 : 1;
   const glowShadow = shadows.glow(palette.gold);
 
   return (
-    <View
-      style={styles.container}
-      pointerEvents={disabled ? 'none' : 'auto'}
-    >
+    <View style={styles.container} pointerEvents={disabled ? "none" : "auto"}>
       {/* Pulse ring (only when feature is available) */}
       {enabled && !disabled && (
         <Animated.View
@@ -122,13 +119,13 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
         accessibilityRole="button"
         accessibilityLabel={
           requiresUpgrade
-            ? 'Chat vocal — plan premium requis'
+            ? "Chat vocal — plan premium requis"
             : `Démarrer le chat vocal pour ${videoTitle}`
         }
         accessibilityHint={
           requiresUpgrade
-            ? 'Appuyez pour voir les plans disponibles'
-            : 'Appuyez pour démarrer une conversation vocale avec l\'IA'
+            ? "Appuyez pour voir les plans disponibles"
+            : "Appuyez pour démarrer une conversation vocale avec l'IA"
         }
       >
         <Ionicons name={iconName} size={24} color={palette.white} />
@@ -139,17 +136,17 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 24,
     right: 16,
     width: RING_SIZE,
     height: RING_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 100,
   },
   ring: {
-    position: 'absolute',
+    position: "absolute",
     width: RING_SIZE,
     height: RING_SIZE,
     borderRadius: RING_SIZE / 2,
@@ -159,7 +156,7 @@ const styles = StyleSheet.create({
     width: BUTTON_SIZE,
     height: BUTTON_SIZE,
     borderRadius: BUTTON_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

@@ -1,12 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../contexts/ThemeContext';
-import { sp, borderRadius } from '../theme/spacing';
-import { fontFamily, fontSize } from '../theme/typography';
+import React from "react";
+import { View, Text, StyleSheet, Pressable, Linking } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../contexts/ThemeContext";
+import { sp, borderRadius } from "../theme/spacing";
+import { fontFamily, fontSize } from "../theme/typography";
 
-const UPGRADE_URL = 'https://www.deepsightsynthesis.com/upgrade';
+const UPGRADE_URL = "https://www.deepsightsynthesis.com/upgrade";
 
 interface PlanBadgeProps {
   planName: string;
@@ -40,18 +40,25 @@ export const PlanBadge: React.FC<PlanBadgeProps> = ({
 
   return (
     <Pressable onPress={handlePress} style={styles.container}>
-      <View style={[styles.badge, { backgroundColor: `${planColor}20`, borderColor: `${planColor}40` }]}>
+      <View
+        style={[
+          styles.badge,
+          { backgroundColor: `${planColor}20`, borderColor: `${planColor}40` },
+        ]}
+      >
         <View style={[styles.dot, { backgroundColor: planColor }]} />
         <Ionicons
           name={planIcon as keyof typeof Ionicons.glyphMap}
           size={compact ? 14 : 16}
           color={planColor}
         />
-        <Text style={[
-          styles.planName,
-          compact && styles.planNameCompact,
-          { color: planColor },
-        ]}>
+        <Text
+          style={[
+            styles.planName,
+            compact && styles.planNameCompact,
+            { color: planColor },
+          ]}
+        >
           {planName}
         </Text>
       </View>
@@ -66,11 +73,11 @@ export const PlanBadge: React.FC<PlanBadgeProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: sp.md,
     paddingVertical: sp.xs + 2,
     borderRadius: borderRadius.full,

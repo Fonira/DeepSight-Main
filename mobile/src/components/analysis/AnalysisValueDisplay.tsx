@@ -7,13 +7,9 @@
  * - Credit cost
  */
 
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -21,11 +17,14 @@ import Animated, {
   withSpring,
   withSequence,
   withDelay,
-} from 'react-native-reanimated';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { calculateTimeSaved, CONVERSION_TRIGGERS } from '../../config/planPrivileges';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+} from "react-native-reanimated";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import {
+  calculateTimeSaved,
+  CONVERSION_TRIGGERS,
+} from "../../config/planPrivileges";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
 interface AnalysisValueDisplayProps {
   videoDurationSeconds: number;
@@ -44,7 +43,8 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
   const { language } = useLanguage();
 
   // Calculate values
-  const { minutes: minutesSaved, equivalent } = calculateTimeSaved(videoDurationSeconds);
+  const { minutes: minutesSaved, equivalent } =
+    calculateTimeSaved(videoDurationSeconds);
 
   // Only show if conversion triggers are enabled and video is long enough
   if (!CONVERSION_TRIGGERS.showTimeSaved || videoDurationSeconds < 60) {
@@ -72,8 +72,8 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
         500,
         withSequence(
           withSpring(1.05, { damping: 10 }),
-          withSpring(1, { damping: 15 })
-        )
+          withSpring(1, { damping: 15 }),
+        ),
       );
     }
   }, [animated]);
@@ -84,13 +84,17 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
 
   if (compact) {
     return (
-      <View style={[styles.compactContainer, { backgroundColor: colors.accentSuccess + '15' }]}>
+      <View
+        style={[
+          styles.compactContainer,
+          { backgroundColor: colors.accentSuccess + "15" },
+        ]}
+      >
         <Ionicons name="time-outline" size={14} color={colors.accentSuccess} />
         <Text style={[styles.compactText, { color: colors.accentSuccess }]}>
-          {language === 'fr'
+          {language === "fr"
             ? `~${minutesSaved} min économisées`
-            : `~${minutesSaved} min saved`
-          }
+            : `~${minutesSaved} min saved`}
         </Text>
       </View>
     );
@@ -100,11 +104,16 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
     <>
       {/* Header */}
       <View style={styles.header}>
-        <View style={[styles.iconContainer, { backgroundColor: colors.accentSuccess + '20' }]}>
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: colors.accentSuccess + "20" },
+          ]}
+        >
           <Ionicons name="trending-up" size={20} color={colors.accentSuccess} />
         </View>
         <Text style={[styles.headerText, { color: colors.textPrimary }]}>
-          {language === 'fr' ? 'Valeur de l\'analyse' : 'Analysis Value'}
+          {language === "fr" ? "Valeur de l'analyse" : "Analysis Value"}
         </Text>
       </View>
 
@@ -112,41 +121,68 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
       <View style={styles.statsGrid}>
         {/* Time Saved */}
         <View style={styles.statItem}>
-          <View style={[styles.statIconBg, { backgroundColor: colors.accentPrimary + '15' }]}>
-            <Ionicons name="time-outline" size={18} color={colors.accentPrimary} />
+          <View
+            style={[
+              styles.statIconBg,
+              { backgroundColor: colors.accentPrimary + "15" },
+            ]}
+          >
+            <Ionicons
+              name="time-outline"
+              size={18}
+              color={colors.accentPrimary}
+            />
           </View>
           <Text style={[styles.statValue, { color: colors.textPrimary }]}>
             ~{minutesSaved} min
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            {language === 'fr' ? 'économisées' : 'saved'}
+            {language === "fr" ? "économisées" : "saved"}
           </Text>
         </View>
 
         {/* Video Duration */}
         <View style={styles.statItem}>
-          <View style={[styles.statIconBg, { backgroundColor: colors.accentWarning + '15' }]}>
-            <Ionicons name="videocam-outline" size={18} color={colors.accentWarning} />
+          <View
+            style={[
+              styles.statIconBg,
+              { backgroundColor: colors.accentWarning + "15" },
+            ]}
+          >
+            <Ionicons
+              name="videocam-outline"
+              size={18}
+              color={colors.accentWarning}
+            />
           </View>
           <Text style={[styles.statValue, { color: colors.textPrimary }]}>
             {videoDuration}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            {language === 'fr' ? 'de vidéo' : 'video'}
+            {language === "fr" ? "de vidéo" : "video"}
           </Text>
         </View>
 
         {/* Equivalent Pages */}
         {CONVERSION_TRIGGERS.showEquivalentPages && (
           <View style={styles.statItem}>
-            <View style={[styles.statIconBg, { backgroundColor: colors.accentInfo + '15' }]}>
-              <Ionicons name="document-text-outline" size={18} color={colors.accentInfo} />
+            <View
+              style={[
+                styles.statIconBg,
+                { backgroundColor: colors.accentInfo + "15" },
+              ]}
+            >
+              <Ionicons
+                name="document-text-outline"
+                size={18}
+                color={colors.accentInfo}
+              />
             </View>
             <Text style={[styles.statValue, { color: colors.textPrimary }]}>
               {equivalent}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              {language === 'fr' ? 'équivalent' : 'equivalent'}
+              {language === "fr" ? "équivalent" : "equivalent"}
             </Text>
           </View>
         )}
@@ -154,27 +190,44 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
         {/* Credits Used */}
         {creditsUsed !== undefined && (
           <View style={styles.statItem}>
-            <View style={[styles.statIconBg, { backgroundColor: colors.accentSecondary + '15' }]}>
-              <Ionicons name="sparkles-outline" size={18} color={colors.accentSecondary} />
+            <View
+              style={[
+                styles.statIconBg,
+                { backgroundColor: colors.accentSecondary + "15" },
+              ]}
+            >
+              <Ionicons
+                name="sparkles-outline"
+                size={18}
+                color={colors.accentSecondary}
+              />
             </View>
             <Text style={[styles.statValue, { color: colors.textPrimary }]}>
               {creditsUsed}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              {language === 'fr' ? 'crédits' : 'credits'}
+              {language === "fr" ? "crédits" : "credits"}
             </Text>
           </View>
         )}
       </View>
 
       {/* Encouragement message */}
-      <View style={[styles.messageContainer, { backgroundColor: colors.accentSuccess + '10' }]}>
-        <Ionicons name="checkmark-circle" size={16} color={colors.accentSuccess} />
+      <View
+        style={[
+          styles.messageContainer,
+          { backgroundColor: colors.accentSuccess + "10" },
+        ]}
+      >
+        <Ionicons
+          name="checkmark-circle"
+          size={16}
+          color={colors.accentSuccess}
+        />
         <Text style={[styles.messageText, { color: colors.textSecondary }]}>
-          {language === 'fr'
+          {language === "fr"
             ? `Vous avez gagné ~${minutesSaved} minutes de lecture!`
-            : `You saved ~${minutesSaved} minutes of reading time!`
-          }
+            : `You saved ~${minutesSaved} minutes of reading time!`}
         </Text>
       </View>
     </>
@@ -219,8 +272,8 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.sm,
   },
   compactContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
@@ -231,8 +284,8 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodyMedium,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     marginBottom: Spacing.md,
   },
@@ -240,31 +293,31 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerText: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.sm,
     marginBottom: Spacing.md,
   },
   statItem: {
     flex: 1,
     minWidth: 70,
-    alignItems: 'center',
+    alignItems: "center",
     gap: Spacing.xs,
   },
   statIconBg: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.xs,
   },
   statValue: {
@@ -274,11 +327,11 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
   },
   messageContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,

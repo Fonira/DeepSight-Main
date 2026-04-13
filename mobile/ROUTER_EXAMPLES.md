@@ -3,6 +3,7 @@
 ## Navigations basiques
 
 ### Depuis un bouton
+
 ```typescript
 import { Button } from '@/components/ui/Button';
 import { useRouter } from 'expo-router';
@@ -20,6 +21,7 @@ export default function LoginScreen() {
 ```
 
 ### Utiliser les helpers de route
+
 ```typescript
 import { tabRoutes, authRoutes } from '@/navigation/routerHelpers';
 
@@ -39,8 +41,9 @@ import { tabRoutes, authRoutes } from '@/navigation/routerHelpers';
 ## Routes dynamiques
 
 ### Créer un lien vers une analyse
+
 ```typescript
-import { useRouter } from 'expo-router';
+import { useRouter } from "expo-router";
 
 const router = useRouter();
 
@@ -48,11 +51,12 @@ const router = useRouter();
 router.push(`/(tabs)/analysis/123`);
 
 // Ou avec helper
-import { analysisRoutes } from '@/navigation/routerHelpers';
-analysisRoutes.detail('123');
+import { analysisRoutes } from "@/navigation/routerHelpers";
+analysisRoutes.detail("123");
 ```
 
 ### Lire les paramètres dynamiques
+
 ```typescript
 import { useLocalSearchParams } from 'expo-router';
 
@@ -68,27 +72,29 @@ export default function AnalysisDetailScreen() {
 ## Navigation de groupe
 
 ### Remplacer vers un groupe
+
 ```typescript
-import { useRouter } from 'expo-router';
+import { useRouter } from "expo-router";
 
 const router = useRouter();
 
 // Après login - remplace pour éviter le back vers login
-router.replace('/(tabs)');
+router.replace("/(tabs)");
 
 // Après logout - remplace pour éviter le back
-router.replace('/(auth)');
+router.replace("/(auth)");
 ```
 
 ### Navigue avec paramètres
+
 ```typescript
-import { useRouter } from 'expo-router';
+import { useRouter } from "expo-router";
 
 const router = useRouter();
 
 router.push({
-  pathname: '/(auth)/verify',
-  params: { email: 'user@example.com' },
+  pathname: "/(auth)/verify",
+  params: { email: "user@example.com" },
 });
 
 // Dans verify.tsx
@@ -98,20 +104,25 @@ const { email } = useLocalSearchParams<{ email?: string }>();
 ## Deep linking
 
 ### Configuration dans app.json
+
 ```json
 {
   "expo": {
     "scheme": "deepsight",
     "plugins": [
-      ["expo-router", {
-        "origin": "https://deepsightsynthesis.com"
-      }]
+      [
+        "expo-router",
+        {
+          "origin": "https://deepsightsynthesis.com"
+        }
+      ]
     ]
   }
 }
 ```
 
 ### URLs supportées
+
 ```
 deepsight://home              → /(tabs)
 deepsight://library           → /(tabs)/library
@@ -121,6 +132,7 @@ https://deepsightsynthesis.com/analysis/456  → /(tabs)/analysis/456
 ```
 
 ### Gérer les deep links dans une screen
+
 ```typescript
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -154,6 +166,7 @@ export default function HomeScreen() {
 ## Animations de transition
 
 ### Désactiver animations
+
 ```typescript
 export default function QuickNavigationScreen() {
   const router = useRouter();
@@ -170,23 +183,26 @@ export default function QuickNavigationScreen() {
 ```
 
 ### Animation slide (défaut)
+
 ```typescript
 router.push({
-  pathname: '/details',
-  animation: 'slide',
+  pathname: "/details",
+  animation: "slide",
 });
 ```
 
 ## Gestion des erreurs 404
 
 ### Affichage auto de 404
+
 ```typescript
 // Si on navigue vers une route inexistante
-router.push('/impossible-route');
+router.push("/impossible-route");
 // Affiche: app/_404.tsx
 ```
 
 ### Créer des routes de fallback
+
 ```typescript
 // Dans app/_layout.tsx
 <Stack>
@@ -202,6 +218,7 @@ router.push('/impossible-route');
 ## Gestion de la navigation de groupe (tabs)
 
 ### Naviguer entre tabs sans remplacer l'historique
+
 ```typescript
 import { tabRoutes } from '@/navigation/routerHelpers';
 
@@ -210,11 +227,12 @@ import { tabRoutes } from '@/navigation/routerHelpers';
 ```
 
 ### Garder l'historique au sein des tabs
+
 ```typescript
 const router = useRouter();
 
 // Push préserve l'historique
-router.push('/(tabs)/analysis/123');
+router.push("/(tabs)/analysis/123");
 
 // Peut faire back
 router.back();
@@ -223,26 +241,29 @@ router.back();
 ## Best practices
 
 ### 1. Utilisez `replace()` pour les transitions de groupe
+
 ```typescript
 // ✅ Correct - après login
-router.replace('/(tabs)');
+router.replace("/(tabs)");
 
 // ❌ Mauvais - crée une boucle de back
-router.push('/(tabs)');
+router.push("/(tabs)");
 ```
 
 ### 2. Utilisez les helpers pour la cohérence
+
 ```typescript
 // ✅ Centralisé
-import { tabRoutes } from '@/navigation/routerHelpers';
+import { tabRoutes } from "@/navigation/routerHelpers";
 tabRoutes.home();
 
 // ❌ Répété partout
-router.push('/(tabs)');
-router.replace('/(tabs)');
+router.push("/(tabs)");
+router.replace("/(tabs)");
 ```
 
 ### 3. Gérez les paramètres avec useLocalSearchParams
+
 ```typescript
 // ✅ Typage fort
 const { id } = useLocalSearchParams<{ id: string }>();
@@ -252,6 +273,7 @@ const { id } = useLocalSearchParams();
 ```
 
 ### 4. Évitez la navigation circulaire
+
 ```typescript
 // ✅ Bon flux
 login → replace('/(tabs)') → Cannot back to login
@@ -263,18 +285,19 @@ login → push('/(tabs)') → back → login → infinite loop
 ## Teste des routes
 
 ### Setup Jest
-```typescript
-import { render, screen } from '@testing-library/react-native';
-import { router } from 'expo-router';
 
-jest.mock('expo-router', () => ({
+```typescript
+import { render, screen } from "@testing-library/react-native";
+import { router } from "expo-router";
+
+jest.mock("expo-router", () => ({
   useRouter: () => ({
     push: jest.fn(),
     replace: jest.fn(),
   }),
 }));
 
-test('navigates to login', () => {
+test("navigates to login", () => {
   const mockRouter = useRouter();
   // ... test
 });
@@ -283,13 +306,17 @@ test('navigates to login', () => {
 ## Problèmes courants
 
 ### Problem: Boucle de back infinie
+
 **Solution:** Utilisez `replace()` au lieu de `push()` pour les transitions de groupe
 
 ### Problem: Paramètres perdus dans deep link
+
 **Solution:** Vérifiez la configuration dans linking config
 
 ### Problem: Animation lag entre screens
+
 **Solution:** Optimisez les renders avec `React.memo()` et `useMemo()`
 
 ### Problem: TypeScript errors sur les routes
+
 **Solution:** Importez depuis `app/types/navigation.ts`

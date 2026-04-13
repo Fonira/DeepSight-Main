@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Image,
@@ -11,17 +11,17 @@ import {
   SafeAreaView,
   StatusBar,
   ViewToken,
-} from 'react-native';
-import { useTheme } from '../../contexts/ThemeContext';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
+} from "react-native";
+import { useTheme } from "../../contexts/ThemeContext";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
 
 interface CarouselGalleryProps {
   images: string[];
   title?: string;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const IMAGE_WIDTH = SCREEN_WIDTH - sp.lg * 2;
 const IMAGE_HEIGHT = IMAGE_WIDTH * 0.75;
 
@@ -68,7 +68,7 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={() => openFullscreen(index)}
-      accessibilityLabel={`Image ${index + 1} sur ${images.length}${title ? ` - ${title}` : ''}`}
+      accessibilityLabel={`Image ${index + 1} sur ${images.length}${title ? ` - ${title}` : ""}`}
       accessibilityRole="image"
     >
       <Image
@@ -100,12 +100,12 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({
     <View style={styles.container}>
       {/* Header badge */}
       <View style={[styles.headerBadge, { backgroundColor: colors.glassBg }]}>
-        <Text style={styles.headerEmoji}>{'📸'}</Text>
+        <Text style={styles.headerEmoji}>{"📸"}</Text>
         <Text style={[styles.headerText, { color: colors.textSecondary }]}>
           Photo Mode
         </Text>
         <Text style={[styles.headerCount, { color: colors.textTertiary }]}>
-          {images.length} photo{images.length > 1 ? 's' : ''}
+          {images.length} photo{images.length > 1 ? "s" : ""}
         </Text>
       </View>
 
@@ -164,7 +164,7 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({
             accessibilityLabel="Fermer"
             accessibilityRole="button"
           >
-            <Text style={styles.closeText}>{'✕'}</Text>
+            <Text style={styles.closeText}>{"✕"}</Text>
           </TouchableOpacity>
 
           {/* Counter */}
@@ -203,9 +203,9 @@ const styles = StyleSheet.create({
     marginVertical: sp.sm,
   },
   headerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
     paddingHorizontal: sp.md,
     paddingVertical: sp.xs,
     borderRadius: borderRadius.full,
@@ -231,9 +231,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     gap: sp.xs,
     marginTop: sp.sm,
   },
@@ -243,50 +243,50 @@ const styles = StyleSheet.create({
   },
   fullscreenContainer: {
     flex: 1,
-    backgroundColor: '#000000',
-    justifyContent: 'center',
+    backgroundColor: "#000000",
+    justifyContent: "center",
   },
   closeButton: {
-    position: 'absolute',
-    top: sp['3xl'] + sp.lg,
+    position: "absolute",
+    top: sp["3xl"] + sp.lg,
     right: sp.lg,
     zIndex: 10,
     width: 36,
     height: 36,
     borderRadius: borderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   closeText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: fontSize.lg,
     fontFamily: fontFamily.bodyBold,
   },
   counterContainer: {
-    position: 'absolute',
-    top: sp['3xl'] + sp.lg,
+    position: "absolute",
+    top: sp["3xl"] + sp.lg,
     left: sp.lg,
     zIndex: 10,
     paddingHorizontal: sp.md,
     paddingVertical: sp.xs,
     borderRadius: borderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   counterText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: fontSize.sm,
     fontFamily: fontFamily.bodyMedium,
   },
   fullscreenSlide: {
     width: SCREEN_WIDTH,
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   fullscreenImage: {
     width: SCREEN_WIDTH,
-    height: '100%',
+    height: "100%",
   },
 });
 

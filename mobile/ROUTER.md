@@ -55,30 +55,34 @@ Le `CustomTabBar.tsx` implémente :
 ## Conventions
 
 ### Routes dynamiques
+
 ```typescript
 // Accéder à [id] depuis une screen
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from "expo-router";
 
 const { id } = useLocalSearchParams<{ id: string }>();
 ```
 
 ### Deep linking
+
 L'app est configurée avec `scheme: "deepsight"` dans app.json :
+
 ```
 deepsight://analysis/123        → app/(tabs)/analysis/[id].tsx
 https://deepsightsynthesis.com/analysis/123  → même screen
 ```
 
 ### Navigation
+
 ```typescript
-import { useRouter } from 'expo-router';
+import { useRouter } from "expo-router";
 
 const router = useRouter();
-router.push('/login');              // Navigue vers (auth)/login
-router.push('/(tabs)/library');     // Navigue vers (tabs)/library
-router.push('/(tabs)/analysis/42'); // Navigue vers (tabs)/analysis/[id].tsx
-router.push('...');                 // Remonte d'un niveau
-router.back();                      // Retour historique
+router.push("/login"); // Navigue vers (auth)/login
+router.push("/(tabs)/library"); // Navigue vers (tabs)/library
+router.push("/(tabs)/analysis/42"); // Navigue vers (tabs)/analysis/[id].tsx
+router.push("..."); // Remonte d'un niveau
+router.back(); // Retour historique
 ```
 
 ## Styles et Thème
@@ -92,6 +96,7 @@ router.back();                      // Retour historique
 ## QueryClient
 
 Configuration dans `src/utils/queryClient.ts` :
+
 - `gcTime` : 24 heures
 - `staleTime` : 5 minutes
 - Retry automatique avec backoff exponentiel
@@ -99,6 +104,7 @@ Configuration dans `src/utils/queryClient.ts` :
 ## Fonts
 
 Les polices sont chargées en root layout via expo-font :
+
 - DMSans (Regular, Medium, SemiBold, Bold)
 - JetBrainsMono (Code)
 - Cormorant (Display)
@@ -106,6 +112,7 @@ Les polices sont chargées en root layout via expo-font :
 ## Splash Screen
 
 Gérée via expo-splash-screen :
+
 1. Prévient l'auto-hide au démarrage
 2. Affiche pending pendant le chargement des fonts
 3. Se masque quand les fonts sont chargées
@@ -120,12 +127,14 @@ Gérée via expo-splash-screen :
 ## À compléter
 
 ### Auth group screens
+
 - [ ] login.tsx - Implémenter formulaire (email, password, Google OAuth)
 - [ ] register.tsx - Implémenter formulaire (username, email, password)
 - [ ] verify.tsx - Code de vérification OTP ou lien email
 - [ ] forgot-password.tsx - Reset password avec email
 
 ### Tabs group screens
+
 - [ ] index.tsx - Dashboard avec actions récentes
 - [ ] library.tsx - Liste des analyses avec filtres/search
 - [ ] study.tsx - Flashcards, mind maps, glossaire
@@ -133,6 +142,7 @@ Gérée via expo-splash-screen :
 - [ ] analysis/[id].tsx - Détail complet d'une analyse
 
 ### Fonctionnalités additionnelles
+
 - [ ] Linking setup pour deep links
 - [ ] Error boundary global
 - [ ] Navigation middleware (auth guards)

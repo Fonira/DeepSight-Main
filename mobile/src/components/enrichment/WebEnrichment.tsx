@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,12 +8,12 @@ import {
   ScrollView,
   ActivityIndicator,
   Linking,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { videoApi } from '../../services/api';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { videoApi } from "../../services/api";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
 interface EnrichmentResult {
   title: string;
@@ -32,17 +32,24 @@ interface WebEnrichmentProps {
 }
 
 const formatEnrichmentFromConcepts = (
-  concepts: Array<{ term: string; definition: string; sources: string[]; category_icon: string }>,
+  concepts: Array<{
+    term: string;
+    definition: string;
+    sources: string[];
+    category_icon: string;
+  }>,
   conceptName?: string,
 ): EnrichmentResult => {
-  const title = conceptName || 'Enrichissement web';
+  const title = conceptName || "Enrichissement web";
   const parts: string[] = [];
   const sources: Array<{ title: string; url: string }> = [];
 
   for (const concept of concepts) {
-    parts.push(`${concept.category_icon} ${concept.term}\n${concept.definition}`);
+    parts.push(
+      `${concept.category_icon} ${concept.term}\n${concept.definition}`,
+    );
     for (const src of concept.sources || []) {
-      if (src.startsWith('http')) {
+      if (src.startsWith("http")) {
         sources.push({ title: src, url: src });
       }
     }
@@ -50,7 +57,7 @@ const formatEnrichmentFromConcepts = (
 
   return {
     title,
-    content: parts.join('\n\n') || 'Aucun concept enrichi disponible.',
+    content: parts.join("\n\n") || "Aucun concept enrichi disponible.",
     sources,
   };
 };
@@ -76,11 +83,14 @@ export const WebEnrichment: React.FC<WebEnrichmentProps> = ({
 
     try {
       const response = await videoApi.webEnrich(summaryId);
-      const parsed = formatEnrichmentFromConcepts(response.concepts || [], conceptName);
+      const parsed = formatEnrichmentFromConcepts(
+        response.concepts || [],
+        conceptName,
+      );
       setResult(parsed);
       setShowModal(true);
     } catch (err: any) {
-      setError(err.message || 'Impossible d\'enrichir le contenu');
+      setError(err.message || "Impossible d'enrichir le contenu");
       setShowModal(true);
     } finally {
       setIsLoading(false);
@@ -95,16 +105,25 @@ export const WebEnrichment: React.FC<WebEnrichmentProps> = ({
     return (
       <>
         <TouchableOpacity
-          style={[styles.compactButton, { backgroundColor: `${colors.accentInfo}20` }]}
+          style={[
+            styles.compactButton,
+            { backgroundColor: `${colors.accentInfo}20` },
+          ]}
           onPress={handleEnrich}
           disabled={disabled || isLoading}
         >
           {isLoading ? (
             <ActivityIndicator size="small" color={colors.accentInfo} />
           ) : (
-            <Ionicons name="globe-outline" size={16} color={colors.accentInfo} />
+            <Ionicons
+              name="globe-outline"
+              size={16}
+              color={colors.accentInfo}
+            />
           )}
-          <Text style={[styles.compactButtonText, { color: colors.accentInfo }]}>
+          <Text
+            style={[styles.compactButtonText, { color: colors.accentInfo }]}
+          >
             Enrichir
           </Text>
         </TouchableOpacity>
@@ -132,11 +151,20 @@ export const WebEnrichment: React.FC<WebEnrichmentProps> = ({
         onPress={handleEnrich}
         disabled={disabled || isLoading}
       >
-        <View style={[styles.iconContainer, { backgroundColor: `${colors.accentInfo}20` }]}>
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: `${colors.accentInfo}20` },
+          ]}
+        >
           {isLoading ? (
             <ActivityIndicator size="small" color={colors.accentInfo} />
           ) : (
-            <Ionicons name="globe-outline" size={24} color={colors.accentInfo} />
+            <Ionicons
+              name="globe-outline"
+              size={24}
+              color={colors.accentInfo}
+            />
           )}
         </View>
         <View style={styles.textContainer}>
@@ -147,7 +175,11 @@ export const WebEnrichment: React.FC<WebEnrichmentProps> = ({
             Informations complémentaires du web
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={colors.textTertiary}
+        />
       </TouchableOpacity>
 
       <EnrichmentModal
@@ -177,11 +209,13 @@ const EnrichmentModal: React.FC<{
     presentationStyle="pageSheet"
     onRequestClose={onClose}
   >
-    <View style={[styles.modalContainer, { backgroundColor: colors.bgPrimary }]}>
+    <View
+      style={[styles.modalContainer, { backgroundColor: colors.bgPrimary }]}
+    >
       {/* Header */}
       <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
         <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-          {result?.title || 'Enrichissement web'}
+          {result?.title || "Enrichissement web"}
         </Text>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
           <Ionicons name="close" size={24} color={colors.textPrimary} />
@@ -194,7 +228,11 @@ const EnrichmentModal: React.FC<{
       >
         {error ? (
           <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle" size={48} color={colors.accentError} />
+            <Ionicons
+              name="alert-circle"
+              size={48}
+              color={colors.accentError}
+            />
             <Text style={[styles.errorText, { color: colors.textPrimary }]}>
               {error}
             </Text>
@@ -207,30 +245,47 @@ const EnrichmentModal: React.FC<{
 
             {result.sources && result.sources.length > 0 && (
               <View style={styles.sourcesSection}>
-                <Text style={[styles.sourcesTitle, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.sourcesTitle, { color: colors.textSecondary }]}
+                >
                   Sources
                 </Text>
                 {result.sources.map((source, index) => (
                   <TouchableOpacity
                     key={index}
-                    style={[styles.sourceCard, { backgroundColor: colors.bgSecondary }]}
+                    style={[
+                      styles.sourceCard,
+                      { backgroundColor: colors.bgSecondary },
+                    ]}
                     onPress={() => onOpenUrl(source.url)}
                   >
-                    <Ionicons name="link-outline" size={16} color={colors.accentPrimary} />
+                    <Ionicons
+                      name="link-outline"
+                      size={16}
+                      color={colors.accentPrimary}
+                    />
                     <Text
-                      style={[styles.sourceText, { color: colors.accentPrimary }]}
+                      style={[
+                        styles.sourceText,
+                        { color: colors.accentPrimary },
+                      ]}
                       numberOfLines={2}
                     >
                       {source.title}
                     </Text>
-                    <Ionicons name="open-outline" size={16} color={colors.textTertiary} />
+                    <Ionicons
+                      name="open-outline"
+                      size={16}
+                      color={colors.textTertiary}
+                    />
                   </TouchableOpacity>
                 ))}
               </View>
             )}
 
             <Text style={[styles.disclaimer, { color: colors.textTertiary }]}>
-              Ces informations proviennent de sources externes et peuvent nécessiter une vérification.
+              Ces informations proviennent de sources externes et peuvent
+              nécessiter une vérification.
             </Text>
           </>
         ) : (
@@ -248,8 +303,8 @@ const EnrichmentModal: React.FC<{
 
 const styles = StyleSheet.create({
   button: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     gap: Spacing.md,
@@ -261,8 +316,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   textContainer: {
     flex: 1,
@@ -277,8 +332,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   compactButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.sm,
@@ -292,9 +347,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: Spacing.md,
     borderBottomWidth: 1,
   },
@@ -327,8 +382,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   sourceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.sm,
@@ -342,22 +397,22 @@ const styles = StyleSheet.create({
   disclaimer: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     marginTop: Spacing.xl,
-    textAlign: 'center',
+    textAlign: "center",
   },
   errorContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: Spacing.xxl,
   },
   errorText: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
     marginTop: Spacing.md,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptyContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: Spacing.xxl,
   },
   emptyText: {

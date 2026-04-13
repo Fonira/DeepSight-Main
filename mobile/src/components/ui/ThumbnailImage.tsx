@@ -4,10 +4,10 @@
  * quand aucune image n'est disponible.
  */
 
-import React, { useState, useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useMemo } from "react";
+import { View, StyleSheet } from "react-native";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
 
 interface ThumbnailImageProps {
   /** URL directe de la thumbnail (priority 1) */
@@ -15,7 +15,7 @@ interface ThumbnailImageProps {
   /** ID de la vidéo YouTube pour générer les fallbacks */
   videoId?: string | null;
   style?: any;
-  contentFit?: 'cover' | 'contain' | 'fill';
+  contentFit?: "cover" | "contain" | "fill";
   transition?: number;
 }
 
@@ -34,7 +34,7 @@ export const ThumbnailImage: React.FC<ThumbnailImageProps> = ({
   uri,
   videoId,
   style,
-  contentFit = 'cover',
+  contentFit = "cover",
   transition = 200,
 }) => {
   const [fallbackIndex, setFallbackIndex] = useState(0);
@@ -47,7 +47,7 @@ export const ThumbnailImage: React.FC<ThumbnailImageProps> = ({
       list.push(uri);
     }
     // Priority 2: YouTube fallbacks from videoId
-    if (videoId && videoId.length > 0 && videoId !== 'undefined') {
+    if (videoId && videoId.length > 0 && videoId !== "undefined") {
       list.push(...getYouTubeFallbacks(videoId));
     }
     return list;
@@ -67,7 +67,11 @@ export const ThumbnailImage: React.FC<ThumbnailImageProps> = ({
   if (!currentUrl || hasError) {
     return (
       <View style={[style, styles.placeholder]}>
-        <Ionicons name="image-outline" size={32} color="rgba(255,255,255,0.3)" />
+        <Ionicons
+          name="image-outline"
+          size={32}
+          color="rgba(255,255,255,0.3)"
+        />
       </View>
     );
   }
@@ -87,8 +91,8 @@ export const ThumbnailImage: React.FC<ThumbnailImageProps> = ({
 
 const styles = StyleSheet.create({
   placeholder: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(255,255,255,0.05)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

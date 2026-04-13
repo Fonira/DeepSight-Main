@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,90 +7,94 @@ import {
   StyleSheet,
   ScrollView,
   FlatList,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 const colors = {
-  bgPrimary: '#0a0a0b',
-  bgSecondary: '#111113',
-  bgElevated: '#1f1f23',
-  textPrimary: '#FAFAF9',
-  textSecondary: '#A1A1AA',
-  textTertiary: '#71717A',
-  accentPrimary: '#6366F1',
-  border: '#27272A',
-  error: '#EF4444',
+  bgPrimary: "#0a0a0b",
+  bgSecondary: "#111113",
+  bgElevated: "#1f1f23",
+  textPrimary: "#FAFAF9",
+  textSecondary: "#A1A1AA",
+  textTertiary: "#71717A",
+  accentPrimary: "#6366F1",
+  border: "#27272A",
+  error: "#EF4444",
 };
 
 const historyData = [
   {
-    id: '1',
-    title: 'Comment fonctionne l\'IA en 2024 - Tout comprendre',
-    channel: 'Tech Explained',
-    mode: 'Synthèse',
-    category: 'Tech',
-    date: 'Aujourd\'hui',
-    thumbnail: '🤖',
+    id: "1",
+    title: "Comment fonctionne l'IA en 2024 - Tout comprendre",
+    channel: "Tech Explained",
+    mode: "Synthèse",
+    category: "Tech",
+    date: "Aujourd'hui",
+    thumbnail: "🤖",
     isFavorite: true,
   },
   {
-    id: '2',
-    title: 'Les secrets de la productivité des entrepreneurs',
-    channel: 'Mindset Pro',
-    mode: 'Détaillé',
-    category: 'Business',
-    date: 'Hier',
-    thumbnail: '🚀',
+    id: "2",
+    title: "Les secrets de la productivité des entrepreneurs",
+    channel: "Mindset Pro",
+    mode: "Détaillé",
+    category: "Business",
+    date: "Hier",
+    thumbnail: "🚀",
     isFavorite: false,
   },
   {
-    id: '3',
-    title: 'React Native - Créer des apps mobiles',
-    channel: 'Code Academy',
-    mode: 'Éducatif',
-    category: 'Dev',
-    date: 'Il y a 2j',
-    thumbnail: '📱',
+    id: "3",
+    title: "React Native - Créer des apps mobiles",
+    channel: "Code Academy",
+    mode: "Éducatif",
+    category: "Dev",
+    date: "Il y a 2j",
+    thumbnail: "📱",
     isFavorite: true,
   },
   {
-    id: '4',
-    title: 'Comprendre la blockchain simplement',
-    channel: 'Crypto France',
-    mode: 'Synthèse',
-    category: 'Crypto',
-    date: 'Il y a 3j',
-    thumbnail: '⛓️',
+    id: "4",
+    title: "Comprendre la blockchain simplement",
+    channel: "Crypto France",
+    mode: "Synthèse",
+    category: "Crypto",
+    date: "Il y a 3j",
+    thumbnail: "⛓️",
     isFavorite: false,
   },
   {
-    id: '5',
-    title: 'Les tendances design 2024',
-    channel: 'Design Weekly',
-    mode: 'Critique',
-    category: 'Design',
-    date: 'Il y a 5j',
-    thumbnail: '🎨',
+    id: "5",
+    title: "Les tendances design 2024",
+    channel: "Design Weekly",
+    mode: "Critique",
+    category: "Design",
+    date: "Il y a 5j",
+    thumbnail: "🎨",
     isFavorite: false,
   },
 ];
 
 export default function HistoryScreen() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [favorites, setFavorites] = useState(
-    historyData.filter((v) => v.isFavorite).map((v) => v.id)
+    historyData.filter((v) => v.isFavorite).map((v) => v.id),
   );
 
   const toggleFavorite = (id) => {
     setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((fid) => fid !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((fid) => fid !== id) : [...prev, id],
     );
   };
 
   const filteredData = historyData.filter((item) => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFavorite = showFavoritesOnly ? favorites.includes(item.id) : true;
+    const matchesSearch = item.title
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesFavorite = showFavoritesOnly
+      ? favorites.includes(item.id)
+      : true;
     return matchesSearch && matchesFavorite;
   });
 
@@ -121,9 +125,11 @@ export default function HistoryScreen() {
         onPress={() => toggleFavorite(item.id)}
       >
         <Ionicons
-          name={favorites.includes(item.id) ? 'heart' : 'heart-outline'}
+          name={favorites.includes(item.id) ? "heart" : "heart-outline"}
           size={22}
-          color={favorites.includes(item.id) ? colors.error : colors.textTertiary}
+          color={
+            favorites.includes(item.id) ? colors.error : colors.textTertiary
+          }
         />
       </TouchableOpacity>
     </TouchableOpacity>
@@ -148,8 +154,12 @@ export default function HistoryScreen() {
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={colors.textTertiary}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -161,17 +171,17 @@ export default function HistoryScreen() {
           onPress={() => setShowFavoritesOnly(!showFavoritesOnly)}
         >
           <Ionicons
-            name={showFavoritesOnly ? 'heart' : 'heart-outline'}
+            name={showFavoritesOnly ? "heart" : "heart-outline"}
             size={20}
-            color={showFavoritesOnly ? '#FFFFFF' : colors.textTertiary}
+            color={showFavoritesOnly ? "#FFFFFF" : colors.textTertiary}
           />
         </TouchableOpacity>
       </View>
 
       {/* Results count */}
       <Text style={styles.resultsCount}>
-        {filteredData.length} analyse{filteredData.length > 1 ? 's' : ''}
-        {showFavoritesOnly ? ' en favoris' : ''}
+        {filteredData.length} analyse{filteredData.length > 1 ? "s" : ""}
+        {showFavoritesOnly ? " en favoris" : ""}
       </Text>
 
       {/* List */}
@@ -184,17 +194,17 @@ export default function HistoryScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons
-              name={showFavoritesOnly ? 'heart-outline' : 'folder-open-outline'}
+              name={showFavoritesOnly ? "heart-outline" : "folder-open-outline"}
               size={48}
               color={colors.textTertiary}
             />
             <Text style={styles.emptyTitle}>
-              {showFavoritesOnly ? 'Aucun favori' : 'Aucun résultat'}
+              {showFavoritesOnly ? "Aucun favori" : "Aucun résultat"}
             </Text>
             <Text style={styles.emptySubtitle}>
               {showFavoritesOnly
-                ? 'Ajoutez des vidéos à vos favoris'
-                : 'Essayez une autre recherche'}
+                ? "Ajoutez des vidéos à vos favoris"
+                : "Essayez une autre recherche"}
             </Text>
           </View>
         }
@@ -215,19 +225,19 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
   },
   searchSection: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 20,
     marginBottom: 12,
     gap: 12,
   },
   searchContainer: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.bgElevated,
     borderRadius: 12,
     borderWidth: 1,
@@ -244,8 +254,8 @@ const styles = StyleSheet.create({
   filterButton: {
     width: 48,
     height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.bgElevated,
     borderRadius: 12,
     borderWidth: 1,
@@ -266,7 +276,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   videoCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: colors.bgElevated,
     borderRadius: 12,
     padding: 12,
@@ -280,8 +290,8 @@ const styles = StyleSheet.create({
     height: 60,
     backgroundColor: colors.bgSecondary,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   thumbnailEmoji: {
     fontSize: 28,
@@ -292,7 +302,7 @@ const styles = StyleSheet.create({
   videoTitle: {
     color: colors.textPrimary,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 4,
   },
   videoChannel: {
@@ -301,7 +311,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   badges: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 4,
   },
   badge: {
@@ -314,7 +324,7 @@ const styles = StyleSheet.create({
   badgeText: {
     color: colors.accentPrimary,
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   badgeSecondary: {
     backgroundColor: colors.bgSecondary,
@@ -322,7 +332,7 @@ const styles = StyleSheet.create({
   badgeTextSecondary: {
     color: colors.textSecondary,
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   videoDate: {
     color: colors.textTertiary,
@@ -332,14 +342,14 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 60,
   },
   emptyTitle: {
     color: colors.textPrimary,
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     marginTop: 16,
   },
   emptySubtitle: {

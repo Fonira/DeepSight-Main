@@ -1,6 +1,6 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
-import { CustomTabBar } from '@/components/navigation/CustomTabBar';
+import React from "react";
+import { Tabs } from "expo-router";
+import { CustomTabBar } from "@/components/navigation/CustomTabBar";
 
 export default function TabsLayout() {
   return (
@@ -14,31 +14,31 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Accueil',
+          title: "Accueil",
         }}
       />
       <Tabs.Screen
         name="library"
         options={{
-          title: 'Bibliothèque',
+          title: "Bibliothèque",
         }}
       />
       <Tabs.Screen
         name="study"
         options={{
-          title: 'Étude & Chat',
+          title: "Étude & Chat",
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profil',
+          title: "Profil",
         }}
       />
       <Tabs.Screen
         name="subscription"
         options={{
-          title: 'Abonnement',
+          title: "Abonnement",
         }}
       />
       {/* Routes cachées de la tab bar */}
@@ -46,7 +46,7 @@ export default function TabsLayout() {
         name="analysis/[id]"
         options={{
           href: null,
-          title: 'Analyse',
+          title: "Analyse",
         }}
       />
     </Tabs>

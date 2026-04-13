@@ -5,8 +5,11 @@
  * Uses @react-native-community/netinfo.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import NetInfo, { NetInfoState, NetInfoStateType } from '@react-native-community/netinfo';
+import { useState, useEffect, useCallback, useRef } from "react";
+import NetInfo, {
+  NetInfoState,
+  NetInfoStateType,
+} from "@react-native-community/netinfo";
 
 export interface NetworkStatus {
   isConnected: boolean;

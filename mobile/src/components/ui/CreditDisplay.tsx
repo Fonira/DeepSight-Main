@@ -1,30 +1,25 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
-import type { RootStackParamList } from '../../types';
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
+import type { RootStackParamList } from "../../types";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface CreditDisplayProps {
-  variant?: 'compact' | 'full' | 'badge';
+  variant?: "compact" | "full" | "badge";
   showUpgradeButton?: boolean;
   onPress?: () => void;
 }
 
 export const CreditDisplay: React.FC<CreditDisplayProps> = ({
-  variant = 'compact',
+  variant = "compact",
   showUpgradeButton = true,
   onPress,
 }) => {
@@ -34,9 +29,11 @@ export const CreditDisplay: React.FC<CreditDisplayProps> = ({
   const navigation = useNavigation<NavigationProp>();
 
   const credits = user?.credits ?? 0;
-  const maxCredits = getMaxCredits(user?.plan || 'free');
+  const maxCredits = getMaxCredits(user?.plan || "free");
   const isUnlimited = maxCredits === -1;
-  const percentage = isUnlimited ? 100 : Math.min((credits / maxCredits) * 100, 100);
+  const percentage = isUnlimited
+    ? 100
+    : Math.min((credits / maxCredits) * 100, 100);
   const isLow = !isUnlimited && percentage <= 20;
 
   const handlePress = () => {
@@ -44,22 +41,24 @@ export const CreditDisplay: React.FC<CreditDisplayProps> = ({
     if (onPress) {
       onPress();
     } else {
-      navigation.navigate('Usage');
+      navigation.navigate("Usage");
     }
   };
 
   const handleUpgrade = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate('Upgrade');
+    navigation.navigate("Upgrade");
   };
 
-  if (variant === 'badge') {
+  if (variant === "badge") {
     return (
       <TouchableOpacity
         style={[
           styles.badge,
           {
-            backgroundColor: isLow ? `${colors.accentError}20` : `${colors.accentPrimary}20`,
+            backgroundColor: isLow
+              ? `${colors.accentError}20`
+              : `${colors.accentPrimary}20`,
           },
         ]}
         onPress={handlePress}
@@ -75,13 +74,13 @@ export const CreditDisplay: React.FC<CreditDisplayProps> = ({
             { color: isLow ? colors.accentError : colors.accentPrimary },
           ]}
         >
-          {isUnlimited ? '∞' : credits}
+          {isUnlimited ? "∞" : credits}
         </Text>
       </TouchableOpacity>
     );
   }
 
-  if (variant === 'compact') {
+  if (variant === "compact") {
     return (
       <TouchableOpacity
         style={[styles.compact, { backgroundColor: colors.bgSecondary }]}
@@ -101,7 +100,9 @@ export const CreditDisplay: React.FC<CreditDisplayProps> = ({
           </Text>
         </View>
         {isLow && (
-          <View style={[styles.lowBadge, { backgroundColor: colors.accentWarning }]}>
+          <View
+            style={[styles.lowBadge, { backgroundColor: colors.accentWarning }]}
+          >
             <Ionicons name="warning" size={10} color="#FFFFFF" />
           </View>
         )}
@@ -126,13 +127,17 @@ export const CreditDisplay: React.FC<CreditDisplayProps> = ({
 
       {/* Progress bar */}
       {!isUnlimited && (
-        <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
+        <View
+          style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}
+        >
           <View
             style={[
               styles.progressFill,
               {
                 width: `${percentage}%`,
-                backgroundColor: isLow ? colors.accentWarning : colors.accentPrimary,
+                backgroundColor: isLow
+                  ? colors.accentWarning
+                  : colors.accentPrimary,
               },
             ]}
           />
@@ -141,8 +146,17 @@ export const CreditDisplay: React.FC<CreditDisplayProps> = ({
 
       {/* Low credits warning */}
       {isLow && (
-        <View style={[styles.warningBox, { backgroundColor: `${colors.accentWarning}15` }]}>
-          <Ionicons name="warning-outline" size={16} color={colors.accentWarning} />
+        <View
+          style={[
+            styles.warningBox,
+            { backgroundColor: `${colors.accentWarning}15` },
+          ]}
+        >
+          <Ionicons
+            name="warning-outline"
+            size={16}
+            color={colors.accentWarning}
+          />
           <Text style={[styles.warningText, { color: colors.accentWarning }]}>
             {t.notifications.creditsLow}
           </Text>
@@ -152,7 +166,10 @@ export const CreditDisplay: React.FC<CreditDisplayProps> = ({
       {/* Upgrade button */}
       {showUpgradeButton && !isUnlimited && (
         <TouchableOpacity
-          style={[styles.upgradeButton, { backgroundColor: colors.accentPrimary }]}
+          style={[
+            styles.upgradeButton,
+            { backgroundColor: colors.accentPrimary },
+          ]}
           onPress={handleUpgrade}
         >
           <Ionicons name="arrow-up-circle" size={18} color="#FFFFFF" />
@@ -174,8 +191,8 @@ function getMaxCredits(plan: string): number {
 
 const styles = StyleSheet.create({
   badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 4,
     paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.full,
@@ -186,16 +203,16 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   compact: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
-    position: 'relative',
+    position: "relative",
   },
   compactContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   compactCredits: {
@@ -207,28 +224,28 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   lowBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -4,
     right: -4,
     width: 16,
     height: 16,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   full: {
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
   },
   fullHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: Spacing.sm,
   },
   fullTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   fullTitle: {
@@ -242,16 +259,16 @@ const styles = StyleSheet.create({
   progressBar: {
     height: 6,
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: Spacing.sm,
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
   },
   warningBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     padding: Spacing.sm,
     borderRadius: BorderRadius.sm,
@@ -263,15 +280,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   upgradeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
     gap: Spacing.xs,
   },
   upgradeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },

@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useTheme } from '../../contexts/ThemeContext';
-import { DOODLE_MAP, DOODLE_CATEGORIES, DoodleCategory } from './doodlePaths';
-import DoodleIcon from './DoodleIcon';
+import React, { useMemo } from "react";
+import { View, StyleSheet } from "react-native";
+import { useTheme } from "../../contexts/ThemeContext";
+import { DOODLE_MAP, DOODLE_CATEGORIES, DoodleCategory } from "./doodlePaths";
+import DoodleIcon from "./DoodleIcon";
 
 interface DoodleDividerProps {
   category?: DoodleCategory;
@@ -45,11 +45,11 @@ export const DoodleDivider: React.FC<DoodleDividerProps> = ({
   const categoryIcons = useMemo(() => {
     const icons = DOODLE_CATEGORIES[selectedCategory];
     const iconNames = Object.keys(icons) as (keyof typeof icons)[];
-    
+
     // Shuffle and select iconCount icons
     const selected: string[] = [];
     const indices = new Set<number>();
-    
+
     while (selected.length < Math.min(iconCount, iconNames.length)) {
       const idx = Math.floor(Math.random() * iconNames.length);
       if (!indices.has(idx)) {
@@ -57,14 +57,16 @@ export const DoodleDivider: React.FC<DoodleDividerProps> = ({
         selected.push(iconNames[idx] as string);
       }
     }
-    
+
     return selected;
   }, [selectedCategory, iconCount]);
 
   // Random rotation angles for each icon
   const rotations = useMemo(() => {
     return categoryIcons.map(() => {
-      const angles = [0, 12, -12, 25, -25, 40, -40, 55, -55, 70, -70, 90, -90, 135, -135, 180];
+      const angles = [
+        0, 12, -12, 25, -25, 40, -40, 55, -55, 70, -70, 90, -90, 135, -135, 180,
+      ];
       return angles[Math.floor(Math.random() * angles.length)];
     });
   }, [categoryIcons]);
@@ -72,12 +74,7 @@ export const DoodleDivider: React.FC<DoodleDividerProps> = ({
   return (
     <View style={[styles.container]}>
       {/* Left line */}
-      <View
-        style={[
-          styles.line,
-          { backgroundColor: finalLineColor },
-        ]}
-      />
+      <View style={[styles.line, { backgroundColor: finalLineColor }]} />
 
       {/* Icons */}
       <View style={styles.iconContainer}>
@@ -95,21 +92,16 @@ export const DoodleDivider: React.FC<DoodleDividerProps> = ({
       </View>
 
       {/* Right line */}
-      <View
-        style={[
-          styles.line,
-          { backgroundColor: finalLineColor },
-        ]}
-      />
+      <View style={[styles.line, { backgroundColor: finalLineColor }]} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     height: 60,
     marginVertical: 16,
     paddingHorizontal: 16,
@@ -119,15 +111,15 @@ const styles = StyleSheet.create({
     height: 1,
   },
   iconContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginHorizontal: 8,
   },
   iconWrapper: {
     marginHorizontal: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

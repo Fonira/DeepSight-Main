@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,20 +7,23 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { Button, Input } from '../components/ui';
-import { Spacing, Typography, BorderRadius } from '../constants/theme';
-import type { RootStackParamList } from '../types';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { Button, Input } from "../components/ui";
+import { Spacing, Typography, BorderRadius } from "../constants/theme";
+import type { RootStackParamList } from "../types";
 
-type ForgotPasswordNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>;
+type ForgotPasswordNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "ForgotPassword"
+>;
 
 export const ForgotPasswordScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -28,10 +31,10 @@ export const ForgotPasswordScreen: React.FC = () => {
   const { forgotPassword, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<ForgotPasswordNavigationProp>();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('creative');
+  useScreenDoodleVariant("creative");
 
-  const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState('');
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [emailSent, setEmailSent] = useState(false);
 
   // Clear errors on mount
@@ -48,7 +51,7 @@ export const ForgotPasswordScreen: React.FC = () => {
       setEmailError(t.errors.invalidEmail);
       return false;
     }
-    setEmailError('');
+    setEmailError("");
     return true;
   };
 
@@ -66,28 +69,36 @@ export const ForgotPasswordScreen: React.FC = () => {
   };
 
   const handleBackToLogin = () => {
-    navigation.navigate('Login');
+    navigation.navigate("Login");
   };
 
   if (emailSent) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.container, { backgroundColor: "transparent" }]}>
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + Spacing.xxl, paddingBottom: insets.bottom + Spacing.xxl },
+            {
+              paddingTop: insets.top + Spacing.xxl,
+              paddingBottom: insets.bottom + Spacing.xxl,
+            },
           ]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.successContainer}>
-            <View style={[styles.successIcon, { backgroundColor: `${colors.accentSuccess}15` }]}>
+            <View
+              style={[
+                styles.successIcon,
+                { backgroundColor: `${colors.accentSuccess}15` },
+              ]}
+            >
               <Ionicons name="mail" size={48} color={colors.accentSuccess} />
             </View>
             <Text style={[styles.successTitle, { color: colors.textPrimary }]}>
-              {language === 'fr' ? 'Email envoyé !' : 'Email sent!'}
+              {language === "fr" ? "Email envoyé !" : "Email sent!"}
             </Text>
             <Text style={[styles.successText, { color: colors.textSecondary }]}>
-              {language === 'fr'
+              {language === "fr"
                 ? `Si un compte existe pour ${email}, vous recevrez un email de réinitialisation.`
                 : `If an account exists for ${email}, you'll receive a password reset email.`}
             </Text>
@@ -104,15 +115,18 @@ export const ForgotPasswordScreen: React.FC = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xxl },
+            {
+              paddingTop: insets.top + Spacing.xl,
+              paddingBottom: insets.bottom + Spacing.xxl,
+            },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -122,11 +136,24 @@ export const ForgotPasswordScreen: React.FC = () => {
             onPress={() => navigation.goBack()}
             style={styles.backButtonIcon}
           >
-            <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
+            <Ionicons
+              name="chevron-back"
+              size={28}
+              color={colors.textPrimary}
+            />
           </TouchableOpacity>
 
-          <View style={[styles.iconContainer, { backgroundColor: `${colors.accentPrimary}15` }]}>
-            <Ionicons name="lock-closed-outline" size={32} color={colors.accentPrimary} />
+          <View
+            style={[
+              styles.iconContainer,
+              { backgroundColor: `${colors.accentPrimary}15` },
+            ]}
+          >
+            <Ionicons
+              name="lock-closed-outline"
+              size={32}
+              color={colors.accentPrimary}
+            />
           </View>
 
           <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -160,9 +187,18 @@ export const ForgotPasswordScreen: React.FC = () => {
           </View>
 
           {/* Back to login */}
-          <TouchableOpacity onPress={handleBackToLogin} style={styles.loginLink}>
-            <Ionicons name="arrow-back" size={16} color={colors.accentPrimary} />
-            <Text style={[styles.loginLinkText, { color: colors.accentPrimary }]}>
+          <TouchableOpacity
+            onPress={handleBackToLogin}
+            style={styles.loginLink}
+          >
+            <Ionicons
+              name="arrow-back"
+              size={16}
+              color={colors.accentPrimary}
+            />
+            <Text
+              style={[styles.loginLinkText, { color: colors.accentPrimary }]}
+            >
               {t.auth.signIn}
             </Text>
           </TouchableOpacity>
@@ -184,7 +220,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
   },
   backButtonIcon: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginBottom: Spacing.lg,
     marginLeft: -Spacing.sm,
   },
@@ -192,21 +228,21 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: BorderRadius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
     marginBottom: Spacing.lg,
   },
   title: {
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize["2xl"],
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.sm,
   },
   subtitle: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.xxl,
     lineHeight: Typography.fontSize.base * Typography.lineHeight.relaxed,
     paddingHorizontal: Spacing.md,
@@ -218,9 +254,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   loginLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: Spacing.xl,
     gap: Spacing.xs,
   },
@@ -230,28 +266,28 @@ const styles = StyleSheet.create({
   },
   successContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: Spacing.lg,
   },
   successIcon: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.xl,
   },
   successTitle: {
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize["2xl"],
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.md,
   },
   successText: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.xxl,
     lineHeight: Typography.fontSize.base * Typography.lineHeight.relaxed,
   },

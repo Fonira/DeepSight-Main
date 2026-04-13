@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Pressable,
   Image,
   Dimensions,
-} from 'react-native';
+} from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,37 +19,43 @@ import Animated, {
   withRepeat,
   Easing,
   FadeInDown,
-} from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as Haptics from 'expo-haptics';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { Button, Input } from '../components/ui';
-import { gradients } from '../theme/colors';
-import { sp, borderRadius } from '../theme/spacing';
-import { fontFamily, fontSize } from '../theme/typography';
-import type { RootStackParamList } from '../types';
+} from "react-native-reanimated";
+import { BlurView } from "expo-blur";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as Haptics from "expo-haptics";
+import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { Button, Input } from "../components/ui";
+import { gradients } from "../theme/colors";
+import { sp, borderRadius } from "../theme/spacing";
+import { fontFamily, fontSize } from "../theme/typography";
+import type { RootStackParamList } from "../types";
 
-type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
+type LoginScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Login"
+>;
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Animated orb component for background
-const AnimatedOrb: React.FC<{ color: string; position: 'topLeft' | 'bottomRight' }> = ({ color, position }) => {
+const AnimatedOrb: React.FC<{
+  color: string;
+  position: "topLeft" | "bottomRight";
+}> = ({ color, position }) => {
   const scale = useSharedValue(1);
 
   useEffect(() => {
     scale.value = withRepeat(
       withTiming(1.3, { duration: 4000, easing: Easing.inOut(Easing.ease) }),
       -1,
-      true
+      true,
     );
   }, [scale]);
 
@@ -57,34 +63,45 @@ const AnimatedOrb: React.FC<{ color: string; position: 'topLeft' | 'bottomRight'
     transform: [{ scale: scale.value }],
   }));
 
-  const posStyle = position === 'topLeft'
-    ? { top: -80, left: -80 }
-    : { bottom: -60, right: -80 };
+  const posStyle =
+    position === "topLeft"
+      ? { top: -80, left: -80 }
+      : { bottom: -60, right: -80 };
 
   return (
-    <Animated.View style={[styles.orb, { backgroundColor: color, ...posStyle }, animStyle]} />
+    <Animated.View
+      style={[styles.orb, { backgroundColor: color, ...posStyle }, animStyle]}
+    />
   );
 };
 
 export const LoginScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
-  const { login, loginWithGoogle, isLoading, error, clearError, pendingVerificationEmail, clearPendingVerification } = useAuth();
+  const {
+    login,
+    loginWithGoogle,
+    isLoading,
+    error,
+    clearError,
+    pendingVerificationEmail,
+    clearPendingVerification,
+  } = useAuth();
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('creative');
+  useScreenDoodleVariant("creative");
 
   useEffect(() => {
     if (pendingVerificationEmail) {
-      navigation.navigate('VerifyEmail', { email: pendingVerificationEmail });
+      navigation.navigate("VerifyEmail", { email: pendingVerificationEmail });
       clearPendingVerification();
     }
   }, [pendingVerificationEmail, navigation, clearPendingVerification]);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   // Animated logo
   const logoScale = useSharedValue(0.8);
@@ -92,7 +109,10 @@ export const LoginScreen: React.FC = () => {
 
   useEffect(() => {
     logoOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
-    logoScale.value = withDelay(200, withSpring(1, { damping: 8, stiffness: 100 }));
+    logoScale.value = withDelay(
+      200,
+      withSpring(1, { damping: 8, stiffness: 100 }),
+    );
     clearError();
   }, [logoScale, logoOpacity, clearError]);
 
@@ -112,7 +132,7 @@ export const LoginScreen: React.FC = () => {
       setEmailError(t.errors.invalidEmail);
       isValid = false;
     } else {
-      setEmailError('');
+      setEmailError("");
     }
 
     if (!password) {
@@ -122,7 +142,7 @@ export const LoginScreen: React.FC = () => {
       setPasswordError(t.errors.passwordMinLength);
       isValid = false;
     } else {
-      setPasswordError('');
+      setPasswordError("");
     }
 
     return isValid;
@@ -151,9 +171,10 @@ export const LoginScreen: React.FC = () => {
     <View style={styles.container}>
       {/* Gradient background */}
       <LinearGradient
-        colors={isDark
-          ? ['#0a0a0f', '#0f0f1a', '#0a0a0f']
-          : ['#f8f9ff', '#f0f0ff', '#ffffff']
+        colors={
+          isDark
+            ? ["#0a0a0f", "#0f0f1a", "#0a0a0f"]
+            : ["#f8f9ff", "#f0f0ff", "#ffffff"]
         }
         style={StyleSheet.absoluteFill}
       />
@@ -170,7 +191,7 @@ export const LoginScreen: React.FC = () => {
       {isDark && (
         <View style={styles.glowContainer}>
           <LinearGradient
-            colors={['rgba(59,130,246,0.12)', 'transparent']}
+            colors={["rgba(59,130,246,0.12)", "transparent"]}
             style={styles.glow}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
@@ -180,28 +201,37 @@ export const LoginScreen: React.FC = () => {
 
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + sp['3xl'], paddingBottom: insets.bottom + sp['3xl'] },
+            {
+              paddingTop: insets.top + sp["3xl"],
+              paddingBottom: insets.bottom + sp["3xl"],
+            },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Animated Logo */}
           <Animated.View style={[styles.logoContainer, logoAnimStyle]}>
-            <View style={[styles.logoGlow, { shadowColor: colors.accentPrimary }]}>
+            <View
+              style={[styles.logoGlow, { shadowColor: colors.accentPrimary }]}
+            >
               <Image
-                source={require('../assets/images/icon.png')}
+                source={require("../assets/images/icon.png")}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
             </View>
             <View style={styles.logoText}>
-              <Text style={[styles.logoDeep, { color: colors.accentPrimary }]}>Deep</Text>
-              <Text style={[styles.logoSight, { color: colors.textPrimary }]}>Sight</Text>
+              <Text style={[styles.logoDeep, { color: colors.accentPrimary }]}>
+                Deep
+              </Text>
+              <Text style={[styles.logoSight, { color: colors.textPrimary }]}>
+                Sight
+              </Text>
             </View>
             <Text style={styles.tagline}>
               Ne subissez plus vos vidéos — interrogez-les.
@@ -209,39 +239,64 @@ export const LoginScreen: React.FC = () => {
           </Animated.View>
 
           {/* Platform logos */}
-          <Animated.View entering={FadeInDown.delay(150).springify().damping(8)} style={styles.platformLogos}>
+          <Animated.View
+            entering={FadeInDown.delay(150).springify().damping(8)}
+            style={styles.platformLogos}
+          >
             <Image
-              source={isDark
-                ? require('../assets/platforms/youtube-logo-white.png')
-                : require('../assets/platforms/youtube-logo-dark.png')
+              source={
+                isDark
+                  ? require("../assets/platforms/youtube-logo-white.png")
+                  : require("../assets/platforms/youtube-logo-dark.png")
               }
               style={styles.platformLogoYt}
               resizeMode="contain"
             />
-            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+            <View
+              style={[
+                styles.platformDivider,
+                { backgroundColor: colors.border },
+              ]}
+            />
             <Image
-              source={isDark
-                ? require('../assets/platforms/tiktok-logo-white.png')
-                : require('../assets/platforms/tiktok-logo-black.png')
+              source={
+                isDark
+                  ? require("../assets/platforms/tiktok-logo-white.png")
+                  : require("../assets/platforms/tiktok-logo-black.png")
               }
               style={styles.platformLogoTk}
               resizeMode="contain"
             />
-            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+            <View
+              style={[
+                styles.platformDivider,
+                { backgroundColor: colors.border },
+              ]}
+            />
             <Image
-              source={require('../assets/platforms/mistral-logo-white.png')}
-              style={[styles.platformLogoMistral, !isDark && { tintColor: '#1a1a2e' }]}
+              source={require("../assets/platforms/mistral-logo-white.png")}
+              style={[
+                styles.platformLogoMistral,
+                !isDark && { tintColor: "#1a1a2e" },
+              ]}
               resizeMode="contain"
             />
-            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+            <View
+              style={[
+                styles.platformDivider,
+                { backgroundColor: colors.border },
+              ]}
+            />
             <Image
-              source={require('../assets/platforms/tournesol-logo.png')}
+              source={require("../assets/platforms/tournesol-logo.png")}
               style={styles.platformLogoTournesol}
               resizeMode="contain"
             />
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(200).springify().damping(8)}>
+          <Animated.View
+            entering={FadeInDown.delay(200).springify().damping(8)}
+          >
             <Text style={[styles.title, { color: colors.textPrimary }]}>
               {t.auth.welcomeBack}
             </Text>
@@ -254,17 +309,36 @@ export const LoginScreen: React.FC = () => {
           {error && (
             <Animated.View
               entering={FadeInDown.duration(300)}
-              style={[styles.errorContainer, { backgroundColor: `${colors.accentError}15`, borderColor: `${colors.accentError}30` }]}
+              style={[
+                styles.errorContainer,
+                {
+                  backgroundColor: `${colors.accentError}15`,
+                  borderColor: `${colors.accentError}30`,
+                },
+              ]}
             >
-              <Ionicons name="alert-circle" size={20} color={colors.accentError} />
-              <Text style={[styles.errorText, { color: colors.accentError }]}>{error}</Text>
+              <Ionicons
+                name="alert-circle"
+                size={20}
+                color={colors.accentError}
+              />
+              <Text style={[styles.errorText, { color: colors.accentError }]}>
+                {error}
+              </Text>
             </Animated.View>
           )}
 
           {/* Form — Glassmorphism container */}
-          <Animated.View entering={FadeInDown.delay(300).springify().damping(8)} style={styles.glassFormWrapper}>
+          <Animated.View
+            entering={FadeInDown.delay(300).springify().damping(8)}
+            style={styles.glassFormWrapper}
+          >
             {isDark && (
-              <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFill} />
+              <BlurView
+                intensity={25}
+                tint="dark"
+                style={StyleSheet.absoluteFill}
+              />
             )}
             <View style={styles.glassFormContent}>
               <Input
@@ -290,8 +364,16 @@ export const LoginScreen: React.FC = () => {
                 error={passwordError}
               />
 
-              <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotPassword}>
-                <Text style={[styles.forgotPasswordText, { color: colors.accentPrimary }]}>
+              <Pressable
+                onPress={() => navigation.navigate("ForgotPassword")}
+                style={styles.forgotPassword}
+              >
+                <Text
+                  style={[
+                    styles.forgotPasswordText,
+                    { color: colors.accentPrimary },
+                  ]}
+                >
                   {t.auth.forgotPassword}
                 </Text>
               </Pressable>
@@ -308,31 +390,55 @@ export const LoginScreen: React.FC = () => {
           </Animated.View>
 
           {/* Divider */}
-          <Animated.View entering={FadeInDown.delay(400).springify().damping(8)} style={styles.divider}>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.textMuted }]}>{t.common.or}</Text>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          <Animated.View
+            entering={FadeInDown.delay(400).springify().damping(8)}
+            style={styles.divider}
+          >
+            <View
+              style={[styles.dividerLine, { backgroundColor: colors.border }]}
+            />
+            <Text style={[styles.dividerText, { color: colors.textMuted }]}>
+              {t.common.or}
+            </Text>
+            <View
+              style={[styles.dividerLine, { backgroundColor: colors.border }]}
+            />
           </Animated.View>
 
           {/* Google login */}
-          <Animated.View entering={FadeInDown.delay(500).springify().damping(8)}>
+          <Animated.View
+            entering={FadeInDown.delay(500).springify().damping(8)}
+          >
             <Button
               title={t.auth.loginWithGoogle}
               variant="outline"
               onPress={handleGoogleLogin}
               fullWidth
               size="lg"
-              icon={<Ionicons name="logo-google" size={20} color={colors.textPrimary} />}
+              icon={
+                <Ionicons
+                  name="logo-google"
+                  size={20}
+                  color={colors.textPrimary}
+                />
+              }
             />
           </Animated.View>
 
           {/* Register link */}
-          <Animated.View entering={FadeInDown.delay(600).springify().damping(8)} style={styles.registerContainer}>
-            <Text style={[styles.registerText, { color: colors.textSecondary }]}>
-              {t.auth.noAccount}{' '}
+          <Animated.View
+            entering={FadeInDown.delay(600).springify().damping(8)}
+            style={styles.registerContainer}
+          >
+            <Text
+              style={[styles.registerText, { color: colors.textSecondary }]}
+            >
+              {t.auth.noAccount}{" "}
             </Text>
-            <Pressable onPress={() => navigation.navigate('Register')}>
-              <Text style={[styles.registerLink, { color: colors.accentPrimary }]}>
+            <Pressable onPress={() => navigation.navigate("Register")}>
+              <Text
+                style={[styles.registerLink, { color: colors.accentPrimary }]}
+              >
                 {t.auth.signUp}
               </Text>
             </Pressable>
@@ -348,7 +454,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   glowContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
@@ -365,8 +471,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: sp.xl,
   },
   logoContainer: {
-    alignItems: 'center',
-    marginBottom: sp['3xl'],
+    alignItems: "center",
+    marginBottom: sp["3xl"],
   },
   logoGlow: {
     shadowOffset: { width: 0, height: 0 },
@@ -381,31 +487,31 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.xl,
   },
   logoText: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   logoDeep: {
-    fontSize: fontSize['3xl'],
+    fontSize: fontSize["3xl"],
     fontFamily: fontFamily.bodySemiBold,
   },
   logoSight: {
-    fontSize: fontSize['3xl'],
+    fontSize: fontSize["3xl"],
     fontFamily: fontFamily.bodySemiBold,
   },
   title: {
-    fontSize: fontSize['2xl'],
+    fontSize: fontSize["2xl"],
     fontFamily: fontFamily.bodySemiBold,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: sp.sm,
   },
   subtitle: {
     fontSize: fontSize.base,
     fontFamily: fontFamily.body,
-    textAlign: 'center',
-    marginBottom: sp['2xl'],
+    textAlign: "center",
+    marginBottom: sp["2xl"],
   },
   errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: sp.md,
     borderRadius: borderRadius.md,
     marginBottom: sp.lg,
@@ -421,7 +527,7 @@ const styles = StyleSheet.create({
     marginBottom: sp.lg,
   },
   forgotPassword: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     marginTop: -sp.sm,
     marginBottom: sp.lg,
   },
@@ -433,8 +539,8 @@ const styles = StyleSheet.create({
     marginTop: sp.sm,
   },
   divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: sp.xl,
   },
   dividerLine: {
@@ -447,8 +553,8 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
   },
   registerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: sp.xl,
   },
   registerText: {
@@ -461,13 +567,13 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.45)',
-    fontStyle: 'italic',
-    textAlign: 'center',
+    color: "rgba(255,255,255,0.45)",
+    fontStyle: "italic",
+    textAlign: "center",
     marginTop: 8,
   },
   orb: {
-    position: 'absolute',
+    position: "absolute",
     width: 300,
     height: 300,
     borderRadius: 150,
@@ -476,18 +582,18 @@ const styles = StyleSheet.create({
   glassFormWrapper: {
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    overflow: 'hidden',
+    borderColor: "rgba(255,255,255,0.10)",
+    overflow: "hidden",
     marginBottom: sp.lg,
   },
   glassFormContent: {
     padding: 24,
   },
   platformLogos: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "wrap",
     gap: sp.md,
     marginBottom: sp.xl,
     opacity: 0.4,

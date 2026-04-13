@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,25 +8,25 @@ import {
   Alert,
   Linking,
   Platform,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import * as Haptics from 'expo-haptics';
-import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { Header } from '../components/Header';
-import { Card, AnimatedToggle } from '../components/ui';
-import { sp, borderRadius } from '../theme/spacing';
-import { fontFamily, fontSize } from '../theme/typography';
-import { ANALYSIS_MODES, AI_MODELS, LANGUAGES } from '../constants/config';
-import { userApi } from '../services/api';
-import { requestNotificationPermissions } from '../services/notifications';
-import { analytics } from '../services/analytics';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import * as Haptics from "expo-haptics";
+import Constants from "expo-constants";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { Header } from "../components/Header";
+import { Card, AnimatedToggle } from "../components/ui";
+import { sp, borderRadius } from "../theme/spacing";
+import { fontFamily, fontSize } from "../theme/typography";
+import { ANALYSIS_MODES, AI_MODELS, LANGUAGES } from "../constants/config";
+import { userApi } from "../services/api";
+import { requestNotificationPermissions } from "../services/notifications";
+import { analytics } from "../services/analytics";
 
 interface SettingItemData {
   key: string;
@@ -34,7 +34,7 @@ interface SettingItemData {
   label: string;
   subtitle?: string;
   value?: string;
-  type: 'navigate' | 'toggle' | 'info';
+  type: "navigate" | "toggle" | "info";
   toggleValue?: boolean;
   onPress?: () => void;
   onToggle?: (value: boolean) => void;
@@ -56,10 +56,13 @@ const SettingItem: React.FC<{
     <Pressable
       style={[
         styles.settingItem,
-        !isLast && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+        !isLast && {
+          borderBottomColor: colors.border,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+        },
       ]}
       onPress={() => {
-        if (item.type === 'toggle' && item.onToggle) {
+        if (item.type === "toggle" && item.onToggle) {
           item.onToggle(!item.toggleValue);
         } else if (item.onPress) {
           Haptics.selectionAsync();
@@ -78,24 +81,29 @@ const SettingItem: React.FC<{
         <Text
           style={[
             styles.settingLabel,
-            { color: item.destructive ? colors.accentError : colors.textPrimary },
+            {
+              color: item.destructive ? colors.accentError : colors.textPrimary,
+            },
           ]}
         >
           {item.label}
         </Text>
       </View>
 
-      {item.type === 'toggle' && item.onToggle && (
+      {item.type === "toggle" && item.onToggle && (
         <AnimatedToggle
           value={!!item.toggleValue}
           onValueChange={item.onToggle}
         />
       )}
 
-      {item.type === 'navigate' && (
+      {item.type === "navigate" && (
         <View style={styles.settingItemRight}>
           {item.value && (
-            <Text style={[styles.settingValue, { color: colors.textMuted }]} numberOfLines={1}>
+            <Text
+              style={[styles.settingValue, { color: colors.textMuted }]}
+              numberOfLines={1}
+            >
               {item.value}
             </Text>
           )}
@@ -103,7 +111,7 @@ const SettingItem: React.FC<{
         </View>
       )}
 
-      {item.type === 'info' && item.value && (
+      {item.type === "info" && item.value && (
         <Text style={[styles.settingValue, { color: colors.textMuted }]}>
           {item.value}
         </Text>
@@ -118,10 +126,14 @@ export const SettingsScreen: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('tech');
+  useScreenDoodleVariant("tech");
 
-  const [selectedMode, setSelectedMode] = useState(user?.default_mode || 'synthesis');
-  const [selectedModel, setSelectedModel] = useState(user?.default_model || 'mistral-small');
+  const [selectedMode, setSelectedMode] = useState(
+    user?.default_mode || "synthesis",
+  );
+  const [selectedModel, setSelectedModel] = useState(
+    user?.default_model || "mistral-small",
+  );
   const [autoPlayVideos, setAutoPlayVideos] = useState(true);
   const [showTournesol, setShowTournesol] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -134,32 +146,53 @@ export const SettingsScreen: React.FC = () => {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const savedMode = await AsyncStorage.getItem('deepsight_default_mode');
-        const savedModel = await AsyncStorage.getItem('deepsight_default_model');
-        const savedAutoPlay = await AsyncStorage.getItem('deepsight_autoplay_videos');
-        const savedTournesol = await AsyncStorage.getItem('deepsight_show_tournesol');
-        const savedReduceMotion = await AsyncStorage.getItem('deepsight_reduce_motion');
+        const savedMode = await AsyncStorage.getItem("deepsight_default_mode");
+        const savedModel = await AsyncStorage.getItem(
+          "deepsight_default_model",
+        );
+        const savedAutoPlay = await AsyncStorage.getItem(
+          "deepsight_autoplay_videos",
+        );
+        const savedTournesol = await AsyncStorage.getItem(
+          "deepsight_show_tournesol",
+        );
+        const savedReduceMotion = await AsyncStorage.getItem(
+          "deepsight_reduce_motion",
+        );
 
         if (savedMode) setSelectedMode(savedMode);
         if (savedModel) setSelectedModel(savedModel);
-        if (savedAutoPlay !== null) setAutoPlayVideos(savedAutoPlay === 'true');
-        if (savedTournesol !== null) setShowTournesol(savedTournesol === 'true');
-        if (savedReduceMotion !== null) setReduceMotion(savedReduceMotion === 'true');
+        if (savedAutoPlay !== null) setAutoPlayVideos(savedAutoPlay === "true");
+        if (savedTournesol !== null)
+          setShowTournesol(savedTournesol === "true");
+        if (savedReduceMotion !== null)
+          setReduceMotion(savedReduceMotion === "true");
 
-        const savedPush = await AsyncStorage.getItem('deepsight_push_enabled');
-        const savedNotifyAnalysis = await AsyncStorage.getItem('deepsight_notify_analysis');
-        const savedNotifyFactCheck = await AsyncStorage.getItem('deepsight_notify_factcheck');
-        const savedNotifyCredits = await AsyncStorage.getItem('deepsight_notify_credits');
-        if (savedPush !== null) setPushEnabled(savedPush === 'true');
-        if (savedNotifyAnalysis !== null) setNotifyAnalysis(savedNotifyAnalysis === 'true');
-        if (savedNotifyFactCheck !== null) setNotifyFactCheck(savedNotifyFactCheck === 'true');
-        if (savedNotifyCredits !== null) setNotifyCredits(savedNotifyCredits === 'true');
+        const savedPush = await AsyncStorage.getItem("deepsight_push_enabled");
+        const savedNotifyAnalysis = await AsyncStorage.getItem(
+          "deepsight_notify_analysis",
+        );
+        const savedNotifyFactCheck = await AsyncStorage.getItem(
+          "deepsight_notify_factcheck",
+        );
+        const savedNotifyCredits = await AsyncStorage.getItem(
+          "deepsight_notify_credits",
+        );
+        if (savedPush !== null) setPushEnabled(savedPush === "true");
+        if (savedNotifyAnalysis !== null)
+          setNotifyAnalysis(savedNotifyAnalysis === "true");
+        if (savedNotifyFactCheck !== null)
+          setNotifyFactCheck(savedNotifyFactCheck === "true");
+        if (savedNotifyCredits !== null)
+          setNotifyCredits(savedNotifyCredits === "true");
 
         // Analytics opt-out (RGPD)
         const analyticsOptedOut = await analytics.isOptedOut();
         setAnalyticsEnabled(!analyticsOptedOut);
       } catch (error) {
-        if (__DEV__) { console.error('Failed to load settings:', error); }
+        if (__DEV__) {
+          console.error("Failed to load settings:", error);
+        }
       }
     };
     loadSettings();
@@ -178,46 +211,48 @@ export const SettingsScreen: React.FC = () => {
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      if (__DEV__) { console.error('Failed to save preference:', error); }
+      if (__DEV__) {
+        console.error("Failed to save preference:", error);
+      }
     }
   };
 
   const handleSelectMode = () => {
     Alert.alert(t.settings.defaultMode, undefined, [
-      ...ANALYSIS_MODES.map(mode => ({
+      ...ANALYSIS_MODES.map((mode) => ({
         text: mode.label,
         onPress: async () => {
           setSelectedMode(mode.id);
-          await savePreference('deepsight_default_mode', mode.id);
+          await savePreference("deepsight_default_mode", mode.id);
         },
       })),
-      { text: t.common.cancel, style: 'cancel' as const },
+      { text: t.common.cancel, style: "cancel" as const },
     ]);
   };
 
   const handleSelectModel = () => {
     Alert.alert(t.settings.defaultModel, undefined, [
-      ...AI_MODELS.map(model => ({
+      ...AI_MODELS.map((model) => ({
         text: `${model.label} (${model.provider})`,
         onPress: async () => {
           setSelectedModel(model.id);
-          await savePreference('deepsight_default_model', model.id);
+          await savePreference("deepsight_default_model", model.id);
         },
       })),
-      { text: t.common.cancel, style: 'cancel' as const },
+      { text: t.common.cancel, style: "cancel" as const },
     ]);
   };
 
   const handleSelectLanguage = () => {
     Alert.alert(t.settings.language, undefined, [
-      ...LANGUAGES.map(lang => ({
+      ...LANGUAGES.map((lang) => ({
         text: `${lang.flag} ${lang.label}`,
         onPress: async () => {
-          await setLanguage(lang.code as 'fr' | 'en');
+          await setLanguage(lang.code as "fr" | "en");
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         },
       })),
-      { text: t.common.cancel, style: 'cancel' as const },
+      { text: t.common.cancel, style: "cancel" as const },
     ]);
   };
 
@@ -227,11 +262,11 @@ export const SettingsScreen: React.FC = () => {
       if (!granted) {
         Alert.alert(
           t.settings.notifications,
-          Platform.OS === 'ios'
-            ? 'Enable notifications in Settings > DeepSight > Notifications'
-            : 'Enable notifications in device settings',
+          Platform.OS === "ios"
+            ? "Enable notifications in Settings > DeepSight > Notifications"
+            : "Enable notifications in device settings",
           [
-            { text: t.common.cancel, style: 'cancel' },
+            { text: t.common.cancel, style: "cancel" },
             { text: t.settings.title, onPress: () => Linking.openSettings() },
           ],
         );
@@ -239,100 +274,253 @@ export const SettingsScreen: React.FC = () => {
       }
     }
     setPushEnabled(value);
-    await AsyncStorage.setItem('deepsight_push_enabled', value.toString());
+    await AsyncStorage.setItem("deepsight_push_enabled", value.toString());
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const handleClearCache = () => {
-    Alert.alert(t.settings.clearCache, t.settings.clearCacheConfirm || 'Clear app cache?', [
-      { text: t.common.cancel, style: 'cancel' },
-      {
-        text: t.settings.clear || 'Clear',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            // Get all AsyncStorage keys and remove cache-related ones
-            const allKeys = await AsyncStorage.getAllKeys();
-            const cacheKeys = allKeys.filter(
-              (key) =>
-                key.startsWith('@deepsight_cache') ||
-                key.startsWith('@deepsight_offline') ||
-                key.includes('history_cache') ||
-                key.includes('_cache_')
-            );
-            if (cacheKeys.length > 0) {
-              await AsyncStorage.multiRemove(cacheKeys);
+    Alert.alert(
+      t.settings.clearCache,
+      t.settings.clearCacheConfirm || "Clear app cache?",
+      [
+        { text: t.common.cancel, style: "cancel" },
+        {
+          text: t.settings.clear || "Clear",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Get all AsyncStorage keys and remove cache-related ones
+              const allKeys = await AsyncStorage.getAllKeys();
+              const cacheKeys = allKeys.filter(
+                (key) =>
+                  key.startsWith("@deepsight_cache") ||
+                  key.startsWith("@deepsight_offline") ||
+                  key.includes("history_cache") ||
+                  key.includes("_cache_"),
+              );
+              if (cacheKeys.length > 0) {
+                await AsyncStorage.multiRemove(cacheKeys);
+              }
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Success,
+              );
+            } catch (error) {
+              if (__DEV__) {
+                console.error("Failed to clear cache:", error);
+              }
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             }
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          } catch (error) {
-            if (__DEV__) { console.error('Failed to clear cache:', error); }
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
-  const getModeLabel = () => ANALYSIS_MODES.find(m => m.id === selectedMode)?.label || 'Synthese';
-  const getModelLabel = () => AI_MODELS.find(m => m.id === selectedModel)?.label || 'Mistral Small';
-  const getLangLabel = () => LANGUAGES.find(l => l.code === language)?.label || 'Francais';
+  const getModeLabel = () =>
+    ANALYSIS_MODES.find((m) => m.id === selectedMode)?.label || "Synthese";
+  const getModelLabel = () =>
+    AI_MODELS.find((m) => m.id === selectedModel)?.label || "Mistral Small";
+  const getLangLabel = () =>
+    LANGUAGES.find((l) => l.code === language)?.label || "Francais";
 
   const sections: SectionData[] = [
     {
       title: t.nav.analysis,
       data: [
-        { key: 'mode', icon: 'document-text-outline', label: t.settings.defaultMode, value: getModeLabel(), type: 'navigate', onPress: handleSelectMode },
-        { key: 'model', icon: 'hardware-chip-outline', label: t.settings.defaultModel, value: getModelLabel(), type: 'navigate', onPress: handleSelectModel },
+        {
+          key: "mode",
+          icon: "document-text-outline",
+          label: t.settings.defaultMode,
+          value: getModeLabel(),
+          type: "navigate",
+          onPress: handleSelectMode,
+        },
+        {
+          key: "model",
+          icon: "hardware-chip-outline",
+          label: t.settings.defaultModel,
+          value: getModelLabel(),
+          type: "navigate",
+          onPress: handleSelectModel,
+        },
       ],
     },
     {
       title: t.settings.appearance,
       data: [
-        { key: 'dark', icon: isDark ? 'moon' : 'sunny', label: t.settings.darkMode, type: 'toggle', toggleValue: isDark, onToggle: () => toggleTheme() },
-        { key: 'lang', icon: 'language-outline', label: t.settings.language, value: getLangLabel(), type: 'navigate', onPress: handleSelectLanguage },
-        { key: 'motion', icon: 'speedometer-outline', label: t.settings.reduceMotion, type: 'toggle', toggleValue: reduceMotion, onToggle: async (v: boolean) => { setReduceMotion(v); await savePreference('deepsight_reduce_motion', v.toString()); } },
+        {
+          key: "dark",
+          icon: isDark ? "moon" : "sunny",
+          label: t.settings.darkMode,
+          type: "toggle",
+          toggleValue: isDark,
+          onToggle: () => toggleTheme(),
+        },
+        {
+          key: "lang",
+          icon: "language-outline",
+          label: t.settings.language,
+          value: getLangLabel(),
+          type: "navigate",
+          onPress: handleSelectLanguage,
+        },
+        {
+          key: "motion",
+          icon: "speedometer-outline",
+          label: t.settings.reduceMotion,
+          type: "toggle",
+          toggleValue: reduceMotion,
+          onToggle: async (v: boolean) => {
+            setReduceMotion(v);
+            await savePreference("deepsight_reduce_motion", v.toString());
+          },
+        },
       ],
     },
     {
       title: t.settings.videoPlayback,
       data: [
-        { key: 'autoplay', icon: 'play-circle-outline', label: t.settings.autoPlayVideos, type: 'toggle', toggleValue: autoPlayVideos, onToggle: async (v: boolean) => { setAutoPlayVideos(v); await savePreference('deepsight_autoplay_videos', v.toString()); } },
-        { key: 'tournesol', icon: 'flower-outline', label: t.settings.showTournesol, type: 'toggle', toggleValue: showTournesol, onToggle: async (v: boolean) => { setShowTournesol(v); await savePreference('deepsight_show_tournesol', v.toString()); } },
+        {
+          key: "autoplay",
+          icon: "play-circle-outline",
+          label: t.settings.autoPlayVideos,
+          type: "toggle",
+          toggleValue: autoPlayVideos,
+          onToggle: async (v: boolean) => {
+            setAutoPlayVideos(v);
+            await savePreference("deepsight_autoplay_videos", v.toString());
+          },
+        },
+        {
+          key: "tournesol",
+          icon: "flower-outline",
+          label: t.settings.showTournesol,
+          type: "toggle",
+          toggleValue: showTournesol,
+          onToggle: async (v: boolean) => {
+            setShowTournesol(v);
+            await savePreference("deepsight_show_tournesol", v.toString());
+          },
+        },
       ],
     },
     {
       title: t.settings.notifications,
       data: [
-        { key: 'push', icon: 'notifications-outline', label: t.settings.pushNotifications, type: 'toggle', toggleValue: pushEnabled, onToggle: handleTogglePush },
-        { key: 'notify_analysis', icon: 'checkmark-circle-outline', label: t.settings.analysisComplete, type: 'toggle', toggleValue: notifyAnalysis && pushEnabled, onToggle: async (v: boolean) => { setNotifyAnalysis(v); await AsyncStorage.setItem('deepsight_notify_analysis', v.toString()); } },
-        { key: 'notify_factcheck', icon: 'shield-checkmark-outline', label: (t.settings as any).factCheckComplete || 'Fact-check complete', type: 'toggle', toggleValue: notifyFactCheck && pushEnabled, onToggle: async (v: boolean) => { setNotifyFactCheck(v); await AsyncStorage.setItem('deepsight_notify_factcheck', v.toString()); } },
-        { key: 'notify_credits', icon: 'wallet-outline', label: (t.settings as any).creditsLow || 'Credits low', type: 'toggle', toggleValue: notifyCredits && pushEnabled, onToggle: async (v: boolean) => { setNotifyCredits(v); await AsyncStorage.setItem('deepsight_notify_credits', v.toString()); } },
+        {
+          key: "push",
+          icon: "notifications-outline",
+          label: t.settings.pushNotifications,
+          type: "toggle",
+          toggleValue: pushEnabled,
+          onToggle: handleTogglePush,
+        },
+        {
+          key: "notify_analysis",
+          icon: "checkmark-circle-outline",
+          label: t.settings.analysisComplete,
+          type: "toggle",
+          toggleValue: notifyAnalysis && pushEnabled,
+          onToggle: async (v: boolean) => {
+            setNotifyAnalysis(v);
+            await AsyncStorage.setItem(
+              "deepsight_notify_analysis",
+              v.toString(),
+            );
+          },
+        },
+        {
+          key: "notify_factcheck",
+          icon: "shield-checkmark-outline",
+          label: (t.settings as any).factCheckComplete || "Fact-check complete",
+          type: "toggle",
+          toggleValue: notifyFactCheck && pushEnabled,
+          onToggle: async (v: boolean) => {
+            setNotifyFactCheck(v);
+            await AsyncStorage.setItem(
+              "deepsight_notify_factcheck",
+              v.toString(),
+            );
+          },
+        },
+        {
+          key: "notify_credits",
+          icon: "wallet-outline",
+          label: (t.settings as any).creditsLow || "Credits low",
+          type: "toggle",
+          toggleValue: notifyCredits && pushEnabled,
+          onToggle: async (v: boolean) => {
+            setNotifyCredits(v);
+            await AsyncStorage.setItem(
+              "deepsight_notify_credits",
+              v.toString(),
+            );
+          },
+        },
       ],
     },
     {
-      title: t.settings.dataStorage || 'Data & Storage',
+      title: t.settings.dataStorage || "Data & Storage",
       data: [
-        { key: 'analytics', icon: 'analytics-outline', label: (t.settings as any).analyticsTracking || 'Usage analytics', subtitle: (t.settings as any).analyticsDesc || 'Help improve DeepSight', type: 'toggle', toggleValue: analyticsEnabled, onToggle: async (v: boolean) => { setAnalyticsEnabled(v); if (v) { await analytics.optIn(); } else { await analytics.optOut(); } } },
-        { key: 'cache', icon: 'trash-outline', label: t.settings.clearCache, type: 'navigate', onPress: handleClearCache, destructive: true },
+        {
+          key: "analytics",
+          icon: "analytics-outline",
+          label: (t.settings as any).analyticsTracking || "Usage analytics",
+          subtitle:
+            (t.settings as any).analyticsDesc || "Help improve DeepSight",
+          type: "toggle",
+          toggleValue: analyticsEnabled,
+          onToggle: async (v: boolean) => {
+            setAnalyticsEnabled(v);
+            if (v) {
+              await analytics.optIn();
+            } else {
+              await analytics.optOut();
+            }
+          },
+        },
+        {
+          key: "cache",
+          icon: "trash-outline",
+          label: t.settings.clearCache,
+          type: "navigate",
+          onPress: handleClearCache,
+          destructive: true,
+        },
       ],
     },
     {
       title: t.settings.about,
       data: [
-        { key: 'about', icon: 'information-circle-outline', label: 'À propos', type: 'navigate', onPress: () => navigation.navigate('About' as any) },
-        { key: 'version', icon: 'code-slash-outline', label: t.settings.version, value: Constants.expoConfig?.version || '1.0.0', type: 'info' },
+        {
+          key: "about",
+          icon: "information-circle-outline",
+          label: "À propos",
+          type: "navigate",
+          onPress: () => navigation.navigate("About" as any),
+        },
+        {
+          key: "version",
+          icon: "code-slash-outline",
+          label: t.settings.version,
+          value: Constants.expoConfig?.version || "1.0.0",
+          type: "info",
+        },
       ],
     },
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
       <Header title={t.nav.settings} showBack />
 
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.key}
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + sp.xl }]}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + sp.xl },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
@@ -342,7 +530,12 @@ export const SettingsScreen: React.FC = () => {
             <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
               {section.title}
             </Text>
-            <View style={[styles.sectionCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+            <View
+              style={[
+                styles.sectionCard,
+                { backgroundColor: colors.bgCard, borderColor: colors.border },
+              ]}
+            >
               {section.data.map((sItem, sIndex) => (
                 <SettingItem
                   key={sItem.key}
@@ -370,7 +563,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: fontSize.xs,
     fontFamily: fontFamily.bodySemiBold,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: sp.sm,
     marginTop: sp.lg,
@@ -379,25 +572,25 @@ const styles = StyleSheet.create({
   cardWrapper: {
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: sp.xs,
   },
   sectionCard: {
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: sp.md,
     paddingHorizontal: sp.lg,
     minHeight: 52,
   },
   settingItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
     marginRight: sp.md,
   },
@@ -405,8 +598,8 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: sp.md,
   },
   settingLabel: {
@@ -415,8 +608,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingItemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.xs,
     maxWidth: 150,
   },

@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { User, AuthTokens } from '../types';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { User, AuthTokens } from "../types";
 
 interface AuthStore {
   user: User | null;
@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthStore>()(
       setHydrated: (value) => set({ isHydrated: value }),
     }),
     {
-      name: 'deepsight-auth-v2',
+      name: "deepsight-auth-v2",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         user: state.user,
@@ -42,6 +42,6 @@ export const useAuthStore = create<AuthStore>()(
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);
       },
-    }
-  )
+    },
+  ),
 );

@@ -1,20 +1,15 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  View,
-  TextInput,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { View, TextInput, Pressable, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/contexts/ThemeContext';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { timings } from '@/theme/animations';
+} from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/contexts/ThemeContext";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
+import { timings } from "@/theme/animations";
 
 interface SearchBarProps {
   value: string;
@@ -22,7 +17,11 @@ interface SearchBarProps {
   onClose: () => void;
 }
 
-export const SearchBar: React.FC<SearchBarProps> = ({ value, onChangeText, onClose }) => {
+export const SearchBar: React.FC<SearchBarProps> = ({
+  value,
+  onChangeText,
+  onClose,
+}) => {
   const { colors } = useTheme();
   const inputRef = useRef<TextInput>(null);
   const [localValue, setLocalValue] = useState(value);
@@ -45,17 +44,20 @@ export const SearchBar: React.FC<SearchBarProps> = ({ value, onChangeText, onClo
     transform: [{ scaleX: expandAnim.value }],
   }));
 
-  const handleChange = useCallback((text: string) => {
-    setLocalValue(text);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      onChangeText(text);
-    }, 300);
-  }, [onChangeText]);
+  const handleChange = useCallback(
+    (text: string) => {
+      setLocalValue(text);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        onChangeText(text);
+      }, 300);
+    },
+    [onChangeText],
+  );
 
   const handleClose = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    onChangeText('');
+    onChangeText("");
     onClose();
   }, [onChangeText, onClose]);
 
@@ -70,7 +72,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({ value, onChangeText, onClo
         animatedStyle,
       ]}
     >
-      <Ionicons name="search" size={18} color={colors.textTertiary} style={styles.icon} />
+      <Ionicons
+        name="search"
+        size={18}
+        color={colors.textTertiary}
+        style={styles.icon}
+      />
       <TextInput
         ref={inputRef}
         value={localValue}
@@ -91,8 +98,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({ value, onChangeText, onClo
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: borderRadius.md,
     borderWidth: 1,
     paddingHorizontal: sp.md,

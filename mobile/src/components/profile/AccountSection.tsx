@@ -1,16 +1,27 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, Linking, TextInput } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { userApi, authApi, ApiError } from '@/services/api';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { Button } from '@/components/ui/Button';
-import { SimpleBottomSheet, type SimpleBottomSheetRef } from '@/components/ui/SimpleBottomSheet';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
+import React, { useState, useRef, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Alert,
+  Linking,
+  TextInput,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { userApi, authApi, ApiError } from "@/services/api";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { Button } from "@/components/ui/Button";
+import {
+  SimpleBottomSheet,
+  type SimpleBottomSheetRef,
+} from "@/components/ui/SimpleBottomSheet";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
 
 export const AccountSection: React.FC = () => {
   const { colors } = useTheme();
@@ -18,58 +29,61 @@ export const AccountSection: React.FC = () => {
   const router = useRouter();
 
   // Sheet state
-  const [activeSheet, setActiveSheet] = useState<'profile' | 'password' | 'delete' | null>(null);
+  const [activeSheet, setActiveSheet] = useState<
+    "profile" | "password" | "delete" | null
+  >(null);
   const sheetRef = useRef<SimpleBottomSheetRef>(null);
 
   // Profile edit
-  const [editUsername, setEditUsername] = useState(user?.username ?? '');
-  const [editEmail, setEditEmail] = useState(user?.email ?? '');
+  const [editUsername, setEditUsername] = useState(user?.username ?? "");
+  const [editEmail, setEditEmail] = useState(user?.email ?? "");
   const [profileLoading, setProfileLoading] = useState(false);
-  const [profileError, setProfileError] = useState('');
+  const [profileError, setProfileError] = useState("");
 
   // Password change
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
+  const [passwordError, setPasswordError] = useState("");
 
   // Delete account
-  const [deletePassword, setDeletePassword] = useState('');
+  const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const openSheet = (type: 'profile' | 'password' | 'delete') => {
+  const openSheet = (type: "profile" | "password" | "delete") => {
     setActiveSheet(type);
     // Reset states
-    if (type === 'profile') {
-      setEditUsername(user?.username ?? '');
-      setEditEmail(user?.email ?? '');
-      setProfileError('');
-    } else if (type === 'password') {
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setPasswordError('');
+    if (type === "profile") {
+      setEditUsername(user?.username ?? "");
+      setEditEmail(user?.email ?? "");
+      setProfileError("");
+    } else if (type === "password") {
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordError("");
     } else {
-      setDeletePassword('');
+      setDeletePassword("");
     }
     sheetRef.current?.snapToIndex(0);
   };
 
   const handleSaveProfile = async () => {
     if (!editUsername.trim()) {
-      setProfileError('Le nom d\'utilisateur est requis');
+      setProfileError("Le nom d'utilisateur est requis");
       return;
     }
     setProfileLoading(true);
-    setProfileError('');
+    setProfileError("");
     try {
       await userApi.updateProfile({ username: editUsername.trim() });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await refreshUser();
       sheetRef.current?.close();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Erreur lors de la mise à jour';
+      const message =
+        err instanceof ApiError ? err.message : "Erreur lors de la mise à jour";
       setProfileError(message);
     } finally {
       setProfileLoading(false);
@@ -78,26 +92,27 @@ export const AccountSection: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
-      setPasswordError('Tous les champs sont requis');
+      setPasswordError("Tous les champs sont requis");
       return;
     }
     if (newPassword.length < 8) {
-      setPasswordError('Le mot de passe doit faire au moins 8 caractères');
+      setPasswordError("Le mot de passe doit faire au moins 8 caractères");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('Les mots de passe ne correspondent pas');
+      setPasswordError("Les mots de passe ne correspondent pas");
       return;
     }
     setPasswordLoading(true);
-    setPasswordError('');
+    setPasswordError("");
     try {
       await userApi.changePassword(oldPassword, newPassword);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Succès', 'Mot de passe modifié avec succès.');
+      Alert.alert("Succès", "Mot de passe modifié avec succès.");
       sheetRef.current?.close();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Erreur lors du changement';
+      const message =
+        err instanceof ApiError ? err.message : "Erreur lors du changement";
       setPasswordError(message);
     } finally {
       setPasswordLoading(false);
@@ -106,14 +121,14 @@ export const AccountSection: React.FC = () => {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Supprimer le compte',
-      'Es-tu sûr ? Cette action est irréversible. Toutes tes données seront supprimées.',
+      "Supprimer le compte",
+      "Es-tu sûr ? Cette action est irréversible. Toutes tes données seront supprimées.",
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: "Annuler", style: "cancel" },
         {
-          text: 'Continuer',
-          style: 'destructive',
-          onPress: () => openSheet('delete'),
+          text: "Continuer",
+          style: "destructive",
+          onPress: () => openSheet("delete"),
         },
       ],
     );
@@ -121,7 +136,7 @@ export const AccountSection: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (!deletePassword) {
-      Alert.alert('Erreur', 'Le mot de passe est requis pour confirmer.');
+      Alert.alert("Erreur", "Le mot de passe est requis pour confirmer.");
       return;
     }
     setDeleteLoading(true);
@@ -130,10 +145,11 @@ export const AccountSection: React.FC = () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       sheetRef.current?.close();
       await logout();
-      router.replace('/(auth)');
+      router.replace("/(auth)");
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Erreur lors de la suppression';
-      Alert.alert('Erreur', message);
+      const message =
+        err instanceof ApiError ? err.message : "Erreur lors de la suppression";
+      Alert.alert("Erreur", message);
     } finally {
       setDeleteLoading(false);
     }
@@ -159,7 +175,7 @@ export const AccountSection: React.FC = () => {
         {label}
       </Text>
       <Ionicons
-        name={options?.icon ?? 'chevron-forward'}
+        name={options?.icon ?? "chevron-forward"}
         size={18}
         color={options?.danger ? colors.accentError : colors.textMuted}
       />
@@ -182,20 +198,26 @@ export const AccountSection: React.FC = () => {
           Compte
         </Text>
 
-        {renderRow('Modifier le profil', () => openSheet('profile'))}
-        {renderRow('Changer le mot de passe', () => openSheet('password'), { icon: 'lock-closed-outline' })}
-        {renderRow('Conditions d\'utilisation', () =>
-          Linking.openURL('https://www.deepsightsynthesis.com/legal'),
-        { icon: 'document-text-outline' })}
-        {renderRow('Nous contacter', () =>
-          Linking.openURL('mailto:contact@deepsightsynthesis.com'),
-        { icon: 'mail-outline' })}
+        {renderRow("Modifier le profil", () => openSheet("profile"))}
+        {renderRow("Changer le mot de passe", () => openSheet("password"), {
+          icon: "lock-closed-outline",
+        })}
+        {renderRow(
+          "Conditions d'utilisation",
+          () => Linking.openURL("https://www.deepsightsynthesis.com/legal"),
+          { icon: "document-text-outline" },
+        )}
+        {renderRow(
+          "Nous contacter",
+          () => Linking.openURL("mailto:contact@deepsightsynthesis.com"),
+          { icon: "mail-outline" },
+        )}
 
         <View style={[styles.separator, { backgroundColor: colors.border }]} />
 
-        {renderRow('Supprimer mon compte', handleDeleteAccount, {
+        {renderRow("Supprimer mon compte", handleDeleteAccount, {
           danger: true,
-          icon: 'trash-outline',
+          icon: "trash-outline",
         })}
       </GlassCard>
 
@@ -207,12 +229,14 @@ export const AccountSection: React.FC = () => {
       >
         <View style={styles.sheetContent}>
           {/* Modifier le profil */}
-          {activeSheet === 'profile' && (
+          {activeSheet === "profile" && (
             <>
               <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
                 Modifier le profil
               </Text>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.inputLabel, { color: colors.textSecondary }]}
+              >
                 Nom d'utilisateur
               </Text>
               <TextInput
@@ -223,7 +247,9 @@ export const AccountSection: React.FC = () => {
                 placeholderTextColor={colors.textMuted}
                 autoCapitalize="none"
               />
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.inputLabel, { color: colors.textSecondary }]}
+              >
                 Email
               </Text>
               <TextInput
@@ -251,12 +277,14 @@ export const AccountSection: React.FC = () => {
           )}
 
           {/* Changer le mot de passe */}
-          {activeSheet === 'password' && (
+          {activeSheet === "password" && (
             <>
               <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
                 Changer le mot de passe
               </Text>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.inputLabel, { color: colors.textSecondary }]}
+              >
                 Mot de passe actuel
               </Text>
               <TextInput
@@ -267,7 +295,9 @@ export const AccountSection: React.FC = () => {
                 placeholderTextColor={colors.textMuted}
                 secureTextEntry
               />
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.inputLabel, { color: colors.textSecondary }]}
+              >
                 Nouveau mot de passe
               </Text>
               <TextInput
@@ -278,7 +308,9 @@ export const AccountSection: React.FC = () => {
                 placeholderTextColor={colors.textMuted}
                 secureTextEntry
               />
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.inputLabel, { color: colors.textSecondary }]}
+              >
                 Confirmer le mot de passe
               </Text>
               <TextInput
@@ -305,13 +337,16 @@ export const AccountSection: React.FC = () => {
           )}
 
           {/* Confirmation suppression */}
-          {activeSheet === 'delete' && (
+          {activeSheet === "delete" && (
             <>
               <Text style={[styles.sheetTitle, { color: colors.accentError }]}>
                 Supprimer le compte
               </Text>
-              <Text style={[styles.deleteWarning, { color: colors.textSecondary }]}>
-                Confirme en saisissant ton mot de passe. Cette action est irréversible.
+              <Text
+                style={[styles.deleteWarning, { color: colors.textSecondary }]}
+              >
+                Confirme en saisissant ton mot de passe. Cette action est
+                irréversible.
               </Text>
               <TextInput
                 style={inputStyle}
@@ -347,9 +382,9 @@ const styles = StyleSheet.create({
     marginBottom: sp.md,
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: sp.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
@@ -363,13 +398,13 @@ const styles = StyleSheet.create({
   },
   sheetContent: {
     paddingHorizontal: sp.xl,
-    paddingBottom: sp['3xl'],
+    paddingBottom: sp["3xl"],
   },
   sheetTitle: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.lg,
     marginBottom: sp.lg,
-    textAlign: 'center',
+    textAlign: "center",
   },
   inputLabel: {
     fontFamily: fontFamily.bodyMedium,
@@ -400,7 +435,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
     marginBottom: sp.lg,
-    textAlign: 'center',
+    textAlign: "center",
   },
   sheetButton: {
     marginTop: sp.sm,

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -9,47 +9,47 @@ import {
   Alert,
   TextInput,
   Keyboard,
-} from 'react-native';
+} from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-} from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { SimpleBottomSheetRef } from '@/components/ui/SimpleBottomSheet';
-import { router } from 'expo-router';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/contexts/ThemeContext';
-import * as Haptics from 'expo-haptics';
-import { useAuthStore } from '@/stores/authStore';
-import { useAuth } from '@/contexts/AuthContext';
-import { historyApi, videoApi } from '@/services/api';
-import { Avatar } from '@/components/ui/Avatar';
-import { YouTubeSearch } from '@/components/home/YouTubeSearch';
-import { URLInput } from '@/components/home/URLInput';
-import { CreditBar } from '@/components/home/CreditBar';
-import { RecentCarousel } from '@/components/home/RecentCarousel';
-import { OptionsSheet } from '@/components/home/OptionsSheet';
-import type { AnalysisSummary } from '@/types';
-import { textStyles, fontFamily, fontSize } from '@/theme/typography';
-import { sp, borderRadius } from '@/theme/spacing';
-import { palette } from '@/theme/colors';
-import { DoodleBackground } from '@/components/ui/DoodleBackground';
-import { TournesolRecommendations } from '@/components/tournesol/TournesolRecommendations';
-import { DeepSightSpinner } from '@/components/ui/DeepSightSpinner';
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { SimpleBottomSheetRef } from "@/components/ui/SimpleBottomSheet";
+import { router } from "expo-router";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/contexts/ThemeContext";
+import * as Haptics from "expo-haptics";
+import { useAuthStore } from "@/stores/authStore";
+import { useAuth } from "@/contexts/AuthContext";
+import { historyApi, videoApi } from "@/services/api";
+import { Avatar } from "@/components/ui/Avatar";
+import { YouTubeSearch } from "@/components/home/YouTubeSearch";
+import { URLInput } from "@/components/home/URLInput";
+import { CreditBar } from "@/components/home/CreditBar";
+import { RecentCarousel } from "@/components/home/RecentCarousel";
+import { OptionsSheet } from "@/components/home/OptionsSheet";
+import type { AnalysisSummary } from "@/types";
+import { textStyles, fontFamily, fontSize } from "@/theme/typography";
+import { sp, borderRadius } from "@/theme/spacing";
+import { palette } from "@/theme/colors";
+import { DoodleBackground } from "@/components/ui/DoodleBackground";
+import { TournesolRecommendations } from "@/components/tournesol/TournesolRecommendations";
+import { DeepSightSpinner } from "@/components/ui/DeepSightSpinner";
 
 // Platform logos HD
-const YOUTUBE_ICON = require('@/assets/platforms/youtube-icon-red.png');
-const TIKTOK_NOTE = require('@/assets/platforms/tiktok-note-white.png');
-const MISTRAL_LOGO = require('@/assets/platforms/mistral-logo-white.png');
-const TOURNESOL_LOGO = require('@/assets/platforms/tournesol-logo.png');
+const YOUTUBE_ICON = require("@/assets/platforms/youtube-icon-red.png");
+const TIKTOK_NOTE = require("@/assets/platforms/tiktok-note-white.png");
+const MISTRAL_LOGO = require("@/assets/platforms/mistral-logo-white.png");
+const TOURNESOL_LOGO = require("@/assets/platforms/tournesol-logo.png");
 
-type InputMode = 'search' | 'url';
+type InputMode = "search" | "url";
 
 const TABS: { key: InputMode; label: string; icon: string }[] = [
-  { key: 'search', label: 'Recherche', icon: 'search-outline' },
-  { key: 'url', label: 'Coller un lien', icon: 'link-outline' },
+  { key: "search", label: "Recherche", icon: "search-outline" },
+  { key: "url", label: "Coller un lien", icon: "link-outline" },
 ];
 
 export default function HomeScreen() {
@@ -59,22 +59,25 @@ export default function HomeScreen() {
   const { logout } = useAuth();
   const optionsRef = useRef<SimpleBottomSheetRef>(null);
 
-  const [mode, setMode] = useState<InputMode>('search');
+  const [mode, setMode] = useState<InputMode>("search");
   const [recents, setRecents] = useState<AnalysisSummary[]>([]);
   const [favorites, setFavorites] = useState<AnalysisSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tournesolRefreshKey, setTournesolRefreshKey] = useState(0);
-  const [quickChatUrl, setQuickChatUrl] = useState('');
+  const [quickChatUrl, setQuickChatUrl] = useState("");
   const [quickChatLoading, setQuickChatLoading] = useState(false);
 
   // Quick Chat handler
   const handleQuickChat = useCallback(async () => {
     const url = quickChatUrl.trim();
     if (!url) return;
-    const isValid = url.includes('youtube.com') || url.includes('youtu.be') || url.includes('tiktok.com');
+    const isValid =
+      url.includes("youtube.com") ||
+      url.includes("youtu.be") ||
+      url.includes("tiktok.com");
     if (!isValid) {
-      Alert.alert('Lien invalide', 'Colle un lien YouTube ou TikTok valide.');
+      Alert.alert("Lien invalide", "Colle un lien YouTube ou TikTok valide.");
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -82,13 +85,21 @@ export default function HomeScreen() {
     setQuickChatLoading(true);
     try {
       const result = await videoApi.quickChat(url);
-      setQuickChatUrl('');
+      setQuickChatUrl("");
       router.push({
-        pathname: '/(tabs)/analysis/[id]',
-        params: { id: String(result.summary_id), backTo: 'home', initialTab: '1', quickChat: 'true' },
+        pathname: "/(tabs)/analysis/[id]",
+        params: {
+          id: String(result.summary_id),
+          backTo: "home",
+          initialTab: "1",
+          quickChat: "true",
+        },
       } as any);
     } catch (err: any) {
-      Alert.alert('Erreur Quick Chat', err?.message || 'Impossible de préparer le chat.');
+      Alert.alert(
+        "Erreur Quick Chat",
+        err?.message || "Impossible de préparer le chat.",
+      );
     } finally {
       setQuickChatLoading(false);
     }
@@ -100,14 +111,17 @@ export default function HomeScreen() {
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorX.value }],
-    width: tabWidths[mode === 'search' ? 0 : 1] || 100,
+    width: tabWidths[mode === "search" ? 0 : 1] || 100,
   }));
 
-  const handleTabPress = useCallback((tab: InputMode, index: number) => {
-    setMode(tab);
-    const offset = tabWidths.slice(0, index).reduce((a, b) => a + b, 0);
-    indicatorX.value = withSpring(offset, { damping: 20, stiffness: 200 });
-  }, [tabWidths, indicatorX]);
+  const handleTabPress = useCallback(
+    (tab: InputMode, index: number) => {
+      setMode(tab);
+      const offset = tabWidths.slice(0, index).reduce((a, b) => a + b, 0);
+      indicatorX.value = withSpring(offset, { damping: 20, stiffness: 200 });
+    },
+    [tabWidths, indicatorX],
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -173,18 +187,20 @@ export default function HomeScreen() {
           </Text>
           <Pressable
             onPress={() => {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Warning,
+              );
               Alert.alert(
-                'Se déconnecter',
-                'Es-tu sûr de vouloir te déconnecter ?',
+                "Se déconnecter",
+                "Es-tu sûr de vouloir te déconnecter ?",
                 [
-                  { text: 'Annuler', style: 'cancel' },
+                  { text: "Annuler", style: "cancel" },
                   {
-                    text: 'Déconnexion',
-                    style: 'destructive',
+                    text: "Déconnexion",
+                    style: "destructive",
                     onPress: async () => {
                       await logout();
-                      router.replace('/(auth)');
+                      router.replace("/(auth)");
                     },
                   },
                 ],
@@ -193,13 +209,19 @@ export default function HomeScreen() {
             accessibilityLabel="Se déconnecter"
             hitSlop={8}
           >
-            <Ionicons name="log-out-outline" size={24} color={colors.accentError} />
+            <Ionicons
+              name="log-out-outline"
+              size={24}
+              color={colors.accentError}
+            />
           </Pressable>
         </View>
 
         {/* Platform Logos Banner */}
         <View style={styles.platformBanner}>
-          <Text style={[styles.platformSubtitle, { color: colors.textTertiary }]}>
+          <Text
+            style={[styles.platformSubtitle, { color: colors.textTertiary }]}
+          >
             Analysez vos vidéos
           </Text>
           <View style={styles.platformLogos}>
@@ -209,31 +231,50 @@ export default function HomeScreen() {
                 style={styles.platformLogoYt}
                 contentFit="contain"
               />
-              <Text style={[styles.platformLogoLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.platformLogoLabel,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 YouTube
               </Text>
             </View>
-            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+            <View
+              style={[
+                styles.platformDivider,
+                { backgroundColor: colors.border },
+              ]}
+            />
             <View style={styles.platformLogoItem}>
               <Image
                 source={TIKTOK_NOTE}
                 style={styles.platformLogoTt}
                 contentFit="contain"
               />
-              <Text style={[styles.platformLogoLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.platformLogoLabel,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 TikTok
               </Text>
             </View>
           </View>
           {/* Powered by Mistral + Tournesol */}
           <View style={styles.poweredRow}>
-            <Text style={[styles.poweredText, { color: colors.textMuted }]}>Propulsé par</Text>
+            <Text style={[styles.poweredText, { color: colors.textMuted }]}>
+              Propulsé par
+            </Text>
             <Image
               source={MISTRAL_LOGO}
-              style={[styles.mistralLogo, !isDark && { tintColor: '#1a1a2e' }]}
+              style={[styles.mistralLogo, !isDark && { tintColor: "#1a1a2e" }]}
               contentFit="contain"
             />
-            <View style={[styles.poweredSep, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.poweredSep, { backgroundColor: colors.border }]}
+            />
             <Image
               source={TOURNESOL_LOGO}
               style={styles.tournesolLogo}
@@ -243,11 +284,16 @@ export default function HomeScreen() {
         </View>
 
         {/* Mode Tabs */}
-        <View style={[styles.tabBar, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.tabBar,
+            { backgroundColor: colors.bgSecondary, borderColor: colors.border },
+          ]}
+        >
           <Animated.View
             style={[
               styles.tabIndicator,
-              { backgroundColor: palette.indigo + '20' },
+              { backgroundColor: palette.indigo + "20" },
               indicatorStyle,
             ]}
           />
@@ -279,7 +325,9 @@ export default function HomeScreen() {
                     styles.tabLabel,
                     {
                       color: isActive ? palette.indigo : colors.textMuted,
-                      fontFamily: isActive ? fontFamily.bodySemiBold : fontFamily.body,
+                      fontFamily: isActive
+                        ? fontFamily.bodySemiBold
+                        : fontFamily.body,
                     },
                   ]}
                 >
@@ -291,7 +339,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Input zone based on mode */}
-        {mode === 'search' ? (
+        {mode === "search" ? (
           <YouTubeSearch onOptionsPress={handleOptionsPress} />
         ) : (
           <URLInput onOptionsPress={handleOptionsPress} />
@@ -301,20 +349,46 @@ export default function HomeScreen() {
         <CreditBar />
 
         {/* Quick Chat Block */}
-        <View style={[styles.quickChatBox, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.quickChatBox,
+            { backgroundColor: colors.bgElevated, borderColor: colors.border },
+          ]}
+        >
           <View style={styles.quickChatHeader}>
             <Ionicons name="flash" size={16} color={palette.amber} />
-            <Text style={[styles.quickChatTitle, { color: colors.textPrimary }]}>Quick Chat</Text>
-            <View style={[styles.quickChatBadge, { backgroundColor: palette.green + '20' }]}>
-              <Text style={[styles.quickChatBadgeText, { color: palette.green }]}>0 crédit</Text>
+            <Text
+              style={[styles.quickChatTitle, { color: colors.textPrimary }]}
+            >
+              Quick Chat
+            </Text>
+            <View
+              style={[
+                styles.quickChatBadge,
+                { backgroundColor: palette.green + "20" },
+              ]}
+            >
+              <Text
+                style={[styles.quickChatBadgeText, { color: palette.green }]}
+              >
+                0 crédit
+              </Text>
             </View>
           </View>
           <Text style={[styles.quickChatDesc, { color: colors.textTertiary }]}>
-            Chatte directement avec une vidéo YouTube ou TikTok — sans analyse complète
+            Chatte directement avec une vidéo YouTube ou TikTok — sans analyse
+            complète
           </Text>
           <View style={styles.quickChatRow}>
             <TextInput
-              style={[styles.quickChatInput, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.border }]}
+              style={[
+                styles.quickChatInput,
+                {
+                  backgroundColor: colors.bgSecondary,
+                  color: colors.textPrimary,
+                  borderColor: colors.border,
+                },
+              ]}
               placeholder="https://youtube.com/... ou tiktok.com/..."
               placeholderTextColor={colors.textMuted}
               value={quickChatUrl}
@@ -327,14 +401,25 @@ export default function HomeScreen() {
               editable={!quickChatLoading}
             />
             <Pressable
-              style={[styles.quickChatBtn, { backgroundColor: quickChatUrl.trim() ? palette.indigo : colors.bgSecondary }]}
+              style={[
+                styles.quickChatBtn,
+                {
+                  backgroundColor: quickChatUrl.trim()
+                    ? palette.indigo
+                    : colors.bgSecondary,
+                },
+              ]}
               onPress={handleQuickChat}
               disabled={quickChatLoading || !quickChatUrl.trim()}
             >
               {quickChatLoading ? (
                 <DeepSightSpinner size="xs" speed="fast" />
               ) : (
-                <Ionicons name="chatbubble-ellipses" size={18} color={quickChatUrl.trim() ? '#fff' : colors.textMuted} />
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={18}
+                  color={quickChatUrl.trim() ? "#fff" : colors.textMuted}
+                />
               )}
             </Pressable>
           </View>
@@ -360,7 +445,11 @@ export default function HomeScreen() {
         )}
 
         {/* Tournesol Recommendations */}
-        <TournesolRecommendations language="fr" limit={10} refreshTrigger={tournesolRefreshKey} />
+        <TournesolRecommendations
+          language="fr"
+          limit={10}
+          refreshTrigger={tournesolRefreshKey}
+        />
       </ScrollView>
 
       {/* Options Bottom Sheet */}
@@ -380,22 +469,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: sp.lg,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: sp.lg,
   },
   tabBar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     padding: 3,
     marginBottom: sp.lg,
-    position: 'relative',
-    overflow: 'hidden',
+    position: "relative",
+    overflow: "hidden",
   },
   tabIndicator: {
-    position: 'absolute',
+    position: "absolute",
     top: 3,
     left: 3,
     bottom: 3,
@@ -403,9 +492,9 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: sp.sm + 2,
     gap: sp.xs,
     zIndex: 1,
@@ -417,7 +506,7 @@ const styles = StyleSheet.create({
     marginTop: sp.xl,
   },
   platformBanner: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: sp.lg,
     gap: sp.sm,
   },
@@ -425,16 +514,16 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.sm,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   platformLogos: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.lg,
   },
   platformLogoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.sm,
   },
   platformLogoYt: {
@@ -455,9 +544,9 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   poweredRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 6,
     marginTop: sp.sm,
     opacity: 0.5,
@@ -465,7 +554,7 @@ const styles = StyleSheet.create({
   poweredText: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   mistralLogo: {
@@ -490,8 +579,8 @@ const styles = StyleSheet.create({
     marginTop: sp.lg,
   },
   quickChatHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     marginBottom: 4,
   },
@@ -504,7 +593,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   quickChatBadgeText: {
     fontFamily: fontFamily.bodySemiBold,
@@ -517,9 +606,9 @@ const styles = StyleSheet.create({
     lineHeight: fontSize.xs * 1.4,
   },
   quickChatRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: sp.sm,
-    alignItems: 'center',
+    alignItems: "center",
   },
   quickChatInput: {
     flex: 1,
@@ -534,7 +623,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

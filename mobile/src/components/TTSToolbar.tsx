@@ -2,12 +2,12 @@
  * TTSToolbar — Mobile TTS controls (autoplay toggle, language, gender, speed)
  */
 
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTTSContext } from '../contexts/TTSContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { Spacing, Typography, BorderRadius } from '../constants/theme';
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useTTSContext } from "../contexts/TTSContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { Spacing, Typography, BorderRadius } from "../constants/theme";
 
 const SPEED_CYCLE = [1, 1.5, 2, 3];
 
@@ -18,10 +18,14 @@ interface TTSToolbarProps {
 export const TTSToolbar: React.FC<TTSToolbarProps> = ({ onUpgradePress }) => {
   const { colors } = useTheme();
   const {
-    autoPlayEnabled, setAutoPlayEnabled,
-    language, setLanguage,
-    gender, setGender,
-    speed, setSpeed,
+    autoPlayEnabled,
+    setAutoPlayEnabled,
+    language,
+    setLanguage,
+    gender,
+    setGender,
+    speed,
+    setSpeed,
     isPremium,
   } = useTTSContext();
 
@@ -47,25 +51,50 @@ export const TTSToolbar: React.FC<TTSToolbarProps> = ({ onUpgradePress }) => {
           styles.button,
           {
             backgroundColor: !isPremium
-              ? 'transparent'
+              ? "transparent"
               : autoPlayEnabled
-                ? colors.accentPrimary + '15'
-                : 'transparent',
-            borderColor: autoPlayEnabled && isPremium ? colors.accentPrimary + '30' : 'transparent',
+                ? colors.accentPrimary + "15"
+                : "transparent",
+            borderColor:
+              autoPlayEnabled && isPremium
+                ? colors.accentPrimary + "30"
+                : "transparent",
             borderWidth: autoPlayEnabled && isPremium ? 1 : 0,
           },
         ]}
       >
         <Ionicons
-          name={!isPremium ? 'lock-closed' : autoPlayEnabled ? 'volume-high' : 'volume-mute'}
+          name={
+            !isPremium
+              ? "lock-closed"
+              : autoPlayEnabled
+                ? "volume-high"
+                : "volume-mute"
+          }
           size={14}
-          color={autoPlayEnabled && isPremium ? colors.accentPrimary : colors.textTertiary}
+          color={
+            autoPlayEnabled && isPremium
+              ? colors.accentPrimary
+              : colors.textTertiary
+          }
         />
-        <Text style={[styles.label, { color: autoPlayEnabled && isPremium ? colors.accentPrimary : colors.textTertiary }]}>
+        <Text
+          style={[
+            styles.label,
+            {
+              color:
+                autoPlayEnabled && isPremium
+                  ? colors.accentPrimary
+                  : colors.textTertiary,
+            },
+          ]}
+        >
           Voix
         </Text>
         {!isPremium && (
-          <Text style={[styles.proBadge, { color: colors.accentPrimary }]}>PRO</Text>
+          <Text style={[styles.proBadge, { color: colors.accentPrimary }]}>
+            PRO
+          </Text>
         )}
       </TouchableOpacity>
 
@@ -73,19 +102,19 @@ export const TTSToolbar: React.FC<TTSToolbarProps> = ({ onUpgradePress }) => {
         <>
           {/* Language toggle */}
           <TouchableOpacity
-            onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
+            onPress={() => setLanguage(language === "fr" ? "en" : "fr")}
             style={styles.smallButton}
           >
-            <Text style={styles.flag}>{language === 'fr' ? '🇫🇷' : '🇬🇧'}</Text>
+            <Text style={styles.flag}>{language === "fr" ? "🇫🇷" : "🇬🇧"}</Text>
           </TouchableOpacity>
 
           {/* Gender toggle */}
           <TouchableOpacity
-            onPress={() => setGender(gender === 'female' ? 'male' : 'female')}
+            onPress={() => setGender(gender === "female" ? "male" : "female")}
             style={styles.smallButton}
           >
             <Text style={[styles.genderText, { color: colors.textTertiary }]}>
-              {gender === 'female' ? '♀' : '♂'}
+              {gender === "female" ? "♀" : "♂"}
             </Text>
           </TouchableOpacity>
 
@@ -106,13 +135,13 @@ export const TTSToolbar: React.FC<TTSToolbarProps> = ({ onUpgradePress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   button: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,

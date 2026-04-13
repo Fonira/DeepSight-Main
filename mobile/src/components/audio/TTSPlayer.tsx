@@ -9,7 +9,7 @@
  * - Progress tracking
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -18,15 +18,19 @@ import {
   Modal,
   ScrollView,
   Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Speech from 'expo-speech';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { hasFeature, getMinPlanForFeature, getPlanInfo } from '../../config/planPrivileges';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Speech from "expo-speech";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useAuth } from "../../contexts/AuthContext";
+import {
+  hasFeature,
+  getMinPlanForFeature,
+  getPlanInfo,
+} from "../../config/planPrivileges";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
 interface TTSPlayerProps {
   text: string;
@@ -43,12 +47,12 @@ interface Voice {
 }
 
 const SPEECH_RATES = [
-  { label: '0.5x', value: 0.5 },
-  { label: '0.75x', value: 0.75 },
-  { label: '1x', value: 1.0 },
-  { label: '1.25x', value: 1.25 },
-  { label: '1.5x', value: 1.5 },
-  { label: '2x', value: 2.0 },
+  { label: "0.5x", value: 0.5 },
+  { label: "0.75x", value: 0.75 },
+  { label: "1x", value: 1.0 },
+  { label: "1.25x", value: 1.25 },
+  { label: "1.5x", value: 1.5 },
+  { label: "2x", value: 2.0 },
 ];
 
 export const TTSPlayer: React.FC<TTSPlayerProps> = ({
@@ -71,8 +75,8 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
   const [estimatedDuration, setEstimatedDuration] = useState(0);
 
   // Check if user has access to TTS
-  const userPlan = user?.plan || 'free';
-  const hasAccess = hasFeature(userPlan, 'ttsAudio');
+  const userPlan = user?.plan || "free";
+  const hasAccess = hasFeature(userPlan, "ttsAudio");
 
   // Load available voices on mount
   useEffect(() => {
@@ -81,21 +85,26 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
         const availableVoices = await Speech.getAvailableVoicesAsync();
         // Filter for French and English voices
         const filteredVoices = availableVoices.filter(
-          (v) => v.language.startsWith('fr') || v.language.startsWith('en')
+          (v) => v.language.startsWith("fr") || v.language.startsWith("en"),
         );
         setVoices(filteredVoices);
 
         // Auto-select a voice based on current language
-        const preferredLang = language === 'fr' ? 'fr' : 'en';
-        const defaultVoice = filteredVoices.find(
-          (v) => v.language.startsWith(preferredLang) && v.quality === Speech.VoiceQuality.Enhanced
-        ) || filteredVoices.find((v) => v.language.startsWith(preferredLang));
+        const preferredLang = language === "fr" ? "fr" : "en";
+        const defaultVoice =
+          filteredVoices.find(
+            (v) =>
+              v.language.startsWith(preferredLang) &&
+              v.quality === Speech.VoiceQuality.Enhanced,
+          ) || filteredVoices.find((v) => v.language.startsWith(preferredLang));
 
         if (defaultVoice) {
           setSelectedVoice(defaultVoice.identifier);
         }
       } catch (error) {
-        if (__DEV__) { console.warn('Failed to load TTS voices:', error); }
+        if (__DEV__) {
+          console.warn("Failed to load TTS voices:", error);
+        }
       }
     };
 
@@ -133,7 +142,7 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
     const options: Speech.SpeechOptions = {
       rate,
       pitch: 1.0,
-      language: language === 'fr' ? 'fr-FR' : 'en-US',
+      language: language === "fr" ? "fr-FR" : "en-US",
       voice: selectedVoice || undefined,
       onStart: () => {
         setIsPlaying(true);
@@ -171,36 +180,44 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
     setProgress(0);
   }, []);
 
-  const handleRateChange = useCallback((newRate: number) => {
-    Haptics.selectionAsync();
-    setRate(newRate);
-    // If currently playing, restart with new rate
-    if (isPlaying) {
-      handleStop();
-    }
-  }, [isPlaying, handleStop]);
+  const handleRateChange = useCallback(
+    (newRate: number) => {
+      Haptics.selectionAsync();
+      setRate(newRate);
+      // If currently playing, restart with new rate
+      if (isPlaying) {
+        handleStop();
+      }
+    },
+    [isPlaying, handleStop],
+  );
 
   // Format duration
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   // If user doesn't have access, show upgrade prompt
   if (!hasAccess) {
-    const minPlan = getMinPlanForFeature('ttsAudio');
+    const minPlan = getMinPlanForFeature("ttsAudio");
     const planInfo = getPlanInfo(minPlan);
-    const planName = planInfo.name[language as 'fr' | 'en'] || planInfo.name.fr;
+    const planName = planInfo.name[language as "fr" | "en"] || planInfo.name.fr;
 
     if (compact) {
       return (
         <TouchableOpacity
-          style={[styles.compactLockedButton, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}
+          style={[
+            styles.compactLockedButton,
+            { backgroundColor: colors.bgSecondary, borderColor: colors.border },
+          ]}
           onPress={onUpgradePress}
         >
           <Ionicons name="lock-closed" size={14} color={colors.textTertiary} />
-          <Text style={[styles.compactLockedText, { color: colors.textTertiary }]}>
+          <Text
+            style={[styles.compactLockedText, { color: colors.textTertiary }]}
+          >
             TTS ({planName}+)
           </Text>
         </TouchableOpacity>
@@ -208,26 +225,37 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
     }
 
     return (
-      <View style={[styles.lockedContainer, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
+      <View
+        style={[
+          styles.lockedContainer,
+          { backgroundColor: colors.bgSecondary, borderColor: colors.border },
+        ]}
+      >
         <View style={styles.lockedHeader}>
-          <Ionicons name="volume-high-outline" size={24} color={colors.textTertiary} />
+          <Ionicons
+            name="volume-high-outline"
+            size={24}
+            color={colors.textTertiary}
+          />
           <Text style={[styles.lockedTitle, { color: colors.textPrimary }]}>
-            {language === 'fr' ? 'Lecture audio' : 'Audio Playback'}
+            {language === "fr" ? "Lecture audio" : "Audio Playback"}
           </Text>
         </View>
         <Text style={[styles.lockedText, { color: colors.textSecondary }]}>
-          {language === 'fr'
+          {language === "fr"
             ? `La lecture audio est disponible avec le plan ${planName} ou supérieur.`
-            : `Audio playback is available with the ${planName} plan or higher.`
-          }
+            : `Audio playback is available with the ${planName} plan or higher.`}
         </Text>
         {onUpgradePress && (
           <TouchableOpacity
-            style={[styles.upgradeButton, { backgroundColor: colors.accentPrimary }]}
+            style={[
+              styles.upgradeButton,
+              { backgroundColor: colors.accentPrimary },
+            ]}
             onPress={onUpgradePress}
           >
             <Text style={styles.upgradeButtonText}>
-              {language === 'fr' ? 'Voir les plans' : 'View Plans'}
+              {language === "fr" ? "Voir les plans" : "View Plans"}
             </Text>
           </TouchableOpacity>
         )}
@@ -238,26 +266,39 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
   // Compact mode
   if (compact) {
     return (
-      <View style={[styles.compactContainer, { backgroundColor: colors.bgSecondary }]}>
+      <View
+        style={[
+          styles.compactContainer,
+          { backgroundColor: colors.bgSecondary },
+        ]}
+      >
         <TouchableOpacity
-          style={[styles.compactPlayButton, { backgroundColor: colors.accentPrimary }]}
+          style={[
+            styles.compactPlayButton,
+            { backgroundColor: colors.accentPrimary },
+          ]}
           onPress={isPlaying ? handleStop : handlePlay}
         >
           <Ionicons
-            name={isPlaying ? 'stop' : 'play'}
+            name={isPlaying ? "stop" : "play"}
             size={16}
             color="#FFFFFF"
           />
         </TouchableOpacity>
         <Text style={[styles.compactLabel, { color: colors.textSecondary }]}>
           {isPlaying
-            ? (language === 'fr' ? 'Lecture...' : 'Playing...')
-            : 'TTS'
-          }
+            ? language === "fr"
+              ? "Lecture..."
+              : "Playing..."
+            : "TTS"}
         </Text>
         {isPlaying && (
           <TouchableOpacity onPress={() => setShowSettings(true)}>
-            <Ionicons name="settings-outline" size={16} color={colors.textTertiary} />
+            <Ionicons
+              name="settings-outline"
+              size={16}
+              color={colors.textTertiary}
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -265,15 +306,29 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.bgSecondary, borderColor: colors.border },
+      ]}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <View style={[styles.iconContainer, { backgroundColor: colors.accentPrimary + '20' }]}>
-          <Ionicons name="volume-high-outline" size={20} color={colors.accentPrimary} />
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: colors.accentPrimary + "20" },
+          ]}
+        >
+          <Ionicons
+            name="volume-high-outline"
+            size={20}
+            color={colors.accentPrimary}
+          />
         </View>
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            {title || (language === 'fr' ? 'Lecture audio' : 'Audio Playback')}
+            {title || (language === "fr" ? "Lecture audio" : "Audio Playback")}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {estimatedDuration > 0 && `~${formatDuration(estimatedDuration)}`}
@@ -283,7 +338,11 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
           style={styles.settingsButton}
           onPress={() => setShowSettings(true)}
         >
-          <Ionicons name="settings-outline" size={20} color={colors.textTertiary} />
+          <Ionicons
+            name="settings-outline"
+            size={20}
+            color={colors.textTertiary}
+          />
         </TouchableOpacity>
       </View>
 
@@ -297,25 +356,33 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
           <Ionicons
             name="stop"
             size={24}
-            color={isPlaying || isPaused ? colors.textPrimary : colors.textTertiary}
+            color={
+              isPlaying || isPaused ? colors.textPrimary : colors.textTertiary
+            }
           />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[
             styles.playButton,
-            { backgroundColor: isPlaying ? colors.accentWarning : colors.accentPrimary },
+            {
+              backgroundColor: isPlaying
+                ? colors.accentWarning
+                : colors.accentPrimary,
+            },
           ]}
           onPress={isPlaying ? handlePause : handlePlay}
         >
           <Ionicons
-            name={isPlaying ? 'pause' : 'play'}
+            name={isPlaying ? "pause" : "play"}
             size={32}
             color="#FFFFFF"
           />
         </TouchableOpacity>
 
-        <View style={[styles.rateButton, { backgroundColor: colors.bgTertiary }]}>
+        <View
+          style={[styles.rateButton, { backgroundColor: colors.bgTertiary }]}
+        >
           <Text style={[styles.rateText, { color: colors.textPrimary }]}>
             {rate}x
           </Text>
@@ -325,16 +392,21 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
       {/* Status */}
       {isPlaying && (
         <View style={styles.statusContainer}>
-          <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
+          <View
+            style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}
+          >
             <View
               style={[
                 styles.progressFill,
-                { backgroundColor: colors.accentPrimary, width: `${progress}%` },
+                {
+                  backgroundColor: colors.accentPrimary,
+                  width: `${progress}%`,
+                },
               ]}
             />
           </View>
           <Text style={[styles.statusText, { color: colors.textSecondary }]}>
-            {language === 'fr' ? 'Lecture en cours...' : 'Playing...'}
+            {language === "fr" ? "Lecture en cours..." : "Playing..."}
           </Text>
         </View>
       )}
@@ -346,10 +418,14 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowSettings(false)}
       >
-        <View style={[styles.modalContainer, { backgroundColor: colors.bgPrimary }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+        <View
+          style={[styles.modalContainer, { backgroundColor: colors.bgPrimary }]}
+        >
+          <View
+            style={[styles.modalHeader, { borderBottomColor: colors.border }]}
+          >
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              {language === 'fr' ? 'Paramètres audio' : 'Audio Settings'}
+              {language === "fr" ? "Paramètres audio" : "Audio Settings"}
             </Text>
             <TouchableOpacity onPress={() => setShowSettings(false)}>
               <Ionicons name="close" size={24} color={colors.textPrimary} />
@@ -359,7 +435,7 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
           <ScrollView style={styles.modalContent}>
             {/* Speed */}
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              {language === 'fr' ? 'Vitesse de lecture' : 'Playback Speed'}
+              {language === "fr" ? "Vitesse de lecture" : "Playback Speed"}
             </Text>
             <View style={styles.rateOptions}>
               {SPEECH_RATES.map((option) => (
@@ -378,7 +454,12 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
                   <Text
                     style={[
                       styles.rateOptionText,
-                      { color: rate === option.value ? colors.accentPrimary : colors.textPrimary },
+                      {
+                        color:
+                          rate === option.value
+                            ? colors.accentPrimary
+                            : colors.textPrimary,
+                      },
                     ]}
                   >
                     {option.label}
@@ -390,8 +471,10 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
             {/* Voice Selection */}
             {voices.length > 0 && (
               <>
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                  {language === 'fr' ? 'Voix' : 'Voice'}
+                <Text
+                  style={[styles.sectionTitle, { color: colors.textPrimary }]}
+                >
+                  {language === "fr" ? "Voix" : "Voice"}
                 </Text>
                 <View style={styles.voiceOptions}>
                   {voices.slice(0, 6).map((voice) => (
@@ -408,17 +491,35 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
                       onPress={() => setSelectedVoice(voice.identifier)}
                     >
                       <Text
-                        style={[styles.voiceName, { color: colors.textPrimary }]}
+                        style={[
+                          styles.voiceName,
+                          { color: colors.textPrimary },
+                        ]}
                         numberOfLines={1}
                       >
                         {voice.name}
                       </Text>
-                      <Text style={[styles.voiceLanguage, { color: colors.textTertiary }]}>
+                      <Text
+                        style={[
+                          styles.voiceLanguage,
+                          { color: colors.textTertiary },
+                        ]}
+                      >
                         {voice.language}
                       </Text>
                       {voice.quality === Speech.VoiceQuality.Enhanced && (
-                        <View style={[styles.qualityBadge, { backgroundColor: colors.accentSuccess + '20' }]}>
-                          <Text style={[styles.qualityText, { color: colors.accentSuccess }]}>
+                        <View
+                          style={[
+                            styles.qualityBadge,
+                            { backgroundColor: colors.accentSuccess + "20" },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.qualityText,
+                              { color: colors.accentSuccess },
+                            ]}
+                          >
                             HD
                           </Text>
                         </View>
@@ -442,8 +543,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   compactContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
@@ -453,16 +554,16 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   compactLabel: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodyMedium,
   },
   compactLockedButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
@@ -479,8 +580,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   lockedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     marginBottom: Spacing.sm,
   },
@@ -497,16 +598,16 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   upgradeButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     marginBottom: Spacing.md,
   },
@@ -514,8 +615,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerText: {
     flex: 1,
@@ -532,25 +633,25 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
   },
   controls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.lg,
   },
   controlButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   playButton: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -560,8 +661,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   rateText: {
     fontSize: Typography.fontSize.xs,
@@ -573,25 +674,25 @@ const styles = StyleSheet.create({
   progressBar: {
     height: 4,
     borderRadius: 2,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 2,
   },
   statusText: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: Spacing.xs,
   },
   modalContainer: {
     flex: 1,
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: Spacing.md,
     borderBottomWidth: 1,
   },
@@ -609,8 +710,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   rateOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.sm,
   },
   rateOption: {
@@ -618,7 +719,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   rateOptionText: {
     fontSize: Typography.fontSize.sm,
@@ -628,12 +729,12 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   voiceOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: "transparent",
     gap: Spacing.sm,
   },
   voiceName: {

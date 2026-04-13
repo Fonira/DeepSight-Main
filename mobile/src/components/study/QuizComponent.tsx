@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,12 +17,12 @@ import Animated, {
   Easing,
   FadeIn,
   FadeInDown,
-} from 'react-native-reanimated';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { GlassCard } from '../ui/GlassCard';
-import { Button } from '../ui/Button';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+} from "react-native-reanimated";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { GlassCard } from "../ui/GlassCard";
+import { Button } from "../ui/Button";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
 export interface QuizQuestion {
   question: string;
@@ -76,14 +76,17 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
   }));
 
   const currentQuestion = questions[state.currentIndex];
-  const score = state.answers.filter(a => a.isCorrect).length;
+  const score = state.answers.filter((a) => a.isCorrect).length;
 
-  const handleSelectAnswer = useCallback((index: number) => {
-    if (state.showResult) return;
+  const handleSelectAnswer = useCallback(
+    (index: number) => {
+      if (state.showResult) return;
 
-    Haptics.selectionAsync();
-    setState(prev => ({ ...prev, selectedAnswer: index }));
-  }, [state.showResult]);
+      Haptics.selectionAsync();
+      setState((prev) => ({ ...prev, selectedAnswer: index }));
+    },
+    [state.showResult],
+  );
 
   const handleValidate = useCallback(() => {
     if (state.selectedAnswer === null) return;
@@ -91,14 +94,16 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
     const isCorrect = state.selectedAnswer === currentQuestion.correct;
 
     Haptics.impactAsync(
-      isCorrect ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Heavy
+      isCorrect
+        ? Haptics.ImpactFeedbackStyle.Light
+        : Haptics.ImpactFeedbackStyle.Heavy,
     );
 
     // Animate feedback
     if (isCorrect) {
       scale.value = withSequence(
         withTiming(1.05, { duration: 100 }),
-        withTiming(1, { duration: 100 })
+        withTiming(1, { duration: 100 }),
       );
     } else {
       shake.value = withSequence(
@@ -106,11 +111,11 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
         withTiming(10, { duration: 50 }),
         withTiming(-10, { duration: 50 }),
         withTiming(10, { duration: 50 }),
-        withTiming(0, { duration: 50 })
+        withTiming(0, { duration: 50 }),
       );
     }
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       showResult: true,
       answers: [
@@ -122,17 +127,23 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
         },
       ],
     }));
-  }, [state.selectedAnswer, state.currentIndex, currentQuestion?.correct, scale, shake]);
+  }, [
+    state.selectedAnswer,
+    state.currentIndex,
+    currentQuestion?.correct,
+    scale,
+    shake,
+  ]);
 
   const handleNext = useCallback(() => {
     Haptics.selectionAsync();
 
     if (state.currentIndex + 1 >= questions.length) {
-      const finalScore = state.answers.filter(a => a.isCorrect).length;
-      setState(prev => ({ ...prev, isComplete: true }));
+      const finalScore = state.answers.filter((a) => a.isCorrect).length;
+      setState((prev) => ({ ...prev, isComplete: true }));
       onComplete?.(finalScore, questions.length);
     } else {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         currentIndex: prev.currentIndex + 1,
         selectedAnswer: null,
@@ -169,7 +180,11 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
   if (!questions || questions.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="help-circle-outline" size={48} color={colors.textTertiary} />
+        <Ionicons
+          name="help-circle-outline"
+          size={48}
+          color={colors.textTertiary}
+        />
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
           {t.study.quiz.noQuestions}
         </Text>
@@ -181,29 +196,47 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
   if (state.isComplete) {
     const percentage = Math.round((score / questions.length) * 100);
     const resultMessage =
-      percentage >= 80 ? t.study.quiz.excellent :
-      percentage >= 60 ? t.study.quiz.good :
-      percentage >= 40 ? t.study.quiz.keepGoing : t.study.quiz.reviewContent;
+      percentage >= 80
+        ? t.study.quiz.excellent
+        : percentage >= 60
+          ? t.study.quiz.good
+          : percentage >= 40
+            ? t.study.quiz.keepGoing
+            : t.study.quiz.reviewContent;
 
     return (
-      <Animated.View entering={FadeIn.duration(300)} style={styles.resultsContainer}>
+      <Animated.View
+        entering={FadeIn.duration(300)}
+        style={styles.resultsContainer}
+      >
         <GlassCard padding="xl" borderRadius="xl">
           <View style={styles.resultsContent}>
             <Ionicons
-              name={percentage >= 60 ? 'trophy' : 'school'}
+              name={percentage >= 60 ? "trophy" : "school"}
               size={64}
-              color={percentage >= 60 ? colors.accentWarning : colors.accentPrimary}
+              color={
+                percentage >= 60 ? colors.accentWarning : colors.accentPrimary
+              }
             />
             <Text style={[styles.resultsTitle, { color: colors.textPrimary }]}>
               {t.study.quiz.completed}
             </Text>
-            <Text style={[styles.resultsScore, { color: colors.accentPrimary }]}>
+            <Text
+              style={[styles.resultsScore, { color: colors.accentPrimary }]}
+            >
               {score}/{questions.length}
             </Text>
-            <Text style={[styles.resultsPercentage, { color: colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.resultsPercentage,
+                { color: colors.textSecondary },
+              ]}
+            >
               {percentage}% {t.study.quiz.correctAnswers}
             </Text>
-            <Text style={[styles.resultsMessage, { color: colors.textTertiary }]}>
+            <Text
+              style={[styles.resultsMessage, { color: colors.textTertiary }]}
+            >
               {resultMessage}
             </Text>
 
@@ -228,11 +261,16 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
             <GlassCard padding="md" borderRadius="md" style={styles.reviewCard}>
               <View style={styles.reviewHeader}>
                 <Ionicons
-                  name={answer.isCorrect ? 'checkmark-circle' : 'close-circle'}
+                  name={answer.isCorrect ? "checkmark-circle" : "close-circle"}
                   size={24}
-                  color={answer.isCorrect ? colors.accentSuccess : colors.accentError}
+                  color={
+                    answer.isCorrect ? colors.accentSuccess : colors.accentError
+                  }
                 />
-                <Text style={[styles.reviewQuestion, { color: colors.textPrimary }]} numberOfLines={2}>
+                <Text
+                  style={[styles.reviewQuestion, { color: colors.textPrimary }]}
+                  numberOfLines={2}
+                >
                   {questions[answer.questionIndex].question}
                 </Text>
               </View>
@@ -251,7 +289,9 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
         <Text style={[styles.progressText, { color: colors.textSecondary }]}>
           {t.study.quiz.question} {state.currentIndex + 1}/{questions.length}
         </Text>
-        <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
+        <View
+          style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}
+        >
           <View
             style={[
               styles.progressFill,
@@ -277,8 +317,10 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
       <Animated.View style={scaleStyle}>
         {currentQuestion.options.map((option, index) => {
           const isSelected = state.selectedAnswer === index;
-          const isCorrect = state.showResult && index === currentQuestion.correct;
-          const isWrong = state.showResult && isSelected && index !== currentQuestion.correct;
+          const isCorrect =
+            state.showResult && index === currentQuestion.correct;
+          const isWrong =
+            state.showResult && isSelected && index !== currentQuestion.correct;
 
           let backgroundColor = colors.bgElevated;
           let borderColor = colors.border;
@@ -312,7 +354,9 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
               disabled={state.showResult}
               activeOpacity={0.7}
             >
-              <View style={[styles.optionIndex, { backgroundColor: borderColor }]}>
+              <View
+                style={[styles.optionIndex, { backgroundColor: borderColor }]}
+              >
                 <Text style={styles.optionIndexText}>
                   {String.fromCharCode(65 + index)}
                 </Text>
@@ -325,7 +369,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
               </Text>
               {state.showResult && (isCorrect || isWrong) && (
                 <Ionicons
-                  name={isCorrect ? 'checkmark-circle' : 'close-circle'}
+                  name={isCorrect ? "checkmark-circle" : "close-circle"}
                   size={24}
                   color={iconColor}
                 />
@@ -338,14 +382,25 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
       {/* Explanation (shown after answer) */}
       {state.showResult && currentQuestion.explanation && (
         <Animated.View entering={FadeInDown.duration(300)}>
-          <GlassCard padding="md" borderRadius="md" style={styles.explanationCard}>
+          <GlassCard
+            padding="md"
+            borderRadius="md"
+            style={styles.explanationCard}
+          >
             <View style={styles.explanationHeader}>
               <Ionicons name="bulb" size={20} color={colors.accentWarning} />
-              <Text style={[styles.explanationTitle, { color: colors.accentWarning }]}>
+              <Text
+                style={[
+                  styles.explanationTitle,
+                  { color: colors.accentWarning },
+                ]}
+              >
                 {t.study.quiz.explanation}
               </Text>
             </View>
-            <Text style={[styles.explanationText, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.explanationText, { color: colors.textSecondary }]}
+            >
               {currentQuestion.explanation}
             </Text>
           </GlassCard>
@@ -363,7 +418,11 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
           />
         ) : (
           <Button
-            title={state.currentIndex + 1 >= questions.length ? t.study.quiz.seeResults : t.study.quiz.nextQuestion}
+            title={
+              state.currentIndex + 1 >= questions.length
+                ? t.study.quiz.seeResults
+                : t.study.quiz.nextQuestion
+            }
             onPress={handleNext}
             fullWidth
             icon={<Ionicons name="arrow-forward" size={20} color="#FFFFFF" />}
@@ -381,8 +440,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: Spacing.xxxl,
   },
   loadingText: {
@@ -392,8 +451,8 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: Spacing.xxxl,
   },
   emptyText: {
@@ -412,10 +471,10 @@ const styles = StyleSheet.create({
   progressBar: {
     height: 4,
     borderRadius: 2,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 2,
   },
   questionCard: {
@@ -427,8 +486,8 @@ const styles = StyleSheet.create({
     lineHeight: Typography.fontSize.lg * 1.5,
   },
   optionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 2,
@@ -438,12 +497,12 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: Spacing.md,
   },
   optionIndexText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
@@ -457,8 +516,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   explanationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Spacing.sm,
   },
   explanationTitle: {
@@ -480,15 +539,15 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.lg,
   },
   resultsContent: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   resultsTitle: {
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize["2xl"],
     fontFamily: Typography.fontFamily.bodySemiBold,
     marginTop: Spacing.lg,
   },
   resultsScore: {
-    fontSize: Typography.fontSize['4xl'],
+    fontSize: Typography.fontSize["4xl"],
     fontFamily: Typography.fontFamily.display,
     marginTop: Spacing.md,
   },
@@ -501,7 +560,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
     marginTop: Spacing.md,
-    textAlign: 'center',
+    textAlign: "center",
   },
   retryButton: {
     marginTop: Spacing.xl,
@@ -516,8 +575,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   reviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   reviewQuestion: {
     flex: 1,

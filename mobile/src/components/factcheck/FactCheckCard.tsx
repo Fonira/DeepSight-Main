@@ -3,20 +3,26 @@
  * Utilisable dans AnalysisScreen ou dans une liste de résultats
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Linking,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
-export type VerdictType = 'verified' | 'disputed' | 'unverified' | 'mixed' | 'misleading' | 'partially_true';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
+export type VerdictType =
+  | "verified"
+  | "disputed"
+  | "unverified"
+  | "mixed"
+  | "misleading"
+  | "partially_true";
 
 export interface FactCheckClaim {
   text: string;
@@ -32,47 +38,50 @@ interface FactCheckCardProps {
   compact?: boolean;
 }
 
-const VERDICT_CONFIG: Record<VerdictType, {
-  icon: keyof typeof Ionicons.glyphMap;
-  labelFr: string;
-  labelEn: string;
-  colorKey: string;
-}> = {
+const VERDICT_CONFIG: Record<
+  VerdictType,
+  {
+    icon: keyof typeof Ionicons.glyphMap;
+    labelFr: string;
+    labelEn: string;
+    colorKey: string;
+  }
+> = {
   verified: {
-    icon: 'checkmark-circle',
-    labelFr: 'Vérifié',
-    labelEn: 'Verified',
-    colorKey: '#22C55E',
+    icon: "checkmark-circle",
+    labelFr: "Vérifié",
+    labelEn: "Verified",
+    colorKey: "#22C55E",
   },
   disputed: {
-    icon: 'warning',
-    labelFr: 'Contesté',
-    labelEn: 'Disputed',
-    colorKey: '#EF4444',
+    icon: "warning",
+    labelFr: "Contesté",
+    labelEn: "Disputed",
+    colorKey: "#EF4444",
   },
   unverified: {
-    icon: 'help-circle',
-    labelFr: 'Non vérifié',
-    labelEn: 'Unverified',
-    colorKey: '#6B7280',
+    icon: "help-circle",
+    labelFr: "Non vérifié",
+    labelEn: "Unverified",
+    colorKey: "#6B7280",
   },
   mixed: {
-    icon: 'remove-circle',
-    labelFr: 'Partiellement vrai',
-    labelEn: 'Partially true',
-    colorKey: '#F59E0B',
+    icon: "remove-circle",
+    labelFr: "Partiellement vrai",
+    labelEn: "Partially true",
+    colorKey: "#F59E0B",
   },
   misleading: {
-    icon: 'close-circle',
-    labelFr: 'Trompeur',
-    labelEn: 'Misleading',
-    colorKey: '#DC2626',
+    icon: "close-circle",
+    labelFr: "Trompeur",
+    labelEn: "Misleading",
+    colorKey: "#DC2626",
   },
   partially_true: {
-    icon: 'remove-circle',
-    labelFr: 'Partiellement vrai',
-    labelEn: 'Partially true',
-    colorKey: '#F59E0B',
+    icon: "remove-circle",
+    labelFr: "Partiellement vrai",
+    labelEn: "Partially true",
+    colorKey: "#F59E0B",
   },
 };
 
@@ -87,11 +96,11 @@ export const FactCheckCard: React.FC<FactCheckCardProps> = ({
 
   const config = VERDICT_CONFIG[claim.verdict] || VERDICT_CONFIG.unverified;
   const verdictColor = config.colorKey;
-  const verdictLabel = language === 'fr' ? config.labelFr : config.labelEn;
+  const verdictLabel = language === "fr" ? config.labelFr : config.labelEn;
 
   const toggleExpand = useCallback(() => {
     Haptics.selectionAsync();
-    setIsExpanded(prev => !prev);
+    setIsExpanded((prev) => !prev);
   }, []);
 
   const openSource = useCallback((url: string) => {
@@ -101,7 +110,9 @@ export const FactCheckCard: React.FC<FactCheckCardProps> = ({
 
   if (compact) {
     return (
-      <View style={[styles.compactCard, { backgroundColor: `${verdictColor}10` }]}>
+      <View
+        style={[styles.compactCard, { backgroundColor: `${verdictColor}10` }]}
+      >
         <Ionicons name={config.icon} size={16} color={verdictColor} />
         <Text
           style={[styles.compactText, { color: colors.textPrimary }]}
@@ -109,7 +120,12 @@ export const FactCheckCard: React.FC<FactCheckCardProps> = ({
         >
           {claim.text}
         </Text>
-        <View style={[styles.compactBadge, { backgroundColor: `${verdictColor}20` }]}>
+        <View
+          style={[
+            styles.compactBadge,
+            { backgroundColor: `${verdictColor}20` },
+          ]}
+        >
           <Text style={[styles.compactBadgeText, { color: verdictColor }]}>
             {verdictLabel}
           </Text>
@@ -126,7 +142,12 @@ export const FactCheckCard: React.FC<FactCheckCardProps> = ({
     >
       {/* Header: verdict icon + claim text */}
       <View style={styles.header}>
-        <View style={[styles.iconContainer, { backgroundColor: `${verdictColor}20` }]}>
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: `${verdictColor}20` },
+          ]}
+        >
           <Ionicons name={config.icon} size={20} color={verdictColor} />
         </View>
         <View style={styles.headerContent}>
@@ -138,7 +159,7 @@ export const FactCheckCard: React.FC<FactCheckCardProps> = ({
           </Text>
         </View>
         <Ionicons
-          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+          name={isExpanded ? "chevron-up" : "chevron-down"}
           size={18}
           color={colors.textTertiary}
         />
@@ -152,7 +173,8 @@ export const FactCheckCard: React.FC<FactCheckCardProps> = ({
           </Text>
         </View>
         <Text style={[styles.confidenceText, { color: colors.textTertiary }]}>
-          {Math.round(claim.confidence * 100)}% {language === 'fr' ? 'confiance' : 'confidence'}
+          {Math.round(claim.confidence * 100)}%{" "}
+          {language === "fr" ? "confiance" : "confidence"}
         </Text>
       </View>
 
@@ -160,15 +182,24 @@ export const FactCheckCard: React.FC<FactCheckCardProps> = ({
       {isExpanded && (
         <View style={styles.expandedSection}>
           {claim.explanation ? (
-            <Text style={[styles.explanationText, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.explanationText, { color: colors.textSecondary }]}
+            >
               {claim.explanation}
             </Text>
           ) : null}
 
           {claim.sources && claim.sources.length > 0 ? (
-            <View style={[styles.sourcesContainer, { borderTopColor: colors.border }]}>
-              <Text style={[styles.sourcesTitle, { color: colors.textTertiary }]}>
-                {language === 'fr' ? 'Sources :' : 'Sources:'}
+            <View
+              style={[
+                styles.sourcesContainer,
+                { borderTopColor: colors.border },
+              ]}
+            >
+              <Text
+                style={[styles.sourcesTitle, { color: colors.textTertiary }]}
+              >
+                {language === "fr" ? "Sources :" : "Sources:"}
               </Text>
               {claim.sources.map((source, sIndex) => (
                 <TouchableOpacity
@@ -176,9 +207,16 @@ export const FactCheckCard: React.FC<FactCheckCardProps> = ({
                   style={styles.sourceLink}
                   onPress={() => openSource(source.url)}
                 >
-                  <Ionicons name="link" size={12} color={colors.accentPrimary} />
+                  <Ionicons
+                    name="link"
+                    size={12}
+                    color={colors.accentPrimary}
+                  />
                   <Text
-                    style={[styles.sourceLinkText, { color: colors.accentPrimary }]}
+                    style={[
+                      styles.sourceLinkText,
+                      { color: colors.accentPrimary },
+                    ]}
                     numberOfLines={1}
                   >
                     {source.title || source.url}
@@ -200,16 +238,16 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: Spacing.sm,
   },
   iconContainer: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerContent: {
     flex: 1,
@@ -220,9 +258,9 @@ const styles = StyleSheet.create({
     lineHeight: Typography.fontSize.sm * 1.5,
   },
   metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginTop: Spacing.sm,
     paddingLeft: 40, // Align with text after icon
   },
@@ -235,7 +273,7 @@ const styles = StyleSheet.create({
   verdictText: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodyMedium,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   confidenceText: {
     fontSize: Typography.fontSize.xs,
@@ -262,8 +300,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   sourceLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     marginBottom: 4,
   },
@@ -274,8 +312,8 @@ const styles = StyleSheet.create({
   },
   // Compact styles
   compactCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
@@ -295,7 +333,7 @@ const styles = StyleSheet.create({
   compactBadgeText: {
     fontSize: 10,
     fontFamily: Typography.fontFamily.bodyMedium,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
 });
 

@@ -8,7 +8,7 @@
  * Apple Pay fonctionne automatiquement via le Stripe Checkout Web
  * lorsqu'on ouvre l'URL dans expo-web-browser sur iOS.
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -18,112 +18,112 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
-import * as WebBrowser from 'expo-web-browser';
-import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQuery } from "@tanstack/react-query";
+import * as WebBrowser from "expo-web-browser";
+import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
-import { useTheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { billingApi, ApiError } from '@/services/api';
-import { DoodleBackground } from '@/components/ui/DoodleBackground';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { palette } from '@/theme/colors';
-import type { PlanType } from '@/constants/config';
+import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { billingApi, ApiError } from "@/services/api";
+import { DoodleBackground } from "@/components/ui/DoodleBackground";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
+import { palette } from "@/theme/colors";
+import type { PlanType } from "@/constants/config";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PlanConfig {
-  id: string;          // ID backend
-  label: string;       // Nom affiché
-  price: string;       // Ex: "2,99 €/mois"
-  priceRaw: number;    // Pour tri
-  highlight: boolean;  // Mise en avant (plan recommandé)
-  badge?: string;      // Ex: "Populaire"
-  color: string[];     // Gradient
+  id: string; // ID backend
+  label: string; // Nom affiché
+  price: string; // Ex: "2,99 €/mois"
+  priceRaw: number; // Pour tri
+  highlight: boolean; // Mise en avant (plan recommandé)
+  badge?: string; // Ex: "Populaire"
+  color: string[]; // Gradient
   features: string[];
-  cta: string;         // Texte du bouton
+  cta: string; // Texte du bouton
 }
 
 // Plans statiques — toujours disponibles même sans réseau
 const PLANS_CONFIG: PlanConfig[] = [
   {
-    id: 'free',
-    label: 'Gratuit',
-    price: '0 €',
+    id: "free",
+    label: "Gratuit",
+    price: "0 €",
     priceRaw: 0,
     highlight: false,
-    color: ['rgba(255,255,255,0.04)', 'rgba(255,255,255,0.02)'],
+    color: ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.02)"],
     features: [
-      '5 analyses / mois',
-      'Vidéos jusqu\'à 15 min',
-      'Historique 60 jours',
-      'Chat limité',
+      "5 analyses / mois",
+      "Vidéos jusqu'à 15 min",
+      "Historique 60 jours",
+      "Chat limité",
     ],
-    cta: 'Plan actuel',
+    cta: "Plan actuel",
   },
   {
-    id: 'etudiant',  // ID backend pour "Starter"
-    label: 'Starter',
-    price: '2,99 €/mois',
+    id: "etudiant", // ID backend pour "Starter"
+    label: "Starter",
+    price: "2,99 €/mois",
     priceRaw: 2.99,
     highlight: false,
-    color: ['rgba(59,130,246,0.15)', 'rgba(59,130,246,0.05)'],
+    color: ["rgba(59,130,246,0.15)", "rgba(59,130,246,0.05)"],
     features: [
-      '20 analyses / mois',
-      'Flashcards automatiques',
-      'Cartes mentales',
-      'Historique complet',
+      "20 analyses / mois",
+      "Flashcards automatiques",
+      "Cartes mentales",
+      "Historique complet",
     ],
-    cta: 'Commencer',
+    cta: "Commencer",
   },
   {
-    id: 'starter',  // ID backend pour "Standard"
-    label: 'Standard',
-    price: '5,99 €/mois',
+    id: "starter", // ID backend pour "Standard"
+    label: "Standard",
+    price: "5,99 €/mois",
     priceRaw: 5.99,
     highlight: true,
-    badge: 'Populaire',
-    color: ['rgba(139,92,246,0.25)', 'rgba(139,92,246,0.08)'],
+    badge: "Populaire",
+    color: ["rgba(139,92,246,0.25)", "rgba(139,92,246,0.08)"],
     features: [
-      '50 analyses / mois',
-      'Vidéos jusqu\'à 2 heures',
-      'Recherche web IA',
-      'Flashcards + Cartes mentales',
-      'Export Markdown',
+      "50 analyses / mois",
+      "Vidéos jusqu'à 2 heures",
+      "Recherche web IA",
+      "Flashcards + Cartes mentales",
+      "Export Markdown",
     ],
-    cta: 'Commencer',
+    cta: "Commencer",
   },
   {
-    id: 'pro',
-    label: 'Pro',
-    price: '12,99 €/mois',
+    id: "pro",
+    label: "Pro",
+    price: "12,99 €/mois",
     priceRaw: 12.99,
     highlight: false,
-    badge: 'Tout inclus',
-    color: ['rgba(6,182,212,0.15)', 'rgba(139,92,246,0.08)'],
+    badge: "Tout inclus",
+    color: ["rgba(6,182,212,0.15)", "rgba(139,92,246,0.08)"],
     features: [
-      '200 analyses / mois',
-      'Playlists entières',
-      'Chat illimité',
-      'Export PDF + DOCX',
-      'Recherche web avancée',
-      'Support prioritaire',
+      "200 analyses / mois",
+      "Playlists entières",
+      "Chat illimité",
+      "Export PDF + DOCX",
+      "Recherche web avancée",
+      "Support prioritaire",
     ],
-    cta: 'Passer Pro',
+    cta: "Passer Pro",
   },
 ];
 
 // Correspondance ID backend → label
 const PLAN_DISPLAY: Record<string, string> = {
-  free: 'Gratuit',
-  etudiant: 'Starter',
-  starter: 'Standard',
-  pro: 'Pro',
+  free: "Gratuit",
+  etudiant: "Starter",
+  starter: "Standard",
+  pro: "Pro",
 };
 
 // ─── Composant PlanCard ────────────────────────────────────────────────────────
@@ -134,7 +134,7 @@ interface PlanCardProps {
   userPlanPrice: number;
   onPress: (planId: string) => void;
   loading: boolean;
-  colors: ReturnType<typeof useTheme>['colors'];
+  colors: ReturnType<typeof useTheme>["colors"];
 }
 
 const PlanCard: React.FC<PlanCardProps> = ({
@@ -145,14 +145,15 @@ const PlanCard: React.FC<PlanCardProps> = ({
   loading,
   colors,
 }) => {
-  const isDowngrade = !isCurrentPlan && plan.priceRaw < userPlanPrice && userPlanPrice > 0;
-  const isFree = plan.id === 'free';
+  const isDowngrade =
+    !isCurrentPlan && plan.priceRaw < userPlanPrice && userPlanPrice > 0;
+  const isFree = plan.id === "free";
 
   const ctaLabel = isCurrentPlan
-    ? '✓ Plan actuel'
+    ? "✓ Plan actuel"
     : isDowngrade
-    ? 'Réduire'
-    : plan.cta;
+      ? "Réduire"
+      : plan.cta;
 
   return (
     <Pressable
@@ -173,15 +174,29 @@ const PlanCard: React.FC<PlanCardProps> = ({
       >
         {/* Badge */}
         {plan.badge && (
-          <View style={[styles.badge, { backgroundColor: plan.highlight ? palette.violet : palette.blue }]}>
+          <View
+            style={[
+              styles.badge,
+              {
+                backgroundColor: plan.highlight ? palette.violet : palette.blue,
+              },
+            ]}
+          >
             <Text style={styles.badgeText}>{plan.badge}</Text>
           </View>
         )}
 
         {/* Header plan */}
         <View style={styles.cardHeader}>
-          <Text style={[styles.planLabel, { color: colors.textPrimary }]}>{plan.label}</Text>
-          <Text style={[styles.planPrice, { color: isFree ? colors.textSecondary : colors.textPrimary }]}>
+          <Text style={[styles.planLabel, { color: colors.textPrimary }]}>
+            {plan.label}
+          </Text>
+          <Text
+            style={[
+              styles.planPrice,
+              { color: isFree ? colors.textSecondary : colors.textPrimary },
+            ]}
+          >
             {plan.price}
           </Text>
         </View>
@@ -190,8 +205,16 @@ const PlanCard: React.FC<PlanCardProps> = ({
         <View style={styles.featuresList}>
           {plan.features.map((f) => (
             <View key={f} style={styles.featureRow}>
-              <Ionicons name="checkmark-circle" size={15} color={plan.highlight ? palette.violet : palette.blue} />
-              <Text style={[styles.featureText, { color: colors.textSecondary }]}>{f}</Text>
+              <Ionicons
+                name="checkmark-circle"
+                size={15}
+                color={plan.highlight ? palette.violet : palette.blue}
+              />
+              <Text
+                style={[styles.featureText, { color: colors.textSecondary }]}
+              >
+                {f}
+              </Text>
             </View>
           ))}
         </View>
@@ -203,17 +226,22 @@ const PlanCard: React.FC<PlanCardProps> = ({
               styles.ctaButton,
               {
                 backgroundColor: isCurrentPlan
-                  ? 'rgba(255,255,255,0.08)'
+                  ? "rgba(255,255,255,0.08)"
                   : plan.highlight
-                  ? palette.violet
-                  : palette.blue,
+                    ? palette.violet
+                    : palette.blue,
               },
             ]}
           >
             {loading && !isCurrentPlan ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={[styles.ctaText, isCurrentPlan && { color: colors.textMuted }]}>
+              <Text
+                style={[
+                  styles.ctaText,
+                  isCurrentPlan && { color: colors.textMuted },
+                ]}
+              >
                 {ctaLabel}
               </Text>
             )}
@@ -234,14 +262,14 @@ export default function SubscriptionScreen() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
 
-  const userPlan = (user?.plan ?? 'free') as PlanType;
+  const userPlan = (user?.plan ?? "free") as PlanType;
   const userPlanConfig = PLANS_CONFIG.find((p) => p.id === userPlan);
   const userPlanPrice = userPlanConfig?.priceRaw ?? 0;
-  const isPaidUser = userPlan !== 'free';
+  const isPaidUser = userPlan !== "free";
 
   // Statut abonnement depuis le backend
   const { data: subStatus } = useQuery({
-    queryKey: ['subscription-status'],
+    queryKey: ["subscription-status"],
     queryFn: () => billingApi.getSubscriptionStatus(),
     staleTime: 60_000,
     retry: 1,
@@ -257,16 +285,17 @@ export default function SubscriptionScreen() {
       // Stripe Checkout sur iOS gère Apple Pay nativement dans le WebBrowser
       const result = await WebBrowser.openBrowserAsync(url, {
         presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-        controlsColor: '#8b5cf6',
+        controlsColor: "#8b5cf6",
       });
       // Si l'utilisateur a complété le paiement, on invalide le cache plan
-      if (result.type === 'dismiss') {
+      if (result.type === "dismiss") {
         // Le plan se mettra à jour via le prochain refresh de l'AuthContext
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Erreur lors du paiement';
-      Alert.alert('Paiement impossible', message, [{ text: 'OK' }]);
+      const message =
+        err instanceof ApiError ? err.message : "Erreur lors du paiement";
+      Alert.alert("Paiement impossible", message, [{ text: "OK" }]);
     } finally {
       setCheckoutLoading(null);
     }
@@ -279,11 +308,14 @@ export default function SubscriptionScreen() {
       const { url } = await billingApi.getPortalUrl();
       await WebBrowser.openBrowserAsync(url, {
         presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-        controlsColor: '#8b5cf6',
+        controlsColor: "#8b5cf6",
       });
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Impossible d\'ouvrir le portail';
-      Alert.alert('Erreur', message, [{ text: 'OK' }]);
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : "Impossible d'ouvrir le portail";
+      Alert.alert("Erreur", message, [{ text: "OK" }]);
     } finally {
       setPortalLoading(false);
     }
@@ -307,22 +339,45 @@ export default function SubscriptionScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Header ── */}
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Abonnement</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          Abonnement
+        </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           🇫🇷 IA 100% Française — Propulsé par Mistral AI
         </Text>
 
         {/* ── Plan actuel ── */}
-        <View style={[styles.currentPlanBanner, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.currentPlanBanner,
+            { backgroundColor: colors.bgCard, borderColor: colors.border },
+          ]}
+        >
           <View style={styles.currentPlanLeft}>
             <Ionicons name="diamond-outline" size={20} color={palette.violet} />
-            <Text style={[styles.currentPlanLabel, { color: colors.textPrimary }]}>
+            <Text
+              style={[styles.currentPlanLabel, { color: colors.textPrimary }]}
+            >
               Plan actuel
             </Text>
           </View>
-          <View style={[styles.currentPlanBadge, { backgroundColor: isPaidUser ? `${palette.violet}22` : colors.bgElevated }]}>
-            <Text style={[styles.currentPlanName, { color: isPaidUser ? palette.violet : colors.textSecondary }]}>
-              {PLAN_DISPLAY[userPlan] ?? 'Gratuit'}
+          <View
+            style={[
+              styles.currentPlanBadge,
+              {
+                backgroundColor: isPaidUser
+                  ? `${palette.violet}22`
+                  : colors.bgElevated,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.currentPlanName,
+                { color: isPaidUser ? palette.violet : colors.textSecondary },
+              ]}
+            >
+              {PLAN_DISPLAY[userPlan] ?? "Gratuit"}
             </Text>
           </View>
         </View>
@@ -330,15 +385,27 @@ export default function SubscriptionScreen() {
         {/* ── Statut renouvellement ── */}
         {subStatus?.currentPeriodEnd && (
           <Text style={[styles.renewalText, { color: colors.textTertiary }]}>
-            Prochain renouvellement : {new Date(subStatus.currentPeriodEnd).toLocaleDateString('fr-FR')}
+            Prochain renouvellement :{" "}
+            {new Date(subStatus.currentPeriodEnd).toLocaleDateString("fr-FR")}
           </Text>
         )}
 
         {/* ── Apple Pay info (iOS only) ── */}
-        {Platform.OS === 'ios' && (
-          <View style={[styles.applePayBanner, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
-            <Ionicons name="logo-apple" size={18} color={colors.textSecondary} />
-            <Text style={[styles.applePayText, { color: colors.textSecondary }]}>
+        {Platform.OS === "ios" && (
+          <View
+            style={[
+              styles.applePayBanner,
+              { backgroundColor: colors.bgCard, borderColor: colors.border },
+            ]}
+          >
+            <Ionicons
+              name="logo-apple"
+              size={18}
+              color={colors.textSecondary}
+            />
+            <Text
+              style={[styles.applePayText, { color: colors.textSecondary }]}
+            >
               Apple Pay disponible lors du paiement
             </Text>
           </View>
@@ -364,17 +431,33 @@ export default function SubscriptionScreen() {
           <Pressable
             onPress={handleManageSubscription}
             disabled={portalLoading}
-            style={[styles.manageButton, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
+            style={[
+              styles.manageButton,
+              { backgroundColor: colors.bgCard, borderColor: colors.border },
+            ]}
           >
             {portalLoading ? (
               <ActivityIndicator size="small" color={colors.textSecondary} />
             ) : (
               <>
-                <Ionicons name="settings-outline" size={16} color={colors.textSecondary} />
-                <Text style={[styles.manageButtonText, { color: colors.textSecondary }]}>
+                <Ionicons
+                  name="settings-outline"
+                  size={16}
+                  color={colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.manageButtonText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
                   Gérer mon abonnement
                 </Text>
-                <Ionicons name="open-outline" size={14} color={colors.textMuted} />
+                <Ionicons
+                  name="open-outline"
+                  size={14}
+                  color={colors.textMuted}
+                />
               </>
             )}
           </Pressable>
@@ -382,9 +465,12 @@ export default function SubscriptionScreen() {
 
         {/* ── Footer légal ── */}
         <Text style={[styles.legalText, { color: colors.textMuted }]}>
-          Les abonnements se renouvellent automatiquement. Annulable à tout moment
-          {Platform.OS === 'ios' ? ' depuis les Réglages iOS ou le portail Stripe.' : ' depuis le portail Stripe.'}
-          {'\n'}Paiement sécurisé par Stripe · Données hébergées en Europe.
+          Les abonnements se renouvellent automatiquement. Annulable à tout
+          moment
+          {Platform.OS === "ios"
+            ? " depuis les Réglages iOS ou le portail Stripe."
+            : " depuis le portail Stripe."}
+          {"\n"}Paiement sécurisé par Stripe · Données hébergées en Europe.
         </Text>
       </ScrollView>
     </View>
@@ -401,7 +487,7 @@ const styles = StyleSheet.create({
   // Header
   title: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize['3xl'],
+    fontSize: fontSize["3xl"],
     marginBottom: sp.xs,
   },
   subtitle: {
@@ -412,17 +498,17 @@ const styles = StyleSheet.create({
 
   // Current plan banner
   currentPlanBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: sp.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     marginBottom: sp.sm,
   },
   currentPlanLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.sm,
   },
   currentPlanLabel: {
@@ -444,13 +530,13 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
     marginBottom: sp.md,
-    textAlign: 'center',
+    textAlign: "center",
   },
 
   // Apple Pay
   applePayBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.sm,
     padding: sp.md,
     borderRadius: borderRadius.md,
@@ -468,7 +554,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: borderRadius.xl,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   cardHighlight: {
     borderWidth: 1.5,
@@ -476,12 +562,12 @@ const styles = StyleSheet.create({
   cardGradient: {
     padding: sp.lg,
     gap: sp.md,
-    position: 'relative',
+    position: "relative",
   },
 
   // Badge
   badge: {
-    position: 'absolute',
+    position: "absolute",
     top: sp.md,
     right: sp.md,
     paddingVertical: 3,
@@ -490,8 +576,8 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize['2xs'],
-    color: '#ffffff',
+    fontSize: fontSize["2xs"],
+    color: "#ffffff",
   },
 
   // Plan header
@@ -502,14 +588,14 @@ const styles = StyleSheet.create({
   },
   planPrice: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize['2xl'],
+    fontSize: fontSize["2xl"],
   },
 
   // Features
   featuresList: { gap: sp.xs },
   featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.sm,
   },
   featureText: {
@@ -522,20 +608,20 @@ const styles = StyleSheet.create({
   ctaButton: {
     paddingVertical: sp.md,
     borderRadius: borderRadius.lg,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: sp.xs,
   },
   ctaText: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.sm,
-    color: '#ffffff',
+    color: "#ffffff",
   },
 
   // Manage
   manageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: sp.sm,
     padding: sp.md,
     borderRadius: borderRadius.lg,
@@ -546,14 +632,14 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.sm,
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
   },
 
   // Legal
   legalText: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 18,
   },
 });

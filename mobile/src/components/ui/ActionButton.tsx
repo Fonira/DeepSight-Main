@@ -1,15 +1,15 @@
-import React from 'react';
-import { Text, StyleSheet, Pressable } from 'react-native';
+import React from "react";
+import { Text, StyleSheet, Pressable } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
+} from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
 
 interface ActionButtonProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -41,7 +41,9 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   }));
 
   const bgAnimatedStyle = useAnimatedStyle(() => ({
-    backgroundColor: `${accentColor}${Math.round(bgOpacity.value * 255).toString(16).padStart(2, '0')}`,
+    backgroundColor: `${accentColor}${Math.round(bgOpacity.value * 255)
+      .toString(16)
+      .padStart(2, "0")}`,
   }));
 
   const handlePressIn = () => {
@@ -69,7 +71,13 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Animated.View style={[styles.iconWrap, { backgroundColor: colors.bgElevated }, bgAnimatedStyle]}>
+      <Animated.View
+        style={[
+          styles.iconWrap,
+          { backgroundColor: colors.bgElevated },
+          bgAnimatedStyle,
+        ]}
+      >
         <Ionicons name={icon} size={22} color={accentColor} />
       </Animated.View>
       <Text
@@ -84,21 +92,21 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    alignItems: "center",
     minWidth: 72,
   },
   iconWrap: {
     width: 52,
     height: 52,
     borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: sp.xs,
   },
   label: {
     fontSize: fontSize.xs,
     fontFamily: fontFamily.bodyMedium,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });
 

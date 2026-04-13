@@ -2,14 +2,20 @@
  * OfflineBanner - Shows a banner when the device is offline
  */
 
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Colors, Spacing, Typography } from '../../constants/theme';
+import React, { useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  TouchableOpacity,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Colors, Spacing, Typography } from "../../constants/theme";
 
 interface OfflineBannerProps {
   /** Show retry button */
@@ -27,7 +33,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
   const { status, refresh } = useNetworkStatus();
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(-100)).current;
-  const isEn = language === 'en';
+  const isEn = language === "en";
 
   useEffect(() => {
     Animated.timing(slideAnim, {
@@ -58,7 +64,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
       <View style={styles.content}>
         <Ionicons name="cloud-offline" size={20} color="#FFFFFF" />
         <Text style={styles.text}>
-          {isEn ? 'No internet connection' : 'Pas de connexion internet'}
+          {isEn ? "No internet connection" : "Pas de connexion internet"}
         </Text>
         {showRetry && (
           <TouchableOpacity onPress={handleRetry} style={styles.retryButton}>
@@ -72,22 +78,22 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     zIndex: 1000,
   },
   content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     gap: Spacing.sm,
   },
   text: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontFamily: Typography.fontFamily.bodyMedium,
     fontSize: Typography.fontSize.sm,
   },

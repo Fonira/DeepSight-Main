@@ -49,6 +49,7 @@ src/
 ## ✨ Fonctionnalités implémentées
 
 ### Root Layout (`app/_layout.tsx`)
+
 - ✅ GestureHandlerRootView (pour React Native Gesture Handler)
 - ✅ SafeAreaProvider (gestion des encoches/safe areas)
 - ✅ QueryClientProvider (React Query)
@@ -60,6 +61,7 @@ src/
 - ✅ StatusBar styling
 
 ### Auth Group (`app/(auth)/`)
+
 - ✅ Stack layout sans headers
 - ✅ Welcome screen avec accueil (index.tsx)
 - ✅ Login form placeholder
@@ -69,6 +71,7 @@ src/
 - ✅ Design dark mode cohérent
 
 ### Tabs Group (`app/(tabs)/`)
+
 - ✅ Custom tab bar avec glassmorphism
 - ✅ Animated indicator (Reanimated)
 - ✅ 4 main tabs: Home, Library, Study, Profile
@@ -79,6 +82,7 @@ src/
 - ✅ Safe area management
 
 ### CustomTabBar (`app/(tabs)/CustomTabBar.tsx`)
+
 ```typescript
 - BlurView avec rgba(12, 12, 26, 0.85)
 - Animated indicator (top bar indigo)
@@ -89,6 +93,7 @@ src/
 ```
 
 ### Welcome Screen (`app/(auth)/index.tsx`)
+
 - ✅ Logo DeepSight
 - ✅ Hero section
 - ✅ Feature cards (3 features)
@@ -111,6 +116,7 @@ src/
 ## 🎨 Design System
 
 Tous les fichiers utilisent :
+
 - **Colors** : darkColors, palette depuis @/theme/colors
 - **Spacing** : sp, borderRadius depuis @/theme/spacing
 - **Typography** : fontFamily, fontSize, textStyles depuis @/theme/typography
@@ -119,15 +125,18 @@ Tous les fichiers utilisent :
 ## 🔧 Configuration
 
 ### TypeScript
+
 - ✅ tsconfig.json - Paths aliases pour @/theme, @/stores
 - ✅ babel.config.js - Module resolver setup
 
 ### Expo
+
 - ✅ app.json - scheme: "deepsight", plugins
 
 ## 🚀 Prochaines étapes
 
 ### 1. Compléter les Auth Screens
+
 ```typescript
 // app/(auth)/login.tsx
 - Email input
@@ -161,6 +170,7 @@ Tous les fichiers utilisent :
 ### 2. Compléter les Tab Screens
 
 #### Home (`app/(tabs)/index.tsx`)
+
 - [ ] Search bar pour chercher vidéos
 - [ ] "Analyser une vidéo" button (FAB ou card)
 - [ ] Analyses récentes (list/grid)
@@ -168,6 +178,7 @@ Tous les fichiers utilisent :
 - [ ] Suggestions/inspiration videos
 
 #### Library (`app/(tabs)/library.tsx`)
+
 - [ ] Analyses listées (avec thumbnail, titre, date)
 - [ ] Filtres (plan, date, durée)
 - [ ] Recherche
@@ -176,6 +187,7 @@ Tous les fichiers utilisent :
 - [ ] Tap pour voir détail
 
 #### Study (`app/(tabs)/study.tsx`)
+
 - [ ] Tabs : Flashcards, Mind Maps, Glossaire
 - [ ] Flashcard viewer avec flip animation
 - [ ] Mind map viewer
@@ -183,6 +195,7 @@ Tous les fichiers utilisent :
 - [ ] Progress indicator
 
 #### Profile (`app/(tabs)/profile.tsx`)
+
 - [ ] Avatar + username
 - [ ] Plan actuel + upgrade button
 - [ ] Usage stats (crédit, analyses)
@@ -190,6 +203,7 @@ Tous les fichiers utilisent :
 - [ ] Logout button
 
 ### 3. Compléter Analysis Detail Route
+
 ```typescript
 // app/(tabs)/analysis/[id].tsx
 - Header avec back button et options
@@ -202,11 +216,13 @@ Tous les fichiers utilisent :
 ```
 
 ### 4. Navigation Linking
+
 - [ ] Setup deep linking dans root layout
 - [ ] Handle URL schemes deepsight://
 - [ ] Test deep links
 
 ### 5. Tests
+
 - [ ] Unit tests pour helpers
 - [ ] Integration tests pour navigation flow
 - [ ] E2E tests pour auth flow

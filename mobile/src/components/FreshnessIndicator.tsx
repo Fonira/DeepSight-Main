@@ -1,11 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { Colors, Spacing, BorderRadius, Typography } from '../constants/theme';
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../contexts/ThemeContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { Colors, Spacing, BorderRadius, Typography } from "../constants/theme";
 
-type FreshnessLevel = 'fresh' | 'recent' | 'dated' | 'outdated';
+type FreshnessLevel = "fresh" | "recent" | "dated" | "outdated";
 
 interface FreshnessIndicatorProps {
   publicationDate: string | Date;
@@ -15,38 +15,41 @@ interface FreshnessIndicatorProps {
   onPress?: () => void;
 }
 
-const FRESHNESS_CONFIG: Record<FreshnessLevel, { color: string; icon: string; labelFr: string; labelEn: string }> = {
+const FRESHNESS_CONFIG: Record<
+  FreshnessLevel,
+  { color: string; icon: string; labelFr: string; labelEn: string }
+> = {
   fresh: {
     color: Colors.accentSuccess,
-    icon: 'leaf',
-    labelFr: 'Récent',
-    labelEn: 'Fresh',
+    icon: "leaf",
+    labelFr: "Récent",
+    labelEn: "Fresh",
   },
   recent: {
     color: Colors.accentSuccess,
-    icon: 'time',
-    labelFr: 'Assez récent',
-    labelEn: 'Recent',
+    icon: "time",
+    labelFr: "Assez récent",
+    labelEn: "Recent",
   },
   dated: {
     color: Colors.accentWarning,
-    icon: 'hourglass',
-    labelFr: 'Daté',
-    labelEn: 'Dated',
+    icon: "hourglass",
+    labelFr: "Daté",
+    labelEn: "Dated",
   },
   outdated: {
     color: Colors.accentError,
-    icon: 'alert-circle',
-    labelFr: 'Ancien',
-    labelEn: 'Outdated',
+    icon: "alert-circle",
+    labelFr: "Ancien",
+    labelEn: "Outdated",
   },
 };
 
 const calculateFreshnessLevel = (daysSince: number): FreshnessLevel => {
-  if (daysSince <= 7) return 'fresh';
-  if (daysSince <= 30) return 'recent';
-  if (daysSince <= 180) return 'dated';
-  return 'outdated';
+  if (daysSince <= 7) return "fresh";
+  if (daysSince <= 30) return "recent";
+  if (daysSince <= 180) return "dated";
+  return "outdated";
 };
 
 const calculateDaysSince = (date: string | Date): number => {
@@ -58,27 +61,33 @@ const calculateDaysSince = (date: string | Date): number => {
 
 const formatDate = (date: string | Date, isEn: boolean): string => {
   const d = new Date(date);
-  return d.toLocaleDateString(isEn ? 'en-US' : 'fr-FR', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+  return d.toLocaleDateString(isEn ? "en-US" : "fr-FR", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
   });
 };
 
 const formatRelativeTime = (days: number, isEn: boolean): string => {
-  if (days === 0) return isEn ? 'Today' : "Aujourd'hui";
-  if (days === 1) return isEn ? 'Yesterday' : 'Hier';
+  if (days === 0) return isEn ? "Today" : "Aujourd'hui";
+  if (days === 1) return isEn ? "Yesterday" : "Hier";
   if (days < 7) return isEn ? `${days} days ago` : `Il y a ${days} jours`;
   if (days < 30) {
     const weeks = Math.floor(days / 7);
-    return isEn ? `${weeks} week${weeks > 1 ? 's' : ''} ago` : `Il y a ${weeks} semaine${weeks > 1 ? 's' : ''}`;
+    return isEn
+      ? `${weeks} week${weeks > 1 ? "s" : ""} ago`
+      : `Il y a ${weeks} semaine${weeks > 1 ? "s" : ""}`;
   }
   if (days < 365) {
     const months = Math.floor(days / 30);
-    return isEn ? `${months} month${months > 1 ? 's' : ''} ago` : `Il y a ${months} mois`;
+    return isEn
+      ? `${months} month${months > 1 ? "s" : ""} ago`
+      : `Il y a ${months} mois`;
   }
   const years = Math.floor(days / 365);
-  return isEn ? `${years} year${years > 1 ? 's' : ''} ago` : `Il y a ${years} an${years > 1 ? 's' : ''}`;
+  return isEn
+    ? `${years} year${years > 1 ? "s" : ""} ago`
+    : `Il y a ${years} an${years > 1 ? "s" : ""}`;
 };
 
 export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
@@ -90,7 +99,7 @@ export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
 }) => {
   const { colors, isDark } = useTheme();
   const { language } = useLanguage();
-  const isEn = language === 'en';
+  const isEn = language === "en";
 
   const days = daysSincePublished ?? calculateDaysSince(publicationDate);
   const level = freshnessLevel ?? calculateFreshnessLevel(days);
@@ -102,7 +111,10 @@ export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
     return (
       <Container
         onPress={onPress}
-        style={[styles.compactContainer, { backgroundColor: config.color + '20' }]}
+        style={[
+          styles.compactContainer,
+          { backgroundColor: config.color + "20" },
+        ]}
       >
         <Ionicons name={config.icon as any} size={12} color={config.color} />
         <Text style={[styles.compactText, { color: config.color }]}>
@@ -124,7 +136,7 @@ export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
       ]}
     >
       <View style={styles.header}>
-        <View style={[styles.badge, { backgroundColor: config.color + '20' }]}>
+        <View style={[styles.badge, { backgroundColor: config.color + "20" }]}>
           <Ionicons name={config.icon as any} size={14} color={config.color} />
           <Text style={[styles.badgeText, { color: config.color }]}>
             {isEn ? config.labelEn : config.labelFr}
@@ -148,13 +160,18 @@ export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
         </Text>
       </View>
 
-      {level === 'outdated' && (
-        <View style={[styles.warningBanner, { backgroundColor: Colors.accentWarning + '15' }]}>
+      {level === "outdated" && (
+        <View
+          style={[
+            styles.warningBanner,
+            { backgroundColor: Colors.accentWarning + "15" },
+          ]}
+        >
           <Ionicons name="warning" size={12} color={Colors.accentWarning} />
           <Text style={[styles.warningText, { color: Colors.accentWarning }]}>
             {isEn
-              ? 'Content may be outdated. Verify current information.'
-              : 'Le contenu peut être obsolète. Vérifiez les informations actuelles.'}
+              ? "Content may be outdated. Verify current information."
+              : "Le contenu peut être obsolète. Vérifiez les informations actuelles."}
           </Text>
         </View>
       )}
@@ -170,8 +187,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   compactContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.full,
@@ -182,13 +199,13 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.full,
@@ -202,8 +219,8 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   dateText: {
@@ -215,8 +232,8 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
   },
   warningBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.sm,

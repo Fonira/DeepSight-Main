@@ -7,21 +7,21 @@
 
 // HTML entity encoding for XSS prevention
 const htmlEntities: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#x27;',
-  '/': '&#x2F;',
-  '`': '&#x60;',
-  '=': '&#x3D;',
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#x27;",
+  "/": "&#x2F;",
+  "`": "&#x60;",
+  "=": "&#x3D;",
 };
 
 /**
  * Escape HTML entities to prevent XSS when rendering text
  */
 export const escapeHtml = (text: string): string => {
-  if (!text) return '';
+  if (!text) return "";
   return text.replace(/[&<>"'`=/]/g, (char) => htmlEntities[char] || char);
 };
 
@@ -32,15 +32,17 @@ export const escapeHtml = (text: string): string => {
  * - Normalizes Unicode
  */
 export const sanitizeTextInput = (input: string): string => {
-  if (!input) return '';
+  if (!input) return "";
 
-  return input
-    // Normalize Unicode (NFC form)
-    .normalize('NFC')
-    // Remove control characters except newlines and tabs
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-    // Trim leading/trailing whitespace
-    .trim();
+  return (
+    input
+      // Normalize Unicode (NFC form)
+      .normalize("NFC")
+      // Remove control characters except newlines and tabs
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      // Trim leading/trailing whitespace
+      .trim()
+  );
 };
 
 /**
@@ -49,14 +51,14 @@ export const sanitizeTextInput = (input: string): string => {
  * - Removes dangerous protocols
  */
 export const sanitizeUrlInput = (url: string): string => {
-  if (!url) return '';
+  if (!url) return "";
 
   const trimmed = url.trim();
 
   // Block javascript:, data:, vbscript: protocols
   const dangerousProtocols = /^(javascript|data|vbscript):/i;
   if (dangerousProtocols.test(trimmed)) {
-    return '';
+    return "";
   }
 
   return trimmed;
@@ -67,17 +69,22 @@ export const sanitizeUrlInput = (url: string): string => {
  * - Removes potentially dangerous characters
  * - Limits length
  */
-export const sanitizeSearchQuery = (query: string, maxLength: number = 500): string => {
-  if (!query) return '';
+export const sanitizeSearchQuery = (
+  query: string,
+  maxLength: number = 500,
+): string => {
+  if (!query) return "";
 
-  return query
-    .normalize('NFC')
-    // Remove control characters
-    .replace(/[\x00-\x1F\x7F]/g, '')
-    // Trim
-    .trim()
-    // Limit length
-    .substring(0, maxLength);
+  return (
+    query
+      .normalize("NFC")
+      // Remove control characters
+      .replace(/[\x00-\x1F\x7F]/g, "")
+      // Trim
+      .trim()
+      // Limit length
+      .substring(0, maxLength)
+  );
 };
 
 /**

@@ -1,1 +1,1 @@
-export { YouTubePlayer, TimestampLink } from './YouTubePlayer';
+export { YouTubePlayer, TimestampLink } from "./YouTubePlayer";

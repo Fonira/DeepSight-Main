@@ -12,9 +12,9 @@
  * - Fallback to ActivityIndicator
  */
 
-import React from 'react';
-import { View, StyleSheet, ImageSourcePropType } from 'react-native';
-import { DeepSightSpinner } from '../ui/DeepSightSpinner';
+import React from "react";
+import { View, StyleSheet, ImageSourcePropType } from "react-native";
+import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 
 // Size presets matching DeepSightSpinner
 const SIZE_PRESETS = {
@@ -25,7 +25,7 @@ const SIZE_PRESETS = {
 } as const;
 
 type SizePreset = keyof typeof SIZE_PRESETS;
-type SpeedPreset = 'slow' | 'normal' | 'fast';
+type SpeedPreset = "slow" | "normal" | "fast";
 
 interface AnimatedLogoProps {
   /** Size of the animation - number or preset ('sm', 'md', 'lg', 'xl') */
@@ -47,32 +47,46 @@ interface AnimatedLogoProps {
 }
 
 export const AnimatedLogo: React.FC<AnimatedLogoProps> = ({
-  size = 'lg',
+  size = "lg",
   loop = true,
   autoPlay = true,
-  speed = 'normal',
+  speed = "normal",
   source,
   showGlow = false,
   color,
   onAnimationFinish,
 }) => {
   // Convert legacy numeric speed to preset
-  const resolvedSpeed: SpeedPreset = typeof speed === 'number'
-    ? speed > 1.5 ? 'fast' : speed < 0.8 ? 'slow' : 'normal'
-    : speed;
+  const resolvedSpeed: SpeedPreset =
+    typeof speed === "number"
+      ? speed > 1.5
+        ? "fast"
+        : speed < 0.8
+          ? "slow"
+          : "normal"
+      : speed;
 
   // Resolve size from preset or number
-  const resolvedSize = typeof size === 'number' ? size : SIZE_PRESETS[size];
+  const resolvedSize = typeof size === "number" ? size : SIZE_PRESETS[size];
 
   // Map numeric size to nearest SpinnerSize preset
-  const spinnerSize = typeof size === 'string' ? (size === 'xl' ? 'xl' : size) as 'sm' | 'md' | 'lg' | 'xl' :
-    resolvedSize <= 24 ? 'xs' as const :
-    resolvedSize <= 32 ? 'sm' as const :
-    resolvedSize <= 48 ? 'md' as const :
-    resolvedSize <= 64 ? 'lg' as const : 'xl' as const;
+  const spinnerSize =
+    typeof size === "string"
+      ? ((size === "xl" ? "xl" : size) as "sm" | "md" | "lg" | "xl")
+      : resolvedSize <= 24
+        ? ("xs" as const)
+        : resolvedSize <= 32
+          ? ("sm" as const)
+          : resolvedSize <= 48
+            ? ("md" as const)
+            : resolvedSize <= 64
+              ? ("lg" as const)
+              : ("xl" as const);
 
   return (
-    <View style={[styles.container, { width: resolvedSize, height: resolvedSize }]}>
+    <View
+      style={[styles.container, { width: resolvedSize, height: resolvedSize }]}
+    >
       <DeepSightSpinner
         size={spinnerSize}
         speed={resolvedSpeed}
@@ -87,8 +101,8 @@ export const AnimatedLogo: React.FC<AnimatedLogoProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

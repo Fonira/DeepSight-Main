@@ -5,16 +5,23 @@
  * and limit notifications.
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useAuth } from './AuthContext';
-import { usageApi, authApi } from '../services/api';
-import { PlanType, PLANS } from '../constants/config';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
+import { useAuth } from "./AuthContext";
+import { usageApi, authApi } from "../services/api";
+import { PlanType, PLANS } from "../constants/config";
 import {
   PLAN_LIMITS,
   PLAN_FEATURES as PP_FEATURES,
   normalizePlanId,
   type PlanId,
-} from '../config/planPrivileges';
+} from "../config/planPrivileges";
 
 // Plan features configuration — dérivé de planPrivileges (source de vérité unique)
 export interface PlanFeatures {
@@ -25,7 +32,7 @@ export interface PlanFeatures {
   chatMessagesPerVideo: number;
   chatMessagesPerDay: number;
   exportEnabled: boolean;
-  exportFormats: ('pdf' | 'markdown' | 'text')[];
+  exportFormats: ("pdf" | "markdown" | "text")[];
   flashcardsEnabled: boolean;
   quizEnabled: boolean;
   mindmapEnabled: boolean;
@@ -45,12 +52,13 @@ export interface PlanFeatures {
 function buildPlanFeatures(planId: PlanId): PlanFeatures {
   const l = PLAN_LIMITS[planId];
   const f = PP_FEATURES[planId];
-  const formats: ('pdf' | 'markdown' | 'text')[] = ['text'];
-  if (f.exportMarkdown) formats.push('markdown');
-  if (f.exportPdf) formats.push('pdf');
+  const formats: ("pdf" | "markdown" | "text")[] = ["text"];
+  if (f.exportMarkdown) formats.push("markdown");
+  if (f.exportPdf) formats.push("pdf");
   return {
     maxAnalysesPerMonth: l.monthlyAnalyses,
-    maxVideoMinutes: l.maxVideoDuration === -1 ? -1 : Math.round(l.maxVideoDuration / 60),
+    maxVideoMinutes:
+      l.maxVideoDuration === -1 ? -1 : Math.round(l.maxVideoDuration / 60),
     maxCredits: l.monthlyCredits,
     chatEnabled: f.chatBasic,
     chatMessagesPerVideo: l.chatQuestionsPerVideo,
@@ -66,7 +74,7 @@ function buildPlanFeatures(planId: PlanId): PlanFeatures {
     webEnrichEnabled: f.chatWebSearch,
     academicSearchEnabled: f.academicSearch,
     ttsEnabled: f.ttsAudio,
-    voiceChatEnabled: planId !== 'free',
+    voiceChatEnabled: planId !== "free",
     voiceChatMonthlyMinutes: l.voiceChatMonthlyMinutes,
     historyDays: l.historyDays,
     apiAccess: f.apiAccess,
@@ -75,15 +83,15 @@ function buildPlanFeatures(planId: PlanId): PlanFeatures {
 
 // Plan configurations — synced from planPrivileges.ts (2 plans)
 const PLAN_FEATURES_MAP: Record<string, PlanFeatures> = {
-  free: buildPlanFeatures('free'),
-  pro: buildPlanFeatures('pro'),
+  free: buildPlanFeatures("free"),
+  pro: buildPlanFeatures("pro"),
   // Legacy aliases → redirigés par normalizePlanId
-  student: buildPlanFeatures('pro'),
-  starter: buildPlanFeatures('pro'),
-  expert: buildPlanFeatures('pro'),
-  team: buildPlanFeatures('pro'),
-  equipe: buildPlanFeatures('pro'),
-  unlimited: buildPlanFeatures('pro'),
+  student: buildPlanFeatures("pro"),
+  starter: buildPlanFeatures("pro"),
+  expert: buildPlanFeatures("pro"),
+  team: buildPlanFeatures("pro"),
+  equipe: buildPlanFeatures("pro"),
+  unlimited: buildPlanFeatures("pro"),
 };
 
 // Usage stats interface
@@ -125,7 +133,7 @@ const PlanContext = createContext<PlanContextType | undefined>(undefined);
 
 // Get suggested upgrade plan
 function getSuggestedUpgrade(currentPlan: PlanType): PlanType | null {
-  const planOrder: string[] = ['free', 'pro'];
+  const planOrder: string[] = ["free", "pro"];
   const normalized = normalizePlanId(currentPlan);
   const currentIndex = planOrder.indexOf(normalized);
   if (currentIndex >= 0 && currentIndex < planOrder.length - 1) {
@@ -135,7 +143,9 @@ function getSuggestedUpgrade(currentPlan: PlanType): PlanType | null {
 }
 
 // Provider component
-export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const PlanProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const { user, isAuthenticated } = useAuth();
   const [usage, setUsage] = useState<UsageStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -160,7 +170,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         resetDate: stats.reset_date,
       });
     } catch (error) {
-      if (__DEV__) { console.error('[PlanContext] Failed to fetch usage:', error); }
+      if (__DEV__) {
+        console.error("[PlanContext] Failed to fetch usage:", error);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -176,80 +188,89 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [isAuthenticated, refreshUsage]);
 
   // Check if a feature is available
-  const checkFeature = useCallback((feature: keyof PlanFeatures): FeatureCheckResult => {
-    const value = features[feature];
+  const checkFeature = useCallback(
+    (feature: keyof PlanFeatures): FeatureCheckResult => {
+      const value = features[feature];
 
-    // Boolean features
-    if (typeof value === 'boolean') {
-      if (value) {
-        return { allowed: true };
-      }
-      return {
-        allowed: false,
-        reason: 'Cette fonctionnalité n\'est pas disponible avec votre forfait actuel.',
-        upgradeRequired: true,
-        suggestedPlan: getSuggestedUpgrade(plan) || undefined,
-      };
-    }
-
-    // Number features (limits)
-    if (typeof value === 'number') {
-      // -1 means unlimited
-      if (value === -1) {
-        return { allowed: true };
-      }
-      // 0 means disabled
-      if (value === 0) {
+      // Boolean features
+      if (typeof value === "boolean") {
+        if (value) {
+          return { allowed: true };
+        }
         return {
           allowed: false,
-          reason: 'Cette fonctionnalité n\'est pas disponible avec votre forfait actuel.',
-          upgradeRequired: true,
-          suggestedPlan: getSuggestedUpgrade(plan) || undefined,
-          limit: value,
-        };
-      }
-      return { allowed: true, limit: value };
-    }
-
-    // Array features (e.g., exportFormats)
-    if (Array.isArray(value)) {
-      if (value.length === 0) {
-        return {
-          allowed: false,
-          reason: 'Cette fonctionnalité n\'est pas disponible avec votre forfait actuel.',
+          reason:
+            "Cette fonctionnalité n'est pas disponible avec votre forfait actuel.",
           upgradeRequired: true,
           suggestedPlan: getSuggestedUpgrade(plan) || undefined,
         };
       }
+
+      // Number features (limits)
+      if (typeof value === "number") {
+        // -1 means unlimited
+        if (value === -1) {
+          return { allowed: true };
+        }
+        // 0 means disabled
+        if (value === 0) {
+          return {
+            allowed: false,
+            reason:
+              "Cette fonctionnalité n'est pas disponible avec votre forfait actuel.",
+            upgradeRequired: true,
+            suggestedPlan: getSuggestedUpgrade(plan) || undefined,
+            limit: value,
+          };
+        }
+        return { allowed: true, limit: value };
+      }
+
+      // Array features (e.g., exportFormats)
+      if (Array.isArray(value)) {
+        if (value.length === 0) {
+          return {
+            allowed: false,
+            reason:
+              "Cette fonctionnalité n'est pas disponible avec votre forfait actuel.",
+            upgradeRequired: true,
+            suggestedPlan: getSuggestedUpgrade(plan) || undefined,
+          };
+        }
+        return { allowed: true };
+      }
+
       return { allowed: true };
-    }
-
-    return { allowed: true };
-  }, [features, plan]);
+    },
+    [features, plan],
+  );
 
   // Check if enough credits
-  const checkCredits = useCallback((required: number): FeatureCheckResult => {
-    if (!usage) {
-      return { allowed: true }; // Allow if no usage data yet
-    }
+  const checkCredits = useCallback(
+    (required: number): FeatureCheckResult => {
+      if (!usage) {
+        return { allowed: true }; // Allow if no usage data yet
+      }
 
-    if (usage.creditsRemaining >= required) {
+      if (usage.creditsRemaining >= required) {
+        return {
+          allowed: true,
+          currentUsage: usage.creditsUsed,
+          limit: usage.creditsTotal,
+        };
+      }
+
       return {
-        allowed: true,
+        allowed: false,
+        reason: `Crédits insuffisants. Vous avez ${usage.creditsRemaining} crédits, mais ${required} sont requis.`,
+        upgradeRequired: true,
+        suggestedPlan: getSuggestedUpgrade(plan) || undefined,
         currentUsage: usage.creditsUsed,
         limit: usage.creditsTotal,
       };
-    }
-
-    return {
-      allowed: false,
-      reason: `Crédits insuffisants. Vous avez ${usage.creditsRemaining} crédits, mais ${required} sont requis.`,
-      upgradeRequired: true,
-      suggestedPlan: getSuggestedUpgrade(plan) || undefined,
-      currentUsage: usage.creditsUsed,
-      limit: usage.creditsTotal,
-    };
-  }, [usage, plan]);
+    },
+    [usage, plan],
+  );
 
   // Check analysis limit
   const checkAnalysisLimit = useCallback((): FeatureCheckResult => {
@@ -281,9 +302,12 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [usage, features.maxAnalysesPerMonth, plan]);
 
   // Simple boolean check for feature
-  const canUseFeature = useCallback((feature: keyof PlanFeatures): boolean => {
-    return checkFeature(feature).allowed;
-  }, [checkFeature]);
+  const canUseFeature = useCallback(
+    (feature: keyof PlanFeatures): boolean => {
+      return checkFeature(feature).allowed;
+    },
+    [checkFeature],
+  );
 
   // Get upgrade plan
   const getUpgradePlan = useCallback((): PlanType | null => {
@@ -314,7 +338,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 export const usePlan = (): PlanContextType => {
   const context = useContext(PlanContext);
   if (!context) {
-    throw new Error('usePlan must be used within PlanProvider');
+    throw new Error("usePlan must be used within PlanProvider");
   }
   return context;
 };

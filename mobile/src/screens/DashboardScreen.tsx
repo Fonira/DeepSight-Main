@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from "react";
 // @ts-ignore — analytics is optional, never blocks rendering
-import { analytics } from '../services/analytics';
+import { analytics } from "../services/analytics";
 import {
   View,
   Text,
@@ -14,46 +14,67 @@ import {
   UIManager,
   Linking,
   Image,
-} from 'react-native';
-import Animated, { FadeInUp } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import * as Haptics from 'expo-haptics';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { videoApi, historyApi } from '../services/api';
-import { Header, VideoCard, Card, Badge, Avatar, FreeTrialLimitModal, PlanBadge } from '../components';
-import { SectionHeader } from '../components/ui';
-import SmartInputBar from '../components/SmartInputBar';
-import { CustomizationPanel } from '../components/customization';
-import { VideoDiscoveryModal } from '../components/VideoDiscoveryModal';
-import { usePlan } from '../hooks/usePlan';
-import { sp, borderRadius } from '../theme/spacing';
-import { fontFamily, fontSize } from '../theme/typography';
-import { gradients } from '../theme/colors';
-import { isValidYouTubeUrl, formatCredits } from '../utils/formatters';
-import { useIsOffline } from '../hooks/useNetworkStatus';
+} from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  useNavigation,
+  CompositeNavigationProp,
+} from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import * as Haptics from "expo-haptics";
+import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { videoApi, historyApi } from "../services/api";
+import {
+  Header,
+  VideoCard,
+  Card,
+  Badge,
+  Avatar,
+  FreeTrialLimitModal,
+  PlanBadge,
+} from "../components";
+import { SectionHeader } from "../components/ui";
+import SmartInputBar from "../components/SmartInputBar";
+import { CustomizationPanel } from "../components/customization";
+import { VideoDiscoveryModal } from "../components/VideoDiscoveryModal";
+import { usePlan } from "../hooks/usePlan";
+import { sp, borderRadius } from "../theme/spacing";
+import { fontFamily, fontSize } from "../theme/typography";
+import { gradients } from "../theme/colors";
+import { isValidYouTubeUrl, formatCredits } from "../utils/formatters";
+import { useIsOffline } from "../hooks/useNetworkStatus";
 import {
   normalizePlanId,
   shouldShowUpgradePrompt,
   CONVERSION_TRIGGERS,
-} from '../config/planPrivileges';
-import type { RootStackParamList, MainTabParamList, AnalysisSummary } from '../types';
-import { AnalysisCustomization, DEFAULT_CUSTOMIZATION } from '../types/analysis';
+} from "../config/planPrivileges";
+import type {
+  RootStackParamList,
+  MainTabParamList,
+  AnalysisSummary,
+} from "../types";
+import {
+  AnalysisCustomization,
+  DEFAULT_CUSTOMIZATION,
+} from "../types/analysis";
 
 // Enable LayoutAnimation for Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 type DashboardNavigationProp = CompositeNavigationProp<
-  BottomTabNavigationProp<MainTabParamList, 'Dashboard'>,
+  BottomTabNavigationProp<MainTabParamList, "Dashboard">,
   NativeStackNavigationProp<RootStackParamList>
 >;
 
@@ -64,16 +85,25 @@ export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<DashboardNavigationProp>();
   const insets = useSafeAreaInsets();
   const isOffline = useIsOffline();
-  useScreenDoodleVariant('analysis');
+  useScreenDoodleVariant("analysis");
 
   const userPlan = normalizePlanId(user?.plan);
-  const { planName, planIcon, planColor, limits, usage, refetch: refetchPlan } = usePlan();
+  const {
+    planName,
+    planIcon,
+    planColor,
+    limits,
+    usage,
+    refetch: refetchPlan,
+  } = usePlan();
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [recentAnalyses, setRecentAnalyses] = useState<AnalysisSummary[]>([]);
   const [favorites, setFavorites] = useState<AnalysisSummary[]>([]);
-  const [estimatedCredits, setEstimatedCredits] = useState<number | undefined>(undefined);
+  const [estimatedCredits, setEstimatedCredits] = useState<number | undefined>(
+    undefined,
+  );
 
   const [showFreeTrialModal, setShowFreeTrialModal] = useState(false);
   const [analysesUsedThisMonth, setAnalysesUsedThisMonth] = useState(0);
@@ -88,7 +118,9 @@ export const DashboardScreen: React.FC = () => {
   } | null>(null);
 
   const [showCustomization, setShowCustomization] = useState(false);
-  const [customization, setCustomization] = useState<AnalysisCustomization>(DEFAULT_CUSTOMIZATION);
+  const [customization, setCustomization] = useState<AnalysisCustomization>(
+    DEFAULT_CUSTOMIZATION,
+  );
 
   const toggleCustomization = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -101,7 +133,9 @@ export const DashboardScreen: React.FC = () => {
       const response = await historyApi.getHistory(1, 5);
       setRecentAnalyses(response.items ?? []);
     } catch (error) {
-      if (__DEV__) { console.error('Failed to load recent analyses:', error); }
+      if (__DEV__) {
+        console.error("Failed to load recent analyses:", error);
+      }
     }
   }, []);
 
@@ -110,13 +144,20 @@ export const DashboardScreen: React.FC = () => {
       const favs = await historyApi.getFavorites(3);
       setFavorites(favs ?? []);
     } catch (error) {
-      if (__DEV__) { console.error('Failed to load favorites:', error); }
+      if (__DEV__) {
+        console.error("Failed to load favorites:", error);
+      }
     }
   }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshUser(), loadRecentAnalyses(), loadFavorites(), refetchPlan()]);
+    await Promise.all([
+      refreshUser(),
+      loadRecentAnalyses(),
+      loadFavorites(),
+      refetchPlan(),
+    ]);
     setRefreshing(false);
   }, [refreshUser, loadRecentAnalyses, loadFavorites, refetchPlan]);
 
@@ -133,7 +174,7 @@ export const DashboardScreen: React.FC = () => {
 
   // ? Quick Chat � Chat direct sans analyse
   const [isQuickChatting, setIsQuickChatting] = useState(false);
-  
+
   const handleQuickChat = async (url: string) => {
     if (!url?.trim()) return;
     setIsQuickChatting(true);
@@ -141,23 +182,20 @@ export const DashboardScreen: React.FC = () => {
       const response = await videoApi.quickChat(url.trim(), language);
       if (response.summary_id) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        navigation.navigate('Analysis', {
+        navigation.navigate("Analysis", {
           summaryId: String(response.summary_id),
-          initialTab: 'chat',
+          initialTab: "chat",
         });
       }
     } catch (error: any) {
-      Alert.alert(
-        t.common.error,
-        error?.message || t.errors.generic
-      );
+      Alert.alert(t.common.error, error?.message || t.errors.generic);
     } finally {
       setIsQuickChatting(false);
     }
   };
 
-    const handleSmartInputSubmit = async (data: {
-    inputType: 'url' | 'text' | 'search';
+  const handleSmartInputSubmit = async (data: {
+    inputType: "url" | "text" | "search";
     value: string;
     category: string;
     mode: string;
@@ -178,39 +216,36 @@ export const DashboardScreen: React.FC = () => {
       usage.analyses_this_month >= limits.monthlyAnalyses
     ) {
       Alert.alert(
-        language === 'fr' ? 'Quota atteint' : 'Quota reached',
-        language === 'fr'
+        language === "fr" ? "Quota atteint" : "Quota reached",
+        language === "fr"
           ? `Vous avez utilisé ${usage.analyses_this_month}/${limits.monthlyAnalyses} analyses ce mois-ci.`
           : `You have used ${usage.analyses_this_month}/${limits.monthlyAnalyses} analyses this month.`,
         [
-          { text: t.common.cancel, style: 'cancel' },
+          { text: t.common.cancel, style: "cancel" },
           {
-            text: language === 'fr' ? 'Voir les plans' : 'View plans',
-            onPress: () => Linking.openURL('https://www.deepsightsynthesis.com/upgrade'),
+            text: language === "fr" ? "Voir les plans" : "View plans",
+            onPress: () =>
+              Linking.openURL("https://www.deepsightsynthesis.com/upgrade"),
           },
-        ]
+        ],
       );
       return;
     }
 
     if (user && (user.credits ?? 0) <= 0) {
-      Alert.alert(
-        t.errors.noCredits,
-        t.chat.upgradeForMore,
-        [
-          { text: t.common.cancel, style: 'cancel' },
-          { text: t.nav.upgrade, onPress: () => navigation.navigate('Upgrade') },
-        ]
-      );
+      Alert.alert(t.errors.noCredits, t.chat.upgradeForMore, [
+        { text: t.common.cancel, style: "cancel" },
+        { text: t.nav.upgrade, onPress: () => navigation.navigate("Upgrade") },
+      ]);
       return;
     }
 
-    if (data.inputType === 'url' && !isValidYouTubeUrl(data.value)) {
+    if (data.inputType === "url" && !isValidYouTubeUrl(data.value)) {
       Alert.alert(
         t.common.error,
-        language === 'fr'
-          ? 'URL invalide. Collez un lien YouTube ou TikTok valide.'
-          : 'Invalid URL. Paste a valid YouTube or TikTok link.'
+        language === "fr"
+          ? "URL invalide. Collez un lien YouTube ou TikTok valide."
+          : "Invalid URL. Paste a valid YouTube or TikTok link.",
       );
       return;
     }
@@ -219,7 +254,7 @@ export const DashboardScreen: React.FC = () => {
     setIsAnalyzing(true);
 
     // Analytics: track analysis start
-    analytics.track('analysis_started', {
+    analytics.track("analysis_started", {
       input_type: data.inputType,
       category: data.category,
       mode: data.mode,
@@ -240,22 +275,22 @@ export const DashboardScreen: React.FC = () => {
       } = {
         mode: data.mode,
         category: data.category,
-        language: data.language || 'fr',
+        language: data.language || "fr",
         deep_research: data.deepResearch || false,
-        model: data.model || 'mistral-small-2603',
+        model: data.model || "mistral-small-2603",
       };
 
-      if (data.inputType === 'url') {
+      if (data.inputType === "url") {
         analysisRequest.url = data.value;
-      } else if (data.inputType === 'text') {
+      } else if (data.inputType === "text") {
         analysisRequest.raw_text = data.value;
         analysisRequest.title = data.title;
         analysisRequest.source = data.source;
-      } else if (data.inputType === 'search') {
+      } else if (data.inputType === "search") {
         setPendingSearchData({
           mode: data.mode,
           category: data.category,
-          language: data.language || 'fr',
+          language: data.language || "fr",
           deepResearch: data.deepResearch || false,
           searchQuery: data.value,
         });
@@ -270,7 +305,8 @@ export const DashboardScreen: React.FC = () => {
         customization.writingStyle !== DEFAULT_CUSTOMIZATION.writingStyle ||
         customization.targetLength !== DEFAULT_CUSTOMIZATION.targetLength ||
         customization.formalityLevel !== DEFAULT_CUSTOMIZATION.formalityLevel ||
-        customization.vocabularyComplexity !== DEFAULT_CUSTOMIZATION.vocabularyComplexity;
+        customization.vocabularyComplexity !==
+          DEFAULT_CUSTOMIZATION.vocabularyComplexity;
 
       let task_id: string;
 
@@ -294,25 +330,27 @@ export const DashboardScreen: React.FC = () => {
         task_id = result.task_id;
       }
 
-      if (userPlan === 'free') {
+      if (userPlan === "free") {
         const newCount = analysesUsedThisMonth + 1;
         setAnalysesUsedThisMonth(newCount);
         const promptStatus = shouldShowUpgradePrompt(userPlan, newCount);
-        if (promptStatus === 'blocked') {
+        if (promptStatus === "blocked") {
           setShowFreeTrialModal(true);
-        } else if (promptStatus === 'warning') {
+        } else if (promptStatus === "warning") {
           setTimeout(() => {
             setShowFreeTrialModal(true);
           }, 2000);
         }
       }
 
-      navigation.navigate('Analysis', {
+      navigation.navigate("Analysis", {
         videoUrl: (analysisRequest as { url?: string }).url,
         summaryId: task_id,
       });
     } catch (error) {
-      if (__DEV__) { console.error('Analysis error:', error); }
+      if (__DEV__) {
+        console.error("Analysis error:", error);
+      }
       Alert.alert(t.common.error, t.errors.generic);
     } finally {
       setIsAnalyzing(false);
@@ -320,7 +358,7 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const handleVideoPress = (summary: AnalysisSummary) => {
-    navigation.navigate('Analysis', { summaryId: summary.id });
+    navigation.navigate("Analysis", { summaryId: summary.id });
   };
 
   const handleFavoritePress = async (summary: AnalysisSummary) => {
@@ -329,8 +367,8 @@ export const DashboardScreen: React.FC = () => {
       const { isFavorite } = await historyApi.toggleFavorite(summary.id);
       setRecentAnalyses((prev) =>
         prev.map((item) =>
-          item.id === summary.id ? { ...item, isFavorite } : item
-        )
+          item.id === summary.id ? { ...item, isFavorite } : item,
+        ),
       );
       if (!isFavorite) {
         setFavorites((prev) => prev.filter((item) => item.id !== summary.id));
@@ -338,7 +376,9 @@ export const DashboardScreen: React.FC = () => {
         loadFavorites();
       }
     } catch (error) {
-      if (__DEV__) { console.error('Failed to toggle favorite:', error); }
+      if (__DEV__) {
+        console.error("Failed to toggle favorite:", error);
+      }
     }
   };
 
@@ -354,7 +394,7 @@ export const DashboardScreen: React.FC = () => {
         mode: pendingSearchData.mode,
         category: pendingSearchData.category,
         language: pendingSearchData.language,
-        model: user?.default_model || 'mistral-small-2603',
+        model: user?.default_model || "mistral-small-2603",
         deep_research: pendingSearchData.deepResearch,
       };
 
@@ -386,23 +426,25 @@ export const DashboardScreen: React.FC = () => {
         task_id = result.task_id;
       }
 
-      if (userPlan === 'free') {
+      if (userPlan === "free") {
         const newCount = analysesUsedThisMonth + 1;
         setAnalysesUsedThisMonth(newCount);
         const promptStatus = shouldShowUpgradePrompt(userPlan, newCount);
-        if (promptStatus === 'blocked') {
+        if (promptStatus === "blocked") {
           setShowFreeTrialModal(true);
-        } else if (promptStatus === 'warning') {
+        } else if (promptStatus === "warning") {
           setTimeout(() => setShowFreeTrialModal(true), 2000);
         }
       }
 
-      navigation.navigate('Analysis', {
+      navigation.navigate("Analysis", {
         videoUrl: videoUrl,
         summaryId: task_id,
       });
     } catch (error) {
-      if (__DEV__) { console.error('Analysis error:', error); }
+      if (__DEV__) {
+        console.error("Analysis error:", error);
+      }
       Alert.alert(t.common.error, t.errors.generic);
     } finally {
       setIsAnalyzing(false);
@@ -411,12 +453,18 @@ export const DashboardScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <Header showLogo rightAction={{ icon: 'notifications-outline', onPress: () => {} }} />
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
+      <Header
+        showLogo
+        rightAction={{ icon: "notifications-outline", onPress: () => {} }}
+      />
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 80 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 80 },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
         refreshControl={
@@ -428,12 +476,13 @@ export const DashboardScreen: React.FC = () => {
         }
       >
         {/* Welcome Section */}
-        <Animated.View entering={FadeInUp.delay(0).springify().damping(12)} style={styles.welcomeSection}>
+        <Animated.View
+          entering={FadeInUp.delay(0).springify().damping(12)}
+          style={styles.welcomeSection}
+        >
           <View style={styles.welcomeHeader}>
             <View>
-              <Text style={styles.welcomeLabel}>
-                {t.auth.welcomeBack}
-              </Text>
+              <Text style={styles.welcomeLabel}>{t.auth.welcomeBack}</Text>
               <Text style={[styles.userName, { color: colors.textPrimary }]}>
                 {user?.username || t.admin.user}
               </Text>
@@ -449,7 +498,7 @@ export const DashboardScreen: React.FC = () => {
               </View>
             </View>
             <Pressable
-              onPress={() => navigation.navigate('Account')}
+              onPress={() => navigation.navigate("Account")}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Avatar uri={user?.avatar_url} name={user?.username} size="lg" />
@@ -459,31 +508,36 @@ export const DashboardScreen: React.FC = () => {
           {/* Credits Card — 3-stop gradient */}
           <View style={styles.creditsCardWrap}>
             <LinearGradient
-              colors={['#3b82f6', '#6366f1', '#8b5cf6']}
+              colors={["#3b82f6", "#6366f1", "#8b5cf6"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.creditsGradient}
             >
               <View style={styles.creditsContent}>
                 <View>
-                  <Text style={styles.creditsLabel}>{t.dashboard.creditsRemaining}</Text>
+                  <Text style={styles.creditsLabel}>
+                    {t.dashboard.creditsRemaining}
+                  </Text>
                   <Text style={styles.creditsValue}>
-                    {formatCredits(user?.credits || 0, user?.credits_monthly || 20)}
+                    {formatCredits(
+                      user?.credits || 0,
+                      user?.credits_monthly || 20,
+                    )}
                   </Text>
                 </View>
                 <View style={styles.planBadge}>
                   <Badge
-                    label={user?.plan?.toUpperCase() || 'FREE'}
+                    label={user?.plan?.toUpperCase() || "FREE"}
                     variant="default"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
-                    textStyle={{ color: '#FFFFFF' }}
+                    style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
+                    textStyle={{ color: "#FFFFFF" }}
                   />
                 </View>
               </View>
-              {userPlan === 'free' && (
+              {userPlan === "free" && (
                 <Pressable
                   style={styles.upgradeButton}
-                  onPress={() => navigation.navigate('Upgrade')}
+                  onPress={() => navigation.navigate("Upgrade")}
                 >
                   <Text style={styles.upgradeText}>{t.nav.upgrade}</Text>
                   <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
@@ -494,40 +548,60 @@ export const DashboardScreen: React.FC = () => {
         </Animated.View>
 
         {/* Platform logos banner */}
-        <Animated.View entering={FadeInUp.delay(100).springify().damping(12)} style={[styles.platformBanner, { backgroundColor: colors.bgTertiary, borderColor: colors.border }]}>
+        <Animated.View
+          entering={FadeInUp.delay(100).springify().damping(12)}
+          style={[
+            styles.platformBanner,
+            { backgroundColor: colors.bgTertiary, borderColor: colors.border },
+          ]}
+        >
           <Image
-            source={isDark
-              ? require('../assets/platforms/youtube-logo-white.png')
-              : require('../assets/platforms/youtube-logo-dark.png')
+            source={
+              isDark
+                ? require("../assets/platforms/youtube-logo-white.png")
+                : require("../assets/platforms/youtube-logo-dark.png")
             }
             style={styles.bannerLogoYt}
             resizeMode="contain"
           />
-          <View style={[styles.bannerDivider, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.bannerDivider, { backgroundColor: colors.border }]}
+          />
           <Image
-            source={isDark
-              ? require('../assets/platforms/tiktok-logo-white.png')
-              : require('../assets/platforms/tiktok-logo-black.png')
+            source={
+              isDark
+                ? require("../assets/platforms/tiktok-logo-white.png")
+                : require("../assets/platforms/tiktok-logo-black.png")
             }
             style={styles.bannerLogoTk}
             resizeMode="contain"
           />
-          <View style={[styles.bannerDivider, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.bannerDivider, { backgroundColor: colors.border }]}
+          />
           <Image
-            source={require('../assets/platforms/mistral-logo-white.png')}
-            style={[styles.bannerLogoMistral, !isDark && { tintColor: '#1a1a2e' }]}
+            source={require("../assets/platforms/mistral-logo-white.png")}
+            style={[
+              styles.bannerLogoMistral,
+              !isDark && { tintColor: "#1a1a2e" },
+            ]}
             resizeMode="contain"
           />
-          <View style={[styles.bannerDivider, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.bannerDivider, { backgroundColor: colors.border }]}
+          />
           <Image
-            source={require('../assets/platforms/tournesol-logo.png')}
+            source={require("../assets/platforms/tournesol-logo.png")}
             style={styles.bannerLogoTournesol}
             resizeMode="contain"
           />
         </Animated.View>
 
         {/* Analysis Input Section */}
-        <Animated.View entering={FadeInUp.delay(200).springify().damping(12)} style={styles.analysisSection}>
+        <Animated.View
+          entering={FadeInUp.delay(200).springify().damping(12)}
+          style={styles.analysisSection}
+        >
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
               {t.dashboard.title}
@@ -549,14 +623,18 @@ export const DashboardScreen: React.FC = () => {
               accessibilityLabel="Personnaliser"
             >
               <Ionicons
-                name={showCustomization ? 'options' : 'options-outline'}
+                name={showCustomization ? "options" : "options-outline"}
                 size={16}
-                color={showCustomization ? '#FFFFFF' : colors.textSecondary}
+                color={showCustomization ? "#FFFFFF" : colors.textSecondary}
               />
-              <Text style={[
-                styles.customizeButtonText,
-                { color: showCustomization ? '#FFFFFF' : colors.textSecondary },
-              ]}>
+              <Text
+                style={[
+                  styles.customizeButtonText,
+                  {
+                    color: showCustomization ? "#FFFFFF" : colors.textSecondary,
+                  },
+                ]}
+              >
                 Personnaliser
               </Text>
               {customization.antiAIDetection && (
@@ -572,7 +650,7 @@ export const DashboardScreen: React.FC = () => {
               <CustomizationPanel
                 onCustomizationChange={setCustomization}
                 initialCustomization={customization}
-                language={language as 'fr' | 'en'}
+                language={language as "fr" | "en"}
                 compact={false}
                 showAdvanced={true}
                 persistPreferences={true}
@@ -595,13 +673,16 @@ export const DashboardScreen: React.FC = () => {
 
         {/* Favorites Section */}
         {favorites.length > 0 && (
-          <Animated.View entering={FadeInUp.delay(400).springify().damping(12)} style={styles.recentSection}>
+          <Animated.View
+            entering={FadeInUp.delay(400).springify().damping(12)}
+            style={styles.recentSection}
+          >
             <SectionHeader
-              title={t.history.favorites || 'Favoris'}
+              title={t.history.favorites || "Favoris"}
               icon="heart"
               iconColor={colors.accentError}
               actionText={t.dashboard.viewAll}
-              onAction={() => navigation.navigate('History')}
+              onAction={() => navigation.navigate("History")}
             />
 
             {favorites.map((analysis) => (
@@ -619,11 +700,14 @@ export const DashboardScreen: React.FC = () => {
 
         {/* Recent Analyses */}
         {recentAnalyses.length > 0 && (
-          <Animated.View entering={FadeInUp.delay(500).springify().damping(12)} style={styles.recentSection}>
+          <Animated.View
+            entering={FadeInUp.delay(500).springify().damping(12)}
+            style={styles.recentSection}
+          >
             <SectionHeader
               title={t.dashboard.recentAnalyses}
               actionText={t.dashboard.viewAll}
-              onAction={() => navigation.navigate('History')}
+              onAction={() => navigation.navigate("History")}
             />
 
             {recentAnalyses.map((analysis) => (
@@ -640,12 +724,29 @@ export const DashboardScreen: React.FC = () => {
         )}
 
         {/* Quick Stats */}
-        <Animated.View entering={FadeInUp.delay(600).springify().damping(12)} style={styles.statsSection}>
+        <Animated.View
+          entering={FadeInUp.delay(600).springify().damping(12)}
+          style={styles.statsSection}
+        >
           <SectionHeader title={t.admin.statistics} icon="analytics-outline" />
           <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
-              <View style={[styles.statIconWrap, { backgroundColor: `${colors.accentPrimary}15` }]}>
-                <Ionicons name="videocam" size={28} color={colors.accentPrimary} />
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: colors.bgCard, borderColor: colors.border },
+              ]}
+            >
+              <View
+                style={[
+                  styles.statIconWrap,
+                  { backgroundColor: `${colors.accentPrimary}15` },
+                ]}
+              >
+                <Ionicons
+                  name="videocam"
+                  size={28}
+                  color={colors.accentPrimary}
+                />
               </View>
               <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                 {user?.total_videos || 0}
@@ -654,12 +755,28 @@ export const DashboardScreen: React.FC = () => {
                 {t.admin.videosAnalyzed}
               </Text>
             </View>
-            <View style={[styles.statCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
-              <View style={[styles.statIconWrap, { backgroundColor: `${colors.accentSecondary}15` }]}>
-                <Ionicons name="document-text" size={28} color={colors.accentSecondary} />
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: colors.bgCard, borderColor: colors.border },
+              ]}
+            >
+              <View
+                style={[
+                  styles.statIconWrap,
+                  { backgroundColor: `${colors.accentSecondary}15` },
+                ]}
+              >
+                <Ionicons
+                  name="document-text"
+                  size={28}
+                  color={colors.accentSecondary}
+                />
               </View>
               <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-                {user?.total_words ? `${Math.round(user.total_words / 1000)}k` : '0'}
+                {user?.total_words
+                  ? `${Math.round(user.total_words / 1000)}k`
+                  : "0"}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textMuted }]}>
                 {t.admin.wordsGenerated}
@@ -675,10 +792,10 @@ export const DashboardScreen: React.FC = () => {
         analysesUsed={analysesUsedThisMonth}
         lastVideoDuration={0}
         onStartTrial={() => {
-          navigation.navigate('Upgrade');
+          navigation.navigate("Upgrade");
         }}
         onUpgrade={() => {
-          navigation.navigate('Upgrade');
+          navigation.navigate("Upgrade");
         }}
       />
 
@@ -709,68 +826,68 @@ const styles = StyleSheet.create({
     marginBottom: sp.xl,
   },
   welcomeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: sp.lg,
   },
   welcomeLabel: {
     fontSize: 13,
     fontFamily: fontFamily.bodyMedium,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 2,
-    color: 'rgba(255,255,255,0.5)',
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 4,
   },
   userName: {
     fontSize: 30,
-    fontWeight: '700',
+    fontWeight: "700",
     fontFamily: fontFamily.bodySemiBold,
   },
   creditsCardWrap: {
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   creditsGradient: {
     padding: 20,
     borderRadius: 16,
   },
   creditsContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   creditsLabel: {
-    color: 'rgba(255,255,255,0.75)',
+    color: "rgba(255,255,255,0.75)",
     fontSize: 13,
     fontFamily: fontFamily.bodyMedium,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1.5,
     marginBottom: sp.xs,
   },
   creditsValue: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 32,
-    fontWeight: '700',
+    fontWeight: "700",
     fontFamily: fontFamily.bodySemiBold,
   },
   planBadge: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   upgradeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: sp.md,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: sp.lg,
     paddingVertical: 10,
     borderRadius: 14,
   },
   upgradeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     fontFamily: fontFamily.bodySemiBold,
     marginRight: sp.sm,
   },
@@ -784,38 +901,38 @@ const styles = StyleSheet.create({
   },
   smartInputCard: {
     padding: 0,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   recentSection: {
     marginBottom: sp.xl,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: sp.md,
   },
   sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   seeAllText: {
     fontSize: fontSize.sm,
     fontFamily: fontFamily.bodyMedium,
     minHeight: 44,
-    textAlignVertical: 'center',
+    textAlignVertical: "center",
     lineHeight: 44,
   },
   statsSection: {
     marginBottom: sp.xl,
   },
   statsGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: sp.md,
   },
   statCard: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     padding: sp.xl,
     borderRadius: 16,
     borderWidth: 1,
@@ -824,13 +941,13 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: sp.md,
   },
   statValue: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: "700",
     fontFamily: fontFamily.bodySemiBold,
     marginTop: sp.xs,
   },
@@ -838,17 +955,17 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontFamily: fontFamily.body,
     marginTop: sp.xs,
-    textAlign: 'center',
+    textAlign: "center",
   },
   sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: sp.md,
   },
   customizeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: sp.md,
     paddingVertical: sp.sm,
     borderRadius: borderRadius.full,
@@ -865,13 +982,13 @@ const styles = StyleSheet.create({
   customizationCard: {
     padding: 0,
     marginBottom: sp.md,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   platformBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "wrap",
     gap: sp.md,
     marginBottom: sp.lg,
     opacity: 0.5,

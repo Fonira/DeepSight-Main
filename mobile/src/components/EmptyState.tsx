@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -8,10 +8,10 @@ import Animated, {
   withDelay,
   FadeIn,
   FadeInDown,
-} from 'react-native-reanimated';
-import { useTheme } from '../contexts/ThemeContext';
-import { Button } from './ui';
-import { Spacing, Typography, Colors } from '../constants/theme';
+} from "react-native-reanimated";
+import { useTheme } from "../contexts/ThemeContext";
+import { Button } from "./ui";
+import { Spacing, Typography, Colors } from "../constants/theme";
 import {
   EmptyHistoryIllustration,
   EmptyFavoritesIllustration,
@@ -19,9 +19,16 @@ import {
   EmptyChatIllustration,
   EmptyStudyIllustration,
   NetworkErrorIllustration,
-} from './illustrations';
+} from "./illustrations";
 
-type IllustrationType = 'history' | 'favorites' | 'analysis' | 'chat' | 'study' | 'network' | 'none';
+type IllustrationType =
+  | "history"
+  | "favorites"
+  | "analysis"
+  | "chat"
+  | "study"
+  | "network"
+  | "none";
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -35,30 +42,62 @@ interface EmptyStateProps {
 
 const getIllustration = (type: IllustrationType, size: number, colors: any) => {
   switch (type) {
-    case 'history':
-      return <EmptyHistoryIllustration size={size} primaryColor={colors.accentPrimary} />;
-    case 'favorites':
-      return <EmptyFavoritesIllustration size={size} primaryColor={colors.accentError} />;
-    case 'analysis':
-      return <StartAnalysisIllustration size={size} primaryColor={colors.accentPrimary} />;
-    case 'chat':
-      return <EmptyChatIllustration size={size} primaryColor={colors.accentPrimary} secondaryColor={colors.accentSecondary} />;
-    case 'study':
-      return <EmptyStudyIllustration size={size} primaryColor={colors.accentPrimary} secondaryColor={colors.accentSecondary} />;
-    case 'network':
-      return <NetworkErrorIllustration size={size} primaryColor={colors.accentError} />;
+    case "history":
+      return (
+        <EmptyHistoryIllustration
+          size={size}
+          primaryColor={colors.accentPrimary}
+        />
+      );
+    case "favorites":
+      return (
+        <EmptyFavoritesIllustration
+          size={size}
+          primaryColor={colors.accentError}
+        />
+      );
+    case "analysis":
+      return (
+        <StartAnalysisIllustration
+          size={size}
+          primaryColor={colors.accentPrimary}
+        />
+      );
+    case "chat":
+      return (
+        <EmptyChatIllustration
+          size={size}
+          primaryColor={colors.accentPrimary}
+          secondaryColor={colors.accentSecondary}
+        />
+      );
+    case "study":
+      return (
+        <EmptyStudyIllustration
+          size={size}
+          primaryColor={colors.accentPrimary}
+          secondaryColor={colors.accentSecondary}
+        />
+      );
+    case "network":
+      return (
+        <NetworkErrorIllustration
+          size={size}
+          primaryColor={colors.accentError}
+        />
+      );
     default:
       return null;
   }
 };
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
-  icon = 'file-tray-outline',
+  icon = "file-tray-outline",
   title,
   description,
   actionLabel,
   onAction,
-  illustration = 'none',
+  illustration = "none",
   illustrationSize = 180,
 }) => {
   const { colors } = useTheme();
@@ -66,7 +105,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   const opacity = useSharedValue(0);
 
   useEffect(() => {
-    scale.value = withDelay(100, withSpring(1, { damping: 12, stiffness: 100 }));
+    scale.value = withDelay(
+      100,
+      withSpring(1, { damping: 12, stiffness: 100 }),
+    );
     opacity.value = withDelay(100, withSpring(1));
   }, []);
 
@@ -75,29 +117,36 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     opacity: opacity.value,
   }));
 
-  const illustrationComponent = getIllustration(illustration, illustrationSize, colors);
+  const illustrationComponent = getIllustration(
+    illustration,
+    illustrationSize,
+    colors,
+  );
 
   return (
     <View style={styles.container}>
       <Animated.View style={containerAnimatedStyle}>
         {illustrationComponent ? (
-          <Animated.View 
+          <Animated.View
             entering={FadeIn.duration(400)}
             style={styles.illustrationContainer}
           >
             {illustrationComponent}
           </Animated.View>
         ) : (
-          <Animated.View 
+          <Animated.View
             entering={FadeInDown.duration(400).delay(100)}
-            style={[styles.iconContainer, { backgroundColor: colors.bgElevated }]}
+            style={[
+              styles.iconContainer,
+              { backgroundColor: colors.bgElevated },
+            ]}
           >
             <Ionicons name={icon} size={48} color={colors.textTertiary} />
           </Animated.View>
         )}
       </Animated.View>
 
-      <Animated.Text 
+      <Animated.Text
         entering={FadeInDown.duration(400).delay(200)}
         style={[styles.title, { color: colors.textPrimary }]}
       >
@@ -105,7 +154,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       </Animated.Text>
 
       {description && (
-        <Animated.Text 
+        <Animated.Text
           entering={FadeInDown.duration(400).delay(300)}
           style={[styles.description, { color: colors.textSecondary }]}
         >
@@ -129,8 +178,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: Spacing.xxl,
   },
   illustrationContainer: {
@@ -140,20 +189,20 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.lg,
   },
   title: {
     fontSize: Typography.fontSize.lg,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.sm,
   },
   description: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: Typography.fontSize.base * Typography.lineHeight.relaxed,
     marginBottom: Spacing.lg,
   },

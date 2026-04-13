@@ -34,17 +34,20 @@ Application mobile React Native/Expo pour Deep Sight - Analyse de vidéos YouTub
 ### Étapes
 
 1. Installer les dépendances :
+
 ```bash
 cd DeepSight-Mobile
 npm install
 ```
 
 2. Lancer l'application en mode développement :
+
 ```bash
 npm start
 ```
 
 3. Ouvrir sur un appareil/simulateur :
+
 - Appuyer sur `i` pour iOS Simulator
 - Appuyer sur `a` pour Android Emulator
 - Scanner le QR code avec l'app Expo Go
@@ -54,16 +57,19 @@ npm start
 ### Configuration EAS
 
 1. Installer EAS CLI :
+
 ```bash
 npm install -g eas-cli
 ```
 
 2. Se connecter à Expo :
+
 ```bash
 eas login
 ```
 
 3. Configurer le projet :
+
 ```bash
 eas build:configure
 ```

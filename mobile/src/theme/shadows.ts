@@ -2,7 +2,7 @@
  * DeepSight Mobile - Shadow System
  * Native iOS/Android shadows
  */
-import { Platform, ViewStyle } from 'react-native';
+import { Platform, ViewStyle } from "react-native";
 
 interface ShadowStyle {
   shadowColor: string;
@@ -17,7 +17,7 @@ const createShadow = (
   opacity: number,
   radius: number,
   elevation: number,
-  color = '#000000',
+  color = "#000000",
 ): ShadowStyle => ({
   shadowColor: color,
   shadowOffset: { width: 0, height: offsetY },
@@ -33,7 +33,7 @@ export const shadows = {
   md: createShadow(2, 0.12, 6, 4),
   lg: createShadow(4, 0.16, 12, 8),
   xl: createShadow(8, 0.2, 20, 12),
-  '2xl': createShadow(12, 0.25, 30, 16),
+  "2xl": createShadow(12, 0.25, 30, 16),
   /** Colored glow for accent elements */
   glow: (color: string): ShadowStyle => createShadow(0, 0.4, 16, 8, color),
   /** Inner shadow approximation (use with border) */
@@ -42,9 +42,9 @@ export const shadows = {
 
 /** Platform-specific shadow application */
 export const applyShadow = (level: keyof typeof shadows): ViewStyle => {
-  if (level === 'glow' || level === 'inner') return {};
+  if (level === "glow" || level === "inner") return {};
   const shadow = shadows[level];
-  if (Platform.OS === 'android') {
+  if (Platform.OS === "android") {
     return { elevation: shadow.elevation };
   }
   return shadow;

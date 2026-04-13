@@ -3,32 +3,43 @@
  * Persists all settings in AsyncStorage
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
-import { File, Paths } from 'expo-file-system';
-import { API_BASE_URL } from '../constants/config';
-import { tokenStorage } from '../utils/storage';
-import { useAuth } from './AuthContext';
-import { hasFeature } from '../config/planPrivileges';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  setAudioModeAsync,
+} from "expo-audio";
+import { File, Paths } from "expo-file-system";
+import { API_BASE_URL } from "../constants/config";
+import { tokenStorage } from "../utils/storage";
+import { useAuth } from "./AuthContext";
+import { hasFeature } from "../config/planPrivileges";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Storage keys
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const KEYS = {
-  autoplay: 'deepsight_tts_autoplay',
-  lang: 'deepsight_tts_lang',
-  gender: 'deepsight_tts_gender',
-  speed: 'deepsight_tts_speed',
+  autoplay: "deepsight_tts_autoplay",
+  lang: "deepsight_tts_lang",
+  gender: "deepsight_tts_gender",
+  speed: "deepsight_tts_speed",
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type TTSLanguage = 'fr' | 'en';
-type TTSGender = 'male' | 'female';
+type TTSLanguage = "fr" | "en";
+type TTSGender = "male" | "female";
 
 interface TTSContextType {
   // Settings
@@ -58,20 +69,22 @@ const TTSContext = createContext<TTSContextType | null>(null);
 // Provider
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { user } = useAuth();
-  const userPlan = user?.plan || 'free';
-  const isPremium = hasFeature(userPlan, 'ttsAudio');
+  const userPlan = user?.plan || "free";
+  const isPremium = hasFeature(userPlan, "ttsAudio");
 
   // Settings
   const [autoPlayEnabled, setAutoPlayEnabledState] = useState(false);
-  const [language, setLanguageState] = useState<TTSLanguage>('fr');
-  const [gender, setGenderState] = useState<TTSGender>('female');
+  const [language, setLanguageState] = useState<TTSLanguage>("fr");
+  const [gender, setGenderState] = useState<TTSGender>("female");
   const [speed, setSpeedState] = useState<number>(1);
 
   // Playback
   const [isLoading, setIsLoading] = useState(false);
-  const [currentText, setCurrentText] = useState('');
+  const [currentText, setCurrentText] = useState("");
   const tempFileRef = useRef<File | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const player = useAudioPlayer(null);
@@ -88,12 +101,13 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           AsyncStorage.getItem(KEYS.gender),
           AsyncStorage.getItem(KEYS.speed),
         ]);
-        if (ap === 'true') setAutoPlayEnabledState(true);
-        if (la === 'fr' || la === 'en') setLanguageState(la);
-        if (ge === 'male' || ge === 'female') setGenderState(ge);
+        if (ap === "true") setAutoPlayEnabledState(true);
+        if (la === "fr" || la === "en") setLanguageState(la);
+        if (ge === "male" || ge === "female") setGenderState(ge);
         if (sp) {
           const parsed = parseFloat(sp);
-          if (!isNaN(parsed) && parsed >= 0.7 && parsed <= 3) setSpeedState(parsed);
+          if (!isNaN(parsed) && parsed >= 0.7 && parsed <= 3)
+            setSpeedState(parsed);
         }
       } catch {
         // Ignore
@@ -107,8 +121,10 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const items = Paths.cache.list();
       for (const item of items) {
-        if (item.name.startsWith('tts_')) {
-          try { item.delete(); } catch {}
+        if (item.name.startsWith("tts_")) {
+          try {
+            item.delete();
+          } catch {}
         }
       }
     } catch {
@@ -146,115 +162,134 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Ignore
     }
     if (tempFileRef.current) {
-      try { tempFileRef.current.delete(); } catch {}
+      try {
+        tempFileRef.current.delete();
+      } catch {}
       tempFileRef.current = null;
     }
   }, [player]);
 
   const stopPlaying = useCallback(() => {
     cleanup();
-    setCurrentText('');
+    setCurrentText("");
     setIsLoading(false);
   }, [cleanup]);
 
-  const playText = useCallback(async (text: string) => {
-    if (!text?.trim()) return;
-    if (isPlaying || isLoading) {
-      stopPlaying();
-      return;
-    }
-
-    // Abort previous fetch if still in-flight
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setIsLoading(true);
-
-    try {
-      // Configure for silent mode playback
-      try {
-        await setAudioModeAsync({ playsInSilentMode: true });
-      } catch {
-        // Ignore
+  const playText = useCallback(
+    async (text: string) => {
+      if (!text?.trim()) return;
+      if (isPlaying || isLoading) {
+        stopPlaying();
+        return;
       }
 
-      const token = await tokenStorage.getAccessToken();
-      if (!token) throw new Error('Authentication required');
+      // Abort previous fetch if still in-flight
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-      const response = await fetch(`${API_BASE_URL}/api/tts`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          language,
-          gender,
-          speed,
-          strip_questions: true,
-        }),
-        signal: controller.signal,
-      });
+      setIsLoading(true);
 
-      if (!response.ok) {
+      try {
+        // Configure for silent mode playback
         try {
-          const errorData = await response.json();
-          const detail = errorData?.detail;
-          if (detail?.error === 'feature_locked') {
-            throw new Error(detail.message || 'Upgrade your plan for TTS');
-          }
-          throw new Error(typeof detail === 'string' ? detail : detail?.message || `TTS error (${response.status})`);
-        } catch (parseErr) {
-          if (parseErr instanceof Error && parseErr.message.includes('TTS')) throw parseErr;
-          throw new Error(`TTS error (${response.status})`);
+          await setAudioModeAsync({ playsInSilentMode: true });
+        } catch {
+          // Ignore
         }
+
+        const token = await tokenStorage.getAccessToken();
+        if (!token) throw new Error("Authentication required");
+
+        const response = await fetch(`${API_BASE_URL}/api/tts`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text,
+            language,
+            gender,
+            speed,
+            strip_questions: true,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          try {
+            const errorData = await response.json();
+            const detail = errorData?.detail;
+            if (detail?.error === "feature_locked") {
+              throw new Error(detail.message || "Upgrade your plan for TTS");
+            }
+            throw new Error(
+              typeof detail === "string"
+                ? detail
+                : detail?.message || `TTS error (${response.status})`,
+            );
+          } catch (parseErr) {
+            if (parseErr instanceof Error && parseErr.message.includes("TTS"))
+              throw parseErr;
+            throw new Error(`TTS error (${response.status})`);
+          }
+        }
+
+        // Write audio blob to temp file via expo-file-system v19 API
+        const audioBlob = await response.blob();
+        const reader = new FileReader();
+        const base64Audio = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => {
+            const base64 = (reader.result as string).split(",")[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(audioBlob);
+        });
+
+        const tempFile = new File(Paths.cache, `tts_${Date.now()}.mp3`);
+        tempFile.create({ overwrite: true });
+        tempFile.write(base64Audio, { encoding: "base64" });
+
+        if (!tempFile.exists || tempFile.size < 100) {
+          throw new Error("Empty audio response");
+        }
+
+        await cleanup();
+        tempFileRef.current = tempFile;
+        setCurrentText(text);
+
+        // Play the audio file
+        player.replace({ uri: tempFile.uri });
+
+        // Set playback speed
+        try {
+          player.playbackRate = speed;
+        } catch {
+          // Fallback: rate not supported on all platforms
+        }
+
+        player.play();
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        if (__DEV__) console.warn("[TTS]", err);
+        await cleanup();
+      } finally {
+        setIsLoading(false);
       }
-
-      // Write audio blob to temp file via expo-file-system v19 API
-      const audioBlob = await response.blob();
-      const reader = new FileReader();
-      const base64Audio = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(',')[1];
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(audioBlob);
-      });
-
-      const tempFile = new File(Paths.cache, `tts_${Date.now()}.mp3`);
-      tempFile.create({ overwrite: true });
-      tempFile.write(base64Audio, { encoding: 'base64' });
-
-      if (!tempFile.exists || tempFile.size < 100) {
-        throw new Error('Empty audio response');
-      }
-
-      await cleanup();
-      tempFileRef.current = tempFile;
-      setCurrentText(text);
-
-      // Play the audio file
-      player.replace({ uri: tempFile.uri });
-
-      // Set playback speed
-      try {
-        player.playbackRate = speed;
-      } catch {
-        // Fallback: rate not supported on all platforms
-      }
-
-      player.play();
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return;
-      if (__DEV__) console.warn('[TTS]', err);
-      await cleanup();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isPlaying, isLoading, stopPlaying, cleanup, player, language, gender, speed]);
+    },
+    [
+      isPlaying,
+      isLoading,
+      stopPlaying,
+      cleanup,
+      player,
+      language,
+      gender,
+      speed,
+    ],
+  );
 
   // Cleanup on unmount
   useEffect(() => {
@@ -265,16 +300,24 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [cleanup]);
 
   return (
-    <TTSContext.Provider value={{
-      autoPlayEnabled, setAutoPlayEnabled,
-      language, setLanguage,
-      gender, setGender,
-      speed, setSpeed,
-      playText, stopPlaying,
-      isPlaying, isLoading,
-      currentText,
-      isPremium,
-    }}>
+    <TTSContext.Provider
+      value={{
+        autoPlayEnabled,
+        setAutoPlayEnabled,
+        language,
+        setLanguage,
+        gender,
+        setGender,
+        speed,
+        setSpeed,
+        playText,
+        stopPlaying,
+        isPlaying,
+        isLoading,
+        currentText,
+        isPremium,
+      }}
+    >
       {children}
     </TTSContext.Provider>
   );
@@ -283,7 +326,7 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 export const useTTSContext = (): TTSContextType => {
   const ctx = useContext(TTSContext);
   if (!ctx) {
-    throw new Error('useTTSContext must be used within a TTSProvider');
+    throw new Error("useTTSContext must be used within a TTSProvider");
   }
   return ctx;
 };

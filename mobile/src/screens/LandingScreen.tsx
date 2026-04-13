@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -23,17 +23,20 @@ import Animated, {
   Easing,
   FadeInDown,
   FadeInUp,
-} from 'react-native-reanimated';
-import { useTheme } from '../contexts/ThemeContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { Button } from '../components/ui';
-import { GlassCard } from '../components/ui/GlassCard';
-import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
-import type { RootStackParamList } from '../types';
+} from "react-native-reanimated";
+import { useTheme } from "../contexts/ThemeContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { Button } from "../components/ui";
+import { GlassCard } from "../components/ui/GlassCard";
+import { Colors, Spacing, Typography, BorderRadius } from "../constants/theme";
+import type { RootStackParamList } from "../types";
 
-type LandingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Landing'>;
+type LandingScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Landing"
+>;
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 interface FeatureCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -42,7 +45,12 @@ interface FeatureCardProps {
   delay: number;
 }
 
-const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, delay }) => {
+const FeatureCard: React.FC<FeatureCardProps> = ({
+  icon,
+  title,
+  description,
+  delay,
+}) => {
   const { colors } = useTheme();
 
   return (
@@ -52,14 +60,24 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, del
     >
       <GlassCard padding="md" borderRadius="lg">
         <View style={styles.featureContent}>
-          <View style={[styles.featureIcon, { backgroundColor: `${colors.accentPrimary}20` }]}>
+          <View
+            style={[
+              styles.featureIcon,
+              { backgroundColor: `${colors.accentPrimary}20` },
+            ]}
+          >
             <Ionicons name={icon} size={24} color={colors.accentPrimary} />
           </View>
           <View style={styles.featureText}>
             <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>
               {title}
             </Text>
-            <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.featureDescription,
+                { color: colors.textSecondary },
+              ]}
+            >
               {description}
             </Text>
           </View>
@@ -73,7 +91,7 @@ export const LandingScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<LandingScreenNavigationProp>();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('creative');
+  useScreenDoodleVariant("creative");
 
   // Floating animation for logo
   const floatY = useSharedValue(0);
@@ -83,19 +101,19 @@ export const LandingScreen: React.FC = () => {
     floatY.value = withRepeat(
       withSequence(
         withTiming(-8, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(8, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+        withTiming(8, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
 
     glowOpacity.value = withRepeat(
       withSequence(
         withTiming(0.8, { duration: 1500 }),
-        withTiming(0.4, { duration: 1500 })
+        withTiming(0.4, { duration: 1500 }),
       ),
       -1,
-      true
+      true,
     );
   }, []);
 
@@ -108,42 +126,45 @@ export const LandingScreen: React.FC = () => {
   }));
 
   const handleLogin = () => {
-    navigation.navigate('Login');
+    navigation.navigate("Login");
   };
 
   const handleRegister = () => {
-    navigation.navigate('Register');
+    navigation.navigate("Register");
   };
 
   const features = [
     {
-      icon: 'videocam' as const,
-      title: 'Analyse YouTube & TikTok',
-      description: 'Transformez n\'importe quelle vidéo en résumé intelligent',
+      icon: "videocam" as const,
+      title: "Analyse YouTube & TikTok",
+      description: "Transformez n'importe quelle vidéo en résumé intelligent",
     },
     {
-      icon: 'chatbubbles' as const,
-      title: 'Chat IA',
-      description: 'Posez des questions sur le contenu analysé',
+      icon: "chatbubbles" as const,
+      title: "Chat IA",
+      description: "Posez des questions sur le contenu analysé",
     },
     {
-      icon: 'school' as const,
-      title: 'Outils d\'étude',
-      description: 'Quiz, flashcards et cartes mentales générés',
+      icon: "school" as const,
+      title: "Outils d'étude",
+      description: "Quiz, flashcards et cartes mentales générés",
     },
     {
-      icon: 'globe' as const,
-      title: 'Multi-langues',
-      description: 'Analysez et exportez dans plusieurs langues',
+      icon: "globe" as const,
+      title: "Multi-langues",
+      description: "Analysez et exportez dans plusieurs langues",
     },
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl },
+          {
+            paddingTop: insets.top + Spacing.xl,
+            paddingBottom: insets.bottom + Spacing.xl,
+          },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -153,14 +174,14 @@ export const LandingScreen: React.FC = () => {
           <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
             <Animated.View style={[styles.logoGlow, glowAnimatedStyle]}>
               <LinearGradient
-                colors={[...Colors.gradientPrimary, 'transparent']}
+                colors={[...Colors.gradientPrimary, "transparent"]}
                 style={styles.glowGradient}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
               />
             </Animated.View>
             <Image
-              source={require('../assets/images/icon.png')}
+              source={require("../assets/images/icon.png")}
               style={styles.logoImage}
               resizeMode="contain"
             />
@@ -169,8 +190,12 @@ export const LandingScreen: React.FC = () => {
           {/* Title */}
           <Animated.View entering={FadeInDown.delay(200).duration(600)}>
             <View style={styles.titleContainer}>
-              <Text style={[styles.titleDeep, { color: colors.accentPrimary }]}>Deep</Text>
-              <Text style={[styles.titleSight, { color: colors.textPrimary }]}>Sight</Text>
+              <Text style={[styles.titleDeep, { color: colors.accentPrimary }]}>
+                Deep
+              </Text>
+              <Text style={[styles.titleSight, { color: colors.textPrimary }]}>
+                Sight
+              </Text>
             </View>
             <Text style={[styles.tagline, { color: colors.textSecondary }]}>
               L'IA qui transforme les vidéos en savoir
@@ -178,35 +203,50 @@ export const LandingScreen: React.FC = () => {
           </Animated.View>
 
           {/* Platform logos — YouTube & TikTok prominent, Mistral smaller */}
-          <Animated.View entering={FadeInDown.delay(350).duration(500)} style={styles.platformRow}>
+          <Animated.View
+            entering={FadeInDown.delay(350).duration(500)}
+            style={styles.platformRow}
+          >
             <View style={styles.platformBadge}>
               <Image
-                source={require('../assets/platforms/youtube-icon-red.png')}
+                source={require("../assets/platforms/youtube-icon-red.png")}
                 style={styles.platformIconYt}
                 resizeMode="contain"
               />
               <Text style={styles.platformLabelYt}>YouTube</Text>
             </View>
-            <View style={[styles.platformSep, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.platformSep, { backgroundColor: colors.border }]}
+            />
             <View style={styles.platformBadge}>
               <Image
-                source={require('../assets/platforms/tiktok-note-color.png')}
+                source={require("../assets/platforms/tiktok-note-color.png")}
                 style={styles.platformIconTk}
                 resizeMode="contain"
               />
               <Text style={styles.platformLabelTk}>TikTok</Text>
             </View>
           </Animated.View>
-          <Animated.View entering={FadeInDown.delay(400).duration(500)} style={styles.poweredRow}>
-            <Text style={[styles.poweredText, { color: colors.textMuted }]}>Propulsé par</Text>
+          <Animated.View
+            entering={FadeInDown.delay(400).duration(500)}
+            style={styles.poweredRow}
+          >
+            <Text style={[styles.poweredText, { color: colors.textMuted }]}>
+              Propulsé par
+            </Text>
             <Image
-              source={require('../assets/platforms/mistral-logo-white.png')}
-              style={[styles.platformMistral, !isDark && { tintColor: '#1a1a2e' }]}
+              source={require("../assets/platforms/mistral-logo-white.png")}
+              style={[
+                styles.platformMistral,
+                !isDark && { tintColor: "#1a1a2e" },
+              ]}
               resizeMode="contain"
             />
-            <View style={[styles.poweredSep, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.poweredSep, { backgroundColor: colors.border }]}
+            />
             <Image
-              source={require('../assets/platforms/tournesol-logo.png')}
+              source={require("../assets/platforms/tournesol-logo.png")}
               style={styles.platformTournesol}
               resizeMode="contain"
             />
@@ -243,18 +283,46 @@ export const LandingScreen: React.FC = () => {
           <GlassCard padding="lg" borderRadius="xl">
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: colors.accentPrimary }]}>100K+</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Vidéos analysées</Text>
+                <Text
+                  style={[styles.statNumber, { color: colors.accentPrimary }]}
+                >
+                  100K+
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Vidéos analysées
+                </Text>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View
+                style={[styles.statDivider, { backgroundColor: colors.border }]}
+              />
               <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: colors.accentPrimary }]}>50K+</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Utilisateurs</Text>
+                <Text
+                  style={[styles.statNumber, { color: colors.accentPrimary }]}
+                >
+                  50K+
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Utilisateurs
+                </Text>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View
+                style={[styles.statDivider, { backgroundColor: colors.border }]}
+              />
               <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: colors.accentPrimary }]}>4.9</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Note App</Text>
+                <Text
+                  style={[styles.statNumber, { color: colors.accentPrimary }]}
+                >
+                  4.9
+                </Text>
+                <Text
+                  style={[styles.statLabel, { color: colors.textSecondary }]}
+                >
+                  Note App
+                </Text>
               </View>
             </View>
           </GlassCard>
@@ -303,23 +371,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
   },
   heroSection: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: Spacing.xxxl,
   },
   logoContainer: {
-    position: 'relative',
+    position: "relative",
     marginBottom: Spacing.xl,
   },
   logoGlow: {
-    position: 'absolute',
+    position: "absolute",
     width: 180,
     height: 180,
     top: -30,
     left: -30,
   },
   glowGradient: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     borderRadius: 80,
   },
   logoImage: {
@@ -328,22 +396,22 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xl,
   },
   titleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginBottom: Spacing.sm,
   },
   titleDeep: {
-    fontSize: Typography.fontSize['4xl'],
+    fontSize: Typography.fontSize["4xl"],
     fontFamily: Typography.fontFamily.display,
   },
   titleSight: {
-    fontSize: Typography.fontSize['4xl'],
+    fontSize: Typography.fontSize["4xl"],
     fontFamily: Typography.fontFamily.display,
   },
   tagline: {
     fontSize: Typography.fontSize.lg,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
   },
   featuresSection: {
     marginBottom: Spacing.xxl,
@@ -357,15 +425,15 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   featureContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   featureIcon: {
     width: 48,
     height: 48,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: Spacing.md,
   },
   featureText: {
@@ -384,28 +452,28 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xxl,
   },
   statsGrid: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
   },
   statItem: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: "rgba(255,255,255,0.1)",
   },
   statNumber: {
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize["2xl"],
     fontFamily: Typography.fontFamily.bodySemiBold,
     marginBottom: Spacing.xs,
   },
   statLabel: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
   },
   ctaSection: {
     marginBottom: Spacing.xl,
@@ -415,23 +483,23 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {},
   footer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   footerText: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
   },
   platformRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.xxl,
     marginTop: Spacing.xl,
   },
   platformBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   platformIconYt: {
@@ -441,7 +509,7 @@ const styles = StyleSheet.create({
   platformLabelYt: {
     fontSize: Typography.fontSize.lg,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    color: '#FF0000',
+    color: "#FF0000",
   },
   platformIconTk: {
     width: 28,
@@ -450,17 +518,17 @@ const styles = StyleSheet.create({
   platformLabelTk: {
     fontSize: Typography.fontSize.lg,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    color: '#69C9D0',
+    color: "#69C9D0",
   },
   platformSep: {
     width: 1,
     height: 28,
   },
   poweredRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "wrap",
     gap: 6,
     marginTop: Spacing.md,
     opacity: 0.6,
@@ -469,7 +537,7 @@ const styles = StyleSheet.create({
   poweredText: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   platformMistral: {

@@ -3,7 +3,7 @@
  * Avec étapes détaillées, progression token par token et effet typing
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -11,13 +11,18 @@ import {
   ScrollView,
   Animated,
   Easing,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
-import type { StreamStep, StreamStatus, VideoMetadata, StreamError } from '../../hooks/useAnalysisStream';
-import { useFormattedDuration } from '../../hooks/useAnalysisStream';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
+import type {
+  StreamStep,
+  StreamStatus,
+  VideoMetadata,
+  StreamError,
+} from "../../hooks/useAnalysisStream";
+import { useFormattedDuration } from "../../hooks/useAnalysisStream";
 
 interface StreamingAnalysisDisplayProps {
   status: StreamStatus;
@@ -31,7 +36,9 @@ interface StreamingAnalysisDisplayProps {
   onCancel?: () => void;
 }
 
-export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> = ({
+export const StreamingAnalysisDisplay: React.FC<
+  StreamingAnalysisDisplayProps
+> = ({
   status,
   progress,
   text,
@@ -63,7 +70,11 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
 
   // Pulse animation for active step
   useEffect(() => {
-    if (status === 'analyzing' || status === 'connecting' || status === 'transcript') {
+    if (
+      status === "analyzing" ||
+      status === "connecting" ||
+      status === "transcript"
+    ) {
       const pulse = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
@@ -76,7 +87,7 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
             duration: 800,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
       pulse.start();
       return () => pulse.stop();
@@ -85,7 +96,7 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
 
   // Cursor blink animation
   useEffect(() => {
-    if (status === 'analyzing' && text) {
+    if (status === "analyzing" && text) {
       const blink = Animated.loop(
         Animated.sequence([
           Animated.timing(cursorAnim, {
@@ -98,7 +109,7 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
             duration: 500,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
       blink.start();
       return () => blink.stop();
@@ -107,28 +118,28 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
 
   const getStepIcon = (step: StreamStep): keyof typeof Ionicons.glyphMap => {
     switch (step.id) {
-      case 'connect':
-        return 'wifi-outline';
-      case 'metadata':
-        return 'information-circle-outline';
-      case 'transcript':
-        return 'document-text-outline';
-      case 'analysis':
-        return 'sparkles-outline';
-      case 'complete':
-        return 'checkmark-circle-outline';
+      case "connect":
+        return "wifi-outline";
+      case "metadata":
+        return "information-circle-outline";
+      case "transcript":
+        return "document-text-outline";
+      case "analysis":
+        return "sparkles-outline";
+      case "complete":
+        return "checkmark-circle-outline";
       default:
-        return 'ellipse-outline';
+        return "ellipse-outline";
     }
   };
 
-  const getStepStatusColor = (stepStatus: StreamStep['status']) => {
+  const getStepStatusColor = (stepStatus: StreamStep["status"]) => {
     switch (stepStatus) {
-      case 'complete':
+      case "complete":
         return colors.accentSuccess;
-      case 'active':
+      case "active":
         return colors.accentPrimary;
-      case 'error':
+      case "error":
         return colors.accentError;
       default:
         return colors.textTertiary;
@@ -137,30 +148,39 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
 
   const getStatusMessage = (): string => {
     switch (status) {
-      case 'connecting':
-        return language === 'fr' ? 'Connexion au serveur...' : 'Connecting to server...';
-      case 'metadata':
-        return language === 'fr' ? 'Récupération des métadonnées...' : 'Fetching metadata...';
-      case 'transcript':
-        return language === 'fr' ? 'Extraction de la transcription...' : 'Extracting transcript...';
-      case 'analyzing':
-        return language === 'fr' ? 'Analyse en cours...' : 'Analyzing...';
-      case 'complete':
-        return language === 'fr' ? 'Analyse terminée !' : 'Analysis complete!';
-      case 'error':
-        return error?.message || (language === 'fr' ? 'Une erreur est survenue' : 'An error occurred');
-      case 'paused':
-        return language === 'fr' ? 'En pause' : 'Paused';
-      case 'cancelled':
-        return language === 'fr' ? 'Annulé' : 'Cancelled';
+      case "connecting":
+        return language === "fr"
+          ? "Connexion au serveur..."
+          : "Connecting to server...";
+      case "metadata":
+        return language === "fr"
+          ? "Récupération des métadonnées..."
+          : "Fetching metadata...";
+      case "transcript":
+        return language === "fr"
+          ? "Extraction de la transcription..."
+          : "Extracting transcript...";
+      case "analyzing":
+        return language === "fr" ? "Analyse en cours..." : "Analyzing...";
+      case "complete":
+        return language === "fr" ? "Analyse terminée !" : "Analysis complete!";
+      case "error":
+        return (
+          error?.message ||
+          (language === "fr" ? "Une erreur est survenue" : "An error occurred")
+        );
+      case "paused":
+        return language === "fr" ? "En pause" : "Paused";
+      case "cancelled":
+        return language === "fr" ? "Annulé" : "Cancelled";
       default:
-        return language === 'fr' ? 'En attente...' : 'Waiting...';
+        return language === "fr" ? "En attente..." : "Waiting...";
     }
   };
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 100],
-    outputRange: ['0%', '100%'],
+    outputRange: ["0%", "100%"],
   });
 
   return (
@@ -168,10 +188,15 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
       {/* Header with metadata */}
       {metadata && (
         <View style={styles.metadataContainer}>
-          <Text style={[styles.metadataTitle, { color: colors.textPrimary }]} numberOfLines={2}>
+          <Text
+            style={[styles.metadataTitle, { color: colors.textPrimary }]}
+            numberOfLines={2}
+          >
             {metadata.title}
           </Text>
-          <Text style={[styles.metadataChannel, { color: colors.textSecondary }]}>
+          <Text
+            style={[styles.metadataChannel, { color: colors.textSecondary }]}
+          >
             {metadata.channel}
           </Text>
         </View>
@@ -179,12 +204,17 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
 
       {/* Progress bar */}
       <View style={styles.progressContainer}>
-        <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
+        <View
+          style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}
+        >
           <Animated.View
             style={[
               styles.progressFill,
               {
-                backgroundColor: status === 'error' ? colors.accentError : colors.accentPrimary,
+                backgroundColor:
+                  status === "error"
+                    ? colors.accentError
+                    : colors.accentPrimary,
                 width: progressWidth,
               },
             ]}
@@ -202,22 +232,31 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
 
       {/* Status message */}
       <View style={styles.statusContainer}>
-        <Animated.View style={{ transform: [{ scale: status !== 'complete' && status !== 'error' ? pulseAnim : 1 }] }}>
+        <Animated.View
+          style={{
+            transform: [
+              {
+                scale:
+                  status !== "complete" && status !== "error" ? pulseAnim : 1,
+              },
+            ],
+          }}
+        >
           <Ionicons
             name={
-              status === 'complete'
-                ? 'checkmark-circle'
-                : status === 'error'
-                ? 'alert-circle'
-                : 'sync'
+              status === "complete"
+                ? "checkmark-circle"
+                : status === "error"
+                  ? "alert-circle"
+                  : "sync"
             }
             size={20}
             color={
-              status === 'complete'
+              status === "complete"
                 ? colors.accentSuccess
-                : status === 'error'
-                ? colors.accentError
-                : colors.accentPrimary
+                : status === "error"
+                  ? colors.accentError
+                  : colors.accentPrimary
             }
           />
         </Animated.View>
@@ -237,7 +276,7 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
                   styles.stepConnector,
                   {
                     backgroundColor:
-                      steps[index - 1].status === 'complete'
+                      steps[index - 1].status === "complete"
                         ? colors.accentSuccess
                         : colors.bgTertiary,
                   },
@@ -251,16 +290,16 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
                 styles.stepIconContainer,
                 {
                   backgroundColor:
-                    step.status === 'complete'
+                    step.status === "complete"
                       ? `${colors.accentSuccess}20`
-                      : step.status === 'active'
-                      ? `${colors.accentPrimary}20`
-                      : `${colors.textTertiary}10`,
+                      : step.status === "active"
+                        ? `${colors.accentPrimary}20`
+                        : `${colors.textTertiary}10`,
                   borderColor: getStepStatusColor(step.status),
                 },
               ]}
             >
-              {step.status === 'active' ? (
+              {step.status === "active" ? (
                 <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                   <Ionicons
                     name={getStepIcon(step)}
@@ -270,7 +309,9 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
                 </Animated.View>
               ) : (
                 <Ionicons
-                  name={step.status === 'complete' ? 'checkmark' : getStepIcon(step)}
+                  name={
+                    step.status === "complete" ? "checkmark" : getStepIcon(step)
+                  }
                   size={16}
                   color={getStepStatusColor(step.status)}
                 />
@@ -283,34 +324,41 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
                 styles.stepLabel,
                 {
                   color:
-                    step.status === 'active'
+                    step.status === "active"
                       ? colors.textPrimary
-                      : step.status === 'complete'
-                      ? colors.accentSuccess
-                      : colors.textTertiary,
+                      : step.status === "complete"
+                        ? colors.accentSuccess
+                        : colors.textTertiary,
                   fontFamily:
-                    step.status === 'active'
+                    step.status === "active"
                       ? Typography.fontFamily.bodySemiBold
                       : Typography.fontFamily.body,
                 },
               ]}
             >
-              {language === 'fr' ? step.label : step.labelEn}
+              {language === "fr" ? step.label : step.labelEn}
             </Text>
           </View>
         ))}
       </View>
 
       {/* Streaming text preview */}
-      {status === 'analyzing' && text && (
-        <View style={[styles.textPreviewContainer, { backgroundColor: colors.bgTertiary }]}>
+      {status === "analyzing" && text && (
+        <View
+          style={[
+            styles.textPreviewContainer,
+            { backgroundColor: colors.bgTertiary },
+          ]}
+        >
           <ScrollView
             style={styles.textPreviewScroll}
             showsVerticalScrollIndicator={false}
           >
             <Text style={[styles.textPreview, { color: colors.textPrimary }]}>
               {text.slice(-500)}
-              <Animated.Text style={{ opacity: cursorAnim, color: colors.accentPrimary }}>
+              <Animated.Text
+                style={{ opacity: cursorAnim, color: colors.accentPrimary }}
+              >
                 ▋
               </Animated.Text>
             </Text>
@@ -319,7 +367,7 @@ export const StreamingAnalysisDisplay: React.FC<StreamingAnalysisDisplayProps> =
       )}
 
       {/* Error state with retry */}
-      {status === 'error' && error?.retryable && onRetry && (
+      {status === "error" && error?.retryable && onRetry && (
         <View style={styles.errorActions}>
           <Text style={[styles.errorCode, { color: colors.textTertiary }]}>
             {error.code}
@@ -334,7 +382,7 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   metadataContainer: {
     marginBottom: Spacing.md,
@@ -354,15 +402,15 @@ const styles = StyleSheet.create({
   progressBar: {
     height: 8,
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 4,
   },
   progressInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: Spacing.xs,
   },
   progressText: {
@@ -374,8 +422,8 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
   },
@@ -387,14 +435,14 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   stepRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
     marginVertical: Spacing.xs,
-    position: 'relative',
+    position: "relative",
   },
   stepConnector: {
-    position: 'absolute',
+    position: "absolute",
     left: 15,
     top: -16,
     width: 2,
@@ -404,8 +452,8 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
   },
   stepLabel: {
@@ -427,7 +475,7 @@ const styles = StyleSheet.create({
   },
   errorActions: {
     marginTop: Spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   errorCode: {
     fontSize: Typography.fontSize.xs,

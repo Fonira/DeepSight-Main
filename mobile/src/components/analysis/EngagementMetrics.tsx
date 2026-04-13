@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useTheme } from '../../contexts/ThemeContext';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { useTheme } from "../../contexts/ThemeContext";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
 
 interface EngagementMetricsProps {
   viewCount?: number | null;
@@ -62,7 +62,7 @@ export const EngagementMetrics: React.FC<EngagementMetricsProps> = ({
     <View style={[styles.container, compact && styles.containerCompact]}>
       {viewCount != null && (
         <MetricBadge
-          emoji={platform === 'tiktok' ? '👁' : '👁'}
+          emoji={platform === "tiktok" ? "👁" : "👁"}
           value={formatCount(viewCount)}
           bgColor={badgeBg}
           textColor={textColor}
@@ -70,7 +70,7 @@ export const EngagementMetrics: React.FC<EngagementMetricsProps> = ({
       )}
       {likeCount != null && (
         <MetricBadge
-          emoji={platform === 'tiktok' ? '❤️' : '👍'}
+          emoji={platform === "tiktok" ? "❤️" : "👍"}
           value={formatCount(likeCount)}
           bgColor={badgeBg}
           textColor={textColor}
@@ -114,17 +114,17 @@ export const EngagementMetrics: React.FC<EngagementMetricsProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: sp.sm - 2, // 6px
-    alignItems: 'center',
+    alignItems: "center",
   },
   containerCompact: {
     gap: sp.xs,
   },
   badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: sp.sm,
     paddingVertical: sp.xs,
     borderRadius: borderRadius.full,

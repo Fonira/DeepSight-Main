@@ -6,13 +6,13 @@
  * Used to display notable quotes from video transcripts.
  */
 
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Animated, { FadeInLeft } from 'react-native-reanimated';
-import { useTheme } from '@/contexts/ThemeContext';
-import { palette } from '@/theme/colors';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize, lineHeight } from '@/theme/typography';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import Animated, { FadeInLeft } from "react-native-reanimated";
+import { useTheme } from "@/contexts/ThemeContext";
+import { palette } from "@/theme/colors";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize, lineHeight } from "@/theme/typography";
 
 interface VideoQuoteProps {
   /** The quoted text */
@@ -41,7 +41,9 @@ export const VideoQuote: React.FC<VideoQuoteProps> = ({
 
   return (
     <Animated.View
-      entering={FadeInLeft.delay(index * 80).duration(300).springify()}
+      entering={FadeInLeft.delay(index * 80)
+        .duration(300)
+        .springify()}
       style={[
         styles.container,
         {
@@ -51,17 +53,12 @@ export const VideoQuote: React.FC<VideoQuoteProps> = ({
       ]}
     >
       {/* Guillemets icon */}
-      <Text style={[styles.guillemets, { color: INDIGO_MUTED }]}>{'\u00AB'}</Text>
+      <Text style={[styles.guillemets, { color: INDIGO_MUTED }]}>
+        {"\u00AB"}
+      </Text>
 
       <View style={styles.content}>
-        <Text
-          style={[
-            styles.text,
-            { color: colors.textPrimary },
-          ]}
-        >
-          {text}
-        </Text>
+        <Text style={[styles.text, { color: colors.textPrimary }]}>{text}</Text>
 
         {/* Footer: speaker and/or timestamp */}
         {(speaker || timestamp) && (
@@ -73,7 +70,7 @@ export const VideoQuote: React.FC<VideoQuoteProps> = ({
             )}
             {speaker && timestamp && (
               <Text style={[styles.separator, { color: colors.textMuted }]}>
-                {' \u2022 '}
+                {" \u2022 "}
               </Text>
             )}
             {timestamp && (
@@ -86,26 +83,28 @@ export const VideoQuote: React.FC<VideoQuoteProps> = ({
       </View>
 
       {/* Closing guillemets at bottom-right for visual balance */}
-      <Text style={[styles.guillemetsClose, { color: INDIGO_MUTED }]}>{'\u00BB'}</Text>
+      <Text style={[styles.guillemetsClose, { color: INDIGO_MUTED }]}>
+        {"\u00BB"}
+      </Text>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderLeftWidth: 3,
     borderRadius: borderRadius.sm,
     paddingLeft: sp.md,
     paddingRight: sp.lg,
     paddingVertical: sp.md,
     marginVertical: sp.sm,
-    position: 'relative',
+    position: "relative",
   },
   guillemets: {
     fontFamily: fontFamily.display,
-    fontSize: fontSize['2xl'],
-    lineHeight: fontSize['2xl'] * lineHeight.tight,
+    fontSize: fontSize["2xl"],
+    lineHeight: fontSize["2xl"] * lineHeight.tight,
     marginRight: sp.sm,
     marginTop: -2,
     opacity: 0.8,
@@ -114,7 +113,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.display,
     fontSize: fontSize.lg,
     lineHeight: fontSize.lg * lineHeight.tight,
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     marginLeft: sp.xs,
     marginBottom: -2,
     opacity: 0.5,
@@ -125,12 +124,12 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     lineHeight: fontSize.sm * lineHeight.relaxed,
   },
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: sp.sm,
   },
   speaker: {

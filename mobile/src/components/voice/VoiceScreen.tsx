@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   Platform,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   type SharedValue,
   useSharedValue,
@@ -22,14 +22,14 @@ import Animated, {
   FadeIn,
   SlideInDown,
   Easing,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '@/contexts/ThemeContext';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { palette } from '@/theme/colors';
-import { duration } from '@/theme/animations';
+} from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "@/contexts/ThemeContext";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
+import { palette } from "@/theme/colors";
+import { duration } from "@/theme/animations";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,7 +37,7 @@ import { duration } from '@/theme/animations';
 
 interface VoiceMessage {
   text: string;
-  source: 'user' | 'ai';
+  source: "user" | "ai";
 }
 
 interface VoiceScreenProps {
@@ -46,13 +46,13 @@ interface VoiceScreenProps {
   videoTitle: string;
   channelName?: string;
   voiceStatus:
-    | 'idle'
-    | 'connecting'
-    | 'listening'
-    | 'thinking'
-    | 'speaking'
-    | 'error'
-    | 'quota_exceeded';
+    | "idle"
+    | "connecting"
+    | "listening"
+    | "thinking"
+    | "speaking"
+    | "error"
+    | "quota_exceeded";
   isSpeaking: boolean;
   messages: VoiceMessage[];
   elapsedSeconds: number;
@@ -71,13 +71,13 @@ interface VoiceScreenProps {
 const formatTime = (totalSeconds: number): string => {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
 
 const formatMinutes = (minutes: number): string => {
   const m = Math.floor(minutes);
   const s = Math.round((minutes - m) * 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
 
 // ---------------------------------------------------------------------------
@@ -113,9 +113,15 @@ const PulsingCircle: React.FC<{ color: string }> = ({ color }) => {
 
   return (
     <View style={styles.pulseContainer}>
-      <Animated.View style={[styles.pulseRingOuter, { borderColor: color }, ringStyle]} />
-      <Animated.View style={[styles.pulseRing, { borderColor: color }, ringStyle]} />
-      <Animated.View style={[styles.pulseCore, { backgroundColor: color }, innerStyle]}>
+      <Animated.View
+        style={[styles.pulseRingOuter, { borderColor: color }, ringStyle]}
+      />
+      <Animated.View
+        style={[styles.pulseRing, { borderColor: color }, ringStyle]}
+      />
+      <Animated.View
+        style={[styles.pulseCore, { backgroundColor: color }, innerStyle]}
+      >
         <Ionicons name="mic" size={36} color={palette.white} />
       </Animated.View>
     </View>
@@ -147,9 +153,15 @@ const ThinkingDots: React.FC<{ color: string }> = ({ color }) => {
     bounce(dot3, 300);
   }, [dot1, dot2, dot3]);
 
-  const s1 = useAnimatedStyle(() => ({ transform: [{ translateY: dot1.value }] }));
-  const s2 = useAnimatedStyle(() => ({ transform: [{ translateY: dot2.value }] }));
-  const s3 = useAnimatedStyle(() => ({ transform: [{ translateY: dot3.value }] }));
+  const s1 = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot1.value }],
+  }));
+  const s2 = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot2.value }],
+  }));
+  const s3 = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot3.value }],
+  }));
 
   return (
     <View style={styles.dotsRow}>
@@ -161,11 +173,11 @@ const ThinkingDots: React.FC<{ color: string }> = ({ color }) => {
 };
 
 /** Single animated bar — extracted to respect Rules of Hooks */
-const WaveformBar: React.FC<{ targetHeight: number; color: string; index: number }> = ({
-  targetHeight,
-  color,
-  index,
-}) => {
+const WaveformBar: React.FC<{
+  targetHeight: number;
+  color: string;
+  index: number;
+}> = ({ targetHeight, color, index }) => {
   const barScale = useSharedValue(targetHeight);
 
   useEffect(() => {
@@ -173,7 +185,10 @@ const WaveformBar: React.FC<{ targetHeight: number; color: string; index: number
       index * 80,
       withRepeat(
         withSequence(
-          withTiming(1, { duration: 400 + index * 40, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, {
+            duration: 400 + index * 40,
+            easing: Easing.inOut(Easing.ease),
+          }),
           withTiming(targetHeight * 0.4, {
             duration: 400 + index * 40,
             easing: Easing.inOut(Easing.ease),
@@ -190,7 +205,9 @@ const WaveformBar: React.FC<{ targetHeight: number; color: string; index: number
   }));
 
   return (
-    <Animated.View style={[styles.waveBar, { backgroundColor: color }, barStyle]} />
+    <Animated.View
+      style={[styles.waveBar, { backgroundColor: color }, barStyle]}
+    />
   );
 };
 
@@ -232,40 +249,48 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
 
   // Haptic feedback on start / stop
   const handleStart = useCallback(() => {
-    if (Platform.OS !== 'web') {
+    if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     onStart();
   }, [onStart]);
 
   const handleStop = useCallback(() => {
-    if (Platform.OS !== 'web') {
+    if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
     onStop();
   }, [onStop]);
 
   // Whether the session is active (not idle / not error states)
-  const isActive = voiceStatus !== 'idle' && voiceStatus !== 'error' && voiceStatus !== 'quota_exceeded';
+  const isActive =
+    voiceStatus !== "idle" &&
+    voiceStatus !== "error" &&
+    voiceStatus !== "quota_exceeded";
 
   // ------- Centre content by status -------
   const renderCenter = () => {
     switch (voiceStatus) {
-      case 'idle':
+      case "idle":
         return (
           <Pressable
             onPress={handleStart}
             style={({ pressed }) => [
               styles.startButton,
-              { backgroundColor: colors.accentPrimary, opacity: pressed ? 0.85 : 1 },
+              {
+                backgroundColor: colors.accentPrimary,
+                opacity: pressed ? 0.85 : 1,
+              },
             ]}
           >
             <Ionicons name="mic" size={28} color={palette.white} />
-            <Text style={[styles.startText, { color: palette.white }]}>Démarrer</Text>
+            <Text style={[styles.startText, { color: palette.white }]}>
+              Démarrer
+            </Text>
           </Pressable>
         );
 
-      case 'connecting':
+      case "connecting":
         return (
           <View style={styles.centerColumn}>
             <ActivityIndicator size="large" color={colors.accentPrimary} />
@@ -275,42 +300,57 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
           </View>
         );
 
-      case 'listening':
+      case "listening":
         return (
           <View style={styles.centerColumn}>
             <PulsingCircle color={colors.accentPrimary} />
-            <Text style={[styles.statusLabel, { color: colors.textSecondary, marginTop: sp['2xl'] }]}>
+            <Text
+              style={[
+                styles.statusLabel,
+                { color: colors.textSecondary, marginTop: sp["2xl"] },
+              ]}
+            >
               À l'écoute...
             </Text>
           </View>
         );
 
-      case 'thinking':
+      case "thinking":
         return (
           <View style={styles.centerColumn}>
             <ThinkingDots color={colors.accentPrimary} />
-            <Text style={[styles.statusLabel, { color: colors.textSecondary, marginTop: sp.xl }]}>
+            <Text
+              style={[
+                styles.statusLabel,
+                { color: colors.textSecondary, marginTop: sp.xl },
+              ]}
+            >
               Réflexion...
             </Text>
           </View>
         );
 
-      case 'speaking':
+      case "speaking":
         return (
           <View style={styles.centerColumn}>
             <WaveformPlaceholder color={colors.accentPrimary} />
-            <Text style={[styles.statusLabel, { color: colors.textSecondary, marginTop: sp.xl }]}>
+            <Text
+              style={[
+                styles.statusLabel,
+                { color: colors.textSecondary, marginTop: sp.xl },
+              ]}
+            >
               DeepSight parle...
             </Text>
           </View>
         );
 
-      case 'error':
+      case "error":
         return (
           <View style={styles.centerColumn}>
             <Ionicons name="alert-circle" size={48} color={palette.red} />
             <Text style={[styles.errorText, { color: palette.red }]}>
-              {error || 'Une erreur est survenue'}
+              {error || "Une erreur est survenue"}
             </Text>
             <Pressable
               onPress={handleStart}
@@ -319,15 +359,21 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
                 { borderColor: palette.red, opacity: pressed ? 0.7 : 1 },
               ]}
             >
-              <Text style={[styles.retryLabel, { color: palette.red }]}>Réessayer</Text>
+              <Text style={[styles.retryLabel, { color: palette.red }]}>
+                Réessayer
+              </Text>
             </Pressable>
           </View>
         );
 
-      case 'quota_exceeded':
+      case "quota_exceeded":
         return (
           <View style={styles.centerColumn}>
-            <Ionicons name="timer-outline" size={48} color={colors.accentWarning} />
+            <Ionicons
+              name="timer-outline"
+              size={48}
+              color={colors.accentWarning}
+            />
             <Text style={[styles.errorText, { color: colors.textPrimary }]}>
               Quota de conversation vocale atteint
             </Text>
@@ -335,7 +381,10 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
               onPress={onClose}
               style={({ pressed }) => [
                 styles.upgradeButton,
-                { backgroundColor: colors.accentPrimary, opacity: pressed ? 0.85 : 1 },
+                {
+                  backgroundColor: colors.accentPrimary,
+                  opacity: pressed ? 0.85 : 1,
+                },
               ]}
             >
               <Text style={[styles.upgradeLabel, { color: palette.white }]}>
@@ -353,14 +402,16 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
   // ------- Transcript bubble renderer -------
   const renderMessage = useCallback(
     ({ item }: { item: VoiceMessage }) => {
-      const isUser = item.source === 'user';
+      const isUser = item.source === "user";
       return (
         <View
           style={[
             styles.bubble,
             isUser ? styles.bubbleUser : styles.bubbleAI,
             {
-              backgroundColor: isUser ? colors.accentPrimary : colors.bgTertiary,
+              backgroundColor: isUser
+                ? colors.accentPrimary
+                : colors.bgTertiary,
             },
           ]}
         >
@@ -434,7 +485,10 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
               hitSlop={12}
               style={({ pressed }) => [
                 styles.closeButton,
-                { backgroundColor: colors.bgTertiary, opacity: pressed ? 0.7 : 1 },
+                {
+                  backgroundColor: colors.bgTertiary,
+                  opacity: pressed ? 0.7 : 1,
+                },
               ]}
             >
               <Ionicons name="close" size={22} color={colors.textSecondary} />
@@ -467,13 +521,15 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
                 style={({ pressed }) => [
                   styles.footerButton,
                   {
-                    backgroundColor: isMuted ? colors.bgTertiary : colors.bgSecondary,
+                    backgroundColor: isMuted
+                      ? colors.bgTertiary
+                      : colors.bgSecondary,
                     opacity: pressed ? 0.7 : 1,
                   },
                 ]}
               >
                 <Ionicons
-                  name={isMuted ? 'mic-off' : 'mic'}
+                  name={isMuted ? "mic-off" : "mic"}
                   size={24}
                   color={isMuted ? palette.red : colors.textPrimary}
                 />
@@ -518,8 +574,8 @@ const styles = StyleSheet.create({
   // Header
   header: {
     height: 60,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerTitles: {
     flex: 1,
@@ -538,19 +594,19 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // Centre
   center: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   centerColumn: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   statusLabel: {
     fontFamily: fontFamily.bodyMedium,
@@ -560,8 +616,8 @@ const styles = StyleSheet.create({
 
   // Start button
   startButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 32,
     paddingVertical: sp.lg,
     borderRadius: 40,
@@ -576,13 +632,13 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.base,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: sp.lg,
-    marginHorizontal: sp['3xl'],
+    marginHorizontal: sp["3xl"],
   },
   retryButton: {
     marginTop: sp.xl,
-    paddingHorizontal: sp['2xl'],
+    paddingHorizontal: sp["2xl"],
     paddingVertical: sp.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1.5,
@@ -595,7 +651,7 @@ const styles = StyleSheet.create({
   // Quota exceeded
   upgradeButton: {
     marginTop: sp.xl,
-    paddingHorizontal: sp['2xl'],
+    paddingHorizontal: sp["2xl"],
     paddingVertical: sp.md,
     borderRadius: borderRadius.lg,
   },
@@ -608,8 +664,8 @@ const styles = StyleSheet.create({
   pulseContainer: {
     width: 140,
     height: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   pulseRingOuter: {
     ...StyleSheet.absoluteFillObject,
@@ -617,7 +673,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   pulseRing: {
-    position: 'absolute',
+    position: "absolute",
     top: 15,
     left: 15,
     right: 15,
@@ -629,15 +685,15 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // Thinking dots
   dotsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
-    alignItems: 'center',
+    alignItems: "center",
     height: 40,
   },
   dot: {
@@ -648,8 +704,8 @@ const styles = StyleSheet.create({
 
   // Waveform
   waveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     height: 60,
   },
@@ -668,17 +724,17 @@ const styles = StyleSheet.create({
     gap: sp.sm,
   },
   bubble: {
-    maxWidth: '80%',
+    maxWidth: "80%",
     paddingHorizontal: sp.md,
     paddingVertical: sp.sm,
     borderRadius: borderRadius.lg,
   },
   bubbleUser: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     borderBottomRightRadius: borderRadius.sm,
   },
   bubbleAI: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     borderBottomLeftRadius: borderRadius.sm,
   },
   bubbleText: {
@@ -690,9 +746,9 @@ const styles = StyleSheet.create({
   // Footer
   footer: {
     height: 80,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: sp.sm,
   },
@@ -700,8 +756,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   timer: {
     fontFamily: fontFamily.mono,
@@ -712,8 +768,8 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: borderRadius.full,
     backgroundColor: palette.red,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

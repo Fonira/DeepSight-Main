@@ -1,7 +1,7 @@
-import { useCallback, useRef, useEffect } from 'react';
-import { useAnalysisStore } from '../stores/analysisStore';
-import { videoApi } from '../services/api';
-import type { AnalysisOptionsV2 } from '../types/v2';
+import { useCallback, useRef, useEffect } from "react";
+import { useAnalysisStore } from "../stores/analysisStore";
+import { videoApi } from "../services/api";
+import type { AnalysisOptionsV2 } from "../types/v2";
 
 export function useAnalysis() {
   const store = useAnalysisStore();
@@ -18,18 +18,18 @@ export function useAnalysis() {
     async (url: string, options?: Partial<AnalysisOptionsV2>) => {
       try {
         const mergedOptions = { ...store.options, ...options };
-        store.startAnalysis('pending');
+        store.startAnalysis("pending");
 
         const response = await videoApi.analyze({
           url,
           mode: mergedOptions.mode,
           language: mergedOptions.language,
-          model: 'mistral',
-          category: 'auto',
+          model: "mistral",
+          category: "auto",
         });
 
         const taskId = response.task_id;
-        if (!taskId) throw new Error('No task ID returned');
+        if (!taskId) throw new Error("No task ID returned");
 
         store.startAnalysis(taskId);
 
@@ -38,28 +38,30 @@ export function useAnalysis() {
           try {
             const data = await videoApi.getStatus(taskId);
 
-            if (data.status === 'processing') {
+            if (data.status === "processing") {
               store.setProgress(data.progress || 0);
-            } else if (data.status === 'completed') {
+            } else if (data.status === "completed") {
               stopPolling();
               store.completeAnalysis();
               if (data.result) {
-                store.addSummary(data.result as unknown as import('../types').AnalysisSummary);
+                store.addSummary(
+                  data.result as unknown as import("../types").AnalysisSummary,
+                );
               }
-            } else if (data.status === 'failed') {
+            } else if (data.status === "failed") {
               stopPolling();
-              store.failAnalysis(data.error || 'Analysis failed');
+              store.failAnalysis(data.error || "Analysis failed");
             }
           } catch {
             stopPolling();
-            store.failAnalysis('Connection lost');
+            store.failAnalysis("Connection lost");
           }
         }, 2500);
       } catch (err: any) {
-        store.failAnalysis(err.message || 'Failed to start analysis');
+        store.failAnalysis(err.message || "Failed to start analysis");
       }
     },
-    [store, stopPolling]
+    [store, stopPolling],
   );
 
   useEffect(() => {

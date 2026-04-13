@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { sp } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
+import React from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { sp } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
 
 interface SectionHeaderProps {
   /** Section title */
@@ -18,7 +18,7 @@ interface SectionHeaderProps {
   /** Action callback */
   onAction?: () => void;
   /** Visual variant */
-  variant?: 'default' | 'uppercase' | 'large';
+  variant?: "default" | "uppercase" | "large";
   /** Additional style */
   style?: object;
 }
@@ -29,15 +29,19 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   iconColor,
   actionText,
   onAction,
-  variant = 'default',
+  variant = "default",
   style,
 }) => {
   const { colors } = useTheme();
 
   const titleStyle = [
-    variant === 'uppercase' ? styles.titleUppercase : variant === 'large' ? styles.titleLarge : styles.titleDefault,
+    variant === "uppercase"
+      ? styles.titleUppercase
+      : variant === "large"
+        ? styles.titleLarge
+        : styles.titleDefault,
     {
-      color: variant === 'uppercase' ? colors.textMuted : colors.textPrimary,
+      color: variant === "uppercase" ? colors.textMuted : colors.textPrimary,
     },
   ];
 
@@ -47,7 +51,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         {icon && (
           <Ionicons
             name={icon}
-            size={variant === 'large' ? 20 : 18}
+            size={variant === "large" ? 20 : 18}
             color={iconColor || colors.accentPrimary}
             style={styles.icon}
           />
@@ -66,7 +70,11 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           <Text style={[styles.actionText, { color: colors.accentPrimary }]}>
             {actionText}
           </Text>
-          <Ionicons name="chevron-forward" size={14} color={colors.accentPrimary} />
+          <Ionicons
+            name="chevron-forward"
+            size={14}
+            color={colors.accentPrimary}
+          />
         </Pressable>
       )}
     </View>
@@ -75,14 +83,14 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: sp.md,
   },
   leftRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   icon: {
@@ -95,7 +103,7 @@ const styles = StyleSheet.create({
   titleUppercase: {
     fontSize: fontSize.xs,
     fontFamily: fontFamily.bodySemiBold,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.8,
   },
   titleLarge: {
@@ -103,8 +111,8 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 2,
     minHeight: 44,
     paddingLeft: sp.sm,

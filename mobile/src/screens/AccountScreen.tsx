@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -11,34 +11,41 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import * as ImagePicker from 'expo-image-picker';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { Header, Card, Avatar, Button, Input, DeepSightSpinner } from '../components';
-import { Spacing, Typography, BorderRadius } from '../constants/theme';
-import { userApi, authApi, ApiError } from '../services/api';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import {
+  Header,
+  Card,
+  Avatar,
+  Button,
+  Input,
+  DeepSightSpinner,
+} from "../components";
+import { Spacing, Typography, BorderRadius } from "../constants/theme";
+import { userApi, authApi, ApiError } from "../services/api";
 
 export const AccountScreen: React.FC = () => {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const { user, refreshUser, logout, forgotPassword } = useAuth();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('tech');
+  useScreenDoodleVariant("tech");
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [username, setUsername] = useState(user?.username || '');
-  const [email, setEmail] = useState(user?.email || '');
+  const [username, setUsername] = useState(user?.username || "");
+  const [email, setEmail] = useState(user?.email || "");
 
   // Delete account modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
+  const [deletePassword, setDeletePassword] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Avatar upload state
@@ -73,45 +80,37 @@ export const AccountScreen: React.FC = () => {
       return;
     }
 
-    Alert.alert(
-      t.settings.changePassword,
-      user.email,
-      [
-        { text: t.common.cancel, style: 'cancel' },
-        {
-          text: t.common.send,
-          onPress: async () => {
-            try {
-              await forgotPassword(user.email);
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert(t.success.generic, t.notifications.analysisReady);
-            } catch (err) {
-              Alert.alert(t.common.error, t.errors.generic);
-            }
+    Alert.alert(t.settings.changePassword, user.email, [
+      { text: t.common.cancel, style: "cancel" },
+      {
+        text: t.common.send,
+        onPress: async () => {
+          try {
+            await forgotPassword(user.email);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert(t.success.generic, t.notifications.analysisReady);
+          } catch (err) {
+            Alert.alert(t.common.error, t.errors.generic);
           }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleDeleteAccount = () => {
     // Show confirmation alert first
-    Alert.alert(
-      t.settings.deleteAccount,
-      t.settings.deleteAccountConfirm,
-      [
-        { text: t.common.cancel, style: 'cancel' },
-        {
-          text: t.common.delete,
-          style: 'destructive',
-          onPress: () => {
-            // Show password confirmation modal
-            setDeletePassword('');
-            setShowDeleteModal(true);
-          },
+    Alert.alert(t.settings.deleteAccount, t.settings.deleteAccountConfirm, [
+      { text: t.common.cancel, style: "cancel" },
+      {
+        text: t.common.delete,
+        style: "destructive",
+        onPress: () => {
+          // Show password confirmation modal
+          setDeletePassword("");
+          setShowDeleteModal(true);
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleConfirmDelete = async () => {
@@ -125,9 +124,9 @@ export const AccountScreen: React.FC = () => {
 
       // Log user out after successful deletion
       Alert.alert(
-        t.success?.generic || 'Succès',
-        'Votre compte a été supprimé.',
-        [{ text: 'OK', onPress: () => logout() }]
+        t.success?.generic || "Succès",
+        "Votre compte a été supprimé.",
+        [{ text: "OK", onPress: () => logout() }],
       );
     } catch (err) {
       const message = err instanceof ApiError ? err.message : t.errors.generic;
@@ -144,18 +143,16 @@ export const AccountScreen: React.FC = () => {
   };
 
   const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (permissionResult.granted === false) {
-      Alert.alert(
-        t.common.error,
-        'Permission to access photos is required!'
-      );
+      Alert.alert(t.common.error, "Permission to access photos is required!");
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -170,10 +167,7 @@ export const AccountScreen: React.FC = () => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
     if (permissionResult.granted === false) {
-      Alert.alert(
-        t.common.error,
-        'Permission to access camera is required!'
-      );
+      Alert.alert(t.common.error, "Permission to access camera is required!");
       return;
     }
 
@@ -208,12 +202,15 @@ export const AccountScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
       <Header title={t.settings.account} showBack />
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 20 },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
@@ -222,7 +219,10 @@ export const AccountScreen: React.FC = () => {
         <View style={styles.avatarSection}>
           <Avatar uri={user?.avatar_url} name={user?.username} size="xl" />
           <Pressable
-            style={[styles.changeAvatarButton, { backgroundColor: colors.accentPrimary }]}
+            style={[
+              styles.changeAvatarButton,
+              { backgroundColor: colors.accentPrimary },
+            ]}
             onPress={handleAvatarPress}
           >
             <Ionicons name="camera" size={16} color="#FFFFFF" />
@@ -271,10 +271,21 @@ export const AccountScreen: React.FC = () => {
             </>
           ) : (
             <>
-              <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <View
+                style={[styles.infoRow, { borderBottomColor: colors.border }]}
+              >
                 <View style={styles.infoLabel}>
-                  <Ionicons name="person-outline" size={20} color={colors.textTertiary} />
-                  <Text style={[styles.infoLabelText, { color: colors.textSecondary }]}>
+                  <Ionicons
+                    name="person-outline"
+                    size={20}
+                    color={colors.textTertiary}
+                  />
+                  <Text
+                    style={[
+                      styles.infoLabelText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {t.settings.displayName}
                   </Text>
                 </View>
@@ -282,10 +293,21 @@ export const AccountScreen: React.FC = () => {
                   {user?.username}
                 </Text>
               </View>
-              <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <View
+                style={[styles.infoRow, { borderBottomColor: colors.border }]}
+              >
                 <View style={styles.infoLabel}>
-                  <Ionicons name="mail-outline" size={20} color={colors.textTertiary} />
-                  <Text style={[styles.infoLabelText, { color: colors.textSecondary }]}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color={colors.textTertiary}
+                  />
+                  <Text
+                    style={[
+                      styles.infoLabelText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {t.auth.email}
                   </Text>
                 </View>
@@ -295,13 +317,24 @@ export const AccountScreen: React.FC = () => {
               </View>
               <View style={styles.infoRow}>
                 <View style={styles.infoLabel}>
-                  <Ionicons name="calendar-outline" size={20} color={colors.textTertiary} />
-                  <Text style={[styles.infoLabelText, { color: colors.textSecondary }]}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={colors.textTertiary}
+                  />
+                  <Text
+                    style={[
+                      styles.infoLabelText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     {t.settings.memberSince}
                   </Text>
                 </View>
                 <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
-                  {user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : '-'}
+                  {user?.created_at
+                    ? new Date(user.created_at).toLocaleDateString("fr-FR")
+                    : "-"}
                 </Text>
               </View>
               <Button
@@ -324,24 +357,42 @@ export const AccountScreen: React.FC = () => {
             onPress={handleChangePassword}
           >
             <View style={styles.securityItemLeft}>
-              <Ionicons name="lock-closed-outline" size={20} color={colors.accentPrimary} />
-              <Text style={[styles.securityItemText, { color: colors.textPrimary }]}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color={colors.accentPrimary}
+              />
+              <Text
+                style={[styles.securityItemText, { color: colors.textPrimary }]}
+              >
                 {t.settings.changePassword}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textTertiary}
+            />
           </Pressable>
           <View style={[styles.securityItem, { borderBottomWidth: 0 }]}>
             <View style={styles.securityItemLeft}>
-              <Ionicons name="shield-checkmark-outline" size={20} color={colors.accentSuccess} />
-              <Text style={[styles.securityItemText, { color: colors.textPrimary }]}>
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={20}
+                color={colors.accentSuccess}
+              />
+              <Text
+                style={[styles.securityItemText, { color: colors.textPrimary }]}
+              >
                 {t.settings.emailVerified}
               </Text>
             </View>
             <Ionicons
-              name={user?.email_verified ? 'checkmark-circle' : 'close-circle'}
+              name={user?.email_verified ? "checkmark-circle" : "close-circle"}
               size={20}
-              color={user?.email_verified ? colors.accentSuccess : colors.accentError}
+              color={
+                user?.email_verified ? colors.accentSuccess : colors.accentError
+              }
             />
           </View>
         </Card>
@@ -351,17 +402,24 @@ export const AccountScreen: React.FC = () => {
           {t.settings.dangerZone}
         </Text>
         <Card variant="elevated" style={styles.dangerCard}>
-          <Pressable
-            style={styles.dangerItem}
-            onPress={handleDeleteAccount}
-          >
+          <Pressable style={styles.dangerItem} onPress={handleDeleteAccount}>
             <View style={styles.securityItemLeft}>
-              <Ionicons name="trash-outline" size={20} color={colors.accentError} />
-              <Text style={[styles.securityItemText, { color: colors.accentError }]}>
+              <Ionicons
+                name="trash-outline"
+                size={20}
+                color={colors.accentError}
+              />
+              <Text
+                style={[styles.securityItemText, { color: colors.accentError }]}
+              >
                 {t.settings.deleteAccount}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.accentError} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.accentError}
+            />
           </Pressable>
         </Card>
       </ScrollView>
@@ -374,11 +432,18 @@ export const AccountScreen: React.FC = () => {
         onRequestClose={() => setShowDeleteModal(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.modalOverlay}
         >
-          <View style={[styles.modalContent, { backgroundColor: colors.bgPrimary }]}>
-            <View style={[styles.modalIconContainer, { backgroundColor: `${colors.accentError}15` }]}>
+          <View
+            style={[styles.modalContent, { backgroundColor: colors.bgPrimary }]}
+          >
+            <View
+              style={[
+                styles.modalIconContainer,
+                { backgroundColor: `${colors.accentError}15` },
+              ]}
+            >
               <Ionicons name="warning" size={32} color={colors.accentError} />
             </View>
 
@@ -386,12 +451,20 @@ export const AccountScreen: React.FC = () => {
               {t.settings.deleteAccount}
             </Text>
 
-            <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
-              Cette action est irréversible. Toutes vos données seront supprimées définitivement.
+            <Text
+              style={[styles.modalDescription, { color: colors.textSecondary }]}
+            >
+              Cette action est irréversible. Toutes vos données seront
+              supprimées définitivement.
             </Text>
 
             <View style={styles.modalInputContainer}>
-              <Text style={[styles.modalInputLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.modalInputLabel,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 Entrez votre mot de passe pour confirmer
               </Text>
               <TextInput
@@ -414,24 +487,37 @@ export const AccountScreen: React.FC = () => {
 
             <View style={styles.modalActions}>
               <Pressable
-                style={[styles.modalButton, styles.modalCancelButton, { borderColor: colors.border }]}
+                style={[
+                  styles.modalButton,
+                  styles.modalCancelButton,
+                  { borderColor: colors.border },
+                ]}
                 onPress={() => setShowDeleteModal(false)}
                 disabled={isDeleting}
               >
-                <Text style={[styles.modalButtonText, { color: colors.textPrimary }]}>
+                <Text
+                  style={[
+                    styles.modalButtonText,
+                    { color: colors.textPrimary },
+                  ]}
+                >
                   {t.common.cancel}
                 </Text>
               </Pressable>
 
               <Pressable
-                style={[styles.modalButton, styles.modalDeleteButton, { backgroundColor: colors.accentError }]}
+                style={[
+                  styles.modalButton,
+                  styles.modalDeleteButton,
+                  { backgroundColor: colors.accentError },
+                ]}
                 onPress={handleConfirmDelete}
                 disabled={isDeleting}
               >
                 {isDeleting ? (
                   <Ionicons name="hourglass" size={16} color="#FFFFFF" />
                 ) : (
-                  <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
+                  <Text style={[styles.modalButtonText, { color: "#FFFFFF" }]}>
                     {t.common.delete}
                   </Text>
                 )}
@@ -449,7 +535,12 @@ export const AccountScreen: React.FC = () => {
         onRequestClose={() => setShowAvatarModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.avatarModalContent, { backgroundColor: colors.bgPrimary }]}>
+          <View
+            style={[
+              styles.avatarModalContent,
+              { backgroundColor: colors.bgPrimary },
+            ]}
+          >
             <View style={styles.avatarModalHeader}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
                 {t.settings.profilePicture}
@@ -467,8 +558,17 @@ export const AccountScreen: React.FC = () => {
                   style={styles.avatarPreview}
                 />
               ) : (
-                <View style={[styles.avatarPlaceholder, { backgroundColor: colors.bgSecondary }]}>
-                  <Avatar uri={user?.avatar_url} name={user?.username} size="xl" />
+                <View
+                  style={[
+                    styles.avatarPlaceholder,
+                    { backgroundColor: colors.bgSecondary },
+                  ]}
+                >
+                  <Avatar
+                    uri={user?.avatar_url}
+                    name={user?.username}
+                    size="xl"
+                  />
                 </View>
               )}
             </View>
@@ -476,24 +576,48 @@ export const AccountScreen: React.FC = () => {
             {/* Actions */}
             <View style={styles.avatarActions}>
               <Pressable
-                style={[styles.avatarActionButton, { backgroundColor: colors.bgSecondary }]}
+                style={[
+                  styles.avatarActionButton,
+                  { backgroundColor: colors.bgSecondary },
+                ]}
                 onPress={pickImage}
                 disabled={isUploadingAvatar}
               >
-                <Ionicons name="images-outline" size={24} color={colors.accentPrimary} />
-                <Text style={[styles.avatarActionText, { color: colors.textPrimary }]}>
-                  {t.common.chooseFromLibrary || 'Choose from Library'}
+                <Ionicons
+                  name="images-outline"
+                  size={24}
+                  color={colors.accentPrimary}
+                />
+                <Text
+                  style={[
+                    styles.avatarActionText,
+                    { color: colors.textPrimary },
+                  ]}
+                >
+                  {t.common.chooseFromLibrary || "Choose from Library"}
                 </Text>
               </Pressable>
 
               <Pressable
-                style={[styles.avatarActionButton, { backgroundColor: colors.bgSecondary }]}
+                style={[
+                  styles.avatarActionButton,
+                  { backgroundColor: colors.bgSecondary },
+                ]}
                 onPress={takePhoto}
                 disabled={isUploadingAvatar}
               >
-                <Ionicons name="camera-outline" size={24} color={colors.accentPrimary} />
-                <Text style={[styles.avatarActionText, { color: colors.textPrimary }]}>
-                  {t.common.takePhoto || 'Take Photo'}
+                <Ionicons
+                  name="camera-outline"
+                  size={24}
+                  color={colors.accentPrimary}
+                />
+                <Text
+                  style={[
+                    styles.avatarActionText,
+                    { color: colors.textPrimary },
+                  ]}
+                >
+                  {t.common.takePhoto || "Take Photo"}
                 </Text>
               </Pressable>
             </View>
@@ -501,7 +625,10 @@ export const AccountScreen: React.FC = () => {
             {/* Upload Button */}
             {selectedImage && (
               <Pressable
-                style={[styles.uploadButton, { backgroundColor: colors.accentPrimary }]}
+                style={[
+                  styles.uploadButton,
+                  { backgroundColor: colors.accentPrimary },
+                ]}
                 onPress={handleUploadAvatar}
                 disabled={isUploadingAvatar}
               >
@@ -509,9 +636,13 @@ export const AccountScreen: React.FC = () => {
                   <DeepSightSpinner size="sm" speed="fast" color="#FFFFFF" />
                 ) : (
                   <>
-                    <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
+                    <Ionicons
+                      name="cloud-upload-outline"
+                      size={20}
+                      color="#FFFFFF"
+                    />
                     <Text style={styles.uploadButtonText}>
-                      {t.common.upload || 'Upload'}
+                      {t.common.upload || "Upload"}
                     </Text>
                   </>
                 )}
@@ -536,23 +667,23 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
   },
   avatarSection: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: Spacing.xl,
   },
   changeAvatarButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
-    right: '35%',
+    right: "35%",
     width: 32,
     height: 32,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   sectionTitle: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: Spacing.sm,
     marginTop: Spacing.md,
@@ -562,15 +693,15 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: Spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   infoLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   infoLabelText: {
@@ -585,7 +716,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
   },
   editActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.md,
     marginTop: Spacing.md,
   },
@@ -596,16 +727,16 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   securityItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   securityItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
   },
   securityItemText: {
@@ -616,50 +747,50 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   dangerItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
   },
   // Delete Account Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: Spacing.xl,
   },
   modalContent: {
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalIconContainer: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.lg,
   },
   modalTitle: {
     fontSize: Typography.fontSize.xl,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.sm,
   },
   modalDescription: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.xl,
     lineHeight: Typography.fontSize.base * 1.5,
   },
   modalInputContainer: {
-    width: '100%',
+    width: "100%",
     marginBottom: Spacing.xl,
   },
   modalInputLabel: {
@@ -668,7 +799,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   modalInput: {
-    width: '100%',
+    width: "100%",
     height: 48,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
@@ -677,16 +808,16 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   modalActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.md,
-    width: '100%',
+    width: "100%",
   },
   modalButton: {
     flex: 1,
     height: 48,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalCancelButton: {
     borderWidth: 1,
@@ -698,19 +829,19 @@ const styles = StyleSheet.create({
   },
   // Avatar Upload Modal Styles
   avatarModalContent: {
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
   },
   avatarModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.xl,
   },
   avatarPreviewContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: Spacing.xl,
   },
   avatarPreview: {
@@ -722,16 +853,16 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarActions: {
     gap: Spacing.md,
     marginBottom: Spacing.lg,
   },
   avatarActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
@@ -742,9 +873,9 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   uploadButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.sm,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
@@ -752,7 +883,7 @@ const styles = StyleSheet.create({
   uploadButtonText: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.bodyMedium,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
 });
 

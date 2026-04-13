@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,27 +7,32 @@ import {
   ScrollView,
   Switch,
   Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 const colors = {
-  bgPrimary: '#0a0a0b',
-  bgSecondary: '#111113',
-  bgElevated: '#1f1f23',
-  textPrimary: '#FAFAF9',
-  textSecondary: '#A1A1AA',
-  textTertiary: '#71717A',
-  accentPrimary: '#6366F1',
-  border: '#27272A',
-  error: '#EF4444',
+  bgPrimary: "#0a0a0b",
+  bgSecondary: "#111113",
+  bgElevated: "#1f1f23",
+  textPrimary: "#FAFAF9",
+  textSecondary: "#A1A1AA",
+  textTertiary: "#71717A",
+  accentPrimary: "#6366F1",
+  border: "#27272A",
+  error: "#EF4444",
 };
 
-const MenuItem = ({ icon, label, onPress, rightText, rightBadge, danger, toggle, toggleValue }) => (
-  <TouchableOpacity
-    style={styles.menuItem}
-    onPress={onPress}
-    disabled={toggle}
-  >
+const MenuItem = ({
+  icon,
+  label,
+  onPress,
+  rightText,
+  rightBadge,
+  danger,
+  toggle,
+  toggleValue,
+}) => (
+  <TouchableOpacity style={styles.menuItem} onPress={onPress} disabled={toggle}>
     <View style={styles.menuItemLeft}>
       <View style={[styles.menuIcon, danger && styles.menuIconDanger]}>
         <Ionicons
@@ -55,7 +60,11 @@ const MenuItem = ({ icon, label, onPress, rightText, rightBadge, danger, toggle,
           thumbColor="#FFFFFF"
         />
       ) : (
-        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={colors.textTertiary}
+        />
       )}
     </View>
   </TouchableOpacity>
@@ -66,14 +75,10 @@ export default function ProfileScreen() {
   const [notifications, setNotifications] = useState(true);
 
   const handleLogout = () => {
-    Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Déconnexion', style: 'destructive', onPress: () => {} },
-      ]
-    );
+    Alert.alert("Déconnexion", "Êtes-vous sûr de vouloir vous déconnecter ?", [
+      { text: "Annuler", style: "cancel" },
+      { text: "Déconnexion", style: "destructive", onPress: () => {} },
+    ]);
   };
 
   return (
@@ -219,12 +224,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
   },
   profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.bgElevated,
     marginHorizontal: 20,
     borderRadius: 16,
@@ -236,13 +241,13 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     backgroundColor: colors.accentPrimary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   profileInfo: {
     marginLeft: 16,
@@ -250,7 +255,7 @@ const styles = StyleSheet.create({
   },
   profileName: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
   },
   profileEmail: {
@@ -263,16 +268,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginTop: 8,
   },
   planBadgeText: {
     color: colors.accentPrimary,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   statsCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: colors.bgElevated,
     marginHorizontal: 20,
     borderRadius: 16,
@@ -281,11 +286,11 @@ const styles = StyleSheet.create({
   },
   stat: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statValue: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
   },
   statLabel: {
@@ -299,9 +304,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginHorizontal: 24,
     marginBottom: 8,
@@ -311,28 +316,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     marginHorizontal: 20,
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   menuIcon: {
     width: 36,
     height: 36,
     borderRadius: 10,
     backgroundColor: `${colors.accentPrimary}15`,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
   menuIconDanger: {
@@ -346,8 +351,8 @@ const styles = StyleSheet.create({
     color: colors.error,
   },
   menuItemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   menuRightText: {
@@ -363,10 +368,10 @@ const styles = StyleSheet.create({
   menuBadgeText: {
     color: colors.accentPrimary,
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   version: {
-    textAlign: 'center',
+    textAlign: "center",
     color: colors.textTertiary,
     fontSize: 14,
     marginTop: 24,

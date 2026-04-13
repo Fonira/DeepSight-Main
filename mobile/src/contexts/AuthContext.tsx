@@ -1,19 +1,30 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
-import { authApi, notificationsApi, ApiError } from '../services/api';
-import { tokenStorage, userStorage } from '../utils/storage';
-import { initializeNotifications, getPushToken } from '../services/notifications';
-import { analytics } from '../services/analytics';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  ReactNode,
+} from "react";
+import { Platform } from "react-native";
+import Constants from "expo-constants";
+import { authApi, notificationsApi, ApiError } from "../services/api";
+import { tokenStorage, userStorage } from "../utils/storage";
+import {
+  initializeNotifications,
+  getPushToken,
+} from "../services/notifications";
+import { analytics } from "../services/analytics";
 import {
   GOOGLE_CLIENT_ID,
   GOOGLE_IOS_CLIENT_ID,
-  GOOGLE_ANDROID_CLIENT_ID
-} from '../constants/config';
-import type { User } from '../types';
+  GOOGLE_ANDROID_CLIENT_ID,
+} from "../constants/config";
+import type { User } from "../types";
 
 // Check if we're running in Expo Go (native modules not available)
-const isExpoGo = Constants.appOwnership === 'expo';
+const isExpoGo = Constants.appOwnership === "expo";
 
 // Conditionally import Google Sign-In (only works in development builds, not Expo Go)
 let GoogleSignin: any = null;
@@ -22,7 +33,7 @@ let isSuccessResponse: any = () => false;
 
 if (!isExpoGo) {
   try {
-    const googleSignIn = require('@react-native-google-signin/google-signin');
+    const googleSignIn = require("@react-native-google-signin/google-signin");
     GoogleSignin = googleSignIn.GoogleSignin;
     statusCodes = googleSignIn.statusCodes;
     isSuccessResponse = googleSignIn.isSuccessResponse;
@@ -30,9 +41,9 @@ if (!isExpoGo) {
     // Configure Google Sign-In on app start
     GoogleSignin.configure({
       webClientId: GOOGLE_CLIENT_ID,
-      iosClientId: Platform.OS === 'ios' ? GOOGLE_IOS_CLIENT_ID : undefined,
+      iosClientId: Platform.OS === "ios" ? GOOGLE_IOS_CLIENT_ID : undefined,
       offlineAccess: true,
-      scopes: ['profile', 'email'],
+      scopes: ["profile", "email"],
     });
   } catch (e) {
     // Google Sign-In not available (running in Expo Go)
@@ -44,11 +55,15 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  pendingVerificationEmail: string | null;  // Email awaiting verification
+  pendingVerificationEmail: string | null; // Email awaiting verification
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithGoogleToken: (accessToken: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<{ requiresVerification: boolean }>;
+  register: (
+    username: string,
+    email: string,
+    password: string,
+  ) => Promise<{ requiresVerification: boolean }>;
   verifyEmail: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -60,11 +75,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<
+    string | null
+  >(null);
   const pushTokenRef = useRef<string | null>(null);
 
   const isAuthenticated = user !== null;
@@ -78,38 +97,56 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (permissionGranted && pushToken) {
         pushTokenRef.current = pushToken;
         await notificationsApi.registerPushToken(pushToken, Platform.OS);
-        if (__DEV__) { console.log('[Auth] Push token registered:', pushToken.slice(0, 30) + '...'); }
+        if (__DEV__) {
+          console.log(
+            "[Auth] Push token registered:",
+            pushToken.slice(0, 30) + "...",
+          );
+        }
       }
     } catch (err) {
-      if (__DEV__) { console.warn('[Auth] Push token registration failed:', err); }
+      if (__DEV__) {
+        console.warn("[Auth] Push token registration failed:", err);
+      }
     }
   }, []);
 
   // Exchange Google token with backend (also exposed as loginWithGoogleToken)
-  const loginWithGoogleToken = useCallback(async (googleAccessToken: string) => {
-    setIsLoading(true);
-    setError(null);
+  const loginWithGoogleToken = useCallback(
+    async (googleAccessToken: string) => {
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      const response = await authApi.googleTokenLogin(googleAccessToken);
-      setUser(response.user);
-      await userStorage.setUser(response.user);
-      // Analytics: identify user + track google login
-      analytics.identify(String(response.user.id), response.user.plan);
-      analytics.track('login', { method: 'google' });
-      // Register push token (non-blocking)
-      registerPushToken();
-    } catch (err) {
-      if (__DEV__) { console.error('Google token exchange failed:', err); }
-      if (err instanceof ApiError && err.status === 404) {
-        setError('Connexion Google non disponible. Utilisez email/mot de passe.');
-      } else {
-        setError(err instanceof ApiError ? err.message : 'Échec de la connexion Google');
+      try {
+        const response = await authApi.googleTokenLogin(googleAccessToken);
+        setUser(response.user);
+        await userStorage.setUser(response.user);
+        // Analytics: identify user + track google login
+        analytics.identify(String(response.user.id), response.user.plan);
+        analytics.track("login", { method: "google" });
+        // Register push token (non-blocking)
+        registerPushToken();
+      } catch (err) {
+        if (__DEV__) {
+          console.error("Google token exchange failed:", err);
+        }
+        if (err instanceof ApiError && err.status === 404) {
+          setError(
+            "Connexion Google non disponible. Utilisez email/mot de passe.",
+          );
+        } else {
+          setError(
+            err instanceof ApiError
+              ? err.message
+              : "Échec de la connexion Google",
+          );
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [registerPushToken]);
+    },
+    [registerPushToken],
+  );
 
   // Initialize auth state - restore session from stored tokens
   useEffect(() => {
@@ -138,7 +175,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           registerPushToken();
         }
       } catch (error) {
-        if (__DEV__) { console.warn('[Auth] Init error:', error); }
+        if (__DEV__) {
+          console.warn("[Auth] Init error:", error);
+        }
         if (!cancelled) {
           // Only clear tokens on explicit 401 (server confirmed tokens are invalid)
           // Network errors, timeouts, etc. should NOT log the user out
@@ -159,14 +198,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Safety timeout: ensure loading ends after 15 seconds max
     timeoutId = setTimeout(() => {
       if (!cancelled) {
-        if (__DEV__) { console.warn('[Auth] Init timeout (15s) - forcing loading complete'); }
+        if (__DEV__) {
+          console.warn("[Auth] Init timeout (15s) - forcing loading complete");
+        }
         cancelled = true;
         setIsLoading(false);
       }
     }, 15000);
 
     init().catch((error) => {
-      if (__DEV__) { console.error('[Auth] Init fatal error:', error); }
+      if (__DEV__) {
+        console.error("[Auth] Init fatal error:", error);
+      }
       if (!cancelled) {
         setIsLoading(false);
       }
@@ -187,8 +230,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // Validate response before setting user
       if (!response.user) {
-        if (__DEV__) { console.error('[Auth] Login response missing user object'); }
-        throw new Error('Réponse serveur invalide: utilisateur manquant');
+        if (__DEV__) {
+          console.error("[Auth] Login response missing user object");
+        }
+        throw new Error("Réponse serveur invalide: utilisateur manquant");
       }
 
       setUser(response.user);
@@ -197,25 +242,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         await userStorage.setUser(response.user);
       } catch (storageError) {
-        if (__DEV__) { console.warn('[Auth] Failed to save user to storage:', storageError); }
+        if (__DEV__) {
+          console.warn("[Auth] Failed to save user to storage:", storageError);
+        }
         // Continue anyway - user is already in state
       }
 
       // Analytics: identify user + track login
       analytics.identify(String(response.user.id), response.user.plan);
-      analytics.track('login', { method: 'email' });
+      analytics.track("login", { method: "email" });
 
       // Register push token (non-blocking)
       registerPushToken();
     } catch (err) {
-      if (__DEV__) { console.error('[Auth] Login failed:', err); }
+      if (__DEV__) {
+        console.error("[Auth] Login failed:", err);
+      }
       // Check for email verification required error
       if (err instanceof ApiError && err.isEmailNotVerified) {
         setPendingVerificationEmail(email);
-        setError('Votre email n\'est pas encore vérifié. Veuillez vérifier votre boîte mail.');
+        setError(
+          "Votre email n'est pas encore vérifié. Veuillez vérifier votre boîte mail.",
+        );
         throw err;
       }
-      const message = err instanceof ApiError ? err.message : 'Échec de la connexion';
+      const message =
+        err instanceof ApiError ? err.message : "Échec de la connexion";
       setError(message);
       throw err;
     } finally {
@@ -229,14 +281,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Check if Google Sign-In is available (not in Expo Go)
     if (!GoogleSignin || isExpoGo) {
-      setError('Connexion Google non disponible dans Expo Go. Utilisez un build de développement ou connectez-vous avec email/mot de passe.');
+      setError(
+        "Connexion Google non disponible dans Expo Go. Utilisez un build de développement ou connectez-vous avec email/mot de passe.",
+      );
       setIsLoading(false);
       return;
     }
 
     try {
       // Check if device has Play Services (Android) or is configured properly
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
 
       // Sign in with Google
       const response = await GoogleSignin.signIn();
@@ -249,45 +305,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           // Exchange with backend
           await loginWithGoogleToken(tokens.accessToken);
         } else {
-          throw new Error('No access token received from Google');
+          throw new Error("No access token received from Google");
         }
       } else {
         // User cancelled
         setIsLoading(false);
       }
     } catch (err: any) {
-      if (__DEV__) { console.error('Google login error:', err); }
+      if (__DEV__) {
+        console.error("Google login error:", err);
+      }
 
       if (err.code === statusCodes.SIGN_IN_CANCELLED) {
         // User cancelled - don't show error
         setIsLoading(false);
       } else if (err.code === statusCodes.IN_PROGRESS) {
-        setError('Connexion Google déjà en cours...');
+        setError("Connexion Google déjà en cours...");
         setIsLoading(false);
       } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        setError('Google Play Services non disponible. Mettez à jour votre appareil.');
+        setError(
+          "Google Play Services non disponible. Mettez à jour votre appareil.",
+        );
         setIsLoading(false);
       } else {
-        setError('Impossible de se connecter avec Google. Veuillez réessayer.');
+        setError("Impossible de se connecter avec Google. Veuillez réessayer.");
         setIsLoading(false);
       }
     }
   }, [loginWithGoogleToken]);
 
-  const register = useCallback(async (username: string, email: string, password: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      await authApi.register(username, email, password);
-      return { requiresVerification: true };
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Échec de l\'inscription';
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const register = useCallback(
+    async (username: string, email: string, password: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await authApi.register(username, email, password);
+        return { requiresVerification: true };
+      } catch (err) {
+        const message =
+          err instanceof ApiError ? err.message : "Échec de l'inscription";
+        setError(message);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
 
   const verifyEmail = useCallback(async (email: string, code: string) => {
     setIsLoading(true);
@@ -297,7 +361,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(response.user);
       await userStorage.setUser(response.user);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Échec de la vérification';
+      const message =
+        err instanceof ApiError ? err.message : "Échec de la vérification";
       setError(message);
       throw err;
     } finally {
@@ -310,7 +375,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Unregister push token before logging out
     if (pushTokenRef.current) {
       try {
-        await notificationsApi.unregisterPushToken(pushTokenRef.current, Platform.OS);
+        await notificationsApi.unregisterPushToken(
+          pushTokenRef.current,
+          Platform.OS,
+        );
       } catch {
         // Ignore — best effort cleanup
       }
@@ -327,10 +395,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await userStorage.clearUser();
 
       // Analytics: track logout + reset identity
-      analytics.track('logout');
+      analytics.track("logout");
       analytics.reset();
     } catch (cleanupError) {
-      if (__DEV__) { console.warn('[Auth] Logout cleanup error:', cleanupError); }
+      if (__DEV__) {
+        console.warn("[Auth] Logout cleanup error:", cleanupError);
+      }
       // Ensure user is still cleared even if storage fails
       setUser(null);
     } finally {
@@ -344,7 +414,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await authApi.forgotPassword(email);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Échec de la réinitialisation';
+      const message =
+        err instanceof ApiError ? err.message : "Échec de la réinitialisation";
       setError(message);
       throw err;
     } finally {
@@ -352,20 +423,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  const refreshUser = useCallback(async (force = false) => {
-    if (!isAuthenticated && !force) return;
-    try {
-      const userData = await authApi.getMe();
-      setUser(userData);
-      await userStorage.setUser(userData);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setUser(null);
-        await tokenStorage.clearTokens();
-        await userStorage.clearUser();
+  const refreshUser = useCallback(
+    async (force = false) => {
+      if (!isAuthenticated && !force) return;
+      try {
+        const userData = await authApi.getMe();
+        setUser(userData);
+        await userStorage.setUser(userData);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          setUser(null);
+          await tokenStorage.clearTokens();
+          await userStorage.clearUser();
+        }
       }
-    }
-  }, [isAuthenticated]);
+    },
+    [isAuthenticated],
+  );
 
   const clearError = useCallback(() => setError(null), []);
 
@@ -379,7 +453,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await authApi.resendVerification(email);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Échec du renvoi';
+      const message = err instanceof ApiError ? err.message : "Échec du renvoi";
       setError(message);
       throw err;
     } finally {
@@ -388,12 +462,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   return (
-    <AuthContext.Provider value={{
-      user, isAuthenticated, isLoading, error, pendingVerificationEmail,
-      login, loginWithGoogle, loginWithGoogleToken, register, verifyEmail,
-      logout, forgotPassword, refreshUser, clearError,
-      clearPendingVerification, resendVerificationCode,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        isLoading,
+        error,
+        pendingVerificationEmail,
+        login,
+        loginWithGoogle,
+        loginWithGoogleToken,
+        register,
+        verifyEmail,
+        logout,
+        forgotPassword,
+        refreshUser,
+        clearError,
+        clearPendingVerification,
+        resendVerificationCode,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -401,7 +489,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };
 

@@ -16,44 +16,44 @@
  * - flashcard_generated / quiz_generated / study_content_generated
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, AppState, type AppStateStatus } from 'react-native';
-import { API_BASE_URL } from '../constants/config';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform, AppState, type AppStateStatus } from "react-native";
+import { API_BASE_URL } from "../constants/config";
 
 // ─────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────
 
 export type AnalyticsEventName =
-  | 'app_opened'
-  | 'app_backgrounded'
-  | 'screen_viewed'
-  | 'analysis_started'
-  | 'analysis_completed'
-  | 'analysis_failed'
-  | 'analysis_deleted'
-  | 'chat_message_sent'
-  | 'tab_switched'
-  | 'share_intent_received'
-  | 'upgrade_cta_viewed'
-  | 'upgrade_cta_clicked'
-  | 'upgrade_plan_selected'
-  | 'upgrade_checkout_started'
-  | 'search_performed'
-  | 'flashcard_generated'
-  | 'quiz_generated'
-  | 'study_content_generated'
-  | 'mindmap_generated'
-  | 'factcheck_requested'
-  | 'export_requested'
-  | 'favorite_toggled'
-  | 'video_deleted'
-  | 'notification_received'
-  | 'notification_tapped'
-  | 'share_link_created'
-  | 'login'
-  | 'register'
-  | 'logout';
+  | "app_opened"
+  | "app_backgrounded"
+  | "screen_viewed"
+  | "analysis_started"
+  | "analysis_completed"
+  | "analysis_failed"
+  | "analysis_deleted"
+  | "chat_message_sent"
+  | "tab_switched"
+  | "share_intent_received"
+  | "upgrade_cta_viewed"
+  | "upgrade_cta_clicked"
+  | "upgrade_plan_selected"
+  | "upgrade_checkout_started"
+  | "search_performed"
+  | "flashcard_generated"
+  | "quiz_generated"
+  | "study_content_generated"
+  | "mindmap_generated"
+  | "factcheck_requested"
+  | "export_requested"
+  | "favorite_toggled"
+  | "video_deleted"
+  | "notification_received"
+  | "notification_tapped"
+  | "share_link_created"
+  | "login"
+  | "register"
+  | "logout";
 
 interface AnalyticsEvent {
   name: AnalyticsEventName;
@@ -73,9 +73,9 @@ interface AnalyticsConfig {
 // Constants
 // ─────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'deepsight_analytics_queue';
-const OPT_OUT_KEY = 'deepsight_analytics_opt_out';
-const SESSION_ID_KEY = 'deepsight_analytics_session';
+const STORAGE_KEY = "deepsight_analytics_queue";
+const OPT_OUT_KEY = "deepsight_analytics_opt_out";
+const SESSION_ID_KEY = "deepsight_analytics_session";
 const BATCH_SIZE = 20;
 const FLUSH_INTERVAL_MS = 60_000; // 1 minute
 const MAX_QUEUE_SIZE = 200;
@@ -86,7 +86,7 @@ const MAX_QUEUE_SIZE = 200;
 
 class AnalyticsEngine {
   private queue: AnalyticsEvent[] = [];
-  private sessionId: string = '';
+  private sessionId: string = "";
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private config: AnalyticsConfig = {
     enabled: true,
@@ -107,7 +107,7 @@ class AnalyticsEngine {
     try {
       // Vérifier opt-out
       const optOut = await AsyncStorage.getItem(OPT_OUT_KEY);
-      if (optOut === 'true') {
+      if (optOut === "true") {
         this.config.enabled = false;
         this.isInitialized = true;
         return;
@@ -131,12 +131,12 @@ class AnalyticsEngine {
       this.startFlushTimer();
 
       // Écouter les changements d'état de l'app
-      AppState.addEventListener('change', this.handleAppStateChange);
+      AppState.addEventListener("change", this.handleAppStateChange);
 
       this.isInitialized = true;
-      this.log('Analytics initialized', { sessionId: this.sessionId });
+      this.log("Analytics initialized", { sessionId: this.sessionId });
     } catch (error) {
-      if (__DEV__) console.warn('[Analytics] Init failed:', error);
+      if (__DEV__) console.warn("[Analytics] Init failed:", error);
     }
   }
 
@@ -146,7 +146,7 @@ class AnalyticsEngine {
   identify(userId: string, plan?: string): void {
     this.userId = userId;
     this.userPlan = plan || null;
-    this.log('User identified', { userId, plan });
+    this.log("User identified", { userId, plan });
   }
 
   /**
@@ -156,13 +156,16 @@ class AnalyticsEngine {
     this.userId = null;
     this.userPlan = null;
     this.sessionId = this.generateSessionId();
-    this.log('User reset');
+    this.log("User reset");
   }
 
   /**
    * Track un événement
    */
-  track(name: AnalyticsEventName, properties?: Record<string, string | number | boolean | null>): void {
+  track(
+    name: AnalyticsEventName,
+    properties?: Record<string, string | number | boolean | null>,
+  ): void {
     if (!this.config.enabled) return;
 
     const event: AnalyticsEvent = {
@@ -192,8 +195,11 @@ class AnalyticsEngine {
   /**
    * Track un écran vu
    */
-  screen(screenName: string, properties?: Record<string, string | number | boolean | null>): void {
-    this.track('screen_viewed', { screen: screenName, ...properties });
+  screen(
+    screenName: string,
+    properties?: Record<string, string | number | boolean | null>,
+  ): void {
+    this.track("screen_viewed", { screen: screenName, ...properties });
   }
 
   /**
@@ -208,9 +214,9 @@ class AnalyticsEngine {
     try {
       // Envoyer au backend (fire-and-forget, ne bloque pas l'UX)
       const response = await fetch(`${API_BASE_URL}/api/analytics/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ events, platform: 'mobile' }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ events, platform: "mobile" }),
       });
 
       if (!response.ok) {
@@ -233,10 +239,10 @@ class AnalyticsEngine {
   async optOut(): Promise<void> {
     this.config.enabled = false;
     this.queue = [];
-    await AsyncStorage.setItem(OPT_OUT_KEY, 'true');
+    await AsyncStorage.setItem(OPT_OUT_KEY, "true");
     await AsyncStorage.removeItem(STORAGE_KEY);
     this.stopFlushTimer();
-    this.log('User opted out of analytics');
+    this.log("User opted out of analytics");
   }
 
   /**
@@ -244,9 +250,9 @@ class AnalyticsEngine {
    */
   async optIn(): Promise<void> {
     this.config.enabled = true;
-    await AsyncStorage.setItem(OPT_OUT_KEY, 'false');
+    await AsyncStorage.setItem(OPT_OUT_KEY, "false");
     this.startFlushTimer();
-    this.log('User opted in to analytics');
+    this.log("User opted in to analytics");
   }
 
   /**
@@ -254,16 +260,16 @@ class AnalyticsEngine {
    */
   async isOptedOut(): Promise<boolean> {
     const value = await AsyncStorage.getItem(OPT_OUT_KEY);
-    return value === 'true';
+    return value === "true";
   }
 
   // ─── Private Methods ────────────────────────────────────
 
   private handleAppStateChange = (state: AppStateStatus): void => {
-    if (state === 'active') {
-      this.track('app_opened');
-    } else if (state === 'background') {
-      this.track('app_backgrounded');
+    if (state === "active") {
+      this.track("app_opened");
+    } else if (state === "background") {
+      this.track("app_backgrounded");
       this.flush().catch(() => {});
     }
   };
@@ -283,7 +289,7 @@ class AnalyticsEngine {
     const newId = this.generateSessionId();
     await AsyncStorage.setItem(
       SESSION_ID_KEY,
-      JSON.stringify({ id: newId, timestamp: new Date().toISOString() })
+      JSON.stringify({ id: newId, timestamp: new Date().toISOString() }),
     );
     return newId;
   }
@@ -294,7 +300,10 @@ class AnalyticsEngine {
 
   private async persistQueue(): Promise<void> {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(this.queue.slice(-MAX_QUEUE_SIZE)));
+      await AsyncStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(this.queue.slice(-MAX_QUEUE_SIZE)),
+      );
     } catch {
       // Storage full or unavailable
     }
@@ -316,7 +325,7 @@ class AnalyticsEngine {
 
   private log(message: string, data?: unknown): void {
     if (this.config.debug && __DEV__) {
-      console.log(`📊 [Analytics] ${message}`, data || '');
+      console.log(`📊 [Analytics] ${message}`, data || "");
     }
   }
 }

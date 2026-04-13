@@ -10,8 +10,8 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import React from 'react';
-import NetInfo from '@react-native-community/netinfo';
+import React from "react";
+import NetInfo from "@react-native-community/netinfo";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES & CONFIGURATION
@@ -181,11 +181,9 @@ function isCircuitOpen(key: string): boolean {
 /**
  * Calculate delay with exponential backoff and optional jitter
  */
-function calculateDelay(
-  attempt: number,
-  config: RetryConfig
-): number {
-  const exponentialDelay = config.initialDelayMs * Math.pow(config.backoffMultiplier, attempt);
+function calculateDelay(attempt: number, config: RetryConfig): number {
+  const exponentialDelay =
+    config.initialDelayMs * Math.pow(config.backoffMultiplier, attempt);
   const cappedDelay = Math.min(exponentialDelay, config.maxDelayMs);
 
   if (config.jitter) {
@@ -200,17 +198,17 @@ function calculateDelay(
 /**
  * Check if we should retry based on the error
  */
-function shouldRetry(
-  error: unknown,
-  config: RetryConfig
-): boolean {
+function shouldRetry(error: unknown, config: RetryConfig): boolean {
   // Check for network errors
-  if (error instanceof TypeError && error.message.includes('Network request failed')) {
+  if (
+    error instanceof TypeError &&
+    error.message.includes("Network request failed")
+  ) {
     return true;
   }
 
   // Check for timeout errors
-  if (error instanceof Error && error.name === 'AbortError') {
+  if (error instanceof Error && error.name === "AbortError") {
     return true;
   }
 
@@ -220,7 +218,7 @@ function shouldRetry(
   }
 
   // Check for retryable HTTP status codes
-  if (error && typeof error === 'object' && 'status' in error) {
+  if (error && typeof error === "object" && "status" in error) {
     const status = (error as { status: number }).status;
     return config.retryOnStatus.includes(status);
   }
@@ -232,7 +230,7 @@ function shouldRetry(
  * Wait for a specified duration
  */
 function wait(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -264,7 +262,7 @@ export async function withRetry<T>(
   options: Partial<RetryConfig> & {
     circuitBreakerKey?: string;
     onRetry?: RetryCallback;
-  } = {}
+  } = {},
 ): Promise<T> {
   const config: RetryConfig = { ...DEFAULT_CONFIG, ...options };
   const { circuitBreakerKey, onRetry } = options;
@@ -285,7 +283,7 @@ export async function withRetry<T>(
           // Wait for network
           const hasNetwork = await waitForNetwork(5000);
           if (!hasNetwork) {
-            throw new Error('No network connectivity');
+            throw new Error("No network connectivity");
           }
         }
       }
@@ -296,7 +294,10 @@ export async function withRetry<T>(
         : await Promise.race([
             fn(),
             new Promise<never>((_, reject) => {
-              setTimeout(() => reject(new Error('Request timeout')), config.timeoutMs);
+              setTimeout(
+                () => reject(new Error("Request timeout")),
+                config.timeoutMs,
+              );
             }),
           ]);
 
@@ -306,12 +307,12 @@ export async function withRetry<T>(
       }
 
       return result;
-
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
 
       // Check if we should retry
-      const canRetry = attempt < config.maxRetries && shouldRetry(error, config);
+      const canRetry =
+        attempt < config.maxRetries && shouldRetry(error, config);
 
       if (!canRetry) {
         // Record failure for circuit breaker
@@ -335,7 +336,9 @@ export async function withRetry<T>(
       }
 
       if (__DEV__) {
-        console.log(`[RetryService] Retry ${attempt + 1}/${config.maxRetries} in ${delayMs}ms`);
+        console.log(
+          `[RetryService] Retry ${attempt + 1}/${config.maxRetries} in ${delayMs}ms`,
+        );
       }
 
       // Wait before retry
@@ -344,22 +347,27 @@ export async function withRetry<T>(
   }
 
   // Should never reach here, but TypeScript needs this
-  throw lastError || new Error('Retry failed');
+  throw lastError || new Error("Retry failed");
 }
 
 /**
  * Create a retryable fetch function
  */
 export function createRetryableFetch(
-  baseConfig: Partial<RetryConfig> = {}
+  baseConfig: Partial<RetryConfig> = {},
 ): (url: string, init?: RequestInit) => Promise<Response> {
   return async (url: string, init?: RequestInit): Promise<Response> => {
     return withRetry(
       async () => {
         const response = await fetch(url, init);
 
-        if (!response.ok && baseConfig.retryOnStatus?.includes(response.status)) {
-          const error = new Error(`HTTP ${response.status}`) as Error & { status: number };
+        if (
+          !response.ok &&
+          baseConfig.retryOnStatus?.includes(response.status)
+        ) {
+          const error = new Error(`HTTP ${response.status}`) as Error & {
+            status: number;
+          };
           error.status = response.status;
           throw error;
         }
@@ -369,7 +377,7 @@ export function createRetryableFetch(
       {
         ...baseConfig,
         circuitBreakerKey: new URL(url).hostname,
-      }
+      },
     );
   };
 }
@@ -382,9 +390,9 @@ export function useRetryState() {
   const [isRetrying, setIsRetrying] = React.useState(false);
 
   const execute = React.useCallback(
-    async <T,>(
+    async <T>(
       fn: () => Promise<T>,
-      config: Partial<RetryConfig> = {}
+      config: Partial<RetryConfig> = {},
     ): Promise<T> => {
       setIsRetrying(true);
       setState(null);
@@ -401,7 +409,7 @@ export function useRetryState() {
         setState(null);
       }
     },
-    []
+    [],
   );
 
   return { execute, state, isRetrying };
@@ -413,15 +421,15 @@ export function useRetryState() {
  */
 export async function withRetryPreset<T>(
   fn: () => Promise<T>,
-  preset: keyof typeof RETRY_PRESETS = 'standard',
-  context?: string
+  preset: keyof typeof RETRY_PRESETS = "standard",
+  context?: string,
 ): Promise<T> {
   return withRetry(fn, {
     ...RETRY_PRESETS[preset],
     // api.ts already manages its own AbortController timeout per request,
     // so skip the Promise.race timeout to avoid double-timeout race conditions
     skipTimeout: true,
-    circuitBreakerKey: context || 'api-call',
+    circuitBreakerKey: context || "api-call",
   });
 }
 

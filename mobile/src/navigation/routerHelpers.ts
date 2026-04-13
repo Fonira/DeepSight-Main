@@ -3,33 +3,33 @@
  * Provides convenient shortcuts and type-safe navigation
  */
 
-import { router } from 'expo-router';
-import * as Linking from 'expo-linking';
+import { router } from "expo-router";
+import * as Linking from "expo-linking";
 
 /**
  * Auth navigation shortcuts
  */
 export const authRoutes = {
-  welcome: () => router.replace('/(auth)'),
-  login: () => router.push('/(auth)/login'),
-  register: () => router.push('/(auth)/register'),
+  welcome: () => router.replace("/(auth)"),
+  login: () => router.push("/(auth)/login"),
+  register: () => router.push("/(auth)/register"),
   verify: (email?: string) => {
     router.push({
-      pathname: '/(auth)/verify',
+      pathname: "/(auth)/verify",
       params: { email },
     });
   },
-  forgotPassword: () => router.push('/(auth)/forgot-password'),
+  forgotPassword: () => router.push("/(auth)/forgot-password"),
 };
 
 /**
  * Tab navigation shortcuts
  */
 export const tabRoutes = {
-  home: () => router.replace('/(tabs)'),
-  library: () => router.replace('/(tabs)/library'),
-  study: () => router.replace('/(tabs)/study'),
-  profile: () => router.replace('/(tabs)/profile'),
+  home: () => router.replace("/(tabs)"),
+  library: () => router.replace("/(tabs)/library"),
+  study: () => router.replace("/(tabs)/study"),
+  profile: () => router.replace("/(tabs)/profile"),
 };
 
 /**
@@ -48,7 +48,7 @@ export const handleDeepLink = async (url: string) => {
 
   if (canOpenURL) {
     Linking.openURL(parsed).catch((err) => {
-      console.error('[Router] Deep link error:', err);
+      console.error("[Router] Deep link error:", err);
     });
   }
 };
@@ -60,7 +60,7 @@ export const safeNavigate = (href: string, fallback?: string) => {
   try {
     router.push(href);
   } catch (error) {
-    console.error('[Router] Navigation error:', error);
+    console.error("[Router] Navigation error:", error);
     if (fallback) {
       router.push(fallback);
     }
@@ -80,12 +80,12 @@ export const presentModal = (href: string) => {
  * Logout and reset to auth
  */
 export const logout = () => {
-  router.replace('/(auth)');
+  router.replace("/(auth)");
 };
 
 /**
  * Reset to home after auth
  */
 export const goHome = () => {
-  router.replace('/(tabs)');
+  router.replace("/(tabs)");
 };

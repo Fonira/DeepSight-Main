@@ -10,14 +10,14 @@
  * Compatible iOS (SKStoreReviewController) + Android (In-App Review API)
  */
 
-import * as StoreReview from 'expo-store-review';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as StoreReview from "expo-store-review";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STORAGE_KEYS = {
-  ANALYSES_COUNT: 'deepsight_review_analyses_count',
-  FIRST_USE_DATE: 'deepsight_review_first_use',
-  LAST_REVIEW_DATE: 'deepsight_review_last_shown',
-  HAS_REVIEWED: 'deepsight_review_done',
+  ANALYSES_COUNT: "deepsight_review_analyses_count",
+  FIRST_USE_DATE: "deepsight_review_first_use",
+  LAST_REVIEW_DATE: "deepsight_review_last_shown",
+  HAS_REVIEWED: "deepsight_review_done",
 } as const;
 
 const MIN_ANALYSES = 3;
@@ -33,7 +33,7 @@ export async function initStoreReview(): Promise<void> {
     if (!firstUse) {
       await AsyncStorage.setItem(
         STORAGE_KEYS.FIRST_USE_DATE,
-        new Date().toISOString()
+        new Date().toISOString(),
       );
     }
   } catch {
@@ -47,7 +47,7 @@ export async function initStoreReview(): Promise<void> {
 export async function trackAnalysisComplete(): Promise<void> {
   try {
     const current = await AsyncStorage.getItem(STORAGE_KEYS.ANALYSES_COUNT);
-    const count = (parseInt(current || '0', 10) || 0) + 1;
+    const count = (parseInt(current || "0", 10) || 0) + 1;
     await AsyncStorage.setItem(STORAGE_KEYS.ANALYSES_COUNT, count.toString());
 
     // Vérifier si on doit afficher le prompt
@@ -69,7 +69,9 @@ async function maybeRequestReview(): Promise<void> {
     if (!isAvailable) return;
 
     // 2. Vérifier si déjà noté récemment
-    const lastReview = await AsyncStorage.getItem(STORAGE_KEYS.LAST_REVIEW_DATE);
+    const lastReview = await AsyncStorage.getItem(
+      STORAGE_KEYS.LAST_REVIEW_DATE,
+    );
     if (lastReview) {
       const daysSinceReview = getDaysSince(lastReview);
       if (daysSinceReview < MIN_DAYS_BETWEEN_PROMPTS) return;
@@ -84,21 +86,21 @@ async function maybeRequestReview(): Promise<void> {
 
     // 4. Vérifier le nombre d'analyses
     const count = await AsyncStorage.getItem(STORAGE_KEYS.ANALYSES_COUNT);
-    if ((parseInt(count || '0', 10) || 0) < MIN_ANALYSES) return;
+    if ((parseInt(count || "0", 10) || 0) < MIN_ANALYSES) return;
 
     // Toutes les conditions sont remplies → afficher le prompt
     await StoreReview.requestReview();
     await AsyncStorage.setItem(
       STORAGE_KEYS.LAST_REVIEW_DATE,
-      new Date().toISOString()
+      new Date().toISOString(),
     );
 
     if (__DEV__) {
-      console.log('🌟 [StoreReview] Review prompt shown');
+      console.log("🌟 [StoreReview] Review prompt shown");
     }
   } catch (error) {
     if (__DEV__) {
-      console.warn('⚠️ [StoreReview] Failed to request review:', error);
+      console.warn("⚠️ [StoreReview] Failed to request review:", error);
     }
   }
 }
@@ -119,7 +121,7 @@ export async function hasAction(): Promise<boolean> {
  */
 export async function resetStoreReview(): Promise<void> {
   await Promise.all(
-    Object.values(STORAGE_KEYS).map((key) => AsyncStorage.removeItem(key))
+    Object.values(STORAGE_KEYS).map((key) => AsyncStorage.removeItem(key)),
   );
 }
 

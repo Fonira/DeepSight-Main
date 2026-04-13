@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import type { ThemeColors } from '../../theme/colors';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
-import { palette } from '../../theme/colors';
+import React from "react";
+import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import type { ThemeColors } from "../../theme/colors";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
+import { palette } from "../../theme/colors";
 
 interface ChatInputProps {
   inputText: string;
@@ -27,7 +27,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   return (
     <View style={styles.inputWrapper}>
-      <View style={[styles.inputRow, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+      <View
+        style={[
+          styles.inputRow,
+          { backgroundColor: colors.bgCard, borderColor: colors.border },
+        ]}
+      >
         <TextInput
           value={inputText}
           onChangeText={setInputText}
@@ -54,11 +59,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           <Ionicons
             name="send"
             size={18}
-            color={canSend ? '#ffffff' : colors.textMuted}
+            color={canSend ? "#ffffff" : colors.textMuted}
           />
         </Pressable>
       </View>
-      <Text style={[styles.quotaText, { color: colors.textMuted }]}>{quotaText}</Text>
+      <Text style={[styles.quotaText, { color: colors.textMuted }]}>
+        {quotaText}
+      </Text>
     </View>
   );
 };
@@ -70,8 +77,8 @@ const styles = StyleSheet.create({
     paddingTop: sp.sm,
   },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     borderRadius: borderRadius.xl,
     borderWidth: 1,
     paddingLeft: sp.lg,
@@ -89,13 +96,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   quotaText: {
     fontFamily: fontFamily.body,
-    fontSize: fontSize['2xs'],
-    textAlign: 'center',
+    fontSize: fontSize["2xs"],
+    textAlign: "center",
     marginTop: sp.xs,
   },
 });

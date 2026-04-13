@@ -2,8 +2,8 @@
  * TTSToggle — Re-exports TTSToolbar for backward compatibility
  */
 
-import React from 'react';
-import { TTSToolbar } from './TTSToolbar';
+import React from "react";
+import { TTSToolbar } from "./TTSToolbar";
 
 interface TTSToggleProps {
   onUpgradePress?: () => void;

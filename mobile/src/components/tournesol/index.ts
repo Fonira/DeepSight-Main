@@ -1,2 +1,2 @@
-export { TournesolWidget } from './TournesolWidget';
-export { default } from './TournesolWidget';
+export { TournesolWidget } from "./TournesolWidget";
+export { default } from "./TournesolWidget";

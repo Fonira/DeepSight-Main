@@ -2,7 +2,7 @@
  * ContactScreen — Contact form + native email button for mobile.
  */
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -15,29 +15,35 @@ import {
   Platform,
   ActivityIndicator,
   StyleSheet,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
-import { Header } from '../components/Header';
-import { sp, borderRadius } from '../theme/spacing';
-import { fontFamily, fontSize } from '../theme/typography';
-import { contactApi } from '../services/api';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../contexts/ThemeContext";
+import { Header } from "../components/Header";
+import { sp, borderRadius } from "../theme/spacing";
+import { fontFamily, fontSize } from "../theme/typography";
+import { contactApi } from "../services/api";
 
-const CONTACT_EMAIL = 'maxime@deepsightsynthesis.com';
+const CONTACT_EMAIL = "maxime@deepsightsynthesis.com";
 
-export const ContactScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+export const ContactScreen: React.FC<{ navigation: any }> = ({
+  navigation,
+}) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  const canSubmit = name.length >= 2 && email.includes('@') && subject.length >= 2 && message.length >= 10;
+  const canSubmit =
+    name.length >= 2 &&
+    email.includes("@") &&
+    subject.length >= 2 &&
+    message.length >= 10;
 
   const handleSubmit = async () => {
     if (!canSubmit || sending) return;
@@ -45,14 +51,16 @@ export const ContactScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     try {
       await contactApi.submit({ name, email, subject, message });
       setSent(true);
-      setName('');
-      setEmail('');
-      setSubject('');
-      setMessage('');
+      setName("");
+      setEmail("");
+      setSubject("");
+      setMessage("");
     } catch (err: any) {
       Alert.alert(
-        'Erreur',
-        err?.detail || err?.message || "Impossible d'envoyer le message. Réessayez plus tard.",
+        "Erreur",
+        err?.detail ||
+          err?.message ||
+          "Impossible d'envoyer le message. Réessayez plus tard.",
       );
     } finally {
       setSending(false);
@@ -60,73 +68,129 @@ export const ContactScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
   };
 
   const openNativeEmail = () => {
-    const url = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject || 'Contact DeepSight')}&body=${encodeURIComponent(message || '')}`;
+    const url = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject || "Contact DeepSight")}&body=${encodeURIComponent(message || "")}`;
     Linking.openURL(url).catch(() => {
-      Alert.alert('Erreur', "Impossible d'ouvrir l'application email.");
+      Alert.alert("Erreur", "Impossible d'ouvrir l'application email.");
     });
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
-      <Header
-        title="Contact"
-        showBack
-      />
+      <Header title="Contact" showBack />
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + sp['2xl'] }]}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: insets.bottom + sp["2xl"] },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Hero */}
           <View style={styles.heroSection}>
-            <View style={[styles.heroIcon, { backgroundColor: `${colors.accentPrimary}15` }]}>
-              <Ionicons name="mail-outline" size={28} color={colors.accentPrimary} />
+            <View
+              style={[
+                styles.heroIcon,
+                { backgroundColor: `${colors.accentPrimary}15` },
+              ]}
+            >
+              <Ionicons
+                name="mail-outline"
+                size={28}
+                color={colors.accentPrimary}
+              />
             </View>
             <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
               Contactez-nous
             </Text>
-            <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.heroSubtitle, { color: colors.textSecondary }]}
+            >
               Une question ou un problème ? Nous sommes là pour vous aider.
             </Text>
           </View>
 
           {sent ? (
-            <View style={[styles.successCard, { backgroundColor: colors.glassBg, borderColor: colors.glassBorder }]}>
-              <View style={[styles.successIcon, { backgroundColor: '#10b98120' }]}>
+            <View
+              style={[
+                styles.successCard,
+                {
+                  backgroundColor: colors.glassBg,
+                  borderColor: colors.glassBorder,
+                },
+              ]}
+            >
+              <View
+                style={[styles.successIcon, { backgroundColor: "#10b98120" }]}
+              >
                 <Ionicons name="checkmark-circle" size={32} color="#10b981" />
               </View>
-              <Text style={[styles.successTitle, { color: colors.textPrimary }]}>
+              <Text
+                style={[styles.successTitle, { color: colors.textPrimary }]}
+              >
                 Message envoyé !
               </Text>
-              <Text style={[styles.successText, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.successText, { color: colors.textSecondary }]}
+              >
                 Nous vous répondrons sous 24 heures.
               </Text>
               <Pressable
                 onPress={() => setSent(false)}
-                style={[styles.againButton, { borderColor: colors.glassBorder }]}
+                style={[
+                  styles.againButton,
+                  { borderColor: colors.glassBorder },
+                ]}
               >
-                <Text style={[styles.againButtonText, { color: colors.accentPrimary }]}>
+                <Text
+                  style={[
+                    styles.againButtonText,
+                    { color: colors.accentPrimary },
+                  ]}
+                >
                   Envoyer un autre message
                 </Text>
               </Pressable>
             </View>
           ) : (
-            <View style={[styles.formCard, { backgroundColor: colors.glassBg, borderColor: colors.glassBorder }]}>
+            <View
+              style={[
+                styles.formCard,
+                {
+                  backgroundColor: colors.glassBg,
+                  borderColor: colors.glassBorder,
+                },
+              ]}
+            >
               <Text style={[styles.formTitle, { color: colors.textPrimary }]}>
                 Envoyer un message
               </Text>
 
               {/* Name */}
               <View style={styles.fieldGroup}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Nom</Text>
-                <View style={[styles.inputRow, { backgroundColor: `${colors.bgSecondary}`, borderColor: colors.glassBorder }]}>
-                  <Ionicons name="person-outline" size={18} color={colors.textTertiary} style={styles.inputIcon} />
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Nom
+                </Text>
+                <View
+                  style={[
+                    styles.inputRow,
+                    {
+                      backgroundColor: `${colors.bgSecondary}`,
+                      borderColor: colors.glassBorder,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="person-outline"
+                    size={18}
+                    color={colors.textTertiary}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={[styles.input, { color: colors.textPrimary }]}
                     value={name}
@@ -140,9 +204,24 @@ export const ContactScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
               {/* Email */}
               <View style={styles.fieldGroup}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
-                <View style={[styles.inputRow, { backgroundColor: `${colors.bgSecondary}`, borderColor: colors.glassBorder }]}>
-                  <Ionicons name="mail-outline" size={18} color={colors.textTertiary} style={styles.inputIcon} />
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Email
+                </Text>
+                <View
+                  style={[
+                    styles.inputRow,
+                    {
+                      backgroundColor: `${colors.bgSecondary}`,
+                      borderColor: colors.glassBorder,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="mail-outline"
+                    size={18}
+                    color={colors.textTertiary}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={[styles.input, { color: colors.textPrimary }]}
                     value={email}
@@ -158,9 +237,24 @@ export const ContactScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
               {/* Subject */}
               <View style={styles.fieldGroup}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Sujet</Text>
-                <View style={[styles.inputRow, { backgroundColor: `${colors.bgSecondary}`, borderColor: colors.glassBorder }]}>
-                  <Ionicons name="chatbubble-outline" size={18} color={colors.textTertiary} style={styles.inputIcon} />
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Sujet
+                </Text>
+                <View
+                  style={[
+                    styles.inputRow,
+                    {
+                      backgroundColor: `${colors.bgSecondary}`,
+                      borderColor: colors.glassBorder,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={18}
+                    color={colors.textTertiary}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={[styles.input, { color: colors.textPrimary }]}
                     value={subject}
@@ -174,8 +268,18 @@ export const ContactScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
               {/* Message */}
               <View style={styles.fieldGroup}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Message</Text>
-                <View style={[styles.textAreaRow, { backgroundColor: `${colors.bgSecondary}`, borderColor: colors.glassBorder }]}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Message
+                </Text>
+                <View
+                  style={[
+                    styles.textAreaRow,
+                    {
+                      backgroundColor: `${colors.bgSecondary}`,
+                      borderColor: colors.glassBorder,
+                    },
+                  ]}
+                >
                   <TextInput
                     style={[styles.textArea, { color: colors.textPrimary }]}
                     value={message}
@@ -196,7 +300,10 @@ export const ContactScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                 disabled={!canSubmit || sending}
                 style={[
                   styles.submitButton,
-                  { backgroundColor: colors.accentPrimary, opacity: !canSubmit || sending ? 0.5 : 1 },
+                  {
+                    backgroundColor: colors.accentPrimary,
+                    opacity: !canSubmit || sending ? 0.5 : 1,
+                  },
                 ]}
               >
                 {sending ? (
@@ -214,18 +321,36 @@ export const ContactScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           {/* Native Email Button */}
           <Pressable
             onPress={openNativeEmail}
-            style={[styles.emailButton, { backgroundColor: colors.glassBg, borderColor: colors.glassBorder }]}
+            style={[
+              styles.emailButton,
+              {
+                backgroundColor: colors.glassBg,
+                borderColor: colors.glassBorder,
+              },
+            ]}
           >
-            <Ionicons name="open-outline" size={20} color={colors.accentPrimary} />
+            <Ionicons
+              name="open-outline"
+              size={20}
+              color={colors.accentPrimary}
+            />
             <View style={styles.emailButtonTextGroup}>
-              <Text style={[styles.emailButtonTitle, { color: colors.textPrimary }]}>
+              <Text
+                style={[styles.emailButtonTitle, { color: colors.textPrimary }]}
+              >
                 Ouvrir l'app email
               </Text>
-              <Text style={[styles.emailButtonSub, { color: colors.textTertiary }]}>
+              <Text
+                style={[styles.emailButtonSub, { color: colors.textTertiary }]}
+              >
                 {CONTACT_EMAIL}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.textTertiary}
+            />
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -238,24 +363,24 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingHorizontal: sp.lg, paddingTop: sp.md },
 
-  heroSection: { alignItems: 'center', marginBottom: sp.xl },
+  heroSection: { alignItems: "center", marginBottom: sp.xl },
   heroIcon: {
     width: 56,
     height: 56,
     borderRadius: borderRadius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: sp.md,
   },
   heroTitle: {
     fontFamily: fontFamily.bodyBold,
-    fontSize: fontSize['2xl'],
+    fontSize: fontSize["2xl"],
     marginBottom: sp.xs,
   },
   heroSubtitle: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
-    textAlign: 'center',
+    textAlign: "center",
     maxWidth: 280,
   },
 
@@ -278,8 +403,8 @@ const styles = StyleSheet.create({
     marginBottom: sp.xs,
   },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: borderRadius.md,
     borderWidth: 1,
     paddingHorizontal: sp.sm,
@@ -289,7 +414,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
-    paddingVertical: Platform.OS === 'ios' ? sp.sm : sp.xs,
+    paddingVertical: Platform.OS === "ios" ? sp.sm : sp.xs,
   },
   textAreaRow: {
     borderRadius: borderRadius.md,
@@ -303,16 +428,16 @@ const styles = StyleSheet.create({
   },
 
   submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: sp.xs,
     paddingVertical: sp.sm + 2,
     borderRadius: borderRadius.md,
     marginTop: sp.sm,
   },
   submitText: {
-    color: '#fff',
+    color: "#fff",
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.sm,
   },
@@ -321,15 +446,15 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.xl,
     borderWidth: 1,
     padding: sp.xl,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: sp.lg,
   },
   successIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: sp.md,
   },
   successTitle: {
@@ -340,7 +465,7 @@ const styles = StyleSheet.create({
   successText: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: sp.lg,
   },
   againButton: {
@@ -355,8 +480,8 @@ const styles = StyleSheet.create({
   },
 
   emailButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.sm,
     padding: sp.md,
     borderRadius: borderRadius.xl,

@@ -1,13 +1,13 @@
-import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Image } from 'expo-image';
-import { useTheme } from '../../contexts/ThemeContext';
-import { BorderRadius, Typography } from '../../constants/theme';
+import React from "react";
+import { View, Text, StyleSheet, ViewStyle } from "react-native";
+import { Image } from "expo-image";
+import { useTheme } from "../../contexts/ThemeContext";
+import { BorderRadius, Typography } from "../../constants/theme";
 
 interface AvatarProps {
   uri?: string | null;
   name?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: "sm" | "md" | "lg" | "xl";
   style?: ViewStyle;
 }
 
@@ -28,7 +28,7 @@ const fontSizes: Record<string, number> = {
 export const Avatar: React.FC<AvatarProps> = ({
   uri,
   name,
-  size = 'md',
+  size = "md",
   style,
 }) => {
   const { colors } = useTheme();
@@ -36,7 +36,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   // Get initials from name
   const getInitials = (name?: string): string => {
-    if (!name) return '?';
+    if (!name) return "?";
     const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
@@ -57,7 +57,14 @@ export const Avatar: React.FC<AvatarProps> = ({
       <View style={containerStyle}>
         <Image
           source={{ uri }}
-          style={[styles.image, { width: dimension, height: dimension, borderRadius: dimension / 2 }]}
+          style={[
+            styles.image,
+            {
+              width: dimension,
+              height: dimension,
+              borderRadius: dimension / 2,
+            },
+          ]}
           contentFit="cover"
           transition={200}
         />
@@ -67,12 +74,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <View style={[styles.fallback, containerStyle]}>
-      <Text
-        style={[
-          styles.initials,
-          { fontSize: fontSizes[size] },
-        ]}
-      >
+      <Text style={[styles.initials, { fontSize: fontSizes[size] }]}>
         {getInitials(name)}
       </Text>
     </View>
@@ -81,14 +83,14 @@ export const Avatar: React.FC<AvatarProps> = ({
 
 const styles = StyleSheet.create({
   image: {
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   fallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   initials: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
 });

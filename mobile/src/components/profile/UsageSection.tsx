@@ -1,11 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, DimensionValue } from 'react-native';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useCredits } from '@/hooks/useCredits';
-import { useAuth } from '@/contexts/AuthContext';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
+import React from "react";
+import { View, Text, StyleSheet, DimensionValue } from "react-native";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useCredits } from "@/hooks/useCredits";
+import { useAuth } from "@/contexts/AuthContext";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
 
 const PLAN_ANALYSES: Record<string, number> = {
   free: 5,
@@ -19,14 +19,12 @@ export const UsageSection: React.FC = () => {
   const credits = useCredits();
 
   const analysesUsed = user?.analyses_this_month ?? 0;
-  const analysesTotal = PLAN_ANALYSES[user?.plan ?? 'free'] ?? 3;
-  const analysesPercent = analysesTotal > 0
-    ? Math.min((analysesUsed / analysesTotal) * 100, 100)
-    : 0;
+  const analysesTotal = PLAN_ANALYSES[user?.plan ?? "free"] ?? 3;
+  const analysesPercent =
+    analysesTotal > 0 ? Math.min((analysesUsed / analysesTotal) * 100, 100) : 0;
 
-  const creditsPercent = credits.total > 0
-    ? Math.min((credits.used / credits.total) * 100, 100)
-    : 0;
+  const creditsPercent =
+    credits.total > 0 ? Math.min((credits.used / credits.total) * 100, 100) : 0;
 
   // Jours restants avant renouvellement (1er du mois prochain)
   const now = new Date();
@@ -41,11 +39,7 @@ export const UsageSection: React.FC = () => {
     return colors.accentSuccess;
   };
 
-  const renderBar = (
-    label: string,
-    value: string,
-    percent: number,
-  ) => {
+  const renderBar = (label: string, value: string, percent: number) => {
     const width: DimensionValue = `${Math.round(percent)}%` as `${number}%`;
     return (
       <View style={styles.progressItem}>
@@ -57,7 +51,9 @@ export const UsageSection: React.FC = () => {
             {value}
           </Text>
         </View>
-        <View style={[styles.progressTrack, { backgroundColor: colors.bgElevated }]}>
+        <View
+          style={[styles.progressTrack, { backgroundColor: colors.bgElevated }]}
+        >
           <View
             style={[
               styles.progressFill,
@@ -76,19 +72,20 @@ export const UsageSection: React.FC = () => {
       </Text>
 
       {renderBar(
-        'Analyses',
+        "Analyses",
         `${analysesUsed}/${analysesTotal} ce mois`,
         analysesPercent,
       )}
 
       {renderBar(
-        'Crédits',
+        "Crédits",
         `${credits.used}/${credits.total} utilisés`,
         creditsPercent,
       )}
 
       <Text style={[styles.renewalText, { color: colors.textTertiary }]}>
-        Renouvellement dans {daysUntilRenewal} jour{daysUntilRenewal > 1 ? 's' : ''}
+        Renouvellement dans {daysUntilRenewal} jour
+        {daysUntilRenewal > 1 ? "s" : ""}
       </Text>
     </GlassCard>
   );
@@ -107,9 +104,9 @@ const styles = StyleSheet.create({
     marginBottom: sp.md,
   },
   progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: sp.xs,
   },
   progressLabel: {
@@ -123,10 +120,10 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 8,
     borderRadius: borderRadius.full,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: borderRadius.full,
   },
   renewalText: {

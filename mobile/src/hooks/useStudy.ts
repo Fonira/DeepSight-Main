@@ -1,7 +1,7 @@
-import { useCallback } from 'react';
-import { useStudyStore } from '../stores/studyStore';
-import { studyApi } from '../services/api';
-import type { Flashcard, QuizQuestionV2 } from '../types/v2';
+import { useCallback } from "react";
+import { useStudyStore } from "../stores/studyStore";
+import { studyApi } from "../services/api";
+import type { Flashcard, QuizQuestionV2 } from "../types/v2";
 
 export function useStudy(summaryId: string) {
   const store = useStudyStore();
@@ -15,9 +15,9 @@ export function useStudy(summaryId: string) {
         .filter((f: any) => f && (f.front || f.question))
         .map((f: any, i: number) => ({
           id: `fc-${i}`,
-          front: f.front || f.question || '',
-          back: f.back || f.answer || f.definition || '',
-          difficulty: f.difficulty || ('medium' as const),
+          front: f.front || f.question || "",
+          back: f.back || f.answer || f.definition || "",
+          difficulty: f.difficulty || ("medium" as const),
           repetitions: 0,
         }));
     } catch {
@@ -38,17 +38,16 @@ export function useStudy(summaryId: string) {
         const singleIndex: number =
           q.correct_index ?? q.correctIndex ?? q.correct ?? 0;
 
-        const correctIndices: number[] = rawIndices && rawIndices.length > 0
-          ? rawIndices
-          : [singleIndex];
+        const correctIndices: number[] =
+          rawIndices && rawIndices.length > 0 ? rawIndices : [singleIndex];
 
         return {
           id: `q-${i}`,
-          question: q.question || '',
+          question: q.question || "",
           options: q.options || q.choices || [],
           correctIndex: correctIndices[0],
           correctIndices,
-          explanation: q.explanation || '',
+          explanation: q.explanation || "",
         };
       });
     } catch {
@@ -57,11 +56,16 @@ export function useStudy(summaryId: string) {
   }, [summaryId]);
 
   const saveProgress = useCallback(
-    (update: { flashcardsCompleted?: number; flashcardsTotal?: number; quizScore?: number; quizTotal?: number }) => {
+    (update: {
+      flashcardsCompleted?: number;
+      flashcardsTotal?: number;
+      quizScore?: number;
+      quizTotal?: number;
+    }) => {
       store.updateProgress(summaryId, update);
       store.incrementStreak();
     },
-    [summaryId, store]
+    [summaryId, store],
   );
 
   return {

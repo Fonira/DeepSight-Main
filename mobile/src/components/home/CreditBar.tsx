@@ -1,16 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useState } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-} from 'react-native-reanimated';
-import { router } from 'expo-router';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useCredits } from '@/hooks/useCredits';
-import { palette } from '@/theme/colors';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
+} from "react-native-reanimated";
+import { router } from "expo-router";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useCredits } from "@/hooks/useCredits";
+import { palette } from "@/theme/colors";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
 
 export const CreditBar: React.FC = () => {
   const { colors } = useTheme();
@@ -23,17 +23,16 @@ export const CreditBar: React.FC = () => {
     remainingPercent > 50
       ? palette.green
       : remainingPercent > 20
-      ? palette.amber
-      : palette.red;
+        ? palette.amber
+        : palette.red;
 
   const widthAnim = useSharedValue(0);
 
   useEffect(() => {
     if (trackWidth > 0) {
-      widthAnim.value = withTiming(
-        (remainingPercent / 100) * trackWidth,
-        { duration: 800 },
-      );
+      widthAnim.value = withTiming((remainingPercent / 100) * trackWidth, {
+        duration: 800,
+      });
     }
   }, [remainingPercent, trackWidth, widthAnim]);
 
@@ -43,7 +42,7 @@ export const CreditBar: React.FC = () => {
 
   const handlePress = useCallback(() => {
     if (isCritical) {
-      router.push('/(tabs)/profile');
+      router.push("/(tabs)/profile");
     }
   }, [isCritical]);
 
@@ -81,9 +80,9 @@ const styles = StyleSheet.create({
     paddingVertical: sp.sm,
   },
   labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: sp.xs,
   },
   label: {
@@ -97,7 +96,7 @@ const styles = StyleSheet.create({
   track: {
     height: 6,
     borderRadius: borderRadius.full,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   bar: {
     height: 6,

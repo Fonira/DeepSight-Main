@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { analytics } from '../services/analytics';
+import React, { useState } from "react";
+import { analytics } from "../services/analytics";
 import {
   View,
   Text,
@@ -8,25 +8,29 @@ import {
   TouchableOpacity,
   Alert,
   Linking,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import * as WebBrowser from 'expo-web-browser';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { Header, Card, Badge, Button } from '../components';
-import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
-import { billingApi, ApiError } from '../services/api';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import * as WebBrowser from "expo-web-browser";
+import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { Header, Card, Badge, Button } from "../components";
+import { Colors, Spacing, Typography, BorderRadius } from "../constants/theme";
+import { billingApi, ApiError } from "../services/api";
 import {
-  normalizePlanId, isPlanHigher, comparePlans,
-  PLANS_INFO, PLAN_LIMITS, getFeatureListForDisplay,
+  normalizePlanId,
+  isPlanHigher,
+  comparePlans,
+  PLANS_INFO,
+  PLAN_LIMITS,
+  getFeatureListForDisplay,
   DIFFERENTIATORS,
   type PlanId,
-} from '../config/planPrivileges';
+} from "../config/planPrivileges";
 
 interface PlanWithTranslations {
   id: string;
@@ -43,13 +47,17 @@ interface PlanWithTranslations {
 // Dynamique depuis planPrivileges — plus de hardcoding
 const PLANS: PlanWithTranslations[] = PLANS_INFO.map((info) => {
   const limits = PLAN_LIMITS[info.id];
-  const frFeatures = getFeatureListForDisplay(info.id, 'fr').filter(f => f.included).map(f => f.text);
-  const enFeatures = getFeatureListForDisplay(info.id, 'en').filter(f => f.included).map(f => f.text);
+  const frFeatures = getFeatureListForDisplay(info.id, "fr")
+    .filter((f) => f.included)
+    .map((f) => f.text);
+  const enFeatures = getFeatureListForDisplay(info.id, "en")
+    .filter((f) => f.included)
+    .map((f) => f.text);
   return {
     id: info.id,
     name: info.name.fr,
     price: info.price / 100,
-    period: '/mois',
+    period: "/mois",
     credits: limits.monthlyCredits,
     icon: info.icon,
     isPopular: info.popular,
@@ -59,7 +67,7 @@ const PLANS: PlanWithTranslations[] = PLANS_INFO.map((info) => {
 });
 
 // Plan progression order for recommendations
-const PLAN_ORDER: PlanId[] = ['free', 'pro'];
+const PLAN_ORDER: PlanId[] = ["free", "pro"];
 
 // Get recommended upgrade path based on current plan
 const getRecommendedPlan = (currentPlan: PlanId): PlanId | null => {
@@ -73,38 +81,48 @@ export const UpgradeScreen: React.FC = () => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('creative');
+  useScreenDoodleVariant("creative");
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [packLoading, setPackLoading] = useState<string | null>(null);
 
-  const isEn = language === 'en';
+  const isEn = language === "en";
   const currentPlan = normalizePlanId(user?.plan);
   const recommendedPlan = getRecommendedPlan(currentPlan);
 
   // Check if selected plan is an upgrade or downgrade
-  const isUpgrade = selectedPlan ? isPlanHigher(selectedPlan as PlanId, currentPlan) : false;
-  const isDowngrade = selectedPlan ? isPlanHigher(currentPlan, selectedPlan as PlanId) : false;
+  const isUpgrade = selectedPlan
+    ? isPlanHigher(selectedPlan as PlanId, currentPlan)
+    : false;
+  const isDowngrade = selectedPlan
+    ? isPlanHigher(currentPlan, selectedPlan as PlanId)
+    : false;
 
   const handleSelectPlan = (planId: string) => {
     if (planId === currentPlan) return;
     Haptics.selectionAsync();
     setSelectedPlan(planId);
-    analytics.track('upgrade_plan_selected', { plan: planId, current_plan: currentPlan });
+    analytics.track("upgrade_plan_selected", {
+      plan: planId,
+      current_plan: currentPlan,
+    });
   };
 
   const handleUpgrade = async () => {
     if (!selectedPlan) return;
 
-    analytics.track('upgrade_checkout_started', { plan: selectedPlan, current_plan: currentPlan });
+    analytics.track("upgrade_checkout_started", {
+      plan: selectedPlan,
+      current_plan: currentPlan,
+    });
     setIsLoading(true);
     try {
       // Get checkout URL from backend
       const { url } = await billingApi.createCheckout(selectedPlan);
 
       if (!url) {
-        throw new Error('No checkout URL received');
+        throw new Error("No checkout URL received");
       }
 
       // Open Stripe checkout in browser
@@ -114,23 +132,26 @@ export const UpgradeScreen: React.FC = () => {
       });
 
       // Handle return from browser
-      if (result.type === 'cancel') {
+      if (result.type === "cancel") {
         // User cancelled - no action needed
       } else {
         // Refresh user data to get updated plan
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert(
-          t.success?.generic || 'Succès',
+          t.success?.generic || "Succès",
           isEn
-            ? 'Payment processing. Your plan will be updated shortly.'
-            : 'Paiement en cours. Votre abonnement sera mis à jour sous peu.',
-          [{ text: 'OK' }]
+            ? "Payment processing. Your plan will be updated shortly."
+            : "Paiement en cours. Votre abonnement sera mis à jour sous peu.",
+          [{ text: "OK" }],
         );
       }
     } catch (err) {
-      const message = err instanceof ApiError
-        ? err.message
-        : (isEn ? 'Unable to start checkout. Please try again.' : 'Impossible de démarrer le paiement. Veuillez réessayer.');
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : isEn
+            ? "Unable to start checkout. Please try again."
+            : "Impossible de démarrer le paiement. Veuillez réessayer.";
       Alert.alert(t.common.error, message);
     } finally {
       setIsLoading(false);
@@ -140,17 +161,21 @@ export const UpgradeScreen: React.FC = () => {
   const handleBuyCreditPack = async (packId: string) => {
     setPackLoading(packId);
     try {
-      const { checkout_url } = await billingApi.createCreditPackCheckout(packId);
-      if (!checkout_url) throw new Error('No checkout URL');
+      const { checkout_url } =
+        await billingApi.createCreditPackCheckout(packId);
+      if (!checkout_url) throw new Error("No checkout URL");
       await WebBrowser.openBrowserAsync(checkout_url, {
         showTitle: true,
         enableBarCollapsing: true,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err) {
-      const message = err instanceof ApiError
-        ? err.message
-        : (isEn ? 'Unable to start checkout.' : 'Impossible de démarrer le paiement.');
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : isEn
+            ? "Unable to start checkout."
+            : "Impossible de démarrer le paiement.";
       Alert.alert(t.common.error, message);
     } finally {
       setPackLoading(null);
@@ -183,16 +208,28 @@ export const UpgradeScreen: React.FC = () => {
           style={[
             styles.planCard,
             isSelected && { borderWidth: 2, borderColor: colors.accentPrimary },
-            isCurrentPlan && [styles.currentPlanCard, { borderColor: colors.accentSuccess }],
-            isRecommended && !isCurrentPlan && [styles.recommendedPlanCard, { borderColor: colors.accentSuccess }],
+            isCurrentPlan && [
+              styles.currentPlanCard,
+              { borderColor: colors.accentSuccess },
+            ],
+            isRecommended &&
+              !isCurrentPlan && [
+                styles.recommendedPlanCard,
+                { borderColor: colors.accentSuccess },
+              ],
           ]}
         >
           {/* Recommended badge */}
           {isRecommended && !isCurrentPlan && (
-            <View style={[styles.recommendedBadge, { backgroundColor: colors.accentSuccess }]}>
+            <View
+              style={[
+                styles.recommendedBadge,
+                { backgroundColor: colors.accentSuccess },
+              ]}
+            >
               <Ionicons name="trending-up" size={12} color="#FFFFFF" />
               <Text style={styles.recommendedText}>
-                {isEn ? 'Recommended' : 'Recommandé'}
+                {isEn ? "Recommended" : "Recommandé"}
               </Text>
             </View>
           )}
@@ -211,25 +248,42 @@ export const UpgradeScreen: React.FC = () => {
 
           <View style={styles.planHeader}>
             <View style={styles.planTitleRow}>
-              <View style={[styles.planIcon, { backgroundColor: colors.accentPrimary + '20' }]}>
-                <Ionicons name={plan.icon as any} size={20} color={colors.accentPrimary} />
+              <View
+                style={[
+                  styles.planIcon,
+                  { backgroundColor: colors.accentPrimary + "20" },
+                ]}
+              >
+                <Ionicons
+                  name={plan.icon as any}
+                  size={20}
+                  color={colors.accentPrimary}
+                />
               </View>
               <Text style={[styles.planName, { color: colors.textPrimary }]}>
                 {displayName}
               </Text>
             </View>
             {isCurrentPlan && (
-              <Badge label={t.upgrade.currentPlan} variant="primary" size="sm" />
+              <Badge
+                label={t.upgrade.currentPlan}
+                variant="primary"
+                size="sm"
+              />
             )}
           </View>
 
           <View style={styles.priceContainer}>
             <Text style={[styles.price, { color: colors.textPrimary }]}>
-              {plan.price === 0 ? (isEn ? 'Free' : 'Gratuit') : `${plan.price}€`}
+              {plan.price === 0
+                ? isEn
+                  ? "Free"
+                  : "Gratuit"
+                : `${plan.price}€`}
             </Text>
             {plan.price > 0 && (
               <Text style={[styles.period, { color: colors.textTertiary }]}>
-                {isEn ? '/month' : plan.period}
+                {isEn ? "/month" : plan.period}
               </Text>
             )}
           </View>
@@ -237,7 +291,8 @@ export const UpgradeScreen: React.FC = () => {
           <View style={styles.creditsRow}>
             <Ionicons name="flash" size={16} color={colors.accentSecondary} />
             <Text style={[styles.credits, { color: colors.accentPrimary }]}>
-              {formatCredits(plan.credits)} {isEn ? 'credits/month' : 'crédits/mois'}
+              {formatCredits(plan.credits)}{" "}
+              {isEn ? "credits/month" : "crédits/mois"}
             </Text>
           </View>
 
@@ -249,7 +304,9 @@ export const UpgradeScreen: React.FC = () => {
                   size={16}
                   color={colors.accentSuccess}
                 />
-                <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                <Text
+                  style={[styles.featureText, { color: colors.textSecondary }]}
+                >
                   {feature}
                 </Text>
               </View>
@@ -268,12 +325,16 @@ export const UpgradeScreen: React.FC = () => {
               <Text
                 style={[
                   styles.selectButtonText,
-                  { color: isSelected ? '#fff' : colors.textSecondary },
+                  { color: isSelected ? "#fff" : colors.textSecondary },
                 ]}
               >
                 {isSelected
-                  ? (isEn ? 'Selected' : 'Sélectionné')
-                  : (isEn ? 'Choose Plan' : 'Choisir')}
+                  ? isEn
+                    ? "Selected"
+                    : "Sélectionné"
+                  : isEn
+                    ? "Choose Plan"
+                    : "Choisir"}
               </Text>
             </TouchableOpacity>
           )}
@@ -283,12 +344,15 @@ export const UpgradeScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
       <Header title={t.upgrade.title} />
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 100 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -299,21 +363,40 @@ export const UpgradeScreen: React.FC = () => {
 
         {/* Pourquoi DeepSight — Différenciateurs */}
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-          {isEn ? 'Why DeepSight?' : 'Pourquoi DeepSight ?'}
+          {isEn ? "Why DeepSight?" : "Pourquoi DeepSight ?"}
         </Text>
         <Text style={[styles.sectionSubtitle, { color: colors.textTertiary }]}>
           {isEn
-            ? 'Features no other tool offers'
-            : 'Ce que personne d\'autre ne propose'}
+            ? "Features no other tool offers"
+            : "Ce que personne d'autre ne propose"}
         </Text>
         {DIFFERENTIATORS.map((diff, index) => (
           <Card key={index} style={styles.diffCard}>
             <View style={styles.diffHeader}>
-              <View style={[styles.diffIconWrap, { backgroundColor: colors.accentPrimary + '15' }]}>
-                <Ionicons name={diff.ionicon as any} size={20} color={colors.accentPrimary} />
+              <View
+                style={[
+                  styles.diffIconWrap,
+                  { backgroundColor: colors.accentPrimary + "15" },
+                ]}
+              >
+                <Ionicons
+                  name={diff.ionicon as any}
+                  size={20}
+                  color={colors.accentPrimary}
+                />
               </View>
-              <View style={[styles.diffTag, { backgroundColor: colors.accentSecondary + '20' }]}>
-                <Text style={[styles.diffTagText, { color: colors.accentSecondary }]}>
+              <View
+                style={[
+                  styles.diffTag,
+                  { backgroundColor: colors.accentSecondary + "20" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.diffTagText,
+                    { color: colors.accentSecondary },
+                  ]}
+                >
                   {isEn ? diff.tag.en : diff.tag.fr}
                 </Text>
               </View>
@@ -328,21 +411,59 @@ export const UpgradeScreen: React.FC = () => {
         ))}
 
         {/* B2B / Sur-mesure */}
-        <Card style={{ padding: Spacing.lg, marginBottom: Spacing.xl, alignItems: 'center' as const }}>
-          <Text style={{ fontSize: Typography.fontSize.base, fontFamily: Typography.fontFamily.bodySemiBold, color: colors.textPrimary, marginBottom: Spacing.xs, textAlign: 'center' as const }}>
-            {isEn ? 'Need a custom plan?' : 'Besoin d\'une offre sur-mesure ?'}
+        <Card
+          style={{
+            padding: Spacing.lg,
+            marginBottom: Spacing.xl,
+            alignItems: "center" as const,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: Typography.fontSize.base,
+              fontFamily: Typography.fontFamily.bodySemiBold,
+              color: colors.textPrimary,
+              marginBottom: Spacing.xs,
+              textAlign: "center" as const,
+            }}
+          >
+            {isEn ? "Need a custom plan?" : "Besoin d'une offre sur-mesure ?"}
           </Text>
-          <Text style={{ fontSize: Typography.fontSize.sm, fontFamily: Typography.fontFamily.body, color: colors.textSecondary, textAlign: 'center' as const, marginBottom: Spacing.md }}>
+          <Text
+            style={{
+              fontSize: Typography.fontSize.sm,
+              fontFamily: Typography.fontFamily.body,
+              color: colors.textSecondary,
+              textAlign: "center" as const,
+              marginBottom: Spacing.md,
+            }}
+          >
             {isEn
-              ? 'Teams, universities, enterprises — contact us.'
-              : 'Équipes, universités, entreprises — contactez-nous.'}
+              ? "Teams, universities, enterprises — contact us."
+              : "Équipes, universités, entreprises — contactez-nous."}
           </Text>
           <TouchableOpacity
-            onPress={() => Linking.openURL('mailto:contact@deepsightsynthesis.com?subject=Offre%20sur-mesure%20DeepSight')}
-            style={{ paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: colors.border }}
+            onPress={() =>
+              Linking.openURL(
+                "mailto:contact@deepsightsynthesis.com?subject=Offre%20sur-mesure%20DeepSight",
+              )
+            }
+            style={{
+              paddingVertical: Spacing.sm,
+              paddingHorizontal: Spacing.lg,
+              borderRadius: BorderRadius.md,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
           >
-            <Text style={{ fontSize: Typography.fontSize.sm, fontFamily: Typography.fontFamily.bodyMedium, color: colors.textPrimary }}>
-              {isEn ? 'Contact us' : 'Contactez-nous'}
+            <Text
+              style={{
+                fontSize: Typography.fontSize.sm,
+                fontFamily: Typography.fontFamily.bodyMedium,
+                color: colors.textPrimary,
+              }}
+            >
+              {isEn ? "Contact us" : "Contactez-nous"}
             </Text>
           </TouchableOpacity>
         </Card>
@@ -350,23 +471,33 @@ export const UpgradeScreen: React.FC = () => {
 
       {/* Bottom CTA */}
       {selectedPlan && selectedPlan !== currentPlan && (
-        <View style={[styles.bottomCta, { backgroundColor: colors.bgPrimary, paddingBottom: insets.bottom + Spacing.md }]}>
+        <View
+          style={[
+            styles.bottomCta,
+            {
+              backgroundColor: colors.bgPrimary,
+              paddingBottom: insets.bottom + Spacing.md,
+            },
+          ]}
+        >
           {isDowngrade && (
-            <Text style={[styles.downgradeWarning, { color: colors.accentWarning }]}>
+            <Text
+              style={[styles.downgradeWarning, { color: colors.accentWarning }]}
+            >
               {isEn
-                ? 'Downgrading will reduce your limits'
-                : 'Rétrograder réduira vos limites'}
+                ? "Downgrading will reduce your limits"
+                : "Rétrograder réduira vos limites"}
             </Text>
           )}
           <Button
             title={
               isUpgrade
-                ? (isEn
-                    ? `Upgrade to ${PLANS.find(p => p.id === selectedPlan)?.en.name}`
-                    : `Passer à ${PLANS.find(p => p.id === selectedPlan)?.name}`)
-                : (isEn
-                    ? `Switch to ${PLANS.find(p => p.id === selectedPlan)?.en.name}`
-                    : `Changer pour ${PLANS.find(p => p.id === selectedPlan)?.name}`)
+                ? isEn
+                  ? `Upgrade to ${PLANS.find((p) => p.id === selectedPlan)?.en.name}`
+                  : `Passer à ${PLANS.find((p) => p.id === selectedPlan)?.name}`
+                : isEn
+                  ? `Switch to ${PLANS.find((p) => p.id === selectedPlan)?.en.name}`
+                  : `Changer pour ${PLANS.find((p) => p.id === selectedPlan)?.name}`
             }
             onPress={handleUpgrade}
             loading={isLoading}
@@ -392,17 +523,17 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.xl,
   },
   planCard: {
     marginBottom: Spacing.lg,
     padding: Spacing.lg,
-    position: 'relative',
-    overflow: 'visible',
+    position: "relative",
+    overflow: "visible",
   },
   popularBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -12,
     right: Spacing.lg,
   },
@@ -412,39 +543,39 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
   },
   popularText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   planHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.sm,
   },
   planTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   planIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   planName: {
     fontSize: Typography.fontSize.xl,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    alignItems: "baseline",
     marginBottom: Spacing.xs,
   },
   price: {
-    fontSize: Typography.fontSize['3xl'],
+    fontSize: Typography.fontSize["3xl"],
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   period: {
@@ -453,8 +584,8 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.xs,
   },
   creditsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     marginBottom: Spacing.md,
   },
@@ -467,8 +598,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   featureRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: Spacing.sm,
   },
   featureText: {
@@ -486,32 +617,32 @@ const styles = StyleSheet.create({
     // borderColor is set dynamically
   },
   recommendedBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -12,
     left: Spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
     gap: 4,
   },
   recommendedText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   downgradeWarning: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.sm,
   },
   selectButton: {
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: Spacing.sm,
   },
   selectButtonText: {
@@ -521,14 +652,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: Typography.fontSize.xl,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: Spacing.xl,
     marginBottom: Spacing.xs,
   },
   sectionSubtitle: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.lg,
   },
   diffCard: {
@@ -536,17 +667,17 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   diffHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.sm,
   },
   diffIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   diffTag: {
     paddingHorizontal: Spacing.sm,
@@ -572,8 +703,8 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   packRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   packName: {
     fontSize: Typography.fontSize.base,
@@ -601,14 +732,14 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
   bottomCta: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(128,128,128,0.2)',
+    borderTopColor: "rgba(128,128,128,0.2)",
   },
 });
 

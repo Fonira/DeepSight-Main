@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Linking,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
 interface TournesolScore {
   score: number;
@@ -32,16 +32,18 @@ interface TournesolWidgetProps {
 }
 
 // Tournesol API integration
-const fetchTournesolScore = async (videoId: string): Promise<TournesolScore | null> => {
+const fetchTournesolScore = async (
+  videoId: string,
+): Promise<TournesolScore | null> => {
   try {
     const response = await fetch(
       `https://tournesol.app/api/v2/polls/videos/entities/yt:${videoId}`,
       {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Accept': 'application/json',
+          Accept: "application/json",
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -49,9 +51,11 @@ const fetchTournesolScore = async (videoId: string): Promise<TournesolScore | nu
       return null;
     }
 
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      if (__DEV__) { console.warn('[Tournesol] Non-JSON response:', response.status); }
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      if (__DEV__) {
+        console.warn("[Tournesol] Non-JSON response:", response.status);
+      }
       return null;
     }
 
@@ -59,7 +63,9 @@ const fetchTournesolScore = async (videoId: string): Promise<TournesolScore | nu
     try {
       data = await response.json();
     } catch (parseError) {
-      if (__DEV__) { console.warn('[Tournesol] JSON parse error:', parseError); }
+      if (__DEV__) {
+        console.warn("[Tournesol] JSON parse error:", parseError);
+      }
       return null;
     }
 
@@ -74,19 +80,23 @@ const fetchTournesolScore = async (videoId: string): Promise<TournesolScore | nu
     };
 
     return {
-      score: data.tournesol_score ? Math.round((data.tournesol_score + 100) / 2) : 50,
-      reliability: getScore('reliability'),
-      importance: getScore('importance'),
-      engaging: getScore('engaging'),
-      pedagogy: getScore('pedagogy'),
-      layman_friendly: getScore('layman_friendly'),
-      diversity_inclusion: getScore('diversity_inclusion'),
-      backfire_risk: getScore('backfire_risk'),
-      better_habits: getScore('better_habits'),
-      entertaining_relaxing: getScore('entertaining_relaxing'),
+      score: data.tournesol_score
+        ? Math.round((data.tournesol_score + 100) / 2)
+        : 50,
+      reliability: getScore("reliability"),
+      importance: getScore("importance"),
+      engaging: getScore("engaging"),
+      pedagogy: getScore("pedagogy"),
+      layman_friendly: getScore("layman_friendly"),
+      diversity_inclusion: getScore("diversity_inclusion"),
+      backfire_risk: getScore("backfire_risk"),
+      better_habits: getScore("better_habits"),
+      entertaining_relaxing: getScore("entertaining_relaxing"),
     };
   } catch (error) {
-    if (__DEV__) { console.error('Tournesol API error:', error); }
+    if (__DEV__) {
+      console.error("Tournesol API error:", error);
+    }
     return null;
   }
 };
@@ -110,7 +120,7 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
         const data = await fetchTournesolScore(videoId);
         setScore(data);
       } catch (err) {
-        setError('Score non disponible');
+        setError("Score non disponible");
       } finally {
         setIsLoading(false);
       }
@@ -146,11 +156,16 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
 
     return (
       <TouchableOpacity
-        style={[styles.notRatedContainer, { backgroundColor: colors.bgSecondary }]}
+        style={[
+          styles.notRatedContainer,
+          { backgroundColor: colors.bgSecondary },
+        ]}
         onPress={handleOpenTournesol}
       >
         <View style={styles.tournesolHeader}>
-          <Text style={[styles.tournesolLogo, { color: colors.textTertiary }]}>🌻</Text>
+          <Text style={[styles.tournesolLogo, { color: colors.textTertiary }]}>
+            🌻
+          </Text>
           <Text style={[styles.notRatedText, { color: colors.textTertiary }]}>
             {t.tournesol.notRatedYet}
           </Text>
@@ -162,7 +177,11 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
           <Text style={[styles.linkText, { color: colors.accentPrimary }]}>
             {t.tournesol.rateThisVideo}
           </Text>
-          <Ionicons name="open-outline" size={14} color={colors.accentPrimary} />
+          <Ionicons
+            name="open-outline"
+            size={14}
+            color={colors.accentPrimary}
+          />
         </View>
       </TouchableOpacity>
     );
@@ -172,11 +191,19 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
   if (compact) {
     return (
       <TouchableOpacity
-        style={[styles.compactScore, { backgroundColor: `${getScoreColor(score.score)}20` }]}
+        style={[
+          styles.compactScore,
+          { backgroundColor: `${getScoreColor(score.score)}20` },
+        ]}
         onPress={handleOpenTournesol}
       >
         <Text style={styles.sunflower}>🌻</Text>
-        <Text style={[styles.compactScoreText, { color: getScoreColor(score.score) }]}>
+        <Text
+          style={[
+            styles.compactScoreText,
+            { color: getScoreColor(score.score) },
+          ]}
+        >
           {Math.round(score.score)}
         </Text>
       </TouchableOpacity>
@@ -184,11 +211,31 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
   }
 
   const criteria = [
-    { label: t.tournesol.criteria.reliability, value: score.reliability, icon: 'shield-checkmark-outline' },
-    { label: t.tournesol.criteria.importance, value: score.importance, icon: 'star-outline' },
-    { label: t.tournesol.criteria.pedagogy, value: score.pedagogy, icon: 'school-outline' },
-    { label: t.tournesol.criteria.accessibility, value: score.layman_friendly, icon: 'people-outline' },
-    { label: t.tournesol.criteria.diversity, value: score.diversity_inclusion, icon: 'globe-outline' },
+    {
+      label: t.tournesol.criteria.reliability,
+      value: score.reliability,
+      icon: "shield-checkmark-outline",
+    },
+    {
+      label: t.tournesol.criteria.importance,
+      value: score.importance,
+      icon: "star-outline",
+    },
+    {
+      label: t.tournesol.criteria.pedagogy,
+      value: score.pedagogy,
+      icon: "school-outline",
+    },
+    {
+      label: t.tournesol.criteria.accessibility,
+      value: score.layman_friendly,
+      icon: "people-outline",
+    },
+    {
+      label: t.tournesol.criteria.diversity,
+      value: score.diversity_inclusion,
+      icon: "globe-outline",
+    },
   ];
 
   return (
@@ -202,8 +249,18 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
         <Text style={[styles.tournesolTitle, { color: colors.textPrimary }]}>
           {t.tournesol.score}
         </Text>
-        <View style={[styles.mainScore, { backgroundColor: `${getScoreColor(score.score)}20` }]}>
-          <Text style={[styles.mainScoreText, { color: getScoreColor(score.score) }]}>
+        <View
+          style={[
+            styles.mainScore,
+            { backgroundColor: `${getScoreColor(score.score)}20` },
+          ]}
+        >
+          <Text
+            style={[
+              styles.mainScoreText,
+              { color: getScoreColor(score.score) },
+            ]}
+          >
             {Math.round(score.score)}
           </Text>
         </View>
@@ -219,11 +276,18 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
                 size={14}
                 color={colors.textTertiary}
               />
-              <Text style={[styles.criterionLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.criterionLabel, { color: colors.textSecondary }]}
+              >
                 {criterion.label}
               </Text>
             </View>
-            <View style={[styles.criterionBar, { backgroundColor: colors.bgTertiary }]}>
+            <View
+              style={[
+                styles.criterionBar,
+                { backgroundColor: colors.bgTertiary },
+              ]}
+            >
               <View
                 style={[
                   styles.criterionFill,
@@ -252,8 +316,8 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
 const styles = StyleSheet.create({
   container: {
     padding: Spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   compactContainer: {
     padding: Spacing.sm,
@@ -264,8 +328,8 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   tournesolHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   tournesolLogo: {
@@ -286,8 +350,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     marginTop: Spacing.sm,
   },
@@ -296,8 +360,8 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodyMedium,
   },
   compactScore: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.sm,
@@ -331,8 +395,8 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   criterionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   criterionLabel: {
@@ -342,21 +406,21 @@ const styles = StyleSheet.create({
   criterionBar: {
     height: 4,
     borderRadius: 2,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   criterionFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 2,
   },
   tournesolFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.xs,
     marginTop: Spacing.md,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(128,128,128,0.2)',
+    borderTopColor: "rgba(128,128,128,0.2)",
   },
   footerText: {
     fontSize: Typography.fontSize.xs,

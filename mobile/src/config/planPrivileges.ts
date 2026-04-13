@@ -9,40 +9,42 @@
  * Dernière synchro: 10 Avril 2026
  */
 
-export type PlanId = 'free' | 'plus' | 'pro';
+export type PlanId = "free" | "plus" | "pro";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PLAN LIMITS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export interface PlanLimits {
-  monthlyAnalyses: number;        // -1 = unlimited
+  monthlyAnalyses: number; // -1 = unlimited
   monthlyCredits: number;
-  maxVideoDuration: number;       // seconds, -1 = unlimited
-  chatQuestionsPerVideo: number;  // -1 = unlimited
-  chatDailyLimit: number;         // -1 = unlimited
-  maxPlaylistVideos: number;      // 0 = disabled
-  maxPlaylists: number;           // 0 = disabled, -1 = unlimited
-  maxExportsPerDay: number;       // 0 = disabled, -1 = unlimited
-  webSearchMonthly: number;       // 0 = disabled, -1 = unlimited
-  historyDays: number;            // -1 = unlimited
-  apiRequestsDaily: number;       // 0 = disabled, -1 = unlimited
-  teamMembers: number;            // 1 = solo, -1 = unlimited
+  maxVideoDuration: number; // seconds, -1 = unlimited
+  chatQuestionsPerVideo: number; // -1 = unlimited
+  chatDailyLimit: number; // -1 = unlimited
+  maxPlaylistVideos: number; // 0 = disabled
+  maxPlaylists: number; // 0 = disabled, -1 = unlimited
+  maxExportsPerDay: number; // 0 = disabled, -1 = unlimited
+  webSearchMonthly: number; // 0 = disabled, -1 = unlimited
+  historyDays: number; // -1 = unlimited
+  apiRequestsDaily: number; // 0 = disabled, -1 = unlimited
+  teamMembers: number; // 1 = solo, -1 = unlimited
   studyQuizQuestions: number;
   studyMindmapDepth: number;
   studyCanGenerateMore: boolean;
-  studyDailyLimit: number;        // -1 = unlimited
+  studyDailyLimit: number; // -1 = unlimited
   // Academic sources
   academicPapersPerAnalysis: number;
   // Voice chat
   voiceChatMonthlyMinutes: number; // 0 = disabled
   // Debate
-  debateMonthly: number;          // 0 = disabled, -1 = unlimited
+  debateMonthly: number; // 0 = disabled, -1 = unlimited
 }
 
 // Type for numeric-only limits (excludes boolean properties)
 export type NumericPlanLimits = {
-  [K in keyof PlanLimits as PlanLimits[K] extends number ? K : never]: PlanLimits[K];
+  [K in keyof PlanLimits as PlanLimits[K] extends number
+    ? K
+    : never]: PlanLimits[K];
 };
 
 // ⚠️ SYNCED WITH: backend/src/billing/plan_config.py (SSOT)
@@ -50,7 +52,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
     monthlyAnalyses: 5,
     monthlyCredits: 250,
-    maxVideoDuration: 900,          // 15 min
+    maxVideoDuration: 900, // 15 min
     chatQuestionsPerVideo: 5,
     chatDailyLimit: 10,
     maxPlaylistVideos: 0,
@@ -72,7 +74,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   plus: {
     monthlyAnalyses: 25,
     monthlyCredits: 3000,
-    maxVideoDuration: 3600,         // 1h
+    maxVideoDuration: 3600, // 1h
     chatQuestionsPerVideo: 25,
     chatDailyLimit: 50,
     maxPlaylistVideos: 0,
@@ -94,7 +96,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   pro: {
     monthlyAnalyses: 100,
     monthlyCredits: 15000,
-    maxVideoDuration: 14400,        // 4h
+    maxVideoDuration: 14400, // 4h
     chatQuestionsPerVideo: -1,
     chatDailyLimit: -1,
     maxPlaylistVideos: 20,
@@ -268,7 +270,7 @@ export interface PlanInfo {
   id: PlanId;
   name: { fr: string; en: string };
   description: { fr: string; en: string };
-  price: number;  // in cents
+  price: number; // in cents
   priceDisplay: { fr: string; en: string };
   badge?: { fr: string; en: string };
   popular?: boolean;
@@ -283,46 +285,61 @@ export interface PlanInfo {
 
 export const PLANS_INFO: PlanInfo[] = [
   {
-    id: 'free',
-    name: { fr: 'Gratuit', en: 'Free' },
-    description: { fr: 'Découvrez DeepSight gratuitement', en: 'Discover DeepSight for free' },
+    id: "free",
+    name: { fr: "Gratuit", en: "Free" },
+    description: {
+      fr: "Découvrez DeepSight gratuitement",
+      en: "Discover DeepSight for free",
+    },
     price: 0,
-    priceDisplay: { fr: '0€', en: 'Free' },
-    color: '#6B7280',
-    icon: 'flash-outline',
-    gradient: ['#6B7280', '#4B5563'],
+    priceDisplay: { fr: "0€", en: "Free" },
+    color: "#6B7280",
+    icon: "flash-outline",
+    gradient: ["#6B7280", "#4B5563"],
     order: 0,
-    targetAudience: { fr: 'Curieux', en: 'Curious' },
-    killerFeature: { fr: '5 analyses gratuites', en: '5 free analyses' },
+    targetAudience: { fr: "Curieux", en: "Curious" },
+    killerFeature: { fr: "5 analyses gratuites", en: "5 free analyses" },
   },
   {
-    id: 'plus',
-    name: { fr: 'Plus', en: 'Plus' },
-    description: { fr: "L'essentiel pour apprendre mieux, plus vite", en: 'Everything to learn better, faster' },
+    id: "plus",
+    name: { fr: "Plus", en: "Plus" },
+    description: {
+      fr: "L'essentiel pour apprendre mieux, plus vite",
+      en: "Everything to learn better, faster",
+    },
     price: 499,
-    priceDisplay: { fr: '4,99€/mois', en: '€4.99/mo' },
-    badge: { fr: 'Populaire', en: 'Popular' },
+    priceDisplay: { fr: "4,99€/mois", en: "€4.99/mo" },
+    badge: { fr: "Populaire", en: "Popular" },
     popular: true,
-    color: '#3B82F6',
-    icon: 'star-outline',
-    gradient: ['#3B82F6', '#2563EB'],
+    color: "#3B82F6",
+    icon: "star-outline",
+    gradient: ["#3B82F6", "#2563EB"],
     order: 1,
-    targetAudience: { fr: 'Étudiants & Curieux', en: 'Students & Curious' },
-    killerFeature: { fr: '25 analyses + Mind Maps + Exports', en: '25 analyses + Mind Maps + Exports' },
+    targetAudience: { fr: "Étudiants & Curieux", en: "Students & Curious" },
+    killerFeature: {
+      fr: "25 analyses + Mind Maps + Exports",
+      en: "25 analyses + Mind Maps + Exports",
+    },
   },
   {
-    id: 'pro',
-    name: { fr: 'Pro', en: 'Pro' },
-    description: { fr: 'Toute la puissance de DeepSight, sans limites', en: 'All the power of DeepSight, unlimited' },
+    id: "pro",
+    name: { fr: "Pro", en: "Pro" },
+    description: {
+      fr: "Toute la puissance de DeepSight, sans limites",
+      en: "All the power of DeepSight, unlimited",
+    },
     price: 999,
-    priceDisplay: { fr: '9,99€/mois', en: '€9.99/mo' },
-    badge: { fr: 'Le + puissant', en: 'Most powerful' },
-    color: '#8B5CF6',
-    icon: 'trophy-outline',
-    gradient: ['#8B5CF6', '#7C3AED'],
+    priceDisplay: { fr: "9,99€/mois", en: "€9.99/mo" },
+    badge: { fr: "Le + puissant", en: "Most powerful" },
+    color: "#8B5CF6",
+    icon: "trophy-outline",
+    gradient: ["#8B5CF6", "#7C3AED"],
     order: 2,
-    targetAudience: { fr: 'Pros & Chercheurs', en: 'Pros & Researchers' },
-    killerFeature: { fr: '100 analyses + Tout illimité', en: '100 analyses + Everything unlimited' },
+    targetAudience: { fr: "Pros & Chercheurs", en: "Pros & Researchers" },
+    killerFeature: {
+      fr: "100 analyses + Tout illimité",
+      en: "100 analyses + Everything unlimited",
+    },
   },
 ];
 
@@ -339,7 +356,7 @@ export const CONVERSION_TRIGGERS = {
   showEquivalentPages: true,
   trialEnabled: false,
   trialDays: 0,
-  trialPlan: 'plus' as PlanId,
+  trialPlan: "plus" as PlanId,
   trialRequiresCard: false,
 };
 
@@ -357,64 +374,67 @@ export interface Differentiator {
 
 export const DIFFERENTIATORS: Differentiator[] = [
   {
-    icon: '🔍',
-    ionicon: 'search-outline',
-    title: { fr: 'Fact-checking automatique', en: 'Automatic fact-checking' },
+    icon: "🔍",
+    ionicon: "search-outline",
+    title: { fr: "Fact-checking automatique", en: "Automatic fact-checking" },
     description: {
-      fr: 'Chaque affirmation est vérifiée avec des sources web fiables. Repérer les erreurs, pas juste résumer.',
-      en: 'Every claim is verified against reliable web sources. Spot errors, not just summarize.',
+      fr: "Chaque affirmation est vérifiée avec des sources web fiables. Repérer les erreurs, pas juste résumer.",
+      en: "Every claim is verified against reliable web sources. Spot errors, not just summarize.",
     },
-    tag: { fr: 'Exclusif', en: 'Exclusive' },
+    tag: { fr: "Exclusif", en: "Exclusive" },
   },
   {
-    icon: '⚔️',
-    ionicon: 'git-compare-outline',
-    title: { fr: 'Débat IA entre 2 vidéos', en: 'AI Debate between 2 videos' },
+    icon: "⚔️",
+    ionicon: "git-compare-outline",
+    title: { fr: "Débat IA entre 2 vidéos", en: "AI Debate between 2 videos" },
     description: {
-      fr: 'Confrontez les arguments de 2 vidéos sur le même sujet. Identifiez contradictions et points communs.',
-      en: 'Compare arguments from 2 videos on the same topic. Identify contradictions and common ground.',
+      fr: "Confrontez les arguments de 2 vidéos sur le même sujet. Identifiez contradictions et points communs.",
+      en: "Compare arguments from 2 videos on the same topic. Identify contradictions and common ground.",
     },
-    tag: { fr: 'Unique', en: 'Unique' },
+    tag: { fr: "Unique", en: "Unique" },
   },
   {
-    icon: '📚',
-    ionicon: 'library-outline',
-    title: { fr: 'Sources académiques', en: 'Academic sources' },
+    icon: "📚",
+    ionicon: "library-outline",
+    title: { fr: "Sources académiques", en: "Academic sources" },
     description: {
-      fr: 'Enrichissement automatique avec arXiv, Semantic Scholar, CrossRef et OpenAlex. Export bibliographique.',
-      en: 'Auto-enrichment from arXiv, Semantic Scholar, CrossRef and OpenAlex. Bibliography export.',
+      fr: "Enrichissement automatique avec arXiv, Semantic Scholar, CrossRef et OpenAlex. Export bibliographique.",
+      en: "Auto-enrichment from arXiv, Semantic Scholar, CrossRef and OpenAlex. Bibliography export.",
     },
-    tag: { fr: 'Exclusif', en: 'Exclusive' },
+    tag: { fr: "Exclusif", en: "Exclusive" },
   },
   {
-    icon: '🇫🇷',
-    ionicon: 'shield-checkmark-outline',
-    title: { fr: 'IA 100% européenne', en: '100% European AI' },
+    icon: "🇫🇷",
+    ionicon: "shield-checkmark-outline",
+    title: { fr: "IA 100% européenne", en: "100% European AI" },
     description: {
-      fr: 'Propulsé par Mistral AI. Vos données restent en Europe. Conforme RGPD.',
-      en: 'Powered by Mistral AI. Your data stays in Europe. GDPR compliant.',
+      fr: "Propulsé par Mistral AI. Vos données restent en Europe. Conforme RGPD.",
+      en: "Powered by Mistral AI. Your data stays in Europe. GDPR compliant.",
     },
-    tag: { fr: 'Confiance', en: 'Trust' },
+    tag: { fr: "Confiance", en: "Trust" },
   },
   {
-    icon: '🧠',
-    ionicon: 'bulb-outline',
-    title: { fr: 'Révision scientifique (FSRS)', en: 'Scientific review (FSRS)' },
-    description: {
-      fr: 'Flashcards avec algorithme de répétition espacée FSRS v5 — le même que Anki. Retenez 3x mieux.',
-      en: 'Flashcards with FSRS v5 spaced repetition — same as Anki. Retain 3x better.',
+    icon: "🧠",
+    ionicon: "bulb-outline",
+    title: {
+      fr: "Révision scientifique (FSRS)",
+      en: "Scientific review (FSRS)",
     },
-    tag: { fr: 'Science', en: 'Science' },
+    description: {
+      fr: "Flashcards avec algorithme de répétition espacée FSRS v5 — le même que Anki. Retenez 3x mieux.",
+      en: "Flashcards with FSRS v5 spaced repetition — same as Anki. Retain 3x better.",
+    },
+    tag: { fr: "Science", en: "Science" },
   },
   {
-    icon: '🎙️',
-    ionicon: 'mic-outline',
-    title: { fr: 'Chat vocal sur vos vidéos', en: 'Voice chat on your videos' },
+    icon: "🎙️",
+    ionicon: "mic-outline",
+    title: { fr: "Chat vocal sur vos vidéos", en: "Voice chat on your videos" },
     description: {
-      fr: 'Discutez à voix haute avec l\'IA sur le contenu de vos vidéos. Mains libres, contexte complet.',
-      en: 'Talk to AI about your video content. Hands-free, full context.',
+      fr: "Discutez à voix haute avec l'IA sur le contenu de vos vidéos. Mains libres, contexte complet.",
+      en: "Talk to AI about your video content. Hands-free, full context.",
     },
-    tag: { fr: 'Pro', en: 'Pro' },
+    tag: { fr: "Pro", en: "Pro" },
   },
 ];
 
@@ -434,36 +454,36 @@ export interface Testimonial {
 
 export const TESTIMONIALS: Testimonial[] = [
   {
-    id: 'testimonial-1',
-    name: 'Marie L.',
-    role: { fr: 'Étudiante en Master', en: 'Master\'s Student' },
+    id: "testimonial-1",
+    name: "Marie L.",
+    role: { fr: "Étudiante en Master", en: "Master's Student" },
     quote: {
-      fr: 'DeepSight m\'a fait gagner des heures de prise de notes. Je peux maintenant me concentrer sur la compréhension plutôt que la transcription.',
-      en: 'DeepSight saved me hours of note-taking. I can now focus on understanding rather than transcribing.',
+      fr: "DeepSight m'a fait gagner des heures de prise de notes. Je peux maintenant me concentrer sur la compréhension plutôt que la transcription.",
+      en: "DeepSight saved me hours of note-taking. I can now focus on understanding rather than transcribing.",
     },
-    plan: 'plus',
+    plan: "plus",
     rating: 5,
   },
   {
-    id: 'testimonial-4',
-    name: 'Alex K.',
-    role: { fr: 'Développeur freelance', en: 'Freelance Developer' },
+    id: "testimonial-4",
+    name: "Alex K.",
+    role: { fr: "Développeur freelance", en: "Freelance Developer" },
     quote: {
-      fr: 'Je peux parcourir des heures de tutoriels en quelques minutes. ROI incroyable pour 4,99€/mois.',
-      en: 'I can go through hours of tutorials in minutes. Incredible ROI for €4.99/month.',
+      fr: "Je peux parcourir des heures de tutoriels en quelques minutes. ROI incroyable pour 4,99€/mois.",
+      en: "I can go through hours of tutorials in minutes. Incredible ROI for €4.99/month.",
     },
-    plan: 'plus',
+    plan: "plus",
     rating: 5,
   },
   {
-    id: 'testimonial-5',
-    name: 'Julie D.',
-    role: { fr: 'Professeure de lycée', en: 'High School Teacher' },
+    id: "testimonial-5",
+    name: "Julie D.",
+    role: { fr: "Professeure de lycée", en: "High School Teacher" },
     quote: {
-      fr: 'Les flashcards générées automatiquement m\'aident à créer des supports de cours rapidement.',
-      en: 'Auto-generated flashcards help me create course materials quickly.',
+      fr: "Les flashcards générées automatiquement m'aident à créer des supports de cours rapidement.",
+      en: "Auto-generated flashcards help me create course materials quickly.",
     },
-    plan: 'plus',
+    plan: "plus",
     rating: 5,
   },
 ];
@@ -480,24 +500,39 @@ export interface ProBenefit {
 
 export const PRO_BENEFITS: ProBenefit[] = [
   {
-    icon: 'time-outline',
-    title: { fr: 'Gagnez du temps', en: 'Save time' },
-    description: { fr: 'Analysez une vidéo de 4h en 30 secondes', en: 'Analyze a 4h video in 30 seconds' },
+    icon: "time-outline",
+    title: { fr: "Gagnez du temps", en: "Save time" },
+    description: {
+      fr: "Analysez une vidéo de 4h en 30 secondes",
+      en: "Analyze a 4h video in 30 seconds",
+    },
   },
   {
-    icon: 'list-outline',
-    title: { fr: 'Playlists', en: 'Playlists' },
-    description: { fr: 'Analysez jusqu\'à 10 playlists de 20 vidéos', en: 'Analyze up to 10 playlists of 20 videos' },
+    icon: "list-outline",
+    title: { fr: "Playlists", en: "Playlists" },
+    description: {
+      fr: "Analysez jusqu'à 10 playlists de 20 vidéos",
+      en: "Analyze up to 10 playlists of 20 videos",
+    },
   },
   {
-    icon: 'school-outline',
-    title: { fr: 'Outils d\'étude', en: 'Study tools' },
-    description: { fr: 'Flashcards, quiz, cartes mentales', en: 'Flashcards, quizzes, mind maps' },
+    icon: "school-outline",
+    title: { fr: "Outils d'étude", en: "Study tools" },
+    description: {
+      fr: "Flashcards, quiz, cartes mentales",
+      en: "Flashcards, quizzes, mind maps",
+    },
   },
   {
-    icon: 'shield-checkmark-outline',
-    title: { fr: 'Deep Research + Voice Chat', en: 'Deep Research + Voice Chat' },
-    description: { fr: 'Recherche approfondie et chat vocal ElevenLabs', en: 'Deep research and ElevenLabs voice chat' },
+    icon: "shield-checkmark-outline",
+    title: {
+      fr: "Deep Research + Voice Chat",
+      en: "Deep Research + Voice Chat",
+    },
+    description: {
+      fr: "Recherche approfondie et chat vocal ElevenLabs",
+      en: "Deep research and ElevenLabs voice chat",
+    },
   },
 ];
 
@@ -505,47 +540,50 @@ export const PRO_BENEFITS: ProBenefit[] = [
 // UTILITY FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const PLAN_ORDER: PlanId[] = ['free', 'plus', 'pro'];
+const PLAN_ORDER: PlanId[] = ["free", "plus", "pro"];
 
 /**
  * Normalize a plan name to a valid PlanId.
  * Handles legacy aliases (student→plus, starter→plus, expert→pro, etc.)
  */
 export function normalizePlanId(plan: string | undefined): PlanId {
-  if (!plan) return 'free';
+  if (!plan) return "free";
 
   const normalized = plan.toLowerCase().trim();
 
   const planMapping: Record<string, PlanId> = {
-    'free': 'free',
-    'gratuit': 'free',
-    'découverte': 'free',
-    'decouverte': 'free',
-    'discovery': 'free',
+    free: "free",
+    gratuit: "free",
+    découverte: "free",
+    decouverte: "free",
+    discovery: "free",
     // Legacy intermédiaires → Plus
-    'student': 'plus',
-    'étudiant': 'plus',
-    'etudiant': 'plus',
-    'starter': 'plus',
+    student: "plus",
+    étudiant: "plus",
+    etudiant: "plus",
+    starter: "plus",
     // Plan actuel
-    'plus': 'plus',
+    plus: "plus",
     // Legacy premium → Pro
-    'expert': 'pro',
-    'team': 'pro',
-    'équipe': 'pro',
-    'equipe': 'pro',
-    'unlimited': 'pro',
+    expert: "pro",
+    team: "pro",
+    équipe: "pro",
+    equipe: "pro",
+    unlimited: "pro",
     // Plan actuel
-    'pro': 'pro',
+    pro: "pro",
   };
 
-  return planMapping[normalized] || 'free';
+  return planMapping[normalized] || "free";
 }
 
 /**
  * Check if a plan has access to a feature
  */
-export function hasFeature(plan: PlanId | string | undefined, feature: keyof PlanFeatures): boolean {
+export function hasFeature(
+  plan: PlanId | string | undefined,
+  feature: keyof PlanFeatures,
+): boolean {
   const planId = normalizePlanId(plan as string);
   return PLAN_FEATURES[planId]?.[feature] ?? false;
 }
@@ -553,7 +591,10 @@ export function hasFeature(plan: PlanId | string | undefined, feature: keyof Pla
 /**
  * Get a limit for a plan
  */
-export function getLimit(plan: PlanId | string | undefined, limit: keyof NumericPlanLimits): number {
+export function getLimit(
+  plan: PlanId | string | undefined,
+  limit: keyof NumericPlanLimits,
+): number {
   const planId = normalizePlanId(plan as string);
   return PLAN_LIMITS[planId]?.[limit] ?? 0;
 }
@@ -561,7 +602,10 @@ export function getLimit(plan: PlanId | string | undefined, limit: keyof Numeric
 /**
  * Check if a limit is unlimited (-1)
  */
-export function isUnlimited(plan: PlanId | string | undefined, limit: keyof NumericPlanLimits): boolean {
+export function isUnlimited(
+  plan: PlanId | string | undefined,
+  limit: keyof NumericPlanLimits,
+): boolean {
   return getLimit(plan, limit) === -1;
 }
 
@@ -570,13 +614,16 @@ export function isUnlimited(plan: PlanId | string | undefined, limit: keyof Nume
  */
 export function getPlanInfo(plan: PlanId | string | undefined): PlanInfo {
   const planId = normalizePlanId(plan as string);
-  return PLANS_INFO.find(p => p.id === planId) || PLANS_INFO[0];
+  return PLANS_INFO.find((p) => p.id === planId) || PLANS_INFO[0];
 }
 
 /**
  * Compare two plans (returns -1, 0, or 1)
  */
-export function comparePlans(plan1: PlanId | string, plan2: PlanId | string): number {
+export function comparePlans(
+  plan1: PlanId | string,
+  plan2: PlanId | string,
+): number {
   const order1 = getPlanInfo(plan1).order;
   const order2 = getPlanInfo(plan2).order;
   return order1 - order2;
@@ -585,7 +632,10 @@ export function comparePlans(plan1: PlanId | string, plan2: PlanId | string): nu
 /**
  * Check if a plan is higher than another
  */
-export function isPlanHigher(currentPlan: PlanId | string, targetPlan: PlanId | string): boolean {
+export function isPlanHigher(
+  currentPlan: PlanId | string,
+  targetPlan: PlanId | string,
+): boolean {
   return comparePlans(targetPlan, currentPlan) > 0;
 }
 
@@ -598,7 +648,7 @@ export function getMinPlanForFeature(feature: keyof PlanFeatures): PlanId {
       return plan;
     }
   }
-  return 'pro';
+  return "pro";
 }
 
 /**
@@ -606,13 +656,14 @@ export function getMinPlanForFeature(feature: keyof PlanFeatures): PlanId {
  */
 export function shouldShowLowCreditsAlert(
   currentCredits: number,
-  maxCredits: number
-): 'none' | 'warning' | 'critical' {
-  if (maxCredits <= 0) return 'none';
+  maxCredits: number,
+): "none" | "warning" | "critical" {
+  if (maxCredits <= 0) return "none";
   const percent = (currentCredits / maxCredits) * 100;
-  if (percent <= CONVERSION_TRIGGERS.lowCreditsCriticalPercent) return 'critical';
-  if (percent <= CONVERSION_TRIGGERS.lowCreditsWarningPercent) return 'warning';
-  return 'none';
+  if (percent <= CONVERSION_TRIGGERS.lowCreditsCriticalPercent)
+    return "critical";
+  if (percent <= CONVERSION_TRIGGERS.lowCreditsWarningPercent) return "warning";
+  return "none";
 }
 
 /**
@@ -620,13 +671,13 @@ export function shouldShowLowCreditsAlert(
  */
 export function shouldShowUpgradePrompt(
   plan: PlanId | string,
-  analysesUsed: number
-): 'none' | 'warning' | 'blocked' {
+  analysesUsed: number,
+): "none" | "warning" | "blocked" {
   const planId = normalizePlanId(plan as string);
-  if (planId !== 'free') return 'none';
-  if (analysesUsed >= CONVERSION_TRIGGERS.freeAnalysisLimit) return 'blocked';
-  if (analysesUsed >= CONVERSION_TRIGGERS.freeAnalysisWarning) return 'warning';
-  return 'none';
+  if (planId !== "free") return "none";
+  if (analysesUsed >= CONVERSION_TRIGGERS.freeAnalysisLimit) return "blocked";
+  if (analysesUsed >= CONVERSION_TRIGGERS.freeAnalysisWarning) return "warning";
+  return "none";
 }
 
 /**
@@ -641,7 +692,7 @@ export function calculateTimeSaved(videoDurationSeconds: number): {
 
   return {
     minutes: minutesSaved,
-    equivalent: pagesEquivalent > 0 ? `${pagesEquivalent} pages` : '1 page',
+    equivalent: pagesEquivalent > 0 ? `${pagesEquivalent} pages` : "1 page",
   };
 }
 
@@ -668,7 +719,10 @@ export function getStudyToolsLimits(plan: PlanId | string | undefined): {
 /**
  * Get feature list for display (used in upgrade screens)
  */
-export function getFeatureListForDisplay(plan: PlanId, language: 'fr' | 'en'): Array<{
+export function getFeatureListForDisplay(
+  plan: PlanId,
+  language: "fr" | "en",
+): Array<{
   text: string;
   included: boolean;
   highlight?: boolean;
@@ -676,37 +730,98 @@ export function getFeatureListForDisplay(plan: PlanId, language: 'fr' | 'en'): A
   const features = PLAN_FEATURES[plan];
   const limits = PLAN_LIMITS[plan];
 
-  const analysesText = limits.monthlyAnalyses === -1
-    ? (language === 'fr' ? 'Analyses illimitées' : 'Unlimited analyses')
-    : (language === 'fr' ? `${limits.monthlyAnalyses} analyses/mois` : `${limits.monthlyAnalyses} analyses/month`);
+  const analysesText =
+    limits.monthlyAnalyses === -1
+      ? language === "fr"
+        ? "Analyses illimitées"
+        : "Unlimited analyses"
+      : language === "fr"
+        ? `${limits.monthlyAnalyses} analyses/mois`
+        : `${limits.monthlyAnalyses} analyses/month`;
 
-  const chatText = limits.chatQuestionsPerVideo === -1
-    ? (language === 'fr' ? 'Chat illimité' : 'Unlimited chat')
-    : (language === 'fr' ? `Chat (${limits.chatQuestionsPerVideo} questions/vidéo)` : `Chat (${limits.chatQuestionsPerVideo} questions/video)`);
+  const chatText =
+    limits.chatQuestionsPerVideo === -1
+      ? language === "fr"
+        ? "Chat illimité"
+        : "Unlimited chat"
+      : language === "fr"
+        ? `Chat (${limits.chatQuestionsPerVideo} questions/vidéo)`
+        : `Chat (${limits.chatQuestionsPerVideo} questions/video)`;
 
-  const webSearchText = limits.webSearchMonthly === 0
-    ? (language === 'fr' ? 'Recherche web' : 'Web search')
-    : limits.webSearchMonthly === -1
-    ? (language === 'fr' ? 'Recherche web illimitée' : 'Unlimited web search')
-    : (language === 'fr' ? `Recherche web (${limits.webSearchMonthly}/mois)` : `Web search (${limits.webSearchMonthly}/mo)`);
+  const webSearchText =
+    limits.webSearchMonthly === 0
+      ? language === "fr"
+        ? "Recherche web"
+        : "Web search"
+      : limits.webSearchMonthly === -1
+        ? language === "fr"
+          ? "Recherche web illimitée"
+          : "Unlimited web search"
+        : language === "fr"
+          ? `Recherche web (${limits.webSearchMonthly}/mois)`
+          : `Web search (${limits.webSearchMonthly}/mo)`;
 
-  const playlistText = limits.maxPlaylistVideos === 0
-    ? (language === 'fr' ? 'Playlists' : 'Playlists')
-    : (language === 'fr' ? `Playlists (${limits.maxPlaylistVideos} vidéos)` : `Playlists (${limits.maxPlaylistVideos} videos)`);
+  const playlistText =
+    limits.maxPlaylistVideos === 0
+      ? language === "fr"
+        ? "Playlists"
+        : "Playlists"
+      : language === "fr"
+        ? `Playlists (${limits.maxPlaylistVideos} vidéos)`
+        : `Playlists (${limits.maxPlaylistVideos} videos)`;
 
   return [
-    { text: analysesText, included: true, highlight: limits.monthlyAnalyses >= 100 },
+    {
+      text: analysesText,
+      included: true,
+      highlight: limits.monthlyAnalyses >= 100,
+    },
     { text: chatText, included: features.chatBasic },
-    { text: webSearchText, included: features.chatWebSearch, highlight: features.chatWebSearch },
-    { text: language === 'fr' ? 'Flashcards & Cartes mentales' : 'Flashcards & Mind maps', included: features.flashcards && features.conceptMaps, highlight: plan !== 'free' },
-    { text: playlistText, included: features.playlists, highlight: features.playlists },
-    { text: language === 'fr' ? 'Export PDF' : 'PDF export', included: features.exportPdf },
-    { text: language === 'fr' ? 'Export Markdown' : 'Markdown export', included: features.exportMarkdown },
-    { text: language === 'fr' ? 'Export BibTeX' : 'BibTeX export', included: features.bibtexExport },
-    { text: language === 'fr' ? 'Lecture audio TTS' : 'TTS audio playback', included: features.ttsAudio },
-    { text: language === 'fr' ? 'Deep Research' : 'Deep Research', included: features.deepResearch, highlight: features.deepResearch },
-    { text: language === 'fr' ? 'Chat vocal' : 'Voice chat', included: features.voiceChat, highlight: features.voiceChat },
-  ].filter(f => f.included || plan === 'free');
+    {
+      text: webSearchText,
+      included: features.chatWebSearch,
+      highlight: features.chatWebSearch,
+    },
+    {
+      text:
+        language === "fr"
+          ? "Flashcards & Cartes mentales"
+          : "Flashcards & Mind maps",
+      included: features.flashcards && features.conceptMaps,
+      highlight: plan !== "free",
+    },
+    {
+      text: playlistText,
+      included: features.playlists,
+      highlight: features.playlists,
+    },
+    {
+      text: language === "fr" ? "Export PDF" : "PDF export",
+      included: features.exportPdf,
+    },
+    {
+      text: language === "fr" ? "Export Markdown" : "Markdown export",
+      included: features.exportMarkdown,
+    },
+    {
+      text: language === "fr" ? "Export BibTeX" : "BibTeX export",
+      included: features.bibtexExport,
+    },
+    {
+      text: language === "fr" ? "Lecture audio TTS" : "TTS audio playback",
+      included: features.ttsAudio,
+    },
+    {
+      text: language === "fr" ? "Deep Research" : "Deep Research",
+      included: features.deepResearch,
+      highlight: features.deepResearch,
+    },
+    {
+      text: language === "fr" ? "Chat vocal" : "Voice chat",
+      included: features.voiceChat,
+      highlight: features.voiceChat,
+    },
+  ].filter((f) => f.included || plan === "free");
 }
 
 export default {

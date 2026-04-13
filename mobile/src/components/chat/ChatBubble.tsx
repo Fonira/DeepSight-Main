@@ -10,14 +10,20 @@
  * - Web-enriched badge when message used web search
  */
 
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+import React, { useMemo } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
+import Svg, { Path } from "react-native-svg";
+import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
 /**
  * iMessage-style bubble tail using smooth cubic beziers.
@@ -32,28 +38,31 @@ import { Spacing, Typography, BorderRadius } from '../../constants/theme';
 const TAIL_W = 15;
 const TAIL_H = 18;
 
-const BubbleTail: React.FC<{ color: string; side: 'left' | 'right' }> = ({ color, side }) => {
+const BubbleTail: React.FC<{ color: string; side: "left" | "right" }> = ({
+  color,
+  side,
+}) => {
   // Right tail (user): starts top-left, curves down-right, concave scoop back
   // Left tail (assistant): mirrored horizontally
   const rightPath = [
-    `M${TAIL_W} 0`,                        // top-right (attaches to bubble)
-    `L${TAIL_W} ${TAIL_H - 6}`,            // straight down along bubble edge
+    `M${TAIL_W} 0`, // top-right (attaches to bubble)
+    `L${TAIL_W} ${TAIL_H - 6}`, // straight down along bubble edge
     `C${TAIL_W} ${TAIL_H - 2} ${TAIL_W - 2} ${TAIL_H} ${TAIL_W - 6} ${TAIL_H}`, // round to bottom
     `C${TAIL_W - 12} ${TAIL_H} ${0} ${TAIL_H - 1} ${0} ${TAIL_H - 1}`, // kick out to the tip
-    `C${3} ${TAIL_H - 4} ${7} ${TAIL_H - 9} ${TAIL_W} ${0}`,  // concave scoop back up
-    'Z',
-  ].join(' ');
+    `C${3} ${TAIL_H - 4} ${7} ${TAIL_H - 9} ${TAIL_W} ${0}`, // concave scoop back up
+    "Z",
+  ].join(" ");
 
   const leftPath = [
-    'M0 0',                                 // top-left (attaches to bubble)
-    `L0 ${TAIL_H - 6}`,                    // straight down along bubble edge
+    "M0 0", // top-left (attaches to bubble)
+    `L0 ${TAIL_H - 6}`, // straight down along bubble edge
     `C0 ${TAIL_H - 2} 2 ${TAIL_H} 6 ${TAIL_H}`, // round to bottom
     `C12 ${TAIL_H} ${TAIL_W} ${TAIL_H - 1} ${TAIL_W} ${TAIL_H - 1}`, // kick out to the tip
     `C${TAIL_W - 3} ${TAIL_H - 4} ${TAIL_W - 7} ${TAIL_H - 9} 0 0`, // concave scoop back up
-    'Z',
-  ].join(' ');
+    "Z",
+  ].join(" ");
 
-  const d = side === 'right' ? rightPath : leftPath;
+  const d = side === "right" ? rightPath : leftPath;
 
   return (
     <Svg
@@ -61,7 +70,7 @@ const BubbleTail: React.FC<{ color: string; side: 'left' | 'right' }> = ({ color
       height={TAIL_H}
       style={[
         styles.tail,
-        side === 'left' ? styles.tailLeft : styles.tailRight,
+        side === "left" ? styles.tailLeft : styles.tailRight,
       ]}
     >
       <Path d={d} fill={color} />
@@ -86,18 +95,18 @@ export function parseAskQuestions(content: string): ParsedContent {
   }
 
   // Remove [ask:...] from visible text
-  const text = content.replace(regex, '').trim();
+  const text = content.replace(regex, "").trim();
   return { text, questions };
 }
 
 /** Remove [[concept]] wiki-style markers from question text */
 export function cleanQuestion(q: string): string {
-  return q.replace(/\[\[([^\]]+)\]\]/g, '$1').trim();
+  return q.replace(/\[\[([^\]]+)\]\]/g, "$1").trim();
 }
 
 // ── Props ──────────────────────────────────────────────────────────
 export interface ChatBubbleProps {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp?: string;
   showTimestamp?: boolean;
@@ -121,7 +130,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   children,
 }) => {
   const { colors } = useTheme();
-  const isUser = role === 'user';
+  const isUser = role === "user";
 
   // Parse [ask:] questions from assistant messages
   const parsed = useMemo(() => {
@@ -131,7 +140,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
   // Teal for user, glass-dark for assistant
   const bubbleBg = isUser ? colors.accentTertiary : colors.bgSecondary;
-  const textColor = isUser ? '#FFFFFF' : colors.textPrimary;
+  const textColor = isUser ? "#FFFFFF" : colors.textPrimary;
 
   const handleQuestionTap = (q: string) => {
     if (!onQuestionPress) return;
@@ -141,7 +150,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(index * 60).duration(300).springify()}
+      entering={FadeInDown.delay(index * 60)
+        .duration(300)
+        .springify()}
       style={[
         styles.container,
         isUser ? styles.containerUser : styles.containerAssistant,
@@ -149,7 +160,12 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     >
       {/* Assistant avatar */}
       {!isUser && (
-        <View style={[styles.avatar, { backgroundColor: `${colors.accentPrimary}20` }]}>
+        <View
+          style={[
+            styles.avatar,
+            { backgroundColor: `${colors.accentPrimary}20` },
+          ]}
+        >
           <Ionicons name="sparkles" size={14} color={colors.accentPrimary} />
         </View>
       )}
@@ -157,70 +173,97 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
       <View style={styles.bubbleWrapper}>
         <BubbleTail
           color={isUser ? bubbleBg : colors.bgSecondary}
-          side={isUser ? 'right' : 'left'}
+          side={isUser ? "right" : "left"}
         />
-      <View
-        style={[
-          styles.bubble,
-          isUser ? styles.bubbleUser : styles.bubbleAssistant,
-          { backgroundColor: bubbleBg },
-          !isUser && { borderColor: colors.glassBorder, borderWidth: 1 },
-        ]}
-      >
-        {/* Web search badge */}
-        {!isUser && webSearchUsed && (
-          <View style={[styles.webBadge, { backgroundColor: `${colors.accentPrimary}15` }]}>
-            <Ionicons name="globe-outline" size={12} color={colors.accentPrimary} />
-            <Text style={[styles.webBadgeText, { color: colors.accentPrimary }]}>
-              Enrichi par le web
-            </Text>
-          </View>
-        )}
-
-        <Text style={[styles.messageText, { color: textColor }]}>
-          {parsed.text}
-        </Text>
-
-        {children}
-
-        {/* [ask:] question pills */}
-        {!isUser && parsed.questions.length > 0 && onQuestionPress && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.questionsList}
-            style={styles.questionsContainer}
-          >
-            {parsed.questions.map((q, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[styles.questionPill, { borderColor: `${colors.accentPrimary}40`, backgroundColor: `${colors.accentPrimary}10` }]}
-                onPress={() => handleQuestionTap(q)}
-                activeOpacity={0.7}
+        <View
+          style={[
+            styles.bubble,
+            isUser ? styles.bubbleUser : styles.bubbleAssistant,
+            { backgroundColor: bubbleBg },
+            !isUser && { borderColor: colors.glassBorder, borderWidth: 1 },
+          ]}
+        >
+          {/* Web search badge */}
+          {!isUser && webSearchUsed && (
+            <View
+              style={[
+                styles.webBadge,
+                { backgroundColor: `${colors.accentPrimary}15` },
+              ]}
+            >
+              <Ionicons
+                name="globe-outline"
+                size={12}
+                color={colors.accentPrimary}
+              />
+              <Text
+                style={[styles.webBadgeText, { color: colors.accentPrimary }]}
               >
-                <Ionicons name="arrow-forward-circle-outline" size={13} color={colors.accentPrimary} />
-                <Text style={[styles.questionPillText, { color: colors.textPrimary }]} numberOfLines={2}>
-                  {cleanQuestion(q)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+                Enrichi par le web
+              </Text>
+            </View>
+          )}
 
-        {showTimestamp && timestamp && (
-          <Text
-            style={[
-              styles.timestamp,
-              { color: isUser ? 'rgba(255,255,255,0.6)' : colors.textMuted },
-            ]}
-          >
-            {new Date(timestamp).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+          <Text style={[styles.messageText, { color: textColor }]}>
+            {parsed.text}
           </Text>
-        )}
-      </View>
+
+          {children}
+
+          {/* [ask:] question pills */}
+          {!isUser && parsed.questions.length > 0 && onQuestionPress && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.questionsList}
+              style={styles.questionsContainer}
+            >
+              {parsed.questions.map((q, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[
+                    styles.questionPill,
+                    {
+                      borderColor: `${colors.accentPrimary}40`,
+                      backgroundColor: `${colors.accentPrimary}10`,
+                    },
+                  ]}
+                  onPress={() => handleQuestionTap(q)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="arrow-forward-circle-outline"
+                    size={13}
+                    color={colors.accentPrimary}
+                  />
+                  <Text
+                    style={[
+                      styles.questionPillText,
+                      { color: colors.textPrimary },
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {cleanQuestion(q)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+
+          {showTimestamp && timestamp && (
+            <Text
+              style={[
+                styles.timestamp,
+                { color: isUser ? "rgba(255,255,255,0.6)" : colors.textMuted },
+              ]}
+            >
+              {new Date(timestamp).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          )}
+        </View>
       </View>
     </Animated.View>
   );
@@ -228,23 +271,23 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: Spacing.sm,
     paddingHorizontal: Spacing.xs,
   },
   containerUser: {
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   containerAssistant: {
-    justifyContent: 'flex-start',
-    alignItems: 'flex-end',
+    justifyContent: "flex-start",
+    alignItems: "flex-end",
   },
   avatar: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: Spacing.sm,
     marginBottom: 4,
   },
@@ -254,11 +297,11 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
   },
   bubbleWrapper: {
-    position: 'relative',
-    maxWidth: '78%',
+    position: "relative",
+    maxWidth: "78%",
   },
   tail: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -1,
   },
   tailLeft: {
@@ -282,14 +325,14 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs - 2,
     fontFamily: Typography.fontFamily.body,
     marginTop: Spacing.xs,
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
   // Web search badge
   webBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
@@ -308,8 +351,8 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.xs,
   },
   questionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 5,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 6,

@@ -1,15 +1,15 @@
-import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useMemo } from "react";
+import { View, StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withRepeat,
   withSequence,
   withTiming,
   Easing,
-} from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
-import { useTheme } from '../../contexts/ThemeContext';
-import { DOODLE_MAP, DoodleName } from './doodlePaths';
+} from "react-native-reanimated";
+import Svg, { Path } from "react-native-svg";
+import { useTheme } from "../../contexts/ThemeContext";
+import { DOODLE_MAP, DoodleName } from "./doodlePaths";
 
 interface DoodleIconProps {
   name: DoodleName;
@@ -65,27 +65,19 @@ export const DoodleIcon: React.FC<DoodleIconProps> = ({
     const floatingY = withRepeat(
       withSequence(
         withTiming(-4, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(4, { duration: 2000, easing: Easing.inOut(Easing.sin) })
+        withTiming(4, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,
-      true
+      true,
     );
 
     return {
-      transform: [
-        { translateY: floatingY },
-        { rotate: `${rotation}deg` },
-      ],
+      transform: [{ translateY: floatingY }, { rotate: `${rotation}deg` }],
     };
   }, [animated, rotation]);
 
   return (
-    <Animated.View
-      style={[
-        animatedStyle,
-        style,
-      ]}
-    >
+    <Animated.View style={[animatedStyle, style]}>
       <Svg
         width={size}
         height={size}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,12 @@ import {
   Modal,
   ScrollView,
   Animated,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { Colors, Spacing, BorderRadius, Typography } from '../constants/theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "../contexts/ThemeContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { Colors, Spacing, BorderRadius, Typography } from "../constants/theme";
 
 interface ReliabilityFactor {
   name: string;
@@ -32,16 +32,16 @@ interface ReliabilityScoreProps {
 
 const getScoreColor = (score: number): string => {
   if (score >= 80) return Colors.accentSuccess;
-  if (score >= 60) return '#84CC16'; // lime
+  if (score >= 60) return "#84CC16"; // lime
   if (score >= 40) return Colors.accentWarning;
   return Colors.accentError;
 };
 
 const getScoreLabel = (score: number, isEn: boolean): string => {
-  if (score >= 80) return isEn ? 'High' : 'Élevée';
-  if (score >= 60) return isEn ? 'Good' : 'Bonne';
-  if (score >= 40) return isEn ? 'Moderate' : 'Modérée';
-  return isEn ? 'Low' : 'Faible';
+  if (score >= 80) return isEn ? "High" : "Élevée";
+  if (score >= 60) return isEn ? "Good" : "Bonne";
+  if (score >= 40) return isEn ? "Moderate" : "Modérée";
+  return isEn ? "Low" : "Faible";
 };
 
 export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
@@ -55,7 +55,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
 }) => {
   const { colors, isDark } = useTheme();
   const { language } = useLanguage();
-  const isEn = language === 'en';
+  const isEn = language === "en";
 
   const [showDetails, setShowDetails] = useState(false);
 
@@ -66,27 +66,27 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
     return (
       <TouchableOpacity
         onPress={() => setShowDetails(true)}
-        style={[styles.compactContainer, { backgroundColor: scoreColor + '20' }]}
+        style={[
+          styles.compactContainer,
+          { backgroundColor: scoreColor + "20" },
+        ]}
       >
         <Ionicons name="shield-checkmark" size={12} color={scoreColor} />
-        <Text style={[styles.compactScore, { color: scoreColor }]}>{overallScore}%</Text>
+        <Text style={[styles.compactScore, { color: scoreColor }]}>
+          {overallScore}%
+        </Text>
       </TouchableOpacity>
     );
   }
 
   return (
     <>
-      <View
-        style={[
-          styles.container,
-          { backgroundColor: colors.bgSecondary },
-        ]}
-      >
+      <View style={[styles.container, { backgroundColor: colors.bgSecondary }]}>
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <Ionicons name="shield-checkmark" size={18} color={scoreColor} />
             <Text style={[styles.title, { color: colors.textPrimary }]}>
-              {isEn ? 'Reliability Score' : 'Score de fiabilité'}
+              {isEn ? "Reliability Score" : "Score de fiabilité"}
             </Text>
           </View>
           <TouchableOpacity onPress={() => setShowDetails(true)}>
@@ -102,22 +102,35 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
         <View style={styles.scoreSection}>
           <View style={styles.scoreCircle}>
             <LinearGradient
-              colors={[scoreColor + '40', scoreColor + '10']}
+              colors={[scoreColor + "40", scoreColor + "10"]}
               style={styles.scoreGradient}
             >
-              <Text style={[styles.scoreValue, { color: scoreColor }]}>{overallScore}</Text>
+              <Text style={[styles.scoreValue, { color: scoreColor }]}>
+                {overallScore}
+              </Text>
               <Text style={[styles.scoreMax, { color: colors.textMuted }]}>
                 /100
               </Text>
             </LinearGradient>
           </View>
           <View style={styles.scoreInfo}>
-            <View style={[styles.scoreBadge, { backgroundColor: scoreColor + '20' }]}>
-              <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>{scoreLabel}</Text>
+            <View
+              style={[
+                styles.scoreBadge,
+                { backgroundColor: scoreColor + "20" },
+              ]}
+            >
+              <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>
+                {scoreLabel}
+              </Text>
             </View>
             {confidence !== undefined && (
-              <Text style={[styles.confidenceText, { color: colors.textMuted }]}>
-                {isEn ? `Confidence: ${confidence}%` : `Confiance: ${confidence}%`}
+              <Text
+                style={[styles.confidenceText, { color: colors.textMuted }]}
+              >
+                {isEn
+                  ? `Confidence: ${confidence}%`
+                  : `Confiance: ${confidence}%`}
               </Text>
             )}
           </View>
@@ -145,7 +158,12 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
                     ]}
                   />
                 </View>
-                <Text style={[styles.factorScore, { color: getScoreColor(factor.score) }]}>
+                <Text
+                  style={[
+                    styles.factorScore,
+                    { color: getScoreColor(factor.score) },
+                  ]}
+                >
                   {factor.score}%
                 </Text>
               </View>
@@ -161,18 +179,18 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
             style={[styles.analyzeButton, { borderColor: scoreColor }]}
           >
             <Ionicons
-              name={isLoading ? 'hourglass' : 'analytics'}
+              name={isLoading ? "hourglass" : "analytics"}
               size={16}
               color={scoreColor}
             />
             <Text style={[styles.analyzeButtonText, { color: scoreColor }]}>
               {isLoading
                 ? isEn
-                  ? 'Analyzing...'
-                  : 'Analyse en cours...'
+                  ? "Analyzing..."
+                  : "Analyse en cours..."
                 : isEn
-                ? 'Detailed Analysis'
-                : 'Analyse détaillée'}
+                  ? "Detailed Analysis"
+                  : "Analyse détaillée"}
             </Text>
           </TouchableOpacity>
         )}
@@ -182,14 +200,11 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
       <Modal visible={showDetails} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View
-            style={[
-              styles.modalContent,
-              { backgroundColor: colors.bgPrimary },
-            ]}
+            style={[styles.modalContent, { backgroundColor: colors.bgPrimary }]}
           >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-                {isEn ? 'Reliability Details' : 'Détails de fiabilité'}
+                {isEn ? "Reliability Details" : "Détails de fiabilité"}
               </Text>
               <TouchableOpacity onPress={() => setShowDetails(false)}>
                 <Ionicons name="close" size={24} color={colors.textPrimary} />
@@ -200,9 +215,20 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
               {/* Overall Score */}
               <View style={styles.modalSection}>
                 <View style={styles.modalScoreDisplay}>
-                  <Text style={[styles.modalScoreValue, { color: scoreColor }]}>{overallScore}%</Text>
-                  <View style={[styles.scoreBadge, { backgroundColor: scoreColor + '20' }]}>
-                    <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>{scoreLabel}</Text>
+                  <Text style={[styles.modalScoreValue, { color: scoreColor }]}>
+                    {overallScore}%
+                  </Text>
+                  <View
+                    style={[
+                      styles.scoreBadge,
+                      { backgroundColor: scoreColor + "20" },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.scoreBadgeText, { color: scoreColor }]}
+                    >
+                      {scoreLabel}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -213,7 +239,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
                   <Text
                     style={[styles.sectionTitle, { color: colors.textPrimary }]}
                   >
-                    {isEn ? 'Analysis Factors' : "Facteurs d'analyse"}
+                    {isEn ? "Analysis Factors" : "Facteurs d'analyse"}
                   </Text>
                   {factors.map((factor, index) => (
                     <View key={index} style={styles.factorCard}>
@@ -226,7 +252,12 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
                         >
                           {factor.name}
                         </Text>
-                        <Text style={[styles.factorCardScore, { color: getScoreColor(factor.score) }]}>
+                        <Text
+                          style={[
+                            styles.factorCardScore,
+                            { color: getScoreColor(factor.score) },
+                          ]}
+                        >
                           {factor.score}%
                         </Text>
                       </View>
@@ -265,11 +296,15 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
                   <Text
                     style={[styles.sectionTitle, { color: colors.textPrimary }]}
                   >
-                    {isEn ? 'Recommendations' : 'Recommandations'}
+                    {isEn ? "Recommendations" : "Recommandations"}
                   </Text>
                   {recommendations.map((rec, index) => (
                     <View key={index} style={styles.recommendationItem}>
-                      <Ionicons name="checkmark-circle" size={16} color={colors.accentInfo} />
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={16}
+                        color={colors.accentInfo}
+                      />
                       <Text
                         style={[
                           styles.recommendationText,
@@ -290,12 +325,16 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
                   { backgroundColor: colors.bgSecondary },
                 ]}
               >
-                <Ionicons name="information-circle" size={14} color={colors.accentInfo} />
+                <Ionicons
+                  name="information-circle"
+                  size={14}
+                  color={colors.accentInfo}
+                />
                 <Text
                   style={[styles.disclaimerText, { color: colors.textMuted }]}
                 >
                   {isEn
-                    ? 'This analysis is AI-generated and should be used as a guide, not as definitive fact-checking.'
+                    ? "This analysis is AI-generated and should be used as a guide, not as definitive fact-checking."
                     : "Cette analyse est générée par IA et doit être utilisée comme guide, pas comme vérification définitive."}
                 </Text>
               </View>
@@ -314,8 +353,8 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   compactContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.full,
@@ -326,13 +365,13 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   title: {
@@ -340,24 +379,24 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
   },
   scoreSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
   },
   scoreCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   scoreGradient: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   scoreValue: {
     fontFamily: Typography.fontFamily.bodySemiBold,
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize["2xl"],
   },
   scoreMax: {
     fontFamily: Typography.fontFamily.body,
@@ -368,7 +407,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   scoreBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     borderRadius: BorderRadius.full,
@@ -385,8 +424,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   factorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   factorName: {
@@ -397,23 +436,23 @@ const styles = StyleSheet.create({
   factorBarContainer: {
     flex: 1,
     height: 4,
-    backgroundColor: Colors.bgPrimary + '40',
+    backgroundColor: Colors.bgPrimary + "40",
     borderRadius: 2,
   },
   factorBar: {
-    height: '100%',
+    height: "100%",
     borderRadius: 2,
   },
   factorScore: {
     fontFamily: Typography.fontFamily.bodySemiBold,
     fontSize: Typography.fontSize.xs,
     width: 40,
-    textAlign: 'right',
+    textAlign: "right",
   },
   analyzeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
@@ -425,19 +464,19 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    maxHeight: '80%',
+    maxHeight: "80%",
     borderTopLeftRadius: BorderRadius.xxl,
     borderTopRightRadius: BorderRadius.xxl,
     padding: Spacing.lg,
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: Spacing.lg,
   },
   modalTitle: {
@@ -451,14 +490,14 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   modalScoreDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.md,
   },
   modalScoreValue: {
     fontFamily: Typography.fontFamily.bodySemiBold,
-    fontSize: Typography.fontSize['4xl'],
+    fontSize: Typography.fontSize["4xl"],
   },
   sectionTitle: {
     fontFamily: Typography.fontFamily.bodySemiBold,
@@ -470,9 +509,9 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   factorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   factorCardName: {
     fontFamily: Typography.fontFamily.bodyMedium,
@@ -487,7 +526,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   factorFullBarFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
   },
   factorDescription: {
@@ -495,8 +534,8 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
   },
   recommendationItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: Spacing.sm,
     marginBottom: Spacing.sm,
   },
@@ -507,8 +546,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   disclaimer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     gap: Spacing.sm,

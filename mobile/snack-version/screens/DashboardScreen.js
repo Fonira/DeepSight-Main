@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,73 +7,79 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 
 const colors = {
-  bgPrimary: '#0a0a0b',
-  bgSecondary: '#111113',
-  bgElevated: '#1f1f23',
-  textPrimary: '#FAFAF9',
-  textSecondary: '#A1A1AA',
-  textTertiary: '#71717A',
-  accentPrimary: '#6366F1',
-  border: '#27272A',
+  bgPrimary: "#0a0a0b",
+  bgSecondary: "#111113",
+  bgElevated: "#1f1f23",
+  textPrimary: "#FAFAF9",
+  textSecondary: "#A1A1AA",
+  textTertiary: "#71717A",
+  accentPrimary: "#6366F1",
+  border: "#27272A",
 };
 
 const analysisTypes = [
-  { id: 'synthesis', label: 'Synthèse', icon: 'document-text' },
-  { id: 'detailed', label: 'Détaillé', icon: 'list' },
-  { id: 'critique', label: 'Critique', icon: 'alert-circle' },
-  { id: 'educational', label: 'Éducatif', icon: 'school' },
+  { id: "synthesis", label: "Synthèse", icon: "document-text" },
+  { id: "detailed", label: "Détaillé", icon: "list" },
+  { id: "critique", label: "Critique", icon: "alert-circle" },
+  { id: "educational", label: "Éducatif", icon: "school" },
 ];
 
 const recentVideos = [
   {
-    id: '1',
-    title: 'Comment fonctionne l\'IA en 2024',
-    channel: 'Tech Explained',
-    thumbnail: '🤖',
-    date: 'Il y a 2h',
+    id: "1",
+    title: "Comment fonctionne l'IA en 2024",
+    channel: "Tech Explained",
+    thumbnail: "🤖",
+    date: "Il y a 2h",
   },
   {
-    id: '2',
-    title: 'Les secrets de la productivité',
-    channel: 'Mindset Pro',
-    thumbnail: '🚀',
-    date: 'Hier',
+    id: "2",
+    title: "Les secrets de la productivité",
+    channel: "Mindset Pro",
+    thumbnail: "🚀",
+    date: "Hier",
   },
   {
-    id: '3',
-    title: 'Apprendre React Native',
-    channel: 'Code Academy',
-    thumbnail: '📱',
-    date: 'Il y a 3j',
+    id: "3",
+    title: "Apprendre React Native",
+    channel: "Code Academy",
+    thumbnail: "📱",
+    date: "Il y a 3j",
   },
 ];
 
 export default function DashboardScreen() {
-  const [videoUrl, setVideoUrl] = useState('');
-  const [selectedType, setSelectedType] = useState('synthesis');
+  const [videoUrl, setVideoUrl] = useState("");
+  const [selectedType, setSelectedType] = useState("synthesis");
   const [analyzing, setAnalyzing] = useState(false);
 
   const handleAnalyze = () => {
     if (!videoUrl.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer une URL YouTube');
+      Alert.alert("Erreur", "Veuillez entrer une URL YouTube");
       return;
     }
     setAnalyzing(true);
     setTimeout(() => {
       setAnalyzing(false);
-      Alert.alert('Analyse terminée !', 'Votre vidéo a été analysée avec succès.');
-      setVideoUrl('');
+      Alert.alert(
+        "Analyse terminée !",
+        "Votre vidéo a été analysée avec succès.",
+      );
+      setVideoUrl("");
     }, 2000);
   };
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -87,7 +93,7 @@ export default function DashboardScreen() {
 
         {/* Credits Card */}
         <LinearGradient
-          colors={['#6366F1', '#8B5CF6']}
+          colors={["#6366F1", "#8B5CF6"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.creditsCard}
@@ -122,15 +128,23 @@ export default function DashboardScreen() {
             autoCapitalize="none"
           />
           {videoUrl.length > 0 && (
-            <TouchableOpacity onPress={() => setVideoUrl('')}>
-              <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
+            <TouchableOpacity onPress={() => setVideoUrl("")}>
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={colors.textTertiary}
+              />
             </TouchableOpacity>
           )}
         </View>
 
         {/* Analysis Types */}
         <Text style={styles.optionLabel}>Type d'analyse</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typesScroll}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.typesScroll}
+        >
           {analysisTypes.map((type) => (
             <TouchableOpacity
               key={type.id}
@@ -143,7 +157,9 @@ export default function DashboardScreen() {
               <Ionicons
                 name={type.icon}
                 size={16}
-                color={selectedType === type.id ? '#FFFFFF' : colors.textSecondary}
+                color={
+                  selectedType === type.id ? "#FFFFFF" : colors.textSecondary
+                }
               />
               <Text
                 style={[
@@ -160,7 +176,7 @@ export default function DashboardScreen() {
         {/* Analyze Button */}
         <TouchableOpacity onPress={handleAnalyze} disabled={analyzing}>
           <LinearGradient
-            colors={analyzing ? ['#4B5563', '#6B7280'] : ['#6366F1', '#8B5CF6']}
+            colors={analyzing ? ["#4B5563", "#6B7280"] : ["#6366F1", "#8B5CF6"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.analyzeButton}
@@ -196,7 +212,11 @@ export default function DashboardScreen() {
               <Text style={styles.videoChannel}>{video.channel}</Text>
               <Text style={styles.videoDate}>{video.date}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textTertiary}
+            />
           </TouchableOpacity>
         ))}
 
@@ -216,9 +236,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingTop: 60,
     marginBottom: 24,
   },
@@ -228,7 +248,7 @@ const styles = StyleSheet.create({
   },
   username: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
   },
   avatar: {
@@ -236,13 +256,13 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: colors.accentPrimary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   creditsCard: {
     borderRadius: 16,
@@ -250,56 +270,56 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   creditsContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   creditsLabel: {
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
     fontSize: 14,
     marginBottom: 4,
   },
   creditsValue: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 32,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   planBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 20,
   },
   planText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   upgradeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignSelf: 'flex-start',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignSelf: "flex-start",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     marginTop: 16,
   },
   upgradeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     marginRight: 4,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
     marginBottom: 16,
   },
   urlInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.bgElevated,
     borderRadius: 12,
     borderWidth: 1,
@@ -323,8 +343,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   typeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.bgElevated,
     borderRadius: 20,
     paddingHorizontal: 16,
@@ -340,40 +360,40 @@ const styles = StyleSheet.create({
   typeChipText: {
     color: colors.textSecondary,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     marginLeft: 8,
   },
   typeChipTextActive: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   analyzeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 12,
     paddingVertical: 16,
     marginBottom: 32,
   },
   analyzeButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginLeft: 8,
   },
   recentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   seeAll: {
     color: colors.accentPrimary,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   videoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.bgElevated,
     borderRadius: 12,
     padding: 12,
@@ -384,8 +404,8 @@ const styles = StyleSheet.create({
     height: 50,
     backgroundColor: colors.bgSecondary,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   videoEmoji: {
     fontSize: 24,
@@ -397,7 +417,7 @@ const styles = StyleSheet.create({
   videoTitle: {
     color: colors.textPrimary,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 4,
   },
   videoChannel: {

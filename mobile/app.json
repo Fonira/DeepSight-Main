@@ -12,9 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#0a0a0b"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.deepsight.app",
@@ -31,10 +29,7 @@
         "NSPhotoLibraryUsageDescription": "Deep Sight needs photo library access to select a profile photo.",
         "ITSAppUsesNonExemptEncryption": false,
         "NSFaceIDUsageDescription": "Deep Sight uses Face ID for secure authentication.",
-        "UIBackgroundModes": [
-          "fetch",
-          "remote-notification"
-        ]
+        "UIBackgroundModes": ["fetch", "remote-notification"]
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -77,10 +72,7 @@
               "scheme": "deepsight"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         },
         {
           "action": "SEND",
@@ -89,9 +81,7 @@
               "mimeType": "text/plain"
             }
           ],
-          "category": [
-            "DEFAULT"
-          ]
+          "category": ["DEFAULT"]
         },
         {
           "action": "SEND",
@@ -100,9 +90,7 @@
               "mimeType": "text/*"
             }
           ],
-          "category": [
-            "DEFAULT"
-          ]
+          "category": ["DEFAULT"]
         }
       ]
     },

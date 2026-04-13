@@ -4,4 +4,4 @@
  * Central export for all configuration files
  */
 
-export * from './planPrivileges';
+export * from "./planPrivileges";

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,16 +6,16 @@ import {
   Animated,
   TouchableOpacity,
   Dimensions,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastType = "success" | "error" | "warning" | "info";
 
 export interface ToastProps {
   visible: boolean;
@@ -29,17 +29,35 @@ export interface ToastProps {
   };
 }
 
-const toastConfig: Record<ToastType, { icon: keyof typeof Ionicons.glyphMap; haptic: Haptics.NotificationFeedbackType }> = {
-  success: { icon: 'checkmark-circle', haptic: Haptics.NotificationFeedbackType.Success },
-  error: { icon: 'alert-circle', haptic: Haptics.NotificationFeedbackType.Error },
-  warning: { icon: 'warning', haptic: Haptics.NotificationFeedbackType.Warning },
-  info: { icon: 'information-circle', haptic: Haptics.NotificationFeedbackType.Success },
+const toastConfig: Record<
+  ToastType,
+  {
+    icon: keyof typeof Ionicons.glyphMap;
+    haptic: Haptics.NotificationFeedbackType;
+  }
+> = {
+  success: {
+    icon: "checkmark-circle",
+    haptic: Haptics.NotificationFeedbackType.Success,
+  },
+  error: {
+    icon: "alert-circle",
+    haptic: Haptics.NotificationFeedbackType.Error,
+  },
+  warning: {
+    icon: "warning",
+    haptic: Haptics.NotificationFeedbackType.Warning,
+  },
+  info: {
+    icon: "information-circle",
+    haptic: Haptics.NotificationFeedbackType.Success,
+  },
 };
 
 export const Toast: React.FC<ToastProps> = ({
   visible,
   message,
-  type = 'info',
+  type = "info",
   duration = 3000,
   onDismiss,
   action,
@@ -55,13 +73,13 @@ export const Toast: React.FC<ToastProps> = ({
 
   const getBackgroundColor = () => {
     switch (type) {
-      case 'success':
+      case "success":
         return colors.accentSuccess;
-      case 'error':
+      case "error":
         return colors.accentError;
-      case 'warning':
+      case "warning":
         return colors.accentWarning;
-      case 'info':
+      case "info":
       default:
         return colors.accentInfo || colors.accentPrimary;
     }
@@ -187,10 +205,20 @@ export const Toast: React.FC<ToastProps> = ({
 };
 
 // Toast Context for global toast management
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType, options?: { duration?: number; action?: ToastProps['action'] }) => void;
+  showToast: (
+    message: string,
+    type?: ToastType,
+    options?: { duration?: number; action?: ToastProps["action"] },
+  ) => void;
   hideToast: () => void;
 }
 
@@ -201,33 +229,38 @@ interface ToastState {
   message: string;
   type: ToastType;
   duration: number;
-  action?: ToastProps['action'];
+  action?: ToastProps["action"];
 }
 
-export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const ToastProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [toast, setToast] = useState<ToastState>({
     visible: false,
-    message: '',
-    type: 'info',
+    message: "",
+    type: "info",
     duration: 3000,
   });
 
-  const showToast = useCallback((
-    message: string,
-    type: ToastType = 'info',
-    options?: { duration?: number; action?: ToastProps['action'] }
-  ) => {
-    setToast({
-      visible: true,
-      message,
-      type,
-      duration: options?.duration ?? 3000,
-      action: options?.action,
-    });
-  }, []);
+  const showToast = useCallback(
+    (
+      message: string,
+      type: ToastType = "info",
+      options?: { duration?: number; action?: ToastProps["action"] },
+    ) => {
+      setToast({
+        visible: true,
+        message,
+        type,
+        duration: options?.duration ?? 3000,
+        action: options?.action,
+      });
+    },
+    [],
+  );
 
   const hideToast = useCallback(() => {
-    setToast(prev => ({ ...prev, visible: false }));
+    setToast((prev) => ({ ...prev, visible: false }));
   }, []);
 
   return (
@@ -248,19 +281,19 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 export const useToast = () => {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
+    throw new Error("useToast must be used within a ToastProvider");
   }
   return context;
 };
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
+    position: "absolute",
     left: Spacing.md,
     right: Spacing.md,
     maxWidth: SCREEN_WIDTH - Spacing.md * 2,
     borderRadius: BorderRadius.lg,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -268,14 +301,14 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   content: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     gap: Spacing.sm,
   },
   message: {
     flex: 1,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodyMedium,
     lineHeight: Typography.fontSize.sm * 1.4,
@@ -283,11 +316,11 @@ const styles = StyleSheet.create({
   actionButton: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: BorderRadius.sm,
   },
   actionText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },

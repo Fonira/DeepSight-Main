@@ -3,8 +3,8 @@
  * Écran d'étude interactif avec modes flashcards et quiz
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { analytics } from '../services/analytics';
+import React, { useState, useEffect, useCallback } from "react";
+import { analytics } from "../services/analytics";
 import {
   View,
   Text,
@@ -12,34 +12,37 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-} from 'react-native';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Linking } from 'react-native';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { studyApi, videoApi } from '../services/api';
-import { Button } from '../components/ui/Button';
-import { FlashcardsComponent } from '../components/study/FlashcardsComponent';
-import { QuizComponent, QuizQuestion } from '../components/study/QuizComponent';
-import { Header } from '../components/Header';
-import { Spacing, Typography, BorderRadius } from '../constants/theme';
-import { usePlan } from '../hooks/usePlan';
-import { getPlanInfo } from '../config/planPrivileges';
-import type { RootStackParamList } from '../types';
+import { Linking } from "react-native";
+import { useTheme } from "../contexts/ThemeContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { studyApi, videoApi } from "../services/api";
+import { Button } from "../components/ui/Button";
+import { FlashcardsComponent } from "../components/study/FlashcardsComponent";
+import { QuizComponent, QuizQuestion } from "../components/study/QuizComponent";
+import { Header } from "../components/Header";
+import { Spacing, Typography, BorderRadius } from "../constants/theme";
+import { usePlan } from "../hooks/usePlan";
+import { getPlanInfo } from "../config/planPrivileges";
+import type { RootStackParamList } from "../types";
 
-type StudyScreenRouteProp = RouteProp<RootStackParamList, 'StudyTools'>;
-type StudyScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'StudyTools'>;
+type StudyScreenRouteProp = RouteProp<RootStackParamList, "StudyTools">;
+type StudyScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "StudyTools"
+>;
 
-type StudyMode = 'flashcards' | 'quiz' | null;
-type StudyState = 'selecting' | 'loading' | 'studying' | 'completed' | 'error';
+type StudyMode = "flashcards" | "quiz" | null;
+type StudyState = "selecting" | "loading" | "studying" | "completed" | "error";
 
 interface Flashcard {
   front: string;
@@ -54,16 +57,16 @@ export const StudyScreen: React.FC = () => {
   const { t, language } = useLanguage();
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('academic');
+  useScreenDoodleVariant("academic");
   const { flashcardsEnabled } = usePlan();
 
   const { summaryId } = route.params;
 
   // State
   const [mode, setMode] = useState<StudyMode>(null);
-  const [state, setState] = useState<StudyState>('selecting');
+  const [state, setState] = useState<StudyState>("selecting");
   const [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState<string>('');
+  const [title, setTitle] = useState<string>("");
 
   // Data
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -74,9 +77,11 @@ export const StudyScreen: React.FC = () => {
     const loadSummary = async () => {
       try {
         const summary = await videoApi.getSummary(summaryId);
-        setTitle(summary.title || 'Étude');
+        setTitle(summary.title || "Étude");
       } catch (err) {
-        if (__DEV__) { console.error('Failed to load summary:', err); }
+        if (__DEV__) {
+          console.error("Failed to load summary:", err);
+        }
       }
     };
 
@@ -84,87 +89,105 @@ export const StudyScreen: React.FC = () => {
   }, [summaryId]);
 
   // Generate content when mode is selected
-  const generateContent = useCallback(async (selectedMode: StudyMode) => {
-    if (!selectedMode) return;
+  const generateContent = useCallback(
+    async (selectedMode: StudyMode) => {
+      if (!selectedMode) return;
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setState('loading');
-    setError(null);
-    setMode(selectedMode);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setState("loading");
+      setError(null);
+      setMode(selectedMode);
 
-    try {
-      if (selectedMode === 'flashcards') {
-        const response = await studyApi.generateFlashcards(summaryId);
-        setFlashcards(response.flashcards.map(f => ({
-          front: f.front,
-          back: f.back,
-          category: f.category,
-        })));
-      } else {
-        const response = await studyApi.generateQuiz(summaryId);
-        // Convert API response to QuizQuestion format
-        setQuiz(response.quiz.map(q => ({
-          question: q.question,
-          options: q.options,
-          correct: q.correct_index,
-          explanation: q.explanation || '',
-        })));
+      try {
+        if (selectedMode === "flashcards") {
+          const response = await studyApi.generateFlashcards(summaryId);
+          setFlashcards(
+            response.flashcards.map((f) => ({
+              front: f.front,
+              back: f.back,
+              category: f.category,
+            })),
+          );
+        } else {
+          const response = await studyApi.generateQuiz(summaryId);
+          // Convert API response to QuizQuestion format
+          setQuiz(
+            response.quiz.map((q) => ({
+              question: q.question,
+              options: q.options,
+              correct: q.correct_index,
+              explanation: q.explanation || "",
+            })),
+          );
+        }
+
+        setState("studying");
+        analytics.track("study_content_generated", {
+          mode: selectedMode,
+          summary_id: summaryId,
+        });
+        refreshUser(); // Refresh credits
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (err: any) {
+        if (__DEV__) {
+          console.error("Failed to generate content:", err);
+        }
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+
+        if (err.status === 402) {
+          setError(
+            language === "fr"
+              ? "Crédits insuffisants. Veuillez recharger votre compte."
+              : "Insufficient credits. Please upgrade your account.",
+          );
+        } else {
+          setError(
+            err.message ||
+              (language === "fr"
+                ? "Erreur lors de la génération du contenu"
+                : "Error generating content"),
+          );
+        }
+        setState("error");
       }
-
-      setState('studying');
-      analytics.track('study_content_generated', { mode: selectedMode, summary_id: summaryId });
-      refreshUser(); // Refresh credits
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (err: any) {
-      if (__DEV__) { console.error('Failed to generate content:', err); }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-
-      if (err.status === 402) {
-        setError(language === 'fr' 
-          ? 'Crédits insuffisants. Veuillez recharger votre compte.'
-          : 'Insufficient credits. Please upgrade your account.'
-        );
-      } else {
-        setError(err.message || (language === 'fr' 
-          ? 'Erreur lors de la génération du contenu'
-          : 'Error generating content'
-        ));
-      }
-      setState('error');
-    }
-  }, [summaryId, language, refreshUser]);
+    },
+    [summaryId, language, refreshUser],
+  );
 
   // Handle quiz completion
   const handleQuizComplete = useCallback((score: number, total: number) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setState('completed');
+    setState("completed");
   }, []);
 
   // Handle flashcard completion
   const handleFlashcardsComplete = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setState('completed');
+    setState("completed");
   }, []);
 
   // Retry
   const handleRetry = useCallback(() => {
     setError(null);
-    setState('selecting');
+    setState("selecting");
     setMode(null);
   }, []);
 
   // Render mode selection
   const renderModeSelection = () => (
-    <ScrollView 
+    <ScrollView
       style={styles.scrollView}
       contentContainerStyle={styles.selectionContainer}
       showsVerticalScrollIndicator={false}
     >
       <Animated.View entering={FadeIn.duration(300)}>
         <Text style={[styles.selectionTitle, { color: colors.textPrimary }]}>
-          {language === 'fr' ? "Mode d'étude" : 'Study Mode'}
+          {language === "fr" ? "Mode d'étude" : "Study Mode"}
         </Text>
-        <Text style={[styles.selectionSubtitle, { color: colors.textSecondary }]} numberOfLines={2}>
+        <Text
+          style={[styles.selectionSubtitle, { color: colors.textSecondary }]}
+          numberOfLines={2}
+        >
           {title}
         </Text>
       </Animated.View>
@@ -172,70 +195,132 @@ export const StudyScreen: React.FC = () => {
       {/* Flashcards Option */}
       <Animated.View entering={FadeInDown.delay(100).duration(300)}>
         <TouchableOpacity
-          style={[styles.modeCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}
-          onPress={() => generateContent('flashcards')}
+          style={[
+            styles.modeCard,
+            { backgroundColor: colors.bgElevated, borderColor: colors.border },
+          ]}
+          onPress={() => generateContent("flashcards")}
           activeOpacity={0.7}
         >
-          <View style={[styles.modeIcon, { backgroundColor: `${colors.accentPrimary}20` }]}>
+          <View
+            style={[
+              styles.modeIcon,
+              { backgroundColor: `${colors.accentPrimary}20` },
+            ]}
+          >
             <Ionicons name="albums" size={32} color={colors.accentPrimary} />
           </View>
           <View style={styles.modeContent}>
             <Text style={[styles.modeTitle, { color: colors.textPrimary }]}>
-              {language === 'fr' ? 'Flashcards' : 'Flashcards'}
+              {language === "fr" ? "Flashcards" : "Flashcards"}
             </Text>
-            <Text style={[styles.modeDescription, { color: colors.textSecondary }]}>
-              {language === 'fr' 
-                ? 'Révisez avec des cartes à retourner. Swipez pour trier.'
-                : 'Review with flip cards. Swipe to sort.'
-              }
+            <Text
+              style={[styles.modeDescription, { color: colors.textSecondary }]}
+            >
+              {language === "fr"
+                ? "Révisez avec des cartes à retourner. Swipez pour trier."
+                : "Review with flip cards. Swipe to sort."}
             </Text>
             <View style={styles.modeInfo}>
-              <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
-              <Text style={[styles.modeInfoText, { color: colors.textTertiary }]}>~5 min</Text>
-              <Text style={[styles.modeInfoText, { color: colors.accentPrimary }]}>• 1 crédit</Text>
+              <Ionicons
+                name="time-outline"
+                size={14}
+                color={colors.textTertiary}
+              />
+              <Text
+                style={[styles.modeInfoText, { color: colors.textTertiary }]}
+              >
+                ~5 min
+              </Text>
+              <Text
+                style={[styles.modeInfoText, { color: colors.accentPrimary }]}
+              >
+                • 1 crédit
+              </Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={colors.textTertiary}
+          />
         </TouchableOpacity>
       </Animated.View>
 
       {/* Quiz Option */}
       <Animated.View entering={FadeInDown.delay(200).duration(300)}>
         <TouchableOpacity
-          style={[styles.modeCard, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}
-          onPress={() => generateContent('quiz')}
+          style={[
+            styles.modeCard,
+            { backgroundColor: colors.bgElevated, borderColor: colors.border },
+          ]}
+          onPress={() => generateContent("quiz")}
           activeOpacity={0.7}
         >
-          <View style={[styles.modeIcon, { backgroundColor: `${colors.accentSecondary}20` }]}>
+          <View
+            style={[
+              styles.modeIcon,
+              { backgroundColor: `${colors.accentSecondary}20` },
+            ]}
+          >
             <Ionicons name="school" size={32} color={colors.accentSecondary} />
           </View>
           <View style={styles.modeContent}>
             <Text style={[styles.modeTitle, { color: colors.textPrimary }]}>
               Quiz
             </Text>
-            <Text style={[styles.modeDescription, { color: colors.textSecondary }]}>
-              {language === 'fr' 
-                ? 'Testez votre compréhension avec des QCM.'
-                : 'Test your understanding with multiple choice questions.'
-              }
+            <Text
+              style={[styles.modeDescription, { color: colors.textSecondary }]}
+            >
+              {language === "fr"
+                ? "Testez votre compréhension avec des QCM."
+                : "Test your understanding with multiple choice questions."}
             </Text>
             <View style={styles.modeInfo}>
-              <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
-              <Text style={[styles.modeInfoText, { color: colors.textTertiary }]}>~10 min</Text>
-              <Text style={[styles.modeInfoText, { color: colors.accentSecondary }]}>• 1 crédit</Text>
+              <Ionicons
+                name="time-outline"
+                size={14}
+                color={colors.textTertiary}
+              />
+              <Text
+                style={[styles.modeInfoText, { color: colors.textTertiary }]}
+              >
+                ~10 min
+              </Text>
+              <Text
+                style={[styles.modeInfoText, { color: colors.accentSecondary }]}
+              >
+                • 1 crédit
+              </Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={colors.textTertiary}
+          />
         </TouchableOpacity>
       </Animated.View>
 
       {/* Credits Info */}
       {user && (
-        <Animated.View entering={FadeInDown.delay(300).duration(300)} style={styles.creditsInfo}>
-          <Ionicons name="wallet-outline" size={16} color={colors.textTertiary} />
+        <Animated.View
+          entering={FadeInDown.delay(300).duration(300)}
+          style={styles.creditsInfo}
+        >
+          <Ionicons
+            name="wallet-outline"
+            size={16}
+            color={colors.textTertiary}
+          />
           <Text style={[styles.creditsText, { color: colors.textTertiary }]}>
-            {language === 'fr' ? 'Crédits disponibles:' : 'Available credits:'}{' '}
-            <Text style={{ color: colors.accentPrimary, fontFamily: Typography.fontFamily.bodySemiBold }}>
+            {language === "fr" ? "Crédits disponibles:" : "Available credits:"}{" "}
+            <Text
+              style={{
+                color: colors.accentPrimary,
+                fontFamily: Typography.fontFamily.bodySemiBold,
+              }}
+            >
               {user.credits}
             </Text>
           </Text>
@@ -247,23 +332,38 @@ export const StudyScreen: React.FC = () => {
   // Render loading
   const renderLoading = () => (
     <View style={styles.centerContainer}>
-      <Animated.View entering={FadeIn.duration(300)} style={styles.loadingContent}>
-        <View style={[styles.loadingIcon, { backgroundColor: `${colors.accentPrimary}20` }]}>
-          <Ionicons 
-            name={mode === 'flashcards' ? 'albums' : 'school'} 
-            size={40} 
-            color={colors.accentPrimary} 
+      <Animated.View
+        entering={FadeIn.duration(300)}
+        style={styles.loadingContent}
+      >
+        <View
+          style={[
+            styles.loadingIcon,
+            { backgroundColor: `${colors.accentPrimary}20` },
+          ]}
+        >
+          <Ionicons
+            name={mode === "flashcards" ? "albums" : "school"}
+            size={40}
+            color={colors.accentPrimary}
           />
         </View>
-        <ActivityIndicator size="large" color={colors.accentPrimary} style={styles.spinner} />
+        <ActivityIndicator
+          size="large"
+          color={colors.accentPrimary}
+          style={styles.spinner}
+        />
         <Text style={[styles.loadingTitle, { color: colors.textPrimary }]}>
-          {language === 'fr' ? 'Génération en cours...' : 'Generating...'}
+          {language === "fr" ? "Génération en cours..." : "Generating..."}
         </Text>
         <Text style={[styles.loadingSubtitle, { color: colors.textSecondary }]}>
-          {mode === 'flashcards'
-            ? (language === 'fr' ? 'Création des flashcards' : 'Creating flashcards')
-            : (language === 'fr' ? 'Préparation du quiz' : 'Preparing quiz')
-          }
+          {mode === "flashcards"
+            ? language === "fr"
+              ? "Création des flashcards"
+              : "Creating flashcards"
+            : language === "fr"
+              ? "Préparation du quiz"
+              : "Preparing quiz"}
         </Text>
       </Animated.View>
     </View>
@@ -272,25 +372,35 @@ export const StudyScreen: React.FC = () => {
   // Render error
   const renderError = () => (
     <View style={styles.centerContainer}>
-      <Animated.View entering={FadeIn.duration(300)} style={styles.errorContent}>
-        <View style={[styles.errorIcon, { backgroundColor: `${colors.accentError}20` }]}>
+      <Animated.View
+        entering={FadeIn.duration(300)}
+        style={styles.errorContent}
+      >
+        <View
+          style={[
+            styles.errorIcon,
+            { backgroundColor: `${colors.accentError}20` },
+          ]}
+        >
           <Ionicons name="alert-circle" size={48} color={colors.accentError} />
         </View>
         <Text style={[styles.errorTitle, { color: colors.textPrimary }]}>
-          {language === 'fr' ? 'Une erreur est survenue' : 'An error occurred'}
+          {language === "fr" ? "Une erreur est survenue" : "An error occurred"}
         </Text>
         <Text style={[styles.errorMessage, { color: colors.textSecondary }]}>
           {error}
         </Text>
         <View style={styles.errorActions}>
           <Button
-            title={language === 'fr' ? 'Réessayer' : 'Retry'}
+            title={language === "fr" ? "Réessayer" : "Retry"}
             onPress={handleRetry}
             variant="secondary"
-            icon={<Ionicons name="refresh" size={18} color={colors.textPrimary} />}
+            icon={
+              <Ionicons name="refresh" size={18} color={colors.textPrimary} />
+            }
           />
           <Button
-            title={language === 'fr' ? 'Retour' : 'Back'}
+            title={language === "fr" ? "Retour" : "Back"}
             onPress={() => navigation.goBack()}
           />
         </View>
@@ -300,7 +410,7 @@ export const StudyScreen: React.FC = () => {
 
   // Render study content
   const renderStudyContent = () => {
-    if (mode === 'flashcards') {
+    if (mode === "flashcards") {
       return (
         <FlashcardsComponent
           flashcards={flashcards}
@@ -309,7 +419,7 @@ export const StudyScreen: React.FC = () => {
       );
     }
 
-    if (mode === 'quiz') {
+    if (mode === "quiz") {
       return (
         <QuizComponent
           questions={quiz}
@@ -325,14 +435,14 @@ export const StudyScreen: React.FC = () => {
   // Main render
   const renderContent = () => {
     switch (state) {
-      case 'selecting':
+      case "selecting":
         return renderModeSelection();
-      case 'loading':
+      case "loading":
         return renderLoading();
-      case 'studying':
-      case 'completed':
+      case "studying":
+      case "completed":
         return renderStudyContent();
-      case 'error':
+      case "error":
         return renderError();
       default:
         return null;
@@ -344,25 +454,32 @@ export const StudyScreen: React.FC = () => {
     return (
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <Header
-          title={language === 'fr' ? 'Mode Étude' : 'Study Mode'}
+          title={language === "fr" ? "Mode Étude" : "Study Mode"}
           showBack
         />
         <View style={styles.lockContainer}>
-          <Animated.View entering={FadeIn.duration(400)} style={styles.lockContent}>
+          <Animated.View
+            entering={FadeIn.duration(400)}
+            style={styles.lockContent}
+          >
             <Text style={styles.lockIcon}>🔒</Text>
             <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>
-              {language === 'fr'
-                ? 'Fonctionnalité réservée'
-                : 'Premium feature'}
+              {language === "fr"
+                ? "Fonctionnalité réservée"
+                : "Premium feature"}
             </Text>
-            <Text style={[styles.lockDescription, { color: colors.textSecondary }]}>
-              {language === 'fr'
+            <Text
+              style={[styles.lockDescription, { color: colors.textSecondary }]}
+            >
+              {language === "fr"
                 ? `Les flashcards et quiz sont disponibles gratuitement ! Analysez une vidéo pour commencer.`
                 : `Flashcards and quizzes are available for free! Analyze a video to get started.`}
             </Text>
             <Button
-              title={language === 'fr' ? 'Découvrir les plans' : 'View plans'}
-              onPress={() => Linking.openURL('https://www.deepsightsynthesis.com/upgrade')}
+              title={language === "fr" ? "Découvrir les plans" : "View plans"}
+              onPress={() =>
+                Linking.openURL("https://www.deepsightsynthesis.com/upgrade")
+              }
               style={styles.lockButton}
             />
           </Animated.View>
@@ -374,7 +491,7 @@ export const StudyScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
       <Header
-        title={language === 'fr' ? 'Mode Étude' : 'Study Mode'}
+        title={language === "fr" ? "Mode Étude" : "Study Mode"}
         showBack
       />
       <View style={[styles.content, { paddingBottom: insets.bottom }]}>
@@ -399,20 +516,20 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
   },
   selectionTitle: {
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize["2xl"],
     fontFamily: Typography.fontFamily.display,
     marginBottom: Spacing.xs,
-    textAlign: 'center',
+    textAlign: "center",
   },
   selectionSubtitle: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.xl,
   },
   modeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.lg,
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
@@ -422,8 +539,8 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: Spacing.md,
   },
   modeContent: {
@@ -440,8 +557,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   modeInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   modeInfoText: {
@@ -449,9 +566,9 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   creditsInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.xs,
     marginTop: Spacing.lg,
   },
@@ -461,19 +578,19 @@ const styles = StyleSheet.create({
   },
   centerContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: Spacing.xl,
   },
   loadingContent: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   loadingIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.lg,
   },
   spinner: {
@@ -489,41 +606,41 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   errorContent: {
-    alignItems: 'center',
+    alignItems: "center",
     maxWidth: 300,
   },
   errorIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing.lg,
   },
   errorTitle: {
     fontSize: Typography.fontSize.xl,
     fontFamily: Typography.fontFamily.bodySemiBold,
     marginBottom: Spacing.sm,
-    textAlign: 'center',
+    textAlign: "center",
   },
   errorMessage: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.xl,
   },
   errorActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.md,
   },
   lockContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: Spacing.xl,
   },
   lockContent: {
-    alignItems: 'center',
+    alignItems: "center",
     maxWidth: 320,
   },
   lockIcon: {
@@ -534,12 +651,12 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xl,
     fontFamily: Typography.fontFamily.bodySemiBold,
     marginBottom: Spacing.sm,
-    textAlign: 'center',
+    textAlign: "center",
   },
   lockDescription: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
     marginBottom: Spacing.xxl,
   },

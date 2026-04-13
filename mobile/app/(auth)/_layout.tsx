@@ -1,6 +1,6 @@
-import React from 'react';
-import { Stack } from 'expo-router';
-import { darkColors } from '@/theme/colors';
+import React from "react";
+import { Stack } from "expo-router";
+import { darkColors } from "@/theme/colors";
 
 export default function AuthLayout() {
   return (

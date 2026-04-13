@@ -7,6 +7,7 @@ The entire Expo Router V2 navigation structure for DeepSight Mobile has been suc
 ## 📍 Start Here
 
 ### 1. Quick Overview
+
 ```bash
 # See what was created
 cat ROUTER.md              # Complete architecture
@@ -15,6 +16,7 @@ cat FILES_CREATED.md       # File list
 ```
 
 ### 2. Start Development
+
 ```bash
 cd /sessions/bold-kind-einstein/mnt/DeepSight-Main/mobile
 
@@ -33,6 +35,7 @@ npm start
 ### 3. What You Have
 
 #### Navigation Structure
+
 ```
 Root Layout (app/_layout.tsx)
   ├─ Splash Screen (loading)
@@ -53,6 +56,7 @@ Root Layout (app/_layout.tsx)
 #### Files Created (19 total)
 
 **Navigation (16)**
+
 - Root layout with all providers
 - Auth screens (5)
 - Tab screens (5)
@@ -62,11 +66,13 @@ Root Layout (app/_layout.tsx)
 - Splash screen
 
 **Utilities (3)**
+
 - React Query client
 - Navigation helpers
 - Type definitions
 
 **Documentation (6)**
+
 - ROUTER.md - Architecture
 - ROUTER_EXAMPLES.md - Usage
 - ROUTER_SETUP.md - Checklist
@@ -75,6 +81,7 @@ Root Layout (app/_layout.tsx)
 - TREE.txt - Directory tree
 
 **Configuration (2 updated)**
+
 - tsconfig.json
 - babel.config.js
 
@@ -93,21 +100,27 @@ Root Layout (app/_layout.tsx)
 ## 🔧 Next Steps
 
 ### 1. Auth Screens
+
 Implement the placeholder forms in `app/(auth)/`:
+
 - [ ] Login (email, password, Google OAuth)
 - [ ] Register (username, email, password, validation)
 - [ ] Verify (OTP/code input)
 - [ ] Forgot Password (email reset)
 
 ### 2. Tab Screens
+
 Add content to `app/(tabs)/`:
+
 - [ ] Home - Recent analyses, quick actions
 - [ ] Library - Analysis list with filters
 - [ ] Study - Flashcards, mind maps, glossary
 - [ ] Profile - User info, settings
 
 ### 3. Analysis Detail
+
 Implement `app/(tabs)/analysis/[id].tsx`:
+
 - [ ] Summary tab (with epistemic markers)
 - [ ] Concepts tab
 - [ ] Chat tab
@@ -115,30 +128,33 @@ Implement `app/(tabs)/analysis/[id].tsx`:
 - [ ] Export options
 
 ### 4. Deep Linking
+
 - [ ] Handle `deepsight://` scheme
 - [ ] Handle web URLs
 - [ ] Deep link tests
 
 ### 5. Error Handling
+
 - [ ] Error boundaries
 - [ ] Network error UI
 - [ ] Fallback screens
 
 ## 📚 Documentation Files
 
-| File | Purpose |
-|------|---------|
-| **ROUTER.md** | Complete architecture and structure |
-| **ROUTER_EXAMPLES.md** | Practical usage examples |
-| **ROUTER_SETUP.md** | Setup checklist and next steps |
-| **QUICK_START.md** | Quick start and testing guide |
-| **FILES_CREATED.md** | Complete file list |
-| **TREE.txt** | Directory structure |
-| **00_START_HERE.md** | This file |
+| File                   | Purpose                             |
+| ---------------------- | ----------------------------------- |
+| **ROUTER.md**          | Complete architecture and structure |
+| **ROUTER_EXAMPLES.md** | Practical usage examples            |
+| **ROUTER_SETUP.md**    | Setup checklist and next steps      |
+| **QUICK_START.md**     | Quick start and testing guide       |
+| **FILES_CREATED.md**   | Complete file list                  |
+| **TREE.txt**           | Directory structure                 |
+| **00_START_HERE.md**   | This file                           |
 
 ## 🎨 Design System
 
 All screens use:
+
 - **Colors**: `darkColors` from `@/theme/colors`
 - **Spacing**: `sp`, `borderRadius` from `@/theme/spacing`
 - **Typography**: `fontFamily`, `fontSize`, `textStyles` from `@/theme/typography`

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -6,25 +6,25 @@ import {
   RefreshControl,
   Alert,
   StyleSheet,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { FlashList } from '@shopify/flash-list';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useTheme } from '@/contexts/ThemeContext';
-import { historyApi } from '@/services/api';
-import { AnalysisCard } from '@/components/library/AnalysisCard';
-import { SearchBar } from '@/components/library/SearchBar';
-import { PlaylistSection } from '@/components/library/PlaylistSection';
-import { VideoCardSkeleton } from '@/components/ui/SkeletonLoader';
-import { sp, borderRadius } from '@/theme/spacing';
-import { palette } from '@/theme/colors';
-import { fontFamily, fontSize, textStyles } from '@/theme/typography';
-import { DoodleBackground } from '@/components/ui/DoodleBackground';
-import type { AnalysisSummary, PaginatedResponse } from '@/types';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { FlashList } from "@shopify/flash-list";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useTheme } from "@/contexts/ThemeContext";
+import { historyApi } from "@/services/api";
+import { AnalysisCard } from "@/components/library/AnalysisCard";
+import { SearchBar } from "@/components/library/SearchBar";
+import { PlaylistSection } from "@/components/library/PlaylistSection";
+import { VideoCardSkeleton } from "@/components/ui/SkeletonLoader";
+import { sp, borderRadius } from "@/theme/spacing";
+import { palette } from "@/theme/colors";
+import { fontFamily, fontSize, textStyles } from "@/theme/typography";
+import { DoodleBackground } from "@/components/ui/DoodleBackground";
+import type { AnalysisSummary, PaginatedResponse } from "@/types";
 
-const QUERY_KEY_BASE = 'library';
+const QUERY_KEY_BASE = "library";
 
 export default function LibraryScreen() {
   const { colors } = useTheme();
@@ -33,7 +33,7 @@ export default function LibraryScreen() {
   const queryClient = useQueryClient();
 
   const [searchVisible, setSearchVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [showPlaylists, setShowPlaylists] = useState(false);
 
@@ -87,7 +87,14 @@ export default function LibraryScreen() {
       // Optimistic removal
       queryClient.setQueryData(
         queryKey,
-        (old: { pages: PaginatedResponse<AnalysisSummary>[]; pageParams: unknown[] } | undefined) => {
+        (
+          old:
+            | {
+                pages: PaginatedResponse<AnalysisSummary>[];
+                pageParams: unknown[];
+              }
+            | undefined,
+        ) => {
           if (!old) return old;
           return {
             ...old,
@@ -103,7 +110,7 @@ export default function LibraryScreen() {
         await historyApi.deleteSummary(id);
       } catch {
         queryClient.setQueryData(queryKey, previousData);
-        Alert.alert('Erreur', "Impossible de supprimer l'analyse.");
+        Alert.alert("Erreur", "Impossible de supprimer l'analyse.");
       }
     },
     [queryClient, queryKey],
@@ -136,11 +143,14 @@ export default function LibraryScreen() {
           Aucune analyse
         </Text>
         <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-          {'Analyse ta premi\u00E8re vid\u00E9o pour la retrouver ici'}
+          {"Analyse ta premi\u00E8re vid\u00E9o pour la retrouver ici"}
         </Text>
         <Pressable
-          style={[styles.emptyButton, { backgroundColor: colors.accentPrimary }]}
-          onPress={() => router.push('/(tabs)')}
+          style={[
+            styles.emptyButton,
+            { backgroundColor: colors.accentPrimary },
+          ]}
+          onPress={() => router.push("/(tabs)")}
           accessibilityLabel="Commencer une analyse"
         >
           <Text style={styles.emptyButtonText}>Commencer</Text>
@@ -155,7 +165,7 @@ export default function LibraryScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + sp.sm }]}>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          {'Ma Biblioth\u00E8que'}
+          {"Ma Biblioth\u00E8que"}
         </Text>
         <Pressable
           onPress={() => setSearchVisible((v) => !v)}
@@ -163,7 +173,7 @@ export default function LibraryScreen() {
           accessibilityLabel="Rechercher"
         >
           <Ionicons
-            name={searchVisible ? 'close' : 'search'}
+            name={searchVisible ? "close" : "search"}
             size={24}
             color={colors.textPrimary}
           />
@@ -178,7 +188,7 @@ export default function LibraryScreen() {
             onChangeText={setSearchQuery}
             onClose={() => {
               setSearchVisible(false);
-              setSearchQuery('');
+              setSearchQuery("");
             }}
           />
         </View>
@@ -190,27 +200,41 @@ export default function LibraryScreen() {
           style={[
             styles.chip,
             {
-              backgroundColor: !showPlaylists && !favoritesOnly
-                ? palette.indigo + '20'
-                : colors.glassBg,
-              borderColor: !showPlaylists && !favoritesOnly
-                ? palette.indigo
-                : colors.glassBorder,
+              backgroundColor:
+                !showPlaylists && !favoritesOnly
+                  ? palette.indigo + "20"
+                  : colors.glassBg,
+              borderColor:
+                !showPlaylists && !favoritesOnly
+                  ? palette.indigo
+                  : colors.glassBorder,
             },
           ]}
-          onPress={() => { setShowPlaylists(false); setFavoritesOnly(false); }}
+          onPress={() => {
+            setShowPlaylists(false);
+            setFavoritesOnly(false);
+          }}
           accessibilityLabel="Toutes les analyses"
           accessibilityState={{ selected: !showPlaylists && !favoritesOnly }}
         >
           <Ionicons
             name="list-outline"
             size={14}
-            color={!showPlaylists && !favoritesOnly ? palette.indigo : colors.textTertiary}
+            color={
+              !showPlaylists && !favoritesOnly
+                ? palette.indigo
+                : colors.textTertiary
+            }
           />
           <Text
             style={[
               styles.chipText,
-              { color: !showPlaylists && !favoritesOnly ? palette.indigo : colors.textTertiary },
+              {
+                color:
+                  !showPlaylists && !favoritesOnly
+                    ? palette.indigo
+                    : colors.textTertiary,
+              },
             ]}
           >
             Vidéos
@@ -222,19 +246,22 @@ export default function LibraryScreen() {
             styles.chip,
             {
               backgroundColor: favoritesOnly
-                ? colors.accentWarning + '20'
+                ? colors.accentWarning + "20"
                 : colors.glassBg,
               borderColor: favoritesOnly
                 ? colors.accentWarning
                 : colors.glassBorder,
             },
           ]}
-          onPress={() => { setFavoritesOnly((v) => !v); setShowPlaylists(false); }}
+          onPress={() => {
+            setFavoritesOnly((v) => !v);
+            setShowPlaylists(false);
+          }}
           accessibilityLabel="Filtrer les favoris"
           accessibilityState={{ selected: favoritesOnly }}
         >
           <Ionicons
-            name={favoritesOnly ? 'star' : 'star-outline'}
+            name={favoritesOnly ? "star" : "star-outline"}
             size={14}
             color={favoritesOnly ? colors.accentWarning : colors.textTertiary}
           />
@@ -257,19 +284,20 @@ export default function LibraryScreen() {
             styles.chip,
             {
               backgroundColor: showPlaylists
-                ? palette.violet + '20'
+                ? palette.violet + "20"
                 : colors.glassBg,
-              borderColor: showPlaylists
-                ? palette.violet
-                : colors.glassBorder,
+              borderColor: showPlaylists ? palette.violet : colors.glassBorder,
             },
           ]}
-          onPress={() => { setShowPlaylists((v) => !v); setFavoritesOnly(false); }}
+          onPress={() => {
+            setShowPlaylists((v) => !v);
+            setFavoritesOnly(false);
+          }}
           accessibilityLabel="Voir les playlists"
           accessibilityState={{ selected: showPlaylists }}
         >
           <Ionicons
-            name={showPlaylists ? 'albums' : 'albums-outline'}
+            name={showPlaylists ? "albums" : "albums-outline"}
             size={14}
             color={showPlaylists ? palette.violet : colors.textTertiary}
           />
@@ -308,7 +336,9 @@ export default function LibraryScreen() {
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
-              onRefresh={() => { refetch(); }}
+              onRefresh={() => {
+                refetch();
+              }}
               tintColor={colors.accentPrimary}
               colors={[colors.accentPrimary]}
             />
@@ -324,9 +354,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: sp.lg,
     paddingBottom: sp.md,
   },
@@ -337,14 +367,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: sp.lg,
   },
   chipsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: sp.lg,
     marginBottom: sp.md,
     gap: sp.sm,
   },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingHorizontal: sp.md,
     paddingVertical: sp.xs + 2,
@@ -369,8 +399,8 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingTop: 80,
     paddingHorizontal: sp.xl,
   },
@@ -382,18 +412,18 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: sp.sm,
   },
   emptyButton: {
-    marginTop: sp['2xl'],
-    paddingHorizontal: sp['2xl'],
+    marginTop: sp["2xl"],
+    paddingHorizontal: sp["2xl"],
     paddingVertical: sp.md,
     borderRadius: borderRadius.full,
   },
   emptyButtonText: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.base,
-    color: '#fff',
+    color: "#fff",
   },
 });

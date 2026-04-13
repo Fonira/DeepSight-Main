@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, memo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, memo, useRef } from "react";
 import {
   View,
   Text,
@@ -10,19 +10,23 @@ import {
   Keyboard,
   Linking,
   ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
-import * as ExpoClipboard from 'expo-clipboard';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { Colors, Spacing, BorderRadius, Typography } from '../constants/theme';
-import { validateYouTubeUrl, URLValidationResult } from '../utils/formatters';
-import { sanitizeUrlInput, sanitizeTextInput, sanitizeSearchQuery } from '../utils/sanitize';
-import { normalizePlanId, hasFeature } from '../config/planPrivileges';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
+import * as ExpoClipboard from "expo-clipboard";
+import { useTheme } from "../contexts/ThemeContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { Colors, Spacing, BorderRadius, Typography } from "../constants/theme";
+import { validateYouTubeUrl, URLValidationResult } from "../utils/formatters";
+import {
+  sanitizeUrlInput,
+  sanitizeTextInput,
+  sanitizeSearchQuery,
+} from "../utils/sanitize";
+import { normalizePlanId, hasFeature } from "../config/planPrivileges";
 
-type InputMode = 'url' | 'text' | 'search';
+type InputMode = "url" | "text" | "search";
 
 interface Category {
   id: string;
@@ -68,49 +72,49 @@ interface SmartInputBarProps {
 }
 
 const CATEGORIES: Category[] = [
-  { id: 'auto', name: 'Auto', nameEn: 'Auto', icon: 'sparkles' },
-  { id: 'interview', name: 'Interview', nameEn: 'Interview', icon: 'mic' },
-  { id: 'tech', name: 'Tech', nameEn: 'Tech', icon: 'hardware-chip' },
-  { id: 'science', name: 'Science', nameEn: 'Science', icon: 'flask' },
-  { id: 'education', name: 'Éducation', nameEn: 'Education', icon: 'school' },
-  { id: 'finance', name: 'Finance', nameEn: 'Finance', icon: 'cash' },
-  { id: 'gaming', name: 'Gaming', nameEn: 'Gaming', icon: 'game-controller' },
-  { id: 'culture', name: 'Culture', nameEn: 'Culture', icon: 'color-palette' },
-  { id: 'news', name: 'Actualités', nameEn: 'News', icon: 'newspaper' },
-  { id: 'health', name: 'Santé', nameEn: 'Health', icon: 'fitness' },
+  { id: "auto", name: "Auto", nameEn: "Auto", icon: "sparkles" },
+  { id: "interview", name: "Interview", nameEn: "Interview", icon: "mic" },
+  { id: "tech", name: "Tech", nameEn: "Tech", icon: "hardware-chip" },
+  { id: "science", name: "Science", nameEn: "Science", icon: "flask" },
+  { id: "education", name: "Éducation", nameEn: "Education", icon: "school" },
+  { id: "finance", name: "Finance", nameEn: "Finance", icon: "cash" },
+  { id: "gaming", name: "Gaming", nameEn: "Gaming", icon: "game-controller" },
+  { id: "culture", name: "Culture", nameEn: "Culture", icon: "color-palette" },
+  { id: "news", name: "Actualités", nameEn: "News", icon: "newspaper" },
+  { id: "health", name: "Santé", nameEn: "Health", icon: "fitness" },
 ];
 
 const ANALYSIS_MODES: AnalysisMode[] = [
   {
-    id: 'accessible',
-    name: 'Accessible',
-    nameEn: 'Accessible',
-    description: 'Synthèse simple et claire',
-    descriptionEn: 'Simple and clear summary',
+    id: "accessible",
+    name: "Accessible",
+    nameEn: "Accessible",
+    description: "Synthèse simple et claire",
+    descriptionEn: "Simple and clear summary",
   },
   {
-    id: 'standard',
-    name: 'Standard',
-    nameEn: 'Standard',
-    description: 'Analyse équilibrée (recommandé)',
-    descriptionEn: 'Balanced analysis (recommended)',
+    id: "standard",
+    name: "Standard",
+    nameEn: "Standard",
+    description: "Analyse équilibrée (recommandé)",
+    descriptionEn: "Balanced analysis (recommended)",
   },
   {
-    id: 'expert',
-    name: 'Expert',
-    nameEn: 'Expert',
-    description: 'Analyse technique approfondie',
-    descriptionEn: 'In-depth technical analysis',
+    id: "expert",
+    name: "Expert",
+    nameEn: "Expert",
+    description: "Analyse technique approfondie",
+    descriptionEn: "In-depth technical analysis",
   },
 ];
 
 const SEARCH_LANGUAGES = [
-  { id: 'fr', name: 'Français', flag: '🇫🇷' },
-  { id: 'en', name: 'English', flag: '🇬🇧' },
-  { id: 'es', name: 'Español', flag: '🇪🇸' },
-  { id: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { id: 'it', name: 'Italiano', flag: '🇮🇹' },
-  { id: 'pt', name: 'Português', flag: '🇧🇷' },
+  { id: "fr", name: "Français", flag: "🇫🇷" },
+  { id: "en", name: "English", flag: "🇬🇧" },
+  { id: "es", name: "Español", flag: "🇪🇸" },
+  { id: "de", name: "Deutsch", flag: "🇩🇪" },
+  { id: "it", name: "Italiano", flag: "🇮🇹" },
+  { id: "pt", name: "Português", flag: "🇧🇷" },
 ];
 
 const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
@@ -120,93 +124,123 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
   isQuickChatting = false,
   creditCost,
   creditsRemaining,
-  userPlan = 'free',
+  userPlan = "free",
 }) => {
   const { colors, isDark } = useTheme();
   const { language } = useLanguage();
-  const isEn = language === 'en';
+  const isEn = language === "en";
 
-  const [inputMode, setInputMode] = useState<InputMode>('url');
-  const [inputValue, setInputValue] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('auto');
-  const [selectedMode, setSelectedMode] = useState('standard');
-  const [searchLanguage, setSearchLanguage] = useState('fr');
-  const [textTitle, setTextTitle] = useState('');
-  const [textSource, setTextSource] = useState('');
+  const [inputMode, setInputMode] = useState<InputMode>("url");
+  const [inputValue, setInputValue] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("auto");
+  const [selectedMode, setSelectedMode] = useState("standard");
+  const [searchLanguage, setSearchLanguage] = useState("fr");
+  const [textTitle, setTextTitle] = useState("");
+  const [textSource, setTextSource] = useState("");
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [deepResearch, setDeepResearch] = useState(false);
-  const [urlValidation, setUrlValidation] = useState<URLValidationResult | null>(null);
-  const [selectedModel, setSelectedModel] = useState('mistral-small-2603');
+  const [urlValidation, setUrlValidation] =
+    useState<URLValidationResult | null>(null);
+  const [selectedModel, setSelectedModel] = useState("mistral-small-2603");
   const [showModelSelector, setShowModelSelector] = useState(false);
 
   // Check if user has access to deep research (Pro+ plans)
   const normalizedPlan = normalizePlanId(userPlan);
-  const hasDeepResearchAccess = hasFeature(normalizedPlan, 'chatWebSearch');
+  const hasDeepResearchAccess = hasFeature(normalizedPlan, "chatWebSearch");
 
   // Available AI models based on plan
   const availableModels = useMemo((): AIModel[] => {
     const models: AIModel[] = [
-      { id: 'mistral-small-2603', name: 'Mistral Small 3.1', desc: 'Rapide (128K)', descEn: 'Fast (128K)', icon: '⚡' },
+      {
+        id: "mistral-small-2603",
+        name: "Mistral Small 3.1",
+        desc: "Rapide (128K)",
+        descEn: "Fast (128K)",
+        icon: "⚡",
+      },
     ];
-    if (['pro', 'expert'].includes(normalizedPlan)) {
-      models.push({ id: 'mistral-medium-2508', name: 'Mistral Medium 3.1', desc: 'Avancé (131K)', descEn: 'Advanced (131K)', icon: '⚖️' });
+    if (["pro", "expert"].includes(normalizedPlan)) {
+      models.push({
+        id: "mistral-medium-2508",
+        name: "Mistral Medium 3.1",
+        desc: "Avancé (131K)",
+        descEn: "Advanced (131K)",
+        icon: "⚖️",
+      });
     }
-    if (['pro', 'expert', 'unlimited'].includes(normalizedPlan)) {
-      models.push({ id: 'mistral-large-2512', name: 'Mistral Large 3', desc: 'Expert (262K)', descEn: 'Expert (262K)', icon: '🚀' });
+    if (["pro", "expert", "unlimited"].includes(normalizedPlan)) {
+      models.push({
+        id: "mistral-large-2512",
+        name: "Mistral Large 3",
+        desc: "Expert (262K)",
+        descEn: "Expert (262K)",
+        icon: "🚀",
+      });
     }
     return models;
   }, [normalizedPlan]);
 
-  const currentModel = useMemo(() =>
-    availableModels.find(m => m.id === selectedModel) || availableModels[0],
-    [availableModels, selectedModel]
+  const currentModel = useMemo(
+    () =>
+      availableModels.find((m) => m.id === selectedModel) || availableModels[0],
+    [availableModels, selectedModel],
   );
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const detectInputType = useCallback((value: string): InputMode => {
-    const trimmed = value.trim();
-    if (
-      trimmed.includes('youtube.com') ||
-      trimmed.includes('youtu.be') ||
-      trimmed.includes('tiktok.com') ||
-      trimmed.includes('vm.tiktok') ||
-      trimmed.includes('m.tiktok') ||
-      trimmed.startsWith('https://') ||
-      trimmed.startsWith('http://')
-    ) {
-      return 'url';
-    }
-    if (trimmed.length > 100) {
-      return 'text';
-    }
-    return inputMode;
-  }, [inputMode]);
+  const detectInputType = useCallback(
+    (value: string): InputMode => {
+      const trimmed = value.trim();
+      if (
+        trimmed.includes("youtube.com") ||
+        trimmed.includes("youtu.be") ||
+        trimmed.includes("tiktok.com") ||
+        trimmed.includes("vm.tiktok") ||
+        trimmed.includes("m.tiktok") ||
+        trimmed.startsWith("https://") ||
+        trimmed.startsWith("http://")
+      ) {
+        return "url";
+      }
+      if (trimmed.length > 100) {
+        return "text";
+      }
+      return inputMode;
+    },
+    [inputMode],
+  );
 
-  const handleInputChange = useCallback((value: string) => {
-    setInputValue(value);
+  const handleInputChange = useCallback(
+    (value: string) => {
+      setInputValue(value);
 
-    // Real-time URL validation
-    if (inputMode === 'url' && value.trim().length > 0) {
-      const validation = validateYouTubeUrl(value);
-      setUrlValidation(validation);
-    } else {
-      setUrlValidation(null);
-    }
+      // Real-time URL validation
+      if (inputMode === "url" && value.trim().length > 0) {
+        const validation = validateYouTubeUrl(value);
+        setUrlValidation(validation);
+      } else {
+        setUrlValidation(null);
+      }
 
-    // Auto-detect mode: switch to 'url' when a YouTube/TikTok link is pasted
-    const detected = detectInputType(value);
-    if (detected === 'url' && inputMode !== 'url') {
-      setInputMode('url');
-    } else if (value.length > 100 && detected === 'text' && inputMode !== 'text') {
-      setInputMode(detected);
-    }
-  }, [detectInputType, inputMode]);
+      // Auto-detect mode: switch to 'url' when a YouTube/TikTok link is pasted
+      const detected = detectInputType(value);
+      if (detected === "url" && inputMode !== "url") {
+        setInputMode("url");
+      } else if (
+        value.length > 100 &&
+        detected === "text" &&
+        inputMode !== "text"
+      ) {
+        setInputMode(detected);
+      }
+    },
+    [detectInputType, inputMode],
+  );
 
   const handleModeChange = useCallback((mode: InputMode) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setInputMode(mode);
-    setInputValue('');
+    setInputValue("");
     setUrlValidation(null);
   }, []);
 
@@ -226,13 +260,13 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
     // Sanitize input based on mode
     let sanitizedValue: string;
     switch (inputMode) {
-      case 'url':
+      case "url":
         sanitizedValue = sanitizeUrlInput(inputValue);
         break;
-      case 'text':
+      case "text":
         sanitizedValue = sanitizeTextInput(inputValue);
         break;
-      case 'search':
+      case "search":
         sanitizedValue = sanitizeSearchQuery(inputValue);
         break;
       default:
@@ -264,39 +298,52 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       value: sanitizedValue,
       category: selectedCategory,
       mode: selectedMode,
-      language: inputMode === 'search' ? searchLanguage : undefined,
-      title: inputMode === 'text' ? sanitizeTextInput(textTitle) : undefined,
-      source: inputMode === 'text' ? sanitizeTextInput(textSource) : undefined,
+      language: inputMode === "search" ? searchLanguage : undefined,
+      title: inputMode === "text" ? sanitizeTextInput(textTitle) : undefined,
+      source: inputMode === "text" ? sanitizeTextInput(textSource) : undefined,
       deepResearch: deepResearch && hasDeepResearchAccess,
       model: selectedModel,
     });
-  }, [inputValue, inputMode, selectedCategory, selectedMode, searchLanguage, textTitle, textSource, isLoading, onSubmit, scaleAnim, deepResearch, hasDeepResearchAccess]);
+  }, [
+    inputValue,
+    inputMode,
+    selectedCategory,
+    selectedMode,
+    searchLanguage,
+    textTitle,
+    textSource,
+    isLoading,
+    onSubmit,
+    scaleAnim,
+    deepResearch,
+    hasDeepResearchAccess,
+  ]);
 
   const getPlaceholder = useCallback(() => {
     switch (inputMode) {
-      case 'url':
+      case "url":
         return isEn
-          ? 'YouTube, TikTok... paste your link here'
-          : 'YouTube, TikTok... collez votre lien ici';
-      case 'text':
+          ? "YouTube, TikTok... paste your link here"
+          : "YouTube, TikTok... collez votre lien ici";
+      case "text":
         return isEn
-          ? 'Paste or type the text to analyze...'
-          : 'Collez ou tapez le texte à analyser...';
-      case 'search':
+          ? "Paste or type the text to analyze..."
+          : "Collez ou tapez le texte à analyser...";
+      case "search":
         return isEn
-          ? 'Search for videos to analyze...'
-          : 'Recherchez des vidéos à analyser...';
+          ? "Search for videos to analyze..."
+          : "Recherchez des vidéos à analyser...";
     }
   }, [inputMode, isEn]);
 
   const getIcon = useCallback(() => {
     switch (inputMode) {
-      case 'url':
-        return 'link';
-      case 'text':
-        return 'document-text';
-      case 'search':
-        return 'search';
+      case "url":
+        return "link";
+      case "text":
+        return "document-text";
+      case "search":
+        return "search";
     }
   }, [inputMode]);
 
@@ -306,7 +353,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
     <View style={styles.container}>
       {/* Mode Tabs */}
       <View style={[styles.modeTabs, { backgroundColor: colors.bgSecondary }]}>
-        {(['url', 'text', 'search'] as InputMode[]).map((mode) => (
+        {(["url", "text", "search"] as InputMode[]).map((mode) => (
           <TouchableOpacity
             key={mode}
             style={[
@@ -317,27 +364,44 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
             onPress={() => handleModeChange(mode)}
           >
             <Ionicons
-              name={mode === 'url' ? 'link' : mode === 'text' ? 'document-text' : 'search'}
+              name={
+                mode === "url"
+                  ? "link"
+                  : mode === "text"
+                    ? "document-text"
+                    : "search"
+              }
               size={16}
-              color={inputMode === mode ? '#fff' : colors.textSecondary}
+              color={inputMode === mode ? "#fff" : colors.textSecondary}
             />
             <Text
               style={[
                 styles.modeTabText,
-                { color: inputMode === mode ? '#fff' : colors.textSecondary },
+                { color: inputMode === mode ? "#fff" : colors.textSecondary },
               ]}
             >
-              {mode === 'url' ? 'URL' : mode === 'text' ? (isEn ? 'Text' : 'Texte') : (isEn ? 'Search' : 'Recherche')}
+              {mode === "url"
+                ? "URL"
+                : mode === "text"
+                  ? isEn
+                    ? "Text"
+                    : "Texte"
+                  : isEn
+                    ? "Search"
+                    : "Recherche"}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
       {/* Search Language Selector */}
-      {inputMode === 'search' && (
+      {inputMode === "search" && (
         <View style={styles.languageSelector}>
           <TouchableOpacity
-            style={[styles.languageButton, { backgroundColor: colors.bgSecondary }]}
+            style={[
+              styles.languageButton,
+              { backgroundColor: colors.bgSecondary },
+            ]}
             onPress={() => setShowLanguageSelector(!showLanguageSelector)}
           >
             <Text style={styles.languageFlag}>
@@ -346,22 +410,36 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
             <Text style={[styles.languageText, { color: colors.textPrimary }]}>
               {SEARCH_LANGUAGES.find((l) => l.id === searchLanguage)?.name}
             </Text>
-            <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+            <Ionicons
+              name="chevron-down"
+              size={16}
+              color={colors.textSecondary}
+            />
           </TouchableOpacity>
 
           {showLanguageSelector && (
-            <View style={[styles.languageDropdown, { backgroundColor: colors.bgElevated }]}>
+            <View
+              style={[
+                styles.languageDropdown,
+                { backgroundColor: colors.bgElevated },
+              ]}
+            >
               {SEARCH_LANGUAGES.map((lang) => (
                 <TouchableOpacity
                   key={lang.id}
-                  style={[styles.languageOption, searchLanguage === lang.id && styles.languageOptionActive]}
+                  style={[
+                    styles.languageOption,
+                    searchLanguage === lang.id && styles.languageOptionActive,
+                  ]}
                   onPress={() => {
                     setSearchLanguage(lang.id);
                     setShowLanguageSelector(false);
                   }}
                 >
                   <Text style={styles.languageFlag}>{lang.flag}</Text>
-                  <Text style={[styles.languageText, { color: colors.textPrimary }]}>
+                  <Text
+                    style={[styles.languageText, { color: colors.textPrimary }]}
+                  >
                     {lang.name}
                   </Text>
                 </TouchableOpacity>
@@ -372,7 +450,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       )}
 
       {/* Text Mode: Title and Source */}
-      {inputMode === 'text' && (
+      {inputMode === "text" && (
         <View style={styles.textMetaContainer}>
           <TextInput
             style={[
@@ -382,7 +460,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
                 color: colors.textPrimary,
               },
             ]}
-            placeholder={isEn ? 'Title (optional)' : 'Titre (optionnel)'}
+            placeholder={isEn ? "Title (optional)" : "Titre (optionnel)"}
             placeholderTextColor={colors.textMuted}
             value={textTitle}
             onChangeText={setTextTitle}
@@ -395,7 +473,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
                 color: colors.textPrimary,
               },
             ]}
-            placeholder={isEn ? 'Source (optional)' : 'Source (optionnel)'}
+            placeholder={isEn ? "Source (optional)" : "Source (optionnel)"}
             placeholderTextColor={colors.textMuted}
             value={textSource}
             onChangeText={setTextSource}
@@ -404,7 +482,9 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       )}
 
       {/* Main Input */}
-      <View style={[styles.inputContainer, { backgroundColor: colors.bgSecondary }]}>
+      <View
+        style={[styles.inputContainer, { backgroundColor: colors.bgSecondary }]}
+      >
         <Ionicons
           name={getIcon()}
           size={20}
@@ -414,21 +494,27 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
         <TextInput
           style={[
             styles.input,
-            inputMode === 'text' && styles.inputMultiline,
+            inputMode === "text" && styles.inputMultiline,
             { color: colors.textPrimary },
           ]}
           placeholder={getPlaceholder()}
           placeholderTextColor={colors.textMuted}
           value={inputValue}
           onChangeText={handleInputChange}
-          multiline={inputMode === 'text'}
-          numberOfLines={inputMode === 'text' ? 4 : 1}
+          multiline={inputMode === "text"}
+          numberOfLines={inputMode === "text" ? 4 : 1}
           autoCapitalize="none"
-          autoCorrect={inputMode === 'text'}
-          keyboardType={inputMode === 'url' ? 'url' : 'default'}
+          autoCorrect={inputMode === "text"}
+          keyboardType={inputMode === "url" ? "url" : "default"}
         />
         {inputValue.length > 0 ? (
-          <TouchableOpacity onPress={() => { setInputValue(''); setUrlValidation(null); }} style={styles.clearButton}>
+          <TouchableOpacity
+            onPress={() => {
+              setInputValue("");
+              setUrlValidation(null);
+            }}
+            style={styles.clearButton}
+          >
             <Ionicons name="close-circle" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         ) : (
@@ -440,37 +526,56 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
                   Haptics.selectionAsync();
                   handleInputChange(text.trim());
                 }
-              } catch { /* clipboard denied */ }
+              } catch {
+                /* clipboard denied */
+              }
             }}
             style={styles.pasteButton}
           >
-            <Ionicons name="clipboard-outline" size={18} color={colors.accentPrimary} />
-            <Text style={[styles.pasteButtonText, { color: colors.accentPrimary }]}>
-              {isEn ? 'Paste' : 'Coller'}
+            <Ionicons
+              name="clipboard-outline"
+              size={18}
+              color={colors.accentPrimary}
+            />
+            <Text
+              style={[styles.pasteButtonText, { color: colors.accentPrimary }]}
+            >
+              {isEn ? "Paste" : "Coller"}
             </Text>
           </TouchableOpacity>
         )}
       </View>
 
       {/* URL Validation Indicator */}
-      {inputMode === 'url' && urlValidation && inputValue.trim().length > 0 && (
+      {inputMode === "url" && urlValidation && inputValue.trim().length > 0 && (
         <View style={styles.validationIndicator}>
           <Ionicons
-            name={urlValidation.isValid ? 'checkmark-circle' : 'close-circle'}
+            name={urlValidation.isValid ? "checkmark-circle" : "close-circle"}
             size={16}
-            color={urlValidation.isValid ? colors.accentSuccess : colors.accentError}
-          />
-          <Text style={[
-            styles.validationText,
-            { color: urlValidation.isValid ? colors.accentSuccess : colors.accentError }
-          ]}>
-            {urlValidation.isValid
-              ? urlValidation.platform === 'tiktok' || urlValidation.urlType === 'tiktok'
-                ? (isEn ? 'Valid TikTok URL' : 'URL TikTok valide')
-                : (isEn ? 'Valid YouTube URL' : 'URL YouTube valide')
-                  + (urlValidation.urlType === 'shorts' ? ' (Shorts)' : '')
-              : (urlValidation.error || (isEn ? 'Invalid URL format' : 'Format d\'URL invalide'))
+            color={
+              urlValidation.isValid ? colors.accentSuccess : colors.accentError
             }
+          />
+          <Text
+            style={[
+              styles.validationText,
+              {
+                color: urlValidation.isValid
+                  ? colors.accentSuccess
+                  : colors.accentError,
+              },
+            ]}
+          >
+            {urlValidation.isValid
+              ? urlValidation.platform === "tiktok" ||
+                urlValidation.urlType === "tiktok"
+                ? isEn
+                  ? "Valid TikTok URL"
+                  : "URL TikTok valide"
+                : (isEn ? "Valid YouTube URL" : "URL YouTube valide") +
+                  (urlValidation.urlType === "shorts" ? " (Shorts)" : "")
+              : urlValidation.error ||
+                (isEn ? "Invalid URL format" : "Format d'URL invalide")}
           </Text>
         </View>
       )}
@@ -478,30 +583,43 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       {/* YouTube / TikTok browse links */}
       <View style={styles.browseLinksRow}>
         <Text style={[styles.browseLabel, { color: colors.textMuted }]}>
-          {isEn ? 'Browse' : 'Parcourir'}
+          {isEn ? "Browse" : "Parcourir"}
         </Text>
         <TouchableOpacity
-          onPress={() => Linking.openURL('https://youtube.com')}
+          onPress={() => Linking.openURL("https://youtube.com")}
           style={styles.browseLink}
         >
           <Ionicons name="logo-youtube" size={16} color="#FF0000" />
-          <Text style={[styles.browseLinkText, { color: colors.textSecondary }]}>YouTube</Text>
+          <Text
+            style={[styles.browseLinkText, { color: colors.textSecondary }]}
+          >
+            YouTube
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => Linking.openURL('https://tiktok.com')}
+          onPress={() => Linking.openURL("https://tiktok.com")}
           style={styles.browseLink}
         >
           <Ionicons name="logo-tiktok" size={16} color={colors.textSecondary} />
-          <Text style={[styles.browseLinkText, { color: colors.textSecondary }]}>TikTok</Text>
+          <Text
+            style={[styles.browseLinkText, { color: colors.textSecondary }]}
+          >
+            TikTok
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Category Selector */}
       <View style={styles.selectorSection}>
         <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>
-          {isEn ? 'Category' : 'Catégorie'}
+          {isEn ? "Category" : "Catégorie"}
         </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardDismissMode="on-drag" style={styles.chipScroll}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardDismissMode="on-drag"
+          style={styles.chipScroll}
+        >
           {CATEGORIES.map((category) => (
             <TouchableOpacity
               key={category.id}
@@ -515,13 +633,20 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
               <Ionicons
                 name={category.icon as any}
                 size={14}
-                color={selectedCategory === category.id ? '#fff' : colors.textSecondary}
+                color={
+                  selectedCategory === category.id
+                    ? "#fff"
+                    : colors.textSecondary
+                }
               />
               <Text
                 style={[
                   styles.chipText,
                   {
-                    color: selectedCategory === category.id ? '#fff' : colors.textSecondary,
+                    color:
+                      selectedCategory === category.id
+                        ? "#fff"
+                        : colors.textSecondary,
                   },
                 ]}
               >
@@ -535,9 +660,14 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       {/* Analysis Mode Selector */}
       <View style={styles.selectorSection}>
         <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>
-          {isEn ? 'Analysis Mode' : "Mode d'analyse"}
+          {isEn ? "Analysis Mode" : "Mode d'analyse"}
         </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardDismissMode="on-drag" style={styles.chipScroll}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardDismissMode="on-drag"
+          style={styles.chipScroll}
+        >
           {ANALYSIS_MODES.map((mode) => (
             <TouchableOpacity
               key={mode.id}
@@ -552,7 +682,8 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
                 style={[
                   styles.modeChipTitle,
                   {
-                    color: selectedMode === mode.id ? '#fff' : colors.textPrimary,
+                    color:
+                      selectedMode === mode.id ? "#fff" : colors.textPrimary,
                   },
                 ]}
               >
@@ -562,7 +693,10 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
                 style={[
                   styles.modeChipDescription,
                   {
-                    color: selectedMode === mode.id ? 'rgba(255,255,255,0.8)' : colors.textMuted,
+                    color:
+                      selectedMode === mode.id
+                        ? "rgba(255,255,255,0.8)"
+                        : colors.textMuted,
                   },
                 ]}
               >
@@ -577,7 +711,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       {availableModels.length > 1 && (
         <View style={styles.selectorSection}>
           <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>
-            {isEn ? 'AI Model' : 'Modèle IA'}
+            {isEn ? "AI Model" : "Modèle IA"}
           </Text>
           <TouchableOpacity
             style={[
@@ -599,20 +733,27 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
               </Text>
             </View>
             <Ionicons
-              name={showModelSelector ? 'chevron-up' : 'chevron-down'}
+              name={showModelSelector ? "chevron-up" : "chevron-down"}
               size={18}
               color={colors.textSecondary}
             />
           </TouchableOpacity>
 
           {showModelSelector && (
-            <View style={[styles.modelDropdown, { backgroundColor: colors.bgElevated }]}>
+            <View
+              style={[
+                styles.modelDropdown,
+                { backgroundColor: colors.bgElevated },
+              ]}
+            >
               {availableModels.map((model) => (
                 <TouchableOpacity
                   key={model.id}
                   style={[
                     styles.modelOption,
-                    selectedModel === model.id && { backgroundColor: colors.accentPrimary + '20' },
+                    selectedModel === model.id && {
+                      backgroundColor: colors.accentPrimary + "20",
+                    },
                   ]}
                   onPress={() => {
                     Haptics.selectionAsync();
@@ -622,15 +763,23 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
                 >
                   <Text style={styles.modelIcon}>{model.icon}</Text>
                   <View style={styles.modelInfo}>
-                    <Text style={[styles.modelName, { color: colors.textPrimary }]}>
+                    <Text
+                      style={[styles.modelName, { color: colors.textPrimary }]}
+                    >
                       {model.name}
                     </Text>
-                    <Text style={[styles.modelDesc, { color: colors.textMuted }]}>
+                    <Text
+                      style={[styles.modelDesc, { color: colors.textMuted }]}
+                    >
                       {isEn ? model.descEn : model.desc}
                     </Text>
                   </View>
                   {selectedModel === model.id && (
-                    <Ionicons name="checkmark-circle" size={18} color={colors.accentPrimary} />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={colors.accentPrimary}
+                    />
                   )}
                 </TouchableOpacity>
               ))}
@@ -645,7 +794,12 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
           style={[
             styles.deepResearchToggle,
             { backgroundColor: colors.bgSecondary },
-            deepResearch && hasDeepResearchAccess && { backgroundColor: colors.accentPrimary + '20', borderColor: colors.accentPrimary, borderWidth: 1 },
+            deepResearch &&
+              hasDeepResearchAccess && {
+                backgroundColor: colors.accentPrimary + "20",
+                borderColor: colors.accentPrimary,
+                borderWidth: 1,
+              },
             !hasDeepResearchAccess && { opacity: 0.5 },
           ]}
           onPress={() => {
@@ -657,22 +811,42 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
           disabled={!hasDeepResearchAccess}
         >
           <Ionicons
-            name={deepResearch && hasDeepResearchAccess ? 'checkbox' : 'square-outline'}
+            name={
+              deepResearch && hasDeepResearchAccess
+                ? "checkbox"
+                : "square-outline"
+            }
             size={18}
-            color={deepResearch && hasDeepResearchAccess ? colors.accentPrimary : colors.textSecondary}
+            color={
+              deepResearch && hasDeepResearchAccess
+                ? colors.accentPrimary
+                : colors.textSecondary
+            }
           />
           <View style={styles.deepResearchText}>
-            <Text style={[
-              styles.deepResearchLabel,
-              { color: deepResearch && hasDeepResearchAccess ? colors.accentPrimary : colors.textPrimary },
-            ]}>
-              {isEn ? 'Deep Research' : 'Recherche approfondie'}
+            <Text
+              style={[
+                styles.deepResearchLabel,
+                {
+                  color:
+                    deepResearch && hasDeepResearchAccess
+                      ? colors.accentPrimary
+                      : colors.textPrimary,
+                },
+              ]}
+            >
+              {isEn ? "Deep Research" : "Recherche approfondie"}
             </Text>
-            <Text style={[styles.deepResearchDesc, { color: colors.textMuted }]}>
+            <Text
+              style={[styles.deepResearchDesc, { color: colors.textMuted }]}
+            >
               {hasDeepResearchAccess
-                ? (isEn ? 'Enhanced analysis with web search' : 'Analyse améliorée avec recherche web')
-                : (isEn ? 'Pro+ feature' : 'Fonctionnalité Pro+')
-              }
+                ? isEn
+                  ? "Enhanced analysis with web search"
+                  : "Analyse améliorée avec recherche web"
+                : isEn
+                  ? "Pro+ feature"
+                  : "Fonctionnalité Pro+"}
             </Text>
           </View>
           {!hasDeepResearchAccess && (
@@ -688,10 +862,19 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
         <View style={styles.creditPreview}>
           <Ionicons name="flash" size={14} color={colors.accentSecondary} />
           <Text style={[styles.creditText, { color: colors.textSecondary }]}>
-            {isEn ? `Cost: ${creditCost} credits` : `Coût: ${creditCost} crédits`}
+            {isEn
+              ? `Cost: ${creditCost} credits`
+              : `Coût: ${creditCost} crédits`}
             {creditsRemaining !== undefined && (
-              <Text style={{ color: creditsRemaining < creditCost ? colors.accentError : colors.accentSuccess }}>
-                {` (${creditsRemaining} ${isEn ? 'remaining' : 'restants'})`}
+              <Text
+                style={{
+                  color:
+                    creditsRemaining < creditCost
+                      ? colors.accentError
+                      : colors.accentSuccess,
+                }}
+              >
+                {` (${creditsRemaining} ${isEn ? "remaining" : "restants"})`}
               </Text>
             )}
           </Text>
@@ -699,39 +882,48 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       )}
 
       {/* ? Quick Chat Button � URL mode only */}
-      {inputMode === 'url' && inputValue.trim().length > 0 && onQuickChat && (
+      {inputMode === "url" && inputValue.trim().length > 0 && onQuickChat && (
         <TouchableOpacity
           onPress={() => onQuickChat(inputValue.trim())}
           disabled={isLoading || isQuickChatting}
           activeOpacity={0.8}
           style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
             paddingVertical: 10,
             paddingHorizontal: 16,
             borderRadius: 12,
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            backgroundColor: "rgba(16, 185, 129, 0.1)",
             borderWidth: 1,
-            borderColor: 'rgba(16, 185, 129, 0.25)',
+            borderColor: "rgba(16, 185, 129, 0.25)",
             marginBottom: 8,
-            opacity: (isLoading || isQuickChatting) ? 0.5 : 1,
+            opacity: isLoading || isQuickChatting ? 0.5 : 1,
           }}
         >
           {isQuickChatting ? (
-            <ActivityIndicator size="small" color="#10B981" style={{ marginRight: 8 }} />
+            <ActivityIndicator
+              size="small"
+              color="#10B981"
+              style={{ marginRight: 8 }}
+            />
           ) : (
             <Text style={{ marginRight: 6, fontSize: 16 }}>?</Text>
           )}
-          <Text style={{
-            color: '#10B981',
-            fontFamily: Typography.fontFamily.bodySemiBold,
-            fontSize: Typography.fontSize.sm,
-          }}>
+          <Text
+            style={{
+              color: "#10B981",
+              fontFamily: Typography.fontFamily.bodySemiBold,
+              fontSize: Typography.fontSize.sm,
+            }}
+          >
             {isQuickChatting
-              ? (isEn ? 'Preparing chat...' : 'Pr�paration...')
-              : (isEn ? 'Quick Chat (free)' : 'Chat direct (gratuit)')
-            }
+              ? isEn
+                ? "Preparing chat..."
+                : "Pr�paration..."
+              : isEn
+                ? "Quick Chat (free)"
+                : "Chat direct (gratuit)"}
           </Text>
         </TouchableOpacity>
       )}
@@ -744,25 +936,40 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={canSubmit ? Colors.gradientPrimary : [Colors.bgTertiary, Colors.bgTertiary]}
+            colors={
+              canSubmit
+                ? Colors.gradientPrimary
+                : [Colors.bgTertiary, Colors.bgTertiary]
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
+            style={[
+              styles.submitButton,
+              !canSubmit && styles.submitButtonDisabled,
+            ]}
           >
             {isLoading ? (
               <Ionicons name="hourglass" size={20} color="#fff" />
             ) : (
               <>
                 <Ionicons
-                  name={inputMode === 'search' ? 'search' : 'sparkles'}
+                  name={inputMode === "search" ? "search" : "sparkles"}
                   size={20}
-                  color={canSubmit ? '#fff' : Colors.textMuted}
+                  color={canSubmit ? "#fff" : Colors.textMuted}
                 />
-                <Text style={[styles.submitButtonText, !canSubmit && { color: Colors.textMuted }]}>
-                  {inputMode === 'search'
-                    ? (isEn ? 'Search Videos' : 'Rechercher des vidéos')
-                    : (isEn ? 'Analyze' : 'Analyser')
-                  }
+                <Text
+                  style={[
+                    styles.submitButtonText,
+                    !canSubmit && { color: Colors.textMuted },
+                  ]}
+                >
+                  {inputMode === "search"
+                    ? isEn
+                      ? "Search Videos"
+                      : "Rechercher des vidéos"
+                    : isEn
+                      ? "Analyze"
+                      : "Analyser"}
                 </Text>
               </>
             )}
@@ -779,16 +986,16 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   modeTabs: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: BorderRadius.lg,
     padding: Spacing.xs,
     gap: Spacing.xs,
   },
   modeTab: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
@@ -802,20 +1009,20 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
   },
   languageSelector: {
-    position: 'relative',
+    position: "relative",
     zIndex: 10,
   },
   languageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
     gap: Spacing.sm,
   },
   languageDropdown: {
-    position: 'absolute',
-    top: '100%',
+    position: "absolute",
+    top: "100%",
     left: 0,
     right: 0,
     marginTop: Spacing.xs,
@@ -823,21 +1030,21 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
     zIndex: 20,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
   languageOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.sm,
     gap: Spacing.sm,
   },
   languageOptionActive: {
-    backgroundColor: Colors.accentPrimary + '20',
+    backgroundColor: Colors.accentPrimary + "20",
   },
   languageFlag: {
     fontSize: 18,
@@ -857,8 +1064,8 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -875,14 +1082,14 @@ const styles = StyleSheet.create({
   },
   inputMultiline: {
     minHeight: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   clearButton: {
     padding: Spacing.sm,
   },
   pasteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.sm,
@@ -892,8 +1099,8 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
   },
   browseLinksRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
     paddingHorizontal: Spacing.xs,
   },
@@ -902,8 +1109,8 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
   },
   browseLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
   },
   browseLinkText: {
@@ -911,8 +1118,8 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
   },
   validationIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.md,
     marginTop: -Spacing.xs,
     gap: Spacing.xs,
@@ -927,7 +1134,7 @@ const styles = StyleSheet.create({
   selectorLabel: {
     fontFamily: Typography.fontFamily.bodyMedium,
     fontSize: Typography.fontSize.xs,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginLeft: Spacing.xs,
   },
@@ -935,8 +1142,8 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.full,
@@ -970,8 +1177,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   deepResearchToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.lg,
@@ -995,13 +1202,13 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
   },
   proBadgeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontFamily: Typography.fontFamily.bodySemiBold,
     fontSize: 10,
   },
   creditPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingHorizontal: Spacing.xs,
   },
@@ -1010,9 +1217,9 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
   },
   submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.lg,
     gap: Spacing.sm,
@@ -1023,12 +1230,12 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontFamily: Typography.fontFamily.bodySemiBold,
     fontSize: Typography.fontSize.base,
-    color: '#fff',
+    color: "#fff",
   },
   // Model selector styles
   modelSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.lg,
@@ -1039,14 +1246,14 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     padding: Spacing.xs,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
   modelOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.sm,

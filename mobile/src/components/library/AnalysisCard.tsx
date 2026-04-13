@@ -1,35 +1,37 @@
-import React, { useCallback } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  Alert,
-  StyleSheet,
-} from 'react-native';
+import React, { useCallback } from "react";
+import { View, Text, Pressable, Alert, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   interpolate,
   runOnJS,
-} from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { ThumbnailImage } from '../ui/ThumbnailImage';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/contexts/ThemeContext';
-import { PlatformBadge, detectPlatformFromUrl } from '@/components/ui/PlatformBadge';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { springs } from '@/theme/animations';
-import { formatRelativeDate } from '@/utils/formatDate';
-import type { AnalysisSummary } from '@/types';
+} from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { ThumbnailImage } from "../ui/ThumbnailImage";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/contexts/ThemeContext";
+import {
+  PlatformBadge,
+  detectPlatformFromUrl,
+} from "@/components/ui/PlatformBadge";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
+import { springs } from "@/theme/animations";
+import { formatRelativeDate } from "@/utils/formatDate";
+import type { AnalysisSummary } from "@/types";
 
 // Epistemic marker badge colors
-const MODE_BADGE: Record<string, { label: string; bg: string; text: string }> = {
-  standard: { label: 'Standard', bg: 'rgba(59,130,246,0.15)', text: '#60a5fa' },
-  deep: { label: 'Deep', bg: 'rgba(139,92,246,0.15)', text: '#a78bfa' },
-  expert: { label: 'Expert', bg: 'rgba(245,158,11,0.15)', text: '#fbbf24' },
-};
+const MODE_BADGE: Record<string, { label: string; bg: string; text: string }> =
+  {
+    standard: {
+      label: "Standard",
+      bg: "rgba(59,130,246,0.15)",
+      text: "#60a5fa",
+    },
+    deep: { label: "Deep", bg: "rgba(139,92,246,0.15)", text: "#a78bfa" },
+    expert: { label: "Expert", bg: "rgba(245,158,11,0.15)", text: "#fbbf24" },
+  };
 
 const DELETE_THRESHOLD = -80;
 
@@ -41,12 +43,12 @@ interface AnalysisCardProps {
 }
 
 const formatDuration = (seconds?: number): string => {
-  if (!seconds) return '';
+  if (!seconds) return "";
   const min = Math.floor(seconds / 60);
   if (min >= 60) {
     const h = Math.floor(min / 60);
     const m = min % 60;
-    return `${h}h${m > 0 ? m.toString().padStart(2, '0') : ''}`;
+    return `${h}h${m > 0 ? m.toString().padStart(2, "0") : ""}`;
   }
   return `${min}min`;
 };
@@ -62,34 +64,32 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
   const scale = useSharedValue(1);
 
   // Detect platform from data or URL heuristics
-  const platform = summary.platform || detectPlatformFromUrl(summary.video_url, summary.videoId);
+  const platform =
+    summary.platform ||
+    detectPlatformFromUrl(summary.video_url, summary.videoId);
 
   // Thumbnail URL is now handled by ThumbnailImage with automatic fallbacks
   const thumbnailUrl = summary.thumbnail || undefined;
 
   const subtitle = [summary.channel, formatDuration(summary.duration)]
     .filter(Boolean)
-    .join(' \u00B7 ');
+    .join(" \u00B7 ");
 
   const confirmDelete = useCallback(() => {
-    Alert.alert(
-      "Supprimer l'analyse",
-      'Cette action est irr\u00E9versible.',
-      [
-        {
-          text: 'Annuler',
-          style: 'cancel',
-          onPress: () => {
-            translateX.value = withSpring(0, springs.gentle);
-          },
+    Alert.alert("Supprimer l'analyse", "Cette action est irr\u00E9versible.", [
+      {
+        text: "Annuler",
+        style: "cancel",
+        onPress: () => {
+          translateX.value = withSpring(0, springs.gentle);
         },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: () => onDelete(summary.id),
-        },
-      ],
-    );
+      },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: () => onDelete(summary.id),
+      },
+    ]);
   }, [summary.id, onDelete, translateX]);
 
   const panGesture = Gesture.Pan()
@@ -111,7 +111,7 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
     transform: [
       { translateX: translateX.value },
       { scale: scale.value },
-      { translateY: interpolate(scale.value, [0.97, 1], [2, 0], 'clamp') },
+      { translateY: interpolate(scale.value, [0.97, 1], [2, 0], "clamp") },
     ],
   }));
 
@@ -244,47 +244,47 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
 const styles = StyleSheet.create({
   swipeWrapper: {
     marginBottom: sp.sm,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderRadius: borderRadius.lg,
   },
   deleteContainer: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
+    justifyContent: "center",
+    alignItems: "flex-end",
     paddingRight: sp.lg,
     borderRadius: borderRadius.lg,
   },
   deleteButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 4,
   },
   deleteText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.xs,
-    color: '#fff',
+    color: "#fff",
   },
   card: {
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   cardInner: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: sp.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   thumbnailWrapper: {
-    position: 'relative',
+    position: "relative",
   },
   thumbnail: {
     width: 80,
     height: 60,
     borderRadius: borderRadius.sm,
-    backgroundColor: '#1a1a25',
+    backgroundColor: "#1a1a25",
   },
   platformBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 3,
     left: 3,
     zIndex: 2,
@@ -304,8 +304,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 4,
     gap: 6,
   },
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
   },
   favoriteIcon: {
-    position: 'absolute',
+    position: "absolute",
     top: sp.sm,
     right: sp.sm,
   },

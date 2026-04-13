@@ -1,11 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { Spacing, BorderRadius, Typography } from '../constants/theme';
-import { AnimatedLogo } from './loading';
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
+import { View, Text, StyleSheet, Animated } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../contexts/ThemeContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { Spacing, BorderRadius, Typography } from "../constants/theme";
+import { AnimatedLogo } from "./loading";
 
 interface Step {
   id: string;
@@ -26,11 +32,31 @@ interface StreamingProgressProps {
 }
 
 const STEPS: Step[] = [
-  { id: 'connect', name: 'Connexion', nameEn: 'Connect', icon: 'wifi' },
-  { id: 'metadata', name: 'Métadonnées', nameEn: 'Metadata', icon: 'information-circle' },
-  { id: 'transcript', name: 'Transcription', nameEn: 'Transcript', icon: 'document-text' },
-  { id: 'analysis', name: 'Analyse IA', nameEn: 'AI Analysis', icon: 'sparkles' },
-  { id: 'complete', name: 'Terminé', nameEn: 'Complete', icon: 'checkmark-circle' },
+  { id: "connect", name: "Connexion", nameEn: "Connect", icon: "wifi" },
+  {
+    id: "metadata",
+    name: "Métadonnées",
+    nameEn: "Metadata",
+    icon: "information-circle",
+  },
+  {
+    id: "transcript",
+    name: "Transcription",
+    nameEn: "Transcript",
+    icon: "document-text",
+  },
+  {
+    id: "analysis",
+    name: "Analyse IA",
+    nameEn: "AI Analysis",
+    icon: "sparkles",
+  },
+  {
+    id: "complete",
+    name: "Terminé",
+    nameEn: "Complete",
+    icon: "checkmark-circle",
+  },
 ];
 
 const LOADING_PHRASES_FR = [
@@ -83,7 +109,7 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
 }) => {
   const { colors } = useTheme();
   const { language } = useLanguage();
-  const isEn = language === 'en';
+  const isEn = language === "en";
 
   // Dynamic phrase state
   const phrases = isEn ? LOADING_PHRASES_EN : LOADING_PHRASES_FR;
@@ -103,7 +129,7 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
   // Per-step checkmark scale animations
   const checkmarkScales = useMemo(
     () => STEPS.map(() => new Animated.Value(0)),
-    []
+    [],
   );
 
   // Animate checkmark when a step completes
@@ -146,7 +172,7 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
             duration: 600,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
       pulse.start();
       return () => pulse.stop();
@@ -161,7 +187,7 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
           toValue: 1,
           duration: 2000,
           useNativeDriver: false,
-        })
+        }),
       );
       shimmer.start();
       return () => shimmer.stop();
@@ -210,24 +236,28 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
   };
 
   const getStepStatus = (stepIndex: number) => {
-    if (error && stepIndex === currentStep) return 'error';
-    if (stepIndex < currentStep) return 'completed';
-    if (stepIndex === currentStep) return 'active';
-    return 'pending';
+    if (error && stepIndex === currentStep) return "error";
+    if (stepIndex < currentStep) return "completed";
+    if (stepIndex === currentStep) return "active";
+    return "pending";
   };
 
   const getStepColor = (status: string) => {
     switch (status) {
-      case 'completed': return colors.accentSuccess;
-      case 'active': return colors.accentPrimary;
-      case 'error': return colors.accentError;
-      default: return colors.textMuted;
+      case "completed":
+        return colors.accentSuccess;
+      case "active":
+        return colors.accentPrimary;
+      case "error":
+        return colors.accentError;
+      default:
+        return colors.textMuted;
     }
   };
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 100],
-    outputRange: ['0%', '100%'],
+    outputRange: ["0%", "100%"],
   });
 
   const isActive = currentStep < 4 && !error;
@@ -237,7 +267,15 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
       {/* Timer badge (top right) */}
       <View style={styles.headerRow}>
         <View style={styles.spacer} />
-        <View style={[styles.timerBadge, { backgroundColor: colors.bgSecondary, borderColor: colors.border + '60' }]}>
+        <View
+          style={[
+            styles.timerBadge,
+            {
+              backgroundColor: colors.bgSecondary,
+              borderColor: colors.border + "60",
+            },
+          ]}
+        >
           <Ionicons name="time-outline" size={11} color={colors.textMuted} />
           <Text style={[styles.timerText, { color: colors.textMuted }]}>
             {formatTime(elapsedSeconds)}
@@ -272,13 +310,25 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
       )}
 
       {/* Progress Bar — premium gradient */}
-      <View style={[styles.progressBarContainer, { backgroundColor: colors.bgSecondary }]}>
-        <Animated.View style={[styles.progressBarFill, { width: progressWidth }]}>
+      <View
+        style={[
+          styles.progressBarContainer,
+          { backgroundColor: colors.bgSecondary },
+        ]}
+      >
+        <Animated.View
+          style={[styles.progressBarFill, { width: progressWidth }]}
+        >
           {error ? (
-            <View style={[styles.progressBarSolid, { backgroundColor: colors.accentError }]} />
+            <View
+              style={[
+                styles.progressBarSolid,
+                { backgroundColor: colors.accentError },
+              ]}
+            />
           ) : (
             <LinearGradient
-              colors={['#3b82f6', '#f59e0b', '#8b5cf6']}
+              colors={["#3b82f6", "#f59e0b", "#8b5cf6"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.progressGradient}
@@ -297,8 +347,8 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
         {STEPS.map((step, index) => {
           const status = getStepStatus(index);
           const color = getStepColor(status);
-          const isStepActive = status === 'active';
-          const isCompleted = status === 'completed';
+          const isStepActive = status === "active";
+          const isCompleted = status === "completed";
 
           return (
             <View key={step.id} style={styles.stepItem}>
@@ -306,19 +356,30 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
                 style={[
                   styles.stepIconContainer,
                   {
-                    backgroundColor: (isCompleted || isStepActive) ? color + '22' : 'transparent',
+                    backgroundColor:
+                      isCompleted || isStepActive
+                        ? color + "22"
+                        : "transparent",
                     borderColor: color,
                     transform: isStepActive ? [{ scale: pulseAnim }] : [],
                   },
                 ]}
               >
                 {isCompleted ? (
-                  <Animated.View style={{ transform: [{ scale: checkmarkScales[index] }] }}>
-                    <Ionicons name="checkmark-circle" size={18} color={colors.accentSuccess} />
+                  <Animated.View
+                    style={{ transform: [{ scale: checkmarkScales[index] }] }}
+                  >
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={colors.accentSuccess}
+                    />
                   </Animated.View>
                 ) : (
                   <Ionicons
-                    name={status === 'error' ? 'close-circle' : (step.icon as any)}
+                    name={
+                      status === "error" ? "close-circle" : (step.icon as any)
+                    }
                     size={16}
                     color={color}
                   />
@@ -328,7 +389,7 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
                 style={[
                   styles.stepLabel,
                   {
-                    color: status === 'pending' ? colors.textMuted : color,
+                    color: status === "pending" ? colors.textMuted : color,
                     fontFamily: isStepActive
                       ? Typography.fontFamily.bodySemiBold
                       : Typography.fontFamily.body,
@@ -352,7 +413,11 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
               key={index}
               style={[
                 styles.connector,
-                { backgroundColor: isCompleted ? colors.accentSuccess : colors.bgSecondary },
+                {
+                  backgroundColor: isCompleted
+                    ? colors.accentSuccess
+                    : colors.bgSecondary,
+                },
               ]}
             />
           );
@@ -365,13 +430,17 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
           style={[
             styles.messageContainer,
             {
-              backgroundColor: error ? colors.accentError + '15' : colors.bgSecondary,
-              borderColor: error ? colors.accentError + '40' : colors.border + '40',
+              backgroundColor: error
+                ? colors.accentError + "15"
+                : colors.bgSecondary,
+              borderColor: error
+                ? colors.accentError + "40"
+                : colors.border + "40",
             },
           ]}
         >
           <Ionicons
-            name={error ? 'alert-circle' : 'information-circle'}
+            name={error ? "alert-circle" : "information-circle"}
             size={16}
             color={error ? colors.accentError : colors.accentInfo}
           />
@@ -395,17 +464,17 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: -Spacing.xs,
   },
   spacer: {
     flex: 1,
   },
   timerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -418,26 +487,26 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   spinnerContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: Spacing.md,
   },
   phraseText: {
     fontFamily: Typography.fontFamily.body,
     fontSize: Typography.fontSize.sm,
-    textAlign: 'center',
+    textAlign: "center",
     letterSpacing: 0.2,
     marginTop: -Spacing.xs,
   },
   progressBarContainer: {
     height: 6,
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressBarFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressBarSolid: {
     flex: 1,
@@ -450,16 +519,16 @@ const styles = StyleSheet.create({
   progressText: {
     fontFamily: Typography.fontFamily.bodyMedium,
     fontSize: Typography.fontSize.lg,
-    textAlign: 'center',
+    textAlign: "center",
   },
   stepsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.sm,
     marginTop: Spacing.sm,
   },
   stepItem: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: Spacing.xs,
     flex: 1,
   },
@@ -467,22 +536,22 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
   },
   stepLabel: {
     fontSize: Typography.fontSize.xs,
-    textAlign: 'center',
+    textAlign: "center",
   },
   connectorContainer: {
-    position: 'absolute',
+    position: "absolute",
     // Offset: container padding + headerRow height (~22) + gap*3 + spinner + phrase + progressBar + progressText + gap + stepContainer margin + half icon
     top: Spacing.lg + 22 + Spacing.md * 3 + 148 + 18 + 6 + 22 + Spacing.sm + 18,
     left: Spacing.lg + Spacing.sm + 18,
     right: Spacing.lg + Spacing.sm + 18,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   connector: {
     height: 2,
@@ -491,8 +560,8 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
   messageContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,

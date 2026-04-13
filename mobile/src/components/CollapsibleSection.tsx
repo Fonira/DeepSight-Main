@@ -6,19 +6,19 @@
  * Chevron rotates smoothly on toggle.
  */
 
-import React, { useState, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useState, useCallback } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   interpolate,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '@/contexts/ThemeContext';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
+} from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "@/contexts/ThemeContext";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
 
 interface CollapsibleSectionProps {
   title: string;
@@ -68,7 +68,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
     return {
       height: interpolate(progress.value, [0, 1], [0, contentHeight]),
       opacity: interpolate(progress.value, [0, 0.3, 1], [0, 0.5, 1]),
-      overflow: 'hidden' as const,
+      overflow: "hidden" as const,
     };
   });
 
@@ -82,12 +82,9 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
     <View style={[styles.container, { borderColor: colors.border }]}>
       <Pressable
         onPress={toggle}
-        style={({ pressed }) => [
-          styles.header,
-          pressed && { opacity: 0.7 },
-        ]}
+        style={({ pressed }) => [styles.header, pressed && { opacity: 0.7 }]}
         accessibilityRole="button"
-        accessibilityLabel={`${title}, ${progress.value > 0.5 ? 'ouvert' : 'fermé'}`}
+        accessibilityLabel={`${title}, ${progress.value > 0.5 ? "ouvert" : "fermé"}`}
         accessibilityHint="Appuyez pour ouvrir ou fermer la section"
       >
         <View style={styles.headerLeft}>
@@ -129,15 +126,15 @@ const styles = StyleSheet.create({
     marginBottom: sp.xs,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: sp.md,
     minHeight: 44,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
     marginRight: sp.sm,
   },
@@ -152,8 +149,8 @@ const styles = StyleSheet.create({
   chevronWrapper: {
     width: 28,
     height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: borderRadius.sm,
   },
   contentInner: {

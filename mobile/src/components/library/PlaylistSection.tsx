@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,16 +6,16 @@ import {
   StyleSheet,
   ActivityIndicator,
   FlatList,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
-import { useTheme } from '@/contexts/ThemeContext';
-import { historyApi, playlistApi } from '@/services/api';
-import { palette } from '@/theme/colors';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { formatRelativeDate as formatDate } from '@/utils/formatDate';
+} from "react-native";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
+import { useTheme } from "@/contexts/ThemeContext";
+import { historyApi, playlistApi } from "@/services/api";
+import { palette } from "@/theme/colors";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
+import { formatRelativeDate as formatDate } from "@/utils/formatDate";
 
 interface PlaylistItem {
   id: string;
@@ -47,7 +47,7 @@ export const PlaylistSection: React.FC = () => {
 
   // Fetch playlist history
   const { data, isLoading, error } = useQuery({
-    queryKey: ['playlist-history'],
+    queryKey: ["playlist-history"],
     queryFn: () => historyApi.getPlaylistHistory(1, 50),
     staleTime: 5 * 60 * 1000,
   });
@@ -114,7 +114,7 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
 
   // Fetch detail only when expanded
   const { data: detail, isLoading: detailLoading } = useQuery({
-    queryKey: ['playlist-detail', playlist.id],
+    queryKey: ["playlist-detail", playlist.id],
     queryFn: async () => {
       const res = await playlistApi.getPlaylist(playlist.id);
       return res as unknown as PlaylistDetailData;
@@ -150,7 +150,10 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
           ))}
           {playlist.thumbnail_urls.length === 0 && (
             <View
-              style={[styles.mosaicPlaceholder, { backgroundColor: colors.bgTertiary }]}
+              style={[
+                styles.mosaicPlaceholder,
+                { backgroundColor: colors.bgTertiary },
+              ]}
             >
               <Ionicons name="albums" size={24} color={colors.textMuted} />
             </View>
@@ -167,7 +170,7 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
           </Text>
           <View style={styles.cardMeta}>
             <Text style={[styles.metaText, { color: colors.textTertiary }]}>
-              {playlist.video_count} vidéo{playlist.video_count > 1 ? 's' : ''}
+              {playlist.video_count} vidéo{playlist.video_count > 1 ? "s" : ""}
             </Text>
             <Text style={[styles.metaDot, { color: colors.textMuted }]}>·</Text>
             <Text style={[styles.metaText, { color: colors.textTertiary }]}>
@@ -178,7 +181,7 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
 
         {/* Chevron */}
         <Ionicons
-          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+          name={isExpanded ? "chevron-up" : "chevron-down"}
           size={20}
           color={colors.textMuted}
         />
@@ -202,15 +205,25 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
                   ]}
                 >
                   <View style={styles.metaAnalysisHeader}>
-                    <Ionicons name="sparkles" size={14} color={palette.indigo} />
+                    <Ionicons
+                      name="sparkles"
+                      size={14}
+                      color={palette.indigo}
+                    />
                     <Text
-                      style={[styles.metaAnalysisLabel, { color: palette.indigo }]}
+                      style={[
+                        styles.metaAnalysisLabel,
+                        { color: palette.indigo },
+                      ]}
                     >
                       Méta-analyse
                     </Text>
                   </View>
                   <Text
-                    style={[styles.metaAnalysisText, { color: colors.textSecondary }]}
+                    style={[
+                      styles.metaAnalysisText,
+                      { color: colors.textSecondary },
+                    ]}
                     numberOfLines={6}
                   >
                     {detail.meta_analysis}
@@ -219,7 +232,9 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
               )}
 
               {/* Videos list */}
-              <Text style={[styles.videosLabel, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.videosLabel, { color: colors.textSecondary }]}
+              >
                 Vidéos analysées ({detail.videos?.length ?? 0})
               </Text>
               {(detail.videos || []).map((video, index) => (
@@ -228,7 +243,8 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
                   style={[
                     styles.videoRow,
                     { borderBottomColor: colors.border },
-                    index === (detail.videos?.length ?? 0) - 1 && styles.videoRowLast,
+                    index === (detail.videos?.length ?? 0) - 1 &&
+                      styles.videoRowLast,
                   ]}
                 >
                   <Image
@@ -245,7 +261,10 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
                       {video.title}
                     </Text>
                     <Text
-                      style={[styles.videoChannel, { color: colors.textTertiary }]}
+                      style={[
+                        styles.videoChannel,
+                        { color: colors.textTertiary },
+                      ]}
                       numberOfLines={1}
                     >
                       {video.channel}
@@ -256,21 +275,21 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
                       styles.statusBadge,
                       {
                         backgroundColor:
-                          video.status === 'completed'
-                            ? palette.green + '20'
+                          video.status === "completed"
+                            ? palette.green + "20"
                             : colors.bgTertiary,
                       },
                     ]}
                   >
                     <Ionicons
                       name={
-                        video.status === 'completed'
-                          ? 'checkmark-circle'
-                          : 'time-outline'
+                        video.status === "completed"
+                          ? "checkmark-circle"
+                          : "time-outline"
                       }
                       size={12}
                       color={
-                        video.status === 'completed'
+                        video.status === "completed"
                           ? palette.green
                           : colors.textMuted
                       }
@@ -280,9 +299,20 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
               ))}
 
               {/* Read-only notice */}
-              <View style={[styles.readOnlyNotice, { backgroundColor: colors.bgTertiary }]}>
-                <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
-                <Text style={[styles.readOnlyText, { color: colors.textMuted }]}>
+              <View
+                style={[
+                  styles.readOnlyNotice,
+                  { backgroundColor: colors.bgTertiary },
+                ]}
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={14}
+                  color={colors.textMuted}
+                />
+                <Text
+                  style={[styles.readOnlyText, { color: colors.textMuted }]}
+                >
                   L'analyse de playlists est disponible sur la version web
                 </Text>
               </View>
@@ -299,9 +329,9 @@ const styles = StyleSheet.create({
     gap: sp.sm,
   },
   loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: sp.xl,
     gap: sp.sm,
   },
@@ -310,8 +340,8 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
   },
   emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: sp['2xl'],
+    alignItems: "center",
+    paddingVertical: sp["2xl"],
     gap: sp.sm,
   },
   emptyText: {
@@ -321,27 +351,27 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
-    textAlign: 'center',
+    textAlign: "center",
     paddingHorizontal: sp.xl,
   },
   card: {
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: sp.md,
     gap: sp.md,
   },
   mosaic: {
     width: 56,
     height: 56,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     borderRadius: borderRadius.sm,
-    overflow: 'hidden',
+    overflow: "hidden",
     gap: 1,
   },
   mosaicThumb: {
@@ -351,8 +381,8 @@ const styles = StyleSheet.create({
   mosaicPlaceholder: {
     width: 56,
     height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: borderRadius.sm,
   },
   cardInfo: {
@@ -365,8 +395,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   cardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   metaText: {
@@ -383,7 +413,7 @@ const styles = StyleSheet.create({
   },
   detailLoading: {
     paddingVertical: sp.lg,
-    alignItems: 'center',
+    alignItems: "center",
   },
   metaAnalysis: {
     padding: sp.md,
@@ -391,8 +421,8 @@ const styles = StyleSheet.create({
     gap: sp.sm,
   },
   metaAnalysisHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.xs,
   },
   metaAnalysisLabel: {
@@ -409,8 +439,8 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
   },
   videoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: sp.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: sp.sm,
@@ -440,12 +470,12 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   readOnlyNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: sp.sm,
     borderRadius: borderRadius.sm,
     gap: sp.xs,

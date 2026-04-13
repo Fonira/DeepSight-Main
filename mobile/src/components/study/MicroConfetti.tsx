@@ -6,8 +6,8 @@
  * Particles have varied shapes (round + rectangular) and spin during flight.
  */
 
-import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import React, { useEffect } from "react";
+import { StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -15,10 +15,10 @@ import Animated, {
   withDelay,
   withSequence,
   Easing,
-} from 'react-native-reanimated';
-import { palette } from '../../theme/colors';
+} from "react-native-reanimated";
+import { palette } from "../../theme/colors";
 
-type ParticleShape = 'circle' | 'rect';
+type ParticleShape = "circle" | "rect";
 
 interface ParticleConfig {
   color: string;
@@ -32,12 +32,54 @@ interface ParticleConfig {
 }
 
 const PARTICLES: ParticleConfig[] = [
-  { color: palette.indigo, dx: -28, delay: 0, shape: 'circle', riseExtra: 18, spinDir: 1 },
-  { color: palette.violet, dx: -12, delay: 40, shape: 'rect', riseExtra: 10, spinDir: -1 },
-  { color: palette.blue, dx: 3, delay: 80, shape: 'circle', riseExtra: 24, spinDir: 1 },
-  { color: palette.indigo, dx: 16, delay: 50, shape: 'rect', riseExtra: 14, spinDir: -1 },
-  { color: palette.violet, dx: 30, delay: 20, shape: 'circle', riseExtra: 20, spinDir: 1 },
-  { color: palette.cyan, dx: 7, delay: 60, shape: 'rect', riseExtra: 8, spinDir: -1 },
+  {
+    color: palette.indigo,
+    dx: -28,
+    delay: 0,
+    shape: "circle",
+    riseExtra: 18,
+    spinDir: 1,
+  },
+  {
+    color: palette.violet,
+    dx: -12,
+    delay: 40,
+    shape: "rect",
+    riseExtra: 10,
+    spinDir: -1,
+  },
+  {
+    color: palette.blue,
+    dx: 3,
+    delay: 80,
+    shape: "circle",
+    riseExtra: 24,
+    spinDir: 1,
+  },
+  {
+    color: palette.indigo,
+    dx: 16,
+    delay: 50,
+    shape: "rect",
+    riseExtra: 14,
+    spinDir: -1,
+  },
+  {
+    color: palette.violet,
+    dx: 30,
+    delay: 20,
+    shape: "circle",
+    riseExtra: 20,
+    spinDir: 1,
+  },
+  {
+    color: palette.cyan,
+    dx: 7,
+    delay: 60,
+    shape: "rect",
+    riseExtra: 8,
+    spinDir: -1,
+  },
 ];
 
 interface MicroConfettiProps {
@@ -70,42 +112,53 @@ const Particle: React.FC<{
       return;
     }
 
-    opacity.value = withDelay(delay, withSequence(
-      withTiming(1, { duration: 80 }),
-      withDelay(320, withTiming(0, { duration: 280 }))
-    ));
+    opacity.value = withDelay(
+      delay,
+      withSequence(
+        withTiming(1, { duration: 80 }),
+        withDelay(320, withTiming(0, { duration: 280 })),
+      ),
+    );
 
-    translateY.value = withDelay(delay, withSequence(
-      // Rise phase
-      withTiming(-40 - riseExtra - Math.random() * 10, {
-        duration: 320,
-        easing: Easing.out(Easing.cubic),
-      }),
-      // Fall with gravity
-      withTiming(14, {
-        duration: 380,
-        easing: Easing.in(Easing.quad),
-      })
-    ));
+    translateY.value = withDelay(
+      delay,
+      withSequence(
+        // Rise phase
+        withTiming(-40 - riseExtra - Math.random() * 10, {
+          duration: 320,
+          easing: Easing.out(Easing.cubic),
+        }),
+        // Fall with gravity
+        withTiming(14, {
+          duration: 380,
+          easing: Easing.in(Easing.quad),
+        }),
+      ),
+    );
 
-    translateX.value = withDelay(delay,
+    translateX.value = withDelay(
+      delay,
       withTiming(dx + (Math.random() - 0.5) * 12, {
         duration: 650,
         easing: Easing.out(Easing.cubic),
-      })
+      }),
     );
 
-    scale.value = withDelay(delay, withSequence(
-      withTiming(1, { duration: 150 }),
-      withDelay(280, withTiming(0.2, { duration: 220 }))
-    ));
+    scale.value = withDelay(
+      delay,
+      withSequence(
+        withTiming(1, { duration: 150 }),
+        withDelay(280, withTiming(0.2, { duration: 220 })),
+      ),
+    );
 
     // Spin during flight
-    rotate.value = withDelay(delay,
+    rotate.value = withDelay(
+      delay,
       withTiming(spinDir * (180 + Math.random() * 180), {
         duration: 650,
         easing: Easing.out(Easing.cubic),
-      })
+      }),
     );
   }, [trigger]);
 
@@ -119,20 +172,18 @@ const Particle: React.FC<{
     opacity: opacity.value,
   }));
 
-  const shapeStyle = shape === 'rect' ? styles.particleRect : styles.particleCircle;
+  const shapeStyle =
+    shape === "rect" ? styles.particleRect : styles.particleCircle;
 
   return (
-    <Animated.View
-      style={[
-        shapeStyle,
-        { backgroundColor: color },
-        style,
-      ]}
-    />
+    <Animated.View style={[shapeStyle, { backgroundColor: color }, style]} />
   );
 };
 
-export const MicroConfetti: React.FC<MicroConfettiProps> = ({ trigger, onComplete }) => {
+export const MicroConfetti: React.FC<MicroConfettiProps> = ({
+  trigger,
+  onComplete,
+}) => {
   useEffect(() => {
     if (trigger && onComplete) {
       const timer = setTimeout(onComplete, 750);
@@ -153,21 +204,21 @@ export const MicroConfetti: React.FC<MicroConfettiProps> = ({ trigger, onComplet
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: '40%',
-    left: '50%',
+    position: "absolute",
+    top: "40%",
+    left: "50%",
     width: 0,
     height: 0,
     zIndex: 100,
   },
   particleCircle: {
-    position: 'absolute',
+    position: "absolute",
     width: 6,
     height: 6,
     borderRadius: 3,
   },
   particleRect: {
-    position: 'absolute',
+    position: "absolute",
     width: 7,
     height: 4,
     borderRadius: 1.5,

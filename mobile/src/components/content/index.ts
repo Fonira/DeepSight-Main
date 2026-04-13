@@ -4,4 +4,4 @@ export {
   formatTimestamp,
   parseTimestamp,
   default as TimecodeTextDefault,
-} from './TimecodeText';
+} from "./TimecodeText";

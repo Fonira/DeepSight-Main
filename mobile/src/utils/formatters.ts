@@ -1,29 +1,29 @@
 // Format duration from seconds to human readable string
 export const formatDuration = (seconds: number): string => {
-  if (!seconds || seconds < 0) return '0:00';
+  if (!seconds || seconds < 0) return "0:00";
 
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
 
   if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  return `${minutes}:${secs.toString().padStart(2, "0")}`;
 };
 
 // Format large numbers (e.g., view counts)
 export const formatNumber = (num: number): string => {
-  if (!num || num < 0) return '0';
+  if (!num || num < 0) return "0";
 
   if (num >= 1000000000) {
-    return (num / 1000000000).toFixed(1).replace(/\.0$/, '') + 'B';
+    return (num / 1000000000).toFixed(1).replace(/\.0$/, "") + "B";
   }
   if (num >= 1000000) {
-    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
   }
   if (num >= 1000) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return (num / 1000).toFixed(1).replace(/\.0$/, "") + "K";
   }
   return num.toString();
 };
@@ -41,42 +41,48 @@ export const formatRelativeTime = (dateString: string): string => {
   const diffMonths = Math.floor(diffDays / 30);
   const diffYears = Math.floor(diffDays / 365);
 
-  if (diffSecs < 60) return 'À l\'instant';
+  if (diffSecs < 60) return "À l'instant";
   if (diffMins < 60) return `Il y a ${diffMins} min`;
   if (diffHours < 24) return `Il y a ${diffHours}h`;
   if (diffDays < 7) return `Il y a ${diffDays}j`;
   if (diffWeeks < 4) return `Il y a ${diffWeeks} sem.`;
   if (diffMonths < 12) return `Il y a ${diffMonths} mois`;
-  return `Il y a ${diffYears} an${diffYears > 1 ? 's' : ''}`;
+  return `Il y a ${diffYears} an${diffYears > 1 ? "s" : ""}`;
 };
 
 // Format date to readable string
-export const formatDate = (dateString: string, locale: string = 'fr-FR'): string => {
-  if (!dateString) return '';
+export const formatDate = (
+  dateString: string,
+  locale: string = "fr-FR",
+): string => {
+  if (!dateString) return "";
 
   const date = new Date(dateString);
 
   // Check for invalid date
   if (isNaN(date.getTime())) {
-    return '';
+    return "";
   }
 
   return date.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 };
 
 // Format date and time
-export const formatDateTime = (dateString: string, locale: string = 'fr-FR'): string => {
+export const formatDateTime = (
+  dateString: string,
+  locale: string = "fr-FR",
+): string => {
   const date = new Date(dateString);
   return date.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
@@ -86,31 +92,42 @@ export const formatCredits = (used: number, total: number): string => {
 };
 
 // Format percentage
-export const formatPercentage = (value: number, decimals: number = 0): string => {
+export const formatPercentage = (
+  value: number,
+  decimals: number = 0,
+): string => {
   return `${(value * 100).toFixed(decimals)}%`;
 };
 
 // Format file size
 export const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) return "0 B";
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
 // Truncate text with ellipsis
 export const truncateText = (text: string, maxLength: number): string => {
   if (!text || text.length <= maxLength) return text;
-  return text.slice(0, maxLength - 3) + '...';
+  return text.slice(0, maxLength - 3) + "...";
 };
 
 // URL validation result interface for real-time feedback
 export interface URLValidationResult {
   isValid: boolean;
   videoId: string | null;
-  urlType: 'watch' | 'youtu.be' | 'embed' | 'v' | 'shorts' | 'direct' | 'tiktok' | null;
-  platform?: 'youtube' | 'tiktok';
+  urlType:
+    | "watch"
+    | "youtu.be"
+    | "embed"
+    | "v"
+    | "shorts"
+    | "direct"
+    | "tiktok"
+    | null;
+  platform?: "youtube" | "tiktok";
   error?: string;
 }
 
@@ -126,7 +143,7 @@ const TIKTOK_PATTERNS = [
 // Check if URL is a TikTok URL
 export const isTikTokUrl = (url: string): boolean => {
   if (!url) return false;
-  return TIKTOK_PATTERNS.some(pattern => pattern.test(url.trim()));
+  return TIKTOK_PATTERNS.some((pattern) => pattern.test(url.trim()));
 };
 
 // Extract TikTok video ID
@@ -176,63 +193,72 @@ export const validateYouTubeUrl = (url: string): URLValidationResult => {
   const trimmed = url.trim();
 
   // Check for YouTube Shorts
-  const shortsMatch = trimmed.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+  const shortsMatch = trimmed.match(
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+  );
   if (shortsMatch) {
-    return { isValid: true, videoId: shortsMatch[1], urlType: 'shorts' };
+    return { isValid: true, videoId: shortsMatch[1], urlType: "shorts" };
   }
 
   // Check for standard watch URL
-  const watchMatch = trimmed.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/);
+  const watchMatch = trimmed.match(
+    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+  );
   if (watchMatch) {
-    return { isValid: true, videoId: watchMatch[1], urlType: 'watch' };
+    return { isValid: true, videoId: watchMatch[1], urlType: "watch" };
   }
 
   // Check for youtu.be short link
   const shortMatch = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
   if (shortMatch) {
-    return { isValid: true, videoId: shortMatch[1], urlType: 'youtu.be' };
+    return { isValid: true, videoId: shortMatch[1], urlType: "youtu.be" };
   }
 
   // Check for embed URL
   const embedMatch = trimmed.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
   if (embedMatch) {
-    return { isValid: true, videoId: embedMatch[1], urlType: 'embed' };
+    return { isValid: true, videoId: embedMatch[1], urlType: "embed" };
   }
 
   // Check for /v/ URL
   const vMatch = trimmed.match(/youtube\.com\/v\/([a-zA-Z0-9_-]{11})/);
   if (vMatch) {
-    return { isValid: true, videoId: vMatch[1], urlType: 'v' };
+    return { isValid: true, videoId: vMatch[1], urlType: "v" };
   }
 
   // Check for direct video ID
   const directMatch = trimmed.match(/^[a-zA-Z0-9_-]{11}$/);
   if (directMatch) {
-    return { isValid: true, videoId: trimmed, urlType: 'direct' };
+    return { isValid: true, videoId: trimmed, urlType: "direct" };
   }
 
   // 🎵 Check TikTok URLs
   const tiktokId = extractTikTokId(trimmed);
   if (tiktokId) {
-    return { isValid: true, videoId: tiktokId, urlType: 'tiktok', platform: 'tiktok' };
-  }
-
-  // Check if it looks like a URL but isn't valid YouTube/TikTok
-  if (trimmed.includes('youtube.com') || trimmed.includes('youtu.be')) {
     return {
-      isValid: false,
-      videoId: null,
-      urlType: null,
-      error: 'Invalid YouTube URL format'
+      isValid: true,
+      videoId: tiktokId,
+      urlType: "tiktok",
+      platform: "tiktok",
     };
   }
 
-  if (trimmed.includes('tiktok.com')) {
+  // Check if it looks like a URL but isn't valid YouTube/TikTok
+  if (trimmed.includes("youtube.com") || trimmed.includes("youtu.be")) {
     return {
       isValid: false,
       videoId: null,
       urlType: null,
-      error: 'Invalid TikTok URL format'
+      error: "Invalid YouTube URL format",
+    };
+  }
+
+  if (trimmed.includes("tiktok.com")) {
+    return {
+      isValid: false,
+      videoId: null,
+      urlType: null,
+      error: "Invalid TikTok URL format",
     };
   }
 
@@ -247,13 +273,13 @@ export const isValidYouTubeUrl = (url: string): boolean => {
 // Get YouTube thumbnail URL
 export const getYouTubeThumbnail = (
   videoId: string,
-  quality: 'default' | 'medium' | 'high' | 'maxres' = 'high'
+  quality: "default" | "medium" | "high" | "maxres" = "high",
 ): string => {
   const qualityMap = {
-    default: 'default',
-    medium: 'mqdefault',
-    high: 'hqdefault',
-    maxres: 'maxresdefault',
+    default: "default",
+    medium: "mqdefault",
+    high: "hqdefault",
+    maxres: "maxresdefault",
   };
   return `https://img.youtube.com/vi/${videoId}/${qualityMap[quality]}.jpg`;
 };
@@ -266,7 +292,7 @@ export const formatWordCount = (count: number): string => {
 
 // Capitalize first letter
 export const capitalizeFirst = (str: string): string => {
-  if (!str) return '';
+  if (!str) return "";
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 

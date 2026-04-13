@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
-import type { ChatMessage } from '../types';
-import { chatApi } from '../services/api';
+import { useState, useCallback, useRef } from "react";
+import type { ChatMessage } from "../types";
+import { chatApi } from "../services/api";
 
 /** Génère un ID unique sans collision (base36 + counter) */
 let _idCounter = 0;
@@ -17,7 +17,7 @@ export function useChat(summaryId: string) {
     async (content: string) => {
       const userMessage: ChatMessage = {
         id: uniqueId(),
-        role: 'user',
+        role: "user",
         content,
         timestamp: new Date().toISOString(),
       };
@@ -30,8 +30,8 @@ export function useChat(summaryId: string) {
 
         const assistantMessage: ChatMessage = {
           id: uniqueId(),
-          role: 'assistant',
-          content: response.response || '',
+          role: "assistant",
+          content: response.response || "",
           timestamp: new Date().toISOString(),
         };
 
@@ -39,8 +39,8 @@ export function useChat(summaryId: string) {
       } catch {
         const errorMessage: ChatMessage = {
           id: uniqueId(),
-          role: 'assistant',
-          content: 'Désolé, une erreur est survenue. Réessayez.',
+          role: "assistant",
+          content: "Désolé, une erreur est survenue. Réessayez.",
           timestamp: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, errorMessage]);
@@ -48,7 +48,7 @@ export function useChat(summaryId: string) {
         setIsLoading(false);
       }
     },
-    [summaryId]
+    [summaryId],
   );
 
   const loadHistory = useCallback(async () => {
@@ -58,7 +58,9 @@ export function useChat(summaryId: string) {
         setMessages(response.messages);
       }
     } catch (error) {
-      if (__DEV__) { console.warn('[useChat] loadHistory failed:', error); }
+      if (__DEV__) {
+        console.warn("[useChat] loadHistory failed:", error);
+      }
     }
   }, [summaryId]);
 

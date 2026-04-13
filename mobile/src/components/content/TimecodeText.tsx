@@ -3,17 +3,17 @@
  * Les timestamps au format [MM:SS] ou [HH:MM:SS] deviennent interactifs
  */
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback } from "react";
 import {
   Text,
   TouchableOpacity,
   StyleSheet,
   TextStyle,
   View,
-} from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Typography } from '../../constants/theme';
+} from "react-native";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { Typography } from "../../constants/theme";
 
 // Regex pour capturer les timestamps
 // Supporte: [2:34], [02:34], [1:02:34], (2:34), 2:34
@@ -28,7 +28,7 @@ interface TimecodeTextProps {
 }
 
 interface TextPart {
-  type: 'text' | 'timecode';
+  type: "text" | "timecode";
   content: string;
   seconds?: number;
 }
@@ -55,20 +55,24 @@ export const TimecodeText: React.FC<TimecodeTextProps> = ({
       // Ajouter le texte avant le timestamp
       if (match.index > lastIndex) {
         result.push({
-          type: 'text',
+          type: "text",
           content: content.slice(lastIndex, match.index),
         });
       }
 
       // Calculer les secondes
       const hours = match[3] ? parseInt(match[1], 10) : 0;
-      const minutes = match[3] ? parseInt(match[2], 10) : parseInt(match[1], 10);
-      const seconds = match[3] ? parseInt(match[3], 10) : parseInt(match[2], 10);
+      const minutes = match[3]
+        ? parseInt(match[2], 10)
+        : parseInt(match[1], 10);
+      const seconds = match[3]
+        ? parseInt(match[3], 10)
+        : parseInt(match[2], 10);
       const totalSeconds = hours * 3600 + minutes * 60 + seconds;
 
       // Ajouter le timestamp
       result.push({
-        type: 'timecode',
+        type: "timecode",
         content: match[0],
         seconds: totalSeconds,
       });
@@ -79,7 +83,7 @@ export const TimecodeText: React.FC<TimecodeTextProps> = ({
     // Ajouter le texte restant
     if (lastIndex < content.length) {
       result.push({
-        type: 'text',
+        type: "text",
         content: content.slice(lastIndex),
       });
     }
@@ -87,13 +91,16 @@ export const TimecodeText: React.FC<TimecodeTextProps> = ({
     return result;
   }, [content]);
 
-  const handleTimecodePress = useCallback((seconds: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onTimecodePress(seconds);
-  }, [onTimecodePress]);
+  const handleTimecodePress = useCallback(
+    (seconds: number) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onTimecodePress(seconds);
+    },
+    [onTimecodePress],
+  );
 
   // Si pas de timecodes, rendre simplement le texte
-  const hasTimecodes = parts.some(p => p.type === 'timecode');
+  const hasTimecodes = parts.some((p) => p.type === "timecode");
   if (!hasTimecodes) {
     return (
       <Text style={[styles.text, style]} numberOfLines={numberOfLines}>
@@ -105,13 +112,16 @@ export const TimecodeText: React.FC<TimecodeTextProps> = ({
   return (
     <Text style={[styles.text, style]} numberOfLines={numberOfLines}>
       {parts.map((part, index) => {
-        if (part.type === 'timecode' && part.seconds !== undefined) {
+        if (part.type === "timecode" && part.seconds !== undefined) {
           return (
             <Text
               key={index}
               style={[
                 styles.timecode,
-                { color: colors.accentPrimary, backgroundColor: `${colors.accentPrimary}15` },
+                {
+                  color: colors.accentPrimary,
+                  backgroundColor: `${colors.accentPrimary}15`,
+                },
                 timecodeStyle,
               ]}
               onPress={() => handleTimecodePress(part.seconds!)}
@@ -120,9 +130,7 @@ export const TimecodeText: React.FC<TimecodeTextProps> = ({
             </Text>
           );
         }
-        return (
-          <Text key={index}>{part.content}</Text>
-        );
+        return <Text key={index}>{part.content}</Text>;
       })}
     </Text>
   );
@@ -164,12 +172,20 @@ export const TimecodeListItem: React.FC<TimecodeListItemProps> = ({
       onPress={handlePress}
       activeOpacity={0.7}
     >
-      <View style={[styles.timestampBadge, { backgroundColor: `${colors.accentPrimary}20` }]}>
+      <View
+        style={[
+          styles.timestampBadge,
+          { backgroundColor: `${colors.accentPrimary}20` },
+        ]}
+      >
         <Text style={[styles.timestampText, { color: colors.accentPrimary }]}>
           {timestamp}
         </Text>
       </View>
-      <Text style={[styles.titleText, { color: colors.textPrimary }]} numberOfLines={2}>
+      <Text
+        style={[styles.titleText, { color: colors.textPrimary }]}
+        numberOfLines={2}
+      >
         {title}
       </Text>
     </TouchableOpacity>
@@ -183,9 +199,9 @@ export const formatTimestamp = (totalSeconds: number): string => {
   const seconds = totalSeconds % 60;
 
   if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   }
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
 
 // Utilitaire pour parser un timestamp en secondes
@@ -210,11 +226,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   listItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     borderRadius: 8,
     marginVertical: 4,
@@ -225,12 +241,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
     minWidth: 60,
-    alignItems: 'center',
+    alignItems: "center",
   },
   timestampText: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodyMedium,
-    fontVariant: ['tabular-nums'],
+    fontVariant: ["tabular-nums"],
   },
   titleText: {
     flex: 1,

@@ -1,10 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '../constants/config';
-import fr from '../i18n/fr.json';
-import en from '../i18n/en.json';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { STORAGE_KEYS } from "../constants/config";
+import fr from "../i18n/fr.json";
+import en from "../i18n/en.json";
 
-export type Language = 'fr' | 'en';
+export type Language = "fr" | "en";
 
 type TranslationsType = typeof fr;
 
@@ -18,10 +25,14 @@ interface LanguageContextType {
 
 const translations: Record<Language, TranslationsType> = { fr, en };
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType | undefined>(
+  undefined,
+);
 
-export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>('fr');
+export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
+  const [language, setLanguageState] = useState<Language>("fr");
   const [isLoading, setIsLoading] = useState(true);
 
   // Load saved language preference on mount with timeout protection
@@ -30,17 +41,19 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
       try {
         // Timeout protection: 2 seconds max to prevent hanging on emulator
         const timeoutPromise = new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('Language load timeout')), 2000)
+          setTimeout(() => reject(new Error("Language load timeout")), 2000),
         );
-        const saved = await Promise.race([
+        const saved = (await Promise.race([
           AsyncStorage.getItem(STORAGE_KEYS.LANGUAGE),
-          timeoutPromise
-        ]) as string | null;
-        if (saved === 'fr' || saved === 'en') {
+          timeoutPromise,
+        ])) as string | null;
+        if (saved === "fr" || saved === "en") {
           setLanguageState(saved);
         }
       } catch (error) {
-        if (__DEV__) { console.warn('Language load failed/timeout, using default:', error); }
+        if (__DEV__) {
+          console.warn("Language load failed/timeout, using default:", error);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -53,7 +66,9 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
       setLanguageState(lang);
       await AsyncStorage.setItem(STORAGE_KEYS.LANGUAGE, lang);
     } catch (error) {
-      if (__DEV__) { console.error('Failed to save language preference:', error); }
+      if (__DEV__) {
+        console.error("Failed to save language preference:", error);
+      }
     }
   };
 
@@ -62,12 +77,14 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Helper for inline translations
   const tr = useCallback(
-    (frText: string, enText: string) => (language === 'fr' ? frText : enText),
-    [language]
+    (frText: string, enText: string) => (language === "fr" ? frText : enText),
+    [language],
   );
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, tr, isLoading }}>
+    <LanguageContext.Provider
+      value={{ language, setLanguage, t, tr, isLoading }}
+    >
       {children}
     </LanguageContext.Provider>
   );
@@ -76,7 +93,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
   if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+    throw new Error("useLanguage must be used within a LanguageProvider");
   }
   return context;
 };

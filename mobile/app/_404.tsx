@@ -1,15 +1,10 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-} from 'react-native';
-import { Link } from 'expo-router';
-import { Button } from '@/components/ui/Button';
-import { darkColors } from '@/theme/colors';
-import { sp } from '@/theme/spacing';
-import { fontFamily, fontSize, textStyles } from '@/theme/typography';
+import React from "react";
+import { View, Text, StyleSheet, SafeAreaView } from "react-native";
+import { Link } from "expo-router";
+import { Button } from "@/components/ui/Button";
+import { darkColors } from "@/theme/colors";
+import { sp } from "@/theme/spacing";
+import { fontFamily, fontSize, textStyles } from "@/theme/typography";
 
 export default function NotFoundScreen() {
   return (
@@ -43,13 +38,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: sp.lg,
     paddingVertical: sp.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     gap: sp.xl,
   },
   title: {
     fontFamily: fontFamily.display,
-    fontSize: fontSize['5xl'],
+    fontSize: fontSize["5xl"],
     color: darkColors.textPrimary,
   },
   heading: {
@@ -59,7 +54,7 @@ const styles = StyleSheet.create({
   description: {
     ...textStyles.bodyMd,
     color: darkColors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: sp.lg,
   },
 });

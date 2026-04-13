@@ -1,14 +1,14 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
+import React, { useEffect, useRef } from "react";
+import { View, StyleSheet, ViewStyle, StyleProp } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
   withTiming,
   interpolate,
-} from 'react-native-reanimated';
-import { useTheme } from '../../contexts/ThemeContext';
-import { BorderRadius, Spacing } from '../../constants/theme';
+} from "react-native-reanimated";
+import { useTheme } from "../../contexts/ThemeContext";
+import { BorderRadius, Spacing } from "../../constants/theme";
 
 interface SkeletonProps {
   width?: number | string;
@@ -18,7 +18,7 @@ interface SkeletonProps {
 }
 
 const SkeletonBlock: React.FC<SkeletonProps> = ({
-  width = '100%',
+  width = "100%",
   height = 16,
   borderRadius = BorderRadius.sm,
   style,
@@ -53,7 +53,9 @@ const SkeletonBlock: React.FC<SkeletonProps> = ({
 };
 
 /** Skeleton for a VideoCard in list mode */
-export const VideoCardSkeleton: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
+export const VideoCardSkeleton: React.FC<{ compact?: boolean }> = ({
+  compact = false,
+}) => {
   const { colors, isDark } = useTheme();
   const bgColor = isDark ? colors.bgCard : colors.bgCard;
 
@@ -63,7 +65,11 @@ export const VideoCardSkeleton: React.FC<{ compact?: boolean }> = ({ compact = f
         <SkeletonBlock width={120} height={68} borderRadius={BorderRadius.sm} />
         <View style={skeletonStyles.compactContent}>
           <SkeletonBlock width="90%" height={14} />
-          <SkeletonBlock width="60%" height={12} style={{ marginTop: Spacing.sm }} />
+          <SkeletonBlock
+            width="60%"
+            height={12}
+            style={{ marginTop: Spacing.sm }}
+          />
         </View>
       </View>
     );
@@ -74,10 +80,22 @@ export const VideoCardSkeleton: React.FC<{ compact?: boolean }> = ({ compact = f
       <SkeletonBlock width="100%" height={180} borderRadius={0} />
       <View style={skeletonStyles.cardContent}>
         <SkeletonBlock width="85%" height={16} />
-        <SkeletonBlock width="50%" height={14} style={{ marginTop: Spacing.sm }} />
+        <SkeletonBlock
+          width="50%"
+          height={14}
+          style={{ marginTop: Spacing.sm }}
+        />
         <View style={skeletonStyles.badgeRow}>
-          <SkeletonBlock width={60} height={20} borderRadius={BorderRadius.full} />
-          <SkeletonBlock width={80} height={20} borderRadius={BorderRadius.full} />
+          <SkeletonBlock
+            width={60}
+            height={20}
+            borderRadius={BorderRadius.full}
+          />
+          <SkeletonBlock
+            width={80}
+            height={20}
+            borderRadius={BorderRadius.full}
+          />
         </View>
       </View>
     </View>
@@ -94,20 +112,42 @@ export const DashboardSkeleton: React.FC = () => {
       <View style={skeletonStyles.welcomeRow}>
         <View style={{ flex: 1 }}>
           <SkeletonBlock width="40%" height={14} />
-          <SkeletonBlock width="60%" height={24} style={{ marginTop: Spacing.sm }} />
+          <SkeletonBlock
+            width="60%"
+            height={24}
+            style={{ marginTop: Spacing.sm }}
+          />
         </View>
         <SkeletonBlock width={48} height={48} borderRadius={24} />
       </View>
 
       {/* Credits card */}
-      <SkeletonBlock width="100%" height={100} borderRadius={BorderRadius.lg} style={{ marginTop: Spacing.lg }} />
+      <SkeletonBlock
+        width="100%"
+        height={100}
+        borderRadius={BorderRadius.lg}
+        style={{ marginTop: Spacing.lg }}
+      />
 
       {/* Input section */}
-      <SkeletonBlock width="40%" height={18} style={{ marginTop: Spacing.xl }} />
-      <SkeletonBlock width="100%" height={120} borderRadius={BorderRadius.lg} style={{ marginTop: Spacing.md }} />
+      <SkeletonBlock
+        width="40%"
+        height={18}
+        style={{ marginTop: Spacing.xl }}
+      />
+      <SkeletonBlock
+        width="100%"
+        height={120}
+        borderRadius={BorderRadius.lg}
+        style={{ marginTop: Spacing.md }}
+      />
 
       {/* Recent analyses */}
-      <SkeletonBlock width="50%" height={18} style={{ marginTop: Spacing.xl }} />
+      <SkeletonBlock
+        width="50%"
+        height={18}
+        style={{ marginTop: Spacing.xl }}
+      />
       <VideoCardSkeleton compact />
       <VideoCardSkeleton compact />
       <VideoCardSkeleton compact />
@@ -132,21 +172,45 @@ export const AnalysisSkeleton: React.FC = () => (
       <SkeletonBlock width={80} height={45} borderRadius={BorderRadius.sm} />
       <View style={{ flex: 1, marginLeft: Spacing.md }}>
         <SkeletonBlock width="80%" height={14} />
-        <SkeletonBlock width="50%" height={12} style={{ marginTop: Spacing.sm }} />
+        <SkeletonBlock
+          width="50%"
+          height={12}
+          style={{ marginTop: Spacing.sm }}
+        />
       </View>
     </View>
 
     {/* Tabs */}
     <View style={skeletonStyles.tabsRow}>
       {Array.from({ length: 4 }).map((_, i) => (
-        <SkeletonBlock key={i} width={70} height={30} borderRadius={BorderRadius.md} />
+        <SkeletonBlock
+          key={i}
+          width={70}
+          height={30}
+          borderRadius={BorderRadius.md}
+        />
       ))}
     </View>
 
     {/* Content */}
-    <SkeletonBlock width="100%" height={200} borderRadius={BorderRadius.lg} style={{ marginTop: Spacing.lg }} />
-    <SkeletonBlock width="100%" height={40} borderRadius={BorderRadius.md} style={{ marginTop: Spacing.md }} />
-    <SkeletonBlock width="100%" height={40} borderRadius={BorderRadius.md} style={{ marginTop: Spacing.md }} />
+    <SkeletonBlock
+      width="100%"
+      height={200}
+      borderRadius={BorderRadius.lg}
+      style={{ marginTop: Spacing.lg }}
+    />
+    <SkeletonBlock
+      width="100%"
+      height={40}
+      borderRadius={BorderRadius.md}
+      style={{ marginTop: Spacing.md }}
+    />
+    <SkeletonBlock
+      width="100%"
+      height={40}
+      borderRadius={BorderRadius.md}
+      style={{ marginTop: Spacing.md }}
+    />
   </View>
 );
 
@@ -158,8 +222,17 @@ export const PlaylistSkeleton: React.FC = () => (
         <SkeletonBlock width={72} height={72} borderRadius={BorderRadius.md} />
         <View style={{ flex: 1, marginLeft: Spacing.md }}>
           <SkeletonBlock width="70%" height={16} />
-          <SkeletonBlock width="90%" height={12} style={{ marginTop: Spacing.sm }} />
-          <SkeletonBlock width={60} height={20} borderRadius={BorderRadius.full} style={{ marginTop: Spacing.sm }} />
+          <SkeletonBlock
+            width="90%"
+            height={12}
+            style={{ marginTop: Spacing.sm }}
+          />
+          <SkeletonBlock
+            width={60}
+            height={20}
+            borderRadius={BorderRadius.full}
+            style={{ marginTop: Spacing.sm }}
+          />
         </View>
       </View>
     ))}
@@ -170,7 +243,7 @@ export { SkeletonBlock };
 
 const skeletonStyles = StyleSheet.create({
   compactCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: BorderRadius.md,
     padding: Spacing.sm,
     marginBottom: Spacing.sm,
@@ -178,18 +251,18 @@ const skeletonStyles = StyleSheet.create({
   compactContent: {
     flex: 1,
     marginLeft: Spacing.sm,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   card: {
     borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: Spacing.md,
   },
   cardContent: {
     padding: Spacing.md,
   },
   badgeRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.sm,
     marginTop: Spacing.sm,
   },
@@ -197,9 +270,9 @@ const skeletonStyles = StyleSheet.create({
     padding: Spacing.lg,
   },
   welcomeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   historyContainer: {
     padding: Spacing.lg,
@@ -208,18 +281,18 @@ const skeletonStyles = StyleSheet.create({
     padding: Spacing.md,
   },
   analysisHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Spacing.md,
   },
   tabsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     marginTop: Spacing.md,
   },
   playlistItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Spacing.lg,
   },
 });

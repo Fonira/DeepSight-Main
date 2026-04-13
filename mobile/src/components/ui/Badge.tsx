@@ -1,20 +1,20 @@
-import React from 'react';
-import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { useTheme } from '../../contexts/ThemeContext';
-import { BorderRadius, Spacing, Typography } from '../../constants/theme';
+import React from "react";
+import { View, Text, StyleSheet, ViewStyle, TextStyle } from "react-native";
+import { useTheme } from "../../contexts/ThemeContext";
+import { BorderRadius, Spacing, Typography } from "../../constants/theme";
 
 interface BadgeProps {
   label: string;
-  variant?: 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info';
-  size?: 'sm' | 'md';
+  variant?: "default" | "primary" | "success" | "warning" | "error" | "info";
+  size?: "sm" | "md";
   style?: ViewStyle;
   textStyle?: TextStyle;
 }
 
 export const Badge: React.FC<BadgeProps> = ({
   label,
-  variant = 'default',
-  size = 'sm',
+  variant = "default",
+  size = "sm",
   style,
   textStyle,
 }) => {
@@ -52,7 +52,10 @@ export const Badge: React.FC<BadgeProps> = ({
       <Text
         style={[
           styles.text,
-          { color: variantColors[variant].text, fontSize: sizeStyles[size].fontSize },
+          {
+            color: variantColors[variant].text,
+            fontSize: sizeStyles[size].fontSize,
+          },
           textStyle,
         ]}
       >
@@ -65,7 +68,7 @@ export const Badge: React.FC<BadgeProps> = ({
 const styles = StyleSheet.create({
   badge: {
     borderRadius: BorderRadius.full,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   text: {
     fontFamily: Typography.fontFamily.bodyMedium,

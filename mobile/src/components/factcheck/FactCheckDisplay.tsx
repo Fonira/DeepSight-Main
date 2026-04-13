@@ -3,7 +3,7 @@
  * Avec claims, verdicts, et sources
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,15 +12,20 @@ import {
   ScrollView,
   ActivityIndicator,
   Linking,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { videoApi } from '../../services/api';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { videoApi } from "../../services/api";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
-type VerdictType = 'verified' | 'disputed' | 'unverified' | 'mixed' | 'misleading';
+type VerdictType =
+  | "verified"
+  | "disputed"
+  | "unverified"
+  | "mixed"
+  | "misleading";
 
 interface Claim {
   text: string;
@@ -40,47 +45,50 @@ interface FactCheckDisplayProps {
   onRequestCheck?: () => void;
 }
 
-const VERDICT_CONFIG: Record<VerdictType, {
-  icon: keyof typeof Ionicons.glyphMap;
-  labelFr: string;
-  labelEn: string;
-  color: string;
-  bgColor: string;
-}> = {
+const VERDICT_CONFIG: Record<
+  VerdictType,
+  {
+    icon: keyof typeof Ionicons.glyphMap;
+    labelFr: string;
+    labelEn: string;
+    color: string;
+    bgColor: string;
+  }
+> = {
   verified: {
-    icon: 'checkmark-circle',
-    labelFr: 'Vérifié',
-    labelEn: 'Verified',
-    color: '#22C55E',
-    bgColor: '#22C55E20',
+    icon: "checkmark-circle",
+    labelFr: "Vérifié",
+    labelEn: "Verified",
+    color: "#22C55E",
+    bgColor: "#22C55E20",
   },
   disputed: {
-    icon: 'warning',
-    labelFr: 'Contesté',
-    labelEn: 'Disputed',
-    color: '#EF4444',
-    bgColor: '#EF444420',
+    icon: "warning",
+    labelFr: "Contesté",
+    labelEn: "Disputed",
+    color: "#EF4444",
+    bgColor: "#EF444420",
   },
   unverified: {
-    icon: 'help-circle',
-    labelFr: 'Non vérifié',
-    labelEn: 'Unverified',
-    color: '#9CA3AF',
-    bgColor: '#9CA3AF20',
+    icon: "help-circle",
+    labelFr: "Non vérifié",
+    labelEn: "Unverified",
+    color: "#9CA3AF",
+    bgColor: "#9CA3AF20",
   },
   mixed: {
-    icon: 'remove-circle',
-    labelFr: 'Partiellement vrai',
-    labelEn: 'Partially true',
-    color: '#F59E0B',
-    bgColor: '#F59E0B20',
+    icon: "remove-circle",
+    labelFr: "Partiellement vrai",
+    labelEn: "Partially true",
+    color: "#F59E0B",
+    bgColor: "#F59E0B20",
   },
   misleading: {
-    icon: 'close-circle',
-    labelFr: 'Trompeur',
-    labelEn: 'Misleading',
-    color: '#DC2626',
-    bgColor: '#DC262620',
+    icon: "close-circle",
+    labelFr: "Trompeur",
+    labelEn: "Misleading",
+    color: "#DC2626",
+    bgColor: "#DC262620",
   },
 };
 
@@ -94,7 +102,10 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
   const { language } = useLanguage();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [data, setData] = useState<{ claims: Claim[]; overall_score: number } | null>(initialData || null);
+  const [data, setData] = useState<{
+    claims: Claim[];
+    overall_score: number;
+  } | null>(initialData || null);
   const [expandedClaims, setExpandedClaims] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
@@ -116,22 +127,28 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
 
       const riskToVerdict = (risk: string): VerdictType => {
         switch (risk) {
-          case 'high': return 'disputed';
-          case 'medium': return 'mixed';
-          case 'low': return 'verified';
-          default: return 'unverified';
+          case "high":
+            return "disputed";
+          case "medium":
+            return "mixed";
+          case "low":
+            return "verified";
+          default:
+            return "unverified";
         }
       };
 
       const claims: Claim[] = [
-        ...factCheck.high_risk_claims.map(c => ({
+        ...factCheck.high_risk_claims.map((c) => ({
           text: c.claim,
           verdict: riskToVerdict(c.risk_level),
           confidence: c.confidence / 100,
           explanation: c.verification_hint,
-          sources: c.suggested_search ? [{ url: '', title: c.suggested_search }] : undefined,
+          sources: c.suggested_search
+            ? [{ url: "", title: c.suggested_search }]
+            : undefined,
         })),
-        ...factCheck.medium_risk_claims.map(c => ({
+        ...factCheck.medium_risk_claims.map((c) => ({
           text: c.claim,
           verdict: riskToVerdict(c.risk_level),
           confidence: c.confidence / 100,
@@ -145,7 +162,12 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
       });
       onRequestCheck?.();
     } catch (err: any) {
-      setError(err.message || (language === 'fr' ? 'Erreur lors de la vérification' : 'Error during verification'));
+      setError(
+        err.message ||
+          (language === "fr"
+            ? "Erreur lors de la vérification"
+            : "Error during verification"),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +175,7 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
 
   const toggleClaimExpanded = (index: number) => {
     Haptics.selectionAsync();
-    setExpandedClaims(prev => {
+    setExpandedClaims((prev) => {
       const next = new Set(prev);
       if (next.has(index)) {
         next.delete(index);
@@ -175,7 +197,9 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accentPrimary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            {language === 'fr' ? 'Vérification des faits en cours...' : 'Fact-checking in progress...'}
+            {language === "fr"
+              ? "Vérification des faits en cours..."
+              : "Fact-checking in progress..."}
           </Text>
         </View>
       </View>
@@ -186,23 +210,41 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
   if (!data) {
     return (
       <TouchableOpacity
-        style={[styles.requestButton, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}
+        style={[
+          styles.requestButton,
+          { backgroundColor: colors.bgElevated, borderColor: colors.border },
+        ]}
         onPress={handleRequestCheck}
       >
-        <View style={[styles.requestIconContainer, { backgroundColor: `${colors.accentInfo}20` }]}>
-          <Ionicons name="shield-checkmark-outline" size={24} color={colors.accentInfo} />
+        <View
+          style={[
+            styles.requestIconContainer,
+            { backgroundColor: `${colors.accentInfo}20` },
+          ]}
+        >
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={24}
+            color={colors.accentInfo}
+          />
         </View>
         <View style={styles.requestTextContainer}>
           <Text style={[styles.requestTitle, { color: colors.textPrimary }]}>
-            {language === 'fr' ? 'Vérification des faits' : 'Fact Check'}
+            {language === "fr" ? "Vérification des faits" : "Fact Check"}
           </Text>
-          <Text style={[styles.requestDescription, { color: colors.textSecondary }]}>
-            {language === 'fr'
-              ? 'Analyser les affirmations de la vidéo'
-              : 'Analyze claims from the video'}
+          <Text
+            style={[styles.requestDescription, { color: colors.textSecondary }]}
+          >
+            {language === "fr"
+              ? "Analyser les affirmations de la vidéo"
+              : "Analyze claims from the video"}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={colors.textTertiary}
+        />
       </TouchableOpacity>
     );
   }
@@ -210,12 +252,19 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
   // Render error state
   if (error) {
     return (
-      <View style={[styles.errorContainer, { backgroundColor: `${colors.accentError}10` }]}>
+      <View
+        style={[
+          styles.errorContainer,
+          { backgroundColor: `${colors.accentError}10` },
+        ]}
+      >
         <Ionicons name="alert-circle" size={24} color={colors.accentError} />
-        <Text style={[styles.errorText, { color: colors.accentError }]}>{error}</Text>
+        <Text style={[styles.errorText, { color: colors.accentError }]}>
+          {error}
+        </Text>
         <TouchableOpacity onPress={handleRequestCheck}>
           <Text style={[styles.retryText, { color: colors.accentPrimary }]}>
-            {language === 'fr' ? 'Réessayer' : 'Retry'}
+            {language === "fr" ? "Réessayer" : "Retry"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -224,14 +273,24 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
 
   // Compact view
   if (compact) {
-    const verifiedCount = data.claims.filter(c => c.verdict === 'verified').length;
-    const disputedCount = data.claims.filter(c => c.verdict === 'disputed' || c.verdict === 'misleading').length;
+    const verifiedCount = data.claims.filter(
+      (c) => c.verdict === "verified",
+    ).length;
+    const disputedCount = data.claims.filter(
+      (c) => c.verdict === "disputed" || c.verdict === "misleading",
+    ).length;
 
     return (
-      <View style={[styles.compactContainer, { backgroundColor: colors.bgElevated }]}>
+      <View
+        style={[
+          styles.compactContainer,
+          { backgroundColor: colors.bgElevated },
+        ]}
+      >
         <Ionicons name="shield-checkmark" size={16} color={colors.accentInfo} />
         <Text style={[styles.compactText, { color: colors.textSecondary }]}>
-          {verifiedCount} {language === 'fr' ? 'vérifié(s)' : 'verified'} • {disputedCount} {language === 'fr' ? 'contesté(s)' : 'disputed'}
+          {verifiedCount} {language === "fr" ? "vérifié(s)" : "verified"} •{" "}
+          {disputedCount} {language === "fr" ? "contesté(s)" : "disputed"}
         </Text>
       </View>
     );
@@ -243,13 +302,27 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
       {/* Header with overall score */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons name="shield-checkmark" size={24} color={colors.accentInfo} />
+          <Ionicons
+            name="shield-checkmark"
+            size={24}
+            color={colors.accentInfo}
+          />
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-            {language === 'fr' ? 'Vérification des faits' : 'Fact Check'}
+            {language === "fr" ? "Vérification des faits" : "Fact Check"}
           </Text>
         </View>
-        <View style={[styles.scoreBadge, { backgroundColor: getScoreColor(data.overall_score) + '20' }]}>
-          <Text style={[styles.scoreText, { color: getScoreColor(data.overall_score) }]}>
+        <View
+          style={[
+            styles.scoreBadge,
+            { backgroundColor: getScoreColor(data.overall_score) + "20" },
+          ]}
+        >
+          <Text
+            style={[
+              styles.scoreText,
+              { color: getScoreColor(data.overall_score) },
+            ]}
+          >
             {Math.round(data.overall_score)}%
           </Text>
         </View>
@@ -283,11 +356,14 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
             >
               <View style={styles.claimHeader}>
                 <Ionicons name={config.icon} size={20} color={config.color} />
-                <Text style={[styles.claimText, { color: colors.textPrimary }]} numberOfLines={isExpanded ? undefined : 2}>
+                <Text
+                  style={[styles.claimText, { color: colors.textPrimary }]}
+                  numberOfLines={isExpanded ? undefined : 2}
+                >
                   {claim.text}
                 </Text>
                 <Ionicons
-                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                  name={isExpanded ? "chevron-up" : "chevron-down"}
                   size={16}
                   color={colors.textTertiary}
                 />
@@ -295,13 +371,21 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
 
               {/* Verdict badge */}
               <View style={styles.verdictRow}>
-                <View style={[styles.verdictBadge, { borderColor: config.color }]}>
+                <View
+                  style={[styles.verdictBadge, { borderColor: config.color }]}
+                >
                   <Text style={[styles.verdictText, { color: config.color }]}>
-                    {language === 'fr' ? config.labelFr : config.labelEn}
+                    {language === "fr" ? config.labelFr : config.labelEn}
                   </Text>
                 </View>
-                <Text style={[styles.confidenceText, { color: colors.textTertiary }]}>
-                  {Math.round(claim.confidence * 100)}% {language === 'fr' ? 'confiance' : 'confidence'}
+                <Text
+                  style={[
+                    styles.confidenceText,
+                    { color: colors.textTertiary },
+                  ]}
+                >
+                  {Math.round(claim.confidence * 100)}%{" "}
+                  {language === "fr" ? "confiance" : "confidence"}
                 </Text>
               </View>
 
@@ -309,15 +393,25 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
               {isExpanded && (
                 <View style={styles.expandedContent}>
                   {claim.explanation && (
-                    <Text style={[styles.explanationText, { color: colors.textSecondary }]}>
+                    <Text
+                      style={[
+                        styles.explanationText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
                       {claim.explanation}
                     </Text>
                   )}
 
                   {claim.sources && claim.sources.length > 0 && (
                     <View style={styles.sourcesContainer}>
-                      <Text style={[styles.sourcesTitle, { color: colors.textTertiary }]}>
-                        {language === 'fr' ? 'Sources:' : 'Sources:'}
+                      <Text
+                        style={[
+                          styles.sourcesTitle,
+                          { color: colors.textTertiary },
+                        ]}
+                      >
+                        {language === "fr" ? "Sources:" : "Sources:"}
                       </Text>
                       {claim.sources.map((source, si) => (
                         <TouchableOpacity
@@ -325,8 +419,18 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
                           style={styles.sourceLink}
                           onPress={() => openSource(source.url)}
                         >
-                          <Ionicons name="link" size={12} color={colors.accentPrimary} />
-                          <Text style={[styles.sourceLinkText, { color: colors.accentPrimary }]} numberOfLines={1}>
+                          <Ionicons
+                            name="link"
+                            size={12}
+                            color={colors.accentPrimary}
+                          />
+                          <Text
+                            style={[
+                              styles.sourceLinkText,
+                              { color: colors.accentPrimary },
+                            ]}
+                            numberOfLines={1}
+                          >
                             {source.title || source.url}
                           </Text>
                         </TouchableOpacity>
@@ -347,7 +451,7 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
       >
         <Ionicons name="refresh" size={16} color={colors.textSecondary} />
         <Text style={[styles.refreshText, { color: colors.textSecondary }]}>
-          {language === 'fr' ? 'Actualiser' : 'Refresh'}
+          {language === "fr" ? "Actualiser" : "Refresh"}
         </Text>
       </TouchableOpacity>
     </View>
@@ -356,10 +460,10 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
 
 // Helper to get score color
 const getScoreColor = (score: number): string => {
-  if (score >= 80) return '#22C55E';
-  if (score >= 60) return '#F59E0B';
-  if (score >= 40) return '#F97316';
-  return '#EF4444';
+  if (score >= 80) return "#22C55E";
+  if (score >= 60) return "#F59E0B";
+  if (score >= 40) return "#F97316";
+  return "#EF4444";
 };
 
 const styles = StyleSheet.create({
@@ -368,7 +472,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
   },
   loadingContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: Spacing.xl,
   },
   loadingText: {
@@ -377,8 +481,8 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   requestButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
@@ -388,8 +492,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   requestTextContainer: {
     flex: 1,
@@ -404,8 +508,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     gap: Spacing.sm,
@@ -420,8 +524,8 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodyMedium,
   },
   compactContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.sm,
@@ -432,14 +536,14 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: Spacing.md,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
   headerTitle: {
@@ -458,11 +562,11 @@ const styles = StyleSheet.create({
   scoreBar: {
     height: 6,
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: Spacing.lg,
   },
   scoreBarFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
   },
   claimsList: {
@@ -473,8 +577,8 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
   },
   claimHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: Spacing.sm,
   },
   claimText: {
@@ -484,9 +588,9 @@ const styles = StyleSheet.create({
     lineHeight: Typography.fontSize.sm * 1.4,
   },
   verdictRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginTop: Spacing.sm,
     paddingLeft: 28,
   },
@@ -523,8 +627,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   sourceLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.xs,
     marginBottom: 4,
   },
@@ -534,9 +638,9 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
   },
   refreshButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.xs,
     marginTop: Spacing.md,
     paddingVertical: Spacing.sm,

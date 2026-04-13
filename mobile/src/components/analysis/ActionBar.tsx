@@ -1,18 +1,18 @@
-import React, { useCallback } from 'react';
-import { View, Pressable, Text, Share, StyleSheet } from 'react-native';
+import React, { useCallback } from "react";
+import { View, Pressable, Text, Share, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-} from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useTheme } from '../../contexts/ThemeContext';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
-import { springs } from '../../theme/animations';
-import { historyApi } from '../../services/api';
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useTheme } from "../../contexts/ThemeContext";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
+import { springs } from "../../theme/animations";
+import { historyApi } from "../../services/api";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -84,7 +84,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
       studyScale.value = withSpring(1, springs.button);
     }, 100);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/(tabs)/study');
+    router.push("/(tabs)/study");
   }, [router, studyScale]);
 
   return (
@@ -100,13 +100,15 @@ export const ActionBar: React.FC<ActionBarProps> = ({
       <AnimatedPressable
         onPress={handleFavorite}
         style={[styles.actionButton, favAnimStyle]}
-        accessibilityLabel={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+        accessibilityLabel={
+          isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"
+        }
         accessibilityRole="button"
       >
         <Ionicons
-          name={isFavorite ? 'star' : 'star-outline'}
+          name={isFavorite ? "star" : "star-outline"}
           size={22}
-          color={isFavorite ? '#f59e0b' : colors.textSecondary}
+          color={isFavorite ? "#f59e0b" : colors.textSecondary}
         />
         <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>
           Favori
@@ -142,9 +144,9 @@ export const ActionBar: React.FC<ActionBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
     paddingVertical: sp.md,
     marginHorizontal: sp.lg,
     marginBottom: sp.sm,
@@ -152,7 +154,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   actionButton: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 4,
     paddingHorizontal: sp.lg,
     paddingVertical: sp.xs,

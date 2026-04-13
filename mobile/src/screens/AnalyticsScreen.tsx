@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,18 +6,18 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { Header, Card, DeepSightSpinner } from '../components';
-import { usageApi } from '../services/api';
-import { Spacing, Typography, BorderRadius } from '../constants/theme';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useScreenDoodleVariant } from "../contexts/DoodleVariantContext";
+import { Header, Card, DeepSightSpinner } from "../components";
+import { usageApi } from "../services/api";
+import { Spacing, Typography, BorderRadius } from "../constants/theme";
 
-type Period = 'week' | 'month' | 'all';
+type Period = "week" | "month" | "all";
 
 interface UsageStats {
   credits_used: number;
@@ -40,10 +40,10 @@ export const AnalyticsScreen: React.FC = () => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  useScreenDoodleVariant('analysis');
-  const isEn = language === 'en';
+  useScreenDoodleVariant("analysis");
+  const isEn = language === "en";
 
-  const [period, setPeriod] = useState<Period>('month');
+  const [period, setPeriod] = useState<Period>("month");
   const [stats, setStats] = useState<UsageStats | null>(null);
   const [detailed, setDetailed] = useState<DetailedUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +53,8 @@ export const AnalyticsScreen: React.FC = () => {
   const loadData = useCallback(async () => {
     setError(null);
     try {
-      const apiPeriod = period === 'all' ? undefined : period === 'week' ? 'week' : 'month';
+      const apiPeriod =
+        period === "all" ? undefined : period === "week" ? "week" : "month";
       const [statsData, detailedData] = await Promise.all([
         usageApi.getStats().catch(() => null),
         usageApi.getDetailedUsage(apiPeriod).catch(() => null),
@@ -61,7 +62,7 @@ export const AnalyticsScreen: React.FC = () => {
       if (statsData) setStats(statsData);
       if (detailedData) setDetailed(detailedData);
     } catch {
-      setError(t.errors?.generic ?? 'An error occurred');
+      setError(t.errors?.generic ?? "An error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -81,23 +82,24 @@ export const AnalyticsScreen: React.FC = () => {
   const creditsUsed = stats?.credits_used ?? 0;
   const creditsTotal = stats?.credits_total ?? (user?.credits_monthly || 20);
   const creditsRemaining = stats?.credits_remaining ?? (user?.credits || 0);
-  const usagePercent = creditsTotal > 0 ? Math.min((creditsUsed / creditsTotal) * 100, 100) : 0;
+  const usagePercent =
+    creditsTotal > 0 ? Math.min((creditsUsed / creditsTotal) * 100, 100) : 0;
 
   const periodLabels: Record<Period, string> = {
-    week: isEn ? 'This week' : 'Cette semaine',
-    month: isEn ? 'This month' : 'Ce mois',
-    all: isEn ? 'All time' : 'Tout',
+    week: isEn ? "This week" : "Cette semaine",
+    month: isEn ? "This month" : "Ce mois",
+    all: isEn ? "All time" : "Tout",
   };
 
   // Filter chart data based on period
   const chartData = (() => {
     if (!detailed?.by_date) return [];
     const now = new Date();
-    if (period === 'week') {
+    if (period === "week") {
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return detailed.by_date.filter(d => new Date(d.date) >= weekAgo);
+      return detailed.by_date.filter((d) => new Date(d.date) >= weekAgo);
     }
-    if (period === 'month') {
+    if (period === "month") {
       return detailed.by_date.slice(-30);
     }
     return detailed.by_date;
@@ -105,14 +107,15 @@ export const AnalyticsScreen: React.FC = () => {
 
   // Show max 10 bars for readability
   const displayBars = chartData.length > 10 ? chartData.slice(-10) : chartData;
-  const maxBarValue = displayBars.length > 0
-    ? Math.max(...displayBars.map(d => d.credits), 1)
-    : 1;
+  const maxBarValue =
+    displayBars.length > 0
+      ? Math.max(...displayBars.map((d) => d.credits), 1)
+      : 1;
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-        <Header title={isEn ? 'Analytics' : 'Analytiques'} showBack />
+      <View style={[styles.container, { backgroundColor: "transparent" }]}>
+        <Header title={isEn ? "Analytics" : "Analytiques"} showBack />
         <View style={styles.centerContainer}>
           <DeepSightSpinner size="lg" showGlow />
         </View>
@@ -122,11 +125,17 @@ export const AnalyticsScreen: React.FC = () => {
 
   if (error && !stats && !detailed) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-        <Header title={isEn ? 'Analytics' : 'Analytiques'} showBack />
+      <View style={[styles.container, { backgroundColor: "transparent" }]}>
+        <Header title={isEn ? "Analytics" : "Analytiques"} showBack />
         <View style={styles.centerContainer}>
-          <Ionicons name="cloud-offline-outline" size={48} color={colors.accentError} />
-          <Text style={[styles.errorText, { color: colors.textPrimary }]}>{error}</Text>
+          <Ionicons
+            name="cloud-offline-outline"
+            size={48}
+            color={colors.accentError}
+          />
+          <Text style={[styles.errorText, { color: colors.textPrimary }]}>
+            {error}
+          </Text>
           <TouchableOpacity
             style={[styles.retryButton, { borderColor: colors.accentPrimary }]}
             onPress={() => {
@@ -134,7 +143,9 @@ export const AnalyticsScreen: React.FC = () => {
               loadData();
             }}
           >
-            <Text style={[styles.retryButtonText, { color: colors.accentPrimary }]}>
+            <Text
+              style={[styles.retryButtonText, { color: colors.accentPrimary }]}
+            >
               {t.common.retry}
             </Text>
           </TouchableOpacity>
@@ -144,12 +155,15 @@ export const AnalyticsScreen: React.FC = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <Header title={isEn ? 'Analytics' : 'Analytiques'} showBack />
+    <View style={[styles.container, { backgroundColor: "transparent" }]}>
+      <Header title={isEn ? "Analytics" : "Analytiques"} showBack />
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 20 },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -160,8 +174,13 @@ export const AnalyticsScreen: React.FC = () => {
         }
       >
         {/* Period selector */}
-        <View style={[styles.periodSelector, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
-          {(['week', 'month', 'all'] as Period[]).map((p) => {
+        <View
+          style={[
+            styles.periodSelector,
+            { backgroundColor: colors.bgSecondary, borderColor: colors.border },
+          ]}
+        >
+          {(["week", "month", "all"] as Period[]).map((p) => {
             const isActive = period === p;
             return (
               <TouchableOpacity
@@ -178,7 +197,7 @@ export const AnalyticsScreen: React.FC = () => {
                 <Text
                   style={[
                     styles.periodButtonText,
-                    { color: isActive ? '#fff' : colors.textSecondary },
+                    { color: isActive ? "#fff" : colors.textSecondary },
                   ]}
                 >
                   {periodLabels[p]}
@@ -196,7 +215,7 @@ export const AnalyticsScreen: React.FC = () => {
               {stats?.analyses_count ?? user?.total_videos ?? 0}
             </Text>
             <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>
-              {t.usage?.analysesUsed ?? (isEn ? 'Analyses' : 'Analyses')}
+              {t.usage?.analysesUsed ?? (isEn ? "Analyses" : "Analyses")}
             </Text>
           </Card>
           <Card variant="elevated" style={styles.summaryCard}>
@@ -205,18 +224,24 @@ export const AnalyticsScreen: React.FC = () => {
               {creditsRemaining}
             </Text>
             <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>
-              {t.usage?.creditsRemaining ?? (isEn ? 'Credits left' : 'Credits restants')}
+              {t.usage?.creditsRemaining ??
+                (isEn ? "Credits left" : "Credits restants")}
             </Text>
           </Card>
         </View>
         <View style={styles.summaryGrid}>
           <Card variant="elevated" style={styles.summaryCard}>
-            <Ionicons name="chatbubbles" size={24} color={colors.accentSuccess} />
+            <Ionicons
+              name="chatbubbles"
+              size={24}
+              color={colors.accentSuccess}
+            />
             <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>
               {stats?.chat_messages_count ?? 0}
             </Text>
             <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>
-              {t.usage?.chatQuestions ?? (isEn ? 'Chat messages' : 'Messages chat')}
+              {t.usage?.chatQuestions ??
+                (isEn ? "Chat messages" : "Messages chat")}
             </Text>
           </Card>
           <Card variant="elevated" style={styles.summaryCard}>
@@ -225,58 +250,77 @@ export const AnalyticsScreen: React.FC = () => {
               {stats?.exports_count ?? 0}
             </Text>
             <Text style={[styles.summaryLabel, { color: colors.textTertiary }]}>
-              {t.usage?.exportsUsed ?? (isEn ? 'Exports' : 'Exports')}
+              {t.usage?.exportsUsed ?? (isEn ? "Exports" : "Exports")}
             </Text>
           </Card>
         </View>
 
         {/* Credits progress */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {t.usage?.monthlyUsage ?? (isEn ? 'Monthly usage' : 'Usage mensuel')}
+          {t.usage?.monthlyUsage ?? (isEn ? "Monthly usage" : "Usage mensuel")}
         </Text>
         <Card variant="elevated" style={styles.creditsCard}>
           <View style={styles.creditsHeader}>
             <Text style={[styles.creditsTitle, { color: colors.textPrimary }]}>
-              {isEn ? 'Credits' : 'Credits'}
+              {isEn ? "Credits" : "Credits"}
             </Text>
-            <Text style={[styles.creditsCount, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.creditsCount, { color: colors.textSecondary }]}
+            >
               {creditsUsed} / {creditsTotal}
             </Text>
           </View>
-          <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
+          <View
+            style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}
+          >
             <View
               style={[
                 styles.progressFill,
                 {
                   width: `${usagePercent}%`,
-                  backgroundColor: usagePercent > 80 ? colors.accentError : colors.accentPrimary,
+                  backgroundColor:
+                    usagePercent > 80
+                      ? colors.accentError
+                      : colors.accentPrimary,
                 },
               ]}
             />
           </View>
           <Text style={[styles.creditsHint, { color: colors.textTertiary }]}>
-            {creditsRemaining} {t.usage?.creditsRemaining ?? (isEn ? 'remaining' : 'restants')}
+            {creditsRemaining}{" "}
+            {t.usage?.creditsRemaining ?? (isEn ? "remaining" : "restants")}
           </Text>
         </Card>
 
         {/* Usage chart */}
         {displayBars.length > 0 && (
           <>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {t.usage?.dailyUsage ?? (isEn ? 'Daily Usage' : 'Usage quotidien')}
+            <Text
+              style={[styles.sectionTitle, { color: colors.textSecondary }]}
+            >
+              {t.usage?.dailyUsage ??
+                (isEn ? "Daily Usage" : "Usage quotidien")}
             </Text>
             <Card variant="elevated" style={styles.chartCard}>
               <View style={styles.chartContainer}>
                 {displayBars.map((item, index) => {
-                  const barHeight = Math.max((item.credits / maxBarValue) * 80, 4);
+                  const barHeight = Math.max(
+                    (item.credits / maxBarValue) * 80,
+                    4,
+                  );
                   const dayLabel = new Date(item.date).toLocaleDateString(
-                    isEn ? 'en' : 'fr',
-                    { weekday: 'short' }
+                    isEn ? "en" : "fr",
+                    { weekday: "short" },
                   );
                   const isLast = index === displayBars.length - 1;
                   return (
                     <View key={item.date} style={styles.barWrapper}>
-                      <Text style={[styles.barValue, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.barValue,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {item.credits}
                       </Text>
                       <View
@@ -286,11 +330,16 @@ export const AnalyticsScreen: React.FC = () => {
                             height: barHeight,
                             backgroundColor: isLast
                               ? colors.accentPrimary
-                              : colors.accentPrimary + '60',
+                              : colors.accentPrimary + "60",
                           },
                         ]}
                       />
-                      <Text style={[styles.barLabel, { color: colors.textTertiary }]}>
+                      <Text
+                        style={[
+                          styles.barLabel,
+                          { color: colors.textTertiary },
+                        ]}
+                      >
                         {dayLabel}
                       </Text>
                     </View>
@@ -302,65 +351,92 @@ export const AnalyticsScreen: React.FC = () => {
         )}
 
         {/* Category breakdown */}
-        {detailed?.by_category && Object.keys(detailed.by_category).length > 0 && (
-          <>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {t.usage?.byCategory ?? (isEn ? 'By Category' : 'Par catégorie')}
-            </Text>
-            <Card variant="elevated" style={styles.breakdownCard}>
-              {Object.entries(detailed.by_category)
-                .sort(([, a], [, b]) => b - a)
-                .map(([category, count], index) => {
-                  const total = Object.values(detailed.by_category).reduce((a, b) => a + b, 0);
-                  const pct = total > 0 ? (count / total) * 100 : 0;
-                  return (
-                    <View
-                      key={category}
-                      style={[
-                        styles.breakdownItem,
-                        index > 0 && {
-                          borderTopColor: colors.border,
-                          borderTopWidth: StyleSheet.hairlineWidth,
-                        },
-                      ]}
-                    >
-                      <View style={styles.breakdownLeft}>
-                        <Text style={[styles.breakdownLabel, { color: colors.textPrimary }]}>
-                          {category}
-                        </Text>
-                        <View style={[styles.breakdownBarBg, { backgroundColor: colors.bgTertiary }]}>
+        {detailed?.by_category &&
+          Object.keys(detailed.by_category).length > 0 && (
+            <>
+              <Text
+                style={[styles.sectionTitle, { color: colors.textSecondary }]}
+              >
+                {t.usage?.byCategory ??
+                  (isEn ? "By Category" : "Par catégorie")}
+              </Text>
+              <Card variant="elevated" style={styles.breakdownCard}>
+                {Object.entries(detailed.by_category)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([category, count], index) => {
+                    const total = Object.values(detailed.by_category).reduce(
+                      (a, b) => a + b,
+                      0,
+                    );
+                    const pct = total > 0 ? (count / total) * 100 : 0;
+                    return (
+                      <View
+                        key={category}
+                        style={[
+                          styles.breakdownItem,
+                          index > 0 && {
+                            borderTopColor: colors.border,
+                            borderTopWidth: StyleSheet.hairlineWidth,
+                          },
+                        ]}
+                      >
+                        <View style={styles.breakdownLeft}>
+                          <Text
+                            style={[
+                              styles.breakdownLabel,
+                              { color: colors.textPrimary },
+                            ]}
+                          >
+                            {category}
+                          </Text>
                           <View
                             style={[
-                              styles.breakdownBarFill,
-                              {
-                                width: `${pct}%`,
-                                backgroundColor: colors.accentSecondary,
-                              },
+                              styles.breakdownBarBg,
+                              { backgroundColor: colors.bgTertiary },
                             ]}
-                          />
+                          >
+                            <View
+                              style={[
+                                styles.breakdownBarFill,
+                                {
+                                  width: `${pct}%`,
+                                  backgroundColor: colors.accentSecondary,
+                                },
+                              ]}
+                            />
+                          </View>
                         </View>
+                        <Text
+                          style={[
+                            styles.breakdownValue,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {count}
+                        </Text>
                       </View>
-                      <Text style={[styles.breakdownValue, { color: colors.textSecondary }]}>
-                        {count}
-                      </Text>
-                    </View>
-                  );
-                })}
-            </Card>
-          </>
-        )}
+                    );
+                  })}
+              </Card>
+            </>
+          )}
 
         {/* Model breakdown */}
         {detailed?.by_model && Object.keys(detailed.by_model).length > 0 && (
           <>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {t.usage?.byModel ?? (isEn ? 'By AI Model' : 'Par modèle IA')}
+            <Text
+              style={[styles.sectionTitle, { color: colors.textSecondary }]}
+            >
+              {t.usage?.byModel ?? (isEn ? "By AI Model" : "Par modèle IA")}
             </Text>
             <Card variant="elevated" style={styles.breakdownCard}>
               {Object.entries(detailed.by_model)
                 .sort(([, a], [, b]) => b - a)
                 .map(([model, count], index) => {
-                  const total = Object.values(detailed.by_model).reduce((a, b) => a + b, 0);
+                  const total = Object.values(detailed.by_model).reduce(
+                    (a, b) => a + b,
+                    0,
+                  );
                   const pct = total > 0 ? (count / total) * 100 : 0;
                   return (
                     <View
@@ -374,10 +450,20 @@ export const AnalyticsScreen: React.FC = () => {
                       ]}
                     >
                       <View style={styles.breakdownLeft}>
-                        <Text style={[styles.breakdownLabel, { color: colors.textPrimary }]}>
+                        <Text
+                          style={[
+                            styles.breakdownLabel,
+                            { color: colors.textPrimary },
+                          ]}
+                        >
                           {model}
                         </Text>
-                        <View style={[styles.breakdownBarBg, { backgroundColor: colors.bgTertiary }]}>
+                        <View
+                          style={[
+                            styles.breakdownBarBg,
+                            { backgroundColor: colors.bgTertiary },
+                          ]}
+                        >
                           <View
                             style={[
                               styles.breakdownBarFill,
@@ -389,7 +475,12 @@ export const AnalyticsScreen: React.FC = () => {
                           />
                         </View>
                       </View>
-                      <Text style={[styles.breakdownValue, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[
+                          styles.breakdownValue,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {count}
                       </Text>
                     </View>
@@ -416,15 +507,15 @@ const styles = StyleSheet.create({
   },
   centerContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: Spacing.xl,
     gap: Spacing.md,
   },
   errorText: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: Spacing.md,
   },
   retryButton: {
@@ -440,7 +531,7 @@ const styles = StyleSheet.create({
   },
   // Period selector
   periodSelector: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     padding: 3,
@@ -450,7 +541,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.sm,
-    alignItems: 'center',
+    alignItems: "center",
   },
   periodButtonText: {
     fontSize: Typography.fontSize.sm,
@@ -458,17 +549,17 @@ const styles = StyleSheet.create({
   },
   // Summary cards
   summaryGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.md,
     marginBottom: Spacing.md,
   },
   summaryCard: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     padding: Spacing.lg,
   },
   summaryValue: {
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize["2xl"],
     fontFamily: Typography.fontFamily.bodySemiBold,
     marginTop: Spacing.sm,
   },
@@ -476,13 +567,13 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
     marginTop: Spacing.xs,
-    textAlign: 'center',
+    textAlign: "center",
   },
   // Credits
   sectionTitle: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: Spacing.sm,
     marginTop: Spacing.md,
@@ -492,9 +583,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   creditsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.sm,
   },
   creditsTitle: {
@@ -508,10 +599,10 @@ const styles = StyleSheet.create({
   progressBar: {
     height: 8,
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 4,
   },
   creditsHint: {
@@ -524,20 +615,20 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   chartContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
     height: 120,
     paddingHorizontal: Spacing.sm,
   },
   barWrapper: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
+    alignItems: "center",
+    justifyContent: "flex-end",
     paddingHorizontal: 2,
   },
   bar: {
-    width: '80%',
+    width: "80%",
     borderRadius: 4,
     minHeight: 4,
   },
@@ -557,9 +648,9 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   breakdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: Spacing.md,
   },
   breakdownLeft: {
@@ -570,22 +661,22 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodyMedium,
     marginBottom: Spacing.xs,
-    textTransform: 'capitalize',
+    textTransform: "capitalize",
   },
   breakdownBarBg: {
     height: 6,
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   breakdownBarFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
   },
   breakdownValue: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodySemiBold,
     minWidth: 30,
-    textAlign: 'right',
+    textAlign: "right",
   },
 });
 

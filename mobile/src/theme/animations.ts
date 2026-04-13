@@ -3,7 +3,11 @@
  * Reanimated 3 spring/timing presets
  * Web reference: 200ms cubic-bezier(0.4, 0, 0.2, 1)
  */
-import { Easing, WithSpringConfig, WithTimingConfig } from 'react-native-reanimated';
+import {
+  Easing,
+  WithSpringConfig,
+  WithTimingConfig,
+} from "react-native-reanimated";
 
 /** Duration presets (ms) */
 export const duration = {

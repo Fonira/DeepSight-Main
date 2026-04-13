@@ -1,4 +1,4 @@
-import { PlanType } from '../constants/config';
+import { PlanType } from "../constants/config";
 
 // Re-export analysis customization types
 export {
@@ -10,8 +10,12 @@ export {
   WRITING_STYLE_CONFIG,
   VOCABULARY_CONFIG,
   LENGTH_CONFIG,
-} from './analysis';
-export type { VocabularyComplexity, TargetLength, FormalityLevel } from './analysis';
+} from "./analysis";
+export type {
+  VocabularyComplexity,
+  TargetLength,
+  FormalityLevel,
+} from "./analysis";
 
 // User Types
 export interface User {
@@ -60,7 +64,7 @@ export interface VideoInfo {
   likeCount?: number;
 }
 
-export type VideoPlatform = 'youtube' | 'tiktok' | 'text';
+export type VideoPlatform = "youtube" | "tiktok" | "text";
 
 export interface AnalysisSummary {
   id: string;
@@ -83,8 +87,8 @@ export interface AnalysisSummary {
   video_url?: string;
   // 🔬 Deep Research (Mar 2026)
   deep_research?: boolean;
-  enrichment_sources?: string;  // JSON string: [{title, url, snippet}]
-  enrichment_data?: string;     // JSON string
+  enrichment_sources?: string; // JSON string: [{title, url, snippet}]
+  enrichment_data?: string; // JSON string
 
   // 📊 Engagement metadata
   view_count?: number;
@@ -93,7 +97,7 @@ export interface AnalysisSummary {
   share_count?: number;
   channel_follower_count?: number;
   engagement_rate?: number;
-  content_type?: 'video' | 'carousel' | 'short' | 'live';
+  content_type?: "video" | "carousel" | "short" | "live";
   music_title?: string;
   music_author?: string;
   source_tags?: string[];
@@ -114,7 +118,14 @@ export interface AnalysisStatus {
   // Backend returns snake_case (task_id), but we also accept camelCase
   task_id?: string;
   taskId?: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'done' | 'error' | 'cancelled';
+  status:
+    | "pending"
+    | "processing"
+    | "completed"
+    | "failed"
+    | "done"
+    | "error"
+    | "cancelled";
   progress: number;
   message?: string;
   result?: Record<string, unknown>;
@@ -125,7 +136,7 @@ export interface AnalysisStatus {
 // Chat Types
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: string;
   web_search_used?: boolean;
@@ -216,7 +227,7 @@ export interface PlaylistDetailsResponse {
 
 export interface CorpusChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   created_at: string;
   sources?: Array<{
@@ -284,7 +295,7 @@ export interface BillingPlan {
 export interface Subscription {
   id: string;
   plan: PlanType;
-  status: 'active' | 'canceled' | 'past_due' | 'trialing';
+  status: "active" | "canceled" | "past_due" | "trialing";
   currentPeriodStart: string;
   currentPeriodEnd: string;
   cancelAtPeriodEnd: boolean;
@@ -304,7 +315,12 @@ export type RootStackParamList = {
   MainTabs: undefined;
 
   // Modal screens
-  Analysis: { videoUrl?: string; summaryId?: string; videoId?: string; initialTab?: 'summary' | 'chat' | 'concepts' | 'tools' | 'study' };
+  Analysis: {
+    videoUrl?: string;
+    summaryId?: string;
+    videoId?: string;
+    initialTab?: "summary" | "chat" | "concepts" | "tools" | "study";
+  };
   VideoPlayer: { videoId: string; startTime?: number };
   Chat: { summaryId: string };
   StudyTools: { summaryId: string };
@@ -319,7 +335,7 @@ export type RootStackParamList = {
   PaymentCancel: undefined;
 
   // Legal screen
-  Legal: { type?: 'privacy' | 'terms' | 'legal' | 'about' } | undefined;
+  Legal: { type?: "privacy" | "terms" | "legal" | "about" } | undefined;
 
   // Contact
   Contact: undefined;
@@ -357,7 +373,7 @@ export interface ConceptMap {
 export interface ConceptNode {
   id: string;
   label: string;
-  type: 'main' | 'secondary' | 'tertiary';
+  type: "main" | "secondary" | "tertiary";
 }
 
 export interface ConceptEdge {
@@ -387,14 +403,14 @@ export interface QuizResult {
 // Notification Types
 export interface Notification {
   id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
+  type: "success" | "error" | "warning" | "info";
   title: string;
   message?: string;
   duration?: number;
 }
 
 // Theme Types
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = "light" | "dark" | "system";
 
 // Language Types
-export type LanguageCode = 'fr' | 'en';
+export type LanguageCode = "fr" | "en";

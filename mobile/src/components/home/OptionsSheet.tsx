@@ -1,14 +1,17 @@
-import React, { forwardRef, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useAnalysisStore } from '@/stores/analysisStore';
-import { SimpleBottomSheet, type SimpleBottomSheetRef } from '@/components/ui/SimpleBottomSheet';
-import type { AnalysisOptionsV2 } from '@/types/v2';
-import { palette } from '@/theme/colors';
-import { sp, borderRadius } from '@/theme/spacing';
-import { fontFamily, fontSize } from '@/theme/typography';
+import React, { forwardRef, useCallback } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useAnalysisStore } from "@/stores/analysisStore";
+import {
+  SimpleBottomSheet,
+  type SimpleBottomSheetRef,
+} from "@/components/ui/SimpleBottomSheet";
+import type { AnalysisOptionsV2 } from "@/types/v2";
+import { palette } from "@/theme/colors";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
 
 // ─── Chip component ───
 
@@ -27,9 +30,7 @@ const Chip: React.FC<ChipProps> = ({ label, selected, onPress }) => {
       style={[
         styles.chip,
         {
-          backgroundColor: selected
-            ? `${palette.indigo}20`
-            : colors.bgTertiary,
+          backgroundColor: selected ? `${palette.indigo}20` : colors.bgTertiary,
           borderColor: selected ? palette.indigo : colors.border,
         },
       ]}
@@ -56,14 +57,14 @@ interface ChipOption {
 }
 
 const MODE_OPTIONS: ChipOption[] = [
-  { value: 'accessible', label: 'Accessible' },
-  { value: 'standard', label: 'Standard' },
-  { value: 'expert', label: 'Expert' },
+  { value: "accessible", label: "Accessible" },
+  { value: "standard", label: "Standard" },
+  { value: "expert", label: "Expert" },
 ];
 
 const LANGUAGE_OPTIONS: ChipOption[] = [
-  { value: 'fr', label: 'Français' },
-  { value: 'en', label: 'English' },
+  { value: "fr", label: "Français" },
+  { value: "en", label: "English" },
 ];
 
 // ─── OptionsSheet ───
@@ -81,7 +82,7 @@ export const OptionsSheet = forwardRef<SimpleBottomSheetRef, OptionsSheetProps>(
     const handleModeSelect = useCallback(
       (mode: string) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setOptions({ mode: mode as AnalysisOptionsV2['mode'] });
+        setOptions({ mode: mode as AnalysisOptionsV2["mode"] });
       },
       [setOptions],
     );
@@ -109,15 +110,13 @@ export const OptionsSheet = forwardRef<SimpleBottomSheetRef, OptionsSheetProps>(
               Options
             </Text>
             <Pressable
-              onPress={() => (ref as React.RefObject<SimpleBottomSheetRef>)?.current?.close()}
+              onPress={() =>
+                (ref as React.RefObject<SimpleBottomSheetRef>)?.current?.close()
+              }
               hitSlop={12}
               accessibilityLabel="Fermer"
             >
-              <Ionicons
-                name="close"
-                size={24}
-                color={colors.textSecondary}
-              />
+              <Ionicons name="close" size={24} color={colors.textSecondary} />
             </Pressable>
           </View>
 
@@ -161,17 +160,17 @@ export const OptionsSheet = forwardRef<SimpleBottomSheetRef, OptionsSheetProps>(
   },
 );
 
-OptionsSheet.displayName = 'OptionsSheet';
+OptionsSheet.displayName = "OptionsSheet";
 
 const styles = StyleSheet.create({
   sheetContent: {
     paddingHorizontal: sp.xl,
-    paddingBottom: sp['3xl'],
+    paddingBottom: sp["3xl"],
   },
   sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: sp.xl,
   },
   sheetTitle: {
@@ -184,7 +183,7 @@ const styles = StyleSheet.create({
     marginBottom: sp.md,
   },
   chipRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: sp.sm,
   },
   chip: {

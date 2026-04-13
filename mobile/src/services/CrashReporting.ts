@@ -10,10 +10,10 @@
  * 3. Run: npx sentry-expo-upload-sourcemaps
  */
 
-import Constants from 'expo-constants';
+import Constants from "expo-constants";
 
 // Error severity levels for reporting
-export type ErrorSeverity = 'fatal' | 'error' | 'warning' | 'info' | 'debug';
+export type ErrorSeverity = "fatal" | "error" | "warning" | "info" | "debug";
 
 // User context for error reports
 export interface UserContext {
@@ -52,7 +52,7 @@ interface CrashReportingConfig {
 // Default configuration
 const defaultConfig: CrashReportingConfig = {
   dsn: Constants.expoConfig?.extra?.sentryDsn,
-  environment: __DEV__ ? 'development' : 'production',
+  environment: __DEV__ ? "development" : "production",
   release: `${Constants.expoConfig?.name}@${Constants.expoConfig?.version}`,
   enabled: !__DEV__, // Disabled in development by default
   debug: __DEV__,
@@ -63,15 +63,20 @@ const defaultConfig: CrashReportingConfig = {
 interface SentryModule {
   init: (options: Record<string, unknown>) => void;
   captureException: (error: Error, options?: Record<string, unknown>) => string;
-  captureMessage: (message: string, options?: Record<string, unknown>) => string;
+  captureMessage: (
+    message: string,
+    options?: Record<string, unknown>,
+  ) => string;
   setUser: (user: Record<string, unknown> | null) => void;
   setTag: (key: string, value: string) => void;
   setExtra: (key: string, value: unknown) => void;
   addBreadcrumb: (breadcrumb: Record<string, unknown>) => void;
-  startTransaction?: (options: { name: string; op: string }) => { finish: () => void };
+  startTransaction?: (options: { name: string; op: string }) => {
+    finish: () => void;
+  };
   withErrorBoundary?: <P extends object>(
     component: React.ComponentType<P>,
-    options?: { fallback?: React.ReactNode }
+    options?: { fallback?: React.ReactNode },
   ) => React.ComponentType<P>;
 }
 
@@ -83,7 +88,7 @@ let isInitialized = false;
  * Initialize crash reporting
  */
 export async function initCrashReporting(
-  config: Partial<CrashReportingConfig> = {}
+  config: Partial<CrashReportingConfig> = {},
 ): Promise<void> {
   if (isInitialized) return;
 
@@ -91,13 +96,15 @@ export async function initCrashReporting(
 
   // Skip if disabled or no DSN
   if (!finalConfig.enabled) {
-    console.log('[CrashReporting] Disabled (development mode)');
+    console.log("[CrashReporting] Disabled (development mode)");
     isInitialized = true;
     return;
   }
 
   if (!finalConfig.dsn) {
-    console.warn('[CrashReporting] No DSN configured - crash reporting disabled');
+    console.warn(
+      "[CrashReporting] No DSN configured - crash reporting disabled",
+    );
     isInitialized = true;
     return;
   }
@@ -105,7 +112,7 @@ export async function initCrashReporting(
   try {
     // Try to import Sentry (optional dependency)
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const sentryModule = require('@sentry/react-native');
+    const sentryModule = require("@sentry/react-native");
     Sentry = sentryModule as SentryModule;
 
     Sentry.init({
@@ -128,16 +135,16 @@ export async function initCrashReporting(
       integrations: (defaultIntegrations: any[]) => {
         return defaultIntegrations.filter(
           // Filter out integrations that cause issues with Expo
-          (integration: any) => integration.name !== 'ReactNativeTracing'
+          (integration: any) => integration.name !== "ReactNativeTracing",
         );
       },
     });
 
     isInitialized = true;
-    console.log('[CrashReporting] Initialized successfully');
+    console.log("[CrashReporting] Initialized successfully");
   } catch (error) {
     // Sentry not installed - use fallback
-    console.log('[CrashReporting] Sentry not available, using fallback logger');
+    console.log("[CrashReporting] Sentry not available, using fallback logger");
     isInitialized = true;
   }
 }
@@ -147,15 +154,15 @@ export async function initCrashReporting(
  */
 export function captureException(
   error: Error | unknown,
-  context?: ErrorContext
+  context?: ErrorContext,
 ): string {
   const errorObj = error instanceof Error ? error : new Error(String(error));
 
   // Always log in development
   if (__DEV__) {
-    console.error('[CrashReporting] Exception:', errorObj);
+    console.error("[CrashReporting] Exception:", errorObj);
     if (context) {
-      console.error('[CrashReporting] Context:', context);
+      console.error("[CrashReporting] Context:", context);
     }
   }
 
@@ -176,13 +183,17 @@ export function captureException(
  */
 export function captureMessage(
   message: string,
-  severity: ErrorSeverity = 'info',
-  context?: ErrorContext
+  severity: ErrorSeverity = "info",
+  context?: ErrorContext,
 ): string {
   // Always log in development
   if (__DEV__) {
-    const logFn = severity === 'error' || severity === 'fatal' ? console.error :
-                  severity === 'warning' ? console.warn : console.log;
+    const logFn =
+      severity === "error" || severity === "fatal"
+        ? console.error
+        : severity === "warning"
+          ? console.warn
+          : console.log;
     logFn(`[CrashReporting] ${severity.toUpperCase()}: ${message}`);
   }
 
@@ -203,7 +214,7 @@ export function captureMessage(
  */
 export function setUser(user: UserContext | null): void {
   if (__DEV__) {
-    console.log('[CrashReporting] Set user:', user);
+    console.log("[CrashReporting] Set user:", user);
   }
 
   if (Sentry && isInitialized) {
@@ -214,7 +225,7 @@ export function setUser(user: UserContext | null): void {
         username: user.username,
       });
       if (user.plan) {
-        Sentry.setTag('plan', user.plan);
+        Sentry.setTag("plan", user.plan);
       }
     } else {
       Sentry.setUser(null);
@@ -245,7 +256,7 @@ export function setExtra(key: string, value: unknown): void {
  */
 export function addBreadcrumb(breadcrumb: Breadcrumb): void {
   if (__DEV__) {
-    console.log('[CrashReporting] Breadcrumb:', breadcrumb.message);
+    console.log("[CrashReporting] Breadcrumb:", breadcrumb.message);
   }
 
   if (Sentry && isInitialized) {
@@ -264,7 +275,7 @@ export function addBreadcrumb(breadcrumb: Breadcrumb): void {
  */
 export function startTransaction(
   name: string,
-  op: string
+  op: string,
 ): { finish: () => void } | null {
   if (Sentry && isInitialized && Sentry.startTransaction) {
     const transaction = Sentry.startTransaction({ name, op });
@@ -280,7 +291,7 @@ export function startTransaction(
  */
 export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
-  fallback?: React.ReactNode
+  fallback?: React.ReactNode,
 ): React.ComponentType<P> {
   if (Sentry && Sentry.withErrorBoundary) {
     return Sentry.withErrorBoundary(Component, {
@@ -295,18 +306,18 @@ export function withErrorBoundary<P extends object>(
  */
 function mapSeverityToSentryLevel(severity: ErrorSeverity): any {
   switch (severity) {
-    case 'fatal':
-      return 'fatal';
-    case 'error':
-      return 'error';
-    case 'warning':
-      return 'warning';
-    case 'info':
-      return 'info';
-    case 'debug':
-      return 'debug';
+    case "fatal":
+      return "fatal";
+    case "error":
+      return "error";
+    case "warning":
+      return "warning";
+    case "info":
+      return "info";
+    case "debug":
+      return "debug";
     default:
-      return 'info';
+      return "info";
   }
 }
 

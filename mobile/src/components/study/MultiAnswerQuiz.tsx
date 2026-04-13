@@ -10,14 +10,8 @@
  * - Rétro-compatible avec l'ancien format QuizQuestionV2 (correctIndex seul)
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-} from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -26,15 +20,15 @@ import Animated, {
   withSpring,
   FadeInDown,
   FadeIn,
-} from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useStudy } from '../../hooks/useStudy';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
-import { springs, duration } from '../../theme/animations';
-import type { QuizQuestionV2 } from '../../types/v2';
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useStudy } from "../../hooks/useStudy";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
+import { springs, duration } from "../../theme/animations";
+import type { QuizQuestionV2 } from "../../types/v2";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -78,7 +72,7 @@ function computeScore(selected: number[], correct: number[]): number {
 }
 
 const ADVANCE_DELAY_SINGLE = 1800; // ms auto-advance pour réponse unique
-const ADVANCE_DELAY_MULTI = 2500;  // ms auto-advance après validation multi
+const ADVANCE_DELAY_MULTI = 2500; // ms auto-advance après validation multi
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -91,7 +85,9 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
 
   const [questions, setQuestions] = useState<QuizQuestionV2[]>([]);
   const [index, setIndex] = useState(0);
-  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(
+    new Set(),
+  );
   const [confirmed, setConfirmed] = useState(false); // true after user validated
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,7 +128,10 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
   const commitAnswer = useCallback(
     (selected: number[]) => {
       if (!current) {
-        if (__DEV__) console.warn('[Quiz] commitAnswer called with null question — skipping');
+        if (__DEV__)
+          console.warn(
+            "[Quiz] commitAnswer called with null question — skipping",
+          );
         return;
       }
       const correct = getCorrectIndices(current);
@@ -169,7 +168,8 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
       advanceTimer.current = setTimeout(() => {
         if (index + 1 >= questions.length) {
           const finalTotal = answers.length + 1;
-          const finalScore = answers.reduce((a, b) => a + b.partialScore, 0) + partialScore;
+          const finalScore =
+            answers.reduce((a, b) => a + b.partialScore, 0) + partialScore;
           saveProgress({
             quizScore: Math.round(finalScore),
             quizTotal: finalTotal,
@@ -182,7 +182,16 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
         }
       }, delay);
     },
-    [current, index, questions.length, answers, isMultiAnswer, saveProgress, shake, scoreScale], // eslint-disable-line react-hooks/exhaustive-deps
+    [
+      current,
+      index,
+      questions.length,
+      answers,
+      isMultiAnswer,
+      saveProgress,
+      shake,
+      scoreScale,
+    ], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // ─── Toggle selection (pre-confirm) ──────────────────────────────────────
@@ -243,7 +252,11 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <QuizHeader onClose={onClose} scoreLabel="" progressLabel="" />
         <View style={styles.center}>
-          <Ionicons name="help-circle-outline" size={48} color={colors.textMuted} />
+          <Ionicons
+            name="help-circle-outline"
+            size={48}
+            color={colors.textMuted}
+          />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             Génération du quiz...
           </Text>
@@ -257,7 +270,11 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <QuizHeader onClose={onClose} scoreLabel="" progressLabel="" />
         <View style={styles.center}>
-          <Ionicons name="alert-circle-outline" size={48} color={colors.textMuted} />
+          <Ionicons
+            name="alert-circle-outline"
+            size={48}
+            color={colors.textMuted}
+          />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             Aucune question disponible
           </Text>
@@ -270,16 +287,15 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
 
   if (finished) {
     const finalScore = answers.reduce((acc, a) => acc + a.partialScore, 0);
-    const pct = answers.length > 0
-      ? Math.round((finalScore / answers.length) * 100)
-      : 0;
+    const pct =
+      answers.length > 0 ? Math.round((finalScore / answers.length) * 100) : 0;
 
     return (
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <QuizHeader onClose={onClose} scoreLabel="" progressLabel="" />
         <ScrollView contentContainerStyle={styles.finishScroll}>
           <Ionicons
-            name={pct >= 60 ? 'trophy' : 'school'}
+            name={pct >= 60 ? "trophy" : "school"}
             size={64}
             color={pct >= 60 ? colors.accentWarning : colors.accentPrimary}
           />
@@ -300,7 +316,10 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
               const correct = getCorrectIndices(q);
               const isMulti = correct.length > 1;
               return (
-                <Animated.View key={i} entering={FadeInDown.delay(i * 70).duration(250)}>
+                <Animated.View
+                  key={i}
+                  entering={FadeInDown.delay(i * 70).duration(250)}
+                >
                   <View
                     style={[
                       styles.reviewItem,
@@ -308,26 +327,41 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
                     ]}
                   >
                     <Ionicons
-                      name={a.perfect ? 'checkmark-circle' : a.partialScore > 0 ? 'ellipse-outline' : 'close-circle'}
+                      name={
+                        a.perfect
+                          ? "checkmark-circle"
+                          : a.partialScore > 0
+                            ? "ellipse-outline"
+                            : "close-circle"
+                      }
                       size={20}
                       color={
                         a.perfect
                           ? colors.accentSuccess
                           : a.partialScore > 0
-                          ? colors.accentWarning
-                          : colors.accentError
+                            ? colors.accentWarning
+                            : colors.accentError
                       }
                     />
                     <View style={styles.reviewContent}>
                       <Text
-                        style={[styles.reviewText, { color: colors.textPrimary }]}
+                        style={[
+                          styles.reviewText,
+                          { color: colors.textPrimary },
+                        ]}
                         numberOfLines={2}
                       >
                         {q.question}
                       </Text>
                       {isMulti && (
-                        <Text style={[styles.reviewSub, { color: colors.textTertiary }]}>
-                          {a.partialScore.toFixed(1)} pt — {correct.length} bonnes réponses
+                        <Text
+                          style={[
+                            styles.reviewSub,
+                            { color: colors.textTertiary },
+                          ]}
+                        >
+                          {a.partialScore.toFixed(1)} pt — {correct.length}{" "}
+                          bonnes réponses
                         </Text>
                       )}
                     </View>
@@ -339,7 +373,10 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
 
           <View style={styles.finishActions}>
             <Pressable
-              style={[styles.finishBtn, { backgroundColor: colors.accentPrimary }]}
+              style={[
+                styles.finishBtn,
+                { backgroundColor: colors.accentPrimary },
+              ]}
               onPress={handleRestart}
             >
               <Text style={styles.finishBtnText}>Recommencer</Text>
@@ -348,7 +385,9 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
               style={[styles.finishBtn, { backgroundColor: colors.bgElevated }]}
               onPress={onClose}
             >
-              <Text style={[styles.finishBtnText, { color: colors.textPrimary }]}>
+              <Text
+                style={[styles.finishBtnText, { color: colors.textPrimary }]}
+              >
                 Fermer
               </Text>
             </Pressable>
@@ -374,7 +413,9 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
       </Animated.View>
 
       {/* Progress bar */}
-      <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
+      <View
+        style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}
+      >
         <View
           style={[
             styles.progressFill,
@@ -386,15 +427,33 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
         />
       </View>
 
-      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Multi-answer badge */}
         {isMultiAnswer && (
-          <Animated.View entering={FadeIn.duration(200)} style={styles.multiBadge}>
+          <Animated.View
+            entering={FadeIn.duration(200)}
+            style={styles.multiBadge}
+          >
             <View
-              style={[styles.multiBadgeInner, { backgroundColor: `${colors.accentWarning}18`, borderColor: `${colors.accentWarning}40` }]}
+              style={[
+                styles.multiBadgeInner,
+                {
+                  backgroundColor: `${colors.accentWarning}18`,
+                  borderColor: `${colors.accentWarning}40`,
+                },
+              ]}
             >
-              <Ionicons name="checkbox-outline" size={14} color={colors.accentWarning} />
-              <Text style={[styles.multiBadgeText, { color: colors.accentWarning }]}>
+              <Ionicons
+                name="checkbox-outline"
+                size={14}
+                color={colors.accentWarning}
+              />
+              <Text
+                style={[styles.multiBadgeText, { color: colors.accentWarning }]}
+              >
                 {correctIndices.length} bonnes réponses — sélectionne-les toutes
               </Text>
             </View>
@@ -412,8 +471,10 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
         {current.options.map((option, optIdx) => {
           const isSelected = selectedIndices.has(optIdx);
           const isCorrect = confirmed && correctIndices.includes(optIdx);
-          const isWrong = confirmed && isSelected && !correctIndices.includes(optIdx);
-          const isMissed = confirmed && !isSelected && correctIndices.includes(optIdx);
+          const isWrong =
+            confirmed && isSelected && !correctIndices.includes(optIdx);
+          const isMissed =
+            confirmed && !isSelected && correctIndices.includes(optIdx);
 
           let bgColor = colors.bgElevated;
           let borderColor = colors.border;
@@ -435,10 +496,13 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
           return (
             <Pressable
               key={optIdx}
-              style={[styles.optionBtn, { backgroundColor: bgColor, borderColor }]}
+              style={[
+                styles.optionBtn,
+                { backgroundColor: bgColor, borderColor },
+              ]}
               onPress={() => handleToggle(optIdx)}
               disabled={confirmed}
-              accessibilityRole={isMultiAnswer ? 'checkbox' : 'radio'}
+              accessibilityRole={isMultiAnswer ? "checkbox" : "radio"}
               accessibilityState={{ checked: isSelected }}
             >
               {/* Checkbox / radio indicator */}
@@ -446,21 +510,29 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
                 style={[
                   styles.optionIndicator,
                   {
-                    borderColor: isSelected || isCorrect ? borderColor : colors.border,
-                    backgroundColor: isSelected && !confirmed ? `${colors.accentPrimary}30` : 'transparent',
+                    borderColor:
+                      isSelected || isCorrect ? borderColor : colors.border,
+                    backgroundColor:
+                      isSelected && !confirmed
+                        ? `${colors.accentPrimary}30`
+                        : "transparent",
                     borderRadius: isMultiAnswer ? 4 : 14,
                   },
                 ]}
               >
                 {isSelected && !confirmed && (
                   <Ionicons
-                    name={isMultiAnswer ? 'checkmark' : 'radio-button-on'}
+                    name={isMultiAnswer ? "checkmark" : "radio-button-on"}
                     size={14}
                     color={colors.accentPrimary}
                   />
                 )}
                 {confirmed && isCorrect && (
-                  <Ionicons name="checkmark" size={14} color={colors.accentSuccess} />
+                  <Ionicons
+                    name="checkmark"
+                    size={14}
+                    color={colors.accentSuccess}
+                  />
                 )}
                 {confirmed && isWrong && (
                   <Ionicons name="close" size={14} color={colors.accentError} />
@@ -476,18 +548,18 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
                 <Ionicons
                   name={
                     isCorrect
-                      ? 'checkmark-circle'
+                      ? "checkmark-circle"
                       : isMissed
-                      ? 'alert-circle'
-                      : 'close-circle'
+                        ? "alert-circle"
+                        : "close-circle"
                   }
                   size={20}
                   color={
                     isCorrect
                       ? colors.accentSuccess
                       : isMissed
-                      ? colors.accentWarning
-                      : colors.accentError
+                        ? colors.accentWarning
+                        : colors.accentError
                   }
                 />
               )}
@@ -515,20 +587,22 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
                 styles.validateBtnText,
                 {
                   color:
-                    selectedIndices.size > 0
-                      ? '#ffffff'
-                      : colors.textMuted,
+                    selectedIndices.size > 0 ? "#ffffff" : colors.textMuted,
                 },
               ]}
             >
-              Valider ma sélection ({selectedIndices.size}/{correctIndices.length})
+              Valider ma sélection ({selectedIndices.size}/
+              {correctIndices.length})
             </Text>
           </Pressable>
         )}
 
         {/* Explanation */}
         {confirmed && current.explanation ? (
-          <Animated.View entering={FadeInDown.duration(300)} style={styles.explanationBox}>
+          <Animated.View
+            entering={FadeInDown.duration(300)}
+            style={styles.explanationBox}
+          >
             <View
               style={[
                 styles.explanationCard,
@@ -537,18 +611,28 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
             >
               <View style={styles.explanationHeader}>
                 <Ionicons name="bulb" size={18} color={colors.accentWarning} />
-                <Text style={[styles.explanationTitle, { color: colors.accentWarning }]}>
+                <Text
+                  style={[
+                    styles.explanationTitle,
+                    { color: colors.accentWarning },
+                  ]}
+                >
                   Explication
                 </Text>
               </View>
-              <Text style={[styles.explanationText, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.explanationText,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 {current.explanation}
               </Text>
             </View>
           </Animated.View>
         ) : null}
 
-        <View style={{ height: sp['4xl'] }} />
+        <View style={{ height: sp["4xl"] }} />
       </ScrollView>
     </View>
   );
@@ -562,15 +646,27 @@ interface QuizHeaderProps {
   progressLabel: string;
 }
 
-const QuizHeader: React.FC<QuizHeaderProps> = ({ onClose, scoreLabel, progressLabel }) => {
+const QuizHeader: React.FC<QuizHeaderProps> = ({
+  onClose,
+  scoreLabel,
+  progressLabel,
+}) => {
   const { colors } = useTheme();
   return (
     <View style={styles.topBar}>
-      <Pressable onPress={onClose} style={styles.closeBtn} accessibilityLabel="Fermer">
+      <Pressable
+        onPress={onClose}
+        style={styles.closeBtn}
+        accessibilityLabel="Fermer"
+      >
         <Ionicons name="close" size={28} color={colors.textPrimary} />
       </Pressable>
-      <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>{scoreLabel}</Text>
-      <Text style={[styles.progressLabel, { color: colors.textMuted }]}>{progressLabel}</Text>
+      <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>
+        {scoreLabel}
+      </Text>
+      <Text style={[styles.progressLabel, { color: colors.textMuted }]}>
+        {progressLabel}
+      </Text>
     </View>
   );
 };
@@ -580,42 +676,42 @@ const QuizHeader: React.FC<QuizHeaderProps> = ({ onClose, scoreLabel, progressLa
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: sp['4xl'],
+    paddingTop: sp["4xl"],
   },
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: sp.lg,
     paddingBottom: sp.sm,
   },
   closeBtn: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   scoreLabel: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.sm,
-    textAlign: 'center',
+    textAlign: "center",
     flex: 1,
   },
   progressLabel: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
     minWidth: 40,
-    textAlign: 'right',
+    textAlign: "right",
   },
   progressBar: {
     height: 4,
     marginHorizontal: sp.lg,
     borderRadius: 2,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: sp.lg,
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 2,
   },
   scrollContent: {
@@ -626,14 +722,14 @@ const styles = StyleSheet.create({
     marginBottom: sp.md,
   },
   multiBadgeInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.xs,
     paddingVertical: sp.xs + 2,
     paddingHorizontal: sp.md,
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   multiBadgeText: {
     fontFamily: fontFamily.bodyMedium,
@@ -643,11 +739,11 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.xl,
     lineHeight: fontSize.xl * 1.4,
-    marginBottom: sp['2xl'],
+    marginBottom: sp["2xl"],
   },
   optionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: sp.lg,
     borderRadius: borderRadius.md,
     borderWidth: 2,
@@ -658,8 +754,8 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     flexShrink: 0,
   },
   optionText: {
@@ -672,8 +768,8 @@ const styles = StyleSheet.create({
     marginTop: sp.md,
     paddingVertical: sp.md + 2,
     borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   validateBtnText: {
     fontFamily: fontFamily.bodyMedium,
@@ -687,8 +783,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
   },
   explanationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.sm,
     marginBottom: sp.sm,
   },
@@ -703,8 +799,8 @@ const styles = StyleSheet.create({
   },
   center: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: sp.md,
   },
   loadingText: {
@@ -712,19 +808,19 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
   },
   finishScroll: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: sp.lg,
-    paddingTop: sp['3xl'],
-    paddingBottom: sp['4xl'],
+    paddingTop: sp["3xl"],
+    paddingBottom: sp["4xl"],
   },
   finishTitle: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize['2xl'],
+    fontSize: fontSize["2xl"],
     marginTop: sp.lg,
   },
   finishScore: {
     fontFamily: fontFamily.display,
-    fontSize: fontSize['5xl'],
+    fontSize: fontSize["5xl"],
     marginTop: sp.sm,
   },
   finishDetail: {
@@ -733,13 +829,13 @@ const styles = StyleSheet.create({
     marginTop: sp.xs,
   },
   reviewList: {
-    width: '100%',
-    marginTop: sp['2xl'],
+    width: "100%",
+    marginTop: sp["2xl"],
     gap: sp.sm,
   },
   reviewItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: sp.sm,
     padding: sp.md,
     borderRadius: borderRadius.md,
@@ -759,18 +855,18 @@ const styles = StyleSheet.create({
   },
   finishActions: {
     gap: sp.md,
-    marginTop: sp['3xl'],
-    width: '100%',
+    marginTop: sp["3xl"],
+    width: "100%",
   },
   finishBtn: {
     paddingVertical: sp.md,
     borderRadius: borderRadius.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   finishBtnText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.base,
-    color: '#ffffff',
+    color: "#ffffff",
   },
 });
 

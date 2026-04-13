@@ -1,14 +1,9 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
-import { darkColors, palette } from '@/theme/colors';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { sp } from '@/theme/spacing';
-import { DoodleBackground } from '@/components/ui/DoodleBackground';
+import React from "react";
+import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { darkColors, palette } from "@/theme/colors";
+import { fontFamily, fontSize } from "@/theme/typography";
+import { sp } from "@/theme/spacing";
+import { DoodleBackground } from "@/components/ui/DoodleBackground";
 
 export default function SplashScreen() {
   return (
@@ -29,13 +24,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: darkColors.bgPrimary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     gap: sp.xl,
   },
   logo: {
     fontFamily: fontFamily.display,
-    fontSize: fontSize['4xl'],
+    fontSize: fontSize["4xl"],
     color: darkColors.textPrimary,
   },
   loader: {

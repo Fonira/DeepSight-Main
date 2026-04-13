@@ -6,8 +6,8 @@
  *   - compact: horizontal layout matching AnalysisCard (thumbnail 80×60 + text + badge)
  *   - hero: full-width card for the featured/latest result
  */
-import React from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import React from "react";
+import { View, StyleSheet, useWindowDimensions } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -15,10 +15,10 @@ import Animated, {
   withTiming,
   Easing,
   ReduceMotion,
-} from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '@/contexts/ThemeContext';
-import { sp, borderRadius } from '@/theme/spacing';
+} from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "@/contexts/ThemeContext";
+import { sp, borderRadius } from "@/theme/spacing";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -34,19 +34,19 @@ const HERO_ASPECT = 16 / 9;
 
 // Brand shimmer colors — indigo #6366f1 → violet #8b5cf6 at low opacity
 const SHIMMER_COLORS_DARK = [
-  'transparent',
-  'rgba(99, 102, 241, 0.12)',
-  'rgba(139, 92, 246, 0.18)',
-  'rgba(99, 102, 241, 0.12)',
-  'transparent',
+  "transparent",
+  "rgba(99, 102, 241, 0.12)",
+  "rgba(139, 92, 246, 0.18)",
+  "rgba(99, 102, 241, 0.12)",
+  "transparent",
 ] as const;
 
 const SHIMMER_COLORS_LIGHT = [
-  'transparent',
-  'rgba(99, 102, 241, 0.10)',
-  'rgba(139, 92, 246, 0.14)',
-  'rgba(99, 102, 241, 0.10)',
-  'transparent',
+  "transparent",
+  "rgba(99, 102, 241, 0.10)",
+  "rgba(139, 92, 246, 0.14)",
+  "rgba(99, 102, 241, 0.10)",
+  "transparent",
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -100,7 +100,7 @@ const ShimmerBlock: React.FC<ShimmerBlockProps> = ({
           height,
           borderRadius: radius,
           backgroundColor: baseBg,
-          overflow: 'hidden',
+          overflow: "hidden",
         },
         style,
       ]}
@@ -110,7 +110,7 @@ const ShimmerBlock: React.FC<ShimmerBlockProps> = ({
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
-          { width: `${SHIMMER_WIDTH_RATIO * 100 + 100}%`, left: '-30%' },
+          { width: `${SHIMMER_WIDTH_RATIO * 100 + 100}%`, left: "-30%" },
           animatedStyle,
         ]}
       >
@@ -130,16 +130,16 @@ const ShimmerBlock: React.FC<ShimmerBlockProps> = ({
 // ---------------------------------------------------------------------------
 
 interface SkeletonCardProps {
-  variant?: 'compact' | 'hero';
+  variant?: "compact" | "hero";
 }
 
 const SkeletonCardInner: React.FC<SkeletonCardProps> = ({
-  variant = 'compact',
+  variant = "compact",
 }) => {
   const { colors } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
 
-  if (variant === 'hero') {
+  if (variant === "hero") {
     const thumbH = Math.round((screenWidth - sp.lg * 2) / HERO_ASPECT);
 
     return (
@@ -154,11 +154,7 @@ const SkeletonCardInner: React.FC<SkeletonCardProps> = ({
         accessibilityLabel="Chargement de l'analyse"
       >
         {/* Full-width thumbnail placeholder */}
-        <ShimmerBlock
-          width="100%"
-          height={thumbH}
-          radius={0}
-        />
+        <ShimmerBlock width="100%" height={thumbH} radius={0} />
 
         <View style={styles.heroContent}>
           {/* Title — 2 lines */}
@@ -253,14 +249,14 @@ export const SkeletonCard = React.memo(SkeletonCardInner);
 
 interface SkeletonListProps {
   count?: number;
-  variant?: 'compact' | 'hero';
+  variant?: "compact" | "hero";
   /** Render the first card as hero and the rest as compact */
   heroFirst?: boolean;
 }
 
 const SkeletonListInner: React.FC<SkeletonListProps> = ({
   count = 5,
-  variant = 'compact',
+  variant = "compact",
   heroFirst = false,
 }) => {
   const items = Array.from({ length: count }, (_, i) => i);
@@ -270,7 +266,7 @@ const SkeletonListInner: React.FC<SkeletonListProps> = ({
       {items.map((i) => (
         <SkeletonCard
           key={i}
-          variant={heroFirst && i === 0 ? 'hero' : variant}
+          variant={heroFirst && i === 0 ? "hero" : variant}
         />
       ))}
     </View>
@@ -286,18 +282,18 @@ export const SkeletonList = React.memo(SkeletonListInner);
 const styles = StyleSheet.create({
   // Compact variant — matches AnalysisCard
   compactCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: sp.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     marginBottom: sp.sm,
   },
   compactThumbWrapper: {
-    position: 'relative',
+    position: "relative",
   },
   badgeOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 3,
     left: 3,
     zIndex: 2,
@@ -307,7 +303,7 @@ const styles = StyleSheet.create({
     marginLeft: sp.md,
   },
   starPlaceholder: {
-    position: 'absolute',
+    position: "absolute",
     top: sp.sm,
     right: sp.sm,
   },
@@ -316,7 +312,7 @@ const styles = StyleSheet.create({
   heroCard: {
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: sp.md,
   },
   heroContent: {

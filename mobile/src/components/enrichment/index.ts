@@ -1,2 +1,2 @@
-export { WebEnrichment } from './WebEnrichment';
-export { default } from './WebEnrichment';
+export { WebEnrichment } from "./WebEnrichment";
+export { default } from "./WebEnrichment";

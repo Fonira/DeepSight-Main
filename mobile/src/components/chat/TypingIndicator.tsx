@@ -5,9 +5,9 @@
  * not just opacity pulse. Each dot has translateY bounce.
  */
 
-import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect } from "react";
+import { View, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,10 +17,10 @@ import Animated, {
   withDelay,
   FadeIn,
   FadeOut,
-} from 'react-native-reanimated';
-import { useTheme } from '../../contexts/ThemeContext';
-import { sp, borderRadius } from '../../theme/spacing';
-import { palette } from '../../theme/colors';
+} from "react-native-reanimated";
+import { useTheme } from "../../contexts/ThemeContext";
+import { sp, borderRadius } from "../../theme/spacing";
+import { palette } from "../../theme/colors";
 
 /**
  * Spring-driven bouncing dot.
@@ -34,7 +34,10 @@ const SPRING_UP = { damping: 6, stiffness: 260, mass: 0.35 };
 const SPRING_DOWN = { damping: 10, stiffness: 180, mass: 0.35 };
 const STAGGER_MS = 150;
 
-const BouncyDot: React.FC<{ delay: number; color: string }> = ({ delay, color }) => {
+const BouncyDot: React.FC<{ delay: number; color: string }> = ({
+  delay,
+  color,
+}) => {
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0.5);
@@ -54,10 +57,7 @@ const BouncyDot: React.FC<{ delay: number; color: string }> = ({ delay, color })
     scale.value = withDelay(
       delay,
       withRepeat(
-        withSequence(
-          withSpring(1.25, SPRING_UP),
-          withSpring(1, SPRING_DOWN),
-        ),
+        withSequence(withSpring(1.25, SPRING_UP), withSpring(1, SPRING_DOWN)),
         -1,
         false,
       ),
@@ -65,10 +65,7 @@ const BouncyDot: React.FC<{ delay: number; color: string }> = ({ delay, color })
     opacity.value = withDelay(
       delay,
       withRepeat(
-        withSequence(
-          withSpring(1, SPRING_UP),
-          withSpring(0.5, SPRING_DOWN),
-        ),
+        withSequence(withSpring(1, SPRING_UP), withSpring(0.5, SPRING_DOWN)),
         -1,
         false,
       ),
@@ -81,7 +78,9 @@ const BouncyDot: React.FC<{ delay: number; color: string }> = ({ delay, color })
   }));
 
   return (
-    <Animated.View style={[styles.dot, { backgroundColor: color }, animStyle]} />
+    <Animated.View
+      style={[styles.dot, { backgroundColor: color }, animStyle]}
+    />
   );
 };
 
@@ -95,7 +94,12 @@ export const TypingIndicator: React.FC = () => {
       style={styles.container}
     >
       {/* Avatar */}
-      <View style={[styles.avatar, { backgroundColor: `${colors.accentPrimary}20` }]}>
+      <View
+        style={[
+          styles.avatar,
+          { backgroundColor: `${colors.accentPrimary}20` },
+        ]}
+      >
         <Ionicons name="sparkles" size={14} color={colors.accentPrimary} />
       </View>
 
@@ -118,8 +122,8 @@ export const TypingIndicator: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     marginBottom: sp.sm,
     paddingHorizontal: sp.xs,
   },
@@ -127,14 +131,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: sp.sm,
     marginBottom: 4,
   },
   bubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: sp.lg,
     paddingVertical: sp.md,
     borderRadius: borderRadius.lg,

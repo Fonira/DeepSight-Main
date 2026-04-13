@@ -2,23 +2,23 @@
  * AnimatedToggle - Premium animated switch with Reanimated
  * Smooth knob slide + color transition + haptic feedback
  */
-import React, { useEffect, useCallback } from 'react';
-import { Pressable, StyleSheet, ViewStyle } from 'react-native';
+import React, { useEffect, useCallback } from "react";
+import { Pressable, StyleSheet, ViewStyle } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   interpolateColor,
-} from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { springs } from '../../theme/animations';
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { springs } from "../../theme/animations";
 
 interface AnimatedToggleProps {
   value: boolean;
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
-  size?: 'sm' | 'md';
+  size?: "sm" | "md";
   style?: ViewStyle;
 }
 
@@ -31,7 +31,7 @@ export const AnimatedToggle: React.FC<AnimatedToggleProps> = ({
   value,
   onValueChange,
   disabled = false,
-  size = 'md',
+  size = "md",
   style,
 }) => {
   const { colors } = useTheme();
@@ -53,7 +53,8 @@ export const AnimatedToggle: React.FC<AnimatedToggleProps> = ({
   const knobStyle = useAnimatedStyle(() => ({
     transform: [
       {
-        translateX: progress.value * (dims.width - dims.knob - dims.padding * 2),
+        translateX:
+          progress.value * (dims.width - dims.knob - dims.padding * 2),
       },
     ],
   }));
@@ -97,11 +98,11 @@ export const AnimatedToggle: React.FC<AnimatedToggleProps> = ({
 
 const styles = StyleSheet.create({
   track: {
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   knob: {
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
+    backgroundColor: "#ffffff",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 2,

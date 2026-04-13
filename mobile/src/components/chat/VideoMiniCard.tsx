@@ -5,13 +5,13 @@
  * Shows a compact thumbnail + title that navigates to the analysis.
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+import React from "react";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../contexts/ThemeContext";
+import { Spacing, Typography, BorderRadius } from "../../constants/theme";
 
 export interface VideoMiniCardProps {
   videoId?: string;
@@ -49,18 +49,33 @@ export const VideoMiniCard: React.FC<VideoMiniCardProps> = ({
       onPress={handlePress}
     >
       {thumbnail ? (
-        <Image source={{ uri: thumbnail }} style={styles.thumbnail} contentFit="cover" />
+        <Image
+          source={{ uri: thumbnail }}
+          style={styles.thumbnail}
+          contentFit="cover"
+        />
       ) : (
-        <View style={[styles.thumbnailPlaceholder, { backgroundColor: colors.bgTertiary }]}>
+        <View
+          style={[
+            styles.thumbnailPlaceholder,
+            { backgroundColor: colors.bgTertiary },
+          ]}
+        >
           <Ionicons name="videocam" size={16} color={colors.textTertiary} />
         </View>
       )}
       <View style={styles.info}>
-        <Text style={[styles.title, { color: colors.accentPrimary }]} numberOfLines={1}>
+        <Text
+          style={[styles.title, { color: colors.accentPrimary }]}
+          numberOfLines={1}
+        >
           {title}
         </Text>
         {channel && (
-          <Text style={[styles.channel, { color: colors.textMuted }]} numberOfLines={1}>
+          <Text
+            style={[styles.channel, { color: colors.textMuted }]}
+            numberOfLines={1}
+          >
             {channel}
           </Text>
         )}
@@ -72,8 +87,8 @@ export const VideoMiniCard: React.FC<VideoMiniCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
@@ -89,8 +104,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 32,
     borderRadius: BorderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   info: {
     flex: 1,

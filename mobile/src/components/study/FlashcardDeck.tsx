@@ -3,8 +3,8 @@
  * Flip 3D Reanimated + Swipe GestureHandler + Haptics
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
+import React, { useState, useCallback, useEffect } from "react";
+import { View, Text, StyleSheet, Pressable, Dimensions } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,24 +13,24 @@ import Animated, {
   interpolate,
   runOnJS,
   Extrapolation,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 import {
   Gesture,
   GestureDetector,
   GestureHandlerRootView,
-} from 'react-native-gesture-handler';
-import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useStudy } from '../../hooks/useStudy';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
-import { springs, duration } from '../../theme/animations';
-import { MicroConfetti } from './MicroConfetti';
-import { FlashcardProgress } from './FlashcardProgress';
-import type { Flashcard } from '../../types/v2';
+} from "react-native-gesture-handler";
+import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useStudy } from "../../hooks/useStudy";
+import { sp, borderRadius } from "../../theme/spacing";
+import { fontFamily, fontSize } from "../../theme/typography";
+import { springs, duration } from "../../theme/animations";
+import { MicroConfetti } from "./MicroConfetti";
+import { FlashcardProgress } from "./FlashcardProgress";
+import type { Flashcard } from "../../types/v2";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 100;
 
 interface FlashcardDeckProps {
@@ -38,7 +38,10 @@ interface FlashcardDeckProps {
   onClose: () => void;
 }
 
-export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose }) => {
+export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
+  summaryId,
+  onClose,
+}) => {
   const { colors } = useTheme();
   const { generateFlashcards, saveProgress } = useStudy(summaryId);
 
@@ -66,28 +69,36 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
         entryY.value = withSpring(0, springs.bouncy);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [generateFlashcards, entryY]);
 
-  const advanceCard = useCallback((isKnown: boolean) => {
-    if (isKnown) {
-      setKnown(prev => prev + 1);
-      setShowConfetti(true);
-    }
-    setIsFlipped(false);
-    flipY.value = 0;
+  const advanceCard = useCallback(
+    (isKnown: boolean) => {
+      if (isKnown) {
+        setKnown((prev) => prev + 1);
+        setShowConfetti(true);
+      }
+      setIsFlipped(false);
+      flipY.value = 0;
 
-    if (index + 1 >= cards.length) {
-      const finalKnown = isKnown ? known + 1 : known;
-      saveProgress({ flashcardsCompleted: finalKnown, flashcardsTotal: cards.length });
-      setFinished(true);
-    } else {
-      setIndex(prev => prev + 1);
-      setShowConfetti(false);
-      entryY.value = 30;
-      entryY.value = withSpring(0, springs.bouncy);
-    }
-  }, [index, cards.length, known, saveProgress, flipY, entryY]);
+      if (index + 1 >= cards.length) {
+        const finalKnown = isKnown ? known + 1 : known;
+        saveProgress({
+          flashcardsCompleted: finalKnown,
+          flashcardsTotal: cards.length,
+        });
+        setFinished(true);
+      } else {
+        setIndex((prev) => prev + 1);
+        setShowConfetti(false);
+        entryY.value = 30;
+        entryY.value = withSpring(0, springs.bouncy);
+      }
+    },
+    [index, cards.length, known, saveProgress, flipY, entryY],
+  );
 
   const handleFlip = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -103,19 +114,31 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
     })
     .onEnd((e) => {
       if (e.translationX > SWIPE_THRESHOLD) {
-        translateX.value = withTiming(SCREEN_WIDTH, { duration: duration.base }, () => {
-          runOnJS(Haptics.notificationAsync)(Haptics.NotificationFeedbackType.Success);
-          translateX.value = 0;
-          cardOpacity.value = 1;
-          runOnJS(advanceCard)(true);
-        });
+        translateX.value = withTiming(
+          SCREEN_WIDTH,
+          { duration: duration.base },
+          () => {
+            runOnJS(Haptics.notificationAsync)(
+              Haptics.NotificationFeedbackType.Success,
+            );
+            translateX.value = 0;
+            cardOpacity.value = 1;
+            runOnJS(advanceCard)(true);
+          },
+        );
       } else if (e.translationX < -SWIPE_THRESHOLD) {
-        translateX.value = withTiming(-SCREEN_WIDTH, { duration: duration.base }, () => {
-          runOnJS(Haptics.notificationAsync)(Haptics.NotificationFeedbackType.Error);
-          translateX.value = 0;
-          cardOpacity.value = 1;
-          runOnJS(advanceCard)(false);
-        });
+        translateX.value = withTiming(
+          -SCREEN_WIDTH,
+          { duration: duration.base },
+          () => {
+            runOnJS(Haptics.notificationAsync)(
+              Haptics.NotificationFeedbackType.Error,
+            );
+            translateX.value = 0;
+            cardOpacity.value = 1;
+            runOnJS(advanceCard)(false);
+          },
+        );
       } else {
         translateX.value = withSpring(0, springs.gentle);
       }
@@ -133,14 +156,14 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
       translateX.value,
       [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
       [-15, 0, 15],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     );
     // Scale down slightly at midpoint of flip for depth illusion
     const flipScale = interpolate(
       flipY.value,
       [0, 90, 180],
       [1, 0.92, 1],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     );
     return {
       transform: [
@@ -153,34 +176,61 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
   });
 
   const frontStyle = useAnimatedStyle(() => {
-    const shadowDepth = interpolate(flipY.value, [0, 90], [8, 24], Extrapolation.CLAMP);
-    const shadowX = interpolate(flipY.value, [0, 90], [0, 8], Extrapolation.CLAMP);
+    const shadowDepth = interpolate(
+      flipY.value,
+      [0, 90],
+      [8, 24],
+      Extrapolation.CLAMP,
+    );
+    const shadowX = interpolate(
+      flipY.value,
+      [0, 90],
+      [0, 8],
+      Extrapolation.CLAMP,
+    );
     return {
-      transform: [
-        { perspective: 1200 },
-        { rotateY: `${flipY.value}deg` },
-      ],
+      transform: [{ perspective: 1200 }, { rotateY: `${flipY.value}deg` }],
       opacity: interpolate(flipY.value, [0, 89, 90, 180], [1, 1, 0, 0]),
-      backfaceVisibility: 'hidden' as const,
+      backfaceVisibility: "hidden" as const,
       shadowOffset: { width: shadowX, height: shadowDepth },
-      shadowOpacity: interpolate(flipY.value, [0, 45, 90], [0.15, 0.25, 0.35], Extrapolation.CLAMP),
+      shadowOpacity: interpolate(
+        flipY.value,
+        [0, 45, 90],
+        [0.15, 0.25, 0.35],
+        Extrapolation.CLAMP,
+      ),
       shadowRadius: shadowDepth * 1.2,
       elevation: shadowDepth,
     };
   });
 
   const backStyle = useAnimatedStyle(() => {
-    const shadowDepth = interpolate(flipY.value, [90, 180], [24, 8], Extrapolation.CLAMP);
-    const shadowX = interpolate(flipY.value, [90, 180], [-8, 0], Extrapolation.CLAMP);
+    const shadowDepth = interpolate(
+      flipY.value,
+      [90, 180],
+      [24, 8],
+      Extrapolation.CLAMP,
+    );
+    const shadowX = interpolate(
+      flipY.value,
+      [90, 180],
+      [-8, 0],
+      Extrapolation.CLAMP,
+    );
     return {
       transform: [
         { perspective: 1200 },
         { rotateY: `${flipY.value - 180}deg` },
       ],
       opacity: interpolate(flipY.value, [0, 89, 90, 180], [0, 0, 1, 1]),
-      backfaceVisibility: 'hidden' as const,
+      backfaceVisibility: "hidden" as const,
       shadowOffset: { width: shadowX, height: shadowDepth },
-      shadowOpacity: interpolate(flipY.value, [90, 135, 180], [0.35, 0.25, 0.15], Extrapolation.CLAMP),
+      shadowOpacity: interpolate(
+        flipY.value,
+        [90, 135, 180],
+        [0.35, 0.25, 0.15],
+        Extrapolation.CLAMP,
+      ),
       shadowRadius: shadowDepth * 1.2,
       elevation: shadowDepth,
     };
@@ -216,7 +266,11 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <CloseButton onClose={onClose} />
         <View style={styles.center}>
-          <Ionicons name="alert-circle-outline" size={48} color={colors.textMuted} />
+          <Ionicons
+            name="alert-circle-outline"
+            size={48}
+            color={colors.textMuted}
+          />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             Aucune flashcard disponible
           </Text>
@@ -232,7 +286,7 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
         <CloseButton onClose={onClose} />
         <View style={styles.center}>
           <Ionicons
-            name={pct >= 60 ? 'trophy' : 'school'}
+            name={pct >= 60 ? "trophy" : "school"}
             size={64}
             color={pct >= 60 ? colors.accentWarning : colors.accentPrimary}
           />
@@ -247,7 +301,10 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
           </Text>
           <View style={styles.finishActions}>
             <Pressable
-              style={[styles.finishBtn, { backgroundColor: colors.accentPrimary }]}
+              style={[
+                styles.finishBtn,
+                { backgroundColor: colors.accentPrimary },
+              ]}
               onPress={handleRestart}
             >
               <Text style={styles.finishBtnText}>Recommencer</Text>
@@ -256,7 +313,9 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
               style={[styles.finishBtn, { backgroundColor: colors.bgElevated }]}
               onPress={onClose}
             >
-              <Text style={[styles.finishBtnText, { color: colors.textPrimary }]}>
+              <Text
+                style={[styles.finishBtnText, { color: colors.textPrimary }]}
+              >
                 Fermer
               </Text>
             </Pressable>
@@ -269,10 +328,16 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
   const currentCard = cards[index];
 
   return (
-    <GestureHandlerRootView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <GestureHandlerRootView
+      style={[styles.container, { backgroundColor: colors.bgPrimary }]}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={onClose} style={styles.closeBtn} accessibilityLabel="Fermer">
+        <Pressable
+          onPress={onClose}
+          style={styles.closeBtn}
+          accessibilityLabel="Fermer"
+        >
           <Ionicons name="close" size={28} color={colors.textPrimary} />
         </Pressable>
         <FlashcardProgress
@@ -295,7 +360,10 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
       </View>
 
       {/* Confetti burst on correct answer */}
-      <MicroConfetti trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
+      <MicroConfetti
+        trigger={showConfetti}
+        onComplete={() => setShowConfetti(false)}
+      />
 
       {/* Card */}
       <View style={styles.cardArea}>
@@ -305,7 +373,10 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
             <Animated.View
               style={[
                 styles.card,
-                { backgroundColor: colors.bgElevated, borderColor: colors.border },
+                {
+                  backgroundColor: colors.bgElevated,
+                  borderColor: colors.border,
+                },
                 frontStyle,
               ]}
             >
@@ -325,7 +396,10 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
               style={[
                 styles.card,
                 styles.cardBack,
-                { backgroundColor: colors.bgElevated, borderColor: colors.accentSecondary },
+                {
+                  backgroundColor: colors.bgElevated,
+                  borderColor: colors.accentSecondary,
+                },
                 backStyle,
               ]}
             >
@@ -350,7 +424,11 @@ const CloseButton: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { colors } = useTheme();
   return (
     <View style={styles.header}>
-      <Pressable onPress={onClose} style={styles.closeBtn} accessibilityLabel="Fermer">
+      <Pressable
+        onPress={onClose}
+        style={styles.closeBtn}
+        accessibilityLabel="Fermer"
+      >
         <Ionicons name="close" size={28} color={colors.textPrimary} />
       </Pressable>
       <View style={{ flex: 1 }} />
@@ -361,29 +439,29 @@ const CloseButton: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: sp['4xl'],
+    paddingTop: sp["4xl"],
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: sp.lg,
     paddingBottom: sp.sm,
   },
   closeBtn: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   progress: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.base,
   },
   hints: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: sp['3xl'],
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: sp["3xl"],
     marginTop: sp.lg,
   },
   hintText: {
@@ -392,8 +470,8 @@ const styles = StyleSheet.create({
   },
   cardArea: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: sp.xl,
   },
   cardWrapper: {
@@ -401,21 +479,21 @@ const styles = StyleSheet.create({
     aspectRatio: 0.65,
   },
   card: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
+    position: "absolute",
+    width: "100%",
+    height: "100%",
     borderRadius: borderRadius.xl,
     borderWidth: 2,
-    padding: sp['3xl'],
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    padding: sp["3xl"],
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
   },
   cardBack: {
-    position: 'absolute',
+    position: "absolute",
   },
   cardLabel: {
-    position: 'absolute',
+    position: "absolute",
     top: sp.lg,
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.xs,
@@ -424,19 +502,19 @@ const styles = StyleSheet.create({
   cardText: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.lg,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: fontSize.lg * 1.5,
   },
   tapHint: {
-    position: 'absolute',
+    position: "absolute",
     bottom: sp.lg,
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
   },
   center: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: sp.md,
   },
   loadingText: {
@@ -445,12 +523,12 @@ const styles = StyleSheet.create({
   },
   finishTitle: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize['2xl'],
+    fontSize: fontSize["2xl"],
     marginTop: sp.lg,
   },
   finishScore: {
     fontFamily: fontFamily.display,
-    fontSize: fontSize['4xl'],
+    fontSize: fontSize["4xl"],
   },
   finishPct: {
     fontFamily: fontFamily.body,
@@ -458,18 +536,18 @@ const styles = StyleSheet.create({
   },
   finishActions: {
     gap: sp.md,
-    marginTop: sp['3xl'],
-    width: '80%',
+    marginTop: sp["3xl"],
+    width: "80%",
   },
   finishBtn: {
     paddingVertical: sp.md,
     borderRadius: borderRadius.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   finishBtnText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.base,
-    color: '#ffffff',
+    color: "#ffffff",
   },
 });
 
