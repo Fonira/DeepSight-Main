@@ -37,7 +37,7 @@ hotfix/stripe-webhook-500
 chore/update-expo-sdk
 Workflow
 main (production)
-  └── feat/ma-feature (développement)
+└── feat/ma-feature (développement)
 
 main = branche de production, auto-deploy Vercel + Railway
 Travailler sur des branches feature, merge via PR ou direct push si petite modification solo
@@ -48,21 +48,27 @@ powershell# Nouveau feature
 git checkout -b feat/nom-feature
 
 # Commit standard
+
 git add . ; git commit -m "feat(web): add comparison view"
 
 # Push
+
 git push origin feat/nom-feature
 
 # Merge rapide en solo
+
 git checkout main ; git merge feat/nom-feature ; git push origin main
 
 # Supprimer la branche après merge
+
 git branch -d feat/nom-feature
 
 # Stash rapide
+
 git stash ; git checkout main ; git stash pop
 
 # Voir l'historique propre
+
 git log --oneline -20
 ⚠️ RAPPEL : Utiliser ; et PAS && sur PowerShell Windows.
 Cas particuliers
@@ -72,7 +78,9 @@ feat(api,web): add share endpoint and UI
 Hotfix production
 powershellgit checkout main
 git checkout -b hotfix/description
+
 # ... fix ...
+
 git add . ; git commit -m "hotfix(api): fix critical auth bypass"
 git checkout main ; git merge hotfix/description ; git push origin main
 Annuler le dernier commit (pas encore pushé)

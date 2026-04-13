@@ -38,15 +38,21 @@ Règles : baser chaque affirmation UNIQUEMENT sur le transcript, ne jamais inven
 ## Modes d'analyse
 
 ### ACCESSIBLE (Découverte) : En une phrase + 3-5 points clés + 1 insight pratique
+
 ### STANDARD (Étudiant+) : Résumé exécutif + idées principales + arguments + limites + applications
+
 ### EXPERT (Starter+) : Thèse centrale + structure argumentative + analyse des preuves + biais + évaluation critique
 
 ## Features Studio
 
 ### Flashcards : JSON `{"flashcards": [{"question", "answer", "category"}]}` (8-15 cards, temp 0.2)
+
 ### Quiz : JSON `{"quiz": [{"question", "options", "correct", "explanation", "difficulty"}]}` (5-10 questions)
+
 ### Mindmap : JSON `{"title", "branches": [{"label", "children"}]}` (max 4 branches, 3 niveaux)
+
 ### Factcheck : Extraction claims → Vérification Perplexity → Synthèse `{"score": 0-100, "results": [{"verdict": "vérifié|réfuté|nuancé"}]}`
+
 ### Compare : Convergences + divergences + tableau comparatif + recommandation
 
 ## Chunking — Transcripts longs

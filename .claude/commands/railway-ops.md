@@ -11,5 +11,6 @@ Depuis mars 2026, le backend DeepSight est hébergé intégralement sur **Hetzne
 Pour toute opération backend/prod, consulter la skill `infra-hetzner`.
 
 ### Historique
+
 - Railway hébergeait le backend FastAPI + PostgreSQL jusqu'en mars 2026
 - La migration vers Hetzner VPS Docker a été effectuée pour réduire les coûts et regrouper tous les services

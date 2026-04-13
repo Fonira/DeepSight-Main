@@ -42,6 +42,7 @@ DeepSight-Main/
 ## Règles impératives
 
 ### 1. Identifier le contexte AVANT de coder
+
 - Utiliser `<div>` dans `/mobile` → crash
 - Utiliser `<View>` dans `/frontend` → crash
 - Importer `fs/path` dans du code client → crash
@@ -49,41 +50,44 @@ DeepSight-Main/
 
 ### 2. Séparation stricte des plateformes
 
-| Plateforme | Langage | Runtime | UI |
-|------------|---------|---------|-----|
-| `/frontend` | TypeScript | Node/Browser | HTML5 + Tailwind |
-| `/mobile` | TypeScript | React Native | `<View>`, `<Text>`, `<TouchableOpacity>` |
-| `/backend` | Python 3.11+ | FastAPI/Uvicorn | N/A (API JSON) |
-| `/extension` | TypeScript/JS | Chrome APIs | HTML + CSS (popup/content scripts) |
+| Plateforme   | Langage       | Runtime         | UI                                       |
+| ------------ | ------------- | --------------- | ---------------------------------------- |
+| `/frontend`  | TypeScript    | Node/Browser    | HTML5 + Tailwind                         |
+| `/mobile`    | TypeScript    | React Native    | `<View>`, `<Text>`, `<TouchableOpacity>` |
+| `/backend`   | Python 3.11+  | FastAPI/Uvicorn | N/A (API JSON)                           |
+| `/extension` | TypeScript/JS | Chrome APIs     | HTML + CSS (popup/content scripts)       |
 
 ### 3. Communication inter-plateformes
+
 - **Base URL prod** : `https://api.deepsightsynthesis.com`
 - **Auth** : JWT Bearer token dans header Authorization
 - **Format** : JSON partout, `snake_case` côté Python, `camelCase` côté TS
 
 ### 4. Système de souscription (SSOT)
+
 5 plans gérés par `is_feature_available(plan, feature, platform)` côté backend :
 
-| Plan | Prix | Cible |
-|------|------|-------|
-| Découverte | Gratuit | Acquisition |
-| Étudiant | 2.99/mois | Étudiants |
-| Starter | 5.99/mois | Usage régulier |
-| Pro | 12.99/mois | Professionnels |
-| Équipe | 29.99/mois | Teams |
+| Plan       | Prix       | Cible          |
+| ---------- | ---------- | -------------- |
+| Découverte | Gratuit    | Acquisition    |
+| Étudiant   | 2.99/mois  | Étudiants      |
+| Starter    | 5.99/mois  | Usage régulier |
+| Pro        | 12.99/mois | Professionnels |
+| Équipe     | 29.99/mois | Teams          |
 
 Stripe en live mode. Vérification des features TOUJOURS côté backend.
 
 ### 5. Stratégie de déploiement
 
-| Plateforme | Service | Méthode |
-|-----------|---------|---------|
-| Frontend | Vercel | Auto-deploy sur `git push main` |
-| Backend | Hetzner VPS Docker | Manuel : SSH → git pull → rebuild Docker |
-| Mobile | EAS Build + Submit | `eas update` (OTA) ou `eas build` (natif) |
-| Extension | Chrome Web Store | Upload manuel du ZIP |
+| Plateforme | Service            | Méthode                                   |
+| ---------- | ------------------ | ----------------------------------------- |
+| Frontend   | Vercel             | Auto-deploy sur `git push main`           |
+| Backend    | Hetzner VPS Docker | Manuel : SSH → git pull → rebuild Docker  |
+| Mobile     | EAS Build + Submit | `eas update` (OTA) ou `eas build` (natif) |
+| Extension  | Chrome Web Store   | Upload manuel du ZIP                      |
 
 ### 6. Services externes
+
 - **Mistral AI** : Synthèse et analyse de vidéos
 - **Perplexity** : Fact-checking enrichi
 - **Brave Search** : Recherche complémentaire

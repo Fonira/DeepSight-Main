@@ -54,15 +54,15 @@ $env:NODE_ENV = "production"
 
 ## RÈGLE N°4 : Commandes spécifiques
 
-| Bash/Linux | PowerShell Windows |
-|---|---|
+| Bash/Linux            | PowerShell Windows                                                     |
+| --------------------- | ---------------------------------------------------------------------- |
 | `rm -rf node_modules` | `Remove-Item -Recurse -Force node_modules` ou `rm -r -fo node_modules` |
-| `cat file.txt` | `Get-Content file.txt` ou `cat file.txt` (alias OK) |
-| `touch file.txt` | `New-Item file.txt` |
-| `which command` | `Get-Command command` |
-| `ls -la` | `Get-ChildItem` ou `ls` (alias OK) |
-| `grep "text" file` | `Select-String -Pattern "text" file` |
-| `cp -r src dest` | `Copy-Item -Recurse src dest` |
+| `cat file.txt`        | `Get-Content file.txt` ou `cat file.txt` (alias OK)                    |
+| `touch file.txt`      | `New-Item file.txt`                                                    |
+| `which command`       | `Get-Command command`                                                  |
+| `ls -la`              | `Get-ChildItem` ou `ls` (alias OK)                                     |
+| `grep "text" file`    | `Select-String -Pattern "text" file`                                   |
+| `cp -r src dest`      | `Copy-Item -Recurse src dest`                                          |
 
 ## RÈGLE N°5 : Commandes longues
 
@@ -88,6 +88,7 @@ Identifier le contexte : si la commande est pour le VPS, utiliser bash. Si c'est
 ## RAPPEL FINAL
 
 Avant CHAQUE réponse contenant une commande terminal :
+
 1. Vérifier : est-ce pour Windows local ou VPS Linux ?
 2. Si Windows : remplacer TOUS les `&&` par `;`
 3. Si Windows : vérifier les chemins (backslash, pas de ~)

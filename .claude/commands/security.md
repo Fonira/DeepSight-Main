@@ -13,6 +13,7 @@ description: "Règles de sécurité transversales DeepSight : JWT, CORS, secrets
 ## 1. JWT — Authentification
 
 ### Configuration sécurisée
+
 ```python
 # app/auth/jwt.py
 from datetime import datetime, timedelta, timezone
@@ -34,6 +35,7 @@ def create_access_token(user_id: str, plan: str) -> str:
 ```
 
 ### Stockage par plateforme
+
 - Web → httpOnly cookie (pas localStorage — XSS-proof)
 - Mobile (Expo) → expo-secure-store (chiffré par l'OS)
 - Extension Chrome → chrome.storage.local (jamais localStorage)
@@ -121,6 +123,7 @@ Interdit en MV3 : `eval()`, scripts inline, `unsafe-inline`.
 ## 8. Checklist sécurité avant déploiement
 
 ### Backend
+
 - SECRET_KEY >= 32 bytes aléatoires
 - CORS_ORIGINS liste uniquement les domaines production
 - Webhook Stripe vérifie la signature
@@ -130,14 +133,17 @@ Interdit en MV3 : `eval()`, scripts inline, `unsafe-inline`.
 - Validation Pydantic sur toutes les entrées
 
 ### Frontend
+
 - Tokens en httpOnly cookie (pas localStorage)
 - Variables `NEXT_PUBLIC_*` sans secret
 
 ### Extension Chrome
+
 - Tokens dans `chrome.storage.local`
 - CSP dans manifest.json
 - Fetch backend depuis service worker uniquement
 
 ### Mobile
+
 - Tokens dans `expo-secure-store`
 - Variables sensibles dans `.env` non commité

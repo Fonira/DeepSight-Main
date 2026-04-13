@@ -10,12 +10,12 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'marketing/**'
+      - "**.md"
+      - "docs/**"
+      - "marketing/**"
 
 env:
-  BASE_URL: 'https://www.deepsightsynthesis.com'
+  BASE_URL: "https://www.deepsightsynthesis.com"
   API_URL: ${{ secrets.API_BASE_URL }}
   HEALTH_CHECK_SECRET: ${{ secrets.HEALTH_CHECK_SECRET }}
 
@@ -38,7 +38,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: monitoring/package-lock.json
 
       - name: Install dependencies

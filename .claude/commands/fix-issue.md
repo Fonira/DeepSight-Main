@@ -10,32 +10,38 @@ Analyse et corrige l'issue GitHub : $ARGUMENTS
 ## Workflow
 
 ### 1. Récupération de l'issue
+
 ```bash
 gh issue view $ARGUMENTS --json title,body,labels,comments
 ```
 
 ### 2. Analyse
+
 - Comprends le problème décrit
 - Identifie les fichiers concernés
 - Formule une hypothèse sur la cause
 
 ### 3. Recherche dans le codebase
+
 - Utilise Grep/Glob pour trouver les fichiers pertinents
 - Lis le code source concerné
 - Identifie la root cause
 
 ### 4. Implémentation du fix
+
 - Écris un test qui reproduit le bug (doit ÉCHOUER)
 - Implémente la correction
 - Vérifie que le test passe maintenant
 
 ### 5. Vérification
+
 ```bash
 cd mobile && npm run typecheck
 cd mobile && npm test
 ```
 
 ### 6. Commit et PR
+
 ```bash
 git checkout -b fix/issue-$ARGUMENTS
 git add <fichiers modifiés>
@@ -57,4 +63,5 @@ Fixes #$ARGUMENTS"
 ```
 
 ## Output
+
 Affiche le lien de la PR créée.

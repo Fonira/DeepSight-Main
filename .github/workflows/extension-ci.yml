@@ -4,13 +4,13 @@ on:
   push:
     branches: [main]
     paths:
-      - 'extension/**'
-      - '.github/workflows/extension-ci.yml'
+      - "extension/**"
+      - ".github/workflows/extension-ci.yml"
   pull_request:
     branches: [main]
     paths:
-      - 'extension/**'
-      - '.github/workflows/extension-ci.yml'
+      - "extension/**"
+      - ".github/workflows/extension-ci.yml"
 
 concurrency:
   group: extension-ci-${{ github.ref }}
@@ -29,8 +29,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: extension/package-lock.json
 
       - name: Install dependencies

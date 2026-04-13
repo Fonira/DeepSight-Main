@@ -19,11 +19,11 @@ extension/
 
 ## Contextes et restrictions
 
-| Contexte | Accès | Restriction |
-|----------|-------|-------------|
-| Service Worker | chrome.* APIs, fetch() | Pas de DOM, s'endort |
-| Content Script | DOM page, chrome.runtime | chrome.* limité, pas fetch backend |
-| Popup | DOM propre, chrome.* | S'efface si clic ailleurs |
+| Contexte       | Accès                    | Restriction                         |
+| -------------- | ------------------------ | ----------------------------------- |
+| Service Worker | chrome.\* APIs, fetch()  | Pas de DOM, s'endort                |
+| Content Script | DOM page, chrome.runtime | chrome.\* limité, pas fetch backend |
+| Popup          | DOM propre, chrome.\*    | S'efface si clic ailleurs           |
 
 **Règle critique MV3 :** Le service worker s'endort après inactivité. Utiliser `chrome.storage.session` ou `chrome.storage.local`.
 
@@ -31,27 +31,30 @@ extension/
 
 ```typescript
 // content.ts → service-worker.ts
-const response = await chrome.runtime.sendMessage({ type: 'ANALYZE_VIDEO', payload: { videoUrl } })
+const response = await chrome.runtime.sendMessage({
+  type: "ANALYZE_VIDEO",
+  payload: { videoUrl },
+});
 
 // service-worker.ts — réception
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'ANALYZE_VIDEO') {
+  if (message.type === "ANALYZE_VIDEO") {
     handleAnalysis(message.payload.videoUrl)
-      .then(result => sendResponse({ data: result }))
-      .catch(err => sendResponse({ error: err.message }))
-    return true  // OBLIGATOIRE pour async
+      .then((result) => sendResponse({ data: result }))
+      .catch((err) => sendResponse({ error: err.message }));
+    return true; // OBLIGATOIRE pour async
   }
-})
+});
 ```
 
 ## Authentification — chrome.storage
 
 ```typescript
 export async function saveAuthToken(token: string): Promise<void> {
-  await chrome.storage.local.set({ 
+  await chrome.storage.local.set({
     deepsight_token: token,
-    deepsight_token_expiry: Date.now() + 30 * 24 * 60 * 60 * 1000
-  })
+    deepsight_token_expiry: Date.now() + 30 * 24 * 60 * 60 * 1000,
+  });
 }
 ```
 
@@ -60,15 +63,18 @@ JAMAIS localStorage dans une extension — utiliser chrome.storage.
 ## Appels API (depuis Popup ou Service Worker uniquement)
 
 ```typescript
-const API_BASE = 'https://api.deepsightsynthesis.com'
+const API_BASE = "https://api.deepsightsynthesis.com";
 export async function analyzeVideo(videoUrl: string): Promise<AnalysisResult> {
-  const token = await getAuthToken()
-  if (!token) throw new Error('NON_AUTHENTICATED')
+  const token = await getAuthToken();
+  if (!token) throw new Error("NON_AUTHENTICATED");
   const response = await fetch(`${API_BASE}/api/v1/analyses`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({ video_url: videoUrl, platform: 'extension' })
-  })
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ video_url: videoUrl, platform: "extension" }),
+  });
   // Handle 401, 403, etc.
 }
 ```
@@ -98,10 +104,10 @@ Compress-Archive -Path .\dist\* -DestinationPath .\extension-v2.0.zip
 
 ## Erreurs fréquentes MV3
 
-| Erreur | Fix |
-|--------|-----|
-| `Cannot use import statement` | `"type": "module"` dans manifest background |
-| `chrome is not defined` | Vérifier contexte d'exécution |
-| `Could not establish connection` | Service worker endormi → retry |
-| `Refused to load script` | Vérifier CSP |
-| Fetch bloqué content script | Fetcher depuis service worker |
+| Erreur                           | Fix                                         |
+| -------------------------------- | ------------------------------------------- |
+| `Cannot use import statement`    | `"type": "module"` dans manifest background |
+| `chrome is not defined`          | Vérifier contexte d'exécution               |
+| `Could not establish connection` | Service worker endormi → retry              |
+| `Refused to load script`         | Vérifier CSP                                |
+| Fetch bloqué content script      | Fetcher depuis service worker               |

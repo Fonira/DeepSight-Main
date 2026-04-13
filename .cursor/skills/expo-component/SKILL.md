@@ -17,10 +17,10 @@ Use this when creating React Native components for the DeepSight mobile app (Exp
 ## Structure
 
 ```tsx
-import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Spacing, BorderRadius } from '../../constants/theme';
+import React from "react";
+import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { useTheme } from "../../contexts/ThemeContext";
+import { Spacing, BorderRadius } from "../../constants/theme";
 
 export interface MyComponentProps {
   title: string;
@@ -62,7 +62,11 @@ export const MyComponent: React.FC<MyComponentProps> = ({
 
 const styles = StyleSheet.create({
   container: { padding: Spacing.md, borderRadius: BorderRadius.lg },
-  centered: { padding: Spacing.lg, alignItems: 'center', justifyContent: 'center' },
+  centered: {
+    padding: Spacing.lg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   error: { minHeight: 80 },
 });
 

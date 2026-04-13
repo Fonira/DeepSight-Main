@@ -13,6 +13,7 @@ description: "Conventions et procédures obligatoires pour écrire et exécuter 
 ## 1. Backend — Pytest
 
 ### Structure
+
 ```
 backend/tests/
 ├── conftest.py          # Fixtures (client, db, auth)
@@ -21,6 +22,7 @@ backend/tests/
 ```
 
 ### Pattern test endpoint
+
 ```python
 class TestCreateAnalysis:
     def test_success(self, client, auth_headers, mocker):
@@ -34,6 +36,7 @@ class TestCreateAnalysis:
 ```
 
 ### Test is_feature_available (critique)
+
 ```python
 @pytest.mark.parametrize("plan,feature,platform,expected", [
     ("decouverte", "create_analysis", "web", True),
@@ -45,6 +48,7 @@ def test_feature_availability(plan, feature, platform, expected):
 ```
 
 ### Commandes
+
 ```powershell
 cd C:\Users\33667\DeepSight-Main\backend
 python -m pytest tests/ -v
@@ -54,6 +58,7 @@ python -m pytest tests/ --cov=app --cov-report=html -v
 ## 2. Frontend Web — Vitest
 
 ### Pattern test composant
+
 ```typescript
 describe('AnalysisCard', () => {
   it('affiche le titre', () => {
@@ -64,6 +69,7 @@ describe('AnalysisCard', () => {
 ```
 
 ### Mock API avec MSW
+
 ```typescript
 export const server = setupServer(
   http.post('/api/v1/analyses', () => HttpResponse.json({ status: 'success', data: {...} }))
@@ -71,6 +77,7 @@ export const server = setupServer(
 ```
 
 ### Commandes
+
 ```powershell
 cd C:\Users\33667\DeepSight-Main\frontend
 npx vitest run
@@ -82,15 +89,22 @@ npx vitest run --coverage
 ### Flux prioritaires : auth (P0), analysis (P0), subscription/Stripe (P0), sharing (P1), studio (P1)
 
 ### Pattern
+
 ```typescript
-test('analyser une URL YouTube', async ({ page }) => {
-  await page.fill('[data-testid="youtube-url-input"]', 'https://youtube.com/watch?v=...')
-  await page.click('[data-testid="analyze-button"]')
-  await expect(page.locator('[data-testid="analysis-result"]')).toBeVisible({ timeout: 30_000 })
-})
+test("analyser une URL YouTube", async ({ page }) => {
+  await page.fill(
+    '[data-testid="youtube-url-input"]',
+    "https://youtube.com/watch?v=...",
+  );
+  await page.click('[data-testid="analyze-button"]');
+  await expect(page.locator('[data-testid="analysis-result"]')).toBeVisible({
+    timeout: 30_000,
+  });
+});
 ```
 
 ### Commandes
+
 ```powershell
 cd C:\Users\33667\DeepSight-Main\frontend
 npx playwright test
@@ -100,13 +114,17 @@ npx playwright test --ui
 ## 4. Mobile — Jest + Maestro
 
 ### Jest
+
 ```typescript
-jest.mock('@/services/api', () => ({
-  createAnalysis: jest.fn().mockResolvedValue({ id: '1', status: 'processing' })
-}))
+jest.mock("@/services/api", () => ({
+  createAnalysis: jest
+    .fn()
+    .mockResolvedValue({ id: "1", status: "processing" }),
+}));
 ```
 
 ### Maestro (E2E yaml)
+
 ```yaml
 appId: com.deepsight.app
 - launchApp

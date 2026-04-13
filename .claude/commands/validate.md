@@ -10,6 +10,7 @@ Exécute toutes les vérifications avant commit.
 ## Checks obligatoires
 
 ### 1. Mobile (React Native)
+
 ```bash
 echo "📱 Mobile TypeScript..."
 cd mobile && npm run typecheck
@@ -19,6 +20,7 @@ cd mobile && npm test -- --passWithNoTests
 ```
 
 ### 2. Frontend (React)
+
 ```bash
 echo "🌐 Frontend TypeScript..."
 cd frontend && npm run typecheck
@@ -28,6 +30,7 @@ cd frontend && npm run lint
 ```
 
 ### 3. Backend (Python)
+
 ```bash
 echo "🐍 Backend Syntax..."
 cd backend && python -m py_compile src/main.py
@@ -39,6 +42,7 @@ cd backend && pytest -x --tb=short 2>/dev/null || echo "Tests skipped"
 ## Résultat
 
 Affiche un récapitulatif :
+
 ```
 ╔════════════════════════════════════╗
 ║       VALIDATION RESULTS           ║
@@ -54,6 +58,7 @@ Affiche un récapitulatif :
 ```
 
 Si un check échoue, indique :
+
 - Quel check a échoué
 - Le message d'erreur
 - La suggestion de correction

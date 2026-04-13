@@ -15,12 +15,12 @@ URL publique: https://api.deepsightsynthesis.com
 
 ## Docker Stack (4 containers)
 
-| Container | Image | Rôle | Port |
-|-----------|-------|------|------|
-| `repo-caddy-1` | `caddy:2-alpine` | Reverse proxy + auto-SSL | 80, 443 |
-| `repo-backend-1` | `deepsight-backend:latest` | FastAPI 4 workers | 8080 (interne) |
-| `repo-postgres-1` | `postgres:17-alpine` | Base de données | 5432 (interne) |
-| `repo-redis-1` | `redis:7-alpine` | Cache L1 transcripts (TTL 24h) | 6379 (interne) |
+| Container         | Image                      | Rôle                           | Port           |
+| ----------------- | -------------------------- | ------------------------------ | -------------- |
+| `repo-caddy-1`    | `caddy:2-alpine`           | Reverse proxy + auto-SSL       | 80, 443        |
+| `repo-backend-1`  | `deepsight-backend:latest` | FastAPI 4 workers              | 8080 (interne) |
+| `repo-postgres-1` | `postgres:17-alpine`       | Base de données                | 5432 (interne) |
+| `repo-redis-1`    | `redis:7-alpine`           | Cache L1 transcripts (TTL 24h) | 6379 (interne) |
 
 - **Réseau Docker** : `repo_deepsight`
 - **Env production** : `/opt/deepsight/repo/.env.production`

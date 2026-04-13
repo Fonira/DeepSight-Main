@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - 'backend/**'
-      - 'deploy/hetzner/**'
-      - '.github/workflows/deploy-backend.yml'
+      - "backend/**"
+      - "deploy/hetzner/**"
+      - ".github/workflows/deploy-backend.yml"
 
   # Permet un déploiement manuel depuis l'onglet Actions
   workflow_dispatch:
@@ -24,8 +24,8 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |

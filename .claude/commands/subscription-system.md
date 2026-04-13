@@ -6,28 +6,28 @@ description: "Référence complète du système de souscription DeepSight : 5 pl
 
 ## Les 5 plans
 
-| Plan | Prix | Cible |
-|------|------|-------|
-| `decouverte` | Gratuit | Acquisition |
-| `etudiant` | 2.99€/mois | Étudiants |
-| `starter` | 5.99€/mois | Usage régulier |
-| `pro` | 12.99€/mois | Professionnels |
-| `equipe` | 29.99€/mois | Teams |
+| Plan         | Prix        | Cible          |
+| ------------ | ----------- | -------------- |
+| `decouverte` | Gratuit     | Acquisition    |
+| `etudiant`   | 2.99€/mois  | Étudiants      |
+| `starter`    | 5.99€/mois  | Usage régulier |
+| `pro`        | 12.99€/mois | Professionnels |
+| `equipe`     | 29.99€/mois | Teams          |
 
 ## Matrice des features
 
-| Feature | decouverte | etudiant | starter | pro | equipe |
-|---------|:---:|:---:|:---:|:---:|:---:|
-| analyses_per_month | 3 | 20 | 50 | ∞ | ∞ |
-| analysis_modes | accessible | +standard | +expert | tous | tous |
-| flashcards | ❌ | ✅ | ✅ | ✅ | ✅ |
-| quiz | ❌ | ✅ | ✅ | ✅ | ✅ |
-| mindmap | ❌ | ❌ | ✅ | ✅ | ✅ |
-| factcheck | ❌ | ❌ | ✅ | ✅ | ✅ |
-| compare_videos | ❌ | ❌ | ❌ | ✅ | ✅ |
-| export_pdf | ❌ | ❌ | ✅ | ✅ | ✅ |
-| team_workspace | ❌ | ❌ | ❌ | ❌ | ✅ |
-| api_access | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Feature            | decouverte | etudiant  | starter | pro  | equipe |
+| ------------------ | :--------: | :-------: | :-----: | :--: | :----: |
+| analyses_per_month |     3      |    20     |   50    |  ∞   |   ∞    |
+| analysis_modes     | accessible | +standard | +expert | tous |  tous  |
+| flashcards         |     ❌     |    ✅     |   ✅    |  ✅  |   ✅   |
+| quiz               |     ❌     |    ✅     |   ✅    |  ✅  |   ✅   |
+| mindmap            |     ❌     |    ❌     |   ✅    |  ✅  |   ✅   |
+| factcheck          |     ❌     |    ❌     |   ✅    |  ✅  |   ✅   |
+| compare_videos     |     ❌     |    ❌     |   ❌    |  ✅  |   ✅   |
+| export_pdf         |     ❌     |    ❌     |   ✅    |  ✅  |   ✅   |
+| team_workspace     |     ❌     |    ❌     |   ❌    |  ❌  |   ✅   |
+| api_access         |     ❌     |    ❌     |   ❌    |  ✅  |   ✅   |
 
 ## Backend — is_feature_available()
 
@@ -53,6 +53,7 @@ def is_feature_available(plan, feature, platform="web") -> bool:
 ```
 
 ### Usage dans les endpoints
+
 ```python
 if not is_feature_available(user.plan, "compare_videos", platform="web"):
     raise HTTPException(status_code=403, detail={
@@ -66,11 +67,12 @@ if not is_feature_available(user.plan, "compare_videos", platform="web"):
 
 ```typescript
 export function useFeatureAccess(feature: string) {
-  const { user } = useUser()
-  const currentPlan = user?.plan ?? 'decouverte'
-  const requiredPlan = FEATURE_MIN_PLAN[feature] ?? null
-  const hasAccess = PLAN_HIERARCHY.indexOf(currentPlan) >= PLAN_HIERARCHY.indexOf(requiredPlan)
-  return { hasAccess, requiredPlan, currentPlan }
+  const { user } = useUser();
+  const currentPlan = user?.plan ?? "decouverte";
+  const requiredPlan = FEATURE_MIN_PLAN[feature] ?? null;
+  const hasAccess =
+    PLAN_HIERARCHY.indexOf(currentPlan) >= PLAN_HIERARCHY.indexOf(requiredPlan);
+  return { hasAccess, requiredPlan, currentPlan };
 }
 ```
 

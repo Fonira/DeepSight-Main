@@ -16,7 +16,7 @@ TypeSignesSyntaxe/TypeSyntaxError, TypeError, ts(xxxx), ligne:colonneImport/Modu
 Vercel (Frontend Web)
 
 Vérifier les logs de build sur Vercel Dashboard
-Variables d'environnement présentes ? (NEXT_PUBLIC_* pour le client)
+Variables d'environnement présentes ? (NEXT*PUBLIC*\* pour le client)
 Version Node.js compatible ?
 Import côté serveur dans un composant client ? (manque "use client")
 Hydration mismatch ? (HTML serveur ≠ client)
