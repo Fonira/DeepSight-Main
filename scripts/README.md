@@ -57,6 +57,7 @@ node scripts/git-push-status.js -f
 ## Log Location
 
 Logs are stored in your home directory:
+
 - **Log file**: `~/.git-push-logs/push.log`
 - **Lock file**: `~/.git-push-logs/push.lock`
 

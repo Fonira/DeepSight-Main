@@ -9,18 +9,19 @@
  *   node scripts/git-push-status.js -f      # Follow log output (alias)
  */
 
-import { existsSync, readFileSync, watchFile, statSync } from 'fs';
-import { homedir } from 'os';
-import { join } from 'path';
+import { existsSync, readFileSync, watchFile, statSync } from "fs";
+import { homedir } from "os";
+import { join } from "path";
 
 // Configuration
-const LOG_DIR = join(homedir(), '.git-push-logs');
-const LOCK_FILE = join(LOG_DIR, 'push.lock');
-const LOG_FILE = join(LOG_DIR, 'push.log');
+const LOG_DIR = join(homedir(), ".git-push-logs");
+const LOCK_FILE = join(LOG_DIR, "push.lock");
+const LOG_FILE = join(LOG_DIR, "push.log");
 
 // Parse arguments
 const args = process.argv.slice(2);
-const tailMode = args.includes('--tail') || args.includes('-f') || args.includes('--follow');
+const tailMode =
+  args.includes("--tail") || args.includes("-f") || args.includes("--follow");
 
 /**
  * Format timestamp for display
@@ -43,7 +44,7 @@ function checkLockStatus() {
   }
 
   try {
-    const lockData = JSON.parse(readFileSync(LOCK_FILE, 'utf8'));
+    const lockData = JSON.parse(readFileSync(LOCK_FILE, "utf8"));
     const lockAge = Date.now() - lockData.timestamp;
 
     // Consider stale if older than 5 minutes
@@ -65,8 +66,8 @@ function getRecentLogs(lines = 20) {
     return [];
   }
 
-  const content = readFileSync(LOG_FILE, 'utf8');
-  const allLines = content.trim().split('\n').filter(Boolean);
+  const content = readFileSync(LOG_FILE, "utf8");
+  const allLines = content.trim().split("\n").filter(Boolean);
   return allLines.slice(-lines);
 }
 
@@ -74,7 +75,7 @@ function getRecentLogs(lines = 20) {
  * Display current status
  */
 function showStatus() {
-  console.log('=== Git Push Status ===\n');
+  console.log("=== Git Push Status ===\n");
 
   const status = checkLockStatus();
 
@@ -85,18 +86,18 @@ function showStatus() {
     console.log(`Started: ${formatAge(status.age)}`);
   } else if (status.stale) {
     console.log(`Status: STALE LOCK (possible crash)`);
-    console.log(`Branch: ${status.lockData?.branch || 'unknown'}`);
+    console.log(`Branch: ${status.lockData?.branch || "unknown"}`);
   } else {
     console.log(`Status: IDLE (no push in progress)`);
   }
 
-  console.log('\n=== Recent Logs ===\n');
+  console.log("\n=== Recent Logs ===\n");
 
   const logs = getRecentLogs();
   if (logs.length === 0) {
-    console.log('No logs found.');
+    console.log("No logs found.");
   } else {
-    logs.forEach(line => console.log(line));
+    logs.forEach((line) => console.log(line));
   }
 }
 
@@ -104,14 +105,14 @@ function showStatus() {
  * Follow log file (tail -f mode)
  */
 function tailLogs() {
-  console.log('Following git push logs (Ctrl+C to exit)...\n');
+  console.log("Following git push logs (Ctrl+C to exit)...\n");
 
   // Show existing content first
   const existingLogs = getRecentLogs(10);
-  existingLogs.forEach(line => console.log(line));
+  existingLogs.forEach((line) => console.log(line));
 
   if (!existsSync(LOG_FILE)) {
-    console.log('(waiting for log file to be created...)');
+    console.log("(waiting for log file to be created...)");
   }
 
   let lastSize = existsSync(LOG_FILE) ? statSync(LOG_FILE).size : 0;
@@ -122,7 +123,7 @@ function tailLogs() {
 
     const currentSize = statSync(LOG_FILE).size;
     if (currentSize > lastSize) {
-      const content = readFileSync(LOG_FILE, 'utf8');
+      const content = readFileSync(LOG_FILE, "utf8");
       const newContent = content.slice(lastSize);
       process.stdout.write(newContent);
       lastSize = currentSize;
@@ -130,9 +131,9 @@ function tailLogs() {
   }, 500);
 
   // Handle exit
-  process.on('SIGINT', () => {
+  process.on("SIGINT", () => {
     clearInterval(checkInterval);
-    console.log('\n');
+    console.log("\n");
     process.exit(0);
   });
 }

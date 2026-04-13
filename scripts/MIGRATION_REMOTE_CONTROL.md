@@ -30,7 +30,7 @@ Copie-colle le bloc ci-dessous **en entier** dans la session Remote Control depu
 
 ---
 
-```
+````
 Tu es le DevOps senior de DeepSight. Ta mission : exécuter la migration COMPLÈTE du backend depuis Railway vers le VPS Hetzner. Mode FULL AUTO — exécute tout sans demander confirmation sauf pour les secrets que tu ne connais pas.
 
 ## INFRA
@@ -70,10 +70,12 @@ mkdir -p /opt/deepsight/{postgres/backups,redis,caddy,logs,scripts}
 cd /opt/deepsight
 git clone https://github.com/Fonira/deepsight-main.git repo
 cd repo
-```
+````
 
 ## PHASE 5 — COPIER LES FICHIERS DOCKER À LA RACINE
+
 Les fichiers Docker sont dans deploy/hetzner/, il faut les copier/lier à la racine du repo pour que docker compose fonctionne :
+
 ```bash
 cp deploy/hetzner/docker-compose.yml ./docker-compose.yml
 cp deploy/hetzner/Dockerfile backend/Dockerfile
@@ -81,25 +83,28 @@ cp -r deploy/hetzner/caddy ./caddy
 ```
 
 ## PHASE 6 — CRÉER .env.production
+
 Crée /opt/deepsight/repo/.env.production en te basant sur .env.production.example.
 
 ⚠️ SECRETS — DEMANDE-MOI CES VALEURS (ne les invente JAMAIS) :
+
 - DB_PASSWORD → Génère un mot de passe fort de 32 caractères (celui-ci tu peux le créer)
 - JWT_SECRET_KEY → Génère aussi (32+ chars)
 - MISTRAL_API_KEY → DEMANDE
 - PERPLEXITY_API_KEY → DEMANDE
 - GROQ_API_KEY → DEMANDE
-- STRIPE_SECRET_KEY → DEMANDE (sk_live_...)
+- STRIPE*SECRET_KEY → DEMANDE (sk_live*...)
 - STRIPE_WEBHOOK_SECRET → On le configurera après (mettre placeholder whsec_TODO)
-- STRIPE_PRICE_STARTER → DEMANDE (price_...)
-- STRIPE_PRICE_ETUDIANT → DEMANDE (price_...)
-- STRIPE_PRICE_PRO → DEMANDE (price_...)
-- RESEND_API_KEY → DEMANDE (re_...)
+- STRIPE*PRICE_STARTER → DEMANDE (price*...)
+- STRIPE*PRICE_ETUDIANT → DEMANDE (price*...)
+- STRIPE*PRICE_PRO → DEMANDE (price*...)
+- RESEND*API_KEY → DEMANDE (re*...)
 - SENTRY_DSN → DEMANDE
 - SUPADATA_API_KEY → DEMANDE (optionnel)
 - OPENAI_API_KEY → DEMANDE (optionnel)
 
 Les valeurs que tu PEUX remplir seul :
+
 - FRONTEND_URL=https://www.deepsightsynthesis.com
 - ALLOWED_ORIGINS=https://www.deepsightsynthesis.com,http://localhost:5173,http://localhost:8081
 - FROM_EMAIL=noreply@deepsightsynthesis.com
@@ -108,6 +113,7 @@ Les valeurs que tu PEUX remplir seul :
 - REFRESH_TOKEN_EXPIRE_DAYS=7
 
 ## PHASE 7 — DÉMARRER POSTGRES + REDIS (5 min)
+
 ```bash
 cd /opt/deepsight/repo
 docker compose up -d postgres redis
@@ -119,9 +125,11 @@ docker compose logs redis | tail -5
 ```
 
 ## PHASE 8 — MIGRER LA DB DEPUIS RAILWAY
+
 ⚠️ DEMANDE-MOI l'URL PostgreSQL Railway complète (format: postgresql://user:pass@host:port/db)
 
 Quand tu l'as :
+
 ```bash
 # Installer pg_dump sur le VPS
 apt install -y postgresql-client
@@ -142,6 +150,7 @@ docker compose exec postgres psql -U deepsight -c "SELECT COUNT(*) FROM summarie
 ```
 
 ## PHASE 9 — LANCER BACKEND + CADDY (10 min)
+
 ```bash
 docker compose up -d
 sleep 30
@@ -151,6 +160,7 @@ docker compose logs caddy | tail -10
 ```
 
 ## PHASE 10 — TESTS DE VALIDATION
+
 ```bash
 # Test interne
 curl -s http://localhost:8080/health | python3 -m json.tool
@@ -165,6 +175,7 @@ free -h
 ```
 
 ## PHASE 11 — BACKUPS AUTOMATIQUES
+
 ```bash
 chmod +x /opt/deepsight/repo/scripts/backup-db.sh
 (crontab -l 2>/dev/null; echo "0 3 * * * /opt/deepsight/repo/scripts/backup-db.sh >> /opt/deepsight/logs/backup.log 2>&1") | crontab -
@@ -173,7 +184,9 @@ chmod +x /opt/deepsight/repo/scripts/backup-db.sh
 ```
 
 ## PHASE 12 — RAPPORT FINAL
+
 Affiche un rapport complet :
+
 - ✅/❌ Status de chaque phase
 - Docker containers running (docker compose ps)
 - Espace disque et RAM utilisés
@@ -187,6 +200,7 @@ Affiche un rapport complet :
   5. GitHub Secrets : HETZNER_HOST + HETZNER_SSH_KEY
 
 ## RÈGLES ABSOLUES
+
 - Si une commande échoue → diagnostiquer avec les logs AVANT de continuer
 - JAMAIS inventer de secrets → DEMANDER
 - NE PAS toucher à Tailscale
@@ -194,6 +208,7 @@ Affiche un rapport complet :
 - NE PAS toucher au frontend
 - Garder les fichiers Railway (Procfile, railway.json) pour rollback
 - Commits atomiques si modifications de fichiers dans le repo
+
 ```
 
 ---
@@ -204,35 +219,47 @@ Une fois le rapport final reçu, tu devras faire manuellement :
 
 ### DNS (chez ton registrar)
 ```
+
 api.deepsightsynthesis.com → A → $HETZNER_IP
 TTL : 300
+
 ```
 
 ### Vercel Dashboard
 ```
+
 VITE_API_URL = https://api.deepsightsynthesis.com
 → Redéployer
+
 ```
 
 ### Stripe Dashboard
 ```
+
 Nouveau webhook : https://api.deepsightsynthesis.com/api/billing/webhook
 Events : checkout.session.completed, customer.subscription.updated,
-         customer.subscription.deleted, invoice.payment_succeeded,
-         invoice.payment_failed
-→ Copier le whsec_... dans .env.production sur le VPS
+customer.subscription.deleted, invoice.payment*succeeded,
+invoice.payment_failed
+→ Copier le whsec*... dans .env.production sur le VPS
 → Redémarrer le backend : ssh root@$TAILSCALE_IP "cd /opt/deepsight/repo && docker compose restart backend"
+
 ```
 
 ### GitHub Secrets
 ```
+
 HETZNER_HOST = $HETZNER_IP
 HETZNER_SSH_KEY = (contenu clé privée SSH)
+
 ```
 
 ### Mobile
 ```
+
 Modifier mobile/src/constants/config.ts :
-  API_BASE_URL = 'https://api.deepsightsynthesis.com'
+API_BASE_URL = 'https://api.deepsightsynthesis.com'
 → Commit + Push + EAS build
+
+```
+
 ```

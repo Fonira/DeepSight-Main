@@ -7,12 +7,12 @@ J'ai un problème avec le contenu vidéo en 2025.
 
 Il y a trop de valeur cachée dans des formats trop longs.
 
-Chaque semaine, je sauvegarde des dizaines de vidéos YouTube "à regarder plus tard". 
+Chaque semaine, je sauvegarde des dizaines de vidéos YouTube "à regarder plus tard".
 Podcasts de 2h. Conférences techniques. Analyses de marché.
 
 Résultat ? 90% ne sont jamais regardées.
 
-Pourtant, l'information est là. Les insights existent. 
+Pourtant, l'information est là. Les insights existent.
 Mais le temps, lui, n'existe pas.
 
 C'est pour ça que j'ai créé DeepSight.
@@ -101,7 +101,7 @@ Résultat pour nos clients B2B :
 Le vrai ROI de l'IA, ce n'est pas de remplacer les humains.
 C'est de leur redonner du temps pour des tâches à haute valeur ajoutée.
 
-Votre équipe fait de la veille vidéo ? 
+Votre équipe fait de la veille vidéo ?
 Parlons-en en commentaire ou en DM.
 
 #B2B #Productivity #AI #DigitalTransformation #ROI #SaaS
@@ -112,15 +112,18 @@ Parlons-en en commentaire ou en DM.
 ## Conseils de publication
 
 **Meilleurs horaires :**
+
 - Mardi-Jeudi : 8h-9h ou 17h-18h
 - Éviter le lundi matin et vendredi après-midi
 
 **Engagement :**
+
 - Répondre à tous les commentaires dans les 2 premières heures
 - Poser une question ouverte en fin de post
 - Taguer des personnes pertinentes si approprié
 
 **Visuels suggérés :**
+
 - Post 1 : Screenshot de l'interface DeepSight
 - Post 2 : Infographie sur les marqueurs de fiabilité
 - Post 3 : Graphique ROI avant/après

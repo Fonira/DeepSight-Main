@@ -1,6 +1,7 @@
 # 🎬 Script Vidéo Démo - DeepSight (30-60 sec)
 
 ## Informations techniques
+
 - **Durée cible :** 45 secondes
 - **Format :** Vertical (9:16) pour TikTok/Reels/Shorts + Horizontal (16:9) pour YouTube
 - **Ton :** Dynamique, moderne, légèrement provocateur
@@ -11,6 +12,7 @@
 ## Script
 
 ### HOOK (0-5 sec)
+
 **[Écran noir → Texte animé]**
 
 > **"Tu as 47 vidéos dans ta watch list."**
@@ -22,9 +24,11 @@
 ---
 
 ### PROBLÈME (5-12 sec)
+
 **[Montage rapide : scroll infini, playlist YouTube interminable, horloge qui tourne]**
 
 **Voix off :**
+
 > "3 heures de podcast. 1 heure de conférence. Pas le temps."
 
 **[Texte à l'écran : "Sound familiar?"]**
@@ -32,9 +36,11 @@
 ---
 
 ### SOLUTION (12-25 sec)
+
 **[Transition fluide → Interface DeepSight]**
 
 **Voix off :**
+
 > "DeepSight. Colle le lien..."
 
 **[Screen recording : coller URL YouTube]**
@@ -44,6 +50,7 @@
 **[Animation : barre de chargement rapide → résumé qui apparaît]**
 
 **Voix off :**
+
 > "Résumé complet. Timecodes. Score de fiabilité."
 
 **[Highlight sur les marqueurs ✅ ⚖️ ❓ ⚠️]**
@@ -55,12 +62,14 @@
 ---
 
 ### VALEUR (25-35 sec)
+
 **[Split screen : Avant/Après]**
 
 **Côté gauche :** Personne frustrée devant une longue vidéo
 **Côté droit :** Même personne satisfaite avec le résumé DeepSight
 
 **Voix off :**
+
 > "10 heures de contenu. Absorbées en 30 minutes."
 
 **[Texte animé : "5x plus de contenu. 100% de la valeur."]**
@@ -68,12 +77,15 @@
 ---
 
 ### CTA (35-45 sec)
+
 **[Logo DeepSight + URL]**
 
 **Voix off :**
+
 > "DeepSight. Arrête de regarder. Commence à comprendre."
 
 **[Texte final :]**
+
 ```
 🔗 deepsightsynthesis.com
 Essai gratuit • 10 analyses offertes
@@ -86,11 +98,13 @@ Essai gratuit • 10 analyses offertes
 ## Versions alternatives
 
 ### Version 30 sec (TikTok/Reels)
+
 - Couper la section "PROBLÈME" (aller direct au hook → solution)
 - Accélérer le screen recording
 - CTA simplifié : juste le logo + "Lien en bio"
 
 ### Version 60 sec (YouTube Shorts / LinkedIn)
+
 - Ajouter un témoignage utilisateur (5-10 sec)
 - Montrer l'export PDF
 - Ajouter les cas d'usage (étudiants, pros, créateurs)

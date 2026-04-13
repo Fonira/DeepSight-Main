@@ -1,6 +1,7 @@
 # 🐦 Twitter/X Posts - DeepSight
 
 ## Post 1 - Hook Principal
+
 ```
 🎯 Tu passes 3h à regarder une vidéo YouTube de 45 min ?
 
@@ -17,12 +18,13 @@ Fini le scroll infini. 🧠
 ---
 
 ## Post 2 - Angle Fiabilité
+
 ```
 ⚠️ 73% des vidéos "éducatives" sur YouTube contiennent des infos non vérifiées.
 
 DeepSight utilise l'IA bayésienne pour noter chaque affirmation :
 ✅ SOLIDE
-⚖️ PLAUSIBLE  
+⚖️ PLAUSIBLE
 ❓ INCERTAIN
 ⚠️ À VÉRIFIER
 
@@ -34,6 +36,7 @@ Ne te fais plus avoir. 🔍
 ---
 
 ## Post 3 - Use Case Étudiant
+
 ```
 📚 Étudiant en révisions ?
 
@@ -42,7 +45,7 @@ DeepSight transforme n'importe quel cours YouTube en :
 → Concepts clés extraits
 → Questions/Réponses avec l'IA
 
-J'ai révisé 10 heures de cours en 2 heures. 
+J'ai révisé 10 heures de cours en 2 heures.
 
 Game changer pour les partiels 🎓
 
@@ -52,6 +55,7 @@ Game changer pour les partiels 🎓
 ---
 
 ## Post 4 - Angle Pro/Business
+
 ```
 🚀 Les pros qui consomment du contenu YouTube :
 
@@ -71,6 +75,7 @@ Votre temps vaut plus que ça. ⏱️
 ---
 
 ## Post 5 - Feature Playlists
+
 ```
 🎬 Tu as une playlist YouTube de 50 vidéos à "regarder plus tard" ?
 
@@ -92,7 +97,8 @@ Transforme ta watch list en knowledge base 📖
 
 **Principaux :** #DeepSight #AI #YouTube #Productivity
 
-**Secondaires :** 
+**Secondaires :**
+
 - Éducation : #EdTech #StudyTips #Learning
 - Pro : #B2B #ContentMarketing #KnowledgeManagement
 - Tech : #IA #MachineLearning #SaaS #Startup
