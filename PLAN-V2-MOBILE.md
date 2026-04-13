@@ -10,35 +10,35 @@
 
 ### 1.1 Matrice des fonctionnalités
 
-| Fonctionnalité | Web | Mobile V1 | Mobile V2 | Justification |
-|---|---|---|---|---|
-| **Analyse vidéo YouTube** | ✅ | ✅ | ✅ CORE | Cœur du produit |
-| **Chat contextuel** | ✅ | ✅ | ✅ CORE | Valeur ajoutée principale |
-| **Historique analyses** | ✅ Full (search, grid/list, filters) | ✅ Full | ✅ Simplifié | Recherche + scroll infini, pas de grid view |
-| **Flashcards** | ✅ | ✅ | ✅ CORE | Fort engagement mobile |
-| **Quiz** | ✅ | ✅ | ✅ CORE | Fort engagement mobile |
-| **Export PDF/MD** | ✅ | ✅ | ✅ Simplifié | Share sheet natif, 1 clic |
-| **Favoris** | ✅ | ✅ | ✅ | Simple toggle |
-| **Upgrade/Plans** | ✅ Full pricing table | ✅ Full | ✅ Simplifié | 1 écran card-based, pas de matrice |
-| **Profil/Compte** | ✅ | ✅ | ✅ | Allégé |
-| **Google OAuth** | ✅ | ✅ | ✅ | Inchangé |
-| **Notifications push** | ❌ | ✅ | ✅ | Avantage mobile |
-| **Mode hors-ligne** | ❌ | ✅ | ✅ Amélioré | Cache intelligent |
-| **Deep linking** | ❌ | ✅ | ✅ | Partage URL |
-| **--- RETIRÉS DU MOBILE V2 ---** | | | | |
-| Customization avancée (mode, catégorie, modèle) | ✅ | ✅ | ❌ RETIRÉ | Trop complexe pour mobile, smart defaults |
-| Playlists (création/gestion) | ✅ | ⚠️ Partiel | ❌ RETIRÉ | Feature power-user → web only |
-| Chat corpus (playlist) | ✅ | ✅ | ❌ RETIRÉ | Lié aux playlists |
-| Sources académiques/Bibliographie | ✅ | ✅ | ❌ RETIRÉ | Niche, mieux sur grand écran |
-| Mind Maps | ✅ | 🚫 Stub | ❌ RETIRÉ | Illisible sur petit écran |
-| Admin Panel | ✅ | ❌ | ❌ | Web only par nature |
-| Analytics détaillés (graphiques) | ✅ | ✅ | ❌ RETIRÉ | Remplacé par usage simple |
-| Fact-check complet | ✅ | ✅ | ⚠️ Simplifié | Badge fiabilité oui, panneau complet non |
-| TTS Player | ✅ | ✅ | ⚠️ Optionnel | Gardé si demande, pas prioritaire |
-| Tournesol widget | ✅ | ✅ | ❌ RETIRÉ | Niche |
-| Recherche vidéo (Discovery) | ✅ | ✅ | ❌ RETIRÉ | L'utilisateur colle une URL, c'est tout |
-| Page de contact | ✅ | ✅ | ❌ RETIRÉ | Lien email dans Settings suffit |
-| Pages légales complètes | ✅ | ✅ | ⚠️ WebView | Un lien vers la version web |
+| Fonctionnalité                                  | Web                                  | Mobile V1  | Mobile V2    | Justification                               |
+| ----------------------------------------------- | ------------------------------------ | ---------- | ------------ | ------------------------------------------- |
+| **Analyse vidéo YouTube**                       | ✅                                   | ✅         | ✅ CORE      | Cœur du produit                             |
+| **Chat contextuel**                             | ✅                                   | ✅         | ✅ CORE      | Valeur ajoutée principale                   |
+| **Historique analyses**                         | ✅ Full (search, grid/list, filters) | ✅ Full    | ✅ Simplifié | Recherche + scroll infini, pas de grid view |
+| **Flashcards**                                  | ✅                                   | ✅         | ✅ CORE      | Fort engagement mobile                      |
+| **Quiz**                                        | ✅                                   | ✅         | ✅ CORE      | Fort engagement mobile                      |
+| **Export PDF/MD**                               | ✅                                   | ✅         | ✅ Simplifié | Share sheet natif, 1 clic                   |
+| **Favoris**                                     | ✅                                   | ✅         | ✅           | Simple toggle                               |
+| **Upgrade/Plans**                               | ✅ Full pricing table                | ✅ Full    | ✅ Simplifié | 1 écran card-based, pas de matrice          |
+| **Profil/Compte**                               | ✅                                   | ✅         | ✅           | Allégé                                      |
+| **Google OAuth**                                | ✅                                   | ✅         | ✅           | Inchangé                                    |
+| **Notifications push**                          | ❌                                   | ✅         | ✅           | Avantage mobile                             |
+| **Mode hors-ligne**                             | ❌                                   | ✅         | ✅ Amélioré  | Cache intelligent                           |
+| **Deep linking**                                | ❌                                   | ✅         | ✅           | Partage URL                                 |
+| **--- RETIRÉS DU MOBILE V2 ---**                |                                      |            |              |                                             |
+| Customization avancée (mode, catégorie, modèle) | ✅                                   | ✅         | ❌ RETIRÉ    | Trop complexe pour mobile, smart defaults   |
+| Playlists (création/gestion)                    | ✅                                   | ⚠️ Partiel | ❌ RETIRÉ    | Feature power-user → web only               |
+| Chat corpus (playlist)                          | ✅                                   | ✅         | ❌ RETIRÉ    | Lié aux playlists                           |
+| Sources académiques/Bibliographie               | ✅                                   | ✅         | ❌ RETIRÉ    | Niche, mieux sur grand écran                |
+| Mind Maps                                       | ✅                                   | 🚫 Stub    | ❌ RETIRÉ    | Illisible sur petit écran                   |
+| Admin Panel                                     | ✅                                   | ❌         | ❌           | Web only par nature                         |
+| Analytics détaillés (graphiques)                | ✅                                   | ✅         | ❌ RETIRÉ    | Remplacé par usage simple                   |
+| Fact-check complet                              | ✅                                   | ✅         | ⚠️ Simplifié | Badge fiabilité oui, panneau complet non    |
+| TTS Player                                      | ✅                                   | ✅         | ⚠️ Optionnel | Gardé si demande, pas prioritaire           |
+| Tournesol widget                                | ✅                                   | ✅         | ❌ RETIRÉ    | Niche                                       |
+| Recherche vidéo (Discovery)                     | ✅                                   | ✅         | ❌ RETIRÉ    | L'utilisateur colle une URL, c'est tout     |
+| Page de contact                                 | ✅                                   | ✅         | ❌ RETIRÉ    | Lien email dans Settings suffit             |
+| Pages légales complètes                         | ✅                                   | ✅         | ⚠️ WebView   | Un lien vers la version web                 |
 
 ### 1.2 Diagnostic UX Mobile V1
 
@@ -93,6 +93,7 @@ Main Stack (connecté)
 ```
 
 **Changements clés :**
+
 - 4 tabs au lieu de 4, mais **contenus totalement différents**
 - `Dashboard` → `Home` (input simplifié + feed récents)
 - `History` → `Library` (feed vertical, pas de grid, UX TikTok-like)
@@ -109,6 +110,7 @@ Main Stack (connecté)
 **Objectif** : Coller une URL en 1 seconde, voir ses dernières analyses.
 
 **Layout :**
+
 ```
 ┌─────────────────────────────┐
 │  DeepSight          [avatar]│  ← Header minimal
@@ -135,12 +137,14 @@ Main Stack (connecté)
 ```
 
 **Ce qui DISPARAÎT vs V1 :**
+
 - CustomizationPanel entier (mode, catégorie, modèle, deep research)
 - Discovery Modal (recherche vidéo)
 - Free Trial Modal complexe
 - Toute section configuration
 
 **Smart Defaults appliqués automatiquement :**
+
 - Mode = `standard`
 - Langue = détectée depuis la vidéo
 - Catégorie = auto-détectée
@@ -179,6 +183,7 @@ Main Stack (connecté)
 ```
 
 **Ce qui DISPARAÎT vs V1 :**
+
 - Onglet "Concepts" séparé → intégré inline dans le résumé
 - Onglet "Tools" entier → actions déplacées dans la barre du bas
 - Sources académiques / Bibliographie
@@ -189,12 +194,14 @@ Main Stack (connecté)
 - Fact-check panel complet (gardé en badge simple)
 
 **Barre d'actions bas (3-4 icônes) :**
+
 - ⭐ Favori (toggle)
 - 📤 Partager (Share sheet natif → export PDF ou copier lien)
 - 📚 Étudier (ouvre Study Screen pré-filtré sur cette vidéo)
 - 💬 Chat (si on est sur l'onglet Résumé, switch vers Chat)
 
 **Chat simplifié :**
+
 - Questions suggérées en chips (3 max)
 - Input en bas avec envoi
 - Messages en bulles (pas de markdown complexe)
@@ -225,6 +232,7 @@ Main Stack (connecté)
 ```
 
 **Simplifications vs V1 :**
+
 - Pas de tabs Videos/Playlists (playlists retirées)
 - Pas de Grid view (list only)
 - Pas de filtres catégorie/mode
@@ -265,6 +273,7 @@ Main Stack (connecté)
 ```
 
 **Nouveautés :**
+
 - Hub centralisé (V1 = study tools cachés dans un sous-onglet d'Analysis)
 - Score global de révision
 - "Reprendre" avec la dernière session incomplète
@@ -304,6 +313,7 @@ Main Stack (connecté)
 ```
 
 **Ce qui DISPARAÎT vs V1 :**
+
 - SettingsScreen séparé
 - AccountScreen séparé
 - UsageScreen séparé
@@ -427,15 +437,15 @@ mobile/src/
 
 ### 4.2 Changements techniques majeurs
 
-| Aspect | V1 | V2 | Raison |
-|---|---|---|---|
-| Navigation | React Navigation 6 (config manuelle) | **Expo Router** (file-based) | Convention over config, deep linking natif |
-| State global | 8 Contexts wrappés | **Zustand stores** (3 max) | Performance, pas de re-render cascade |
-| AnalysisScreen | 1 fichier 1682 LOC, 30+ useState | **3 composants + 2 hooks** | Maintenabilité, testabilité |
-| Animations | Reanimated basique | **Reanimated 3 + Gesture Handler** | Swipe, spring, shared transitions |
-| Bottom Sheet | Modal custom | **@gorhom/bottom-sheet** | Standard, performant, gesture-native |
-| Listes | FlatList + pagination manuelle | **FlashList** (Shopify) | 5x plus rapide sur grandes listes |
-| Images | expo-image basique | **expo-image + blurhash** | Placeholder flou pendant chargement |
+| Aspect         | V1                                   | V2                                 | Raison                                     |
+| -------------- | ------------------------------------ | ---------------------------------- | ------------------------------------------ |
+| Navigation     | React Navigation 6 (config manuelle) | **Expo Router** (file-based)       | Convention over config, deep linking natif |
+| State global   | 8 Contexts wrappés                   | **Zustand stores** (3 max)         | Performance, pas de re-render cascade      |
+| AnalysisScreen | 1 fichier 1682 LOC, 30+ useState     | **3 composants + 2 hooks**         | Maintenabilité, testabilité                |
+| Animations     | Reanimated basique                   | **Reanimated 3 + Gesture Handler** | Swipe, spring, shared transitions          |
+| Bottom Sheet   | Modal custom                         | **@gorhom/bottom-sheet**           | Standard, performant, gesture-native       |
+| Listes         | FlatList + pagination manuelle       | **FlashList** (Shopify)            | 5x plus rapide sur grandes listes          |
+| Images         | expo-image basique                   | **expo-image + blurhash**          | Placeholder flou pendant chargement        |
 
 ### 4.3 Réduction de complexité
 
@@ -497,70 +507,70 @@ Mono:        JetBrains Mono, 14px (code blocks uniquement)
 
 **Objectif** : Nouveau squelette, navigation, design system
 
-| Tâche | Fichiers | Estimation |
-|---|---|---|
-| Migrer vers Expo Router | `app/` directory complète | 1 jour |
-| Implémenter le design system V2 | `theme/` | 0.5 jour |
-| Créer les composants UI primitifs | `components/ui/` (8 fichiers) | 1 jour |
-| Créer les Zustand stores | `stores/` (3 fichiers) | 0.5 jour |
-| Extraire les hooks métier | `hooks/` (4 fichiers) | 1 jour |
-| Setup FlashList + expo-image | `package.json` + config | 0.5 jour |
-| Auth flow (login/register/verify) | `app/(auth)/` | 1 jour |
-| Tab bar custom avec animations | `app/(tabs)/_layout.tsx` | 0.5 jour |
+| Tâche                             | Fichiers                      | Estimation |
+| --------------------------------- | ----------------------------- | ---------- |
+| Migrer vers Expo Router           | `app/` directory complète     | 1 jour     |
+| Implémenter le design system V2   | `theme/`                      | 0.5 jour   |
+| Créer les composants UI primitifs | `components/ui/` (8 fichiers) | 1 jour     |
+| Créer les Zustand stores          | `stores/` (3 fichiers)        | 0.5 jour   |
+| Extraire les hooks métier         | `hooks/` (4 fichiers)         | 1 jour     |
+| Setup FlashList + expo-image      | `package.json` + config       | 0.5 jour   |
+| Auth flow (login/register/verify) | `app/(auth)/`                 | 1 jour     |
+| Tab bar custom avec animations    | `app/(tabs)/_layout.tsx`      | 0.5 jour   |
 
 ### Phase 2 : Écrans Core (Semaine 3-4)
 
-| Tâche | Fichiers | Estimation |
-|---|---|---|
-| Home Screen (input + carousels) | `app/(tabs)/index.tsx` + 3 components | 1.5 jours |
-| Analysis Screen V2 (summary + chat) | `app/analysis/[id].tsx` + 5 components | 3 jours |
-| Streaming overlay + progress | `components/analysis/StreamingOverlay.tsx` | 1 jour |
-| Library Screen (feed + search) | `app/(tabs)/library.tsx` + 2 components | 1.5 jours |
-| Profile Screen (fusion 4→1) | `app/(tabs)/profile.tsx` + 3 sections | 1 jour |
+| Tâche                               | Fichiers                                   | Estimation |
+| ----------------------------------- | ------------------------------------------ | ---------- |
+| Home Screen (input + carousels)     | `app/(tabs)/index.tsx` + 3 components      | 1.5 jours  |
+| Analysis Screen V2 (summary + chat) | `app/analysis/[id].tsx` + 5 components     | 3 jours    |
+| Streaming overlay + progress        | `components/analysis/StreamingOverlay.tsx` | 1 jour     |
+| Library Screen (feed + search)      | `app/(tabs)/library.tsx` + 2 components    | 1.5 jours  |
+| Profile Screen (fusion 4→1)         | `app/(tabs)/profile.tsx` + 3 sections      | 1 jour     |
 
 ### Phase 3 : Study Hub + Polish (Semaine 5-6)
 
-| Tâche | Fichiers | Estimation |
-|---|---|---|
-| Study Hub Screen | `app/(tabs)/study.tsx` + 4 components | 2 jours |
-| Flashcards refonte (animations flip) | `components/study/FlashcardDeck.tsx` | 1 jour |
-| Quiz refonte (gamification) | `components/study/QuizGame.tsx` | 1 jour |
-| Upgrade Screen (carousel plans) | `app/upgrade.tsx` + `PlanCard.tsx` | 1 jour |
-| Animations et transitions | Shared elements, spring anims | 1.5 jours |
-| Haptic feedback partout | `expo-haptics` integration | 0.5 jour |
+| Tâche                                | Fichiers                              | Estimation |
+| ------------------------------------ | ------------------------------------- | ---------- |
+| Study Hub Screen                     | `app/(tabs)/study.tsx` + 4 components | 2 jours    |
+| Flashcards refonte (animations flip) | `components/study/FlashcardDeck.tsx`  | 1 jour     |
+| Quiz refonte (gamification)          | `components/study/QuizGame.tsx`       | 1 jour     |
+| Upgrade Screen (carousel plans)      | `app/upgrade.tsx` + `PlanCard.tsx`    | 1 jour     |
+| Animations et transitions            | Shared elements, spring anims         | 1.5 jours  |
+| Haptic feedback partout              | `expo-haptics` integration            | 0.5 jour   |
 
 ### Phase 4 : Edge Cases + QA (Semaine 7)
 
-| Tâche | Estimation |
-|---|---|
-| Mode hors-ligne (cache analyses) | 1 jour |
-| Gestion erreurs (network, API, empty states) | 1 jour |
-| Deep linking (analysis?url=...) | 0.5 jour |
-| Push notifications (analyse terminée) | 0.5 jour |
-| Tests manuels iOS + Android | 2 jours |
-| Performance profiling + optimisation | 1 jour |
+| Tâche                                        | Estimation |
+| -------------------------------------------- | ---------- |
+| Mode hors-ligne (cache analyses)             | 1 jour     |
+| Gestion erreurs (network, API, empty states) | 1 jour     |
+| Deep linking (analysis?url=...)              | 0.5 jour   |
+| Push notifications (analyse terminée)        | 0.5 jour   |
+| Tests manuels iOS + Android                  | 2 jours    |
+| Performance profiling + optimisation         | 1 jour     |
 
 ### Phase 5 : Release (Semaine 8)
 
-| Tâche | Estimation |
-|---|---|
-| EAS Build production iOS + Android | 0.5 jour |
-| Screenshots App Store / Play Store | 0.5 jour |
-| Soumission stores | 1 jour |
-| Monitoring post-release (Sentry) | Continu |
+| Tâche                              | Estimation |
+| ---------------------------------- | ---------- |
+| EAS Build production iOS + Android | 0.5 jour   |
+| Screenshots App Store / Play Store | 0.5 jour   |
+| Soumission stores                  | 1 jour     |
+| Monitoring post-release (Sentry)   | Continu    |
 
 ---
 
 ## 7. Métriques de succès V2
 
-| Métrique | V1 (estimée) | Cible V2 |
-|---|---|---|
+| Métrique                                    | V1 (estimée)                | Cible V2                      |
+| ------------------------------------------- | --------------------------- | ----------------------------- |
 | Temps pour analyser une vidéo (user action) | ~15 secondes (URL + config) | < 5 secondes (URL → Analyser) |
-| Lignes de code mobile | ~12000 LOC | < 5500 LOC |
-| Nombre de screens | 21 | 11 |
-| Crash rate | Inconnu | < 0.5% |
-| Time to Interactive (app start) | ~3s | < 1.5s |
-| Taux de rétention J7 | Baseline | +30% vs V1 |
+| Lignes de code mobile                       | ~12000 LOC                  | < 5500 LOC                    |
+| Nombre de screens                           | 21                          | 11                            |
+| Crash rate                                  | Inconnu                     | < 0.5%                        |
+| Time to Interactive (app start)             | ~3s                         | < 1.5s                        |
+| Taux de rétention J7                        | Baseline                    | +30% vs V1                    |
 
 ---
 
@@ -578,4 +588,4 @@ Mono:        JetBrains Mono, 14px (code blocks uniquement)
 
 ---
 
-*Ce plan est conçu pour être exécuté tâche par tâche avec validation à chaque étape. Chaque phase produit une version testable.*
+_Ce plan est conçu pour être exécuté tâche par tâche avec validation à chaque étape. Chaque phase produit une version testable._

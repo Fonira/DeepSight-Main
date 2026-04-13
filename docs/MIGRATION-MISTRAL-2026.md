@@ -26,18 +26,18 @@ DeepSight utilise actuellement 3 modèles Mistral legacy (`mistral-small-latest`
 
 ### 2.1 Mistral AI — Conformité Légale
 
-| Garantie | Détail |
-|----------|--------|
-| **Siège social** | Paris, France — société de droit français |
-| **Hébergement données** | Union Européenne par défaut (endpoint EU) |
-| **RGPD** | Conformité totale — DPA disponible sur legal.mistral.ai |
-| **EU AI Act** | Signataire du Code of Practice européen |
-| **CLOUD Act US** | **Non soumis** — contrairement à OpenAI, Google, Amazon |
-| **Zero Data Retention** | Activable sur demande pour l'API |
-| **Training sur données** | Opt-out disponible pour les clients API |
-| **Rétention par défaut** | 30 jours (monitoring anti-abus), supprimé ensuite |
-| **DPA** | https://legal.mistral.ai/terms/data-processing-addendum |
-| **SCCs** | Clauses contractuelles types UE pour tout sous-traitant hors UE |
+| Garantie                 | Détail                                                          |
+| ------------------------ | --------------------------------------------------------------- |
+| **Siège social**         | Paris, France — société de droit français                       |
+| **Hébergement données**  | Union Européenne par défaut (endpoint EU)                       |
+| **RGPD**                 | Conformité totale — DPA disponible sur legal.mistral.ai         |
+| **EU AI Act**            | Signataire du Code of Practice européen                         |
+| **CLOUD Act US**         | **Non soumis** — contrairement à OpenAI, Google, Amazon         |
+| **Zero Data Retention**  | Activable sur demande pour l'API                                |
+| **Training sur données** | Opt-out disponible pour les clients API                         |
+| **Rétention par défaut** | 30 jours (monitoring anti-abus), supprimé ensuite               |
+| **DPA**                  | https://legal.mistral.ai/terms/data-processing-addendum         |
+| **SCCs**                 | Clauses contractuelles types UE pour tout sous-traitant hors UE |
 
 ### 2.2 Actions immédiates pour DeepSight
 
@@ -90,24 +90,24 @@ mistral-large-latest            mistral-large-2512            -75%
 
 ### 3.2 Nouveau modèle par usage
 
-| Usage | Modèle | ID API | In/Out (1M) | Contexte | Justification |
-|-------|--------|--------|-------------|----------|---------------|
-| **Micro-tâches** (entités, classification, flashcards) | Ministral 8B | `ministral-8b-2512` | $0.10/$0.10 | 128K | Output 3x moins cher que Small, suffisant pour extraction JSON |
-| **Free + Étudiant** (analyses standard, chat) | Mistral Small 3.1 | `mistral-small-2603` | $0.10/$0.30 | 128K | Même prix, 4x contexte, meilleure qualité |
-| **Starter** (analyses détaillées, chat avancé) | Mistral Small 3.1 | `mistral-small-2603` | $0.10/$0.30 | 128K | Remplace Medium obsolète, bien meilleur rapport qualité/prix |
-| **Pro** (analyses profondes, recherche web) | Mistral Medium 3.1 | `mistral-medium-2508` | $0.40/$2.00 | 131K | GPT-4 class, contexte 131K, analyses de haute qualité |
-| **Expert** (vidéos longues, synthèses complexes) | Mistral Large 3 | `mistral-large-2512` | $0.50/$1.50 | 262K | 75% moins cher, contexte 262K (vidéos 2h+), multimodal |
-| **Fact-checking** (vérification sources) | Mistral Medium 3.1 | `mistral-medium-2508` | $0.40/$2.00 | 131K | Raisonnement solide pour la vérification |
-| **Modération** (commentaires UGC) | Mistral Moderation 2 | `mistral-moderation-latest` | gratuit/très cheap | — | Modération native, évite les faux positifs |
+| Usage                                                  | Modèle               | ID API                      | In/Out (1M)        | Contexte | Justification                                                  |
+| ------------------------------------------------------ | -------------------- | --------------------------- | ------------------ | -------- | -------------------------------------------------------------- |
+| **Micro-tâches** (entités, classification, flashcards) | Ministral 8B         | `ministral-8b-2512`         | $0.10/$0.10        | 128K     | Output 3x moins cher que Small, suffisant pour extraction JSON |
+| **Free + Étudiant** (analyses standard, chat)          | Mistral Small 3.1    | `mistral-small-2603`        | $0.10/$0.30        | 128K     | Même prix, 4x contexte, meilleure qualité                      |
+| **Starter** (analyses détaillées, chat avancé)         | Mistral Small 3.1    | `mistral-small-2603`        | $0.10/$0.30        | 128K     | Remplace Medium obsolète, bien meilleur rapport qualité/prix   |
+| **Pro** (analyses profondes, recherche web)            | Mistral Medium 3.1   | `mistral-medium-2508`       | $0.40/$2.00        | 131K     | GPT-4 class, contexte 131K, analyses de haute qualité          |
+| **Expert** (vidéos longues, synthèses complexes)       | Mistral Large 3      | `mistral-large-2512`        | $0.50/$1.50        | 262K     | 75% moins cher, contexte 262K (vidéos 2h+), multimodal         |
+| **Fact-checking** (vérification sources)               | Mistral Medium 3.1   | `mistral-medium-2508`       | $0.40/$2.00        | 131K     | Raisonnement solide pour la vérification                       |
+| **Modération** (commentaires UGC)                      | Mistral Moderation 2 | `mistral-moderation-latest` | gratuit/très cheap | —        | Modération native, évite les faux positifs                     |
 
 ### 3.3 Impact financier estimé (pour 1000 analyses/mois)
 
-| Scénario | Ancien coût | Nouveau coût | Économie |
-|----------|-------------|--------------|----------|
-| 500 analyses Free (Small) | ~$50 | ~$50 | = (mais 4x contexte) |
-| 300 analyses Pro (Medium→Medium 3.1) | ~$81 | ~$120 input mais meilleure qualité | Qualité ↑↑ |
-| 200 analyses Expert (Large→Large 3) | ~$400 output | ~$100 output | **-75%** |
-| Entités/flashcards (Small→Ministral 8B) | ~$30 output | ~$10 output | **-67%** |
+| Scénario                                | Ancien coût  | Nouveau coût                       | Économie             |
+| --------------------------------------- | ------------ | ---------------------------------- | -------------------- |
+| 500 analyses Free (Small)               | ~$50         | ~$50                               | = (mais 4x contexte) |
+| 300 analyses Pro (Medium→Medium 3.1)    | ~$81         | ~$120 input mais meilleure qualité | Qualité ↑↑           |
+| 200 analyses Expert (Large→Large 3)     | ~$400 output | ~$100 output                       | **-75%**             |
+| Entités/flashcards (Small→Ministral 8B) | ~$30 output  | ~$10 output                        | **-67%**             |
 
 ---
 
@@ -359,38 +359,38 @@ LEGAL_CONFIG = {
 
 ### Phase 1 : Configuration (sans risque, rétrocompatible)
 
-| # | Fichier | Modification | Risque |
-|---|---------|--------------|--------|
-| 1 | `backend/src/core/config.py` | Nouveau `MISTRAL_MODELS` + aliases + `LEGAL_CONFIG` | 🟢 Faible |
-| 2 | `backend/src/core/credits.py` | Nouveau `MODEL_COSTS` avec rétrocompat | 🟢 Faible |
-| 3 | `backend/src/billing/plan_config.py` | Nouveaux `allowed_models` / `default_model` | 🟡 Moyen |
-| 4 | `backend/src/billing/permissions.py` | `get_allowed_model()` avec alias resolution | 🟡 Moyen |
+| #   | Fichier                              | Modification                                        | Risque    |
+| --- | ------------------------------------ | --------------------------------------------------- | --------- |
+| 1   | `backend/src/core/config.py`         | Nouveau `MISTRAL_MODELS` + aliases + `LEGAL_CONFIG` | 🟢 Faible |
+| 2   | `backend/src/core/credits.py`        | Nouveau `MODEL_COSTS` avec rétrocompat              | 🟢 Faible |
+| 3   | `backend/src/billing/plan_config.py` | Nouveaux `allowed_models` / `default_model`         | 🟡 Moyen  |
+| 4   | `backend/src/billing/permissions.py` | `get_allowed_model()` avec alias resolution         | 🟡 Moyen  |
 
 ### Phase 2 : Optimisation modèles internes
 
-| # | Fichier | Modification | Risque |
-|---|---------|--------------|--------|
-| 5 | `backend/src/videos/analysis.py` | Entités → `ministral-8b-2512` | 🟢 Faible |
-| 6 | `backend/src/videos/study_tools.py` | Flashcards → `ministral-8b-2512` | 🟢 Faible |
-| 7 | `backend/src/videos/youtube_comments.py` | Résumé commentaires → `ministral-8b-2512` | 🟢 Faible |
+| #   | Fichier                                  | Modification                              | Risque    |
+| --- | ---------------------------------------- | ----------------------------------------- | --------- |
+| 5   | `backend/src/videos/analysis.py`         | Entités → `ministral-8b-2512`             | 🟢 Faible |
+| 6   | `backend/src/videos/study_tools.py`      | Flashcards → `ministral-8b-2512`          | 🟢 Faible |
+| 7   | `backend/src/videos/youtube_comments.py` | Résumé commentaires → `ministral-8b-2512` | 🟢 Faible |
 
 ### Phase 3 : Frontend & Mobile (affichage)
 
-| # | Fichier | Modification | Risque |
-|---|---------|--------------|--------|
-| 8 | `frontend/src/config/planPrivileges.ts` | Mettre à jour noms de modèles | 🟢 Faible |
-| 9 | `frontend/src/components/` | Sélecteur de modèle avec nouveaux noms | 🟢 Faible |
-| 10 | `mobile/src/constants/config.ts` | Idem mobile | 🟢 Faible |
+| #   | Fichier                                 | Modification                           | Risque    |
+| --- | --------------------------------------- | -------------------------------------- | --------- |
+| 8   | `frontend/src/config/planPrivileges.ts` | Mettre à jour noms de modèles          | 🟢 Faible |
+| 9   | `frontend/src/components/`              | Sélecteur de modèle avec nouveaux noms | 🟢 Faible |
+| 10  | `mobile/src/constants/config.ts`        | Idem mobile                            | 🟢 Faible |
 
 ### Phase 4 : VPS Production
 
-| # | Action | Commande |
-|---|--------|----------|
-| 11 | Push code | `git push origin main` |
-| 12 | Pull sur VPS | `ssh root@$HETZNER_IP "cd /opt/deepsight/repo && git pull"` |
-| 13 | Rebuild Docker | `docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend` |
-| 14 | Recréer container | (voir commande docker run standard) |
-| 15 | Health check | `curl https://api.deepsightsynthesis.com/health` |
+| #   | Action            | Commande                                                                          |
+| --- | ----------------- | --------------------------------------------------------------------------------- |
+| 11  | Push code         | `git push origin main`                                                            |
+| 12  | Pull sur VPS      | `ssh root@$HETZNER_IP "cd /opt/deepsight/repo && git pull"`                       |
+| 13  | Rebuild Docker    | `docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend` |
+| 14  | Recréer container | (voir commande docker run standard)                                               |
+| 15  | Health check      | `curl https://api.deepsightsynthesis.com/health`                                  |
 
 ---
 
@@ -441,29 +441,29 @@ Semaine 3 — Frontend + Communication
 
 ## 8. Risques & Mitigations
 
-| Risque | Probabilité | Impact | Mitigation |
-|--------|-------------|--------|-----------|
-| Modèle ID invalide (typo) | Faible | Élevé | Test local + alias fallback |
-| Qualité différente sur Small 3.1 | Moyen | Moyen | A/B test sur 50 analyses avant migration complète |
-| Breaking change API Mistral | Faible | Élevé | Garder les aliases, fallback sur ancien modèle |
-| Users avec ancien modèle en DB | Certain | Faible | Migration SQL + alias resolution dans permissions.py |
-| Ministral 8B trop faible pour entités | Moyen | Faible | Fallback automatique sur Small 3.1 si score confiance < seuil |
+| Risque                                | Probabilité | Impact | Mitigation                                                    |
+| ------------------------------------- | ----------- | ------ | ------------------------------------------------------------- |
+| Modèle ID invalide (typo)             | Faible      | Élevé  | Test local + alias fallback                                   |
+| Qualité différente sur Small 3.1      | Moyen       | Moyen  | A/B test sur 50 analyses avant migration complète             |
+| Breaking change API Mistral           | Faible      | Élevé  | Garder les aliases, fallback sur ancien modèle                |
+| Users avec ancien modèle en DB        | Certain     | Faible | Migration SQL + alias resolution dans permissions.py          |
+| Ministral 8B trop faible pour entités | Moyen       | Faible | Fallback automatique sur Small 3.1 si score confiance < seuil |
 
 ---
 
 ## 9. Résumé Exécutif
 
-| Métrique | Avant | Après |
-|----------|-------|-------|
-| Modèles disponibles | 3 (legacy) | 4 (nouvelle gamme) + 1 modération |
-| Contexte max | 128K tokens | **262K tokens** |
-| Coût Expert (output/1M) | $6.00 | **$1.50 (-75%)** |
-| Vidéos 2h+ | ❌ Impossible | ✅ Natif (Large 3 262K) |
-| Souveraineté | Partielle | **100% FR/EU** |
-| RGPD | Implicite | **DPA signé + ZDR** |
-| CLOUD Act | Non vérifié | **Exempt** (société française) |
-| EU AI Act | Non vérifié | **Signataire Code of Practice** |
+| Métrique                | Avant         | Après                             |
+| ----------------------- | ------------- | --------------------------------- |
+| Modèles disponibles     | 3 (legacy)    | 4 (nouvelle gamme) + 1 modération |
+| Contexte max            | 128K tokens   | **262K tokens**                   |
+| Coût Expert (output/1M) | $6.00         | **$1.50 (-75%)**                  |
+| Vidéos 2h+              | ❌ Impossible | ✅ Natif (Large 3 262K)           |
+| Souveraineté            | Partielle     | **100% FR/EU**                    |
+| RGPD                    | Implicite     | **DPA signé + ZDR**               |
+| CLOUD Act               | Non vérifié   | **Exempt** (société française)    |
+| EU AI Act               | Non vérifié   | **Signataire Code of Practice**   |
 
 ---
 
-*Document généré le 19 mars 2026 — DeepSight Migration Mistral AI*
+_Document généré le 19 mars 2026 — DeepSight Migration Mistral AI_

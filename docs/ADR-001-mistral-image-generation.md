@@ -90,16 +90,17 @@ Terme + Définition
 
 ### Option A : Mistral Agent API (image_generation built-in)
 
-| Dimension | Assessment |
-|-----------|------------|
-| Complexité | **Basse** — 1 agent à créer, 1 conversation à démarrer, 1 fichier à télécharger |
-| Coût | **À valider** — potentiellement inclus dans le tier Scale/API, pricing non documenté par image |
-| Qualité | **Haute** — FLUX 1.1 Pro Ultra (vs Schnell actuellement) |
-| Cohérence stack | **Parfaite** — tout Mistral, 1 seule API key |
-| Latence | **Moyenne** — 1 appel agent (inclut raisonnement + génération), probablement 10-20s |
-| Contrôle prompt | **Indirect** — on donne des instructions à l'agent, pas un prompt direct à FLUX |
+| Dimension       | Assessment                                                                                     |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| Complexité      | **Basse** — 1 agent à créer, 1 conversation à démarrer, 1 fichier à télécharger                |
+| Coût            | **À valider** — potentiellement inclus dans le tier Scale/API, pricing non documenté par image |
+| Qualité         | **Haute** — FLUX 1.1 Pro Ultra (vs Schnell actuellement)                                       |
+| Cohérence stack | **Parfaite** — tout Mistral, 1 seule API key                                                   |
+| Latence         | **Moyenne** — 1 appel agent (inclut raisonnement + génération), probablement 10-20s            |
+| Contrôle prompt | **Indirect** — on donne des instructions à l'agent, pas un prompt direct à FLUX                |
 
 **Pros :**
+
 - Pipeline unifié : 1 API call au lieu de 2
 - Qualité image supérieure (FLUX Pro Ultra >> Schnell)
 - Supprime la dépendance Together AI
@@ -108,6 +109,7 @@ Terme + Définition
 - Fallback naturel : si l'agent échoue, on garde DALL-E 3
 
 **Cons :**
+
 - API en **beta** — risque de breaking changes
 - Pricing pas clairement documenté par image via API
 - Moins de contrôle sur le prompt exact envoyé à FLUX (l'agent reformule)
@@ -117,16 +119,17 @@ Terme + Définition
 
 ### Option B : FLUX Pro/Dev via API directe (Black Forest Labs ou FAL.ai)
 
-| Dimension | Assessment |
-|-----------|------------|
-| Complexité | **Moyenne** — nouvel appel API direct, similaire à Together AI |
-| Coût | **~0.04-0.06€/image** pour FLUX Pro, ~0.01€ pour FLUX Dev |
-| Qualité | **Haute** — FLUX 1.1 Pro (très bon), FLUX 2 Pro (état de l'art) |
+| Dimension       | Assessment                                                                   |
+| --------------- | ---------------------------------------------------------------------------- |
+| Complexité      | **Moyenne** — nouvel appel API direct, similaire à Together AI               |
+| Coût            | **~0.04-0.06€/image** pour FLUX Pro, ~0.01€ pour FLUX Dev                    |
+| Qualité         | **Haute** — FLUX 1.1 Pro (très bon), FLUX 2 Pro (état de l'art)              |
 | Cohérence stack | **Moyenne** — garde Mistral pour art direction + nouveau vendor pour l'image |
-| Latence | **Basse à moyenne** — 5-15s selon le modèle |
-| Contrôle prompt | **Total** — on envoie le prompt exact |
+| Latence         | **Basse à moyenne** — 5-15s selon le modèle                                  |
+| Contrôle prompt | **Total** — on envoie le prompt exact                                        |
 
 **Pros :**
+
 - Contrôle total sur le prompt, la résolution, les steps
 - API stable et mature (pas beta)
 - Pricing transparent
@@ -134,26 +137,29 @@ Terme + Définition
 - Résolution configurable (512, 1024, custom)
 
 **Cons :**
+
 - Ajoute un vendor (FAL.ai ou BFL direct) au lieu d'en retirer un
 - Pipeline toujours en 2 étapes (Stage1 Mistral + Stage2 FLUX)
 - Pas de gain architectural, juste un upgrade de modèle image
 
 ### Option C : Garder le pipeline actuel et juste fixer le bug
 
-| Dimension | Assessment |
-|-----------|------------|
-| Complexité | **Minimale** — ajouter `get_together_key()` dans config.py |
-| Coût | **Inchangé** — ~0.003€/image (free), ~0.04€ (premium) |
-| Qualité | **Inchangée** — FLUX Schnell reste basique |
-| Cohérence stack | **Mauvaise** — 3 vendors |
-| Latence | **Inchangée** |
-| Contrôle prompt | **Total** |
+| Dimension       | Assessment                                                 |
+| --------------- | ---------------------------------------------------------- |
+| Complexité      | **Minimale** — ajouter `get_together_key()` dans config.py |
+| Coût            | **Inchangé** — ~0.003€/image (free), ~0.04€ (premium)      |
+| Qualité         | **Inchangée** — FLUX Schnell reste basique                 |
+| Cohérence stack | **Mauvaise** — 3 vendors                                   |
+| Latence         | **Inchangée**                                              |
+| Contrôle prompt | **Total**                                                  |
 
 **Pros :**
+
 - Zéro risque, zéro effort
 - On sait que ça fonctionne (quand le bug est fixé)
 
 **Cons :**
+
 - Ne résout aucun des problèmes structurels (3 vendors, qualité Schnell, branding)
 - La dette technique reste
 
@@ -163,15 +169,15 @@ Terme + Définition
 
 Le choix principal est entre **Option A** (Mistral Agent) et **Option B** (FLUX direct via FAL/BFL).
 
-| Critère | Option A (Agent) | Option B (FLUX direct) |
-|---------|-----------------|----------------------|
-| Simplification | ✅ Supprime 1 vendor | ❌ Ajoute/remplace 1 vendor |
-| Qualité image | ✅ FLUX Pro Ultra | ✅ FLUX Pro/Dev |
-| Contrôle prompt | ⚠️ Indirect (via instructions agent) | ✅ Direct (prompt → image) |
-| Stabilité API | ⚠️ Beta | ✅ Stable |
-| Cohérence "100% Mistral" | ✅ Parfaite | ❌ Non |
-| Pricing clarity | ⚠️ Non documenté | ✅ Transparent |
-| Effort d'implémentation | ~2h | ~1h |
+| Critère                  | Option A (Agent)                     | Option B (FLUX direct)      |
+| ------------------------ | ------------------------------------ | --------------------------- |
+| Simplification           | ✅ Supprime 1 vendor                 | ❌ Ajoute/remplace 1 vendor |
+| Qualité image            | ✅ FLUX Pro Ultra                    | ✅ FLUX Pro/Dev             |
+| Contrôle prompt          | ⚠️ Indirect (via instructions agent) | ✅ Direct (prompt → image)  |
+| Stabilité API            | ⚠️ Beta                              | ✅ Stable                   |
+| Cohérence "100% Mistral" | ✅ Parfaite                          | ❌ Non                      |
+| Pricing clarity          | ⚠️ Non documenté                     | ✅ Transparent              |
+| Effort d'implémentation  | ~2h                                  | ~1h                         |
 
 **Ma recommandation : Option A (Mistral Agent) comme défaut, avec fallback sur Option B (FAL.ai FLUX Pro) si les limites de l'Agent API se révèlent bloquantes.**
 
@@ -182,10 +188,12 @@ Raison : la simplification architecturale + la cohérence branding + la qualité
 ## Implementation Plan
 
 ### Phase 0 — Fix immédiat (30 min)
+
 - [ ] Ajouter `get_together_key()` dans `core/config.py` (fix le bug actuel)
 - [ ] Vérifier la version du SDK `mistralai` dans `requirements.txt` (besoin de `.beta.agents`)
 
 ### Phase 1 — POC Mistral Agent (2-3h)
+
 - [ ] Créer l'agent "DeepSight Art Director" via l'API (une seule fois, stocker l'`agent_id`)
 - [ ] Implémenter `_stage2_mistral_agent()` dans `keyword_images.py`
 - [ ] Ajouter le download du fichier généré (file_id → bytes)
@@ -193,6 +201,7 @@ Raison : la simplification architecturale + la cohérence branding + la qualité
 - [ ] Comparer qualité vs FLUX Schnell actuel et DALL-E 3
 
 ### Phase 2 — Intégration (1-2h)
+
 - [ ] Ajouter la config `MISTRAL_IMAGE_AGENT_ID` dans `core/config.py` et `.env.production`
 - [ ] Modifier `_stage2_generate_image()` :
   ```python
@@ -214,11 +223,13 @@ Raison : la simplification architecturale + la cohérence branding + la qualité
 - [ ] Mettre à jour le model enregistré dans `keyword_images` (colonne `model`)
 
 ### Phase 3 — Optimisation Agent (optionnel, après validation qualité)
+
 - [ ] Fusionner Stage 1 + Stage 2 : supprimer `_stage1_art_director()` séparé, laisser l'agent faire les deux
 - [ ] Enrichir les instructions agent avec des exemples de style DeepSight
 - [ ] Ajouter un champ `metaphor_reasoning` dans la réponse agent pour le logging
 
 ### Phase 4 — Cleanup
+
 - [ ] Si Mistral Agent confirmé stable : retirer la dépendance Together AI
 - [ ] Mettre à jour la doc (`CLAUDE.md`, `docs/`)
 - [ ] Monitorer les coûts sur 1 semaine
@@ -228,16 +239,19 @@ Raison : la simplification architecturale + la cohérence branding + la qualité
 ## Consequences
 
 ### Ce qui devient plus facile
+
 - Maintenance : 1 seule API key pour tout le pipeline d'images
 - Branding : communication "100% Mistral AI" sans astérisque
 - Onboarding : un nouveau dev n'a qu'une API à comprendre
 - Qualité : images nettement meilleures grâce à FLUX Pro Ultra
 
 ### Ce qui devient plus difficile
+
 - Debug : si l'agent hallucine ou génère un style incohérent, on a moins de contrôle qu'un prompt direct
 - Migration retour : si Mistral change/deprecate l'Agents API beta, il faudra revenir sur Together/FAL
 
 ### Ce qu'il faudra revisiter
+
 - Pricing : surveiller la facturation Mistral côté images (premier mois)
 - Résolution : l'Agent API ne semble pas offrir de contrôle sur la taille — valider que le PNG retourné est assez grand pour le resize 512x512
 - Rate limits : vérifier les limites agents/conversations par minute sur le tier Scale Mistral
@@ -347,4 +361,4 @@ print(f"Add to .env.production: MISTRAL_IMAGE_AGENT_ID={agent.id}")
 
 ---
 
-*ADR-001 — DeepSight — Avril 2026*
+_ADR-001 — DeepSight — Avril 2026_

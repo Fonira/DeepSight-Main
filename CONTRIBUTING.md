@@ -103,6 +103,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 
 **Types:**
+
 - `feat` — New feature
 - `fix` — Bug fix
 - `docs` — Documentation
@@ -134,18 +135,18 @@ refactor(auth): simplify token validation logic
 ```python
 # ✅ Good
 async def get_summary(
-    db: AsyncSession, 
-    user_id: int, 
+    db: AsyncSession,
+    user_id: int,
     summary_id: int
 ) -> Optional[Summary]:
     """
     Retrieve a summary by ID for a specific user.
-    
+
     Args:
         db: Database session
         user_id: The user's ID
         summary_id: The summary's ID
-        
+
     Returns:
         Summary object if found, None otherwise
     """
@@ -179,14 +180,14 @@ interface AnalysisResult {
 
 const useAnalysis = (videoId: string): UseQueryResult<AnalysisResult> => {
   return useQuery({
-    queryKey: ['analysis', videoId],
+    queryKey: ["analysis", videoId],
     queryFn: () => videoApi.getSummary(videoId),
   });
 };
 
 // ❌ Bad
 const useAnalysis = (videoId: any) => {
-  return useQuery(['analysis', videoId], () => videoApi.getSummary(videoId));
+  return useQuery(["analysis", videoId], () => videoApi.getSummary(videoId));
 };
 ```
 
@@ -203,12 +204,14 @@ const useAnalysis = (videoId: any) => {
 ### Before Submitting
 
 1. **Sync with Upstream**
+
    ```bash
    git fetch upstream
    git rebase upstream/main
    ```
 
 2. **Run Tests**
+
    ```bash
    # Backend
    cd backend && pytest tests/ -v
@@ -228,6 +231,7 @@ const useAnalysis = (videoId: any) => {
 ### Submitting a PR
 
 1. Push your branch to your fork
+
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -238,21 +242,26 @@ const useAnalysis = (videoId: any) => {
 
    ```markdown
    ## Description
+
    Brief description of changes
 
    ## Type of Change
+
    - [ ] Bug fix
    - [ ] New feature
    - [ ] Documentation
    - [ ] Refactoring
 
    ## Testing
+
    Describe how you tested your changes
 
    ## Screenshots (if applicable)
+
    Add screenshots for UI changes
 
    ## Checklist
+
    - [ ] My code follows the project style guidelines
    - [ ] I have performed a self-review
    - [ ] I have added tests (if applicable)
@@ -280,6 +289,7 @@ A clear description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce:
+
 1. Go to '...'
 2. Click on '...'
 3. See error
@@ -291,6 +301,7 @@ What you expected to happen.
 If applicable, add screenshots.
 
 **Environment:**
+
 - OS: [e.g., macOS 14.0]
 - Browser: [e.g., Chrome 120]
 - App version: [e.g., 3.7.1]
@@ -321,6 +332,7 @@ Any other context or screenshots.
 ### First-Time Contributors
 
 Look for issues labeled:
+
 - `good first issue` — Simple, beginner-friendly
 - `help wanted` — We need community help
 - `documentation` — Improve docs (great starting point!)
@@ -334,6 +346,7 @@ Look for issues labeled:
 ### Getting Help
 
 If you're stuck:
+
 1. Check existing issues and PRs
 2. Read the documentation
 3. Ask in your PR or issue
@@ -343,6 +356,7 @@ If you're stuck:
 ## 🙏 Thank You!
 
 Every contribution matters, whether it's:
+
 - Fixing a typo
 - Improving documentation
 - Adding a feature

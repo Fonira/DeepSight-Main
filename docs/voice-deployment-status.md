@@ -7,13 +7,13 @@
 
 ## Commits Voice sur `main`
 
-| Commit | Message |
-|--------|---------|
+| Commit     | Message                                                                     |
+| ---------- | --------------------------------------------------------------------------- |
 | `fb3b1be6` | fix(voice): read seconds_remaining instead of missing minutes_remaining key |
-| `7b839bfb` | fix(voice): use naive datetime for DB columns without timezone |
-| `4d5ca01a` | fix(voice): add expert and unlimited plans to VOICE_LIMITS |
-| `6b2b2172` | test(voice): add 55 backend + 40 frontend/mobile tests, wire analytics |
-| `96efed04` | feat(voice): Parler à sa vidéo — ElevenLabs Conversational AI (#81) |
+| `7b839bfb` | fix(voice): use naive datetime for DB columns without timezone              |
+| `4d5ca01a` | fix(voice): add expert and unlimited plans to VOICE_LIMITS                  |
+| `6b2b2172` | test(voice): add 55 backend + 40 frontend/mobile tests, wire analytics      |
+| `96efed04` | feat(voice): Parler à sa vidéo — ElevenLabs Conversational AI (#81)         |
 
 Tous les commits sont **pushés sur `origin/main`**.
 
@@ -53,27 +53,27 @@ Tous les commits sont **pushés sur `origin/main`**.
 
 ## Tests
 
-| Suite | Résultat |
-|-------|----------|
-| Frontend typecheck (voice files) | 0 erreurs |
-| Frontend build (Vite) | OK |
-| Backend tests (voice) | 55 tests ajoutés (commit `6b2b2172`) |
-| Frontend tests (voice) | 40 tests ajoutés (commit `6b2b2172`) |
+| Suite                            | Résultat                             |
+| -------------------------------- | ------------------------------------ |
+| Frontend typecheck (voice files) | 0 erreurs                            |
+| Frontend build (Vite)            | OK                                   |
+| Backend tests (voice)            | 55 tests ajoutés (commit `6b2b2172`) |
+| Frontend tests (voice)           | 40 tests ajoutés (commit `6b2b2172`) |
 
 ---
 
 ## Composants Voice dans le bundle
 
-| Fichier source | Inclus dans build |
-|----------------|-------------------|
-| `VoiceButton.tsx` | OK |
-| `VoiceModal.tsx` | OK |
-| `VoiceWaveform.tsx` | OK |
-| `VoiceQuotaBadge.tsx` | OK |
-| `VoiceTranscript.tsx` | OK |
-| `VoiceAddonModal.tsx` | OK |
-| `useVoiceChat.ts` | OK |
-| `voiceAnalytics.ts` | OK |
+| Fichier source        | Inclus dans build |
+| --------------------- | ----------------- |
+| `VoiceButton.tsx`     | OK                |
+| `VoiceModal.tsx`      | OK                |
+| `VoiceWaveform.tsx`   | OK                |
+| `VoiceQuotaBadge.tsx` | OK                |
+| `VoiceTranscript.tsx` | OK                |
+| `VoiceAddonModal.tsx` | OK                |
+| `useVoiceChat.ts`     | OK                |
+| `voiceAnalytics.ts`   | OK                |
 
 ---
 

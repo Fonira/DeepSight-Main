@@ -10,20 +10,20 @@
 
 ## 🏗️ Stack technique
 
-| Technologie | Usage |
-|-------------|-------|
-| Python 3.11+ | Runtime |
-| FastAPI | Framework API async |
-| SQLAlchemy 2.0 | ORM async (asyncpg) |
-| PostgreSQL | Base de données production |
-| Pydantic V2 | Validation & schémas |
-| JWT (PyJWT) | Authentification stateless |
-| Mistral AI | Analyse & synthèse IA |
-| Perplexity AI | Fact-checking & web search |
-| Stripe | Paiements & abonnements |
-| Resend | Emails transactionnels |
-| Sentry | Error tracking |
-| Redis (optionnel) | Cache & rate limiting |
+| Technologie       | Usage                      |
+| ----------------- | -------------------------- |
+| Python 3.11+      | Runtime                    |
+| FastAPI           | Framework API async        |
+| SQLAlchemy 2.0    | ORM async (asyncpg)        |
+| PostgreSQL        | Base de données production |
+| Pydantic V2       | Validation & schémas       |
+| JWT (PyJWT)       | Authentification stateless |
+| Mistral AI        | Analyse & synthèse IA      |
+| Perplexity AI     | Fact-checking & web search |
+| Stripe            | Paiements & abonnements    |
+| Resend            | Emails transactionnels     |
+| Sentry            | Error tracking             |
+| Redis (optionnel) | Cache & rate limiting      |
 
 ## 📁 Architecture des dossiers
 
@@ -77,14 +77,14 @@ src/
 
 ## 🔑 Fichiers critiques
 
-| Fichier | Importance | Description |
-|---------|------------|-------------|
-| `core/config.py` | ⭐⭐⭐ | Plans, quotas, toutes les settings |
-| `db/database.py` | ⭐⭐⭐ | Modèles SQLAlchemy (15 tables) |
-| `auth/dependencies.py` | ⭐⭐⭐ | Dépendances auth FastAPI |
-| `videos/analysis.py` | ⭐⭐⭐ | Prompts IA analyse critique |
-| `transcripts/youtube.py` | ⭐⭐ | Extraction YouTube multi-fallback |
-| `billing/router.py` | ⭐⭐ | Intégration Stripe complète |
+| Fichier                  | Importance | Description                        |
+| ------------------------ | ---------- | ---------------------------------- |
+| `core/config.py`         | ⭐⭐⭐     | Plans, quotas, toutes les settings |
+| `db/database.py`         | ⭐⭐⭐     | Modèles SQLAlchemy (15 tables)     |
+| `auth/dependencies.py`   | ⭐⭐⭐     | Dépendances auth FastAPI           |
+| `videos/analysis.py`     | ⭐⭐⭐     | Prompts IA analyse critique        |
+| `transcripts/youtube.py` | ⭐⭐       | Extraction YouTube multi-fallback  |
+| `billing/router.py`      | ⭐⭐       | Intégration Stripe complète        |
 
 ## ⚡ Commandes essentielles
 
@@ -112,6 +112,7 @@ alembic upgrade head
 ## 🔐 Authentification
 
 ### Flow JWT
+
 ```
 1. POST /api/auth/register → Crée user + envoie email vérification
 2. POST /api/auth/login → Retourne access_token (15min) + refresh_token (7j)
@@ -121,6 +122,7 @@ alembic upgrade head
 ```
 
 ### Dépendances FastAPI
+
 ```python
 from auth.dependencies import get_current_user, require_plan
 
@@ -137,24 +139,24 @@ async def pro_route(user: User = Depends(require_plan("pro"))):
 
 ## 💳 Système de crédits & Limites (v3.1)
 
-| Plan | Crédits/mois | Analyses/jour | Chat/vidéo | Playlists |
-|------|--------------|---------------|------------|-----------|
-| Free | 500 | 5 | 5 | ❌ |
-| Starter | 5,000 | 20 | 20 | ❌ |
-| Pro | 25,000 | 50 | ∞ | ✅ (10 vidéos) |
-| Expert | 100,000 | 200 | ∞ | ✅ (50 vidéos) |
-| Unlimited | ∞ | ∞ | ∞ | ✅ (100 vidéos) |
+| Plan      | Crédits/mois | Analyses/jour | Chat/vidéo | Playlists       |
+| --------- | ------------ | ------------- | ---------- | --------------- |
+| Free      | 500          | 5             | 5          | ❌              |
+| Starter   | 5,000        | 20            | 20         | ❌              |
+| Pro       | 25,000       | 50            | ∞          | ✅ (10 vidéos)  |
+| Expert    | 100,000      | 200           | ∞          | ✅ (50 vidéos)  |
+| Unlimited | ∞            | ∞             | ∞          | ✅ (100 vidéos) |
 
 ### Features bloquées par plan
 
-| Feature | Free | Starter | Pro | Expert |
-|---------|------|---------|-----|--------|
-| playlists | ❌ | ❌ | ✅ | ✅ |
-| export_csv | ❌ | ✅ | ✅ | ✅ |
-| export_excel | ❌ | ✅ | ✅ | ✅ |
-| tts | ❌ | ✅ | ✅ | ✅ |
-| batch_api | ❌ | ❌ | ❌ | ✅ |
-| deep_research | ❌ | ❌ | ❌ | ✅ |
+| Feature       | Free | Starter | Pro | Expert |
+| ------------- | ---- | ------- | --- | ------ |
+| playlists     | ❌   | ❌      | ✅  | ✅     |
+| export_csv    | ❌   | ✅      | ✅  | ✅     |
+| export_excel  | ❌   | ✅      | ✅  | ✅     |
+| tts           | ❌   | ✅      | ✅  | ✅     |
+| batch_api     | ❌   | ❌      | ❌  | ✅     |
+| deep_research | ❌   | ❌      | ❌  | ✅     |
 
 ### Module `core/plan_limits.py` (NEW)
 
@@ -184,6 +186,7 @@ async def export_csv(user: User = Depends(require_feature("export_csv"))):
 ```
 
 **Coûts en crédits**:
+
 - Analyse standard: 1 crédit
 - Analyse longue (>30min): 2 crédits
 - Playlist: 1 crédit/vidéo
@@ -191,6 +194,7 @@ async def export_csv(user: User = Depends(require_feature("export_csv"))):
 ## 🤖 Analyse IA Sourcée et Nuancée
 
 ### Modes d'analyse
+
 ```python
 ANALYSIS_MODES = {
     "accessible": "Grand public, vulgarisation",
@@ -200,6 +204,7 @@ ANALYSIS_MODES = {
 ```
 
 ### Marqueurs épistémiques
+
 ```
 ✅ SOLIDE - Fait établi, consensus scientifique
 ⚖️ PLAUSIBLE - Probable mais à confirmer
@@ -208,18 +213,24 @@ ANALYSIS_MODES = {
 ```
 
 ### Structure du résumé généré
+
 ```markdown
 ## 🎯 Points clés
+
 - [00:02:15] Point avec timecode
 
 ## 📊 Analyse détaillée
+
 ### Section 1
+
 Contenu avec marqueurs épistémiques...
 
 ## 🔍 Concepts clés
+
 - **Concept**: Définition Wikipedia enrichie
 
 ## ⚠️ Limites et biais potentiels
+
 - Biais identifiés dans la source
 ```
 
@@ -237,6 +248,7 @@ Système multi-fallback pour robustesse:
 ## 📡 Endpoints principaux
 
 ### Auth & Limits
+
 ```
 POST /api/auth/register           # Création compte
 POST /api/auth/login              # Connexion → tokens
@@ -248,6 +260,7 @@ PUT  /api/auth/preferences        # Modifier préférences
 ```
 
 #### `GET /api/auth/limits` Response (v3.1)
+
 ```json
 {
   "plan": "starter",
@@ -268,6 +281,7 @@ PUT  /api/auth/preferences        # Modifier préférences
 ```
 
 ### Videos
+
 ```
 POST /api/videos/analyze          # Lancer analyse → task_id
 GET  /api/videos/status/{task_id} # Polling status
@@ -277,6 +291,7 @@ POST /api/videos/discover         # Découverte intelligente
 ```
 
 ### Chat
+
 ```
 POST /api/chat/ask                # Question → réponse
 POST /api/chat/ask/stream         # Question → SSE stream
@@ -284,6 +299,7 @@ GET  /api/chat/history/{summary}  # Historique conversation
 ```
 
 ### Billing
+
 ```
 POST /api/billing/checkout        # Créer session Stripe
 POST /api/billing/webhook         # Webhook Stripe
@@ -368,14 +384,15 @@ web: cd src && uvicorn main:app --host 0.0.0.0 --port $PORT
 
 ## 🐛 Debug & Troubleshooting
 
-| Problème | Cause | Solution |
-|----------|-------|----------|
-| 500 sur /analyze | Mistral API down | Vérifier MISTRAL_API_KEY, retry |
-| Transcript vide | YouTube rate limit | Fallback yt-dlp activé auto |
-| 401 Unauthorized | Token expiré | Client doit refresh |
-| Stripe webhook fail | Signature invalide | Vérifier STRIPE_WEBHOOK_SECRET |
+| Problème            | Cause              | Solution                        |
+| ------------------- | ------------------ | ------------------------------- |
+| 500 sur /analyze    | Mistral API down   | Vérifier MISTRAL_API_KEY, retry |
+| Transcript vide     | YouTube rate limit | Fallback yt-dlp activé auto     |
+| 401 Unauthorized    | Token expiré       | Client doit refresh             |
+| Stripe webhook fail | Signature invalide | Vérifier STRIPE_WEBHOOK_SECRET  |
 
 ### Logs structurés
+
 ```python
 from core.logging import logger
 
@@ -397,12 +414,14 @@ logger.info("Analysis started", extra={
 ## 🤖 Instructions pour Claude Code
 
 ### Priorités lors des modifications
+
 1. **Async everywhere**: Toujours utiliser `async/await` pour I/O
 2. **Type hints**: Typer toutes les fonctions
 3. **Pydantic**: Valider toutes les entrées/sorties
 4. **Error handling**: Exceptions métier explicites
 
 ### Patterns à suivre
+
 ```python
 # Service layer pattern
 async def get_user_summary(db: AsyncSession, user_id: int, summary_id: int) -> Summary:
@@ -420,6 +439,7 @@ async def get_user_summary(db: AsyncSession, user_id: int, summary_id: int) -> S
 ```
 
 ### À éviter absolument
+
 - Requêtes synchrones (`requests.get` → utiliser `httpx`)
 - `time.sleep()` → utiliser `asyncio.sleep()`
 - Secrets hardcodés → toujours via `config.py`

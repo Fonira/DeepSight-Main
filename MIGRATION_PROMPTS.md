@@ -71,7 +71,7 @@ RÈGLES :
 
 ## TERMINAL B — CODE : Fichiers Docker + Deploy + CI/CD
 
-```
+````
 Tu es le Tech Lead de DeepSight. Ta mission : créer TOUS les fichiers de configuration nécessaires pour déployer le backend sur un VPS Hetzner avec Docker.
 
 CONTEXTE :
@@ -108,9 +108,10 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", \
      "--timeout-keep-alive", "300", "--limit-concurrency", "200", \
      "--workers", "4"]
-```
+````
 
 ### 2. docker-compose.yml (à la RACINE du repo DeepSight-Main/)
+
 ```yaml
 # DeepSight Production Stack — Hetzner VPS
 # Usage: docker compose -f docker-compose.yml up -d
@@ -203,6 +204,7 @@ volumes:
 ```
 
 ### 3. caddy/Caddyfile (créer le dossier caddy/ à la racine)
+
 ```
 api.deepsightsynthesis.com {
     reverse_proxy backend:8080
@@ -233,6 +235,7 @@ api.deepsightsynthesis.com {
 ```
 
 ### 4. scripts/deploy.sh (script de déploiement appelé par CI/CD)
+
 ```bash
 #!/bin/bash
 set -euo pipefail
@@ -282,6 +285,7 @@ echo "═══ Deploy complete ═══"
 ```
 
 ### 5. scripts/backup-db.sh
+
 ```bash
 #!/bin/bash
 set -euo pipefail
@@ -319,10 +323,13 @@ echo "📦 Backup complete"
 ```
 
 ### 6. .env.production.example (à la racine, template des variables)
+
 Créer ce fichier avec TOUTES les variables de backend/src/core/config.py, valeurs vides sauf les défauts. Ajouter DB_PASSWORD en haut.
 
 ### 7. Modifier .github/workflows/deploy-backend.yml :
+
 Remplacer le contenu par un déploiement SSH vers Hetzner :
+
 ```yaml
 name: Deploy Backend to Hetzner
 
@@ -330,9 +337,9 @@ on:
   push:
     branches: [main]
     paths:
-      - 'backend/**'
-      - 'docker-compose.yml'
-      - 'caddy/**'
+      - "backend/**"
+      - "docker-compose.yml"
+      - "caddy/**"
 
 concurrency:
   group: deploy-backend
@@ -407,9 +414,11 @@ jobs:
 ```
 
 ### 8. Modifier .github/workflows/db-backup.yml :
+
 Adapter pour utiliser le PostgreSQL Hetzner via SSH au lieu de Railway.
 
 ### 9. Ajouter au .gitignore :
+
 ```
 .env.production
 postgres/data/
@@ -417,6 +426,7 @@ redis/data/
 ```
 
 ### 10. NE PAS MODIFIER :
+
 - backend/src/core/config.py → Le pool_size est déjà configurable via env var DB_POOL_SIZE (ligne 70 de database.py)
 - backend/src/db/database.py → Supporte déjà PostgreSQL + SSL toggle
 - frontend/ → Rien à toucher dans le code
@@ -425,11 +435,13 @@ redis/data/
 COMMIT MESSAGE : "feat(infra): add Docker deployment config for Hetzner VPS migration"
 
 RÈGLES :
+
 - Code COMPLET, pas d'extraits partiels
 - Crée les fichiers avec le contenu exact ci-dessus comme base, adapte si nécessaire
 - N'oublie pas chmod +x sur les scripts .sh
 - NE modifie PAS le code backend Python existant
 - NE touche PAS au frontend
+
 ```
 
 ---
@@ -438,7 +450,9 @@ RÈGLES :
 > ⚠️ Lancer APRÈS que Terminal A (VPS prêt) et Terminal B (fichiers créés + pushés) soient terminés.
 
 ```
+
 Tu es le DevOps de DeepSight. Les terminaux A et B ont terminé :
+
 - Le VPS Hetzner ($HETZNER_IP / Tailscale $TAILSCALE_IP) est propre avec Docker installé
 - Les fichiers Docker (Dockerfile, docker-compose.yml, Caddyfile, scripts) sont dans le repo sur GitHub
 
@@ -447,7 +461,9 @@ Ta mission : déployer le backend DeepSight sur le VPS et migrer la base de donn
 ÉTAPES :
 
 ### Phase 1 — Cloner le repo sur le VPS
+
 SSH sur le VPS puis :
+
 ```bash
 cd /opt/deepsight
 git clone https://github.com/Fonira/deepsight-main.git repo
@@ -455,9 +471,11 @@ cd repo
 ```
 
 ### Phase 2 — Créer le .env.production
+
 Créer /opt/deepsight/repo/.env.production avec les variables.
 IMPORTANT : Récupérer les valeurs EXACTES depuis Railway Dashboard.
 Variables critiques à ne PAS oublier :
+
 - DB_PASSWORD (nouveau mot de passe fort pour PostgreSQL local)
 - JWT_SECRET_KEY
 - ADMIN_PASSWORD, ADMIN_SECRET_KEY
@@ -474,6 +492,7 @@ Variables critiques à ne PAS oublier :
 ME DEMANDER les valeurs que tu ne connais pas. Ne JAMAIS inventer de secrets.
 
 ### Phase 3 — Démarrer PostgreSQL + Redis d'abord
+
 ```bash
 cd /opt/deepsight/repo
 docker compose up -d postgres redis
@@ -482,6 +501,7 @@ docker compose logs -f redis     # Attendre "Ready to accept connections"
 ```
 
 ### Phase 4 — Migrer la base de données depuis Railway
+
 IMPORTANT : Demander à l'utilisateur l'URL PostgreSQL Railway complète (format: postgresql://user:pass@host:port/db)
 
 ```bash
@@ -504,6 +524,7 @@ docker compose exec postgres psql -U deepsight -c "SELECT COUNT(*) FROM summarie
 ```
 
 ### Phase 5 — Lancer le backend + Caddy
+
 ```bash
 docker compose up -d
 docker compose logs -f backend   # Vérifier le démarrage (pas d'erreurs)
@@ -511,6 +532,7 @@ docker compose logs -f caddy     # Vérifier le certificat SSL
 ```
 
 ### Phase 6 — Tests de validation
+
 ```bash
 # Test interne
 curl http://localhost:8080/health
@@ -530,6 +552,7 @@ docker stats  # Vérifier consommation RAM/CPU
 ```
 
 ### Phase 7 — Configurer les backups automatiques
+
 ```bash
 chmod +x /opt/deepsight/repo/scripts/backup-db.sh
 
@@ -541,14 +564,17 @@ chmod +x /opt/deepsight/repo/scripts/backup-db.sh
 ```
 
 ### Phase 8 — Monitoring
+
 - Vérifier que Sentry reçoit les events : déclencher un /health puis check Sentry dashboard
 - Créer un check UptimeRobot (gratuit) sur https://api.deepsightsynthesis.com/health
 
 RÈGLES :
+
 - JAMAIS inventer de secrets → me demander
 - Vérifier CHAQUE étape avant de passer à la suivante
 - Si une erreur survient → docker compose logs + diagnostiquer AVANT de continuer
 - Le DNS de api.deepsightsynthesis.com doit être configuré MANUELLEMENT par l'utilisateur chez son registrar
+
 ```
 
 ---
@@ -557,36 +583,49 @@ RÈGLES :
 
 ### DNS (à faire toi-même dans l'interface du registrar)
 ```
+
 api.deepsightsynthesis.com → A → $HETZNER_IP
 TTL : 300 (5 min pour test rapide)
+
 ```
 
 ### Vercel (à faire dans le dashboard Vercel)
 ```
+
 Modifier la variable d'environnement :
 VITE_API_URL = https://api.deepsightsynthesis.com
 → Redéployer le frontend
+
 ```
 
 ### Stripe Dashboard
 ```
+
 1. Ajouter un nouveau webhook endpoint :
    URL : https://api.deepsightsynthesis.com/api/billing/webhook
    Events : checkout.session.completed, customer.subscription.updated, customer.subscription.deleted, invoice.payment_succeeded, invoice.payment_failed
-2. Copier le nouveau whsec_... dans le .env.production du VPS
+2. Copier le nouveau whsec\_... dans le .env.production du VPS
 3. Garder l'ancien webhook Railway actif pendant 1 semaine
+
 ```
 
 ### GitHub Secrets (Settings → Secrets → Actions)
 ```
+
 Ajouter :
+
 - HETZNER_HOST = $HETZNER_IP
 - HETZNER_SSH_KEY = (contenu de la clé privée SSH)
+
 ```
 
 ### Mobile (build EAS nécessaire)
 ```
+
 Modifier mobile/src/constants/config.ts :
 export const API_BASE_URL = 'https://api.deepsightsynthesis.com';
 → Commit + Push → EAS build
+
+```
+
 ```

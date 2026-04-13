@@ -101,6 +101,7 @@ mobile/
 ```
 
 ### Critères de fin Sprint 0
+
 - [ ] `npx expo start` démarre sans erreur
 - [ ] Navigation (auth) → (tabs) fonctionne
 - [ ] Tab bar affiche 4 onglets avec icônes
@@ -116,6 +117,7 @@ mobile/
 ---
 
 ### FENÊTRE 1 : AUTH STACK
+
 **Branche** : `v2/auth`
 **Durée estimée** : 2 jours
 
@@ -171,6 +173,7 @@ RÈGLES :
 ```
 
 #### Fichiers produits
+
 ```
 app/(auth)/
 ├── _layout.tsx
@@ -184,6 +187,7 @@ app/(auth)/
 ---
 
 ### FENÊTRE 2 : HOME SCREEN + URL INPUT
+
 **Branche** : `v2/home`
 **Durée estimée** : 2 jours
 
@@ -275,6 +279,7 @@ RÈGLES :
 ```
 
 #### Fichiers produits
+
 ```
 app/(tabs)/index.tsx
 src/components/home/
@@ -287,6 +292,7 @@ src/components/home/
 ---
 
 ### FENÊTRE 3 : ANALYSIS SCREEN (LE PLUS GROS CHANTIER)
+
 **Branche** : `v2/analysis`
 **Durée estimée** : 4-5 jours
 
@@ -398,6 +404,7 @@ RÈGLES :
 ```
 
 #### Fichiers produits
+
 ```
 app/analysis/[id].tsx
 src/components/analysis/
@@ -411,6 +418,7 @@ src/components/analysis/
 ---
 
 ### FENÊTRE 4 : LIBRARY SCREEN
+
 **Branche** : `v2/library`
 **Durée estimée** : 2 jours
 
@@ -480,6 +488,7 @@ RÈGLES :
 ```
 
 #### Fichiers produits
+
 ```
 app/(tabs)/library.tsx
 src/components/library/
@@ -490,6 +499,7 @@ src/components/library/
 ---
 
 ### FENÊTRE 5 : STUDY HUB
+
 **Branche** : `v2/study`
 **Durée estimée** : 3 jours
 
@@ -590,6 +600,7 @@ RÈGLES :
 ```
 
 #### Fichiers produits
+
 ```
 app/(tabs)/study.tsx
 src/components/study/
@@ -602,6 +613,7 @@ src/components/study/
 ---
 
 ### FENÊTRE 6 : PROFILE + UPGRADE
+
 **Branche** : `v2/profile`
 **Durée estimée** : 2 jours
 
@@ -713,6 +725,7 @@ RÈGLES :
 ```
 
 #### Fichiers produits
+
 ```
 app/(tabs)/profile.tsx
 app/upgrade.tsx
@@ -800,4 +813,4 @@ vs 8 semaines séquentiel = 3x plus rapide
 
 ---
 
-*Plan prêt pour exécution. Sprint 0 = le goulot d'étranglement. Tout le reste est parallélisable.*
+_Plan prêt pour exécution. Sprint 0 = le goulot d'étranglement. Tout le reste est parallélisable._

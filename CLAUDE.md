@@ -1,9 +1,11 @@
 # DeepSight — AI Assistant Development Guide
-*Version 3.0 — Mars 2026*
+
+_Version 3.0 — Mars 2026_
 
 ---
 
 ## 🎯 VISION STRATÉGIQUE TRI-PLATEFORME
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  🧩 EXTENSION CHROME      📱 APP MOBILE          🖥️ APP WEB         │
@@ -23,6 +25,7 @@ Le backend vérifie `plan + platform` via `is_feature_available(plan, feature, p
 Chaque requête API porte le header : `?platform=web|mobile|extension`
 
 ### Rôle de chaque plateforme
+
 - **Extension Chrome** : hameçon d'acquisition. Analyse + synthèse + chat compact + Quick Chat. Tout le reste → CTA "Ouvrir dans l'app". Ne pas bloquer, convertir.
 - **App Mobile** : rétention par révision. Flashcards, relire synthèses, chat rapide, Quick Chat. Features complexes (cartes mentales, export, recherche web) → absentes de l'UI, redirection discrète vers Web.
 - **App Web** : plateforme complète. Playlists, recherche web, exports, gestion compte, Stripe, académique, mind maps. C'est là que se monétise.
@@ -33,14 +36,15 @@ Chaque requête API porte le header : `?platform=web|mobile|extension`
 
 **DeepSight** est un SaaS d'analyse IA de vidéos YouTube & TikTok avec analyse sourcée et nuancée. Synthèses intelligentes, fact-checking, outils d'étude, chat contextuel, recherche académique.
 
-| Composant | Technologie | Déploiement | URL |
-|-----------|-------------|-------------|-----|
-| **Backend** | FastAPI + Python 3.11 | Hetzner VPS (Docker) | `https://api.deepsightsynthesis.com` |
-| **Frontend** | React 18 + TypeScript + Vite (v7.0.1) | Vercel | `https://www.deepsightsynthesis.com` |
-| **Mobile** | Expo SDK 54 + React Native 0.81 + React 19 | EAS Build | App Store / Play Store |
-| **Extension** | React + TypeScript + Webpack (MV3 v2.0) | dist/ | Chrome Web Store (à soumettre) |
+| Composant     | Technologie                                | Déploiement          | URL                                  |
+| ------------- | ------------------------------------------ | -------------------- | ------------------------------------ |
+| **Backend**   | FastAPI + Python 3.11                      | Hetzner VPS (Docker) | `https://api.deepsightsynthesis.com` |
+| **Frontend**  | React 18 + TypeScript + Vite (v7.0.1)      | Vercel               | `https://www.deepsightsynthesis.com` |
+| **Mobile**    | Expo SDK 54 + React Native 0.81 + React 19 | EAS Build            | App Store / Play Store               |
+| **Extension** | React + TypeScript + Webpack (MV3 v2.0)    | dist/                | Chrome Web Store (à soumettre)       |
 
 ### Communication & Positionnement
+
 - **Tagline** : "Ne subissez plus vos vidéos — interrogez-les."
 - **Différenciateur** : IA 100% Française & Européenne — propulsé par Mistral AI
 - **Badge** : 🇫🇷🇪🇺 "Vos données restent en Europe"
@@ -50,6 +54,7 @@ Chaque requête API porte le header : `?platform=web|mobile|extension`
 ## ⚠️ RÈGLES COMPORTEMENTALES (OBLIGATOIRES)
 
 ### Contrôle du scope
+
 - **TOUJOURS demander la tâche exacte** avant de commencer
 - **JAMAIS lancer typecheck/lint/build sur des parties non concernées**
 - **JAMAIS corriger des problèmes hors scope** — signaler seulement
@@ -57,23 +62,27 @@ Chaque requête API porte le header : `?platform=web|mobile|extension`
 - Si `git diff` montre beaucoup de changements non commités → **ne pas supposer qu'ils nécessitent un fix**
 
 ### Avant de commencer
+
 1. Confirmer la tâche exacte
 2. Identifier le(s) composant(s) impliqués (backend / frontend / mobile / extension)
 3. Toucher uniquement les fichiers directement liés
 4. Si ambigu → **demander une clarification plutôt que deviner**
 
 ### Gestion des erreurs
+
 - Erreurs dans des fichiers non liés → **signaler, ne pas corriger**
 - Ne jamais lancer d'agents parallèles pour des corrections en masse sauf demande explicite
 - Préférer `eslint --fix` ciblé plutôt que corrections manuelles fichier par fichier
 
 ### Discipline de commit
+
 - Commits atomiques après chaque changement logique
 - Ne jamais laisser le codebase dans un état pire qu'à l'arrivée
 
 ---
 
 ## Repository Structure
+
 ```
 DeepSight-Main/
 ├── backend/                    # FastAPI Python backend
@@ -152,64 +161,69 @@ DeepSight-Main/
 ## Technology Stack
 
 ### Backend (Python)
-| Catégorie | Technologie |
-|-----------|-------------|
-| Framework | FastAPI (async, 4 workers) |
-| ORM | SQLAlchemy 2.0 (async) + Alembic migrations |
-| DB | PostgreSQL 17 (prod Hetzner) / SQLite (dev) |
-| Cache | Redis 7 + cachetools LRU |
-| Auth | JWT + Google OAuth (authlib) + session management |
-| IA Analyse | Mistral AI (4 tiers: ministral-8b → mistral-large-2512) |
-| IA Chat | Mistral AI + Perplexity enrichment (v4.0) |
-| Fact-check | Perplexity AI + Brave Search |
-| Paiements | Stripe (checkout, webhooks, portal, API keys) |
-| Email | Resend |
-| Monitoring | Sentry |
-| Exports | ReportLab (PDF) + python-docx + WeasyPrint + openpyxl |
-| Backup | S3/R2 (Cloudflare) + APScheduler cron |
-| HTTP | httpx[http2] + aiohttp |
-| YouTube | Supadata (prioritaire) → youtube-transcript-api → Invidious → Piped → yt-dlp → STT |
+
+| Catégorie  | Technologie                                                                        |
+| ---------- | ---------------------------------------------------------------------------------- |
+| Framework  | FastAPI (async, 4 workers)                                                         |
+| ORM        | SQLAlchemy 2.0 (async) + Alembic migrations                                        |
+| DB         | PostgreSQL 17 (prod Hetzner) / SQLite (dev)                                        |
+| Cache      | Redis 7 + cachetools LRU                                                           |
+| Auth       | JWT + Google OAuth (authlib) + session management                                  |
+| IA Analyse | Mistral AI (4 tiers: ministral-8b → mistral-large-2512)                            |
+| IA Chat    | Mistral AI + Perplexity enrichment (v4.0)                                          |
+| Fact-check | Perplexity AI + Brave Search                                                       |
+| Paiements  | Stripe (checkout, webhooks, portal, API keys)                                      |
+| Email      | Resend                                                                             |
+| Monitoring | Sentry                                                                             |
+| Exports    | ReportLab (PDF) + python-docx + WeasyPrint + openpyxl                              |
+| Backup     | S3/R2 (Cloudflare) + APScheduler cron                                              |
+| HTTP       | httpx[http2] + aiohttp                                                             |
+| YouTube    | Supadata (prioritaire) → youtube-transcript-api → Invidious → Piped → yt-dlp → STT |
 
 ### Frontend (TypeScript — React 18)
-| Catégorie | Technologie |
-|-----------|-------------|
-| Build | Vite 5, ES2020 target, code splitting |
-| Routing | React Router 6 (lazy loading) |
-| State | Zustand (Immer + persist) + TanStack Query 5 |
-| Styling | Tailwind CSS 3 |
-| Animations | Framer Motion 12 |
-| Charts | Recharts 3 |
-| Graphs | @xyflow/react + Cytoscape (mind maps) |
-| Analytics | PostHog (RGPD) |
-| Tests | Vitest + Testing Library + Playwright E2E |
+
+| Catégorie  | Technologie                                  |
+| ---------- | -------------------------------------------- |
+| Build      | Vite 5, ES2020 target, code splitting        |
+| Routing    | React Router 6 (lazy loading)                |
+| State      | Zustand (Immer + persist) + TanStack Query 5 |
+| Styling    | Tailwind CSS 3                               |
+| Animations | Framer Motion 12                             |
+| Charts     | Recharts 3                                   |
+| Graphs     | @xyflow/react + Cytoscape (mind maps)        |
+| Analytics  | PostHog (RGPD)                               |
+| Tests      | Vitest + Testing Library + Playwright E2E    |
 
 ### Mobile (TypeScript — Expo SDK 54)
-| Catégorie | Technologie |
-|-----------|-------------|
-| Framework | React Native 0.81 + React 19 |
-| Routing | Expo Router v2 (file-based) |
-| State | Zustand + TanStack Query 5 |
-| Auth | @react-native-google-signin + expo-auth-session |
-| Storage | AsyncStorage + expo-secure-store |
-| Animations | react-native-reanimated 4.1 |
-| Lists | @shopify/flash-list |
-| UI | @gorhom/bottom-sheet, expo-blur, expo-linear-gradient |
-| Tests | Jest + Testing Library RN |
+
+| Catégorie  | Technologie                                           |
+| ---------- | ----------------------------------------------------- |
+| Framework  | React Native 0.81 + React 19                          |
+| Routing    | Expo Router v2 (file-based)                           |
+| State      | Zustand + TanStack Query 5                            |
+| Auth       | @react-native-google-signin + expo-auth-session       |
+| Storage    | AsyncStorage + expo-secure-store                      |
+| Animations | react-native-reanimated 4.1                           |
+| Lists      | @shopify/flash-list                                   |
+| UI         | @gorhom/bottom-sheet, expo-blur, expo-linear-gradient |
+| Tests      | Jest + Testing Library RN                             |
 
 ### Extension Chrome (TypeScript — Manifest V3)
-| Catégorie | Technologie |
-|-----------|-------------|
-| Build | Webpack 5 (5 entry points) |
-| UI | React + custom components |
-| Auth | chrome.identity (Google OAuth) + JWT |
-| Storage | chrome.storage.local |
-| Tests | Jest + jsdom |
+
+| Catégorie | Technologie                          |
+| --------- | ------------------------------------ |
+| Build     | Webpack 5 (5 entry points)           |
+| UI        | React + custom components            |
+| Auth      | chrome.identity (Google OAuth) + JWT |
+| Storage   | chrome.storage.local                 |
+| Tests     | Jest + jsdom                         |
 
 ---
 
 ## API Endpoints (15 routers, 100+ endpoints)
 
 ### Auth (`/api/auth`)
+
 ```
 POST   /register, /login, /refresh, /logout
 DELETE /account
@@ -222,6 +236,7 @@ POST   /google/callback, /google/token   ⚠️ Mobile OAuth
 ```
 
 ### Videos (`/api/videos`)
+
 ```
 POST   /analyze                    # Analyse principale
 GET    /status/{task_id}           # Poll status
@@ -241,6 +256,7 @@ GET    /models/available           # Models par plan
 ```
 
 ### Chat (`/api/chat`)
+
 ```
 POST   /ask                        # Chat v4.0 (Perplexity enrichissement)
 POST   /ask/stream                 # Streaming SSE
@@ -250,6 +266,7 @@ GET    /quota, /{summary_id}/quota # Quotas
 ```
 
 ### Billing (`/api/billing`)
+
 ```
 GET    /plans, /my-plan, /info, /subscription-status
 POST   /create-checkout, /confirm-checkout
@@ -264,6 +281,7 @@ DELETE /api-key
 ```
 
 ### Playlists (`/api/playlists`)
+
 ```
 POST   /analyze, /corpus/analyze, /chat
 GET    /status/{task_id}
@@ -272,6 +290,7 @@ DELETE /{playlist_id}
 ```
 
 ### Study (`/api/study`)
+
 ```
 GET/POST /{summary_id}/flashcards
 GET      /{summary_id}/quiz
@@ -281,12 +300,14 @@ GET      /spaced-repetition/{user_id}
 ```
 
 ### Academic (`/api/academic`)
+
 ```
 POST   /search, /enrich/{summary_id}, /export
 GET    /papers/{summary_id}, /formats
 ```
 
 ### Exports (`/api/exports`)
+
 ```
 POST   /                          # Export (PDF/DOCX/MD/XLSX)
 GET    /{summary_id}/{format}     # Direct download
@@ -294,12 +315,14 @@ GET    /formats, /pdf-options
 ```
 
 ### History (`/api/history`)
+
 ```
 GET    /videos, /videos/{id}, /playlists, /playlists/{id}
 GET    /search, /search/semantic, /stats
 ```
 
 ### Admin (`/api/admin`)
+
 ```
 GET    /stats, /users, /users/{id}, /logs
 PUT    /users/{id}
@@ -308,6 +331,7 @@ DELETE /users/{id}
 ```
 
 ### Tournesol (`/api/tournesol`)
+
 ```
 GET    /video/{video_id}           # Score Tournesol
 POST   /search                     # Recherche Tournesol
@@ -317,6 +341,7 @@ GET    /batch                      # Batch scores (max 20)
 ```
 
 ### Debate (`/api/debate`)
+
 ```
 POST   /create                     # Créer un débat (2 vidéos)
 GET    /status/{debate_id}         # Poll status
@@ -327,6 +352,7 @@ DELETE /{debate_id}                # Supprimer
 ```
 
 ### Autres
+
 ```
 POST   /api/analytics/events       # Tracking
 POST   /api/batch/analyze           # Batch analyses
@@ -339,61 +365,67 @@ POST   /api/search/semantic         # Semantic search
 ## Database Models (25 tables)
 
 ### Core
-| Table | Rôle |
-|-------|------|
-| **User** | Utilisateurs (email, google_id, plan, credits, stripe_customer_id) |
-| **Summary** | Analyses vidéo (video_id, content, platform, full_digest, deep_research) |
-| **RefreshToken** | Sessions JWT (token_hash, expires_at) |
+
+| Table            | Rôle                                                                     |
+| ---------------- | ------------------------------------------------------------------------ |
+| **User**         | Utilisateurs (email, google_id, plan, credits, stripe_customer_id)       |
+| **Summary**      | Analyses vidéo (video_id, content, platform, full_digest, deep_research) |
+| **RefreshToken** | Sessions JWT (token_hash, expires_at)                                    |
 
 ### Content & Study
-| Table | Rôle |
-|-------|------|
-| **ChatMessage** | Messages chat (role, content, web_search_used) |
-| **ChatQuota** | Quota chat par vidéo |
-| **PlaylistAnalysis** | Analyses playlist (results_json) |
-| **PlaylistChatMessage** | Chat playlist |
-| **VideoChunk** | Segments vidéo long |
-| **VideoComparison** | Comparaisons 2 vidéos |
-| **AcademicPaper** | Papiers académiques (arxiv_id, metadata) |
-| **SharedAnalysis** | Analyses partagées (share_token) |
-| **Debate** | Débats IA (video_a, video_b, status, results) |
-| **DebateChatMessage** | Messages chat dans un débat |
+
+| Table                   | Rôle                                           |
+| ----------------------- | ---------------------------------------------- |
+| **ChatMessage**         | Messages chat (role, content, web_search_used) |
+| **ChatQuota**           | Quota chat par vidéo                           |
+| **PlaylistAnalysis**    | Analyses playlist (results_json)               |
+| **PlaylistChatMessage** | Chat playlist                                  |
+| **VideoChunk**          | Segments vidéo long                            |
+| **VideoComparison**     | Comparaisons 2 vidéos                          |
+| **AcademicPaper**       | Papiers académiques (arxiv_id, metadata)       |
+| **SharedAnalysis**      | Analyses partagées (share_token)               |
+| **Debate**              | Débats IA (video_a, video_b, status, results)  |
+| **DebateChatMessage**   | Messages chat dans un débat                    |
 
 ### Transcripts & Search
-| Table | Rôle |
-|-------|------|
-| **TranscriptCache** | Cache L2 persistent (video_id, platform, char_count) |
-| **TranscriptCacheChunk** | Chunks cache |
-| **TranscriptEmbedding** | Embeddings sémantiques |
+
+| Table                    | Rôle                                                 |
+| ------------------------ | ---------------------------------------------------- |
+| **TranscriptCache**      | Cache L2 persistent (video_id, platform, char_count) |
+| **TranscriptCacheChunk** | Chunks cache                                         |
+| **TranscriptEmbedding**  | Embeddings sémantiques                               |
 
 ### Billing & Usage
-| Table | Rôle |
-|-------|------|
-| **DailyQuota** | Quotas journaliers |
-| **CreditTransaction** | Historique crédits |
-| **WebSearchUsage** | Usage recherche web |
+
+| Table                 | Rôle                |
+| --------------------- | ------------------- |
+| **DailyQuota**        | Quotas journaliers  |
+| **CreditTransaction** | Historique crédits  |
+| **WebSearchUsage**    | Usage recherche web |
 
 ### System
-| Table | Rôle |
-|-------|------|
-| **TaskStatus** | Tâches asynchrones |
-| **ApiUsage** | Tracking API calls |
-| **AnalyticsEvent** | Events tracking |
-| **PushToken** | Tokens FCM mobile |
-| **AdminLog** | Logs admin |
-| **ApiStatus** | Status services |
+
+| Table              | Rôle               |
+| ------------------ | ------------------ |
+| **TaskStatus**     | Tâches asynchrones |
+| **ApiUsage**       | Tracking API calls |
+| **AnalyticsEvent** | Events tracking    |
+| **PushToken**      | Tokens FCM mobile  |
+| **AdminLog**       | Logs admin         |
+| **ApiStatus**      | Status services    |
 
 ---
 
 ## Pricing Plans (3 tiers — Mars 2026)
 
-| Plan | ID interne | Prix | Analyses/mois | Max durée | Chat/vidéo | Features clés |
-|------|-----------|------|---------------|-----------|------------|---------------|
-| Gratuit | free | 0€ | 5 | 15min | 5 | Flashcards, historique 60j |
-| Pro | pro | 5.99€ | 30 | 2h | 25 | Mind maps, web search (20/mois), playlists (3), export PDF |
-| Expert | expert | 14.99€ | 100 | 4h | illimité | Web search (60/mois), playlists (10), priority queue, voice chat 20min |
+| Plan    | ID interne | Prix   | Analyses/mois | Max durée | Chat/vidéo | Features clés                                                          |
+| ------- | ---------- | ------ | ------------- | --------- | ---------- | ---------------------------------------------------------------------- |
+| Gratuit | free       | 0€     | 5             | 15min     | 5          | Flashcards, historique 60j                                             |
+| Pro     | pro        | 5.99€  | 30            | 2h        | 25         | Mind maps, web search (20/mois), playlists (3), export PDF             |
+| Expert  | expert     | 14.99€ | 100           | 4h        | illimité   | Web search (60/mois), playlists (10), priority queue, voice chat 20min |
 
 ### Modèles Mistral par plan
+
 - **Free** : mistral-small-2603
 - **Pro** : mistral-medium-2508
 - **Expert** : mistral-large-2512 (262K context)
@@ -415,6 +447,7 @@ POST   /api/search/semantic         # Semantic search
 ---
 
 ## Authentication Flow
+
 ```
 1. POST /api/auth/register → Create user + send verification email (Resend)
 2. POST /api/auth/login    → Returns access_token (15min) + refresh_token (7d)
@@ -429,11 +462,11 @@ POST   /api/search/semantic         # Semantic search
 
 ## Chat v4.0 (Perplexity Enrichissement)
 
-| Plan | Daily | Per-video | Web Search | Model |
-|------|-------|-----------|-----------|-------|
-| Free | 10 | 5 | ✗ | small |
-| Étudiant | 40 | 15 | ✗ | small |
-| Pro | 100 | illimité | ✓ | large |
+| Plan     | Daily | Per-video | Web Search | Model |
+| -------- | ----- | --------- | ---------- | ----- |
+| Free     | 10    | 5         | ✗          | small |
+| Étudiant | 40    | 15        | ✗          | small |
+| Pro      | 100   | illimité  | ✓          | large |
 
 - Auto-enrichissement selon plan (none/light/full/deep)
 - Détection intelligente quand web search est pertinent
@@ -445,55 +478,60 @@ POST   /api/search/semantic         # Semantic search
 ## Critical Files Reference
 
 ### Backend
-| Fichier | Rôle | Taille |
-|---------|------|--------|
-| `backend/src/main.py` | Entry point + 15 routers | 1081 lines |
-| `backend/src/core/config.py` | Settings, plans, quotas, API keys, models Mistral | — |
-| `backend/src/db/database.py` | SQLAlchemy models (23 tables) | — |
-| `backend/src/videos/router.py` | Analysis v6, streaming, discovery | 3959 lines |
-| `backend/src/videos/intelligent_discovery.py` | Scoring multi-critères + Tournesol | — |
-| `backend/src/chat/router.py` | Chat v4.0 + Perplexity | — |
-| `backend/src/billing/router.py` | Stripe workflows | 1636 lines |
-| `backend/src/transcripts/youtube.py` | 7-method extraction chain | 2339 lines |
-| `backend/src/auth/dependencies.py` | get_current_user, require_plan | — |
-| `backend/src/tournesol/router.py` | Proxy API Tournesol | — |
+
+| Fichier                                       | Rôle                                              | Taille     |
+| --------------------------------------------- | ------------------------------------------------- | ---------- |
+| `backend/src/main.py`                         | Entry point + 15 routers                          | 1081 lines |
+| `backend/src/core/config.py`                  | Settings, plans, quotas, API keys, models Mistral | —          |
+| `backend/src/db/database.py`                  | SQLAlchemy models (23 tables)                     | —          |
+| `backend/src/videos/router.py`                | Analysis v6, streaming, discovery                 | 3959 lines |
+| `backend/src/videos/intelligent_discovery.py` | Scoring multi-critères + Tournesol                | —          |
+| `backend/src/chat/router.py`                  | Chat v4.0 + Perplexity                            | —          |
+| `backend/src/billing/router.py`               | Stripe workflows                                  | 1636 lines |
+| `backend/src/transcripts/youtube.py`          | 7-method extraction chain                         | 2339 lines |
+| `backend/src/auth/dependencies.py`            | get_current_user, require_plan                    | —          |
+| `backend/src/tournesol/router.py`             | Proxy API Tournesol                               | —          |
 
 ### Frontend
-| Fichier | Rôle |
-|---------|------|
-| `frontend/src/services/api.ts` | All API calls (2051 lines) |
-| `frontend/src/store/analysisStore.ts` | Zustand state (Immer, 436 lines) |
-| `frontend/src/config/planPrivileges.ts` | Plan features matrix (400 lines) |
-| `frontend/src/pages/DashboardPage.tsx` | Hub principal (60 KB) |
-| `frontend/src/pages/History.tsx` | Virtual scrolling (131 KB) |
-| `frontend/src/components/TournesolTrendingSection.tsx` | Recommandations Tournesol |
-| `frontend/src/types/analysis.ts` | Customization v4 (322 lines) |
+
+| Fichier                                                | Rôle                             |
+| ------------------------------------------------------ | -------------------------------- |
+| `frontend/src/services/api.ts`                         | All API calls (2051 lines)       |
+| `frontend/src/store/analysisStore.ts`                  | Zustand state (Immer, 436 lines) |
+| `frontend/src/config/planPrivileges.ts`                | Plan features matrix (400 lines) |
+| `frontend/src/pages/DashboardPage.tsx`                 | Hub principal (60 KB)            |
+| `frontend/src/pages/History.tsx`                       | Virtual scrolling (131 KB)       |
+| `frontend/src/components/TournesolTrendingSection.tsx` | Recommandations Tournesol        |
+| `frontend/src/types/analysis.ts`                       | Customization v4 (322 lines)     |
 
 ### Mobile
-| Fichier | Rôle |
-|---------|------|
-| `mobile/src/services/api.ts` | API client (1722 lines, mirrors frontend) |
-| `mobile/src/contexts/AuthContext.tsx` | Auth + Google OAuth |
-| `mobile/src/contexts/PlanContext.tsx` | Plan-based feature gating |
-| `mobile/app/(tabs)/index.tsx` | Home (pull-to-refresh + Tournesol) |
-| `mobile/app/(tabs)/analysis/[id].tsx` | Analysis detail (4 tabs) |
-| `mobile/src/constants/config.ts` | API URL, Google Client IDs, timeouts |
-| `mobile/src/stores/analysisStore.ts` | Analysis state (Zustand) |
+
+| Fichier                               | Rôle                                      |
+| ------------------------------------- | ----------------------------------------- |
+| `mobile/src/services/api.ts`          | API client (1722 lines, mirrors frontend) |
+| `mobile/src/contexts/AuthContext.tsx` | Auth + Google OAuth                       |
+| `mobile/src/contexts/PlanContext.tsx` | Plan-based feature gating                 |
+| `mobile/app/(tabs)/index.tsx`         | Home (pull-to-refresh + Tournesol)        |
+| `mobile/app/(tabs)/analysis/[id].tsx` | Analysis detail (4 tabs)                  |
+| `mobile/src/constants/config.ts`      | API URL, Google Client IDs, timeouts      |
+| `mobile/src/stores/analysisStore.ts`  | Analysis state (Zustand)                  |
 
 ### Extension
-| Fichier | Rôle |
-|---------|------|
-| `extension/src/background.ts` | Service worker (558 lines) |
-| `extension/src/content.ts` | YouTube/TikTok DOM injection (800+ lines) |
-| `extension/src/popup/components/MainView.tsx` | Core UI (538 lines) |
-| `extension/src/popup/components/ChatDrawer.tsx` | Chat interface |
-| `extension/src/utils/config.ts` | API URL, Google Client ID |
+
+| Fichier                                         | Rôle                                      |
+| ----------------------------------------------- | ----------------------------------------- |
+| `extension/src/background.ts`                   | Service worker (558 lines)                |
+| `extension/src/content.ts`                      | YouTube/TikTok DOM injection (800+ lines) |
+| `extension/src/popup/components/MainView.tsx`   | Core UI (538 lines)                       |
+| `extension/src/popup/components/ChatDrawer.tsx` | Chat interface                            |
+| `extension/src/utils/config.ts`                 | API URL, Google Client ID                 |
 
 ---
 
 ## Development Commands
 
 ### Backend
+
 ```bash
 cd backend
 python -m venv venv && source venv/bin/activate
@@ -502,6 +540,7 @@ cd src && uvicorn main:app --reload --port 8000
 ```
 
 ### Frontend
+
 ```bash
 cd frontend
 npm install
@@ -513,6 +552,7 @@ npm run test         # Vitest
 ```
 
 ### Mobile
+
 ```bash
 cd mobile
 npm install
@@ -523,6 +563,7 @@ npm run test                  # Jest
 ```
 
 ### Extension
+
 ```bash
 cd extension
 npm install
@@ -532,6 +573,7 @@ npm run typecheck    # tsc --noEmit
 ```
 
 ### EAS (Mobile Production)
+
 ```bash
 eas build --platform ios --profile production
 eas build --platform android --profile production
@@ -543,20 +585,21 @@ eas submit --platform android
 
 ## Infrastructure & DevOps
 
-| Service | Détail |
-|---------|--------|
-| **VPS Hetzner** | clawdbot — (voir .env.production pour IP) |
+| Service          | Détail                                                              |
+| ---------------- | ------------------------------------------------------------------- |
+| **VPS Hetzner**  | clawdbot — (voir .env.production pour IP)                           |
 | **API publique** | https://api.deepsightsynthesis.com (Caddy reverse proxy + auto-SSL) |
-| **Frontend** | Vercel — auto-deploy on `main` push |
-| **Mobile** | EAS Build — App Store (ascAppId: 6740487498) + Play Store |
+| **Frontend**     | Vercel — auto-deploy on `main` push                                 |
+| **Mobile**       | EAS Build — App Store (ascAppId: 6740487498) + Play Store           |
 
 ### Docker Stack Hetzner (Production)
-| Container | Image | Rôle |
-|-----------|-------|------|
-| `repo-backend-1` | `deepsight-backend:latest` | FastAPI 4 workers (port 8080) |
-| `repo-caddy-1` | `caddy:2-alpine` | Reverse proxy + auto-SSL (80/443) |
-| `repo-postgres-1` | `postgres:17-alpine` | PostgreSQL 17 |
-| `repo-redis-1` | `redis:7-alpine` | Redis 7 cache |
+
+| Container         | Image                      | Rôle                              |
+| ----------------- | -------------------------- | --------------------------------- |
+| `repo-backend-1`  | `deepsight-backend:latest` | FastAPI 4 workers (port 8080)     |
+| `repo-caddy-1`    | `caddy:2-alpine`           | Reverse proxy + auto-SSL (80/443) |
+| `repo-postgres-1` | `postgres:17-alpine`       | PostgreSQL 17                     |
+| `repo-redis-1`    | `redis:7-alpine`           | Redis 7 cache                     |
 
 - **Réseau Docker** : `repo_deepsight`
 - **Env production** : `/opt/deepsight/repo/.env.production`
@@ -565,6 +608,7 @@ eas submit --platform android
 - **Caddyfile** : `deploy/hetzner/caddy/Caddyfile` (300s timeouts SSE, HSTS, security headers)
 
 ### Déploiement
+
 - **Frontend** : `git push origin main` → Vercel auto-deploy
 - **Backend** : Push → SSH VPS → `cd /opt/deepsight/repo && git pull` → `docker build` → recreate container
 - **Mobile** : `eas update` (OTA) ou `eas build` (natif)
@@ -575,6 +619,7 @@ eas submit --platform android
 ## Environment Variables
 
 ### Backend (.env.production)
+
 ```env
 # Core
 DATABASE_URL=postgresql+asyncpg://deepsight:PASS@repo-postgres-1:5432/deepsight
@@ -624,17 +669,19 @@ SENTRY_DSN=optional
 ```
 
 ### Frontend (.env)
+
 ```env
 VITE_API_URL=https://api.deepsightsynthesis.com
 VITE_SENTRY_DSN=optional
 ```
 
 ### Mobile (constants/config.ts)
+
 ```typescript
-export const API_BASE_URL = 'https://api.deepsightsynthesis.com';
-export const GOOGLE_CLIENT_ID = 'web-client-id.apps.googleusercontent.com';
-export const GOOGLE_ANDROID_CLIENT_ID = 'android-client-id';
-export const GOOGLE_IOS_CLIENT_ID = 'ios-client-id';
+export const API_BASE_URL = "https://api.deepsightsynthesis.com";
+export const GOOGLE_CLIENT_ID = "web-client-id.apps.googleusercontent.com";
+export const GOOGLE_ANDROID_CLIENT_ID = "android-client-id";
+export const GOOGLE_IOS_CLIENT_ID = "ios-client-id";
 ```
 
 ---
@@ -642,6 +689,7 @@ export const GOOGLE_IOS_CLIENT_ID = 'ios-client-id';
 ## Code Conventions
 
 ### Python (Backend)
+
 - **Toujours async** : `async/await` pour tout I/O
 - **Type hints** : tous paramètres et retours typés
 - **Pydantic v2** : valider tous les schémas requête/réponse
@@ -650,6 +698,7 @@ export const GOOGLE_IOS_CLIENT_ID = 'ios-client-id';
 - **Pas de secrets hardcodés** : tout via `core/config.py`
 
 ### TypeScript (Frontend + Mobile + Extension)
+
 - **Strict mode** activé dans tsconfig
 - **Interfaces** plutôt que types pour les objets
 - **Functional components** uniquement
@@ -674,12 +723,12 @@ export const GOOGLE_IOS_CLIENT_ID = 'ios-client-id';
 
 ## Test Coverage (Mars 2026)
 
-| Composant | Tests | Status |
-|-----------|-------|--------|
-| Backend | 526/526 | ✅ All passing |
-| Frontend | 400/400 | ✅ All passing |
-| Mobile | 178/178 | ✅ All passing |
-| Extension | Partiel | ⚠️ passWithNoTests |
+| Composant        | Tests   | Status                                 |
+| ---------------- | ------- | -------------------------------------- |
+| Backend          | 526/526 | ✅ All passing                         |
+| Frontend         | 400/400 | ✅ All passing                         |
+| Mobile           | 178/178 | ✅ All passing                         |
+| Extension        | Partiel | ⚠️ passWithNoTests                     |
 | E2E (Playwright) | 6 specs | ✅ Auth, Analysis, Navigation, Upgrade |
 
 ---
@@ -687,12 +736,14 @@ export const GOOGLE_IOS_CLIENT_ID = 'ios-client-id';
 ## Known Issues & TODOs
 
 ### 🔴 Critique
+
 - **Google OAuth Mobile** : `/api/auth/google/token` endpoint existe mais incomplet
 - **YouTube IP ban Hetzner** : VPS IP bloquée par YouTube. Supadata = méthode principale. Proxy Webshare en cours
 - **Deploy backend workflow** : `.github/workflows/deploy-backend.yml` référence encore Railway → à migrer vers SSH Hetzner
 - **Resend rate limiting** : 429 errors (56/24h) → email batch scheduler dépasse 5 req/s
 
 ### 🟡 Moyen
+
 - Redis cache pour transcripts (optimisation)
 - Rate limiting IP pour requêtes non authentifiées
 - Optimiser requêtes N+1 dans /videos/history
@@ -701,11 +752,13 @@ export const GOOGLE_IOS_CLIENT_ID = 'ios-client-id';
 - docker-compose.yml fonctionnel (actuellement containers manuels `docker run`)
 
 ### 🟢 Bas
+
 - Chrome Web Store submission (extension prête, pas soumise)
 - Cross-domain auth sync testing en production
 - Spaced repetition UI fine-tuning
 
 ### ✅ Résolu récemment (Mars 2026)
+
 - AI Debate feature : confrontation de perspectives entre 2 vidéos (backend + frontend)
 - Security hardening : IDOR patch chat v4, rate limits auth, Gitleaks CI/CD, credential redaction
 - GitHub CLI (`gh`) configuré sur machine dev Windows (PR creation, merge via CLI)
@@ -724,23 +777,23 @@ export const GOOGLE_IOS_CLIENT_ID = 'ios-client-id';
 
 ## Features par plateforme
 
-| Feature | Web | Mobile | Extension |
-|---------|-----|--------|-----------|
-| Analyse vidéo | ✅ | ✅ | ✅ |
-| Quick Chat | ✅ | ✅ | ✅ |
-| Chat contextuel | ✅ | ✅ | ✅ |
-| Flashcards | ✅ | ✅ | ❌ CTA |
-| Quiz | ✅ | ✅ | ❌ CTA |
-| Mind Maps | ✅ | ❌ CTA | ❌ CTA |
-| Playlists | ✅ | ❌ CTA | ❌ CTA |
-| Export PDF | ✅ Pro | ❌ CTA | ❌ CTA |
-| Web Search | ✅ Pro+ | ❌ CTA | ❌ CTA |
-| Academic Search | ✅ | ✅ | ❌ |
-| Tournesol | ✅ | ✅ | ❌ |
-| History | ✅ | ✅ | ✅ (local) |
-| Billing/Upgrade | ✅ Stripe | ✅ | Link to web |
-| AI Debate | ✅ Pro | ❌ CTA | ❌ CTA |
-| Guest mode | ❌ | ❌ | ✅ (1 analyse) |
+| Feature         | Web       | Mobile | Extension      |
+| --------------- | --------- | ------ | -------------- |
+| Analyse vidéo   | ✅        | ✅     | ✅             |
+| Quick Chat      | ✅        | ✅     | ✅             |
+| Chat contextuel | ✅        | ✅     | ✅             |
+| Flashcards      | ✅        | ✅     | ❌ CTA         |
+| Quiz            | ✅        | ✅     | ❌ CTA         |
+| Mind Maps       | ✅        | ❌ CTA | ❌ CTA         |
+| Playlists       | ✅        | ❌ CTA | ❌ CTA         |
+| Export PDF      | ✅ Pro    | ❌ CTA | ❌ CTA         |
+| Web Search      | ✅ Pro+   | ❌ CTA | ❌ CTA         |
+| Academic Search | ✅        | ✅     | ❌             |
+| Tournesol       | ✅        | ✅     | ❌             |
+| History         | ✅        | ✅     | ✅ (local)     |
+| Billing/Upgrade | ✅ Stripe | ✅     | Link to web    |
+| AI Debate       | ✅ Pro    | ❌ CTA | ❌ CTA         |
+| Guest mode      | ❌        | ❌     | ✅ (1 analyse) |
 
 ---
 
@@ -754,4 +807,4 @@ export const GOOGLE_IOS_CLIENT_ID = 'ios-client-id';
 
 ---
 
-*Last updated: March 23, 2026 — Version 3.1*
+_Last updated: March 23, 2026 — Version 3.1_

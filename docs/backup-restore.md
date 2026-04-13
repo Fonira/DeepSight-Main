@@ -7,6 +7,7 @@
 ## Overview
 
 Automated PostgreSQL backup system with:
+
 - Full SQL dump via `psycopg2` (schema + data)
 - gzip compression
 - Local storage + S3 upload
@@ -43,28 +44,28 @@ Automated PostgreSQL backup system with:
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `scripts/backup_db.py` | SQL dump, compress, upload, cleanup, email |
-| `scripts/restore_db.py` | List backups, download from S3, restore SQL |
-| `admin/router.py` | `POST /api/admin/backup/trigger`, `GET /api/admin/backup/list` |
-| `main.py` | APScheduler cron integration in lifespan |
-| `core/config.py` | `BACKUP_CONFIG` with S3/cron settings |
+| File                    | Purpose                                                        |
+| ----------------------- | -------------------------------------------------------------- |
+| `scripts/backup_db.py`  | SQL dump, compress, upload, cleanup, email                     |
+| `scripts/restore_db.py` | List backups, download from S3, restore SQL                    |
+| `admin/router.py`       | `POST /api/admin/backup/trigger`, `GET /api/admin/backup/list` |
+| `main.py`               | APScheduler cron integration in lifespan                       |
+| `core/config.py`        | `BACKUP_CONFIG` with S3/cron settings                          |
 
 ---
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AWS_ACCESS_KEY_ID` | — | Required for S3 uploads |
-| `AWS_SECRET_ACCESS_KEY` | — | Required for S3 uploads |
-| `AWS_REGION` | `eu-west-3` | AWS region |
-| `BACKUP_S3_BUCKET` | `deepsight-backups` | S3 bucket name |
-| `BACKUP_S3_PREFIX` | `db-backups/` | Key prefix in bucket |
-| `BACKUP_CRON_HOUR` | `3` | Hour (UTC) for daily backup |
-| `BACKUP_CRON_MINUTE` | `0` | Minute for daily backup |
-| `BACKUP_RETENTION_DAYS` | `30` | Delete S3 backups older than N days |
+| Variable                | Default             | Description                         |
+| ----------------------- | ------------------- | ----------------------------------- |
+| `AWS_ACCESS_KEY_ID`     | —                   | Required for S3 uploads             |
+| `AWS_SECRET_ACCESS_KEY` | —                   | Required for S3 uploads             |
+| `AWS_REGION`            | `eu-west-3`         | AWS region                          |
+| `BACKUP_S3_BUCKET`      | `deepsight-backups` | S3 bucket name                      |
+| `BACKUP_S3_PREFIX`      | `db-backups/`       | Key prefix in bucket                |
+| `BACKUP_CRON_HOUR`      | `3`                 | Hour (UTC) for daily backup         |
+| `BACKUP_CRON_MINUTE`    | `0`                 | Minute for daily backup             |
+| `BACKUP_RETENTION_DAYS` | `30`                | Delete S3 backups older than N days |
 
 If `AWS_ACCESS_KEY_ID` is not set, backups are saved locally only (no S3 upload).
 
@@ -111,6 +112,7 @@ python -m scripts.restore_db --latest
 Triggers a manual backup. Requires admin authentication.
 
 **Response:**
+
 ```json
 {
   "timestamp": "2026-02-10T03:00:00+00:00",
@@ -129,6 +131,7 @@ Triggers a manual backup. Requires admin authentication.
 Lists all available backups (local + S3), sorted newest first.
 
 **Response:**
+
 ```json
 {
   "backups": [
@@ -183,6 +186,7 @@ Lists all available backups (local + S3), sorted newest first.
 ## Scheduler
 
 APScheduler `AsyncIOScheduler` is started in the FastAPI `lifespan` context manager:
+
 - Job ID: `daily_backup`
 - Trigger: `CronTrigger(hour=BACKUP_CRON_HOUR, minute=BACKUP_CRON_MINUTE)`
 - Gracefully shuts down on app stop
@@ -194,6 +198,7 @@ If `apscheduler` is not installed, the app starts normally with a warning log.
 ## Dependencies
 
 Added to `requirements.txt`:
+
 - `boto3>=1.34.0` — S3 client
 - `apscheduler>=3.10.0` — Cron scheduling
 - `psycopg2-binary>=2.9.0` — Sync PostgreSQL driver for SQL dumps

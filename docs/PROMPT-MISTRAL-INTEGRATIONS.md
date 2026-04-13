@@ -9,12 +9,14 @@
 Je suis le fondateur solo de **DeepSight**, un SaaS d'analyse IA de vidéos YouTube/TikTok. Le projet est un monorepo tri-plateforme (Web React + Mobile Expo + Extension Chrome) avec un backend FastAPI Python déployé sur Hetzner VPS Docker.
 
 **Ce qui vient d'être fait (avril 2026) :**
+
 - Migration du tier Mistral Experiment → Scale (6 req/s, 2M tokens/min)
 - Création de `core/llm_provider.py` — helper centralisé avec fallback chain (Mistral → DeepSeek)
 - Tous les appels LLM passent par `llm_complete()` et `llm_complete_stream()`
 - DeepSeek configuré comme fallback de résilience
 
 **Stack actuelle pertinente :**
+
 - Backend : FastAPI + Python 3.11 + httpx (async)
 - AI : Mistral API (Small 2603, Medium 2508, Large 2512) via `core/llm_provider.py`
 - Fact-check : Brave Search API + Mistral synthèse (`videos/web_search_provider.py`)
@@ -23,6 +25,7 @@ Je suis le fondateur solo de **DeepSight**, un SaaS d'analyse IA de vidéos YouT
 - AudioSummaryPlayer : composant frontend EXISTANT, attend un endpoint backend TTS
 
 **Fichiers clés à lire avant de coder :**
+
 - `backend/src/core/llm_provider.py` — Le helper LLM centralisé
 - `backend/src/core/config.py` — Toutes les config/API keys
 - `backend/src/videos/web_search_provider.py` — Pipeline Brave + Mistral
@@ -40,10 +43,12 @@ Je suis le fondateur solo de **DeepSight**, un SaaS d'analyse IA de vidéos YouT
 **Objectif :** Remplacer le pipeline actuel (Brave Search → synthèse Mistral séparée) par un **Agent Mistral avec web search natif intégré**. Un seul appel API au lieu de 2-3.
 
 **Ce qui existe :**
+
 - `videos/web_search_provider.py` : appelle Brave Search, puis passe les résultats à Mistral pour synthèse
 - Utilisé pour : enrichissement d'analyse, fact-check, chat enrichi, débat IA
 
 **Ce qu'il faut faire :**
+
 1. Créer un Agent Mistral via l'API Agents (POST https://api.mistral.ai/v1/agents)
    - Nom : "DeepSight Analyst"
    - Instructions : prompt système pour fact-checking et enrichissement
@@ -65,11 +70,13 @@ Je suis le fondateur solo de **DeepSight**, un SaaS d'analyse IA de vidéos YouT
 **Objectif :** Toutes les analyses non-temps-réel passent par le Batch API Mistral (50% moins cher, asynchrone).
 
 **Ce qui existe :**
+
 - `backend/src/playlists/` : analyse de playlists (itère sur chaque vidéo → analyse séquentielle)
 - `backend/src/batch/` : batch analyses existantes
 - Les playlists peuvent avoir 10-50 vidéos → beaucoup de tokens
 
 **Ce qu'il faut faire :**
+
 1. Créer `core/mistral_batch.py` — wrapper pour le Batch API
    - Soumettre un batch de requêtes chat/completions en JSONL
    - Poller le status jusqu'à completion
@@ -88,11 +95,13 @@ Je suis le fondateur solo de **DeepSight**, un SaaS d'analyse IA de vidéos YouT
 **Objectif :** Générer des synthèses audio à partir des analyses texte. Le composant frontend AudioSummaryPlayer existe déjà.
 
 **Ce qui existe :**
+
 - Frontend : `AudioSummaryPlayer` component (attend un endpoint backend)
 - Config : `TTS_PROVIDER` dans config.py, `ELEVENLABS_API_KEY` configuré
 - Pas encore d'endpoint backend `/api/tts/` ou `/api/audio/`
 
 **Ce qu'il faut faire :**
+
 1. Créer `backend/src/audio/router.py` — endpoints TTS
    - POST `/api/audio/tts` — génère audio à partir de texte (synthèse)
    - GET `/api/audio/tts/{summary_id}` — récupère l'audio d'une analyse
@@ -116,6 +125,7 @@ Je suis le fondateur solo de **DeepSight**, un SaaS d'analyse IA de vidéos YouT
 **Objectif :** Remplacer les 4 providers STT de la Phase 3 (Groq Whisper → OpenAI Whisper → Deepgram → AssemblyAI) par Voxtral Transcribe V2.
 
 **Ce qui existe :**
+
 - `transcripts/youtube.py` : pipeline 7 méthodes
   - Phase 0 : Supadata (prioritaire, texte)
   - Phase 1 : youtube-transcript-api + Invidious + Piped (texte)
@@ -124,6 +134,7 @@ Je suis le fondateur solo de **DeepSight**, un SaaS d'analyse IA de vidéos YouT
 - Phase 3 télécharge l'audio puis transcrit via Groq → OpenAI → Deepgram → AssemblyAI
 
 **Ce qu'il faut faire :**
+
 1. Créer `backend/src/audio/stt_provider.py` — wrapper Voxtral STT
    - Endpoint : POST https://api.mistral.ai/v1/audio/transcriptions (vérifier la doc)
    - Mode batch pour les fichiers longs
@@ -143,11 +154,27 @@ Je suis le fondateur solo de **DeepSight**, un SaaS d'analyse IA de vidéos YouT
 **Objectif :** Fine-tuner mistral-small sur les analyses existantes pour obtenir des analyses parfaitement formatées à 1/10ème du prix de Large.
 
 **Ce qu'il faut faire :**
+
 1. Créer `scripts/export_training_data.py` :
    - Requêter la DB PostgreSQL pour récupérer les meilleures analyses (>500 mots, bien formatées)
    - Exporter en format JSONL pour fine-tuning Mistral :
      ```jsonl
-     {"messages": [{"role": "system", "content": "..."}, {"role": "user", "content": "Titre: X\nTranscript: Y\n..."}, {"role": "assistant", "content": "analyse complète ici"}]}
+     {
+       "messages": [
+         {
+           "role": "system",
+           "content": "..."
+         },
+         {
+           "role": "user",
+           "content": "Titre: X\nTranscript: Y\n..."
+         },
+         {
+           "role": "assistant",
+           "content": "analyse complète ici"
+         }
+       ]
+     }
      ```
    - Filtrer : garder les analyses en mode standard + expert, plan Pro+
    - Objectif : 200-500 exemples de qualité
@@ -171,6 +198,7 @@ Je suis le fondateur solo de **DeepSight**, un SaaS d'analyse IA de vidéos YouT
 **Objectif :** Nouvelle feature : "Upload un PDF → DeepSight l'analyse comme une vidéo".
 
 **Ce qu'il faut faire :**
+
 1. Créer `backend/src/documents/router.py` :
    - POST `/api/documents/analyze` — upload PDF + lance analyse
    - GET `/api/documents/status/{task_id}` — poll status

@@ -197,27 +197,27 @@ VITE_SENTRY_DSN=optional-sentry-dsn
 
 ## 🔬 Technology Stack
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Backend** | FastAPI + SQLAlchemy | Async API + ORM |
-| **AI** | Mistral AI + Perplexity | Analysis + Fact-check |
-| **Frontend** | React 18 + Vite + Tailwind | Modern web UI |
-| **Mobile** | Expo SDK 54 + React Native | Cross-platform apps |
-| **State** | Zustand + TanStack Query | Client state management |
-| **Auth** | JWT + Google OAuth | Secure authentication |
-| **Payments** | Stripe | Subscription billing |
-| **Deploy** | Railway + Vercel + EAS | Cloud infrastructure |
+| Layer        | Technology                 | Purpose                 |
+| ------------ | -------------------------- | ----------------------- |
+| **Backend**  | FastAPI + SQLAlchemy       | Async API + ORM         |
+| **AI**       | Mistral AI + Perplexity    | Analysis + Fact-check   |
+| **Frontend** | React 18 + Vite + Tailwind | Modern web UI           |
+| **Mobile**   | Expo SDK 54 + React Native | Cross-platform apps     |
+| **State**    | Zustand + TanStack Query   | Client state management |
+| **Auth**     | JWT + Google OAuth         | Secure authentication   |
+| **Payments** | Stripe                     | Subscription billing    |
+| **Deploy**   | Railway + Vercel + EAS     | Cloud infrastructure    |
 
 ---
 
 ## 💰 Pricing Plans
 
-| Plan (Display) | Internal ID | Price | Analyses/mo | Key Features |
-|----------------|------------|-------|-------------|--------------|
-| **Free** | free | $0 | 3 | 15min videos, 60-day history |
-| **Starter** | etudiant | $2.99 | 20 | Flashcards, mind maps |
-| **Student** | starter | $5.99 | 50 | 2h videos, web search AI |
-| **Pro** | pro | $12.99 | 200 | Playlists, unlimited chat, PDF export |
+| Plan (Display) | Internal ID | Price  | Analyses/mo | Key Features                          |
+| -------------- | ----------- | ------ | ----------- | ------------------------------------- |
+| **Free**       | free        | $0     | 3           | 15min videos, 60-day history          |
+| **Starter**    | etudiant    | $2.99  | 20          | Flashcards, mind maps                 |
+| **Student**    | starter     | $5.99  | 50          | 2h videos, web search AI              |
+| **Pro**        | pro         | $12.99 | 200         | Playlists, unlimited chat, PDF export |
 
 ---
 

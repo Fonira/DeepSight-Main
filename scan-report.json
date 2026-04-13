@@ -5,11 +5,26 @@
       "health_score": 72,
       "lines_of_code": 56078,
       "todos": [
-        {"file": "batch/router.py:340", "text": "TODO: Intégrer avec le système d'analyse réel"},
-        {"file": "chat/websocket.py:569", "text": "TODO: Extraire user_id du token JWT"},
-        {"file": "usage/router.py:214", "text": "TODO: récupérer subscription_renewal depuis Stripe"},
-        {"file": "videos/streaming.py:410", "text": "TODO: Get actual duration"},
-        {"file": "videos/streaming.py:500", "text": "TODO: detect category from metadata"}
+        {
+          "file": "batch/router.py:340",
+          "text": "TODO: Intégrer avec le système d'analyse réel"
+        },
+        {
+          "file": "chat/websocket.py:569",
+          "text": "TODO: Extraire user_id du token JWT"
+        },
+        {
+          "file": "usage/router.py:214",
+          "text": "TODO: récupérer subscription_renewal depuis Stripe"
+        },
+        {
+          "file": "videos/streaming.py:410",
+          "text": "TODO: Get actual duration"
+        },
+        {
+          "file": "videos/streaming.py:500",
+          "text": "TODO: detect category from metadata"
+        }
       ],
       "security_issues": [
         {
@@ -76,8 +91,14 @@
       "health_score": 68,
       "lines_of_code": 48645,
       "todos": [
-        {"file": "components/PrivateRoute.tsx:23", "text": "TODO: remove this dev bypass after preview - SECURITY: bypasses auth in DEV mode"},
-        {"file": "pages/DashboardPage.tsx:101", "text": "Playlist regex comment (minor)"}
+        {
+          "file": "components/PrivateRoute.tsx:23",
+          "text": "TODO: remove this dev bypass after preview - SECURITY: bypasses auth in DEV mode"
+        },
+        {
+          "file": "pages/DashboardPage.tsx:101",
+          "text": "Playlist regex comment (minor)"
+        }
       ],
       "security_issues": [
         {
@@ -106,10 +127,25 @@
         "hooks/ - No tests for custom hooks"
       ],
       "pages": [
-        "AdminPage", "AnalyticsPage", "AuthCallback", "ContactPage", "DashboardPage",
-        "History", "LandingPage", "LegalPage", "Login", "MyAccount",
-        "PaymentCancel", "PaymentSuccess", "PlaylistDetailPage", "PlaylistPage",
-        "Settings", "StatusPage", "StudyPage", "UpgradePage", "UsageDashboard"
+        "AdminPage",
+        "AnalyticsPage",
+        "AuthCallback",
+        "ContactPage",
+        "DashboardPage",
+        "History",
+        "LandingPage",
+        "LegalPage",
+        "Login",
+        "MyAccount",
+        "PaymentCancel",
+        "PaymentSuccess",
+        "PlaylistDetailPage",
+        "PlaylistPage",
+        "Settings",
+        "StatusPage",
+        "StudyPage",
+        "UpgradePage",
+        "UsageDashboard"
       ]
     },
     "mobile": {
@@ -134,15 +170,35 @@
         "navigation/ - No tests for navigation logic"
       ],
       "screens": [
-        "AccountScreen", "AnalysisScreen", "ContactScreen", "DashboardScreen",
-        "ForgotPasswordScreen", "HistoryScreen", "LandingScreen", "LegalScreen",
-        "LoginScreen", "OnboardingScreen", "PaymentCancelScreen", "PaymentSuccessScreen",
-        "PlaylistDetailScreen", "PlaylistsScreen", "ProfileScreen", "RegisterScreen",
-        "SettingsScreen", "StudyScreen", "UpgradeScreen", "UsageScreen", "VerifyEmailScreen"
+        "AccountScreen",
+        "AnalysisScreen",
+        "ContactScreen",
+        "DashboardScreen",
+        "ForgotPasswordScreen",
+        "HistoryScreen",
+        "LandingScreen",
+        "LegalScreen",
+        "LoginScreen",
+        "OnboardingScreen",
+        "PaymentCancelScreen",
+        "PaymentSuccessScreen",
+        "PlaylistDetailScreen",
+        "PlaylistsScreen",
+        "ProfileScreen",
+        "RegisterScreen",
+        "SettingsScreen",
+        "StudyScreen",
+        "UpgradeScreen",
+        "UsageScreen",
+        "VerifyEmailScreen"
       ],
       "backup_files": [
-        "DashboardScreen.tsx.bak", "HistoryScreen.tsx.bak", "LandingScreen.tsx.bak",
-        "LoginScreen.tsx.bak", "ProfileScreen.tsx.bak", "SettingsScreen.tsx.bak"
+        "DashboardScreen.tsx.bak",
+        "HistoryScreen.tsx.bak",
+        "LandingScreen.tsx.bak",
+        "LoginScreen.tsx.bak",
+        "ProfileScreen.tsx.bak",
+        "SettingsScreen.tsx.bak"
       ]
     }
   },

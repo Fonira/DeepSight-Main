@@ -4,12 +4,12 @@ Les workflows `smoke-tests.yml` et `smoke-on-deploy.yml` requierent les secrets 
 
 ## Secrets a configurer
 
-| Secret | Description | Comment l'obtenir |
-|--------|-------------|-------------------|
-| `API_BASE_URL` | URL de l'API backend production | `https://api.deepsightsynthesis.com` |
+| Secret                | Description                                              | Comment l'obtenir                                                                                          |
+| --------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `API_BASE_URL`        | URL de l'API backend production                          | `https://api.deepsightsynthesis.com`                                                                       |
 | `HEALTH_CHECK_SECRET` | Secret pour le deep health check (`/api/v1/health/deep`) | Generer un token aleatoire : `openssl rand -hex 32` puis l'ajouter aussi dans `.env.production` sur le VPS |
-| `TELEGRAM_BOT_TOKEN` | Token du bot Telegram @Fonirabot | Depuis @BotFather sur Telegram : `/mybots` > selectionner @Fonirabot > API Token |
-| `TELEGRAM_CHAT_ID` | ID du chat/groupe pour les alertes | Voir la procedure ci-dessous |
+| `TELEGRAM_BOT_TOKEN`  | Token du bot Telegram @Fonirabot                         | Depuis @BotFather sur Telegram : `/mybots` > selectionner @Fonirabot > API Token                           |
+| `TELEGRAM_CHAT_ID`    | ID du chat/groupe pour les alertes                       | Voir la procedure ci-dessous                                                                               |
 
 ## Obtenir le Telegram Chat ID
 

@@ -65,14 +65,14 @@ DeepSight is a distributed SaaS application with three main components:
 
 ### Technology Stack
 
-| Component | Technology | Version |
-|-----------|------------|---------|
-| Framework | FastAPI | 0.115+ |
-| ORM | SQLAlchemy | 2.0 |
-| Database | PostgreSQL / SQLite | 15+ / 3.x |
-| Python | Python | 3.11+ |
-| Task Queue | Background Tasks | Built-in |
-| Auth | JWT + OAuth | python-jose |
+| Component  | Technology          | Version     |
+| ---------- | ------------------- | ----------- |
+| Framework  | FastAPI             | 0.115+      |
+| ORM        | SQLAlchemy          | 2.0         |
+| Database   | PostgreSQL / SQLite | 15+ / 3.x   |
+| Python     | Python              | 3.11+       |
+| Task Queue | Background Tasks    | Built-in    |
+| Auth       | JWT + OAuth         | python-jose |
 
 ### Module Structure
 
@@ -169,14 +169,14 @@ def require_plan(*allowed_plans: str):
 
 ### Technology Stack
 
-| Component | Technology |
-|-----------|------------|
-| Framework | React 18 |
-| Build | Vite 5 |
-| Language | TypeScript 5.6 |
-| Styling | Tailwind CSS |
-| State | Zustand + TanStack Query |
-| Routing | React Router 6 |
+| Component | Technology               |
+| --------- | ------------------------ |
+| Framework | React 18                 |
+| Build     | Vite 5                   |
+| Language  | TypeScript 5.6           |
+| Styling   | Tailwind CSS             |
+| State     | Zustand + TanStack Query |
+| Routing   | React Router 6           |
 
 ### Directory Structure
 
@@ -225,7 +225,7 @@ frontend/src/
 interface AnalysisStore {
   currentAnalysis: Analysis | null;
   isLoading: boolean;
-  
+
   // Actions
   setAnalysis: (analysis: Analysis) => void;
   startAnalysis: (url: string) => Promise<void>;
@@ -236,17 +236,17 @@ const useAnalysisStore = create<AnalysisStore>()(
   immer((set, get) => ({
     currentAnalysis: null,
     isLoading: false,
-    
+
     setAnalysis: (analysis) => set({ currentAnalysis: analysis }),
-    
+
     startAnalysis: async (url) => {
       set({ isLoading: true });
       const result = await api.analyzeVideo(url);
       set({ currentAnalysis: result, isLoading: false });
     },
-    
+
     clearAnalysis: () => set({ currentAnalysis: null }),
-  }))
+  })),
 );
 ```
 
@@ -256,14 +256,14 @@ const useAnalysisStore = create<AnalysisStore>()(
 
 ### Technology Stack
 
-| Component | Technology |
-|-----------|------------|
-| Framework | React Native 0.81 |
-| Platform | Expo SDK 54 |
-| Navigation | React Navigation 6 |
-| State | Zustand + TanStack Query |
-| Auth | expo-auth-session |
-| Storage | expo-secure-store |
+| Component  | Technology               |
+| ---------- | ------------------------ |
+| Framework  | React Native 0.81        |
+| Platform   | Expo SDK 54              |
+| Navigation | React Navigation 6       |
+| State      | Zustand + TanStack Query |
+| Auth       | expo-auth-session        |
+| Storage    | expo-secure-store        |
 
 ### Directory Structure
 
@@ -526,14 +526,14 @@ CREATE TABLE subscriptions (
 
 ### Security Measures
 
-| Layer | Protection |
-|-------|------------|
-| Transport | HTTPS only, HSTS |
-| Authentication | JWT with short expiry, session tokens |
-| Authorization | Role-based (user/admin), Plan-based features |
-| Input | Pydantic validation, SQL injection prevention |
-| Secrets | Environment variables, never in code |
-| Monitoring | Sentry error tracking, structured logging |
+| Layer          | Protection                                    |
+| -------------- | --------------------------------------------- |
+| Transport      | HTTPS only, HSTS                              |
+| Authentication | JWT with short expiry, session tokens         |
+| Authorization  | Role-based (user/admin), Plan-based features  |
+| Input          | Pydantic validation, SQL injection prevention |
+| Secrets        | Environment variables, never in code          |
+| Monitoring     | Sentry error tracking, structured logging     |
 
 ---
 
@@ -593,11 +593,11 @@ CREATE TABLE subscriptions (
 
 ### Mistral AI Usage
 
-| Feature | Model | Purpose |
-|---------|-------|---------|
-| Analysis | mistral-large | Source-verified video summaries |
-| Chat | mistral-medium | Contextual Q&A |
-| Study Tools | mistral-medium | Quiz/flashcard generation |
+| Feature     | Model          | Purpose                         |
+| ----------- | -------------- | ------------------------------- |
+| Analysis    | mistral-large  | Source-verified video summaries |
+| Chat        | mistral-medium | Contextual Q&A                  |
+| Study Tools | mistral-medium | Quiz/flashcard generation       |
 
 ### Prompt Engineering
 
@@ -607,7 +607,7 @@ You are an expert analyst using evidence-based epistemology.
 Analyze the content and mark claims with epistemic markers:
 
 - **SOLID** [🟢]: Established fact, scientific consensus
-- **PLAUSIBLE** [🟡]: Probable, needs confirmation  
+- **PLAUSIBLE** [🟡]: Probable, needs confirmation
 - **UNCERTAIN** [🟠]: Hypothesis, ongoing debate
 - **TO_VERIFY** [🔴]: Doubtful, verify independently
 
@@ -690,4 +690,4 @@ logger.info(
 
 ---
 
-*Last updated: January 2025*
+_Last updated: January 2025_

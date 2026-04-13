@@ -3,9 +3,11 @@
 > **Pré-requis** : Sprint 0 terminé, tous les fichiers fondations sont dans `mobile/`
 >
 > **Lancement** : Ouvrir 6 terminaux dans `C:\Users\33667\DeepSight-Main\mobile` et exécuter chacun avec :
+>
 > ```
 > claude --dangerously-skip-permissions
 > ```
+>
 > Puis coller le prompt correspondant.
 
 ---
@@ -512,7 +514,7 @@ Crée les 5 fichiers un par un. Typecheck après chaque : npx tsc --noEmit 2>&1 
 
 ## FENÊTRE 6 — PROFILE + UPGRADE
 
-```
+````
 Tu es le développeur de la branche v2/profile du projet DeepSight Mobile V2 (Expo SDK 54 / React Native 0.81 / TypeScript strict).
 
 MISSION : Créer le Profile Screen (fusion de 4 anciens écrans : Profil, Settings, Usage, Account) et l'Upgrade Screen.
@@ -613,9 +615,10 @@ const UPGRADE_PLANS = [
   { id: 'team', name: 'Team', price: '29,99€', period: '/mois',
     features: ['1000 analyses/mois', '50000 crédits', 'Accès API', '5 utilisateurs', 'Dashboard analytics'] },
 ];
-```
+````
 
 RÈGLES STRICTES :
+
 - TOUTES actions destructives (logout, delete) = Alert.alert avec confirmation
 - Delete account = double confirmation + saisie mot de passe obligatoire
 - Stripe checkout = expo-web-browser (WebBrowser.openBrowserAsync) — PAS de WebView inline
@@ -628,6 +631,7 @@ RÈGLES STRICTES :
 - Textes en français
 
 Commence par lire :
+
 - src/services/api.ts (cherche authApi, billingApi, usageApi)
 - src/stores/authStore.ts
 - src/hooks/useCredits.ts
@@ -639,7 +643,8 @@ Commence par lire :
 
 Crée les 6 fichiers un par un. Typecheck après chaque : npx tsc --noEmit 2>&1 | grep "profile\|upgrade"
 À la fin : npx tsc --noEmit complet.
-```
+
+````
 
 ---
 
@@ -663,6 +668,6 @@ cd C:\Users\33667\DeepSight-Main\mobile && claude --dangerously-skip-permissions
 
 # Terminal 6 — PROFILE
 cd C:\Users\33667\DeepSight-Main\mobile && claude --dangerously-skip-permissions
-```
+````
 
 Puis coller le prompt correspondant dans chaque fenêtre.

@@ -1,5 +1,6 @@
 # Analyse Stratégique — Mistral Images & Fine-Tuning pour DeepSight
-*Avril 2026*
+
+_Avril 2026_
 
 ---
 
@@ -9,11 +10,11 @@
 
 Le pipeline est **déjà implémenté** dans `backend/src/images/keyword_images.py` avec une architecture en 2 étapes :
 
-| Étape | Actuel | Modèle | Coût/image |
-|-------|--------|--------|------------|
-| Stage 1 — Art Director | Mistral Small 2503 | Génère la métaphore visuelle créative (JSON) | ~0.001€ |
-| Stage 2 — Free | FLUX Schnell via Together AI | Génère l'image 512x512 | ~0.003€ |
-| Stage 2 — Premium | DALL-E 3 via OpenAI | Génère l'image 512x512 | ~0.04€ |
+| Étape                  | Actuel                       | Modèle                                       | Coût/image |
+| ---------------------- | ---------------------------- | -------------------------------------------- | ---------- |
+| Stage 1 — Art Director | Mistral Small 2503           | Génère la métaphore visuelle créative (JSON) | ~0.001€    |
+| Stage 2 — Free         | FLUX Schnell via Together AI | Génère l'image 512x512                       | ~0.003€    |
+| Stage 2 — Premium      | DALL-E 3 via OpenAI          | Génère l'image 512x512                       | ~0.04€     |
 
 **Post-processing** : Resize 512x512 → WebP (quality 85) → Upload R2 CDN → Cache PostgreSQL (`keyword_images` table).
 
@@ -21,17 +22,18 @@ Le pipeline est **déjà implémenté** dans `backend/src/images/keyword_images.
 
 Mistral a intégré la **génération d'images comme outil built-in** dans son Agents API, propulsé par **Black Forest Labs FLUX 1.1 [pro] Ultra** — un modèle nettement supérieur à FLUX Schnell.
 
-| Aspect | Actuel (Together AI) | Mistral Agents API |
-|--------|---------------------|-------------------|
-| Modèle | FLUX.1 Schnell (gratuit, basique) | FLUX 1.1 Pro Ultra (premium) |
-| Qualité | Correcte, parfois floue | Nettement supérieure, photoréaliste |
-| Coût | ~0.003€/image | Inclus dans l'appel agent (à vérifier quota) |
-| Intégration | 2 APIs séparées (Mistral + Together) | 1 seul appel Mistral |
-| Pipeline | Stage 1 → Stage 2 = 2 calls | Agent unique avec tool = 1 call |
+| Aspect      | Actuel (Together AI)                 | Mistral Agents API                           |
+| ----------- | ------------------------------------ | -------------------------------------------- |
+| Modèle      | FLUX.1 Schnell (gratuit, basique)    | FLUX 1.1 Pro Ultra (premium)                 |
+| Qualité     | Correcte, parfois floue              | Nettement supérieure, photoréaliste          |
+| Coût        | ~0.003€/image                        | Inclus dans l'appel agent (à vérifier quota) |
+| Intégration | 2 APIs séparées (Mistral + Together) | 1 seul appel Mistral                         |
+| Pipeline    | Stage 1 → Stage 2 = 2 calls          | Agent unique avec tool = 1 call              |
 
 ### Proposition : Fusionner les 2 stages en un seul appel Agent
 
 **Avant** (actuel) :
+
 ```
 Appel 1: Mistral Small → génère prompt créatif (JSON)
 Appel 2: Together AI FLUX Schnell → génère image depuis prompt
@@ -39,8 +41,9 @@ Appel 2: Together AI FLUX Schnell → génère image depuis prompt
 ```
 
 **Après** (proposition) :
+
 ```
-Appel 1: Mistral Agent (avec tool image_generation) 
+Appel 1: Mistral Agent (avec tool image_generation)
 → L'agent reçoit le terme + style DeepSight
 → Il génère l'image directement via FLUX Pro Ultra
 = 1 service, 1 API key, 1 point de failure, meilleure qualité
@@ -73,41 +76,44 @@ Appel 1: Mistral Agent (avec tool image_generation)
 
 DeepSight utilise 3 tiers de modèles Mistral pour les analyses vidéo :
 
-| Plan | Modèle | Coût input/output (par 1M tokens) |
-|------|--------|-----------------------------------|
-| Free | mistral-small-2603 | 0.10€ / 0.30€ |
-| Pro | mistral-medium-2508 | ~0.40€ / ~1.20€ |
-| Expert | mistral-large-2512 | 2.00€ / 6.00€ |
+| Plan   | Modèle              | Coût input/output (par 1M tokens) |
+| ------ | ------------------- | --------------------------------- |
+| Free   | mistral-small-2603  | 0.10€ / 0.30€                     |
+| Pro    | mistral-medium-2508 | ~0.40€ / ~1.20€                   |
+| Expert | mistral-large-2512  | 2.00€ / 6.00€                     |
 
 ### Ce que le fine-tuning Mistral permet
 
 Mistral permet de fine-tuner les modèles **Small** et **Medium** via leur API :
 
-| Aspect | Détail |
-|--------|--------|
-| Modèles fine-tunables | Small 3.1, Medium 3 |
-| Méthodes | Supervised fine-tuning, LoRA |
-| Coût training | 1€–9€ par million de tokens d'entraînement |
-| Coût minimum | 4€ par job |
-| Stockage modèle | 2€/mois |
-| Coût inférence | Même prix que le modèle de base |
+| Aspect                | Détail                                     |
+| --------------------- | ------------------------------------------ |
+| Modèles fine-tunables | Small 3.1, Medium 3                        |
+| Méthodes              | Supervised fine-tuning, LoRA               |
+| Coût training         | 1€–9€ par million de tokens d'entraînement |
+| Coût minimum          | 4€ par job                                 |
+| Stockage modèle       | 2€/mois                                    |
+| Coût inférence        | Même prix que le modèle de base            |
 
 ### Scénario réaliste pour DeepSight
 
 **Objectif** : Fine-tuner Mistral Small pour qu'il produise des analyses de qualité proche de Mistral Large, à 10x moins cher.
 
 **Données nécessaires** :
-- ~500-2000 paires (transcript vidéo → analyse de qualité) 
+
+- ~500-2000 paires (transcript vidéo → analyse de qualité)
 - Les analyses doivent être "gold standard" (générées par Large, vérifiées humainement)
 - Format : JSONL avec prompt système DeepSight + transcript + analyse attendue
 
 **Estimation des coûts de training** :
+
 - 1000 exemples × ~3000 tokens/exemple = ~3M tokens
 - Coût : ~3€–27€ par run de training
 - Stockage : 2€/mois
 - **Total pour démarrer : ~30-50€**
 
 **Économie potentielle en inférence** :
+
 - Si un Small fine-tuné remplace Medium pour les plans Pro :
   - Avant : ~0.40€/M input → Après : ~0.10€/M input = **75% de réduction**
 - Si un Small fine-tuné remplace Large pour certains cas :
@@ -115,13 +121,13 @@ Mistral permet de fine-tuner les modèles **Small** et **Medium** via leur API :
 
 ### Faisabilité pour un solo dev
 
-| Critère | Évaluation |
-|---------|------------|
-| Coût initial | ✅ Très abordable (~30-50€) |
-| Complexité technique | ⚠️ Moyenne — il faut constituer le dataset |
-| Temps | ⚠️ 2-3 jours pour le dataset, quelques heures pour le training |
-| ROI | ✅ Excellent si >1000 analyses/mois |
-| Maintenance | ⚠️ Re-fine-tuner quand les prompts changent |
+| Critère              | Évaluation                                                     |
+| -------------------- | -------------------------------------------------------------- |
+| Coût initial         | ✅ Très abordable (~30-50€)                                    |
+| Complexité technique | ⚠️ Moyenne — il faut constituer le dataset                     |
+| Temps                | ⚠️ 2-3 jours pour le dataset, quelques heures pour le training |
+| ROI                  | ✅ Excellent si >1000 analyses/mois                            |
+| Maintenance          | ⚠️ Re-fine-tuner quand les prompts changent                    |
 
 ### Le vrai défi : constituer le dataset
 
@@ -149,10 +155,10 @@ C'est LE point bloquant. Options :
 
 ## Résumé des recommandations
 
-| Mission | Verdict | Priorité | Budget | Timeline |
-|---------|---------|----------|--------|----------|
-| **M1 — Images Mistral** | ✅ GO (POC) | Haute | ~0€ (si inclus dans Scale) | 1-2 jours |
-| **M2 — Fine-tuning** | ✅ GO (itératif) | Moyenne | ~50-80€ | 1 semaine |
+| Mission                 | Verdict          | Priorité | Budget                     | Timeline  |
+| ----------------------- | ---------------- | -------- | -------------------------- | --------- |
+| **M1 — Images Mistral** | ✅ GO (POC)      | Haute    | ~0€ (si inclus dans Scale) | 1-2 jours |
+| **M2 — Fine-tuning**    | ✅ GO (itératif) | Moyenne  | ~50-80€                    | 1 semaine |
 
 ### Actions immédiates
 
@@ -163,4 +169,4 @@ C'est LE point bloquant. Options :
 
 ---
 
-*Document généré le 11 avril 2026 — DeepSight Strategic Analysis*
+_Document généré le 11 avril 2026 — DeepSight Strategic Analysis_

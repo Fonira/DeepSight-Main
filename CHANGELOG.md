@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.1.0] - 2026-01-29
 
 ### Added
+
 - **Daily Analysis Limits**: New per-plan daily analysis quotas
   - Free: 5/day, Starter: 20/day, Pro: 50/day, Expert: 200/day, Unlimited: no limit
 - **Feature-Based Access Control**: Granular feature blocking by plan
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Detailed health check endpoint
 
 ### Security
+
 - Admin cannot delete themselves
 - Admin cannot remove their own privileges
 - Plan validation with whitelist: `free/starter/pro/expert/unlimited`
@@ -35,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic bcrypt/SHA256 hash migration
 
 ### Changed
+
 - Pro plan: 10 videos/playlist (was 20), 180 days history (was unlimited)
 - Expert plan: 50 videos/playlist (was 60)
 - Upgrade prompts now localized (French/English)
@@ -42,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.0.0] - 2026-01-28
 
 ### Added
+
 - **Mobile App**: Complete React Native app with Expo SDK 54
   - 13+ screens with full feature parity
   - Google OAuth integration
@@ -51,10 +55,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Anti-AI Detection**: WritingStyle customization for analysis output
 
 ### Changed
+
 - Unified API client between frontend and mobile
 - Session-based auth with single device enforcement
 
 ### Fixed
+
 - Google OAuth login flow for mobile
 - Scholar source extraction timeouts
 - Dark mode readability improvements
@@ -62,23 +68,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.5.0] - 2026-01-27
 
 ### Added
+
 - **Transcript Extraction v6.0**: Ultra-resilient with 10 fallback methods
 - **Mobile Architecture**: Initial React Native setup
 
 ### Fixed
+
 - TypeScript errors across mobile codebase
 - Type definition updates
 
 ## [2.4.0] - 2026-01-26
 
 ### Added
+
 - **Intelligent Discovery**: AI-powered content recommendations
 - **Enhanced History**: Paginated video history with filters
 
 ### Fixed
+
 - CORS configuration for production URLs
 - Null guards in discovery functions
 
 ---
 
-*For older versions, see git history.*
+_For older versions, see git history._

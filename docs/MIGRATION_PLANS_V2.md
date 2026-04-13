@@ -42,9 +42,9 @@ STRIPE_TEST_MODE=true   # mettre false au lancement
 
 ## 4. Correspondance Stripe ↔ Backend
 
-| Produit Stripe | Price ID (test) | PlanId backend |
-|---|---|---|
-| Deep Sight Etudiant 2.99€ | price_xxx | etudiant |
-| Deep Sight Starter 5.99€ | price_xxx | starter |
-| Deep Sight Pro 12.99€ | price_xxx | pro |
-| Deep Sight Equipe 29.99€ | price_xxx | equipe |
+| Produit Stripe            | Price ID (test) | PlanId backend |
+| ------------------------- | --------------- | -------------- |
+| Deep Sight Etudiant 2.99€ | price_xxx       | etudiant       |
+| Deep Sight Starter 5.99€  | price_xxx       | starter        |
+| Deep Sight Pro 12.99€     | price_xxx       | pro            |
+| Deep Sight Equipe 29.99€  | price_xxx       | equipe         |

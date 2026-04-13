@@ -25,6 +25,7 @@ Complete API documentation for the DeepSight backend.
 ## 🔐 Authentication
 
 All authenticated endpoints require:
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -45,6 +46,7 @@ Content-Type: application/json
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -67,6 +69,7 @@ Content-Type: application/json
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "access_token": "eyJ...",
@@ -95,6 +98,7 @@ Content-Type: application/json
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "access_token": "eyJ...",
@@ -111,6 +115,7 @@ Authorization: Bearer <token>
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "id": 1,
@@ -132,6 +137,7 @@ Authorization: Bearer <token>
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "plan": "starter",
@@ -193,6 +199,7 @@ Content-Type: application/json
 ```
 
 **Response:** `202 Accepted`
+
 ```json
 {
   "task_id": "abc123",
@@ -211,6 +218,7 @@ Authorization: Bearer <token>
 ```
 
 **Response (pending):**
+
 ```json
 {
   "task_id": "abc123",
@@ -221,6 +229,7 @@ Authorization: Bearer <token>
 ```
 
 **Response (completed):**
+
 ```json
 {
   "task_id": "abc123",
@@ -239,6 +248,7 @@ Authorization: Bearer <token>
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "id": 456,
@@ -339,6 +349,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "estimated_credits": 42,
@@ -368,6 +379,7 @@ Content-Type: application/json
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "response": "The main arguments presented are...",
@@ -394,6 +406,7 @@ Content-Type: application/json
 ```
 
 **Response:** `text/event-stream`
+
 ```
 data: {"chunk": "The concept"}
 data: {"chunk": " refers to"}
@@ -409,6 +422,7 @@ Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "messages": [
@@ -453,6 +467,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "questions": [
@@ -475,15 +490,14 @@ Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "nodes": [
-    {"id": "1", "label": "Main Topic", "level": 0},
-    {"id": "2", "label": "Subtopic 1", "level": 1, "parent": "1"}
+    { "id": "1", "label": "Main Topic", "level": 0 },
+    { "id": "2", "label": "Subtopic 1", "level": 1, "parent": "1" }
   ],
-  "edges": [
-    {"from": "1", "to": "2"}
-  ],
+  "edges": [{ "from": "1", "to": "2" }],
   "credits_used": 10
 }
 ```
@@ -501,6 +515,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "cards": [
@@ -533,6 +548,7 @@ Authorization: Bearer <token>
 ```
 
 **Query Parameters:**
+
 - `page` — Page number (default: 1)
 - `limit` — Items per page (default: 20, max: 100)
 - `search` — Search in titles
@@ -540,6 +556,7 @@ Authorization: Bearer <token>
 - `favorite` — Filter favorites only (boolean)
 
 **Response:**
+
 ```json
 {
   "items": [...],
@@ -566,6 +583,7 @@ Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "total_analyses": 45,
@@ -597,6 +615,7 @@ GET /api/billing/plans
 ```
 
 **Response:**
+
 ```json
 {
   "plans": [
@@ -642,6 +661,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "checkout_url": "https://checkout.stripe.com/..."
@@ -726,6 +746,7 @@ Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "current_period": {
@@ -768,6 +789,7 @@ Accept: text/event-stream
 ```
 
 **Events:**
+
 ```
 event: analysis_complete
 data: {"summary_id": 456, "title": "Video Title"}
@@ -791,41 +813,41 @@ data: {"remaining": 50, "threshold": 100}
 
 ### Common HTTP Status Codes
 
-| Code | Meaning |
-|------|---------|
-| `200` | Success |
-| `201` | Created |
-| `202` | Accepted (async task started) |
-| `400` | Bad Request (validation error) |
+| Code  | Meaning                              |
+| ----- | ------------------------------------ |
+| `200` | Success                              |
+| `201` | Created                              |
+| `202` | Accepted (async task started)        |
+| `400` | Bad Request (validation error)       |
 | `401` | Unauthorized (missing/invalid token) |
 | `403` | Forbidden (insufficient permissions) |
-| `404` | Not Found |
-| `429` | Too Many Requests (rate limit) |
-| `500` | Internal Server Error |
+| `404` | Not Found                            |
+| `429` | Too Many Requests (rate limit)       |
+| `500` | Internal Server Error                |
 
 ### Error Codes
 
-| Code | Description |
-|------|-------------|
-| `EMAIL_NOT_VERIFIED` | Email verification required |
-| `INSUFFICIENT_CREDITS` | Not enough credits |
-| `QUOTA_EXCEEDED` | Monthly limit reached |
-| `PLAN_REQUIRED` | Feature requires upgrade |
-| `SESSION_EXPIRED` | Token/session invalid |
-| `VIDEO_TOO_LONG` | Video exceeds plan limit |
-| `TRANSCRIPT_UNAVAILABLE` | No captions available |
+| Code                     | Description                 |
+| ------------------------ | --------------------------- |
+| `EMAIL_NOT_VERIFIED`     | Email verification required |
+| `INSUFFICIENT_CREDITS`   | Not enough credits          |
+| `QUOTA_EXCEEDED`         | Monthly limit reached       |
+| `PLAN_REQUIRED`          | Feature requires upgrade    |
+| `SESSION_EXPIRED`        | Token/session invalid       |
+| `VIDEO_TOO_LONG`         | Video exceeds plan limit    |
+| `TRANSCRIPT_UNAVAILABLE` | No captions available       |
 
 ---
 
 ## 🔧 Rate Limits
 
-| Plan | Requests/min | Concurrent Analyses |
-|------|--------------|---------------------|
-| Free | 30 | 1 |
-| Student | 60 | 2 |
-| Starter | 60 | 2 |
-| Pro | 120 | 5 |
-| Team | 300 | 10 |
+| Plan    | Requests/min | Concurrent Analyses |
+| ------- | ------------ | ------------------- |
+| Free    | 30           | 1                   |
+| Student | 60           | 2                   |
+| Starter | 60           | 2                   |
+| Pro     | 120          | 5                   |
+| Team    | 300          | 10                  |
 
 ---
 

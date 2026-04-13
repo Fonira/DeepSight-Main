@@ -15,7 +15,7 @@ DeepSight includes a built-in monitoring system with three components:
 Lightweight liveness probe. Always returns:
 
 ```json
-{"status": "ok"}
+{ "status": "ok" }
 ```
 
 ### `GET /api/health/status`
@@ -28,10 +28,34 @@ Full system status with per-service health, latency, version, and uptime.
   "version": "4.0.0",
   "uptime_seconds": 86400.5,
   "services": [
-    {"name": "database", "status": "operational", "latency_ms": 2.3, "message": null, "last_checked": "..."},
-    {"name": "stripe", "status": "operational", "latency_ms": 150.2, "message": null, "last_checked": "..."},
-    {"name": "mistral", "status": "operational", "latency_ms": 85.7, "message": null, "last_checked": "..."},
-    {"name": "perplexity", "status": "degraded", "latency_ms": null, "message": "API key not configured", "last_checked": "..."}
+    {
+      "name": "database",
+      "status": "operational",
+      "latency_ms": 2.3,
+      "message": null,
+      "last_checked": "..."
+    },
+    {
+      "name": "stripe",
+      "status": "operational",
+      "latency_ms": 150.2,
+      "message": null,
+      "last_checked": "..."
+    },
+    {
+      "name": "mistral",
+      "status": "operational",
+      "latency_ms": 85.7,
+      "message": null,
+      "last_checked": "..."
+    },
+    {
+      "name": "perplexity",
+      "status": "degraded",
+      "latency_ms": null,
+      "message": "API key not configured",
+      "last_checked": "..."
+    }
   ],
   "checked_at": "2026-02-10T12:00:00+00:00"
 }
@@ -41,11 +65,11 @@ Both endpoints are **public** (no auth), **excluded from rate limiting**, and **
 
 ## Health Checks
 
-| Service | Method | Cost |
-|---------|--------|------|
-| Database | `SELECT 1` via async session | Free |
-| Stripe | `stripe.Account.retrieve()` | Free |
-| Mistral | `GET /v1/models` with API key | Free |
+| Service    | Method                                       | Cost        |
+| ---------- | -------------------------------------------- | ----------- |
+| Database   | `SELECT 1` via async session                 | Free        |
+| Stripe     | `stripe.Account.retrieve()`                  | Free        |
+| Mistral    | `GET /v1/models` with API key                | Free        |
 | Perplexity | `POST /chat/completions` with `max_tokens=1` | ~$0.001/day |
 
 All checks run concurrently via `asyncio.gather()`. Each has its own try/except and never propagates failures.
@@ -71,6 +95,7 @@ A job runs every **5 minutes** via APScheduler (same instance as backups).
 Route: `/status` (public, no auth required)
 
 Features:
+
 - Polls `/api/health/status` every 30 seconds
 - Overall status banner (green/orange/red)
 - 2x2 grid of service cards with icons, status dot, latency
@@ -82,16 +107,16 @@ Features:
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `backend/src/monitoring/__init__.py` | Module init |
-| `backend/src/monitoring/checks.py` | Health check functions |
-| `backend/src/monitoring/router.py` | FastAPI router (`/ping`, `/status`) |
-| `backend/src/monitoring/scheduler.py` | Background job + alert emails |
-| `backend/src/main.py` | Wires router, scheduler, rate limiter exclusions |
-| `frontend/src/services/api.ts` | `statusApi` with `getStatus()` and `ping()` |
-| `frontend/src/pages/StatusPage.tsx` | Public status page |
-| `frontend/src/App.tsx` | `/status` route |
+| File                                  | Purpose                                          |
+| ------------------------------------- | ------------------------------------------------ |
+| `backend/src/monitoring/__init__.py`  | Module init                                      |
+| `backend/src/monitoring/checks.py`    | Health check functions                           |
+| `backend/src/monitoring/router.py`    | FastAPI router (`/ping`, `/status`)              |
+| `backend/src/monitoring/scheduler.py` | Background job + alert emails                    |
+| `backend/src/main.py`                 | Wires router, scheduler, rate limiter exclusions |
+| `frontend/src/services/api.ts`        | `statusApi` with `getStatus()` and `ping()`      |
+| `frontend/src/pages/StatusPage.tsx`   | Public status page                               |
+| `frontend/src/App.tsx`                | `/status` route                                  |
 
 ## Verification
 
