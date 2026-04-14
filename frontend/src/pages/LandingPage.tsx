@@ -8,20 +8,14 @@ import { useNavigate } from "react-router-dom";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
-  Check,
-  X,
   Sparkles,
   Brain,
   Shield,
   MessageSquare,
   FileText,
-  Zap,
   ChevronRight,
-  Users,
   GraduationCap,
   Newspaper,
-  Star,
-  Crown,
   ListVideo,
   Briefcase,
   AlertTriangle,
@@ -31,28 +25,28 @@ import {
   Puzzle,
   Clipboard,
   ExternalLink,
-  Lock,
   Swords,
   CheckCircle2,
   GitMerge,
   Scale,
 } from "lucide-react";
-import {
-  DeepSightSpinner,
-  DeepSightSpinnerMicro,
-} from "../components/ui/DeepSightSpinner";
+import { DeepSightSpinner } from "../components/ui/DeepSightSpinner";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../hooks/useAuth";
 import { SEO } from "../components/SEO";
-import { videoApi, demoApi } from "../services/api";
+import { demoApi } from "../services/api";
 import type { DemoAnalyzeResult } from "../services/api";
-import { sanitizeTitle } from "../utils/sanitize";
 import {
   DemoResultCard,
   DemoChatMini,
   DemoCTA,
   DemoFeaturesShowcase,
 } from "../components/demo";
+import {
+  DemoAnalysisStatic,
+  DemoChatStatic,
+  PricingSection,
+} from "../components/landing";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION HELPERS
@@ -62,7 +56,7 @@ const ease = [0.4, 0, 0.2, 1] as const;
 
 const floatAnimation = {
   y: [0, -6, 0],
-  transition: { duration: 3, ease: "easeInOut", repeat: Infinity },
+  transition: { duration: 3, ease: "easeInOut" as const, repeat: Infinity },
 };
 
 const ScrollReveal: React.FC<{
@@ -189,113 +183,7 @@ const Logo: React.FC<{ className?: string }> = ({ className = "" }) => {
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PLANS CONFIGURATION — Aligné sur planPrivileges.ts (source de vérité)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-import { PLAN_LIMITS, PLANS_INFO, type PlanId } from "../config/planPrivileges";
-
-interface PlanConfig {
-  id: PlanId;
-  name: { fr: string; en: string };
-  description: { fr: string; en: string };
-  price: number;
-  icon: React.ElementType;
-  color: string;
-  gradient: string;
-  popular?: boolean;
-  recommended?: boolean;
-  badge?: { fr: string; en: string };
-  badgeColor?: string;
-  features: Array<{
-    text: { fr: string; en: string };
-    included: boolean;
-    highlight?: boolean;
-  }>;
-}
-
-const PLANS: PlanConfig[] = [
-  {
-    id: "free",
-    name: { fr: "Gratuit", en: "Free" },
-    description: { fr: "Découvrez DeepSight", en: "Discover DeepSight" },
-    price: 0,
-    icon: Zap,
-    color: "text-gray-400",
-    gradient: "from-gray-500 to-gray-600",
-    features: [
-      {
-        text: {
-          fr: `${PLAN_LIMITS.free.monthlyAnalyses} analyses/mois`,
-          en: `${PLAN_LIMITS.free.monthlyAnalyses} analyses/month`,
-        },
-        included: true,
-      },
-      { text: { fr: "Chat IA basique", en: "Basic AI Chat" }, included: true },
-      {
-        text: { fr: "Flashcards & Quiz", en: "Flashcards & Quiz" },
-        included: true,
-      },
-      { text: { fr: "Export texte", en: "Text export" }, included: true },
-      { text: { fr: "Mindmap", en: "Mindmap" }, included: false },
-      { text: { fr: "Fact-check", en: "Fact-check" }, included: false },
-      { text: { fr: "Export PDF", en: "PDF export" }, included: false },
-    ],
-  },
-  {
-    id: "pro",
-    name: { fr: "Pro", en: "Pro" },
-    description: {
-      fr: "Pour les utilisateurs réguliers",
-      en: "For regular users",
-    },
-    price: PLANS_INFO.pro.priceMonthly / 100,
-    icon: Star,
-    color: "text-blue-400",
-    gradient: "from-blue-500 to-indigo-600",
-    popular: true,
-    badge: { fr: "Le plus populaire", en: "Most popular" },
-    badgeColor: "bg-blue-500",
-    features: [
-      {
-        text: {
-          fr: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/mois`,
-          en: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/month`,
-        },
-        included: true,
-      },
-      {
-        text: { fr: "Chat illimité", en: "Unlimited chat" },
-        included: true,
-        highlight: true,
-      },
-      {
-        text: { fr: "Mindmap", en: "Mindmap" },
-        included: true,
-        highlight: true,
-      },
-      {
-        text: { fr: "Fact-check", en: "Fact-check" },
-        included: true,
-        highlight: true,
-      },
-      {
-        text: { fr: "Web Search IA", en: "AI Web Search" },
-        included: true,
-        highlight: true,
-      },
-      { text: { fr: "Export PDF", en: "PDF export" }, included: true },
-      {
-        text: {
-          fr: `Chat vocal ${PLAN_LIMITS.pro.voiceChatMonthlyMinutes} min`,
-          en: `Voice chat ${PLAN_LIMITS.pro.voiceChatMonthlyMinutes} min`,
-        },
-        included: true,
-      },
-      { text: { fr: "Playlists", en: "Playlists" }, included: true },
-    ],
-  },
-];
+// Plans configuration is now in components/landing/PricingSection.tsx
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // FEATURES
@@ -514,7 +402,7 @@ const LandingPage: React.FC = () => {
   const MAX_GUEST_ANALYSES = 3;
   const [guestUrl, setGuestUrl] = useState("");
   const [guestLoading, setGuestLoading] = useState(false);
-  const [guestResult, setGuestResult] = useState<{
+  const [_guestResult, setGuestResult] = useState<{
     video_title: string;
     video_channel: string;
     video_duration: number;
@@ -1169,54 +1057,12 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ─── DEMO VISUAL ─── */}
-      <section className="py-8 sm:py-16 px-4 sm:px-6">
-        <ScrollReveal className="max-w-4xl mx-auto">
-          <div className="relative rounded-2xl overflow-hidden border border-border-subtle bg-bg-secondary/60 backdrop-blur-sm">
-            {/* Gradient top bar */}
-            <div className="h-px bg-gradient-to-r from-transparent via-accent-primary/50 to-transparent" />
-
-            <div className="py-16 sm:py-24 flex flex-col items-center justify-center relative">
-              {/* Animated logo visual */}
-              <motion.div
-                className="relative w-20 h-20 sm:w-24 sm:h-24 mb-6"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-              >
-                <div className="absolute inset-0 rounded-full border border-accent-primary/20" />
-                <div className="absolute inset-2 rounded-full border border-violet-500/15" />
-                <div className="absolute inset-4 rounded-full border border-cyan-500/10" />
-                <motion.div
-                  className="absolute inset-0 flex items-center justify-center"
-                  animate={{ rotate: -360 }}
-                  transition={{
-                    duration: 40,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                >
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-accent-primary via-violet-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-accent-primary/30">
-                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                  </div>
-                </motion.div>
-              </motion.div>
-
-              {/* Glow */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-48 h-48 bg-accent-primary/10 rounded-full blur-[60px]" />
-              </div>
-
-              <p className="text-sm text-text-secondary font-medium relative z-10">
-                {language === "fr"
-                  ? "L'IA qui pense vos vidéos avec vous"
-                  : "AI that thinks through your videos with you"}
-              </p>
-            </div>
-
-            {/* Gradient bottom bar */}
-            <div className="h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
-          </div>
-        </ScrollReveal>
+      {/* ─── DEMO INTERACTIVE ─── */}
+      <section className="py-12 sm:py-20 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+          <DemoAnalysisStatic language={language} />
+          <DemoChatStatic language={language} />
+        </div>
       </section>
 
       {/* ─── FEATURES ─── */}
@@ -1510,198 +1356,7 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* ─── PRICING ─── */}
-      <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto">
-          <ScrollReveal className="text-center mb-12 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-text-primary mb-3">
-              {language === "fr"
-                ? "Investissez dans votre compréhension"
-                : "Invest in your understanding"}
-            </h2>
-            <p className="text-text-secondary text-sm sm:text-base max-w-xl mx-auto mb-4">
-              {language === "fr"
-                ? "Commencez gratuitement. Évoluez quand vos besoins grandissent. Sans engagement."
-                : "Start for free. Scale when your needs grow. No commitment."}
-            </p>
-            <p className="text-text-tertiary text-xs sm:text-sm max-w-lg mx-auto">
-              {language === "fr"
-                ? "Pourquoi payer ? Parce qu'une heure de vidéo analysée en 5 minutes, des affirmations vérifiées par des sources, et des synthèses exportables transforment votre productivité intellectuelle."
-                : "Why pay? Because an hour of video analyzed in 5 minutes, claims verified against sources, and exportable summaries transform your intellectual productivity."}
-            </p>
-          </ScrollReveal>
-
-          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-4xl mx-auto">
-            {PLANS.map((plan) => {
-              const Icon = plan.icon;
-              const isPopular = plan.popular;
-
-              return (
-                <StaggerItem key={plan.id}>
-                  <div
-                    className={`relative p-6 rounded-xl border transition-all h-full flex flex-col overflow-hidden ${
-                      isPopular
-                        ? "border-blue-500/50 bg-blue-500/[0.06] shadow-xl shadow-blue-500/15 scale-[1.03] ring-1 ring-blue-500/25 z-10"
-                        : "border-border-subtle bg-bg-secondary/40 hover:border-border-default"
-                    }`}
-                  >
-                    {/* Badge */}
-                    {plan.badge && (
-                      <div className="absolute -top-0 -right-0">
-                        <div
-                          className={`${plan.badgeColor || "bg-gray-500"} text-white text-[0.625rem] font-bold px-2 py-1 rounded-bl-xl`}
-                        >
-                          {plan.badge[lang]}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Icon */}
-                    <div
-                      className={`w-10 h-10 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-4 shadow-lg`}
-                    >
-                      <Icon className="w-5 h-5 text-white" />
-                    </div>
-
-                    {/* Header */}
-                    <div className="mb-3">
-                      <h3 className="font-semibold text-text-primary text-sm">
-                        {plan.name[lang]}
-                      </h3>
-                      <p className="text-[0.6875rem] text-text-tertiary">
-                        {plan.description[lang]}
-                      </p>
-                    </div>
-
-                    {/* Price */}
-                    <div className="mb-5">
-                      <span className="text-2xl font-semibold text-text-primary tabular-nums">
-                        {plan.price === 0
-                          ? "0"
-                          : plan.price.toFixed(2).replace(".", ",")}
-                      </span>
-                      <span className="text-text-tertiary text-xs ml-1">
-                        €/{language === "fr" ? "mois" : "month"}
-                      </span>
-                    </div>
-
-                    {/* Features */}
-                    <div className="space-y-2 mb-6 flex-1">
-                      {plan.features.map((feature, i) => (
-                        <div
-                          key={i}
-                          className={`flex items-start gap-2 text-xs ${
-                            feature.included
-                              ? feature.highlight
-                                ? "text-accent-primary"
-                                : "text-text-secondary"
-                              : "text-text-muted line-through"
-                          }`}
-                        >
-                          {feature.included ? (
-                            <div
-                              className={`w-4 h-4 rounded-full ${
-                                feature.highlight
-                                  ? "bg-amber-500/20"
-                                  : "bg-green-500/20"
-                              } flex items-center justify-center flex-shrink-0 mt-0.5`}
-                            >
-                              <Check
-                                className={`w-2.5 h-2.5 ${
-                                  feature.highlight
-                                    ? "text-amber-400"
-                                    : "text-green-400"
-                                }`}
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-4 h-4 rounded-full bg-gray-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <X className="w-2.5 h-2.5 text-gray-500" />
-                            </div>
-                          )}
-                          <span
-                            className={feature.highlight ? "font-medium" : ""}
-                          >
-                            {feature.text[lang]}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* CTA */}
-                    <motion.button
-                      onClick={() => navigate("/login")}
-                      className={`w-full py-2.5 rounded-lg font-medium text-sm transition-all ${
-                        isPopular
-                          ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-90 shadow-lg"
-                          : "bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border-subtle"
-                      }`}
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {plan.id === "free"
-                        ? language === "fr"
-                          ? "Commencer gratuitement"
-                          : "Start for free"
-                        : plan.id === "pro"
-                          ? language === "fr"
-                            ? "Essayer 7 jours gratuitement"
-                            : "Try 7 days free"
-                          : language === "fr"
-                            ? "Commencer"
-                            : "Get started"}
-                    </motion.button>
-                  </div>
-                </StaggerItem>
-              );
-            })}
-          </StaggerReveal>
-
-          {/* Guarantee */}
-          <ScrollReveal delay={0.2} className="text-center mt-10">
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-text-secondary">
-              <span>
-                ✓{" "}
-                {language === "fr"
-                  ? "Annulation à tout moment"
-                  : "Cancel anytime"}
-              </span>
-              <span>
-                ✓{" "}
-                {language === "fr" ? "Remboursement 14 jours" : "14-day refund"}
-              </span>
-              <span>
-                ✓{" "}
-                {language === "fr"
-                  ? "Données hébergées en Europe"
-                  : "Data hosted in Europe"}{" "}
-                🇪🇺
-              </span>
-            </div>
-          </ScrollReveal>
-
-          {/* B2B Contact */}
-          <ScrollReveal delay={0.3} className="text-center mt-10">
-            <div className="inline-flex flex-col items-center gap-2 p-5 rounded-xl border border-border-subtle bg-bg-secondary/40 backdrop-blur-sm">
-              <p className="text-sm text-text-primary font-medium">
-                {language === "fr"
-                  ? "Besoin d'une offre sur-mesure ?"
-                  : "Need a custom plan?"}
-              </p>
-              <p className="text-xs text-text-secondary max-w-md">
-                {language === "fr"
-                  ? "Équipes, universités, entreprises — contactez-nous pour un plan adapté."
-                  : "Teams, universities, enterprises — contact us for a tailored plan."}
-              </p>
-              <a
-                href="mailto:contact@deepsightsynthesis.com?subject=Offre%20sur-mesure%20DeepSight"
-                className="mt-1 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-text-primary text-xs font-medium transition-all"
-              >
-                {language === "fr" ? "Contactez-nous" : "Contact us"}
-              </a>
-            </div>
-          </ScrollReveal>
-        </div>
-      </section>
+      <PricingSection language={language} onNavigate={navigate} />
 
       {/* ─── FAQ ─── */}
       <section className="py-16 sm:py-24 px-4 sm:px-6">
