@@ -497,7 +497,7 @@ export const SettingsScreen: React.FC = () => {
           icon: "information-circle-outline",
           label: "À propos",
           type: "navigate",
-          onPress: () => navigation.navigate("About" as any),
+          onPress: () => (navigation as any).navigate("About"),
         },
         {
           key: "version",
