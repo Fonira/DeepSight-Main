@@ -104,19 +104,40 @@ SSOT : `is_feature_available(plan, feature, platform)` dans le backend.
 
 ---
 
-## 📋 Gestion des tâches — Asana (principal) + Notion (legacy)
+## 📋 Orchestration Cross-Session — Asana Hub
 
-### Asana (connecté via MCP)
+### Projets Asana (connecté via MCP)
 
-- **Workspace** : `deepsightsynthesis.com` (GID: `1214049486421124`)
-- **Projet principal** : `Maxime : premier projet` (GID: `1214026047482525`)
-- **Conventions** : voir skill `asana-tasks` pour le format complet (titres `[SCOPE]`, priorités, descriptions)
-- **Workflow** : Consulter `asana-tasks` SKILL.md avant toute création/modification de tâche
+| Projet                         | GID                | Rôle                                            |
+| ------------------------------ | ------------------ | ----------------------------------------------- |
+| **DeepSight Orchestration**    | _(voir Asana)_     | Hub central cross-session, backlog, conventions |
+| **DeepSight Frontend**         | `1214026064924698` | Tâches frontend web                             |
+| **DeepSight Backend**          | `1214031529879486` | Tâches backend API                              |
+| **DeepSight Mobile**           | `1214026065055474` | Tâches mobile Expo                              |
+| **DeepSight Extension Chrome** | `1214026081649153` | Tâches extension                                |
 
-### Notion (legacy — encore utilisé pour l'historique)
+### Protocole Cross-Session (OBLIGATOIRE)
 
-- **Database ID** : `2fed4ccc-7657-81ff-94a6-c3e5b4e62648`
-- ⚠️ Nouvelles tâches → **Asana**. Notion reste en lecture pour les tâches existantes.
+**Au DÉBUT de chaque session Claude (Desktop, CLI, Web, Cowork) :**
+
+1. Checker le projet **Orchestration > Session Active** pour voir ce qui tourne
+2. Checker **Orchestration > Backlog Priorisé** pour le contexte
+3. Créer une tâche `[ENV] Objectif — date` dans Session Active
+   - ENV = DESKTOP | CLI | WEB | SCHEDULED | COWORK
+
+**Pendant la session :** 4. Chaque commit crée une tâche Asana complétée dans le projet domaine (Frontend/Backend/Mobile/Extension) 5. Worktrees nommés `feature/<nom>` ou `fix/<nom>`, JAMAIS `claude/<hash>` 6. Exclure TOUJOURS du commit : `id_hetzner_b64.txt`, `.claude/settings.local.json`, `extension/dist/*.map`
+
+**En FIN de session :** 7. Mettre à jour la tâche Session Active avec le résumé du travail fait 8. Si des commits sont prêts à push → créer une tâche dans **Deploy Queue**
+
+### Trigger Scheduled (Daily 8h45 Paris)
+
+- **ID** : `trig_01Lm16hjNSq7chewteqjmkAh`
+- **Rôle** : Check Asana + Git + Sentry, commit auto si nécessaire, rapport
+- **Visible** : Claude Desktop > Scheduled, ou https://claude.ai/code/scheduled
+
+### Notion (legacy — lecture seule)
+
+- ⚠️ Nouvelles tâches → **Asana uniquement**.
 
 ---
 
