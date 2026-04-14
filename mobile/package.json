@@ -17,6 +17,8 @@
     "build:preview": "eas build --profile preview",
     "submit:ios": "eas submit --platform ios --profile production",
     "submit:android": "eas submit --platform android --profile production",
+    "update": "eas update --auto",
+    "update:preview": "eas update --branch preview --auto",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "jest",
