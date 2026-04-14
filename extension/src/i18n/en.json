@@ -112,10 +112,16 @@
   },
   "features": {
     "flashcards": "Flashcards",
+    "flashcardsDesc": "Study with AI-generated memory cards",
     "mindMaps": "Mind maps",
+    "mindMapsDesc": "Visualize key ideas as a mind map",
     "webSearch": "Web search",
+    "webSearchDesc": "Enrich analysis with external sources",
     "exports": "Exports",
+    "exportsDesc": "Download as PDF, DOCX or Markdown",
     "playlists": "Playlists",
+    "playlistsDesc": "Analyze entire playlists in one click",
+    "mobileDesc": "Access DeepSight on mobile",
     "fromPrice": "from {price}"
   },
   "chat": {
@@ -202,6 +208,9 @@
     "shortcutChat": "Alt+C — Chat",
     "shortcutPanel": "Alt+S — Side Panel"
   },
+  "results": {
+    "backToAnalysis": "New analysis"
+  },
   "promos": {
     "free": [
       {
@@ -211,6 +220,10 @@
       {
         "text": "Only 5 analyses/month? Get 30 with Pro",
         "cta": "Upgrade →"
+      },
+      {
+        "text": "Limited quota? Unlock 30 analyses and all Pro features",
+        "cta": "View plans"
       }
     ],
     "pro": [

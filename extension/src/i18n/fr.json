@@ -112,10 +112,16 @@
   },
   "features": {
     "flashcards": "Flashcards",
+    "flashcardsDesc": "Révisez avec des cartes mémoire générées par l'IA",
     "mindMaps": "Cartes mentales",
+    "mindMapsDesc": "Visualisez les idées clés sous forme de carte",
     "webSearch": "Recherche web",
+    "webSearchDesc": "Enrichissez l'analyse avec des sources externes",
     "exports": "Exports",
+    "exportsDesc": "Téléchargez en PDF, DOCX ou Markdown",
     "playlists": "Playlists",
+    "playlistsDesc": "Analysez des playlists entières en un clic",
+    "mobileDesc": "Accédez à DeepSight sur mobile",
     "fromPrice": "dès {price}"
   },
   "chat": {
@@ -202,6 +208,9 @@
     "shortcutChat": "Alt+C — Chat",
     "shortcutPanel": "Alt+S — Side Panel"
   },
+  "results": {
+    "backToAnalysis": "Nouvelle analyse"
+  },
   "promos": {
     "free": [
       {
@@ -211,6 +220,10 @@
       {
         "text": "Seulement 5 analyses/mois ? Passez à 30 avec Pro",
         "cta": "Upgrade →"
+      },
+      {
+        "text": "Quota limité ? Débloquez 30 analyses et toutes les fonctionnalités Pro",
+        "cta": "Voir les plans"
       }
     ],
     "pro": [

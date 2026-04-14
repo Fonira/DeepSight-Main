@@ -11,6 +11,7 @@ import {
   isTTSPremium,
 } from "../tts";
 import { $id } from "../shadow";
+import { ct } from "../i18n";
 import type { ChatMessage } from "../../types";
 
 let _chatHasTTS = false; // Cached TTS premium state for this chat session
@@ -36,7 +37,7 @@ function renderMessage(msg: ChatMessage): string {
       : escapeHtml(msg.content);
 
   const webBadge = msg.web_search_used
-    ? `<span style="font-size:10px;color:var(--ds-info);display:block;margin-top:3px">🌐 Recherche web utilisée</span>`
+    ? `<span style="font-size:10px;color:var(--ds-info);display:block;margin-top:3px">🌐 ${ct().webSearchUsed}</span>`
     : "";
 
   // TTS button for assistant messages
@@ -63,7 +64,7 @@ export async function renderChatState(opts: ChatOptions): Promise<void> {
 
   const messagesHtml = messages.map(renderMessage).join("");
   const backBtn = onBack
-    ? `<button class="ds-link-btn" id="ds-chat-back" type="button" style="font-size:11px;margin-bottom:4px">← Retour aux résultats</button>`
+    ? `<button class="ds-link-btn" id="ds-chat-back" type="button" style="font-size:11px;margin-bottom:4px">← ${ct().backToResults}</button>`
     : "";
 
   const html = `
@@ -74,7 +75,7 @@ export async function renderChatState(opts: ChatOptions): Promise<void> {
       </div>
 
       <div class="ds-chat-messages" id="ds-chat-messages">
-        ${messagesHtml || `<div style="text-align:center;color:var(--ds-text-muted);font-size:11px;padding:16px 0">Posez une question sur cette vidéo</div>`}
+        ${messagesHtml || `<div style="text-align:center;color:var(--ds-text-muted);font-size:11px;padding:16px 0">${ct().askQuestion}</div>`}
       </div>
 
       ${

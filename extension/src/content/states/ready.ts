@@ -5,6 +5,7 @@ import { setWidgetBody } from "../widget";
 import { escapeHtml } from "../../utils/sanitize";
 import { $id } from "../shadow";
 import { detectTournesolExtension } from "../tournesol";
+import { ct } from "../i18n";
 import type { TournesolData } from "../../types";
 
 interface ReadyOptions {
@@ -41,16 +42,16 @@ export function renderReadyState(opts: ReadyOptions): void {
       <div class="ds-user-bar">
         <span class="ds-user-name">${escapeHtml(user.username)}</span>
         <span class="ds-user-plan ds-plan-${escapeHtml(user.plan)}">${escapeHtml(user.plan)}</span>
-        <span class="ds-user-credits">${user.credits} crédits</span>
+        <span class="ds-user-credits">${user.credits} ${ct().credits}</span>
       </div>
       ${tournesolBadgeHtml(tournesol)}
 
       <button class="ds-btn ds-btn-analyze" id="ds-analyze-btn" type="button">
-        🚀 Analyser cette vidéo
+        🚀 ${ct().analyzeButton}
       </button>
 
       <button class="ds-btn ds-btn-quickchat" id="ds-quickchat-btn" type="button">
-        💬 Quick Chat IA
+        💬 ${ct().quickChatButton}
       </button>
 
       <div class="ds-options-row">
@@ -68,7 +69,7 @@ export function renderReadyState(opts: ReadyOptions): void {
 
       <div class="ds-card-footer">
         <a href="${WEBAPP_URL}" target="_blank" rel="noreferrer">🌐 deepsightsynthesis.com</a>
-        <button id="ds-logout" class="ds-link-btn" type="button">Déconnexion</button>
+        <button id="ds-logout" class="ds-link-btn" type="button">${ct().logout}</button>
       </div>
     </div>
   `;
@@ -86,7 +87,7 @@ export function renderReadyState(opts: ReadyOptions): void {
     const lang = $id<HTMLSelectElement>("ds-lang")?.value || "fr";
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = `${spinnerSmall()} Préparation...`;
+      btn.innerHTML = `${spinnerSmall()} ${ct().preparing}`;
     }
     onQuickChat(lang);
   });
