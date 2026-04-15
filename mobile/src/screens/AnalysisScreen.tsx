@@ -1,4 +1,4 @@
-ï»¿import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -60,6 +60,9 @@ import { ChatBubble } from "../components/chat/ChatBubble";
 import { TypingIndicator } from "../components/chat/TypingIndicator";
 import { ChatInput } from "../components/chat/ChatInput";
 import { FloatingChat } from "../components/chat";
+import { VoiceButton } from "../components/voice/VoiceButton";
+import { VoiceScreen } from "../components/voice/VoiceScreen";
+import { useVoiceChat } from "../components/voice/useVoiceChat";
 import { UpgradePromptModal } from "../components/upgrade";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -190,6 +193,13 @@ export const AnalysisScreen: React.FC = () => {
 
   // Upgrade modal state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showVoiceScreen, setShowVoiceScreen] = useState(false);
+
+  // Voice chat — ElevenLabs integration
+  const voiceChat = useVoiceChat({
+    summaryId: summaryId || "",
+    onError: (err) => console.warn("[VoiceChat]", err),
+  });
   // Quick Chat Upgrade states
   const [upgradeMode, setUpgradeMode] = useState<string>("standard");
   const [upgradeDeepResearch, setUpgradeDeepResearch] = useState(false);
@@ -257,7 +267,7 @@ export const AnalysisScreen: React.FC = () => {
         setAnalysisProgress(100);
         setAnalysisStep(4);
 
-        // Track pour In-App Rating (dÃ©clenche aprÃ¨s 3+ analyses)
+        // Track pour In-App Rating (déclenche après 3+ analyses)
         trackAnalysisComplete().catch(() => {});
 
         // Analytics: track analysis completion
@@ -538,7 +548,7 @@ export const AnalysisScreen: React.FC = () => {
             : undefined);
         if (actualSummaryId) {
           // Use replace to prevent going back to the loading screen
-          // Use activeTabRef.current to avoid stale closure â€” the user may have
+          // Use activeTabRef.current to avoid stale closure — the user may have
           // switched tabs while the analysis was completing
           navigation.replace("Analysis", {
             summaryId: actualSummaryId,
@@ -635,23 +645,23 @@ export const AnalysisScreen: React.FC = () => {
       if (err?.status === 402) {
         errorMessage =
           language === "fr"
-            ? "Quota de chat dÃ©passÃ©. Passez Ã  un plan supÃ©rieur."
+            ? "Quota de chat dépassé. Passez à un plan supérieur."
             : "Chat quota exceeded. Please upgrade your plan.";
       } else if (err?.status === 429) {
         errorMessage =
           language === "fr"
-            ? "Trop de requÃªtes. Veuillez patienter un moment."
+            ? "Trop de requêtes. Veuillez patienter un moment."
             : "Too many requests. Please wait a moment.";
       } else if (err?.code === "TIMEOUT") {
         errorMessage =
           language === "fr"
-            ? "Ã‡a prend plus de temps que prÃ©vu â€” rÃ©essayez."
-            : "Taking longer than expected â€” try again.";
+            ? "Ça prend plus de temps que prévu — réessayez."
+            : "Taking longer than expected — try again.";
       } else if (err?.code === "NETWORK_ERROR") {
         errorMessage =
           language === "fr"
-            ? "Connexion perdue â€” on rÃ©essaie dans un instant"
-            : "Connection lost â€” retrying shortly";
+            ? "Connexion perdue — on réessaie dans un instant"
+            : "Connection lost — retrying shortly";
       }
       Alert.alert(t.common.error, errorMessage);
       // Remove the user message on error
@@ -949,7 +959,7 @@ export const AnalysisScreen: React.FC = () => {
     { id: "concepts", label: t.analysis.concepts, icon: "bulb-outline" },
     {
       id: "study",
-      label: language === "fr" ? "RÃ©viser" : "Study",
+      label: language === "fr" ? "Réviser" : "Study",
       icon: "school-outline",
     },
   ];
@@ -962,7 +972,7 @@ export const AnalysisScreen: React.FC = () => {
         rightAction={{ icon: "share-outline", onPress: handleShare }}
       />
 
-      {/* Video Header â€” Full-width immersive thumbnail */}
+      {/* Video Header — Full-width immersive thumbnail */}
       {summary && !showExpandedPlayer && (
         <TouchableOpacity
           onPress={() => setShowExpandedPlayer(true)}
@@ -990,7 +1000,7 @@ export const AnalysisScreen: React.FC = () => {
               {summary.title}
             </Text>
             <Text style={styles.videoMetaOverlay}>
-              {summary.videoInfo?.channel} â€¢{" "}
+              {summary.videoInfo?.channel} •{" "}
               {formatDuration(summary.videoInfo?.duration || 0)}
             </Text>
           </View>
@@ -1032,7 +1042,7 @@ export const AnalysisScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Tabs â€” Animated sliding indicator */}
+      {/* Tabs — Animated sliding indicator */}
       <View
         onLayout={(e) => {
           const { y, height } = e.nativeEvent.layout;
@@ -1081,7 +1091,7 @@ export const AnalysisScreen: React.FC = () => {
                 showLabel
               />
               <Badge label={summary?.mode || "Standard"} variant="primary" />
-              <Badge label={summary?.category || "GÃ©nÃ©ral"} variant="default" />
+              <Badge label={summary?.category || "Général"} variant="default" />
               {summary?.language && (
                 <Badge
                   label={summary.language.toUpperCase()}
@@ -1344,7 +1354,7 @@ export const AnalysisScreen: React.FC = () => {
               </Card>
             )}
 
-            {/* Actions â€” Glassmorphism container */}
+            {/* Actions — Glassmorphism container */}
             <View
               style={[
                 styles.actionsRowGlass,
@@ -1653,7 +1663,7 @@ export const AnalysisScreen: React.FC = () => {
 
       {activeTab === "study" && (
         <View style={{ flex: 1 }}>
-          {/* Segmented Control: Chat IA / Outils d'Ã©tude */}
+          {/* Segmented Control: Chat IA / Outils d'étude */}
           {!activeStudyTool && (
             <View
               style={[
@@ -1806,7 +1816,7 @@ export const AnalysisScreen: React.FC = () => {
                   <View style={styles.chatLimitWarning}>
                     <Text style={styles.chatLimitText}>
                       {language === "fr"
-                        ? "Limite atteinte. Passez au plan supÃ©rieur pour continuer."
+                        ? "Limite atteinte. Passez au plan supérieur pour continuer."
                         : "Limit reached. Upgrade to continue chatting."}
                     </Text>
                   </View>
@@ -1835,7 +1845,7 @@ export const AnalysisScreen: React.FC = () => {
             </KeyboardAvoidingView>
           )}
 
-          {/* Outils d'Ã©tude sub-tab */}
+          {/* Outils d'étude sub-tab */}
           {(studySubTab === "tools" || activeStudyTool) && (
             <View
               style={styles.toolsContainer}
@@ -2156,6 +2166,36 @@ export const AnalysisScreen: React.FC = () => {
         onClose={() => setShowUpgradeModal(false)}
         limitType={upgradeLimitType}
       />
+
+      {/* Voice Chat FAB + Modal */}
+      {summary && summaryId && (
+        <>
+          <VoiceButton
+            summaryId={String(summaryId)}
+            videoTitle={summary.title || ""}
+            onSessionStart={() => setShowVoiceScreen(true)}
+          />
+          <VoiceScreen
+            visible={showVoiceScreen}
+            onClose={() => {
+              voiceChat.stop();
+              setShowVoiceScreen(false);
+            }}
+            videoTitle={summary.title || ""}
+            channelName={summary.videoInfo?.channel}
+            voiceStatus={voiceChat.status}
+            isSpeaking={voiceChat.isSpeaking}
+            messages={voiceChat.messages}
+            elapsedSeconds={voiceChat.elapsedSeconds}
+            remainingMinutes={voiceChat.remainingMinutes}
+            onStart={voiceChat.start}
+            onStop={voiceChat.stop}
+            onMuteToggle={voiceChat.toggleMute}
+            isMuted={voiceChat.isMuted}
+            error={voiceChat.error ?? undefined}
+          />
+        </>
+      )}
 
       {/* Floating Chat FAB - visible on all tabs except study/chat */}
       {summary && !(activeTab === "study" && studySubTab === "chat") && (

@@ -1,13 +1,16 @@
 /**
  * useVoiceChat — Hook d'orchestration de conversation vocale (React Native)
- * Gère le cycle complet : permissions micro → API session → ElevenLabs → timer → cleanup
- * Adapté du hook web avec gestion AppState, expo-av, et haptics.
+ * Gère le cycle complet : permissions micro → API session → ElevenLabs RN SDK → timer → cleanup
+ *
+ * Utilise @elevenlabs/react-native (useConversation) pour la gestion native audio.
+ * Le SDK gère automatiquement : WebSocket, audio input/output, VAD, etc.
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
+import { useConversation } from "@elevenlabs/react-native";
 import { voiceApi } from "../../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -36,6 +39,7 @@ interface VoiceChatMessage {
 interface SessionResponse {
   session_id: string;
   signed_url: string;
+  agent_id: string;
   expires_at: string;
   quota_remaining_minutes: number;
   max_session_minutes: number;
@@ -77,7 +81,7 @@ const ERROR_MESSAGES = {
   QUOTA_EXCEEDED:
     "Quota vocal épuisé. Passez à un plan supérieur pour continuer.",
   SESSION_FAILED: "Impossible de démarrer la session vocale. Réessayez.",
-  SDK_LOAD_FAILED: "Impossible de charger le module de conversation vocale.",
+  SDK_INIT_FAILED: "Impossible d'initialiser le module vocal.",
   SESSION_TIMEOUT: "Session terminée : durée maximale atteinte.",
   APP_BACKGROUNDED:
     "Session arrêtée car l'application est passée en arrière-plan.",
@@ -93,7 +97,6 @@ export function useVoiceChat({
   onError,
 }: UseVoiceChatOptions): UseVoiceChatReturn {
   const [status, setStatus] = useState<VoiceChatStatus>("idle");
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [messages, setMessages] = useState<VoiceChatMessage[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -101,7 +104,6 @@ export function useVoiceChat({
   const [error, setError] = useState<string | null>(null);
 
   // Refs pour le cleanup
-  const conversationRef = useRef<unknown>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const maxSecondsRef = useRef<number>(0);
   const isMountedRef = useRef(true);
@@ -113,6 +115,7 @@ export function useVoiceChat({
 
   const reportError = useCallback(
     (msg: string) => {
+      if (!isMountedRef.current) return;
       setError(msg);
       setStatus("error");
       onError?.(msg);
@@ -128,6 +131,57 @@ export function useVoiceChat({
   }, []);
 
   // ─────────────────────────────────────────────────────────────────────────
+  // ElevenLabs React Native SDK — useConversation
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const conversation = useConversation({
+    onConnect: () => {
+      if (isMountedRef.current) {
+        setStatus("listening");
+      }
+    },
+    onDisconnect: () => {
+      if (isMountedRef.current) {
+        stopTimer();
+        isActiveRef.current = false;
+        setStatus("idle");
+      }
+    },
+    onMessage: (message: { message: string; source: "user" | "ai" }) => {
+      if (isMountedRef.current) {
+        setMessages((prev) => [
+          ...prev,
+          { text: message.message, source: message.source },
+        ]);
+      }
+    },
+    onError: (err: Error | string) => {
+      if (isMountedRef.current) {
+        const msg =
+          typeof err === "string"
+            ? err
+            : err.message || ERROR_MESSAGES.UNKNOWN;
+        reportError(msg);
+      }
+    },
+    onStatusChange: (statusInfo: { status: string }) => {
+      if (!isMountedRef.current) return;
+      switch (statusInfo.status) {
+        case "speaking":
+          setStatus("speaking");
+          break;
+        case "listening":
+          setStatus("listening");
+          break;
+        case "thinking":
+        case "processing":
+          setStatus("thinking");
+          break;
+      }
+    },
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
   // stop()
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -135,15 +189,11 @@ export function useVoiceChat({
     stopTimer();
     isActiveRef.current = false;
 
-    // End ElevenLabs session
-    if (conversationRef.current) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (conversationRef.current as any).endSession();
-      } catch {
-        // Ignorer les erreurs de fin de session
-      }
-      conversationRef.current = null;
+    // End ElevenLabs session via RN SDK
+    try {
+      await conversation.endSession();
+    } catch {
+      // Ignorer les erreurs de fin de session
     }
 
     // Haptic feedback au stop
@@ -155,11 +205,10 @@ export function useVoiceChat({
 
     if (isMountedRef.current) {
       setStatus("idle");
-      setIsSpeaking(false);
       setIsMuted(false);
       setElapsedSeconds(0);
     }
-  }, [stopTimer]);
+  }, [stopTimer, conversation]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // start()
@@ -199,7 +248,7 @@ export function useVoiceChat({
       return;
     }
 
-    // 2. Créer la session via notre API
+    // 2. Créer la session via notre API backend
     let sessionData: SessionResponse;
     try {
       const numericId = parseInt(summaryId, 10);
@@ -233,64 +282,17 @@ export function useVoiceChat({
       return;
     }
 
-    // 3. Charger le SDK ElevenLabs et démarrer la session
+    // 3. Démarrer la session ElevenLabs via le SDK React Native
     try {
-      const { Conversation } = await import("@elevenlabs/client");
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const conversation = await (Conversation as any).startSession({
-        signedUrl: sessionData.signed_url,
-        onConnect: () => {
-          if (isMountedRef.current) {
-            setStatus("listening");
-          }
-        },
-        onDisconnect: () => {
-          if (isMountedRef.current) {
-            stopTimer();
-            isActiveRef.current = false;
-            setStatus("idle");
-            setIsSpeaking(false);
-          }
-        },
-        onMessage: (message: { message: string; source: "user" | "ai" }) => {
-          if (isMountedRef.current) {
-            setMessages((prev) => [
-              ...prev,
-              { text: message.message, source: message.source },
-            ]);
-          }
-        },
-        onError: (err: Error | string) => {
-          if (isMountedRef.current) {
-            const msg =
-              typeof err === "string"
-                ? err
-                : err.message || ERROR_MESSAGES.UNKNOWN;
-            reportError(msg);
-          }
-        },
-        onStatusChange: (statusInfo: { status: string }) => {
-          if (!isMountedRef.current) return;
-          switch (statusInfo.status) {
-            case "speaking":
-              setIsSpeaking(true);
-              setStatus("speaking");
-              break;
-            case "listening":
-              setIsSpeaking(false);
-              setStatus("listening");
-              break;
-            case "thinking":
-            case "processing":
-              setIsSpeaking(false);
-              setStatus("thinking");
-              break;
-          }
+      await conversation.startSession({
+        agentId: sessionData.agent_id,
+        overrides: {
+          agent: {
+            language: "fr",
+          },
         },
       });
 
-      conversationRef.current = conversation;
       isActiveRef.current = true;
 
       // Haptic feedback au start
@@ -316,26 +318,20 @@ export function useVoiceChat({
         });
       }, 1000);
     } catch {
-      reportError(ERROR_MESSAGES.SDK_LOAD_FAILED);
+      reportError(ERROR_MESSAGES.SDK_INIT_FAILED);
     }
-  }, [status, summaryId, onError, reportError, stopTimer, stop]);
+  }, [status, summaryId, onError, reportError, stop, conversation]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // toggleMute()
   // ─────────────────────────────────────────────────────────────────────────
 
   const toggleMute = useCallback(() => {
-    if (!conversationRef.current) return;
-
     const nextMuted = !isMuted;
 
-    // Tenter de muter via le SDK ElevenLabs
+    // Muter via le SDK RN ElevenLabs
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const conv = conversationRef.current as any;
-      if (typeof conv.setVolume === "function") {
-        conv.setVolume({ inputVolume: nextMuted ? 0 : 1 });
-      }
+      conversation.setMicMuted(nextMuted);
     } catch {
       // Ignorer — le mute est géré côté état
     }
@@ -348,7 +344,7 @@ export function useVoiceChat({
     }
 
     setIsMuted(nextMuted);
-  }, [isMuted]);
+  }, [isMuted, conversation]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // AppState — auto-stop quand l'app passe en background
@@ -387,17 +383,6 @@ export function useVoiceChat({
       isActiveRef.current = false;
       stopTimer();
 
-      // Fin de session ElevenLabs
-      if (conversationRef.current) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (conversationRef.current as any).endSession();
-        } catch {
-          // Ignorer
-        }
-        conversationRef.current = null;
-      }
-
       // Réinitialiser le mode audio
       Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
@@ -412,7 +397,7 @@ export function useVoiceChat({
     stop,
     toggleMute,
     status,
-    isSpeaking,
+    isSpeaking: conversation.isSpeaking,
     isMuted,
     messages,
     elapsedSeconds,

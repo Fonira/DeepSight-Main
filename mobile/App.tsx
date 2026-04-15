@@ -29,6 +29,7 @@ import {
   captureException,
 } from "./src/services/CrashReporting";
 import { tokenManager } from "./src/services/TokenManager";
+import { ElevenLabsProvider } from "@elevenlabs/react-native";
 
 // DoodleBackground uses only react-native-svg + expo-linear-gradient (no Reanimated)
 // Safe to load in Expo Go
@@ -179,11 +180,13 @@ export default function App() {
                     <AuthProvider>
                       <PlanProvider>
                         <BackgroundAnalysisProvider>
-                          <DoodleVariantProvider>
-                            <ToastProvider>
-                              <AppContent />
-                            </ToastProvider>
-                          </DoodleVariantProvider>
+                          <ElevenLabsProvider>
+                            <DoodleVariantProvider>
+                              <ToastProvider>
+                                <AppContent />
+                              </ToastProvider>
+                            </DoodleVariantProvider>
+                          </ElevenLabsProvider>
                         </BackgroundAnalysisProvider>
                       </PlanProvider>
                     </AuthProvider>

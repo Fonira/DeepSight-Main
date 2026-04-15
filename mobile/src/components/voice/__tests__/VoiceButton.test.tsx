@@ -51,12 +51,16 @@ jest.mock("expo-haptics", () => ({
 
 // Mock react-native-reanimated
 jest.mock("react-native-reanimated", () => {
-  const View = require("react-native").View;
+  const { View } = require("react-native");
+  const AnimatedView = View;
+  const Animated = {
+    View: AnimatedView,
+    createAnimatedComponent: (c: React.ComponentType) => c,
+  };
   return {
-    default: {
-      View: View,
-      createAnimatedComponent: (c: React.ComponentType) => c,
-    },
+    __esModule: true,
+    default: Animated,
+    ...Animated,
     useAnimatedStyle: () => ({}),
     useSharedValue: (val: number) => ({ value: val }),
     withRepeat: (val: unknown) => val,

@@ -1898,6 +1898,7 @@ export const voiceApi = {
   ): Promise<{
     session_id: string;
     signed_url: string;
+    agent_id: string;
     expires_at: string;
     quota_remaining_minutes: number;
     max_session_minutes: number;
