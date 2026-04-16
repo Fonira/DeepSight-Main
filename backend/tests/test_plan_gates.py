@@ -153,11 +153,11 @@ class TestRequireCredits:
         assert "insufficient_credits" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
-    async def test_unlimited_plan_bypasses_credits(self):
-        """User unlimited n'a pas de vérification crédits."""
+    async def test_admin_bypasses_credits(self):
+        """Admin user bypasses credit checks."""
         from auth.dependencies import require_credits
 
-        user = make_mock_user(plan="unlimited", credits=0)
+        user = make_mock_user(plan="free", credits=0, is_admin=True)
         mock_session = AsyncMock()
         check_fn = require_credits(min_credits=100)
 
@@ -173,69 +173,63 @@ class TestRequireCredits:
 class TestFeatureAccess:
 
     def test_feature_available_for_plan(self):
-        """is_feature_available pour plan avec accès → True."""
+        """Pro user a accès aux playlists → True."""
         from core.plan_limits import check_feature_access
 
-        # User pro devrait avoir accès à la plupart des features
         pro_user = make_mock_user(plan="pro")
+        pro_limits = {"playlists_enabled": True, "deep_research_enabled": True}
+        mock_plan = {"name": "Pro", "name_en": "Pro", "color": "#8B5CF6",
+                     "price_monthly_cents": 999, "limits": pro_limits}
 
-        with patch("core.plan_limits.PLAN_LIMITS", {
-            "free": {"blocked_features": ["playlists", "export_csv", "batch_api", "deep_research"], "upgrade_prompt": {}},
-            "pro": {"blocked_features": [], "upgrade_prompt": {}}
-        }):
+        with patch("core.plan_limits.get_limits", return_value=pro_limits), \
+             patch("core.plan_limits.get_plan", return_value=mock_plan):
             has_access, error = check_feature_access(pro_user, "playlists")
 
         assert has_access is True
         assert error is None
 
     def test_feature_blocked_for_free(self):
-        """is_feature_available pour plan sans accès → False."""
+        """Free user bloqué pour playlists → False."""
         from core.plan_limits import check_feature_access
 
         free_user = make_mock_user(plan="free")
+        free_limits = {"playlists_enabled": False}
+        mock_plan = {"name": "Pro", "name_en": "Pro", "color": "#8B5CF6",
+                     "price_monthly_cents": 999, "limits": {}}
 
-        with patch("core.plan_limits.PLAN_LIMITS", {
-            "free": {
-                "blocked_features": ["playlists", "export_csv", "batch_api", "deep_research"],
-                "upgrade_prompt": {"fr": "Passez au plan Pro"}
-            }
-        }), \
-             patch("core.plan_limits.get_required_plan_for_feature", return_value="pro"):
+        with patch("core.plan_limits.get_limits", return_value=free_limits), \
+             patch("core.plan_limits.get_plan", return_value=mock_plan):
             has_access, error = check_feature_access(free_user, "playlists")
 
         assert has_access is False
         assert error is not None
         assert error["code"] == "feature_blocked"
 
-    def test_web_search_for_starter(self):
-        """Starter accède à web_search → True."""
+    def test_web_search_for_plus(self):
+        """Plus (ex-starter) accède à web_search → True."""
         from core.plan_limits import check_feature_access
 
-        starter_user = make_mock_user(plan="starter")
+        plus_user = make_mock_user(plan="plus")
+        plus_limits = {"web_search_enabled": True, "web_search_monthly": 20}
+        mock_plan = {"name": "Plus", "limits": plus_limits}
 
-        with patch("core.plan_limits.PLAN_LIMITS", {
-            "free": {"blocked_features": ["playlists", "export_csv", "batch_api", "deep_research", "web_search"], "upgrade_prompt": {}},
-            "starter": {"blocked_features": ["batch_api", "deep_research"], "upgrade_prompt": {}}
-        }):
-            has_access, error = check_feature_access(starter_user, "web_search")
+        with patch("core.plan_limits.get_limits", return_value=plus_limits), \
+             patch("core.plan_limits.get_plan", return_value=mock_plan):
+            has_access, error = check_feature_access(plus_user, "web_search")
 
         assert has_access is True
 
-    def test_batch_api_blocked_for_starter(self):
-        """Starter n'accède pas à batch_api → False."""
+    def test_batch_api_blocked_for_plus(self):
+        """Plus n'accède pas à batch_api → False."""
         from core.plan_limits import check_feature_access
 
-        starter_user = make_mock_user(plan="starter")
+        plus_user = make_mock_user(plan="plus")
+        plus_limits = {"batch_api_enabled": False}
+        mock_plan = {"name": "Pro", "limits": {}}
 
-        with patch("core.plan_limits.PLAN_LIMITS", {
-            "free": {"blocked_features": ["playlists", "export_csv", "batch_api", "deep_research"], "upgrade_prompt": {}},
-            "starter": {
-                "blocked_features": ["batch_api", "deep_research"],
-                "upgrade_prompt": {"fr": "Passez au plan Expert"}
-            }
-        }), \
-             patch("core.plan_limits.get_required_plan_for_feature", return_value="expert"):
-            has_access, error = check_feature_access(starter_user, "batch_api")
+        with patch("core.plan_limits.get_limits", return_value=plus_limits), \
+             patch("core.plan_limits.get_plan", return_value=mock_plan):
+            has_access, error = check_feature_access(plus_user, "batch_api")
 
         assert has_access is False
-        assert error["required_plan"] == "expert"
+        assert error["required_plan"] == "pro"
