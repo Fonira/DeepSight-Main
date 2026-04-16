@@ -668,6 +668,27 @@ async def lifespan(app: FastAPI):
         )
         logger.info("Keyword image scheduler registered (every 1 hour)")
 
+        # 🌻 Trending pre-cache job (every hour)
+        async def _scheduled_trending_refresh():
+            """Pre-cache Tournesol trending recommendations."""
+            try:
+                from tournesol.trending_cache import refresh_trending_cache
+                await refresh_trending_cache()
+            except Exception as e:
+                logger.error(f"Trending cache refresh failed: {e}")
+
+        scheduler.add_job(
+            _scheduled_trending_refresh,
+            _IT(hours=1),
+            id="trending_precache",
+            name="Tournesol trending pre-cache",
+            replace_existing=True,
+        )
+        logger.info("Trending pre-cache scheduler registered (every 1 hour)")
+
+        # Warm the cache immediately on startup
+        asyncio.create_task(_scheduled_trending_refresh())
+
         scheduler.start()
         logger.info(
             f"Backup scheduler started (daily at {BACKUP_CONFIG['CRON_HOUR']:02d}:{BACKUP_CONFIG['CRON_MINUTE']:02d} UTC)"

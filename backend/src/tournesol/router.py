@@ -359,15 +359,33 @@ async def get_recommendations_raw(request: Request):
     Utilisé par le frontend TournesolTrendingSection qui a besoin du format original
     avec entity.metadata, collective_rating, etc.
     Contourne le problème CORS (api.tournesol.app ne renvoie pas Access-Control-Allow-Origin).
-    Tous les query params sont passés tels quels à l'API Tournesol.
+
+    Sert d'abord depuis le pre-cache Redis (rafraîchi toutes les heures),
+    fallback sur appel live Tournesol si cache miss.
     """
-    # Passer tous les query params tels quels à Tournesol
+    from tournesol.trending_cache import get_cached_trending
+
     params = dict(request.query_params)
     # Sécurité : limiter le nombre de résultats
     if "limit" in params:
         params["limit"] = str(min(int(params["limit"]), 50))
 
-    logger.info(f"Tournesol raw proxy: params={params}")
+    # ── Try pre-cache first ──
+    language = params.get("language", "")
+    limit = int(params.get("limit", "20"))
+    offset = int(params.get("offset", "0"))
+
+    cached = await get_cached_trending(language=language, limit=limit, offset=offset)
+    if cached:
+        logger.info(
+            "Tournesol raw (CACHED, age=%ds): %d results",
+            cached.get("_cache_age", 0),
+            len(cached.get("results", [])),
+        )
+        return cached
+
+    # ── Fallback: live API call ──
+    logger.info(f"Tournesol raw proxy (LIVE): params={params}")
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -394,6 +412,21 @@ async def get_recommendations_raw(request: Request):
     except Exception as e:
         logger.error(f"Tournesol raw proxy error: {e}")
         return {"count": 0, "next": None, "previous": None, "results": []}
+
+
+@router.get("/trending/stats")
+async def get_trending_cache_stats():
+    """📊 Stats du pre-cache trending (admin debug)."""
+    from tournesol.trending_cache import get_cache_stats
+    return await get_cache_stats()
+
+
+@router.get("/trending/refresh")
+async def trigger_trending_refresh():
+    """🔄 Force un refresh du pre-cache trending (admin debug)."""
+    from tournesol.trending_cache import refresh_trending_cache
+    stats = await refresh_trending_cache()
+    return {"status": "refreshed", **stats}
 
 
 @router.get("/batch")
