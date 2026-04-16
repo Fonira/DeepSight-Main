@@ -14,6 +14,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { historyApi } from "@/services/api";
+import { OfflineCache, CachePriority } from "@/services/OfflineCache";
+import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { AnalysisCard } from "@/components/library/AnalysisCard";
 import { SearchBar } from "@/components/library/SearchBar";
 import { PlaylistSection } from "@/components/library/PlaylistSection";
@@ -31,6 +33,7 @@ export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const isOffline = useIsOffline();
 
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,16 +55,48 @@ export default function LibraryScreen() {
     isRefetching,
   } = useInfiniteQuery({
     queryKey,
-    queryFn: ({ pageParam }) =>
-      historyApi.getHistory(
-        pageParam as number,
+    queryFn: async ({ pageParam }) => {
+      const page = pageParam as number;
+      const cacheKey = `library_p1_fav${favoritesOnly ? 1 : 0}`;
+
+      // Offline: only page 1 is cached — subsequent pages return empty
+      if (isOffline) {
+        if (page !== 1) {
+          const emptyPage: PaginatedResponse<AnalysisSummary> = {
+            items: [],
+            page,
+            pageSize: 20,
+            hasMore: false,
+            total: 0,
+          };
+          return emptyPage;
+        }
+        const cached =
+          await OfflineCache.get<PaginatedResponse<AnalysisSummary>>(cacheKey);
+        if (cached) return cached;
+        throw new Error("OFFLINE_NO_CACHE");
+      }
+
+      const result = await historyApi.getHistory(
+        page,
         20,
         favoritesOnly ? { favoritesOnly: true } : undefined,
-      ),
+      );
+      // Cache page 1 only — 20 recent analyses are enough for offline browsing
+      if (page === 1) {
+        await OfflineCache.set(cacheKey, result, {
+          priority: CachePriority.HIGH,
+          ttlMinutes: 7 * 24 * 60,
+          tags: ["library"],
+        });
+      }
+      return result;
+    },
     getNextPageParam: (lastPage: PaginatedResponse<AnalysisSummary>) =>
       lastPage.hasMore ? lastPage.page + 1 : undefined,
     initialPageParam: 1,
     staleTime: 5 * 60 * 1000,
+    retry: isOffline ? 0 : 2,
   });
 
   const allItems = useMemo(
@@ -117,10 +152,10 @@ export default function LibraryScreen() {
   );
 
   const handleLoadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
+    if (hasNextPage && !isFetchingNextPage && !isOffline) {
       fetchNextPage();
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, isOffline]);
 
   const renderItem = useCallback(
     ({ item }: { item: AnalysisSummary }) => (

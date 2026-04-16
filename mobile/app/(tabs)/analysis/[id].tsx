@@ -18,7 +18,10 @@ import { palette } from "@/theme/colors";
 import { springs } from "@/theme/animations";
 import { videoApi, historyApi } from "@/services/api";
 import { resetCircuitBreaker } from "@/services/RetryService";
+import { OfflineCache, CachePriority } from "@/services/OfflineCache";
+import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { useAnalysisStore } from "@/stores/analysisStore";
+import type { AnalysisSummary } from "@/types";
 import { AnalysisSkeleton } from "@/components/ui/SkeletonLoader";
 import { VideoPlayer } from "@/components/analysis/VideoPlayer";
 import { StreamingOverlay } from "@/components/analysis/StreamingOverlay";
@@ -47,6 +50,7 @@ export default function AnalysisDetailScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const store = useAnalysisStore();
+  const isOffline = useIsOffline();
 
   const pagerRef = useRef<PagerView>(null);
   const initialTabIndex = Number(initialTab ?? "0");
@@ -112,11 +116,37 @@ export default function AnalysisDetailScreen() {
     refetch,
   } = useQuery({
     queryKey: ["summary", effectiveId],
-    queryFn: () => videoApi.getSummary(effectiveId!),
+    queryFn: async () => {
+      const cacheKey = `summary_${effectiveId}`;
+
+      // Offline: serve from cache or throw
+      if (isOffline) {
+        const cached = await OfflineCache.get<AnalysisSummary>(cacheKey);
+        if (cached) return cached;
+        throw new Error("OFFLINE_NO_CACHE");
+      }
+
+      // Online: fetch and cache on success, fallback to cache on network failure
+      try {
+        const result = await videoApi.getSummary(effectiveId!);
+        // Persist for offline access (HIGH priority, 7-day TTL)
+        await OfflineCache.set(cacheKey, result, {
+          priority: CachePriority.HIGH,
+          ttlMinutes: 7 * 24 * 60,
+          tags: ["summaries"],
+        });
+        return result;
+      } catch (err) {
+        const cached = await OfflineCache.get<AnalysisSummary>(cacheKey);
+        if (cached) return cached;
+        throw err;
+      }
+    },
     enabled: canFetchSummary,
     // Keep retry count below the circuit breaker threshold (5 failures = open).
     // 2 retries = 3 total attempts → safely under the threshold.
-    retry: 2,
+    // Skip retries when offline — cache miss won't become a hit by retrying.
+    retry: isOffline ? 0 : 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 
@@ -401,18 +431,26 @@ export default function AnalysisDetailScreen() {
 
   // Error state
   if (error && !isProcessing && store.status !== "failed" && !summary) {
+    const isOfflineNoCache =
+      isOffline || (error as Error)?.message === "OFFLINE_NO_CACHE";
     return (
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
         {BackHeader}
         <View style={styles.errorContainer}>
           <Ionicons
-            name="alert-circle-outline"
+            name={
+              isOfflineNoCache
+                ? "cloud-offline-outline"
+                : "alert-circle-outline"
+            }
             size={48}
-            color={colors.accentError}
+            color={isOfflineNoCache ? colors.textSecondary : colors.accentError}
           />
           <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-            Impossible de charger l'analyse
+            {isOfflineNoCache
+              ? "Hors ligne — cette analyse n'est pas encore en cache. Reconnectez-vous pour la télécharger."
+              : "Impossible de charger l'analyse"}
           </Text>
           <Pressable
             onPress={() => refetch()}
