@@ -106,13 +106,13 @@ class TestGetBatchResults:
         mock_response.status_code = 200
         mock_response.text = output_jsonl
 
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_client = AsyncMock()
-            mock_client.get.return_value = mock_response
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_client
+        mock_client = AsyncMock()
+        mock_client.get.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
 
+        with patch("core.mistral_batch.shared_http_client", return_value=mock_client), \
+             patch("core.mistral_batch.get_mistral_key", return_value="test-key"):
             results = await get_batch_results("output_file_123")
 
         assert len(results) == 2
@@ -137,13 +137,13 @@ class TestGetBatchResults:
         mock_response.status_code = 200
         mock_response.text = output_jsonl
 
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_client = AsyncMock()
-            mock_client.get.return_value = mock_response
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_cls.return_value = mock_client
+        mock_client = AsyncMock()
+        mock_client.get.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
 
+        with patch("core.mistral_batch.shared_http_client", return_value=mock_client), \
+             patch("core.mistral_batch.get_mistral_key", return_value="test-key"):
             results = await get_batch_results("file_id")
 
         assert len(results) == 2
