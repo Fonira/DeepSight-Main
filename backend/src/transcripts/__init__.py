@@ -31,6 +31,15 @@ from .cache_db import (
     save_transcript_to_cache,
 )
 
+# 💾 Unified L1 (Redis) + L2 (DB) transcript cache orchestrator
+from .cache import (
+    TranscriptCacheService,
+    transcript_cache,
+    get_transcript_cached,
+    save_transcript_cached,
+    L1_TTL_SECONDS,
+)
+
 # Health monitoring
 from .monitor import (
     TranscriptHealthMonitor,
@@ -66,6 +75,12 @@ __all__ = [
     # 💾 DB Cache L2
     "get_cached_transcript",
     "save_transcript_to_cache",
+    # 💾 L1 (Redis) + L2 (DB) unified cache
+    "TranscriptCacheService",
+    "transcript_cache",
+    "get_transcript_cached",
+    "save_transcript_cached",
+    "L1_TTL_SECONDS",
     # Health monitoring
     "TranscriptHealthMonitor",
     "health_monitor",
