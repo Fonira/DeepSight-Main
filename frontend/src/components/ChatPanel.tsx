@@ -31,6 +31,7 @@ import { AudioPlayerButton } from "./AudioPlayerButton";
 import { TTSToggle } from "./TTSToggle";
 import { useTTSContext } from "../contexts/TTSContext";
 import { EnrichedMarkdown, cleanConceptMarkers } from "./EnrichedMarkdown";
+import { ThumbnailImage } from "./ThumbnailImage";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 TYPES
@@ -83,11 +84,6 @@ interface ChatPanelProps {
 const canUseWebSearch = (plan?: string): boolean => {
   if (!plan) return false;
   return plan.toLowerCase() === "pro";
-};
-
-const getThumbnailUrl = (videoId: string, thumbnailUrl?: string): string => {
-  if (thumbnailUrl) return thumbnailUrl;
-  return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -285,11 +281,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         ═══════════════════════════════════════════════════════════════════════ */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] flex-shrink-0">
           {/* Miniature vidéo */}
-          <img
-            src={getThumbnailUrl(videoId, thumbnailUrl)}
-            alt=""
-            className="w-12 h-[27px] rounded object-cover flex-shrink-0 opacity-80"
-          />
+          <div className="w-12 h-[27px] rounded overflow-hidden flex-shrink-0 opacity-80">
+            <ThumbnailImage
+              thumbnailUrl={thumbnailUrl}
+              videoId={videoId}
+              title={videoTitle}
+              className="w-full h-full object-cover"
+            />
+          </div>
 
           {/* Titre */}
           <div className="flex-1 min-w-0">

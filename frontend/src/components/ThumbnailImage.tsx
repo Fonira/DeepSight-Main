@@ -1,6 +1,6 @@
 /**
- * 🖼️ THUMBNAIL IMAGE COMPONENT
- * Gère intelligemment les thumbnails pour vidéos YouTube et textes bruts
+ * ThumbnailImage — Unified thumbnail component
+ * Handles YouTube, TikTok, text, and R2-persisted thumbnails
  */
 
 import React, { useState } from "react";
@@ -16,6 +16,7 @@ import {
   Leaf,
   GraduationCap,
   Mic,
+  Music,
 } from "lucide-react";
 
 interface ThumbnailImageProps {
@@ -23,10 +24,11 @@ interface ThumbnailImageProps {
   videoId: string;
   title: string;
   category?: string;
+  platform?: "youtube" | "tiktok" | "text";
   className?: string;
 }
 
-// Couleurs et icônes par catégorie
+// Couleurs et icones par categorie
 const categoryStyles: Record<
   string,
   { gradient: string; icon: React.ReactNode }
@@ -79,14 +81,23 @@ const defaultStyle = {
 };
 
 /**
- * Détermine si c'est un texte brut (pas une vidéo YouTube)
+ * Determine si c'est un texte brut (pas une video)
  */
-const isRawText = (videoId: string): boolean => {
+const isRawText = (videoId: string, platform?: string): boolean => {
+  if (platform === "text") return true;
   return videoId?.startsWith("txt_") || videoId?.startsWith("text_");
 };
 
 /**
- * Composant placeholder pour les textes bruts
+ * Determine si une URL pointe vers R2 (persistee)
+ */
+const isR2Url = (url?: string): boolean => {
+  if (!url) return false;
+  return url.includes(".r2.dev") || url.includes("r2.cloudflarestorage.com");
+};
+
+/**
+ * Placeholder pour les textes bruts
  */
 const TextPlaceholder: React.FC<{
   category?: string;
@@ -110,6 +121,22 @@ const TextPlaceholder: React.FC<{
 };
 
 /**
+ * Placeholder pour TikTok sans thumbnail
+ */
+const TikTokPlaceholder: React.FC<{ className?: string }> = ({
+  className = "",
+}) => (
+  <div
+    className={`w-full h-full bg-gradient-to-br from-pink-500/20 via-black/40 to-cyan-500/20 flex flex-col items-center justify-center ${className}`}
+  >
+    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-1">
+      <Music className="w-6 h-6 text-white" />
+    </div>
+    <span className="text-white/60 text-xs font-medium">TikTok</span>
+  </div>
+);
+
+/**
  * Composant principal ThumbnailImage
  */
 export const ThumbnailImage: React.FC<ThumbnailImageProps> = ({
@@ -117,13 +144,17 @@ export const ThumbnailImage: React.FC<ThumbnailImageProps> = ({
   videoId,
   title,
   category,
+  platform,
   className = "w-full h-full object-cover",
 }) => {
   const [hasError, setHasError] = useState(false);
 
+  const effectivePlatform =
+    platform || (isRawText(videoId) ? "text" : undefined);
+
   // Si c'est un texte brut
-  if (isRawText(videoId)) {
-    // Si on a une thumbnail (base64 ou URL), l'utiliser
+  if (effectivePlatform === "text" || isRawText(videoId, platform)) {
+    // Si on a une thumbnail (R2 URL, base64, ou autre), l'utiliser
     if (thumbnailUrl && !hasError) {
       return (
         <img
@@ -134,7 +165,6 @@ export const ThumbnailImage: React.FC<ThumbnailImageProps> = ({
         />
       );
     }
-    // Sinon, afficher le placeholder
     return (
       <TextPlaceholder
         category={category}
@@ -144,13 +174,43 @@ export const ThumbnailImage: React.FC<ThumbnailImageProps> = ({
     );
   }
 
-  // Pour les vidéos YouTube
-  const youtubeThumb = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-  const src = thumbnailUrl || youtubeThumb;
+  // TikTok
+  if (effectivePlatform === "tiktok") {
+    if (thumbnailUrl && !hasError) {
+      return (
+        <img
+          src={thumbnailUrl}
+          alt={title}
+          className={className}
+          onError={() => setHasError(true)}
+        />
+      );
+    }
+    return <TikTokPlaceholder className={className} />;
+  }
+
+  // YouTube (ou autre plateforme)
+  // Si l'URL est une R2 URL, ne pas fallback vers YouTube CDN
+  if (isR2Url(thumbnailUrl)) {
+    if (!hasError) {
+      return (
+        <img
+          src={thumbnailUrl}
+          alt={title}
+          className={className}
+          onError={() => setHasError(true)}
+        />
+      );
+    }
+    // R2 failed — fallback to YouTube CDN
+  }
+
+  const youtubeThumb = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  const src = thumbnailUrl && !hasError ? thumbnailUrl : youtubeThumb;
 
   return (
     <img
-      src={hasError ? youtubeThumb : src}
+      src={src}
       alt={title}
       className={className}
       onError={() => {
@@ -162,20 +222,23 @@ export const ThumbnailImage: React.FC<ThumbnailImageProps> = ({
 
 /**
  * Helper function pour utilisation dans les templates existants
- * Retourne l'URL appropriée ou null si placeholder nécessaire
+ * Retourne l'URL appropriee ou null si placeholder necessaire
  */
 export const getThumbnailUrl = (
   videoId: string,
   thumbnailUrl?: string,
+  platform?: string,
 ): string | null => {
   if (thumbnailUrl) return thumbnailUrl;
-  if (isRawText(videoId)) return null;
-  return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+  if (isRawText(videoId, platform)) return null;
+  if (platform === "tiktok") return null;
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 };
 
 /**
- * Vérifie si un video_id correspond à un texte brut
+ * Verifie si un video_id correspond a un texte brut
  */
-export const isRawTextVideo = isRawText;
+export const isRawTextVideo = (videoId: string, platform?: string): boolean =>
+  isRawText(videoId, platform);
 
 export default ThumbnailImage;

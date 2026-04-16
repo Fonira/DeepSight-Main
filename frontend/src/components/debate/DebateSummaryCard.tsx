@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { Swords, Clock, CheckCircle2, XCircle } from "lucide-react";
 import type { DebateListItem, DebateStatus } from "../../types/debate";
 import { DeepSightSpinnerMicro } from "../ui/DeepSightSpinner";
+import { ThumbnailImage } from "../ThumbnailImage";
 
 interface DebateSummaryCardProps {
   debate: DebateListItem;
@@ -88,24 +89,22 @@ export const DebateSummaryCard: React.FC<DebateSummaryCardProps> = ({
       <div className="flex items-start gap-3">
         {/* Thumbnails stacked */}
         <div className="relative w-16 h-16 shrink-0">
-          {debate.video_a_thumbnail ? (
-            <img
-              src={debate.video_a_thumbnail}
-              alt=""
-              className="absolute top-0 left-0 w-12 h-12 rounded-lg object-cover border border-indigo-500/30"
+          <div className="absolute top-0 left-0 w-12 h-12 rounded-lg overflow-hidden border border-indigo-500/30">
+            <ThumbnailImage
+              thumbnailUrl={debate.video_a_thumbnail || undefined}
+              videoId=""
+              title={debate.video_a_title || ""}
+              className="w-full h-full object-cover"
             />
-          ) : (
-            <div className="absolute top-0 left-0 w-12 h-12 rounded-lg bg-indigo-500/10 border border-indigo-500/30" />
-          )}
-          {debate.video_b_thumbnail ? (
-            <img
-              src={debate.video_b_thumbnail}
-              alt=""
-              className="absolute bottom-0 right-0 w-12 h-12 rounded-lg object-cover border border-violet-500/30"
+          </div>
+          <div className="absolute bottom-0 right-0 w-12 h-12 rounded-lg overflow-hidden border border-violet-500/30">
+            <ThumbnailImage
+              thumbnailUrl={debate.video_b_thumbnail || undefined}
+              videoId=""
+              title={debate.video_b_title || ""}
+              className="w-full h-full object-cover"
             />
-          ) : (
-            <div className="absolute bottom-0 right-0 w-12 h-12 rounded-lg bg-violet-500/10 border border-violet-500/30" />
-          )}
+          </div>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center z-10 border border-white/20">
             <Swords className="w-3 h-3 text-white" />
           </div>

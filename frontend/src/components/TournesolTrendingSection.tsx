@@ -10,6 +10,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { ExternalLink, Clock, ThumbsUp, RefreshCw } from "lucide-react";
+import { ThumbnailImage } from "./ThumbnailImage";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES — Tournesol API response
@@ -350,7 +351,6 @@ const TournesolCard: React.FC<TournesolCardProps> = ({
 }) => {
   const { entity, collective_rating } = item;
   const { metadata } = entity;
-  const thumbUrl = `https://img.youtube.com/vi/${metadata.video_id}/mqdefault.jpg`;
   const score = collective_rating.tournesol_score;
 
   const reliability = getCriteriaScore(
@@ -372,11 +372,12 @@ const TournesolCard: React.FC<TournesolCardProps> = ({
     >
       {/* Thumbnail */}
       <div className="relative aspect-video overflow-hidden">
-        <img
-          src={thumbUrl}
-          alt={metadata.name}
+        <ThumbnailImage
+          thumbnailUrl={undefined}
+          videoId={metadata.video_id}
+          title={metadata.name}
+          platform="youtube"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          loading="lazy"
         />
         {metadata.duration && (
           <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 bg-black/80 rounded text-[10px] text-white/80 font-mono">

@@ -163,10 +163,6 @@ const TrendingCard: React.FC<TrendingCardProps> = ({
   onClick,
   labels,
 }) => {
-  const thumbUrl =
-    video.thumbnail_url ||
-    `https://img.youtube.com/vi/${video.video_id}/mqdefault.jpg`;
-
   return (
     <button
       onClick={onClick}
@@ -176,11 +172,11 @@ const TrendingCard: React.FC<TrendingCardProps> = ({
     >
       {/* Thumbnail */}
       <div className="relative aspect-video overflow-hidden">
-        <img
-          src={thumbUrl}
-          alt={video.title}
+        <ThumbnailImage
+          thumbnailUrl={video.thumbnail_url}
+          videoId={video.video_id}
+          title={video.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          loading="lazy"
         />
         {video.duration && (
           <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 bg-black/80 rounded text-[10px] text-white/80 font-mono">

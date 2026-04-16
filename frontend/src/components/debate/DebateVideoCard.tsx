@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { Shield, Zap, AlertTriangle, Play } from "lucide-react";
 import type { DebateArgument } from "../../types/debate";
 import type { VideoPlatform } from "../../types/debate";
+import { ThumbnailImage } from "../ThumbnailImage";
 
 interface DebateVideoCardProps {
   side: "a" | "b";
@@ -90,24 +91,6 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
   const [showPlayer, setShowPlayer] = useState(false);
   const platform = detectPlatform(videoId, platformProp);
 
-  // Build thumbnail URL with fallback chain
-  const getThumbnailUrl = (): string => {
-    if (thumbnail) return thumbnail;
-    if (platform === "youtube" && videoId) {
-      return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-    }
-    return "";
-  };
-
-  const thumbnailUrl = getThumbnailUrl();
-  const [imgError, setImgError] = useState(false);
-
-  // YouTube fallback: maxresdefault → hqdefault → mqdefault
-  const fallbackThumbnail =
-    platform === "youtube" && videoId
-      ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
-      : "";
-
   return (
     <div
       className={`rounded-xl bg-white/5 border ${accent.border} backdrop-blur-xl shadow-lg ${accent.glow} overflow-hidden`}
@@ -134,40 +117,13 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
           )
         ) : (
           <>
-            {thumbnailUrl && !imgError ? (
-              <img
-                src={thumbnailUrl}
-                alt={title}
-                className="w-full h-full object-cover"
-                onError={() => {
-                  if (!imgError) setImgError(true);
-                }}
-              />
-            ) : imgError && fallbackThumbnail ? (
-              <img
-                src={fallbackThumbnail}
-                alt={title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              /* Placeholder gradient when no thumbnail */
-              <div
-                className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${
-                  platform === "tiktok"
-                    ? "from-pink-500/20 via-black/40 to-cyan-500/20"
-                    : "from-red-500/20 via-black/40 to-white/5"
-                }`}
-              >
-                <div className="text-center">
-                  <span className="text-3xl">
-                    {platform === "tiktok" ? "🎵" : "▶️"}
-                  </span>
-                  <p className="text-white/30 text-xs mt-2">
-                    {platform === "tiktok" ? "TikTok" : "YouTube"}
-                  </p>
-                </div>
-              </div>
-            )}
+            <ThumbnailImage
+              thumbnailUrl={thumbnail}
+              videoId={videoId}
+              title={title}
+              platform={platform as "youtube" | "tiktok"}
+              className="w-full h-full object-cover"
+            />
             <div
               className={`absolute inset-0 bg-gradient-to-t ${accent.gradient}`}
             />

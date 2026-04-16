@@ -26,15 +26,15 @@ try:
     logger.info("Logging module initialized")
 except ImportError as e:
     LOGGING_AVAILABLE = False
-    print(f"⚠️ Logging module not available: {e}", flush=True)
+    logger.warning(f"⚠️ Logging module not available: {e}")
     
     # Fallback logger
     class FallbackLogger:
-        def info(self, msg, **kwargs): print(f"ℹ️ {msg}", flush=True)
-        def warning(self, msg, **kwargs): print(f"⚠️ {msg}", flush=True)
-        def error(self, msg, **kwargs): print(f"❌ {msg}", flush=True)
-        def debug(self, msg, **kwargs): print(f"🔍 {msg}", flush=True)
-        def exception(self, msg, **kwargs): print(f"💥 {msg}", flush=True)
+        def info(self, msg, **kwargs): logger.info(f"ℹ️ {msg}")
+        def warning(self, msg, **kwargs): logger.warning(f"⚠️ {msg}")
+        def error(self, msg, **kwargs): logger.error(f"❌ {msg}")
+        def debug(self, msg, **kwargs): logger.info(f"🔍 {msg}")
+        def exception(self, msg, **kwargs): logger.error(f"💥 {msg}")
     logger = FallbackLogger()
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -98,7 +98,7 @@ try:
     GEO_ROUTER_AVAILABLE = True
 except ImportError as e:
     GEO_ROUTER_AVAILABLE = False
-    print(f"⚠️ GEO router not available: {e}", flush=True)
+    logger.warning(f"⚠️ GEO router not available: {e}")
 from db.database import init_db, close_db
 from core.http_client import init_http_client, close_http_client
 
@@ -108,7 +108,7 @@ try:
     SECURITY_HEADERS_AVAILABLE = True
 except ImportError as e:
     SECURITY_HEADERS_AVAILABLE = False
-    print(f"⚠️ Security headers middleware not available: {e}", flush=True)
+    logger.warning(f"⚠️ Security headers middleware not available: {e}")
 
 # 🚦 Rate Limiting & Cache
 try:
@@ -116,17 +116,17 @@ try:
     from core.config import RATE_LIMIT_ENABLED
     RATE_LIMITER_AVAILABLE = RATE_LIMIT_ENABLED
     if not RATE_LIMIT_ENABLED:
-        print("ℹ️ Rate limiter disabled via RATE_LIMIT_ENABLED=false", flush=True)
+        logger.info("ℹ️ Rate limiter disabled via RATE_LIMIT_ENABLED=false")
 except ImportError as e:
     RATE_LIMITER_AVAILABLE = False
-    print(f"⚠️ Rate limiter not available: {e}", flush=True)
+    logger.warning(f"⚠️ Rate limiter not available: {e}")
 
 try:
     from core.cache import init_cache, cache_service
     CACHE_AVAILABLE = True
 except ImportError as e:
     CACHE_AVAILABLE = False
-    print(f"⚠️ Cache service not available: {e}", flush=True)
+    logger.warning(f"⚠️ Cache service not available: {e}")
 
 # ✅ NOUVEAU: Import du Profile router (avec fallback si absent)
 try:
@@ -134,7 +134,7 @@ try:
     PROFILE_ROUTER_AVAILABLE = True
 except ImportError as e:
     PROFILE_ROUTER_AVAILABLE = False
-    print(f"⚠️ Profile router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Profile router not available: {e}")
 
 # 🌻 NOUVEAU: Import du Tournesol proxy router
 try:
@@ -142,7 +142,7 @@ try:
     TOURNESOL_ROUTER_AVAILABLE = True
 except ImportError as e:
     TOURNESOL_ROUTER_AVAILABLE = False
-    print(f"⚠️ Tournesol router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Tournesol router not available: {e}")
 
 # 🎙️ TTS router (Text-to-Speech for summaries)
 try:
@@ -150,7 +150,7 @@ try:
     TTS_ROUTER_AVAILABLE = True
 except ImportError as e:
     TTS_ROUTER_AVAILABLE = False
-    print(f"⚠️ TTS router not available: {e}", flush=True)
+    logger.warning(f"⚠️ TTS router not available: {e}")
 
 # 📊 NOUVEAU: Import du Usage router (statistiques)
 try:
@@ -165,7 +165,7 @@ try:
     NOTIFICATIONS_ROUTER_AVAILABLE = True
 except ImportError as e:
     NOTIFICATIONS_ROUTER_AVAILABLE = False
-    print(f"⚠️ Notifications router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Notifications router not available: {e}")
 
 # 🔑 NOUVEAU: Import du Public API router (Plan Expert)
 try:
@@ -173,7 +173,7 @@ try:
     API_PUBLIC_ROUTER_AVAILABLE = True
 except ImportError as e:
     API_PUBLIC_ROUTER_AVAILABLE = False
-    print(f"⚠️ Public API router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Public API router not available: {e}")
 
 # 🧠 NOUVEAU: Import du Words router ("Le Saviez-Vous")
 try:
@@ -181,7 +181,7 @@ try:
     WORDS_ROUTER_AVAILABLE = True
 except ImportError as e:
     WORDS_ROUTER_AVAILABLE = False
-    print(f"⚠️ Words router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Words router not available: {e}")
 
 # 📚 NOUVEAU: Study router (mobile-compatible study tools)
 try:
@@ -189,7 +189,7 @@ try:
     STUDY_ROUTER_AVAILABLE = True
 except ImportError as e:
     STUDY_ROUTER_AVAILABLE = False
-    print(f"⚠️ Study router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Study router not available: {e}")
 
 # 📦 NOUVEAU: Batch router (analyses en lot - API v2)
 try:
@@ -197,7 +197,7 @@ try:
     BATCH_ROUTER_AVAILABLE = True
 except ImportError as e:
     BATCH_ROUTER_AVAILABLE = False
-    print(f"⚠️ Batch router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Batch router not available: {e}")
 
 # 📚 NOUVEAU: Import du Academic router (Sources Académiques)
 try:
@@ -205,7 +205,7 @@ try:
     ACADEMIC_ROUTER_AVAILABLE = True
 except ImportError as e:
     ACADEMIC_ROUTER_AVAILABLE = False
-    print(f"⚠️ Academic router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Academic router not available: {e}")
 
 # 🩺 Monitoring router (health checks, status page)
 try:
@@ -214,7 +214,7 @@ try:
     MONITORING_AVAILABLE = True
 except ImportError as e:
     MONITORING_AVAILABLE = False
-    print(f"⚠️ Monitoring module not available: {e}", flush=True)
+    logger.warning(f"⚠️ Monitoring module not available: {e}")
 
 # 📬 Contact router (contact form)
 try:
@@ -222,7 +222,7 @@ try:
     CONTACT_AVAILABLE = True
 except ImportError as e:
     CONTACT_AVAILABLE = False
-    print(f"⚠️ Contact router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Contact router not available: {e}")
 
 # 🔗 Share router (public analysis sharing)
 try:
@@ -230,7 +230,7 @@ try:
     SHARE_ROUTER_AVAILABLE = True
 except ImportError as e:
     SHARE_ROUTER_AVAILABLE = False
-    print(f"⚠️ Share router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Share router not available: {e}")
 
 # 📊 Analytics router (event tracking)
 try:
@@ -238,7 +238,7 @@ try:
     ANALYTICS_ROUTER_AVAILABLE = True
 except ImportError as e:
     ANALYTICS_ROUTER_AVAILABLE = False
-    print(f"⚠️ Analytics router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Analytics router not available: {e}")
 
 # 🔥 Trending router (most-analyzed videos)
 try:
@@ -246,7 +246,7 @@ try:
     TRENDING_ROUTER_AVAILABLE = True
 except ImportError as e:
     TRENDING_ROUTER_AVAILABLE = False
-    print(f"⚠️ Trending router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Trending router not available: {e}")
 
 # 🔍 Search router (semantic search)
 try:
@@ -254,7 +254,7 @@ try:
     SEARCH_ROUTER_AVAILABLE = True
 except ImportError as e:
     SEARCH_ROUTER_AVAILABLE = False
-    print(f"⚠️ Search router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Search router not available: {e}")
 
 # 🎭 Debate router (AI Debate — confrontation de perspectives)
 try:
@@ -262,7 +262,7 @@ try:
     DEBATE_ROUTER_AVAILABLE = True
 except ImportError as e:
     DEBATE_ROUTER_AVAILABLE = False
-    print(f"⚠️ Debate router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Debate router not available: {e}")
 
 # 🆚 Comparison router (Video VS Mode)
 try:
@@ -270,7 +270,7 @@ try:
     COMPARISON_ROUTER_AVAILABLE = True
 except ImportError as e:
     COMPARISON_ROUTER_AVAILABLE = False
-    print(f"⚠️ Comparison router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Comparison router not available: {e}")
 
 # 🎨 Keyword Images router (IA illustrations for "Le Saviez-Vous")
 try:
@@ -278,7 +278,7 @@ try:
     IMAGES_ROUTER_AVAILABLE = True
 except Exception as e:
     IMAGES_ROUTER_AVAILABLE = False
-    print(f"⚠️ Images router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Images router not available: {e}")
 
 # 🩺 Health check v2 router (deep health checks)
 try:
@@ -286,7 +286,7 @@ try:
     HEALTH_V1_ROUTER_AVAILABLE = True
 except ImportError as e:
     HEALTH_V1_ROUTER_AVAILABLE = False
-    print(f"⚠️ Health v1 router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Health v1 router not available: {e}")
 
 # 💾 Video Content Cache (L1 Redis + L2 PostgreSQL VPS)
 try:
@@ -295,7 +295,7 @@ try:
     VIDEO_CACHE_AVAILABLE = True
 except ImportError as e:
     VIDEO_CACHE_AVAILABLE = False
-    print(f"⚠️ Video content cache not available: {e}", flush=True)
+    logger.warning(f"⚠️ Video content cache not available: {e}")
 
 # 🎙️ Voice chat router (ElevenLabs Conversational AI)
 try:
@@ -303,7 +303,7 @@ try:
     VOICE_ROUTER_AVAILABLE = True
 except ImportError as e:
     VOICE_ROUTER_AVAILABLE = False
-    print(f"⚠️ Voice router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Voice router not available: {e}")
 
 # 🎮 Gamification router (XP, badges, streaks, heat-map)
 try:
@@ -311,7 +311,7 @@ try:
     GAMIFICATION_ROUTER_AVAILABLE = True
 except ImportError as e:
     GAMIFICATION_ROUTER_AVAILABLE = False
-    print(f"⚠️ Gamification router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Gamification router not available: {e}")
 
 # 📖 Study Review router (FSRS spaced-repetition)
 try:
@@ -319,7 +319,7 @@ try:
     STUDY_REVIEW_ROUTER_AVAILABLE = True
 except ImportError as e:
     STUDY_REVIEW_ROUTER_AVAILABLE = False
-    print(f"⚠️ Study review router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Study review router not available: {e}")
 
 # 📄 Documents router (Mistral OCR — PDF/Image analysis)
 try:
@@ -327,7 +327,7 @@ try:
     DOCUMENTS_ROUTER_AVAILABLE = True
 except ImportError as e:
     DOCUMENTS_ROUTER_AVAILABLE = False
-    print(f"⚠️ Documents router not available: {e}", flush=True)
+    logger.warning(f"⚠️ Documents router not available: {e}")
 
 # Global video cache instance
 _video_cache: "VideoContentCacheService | None" = None
@@ -409,25 +409,25 @@ async def run_auto_migrations():
             try:
                 await session.execute(text(sql))
                 await session.commit()
-                print(f"  ✅ Migration OK: {table}.{column}", flush=True)
+                logger.info(f"  ✅ Migration OK: {table}.{column}")
             except Exception as e:
                 # Ignorer si la colonne existe déjà ou autre erreur non bloquante
                 await session.rollback()
                 if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
-                    print(f"  ℹ️ Already exists: {table}.{column}", flush=True)
+                    logger.info(f"  ℹ️ Already exists: {table}.{column}")
                 else:
-                    print(f"  ⚠️ Migration warning for {table}.{column}: {e}", flush=True)
+                    logger.warning(f"  ⚠️ Migration warning for {table}.{column}: {e}")
         
         # Migrations ALTER COLUMN (changement de type)
         for table, column, sql in alter_column_migrations:
             try:
                 await session.execute(text(sql))
                 await session.commit()
-                print(f"  ✅ Column type changed: {table}.{column} -> TEXT", flush=True)
+                logger.info(f"  ✅ Column type changed: {table}.{column} -> TEXT")
             except Exception as e:
                 await session.rollback()
                 # Ignorer si déjà le bon type
-                print(f"  ℹ️ Column type migration: {table}.{column} - {str(e)[:50]}", flush=True)
+                logger.info(f"  ℹ️ Column type migration: {table}.{column} - {str(e)[:50]}")
 
 
 import asyncio
@@ -668,6 +668,71 @@ async def lifespan(app: FastAPI):
         )
         logger.info("Keyword image scheduler registered (every 1 hour)")
 
+        # 🖼️ Thumbnail R2 persistence retry (every 2 hours)
+        async def _scheduled_thumbnail_retry():
+            """Retry thumbnails that failed or are missing from R2."""
+            try:
+                # Redis distributed lock
+                lock_acquired = False
+                try:
+                    from core.cache import cache_service
+                    if hasattr(cache_service, 'backend') and hasattr(cache_service.backend, 'redis'):
+                        redis = cache_service.backend.redis
+                        lock_acquired = await redis.set(
+                            "deepsight:lock:thumbnail_retry", "1", nx=True, ex=600
+                        )
+                    else:
+                        lock_acquired = True
+                except Exception:
+                    lock_acquired = True
+
+                if not lock_acquired:
+                    return
+
+                from db.database import get_session as _get_sess
+                from sqlalchemy import text
+                async for db in _get_sess():
+                    rows = (await db.execute(text(
+                        "SELECT id, video_id, title, thumbnail_url, category, platform "
+                        "FROM summaries "
+                        "WHERE thumbnail_url IS NULL "
+                        "OR thumbnail_url LIKE 'data:image/svg%' "
+                        "OR thumbnail_url = '' "
+                        "ORDER BY id DESC LIMIT 10"
+                    ))).fetchall()
+
+                    if not rows:
+                        break
+
+                    from storage.thumbnail_generator import ensure_thumbnail
+                    import asyncio as _aio_sched
+                    for row in rows:
+                        try:
+                            await ensure_thumbnail(
+                                summary_id=row.id,
+                                video_id=row.video_id or "",
+                                title=row.title or "",
+                                category=row.category,
+                                platform=row.platform or "youtube",
+                                original_url=row.thumbnail_url if row.thumbnail_url and not row.thumbnail_url.startswith("data:") else None,
+                                video_url=None,
+                            )
+                            await _aio_sched.sleep(5)
+                        except Exception as e:
+                            logger.warning(f"Thumbnail retry failed for summary {row.id}: {e}")
+                    break
+            except Exception as e:
+                logger.error(f"Thumbnail retry job failed: {e}")
+
+        scheduler.add_job(
+            _scheduled_thumbnail_retry,
+            _IT(hours=2),
+            id="thumbnail_r2_retry",
+            name="Thumbnail R2 persistence retry",
+            replace_existing=True,
+        )
+        logger.info("Thumbnail R2 retry scheduler registered (every 2 hours)")
+
         # 🌻 Trending pre-cache job (every hour)
         async def _scheduled_trending_refresh():
             """Pre-cache Tournesol trending recommendations."""
@@ -876,7 +941,7 @@ app.include_router(videos_router, prefix="/api/videos", tags=["Videos"])
 app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
 app.include_router(billing_router, prefix="/api/billing", tags=["Billing"])
 app.include_router(billing_router, prefix="/api/stripe", tags=["Stripe"], include_in_schema=False)
-print("Billing router loaded (available at /api/billing and /api/stripe)", flush=True)
+logger.info("Billing router loaded (available at /api/billing and /api/stripe)")
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(finetuning_router, prefix="/api/admin/finetune", tags=["Fine-tuning"])
 app.include_router(exports_router, prefix="/api/exports", tags=["Exports"])
@@ -886,132 +951,132 @@ app.include_router(history_router, prefix="/api/history", tags=["History"])
 # ✅ NOUVEAU: Profile router pour avatar et préférences
 if PROFILE_ROUTER_AVAILABLE:
     app.include_router(profile_router, prefix="/api/profile", tags=["Profile"])
-    print("✅ Profile router loaded", flush=True)
+    logger.info("✅ Profile router loaded")
 
 # 🌻 NOUVEAU: Tournesol proxy router
 if TOURNESOL_ROUTER_AVAILABLE:
     app.include_router(tournesol_router, prefix="/api/tournesol", tags=["Tournesol"])
-    print("🌻 Tournesol router loaded", flush=True)
+    logger.info("🌻 Tournesol router loaded")
 
 # 🎙️ NOUVEAU: TTS (Text-to-Speech) router
 if TTS_ROUTER_AVAILABLE:
     app.include_router(tts_router, prefix="/api/tts", tags=["Text-to-Speech"])
-    print("🎙️ TTS router loaded", flush=True)
+    logger.info("🎙️ TTS router loaded")
 
 # 📊 NOUVEAU: Usage router (statistiques d'utilisation)
 if USAGE_ROUTER_AVAILABLE:
     app.include_router(usage_router, prefix="/api/usage", tags=["Usage"])
-    print("📊 Usage router loaded", flush=True)
+    logger.info("📊 Usage router loaded")
 
 # 🔔 NOUVEAU: Notifications router (SSE temps réel)
 if NOTIFICATIONS_ROUTER_AVAILABLE:
     app.include_router(notifications_router, prefix="/api/notifications", tags=["Notifications"])
-    print("🔔 Notifications router loaded (SSE)", flush=True)
+    logger.info("🔔 Notifications router loaded (SSE)")
 
 # 🔑 NOUVEAU: Public API router (Plan Expert)
 if API_PUBLIC_ROUTER_AVAILABLE:
     app.include_router(api_public_router, tags=["Public API v1"])
-    print("🔑 Public API router loaded (Expert plan)", flush=True)
+    logger.info("🔑 Public API router loaded (Expert plan)")
 
 # 🧠 NOUVEAU: Words router ("Le Saviez-Vous")
 if WORDS_ROUTER_AVAILABLE:
     app.include_router(words_router, prefix="/api/words", tags=["Words"])
-    print("🧠 Words router loaded (Le Saviez-Vous)", flush=True)
+    logger.info("🧠 Words router loaded (Le Saviez-Vous)")
 
 # 📚 NOUVEAU: Study router (mobile-compatible study tools)
 if STUDY_ROUTER_AVAILABLE:
     app.include_router(study_router, prefix="/api/study", tags=["Study"])
-    print("📚 Study router loaded (quiz, mindmap, flashcards)", flush=True)
+    logger.info("📚 Study router loaded (quiz, mindmap, flashcards)")
 
 # 📦 NOUVEAU: Batch router (analyses en lot - API v2)
 if BATCH_ROUTER_AVAILABLE:
     app.include_router(batch_router, prefix="/api/batch", tags=["Batch"])
-    print("📦 Batch router loaded (batch video analysis)", flush=True)
+    logger.info("📦 Batch router loaded (batch video analysis)")
 
 # 📚 NOUVEAU: Academic router (Sources Académiques)
 if ACADEMIC_ROUTER_AVAILABLE:
     app.include_router(academic_router, tags=["Academic"])
-    print("📚 Academic router loaded (Semantic Scholar, OpenAlex, arXiv)", flush=True)
+    logger.info("📚 Academic router loaded (Semantic Scholar, OpenAlex, arXiv)")
 
 # 🎯 NOUVEAU: GEO router (Generative Engine Optimization)
 if GEO_ROUTER_AVAILABLE:
     app.include_router(geo_router, prefix="/api/geo", tags=["GEO"])
-    print("🎯 GEO router loaded (score, quotes)", flush=True)
+    logger.info("🎯 GEO router loaded (score, quotes)")
 
 # 🩺 Monitoring router (health checks, status)
 if MONITORING_AVAILABLE:
     app.include_router(monitoring_router, prefix="/api/health", tags=["Monitoring"])
-    print("🩺 Monitoring router loaded (/api/health/ping, /api/health/status)", flush=True)
+    logger.info("🩺 Monitoring router loaded (/api/health/ping, /api/health/status)")
 
 # 📬 Contact router
 if CONTACT_AVAILABLE:
     app.include_router(contact_router, prefix="/api", tags=["Contact"])
-    print("📬 Contact router loaded (POST /api/contact)", flush=True)
+    logger.info("📬 Contact router loaded (POST /api/contact)")
 
 # 🔗 Share router (public analysis sharing)
 if SHARE_ROUTER_AVAILABLE:
     app.include_router(share_router, prefix="/api/share", tags=["Share"])
-    print("🔗 Share router loaded (POST /api/share, GET /api/share/{token})", flush=True)
+    logger.info("🔗 Share router loaded (POST /api/share, GET /api/share/{token})")
 
 # 📊 Analytics router
 if ANALYTICS_ROUTER_AVAILABLE:
     app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
-    print("📊 Analytics router loaded (POST /api/analytics/events, GET /api/analytics/summary)", flush=True)
+    logger.info("📊 Analytics router loaded (POST /api/analytics/events, GET /api/analytics/summary)")
 
 # 🔥 Trending router (most-analyzed videos, public)
 if TRENDING_ROUTER_AVAILABLE:
     app.include_router(trending_router, prefix="/api/trending", tags=["Trending"])
-    print("🔥 Trending router loaded (GET /api/trending)", flush=True)
+    logger.info("🔥 Trending router loaded (GET /api/trending)")
 
 # 🔍 Search router (semantic search via Mistral embeddings)
 if SEARCH_ROUTER_AVAILABLE:
     app.include_router(search_router, prefix="/api/search", tags=["Search"])
-    print("🔍 Search router loaded (POST /api/search/semantic)", flush=True)
+    logger.info("🔍 Search router loaded (POST /api/search/semantic)")
 
 # 🎭 Debate router (AI Debate — confrontation de perspectives)
 if DEBATE_ROUTER_AVAILABLE:
     app.include_router(debate_router, prefix="/api/debate", tags=["Debate"])
-    print("🎭 Debate router loaded (POST /api/debate/create)", flush=True)
+    logger.info("🎭 Debate router loaded (POST /api/debate/create)")
 
 # 🆚 Comparison router (Video VS Mode)
 if COMPARISON_ROUTER_AVAILABLE:
     app.include_router(comparison_router, prefix="/api/comparison", tags=["Comparison"])
-    print("🆚 Comparison router loaded (POST /api/comparison/compare)", flush=True)
+    logger.info("🆚 Comparison router loaded (POST /api/comparison/compare)")
 
 # 🎨 Keyword Images router (IA illustrations for "Le Saviez-Vous")
 if IMAGES_ROUTER_AVAILABLE:
     app.include_router(images_router, prefix="/api/images", tags=["Keyword Images"])
-    print("🎨 Images router loaded (GET /api/images/keyword/{term})", flush=True)
+    logger.info("🎨 Images router loaded (GET /api/images/keyword/{term})")
 
 # 🩺 Health check v1 router (deep health checks)
 if HEALTH_V1_ROUTER_AVAILABLE:
     app.include_router(health_v1_router, prefix="/api/v1/health", tags=["Health Check"])
-    print("🩺 Health v1 router loaded (GET /api/v1/health, GET /api/v1/health/deep)", flush=True)
+    logger.info("🩺 Health v1 router loaded (GET /api/v1/health, GET /api/v1/health/deep)")
 
 # 💾 Video Content Cache router (cache status & stats)
 if VIDEO_CACHE_AVAILABLE:
     app.include_router(cache_router, tags=["Video Cache"])
-    print("💾 Video cache router loaded (GET /api/v1/cache/video/{platform}/{video_id}, GET /api/v1/cache/stats)", flush=True)
+    logger.info("💾 Video cache router loaded (GET /api/v1/cache/video/{platform}/{video_id}, GET /api/v1/cache/stats)")
 
 # 🎙️ Voice chat router
 if VOICE_ROUTER_AVAILABLE:
     app.include_router(voice_router, prefix="/api/voice", tags=["Voice"])
-    print("🎙️ Voice router loaded (GET /api/voice/quota, POST /api/voice/session, POST /api/voice/webhook)", flush=True)
+    logger.info("🎙️ Voice router loaded (GET /api/voice/quota, POST /api/voice/session, POST /api/voice/webhook)")
 
 # 🎮 Gamification router (XP, badges, streaks)
 if GAMIFICATION_ROUTER_AVAILABLE:
     app.include_router(gamification_router, prefix="/api/gamification", tags=["Gamification"])
-    print("🎮 Gamification router loaded (GET /api/gamification/stats, badges, heat-map)", flush=True)
+    logger.info("🎮 Gamification router loaded (GET /api/gamification/stats, badges, heat-map)")
 
 # 📖 Study Review router (FSRS spaced-repetition)
 if STUDY_REVIEW_ROUTER_AVAILABLE:
     app.include_router(study_review_router, prefix="/api/study/review", tags=["Study Review"])
-    print("📖 Study review router loaded (POST /api/study/review/submit, GET /due)", flush=True)
+    logger.info("📖 Study review router loaded (POST /api/study/review/submit, GET /due)")
 
 # 📄 Documents router (Mistral OCR — PDF/Image analysis)
 if DOCUMENTS_ROUTER_AVAILABLE:
     app.include_router(documents_router, prefix="/api/documents", tags=["Documents"])
-    print("📄 Documents router loaded (POST /api/documents/analyze-url, /analyze-upload, /ocr-only)", flush=True)
+    logger.info("📄 Documents router loaded (POST /api/documents/analyze-url, /analyze-upload, /ocr-only)")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE

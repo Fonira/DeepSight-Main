@@ -21,13 +21,11 @@ from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, UploadFile, File, Form, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger(__name__)
-
 from db.database import get_session, User, Summary
 from auth.dependencies import get_current_user, get_verified_user, require_plan, check_daily_limit, require_feature, get_current_admin
 from core.config import PLAN_LIMITS, CATEGORIES, get_mistral_key
 from core.http_client import shared_http_client
-from core.http_client import shared_http_client
+from core.logging import logger
 
 # Import du système de sécurité
 try:
@@ -39,7 +37,7 @@ try:
     SECURITY_AVAILABLE = True
 except ImportError:
     SECURITY_AVAILABLE = False
-    print("⚠️ [VIDEO] Security module not available", flush=True)
+    logger.warning("⚠️ [VIDEO] Security module not available")
 
 from .schemas import (
     AnalyzeVideoRequest, AnalyzePlaylistRequest, UpdateSummaryRequest,
@@ -103,7 +101,7 @@ try:
     ADVANCED_ANALYSIS_AVAILABLE = True
 except ImportError as e:
     ADVANCED_ANALYSIS_AVAILABLE = False
-    print(f"⚠️ [VIDEO] Advanced analysis modules not available: {e}", flush=True)
+    logger.warning(f"⚠️ [VIDEO] Advanced analysis modules not available: {e}")
 
 # 🕐 Import du système de fraîcheur et fact-check LITE
 try:
@@ -114,7 +112,7 @@ try:
     FACTCHECK_LITE_AVAILABLE = True
 except ImportError:
     FACTCHECK_LITE_AVAILABLE = False
-    print("⚠️ [VIDEO] Freshness/FactCheck LITE module not available", flush=True)
+    logger.warning("⚠️ [VIDEO] Freshness/FactCheck LITE module not available")
 from transcripts import (
     extract_video_id, extract_playlist_id,
     get_video_info, get_transcript_with_timestamps,
@@ -133,7 +131,7 @@ try:
     NOTIFICATIONS_AVAILABLE = True
 except ImportError:
     NOTIFICATIONS_AVAILABLE = False
-    print("⚠️ [VIDEO] Notifications module not available", flush=True)
+    logger.warning("⚠️ [VIDEO] Notifications module not available")
     
     # Fallback: fonctions vides
     async def notify_analysis_complete(*args, **kwargs):
@@ -181,13 +179,13 @@ async def _save_structured_index(
                     .values(structured_index=index_json)
                 )
                 await session.commit()
-                print(f"📑 [v4.0] Structured index saved: {len(index_entries)} entries for summary_id={summary_id}, tier={profile.tier.value}", flush=True)
+                logger.info(f"📑 [v4.0] Structured index saved: {len(index_entries)} entries for summary_id={summary_id}, tier={profile.tier.value}")
             else:
-                print(f"📑 [v4.0] No index entries generated for summary_id={summary_id}", flush=True)
+                logger.info(f"📑 [v4.0] No index entries generated for summary_id={summary_id}")
         else:
-            print(f"📑 [v4.0] No index needed (tier={profile.tier.value}) for summary_id={summary_id}", flush=True)
+            logger.info(f"📑 [v4.0] No index needed (tier={profile.tier.value}) for summary_id={summary_id}")
     except Exception as e:
-        print(f"⚠️ [v4.0] Structured index failed (non-blocking): {e}", flush=True)
+        logger.error(f"⚠️ [v4.0] Structured index failed (non-blocking): {e}")
 
 
 async def get_task_status(task_id: str) -> Optional[Dict[str, Any]]:
@@ -267,7 +265,7 @@ async def quick_chat_prepare(
     start_time = time.time()
     url = request.url.strip()
     platform = detect_platform(url)
-    print(f"[QUICK CHAT] Starting for {platform} URL: {url[:80]}...", flush=True)
+    logger.info(f"[QUICK CHAT] Starting for {platform} URL: {url[:80]}...")
 
     # 1. Detecter plateforme et extraire video_id
     if platform == "tiktok":
@@ -283,7 +281,7 @@ async def quick_chat_prepare(
     # 2. Verifier si un Summary existe deja
     existing = await get_summary_by_video_id(session, str(video_id), int(current_user.id))
     if existing:
-        print(f"[QUICK CHAT] Existing summary found: id={existing.id}", flush=True)
+        logger.info(f"[QUICK CHAT] Existing summary found: id={existing.id}")
         return QuickChatResponse(
             summary_id=existing.id,
             video_id=video_id,
@@ -305,9 +303,9 @@ async def quick_chat_prepare(
                 head_resp = await client.head(url, timeout=8.0)
                 if head_resp.status_code in (200, 301, 302) and "tiktok.com" in str(head_resp.url):
                     resolved_url = str(head_resp.url).split("?")[0]  # Drop tracking params
-                    print(f"[QUICK CHAT] Resolved short URL → {resolved_url[:80]}", flush=True)
+                    logger.info(f"[QUICK CHAT] Resolved short URL → {resolved_url[:80]}")
         except Exception as e:
-            print(f"[QUICK CHAT] Short URL resolution failed: {e}", flush=True)
+            logger.error(f"[QUICK CHAT] Short URL resolution failed: {e}")
 
     # 3. Recuperer les metadonnees
     try:
@@ -320,7 +318,7 @@ async def quick_chat_prepare(
             video_info = await get_video_info(video_id)
             thumbnail_url = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
     except Exception as e:
-        print(f"[QUICK CHAT] Failed to get video info: {e}", flush=True)
+        logger.error(f"[QUICK CHAT] Failed to get video info: {e}")
         raise HTTPException(status_code=400, detail="Impossible de recuperer les informations de la video.")
 
     title = str(video_info.get("title", "Video sans titre"))[:255]
@@ -358,9 +356,9 @@ async def quick_chat_prepare(
                         title = str(oembed_data.get("title", title))[:255]
                     if not channel or channel in ("Unknown", ""):
                         channel = str(oembed_data.get("author_name", channel))[:255]
-                    print(f"[QUICK CHAT] oEmbed fallback: thumb={bool(thumbnail_url)}, title={title[:40]}", flush=True)
+                    logger.warning(f"[QUICK CHAT] oEmbed fallback: thumb={bool(thumbnail_url)}, title={title[:40]}")
         except Exception as e:
-            print(f"[QUICK CHAT] oEmbed fallback failed: {e}", flush=True)
+            logger.error(f"[QUICK CHAT] oEmbed fallback failed: {e}")
 
     # 4. Extraire le transcript
     try:
@@ -386,7 +384,7 @@ async def quick_chat_prepare(
             transcript_result = await get_transcript_with_timestamps(video_id, is_short=is_short, duration=duration)
             transcript_text = transcript_result[0] if isinstance(transcript_result, tuple) else transcript_result
     except Exception as e:
-        print(f"[QUICK CHAT] Failed to get transcript: {e}", flush=True)
+        logger.error(f"[QUICK CHAT] Failed to get transcript: {e}")
         raise HTTPException(status_code=400, detail="Impossible de recuperer la transcription.")
 
     # Guard: extractors can return tuples (text, timestamps, lang)
@@ -407,7 +405,7 @@ async def quick_chat_prepare(
         if len(derived_title) > 80:
             derived_title = derived_title[:77] + "..."
         title = derived_title or title
-        print(f"[QUICK CHAT] Derived title from transcript: {title[:50]}...", flush=True)
+        logger.info(f"[QUICK CHAT] Derived title from transcript: {title[:50]}...")
 
     # 5. Creer un Summary leger (transcript-only)
     # Securite: tronquer tous les champs VARCHAR avant insert
@@ -438,11 +436,24 @@ async def quick_chat_prepare(
             carousel_images=video_info.get("carousel_images"),
         )
     except Exception as e:
-        print(f"[QUICK CHAT] Failed to save: {e}", flush=True)
+        logger.error(f"[QUICK CHAT] Failed to save: {e}")
         raise HTTPException(status_code=500, detail="Erreur lors de la sauvegarde.")
 
+    # 🖼️ Persist thumbnail to R2 (non-blocking)
+    try:
+        import asyncio as _aio_qc
+        from storage.thumbnail_generator import ensure_thumbnail
+        _aio_qc.create_task(ensure_thumbnail(
+            summary_id=summary_id, video_id=video_id,
+            title=title, category="general",
+            platform=platform, original_url=thumbnail_url,
+            video_url=str(url),
+        ))
+    except Exception as thumb_err:
+        logger.error(f"⚠️ [THUMBNAIL] R2 persist failed (non-blocking): {thumb_err}")
+
     elapsed = time.time() - start_time
-    print(f"[QUICK CHAT] Done in {elapsed:.1f}s - summary_id={summary_id}, words={word_count}", flush=True)
+    logger.info(f"[QUICK CHAT] Done in {elapsed:.1f}s - summary_id={summary_id}, words={word_count}")
 
     return QuickChatResponse(
         summary_id=summary_id, video_id=video_id, video_title=title,
@@ -539,9 +550,9 @@ async def upgrade_quick_chat(
                 )
                 await bg_session.commit()
                 _task_store[task_id].update({"status": "completed", "progress": 100, "message": "Analyse terminee"})
-                print(f"[UPGRADE] Summary {request.summary_id} upgraded OK", flush=True)
+                logger.info(f"[UPGRADE] Summary {request.summary_id} upgraded OK")
         except Exception as e:
-            print(f"[UPGRADE] Failed: {e}", flush=True)
+            logger.error(f"[UPGRADE] Failed: {e}")
             _task_store[task_id].update({"status": "failed", "message": f"Erreur: {str(e)[:100]}"})
 
     background_tasks.add_task(run_upgrade)
@@ -705,7 +716,7 @@ async def analyze_video(
     - Crédits réservés AVANT l'opération
     - Coût variable selon le modèle
     """
-    print(f"📥 [v6.0] Analyze request: {request.url} by user {current_user.id} (plan: {current_user.plan})", flush=True)
+    logger.info(f"📥 [v6.0] Analyze request: {request.url} by user {current_user.id} (plan: {current_user.plan})")
 
     # 🎵 Détecter la plateforme (YouTube ou TikTok)
     platform = detect_platform(request.url)
@@ -717,7 +728,7 @@ async def analyze_video(
                 "code": "invalid_url",
                 "message": "Invalid TikTok URL"
             })
-        print(f"🎵 [TIKTOK] Detected TikTok video: {video_id}", flush=True)
+        logger.info(f"🎵 [TIKTOK] Detected TikTok video: {video_id}")
     else:
         video_id = extract_video_id(request.url)
         if not video_id:
@@ -767,7 +778,7 @@ async def analyze_video(
             **info
         })
     
-    print(f"🎬 Video ID extracted: {video_id}, cost: {credit_cost} credits", flush=True)
+    logger.info(f"🎬 Video ID extracted: {video_id}, cost: {credit_cost} credits")
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # 💾 GLOBAL VIDEO CONTENT CACHE — Cross-user L1 Redis / L2 PostgreSQL VPS
@@ -808,7 +819,7 @@ async def analyze_video(
                         await increment_daily_usage(session, current_user.id)
                     except Exception:
                         pass
-                    print(f"💾 [GLOBAL CACHE HIT] {platform}/{video_id} → summary_id={_cache_summary_id} (0 credits)", flush=True)
+                    logger.info(f"💾 [GLOBAL CACHE HIT] {platform}/{video_id} → summary_id={_cache_summary_id} (0 credits)")
                     return TaskStatusResponse(
                         task_id=f"cached_{_cache_summary_id}",
                         status="completed",
@@ -824,7 +835,7 @@ async def analyze_video(
                         }
                     )
         except Exception as _vcache_err:
-            print(f"⚠️ [GLOBAL CACHE] Check failed (continuing): {_vcache_err}", flush=True)
+            logger.error(f"⚠️ [GLOBAL CACHE] Check failed (continuing): {_vcache_err}")
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # 💾 SYSTÈME DE CACHE v2.0 — Économise les crédits API
@@ -840,7 +851,7 @@ async def analyze_video(
             cache_valid = cache_age < timedelta(days=7)
             
             if cache_valid:
-                print(f"💾 [CACHE HIT] Using cached analysis: summary_id={existing.id} (age: {cache_age.days}d)", flush=True)
+                logger.info(f"💾 [CACHE HIT] Using cached analysis: summary_id={existing.id} (age: {cache_age.days}d)")
                 return TaskStatusResponse(
                     task_id=f"cached_{existing.id}",
                     status="completed",
@@ -856,9 +867,9 @@ async def analyze_video(
                     }
                 )
             else:
-                print(f"⏰ [CACHE EXPIRED] Cache too old ({cache_age.days} days), re-analyzing...", flush=True)
+                logger.info(f"⏰ [CACHE EXPIRED] Cache too old ({cache_age.days} days), re-analyzing...")
     else:
-        print(f"🔄 [FORCE REFRESH] Bypassing cache as requested", flush=True)
+        logger.info(f"🔄 [FORCE REFRESH] Bypassing cache as requested")
     
     # 🔐 Générer un ID d'opération sécurisé
     if SECURITY_AVAILABLE:
@@ -877,7 +888,7 @@ async def analyze_video(
                 "message": f"Could not reserve credits: {reserve_reason}",
                 **reserve_info
             })
-        print(f"🔒 Credits reserved: {credit_cost} for task {task_id[:12]}", flush=True)
+        logger.info(f"🔒 Credits reserved: {credit_cost} for task {task_id[:12]}")
     
     _task_store[task_id] = {
         "status": "pending",
@@ -889,7 +900,7 @@ async def analyze_video(
         "deep_research": deep_research  # 🆕 v5.5
     }
     
-    print(f"🚀 Task created: {task_id} (deep_research={deep_research})", flush=True)
+    logger.info(f"🚀 Task created: {task_id} (deep_research={deep_research})")
     
     # Créer dans la DB aussi
     await create_task(session, task_id, current_user.id, "video_analysis")
@@ -948,7 +959,7 @@ async def analyze_video_v2(
     - Rate limiting appliqué
     - Crédits réservés AVANT l'opération
     """
-    print(f"📥 [v2.0] Analyze request: {request.url} by user {current_user.id}", flush=True)
+    logger.info(f"📥 [v2.0] Analyze request: {request.url} by user {current_user.id}")
 
     # 🎵 Détecter la plateforme
     platform = detect_platform(request.url)
@@ -1019,7 +1030,7 @@ async def analyze_video_v2(
             from datetime import timedelta
             cache_age = datetime.now() - existing.created_at
             if cache_age < timedelta(days=7):
-                print(f"💾 [CACHE HIT] v2: summary_id={existing.id}", flush=True)
+                logger.info(f"💾 [CACHE HIT] v2: summary_id={existing.id}")
                 return AnalyzeV2Response(
                     task_id=f"cached_{existing.id}",
                     status="completed",
@@ -1056,7 +1067,7 @@ async def analyze_video_v2(
                 "message": f"Could not reserve credits: {reserve_reason}",
                 **reserve_info
             })
-        print(f"🔒 [v2] Credits reserved: {credit_cost} for task {task_id[:12]}", flush=True)
+        logger.info(f"🔒 [v2] Credits reserved: {credit_cost} for task {task_id[:12]}")
 
     # Préparer les options de customization
     # 🆕 v5.2: Map frontend target_length → backend summary_length
@@ -1089,7 +1100,7 @@ async def analyze_video_v2(
         "v2_options": customization_options
     }
 
-    print(f"🚀 [v2] Task created: {task_id}", flush=True)
+    logger.info(f"🚀 [v2] Task created: {task_id}")
 
     # Créer en DB
     await create_task(session, task_id, current_user.id, "video_analysis_v2")
@@ -1157,7 +1168,7 @@ async def _analyze_video_background_v2(
     from db.database import async_session_maker
     import httpx
 
-    print(f"🔧 [v2.0] Background task started: {task_id}", flush=True)
+    logger.info(f"🔧 [v2.0] Background task started: {task_id}")
 
     # Déterminer le niveau d'enrichissement
     if deep_research:
@@ -1174,7 +1185,7 @@ async def _analyze_video_background_v2(
             # 1. Récupérer les infos vidéo
             # Check cancellation
             if _task_store.get(task_id, {}).get("status") == "cancelled":
-                print(f"🚫 [v6.0] Task {task_id[:12]} cancelled", flush=True)
+                logger.info(f"🚫 [v6.0] Task {task_id[:12]} cancelled")
                 return
             _task_store[task_id]["progress"] = 10
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
@@ -1246,7 +1257,7 @@ async def _analyze_video_background_v2(
                         upload_date=video_info.get("upload_date", "")
                     )
                 except Exception as e:
-                    print(f"⚠️ [v2.0] Web enrichment failed: {e}", flush=True)
+                    logger.error(f"⚠️ [v2.0] Web enrichment failed: {e}")
                     return None, [], enrichment_level
 
             (category, confidence), (_web_ctx, _enrich_src, _) = await asyncio.gather(
@@ -1327,7 +1338,7 @@ async def _analyze_video_background_v2(
                 summary_content = _long_video_result.summary if isinstance(_long_video_result, LongVideoResult) else _long_video_result
                 # Fallback si la synthèse a échoué
                 if not summary_content:
-                    print("⚠️ [v3.0] Long video analysis returned empty summary, falling back to truncated", flush=True)
+                    logger.warning("⚠️ [v3.0] Long video analysis returned empty summary, falling back to truncated")
                     truncated = " ".join(transcript_to_analyze.split()[:8000])
                     summary_content = await generate_summary(
                         title=video_info["title"], transcript=truncated,
@@ -1479,14 +1490,14 @@ async def _analyze_video_background_v2(
                 try:
                     await store_chunks_in_db(_long_video_result, summary_id, session)
                 except Exception as chunk_err:
-                    print(f"⚠️ [v3.0] VideoChunk storage failed (non-blocking): {chunk_err}", flush=True)
+                    logger.error(f"⚠️ [v3.0] VideoChunk storage failed (non-blocking): {chunk_err}")
 
             # Incrémenter le quota quotidien
             try:
                 from core.plan_limits import increment_daily_usage
                 await increment_daily_usage(session, user_id)
             except Exception as quota_err:
-                print(f"⚠️ [v2] Quota increment failed: {quota_err}", flush=True)
+                logger.error(f"⚠️ [v2] Quota increment failed: {quota_err}")
 
             # 9. Marquer comme terminé
             final_word_count = len(summary_content.split())
@@ -1529,7 +1540,7 @@ async def _analyze_video_background_v2(
                     cached=False
                 )
             except Exception as notify_err:
-                print(f"⚠️ [v2] Notification failed: {notify_err}", flush=True)
+                logger.error(f"⚠️ [v2] Notification failed: {notify_err}")
 
             # Webhook (si configuré)
             webhook_url = options.get("webhook_url")
@@ -1547,15 +1558,15 @@ async def _analyze_video_background_v2(
                             },
                             timeout=30.0
                         )
-                    print(f"🔔 [v2] Webhook sent to {webhook_url}", flush=True)
+                    logger.info(f"🔔 [v2] Webhook sent to {webhook_url}")
                 except Exception as webhook_err:
-                    print(f"⚠️ [v2] Webhook failed: {webhook_err}", flush=True)
+                    logger.error(f"⚠️ [v2] Webhook failed: {webhook_err}")
 
-            print(f"✅ [v2.0] Task completed: {task_id}", flush=True)
+            logger.info(f"✅ [v2.0] Task completed: {task_id}")
 
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ [v2] Analysis error for task {task_id}: {error_msg}", flush=True)
+        logger.error(f"❌ [v2] Analysis error for task {task_id}: {error_msg}")
 
         if SECURITY_AVAILABLE:
             await release_reserved_credits(user_id, task_id)
@@ -1611,7 +1622,7 @@ async def analyze_video_v2_1(
     - Pro/Expert requis pour certaines fonctionnalités
     - Rate limiting appliqué
     """
-    print(f"📥 [v2.1] Advanced analyze request: {request.url} by user {current_user.id}", flush=True)
+    logger.info(f"📥 [v2.1] Advanced analyze request: {request.url} by user {current_user.id}")
 
     if not ADVANCED_ANALYSIS_AVAILABLE:
         raise HTTPException(status_code=501, detail={
@@ -1629,7 +1640,7 @@ async def analyze_video_v2_1(
                 "code": "invalid_url",
                 "message": "Invalid TikTok URL"
             })
-        print(f"🎵 [TIKTOK] Detected TikTok video: {video_id}", flush=True)
+        logger.info(f"🎵 [TIKTOK] Detected TikTok video: {video_id}")
     else:
         video_id = extract_video_id(request.url)
         if not video_id:
@@ -1681,17 +1692,17 @@ async def analyze_video_v2_1(
     # Anti-AI detection: Pro only
     if customization.anti_ai_detection and not is_premium:
         customization.anti_ai_detection = False
-        print(f"⚠️ [v2.1] Anti-AI disabled (requires Pro)", flush=True)
+        logger.warning(f"⚠️ [v2.1] Anti-AI disabled (requires Pro)")
 
     # Analyse des commentaires: Pro only
     if customization.analyze_comments and not is_premium:
         customization.analyze_comments = False
-        print(f"⚠️ [v2.1] Comments analysis disabled (requires Pro)", flush=True)
+        logger.warning(f"⚠️ [v2.1] Comments analysis disabled (requires Pro)")
 
     # Analyse de propagande: Pro only (advanced feature)
     if customization.detect_propaganda and current_user.plan not in ["pro"]:
         customization.detect_propaganda = False
-        print(f"⚠️ [v2.1] Propaganda analysis disabled (requires Pro)", flush=True)
+        logger.warning(f"⚠️ [v2.1] Propaganda analysis disabled (requires Pro)")
     
     # Analyse d'intention: Pro/Expert only
     if customization.analyze_publication_intent and not is_premium:
@@ -1745,7 +1756,7 @@ async def analyze_video_v2_1(
             from datetime import timedelta
             cache_age = datetime.now() - existing.created_at
             if cache_age < timedelta(days=7):
-                print(f"💾 [CACHE HIT] v2.1: summary_id={existing.id}", flush=True)
+                logger.info(f"💾 [CACHE HIT] v2.1: summary_id={existing.id}")
                 return {
                     "task_id": f"cached_{existing.id}",
                     "status": "completed",
@@ -1778,7 +1789,7 @@ async def analyze_video_v2_1(
                 "message": f"Could not reserve credits: {reserve_reason}",
                 **reserve_info
             })
-        print(f"🔒 [v2.1] Credits reserved: {credit_cost} for task {task_id[:12]}", flush=True)
+        logger.info(f"🔒 [v2.1] Credits reserved: {credit_cost} for task {task_id[:12]}")
 
     # Préparer les options complètes
     full_options = {
@@ -1824,7 +1835,7 @@ async def analyze_video_v2_1(
         "v2_1_options": full_options
     }
 
-    print(f"🚀 [v2.1] Task created: {task_id} with advanced options", flush=True)
+    logger.info(f"🚀 [v2.1] Task created: {task_id} with advanced options")
 
     # Créer en DB
     await create_task(session, task_id, current_user.id, "video_analysis_v2.1")
@@ -1900,7 +1911,7 @@ async def _analyze_video_background_v2_1(
     from db.database import async_session_maker
     import httpx
 
-    print(f"🔧 [v2.1] Advanced background task started: {task_id}", flush=True)
+    logger.info(f"🔧 [v2.1] Advanced background task started: {task_id}")
 
     # Extraire les options de customization
     custom_opts = options.get("customization", {})
@@ -1998,10 +2009,10 @@ async def _analyze_video_background_v2_1(
                         lang=lang,
                         model=model
                     )
-                    print(f"✅ [v2.1] Comments analysis: {result.analyzed_count} comments", flush=True)
+                    logger.info(f"✅ [v2.1] Comments analysis: {result.analyzed_count} comments")
                     return result
                 except Exception as e:
-                    print(f"⚠️ [v2.1] Comments analysis failed: {e}", flush=True)
+                    logger.error(f"⚠️ [v2.1] Comments analysis failed: {e}")
                     return None
 
             async def _enrich_metadata_v21():
@@ -2019,10 +2030,10 @@ async def _analyze_video_background_v2_1(
                         extract_figures=custom_opts.get("extract_public_figures", True),
                         lang=lang
                     )
-                    print(f"✅ [v2.1] Metadata enriched", flush=True)
+                    logger.info(f"✅ [v2.1] Metadata enriched")
                     return result
                 except Exception as e:
-                    print(f"⚠️ [v2.1] Metadata enrichment failed: {e}", flush=True)
+                    logger.error(f"⚠️ [v2.1] Metadata enrichment failed: {e}")
                     return None
 
             async def _enrich_web_v21():
@@ -2039,7 +2050,7 @@ async def _analyze_video_background_v2_1(
                         upload_date=video_info.get("upload_date", "")
                     )
                 except Exception as e:
-                    print(f"⚠️ [v2.1] Web enrichment failed: {e}", flush=True)
+                    logger.error(f"⚠️ [v2.1] Web enrichment failed: {e}")
                     return None, [], enrichment_level
 
             # ⚡ Lancer les 4 tâches en parallèle
@@ -2051,7 +2062,7 @@ async def _analyze_video_background_v2_1(
             )
             web_context = _web_ctx
             enrichment_sources = _enrich_src
-            print(f"⚡ [v2.1.1] Category + comments + metadata + web computed in PARALLEL", flush=True)
+            logger.info(f"⚡ [v2.1.1] Category + comments + metadata + web computed in PARALLEL")
 
             # ═══════════════════════════════════════════════════════════════════
             # 7. 🆕 CONSTRUIRE LE PROMPT PERSONNALISÉ
@@ -2146,7 +2157,7 @@ async def _analyze_video_background_v2_1(
                 summary_content = _long_video_result2.summary if isinstance(_long_video_result2, LongVideoResult) else _long_video_result2
                 # Fallback si la synthèse a échoué
                 if not summary_content:
-                    print("⚠️ [v3.0] Long video analysis returned empty summary, falling back to truncated", flush=True)
+                    logger.warning("⚠️ [v3.0] Long video analysis returned empty summary, falling back to truncated")
                     truncated = " ".join(transcript_to_analyze.split()[:8000])
                     summary_content = await generate_summary(
                         title=video_info["title"], transcript=truncated,
@@ -2314,14 +2325,14 @@ async def _analyze_video_background_v2_1(
                 try:
                     await store_chunks_in_db(_long_video_result2, summary_id, session)
                 except Exception as chunk_err:
-                    print(f"⚠️ [v3.0] VideoChunk storage failed (non-blocking): {chunk_err}", flush=True)
+                    logger.error(f"⚠️ [v3.0] VideoChunk storage failed (non-blocking): {chunk_err}")
 
             # Incrémenter le quota
             try:
                 from core.plan_limits import increment_daily_usage
                 await increment_daily_usage(session, user_id)
             except Exception as quota_err:
-                print(f"⚠️ [v2.1] Quota increment failed: {quota_err}", flush=True)
+                logger.error(f"⚠️ [v2.1] Quota increment failed: {quota_err}")
 
             # ═══════════════════════════════════════════════════════════════════
             # 12. MARQUER COMME TERMINÉ
@@ -2406,7 +2417,7 @@ async def _analyze_video_background_v2_1(
                     cached=False
                 )
             except Exception as notify_err:
-                print(f"⚠️ [v2.1] Notification failed: {notify_err}", flush=True)
+                logger.error(f"⚠️ [v2.1] Notification failed: {notify_err}")
 
             # Webhook
             webhook_url = options.get("webhook_url")
@@ -2425,15 +2436,15 @@ async def _analyze_video_background_v2_1(
                             },
                             timeout=30.0
                         )
-                    print(f"🔔 [v2.1] Webhook sent to {webhook_url}", flush=True)
+                    logger.info(f"🔔 [v2.1] Webhook sent to {webhook_url}")
                 except Exception as webhook_err:
-                    print(f"⚠️ [v2.1] Webhook failed: {webhook_err}", flush=True)
+                    logger.error(f"⚠️ [v2.1] Webhook failed: {webhook_err}")
 
-            print(f"✅ [v2.1] Task completed: {task_id}", flush=True)
+            logger.info(f"✅ [v2.1] Task completed: {task_id}")
 
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ [v2.1] Analysis error for task {task_id}: {error_msg}", flush=True)
+        logger.error(f"❌ [v2.1] Analysis error for task {task_id}: {error_msg}")
 
         if SECURITY_AVAILABLE:
             await release_reserved_credits(user_id, task_id)
@@ -2497,23 +2508,23 @@ async def _analyze_video_background_v6(
     """
     from db.database import async_session_maker
     
-    print(f"🔧 [v6.0] Background task started: {task_id} (deep_research={deep_research}, platform={platform})", flush=True)
+    logger.info(f"🔧 [v6.0] Background task started: {task_id} (deep_research={deep_research}, platform={platform})")
     
     # 🆕 v5.5: Si deep_research activé, utiliser enrichissement maximal
     if deep_research:
         enrichment_level = EnrichmentLevel.DEEP
-        print(f"🔬 [v5.5] Deep research enabled - using DEEP enrichment", flush=True)
+        logger.info(f"🔬 [v5.5] Deep research enabled - using DEEP enrichment")
     else:
         # Déterminer le niveau d'enrichissement selon le plan
         enrichment_level = get_enrichment_level(user_plan)
-    print(f"🌐 [v6.0] Enrichment level: {enrichment_level.value} for plan {user_plan}", flush=True)
+    logger.info(f"🌐 [v6.0] Enrichment level: {enrichment_level.value} for plan {user_plan}")
     
     try:
         async with async_session_maker() as session:
             # Update status
             # Check if cancelled before starting
             if _task_store.get(task_id, {}).get("status") == "cancelled":
-                print(f"🚫 [v6.0] Task {task_id[:12]} cancelled before start", flush=True)
+                logger.info(f"🚫 [v6.0] Task {task_id[:12]} cancelled before start")
                 return
 
             _task_store[task_id]["status"] = "processing"
@@ -2525,12 +2536,12 @@ async def _analyze_video_background_v6(
             # ═══════════════════════════════════════════════════════════════════
             # Check cancellation
             if _task_store.get(task_id, {}).get("status") == "cancelled":
-                print(f"🚫 [v6.0] Task {task_id[:12]} cancelled", flush=True)
+                logger.info(f"🚫 [v6.0] Task {task_id[:12]} cancelled")
                 return
             _task_store[task_id]["progress"] = 10
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
             
-            print(f"📺 Fetching video info for {video_id} (platform={platform})...", flush=True)
+            logger.info(f"📺 Fetching video info for {video_id} (platform={platform})...")
             if platform == "tiktok":
                 video_info = await get_tiktok_video_info(url)
             else:
@@ -2538,7 +2549,7 @@ async def _analyze_video_background_v6(
             if not video_info:
                 raise Exception("Could not fetch video info")
             
-            print(f"✅ Video info: {video_info.get('title', 'Unknown')[:50]}", flush=True)
+            logger.info(f"✅ Video info: {video_info.get('title', 'Unknown')[:50]}")
             
             # ═══════════════════════════════════════════════════════════════════
             # 2. EXTRAIRE LA TRANSCRIPTION (avec global cache check)
@@ -2560,9 +2571,9 @@ async def _analyze_video_background_v6(
                         transcript_timestamped = _cached_t.get("transcript_timestamped")
                         detected_lang = _cached_t.get("detected_lang")
                         if transcript:
-                            print(f"💾 [GLOBAL CACHE HIT] Transcript for {platform}/{video_id}: {len(transcript)} chars", flush=True)
+                            logger.info(f"💾 [GLOBAL CACHE HIT] Transcript for {platform}/{video_id}: {len(transcript)} chars")
             except Exception as _vce:
-                print(f"⚠️ [GLOBAL CACHE] Transcript check failed: {_vce}", flush=True)
+                logger.error(f"⚠️ [GLOBAL CACHE] Transcript check failed: {_vce}")
 
             # Extract if not found in cache
             if not transcript:
@@ -2595,7 +2606,7 @@ async def _analyze_video_background_v6(
                                 "transcript_timestamped": transcript_timestamped,
                                 "detected_lang": detected_lang,
                             })
-                            print(f"💾 [GLOBAL CACHE SET] Transcript cached for {platform}/{video_id}", flush=True)
+                            logger.info(f"💾 [GLOBAL CACHE SET] Transcript cached for {platform}/{video_id}")
                     except Exception:
                         pass
 
@@ -2604,7 +2615,7 @@ async def _analyze_video_background_v6(
                 _vid_duration = video_info.get("duration", 0) or 0
                 _vid_url = video_info.get("url") or video_info.get("webpage_url") or url
                 if _vid_duration <= 120 or not transcript:
-                    print(f"🎞️ [SLIDESHOW] Empty/minimal transcript ({len(transcript or '')} chars, {_vid_duration}s), trying frame extraction...", flush=True)
+                    logger.info(f"🎞️ [SLIDESHOW] Empty/minimal transcript ({len(transcript or '')} chars, {_vid_duration}s), trying frame extraction...")
                     _task_store[task_id]["message"] = "Transcript vide — extraction des slides..."
                     _task_store[task_id]["progress"] = 22
                     try:
@@ -2629,16 +2640,16 @@ async def _analyze_video_background_v6(
                             )
                             if _slide_result:
                                 transcript = "[SLIDESHOW — " + str(len(_slideshow_frames)) + " slides]" + chr(10) + chr(10) + _slide_result
-                                print(f"🎞️ [SLIDESHOW] Vision OCR success: {len(_slide_result)} chars", flush=True)
+                                logger.info(f"🎞️ [SLIDESHOW] Vision OCR success: {len(_slide_result)} chars")
                             else:
-                                print(f"🎞️ [SLIDESHOW] Vision OCR failed", flush=True)
+                                logger.error(f"🎞️ [SLIDESHOW] Vision OCR failed")
                     except Exception as _se:
-                        print(f"🎞️ [SLIDESHOW] Error: {_se}", flush=True)
+                        logger.error(f"🎞️ [SLIDESHOW] Error: {_se}")
                 
                 if not transcript or len(transcript.strip()) < 30:
                     raise Exception("No transcript available for this video")
 
-            print(f"✅ Transcript: {len(transcript)} chars", flush=True)
+            logger.info(f"✅ Transcript: {len(transcript)} chars")
 
             # Utiliser la langue détectée si pas spécifiée
             if not lang or lang == "auto":
@@ -2662,16 +2673,16 @@ async def _analyze_video_background_v6(
                         tags=video_info.get("tags", []),
                         youtube_categories=video_info.get("categories", [])
                     )
-                    print(f"🏷️ Auto-detected category: {cat} ({conf:.0%})", flush=True)
+                    logger.info(f"🏷️ Auto-detected category: {cat} ({conf:.0%})")
                     return cat, conf
                 return category, 0.9
 
             # — Enrichissement web (async)
             async def _enrich_web_async():
                 if enrichment_level == EnrichmentLevel.NONE:
-                    print(f"⏭️ [v5.0] Skipping web enrichment (plan={user_plan})", flush=True)
+                    logger.warning(f"⏭️ [v5.0] Skipping web enrichment (plan={user_plan})")
                     return None, [], enrichment_level
-                print(f"🌐 [v5.0] PRE-ANALYSIS: Fetching web context from Perplexity...", flush=True)
+                logger.info(f"🌐 [v5.0] PRE-ANALYSIS: Fetching web context from Perplexity...")
                 try:
                     # Note: pour l'enrichissement, on passe "auto" comme catégorie provisoire
                     # car la catégorie finale est détectée en parallèle
@@ -2685,12 +2696,12 @@ async def _analyze_video_background_v6(
                         upload_date=video_info.get("upload_date", "")
                     )
                     if _wc:
-                        print(f"✅ [v5.0] PRE-ANALYSIS: Got {len(_wc)} chars, {len(_es)} sources", flush=True)
+                        logger.info(f"✅ [v5.0] PRE-ANALYSIS: Got {len(_wc)} chars, {len(_es)} sources")
                     else:
-                        print(f"⚠️ [v5.0] PRE-ANALYSIS: No web context returned", flush=True)
+                        logger.warning(f"⚠️ [v5.0] PRE-ANALYSIS: No web context returned")
                     return _wc, _es, _al
                 except Exception as e:
-                    print(f"⚠️ [v5.0] PRE-ANALYSIS failed (continuing without): {e}", flush=True)
+                    logger.error(f"⚠️ [v5.0] PRE-ANALYSIS failed (continuing without): {e}")
                     return None, [], enrichment_level
 
             # ⚡ Lancer les deux en parallèle
@@ -2702,7 +2713,7 @@ async def _analyze_video_background_v6(
             enrichment_sources = _enrich_src
 
             _task_store[task_id]["progress"] = 45
-            print(f"⚡ [v6.1] Category + web enrichment computed in PARALLEL", flush=True)
+            logger.info(f"⚡ [v6.1] Category + web enrichment computed in PARALLEL")
             
             # ═══════════════════════════════════════════════════════════════════
             # 5. GÉNÉRER LE RÉSUMÉ (MISTRAL) AVEC CONTEXTE WEB
@@ -2732,7 +2743,7 @@ async def _analyze_video_background_v6(
                 # ════════════════════════════════════════════════════════════
                 # 📚 VIDÉO LONGUE — Analyse par chunks
                 # ════════════════════════════════════════════════════════════
-                print(f"📚 [v7.0] LONG VIDEO DETECTED: {word_count} words ({chunk_reason})", flush=True)
+                logger.info(f"📚 [v7.0] LONG VIDEO DETECTED: {word_count} words ({chunk_reason})")
                 _task_store[task_id]["message"] = f"📚 Vidéo longue détectée ({word_count} mots)..."
 
                 # Fonction de callback pour le progress
@@ -2757,7 +2768,7 @@ async def _analyze_video_background_v6(
                 summary_content = _long_video_result3.summary if isinstance(_long_video_result3, LongVideoResult) else _long_video_result3
 
                 if not summary_content:
-                    print("⚠️ [v7.0] Chunking failed, falling back to truncated analysis", flush=True)
+                    logger.error("⚠️ [v7.0] Chunking failed, falling back to truncated analysis")
                     # Fallback: analyser seulement les premiers 8000 mots
                     truncated_transcript = " ".join(transcript_to_analyze.split()[:8000])
                     summary_content = await generate_summary(
@@ -2790,9 +2801,9 @@ async def _analyze_video_background_v6(
                 else:
                     _task_store[task_id]["message"] = "🧠 Génération du résumé avec l'IA..."
 
-                print(f"🧠 Generating summary with {model}...", flush=True)
+                logger.info(f"🧠 Generating summary with {model}...")
                 if web_context:
-                    print(f"🌐 [v5.0] Including {len(web_context)} chars of web context in Mistral prompt", flush=True)
+                    logger.info(f"🌐 [v5.0] Including {len(web_context)} chars of web context in Mistral prompt")
 
                 summary_content = await generate_summary(
                     title=video_info["title"],
@@ -2820,7 +2831,7 @@ async def _analyze_video_background_v6(
                 raise Exception("AI service temporarily unavailable, please retry")
 
             final_word_count = len(summary_content.split())
-            print(f"✅ Summary generated: {final_word_count} words", flush=True)
+            logger.info(f"✅ Summary generated: {final_word_count} words")
             
             # ═══════════════════════════════════════════════════════════════════
             # 6+7. ⚡ ENTITÉS + FIABILITÉ EN PARALLÈLE (optimisation v6.1)
@@ -2841,7 +2852,7 @@ async def _analyze_video_background_v6(
             if entities and len(entities) > 5:
                 reliability = min(98, reliability + 2)  # Bonus pour richesse d'entités
 
-            print(f"⚡ [v6.1] Entities + reliability computed in PARALLEL", flush=True)
+            logger.info(f"⚡ [v6.1] Entities + reliability computed in PARALLEL")
             
             # Bonus de fiabilité si enrichi avec Perplexity (PRÉ-ANALYSE)
             if enrichment_sources:
@@ -2850,7 +2861,7 @@ async def _analyze_video_background_v6(
                     EnrichmentLevel.DEEP: 15   # Expert: +15
                 }.get(enrichment_level, 0)
                 reliability = min(98, reliability + reliability_bonus)
-                print(f"🎯 [v5.0] Reliability boosted by {reliability_bonus} (web-enriched analysis)", flush=True)
+                logger.info(f"🎯 [v5.0] Reliability boosted by {reliability_bonus} (web-enriched analysis)")
             
             # ═══════════════════════════════════════════════════════════════════
             # 8. SAUVEGARDER LE RÉSUMÉ
@@ -2919,7 +2930,7 @@ async def _analyze_video_background_v6(
                 carousel_images=video_info.get("carousel_images"),
             )
 
-            print(f"💾 Summary saved: id={summary_id}", flush=True)
+            logger.info(f"💾 Summary saved: id={summary_id}")
 
             # 🆕 v4.0: Index structuré
             await _save_structured_index(
@@ -2933,14 +2944,26 @@ async def _analyze_video_background_v6(
                 try:
                     await store_chunks_in_db(_long_video_result3, summary_id, session)
                 except Exception as chunk_err:
-                    print(f"⚠️ [v3.0] VideoChunk storage failed (non-blocking): {chunk_err}", flush=True)
+                    logger.error(f"⚠️ [v3.0] VideoChunk storage failed (non-blocking): {chunk_err}")
 
             # 🎨 Enqueue keyword image generation (non-blocking)
             try:
                 from images.keyword_images import enqueue_images_for_summary
                 await enqueue_images_for_summary(summary_id)
             except Exception as img_err:
-                print(f"⚠️ [IMAGES] Keyword image enqueue failed (non-blocking): {img_err}", flush=True)
+                logger.error(f"⚠️ [IMAGES] Keyword image enqueue failed (non-blocking): {img_err}")
+
+            # 🖼️ Persist thumbnail to R2 (non-blocking)
+            try:
+                from storage.thumbnail_generator import ensure_thumbnail
+                asyncio.create_task(ensure_thumbnail(
+                    summary_id=summary_id, video_id=video_id,
+                    title=video_info["title"], category=category,
+                    platform=platform, original_url=default_thumbnail,
+                    video_url=url,
+                ))
+            except Exception as thumb_err:
+                logger.error(f"⚠️ [THUMBNAIL] R2 persist failed (non-blocking): {thumb_err}")
 
             # ⚡ Cache + quota en parallèle (perf v6.2)
             async def _cache_analysis():
@@ -2966,14 +2989,14 @@ async def _analyze_video_background_v6(
                             "enrichment_data": enrichment_metadata,
                         })
                 except Exception as _vce:
-                    print(f"⚠️ [GLOBAL CACHE] Analysis cache set failed: {_vce}", flush=True)
+                    logger.error(f"⚠️ [GLOBAL CACHE] Analysis cache set failed: {_vce}")
 
             async def _increment_quota():
                 try:
                     from core.plan_limits import increment_daily_usage
                     await increment_daily_usage(session, user_id)
                 except Exception as quota_err:
-                    print(f"⚠️ [QUOTA] Failed to increment daily usage: {quota_err}", flush=True)
+                    logger.error(f"⚠️ [QUOTA] Failed to increment daily usage: {quota_err}")
 
             await asyncio.gather(_cache_analysis(), _increment_quota())
 
@@ -3015,9 +3038,9 @@ async def _analyze_video_background_v6(
                 result=_task_store[task_id]["result"]
             )
             
-            print(f"✅ [v6.0] Task completed: {task_id}", flush=True)
+            logger.info(f"✅ [v6.0] Task completed: {task_id}")
             if enrichment_level != EnrichmentLevel.NONE:
-                print(f"   └─ Enrichment: {enrichment_level.value}, {len(enrichment_sources)} sources", flush=True)
+                logger.info(f"   └─ Enrichment: {enrichment_level.value}, {len(enrichment_sources)} sources")
             
             # 🔔 NOTIFICATION PUSH — Alerter l'utilisateur que l'analyse est prête
             try:
@@ -3028,18 +3051,18 @@ async def _analyze_video_background_v6(
                     video_id=video_id,
                     cached=False
                 )
-                print(f"🔔 [NOTIFY] Analysis complete notification sent to user {user_id}", flush=True)
+                logger.info(f"🔔 [NOTIFY] Analysis complete notification sent to user {user_id}")
             except Exception as notify_err:
-                print(f"⚠️ [NOTIFY] Failed to send notification: {notify_err}", flush=True)
+                logger.error(f"⚠️ [NOTIFY] Failed to send notification: {notify_err}")
             
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ Analysis error for task {task_id}: {error_msg}", flush=True)
+        logger.error(f"❌ Analysis error for task {task_id}: {error_msg}")
         
         # 🔐 LIBÉRER les crédits réservés (échec de l'opération)
         if SECURITY_AVAILABLE:
             await release_reserved_credits(user_id, task_id)
-            print(f"🔓 [SECURITY] Credits released due to failure: task={task_id[:12]}", flush=True)
+            logger.error(f"🔓 [SECURITY] Credits released due to failure: task={task_id[:12]}")
         
         _task_store[task_id] = {
             "status": "failed",
@@ -3057,9 +3080,9 @@ async def _analyze_video_background_v6(
                 video_title=video_title_for_notif,
                 error=error_msg[:200]
             )
-            print(f"🔔 [NOTIFY] Analysis failure notification sent to user {user_id}", flush=True)
+            logger.error(f"🔔 [NOTIFY] Analysis failure notification sent to user {user_id}")
         except Exception as notify_err:
-            print(f"⚠️ [NOTIFY] Failed to send failure notification: {notify_err}", flush=True)
+            logger.error(f"⚠️ [NOTIFY] Failed to send failure notification: {notify_err}")
         
         try:
             async with async_session_maker() as session:
@@ -3092,7 +3115,7 @@ async def cancel_task(
         # Mark as cancelled (la mutation sync vers Redis via le proxy)
         task["status"] = "cancelled"
         task["message"] = "Analyse annulée par l'utilisateur"
-        print(f"🚫 [CANCEL] Task {task_id[:12]} cancelled by user {current_user.id}", flush=True)
+        logger.info(f"🚫 [CANCEL] Task {task_id[:12]} cancelled by user {current_user.id}")
         return {"status": "cancelled", "task_id": task_id}
 
     raise HTTPException(status_code=404, detail="Task not found")
@@ -3294,7 +3317,7 @@ async def get_summary_concepts(
             language=summary.lang or "fr"
         )
         
-        print(f"📚 [Concepts] Got {result['count']} concepts for summary {summary_id}")
+        logger.info(f"📚 [Concepts] Got {result['count']} concepts for summary {summary_id}")
         
         return {
             "summary_id": summary_id,
@@ -3304,7 +3327,7 @@ async def get_summary_concepts(
         }
         
     except Exception as e:
-        print(f"❌ [Concepts] Error: {e}")
+        logger.error(f"❌ [Concepts] Error: {e}")
         # Fallback: extraire les termes sans définitions
         concepts = extract_concepts(summary.summary_content)
         return {
@@ -3398,7 +3421,7 @@ async def get_enriched_concepts(
             })
         
         provider = "perplexity+mistral" if use_perplexity else "mistral"
-        print(f"📚 [Enriched] Got {len(concepts_list)} enriched definitions for summary {summary_id} ({provider})")
+        logger.info(f"📚 [Enriched] Got {len(concepts_list)} enriched definitions for summary {summary_id} ({provider})")
         
         return {
             "summary_id": summary_id,
@@ -3417,7 +3440,7 @@ async def get_enriched_concepts(
         }
         
     except Exception as e:
-        print(f"❌ [Enriched] Error: {e}")
+        logger.error(f"❌ [Enriched] Error: {e}")
         # Fallback: termes sans définitions
         return {
             "summary_id": summary_id,
@@ -3667,7 +3690,7 @@ async def create_study_card(
         }
         
     except Exception as e:
-        print(f"❌ [STUDY_CARD] Erreur: {e}", flush=True)
+        logger.error(f"❌ [STUDY_CARD] Erreur: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
@@ -3715,7 +3738,7 @@ async def create_concept_map(
         }
         
     except Exception as e:
-        print(f"❌ [CONCEPT_MAP] Erreur: {e}", flush=True)
+        logger.error(f"❌ [CONCEPT_MAP] Erreur: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
@@ -3767,7 +3790,7 @@ async def create_all_study_materials(
         }
         
     except Exception as e:
-        print(f"❌ [STUDY_ALL] Erreur: {e}", flush=True)
+        logger.error(f"❌ [STUDY_ALL] Erreur: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
@@ -3808,7 +3831,7 @@ async def discover_videos(
     import time
     start = time.time()
     
-    print(f"🔍 [DISCOVER] User {current_user.email} searching: {request.query}", flush=True)
+    logger.info(f"🔍 [DISCOVER] User {current_user.email} searching: {request.query}")
     
     try:
         result = await IntelligentDiscoveryService.discover(
@@ -3826,7 +3849,7 @@ async def discover_videos(
         ]
         
         duration_ms = int((time.time() - start) * 1000)
-        print(f"✅ [DISCOVER] Found {len(candidates)} candidates in {duration_ms}ms", flush=True)
+        logger.info(f"✅ [DISCOVER] Found {len(candidates)} candidates in {duration_ms}ms")
         
         return DiscoveryResponse(
             query=result.query,
@@ -3839,7 +3862,7 @@ async def discover_videos(
         )
         
     except Exception as e:
-        print(f"❌ [DISCOVER] Error: {e}", flush=True)
+        logger.error(f"❌ [DISCOVER] Error: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur de recherche: {str(e)}")
 
 
@@ -3855,7 +3878,7 @@ async def discover_best_video(
     GRATUIT - Ne consomme pas de crédits.
     Retourne directement le meilleur candidat.
     """
-    print(f"🏆 [DISCOVER/BEST] User {current_user.email} searching: {query}", flush=True)
+    logger.info(f"🏆 [DISCOVER/BEST] User {current_user.email} searching: {query}")
     
     lang_list = [l.strip() for l in languages.split(",")]
     
@@ -3876,7 +3899,7 @@ async def discover_best_video(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ [DISCOVER/BEST] Error: {e}", flush=True)
+        logger.error(f"❌ [DISCOVER/BEST] Error: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
@@ -3894,7 +3917,7 @@ async def discover_search_videos(
     GRATUIT - Ne consomme pas de crédits.
     Retourne toujours { videos: [...], total: N, query: str }, jamais de 404.
     """
-    print(f"🔍 [DISCOVER/SEARCH] User {current_user.email} query='{query}' sort={sort_by} limit={limit}", flush=True)
+    logger.info(f"🔍 [DISCOVER/SEARCH] User {current_user.email} query='{query}' sort={sort_by} limit={limit}")
 
     lang_list = [l.strip() for l in languages.split(",")]
 
@@ -3936,7 +3959,7 @@ async def discover_search_videos(
         # Limit results
         videos = videos[:limit]
 
-        print(f"✅ [DISCOVER/SEARCH] Returning {len(videos)} videos", flush=True)
+        logger.info(f"✅ [DISCOVER/SEARCH] Returning {len(videos)} videos")
 
         return {
             "videos": videos,
@@ -3945,7 +3968,7 @@ async def discover_search_videos(
         }
 
     except Exception as e:
-        print(f"❌ [DISCOVER/SEARCH] Error: {e}", flush=True)
+        logger.error(f"❌ [DISCOVER/SEARCH] Error: {e}")
         # Always return valid JSON, never 404
         return {
             "videos": [],
@@ -3978,7 +4001,7 @@ async def analyze_hybrid(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-    print(f"🔀 [HYBRID] User {current_user.email} - Type: {input_type.value}", flush=True)
+    logger.info(f"🔀 [HYBRID] User {current_user.email} - Type: {input_type.value}")
     
     # === MODE URL ===
     if input_type == InputType.URL:
@@ -4190,7 +4213,7 @@ async def _analyze_raw_text_background(
     from sqlalchemy.ext.asyncio import AsyncSession
     from db.database import async_session_maker
     
-    print(f"📝 [RAW_TEXT] Starting analysis for {text_id}", flush=True)
+    logger.info(f"📝 [RAW_TEXT] Starting analysis for {text_id}")
     
     try:
         _task_store[task_id]["progress"] = 5
@@ -4215,11 +4238,11 @@ async def _analyze_raw_text_background(
             source_hint=source  # Utiliser la source comme indice
         )
         
-        print(f"🎯 [RAW_TEXT] Smart title: {smart_title}", flush=True)
-        print(f"📚 [RAW_TEXT] Source type: {source_context.source_type.value}", flush=True)
+        logger.info(f"🎯 [RAW_TEXT] Smart title: {smart_title}")
+        logger.info(f"📚 [RAW_TEXT] Source type: {source_context.source_type.value}")
         if source_context.detected_origin:
-            print(f"   Origin: {source_context.detected_origin}", flush=True)
-        print(f"🖼️ [RAW_TEXT] Thumbnail: {len(thumbnail_url) if thumbnail_url else 0} chars", flush=True)
+            logger.info(f"   Origin: {source_context.detected_origin}")
+        logger.info(f"🖼️ [RAW_TEXT] Thumbnail: {len(thumbnail_url) if thumbnail_url else 0} chars")
         
         _task_store[task_id]["progress"] = 30
         _task_store[task_id]["message"] = "Génération du résumé adapté au contexte..."
@@ -4284,7 +4307,19 @@ async def _analyze_raw_text_background(
             )
             
             await session.commit()
-        
+
+        # 🖼️ Persist AI thumbnail to R2 (non-blocking)
+        try:
+            import asyncio as _aio_thumb
+            from storage.thumbnail_generator import ensure_thumbnail
+            _aio_thumb.create_task(ensure_thumbnail(
+                summary_id=summary_id, video_id=text_id,
+                title=smart_title, category=detected_category,
+                platform="text", original_url=None, video_url=None,
+            ))
+        except Exception as thumb_err:
+            logger.error(f"⚠️ [THUMBNAIL] R2 text thumbnail failed (non-blocking): {thumb_err}")
+
         _task_store[task_id]["status"] = "completed"
         _task_store[task_id]["progress"] = 100
         _task_store[task_id]["message"] = "Analyse terminée"
@@ -4294,7 +4329,7 @@ async def _analyze_raw_text_background(
             "word_count": word_count,
             "category": detected_category,
         }
-        
+
         # Notification SSE
         if NOTIFICATIONS_AVAILABLE:
             await notify_analysis_complete(
@@ -4304,10 +4339,10 @@ async def _analyze_raw_text_background(
                 video_id=text_id,
             )
         
-        print(f"✅ [RAW_TEXT] Analysis completed: {text_id}", flush=True)
+        logger.info(f"✅ [RAW_TEXT] Analysis completed: {text_id}")
         
     except Exception as e:
-        print(f"❌ [RAW_TEXT] Error: {e}", flush=True)
+        logger.error(f"❌ [RAW_TEXT] Error: {e}")
         import traceback
         traceback.print_exc()
         
@@ -4398,7 +4433,7 @@ async def get_content_reliability(
             reliability_score=result.get("overall_score"),
         )
     except Exception as e:
-        print(f"⚠️ [PUSH] Factcheck notification failed: {e}", flush=True)
+        logger.error(f"⚠️ [PUSH] Factcheck notification failed: {e}")
 
     return result
 
@@ -4583,7 +4618,7 @@ async def analyze_images(
         category=request.category,
     )
 
-    print(f"📸 [IMAGES] User {current_user.email} - {len(request.images)} images - task={task_id}", flush=True)
+    logger.info(f"📸 [IMAGES] User {current_user.email} - {len(request.images)} images - task={task_id}")
 
     return AnalyzeImagesResponse(
         task_id=task_id,
@@ -4627,7 +4662,7 @@ async def _analyze_images_background(
     from sqlalchemy.ext.asyncio import AsyncSession
     from db.database import async_session_maker
 
-    print(f"📸 [IMAGES] Starting analysis for {image_id} ({len(images)} images)", flush=True)
+    logger.info(f"📸 [IMAGES] Starting analysis for {image_id} ({len(images)} images)")
 
     try:
         _task_store[task_id]["progress"] = 5
@@ -4653,12 +4688,12 @@ async def _analyze_images_background(
                 video_url = screenshot_result.get("video_url")
                 search_query = ocr_query
 
-                print(f"📱 [IMAGES] Screenshot detected: {platform} — OCR query: '{ocr_query}' — URL: {video_url}", flush=True)
+                logger.info(f"📱 [IMAGES] Screenshot detected: {platform} — OCR query: '{ocr_query}' — URL: {video_url}")
 
                 # TOUJOURS appeler Vision quand OCR n'a pas trouvé d'URL directe
                 # Vision est beaucoup plus fiable que le parsing OCR pour extraire titre/chaîne
                 if not video_url:
-                    print(f"🔍 [IMAGES] No direct URL from OCR, calling Vision for title extraction...", flush=True)
+                    logger.info(f"🔍 [IMAGES] No direct URL from OCR, calling Vision for title extraction...")
                     _task_store[task_id]["message"] = f"Analyse visuelle du screenshot {platform}..."
                     vision_result = await _detect_video_screenshot_vision(images[0], api_key, platform)
                     if vision_result:
@@ -4669,16 +4704,16 @@ async def _analyze_images_background(
                         # Préférer la query Vision sauf si elle est aussi garbage
                         if vision_query and not _is_garbage_query(vision_query):
                             search_query = vision_query
-                            print(f"✅ [IMAGES] Vision query (primary): '{search_query}'", flush=True)
+                            logger.info(f"✅ [IMAGES] Vision query (primary): '{search_query}'")
                         elif not _is_garbage_query(ocr_query):
                             search_query = ocr_query
-                            print(f"⚠️ [IMAGES] Vision failed, using OCR query: '{search_query}'", flush=True)
+                            logger.error(f"⚠️ [IMAGES] Vision failed, using OCR query: '{search_query}'")
                         else:
-                            print(f"❌ [IMAGES] Both Vision and OCR queries are garbage", flush=True)
+                            logger.error(f"❌ [IMAGES] Both Vision and OCR queries are garbage")
                     elif not _is_garbage_query(ocr_query):
-                        print(f"⚠️ [IMAGES] Vision returned nothing, using OCR query: '{search_query}'", flush=True)
+                        logger.warning(f"⚠️ [IMAGES] Vision returned nothing, using OCR query: '{search_query}'")
                     else:
-                        print(f"❌ [IMAGES] Vision failed and OCR query is garbage: '{ocr_query}'", flush=True)
+                        logger.error(f"❌ [IMAGES] Vision failed and OCR query is garbage: '{ocr_query}'")
 
                 _task_store[task_id]["progress"] = 15
                 _task_store[task_id]["message"] = f"Capture d'écran {platform} détectée ! Recherche de la vidéo..."
@@ -4697,11 +4732,11 @@ async def _analyze_images_background(
                     if _ocr_channel and len(_ocr_channel) > 2:
                         # Channel name is often reliable even when title is garbage
                         _brave_q = f"{_ocr_channel} {platform} video"
-                        print(f"🔎 [IMAGES] Last resort Brave search with channel: '{_brave_q}'", flush=True)
+                        logger.info(f"🔎 [IMAGES] Last resort Brave search with channel: '{_brave_q}'")
                         found_url = await _brave_search_video(_brave_q, platform)
 
                 if found_url:
-                    print(f"🎯 [IMAGES] Video found: {found_url}", flush=True)
+                    logger.info(f"🎯 [IMAGES] Video found: {found_url}")
 
                     # Extraire le video_id et lancer l'analyse vidéo classique
                     import asyncio
@@ -4764,12 +4799,12 @@ async def _analyze_images_background(
                             "video_url": found_url,
                             "video_id": vid_id,
                         }
-                        print(f"✅ [IMAGES] Screenshot → video redirect: {found_url} → new_task={new_task_id}", flush=True)
+                        logger.info(f"✅ [IMAGES] Screenshot → video redirect: {found_url} → new_task={new_task_id}")
                         return
                     else:
-                        print(f"⚠️ [IMAGES] Could not extract video_id from {found_url}", flush=True)
+                        logger.warning(f"⚠️ [IMAGES] Could not extract video_id from {found_url}")
                 else:
-                    print(f"⚠️ [IMAGES] Video not found for query '{search_query}', falling back to image analysis", flush=True)
+                    logger.warning(f"⚠️ [IMAGES] Video not found for query '{search_query}', falling back to image analysis")
                     _task_store[task_id]["message"] = "Vidéo non trouvée, analyse de l'image en cours..."
 
         # Construire le message multimodal
@@ -4866,7 +4901,7 @@ async def _analyze_images_background(
         if not vision_result:
             raise Exception("Mistral Vision : l'API est temporairement surchargée. Réessayez dans 1-2 minutes.")
 
-        print(f"📸 [IMAGES] Vision analysis complete: {len(vision_result)} chars", flush=True)
+        logger.info(f"📸 [IMAGES] Vision analysis complete: {len(vision_result)} chars")
 
         _task_store[task_id]["progress"] = 40
         _task_store[task_id]["message"] = "Texte et visuels extraits. Génération de la synthèse..."
@@ -4955,7 +4990,7 @@ async def _analyze_images_background(
                 except Exception:
                     image_thumbnail_url = f"data:{first_img.mime_type};base64,{b64_data[:32768]}"
         except Exception as e:
-            print(f"[IMAGES] Thumbnail error: {e}", flush=True)
+            logger.error(f"[IMAGES] Thumbnail error: {e}")
 
         async with async_session_maker() as db_session:
             credit_cost = get_credit_cost(model) if SECURITY_AVAILABLE else 1
@@ -5003,10 +5038,10 @@ async def _analyze_images_background(
                 video_id=image_id,
             )
 
-        print(f"✅ [IMAGES] Analysis completed: {image_id} → summary_id={summary_id}", flush=True)
+        logger.info(f"✅ [IMAGES] Analysis completed: {image_id} → summary_id={summary_id}")
 
     except Exception as e:
-        print(f"❌ [IMAGES] Error: {e}", flush=True)
+        logger.error(f"❌ [IMAGES] Error: {e}")
         import traceback
         traceback.print_exc()
 
@@ -5057,7 +5092,7 @@ async def _extract_slideshow_frames(
     import os
     import glob as glob_module
 
-    print(f"🎞️ [SLIDESHOW] Extracting frames from {platform}: {video_url}", flush=True)
+    logger.info(f"🎞️ [SLIDESHOW] Extracting frames from {platform}: {video_url}")
 
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -5081,7 +5116,7 @@ async def _extract_slideshow_frames(
 
             ok = await loop.run_in_executor(None, run_dl)
             if not ok or not os.path.exists(video_path):
-                print(f"🎞️ [SLIDESHOW] Download failed", flush=True)
+                logger.error(f"🎞️ [SLIDESHOW] Download failed")
                 return None
 
             def get_dur():
@@ -5121,12 +5156,12 @@ async def _extract_slideshow_frames(
 
             ok = await loop.run_in_executor(None, do_ff)
             if not ok:
-                print(f"🎞️ [SLIDESHOW] ffmpeg extraction failed", flush=True)
+                logger.error(f"🎞️ [SLIDESHOW] ffmpeg extraction failed")
                 return None
 
             frame_files = sorted(glob_module.glob(os.path.join(tmpdir, "frame_*.jpg")))
             if not frame_files:
-                print(f"🎞️ [SLIDESHOW] No frames found", flush=True)
+                logger.info(f"🎞️ [SLIDESHOW] No frames found")
                 return None
 
             frames = []
@@ -5135,11 +5170,11 @@ async def _extract_slideshow_frames(
                     raw = f.read()
                     frames.append({"data": base64.b64encode(raw).decode(), "mime_type": "image/jpeg"})
 
-            print(f"🎞️ [SLIDESHOW] Extracted {len(frames)} frames from {duration:.1f}s video", flush=True)
+            logger.info(f"🎞️ [SLIDESHOW] Extracted {len(frames)} frames from {duration:.1f}s video")
             return frames
 
     except Exception as e:
-        print(f"🎞️ [SLIDESHOW] Error: {e}", flush=True)
+        logger.error(f"🎞️ [SLIDESHOW] Error: {e}")
         import traceback
         traceback.print_exc()
         return None

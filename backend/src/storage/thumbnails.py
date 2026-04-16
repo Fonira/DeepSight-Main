@@ -116,8 +116,8 @@ async def store_thumbnail_r2(
     if not R2_CONFIG["ENABLED"]:
         return None
 
-    # Skip text/placeholder thumbnails
-    if platform == "text" or not original_url:
+    # Skip if no URL provided (text thumbnails handled by ensure_thumbnail)
+    if not original_url:
         return None
 
     # Check if already uploaded

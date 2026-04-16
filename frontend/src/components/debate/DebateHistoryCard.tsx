@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { DebateAnalysis } from "../../types/debate";
 import { DeepSightSpinnerMicro } from "../ui/DeepSightSpinner";
+import { ThumbnailImage } from "../ThumbnailImage";
 
 interface DebateHistoryCardProps {
   debate: DebateAnalysis;
@@ -65,17 +66,6 @@ const statusConfig: Record<
   },
 };
 
-function getThumbnailUrl(
-  videoId: string | null,
-  providedThumbnail: string | null,
-  platform?: string,
-): string | null {
-  if (providedThumbnail) return providedThumbnail;
-  if (!videoId) return null;
-  if (platform === "tiktok") return null;
-  return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-}
-
 function formatDate(dateStr: string, language: string): string {
   const date = new Date(dateStr);
   const now = new Date();
@@ -101,16 +91,6 @@ export function DebateHistoryCard({
   onDelete,
 }: DebateHistoryCardProps) {
   const status = statusConfig[debate.status] || statusConfig.pending;
-  const thumbA = getThumbnailUrl(
-    debate.video_a_id,
-    debate.video_a_thumbnail,
-    debate.platform_a,
-  );
-  const thumbB = getThumbnailUrl(
-    debate.video_b_id,
-    debate.video_b_thumbnail,
-    debate.platform_b ?? undefined,
-  );
 
   return (
     <div
@@ -121,25 +101,13 @@ export function DebateHistoryCard({
       <div className="relative h-32 flex">
         {/* Video A */}
         <div className="w-1/2 relative overflow-hidden">
-          {thumbA ? (
-            <img
-              src={thumbA}
-              alt={debate.video_a_title || "Vidéo A"}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                if (target.src.includes("mqdefault")) {
-                  target.src = `https://img.youtube.com/vi/${debate.video_a_id}/hqdefault.jpg`;
-                } else {
-                  target.style.display = "none";
-                }
-              }}
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center">
-              <span className="text-2xl font-bold text-white/30">A</span>
-            </div>
-          )}
+          <ThumbnailImage
+            thumbnailUrl={debate.video_a_thumbnail || undefined}
+            videoId={debate.video_a_id || ""}
+            title={debate.video_a_title || "Vidéo A"}
+            platform={debate.platform_a as "youtube" | "tiktok" | undefined}
+            className="w-full h-full object-cover"
+          />
           <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-black/70 text-white">
             A
           </div>
@@ -152,25 +120,18 @@ export function DebateHistoryCard({
 
         {/* Video B */}
         <div className="w-1/2 relative overflow-hidden">
-          {thumbB ? (
-            <img
-              src={thumbB}
-              alt={debate.video_b_title || "Vidéo B"}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                if (target.src.includes("mqdefault")) {
-                  target.src = `https://img.youtube.com/vi/${debate.video_b_id}/hqdefault.jpg`;
-                } else {
-                  target.style.display = "none";
-                }
-              }}
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
-              <span className="text-2xl font-bold text-white/30">B</span>
-            </div>
-          )}
+          <ThumbnailImage
+            thumbnailUrl={debate.video_b_thumbnail || undefined}
+            videoId={debate.video_b_id || ""}
+            title={debate.video_b_title || "Vidéo B"}
+            platform={
+              (debate.platform_b ?? undefined) as
+                | "youtube"
+                | "tiktok"
+                | undefined
+            }
+            className="w-full h-full object-cover"
+          />
           <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-black/70 text-white">
             B
           </div>

@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional
 
 from pydantic_settings import BaseSettings
 from pydantic import Field, model_validator
+from core.logging import logger
 
 
 # =============================================================================
@@ -146,7 +147,7 @@ class _DeepSightSettings(BaseSettings):
     R2_SECRET_ACCESS_KEY: str = ""
     R2_BUCKET_NAME: str = "deepsight-thumbnails"
     R2_PUBLIC_DOMAIN: str = ""
-    R2_ENABLED: bool = False
+    R2_ENABLED: bool = True
 
     # -- Transcript --
     YTDLP_COOKIES_PATH: str = ""
@@ -796,22 +797,22 @@ TRANSCRIPT_CONFIG = {
 
 if __name__ != "__main__":
     _env_label = "PRODUCTION" if _settings.is_production else "DEVELOPMENT"
-    print(f"Deep Sight API v{VERSION} [{_env_label}]", flush=True)
-    print(f"  Railway: {IS_RAILWAY}", flush=True)
-    print(f"  Stripe: {STRIPE_CONFIG['ENABLED']} (test_mode={STRIPE_CONFIG['TEST_MODE']})", flush=True)
-    print(f"  Google OAuth: {GOOGLE_OAUTH_CONFIG['ENABLED']}", flush=True)
-    print(f"  Email: {EMAIL_CONFIG['ENABLED']}", flush=True)
-    print(f"  Mistral: {'yes' if MISTRAL_API_KEY else 'no'}", flush=True)
-    print(f"  Web Search (Brave+Mistral): {'yes' if is_web_search_available() else 'no'}", flush=True)
-    print(f"  Supadata: {'yes' if SUPADATA_API_KEY else 'no'}", flush=True)
-    print(f"  YouTube Proxy: {'yes' if YOUTUBE_PROXY else 'no (direct)'}", flush=True)
-    print(f"  Audio: Groq={'yes' if get_groq_key() else 'no'}"
+    logger.info(f"Deep Sight API v{VERSION} [{_env_label}]")
+    logger.info(f"  Railway: {IS_RAILWAY}")
+    logger.info(f"  Stripe: {STRIPE_CONFIG['ENABLED']} (test_mode={STRIPE_CONFIG['TEST_MODE']})")
+    logger.info(f"  Google OAuth: {GOOGLE_OAUTH_CONFIG['ENABLED']}")
+    logger.info(f"  Email: {EMAIL_CONFIG['ENABLED']}")
+    logger.info(f"  Mistral: {'yes' if MISTRAL_API_KEY else 'no'}")
+    logger.info(f"  Web Search (Brave+Mistral): {'yes' if is_web_search_available() else 'no'}")
+    logger.info(f"  Supadata: {'yes' if SUPADATA_API_KEY else 'no'}")
+    logger.info(f"  YouTube Proxy: {'yes' if YOUTUBE_PROXY else 'no (direct)'}")
+    logger.info(f"  Audio: Groq={'yes' if get_groq_key() else 'no'}"
           f" OpenAI={'yes' if get_openai_key() else 'no'}"
           f" Deepgram={'yes' if get_deepgram_key() else 'no'}"
           f" AssemblyAI={'yes' if get_assemblyai_key() else 'no'}"
-          f" ElevenLabs={'yes' if get_elevenlabs_key() else 'no'}", flush=True)
-    print(f"  Rate Limit: {RATE_LIMIT_ENABLED}", flush=True)
-    print(f"  Cache: Redis={'yes' if _settings.REDIS_URL else 'no (memory fallback)'}"
-          f" max_size={_settings.CACHE_MAX_SIZE}", flush=True)
-    print(f"  Video Cache L2: {'yes' if _settings.VPS_DATABASE_URL else 'no (VPS_DATABASE_URL not set)'}", flush=True)
-    print(f"  Backup S3: {'yes' if _settings.AWS_ACCESS_KEY_ID else 'no'}", flush=True)
+          f" ElevenLabs={'yes' if get_elevenlabs_key() else 'no'}")
+    logger.info(f"  Rate Limit: {RATE_LIMIT_ENABLED}")
+    logger.warning(f"  Cache: Redis={'yes' if _settings.REDIS_URL else 'no (memory fallback)'}"
+          f" max_size={_settings.CACHE_MAX_SIZE}")
+    logger.info(f"  Video Cache L2: {'yes' if _settings.VPS_DATABASE_URL else 'no (VPS_DATABASE_URL not set)'}")
+    logger.info(f"  Backup S3: {'yes' if _settings.AWS_ACCESS_KEY_ID else 'no'}")
