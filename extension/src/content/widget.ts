@@ -37,7 +37,7 @@ export function createWidgetShell(
 
   if (isTikTok) {
     host.style.cssText =
-      "all:initial;position:fixed;bottom:20px;right:20px;width:360px;max-height:80vh;z-index:99999;";
+      "all:initial;position:fixed;bottom:20px;right:20px;width:360px;max-height:80vh;z-index:2147483646;";
   }
 
   // Attach closed shadow root for full encapsulation
@@ -89,7 +89,14 @@ export function buildWidgetHeader(logoHtml: string): string {
 }
 
 function isSidebarVisible(el: HTMLElement): boolean {
-  return el.offsetHeight > 0 && getComputedStyle(el).display !== "none";
+  const style = getComputedStyle(el);
+  return (
+    el.offsetHeight > 0 &&
+    el.offsetWidth > 50 &&
+    style.display !== "none" &&
+    style.visibility !== "hidden" &&
+    style.opacity !== "0"
+  );
 }
 
 let _floatingMode = false;
@@ -136,7 +143,7 @@ export function injectWidget(host: HTMLDivElement, isTikTok: boolean): boolean {
   // Floating fallback — no sidebar found
   _floatingMode = true;
   host.style.cssText =
-    "all:initial;position:fixed;bottom:20px;right:20px;width:380px;max-height:80vh;z-index:99999;";
+    "all:initial;position:fixed;bottom:20px;right:20px;width:380px;max-height:80vh;z-index:2147483646;";
   document.body.appendChild(host);
   return true;
 }
