@@ -754,6 +754,27 @@ async def lifespan(app: FastAPI):
         # Warm the cache immediately on startup
         asyncio.create_task(_scheduled_trending_refresh())
 
+        # 📊 DeepSight trending pre-cache job (every hour)
+        async def _scheduled_deepsight_trending_refresh():
+            """Pre-cache DeepSight most-analyzed videos."""
+            try:
+                from trending.trending_precache import refresh_deepsight_trending
+                await refresh_deepsight_trending()
+            except Exception as e:
+                logger.error(f"DeepSight trending pre-cache failed: {e}")
+
+        scheduler.add_job(
+            _scheduled_deepsight_trending_refresh,
+            _IT(hours=1),
+            id="deepsight_trending_precache",
+            name="DeepSight trending pre-cache",
+            replace_existing=True,
+        )
+        logger.info("DeepSight trending pre-cache scheduler registered (every 1 hour)")
+
+        # Warm DeepSight trending cache on startup too
+        asyncio.create_task(_scheduled_deepsight_trending_refresh())
+
         scheduler.start()
         logger.info(
             f"Backup scheduler started (daily at {BACKUP_CONFIG['CRON_HOUR']:02d}:{BACKUP_CONFIG['CRON_MINUTE']:02d} UTC)"

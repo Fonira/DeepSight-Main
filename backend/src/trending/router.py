@@ -2,8 +2,12 @@
 Trending Router -- Most-analyzed videos on DeepSight
 GET /api/trending  -> Public endpoint, aggregated data only
 Privacy: Only shows video metadata + aggregated counts, never user-specific data.
+
+Cache: Redis via cache_service (shared across all Uvicorn workers).
+Fallback: on cache miss -> DB query -> cache result for 1 hour.
+Pre-cache: see trending_precache.py (APScheduler job every hour).
 """
-import time
+import logging
 from typing import Optional, List
 from datetime import datetime, timedelta
 
@@ -11,13 +15,16 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from sqlalchemy import select, func, desc
 
+from core.cache import cache_service, make_cache_key
 from db.database import async_session_maker, Summary, TranscriptCache
+
+logger = logging.getLogger("deepsight.trending")
 
 router = APIRouter()
 
-# In-memory cache (1 hour TTL)
-_trending_cache: dict = {}
-CACHE_TTL = 3600
+# Cache configuration
+CACHE_TTL = 3600  # 1 hour
+CACHE_PREFIX = "trending:deepsight"
 
 
 class TrendingVideo(BaseModel):
@@ -43,25 +50,12 @@ class TrendingResponse(BaseModel):
     generated_at: str
 
 
-@router.get("", response_model=TrendingResponse)
-async def get_trending(
-    period: str = Query("30d", pattern="^(7d|30d|all)$"),
-    category: Optional[str] = Query(None),
-    limit: int = Query(20, ge=1, le=50),
-):
-    """
-    Public endpoint -- no auth required.
-    Returns most-analyzed videos aggregated from summaries.
-    Only shows videos analyzed by 2+ distinct users.
-    """
-    cache_key = f"{period}:{category}:{limit}"
-    now = time.time()
-
-    if cache_key in _trending_cache:
-        cached_data, cached_at = _trending_cache[cache_key]
-        if now - cached_at < CACHE_TTL:
-            return cached_data
-
+async def _query_trending_from_db(
+    period: str,
+    category: Optional[str],
+    limit: int,
+) -> TrendingResponse:
+    """Execute the trending DB query. Extracted for reuse by precache job."""
     date_filter = None
     if period == "7d":
         date_filter = datetime.utcnow() - timedelta(days=7)
@@ -131,12 +125,44 @@ async def get_trending(
             latest_analyzed_at=row.latest_at.isoformat() if row.latest_at else "",
         ))
 
-    response = TrendingResponse(
+    return TrendingResponse(
         videos=videos,
         period=period,
         total_cached_videos=total,
         generated_at=datetime.utcnow().isoformat(),
     )
 
-    _trending_cache[cache_key] = (response, now)
+
+def build_trending_cache_key(period: str, category: Optional[str], limit: int) -> str:
+    """Build a deterministic Redis cache key for a trending query."""
+    cat = category or "all"
+    return make_cache_key(CACHE_PREFIX, period, cat, str(limit))
+
+
+@router.get("", response_model=TrendingResponse)
+async def get_trending(
+    period: str = Query("30d", pattern="^(7d|30d|all)$"),
+    category: Optional[str] = Query(None),
+    limit: int = Query(20, ge=1, le=50),
+) -> TrendingResponse:
+    """
+    Public endpoint -- no auth required.
+    Returns most-analyzed videos aggregated from summaries.
+    Only shows videos analyzed by 2+ distinct users.
+    """
+    cache_key = build_trending_cache_key(period, category, limit)
+
+    # --- Redis cache lookup ---
+    cached = await cache_service.get(cache_key)
+    if cached is not None:
+        logger.debug("[TRENDING] Cache hit key=%s", cache_key)
+        return TrendingResponse(**cached)
+
+    # --- Cache miss: query DB ---
+    logger.info("[TRENDING] Cache miss key=%s — querying DB", cache_key)
+    response = await _query_trending_from_db(period, category, limit)
+
+    # Store in Redis (serialise via Pydantic .model_dump())
+    await cache_service.set(cache_key, response.model_dump(), ttl=CACHE_TTL)
+
     return response
