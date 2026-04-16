@@ -5,7 +5,7 @@
 """
 
 from pydantic import BaseModel, EmailStr, Field, computed_field
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 
 
@@ -74,8 +74,26 @@ class GoogleCallbackRequest(BaseModel):
 
 
 class GoogleTokenRequest(BaseModel):
-    """Schéma pour Google OAuth via access token (mobile)"""
+    """Schéma pour Google OAuth via access token (mobile, legacy)"""
     access_token: str
+
+
+class GoogleMobileTokenRequest(BaseModel):
+    """
+    Schéma pour Google OAuth mobile via id_token JWT (Expo / @react-native-google-signin).
+    Le mobile obtient l'id_token via GoogleSignin.signIn() puis l'envoie ici pour
+    vérification serveur + échange contre nos propres JWT.
+    """
+    id_token: str = Field(..., min_length=10, description="Google ID token JWT signé")
+    client_platform: Literal["ios", "android", "web"] = Field(
+        default="web",
+        description="Plateforme cliente (pour sélectionner l'audience attendue)"
+    )
+    device_name: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Nom du device pour tracking des sessions (ex: 'iPhone 15 Pro')"
+    )
 
 
 class DeleteAccountRequest(BaseModel):

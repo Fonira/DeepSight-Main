@@ -27,6 +27,7 @@ python-jose[cryptography]>=3.4.0
 passlib>=1.7.4
 bcrypt>=4.0.0            # Secure password hashing
 authlib>=1.3.0           # OAuth (Google)
+google-auth>=2.23.0      # Google ID token verification (mobile OAuth)
 
 # ─────────────────────────────────────────────────────────────────────────────────
 # 🌐 HTTP CLIENT

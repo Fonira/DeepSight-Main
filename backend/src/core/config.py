@@ -86,6 +86,8 @@ class _DeepSightSettings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = ""
+    GOOGLE_IOS_CLIENT_ID: str = ""       # Mobile iOS client ID (fallback: GOOGLE_CLIENT_ID)
+    GOOGLE_ANDROID_CLIENT_ID: str = ""   # Mobile Android client ID (fallback: GOOGLE_CLIENT_ID)
 
     # -- CRON --
     CRON_SECRET: str = ""
@@ -319,6 +321,9 @@ GOOGLE_OAUTH_CONFIG = {
     "CLIENT_ID": _settings.GOOGLE_CLIENT_ID,
     "CLIENT_SECRET": _settings.GOOGLE_CLIENT_SECRET,
     "REDIRECT_URI": _settings.GOOGLE_REDIRECT_URI or f"{APP_URL}/api/auth/google/callback",
+    # Mobile client IDs (fallback to web CLIENT_ID if not set)
+    "IOS_CLIENT_ID": _settings.GOOGLE_IOS_CLIENT_ID or _settings.GOOGLE_CLIENT_ID,
+    "ANDROID_CLIENT_ID": _settings.GOOGLE_ANDROID_CLIENT_ID or _settings.GOOGLE_CLIENT_ID,
 }
 
 # =============================================================================
