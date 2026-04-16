@@ -42,6 +42,7 @@ def mock_voice_user():
     user.id = 1
     user.email = "voice@test.fr"
     user.plan = "starter"
+    user.is_admin = False
     user.voice_bonus_seconds = 0
     user.stripe_customer_id = "cus_test123"
     user.username = "voice_tester"
@@ -55,6 +56,7 @@ def mock_pro_voice_user():
     user.id = 2
     user.email = "pro@test.fr"
     user.plan = "pro"
+    user.is_admin = False
     user.voice_bonus_seconds = 300  # 5 min bonus
     user.stripe_customer_id = "cus_pro456"
     user.username = "pro_tester"
@@ -227,7 +229,9 @@ class TestSearchInTranscript:
         mock_result.scalar_one_or_none.return_value = mock_summary
         mock_db_session.execute.return_value = mock_result
 
-        result = await search_in_transcript(42, "xyznonexistent zzz", mock_db_session)
+        # Mock smart_search to return empty (prevents BM25 from matching nonsense)
+        with patch("videos.smart_search.search_relevant_passages", return_value=[]):
+            result = await search_in_transcript(42, "xyznonexistent zzz", mock_db_session)
         assert "aucun passage" in result.lower()
 
     @pytest.mark.asyncio
@@ -401,14 +405,17 @@ class TestGetFlashcards:
 
     @pytest.mark.asyncio
     async def test_no_cached_flashcards(self, mock_db_session, mock_summary):
+        import sys
         from voice.tools import get_flashcards
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_summary
         mock_db_session.execute.return_value = mock_result
 
-        # Mock the cache import to return None
-        with patch("voice.tools.get_video_cache", side_effect=ImportError):
+        # Mock main module so get_video_cache() returns None (no cache)
+        mock_main = MagicMock()
+        mock_main.get_video_cache.return_value = None
+        with patch.dict(sys.modules, {"main": mock_main}):
             result = await get_flashcards(42, count=5, db=mock_db_session)
 
         assert "aucune flashcard" in result.lower() or "génère" in result.lower()
@@ -442,7 +449,7 @@ class TestVoiceLimits:
     def test_etudiant_plan_enabled(self):
         from voice.quota import VOICE_LIMITS
         assert VOICE_LIMITS["etudiant"]["enabled"] is True
-        assert VOICE_LIMITS["etudiant"]["monthly_minutes"] == 5
+        assert VOICE_LIMITS["etudiant"]["monthly_minutes"] == 15
 
     def test_starter_plan_limits(self):
         from voice.quota import VOICE_LIMITS
@@ -453,7 +460,7 @@ class TestVoiceLimits:
     def test_pro_plan_limits(self):
         from voice.quota import VOICE_LIMITS
         assert VOICE_LIMITS["pro"]["enabled"] is True
-        assert VOICE_LIMITS["pro"]["monthly_minutes"] == 45
+        assert VOICE_LIMITS["pro"]["monthly_minutes"] == 15
 
 
 class TestGetOrCreateVoiceQuota:
@@ -774,18 +781,21 @@ class TestElevenLabsClient:
         assert "DeepSight voice assistant" in prompt
         assert "quiz me" in prompt.lower()
 
-    def test_build_tools_config_returns_4_tools(self):
+    def test_build_tools_config_returns_7_tools(self):
         from voice.elevenlabs import ElevenLabsClient
         tools = ElevenLabsClient.build_tools_config(
             webhook_base_url="https://api.example.com",
             api_token="test-token",
         )
-        assert len(tools) == 4
+        assert len(tools) == 7
         names = [t["name"] for t in tools]
         assert "search_in_transcript" in names
         assert "get_analysis_section" in names
         assert "get_sources" in names
         assert "get_flashcards" in names
+        assert "web_search" in names
+        assert "deep_research" in names
+        assert "check_fact" in names
 
     def test_tools_config_urls_use_base_url(self):
         from voice.elevenlabs import ElevenLabsClient
@@ -803,12 +813,12 @@ class TestElevenLabsClient:
             api_token="my-token-123",
         )
         for tool in tools:
-            auth = tool["api_schema"]["headers"]["Authorization"]
+            auth = tool["api_schema"]["request_headers"]["Authorization"]
             assert auth == "Bearer my-token-123"
 
     def test_get_elevenlabs_client_raises_without_key(self):
         from voice.elevenlabs import get_elevenlabs_client
-        with patch("voice.elevenlabs.get_elevenlabs_key", return_value=None):
+        with patch("core.config.get_elevenlabs_key", return_value=None):
             with pytest.raises(ValueError, match="ELEVENLABS_API_KEY"):
                 get_elevenlabs_client()
 
