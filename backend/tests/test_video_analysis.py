@@ -67,6 +67,10 @@ def make_mock_summary(**overrides):
         "deep_research": None, "enrichment_sources": None,
         "enrichment_data": None, "full_digest": None,
         "platform": "youtube", "playlist_id": None,
+        "view_count": 0, "like_count": 0, "comment_count": 0, "share_count": 0,
+        "channel_follower_count": None, "content_type": "video",
+        "music_title": None, "music_author": None,
+        "source_tags_json": None, "carousel_images": None,
         "created_at": datetime(2024, 1, 1),
     }
     defaults.update(overrides)
@@ -224,15 +228,14 @@ class TestTaskStatus:
     async def test_status_existing_task(self, auth_client, api_user):
         """GET /status/{task_id} existant → statut correct."""
         task_id = "test-task-123"
-        with patch.dict(_videos_router._task_store, {
-            task_id: {
-                "status": "completed",
-                "progress": 100,
-                "message": "Done",
-                "user_id": api_user.id,
-                "result": {"summary_id": 1}
-            }
-        }):
+        mock_task = {
+            "status": "completed",
+            "progress": 100,
+            "message": "Done",
+            "user_id": api_user.id,
+            "result": {"summary_id": 1}
+        }
+        with patch.object(_videos_router._task_store, "aget", new_callable=AsyncMock, return_value=mock_task):
             resp = await auth_client.get(f"/api/videos/status/{task_id}")
 
         assert resp.status_code == 200
