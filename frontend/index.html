@@ -112,22 +112,35 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://api.deepsightsynthesis.com" />
 
-    <!-- 🎯 Fonts — Cormorant Garamond (display) + DM Sans (body) + JetBrains Mono (code) with display=swap -->
+    <!-- 🎯 Fonts — Cormorant Garamond (display) + DM Sans (body): display=swap, latin subset -->
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&subset=latin&display=swap"
     />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&subset=latin&display=swap"
       media="print"
       onload="this.media = 'all'"
     />
     <noscript
       ><link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&subset=latin&display=swap"
+    /></noscript>
+
+    <!-- 🎯 JetBrains Mono (code): display=optional to avoid FOUT for non-critical monospace font -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&subset=latin&display=optional"
+      media="print"
+      onload="this.media = 'all'"
+    />
+    <noscript
+      ><link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&subset=latin&display=optional"
     /></noscript>
 
     <!-- 🧠 JSON-LD Structured Data -->
