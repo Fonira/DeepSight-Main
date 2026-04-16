@@ -25,6 +25,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStudyStore } from "@/stores/studyStore";
 import { historyApi, videoApi } from "@/services/api";
+import { OfflineCache, CachePriority } from "@/services/OfflineCache";
+import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { StatsCard } from "@/components/study/StatsCard";
 import { VideoStudyCard } from "@/components/study/VideoStudyCard";
 import { FlashcardDeck } from "@/components/study/FlashcardDeck";
@@ -44,6 +46,7 @@ export default function StudyScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const { progress, stats } = useStudyStore();
+  const isOffline = useIsOffline();
 
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("chat");
   const [summaries, setSummaries] = useState<AnalysisSummary[]>([]);
@@ -92,15 +95,35 @@ export default function StudyScreen() {
     }
   }, [quickChatUrl, router]);
 
-  // Load summaries from history
+  // Load summaries from history (with offline cache)
   useEffect(() => {
     let mounted = true;
     (async () => {
+      const cacheKey = "study_summaries";
+
+      // Offline: serve cache silently
+      if (isOffline) {
+        const cached = await OfflineCache.get<AnalysisSummary[]>(cacheKey);
+        if (mounted) {
+          if (cached) setSummaries(cached);
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
         const response = await historyApi.getHistory(1, 50);
         if (mounted) setSummaries(response.items);
+        // Cache for offline study (HIGH priority, 7-day TTL)
+        await OfflineCache.set(cacheKey, response.items, {
+          priority: CachePriority.HIGH,
+          ttlMinutes: 7 * 24 * 60,
+          tags: ["study"],
+        });
       } catch {
-        // Silently fail — empty state will show
+        // Fetch failed — fallback to cache if available
+        const cached = await OfflineCache.get<AnalysisSummary[]>(cacheKey);
+        if (mounted && cached) setSummaries(cached);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -108,7 +131,7 @@ export default function StudyScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isOffline]);
 
   // Find last incomplete session
   const lastIncomplete = summaries.find((s) => {
