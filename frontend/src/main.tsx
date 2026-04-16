@@ -24,7 +24,9 @@ window.addEventListener("error", (event) => {
     msg.includes("Failed to fetch dynamically imported module") ||
     msg.includes("error loading dynamically imported module") ||
     msg.includes("Loading chunk") ||
-    msg.includes("Loading CSS chunk")
+    msg.includes("Loading CSS chunk") ||
+    msg.includes("NetworkError when attempting to fetch") || // Firefox
+    msg.includes("ChunkLoadError")                          // Edge/Webpack
   ) {
     const RELOAD_KEY = "chunk_reload_ts";
     try {
@@ -47,7 +49,9 @@ window.addEventListener("unhandledrejection", (event) => {
     msg.includes("error loading dynamically imported module") ||
     msg.includes("Loading chunk") ||
     msg.includes("Loading CSS chunk") ||
-    msg.includes("Load failed") // Safari-specific
+    msg.includes("Load failed") || // Safari-specific
+    msg.includes("NetworkError when attempting to fetch") || // Firefox
+    msg.includes("ChunkLoadError")                          // Edge/Webpack
   ) {
     const RELOAD_KEY = "chunk_reload_ts";
     try {
