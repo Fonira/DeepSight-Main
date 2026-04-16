@@ -1107,6 +1107,8 @@ _THUMB_DIR = os.environ.get("THUMBNAIL_LOCAL_DIR", "/app/data/thumbnails")
 _THUMB_URL = os.environ.get("THUMBNAIL_BASE_URL", "")
 if _THUMB_URL:
     try:
+        import mimetypes
+        mimetypes.add_type("image/webp", ".webp")
         from fastapi.staticfiles import StaticFiles
         os.makedirs(_THUMB_DIR, exist_ok=True)
         app.mount("/api/thumbnails", StaticFiles(directory=_THUMB_DIR), name="thumbnails")
