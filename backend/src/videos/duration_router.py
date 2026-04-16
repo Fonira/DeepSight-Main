@@ -1233,3 +1233,122 @@ def prepare_transcript_for_chat(
                 parts.append(f"📍 FIN DU TRANSCRIPT :\n{full_transcript[-outro_size:]}")
 
     return "\n\n".join(parts)[:max_chat]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎯 API PUBLIQUE : get_analysis_strategy()
+# ═══════════════════════════════════════════════════════════════════════════════
+# Point d'entrée haut-niveau pour le router d'analyse.
+# Combine categorize_video + get_optimal_model en une seule décision.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from pydantic import BaseModel
+
+
+class AnalysisStrategy(BaseModel):
+    """Stratégie d'analyse déterminée par la durée, le transcript et le plan."""
+
+    tier: str                   # VideoTier value ("micro", "short", ...)
+    chunk_size: int             # Taille des chunks en mots (0 = pas de chunking)
+    model_override: str         # Modèle Mistral à utiliser pour la synthèse finale
+    two_pass: bool              # True = synthèse en 2 passes (chunks → merge)
+    max_context_chars: int      # Max chars envoyés en un seul prompt
+    max_tokens: int             # max_tokens pour la synthèse finale
+    concurrent_chunks: int      # Nombre de chunks traités en parallèle
+    needs_chunking: bool        # Shortcut: True si chunking obligatoire
+
+
+async def get_analysis_strategy(
+    duration_seconds: int,
+    transcript_length: int,
+    user_plan: str,
+) -> AnalysisStrategy:
+    """
+    Point d'entrée pour déterminer la stratégie d'analyse optimale.
+
+    Combine la catégorisation par durée, le routage de modèle par plan,
+    et les seuils de chunking en une seule décision cohérente.
+
+    Args:
+        duration_seconds: Durée de la vidéo en secondes (0 = estimation auto)
+        transcript_length: Nombre de caractères du transcript
+        user_plan: Plan de l'utilisateur ("free", "plus", "pro")
+
+    Returns:
+        AnalysisStrategy avec tous les paramètres nécessaires au pipeline
+    """
+    # Estimer le nombre de mots (~5 chars/mot)
+    estimated_words = transcript_length // 5 if transcript_length > 0 else 0
+
+    # Construire un transcript factice pour la catégorisation (on n'a besoin que de la longueur)
+    fake_transcript = "x " * estimated_words if estimated_words > 0 else ""
+
+    profile = categorize_video(
+        duration_seconds=duration_seconds,
+        transcript=fake_transcript,
+        transcript_timestamped=None,
+    )
+
+    # Routage du modèle pour la synthèse finale
+    model_id, max_tokens = get_optimal_model(
+        tier=profile.tier,
+        user_plan=user_plan,
+        task="synthesis",
+        transcript_words=profile.transcript_words,
+    )
+
+    # Déterminer le chunk_size
+    # Si chunking nécessaire, on utilise les constantes du long_video_analyzer
+    chunk_size = 0
+    if profile.needs_chunking:
+        # EXTENDED = chunks de 2500 mots, MARATHON = chunks de 2500 aussi (overlap gère la continuité)
+        chunk_size = 2500
+
+    # Forcer le chunking si le transcript dépasse 50K chars pour les vidéos moyennes
+    force_chunking = False
+    if not profile.needs_chunking and transcript_length > 50_000:
+        if profile.tier in (VideoTier.MEDIUM, VideoTier.LONG):
+            force_chunking = True
+            chunk_size = 2500
+            logger.info(
+                "force_chunking_medium_video",
+                extra={
+                    "tier": profile.tier.value,
+                    "transcript_chars": transcript_length,
+                    "reason": "transcript > 50K chars",
+                }
+            )
+
+    needs_chunking = profile.needs_chunking or force_chunking
+
+    # Two-pass = obligatoire pour EXTENDED/MARATHON, ou si chunking forcé
+    two_pass = needs_chunking
+
+    concurrent = get_concurrent_chunks(profile.tier)
+
+    strategy = AnalysisStrategy(
+        tier=profile.tier.value,
+        chunk_size=chunk_size,
+        model_override=model_id,
+        two_pass=two_pass,
+        max_context_chars=profile.max_transcript_for_analysis,
+        max_tokens=max_tokens,
+        concurrent_chunks=concurrent,
+        needs_chunking=needs_chunking,
+    )
+
+    logger.info(
+        "analysis_strategy_resolved",
+        extra={
+            "tier": strategy.tier,
+            "duration_seconds": duration_seconds,
+            "transcript_chars": transcript_length,
+            "plan": user_plan,
+            "model": strategy.model_override,
+            "chunking": strategy.needs_chunking,
+            "two_pass": strategy.two_pass,
+            "chunk_size": strategy.chunk_size,
+        }
+    )
+
+    return strategy
