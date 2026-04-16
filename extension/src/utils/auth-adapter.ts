@@ -1,10 +1,15 @@
 // Cross-browser OAuth adapter
-// Chrome/Edge: chrome.identity.launchWebAuthFlow
-// Firefox: browser.identity.launchWebAuthFlow (via polyfill)
-// Safari: window.open fallback + polling
+// Chrome/Edge/Firefox: Browser.identity.launchWebAuthFlow (via webextension-polyfill)
+// Safari: window.open fallback + polling (identity API unavailable on Safari Web Extensions)
 
 import Browser, { hasIdentityAPI } from "./browser-polyfill";
 import { GOOGLE_CLIENT_ID } from "./config";
+
+// Injected by webpack DefinePlugin — "chrome" | "firefox" | "safari"
+// Falls back to "chrome" if undefined (e.g. legacy builds, non-define test runners).
+declare const __TARGET_BROWSER__: string;
+const TARGET_BROWSER: string =
+  typeof __TARGET_BROWSER__ !== "undefined" ? __TARGET_BROWSER__ : "chrome";
 
 function getRedirectURL(): string {
   try {
@@ -32,20 +37,23 @@ function buildGoogleAuthUrl(): string {
 export async function launchOAuthFlow(
   interactive: boolean = true,
 ): Promise<string> {
-  // Chrome, Edge, Brave, Opera, Firefox — use Browser.identity (Promise-based)
-  if (hasIdentityAPI()) {
-    const redirectUrl = await Browser.identity.launchWebAuthFlow({
-      url: buildGoogleAuthUrl(),
-      interactive,
-    });
-    if (!redirectUrl) {
-      throw new Error("No redirect URL received");
-    }
-    return redirectUrl;
+  // Safari: identity API is absent — use a popup window + polling.
+  // Determined at build time via webpack DefinePlugin, with a runtime
+  // feature-detection safety net for edge cases (e.g. Safari builds that
+  // somehow expose a broken identity shim).
+  if (TARGET_BROWSER === "safari" || !hasIdentityAPI()) {
+    return launchOAuthPopup();
   }
 
-  // Safari / fallback — popup window
-  return launchOAuthPopup();
+  // Chrome, Edge, Brave, Opera, Firefox — Promise-based Browser.identity.
+  const redirectUrl = await Browser.identity.launchWebAuthFlow({
+    url: buildGoogleAuthUrl(),
+    interactive,
+  });
+  if (!redirectUrl) {
+    throw new Error("No redirect URL received");
+  }
+  return redirectUrl;
 }
 
 function launchOAuthPopup(): Promise<string> {
