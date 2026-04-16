@@ -11,9 +11,16 @@ import asyncio
 from typing import AsyncGenerator, Generator
 from unittest.mock import MagicMock, AsyncMock
 
-# Ajouter le src et tests au path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-sys.path.insert(0, os.path.dirname(__file__))
+# Ajouter src au path en premier (AVANT tests/) pour éviter que tests/core/ shadow src/core/
+_src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+_tests_dir = os.path.abspath(os.path.dirname(__file__))
+# tests/ en second pour conftest_enhanced etc., mais src/ doit être prioritaire
+if _tests_dir in sys.path:
+    sys.path.remove(_tests_dir)
+if _src_dir in sys.path:
+    sys.path.remove(_src_dir)
+sys.path.insert(0, _tests_dir)
+sys.path.insert(0, _src_dir)
 
 # Charger les fixtures avancées de conftest_enhanced.py
 pytest_plugins = ['conftest_enhanced']
