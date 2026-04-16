@@ -1,9 +1,23 @@
 const path = require("path");
+const webpack = require("webpack");
 const CopyPlugin = require("copy-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
+const manifestMap = {
+  chrome: "manifest.json",
+  firefox: "manifest.firefox.json",
+  safari: "manifest.safari.json",
+};
+
 module.exports = (env, argv) => {
   const isProd = argv.mode === "production";
+  const targetBrowser = env?.target || "chrome";
+  const manifestFile = manifestMap[targetBrowser] || "manifest.json";
+
+  // If an explicit target is set, output to dist/<target>; otherwise dist/ for backwards compat
+  const outputDir = env?.target
+    ? path.resolve(__dirname, "dist", targetBrowser)
+    : path.resolve(__dirname, "dist");
 
   return {
     entry: {
@@ -14,7 +28,7 @@ module.exports = (env, argv) => {
       popup: "./src/popup.tsx",
     },
     output: {
-      path: path.resolve(__dirname, "dist"),
+      path: outputDir,
       filename: "[name].js",
       clean: true,
     },
@@ -33,14 +47,19 @@ module.exports = (env, argv) => {
     },
     resolve: {
       extensions: [".ts", ".tsx", ".js"],
+      // Preact aliases will be activated in Phase 4
+      // alias: { react: "preact/compat", "react-dom": "preact/compat" },
     },
     plugins: [
+      new webpack.DefinePlugin({
+        __TARGET_BROWSER__: JSON.stringify(targetBrowser),
+      }),
       new MiniCssExtractPlugin({
         filename: "[name].css",
       }),
       new CopyPlugin({
         patterns: [
-          { from: "public/manifest.json", to: "manifest.json" },
+          { from: `public/${manifestFile}`, to: "manifest.json" },
           { from: "public/popup.html", to: "popup.html" },
           { from: "src/styles/design-tokens.css", to: "design-tokens.css" },
           { from: "src/styles/popup.css", to: "popup.css" },
