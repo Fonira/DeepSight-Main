@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import type { User, PlanInfo } from "../types";
+import type { User, PlanInfo, MessageResponse } from "../types";
+import Browser from "../utils/browser-polyfill";
 import { LoginView } from "./components/LoginView";
 import { MainView } from "./components/MainView";
 import { DeepSightSpinner } from "./components/DeepSightSpinner";
@@ -31,7 +32,10 @@ export const App: React.FC = () => {
 
   async function checkAuth(): Promise<void> {
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await Browser.runtime.sendMessage<
+        unknown,
+        MessageResponse
+      >({
         action: "CHECK_AUTH",
       });
       if (response.authenticated && response.user) {
@@ -49,7 +53,12 @@ export const App: React.FC = () => {
 
   async function loadPlanInfo(): Promise<void> {
     try {
-      const response = await chrome.runtime.sendMessage({ action: "GET_PLAN" });
+      const response = await Browser.runtime.sendMessage<
+        unknown,
+        MessageResponse
+      >({
+        action: "GET_PLAN",
+      });
       if (response.success && response.plan) {
         setPlanInfo(response.plan);
       }
@@ -61,7 +70,10 @@ export const App: React.FC = () => {
   const handleLogin = useCallback(
     async (email: string, password: string): Promise<void> => {
       setError(null);
-      const response = await chrome.runtime.sendMessage({
+      const response = await Browser.runtime.sendMessage<
+        unknown,
+        MessageResponse
+      >({
         action: "LOGIN",
         data: { email, password },
       });
@@ -80,7 +92,10 @@ export const App: React.FC = () => {
 
   const handleGoogleLogin = useCallback(async (): Promise<void> => {
     setError(null);
-    const response = await chrome.runtime.sendMessage({
+    const response = await Browser.runtime.sendMessage<
+      unknown,
+      MessageResponse
+    >({
       action: "GOOGLE_LOGIN",
     });
 
@@ -102,7 +117,7 @@ export const App: React.FC = () => {
   }, []);
 
   const handleLogout = useCallback(async (): Promise<void> => {
-    await chrome.runtime.sendMessage({ action: "LOGOUT" });
+    await Browser.runtime.sendMessage({ action: "LOGOUT" });
     setUser(null);
     setPlanInfo(null);
     setIsGuest(false);

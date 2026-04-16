@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Browser from "../../utils/browser-polyfill";
 import { GoogleIcon } from "./Icons";
 import { DoodleIcon } from "./doodles/DoodleIcon";
 import { DeepSightSpinner } from "./DeepSightSpinner";
@@ -111,28 +112,28 @@ export const LoginView: React.FC<LoginViewProps> = ({
       {/* Platform logos */}
       <div className="login-platforms">
         <img
-          src={chrome.runtime.getURL("platforms/youtube-icon-red.png")}
+          src={Browser.runtime.getURL("platforms/youtube-icon-red.png")}
           alt="YouTube"
           className="login-platform-logo"
           style={{ height: 20, width: "auto" }}
         />
         <span className="login-platform-sep" />
         <img
-          src={chrome.runtime.getURL("platforms/tiktok-note-white.png")}
+          src={Browser.runtime.getURL("platforms/tiktok-note-white.png")}
           alt="TikTok"
           className="login-platform-logo"
           style={{ height: 18, width: "auto" }}
         />
         <span className="login-platform-sep" />
         <img
-          src={chrome.runtime.getURL("platforms/mistral-logo-white.png")}
+          src={Browser.runtime.getURL("platforms/mistral-logo-white.png")}
           alt="Mistral AI"
           className="login-platform-logo"
           style={{ height: 15, width: "auto" }}
         />
         <span className="login-platform-sep" />
         <img
-          src={chrome.runtime.getURL("platforms/tournesol-logo.png")}
+          src={Browser.runtime.getURL("platforms/tournesol-logo.png")}
           alt="Tournesol"
           className="login-platform-logo"
           style={{ height: 16, width: "auto" }}

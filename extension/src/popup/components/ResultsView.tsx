@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { Summary, PlanInfo, User } from "../../types";
+import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
 import { ExternalLinkIcon } from "./Icons";
 import { SynthesisView } from "./SynthesisView";
@@ -52,7 +53,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
           <button
             className="btn-open-webapp"
             onClick={() =>
-              chrome.tabs.create({ url: `${WEBAPP_URL}/summary/${summaryId}` })
+              Browser.tabs.create({ url: `${WEBAPP_URL}/summary/${summaryId}` })
             }
             title={t.synthesis.fullAnalysis}
           >
@@ -64,19 +65,19 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
       {/* Platform logos strip */}
       <div className="platform-logos-strip">
         <img
-          src={chrome.runtime.getURL("platforms/youtube-icon-red.svg")}
+          src={Browser.runtime.getURL("platforms/youtube-icon-red.svg")}
           alt="YouTube"
         />
         <img
-          src={chrome.runtime.getURL("platforms/tiktok-note-color.svg")}
+          src={Browser.runtime.getURL("platforms/tiktok-note-color.svg")}
           alt="TikTok"
         />
         <img
-          src={chrome.runtime.getURL("platforms/mistral-icon.svg")}
+          src={Browser.runtime.getURL("platforms/mistral-icon.svg")}
           alt="Mistral AI"
         />
         <img
-          src={chrome.runtime.getURL("platforms/tournesol-logo.png")}
+          src={Browser.runtime.getURL("platforms/tournesol-logo.png")}
           alt="Tournesol"
         />
       </div>
@@ -103,7 +104,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
           <button
             className="btn-create-account"
             onClick={() =>
-              chrome.tabs.create({ url: `${WEBAPP_URL}/register` })
+              Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
             }
           >
             {t.common.createAccount} {"\u2197"}

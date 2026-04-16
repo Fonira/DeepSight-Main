@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { User, Summary, PlanInfo, QuickChatResponse } from "../../types";
+import type {
+  User,
+  Summary,
+  PlanInfo,
+  QuickChatResponse,
+  MessageResponse,
+} from "../../types";
+import Browser from "../../utils/browser-polyfill";
 import { extractVideoId, detectPlatform } from "../../utils/video";
 import {
   addRecentAnalysis,
@@ -58,7 +65,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
   }, [isGuest]);
 
   useEffect(() => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    Browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
       const url = tabs[0]?.url || "";
       const videoId = extractVideoId(url);
       if (videoId) {
@@ -96,14 +103,17 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
     if (!video) return;
     setQuickChatLoading(true);
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await Browser.runtime.sendMessage<
+        unknown,
+        MessageResponse
+      >({
         action: "QUICK_CHAT",
         data: { url: video.url, lang },
       });
       if (!response.success)
         throw new Error(response.error || "Quick Chat failed");
       const result = response.result as QuickChatResponse;
-      chrome.tabs.create({
+      Browser.tabs.create({
         url: `${WEBAPP_URL}/chat?summary=${result.summary_id}`,
       });
     } catch (e) {
@@ -129,7 +139,10 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
     setProgressMsg(t.analysis.starting);
 
     try {
-      const startRes = await chrome.runtime.sendMessage({
+      const startRes = await Browser.runtime.sendMessage<
+        unknown,
+        MessageResponse
+      >({
         action: "START_ANALYSIS",
         data: { url: video.url, options: { mode, lang } },
       });
@@ -144,7 +157,10 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
 
       pollRef.current = setInterval(async () => {
         try {
-          const statusRes = await chrome.runtime.sendMessage({
+          const statusRes = await Browser.runtime.sendMessage<
+            unknown,
+            MessageResponse
+          >({
             action: "GET_TASK_STATUS",
             data: { taskId },
           });
@@ -166,7 +182,10 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
               title: status.result.video_title || video.title,
             });
 
-            const summaryRes = await chrome.runtime.sendMessage({
+            const summaryRes = await Browser.runtime.sendMessage<
+              unknown,
+              MessageResponse
+            >({
               action: "GET_SUMMARY",
               data: { summaryId: status.result.summary_id },
             });
@@ -202,7 +221,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
       <div className="main-header">
         <div className="main-header-left">
           <img
-            src={chrome.runtime.getURL("assets/deepsight-logo-cosmic.png")}
+            src={Browser.runtime.getURL("assets/deepsight-logo-cosmic.png")}
             alt="DeepSight"
             className="header-logo-img"
           />
@@ -211,7 +230,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
         <div className="main-header-actions">
           <button
             className="btn-open-webapp"
-            onClick={() => chrome.tabs.create({ url: WEBAPP_URL })}
+            onClick={() => Browser.tabs.create({ url: WEBAPP_URL })}
             title="Ouvrir DeepSight"
           >
             <ExternalLinkIcon size={12} /> Web
@@ -235,19 +254,19 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
       {/* Platform logos strip */}
       <div className="platform-logos-strip">
         <img
-          src={chrome.runtime.getURL("platforms/youtube-icon-red.svg")}
+          src={Browser.runtime.getURL("platforms/youtube-icon-red.svg")}
           alt="YouTube"
         />
         <img
-          src={chrome.runtime.getURL("platforms/tiktok-note-color.svg")}
+          src={Browser.runtime.getURL("platforms/tiktok-note-color.svg")}
           alt="TikTok"
         />
         <img
-          src={chrome.runtime.getURL("platforms/mistral-icon.svg")}
+          src={Browser.runtime.getURL("platforms/mistral-icon.svg")}
           alt="Mistral AI"
         />
         <img
-          src={chrome.runtime.getURL("platforms/tournesol-logo.png")}
+          src={Browser.runtime.getURL("platforms/tournesol-logo.png")}
           alt="Tournesol"
         />
       </div>
@@ -281,7 +300,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
             href={`${WEBAPP_URL}/upgrade`}
             onClick={(e) => {
               e.preventDefault();
-              chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
+              Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
             }}
           >
             {t.credits.recharge} {"\u2197"}
@@ -377,7 +396,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
                   className="btn-upgrade-cta"
                   onClick={(e) => {
                     e.preventDefault();
-                    chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
+                    Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
                   }}
                 >
                   {t.common.viewPlans} {"\u2197"}
@@ -389,7 +408,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
                 <button
                   className="btn-create-account"
                   onClick={() =>
-                    chrome.tabs.create({ url: `${WEBAPP_URL}/register` })
+                    Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
                   }
                 >
                   {t.common.createAccount} {"\u2197"}
@@ -441,7 +460,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
                 </button>
                 <div className="mistral-badge">
                   <img
-                    src={chrome.runtime.getURL("platforms/mistral-icon.svg")}
+                    src={Browser.runtime.getURL("platforms/mistral-icon.svg")}
                     alt=""
                     style={{ height: 12, width: "auto" }}
                   />

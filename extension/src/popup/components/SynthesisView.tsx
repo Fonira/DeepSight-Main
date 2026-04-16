@@ -7,6 +7,7 @@ import {
   parseAnalysisToSummary,
 } from "../../utils/sanitize";
 import type { KeyPoint } from "../../utils/sanitize";
+import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
 import {
   ChatIcon,
@@ -141,7 +142,7 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({
     );
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
-    chrome.tabs.create({ url });
+    Browser.tabs.create({ url });
   };
 
   const availableCTAs: { cta: FeatureCTA; available: boolean }[] =
@@ -170,25 +171,25 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({
       {/* Platform logos */}
       <div className="synthesis-platforms">
         <img
-          src={chrome.runtime.getURL("platforms/youtube-icon-red.png")}
+          src={Browser.runtime.getURL("platforms/youtube-icon-red.png")}
           alt="YouTube"
           style={{ height: 16 }}
         />
         <span className="synthesis-platform-sep" />
         <img
-          src={chrome.runtime.getURL("platforms/tiktok-note-white.png")}
+          src={Browser.runtime.getURL("platforms/tiktok-note-white.png")}
           alt="TikTok"
           style={{ height: 14 }}
         />
         <span className="synthesis-platform-sep" />
         <img
-          src={chrome.runtime.getURL("platforms/mistral-logo-white.png")}
+          src={Browser.runtime.getURL("platforms/mistral-logo-white.png")}
           alt="Mistral AI"
           style={{ height: 12, opacity: 0.7 }}
         />
         <span className="synthesis-platform-sep" />
         <img
-          src={chrome.runtime.getURL("platforms/tournesol-logo.png")}
+          src={Browser.runtime.getURL("platforms/tournesol-logo.png")}
           alt="Tournesol"
           style={{ height: 13, opacity: 0.8 }}
         />
@@ -333,7 +334,7 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({
               key={cta.key}
               className="feature-cta feature-cta-available"
               onClick={() =>
-                chrome.tabs.create({
+                Browser.tabs.create({
                   url: `${WEBAPP_URL}/summary/${summaryId}${cta.hash}`,
                 })
               }
@@ -355,7 +356,7 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({
               key={cta.key}
               className="feature-cta feature-cta-locked"
               onClick={() =>
-                chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` })
+                Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` })
               }
             >
               <span className="feature-cta-icon">
@@ -381,7 +382,7 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({
           className="feature-cta-all-plans"
           onClick={(e) => {
             e.preventDefault();
-            chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
+            Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
           }}
         >
           {t.common.allPlans} {"\u2197"}

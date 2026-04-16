@@ -5,6 +5,7 @@ import type {
   RecentAnalysis,
   PlanInfo,
   QuickChatResponse,
+  MessageResponse,
 } from "../../types";
 import {
   extractVideoId,
@@ -18,6 +19,7 @@ import {
   getFreeAnalysisCount,
   incrementFreeAnalysisCount,
 } from "../../utils/storage";
+import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
 import { LogoutIcon, PlayIcon, ExternalLinkIcon } from "./Icons";
 import { SynthesisView } from "./SynthesisView";
@@ -77,18 +79,18 @@ export const MainView: React.FC<MainViewProps> = ({
   }, [isGuest]);
 
   useEffect(() => {
-    chrome.storage.local.get("showYouTubeRecommendation", (result) => {
+    Browser.storage.local.get("showYouTubeRecommendation").then((result) => {
       if (result.showYouTubeRecommendation) setShowYtBanner(true);
     });
   }, []);
 
   const dismissYtBanner = () => {
     setShowYtBanner(false);
-    chrome.storage.local.remove("showYouTubeRecommendation");
+    Browser.storage.local.remove("showYouTubeRecommendation");
   };
 
   useEffect(() => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    Browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
       const url = tabs[0]?.url || "";
       const videoId = extractVideoId(url);
       if (videoId) {
@@ -136,7 +138,10 @@ export const MainView: React.FC<MainViewProps> = ({
     setQuickChatLoading(true);
 
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await Browser.runtime.sendMessage<
+        unknown,
+        MessageResponse
+      >({
         action: "QUICK_CHAT",
         data: { url: video.url, lang },
       });
@@ -145,7 +150,7 @@ export const MainView: React.FC<MainViewProps> = ({
         throw new Error(response.error || "Quick Chat failed");
 
       const result = response.result as QuickChatResponse;
-      chrome.tabs.create({
+      Browser.tabs.create({
         url: `${WEBAPP_URL}/chat?summary=${result.summary_id}`,
       });
     } catch (e) {
@@ -173,7 +178,10 @@ export const MainView: React.FC<MainViewProps> = ({
     });
 
     try {
-      const startRes = await chrome.runtime.sendMessage({
+      const startRes = await Browser.runtime.sendMessage<
+        unknown,
+        MessageResponse
+      >({
         action: "START_ANALYSIS",
         data: { url: video.url, options: { mode, lang } },
       });
@@ -190,7 +198,10 @@ export const MainView: React.FC<MainViewProps> = ({
 
       pollRef.current = setInterval(async () => {
         try {
-          const statusRes = await chrome.runtime.sendMessage({
+          const statusRes = await Browser.runtime.sendMessage<
+            unknown,
+            MessageResponse
+          >({
             action: "GET_TASK_STATUS",
             data: { taskId },
           });
@@ -212,7 +223,10 @@ export const MainView: React.FC<MainViewProps> = ({
               title: status.result.video_title || video.title,
             });
 
-            const summaryRes = await chrome.runtime.sendMessage({
+            const summaryRes = await Browser.runtime.sendMessage<
+              unknown,
+              MessageResponse
+            >({
               action: "GET_SUMMARY",
               data: { summaryId: status.result.summary_id },
             });
@@ -282,7 +296,7 @@ export const MainView: React.FC<MainViewProps> = ({
         <div className="main-header-actions">
           <button
             className="btn-open-webapp"
-            onClick={() => chrome.tabs.create({ url: WEBAPP_URL })}
+            onClick={() => Browser.tabs.create({ url: WEBAPP_URL })}
             title="Ouvrir DeepSight"
           >
             <ExternalLinkIcon size={12} /> Web
@@ -348,7 +362,7 @@ export const MainView: React.FC<MainViewProps> = ({
             href={`${WEBAPP_URL}/upgrade`}
             onClick={(e) => {
               e.preventDefault();
-              chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
+              Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
             }}
           >
             {t.credits.recharge} {"\u2197"}
@@ -367,7 +381,7 @@ export const MainView: React.FC<MainViewProps> = ({
         <div className="yt-recommend-banner">
           <div className="yt-recommend-content">
             <img
-              src={chrome.runtime.getURL("platforms/youtube-icon-red.png")}
+              src={Browser.runtime.getURL("platforms/youtube-icon-red.png")}
               alt="YouTube"
               style={{ height: 18, width: "auto", flexShrink: 0 }}
             />
@@ -483,7 +497,7 @@ export const MainView: React.FC<MainViewProps> = ({
                   className="btn-upgrade-cta"
                   onClick={(e) => {
                     e.preventDefault();
-                    chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
+                    Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
                   }}
                 >
                   {t.common.viewPlans} {"\u2197"}
@@ -495,7 +509,7 @@ export const MainView: React.FC<MainViewProps> = ({
                 <button
                   className="btn-create-account"
                   onClick={() =>
-                    chrome.tabs.create({ url: `${WEBAPP_URL}/register` })
+                    Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
                   }
                 >
                   {t.common.createAccount} {"\u2197"}
@@ -637,7 +651,7 @@ export const MainView: React.FC<MainViewProps> = ({
                   className="upsell-btn"
                   onClick={(e) => {
                     e.preventDefault();
-                    chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
+                    Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
                   }}
                 >
                   {t.common.unlock} {"\u2197"}
@@ -651,7 +665,7 @@ export const MainView: React.FC<MainViewProps> = ({
                 <button
                   className="btn-create-account"
                   onClick={() =>
-                    chrome.tabs.create({ url: `${WEBAPP_URL}/register` })
+                    Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
                   }
                 >
                   {t.common.createAccount} {"\u2197"}

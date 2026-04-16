@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import type { PlanInfo } from "../../types";
+import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
 import { DoodleIcon } from "./doodles/DoodleIcon";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -95,11 +96,11 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ planInfo }) => {
   const promoTexts = t.promos[tier];
 
   useEffect(() => {
-    chrome.storage.local.get(["promoDismissedAt"]).then((data) => {
+    Browser.storage.local.get(["promoDismissedAt"]).then((data) => {
       if (data.promoDismissedAt) {
-        const elapsed = Date.now() - data.promoDismissedAt;
+        const elapsed = Date.now() - (data.promoDismissedAt as number);
         if (elapsed > 24 * 60 * 60 * 1000) {
-          chrome.storage.local.remove(["promoDismissedAt"]);
+          Browser.storage.local.remove(["promoDismissedAt"]);
         } else {
           setDismissed(true);
         }
@@ -121,7 +122,7 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ planInfo }) => {
 
   const handleDismiss = () => {
     setDismissed(true);
-    chrome.storage.local.set({ promoDismissedAt: Date.now() });
+    Browser.storage.local.set({ promoDismissedAt: Date.now() });
   };
 
   if (dismissed || promos.length === 0) return null;
@@ -159,7 +160,7 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ planInfo }) => {
           style={{ color: "var(--accent-primary)" }}
           onClick={(e) => {
             e.preventDefault();
-            chrome.tabs.create({ url: promo.url });
+            Browser.tabs.create({ url: promo.url });
           }}
         >
           {textData.cta} &rarr;

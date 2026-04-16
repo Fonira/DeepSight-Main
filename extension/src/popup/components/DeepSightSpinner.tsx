@@ -1,4 +1,5 @@
 import React from "react";
+import Browser from "../../utils/browser-polyfill";
 
 type SpinnerSize = "xs" | "sm" | "md" | "lg";
 
@@ -76,8 +77,8 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
   const showFlames = containerPx >= 36;
   const canShowLogos = showLogos && containerPx >= 64;
 
-  const cosmicUrl = chrome.runtime.getURL("assets/spinner-cosmic.jpg");
-  const wheelUrl = chrome.runtime.getURL("assets/spinner-wheel.jpg");
+  const cosmicUrl = Browser.runtime.getURL("assets/spinner-cosmic.jpg");
+  const wheelUrl = Browser.runtime.getURL("assets/spinner-wheel.jpg");
 
   const outerSize = canShowLogos ? containerPx + 40 : containerPx;
 
@@ -107,7 +108,7 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
         {/* Platform logos orbiting */}
         {canShowLogos &&
           PLATFORM_LOGOS.map((logo, i) => {
-            const logoUrl = chrome.runtime.getURL(logo.src);
+            const logoUrl = Browser.runtime.getURL(logo.src);
             const cx = outerSize / 2;
             const cy = outerSize / 2;
             const orbitR = containerPx / 2 + 14;

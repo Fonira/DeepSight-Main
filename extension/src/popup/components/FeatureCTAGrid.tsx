@@ -1,5 +1,6 @@
 import React from "react";
 import type { PlanInfo } from "../../types";
+import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
 import { DoodleIcon } from "./doodles/DoodleIcon";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -90,11 +91,11 @@ export const FeatureCTAGrid: React.FC<FeatureCTAGridProps> = ({
               className={`feature-cta-card ${available ? "feature-cta-card--available" : "feature-cta-card--locked"}`}
               onClick={() => {
                 if (available) {
-                  chrome.tabs.create({
+                  Browser.tabs.create({
                     url: `${WEBAPP_URL}/summary/${summaryId}${feat.hash}`,
                   });
                 } else {
-                  chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
+                  Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
                 }
               }}
             >
@@ -130,7 +131,7 @@ export const FeatureCTAGrid: React.FC<FeatureCTAGridProps> = ({
         {/* Mobile app card */}
         <button
           className="feature-cta-card feature-cta-card--highlight"
-          onClick={() => chrome.tabs.create({ url: WEBAPP_URL })}
+          onClick={() => Browser.tabs.create({ url: WEBAPP_URL })}
         >
           <div className="feature-cta-card__icon">
             <DoodleIcon
@@ -156,7 +157,7 @@ export const FeatureCTAGrid: React.FC<FeatureCTAGridProps> = ({
         className="feature-cta-all-plans"
         onClick={(e) => {
           e.preventDefault();
-          chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
+          Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
         }}
       >
         {t.common.allPlans} {"\u2197"}

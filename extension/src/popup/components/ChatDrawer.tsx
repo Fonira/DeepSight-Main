@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import type { ChatMessage, ChatOptions } from "../../types";
+import type { ChatMessage, ChatOptions, MessageResponse } from "../../types";
+import Browser from "../../utils/browser-polyfill";
 import { escapeHtml, markdownToFullHtml } from "../../utils/sanitize";
 import { BackIcon, SendIcon } from "./Icons";
 import { DoodleIcon } from "./doodles/DoodleIcon";
@@ -84,7 +85,10 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
 
   async function loadHistory(): Promise<void> {
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await Browser.runtime.sendMessage<
+        unknown,
+        MessageResponse
+      >({
         action: "GET_CHAT_HISTORY",
         data: { summaryId },
       });
@@ -115,7 +119,10 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     }
 
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await Browser.runtime.sendMessage<
+        unknown,
+        MessageResponse
+      >({
         action: "ASK_QUESTION",
         data: { summaryId, question, options },
       });
