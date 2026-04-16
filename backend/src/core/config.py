@@ -67,6 +67,9 @@ class _DeepSightSettings(BaseSettings):
     RESEND_API_KEY: str = ""
     FROM_EMAIL: str = "noreply@deepsightsynthesis.com"
     FROM_NAME: str = "DeepSight"
+    # Resend API rate limit (requests per second, per worker process).
+    # 4 workers × 2 req/s = ~8 req/s aggregate, safely under Resend's 10 req/s cap.
+    RESEND_RATE_LIMIT_PER_SEC: int = 2
 
     # -- Stripe --
     STRIPE_ENABLED: str = "true"
@@ -283,6 +286,11 @@ EMAIL_CONFIG = {
     "FROM_EMAIL": _settings.FROM_EMAIL,
     "FROM_NAME": _settings.FROM_NAME,
 }
+
+# Resend API rate limit (per-worker, intra-process). See email_rate_limiter.py.
+RESEND_RATE_LIMIT_PER_SEC: int = int(
+    os.getenv("RESEND_RATE_LIMIT_PER_SEC", str(_settings.RESEND_RATE_LIMIT_PER_SEC))
+)
 
 # =============================================================================
 # STRIPE
