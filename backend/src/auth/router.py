@@ -15,7 +15,7 @@ from .schemas import (
     UserRegister, UserLogin, RefreshTokenRequest, VerifyEmailRequest,
     ResendVerificationRequest, ForgotPasswordRequest, ResetPasswordRequest,
     ChangePasswordRequest, UpdatePreferencesRequest, GoogleCallbackRequest,
-    GoogleTokenRequest, DeleteAccountRequest,
+    GoogleTokenRequest, GoogleMobileTokenRequest, DeleteAccountRequest,
     UserResponse, TokenResponse, AuthUrlResponse, MessageResponse, QuotaResponse
 )
 from .service import (
@@ -25,7 +25,7 @@ from .service import (
     create_access_token, create_refresh_token, verify_token,
     get_google_auth_url, exchange_google_code, get_google_user_info,
     login_or_register_google_user, create_user_session, invalidate_user_session,
-    validate_session_token
+    validate_session_token, verify_google_id_token
 )
 from .dependencies import get_current_user, get_current_user_optional
 from .email import send_verification_email, send_password_reset_email, send_welcome_email
@@ -570,37 +570,82 @@ async def google_callback_post(
 
 @router.post("/google/token", response_model=TokenResponse)
 async def google_token_login(
-    data: GoogleTokenRequest,
+    data: GoogleMobileTokenRequest,
     session: AsyncSession = Depends(get_session)
 ):
     """
-    Google OAuth pour mobile (Expo).
-    Accepte directement un access_token Google (pas un code d'autorisation).
-    Le mobile obtient le token via expo-auth-session puis l'envoie ici.
-    """
-    # Récupérer les infos utilisateur avec le token Google
-    google_user = await get_google_user_info(data.access_token)
+    Google OAuth mobile — vérifie un `id_token` Google (JWT signé) et retourne
+    nos propres JWT (access_token + refresh_token).
 
-    if not google_user:
+    Flow côté mobile (Expo + @react-native-google-signin/google-signin):
+      1. Mobile appelle GoogleSignin.signIn() → reçoit un `id_token` JWT.
+      2. Mobile envoie cet `id_token` à ce endpoint.
+      3. Backend vérifie la signature + audience via `google.oauth2.id_token`.
+      4. Backend lookup/crée l'utilisateur, génère JWT, retourne TokenResponse.
+
+    Réponse identique à POST /login pour réutiliser le flow mobile.
+    """
+    import logging
+    log = logging.getLogger(__name__)
+
+    # 1. Vérifier cryptographiquement l'id_token avec Google
+    claims = verify_google_id_token(data.id_token, client_platform=data.client_platform)
+    if not claims:
+        log.warning(
+            f"Google mobile login: invalid id_token (platform={data.client_platform})"
+        )
+        raise HTTPException(status_code=401, detail="Invalid Google ID token")
+
+    # 2. Extraire les claims essentiels
+    google_sub = claims.get("sub")
+    email = (claims.get("email") or "").lower().strip()
+    email_verified = bool(claims.get("email_verified", False))
+    name = claims.get("name") or (email.split("@")[0] if email else "")
+    picture = claims.get("picture")
+
+    if not google_sub or not email:
+        log.warning("Google mobile login: id_token missing sub or email claim")
+        raise HTTPException(status_code=401, detail="Invalid Google ID token payload")
+
+    if not email_verified:
+        log.warning(f"Google mobile login: email not verified for {email}")
+        raise HTTPException(status_code=401, detail="Google email not verified")
+
+    # 3. Construire la structure google_user attendue par login_or_register_google_user
+    #    (qui utilise la clé "id" pour le google_id, pas "sub")
+    google_user = {
+        "id": google_sub,
+        "email": email,
+        "name": name,
+        "picture": picture,
+        "verified_email": email_verified,
+    }
+
+    # 4. Login ou création avec merge par email (comportement existant)
+    try:
+        success, user, message, session_token = await login_or_register_google_user(
+            session, google_user
+        )
+    except Exception as e:
+        log.error(f"Google mobile login DB error for {email}: {e}")
         raise HTTPException(
-            status_code=400,
-            detail="Invalid Google access token or could not get user info"
+            status_code=503,
+            detail="Database temporarily unavailable. Please try again."
         )
 
-    # Créer ou connecter (avec session unique)
-    try:
-        success, user, message, session_token = await login_or_register_google_user(session, google_user)
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Google OAuth DB error: {e}")
-        raise HTTPException(status_code=503, detail="Database temporarily unavailable. Please try again.")
-
     if not success or not user:
+        log.warning(f"Google mobile login failed for {email}: {message}")
         raise HTTPException(status_code=400, detail=message)
 
-    # Tokens JWT avec session_token
+    # 5. Générer nos JWT (device_name transmis pour traçabilité future)
     access_token = create_access_token(user.id, user.is_admin, session_token)
     refresh_token = create_refresh_token(user.id, session_token)
+
+    log.info(
+        f"Google mobile login success: user_id={user.id} email={email} "
+        f"google_id={google_sub} platform={data.client_platform} "
+        f"device={data.device_name or 'unknown'}"
+    )
 
     return TokenResponse(
         access_token=access_token,

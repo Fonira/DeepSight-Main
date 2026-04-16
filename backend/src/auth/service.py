@@ -671,5 +671,98 @@ async def login_or_register_google_user(
     
     # 🆕 Créer une session unique
     session_token = await create_user_session(session, user.id)
-    
+
     return True, user, "✅ Compte créé avec Google", session_token
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📱 GOOGLE OAUTH MOBILE — Vérification ID Token (Expo / @react-native-google-signin)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _get_allowed_google_audiences(client_platform: str = "web") -> list[str]:
+    """
+    Retourne la liste des audiences Google OAuth autorisées selon la plateforme.
+    Toutes les audiences non-vides sont incluses pour supporter le cross-platform
+    (ex: ID token émis pour le client Web depuis @react-native-google-signin Android).
+    """
+    audiences: set[str] = set()
+    for key in ("CLIENT_ID", "IOS_CLIENT_ID", "ANDROID_CLIENT_ID"):
+        value = GOOGLE_OAUTH_CONFIG.get(key)
+        if value:
+            audiences.add(value)
+    return [a for a in audiences if a]
+
+
+def verify_google_id_token(id_token_str: str, client_platform: str = "web") -> Optional[dict]:
+    """
+    Vérifie un Google ID token JWT (signé par Google).
+
+    - Valide la signature via les clés publiques Google (tls + cache httpcache).
+    - Vérifie que l'audience (`aud`) correspond à l'un de nos client IDs OAuth
+      (Web, iOS, Android — toutes plateformes acceptées).
+    - Vérifie que l'issuer (`iss`) est Google.
+    - Vérifie l'expiration (`exp`).
+
+    Retourne les claims décodés (dict) si valides, None sinon.
+
+    Les claims Google incluent typiquement:
+      - sub: Google user ID (stable, unique)
+      - email: adresse email
+      - email_verified: bool
+      - name, picture, given_name, family_name
+      - aud, iss, exp, iat
+    """
+    try:
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+    except ImportError as e:
+        # google-auth non installé — dégradation gracieuse
+        import logging
+        logging.getLogger(__name__).error(
+            f"google-auth package not installed: {e}. "
+            "Install with: pip install google-auth>=2.23.0"
+        )
+        return None
+
+    allowed_audiences = _get_allowed_google_audiences(client_platform)
+    if not allowed_audiences:
+        import logging
+        logging.getLogger(__name__).error(
+            "No Google OAuth client IDs configured (GOOGLE_CLIENT_ID / "
+            "GOOGLE_IOS_CLIENT_ID / GOOGLE_ANDROID_CLIENT_ID)"
+        )
+        return None
+
+    try:
+        # google.oauth2.id_token.verify_oauth2_token accepte une seule audience.
+        # Pour en accepter plusieurs, on tente chacune successivement.
+        request = google_requests.Request()
+        last_error: Optional[Exception] = None
+        for audience in allowed_audiences:
+            try:
+                claims = google_id_token.verify_oauth2_token(
+                    id_token_str,
+                    request,
+                    audience=audience,
+                )
+                # Vérifier l'issuer
+                issuer = claims.get("iss", "")
+                if issuer not in ("accounts.google.com", "https://accounts.google.com"):
+                    last_error = ValueError(f"Invalid issuer: {issuer}")
+                    continue
+                return claims
+            except ValueError as e:
+                last_error = e
+                continue
+
+        # Aucune audience n'a matché
+        import logging
+        logging.getLogger(__name__).warning(
+            f"Google ID token verification failed for all audiences: {last_error}"
+        )
+        return None
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Unexpected error verifying Google ID token: {e}")
+        return None
