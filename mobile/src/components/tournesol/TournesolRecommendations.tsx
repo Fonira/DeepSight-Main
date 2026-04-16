@@ -21,6 +21,8 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/contexts/ThemeContext";
+import { OfflineCache, CachePriority } from "@/services/OfflineCache";
+import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
 import { palette } from "@/theme/colors";
@@ -66,6 +68,7 @@ export function TournesolRecommendations({
 }: Props) {
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const isOffline = useIsOffline();
   const [results, setResults] = useState<TournesolResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -73,6 +76,22 @@ export function TournesolRecommendations({
   const fetchRecommendations = useCallback(async () => {
     setLoading(true);
     setError(false);
+
+    const cacheKey = `tournesol_recos_${language}`;
+
+    // Offline: serve cached pool, shuffle locally for variety
+    if (isOffline) {
+      const cached = await OfflineCache.get<TournesolResult[]>(cacheKey);
+      if (cached && cached.length > 0) {
+        const shuffled = [...cached].sort(() => Math.random() - 0.5);
+        setResults(shuffled.slice(0, limit));
+      } else {
+        setError(true);
+      }
+      setLoading(false);
+      return;
+    }
+
     try {
       // Offset aléatoire pour varier les suggestions à chaque chargement / pull-to-refresh
       const randomOffset = Math.floor(Math.random() * (POOL_SIZE - limit));
@@ -81,15 +100,31 @@ export function TournesolRecommendations({
       const res = await fetch(url);
       if (!res.ok) throw new Error("API error");
       const data = await res.json();
+      const fresh: TournesolResult[] = data.results || [];
       // Mélanger les résultats pour encore plus de variété
-      const shuffled = (data.results || []).sort(() => Math.random() - 0.5);
+      const shuffled = [...fresh].sort(() => Math.random() - 0.5);
       setResults(shuffled);
+      // Persist unshuffled pool for offline fallback (LOW priority — discovery feature)
+      if (fresh.length > 0) {
+        await OfflineCache.set(cacheKey, fresh, {
+          priority: CachePriority.LOW,
+          ttlMinutes: 3 * 24 * 60,
+          tags: ["tournesol"],
+        });
+      }
     } catch {
-      setError(true);
+      // Fetch failed → fallback to cache
+      const cached = await OfflineCache.get<TournesolResult[]>(cacheKey);
+      if (cached && cached.length > 0) {
+        const shuffled = [...cached].sort(() => Math.random() - 0.5);
+        setResults(shuffled.slice(0, limit));
+      } else {
+        setError(true);
+      }
     } finally {
       setLoading(false);
     }
-  }, [language, limit, refreshTrigger]);
+  }, [language, limit, refreshTrigger, isOffline]);
 
   useEffect(() => {
     fetchRecommendations();
