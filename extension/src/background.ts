@@ -1,3 +1,8 @@
+import Browser, {
+  type Runtime,
+  type Alarms,
+  type Storage,
+} from "./utils/browser-polyfill";
 import { API_BASE_URL, GOOGLE_CLIENT_ID, WEBAPP_URL } from "./utils/config";
 import {
   getStoredTokens,
@@ -132,7 +137,7 @@ async function loginWithGoogle(): Promise<User> {
     throw new Error("Google OAuth not configured. Use email/password login.");
   }
 
-  const redirectUrl = chrome.identity.getRedirectURL();
+  const redirectUrl = Browser.identity.getRedirectURL();
 
   const authUrl =
     `https://accounts.google.com/o/oauth2/v2/auth` +
@@ -142,7 +147,7 @@ async function loginWithGoogle(): Promise<User> {
     `&scope=${encodeURIComponent("email profile")}` +
     `&prompt=select_account`;
 
-  const responseUrl = await chrome.identity.launchWebAuthFlow({
+  const responseUrl = await Browser.identity.launchWebAuthFlow({
     url: authUrl,
     interactive: true,
   });
@@ -345,7 +350,7 @@ async function pollAnalysis(
 
     // Send progress only to the originating tab (Bug #8 fix)
     if (originTabId !== undefined) {
-      chrome.tabs
+      Browser.tabs
         .sendMessage(originTabId, {
           action: "ANALYSIS_PROGRESS",
           data: { taskId, progress: status.progress, message: status.message },
@@ -547,8 +552,8 @@ async function handleMessage(
     }
 
     case "OPEN_POPUP": {
-      chrome.action.setBadgeText({ text: "!" });
-      chrome.action.setBadgeBackgroundColor({ color: "#6366f1" });
+      Browser.action.setBadgeText({ text: "!" });
+      Browser.action.setBadgeBackgroundColor({ color: "#6366f1" });
       return { success: true };
     }
 
@@ -576,7 +581,7 @@ async function handleMessage(
       try {
         await setStoredTokens(accessToken, rt);
         await setStoredUser(user as never);
-        chrome.action.setBadgeText({ text: "" });
+        Browser.action.setBadgeText({ text: "" });
         return { success: true };
       } catch (e) {
         return { success: false, error: (e as Error).message };
@@ -590,14 +595,14 @@ async function handleMessage(
 
 // ── Message Listener ──
 
-chrome.runtime.onMessage.addListener(
+Browser.runtime.onMessage.addListener(
   (
-    message: ExtensionMessage,
-    sender,
+    message: unknown,
+    sender: Runtime.MessageSender,
     sendResponse: (response: MessageResponse) => void,
   ) => {
     const senderTabId = sender.tab?.id;
-    handleMessage(message, senderTabId)
+    handleMessage(message as ExtensionMessage, senderTabId)
       .then(sendResponse)
       .catch((e) => sendResponse({ error: (e as Error).message }));
     return true;
@@ -606,19 +611,21 @@ chrome.runtime.onMessage.addListener(
 
 // ── Lifecycle Events ──
 
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === "install") {
-    chrome.tabs.create({ url: WEBAPP_URL });
-    chrome.storage.local.set({ showYouTubeRecommendation: true });
-  }
-});
+Browser.runtime.onInstalled.addListener(
+  (details: Runtime.OnInstalledDetailsType) => {
+    if (details.reason === "install") {
+      Browser.tabs.create({ url: WEBAPP_URL });
+      Browser.storage.local.set({ showYouTubeRecommendation: true });
+    }
+  },
+);
 
 // ── Alarms ──
 
-chrome.alarms.create("keepAlive", { periodInMinutes: 0.5 });
-chrome.alarms.create("refreshToken", { periodInMinutes: 50 }); // Refresh avant expiration (access_token = 60min)
+Browser.alarms.create("keepAlive", { periodInMinutes: 0.5 });
+Browser.alarms.create("refreshToken", { periodInMinutes: 50 }); // Refresh avant expiration (access_token = 60min)
 
-chrome.alarms.onAlarm.addListener(async (alarm) => {
+Browser.alarms.onAlarm.addListener(async (alarm: Alarms.Alarm) => {
   if (alarm.name === "refreshToken" && (await isAuthenticated())) {
     await tryRefreshToken();
   }
@@ -626,13 +633,15 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 // ── Badge Updates ──
 
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && changes.accessToken) {
-    if (changes.accessToken.newValue) {
-      chrome.action.setBadgeText({ text: "" });
-    } else {
-      chrome.action.setBadgeText({ text: "!" });
-      chrome.action.setBadgeBackgroundColor({ color: "#ef4444" });
+Browser.storage.onChanged.addListener(
+  (changes: Record<string, Storage.StorageChange>, areaName: string) => {
+    if (areaName === "local" && changes.accessToken) {
+      if (changes.accessToken.newValue) {
+        Browser.action.setBadgeText({ text: "" });
+      } else {
+        Browser.action.setBadgeText({ text: "!" });
+        Browser.action.setBadgeBackgroundColor({ color: "#ef4444" });
+      }
     }
-  }
-});
+  },
+);
