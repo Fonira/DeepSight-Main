@@ -92,10 +92,12 @@ jobs:
             git reset --hard origin/main
 
             # Build the new image.
+            # Build context = backend/ because the Dockerfile expects
+            # `src/` and `requirements.txt` at the context root.
             docker build \
               -t deepsight-backend:latest \
               -f deploy/hetzner/Dockerfile \
-              .
+              backend
 
             # Recreate the backend container.
             docker stop repo-backend-1 || true
