@@ -1,5 +1,6 @@
 // ── Tournesol score fetch + extension detection ──
 
+import Browser from "../utils/browser-polyfill";
 import type { TournesolData } from "../types";
 
 export function detectTournesolExtension(): boolean {
@@ -12,11 +13,11 @@ export async function fetchTournesolScore(
   videoId: string,
 ): Promise<TournesolData | null> {
   try {
-    const resp = await chrome.runtime.sendMessage({
+    const resp = (await Browser.runtime.sendMessage({
       action: "GET_TOURNESOL",
       data: { videoId },
-    });
-    if (resp?.success && resp.data) return resp.data as TournesolData;
+    })) as { success?: boolean; data?: TournesolData } | undefined;
+    if (resp?.success && resp.data) return resp.data;
     return null;
   } catch {
     return null;

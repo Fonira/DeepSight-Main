@@ -1,5 +1,6 @@
 // ── Widget DOM management (Shadow DOM) ──
 
+import Browser from "../utils/browser-polyfill";
 import { getShadowRoot, setShadowRoot, $id, $qs } from "./shadow";
 
 const WIDGET_ID = "deepsight-card";
@@ -48,17 +49,17 @@ export function createWidgetShell(
   // tokens.css uses :host selector so variables work inside the shadow boundary
   const tokensLink = document.createElement("link");
   tokensLink.rel = "stylesheet";
-  tokensLink.href = chrome.runtime.getURL("tokens.css");
+  tokensLink.href = Browser.runtime.getURL("tokens.css");
   shadow.appendChild(tokensLink);
 
   const widgetStyleLink = document.createElement("link");
   widgetStyleLink.rel = "stylesheet";
-  widgetStyleLink.href = chrome.runtime.getURL("widget.css");
+  widgetStyleLink.href = Browser.runtime.getURL("widget.css");
   shadow.appendChild(widgetStyleLink);
 
   const contentStyleLink = document.createElement("link");
   contentStyleLink.rel = "stylesheet";
-  contentStyleLink.href = chrome.runtime.getURL("content.css");
+  contentStyleLink.href = Browser.runtime.getURL("content.css");
   shadow.appendChild(contentStyleLink);
 
   // Create the actual widget card inside shadow
@@ -193,7 +194,7 @@ export function bindMinimizeButton(): void {
   if (!btn || !widget) return;
 
   // Restore persisted state
-  chrome.storage.local.get(["ds_minimized"]).then((data) => {
+  Browser.storage.local.get(["ds_minimized"]).then((data) => {
     if (data.ds_minimized) collapseWidget();
   });
 
@@ -201,10 +202,10 @@ export function bindMinimizeButton(): void {
     const isCollapsed = widget.classList.contains("ds-collapsed");
     if (isCollapsed) {
       expandWidget();
-      chrome.storage.local.set({ ds_minimized: false });
+      Browser.storage.local.set({ ds_minimized: false });
     } else {
       collapseWidget();
-      chrome.storage.local.set({ ds_minimized: true });
+      Browser.storage.local.set({ ds_minimized: true });
     }
   });
 }

@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import Browser from "../utils/browser-polyfill";
 import fr from "./fr.json";
 import en from "./en.json";
 
@@ -17,7 +18,7 @@ export function useTranslation() {
   const [language, setLanguageState] = useState<Language>("fr");
 
   useEffect(() => {
-    chrome.storage.sync.get([STORAGE_KEY]).then((data) => {
+    Browser.storage.sync.get([STORAGE_KEY]).then((data) => {
       const stored = data[STORAGE_KEY];
       if (stored === "en" || stored === "fr") {
         setLanguageState(stored);
@@ -27,7 +28,7 @@ export function useTranslation() {
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
-    chrome.storage.sync.set({ [STORAGE_KEY]: lang });
+    Browser.storage.sync.set({ [STORAGE_KEY]: lang });
   }, []);
 
   const t = TRANSLATIONS[language];

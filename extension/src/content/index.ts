@@ -1,6 +1,7 @@
 // ── Content Script — Point d'entrée modulaire ──
 // Remplace l'ancien content.ts monolithique (852 lignes)
 
+import Browser from "../utils/browser-polyfill";
 import { extractVideoId, detectCurrentPagePlatform } from "../utils/video";
 import { addRecentAnalysis } from "../utils/storage";
 import { escapeHtml } from "../utils/sanitize";
@@ -68,7 +69,7 @@ const ctx: AppContext = {
 };
 
 function assetUrl(p: string): string {
-  return chrome.runtime.getURL(`assets/${p}`);
+  return Browser.runtime.getURL(`assets/${p}`);
 }
 
 function logoImgHtml(size = 22): string {
@@ -143,7 +144,9 @@ function tryInjectWidget(): void {
 
 async function initCard(): Promise<void> {
   try {
-    const authResp = await chrome.runtime.sendMessage({ action: "CHECK_AUTH" });
+    const authResp = (await Browser.runtime.sendMessage({
+      action: "CHECK_AUTH",
+    })) as { authenticated?: boolean; user?: User | null } | undefined;
 
     if (!authResp?.authenticated) {
       ctx.state = "login";
@@ -155,10 +158,13 @@ async function initCard(): Promise<void> {
     ctx.user = authResp.user ?? null;
 
     // Fetch plan info (non-bloquant)
-    chrome.runtime
+    Browser.runtime
       .sendMessage({ action: "GET_PLAN" })
       .then((resp) => {
-        if (resp?.success) ctx.planInfo = resp.plan ?? null;
+        const r = resp as
+          | { success?: boolean; plan?: PlanInfo | null }
+          | undefined;
+        if (r?.success) ctx.planInfo = r.plan ?? null;
       })
       .catch(() => {});
 
@@ -233,7 +239,7 @@ function getVideoTitle(): string {
 
 function handleCancelCurrentAnalysis(): void {
   if (ctx.currentTaskId) {
-    chrome.runtime
+    Browser.runtime
       .sendMessage({
         action: "CANCEL_ANALYSIS",
         data: { taskId: ctx.currentTaskId },
@@ -272,10 +278,20 @@ async function startAnalysis(mode: string, lang: string): Promise<void> {
   const url = window.location.href;
 
   try {
-    const response = await chrome.runtime.sendMessage({
+    const response = (await Browser.runtime.sendMessage({
       action: "ANALYZE_VIDEO",
       data: { url, options: { mode, lang, category: "auto" } },
-    });
+    })) as
+      | {
+          success?: boolean;
+          error?: string;
+          result?: {
+            status: string;
+            result?: { summary_id: number; video_title?: string };
+            error?: string;
+          };
+        }
+      | undefined;
 
     if (!response?.success)
       throw new Error(response?.error || "Analyse échouée");
@@ -315,10 +331,10 @@ async function startAnalysis(mode: string, lang: string): Promise<void> {
 }
 
 async function displaySummary(summaryId: number): Promise<void> {
-  const resp = await chrome.runtime.sendMessage({
+  const resp = (await Browser.runtime.sendMessage({
     action: "GET_SUMMARY",
     data: { summaryId },
-  });
+  })) as { success?: boolean; error?: string; summary?: Summary } | undefined;
   if (!resp?.success)
     throw new Error(resp?.error || "Récupération analyse échouée");
 
@@ -347,10 +363,16 @@ async function displaySummary(summaryId: number): Promise<void> {
 
 async function handleQuickChat(lang: string): Promise<void> {
   try {
-    const resp = await chrome.runtime.sendMessage({
+    const resp = (await Browser.runtime.sendMessage({
       action: "QUICK_CHAT",
       data: { url: window.location.href, lang },
-    });
+    })) as
+      | {
+          success?: boolean;
+          error?: string;
+          result?: { summary_id: number; video_title: string };
+        }
+      | undefined;
 
     if (!resp?.success) throw new Error(resp?.error || "Quick Chat échoué");
 
@@ -375,10 +397,10 @@ async function openChat(summaryId: number, title: string): Promise<void> {
   // Charger l'historique
   let messages = [];
   try {
-    const histResp = await chrome.runtime.sendMessage({
+    const histResp = (await Browser.runtime.sendMessage({
       action: "GET_CHAT_HISTORY",
       data: { summaryId },
-    });
+    })) as { success?: boolean; result?: unknown } | undefined;
     if (histResp?.success && Array.isArray(histResp.result)) {
       messages = histResp.result;
     }
@@ -415,10 +437,10 @@ async function handleCopy(): Promise<void> {
 
   let shareUrl = `${WEBAPP_URL}/summary/${ctx.summary.id}`;
   try {
-    const res = await chrome.runtime.sendMessage({
+    const res = (await Browser.runtime.sendMessage({
       action: "SHARE_ANALYSIS",
       data: { videoId: ctx.videoId },
-    });
+    })) as { success?: boolean; share_url?: string } | undefined;
     if (res?.success && res.share_url) shareUrl = res.share_url;
   } catch {
     /* use fallback */
@@ -458,10 +480,10 @@ async function handleShare(): Promise<void> {
   if (!btn) return;
 
   try {
-    const res = await chrome.runtime.sendMessage({
+    const res = (await Browser.runtime.sendMessage({
       action: "SHARE_ANALYSIS",
       data: { videoId: ctx.videoId },
-    });
+    })) as { success?: boolean; share_url?: string } | undefined;
     const url = res?.success
       ? res.share_url
       : `${WEBAPP_URL}/summary/${ctx.summary.id}`;
@@ -481,7 +503,7 @@ async function handleShare(): Promise<void> {
 // ── Logout ──
 
 async function handleLogout(): Promise<void> {
-  await chrome.runtime.sendMessage({ action: "LOGOUT" });
+  await Browser.runtime.sendMessage({ action: "LOGOUT" });
   ctx.user = null;
   ctx.planInfo = null;
   ctx.summary = null;
@@ -534,43 +556,40 @@ async function onNavigate(videoId: string | null): Promise<void> {
 
 // ── Message listener (from background / popup) ──
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.action === "ANALYSIS_PROGRESS") {
+Browser.runtime.onMessage.addListener((message: unknown) => {
+  const msg = message as { action: string; data?: unknown };
+  if (msg.action === "ANALYSIS_PROGRESS") {
     const {
       taskId,
       progress,
-      message: msg,
-    } = message.data as { taskId: string; progress: number; message: string };
+      message: msgText,
+    } = msg.data as { taskId: string; progress: number; message: string };
     if (ctx.state === "analyzing") {
       ctx.currentTaskId = taskId;
-      updateAnalyzingProgress(msg, progress);
+      updateAnalyzingProgress(msgText, progress);
     }
-    sendResponse({ success: true });
-    return undefined;
+    return Promise.resolve({ success: true });
   }
 
-  if (message.action === "TOGGLE_WIDGET") {
+  if (msg.action === "TOGGLE_WIDGET") {
     const w = getExistingWidget();
     if (w) removeWidget();
     else tryInjectWidget();
-    sendResponse({ success: true });
-    return undefined;
+    return Promise.resolve({ success: true });
   }
 
-  if (message.action === "START_ANALYSIS_FROM_COMMAND") {
+  if (msg.action === "START_ANALYSIS_FROM_COMMAND") {
     if (ctx.state === "ready") {
       startAnalysis("standard", "fr");
     }
-    sendResponse({ success: true });
-    return undefined;
+    return Promise.resolve({ success: true });
   }
 
-  if (message.action === "OPEN_CHAT_FROM_COMMAND") {
+  if (msg.action === "OPEN_CHAT_FROM_COMMAND") {
     if (ctx.state === "results" && ctx.summary) {
       openChat(ctx.summary.id, ctx.summary.video_title);
     }
-    sendResponse({ success: true });
-    return undefined;
+    return Promise.resolve({ success: true });
   }
 
   return undefined;

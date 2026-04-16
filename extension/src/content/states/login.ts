@@ -1,5 +1,6 @@
 // ── État: login ──
 
+import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
 import { setWidgetBody } from "../widget";
 import { escapeHtml } from "../../utils/sanitize";
@@ -50,7 +51,9 @@ export function renderLoginState(onLogin: () => void): void {
       btn.innerHTML = `${spinnerSmall()} Connexion...`;
     }
     try {
-      const resp = await chrome.runtime.sendMessage({ action: "GOOGLE_LOGIN" });
+      const resp = (await Browser.runtime.sendMessage({
+        action: "GOOGLE_LOGIN",
+      })) as { success?: boolean; user?: unknown; error?: string } | undefined;
       if (resp?.success && resp.user) {
         onLogin();
       } else {
@@ -79,10 +82,10 @@ export function renderLoginState(onLogin: () => void): void {
       btn.textContent = "Connexion...";
     }
     try {
-      const resp = await chrome.runtime.sendMessage({
+      const resp = (await Browser.runtime.sendMessage({
         action: "LOGIN",
         data: { email, password },
-      });
+      })) as { success?: boolean; user?: unknown; error?: string } | undefined;
       if (resp?.success && resp.user) {
         onLogin();
       } else {

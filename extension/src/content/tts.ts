@@ -1,6 +1,7 @@
 // ── TTS Module — Text-to-Speech pour l'extension Chrome ──
 // Utilise le backend /api/tts (ElevenLabs) avec gestion plan premium
 
+import Browser from "../utils/browser-polyfill";
 import { getStoredTokens, getStoredUser } from "../utils/storage";
 import { $id, $qsa } from "./shadow";
 
@@ -57,16 +58,18 @@ let activeButtonId: string | null = null;
 
 // Load persisted settings
 function loadSettings(): void {
-  chrome.storage.local.get(["tts_speed", "tts_lang", "tts_gender"], (data) => {
-    if (data.tts_speed) state.speed = data.tts_speed;
-    if (data.tts_lang) state.language = data.tts_lang;
-    if (data.tts_gender) state.gender = data.tts_gender;
-  });
+  Browser.storage.local
+    .get(["tts_speed", "tts_lang", "tts_gender"])
+    .then((data) => {
+      if (data.tts_speed) state.speed = data.tts_speed as number;
+      if (data.tts_lang) state.language = data.tts_lang as "fr" | "en";
+      if (data.tts_gender) state.gender = data.tts_gender as "male" | "female";
+    });
 }
 loadSettings();
 
 function saveSettings(): void {
-  chrome.storage.local.set({
+  Browser.storage.local.set({
     tts_speed: state.speed,
     tts_lang: state.language,
     tts_gender: state.gender,

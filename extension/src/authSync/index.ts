@@ -1,3 +1,4 @@
+import Browser from "../utils/browser-polyfill";
 import { WEBAPP_URL } from "../utils/config";
 
 // This script runs in the ISOLATED world.
@@ -11,10 +12,10 @@ window.addEventListener("message", async (event: MessageEvent) => {
 
   if (type === "DEEPSIGHT_AUTH_SUCCESS") {
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = (await Browser.runtime.sendMessage({
         action: "SYNC_AUTH_FROM_WEBSITE",
         data: payload,
-      });
+      })) as { success?: boolean } | undefined;
 
       if (response?.success) {
         window.postMessage(

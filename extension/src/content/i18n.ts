@@ -2,6 +2,8 @@
 // Les content scripts n'ont pas accès au système React i18n.
 // Ce module fournit un objet de traductions détecté via chrome.storage + navigator.language.
 
+import Browser from "../utils/browser-polyfill";
+
 type ContentLanguage = "fr" | "en";
 
 interface ContentStrings {
@@ -61,7 +63,7 @@ function detectLanguage(): ContentLanguage {
 async function loadLanguage(): Promise<void> {
   if (initialized) return;
   try {
-    const data = await chrome.storage.sync.get(["ds_language"]);
+    const data = await Browser.storage.sync.get(["ds_language"]);
     if (data.ds_language === "en" || data.ds_language === "fr") {
       currentLang = data.ds_language;
     } else {

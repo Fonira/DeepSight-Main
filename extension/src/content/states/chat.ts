@@ -1,5 +1,6 @@
 // ── État: chat inline ──
 
+import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
 import { setWidgetBody } from "../widget";
 import { escapeHtml, markdownToSafeHtml } from "../../utils/sanitize";
@@ -202,10 +203,16 @@ async function sendMessage(summaryId: number): Promise<void> {
   }
 
   try {
-    const resp = await chrome.runtime.sendMessage({
+    const resp = (await Browser.runtime.sendMessage({
       action: "ASK_QUESTION",
       data: { summaryId, question, options: {} },
-    });
+    })) as
+      | {
+          success?: boolean;
+          error?: string;
+          result?: { response: string; web_search_used?: boolean };
+        }
+      | undefined;
 
     $id(loadingId)?.remove();
 
