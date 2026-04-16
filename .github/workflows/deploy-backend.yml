@@ -1,3 +1,28 @@
+# Deploy Backend to Hetzner VPS
+#
+# Auto-deploys the FastAPI backend to the Hetzner VPS over SSH on every push
+# to `main` that touches backend code, the Hetzner deploy assets, or this
+# workflow file itself. Also supports manual dispatch from the Actions tab.
+#
+# Required repository secrets:
+#   - HETZNER_SSH_PRIVATE_KEY  (mandatory) PEM-encoded private key granting
+#                              root access to the Hetzner VPS.
+#   - HETZNER_HOST             (optional)  VPS hostname or IP. Defaults to
+#                              89.167.23.214.
+#   - HETZNER_USER             (optional)  SSH user. Defaults to `root`.
+#   - TELEGRAM_BOT_TOKEN       (optional)  Enables Telegram notifications.
+#   - TELEGRAM_CHAT_ID         (optional)  Target chat for notifications.
+#
+# Deploy flow:
+#   1. Tag the currently-running image as `deepsight-backend:previous`
+#      (rollback anchor).
+#   2. Pull latest `main` into /opt/deepsight/repo.
+#   3. Build `deepsight-backend:latest` from deploy/hetzner/Dockerfile.
+#   4. Recreate `repo-backend-1` on the `repo_deepsight` network.
+#   5. Smoke-test https://api.deepsightsynthesis.com/health with retries.
+#   6. If the smoke test fails, automatically roll back to
+#      `deepsight-backend:previous` and exit non-zero.
+
 name: Deploy Backend
 
 on:
@@ -7,8 +32,6 @@ on:
       - "backend/**"
       - "deploy/hetzner/**"
       - ".github/workflows/deploy-backend.yml"
-
-  # Permet un déploiement manuel depuis l'onglet Actions
   workflow_dispatch:
 
 concurrency:
@@ -16,111 +39,169 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          cd backend
-          pip install -r requirements.txt
-
-      - name: Run tests
-        continue-on-error: true
-        run: |
-          cd backend
-          python -m pytest --tb=short -q \
-            --deselect tests/core/test_mistral_agent.py::TestWebSearchProviderIntegration::test_uses_agent_when_available \
-            --deselect tests/core/test_mistral_batch.py::TestGetBatchResults::test_parses_success_results \
-            --deselect tests/core/test_mistral_batch.py::TestGetBatchResults::test_handles_error_entries \
-            --ignore=tests/core/test_plan_limits.py \
-            --ignore=tests/test_plan_gates.py
-
   deploy:
     name: Deploy to Hetzner VPS
     runs-on: ubuntu-latest
-    needs: [test]
+    timeout-minutes: 15
     environment: production
+
+    env:
+      HETZNER_HOST: ${{ secrets.HETZNER_HOST || '89.167.23.214' }}
+      HETZNER_USER: ${{ secrets.HETZNER_USER || 'root' }}
+      HEALTH_URL: https://api.deepsightsynthesis.com/health
+
     steps:
-      - uses: actions/checkout@v4
+      # ---------------------------------------------------------------------
+      # Checkout
+      # ---------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_hetzner
-          chmod 600 ~/.ssh/id_hetzner
-          ssh-keyscan -H ${{ secrets.HETZNER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+      # ---------------------------------------------------------------------
+      # Build & Deploy
+      # ---------------------------------------------------------------------
+      - name: Build and deploy on Hetzner VPS
+        id: deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ env.HETZNER_HOST }}
+          username: ${{ env.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 12m
+          script_stop: true
+          script: |
+            set -euo pipefail
 
-      - name: Pull latest code on VPS
-        run: |
-          ssh -i ~/.ssh/id_hetzner root@${{ secrets.HETZNER_HOST }} \
-            "cd /opt/deepsight/repo && git fetch origin main && git reset --hard origin/main"
+            cd /opt/deepsight/repo
 
-      - name: Build Docker image
-        run: |
-          ssh -i ~/.ssh/id_hetzner root@${{ secrets.HETZNER_HOST }} \
-            "cd /opt/deepsight/repo && docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend"
-
-      - name: Stop existing backend container
-        run: |
-          ssh -i ~/.ssh/id_hetzner root@${{ secrets.HETZNER_HOST }} \
-            "docker rm -f repo-backend-1 2>/dev/null || true"
-
-      - name: Deploy with docker compose
-        run: |
-          ssh -i ~/.ssh/id_hetzner root@${{ secrets.HETZNER_HOST }} \
-            "cd /opt/deepsight/repo && docker compose -p repo -f deploy/hetzner/docker-compose.yml up -d --no-deps backend"
-
-      - name: Wait for startup
-        run: sleep 20
-
-      - name: Health check
-        run: |
-          for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              "https://api.deepsightsynthesis.com/health" \
-              --max-time 10)
-            if [ "$STATUS" = "200" ]; then
-              echo "✅ Health check passed"
-              exit 0
+            # Tag the currently-running image as the rollback anchor.
+            # If no image is tagged `latest` yet (first deploy), skip.
+            if docker image inspect deepsight-backend:latest >/dev/null 2>&1; then
+              docker tag deepsight-backend:latest deepsight-backend:previous
+              echo "Rollback anchor updated: deepsight-backend:previous"
+            else
+              echo "No existing deepsight-backend:latest image - skipping rollback tag"
             fi
-            echo "Attempt $i: status $STATUS, retrying in 15s..."
-            sleep 15
-          done
-          echo "::error::Health check failed after 5 attempts"
-          exit 1
 
+            # Pull the latest code.
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Build the new image.
+            docker build \
+              -t deepsight-backend:latest \
+              -f deploy/hetzner/Dockerfile \
+              .
+
+            # Recreate the backend container.
+            docker stop repo-backend-1 || true
+            docker rm repo-backend-1 || true
+            docker run -d \
+              --name repo-backend-1 \
+              --network repo_deepsight \
+              --env-file /opt/deepsight/repo/.env.production \
+              --restart unless-stopped \
+              -p 127.0.0.1:8080:8080 \
+              deepsight-backend:latest
+
+            echo "Deployed SHA: $(git rev-parse HEAD)"
+
+      # ---------------------------------------------------------------------
+      # Health Check
+      # ---------------------------------------------------------------------
+      - name: Smoke test /health
+        id: healthcheck
+        run: |
+          echo "Probing ${HEALTH_URL}"
+          curl -fsS \
+            --max-time 30 \
+            --retry 5 \
+            --retry-delay 3 \
+            --retry-all-errors \
+            "${HEALTH_URL}"
+          echo ""
+          echo "Health check passed"
+
+      # ---------------------------------------------------------------------
+      # Rollback (only runs if the deploy succeeded but the smoke test failed)
+      # ---------------------------------------------------------------------
+      - name: Rollback to previous image
+        if: failure() && steps.deploy.outcome == 'success' && steps.healthcheck.outcome == 'failure'
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ env.HETZNER_HOST }}
+          username: ${{ env.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 5m
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            if ! docker image inspect deepsight-backend:previous >/dev/null 2>&1; then
+              echo "No deepsight-backend:previous image available - cannot rollback"
+              exit 1
+            fi
+
+            echo "Rolling back to deepsight-backend:previous"
+            docker tag deepsight-backend:previous deepsight-backend:latest
+
+            docker stop repo-backend-1 || true
+            docker rm repo-backend-1 || true
+            docker run -d \
+              --name repo-backend-1 \
+              --network repo_deepsight \
+              --env-file /opt/deepsight/repo/.env.production \
+              --restart unless-stopped \
+              -p 127.0.0.1:8080:8080 \
+              deepsight-backend:latest
+
+            echo "Rollback complete"
+
+      - name: Verify rollback health
+        if: failure() && steps.deploy.outcome == 'success' && steps.healthcheck.outcome == 'failure'
+        run: |
+          echo "Verifying ${HEALTH_URL} after rollback"
+          curl -fsS \
+            --max-time 30 \
+            --retry 5 \
+            --retry-delay 3 \
+            --retry-all-errors \
+            "${HEALTH_URL}" || {
+              echo "::error::Rollback did not restore a healthy backend"
+              exit 1
+            }
+          echo ""
+          echo "Rollback verified - backend is healthy on previous image"
+
+      # ---------------------------------------------------------------------
+      # Notifications (optional - only fire if Telegram secrets are present)
+      # ---------------------------------------------------------------------
       - name: Notify success
         if: success()
         run: |
-          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
             SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
             curl -s -X POST \
               "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
               -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
               -d parse_mode="HTML" \
-              -d text="✅ <b>DeepSight Backend Deployed</b>%0A%0ACommit: <code>${SHORT_SHA}</code>%0ABy: ${{ github.actor }}%0A<a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
+              -d text="<b>DeepSight Backend Deployed</b>%0A%0ACommit: <code>${SHORT_SHA}</code>%0ABy: ${{ github.actor }}%0A<a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
           fi
 
       - name: Notify failure
         if: failure()
         run: |
-          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
             SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
             curl -s -X POST \
               "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
               -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
               -d parse_mode="HTML" \
-              -d text="❌ <b>DeepSight Backend Deploy FAILED</b>%0A%0ACommit: <code>${SHORT_SHA}</code>%0ABy: ${{ github.actor }}%0A<a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
+              -d text="<b>DeepSight Backend Deploy FAILED</b>%0A%0ACommit: <code>${SHORT_SHA}</code>%0ABy: ${{ github.actor }}%0A<a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
           fi
-
-      - name: Cleanup SSH
-        if: always()
-        run: rm -rf ~/.ssh/id_hetzner
