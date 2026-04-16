@@ -34,7 +34,7 @@ from core.config import get_supadata_key, get_mistral_key
 
 logger = logging.getLogger(__name__)
 
-# 💾 Redis Cache L1
+# 💾 Redis Cache L1 (kept for backward-compatibility imports)
 try:
     from core.cache import cache_service, make_cache_key
     CACHE_AVAILABLE = True
@@ -42,13 +42,22 @@ except ImportError:
     CACHE_AVAILABLE = False
     logger.warning("[TIKTOK] Redis cache not available")
 
-# 💾 DB Cache L2 (persistent, cross-user)
+# 💾 DB Cache L2 (persistent, cross-user) — kept for legacy / direct use
 try:
     from transcripts.cache_db import get_cached_transcript, save_transcript_to_cache
     DB_CACHE_AVAILABLE = True
 except ImportError:
     DB_CACHE_AVAILABLE = False
     logger.warning("[TIKTOK] DB cache not available")
+
+# 💾 Unified L1 (Redis) + L2 (DB) transcript cache orchestrator
+try:
+    from transcripts.cache import transcript_cache
+    TRANSCRIPT_CACHE_AVAILABLE = True
+except ImportError:
+    TRANSCRIPT_CACHE_AVAILABLE = False
+    transcript_cache = None
+    logger.warning("[TIKTOK] Unified transcript cache not available")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION
@@ -539,58 +548,37 @@ async def get_tiktok_transcript(
         logger.error(f"[TIKTOK] Circuit breaker open, skipping transcript for {vid}")
         return None, None, None
 
-    # ─── Phase 0 : Cache check (Redis L1 → DB L2) ─────────────────────────
-    if CACHE_AVAILABLE:
+    # ─── Phase 0 : Unified cache check (L1 Redis + L2 DB) ─────────────────
+    cache_video_id = f"tiktok_{vid}"
+    if TRANSCRIPT_CACHE_AVAILABLE and transcript_cache is not None:
         try:
-            cache_key = make_cache_key("transcript", f"tiktok_{vid}")
-            cached = await cache_service.get(cache_key)
-            if cached and isinstance(cached, dict):
-                logger.info(f"[TIKTOK] Redis Cache HIT for {vid}")
-                return cached.get("simple"), cached.get("timestamped"), cached.get("lang")
+            payload = await transcript_cache.get(cache_video_id, platform="tiktok")
+            if payload is not None and payload.get("simple"):
+                logger.info(f"[TIKTOK] Transcript cache HIT for {vid}")
+                return payload.get("simple"), payload.get("timestamped"), payload.get("lang")
             else:
-                logger.info(f"[TIKTOK] Redis Cache MISS for {vid}")
+                logger.info(f"[TIKTOK] Transcript cache MISS for {vid}")
         except Exception as e:
-            logger.warning(f"[TIKTOK] Redis cache error: {e}")
-
-    if DB_CACHE_AVAILABLE:
-        try:
-            db_cached = await get_cached_transcript(f"tiktok_{vid}")
-            if db_cached:
-                simple, timestamped, lang = db_cached
-                logger.info(f"[TIKTOK] DB Cache HIT for {vid} ({len(simple)} chars)")
-                # Populate Redis L1
-                if CACHE_AVAILABLE:
-                    try:
-                        cache_key = make_cache_key("transcript", f"tiktok_{vid}")
-                        await cache_service.set(cache_key, {"simple": simple, "timestamped": timestamped, "lang": lang})
-                    except Exception:
-                        pass
-                return simple, timestamped, lang
-            else:
-                logger.info(f"[TIKTOK] DB Cache MISS for {vid}")
-        except Exception as e:
-            logger.warning(f"[TIKTOK] DB cache error: {e}")
+            logger.warning(f"[TIKTOK] Transcript cache error: {e}")
 
     # Helper to cache result after successful extraction
     async def _cache_result(result: Tuple, method: str):
         simple, timestamped, lang = result
         if not simple:
             return
-        # Redis L1
-        if CACHE_AVAILABLE:
+        if TRANSCRIPT_CACHE_AVAILABLE and transcript_cache is not None:
             try:
-                cache_key = make_cache_key("transcript", f"tiktok_{vid}")
-                await cache_service.set(cache_key, {"simple": simple, "timestamped": timestamped, "lang": lang})
-                logger.info(f"[TIKTOK] Redis cached for {vid}")
-            except Exception:
-                pass
-        # DB L2
-        if DB_CACHE_AVAILABLE:
-            try:
-                await save_transcript_to_cache(f"tiktok_{vid}", simple, timestamped, lang, platform="tiktok", extraction_method=method)
-                print(f"🗄️ DB Cache SAVED for tiktok_{vid}", flush=True)
+                await transcript_cache.set(
+                    video_id=cache_video_id,
+                    simple=simple,
+                    timestamped=timestamped,
+                    lang=lang,
+                    platform="tiktok",
+                    extraction_method=method,
+                )
+                logger.info(f"[TIKTOK] Transcript cached (L1+L2) for {vid}")
             except Exception as e:
-                print(f"⚠️ DB Cache save error for tiktok_{vid}: {e}", flush=True)
+                logger.warning(f"[TIKTOK] Transcript cache save error for {vid}: {e}")
 
     # ─── Phase 0.5 : Supadata API (PRIORITAIRE) ──────────────────────────
     logger.info(f"[TIKTOK] Phase 0.5: Supadata API (priority) for {vid}")

@@ -67,13 +67,22 @@ except ImportError:
     transcript_metrics = None
     print("⚠️ [YOUTUBE] Cache not available, transcripts won't be cached", flush=True)
 
-# 💾 DB Cache L2 (persistent, cross-user)
+# 💾 DB Cache L2 (persistent, cross-user) — kept for legacy / direct use
 try:
     from transcripts.cache_db import get_cached_transcript, save_transcript_to_cache
     DB_CACHE_AVAILABLE = True
 except ImportError:
     DB_CACHE_AVAILABLE = False
     print("⚠️ [YOUTUBE] DB cache not available", flush=True)
+
+# 💾 Unified L1 (Redis) + L2 (DB) transcript cache orchestrator
+try:
+    from transcripts.cache import transcript_cache
+    TRANSCRIPT_CACHE_AVAILABLE = True
+except ImportError:
+    TRANSCRIPT_CACHE_AVAILABLE = False
+    transcript_cache = None
+    print("⚠️ [YOUTUBE] Unified transcript cache not available", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION
@@ -2198,65 +2207,36 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
         _active_timeouts.set(TIMEOUTS)
 
     # ═══════════════════════════════════════════════════════════════════════════════
-    # CACHE CHECK: Vérifie si le transcript est déjà en cache
+    # CACHE CHECK: Unified L1 (Redis) + L2 (DB) lookup via TranscriptCacheService
     # ═══════════════════════════════════════════════════════════════════════════════
-    if CACHE_AVAILABLE:
-        cache_key = make_cache_key("transcript", video_id)
+    if TRANSCRIPT_CACHE_AVAILABLE and transcript_cache is not None:
         try:
-            cached = await cache_service.get(cache_key)
-            if cached and isinstance(cached, dict):
-                print(f"💾 Cache L1 HIT for transcript:{video_id}", flush=True)
+            payload = await transcript_cache.get(video_id, platform="youtube")
+            if payload is not None and payload.get("simple"):
+                print(f"💾 Transcript cache HIT for {video_id}", flush=True)
                 print(f"{'='*70}", flush=True)
-                if transcript_metrics:
-                    await transcript_metrics.increment("l1_hits")
-                return cached.get("simple"), cached.get("timestamped"), cached.get("lang")
+                return payload.get("simple"), payload.get("timestamped"), payload.get("lang")
             else:
-                print(f"💾 Cache L1 MISS for transcript:{video_id}", flush=True)
+                print(f"💾 Transcript cache MISS for {video_id}", flush=True)
         except Exception as e:
-            print(f"⚠️ Cache error (continuing without cache): {e}", flush=True)
-
-    # ═══════════════════════════════════════════════════════════════════════════════
-    # DB CACHE L2: Vérifie le cache persistant (cross-user)
-    # ═══════════════════════════════════════════════════════════════════════════════
-    if DB_CACHE_AVAILABLE:
-        try:
-            db_cached = await get_cached_transcript(video_id)
-            if db_cached:
-                simple, timestamped, lang = db_cached
-                print(f"🗄️ DB Cache L2 HIT for {video_id} ({len(simple)} chars)", flush=True)
-                print(f"{'='*70}", flush=True)
-                if transcript_metrics:
-                    await transcript_metrics.increment("l2_hits")
-                # Populate Redis L1 for faster subsequent access
-                if CACHE_AVAILABLE:
-                    try:
-                        cache_key = make_cache_key("transcript", video_id)
-                        await cache_service.set(cache_key, {"simple": simple, "timestamped": timestamped, "lang": lang})
-                    except Exception:
-                        pass
-                return simple, timestamped, lang
-            else:
-                print(f"🗄️ DB Cache L2 MISS for {video_id}", flush=True)
-                if transcript_metrics:
-                    await transcript_metrics.increment("misses")
-        except Exception as e:
-            print(f"⚠️ DB Cache error (continuing): {e}", flush=True)
+            print(f"⚠️ Transcript cache error (continuing): {e}", flush=True)
 
     # Helper pour cacher un résultat réussi (évite la duplication de code)
     async def _cache_success(vid: str, simple: str, timestamped: str, lang: str, method_name: str):
-        if CACHE_AVAILABLE:
+        if TRANSCRIPT_CACHE_AVAILABLE and transcript_cache is not None:
             try:
-                ck = make_cache_key("transcript", vid)
-                await cache_service.set(ck, {"simple": simple, "timestamped": timestamped, "lang": lang})
-                print(f"💾 Transcript cached: {ck}", flush=True)
-            except Exception:
-                pass
-        if DB_CACHE_AVAILABLE:
-            try:
-                await save_transcript_to_cache(vid, simple, timestamped, lang, platform="youtube", extraction_method=method_name, thumbnail_url=f"https://img.youtube.com/vi/{vid}/mqdefault.jpg")
-                print(f"🗄️ DB Cache SAVED for {vid}", flush=True)
+                await transcript_cache.set(
+                    video_id=vid,
+                    simple=simple,
+                    timestamped=timestamped,
+                    lang=lang,
+                    platform="youtube",
+                    extraction_method=method_name,
+                    thumbnail_url=f"https://img.youtube.com/vi/{vid}/mqdefault.jpg",
+                )
+                print(f"💾 Transcript cached (L1+L2) for {vid}", flush=True)
             except Exception as e:
-                print(f"⚠️ DB Cache save error for {vid}: {e}", flush=True)
+                print(f"⚠️ Transcript cache save error for {vid}: {e}", flush=True)
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 0: Supadata API EN PRIORITÉ (seul, le plus fiable)
