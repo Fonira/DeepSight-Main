@@ -206,9 +206,9 @@ class TestPhase3Ordering:
         import inspect
         from transcripts import youtube
 
-        source = inspect.getsource(youtube.get_youtube_transcript)
+        source = inspect.getsource(youtube._get_transcript_with_timestamps_inner)
         # Voxtral should appear before Groq in the phase3_methods list
         voxtral_pos = source.find("Voxtral STT")
         groq_pos = source.find("Groq Whisper")
-        assert voxtral_pos > 0, "Voxtral STT not found in get_youtube_transcript"
+        assert voxtral_pos > 0, "Voxtral STT not found in _get_transcript_with_timestamps_inner"
         assert voxtral_pos < groq_pos, "Voxtral STT should come before Groq Whisper in Phase 3"
