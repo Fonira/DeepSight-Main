@@ -6,7 +6,6 @@ and uploads them to R2 for permanent storage.
 Reuses existing pipeline functions — no duplication.
 """
 
-import asyncio
 import json
 import logging
 from datetime import date
@@ -43,12 +42,17 @@ async def _check_ai_budget() -> bool:
     """Check if we haven't exceeded the daily AI thumbnail budget."""
     try:
         from core.cache import cache_service
-        if hasattr(cache_service, 'backend') and hasattr(cache_service.backend, 'redis'):
+
+        if hasattr(cache_service, "backend") and hasattr(
+            cache_service.backend, "redis"
+        ):
             redis = cache_service.backend.redis
             key = f"{_REDIS_COUNTER_PREFIX}:{date.today().isoformat()}"
             count = await redis.get(key)
             if count and int(count) >= DAILY_AI_THUMB_LIMIT:
-                logger.info(f"AI thumbnail budget exhausted ({count}/{DAILY_AI_THUMB_LIMIT})")
+                logger.info(
+                    f"AI thumbnail budget exhausted ({count}/{DAILY_AI_THUMB_LIMIT})"
+                )
                 return False
             return True
     except Exception:
@@ -60,7 +64,10 @@ async def _increment_ai_budget() -> None:
     """Increment the daily AI thumbnail counter."""
     try:
         from core.cache import cache_service
-        if hasattr(cache_service, 'backend') and hasattr(cache_service.backend, 'redis'):
+
+        if hasattr(cache_service, "backend") and hasattr(
+            cache_service.backend, "redis"
+        ):
             redis = cache_service.backend.redis
             key = f"{_REDIS_COUNTER_PREFIX}:{date.today().isoformat()}"
             await redis.incr(key)
@@ -110,14 +117,17 @@ async def _generate_text_thumbnail(title: str, category: str | None) -> Optional
         from images.keyword_images import (
             _stage2_generate_image,
             _post_process,
-            DEEPSIGHT_STYLE_SUFFIX,
         )
 
-        raw_image, model_used = await _stage2_generate_image(visual_prompt, premium=False)
+        raw_image, model_used = await _stage2_generate_image(
+            visual_prompt, premium=False
+        )
         webp_bytes = _post_process(raw_image)
 
         await _increment_ai_budget()
-        logger.info(f"AI thumbnail generated for '{title[:40]}' ({model_used}, {len(webp_bytes)}B)")
+        logger.info(
+            f"AI thumbnail generated for '{title[:40]}' ({model_used}, {len(webp_bytes)}B)"
+        )
         return webp_bytes
 
     except Exception as e:
