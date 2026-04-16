@@ -188,6 +188,18 @@ export const SHAPES_ORGANIC = [
   "M2 4l20 16M6 2l16 20M2 8l20 16M2 12l16 12M2 16l12 8M22 8L6 22M22 4L2 20M22 12L10 22", // Cross-hatch texture
 ];
 
+// ─── BRAND ICONS (4 paths) ───
+export const ICONS_BRAND = [
+  // YouTube — rounded screen + play triangle
+  "M2.5 7A2.5 2.5 0 015 4.5h14A2.5 2.5 0 0121.5 7v10a2.5 2.5 0 01-2.5 2.5H5A2.5 2.5 0 012.5 17V7zm7.5 2v6l5-3-5-3z",
+  // TikTok — musical note with offset
+  "M9 3h6v10a4 4 0 11-4-4h4V3m2 2a4 4 0 004 4",
+  // Mistral — abstract staircase blocks
+  "M3 4h4v3H3zm6 3h4v3H9zm-6 6h4v3H3zm6 3h4v3H9zm6-9h4v3h-4zm0 6h4v3h-4z",
+  // Tournesol — sunflower with petals and center
+  "M12 8a4 4 0 100 8 4 4 0 000-8zm0-6v3m0 14v3M4.93 4.93l2.12 2.12m9.9 9.9l2.12 2.12M2 12h3m14 0h3M4.93 19.07l2.12-2.12m9.9-9.9l2.12-2.12",
+];
+
 // ─── DECORATIVE SHAPES (15 paths) ───
 export const SHAPES_DECORATIVE = [
   "M12 10a2 2 0 100 4 2 2 0 000-4z", // Dot
@@ -221,7 +233,7 @@ export const DOODLE_MAP: Record<string, string> = {
   headphones: ICONS_VIDEO[5],
   waveform: ICONS_VIDEO[6],
   mic: ICONS_VIDEO[7],
-  youtube: ICONS_VIDEO[8],
+  youtubeIcon: ICONS_VIDEO[8],
   filmstrip: ICONS_VIDEO[9],
   fastForward: ICONS_VIDEO[10],
   recordCrosshair: ICONS_VIDEO[11],
@@ -397,18 +409,6 @@ export const DOODLE_MAP: Record<string, string> = {
   triangleLarge: SHAPES_DECORATIVE[13],
   parallelDashes: SHAPES_DECORATIVE[14],
 };
-
-// ─── BRAND ICONS (4 paths) ───
-export const ICONS_BRAND = [
-  // YouTube — rounded screen + play triangle
-  "M2.5 7A2.5 2.5 0 015 4.5h14A2.5 2.5 0 0121.5 7v10a2.5 2.5 0 01-2.5 2.5H5A2.5 2.5 0 012.5 17V7zm7.5 2v6l5-3-5-3z",
-  // TikTok — musical note with offset
-  "M9 3h6v10a4 4 0 11-4-4h4V3m2 2a4 4 0 004 4",
-  // Mistral — abstract staircase blocks
-  "M3 4h4v3H3zm6 3h4v3H9zm-6 6h4v3H3zm6 3h4v3H9zm6-9h4v3h-4zm0 6h4v3h-4z",
-  // Tournesol — sunflower with petals and center
-  "M12 8a4 4 0 100 8 4 4 0 000-8zm0-6v3m0 14v3M4.93 4.93l2.12 2.12m9.9 9.9l2.12 2.12M2 12h3m14 0h3M4.93 19.07l2.12-2.12m9.9-9.9l2.12-2.12",
-];
 
 /**
  * DOODLE_CATEGORIES: Organized by category for themed selections
