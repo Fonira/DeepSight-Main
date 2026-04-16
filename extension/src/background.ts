@@ -132,19 +132,36 @@ async function login(email: string, password: string): Promise<User> {
   return data.user;
 }
 
+/**
+ * Generate a cryptographically random nonce for OpenID Connect id_token
+ * replay protection. Google embeds this nonce in the signed id_token — if an
+ * attacker replays an old token it won't match our freshly generated nonce.
+ */
+function generateOidcNonce(): string {
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 async function loginWithGoogle(): Promise<User> {
   if (!GOOGLE_CLIENT_ID) {
     throw new Error("Google OAuth not configured. Use email/password login.");
   }
 
   const redirectUrl = Browser.identity.getRedirectURL();
+  const nonce = generateOidcNonce();
 
+  // OpenID Connect hybrid flow: ask Google for a signed id_token (JWT).
+  // The backend verifies the JWT signature + audience + nonce cryptographically,
+  // which is more secure than trusting a bearer access_token. scope=openid is
+  // required to obtain an id_token.
   const authUrl =
     `https://accounts.google.com/o/oauth2/v2/auth` +
     `?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
     `&redirect_uri=${encodeURIComponent(redirectUrl)}` +
-    `&response_type=token` +
-    `&scope=${encodeURIComponent("email profile")}` +
+    `&response_type=${encodeURIComponent("id_token token")}` +
+    `&scope=${encodeURIComponent("openid email profile")}` +
+    `&nonce=${encodeURIComponent(nonce)}` +
     `&prompt=select_account`;
 
   const responseUrl = await Browser.identity.launchWebAuthFlow({
@@ -155,15 +172,17 @@ async function loginWithGoogle(): Promise<User> {
   if (!responseUrl) throw new Error("Google login cancelled");
 
   const hashParams = new URLSearchParams(responseUrl.split("#")[1]);
-  const googleAccessToken = hashParams.get("access_token");
+  const idToken = hashParams.get("id_token");
 
-  if (!googleAccessToken)
-    throw new Error("No access token received from Google");
+  if (!idToken) throw new Error("No ID token received from Google");
 
   const response = await fetch(`${API_BASE_URL}/auth/google/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ access_token: googleAccessToken }),
+    body: JSON.stringify({
+      id_token: idToken,
+      client_platform: "web",
+    }),
   });
 
   if (!response.ok) {
