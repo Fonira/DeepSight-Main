@@ -195,7 +195,7 @@ export const AnalysisScreen: React.FC = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showVoiceScreen, setShowVoiceScreen] = useState(false);
 
-  // Voice chat — ElevenLabs integration
+  // Voice chat ï¿½ ElevenLabs integration
   const voiceChat = useVoiceChat({
     summaryId: summaryId || "",
     onError: (err) => console.warn("[VoiceChat]", err),
@@ -267,7 +267,7 @@ export const AnalysisScreen: React.FC = () => {
         setAnalysisProgress(100);
         setAnalysisStep(4);
 
-        // Track pour In-App Rating (déclenche après 3+ analyses)
+        // Track pour In-App Rating (dï¿½clenche aprï¿½s 3+ analyses)
         trackAnalysisComplete().catch(() => {});
 
         // Analytics: track analysis completion
@@ -548,7 +548,7 @@ export const AnalysisScreen: React.FC = () => {
             : undefined);
         if (actualSummaryId) {
           // Use replace to prevent going back to the loading screen
-          // Use activeTabRef.current to avoid stale closure — the user may have
+          // Use activeTabRef.current to avoid stale closure ï¿½ the user may have
           // switched tabs while the analysis was completing
           navigation.replace("Analysis", {
             summaryId: actualSummaryId,
@@ -645,23 +645,23 @@ export const AnalysisScreen: React.FC = () => {
       if (err?.status === 402) {
         errorMessage =
           language === "fr"
-            ? "Quota de chat dépassé. Passez à un plan supérieur."
+            ? "Quota de chat dï¿½passï¿½. Passez ï¿½ un plan supï¿½rieur."
             : "Chat quota exceeded. Please upgrade your plan.";
       } else if (err?.status === 429) {
         errorMessage =
           language === "fr"
-            ? "Trop de requêtes. Veuillez patienter un moment."
+            ? "Trop de requï¿½tes. Veuillez patienter un moment."
             : "Too many requests. Please wait a moment.";
       } else if (err?.code === "TIMEOUT") {
         errorMessage =
           language === "fr"
-            ? "Ça prend plus de temps que prévu — réessayez."
-            : "Taking longer than expected — try again.";
+            ? "ï¿½a prend plus de temps que prï¿½vu ï¿½ rï¿½essayez."
+            : "Taking longer than expected ï¿½ try again.";
       } else if (err?.code === "NETWORK_ERROR") {
         errorMessage =
           language === "fr"
-            ? "Connexion perdue — on réessaie dans un instant"
-            : "Connection lost — retrying shortly";
+            ? "Connexion perdue ï¿½ on rï¿½essaie dans un instant"
+            : "Connection lost ï¿½ retrying shortly";
       }
       Alert.alert(t.common.error, errorMessage);
       // Remove the user message on error
@@ -959,7 +959,7 @@ export const AnalysisScreen: React.FC = () => {
     { id: "concepts", label: t.analysis.concepts, icon: "bulb-outline" },
     {
       id: "study",
-      label: language === "fr" ? "Réviser" : "Study",
+      label: language === "fr" ? "Rï¿½viser" : "Study",
       icon: "school-outline",
     },
   ];
@@ -972,7 +972,7 @@ export const AnalysisScreen: React.FC = () => {
         rightAction={{ icon: "share-outline", onPress: handleShare }}
       />
 
-      {/* Video Header — Full-width immersive thumbnail */}
+      {/* Video Header ï¿½ Full-width immersive thumbnail */}
       {summary && !showExpandedPlayer && (
         <TouchableOpacity
           onPress={() => setShowExpandedPlayer(true)}
@@ -1000,7 +1000,7 @@ export const AnalysisScreen: React.FC = () => {
               {summary.title}
             </Text>
             <Text style={styles.videoMetaOverlay}>
-              {summary.videoInfo?.channel} •{" "}
+              {summary.videoInfo?.channel} ï¿½{" "}
               {formatDuration(summary.videoInfo?.duration || 0)}
             </Text>
           </View>
@@ -1042,7 +1042,7 @@ export const AnalysisScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Tabs — Animated sliding indicator */}
+      {/* Tabs ï¿½ Animated sliding indicator */}
       <View
         onLayout={(e) => {
           const { y, height } = e.nativeEvent.layout;
@@ -1091,7 +1091,7 @@ export const AnalysisScreen: React.FC = () => {
                 showLabel
               />
               <Badge label={summary?.mode || "Standard"} variant="primary" />
-              <Badge label={summary?.category || "Général"} variant="default" />
+              <Badge label={summary?.category || "Gï¿½nï¿½ral"} variant="default" />
               {summary?.language && (
                 <Badge
                   label={summary.language.toUpperCase()}
@@ -1354,7 +1354,7 @@ export const AnalysisScreen: React.FC = () => {
               </Card>
             )}
 
-            {/* Actions — Glassmorphism container */}
+            {/* Actions ï¿½ Glassmorphism container */}
             <View
               style={[
                 styles.actionsRowGlass,
@@ -1663,7 +1663,7 @@ export const AnalysisScreen: React.FC = () => {
 
       {activeTab === "study" && (
         <View style={{ flex: 1 }}>
-          {/* Segmented Control: Chat IA / Outils d'étude */}
+          {/* Segmented Control: Chat IA / Outils d'ï¿½tude */}
           {!activeStudyTool && (
             <View
               style={[
@@ -1816,7 +1816,7 @@ export const AnalysisScreen: React.FC = () => {
                   <View style={styles.chatLimitWarning}>
                     <Text style={styles.chatLimitText}>
                       {language === "fr"
-                        ? "Limite atteinte. Passez au plan supérieur pour continuer."
+                        ? "Limite atteinte. Passez au plan supï¿½rieur pour continuer."
                         : "Limit reached. Upgrade to continue chatting."}
                     </Text>
                   </View>
@@ -1845,7 +1845,7 @@ export const AnalysisScreen: React.FC = () => {
             </KeyboardAvoidingView>
           )}
 
-          {/* Outils d'étude sub-tab */}
+          {/* Outils d'ï¿½tude sub-tab */}
           {(studySubTab === "tools" || activeStudyTool) && (
             <View
               style={styles.toolsContainer}

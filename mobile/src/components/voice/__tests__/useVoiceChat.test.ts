@@ -74,14 +74,15 @@ jest.mock("../../../services/api", () => ({
 // Mock AppState
 let appStateCallback: ((state: string) => void) | null = null;
 const mockRemove = jest.fn();
-jest.spyOn(AppState, "addEventListener").mockImplementation(
-  ((_type: string, callback: (state: string) => void) => {
-    appStateCallback = callback;
-    return { remove: mockRemove } as unknown as ReturnType<
-      typeof AppState.addEventListener
-    >;
-  }) as any,
-);
+jest.spyOn(AppState, "addEventListener").mockImplementation(((
+  _type: string,
+  callback: (state: string) => void,
+) => {
+  appStateCallback = callback;
+  return { remove: mockRemove } as unknown as ReturnType<
+    typeof AppState.addEventListener
+  >;
+}) as any);
 
 import { useVoiceChat } from "../useVoiceChat";
 
@@ -123,9 +124,7 @@ describe("useVoiceChat", () => {
   // ── Initial state ──
 
   it("retourne l'état initial idle", () => {
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     expect(result.current.status).toBe("idle");
     expect(result.current.isSpeaking).toBe(false);
@@ -138,9 +137,7 @@ describe("useVoiceChat", () => {
   // ── start() flow ──
 
   it("demande la permission micro au start", async () => {
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     await act(async () => {
       await result.current.start();
@@ -152,9 +149,7 @@ describe("useVoiceChat", () => {
   it("passe en erreur si permission micro refusée", async () => {
     mockRequestPermissions.mockResolvedValue({ granted: false });
 
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     await act(async () => {
       await result.current.start();
@@ -165,9 +160,7 @@ describe("useVoiceChat", () => {
   });
 
   it("crée une session API avec le bon summaryId", async () => {
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     await act(async () => {
       await result.current.start();
@@ -177,9 +170,7 @@ describe("useVoiceChat", () => {
   });
 
   it("démarre la session ElevenLabs avec l'agent_id", async () => {
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     await act(async () => {
       await result.current.start();
@@ -195,9 +186,7 @@ describe("useVoiceChat", () => {
   it("passe en quota_exceeded sur erreur 403", async () => {
     mockCreateSession.mockRejectedValue({ status: 403, message: "forbidden" });
 
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     await act(async () => {
       await result.current.start();
@@ -210,9 +199,7 @@ describe("useVoiceChat", () => {
   it("passe en erreur réseau sur TypeError", async () => {
     mockCreateSession.mockRejectedValue(new TypeError("Network error"));
 
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     await act(async () => {
       await result.current.start();
@@ -238,9 +225,7 @@ describe("useVoiceChat", () => {
   // ── stop() ──
 
   it("appelle endSession et reset l'état au stop", async () => {
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     // Start first
     await act(async () => {
@@ -261,9 +246,7 @@ describe("useVoiceChat", () => {
   // ── toggleMute() ──
 
   it("toggle le mute et appelle setMicMuted du SDK", () => {
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     act(() => {
       result.current.toggleMute();
@@ -283,9 +266,7 @@ describe("useVoiceChat", () => {
   // ── Timer ──
 
   it("incrémente le timer chaque seconde", async () => {
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     await act(async () => {
       await result.current.start();
@@ -301,9 +282,7 @@ describe("useVoiceChat", () => {
   // ── AppState background ──
 
   it("arrête la session quand l'app passe en background", async () => {
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     await act(async () => {
       await result.current.start();
@@ -337,9 +316,7 @@ describe("useVoiceChat", () => {
   // ── SDK callbacks ──
 
   it("ajoute un message quand le SDK émet onMessage", async () => {
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     // Simulate SDK message callback
     act(() => {
@@ -359,9 +336,7 @@ describe("useVoiceChat", () => {
   // ── Quota remaining ──
 
   it("stocke les minutes restantes depuis la réponse API", async () => {
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     await act(async () => {
       await result.current.start();
@@ -373,9 +348,7 @@ describe("useVoiceChat", () => {
   // ── Prevents double start ──
 
   it("empêche le double démarrage", async () => {
-    const { result } = renderHook(() =>
-      useVoiceChat({ summaryId: "42" }),
-    );
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     await act(async () => {
       await result.current.start();

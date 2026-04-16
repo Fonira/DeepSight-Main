@@ -96,7 +96,6 @@ jest.mock("react-native-reanimated", () => {
   };
 });
 
-
 // Mock Ionicons
 jest.mock("@expo/vector-icons", () => ({
   Ionicons: "Ionicons",
@@ -209,11 +208,7 @@ describe("VoiceScreen", () => {
 
   it("appelle onStart (retry) quand on appuie sur Réessayer en erreur", () => {
     const { getByText } = render(
-      <VoiceScreen
-        {...defaultProps}
-        voiceStatus="error"
-        error="Test erreur"
-      />,
+      <VoiceScreen {...defaultProps} voiceStatus="error" error="Test erreur" />,
     );
     fireEvent.press(getByText("Réessayer"));
     expect(defaultProps.onStart).toHaveBeenCalledTimes(1);

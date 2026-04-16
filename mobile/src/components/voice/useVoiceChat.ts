@@ -158,9 +158,7 @@ export function useVoiceChat({
     onError: (err: Error | string) => {
       if (isMountedRef.current) {
         const msg =
-          typeof err === "string"
-            ? err
-            : err.message || ERROR_MESSAGES.UNKNOWN;
+          typeof err === "string" ? err : err.message || ERROR_MESSAGES.UNKNOWN;
         reportError(msg);
       }
     },
