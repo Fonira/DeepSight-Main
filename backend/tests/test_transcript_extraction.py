@@ -439,6 +439,10 @@ This is a test
 @pytest.mark.slow
 @pytest.mark.integration
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    not os.getenv("YOUTUBE_INTEGRATION_TESTS"),
+    reason="Set YOUTUBE_INTEGRATION_TESTS=1 to run (requires network + YouTube access)"
+)
 class TestIntegrationExtraction:
     """Integration tests that require network access — skip with -m 'not integration'"""
 
