@@ -23,6 +23,11 @@ from collections import deque
 import httpx
 
 from core.config import EMAIL_CONFIG, APP_NAME
+from core.email_rate_limiter import (
+    RESEND_LIMITER,
+    ResendRateLimitError,
+    send_with_rate_limit,
+)
 
 logger = logging.getLogger("deepsight.email_queue")
 
@@ -230,7 +235,14 @@ class EmailQueue:
     # ------------------------------------------------------------------
 
     async def _send_email(self, item: EmailItem) -> bool:
-        """Envoie un email via Resend API avec gestion des erreurs."""
+        """Envoie un email via Resend API avec gestion des erreurs.
+
+        Passe par le rate limiter global (``RESEND_LIMITER``) pour respecter la
+        limite Resend (2 req/s par worker par défaut, configurable via
+        ``RESEND_RATE_LIMIT_PER_SEC``). Si un 429 passe quand même, un retry
+        avec backoff exponentiel (1s/2s/4s) est appliqué via
+        ``send_with_rate_limit``. Voir ``core/email_rate_limiter.py``.
+        """
         api_key = EMAIL_CONFIG.get("RESEND_API_KEY")
         if not api_key:
             logger.warning("RESEND_API_KEY not configured")
@@ -239,9 +251,9 @@ class EmailQueue:
         from_email = EMAIL_CONFIG.get("FROM_EMAIL", "noreply@deepsightsynthesis.com")
         from_name = EMAIL_CONFIG.get("FROM_NAME", APP_NAME)
 
-        try:
+        async def _do_post() -> httpx.Response:
             async with httpx.AsyncClient() as client:
-                response = await client.post(
+                return await client.post(
                     RESEND_API_URL,
                     headers={
                         "Authorization": f"Bearer {api_key}",
@@ -257,17 +269,20 @@ class EmailQueue:
                     timeout=15,
                 )
 
+        try:
+            response = await send_with_rate_limit(
+                _do_post,
+                is_rate_limited=lambda r: r.status_code == 429,
+                context=f"to={item.to}",
+            )
+
             self._last_send_time = time.time()
 
             if response.status_code in (200, 201):
                 logger.info(f"📧 Sent: {item.to} — {item.subject}")
                 return True
-            elif response.status_code == 429:
-                # Rate limited — sera retry
-                logger.warning(f"📧 Rate limited (429) for {item.to}")
-                return False
             elif response.status_code >= 500:
-                # Server error — sera retry
+                # Server error — sera retry par la queue externe
                 logger.warning(f"📧 Server error ({response.status_code}) for {item.to}")
                 return False
             else:
@@ -276,6 +291,10 @@ class EmailQueue:
                 self.total_failed += 1
                 return True  # Don't retry client errors
 
+        except ResendRateLimitError:
+            # All inner 429 retries exhausted — bubble up to queue-level retry
+            logger.warning(f"📧 Rate limited (429) for {item.to} after all retries")
+            return False
         except httpx.TimeoutException:
             logger.warning(f"📧 Timeout sending to {item.to}")
             return False
