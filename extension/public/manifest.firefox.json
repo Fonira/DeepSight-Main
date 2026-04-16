@@ -13,7 +13,14 @@
     }
   },
 
-  "permissions": ["storage", "activeTab", "tabs", "alarms", "identity"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "alarms",
+    "identity",
+    "clipboardWrite"
+  ],
 
   "host_permissions": [
     "https://www.youtube.com/*",

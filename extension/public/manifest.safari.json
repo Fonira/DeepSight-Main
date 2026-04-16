@@ -6,12 +6,7 @@
   "author": "DeepSight",
   "homepage_url": "https://www.deepsightsynthesis.com",
 
-  "permissions": [
-    "storage",
-    "activeTab",
-    "tabs",
-    "alarms"
-  ],
+  "permissions": ["storage", "activeTab", "tabs", "alarms", "clipboardWrite"],
 
   "host_permissions": [
     "https://www.youtube.com/*",
@@ -25,8 +20,9 @@
   ],
 
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "scripts": ["background.js"],
+    "type": "module",
+    "persistent": false
   },
 
   "content_scripts": [
