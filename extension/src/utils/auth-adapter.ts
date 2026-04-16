@@ -3,11 +3,8 @@
 // Firefox: browser.identity.launchWebAuthFlow (via polyfill)
 // Safari: window.open fallback + polling
 
-import Browser, { detectBrowser, hasIdentityAPI } from "./browser-polyfill";
+import Browser, { hasIdentityAPI } from "./browser-polyfill";
 import { GOOGLE_CLIENT_ID } from "./config";
-
-// __TARGET_BROWSER__ is injected by webpack DefinePlugin
-declare const __TARGET_BROWSER__: string;
 
 function getRedirectURL(): string {
   try {
@@ -46,9 +43,6 @@ export async function launchOAuthFlow(
     }
     return redirectUrl;
   }
-
-  // Keep browser detection available for callers/debug scenarios
-  void detectBrowser();
 
   // Safari / fallback — popup window
   return launchOAuthPopup();

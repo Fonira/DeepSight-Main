@@ -320,18 +320,14 @@ describe("App — authenticated state", () => {
         },
       }); // GET_PLAN
 
-    // Mock tabs.query for video detection
-    (chrome.tabs.query as jest.Mock).mockImplementation(
-      (_q: unknown, cb: (tabs: unknown[]) => void) => {
-        cb([
-          {
-            id: 1,
-            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            title: "Test Video",
-          },
-        ]);
+    // Mock tabs.query for video detection (Promise-based via webextension-polyfill)
+    (chrome.tabs.query as jest.Mock).mockResolvedValue([
+      {
+        id: 1,
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        title: "Test Video",
       },
-    );
+    ]);
   });
 
   it("shows main view with video detection", async () => {
@@ -355,18 +351,14 @@ describe("App — guest mode", () => {
       authenticated: false,
     });
 
-    // Mock tabs.query for video detection
-    (chrome.tabs.query as jest.Mock).mockImplementation(
-      (_q: unknown, cb: (tabs: unknown[]) => void) => {
-        cb([
-          {
-            id: 1,
-            url: "https://www.youtube.com/watch?v=test123",
-            title: "Test",
-          },
-        ]);
+    // Mock tabs.query for video detection (Promise-based via webextension-polyfill)
+    (chrome.tabs.query as jest.Mock).mockResolvedValue([
+      {
+        id: 1,
+        url: "https://www.youtube.com/watch?v=test123",
+        title: "Test",
       },
-    );
+    ]);
 
     render(<App />);
 

@@ -22,5 +22,6 @@ module.exports = {
   moduleNameMapper: {
     "\\.(css|less|scss)$": "<rootDir>/__tests__/setup/style-mock.ts",
     "\\.(png|jpg|jpeg|gif|svg)$": "<rootDir>/__tests__/setup/file-mock.ts",
+    "^webextension-polyfill$": "<rootDir>/__tests__/setup/polyfill-mock.ts",
   },
 };
