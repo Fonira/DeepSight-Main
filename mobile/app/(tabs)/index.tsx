@@ -25,6 +25,8 @@ import * as Haptics from "expo-haptics";
 import { useAuthStore } from "@/stores/authStore";
 import { useAuth } from "@/contexts/AuthContext";
 import { historyApi, videoApi } from "@/services/api";
+import { OfflineCache, CachePriority } from "@/services/OfflineCache";
+import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { Avatar } from "@/components/ui/Avatar";
 import { YouTubeSearch } from "@/components/home/YouTubeSearch";
 import { URLInput } from "@/components/home/URLInput";
@@ -57,6 +59,7 @@ export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const user = useAuthStore((s) => s.user);
   const { logout } = useAuth();
+  const isOffline = useIsOffline();
   const optionsRef = useRef<SimpleBottomSheetRef>(null);
 
   const [mode, setMode] = useState<InputMode>("search");
@@ -124,6 +127,22 @@ export default function HomeScreen() {
   );
 
   const loadData = useCallback(async () => {
+    // Offline: serve cached items (silent fail on cache miss)
+    if (isOffline) {
+      try {
+        const [cachedRecents, cachedFavorites] = await Promise.all([
+          OfflineCache.get<AnalysisSummary[]>("home_recents"),
+          OfflineCache.get<AnalysisSummary[]>("home_favorites"),
+        ]);
+        if (cachedRecents) setRecents(cachedRecents);
+        if (cachedFavorites) setFavorites(cachedFavorites);
+      } finally {
+        setIsLoading(false);
+        setRefreshing(false);
+      }
+      return;
+    }
+
     try {
       const [historyRes, favRes] = await Promise.all([
         historyApi.getHistory(1, 10),
@@ -131,13 +150,32 @@ export default function HomeScreen() {
       ]);
       setRecents(historyRes.items);
       setFavorites(favRes.items);
+      // Persist for offline (7-day TTL, HIGH priority)
+      await Promise.all([
+        OfflineCache.set("home_recents", historyRes.items, {
+          priority: CachePriority.HIGH,
+          ttlMinutes: 7 * 24 * 60,
+          tags: ["home"],
+        }),
+        OfflineCache.set("home_favorites", favRes.items, {
+          priority: CachePriority.HIGH,
+          ttlMinutes: 7 * 24 * 60,
+          tags: ["home"],
+        }),
+      ]);
     } catch {
-      // Silent fail
+      // Fetch failed — fallback to cache if available
+      const [cachedRecents, cachedFavorites] = await Promise.all([
+        OfflineCache.get<AnalysisSummary[]>("home_recents"),
+        OfflineCache.get<AnalysisSummary[]>("home_favorites"),
+      ]);
+      if (cachedRecents) setRecents(cachedRecents);
+      if (cachedFavorites) setFavorites(cachedFavorites);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [isOffline]);
 
   useEffect(() => {
     loadData();
