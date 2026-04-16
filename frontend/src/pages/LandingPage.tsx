@@ -926,6 +926,22 @@ const LandingPage: React.FC = () => {
             </span>
             <span className="text-base">🇪🇺</span>
           </motion.div>
+
+          {/* Badge Archives pérennes — nouvelle feature R2 thumbnails persistantes */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease, delay: 0.9 }}
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-violet-500/15 via-white/5 to-cyan-500/15 border border-violet-500/25"
+          >
+            <span className="text-base">🗄️</span>
+            <span className="text-xs sm:text-sm font-medium text-text-secondary">
+              {language === "fr"
+                ? "Vos analyses archivées à vie — même si la vidéo disparaît de YouTube"
+                : "Analyses archived forever — even if the video is removed from YouTube"}
+            </span>
+            <span className="text-base">♾️</span>
+          </motion.div>
         </div>
       </section>
 
