@@ -331,7 +331,7 @@ class VoxtralTTSProvider(TTSProvider):
                 f"No Voxtral voice configured for {language}/{gender}"
             )
 
-        from core.config import settings as _settings
+        from core.config import _settings
         resolved_model = model_id or _settings.VOXTRAL_MODEL
 
         payload = {
@@ -428,7 +428,7 @@ class VoxtralTTSProvider(TTSProvider):
         if not resolved_voice:
             raise RuntimeError(f"No Voxtral voice configured for {language}/{gender}")
 
-        from core.config import settings as _settings
+        from core.config import _settings
 
         payload = {
             "model": _settings.VOXTRAL_MODEL,
