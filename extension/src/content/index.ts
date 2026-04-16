@@ -9,7 +9,7 @@ import { ttsStop } from "./tts";
 import { detectExtensions, refreshDetection } from "./coexistence";
 
 import { watchNavigation, isVideoPage, getCurrentVideoId } from "./navigation";
-import { detectTheme, watchTheme } from "./theme";
+import { detectTheme, watchTheme, stopWatchingTheme } from "./theme";
 import {
   createWidgetShell,
   injectWidget,
@@ -511,6 +511,7 @@ async function onNavigate(videoId: string | null): Promise<void> {
   // Cleanup observers
   stopWidgetObserver();
   stopWatchingLayout();
+  stopWatchingTheme();
 
   // Re-detect third-party extensions on SPA navigation
   refreshDetection();

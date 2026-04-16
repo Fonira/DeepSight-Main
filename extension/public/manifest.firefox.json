@@ -13,13 +13,7 @@
     }
   },
 
-  "permissions": [
-    "storage",
-    "activeTab",
-    "tabs",
-    "alarms",
-    "identity"
-  ],
+  "permissions": ["storage", "activeTab", "tabs", "alarms", "identity"],
 
   "host_permissions": [
     "https://www.youtube.com/*",
@@ -54,12 +48,6 @@
       "matches": ["https://www.deepsightsynthesis.com/*"],
       "js": ["authSync.js"],
       "run_at": "document_end"
-    },
-    {
-      "matches": ["https://www.deepsightsynthesis.com/*"],
-      "js": ["authSyncMain.js"],
-      "run_at": "document_end",
-      "world": "MAIN"
     }
   ],
 

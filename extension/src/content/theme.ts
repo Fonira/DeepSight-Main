@@ -58,6 +58,9 @@ let mediaQueryCleanup: (() => void) | null = null;
  * Watch for theme changes via DOM mutations AND prefers-color-scheme changes.
  */
 export function watchTheme(callback: ThemeCallback): void {
+  // Cleanup any previous watchers to prevent orphaned observers
+  stopWatchingTheme();
+
   // Watch YouTube DOM attribute changes
   const observer = new MutationObserver(() => {
     callback(detectTheme());
