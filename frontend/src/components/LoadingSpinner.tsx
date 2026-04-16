@@ -1,16 +1,25 @@
 /**
- * 🔄 LOADING SPINNER v4.0 — Deep Sight
- * Spinner de chargement avec vidéo du logo animé
- * Inclut une barre de progression optionnelle
- * 🆕 v4.0: Intégration du widget "Le Saviez-Vous"
+ * 🔄 LOADING SPINNER v5.0 — Deep Sight Aurora
+ * Spinner CSS pur basé sur le vrai logo DeepSight avec effets magiques cumulables.
+ * 60fps, zéro vidéo, zéro dépendance, respecte prefers-reduced-motion.
+ * 🆕 v5.0: Aurora spinner avec blades/flames/water/sparks/rings via preset "magic"
  */
 
-import React, { useRef, useEffect, useState } from "react";
+import React from "react";
 import { LoadingWordCompact } from "./LoadingWord";
+import "./Spinner.css";
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎬 VIDEO LOADING SPINNER — Composant principal
+// 🎬 LOADING SPINNER — Composant principal
 // ═══════════════════════════════════════════════════════════════════════════════
+
+export type SpinnerEffect =
+  | "blades"
+  | "flames"
+  | "water"
+  | "sparks"
+  | "rings"
+  | "magic";
 
 interface LoadingSpinnerProps {
   /** Taille du spinner */
@@ -31,16 +40,39 @@ interface LoadingSpinnerProps {
   variant?: "nautical" | "gold" | "video";
   /** 🆕 Afficher le widget "Le Saviez-Vous" */
   showWord?: boolean;
+  /** Effets magiques (défaut: ["magic"] pour md+, aucun pour xs/sm) */
+  effects?: SpinnerEffect[];
+  /** Vitesse rotation en secondes (override auto) */
+  speed?: number;
+  /** Sens rotation inversé */
+  reverse?: boolean;
+  /** URL logo (défaut: /deepsight-logo.png) */
+  logoSrc?: string;
 }
 
-const sizeMap = {
+const sizeMap: Record<string, number> = {
   xs: 32,
   sm: 48,
-  md: 64,
-  lg: 96,
-  xl: 128,
-  hero: 200,
+  md: 96,
+  lg: 160,
+  xl: 240,
+  hero: 360,
 };
+
+/** Durée rotation par défaut basée sur taille en px (petit = rapide, grand = hypnotique) */
+function defaultDuration(px: number): number {
+  if (px <= 48) return 2.2;
+  if (px <= 96) return 3.5;
+  if (px <= 160) return 5;
+  return 7;
+}
+
+/** Effets par défaut basés sur taille */
+function defaultEffects(px: number): SpinnerEffect[] {
+  if (px < 56) return []; // trop petit pour que les effets soient lisibles
+  if (px < 128) return ["flames", "sparks"];
+  return ["magic"];
+}
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = "md",
@@ -51,34 +83,30 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   className = "",
   label = "Chargement en cours...",
   showWord = false,
+  effects,
+  speed,
+  reverse = false,
+  logoSrc = "/deepsight-logo.png",
 }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoError, setVideoError] = useState(false);
   const pixelSize = typeof size === "number" ? size : sizeMap[size];
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const playVideo = async () => {
-      try {
-        await video.play();
-      } catch {
-        // Autoplay bloqué, on continue
-      }
-    };
-
-    video.addEventListener("canplay", playVideo);
-    video.addEventListener("error", () => setVideoError(true));
-
-    if (video.readyState >= 3) playVideo();
-
-    return () => {
-      video.removeEventListener("canplay", playVideo);
-    };
-  }, []);
-
+  const resolvedEffects = effects ?? defaultEffects(pixelSize);
+  const resolvedSpeed = speed ?? defaultDuration(pixelSize);
   const hasProgress = showProgress || typeof progress === "number";
+
+  const fxClasses = resolvedEffects.map((e) => `ds-spinner--fx-${e}`);
+  const spinnerClasses = [
+    "ds-spinner",
+    reverse ? "ds-spinner--reverse" : "",
+    ...fxClasses,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const spinnerStyle: React.CSSProperties = {
+    width: pixelSize,
+    height: pixelSize,
+    ["--ds-spin-duration" as string]: `${resolvedSpeed}s`,
+  } as React.CSSProperties;
 
   const spinner = (
     <div
@@ -87,37 +115,23 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       aria-live="polite"
       aria-busy="true"
     >
-      {/* Conteneur vidéo/logo */}
-      <div className="relative" style={{ width: pixelSize, height: pixelSize }}>
-        {/* Glow effect */}
-        <div
-          className="absolute inset-0 rounded-full opacity-50"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(74, 144, 217, 0.3) 0%, rgba(212, 165, 116, 0.2) 50%, transparent 70%)",
-            filter: "blur(20px)",
-            transform: "scale(1.4)",
-          }}
-        />
-
-        {/* Vidéo ou fallback SVG */}
-        {!videoError ? (
-          <video
-            ref={videoRef}
-            className="w-full h-full object-contain relative z-10"
-            src="/logo-animation.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            style={{
-              filter: "drop-shadow(0 0 15px rgba(74, 144, 217, 0.3))",
-            }}
+      <div className={spinnerClasses} style={spinnerStyle} aria-label={label}>
+        <div className="ds-spinner__water" aria-hidden="true" />
+        <div className="ds-spinner__flames" aria-hidden="true" />
+        <div className="ds-spinner__blades" aria-hidden="true" />
+        <div className="ds-spinner__rings" aria-hidden="true" />
+        <div className="ds-spinner__wheel">
+          <img
+            className="ds-spinner__img"
+            src={logoSrc}
+            alt=""
+            draggable={false}
+            aria-hidden="true"
           />
-        ) : (
-          <FallbackSpinner size={pixelSize} />
-        )}
+        </div>
+        <div className="ds-spinner__pulse" aria-hidden="true" />
+        <div className="ds-spinner__ring" aria-hidden="true" />
+        <div className="ds-spinner__sparks" aria-hidden="true" />
       </div>
 
       {/* Barre de progression */}
@@ -128,7 +142,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
               className="h-full rounded-full transition-all duration-300 ease-out"
               style={{
                 width: `${progress ?? 0}%`,
-                background: "linear-gradient(90deg, #4A7BA7, #C4935A, #6B4380)",
+                background: "linear-gradient(90deg, #6366f1, #8b5cf6, #fb923c)",
               }}
             />
           </div>
@@ -147,7 +161,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         </p>
       )}
 
-      {/* 🆕 Widget "Le Saviez-Vous" */}
+      {/* Widget "Le Saviez-Vous" */}
       {showWord && (
         <div className="mt-4 max-w-sm">
           <LoadingWordCompact />
@@ -168,45 +182,6 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
   return spinner;
 };
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🎯 FALLBACK SVG SPINNER
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const FallbackSpinner: React.FC<{ size: number }> = ({ size }) => (
-  <svg
-    viewBox="0 0 200 200"
-    width={size}
-    height={size}
-    className="relative z-10"
-  >
-    <defs>
-      <linearGradient id="spinnerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#5B8DB8" />
-        <stop offset="50%" stopColor="#C4935A" />
-        <stop offset="100%" stopColor="#6B4380" />
-      </linearGradient>
-    </defs>
-    <g
-      style={{
-        transformOrigin: "100px 100px",
-        animation: "spin 2s linear infinite",
-      }}
-    >
-      <path
-        d="M 100 30 C 145 30, 175 55, 180 100 C 175 145, 145 170, 100 170 C 55 170, 25 145, 20 100 C 25 55, 55 30, 100 30 Z"
-        fill="none"
-        stroke="url(#spinnerGradient)"
-        strokeWidth="8"
-        strokeLinecap="round"
-      />
-    </g>
-    <circle cx="100" cy="100" r="35" fill="#1a1a2e" />
-    <polygon points="90,80 90,120 115,100" fill="white" opacity="0.9" />
-    <circle cx="125" cy="75" r="8" fill="white" opacity="0.9" />
-    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-  </svg>
-);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 LOADING OVERLAY
@@ -280,7 +255,7 @@ export const VideoAnalysisLoading: React.FC<{
             className="h-full rounded-full transition-all duration-500 ease-out"
             style={{
               width: `${progress}%`,
-              background: "linear-gradient(90deg, #4A7BA7, #C4935A, #6B4380)",
+              background: "linear-gradient(90deg, #6366f1, #8b5cf6, #fb923c)",
             }}
           />
         </div>
@@ -290,7 +265,6 @@ export const VideoAnalysisLoading: React.FC<{
         </div>
       </div>
 
-      {/* 🆕 Widget "Le Saviez-Vous" */}
       {showWord && (
         <div className="mt-4 max-w-sm">
           <LoadingWordCompact />

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DeepSight Spinner — effets magiques</title>
+<link rel="stylesheet" href="Spinner.css" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0f;
+    color: #e5e5e5;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    padding: 48px 24px;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(251, 146, 60, 0.06) 0%, transparent 50%);
+  }
+  .wrap { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 72px; }
+  h1 { font-size: 28px; font-weight: 600; text-align: center; letter-spacing: 0.5px; }
+  h2 {
+    font-size: 14px; font-weight: 500; text-transform: uppercase;
+    letter-spacing: 3px; color: rgba(255, 255, 255, 0.5);
+    text-align: center; margin-bottom: 24px;
+  }
+  .row {
+    display: flex; gap: 80px; align-items: center;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255, 255, 255, 0.5); }
+  .section { padding-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+  .hero { display: flex; justify-content: center; padding: 40px 0; }
+
+  /* remap .ds-spinner__img src via HTML (relatif au fichier) */
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>DeepSight Spinner — effets magiques</h1>
+
+  <!-- HERO : MAGIC (tout combiné) -->
+  <section>
+    <h2>Preset « magic » — tout combiné</h2>
+    <div class="hero">
+      <div class="cell">
+        <div class="ds-spinner ds-spinner--lg ds-spinner--fx-magic" role="status" aria-label="Chargement…">
+          <div class="ds-spinner__water"></div>
+          <div class="ds-spinner__flames"></div>
+          <div class="ds-spinner__blades"></div>
+          <div class="ds-spinner__rings"></div>
+          <div class="ds-spinner__wheel"><img class="ds-spinner__img" src="deepsight-logo.png" alt="" /></div>
+          <div class="ds-spinner__pulse"></div>
+          <div class="ds-spinner__ring"></div>
+          <div class="ds-spinner__sparks"></div>
+        </div>
+        <div class="label">Large · magic (blades + flames + water + sparks + rings)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Effets isolés -->
+  <section class="section">
+    <h2>Effets isolés</h2>
+    <div class="row">
+
+      <div class="cell">
+        <div class="ds-spinner ds-spinner--md ds-spinner--fx-blades" role="status">
+          <div class="ds-spinner__blades"></div>
+          <div class="ds-spinner__wheel"><img class="ds-spinner__img" src="deepsight-logo.png" alt="" /></div>
+          <div class="ds-spinner__pulse"></div>
+          <div class="ds-spinner__ring"></div>
+        </div>
+        <div class="label">blades (scie vitesse)</div>
+      </div>
+
+      <div class="cell">
+        <div class="ds-spinner ds-spinner--md ds-spinner--fx-flames" role="status">
+          <div class="ds-spinner__flames"></div>
+          <div class="ds-spinner__wheel"><img class="ds-spinner__img" src="deepsight-logo.png" alt="" /></div>
+          <div class="ds-spinner__pulse"></div>
+          <div class="ds-spinner__ring"></div>
+        </div>
+        <div class="label">flames (orange/rouge)</div>
+      </div>
+
+      <div class="cell">
+        <div class="ds-spinner ds-spinner--md ds-spinner--fx-water" role="status">
+          <div class="ds-spinner__water"></div>
+          <div class="ds-spinner__wheel"><img class="ds-spinner__img" src="deepsight-logo.png" alt="" /></div>
+          <div class="ds-spinner__pulse"></div>
+          <div class="ds-spinner__ring"></div>
+        </div>
+        <div class="label">water (cyan/bleu)</div>
+      </div>
+
+      <div class="cell">
+        <div class="ds-spinner ds-spinner--md ds-spinner--fx-sparks" role="status">
+          <div class="ds-spinner__wheel"><img class="ds-spinner__img" src="deepsight-logo.png" alt="" /></div>
+          <div class="ds-spinner__pulse"></div>
+          <div class="ds-spinner__ring"></div>
+          <div class="ds-spinner__sparks"></div>
+        </div>
+        <div class="label">sparks (étincelles)</div>
+      </div>
+
+      <div class="cell">
+        <div class="ds-spinner ds-spinner--md ds-spinner--fx-rings" role="status">
+          <div class="ds-spinner__rings"></div>
+          <div class="ds-spinner__wheel"><img class="ds-spinner__img" src="deepsight-logo.png" alt="" /></div>
+          <div class="ds-spinner__pulse"></div>
+          <div class="ds-spinner__ring"></div>
+        </div>
+        <div class="label">rings (ondes)</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Combos + tailles -->
+  <section class="section">
+    <h2>Combos feu+eau / scie+sparks · tailles</h2>
+    <div class="row">
+
+      <div class="cell">
+        <div class="ds-spinner ds-spinner--md ds-spinner--fx-flames ds-spinner--fx-water" role="status">
+          <div class="ds-spinner__water"></div>
+          <div class="ds-spinner__flames"></div>
+          <div class="ds-spinner__wheel"><img class="ds-spinner__img" src="deepsight-logo.png" alt="" /></div>
+          <div class="ds-spinner__pulse"></div>
+          <div class="ds-spinner__ring"></div>
+        </div>
+        <div class="label">feu + eau</div>
+      </div>
+
+      <div class="cell">
+        <div class="ds-spinner ds-spinner--md ds-spinner--fx-blades ds-spinner--fx-sparks" role="status">
+          <div class="ds-spinner__blades"></div>
+          <div class="ds-spinner__wheel"><img class="ds-spinner__img" src="deepsight-logo.png" alt="" /></div>
+          <div class="ds-spinner__pulse"></div>
+          <div class="ds-spinner__ring"></div>
+          <div class="ds-spinner__sparks"></div>
+        </div>
+        <div class="label">scie + étincelles</div>
+      </div>
+
+      <div class="cell">
+        <div class="ds-spinner ds-spinner--sm ds-spinner--fx-magic" role="status">
+          <div class="ds-spinner__water"></div>
+          <div class="ds-spinner__flames"></div>
+          <div class="ds-spinner__blades"></div>
+          <div class="ds-spinner__rings"></div>
+          <div class="ds-spinner__wheel"><img class="ds-spinner__img" src="deepsight-logo.png" alt="" /></div>
+          <div class="ds-spinner__pulse"></div>
+          <div class="ds-spinner__ring"></div>
+          <div class="ds-spinner__sparks"></div>
+        </div>
+        <div class="label">magic · small 96px</div>
+      </div>
+
+    </div>
+  </section>
+</div>
+</body>
+</html>

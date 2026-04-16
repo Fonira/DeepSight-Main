@@ -1,9 +1,7 @@
 /**
- * DeepSight Spinner — Real DeepSight logo (cosmic compass/helm)
- * with animated flame particles rotating around it.
- *
- * Uses the actual app icon (spinner-cosmic.jpg) at center,
- * with 4 colored flame particles orbiting + pulsing.
+ * DeepSight Spinner v2.0 — Aurora édition
+ * Vrai logo DeepSight qui tourne + flammes orbitantes + halo pulsant.
+ * Port Reanimated du spinner CSS web. Respecte reduce motion via isAnimating.
  */
 
 import React, { useEffect } from "react";
@@ -20,8 +18,8 @@ import Animated, {
 import { useTheme } from "../../contexts/ThemeContext";
 import { fontFamily, fontSize } from "../../theme/typography";
 
-// Real DeepSight logo asset
-const LOGO_SOURCE = require("../../../assets/images/spinner-cosmic.jpg");
+// Vrai logo DeepSight (1024x1024, vignette radiale, fond noir)
+const LOGO_SOURCE = require("../../../assets/images/deepsight-logo.png");
 
 type SpinnerSize = "xs" | "sm" | "md" | "lg" | "xl";
 type SpeedPreset = "slow" | "normal" | "fast";
@@ -29,18 +27,26 @@ type SpeedPreset = "slow" | "normal" | "fast";
 const sizeMap: Record<SpinnerSize, number> = {
   xs: 28,
   sm: 40,
-  md: 56,
-  lg: 80,
-  xl: 120,
+  md: 64,
+  lg: 96,
+  xl: 140,
 };
 
 const speedMap: Record<SpeedPreset, number> = {
-  slow: 4000,
-  normal: 2500,
-  fast: 1500,
+  slow: 5000,
+  normal: 3500,
+  fast: 2000,
 };
 
-const FLAME_COLORS = ["#8b5cf6", "#f59e0b", "#3b82f6", "#ef4444"] as const;
+// Palette aurora (identique au web)
+const FLAME_COLORS = [
+  "#fbbf24", // or
+  "#8b5cf6", // violet
+  "#06b6d4", // cyan
+  "#ec4899", // rose
+  "#fb923c", // orange
+  "#6366f1", // indigo
+] as const;
 
 interface DeepSightSpinnerProps {
   size?: SpinnerSize;
@@ -48,11 +54,11 @@ interface DeepSightSpinnerProps {
   showLabel?: boolean;
   duration?: number;
   speed?: SpeedPreset;
-  /** Backward compat — ignored */
+  /** Rétrocompat — ignoré */
   color?: string;
-  /** Backward compat — ignored */
+  /** Rétrocompat — ignoré */
   showGlow?: boolean;
-  /** Backward compat — ignored */
+  /** Rétrocompat — ignoré */
   source?: any;
   isAnimating?: boolean;
   style?: object;
@@ -68,68 +74,82 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
   style,
 }) => {
   const { colors } = useTheme();
-  const resolvedDuration = duration ?? (speed ? speedMap[speed] : 2500);
+  const resolvedDuration = duration ?? (speed ? speedMap[speed] : 3500);
   const pixelSize = sizeMap[size];
 
+  // Animations partagées
   const rotation = useSharedValue(0);
+  const counterRotation = useSharedValue(0);
   const logoScale = useSharedValue(1);
-  const scales = [
-    useSharedValue(1),
-    useSharedValue(1),
-    useSharedValue(1),
-    useSharedValue(1),
-  ];
+  const haloOpacity = useSharedValue(0.55);
+  const flameScales = FLAME_COLORS.map(() => useSharedValue(1));
   const labelOpacity = useSharedValue(0.6);
 
   useEffect(() => {
     if (!isAnimating) return;
 
-    // Continuous rotation of flame ring
+    // Logo rotation
     rotation.value = withRepeat(
       withTiming(360, { duration: resolvedDuration, easing: Easing.linear }),
       -1,
       false,
     );
 
-    // Gentle logo pulse (breathe effect)
+    // Particules en contre-rotation (effet scie inversée)
+    counterRotation.value = withRepeat(
+      withTiming(-360, {
+        duration: resolvedDuration * 0.7,
+        easing: Easing.linear,
+      }),
+      -1,
+      false,
+    );
+
+    // Pulsation logo (breathe)
     logoScale.value = withRepeat(
       withSequence(
-        withTiming(1.08, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.95, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1.06, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.97, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
       true,
     );
 
-    // Pulsing flames — each offset by 150ms
-    scales.forEach((scale, i) => {
+    // Halo pulse
+    haloOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.95, { duration: 1750, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.55, { duration: 1750, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      true,
+    );
+
+    // Flammes : chaque particule pulse avec décalage
+    flameScales.forEach((scale, i) => {
       setTimeout(() => {
         scale.value = withRepeat(
           withSequence(
-            withTiming(1.3, {
-              duration: 500,
+            withTiming(1.4, {
+              duration: 450,
               easing: Easing.inOut(Easing.ease),
             }),
             withTiming(0.7, {
-              duration: 500,
+              duration: 450,
               easing: Easing.inOut(Easing.ease),
             }),
           ),
           -1,
           true,
         );
-      }, i * 150);
+      }, i * 120);
     });
 
-    // Label pulse
     if (showLabel) {
       labelOpacity.value = withRepeat(
         withSequence(
           withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.5, {
-            duration: 1000,
-            easing: Easing.inOut(Easing.ease),
-          }),
+          withTiming(0.5, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
         ),
         -1,
         true,
@@ -142,19 +162,28 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
+  const counterStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${counterRotation.value}deg` }],
+  }));
+
   const logoAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: logoScale.value }],
+  }));
+
+  const haloStyle = useAnimatedStyle(() => ({
+    opacity: haloOpacity.value,
   }));
 
   const labelStyle = useAnimatedStyle(() => ({
     opacity: labelOpacity.value,
   }));
 
-  // Outer container is larger to accommodate the orbiting flames
   const outerSize = pixelSize * 1.6;
   const logoSize = pixelSize;
-  const flameRadius = pixelSize * 0.7;
-  const flameSize = Math.max(pixelSize * 0.14, 5);
+  const flameRadius = pixelSize * 0.72;
+  const flameSize = Math.max(pixelSize * 0.12, 4);
+  const showFlames = pixelSize >= 40;
+  const showHalo = pixelSize >= 48;
 
   return (
     <View style={[styles.container, style]}>
@@ -166,52 +195,104 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
           justifyContent: "center",
         }}
       >
-        {/* Real DeepSight Logo at center — round with glow */}
-        <Animated.View style={[styles.logoWrapper, logoAnimStyle]}>
-          <Image
-            source={LOGO_SOURCE}
+        {/* Halo aurora pulsant (derrière) */}
+        {showHalo && (
+          <Animated.View
             style={[
-              styles.logo,
               {
-                width: logoSize,
-                height: logoSize,
-                borderRadius: logoSize / 2,
+                position: "absolute",
+                width: outerSize,
+                height: outerSize,
+                borderRadius: outerSize / 2,
+                backgroundColor: "transparent",
+                shadowColor: "#8b5cf6",
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.8,
+                shadowRadius: outerSize * 0.3,
+                elevation: 20,
               },
+              haloStyle,
             ]}
-            resizeMode="cover"
-          />
+          >
+            <View
+              style={{
+                width: outerSize * 0.7,
+                height: outerSize * 0.7,
+                borderRadius: outerSize * 0.35,
+                backgroundColor: "#6366f1",
+                opacity: 0.15,
+                position: "absolute",
+                top: outerSize * 0.15,
+                left: outerSize * 0.15,
+              }}
+            />
+            <View
+              style={{
+                width: outerSize * 0.5,
+                height: outerSize * 0.5,
+                borderRadius: outerSize * 0.25,
+                backgroundColor: "#fb923c",
+                opacity: 0.12,
+                position: "absolute",
+                top: outerSize * 0.25,
+                left: outerSize * 0.3,
+              }}
+            />
+          </Animated.View>
+        )}
+
+        {/* Logo DeepSight qui tourne */}
+        <Animated.View style={[styles.logoWrapper, rotationStyle]}>
+          <Animated.View style={logoAnimStyle}>
+            <Image
+              source={LOGO_SOURCE}
+              style={[
+                styles.logo,
+                {
+                  width: logoSize,
+                  height: logoSize,
+                  borderRadius: logoSize / 2,
+                },
+              ]}
+              resizeMode="cover"
+            />
+          </Animated.View>
         </Animated.View>
 
-        {/* Rotating flames ring */}
-        <Animated.View
-          style={[
-            {
-              width: outerSize,
-              height: outerSize,
-              position: "absolute",
-            },
-            rotationStyle,
-          ]}
-        >
-          {FLAME_COLORS.map((color, i) => {
-            const angle = (i / 4) * 2 * Math.PI - Math.PI / 2;
-            const x =
-              Math.cos(angle) * flameRadius + outerSize / 2 - flameSize / 2;
-            const y =
-              Math.sin(angle) * flameRadius + outerSize / 2 - flameSize / 2;
+        {/* Anneau de flammes orbitantes (contre-rotation) */}
+        {showFlames && (
+          <Animated.View
+            style={[
+              {
+                width: outerSize,
+                height: outerSize,
+                position: "absolute",
+              },
+              counterStyle,
+            ]}
+            pointerEvents="none"
+          >
+            {FLAME_COLORS.map((color, i) => {
+              const angle =
+                (i / FLAME_COLORS.length) * 2 * Math.PI - Math.PI / 2;
+              const x =
+                Math.cos(angle) * flameRadius + outerSize / 2 - flameSize / 2;
+              const y =
+                Math.sin(angle) * flameRadius + outerSize / 2 - flameSize / 2;
 
-            return (
-              <FlameParticle
-                key={i}
-                color={color}
-                x={x}
-                y={y}
-                particleSize={flameSize}
-                scaleValue={scales[i]}
-              />
-            );
-          })}
-        </Animated.View>
+              return (
+                <FlameParticle
+                  key={i}
+                  color={color}
+                  x={x}
+                  y={y}
+                  particleSize={flameSize}
+                  scaleValue={flameScales[i]}
+                />
+              );
+            })}
+          </Animated.View>
+        )}
       </View>
 
       {showLabel && (
@@ -255,11 +336,10 @@ const FlameParticle: React.FC<FlameParticleProps> = ({
           height: particleSize,
           borderRadius: particleSize / 2,
           backgroundColor: color,
-          // Glow effect via shadow
           shadowColor: color,
           shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.8,
-          shadowRadius: particleSize,
+          shadowOpacity: 0.9,
+          shadowRadius: particleSize * 1.2,
           elevation: 6,
         },
         style,
@@ -274,8 +354,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   logoWrapper: {
-    zIndex: 1,
-    // Glow effect around the logo
+    zIndex: 10,
     shadowColor: "#8b5cf6",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
@@ -283,7 +362,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   logo: {
-    // The image is round-cropped
     overflow: "hidden",
   },
   label: {

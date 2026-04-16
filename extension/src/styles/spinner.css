@@ -1,0 +1,227 @@
+/* DeepSight Aurora Spinner — CSS pur, 60fps, basé sur le vrai logo */
+
+.ds-spinner {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: visible;
+  isolation: isolate;
+}
+
+.ds-spinner::before {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(99, 102, 241, 0.35) 0%, transparent 55%),
+    radial-gradient(circle at 70% 60%, rgba(251, 146, 60, 0.30) 0%, transparent 55%),
+    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.25) 0%, transparent 65%);
+  filter: blur(24px);
+  animation: ds-halo-pulse 3.5s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.ds-spinner__blades {
+  position: absolute;
+  inset: -8%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(251, 191, 36, 0.55) 18deg,
+    rgba(255, 255, 255, 0.85) 22deg,
+    rgba(251, 191, 36, 0.55) 26deg,
+    transparent 34deg,
+    transparent 100deg,
+    rgba(139, 92, 246, 0.55) 108deg,
+    rgba(255, 255, 255, 0.85) 112deg,
+    rgba(139, 92, 246, 0.55) 116deg,
+    transparent 124deg,
+    transparent 190deg,
+    rgba(6, 182, 212, 0.55) 198deg,
+    rgba(255, 255, 255, 0.85) 202deg,
+    rgba(6, 182, 212, 0.55) 206deg,
+    transparent 214deg,
+    transparent 280deg,
+    rgba(236, 72, 153, 0.55) 288deg,
+    rgba(255, 255, 255, 0.85) 292deg,
+    rgba(236, 72, 153, 0.55) 296deg,
+    transparent 304deg,
+    transparent 360deg
+  );
+  -webkit-mask-image: radial-gradient(circle, transparent 48%, black 52%, black 62%, transparent 72%);
+  mask-image: radial-gradient(circle, transparent 48%, black 52%, black 62%, transparent 72%);
+  filter: blur(3px);
+  animation: ds-spin-fast calc(var(--ds-spin-duration, 3s) * 0.55) linear infinite;
+  mix-blend-mode: screen;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.ds-spinner__flames {
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  animation: ds-spin calc(var(--ds-spin-duration, 3s) * 1.2) linear infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+.ds-spinner__flames::before,
+.ds-spinner__flames::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 6%,  rgba(251, 146, 60, 0.90) 0%, rgba(239, 68, 68, 0.55) 4%, transparent 10%),
+    radial-gradient(circle at 94% 50%, rgba(251, 191, 36, 0.85) 0%, rgba(239, 68, 68, 0.50) 4%, transparent 10%),
+    radial-gradient(circle at 50% 94%, rgba(239, 68, 68, 0.90) 0%, rgba(251, 146, 60, 0.55) 4%, transparent 10%),
+    radial-gradient(circle at 6% 50%,  rgba(251, 146, 60, 0.85) 0%, rgba(239, 68, 68, 0.50) 4%, transparent 10%);
+  filter: blur(6px);
+  mix-blend-mode: screen;
+  animation: ds-flicker 0.18s steps(3) infinite;
+}
+.ds-spinner__flames::after {
+  transform: rotate(45deg);
+  animation-delay: -0.09s;
+}
+
+.ds-spinner__sparks {
+  position: absolute;
+  inset: -25%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.95) 0%, transparent 0.6%),
+    radial-gradient(circle at 85% 15%, rgba(251, 191, 36, 0.90) 0%, transparent 0.5%),
+    radial-gradient(circle at 80% 85%, rgba(255, 255, 255, 0.90) 0%, transparent 0.6%),
+    radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.90) 0%, transparent 0.5%),
+    radial-gradient(circle at 50% 10%, rgba(6, 182, 212, 0.85) 0%, transparent 0.4%),
+    radial-gradient(circle at 95% 50%, rgba(255, 255, 255, 0.95) 0%, transparent 0.5%);
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9));
+  animation:
+    ds-spin calc(var(--ds-spin-duration, 3s) * 0.7) linear infinite,
+    ds-sparkle 0.4s steps(2) infinite;
+  mix-blend-mode: screen;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.ds-spinner__wheel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 1;
+  animation: ds-spin var(--ds-spin-duration, 3s) linear infinite;
+  will-change: transform;
+  box-shadow:
+    0 0 24px rgba(99, 102, 241, 0.35),
+    0 0 48px rgba(251, 146, 60, 0.20),
+    inset 0 0 40px rgba(0, 0, 0, 0.6);
+}
+
+.ds-spinner__img {
+  display: block;
+  width: 112%;
+  height: 112%;
+  margin: -6%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+}
+
+.ds-spinner__pulse {
+  position: absolute;
+  inset: 20%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 210, 140, 0.55) 0%,
+    rgba(255, 150, 80, 0.25) 40%,
+    transparent 72%
+  );
+  mix-blend-mode: screen;
+  filter: blur(10px);
+  animation: ds-pulse 2.2s ease-in-out infinite;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ds-spinner__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 20px rgba(139, 92, 246, 0.4);
+  z-index: 3;
+  pointer-events: none;
+}
+
+@keyframes ds-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes ds-spin-fast { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes ds-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50%      { opacity: 0.95; transform: scale(1.08); }
+}
+@keyframes ds-halo-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.95; transform: scale(1.08); }
+}
+@keyframes ds-flicker {
+  0%   { opacity: 0.7;  transform: scale(1); }
+  33%  { opacity: 1.0;  transform: scale(1.05); }
+  66%  { opacity: 0.85; transform: scale(0.98); }
+  100% { opacity: 0.9;  transform: scale(1.02); }
+}
+@keyframes ds-sparkle {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* Cachés par défaut */
+.ds-spinner__blades,
+.ds-spinner__flames,
+.ds-spinner__sparks {
+  display: none;
+}
+
+.ds-spinner--fx-flames .ds-spinner__flames,
+.ds-spinner--fx-blades .ds-spinner__blades,
+.ds-spinner--fx-sparks .ds-spinner__sparks {
+  display: block;
+}
+
+.ds-spinner--fx-magic .ds-spinner__blades,
+.ds-spinner--fx-magic .ds-spinner__flames,
+.ds-spinner--fx-magic .ds-spinner__sparks {
+  display: block;
+}
+
+.ds-spinner--label {
+  font-size: 13px;
+  color: var(--text-tertiary, rgba(255,255,255,0.6));
+  margin-top: 8px;
+  text-align: center;
+  animation: ds-pulse 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-spinner::before,
+  .ds-spinner__wheel,
+  .ds-spinner__pulse,
+  .ds-spinner__blades,
+  .ds-spinner__flames,
+  .ds-spinner__flames::before,
+  .ds-spinner__flames::after,
+  .ds-spinner__sparks {
+    animation: none !important;
+  }
+  .ds-spinner__wheel { transform: rotate(0deg); }
+}
