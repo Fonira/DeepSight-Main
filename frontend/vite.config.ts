@@ -51,7 +51,7 @@ export default defineConfig({
     // Utiliser esbuild (par défaut) au lieu de terser
     // esbuild est beaucoup plus rapide et inclus dans Vite
     minify: "esbuild",
-    target: "es2020",
+    target: "es2018",
   },
 
   // Optimisations pour le dev
