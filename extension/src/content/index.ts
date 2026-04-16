@@ -123,7 +123,7 @@ function tryInjectWidget(): void {
         hostEl.style.display = "none";
       } else if (mode === "theater") {
         hostEl.style.cssText =
-          "all:initial;position:fixed;bottom:20px;right:20px;width:380px;max-height:80vh;z-index:99999;";
+          "all:initial;position:fixed;bottom:20px;right:20px;width:380px;max-height:80vh;z-index:2147483646;";
         hostEl.style.display = "";
       } else {
         hostEl.style.cssText =
@@ -204,13 +204,28 @@ async function initCard(): Promise<void> {
 }
 
 function getVideoTitle(): string {
-  // YouTube: titre dans le DOM
-  const el =
+  // Priority 1: og:title meta (never in shadow DOM, never touched by extensions)
+  const ogTitle = document.querySelector('meta[property="og:title"]');
+  if (ogTitle instanceof HTMLMetaElement && ogTitle.content) return ogTitle.content;
+
+  // Priority 2: name=title meta
+  const metaTitle = document.querySelector('meta[name="title"]');
+  if (metaTitle instanceof HTMLMetaElement && metaTitle.content) return metaTitle.content;
+
+  // Priority 3: YouTube DOM selectors (may break with shadow DOM A/B tests)
+  const domTitle =
     document.querySelector("ytd-watch-metadata h1 yt-formatted-string") ??
-    document.querySelector("h1.title") ??
-    document.querySelector('meta[name="title"]');
-  if (el instanceof HTMLMetaElement) return el.content;
-  return el?.textContent?.trim() ?? "";
+    document.querySelector("h1.title yt-formatted-string") ??
+    document.querySelector("h1.title");
+  if (domTitle?.textContent?.trim()) return domTitle.textContent.trim();
+
+  // Priority 4: document.title cleanup
+  const pageTitle = document.title
+    .replace(/\s*[-–—]\s*YouTube\s*$/, "")
+    .trim();
+  if (pageTitle) return pageTitle;
+
+  return "";
 }
 
 // ── Analyse ──
