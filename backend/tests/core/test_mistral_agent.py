@@ -358,7 +358,7 @@ class TestWebSearchProviderIntegration:
             latency_ms=500,
         )
 
-        with patch("core.config.is_mistral_agent_available", return_value=True), \
+        with patch("videos.web_search_provider.is_mistral_agent_available", return_value=True), \
              patch("core.mistral_agent.agent_web_search", new_callable=AsyncMock, return_value=mock_result):
 
             result = await _try_agent_search(
@@ -376,7 +376,7 @@ class TestWebSearchProviderIntegration:
         """When agent is disabled, _try_agent_search returns None."""
         from videos.web_search_provider import _try_agent_search
 
-        with patch("core.config.is_mistral_agent_available", return_value=False):
+        with patch("videos.web_search_provider.is_mistral_agent_available", return_value=False):
             result = await _try_agent_search(
                 query="test", context="test", purpose="chat",
             )
@@ -388,7 +388,7 @@ class TestWebSearchProviderIntegration:
         """When agent raises exception, returns None (caller falls back to Brave)."""
         from videos.web_search_provider import _try_agent_search
 
-        with patch("core.config.is_mistral_agent_available", return_value=True), \
+        with patch("videos.web_search_provider.is_mistral_agent_available", return_value=True), \
              patch("core.mistral_agent.agent_web_search", new_callable=AsyncMock, side_effect=Exception("API down")):
 
             result = await _try_agent_search(
