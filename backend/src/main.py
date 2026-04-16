@@ -1100,6 +1100,21 @@ if DOCUMENTS_ROUTER_AVAILABLE:
     logger.info("📄 Documents router loaded (POST /api/documents/analyze-url, /analyze-upload, /ocr-only)")
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🖼️ THUMBNAIL STATIC FILES (local VPS fallback when R2 creds not available)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_THUMB_DIR = os.environ.get("THUMBNAIL_LOCAL_DIR", "/app/data/thumbnails")
+_THUMB_URL = os.environ.get("THUMBNAIL_BASE_URL", "")
+if _THUMB_URL:
+    try:
+        from fastapi.staticfiles import StaticFiles
+        os.makedirs(_THUMB_DIR, exist_ok=True)
+        app.mount("/api/thumbnails", StaticFiles(directory=_THUMB_DIR), name="thumbnails")
+        logger.info(f"🖼️ Thumbnail static files mounted at /api/thumbnails → {_THUMB_DIR}")
+    except Exception as e:
+        logger.warning(f"⚠️ Thumbnail static mount failed: {e}")
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE
 # ═══════════════════════════════════════════════════════════════════════════════
 
