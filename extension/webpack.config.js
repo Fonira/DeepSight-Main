@@ -47,8 +47,11 @@ module.exports = (env, argv) => {
     },
     resolve: {
       extensions: [".ts", ".tsx", ".js"],
-      // Preact aliases will be activated in Phase 4
-      // alias: { react: "preact/compat", "react-dom": "preact/compat" },
+      alias: {
+        react: "preact/compat",
+        "react-dom": "preact/compat",
+        "react/jsx-runtime": "preact/jsx-runtime",
+      },
     },
     plugins: [
       new webpack.DefinePlugin({

@@ -36,8 +36,7 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "preact": "^10.29.1",
     "webextension-polyfill": "^0.12.0"
   }
 }
