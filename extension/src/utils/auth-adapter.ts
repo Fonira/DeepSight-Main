@@ -3,7 +3,7 @@
 // Firefox: browser.identity.launchWebAuthFlow (via polyfill)
 // Safari: window.open fallback + polling
 
-import { detectBrowser, hasIdentityAPI } from "./browser-polyfill";
+import Browser, { detectBrowser, hasIdentityAPI } from "./browser-polyfill";
 import { GOOGLE_CLIENT_ID } from "./config";
 
 // __TARGET_BROWSER__ is injected by webpack DefinePlugin
@@ -11,13 +11,13 @@ declare const __TARGET_BROWSER__: string;
 
 function getRedirectURL(): string {
   try {
-    if (typeof chrome !== "undefined" && chrome.identity?.getRedirectURL) {
-      return chrome.identity.getRedirectURL();
-    }
+    return (
+      Browser.identity?.getRedirectURL() ??
+      "https://www.deepsightsynthesis.com/auth/callback"
+    );
   } catch {
-    /* not available */
+    return "https://www.deepsightsynthesis.com/auth/callback";
   }
-  return `https://www.deepsightsynthesis.com/auth/callback`;
 }
 
 function buildGoogleAuthUrl(): string {
@@ -35,36 +35,20 @@ function buildGoogleAuthUrl(): string {
 export async function launchOAuthFlow(
   interactive: boolean = true,
 ): Promise<string> {
-  // Chrome, Edge, Brave, Opera — use chrome.identity
+  // Chrome, Edge, Brave, Opera, Firefox — use Browser.identity (Promise-based)
   if (hasIdentityAPI()) {
-    return new Promise<string>((resolve, reject) => {
-      chrome.identity.launchWebAuthFlow(
-        { url: buildGoogleAuthUrl(), interactive },
-        (redirectUrl) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-            return;
-          }
-          if (!redirectUrl) {
-            reject(new Error("No redirect URL received"));
-            return;
-          }
-          resolve(redirectUrl);
-        },
-      );
-    });
-  }
-
-  // Firefox via webextension-polyfill
-  const browser = detectBrowser();
-  if (browser === "firefox") {
-    const Browser = (await import("webextension-polyfill")).default;
     const redirectUrl = await Browser.identity.launchWebAuthFlow({
       url: buildGoogleAuthUrl(),
       interactive,
     });
+    if (!redirectUrl) {
+      throw new Error("No redirect URL received");
+    }
     return redirectUrl;
   }
+
+  // Keep browser detection available for callers/debug scenarios
+  void detectBrowser();
 
   // Safari / fallback — popup window
   return launchOAuthPopup();
