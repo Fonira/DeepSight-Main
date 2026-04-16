@@ -6,6 +6,7 @@ import { addRecentAnalysis } from "../utils/storage";
 import { escapeHtml } from "../utils/sanitize";
 import { WEBAPP_URL } from "../utils/config";
 import { ttsStop } from "./tts";
+import { detectExtensions, refreshDetection } from "./coexistence";
 
 import { watchNavigation, isVideoPage, getCurrentVideoId } from "./navigation";
 import { detectTheme, watchTheme } from "./theme";
@@ -206,11 +207,13 @@ async function initCard(): Promise<void> {
 function getVideoTitle(): string {
   // Priority 1: og:title meta (never in shadow DOM, never touched by extensions)
   const ogTitle = document.querySelector('meta[property="og:title"]');
-  if (ogTitle instanceof HTMLMetaElement && ogTitle.content) return ogTitle.content;
+  if (ogTitle instanceof HTMLMetaElement && ogTitle.content)
+    return ogTitle.content;
 
   // Priority 2: name=title meta
   const metaTitle = document.querySelector('meta[name="title"]');
-  if (metaTitle instanceof HTMLMetaElement && metaTitle.content) return metaTitle.content;
+  if (metaTitle instanceof HTMLMetaElement && metaTitle.content)
+    return metaTitle.content;
 
   // Priority 3: YouTube DOM selectors (may break with shadow DOM A/B tests)
   const domTitle =
@@ -220,9 +223,7 @@ function getVideoTitle(): string {
   if (domTitle?.textContent?.trim()) return domTitle.textContent.trim();
 
   // Priority 4: document.title cleanup
-  const pageTitle = document.title
-    .replace(/\s*[-–—]\s*YouTube\s*$/, "")
-    .trim();
+  const pageTitle = document.title.replace(/\s*[-–—]\s*YouTube\s*$/, "").trim();
   if (pageTitle) return pageTitle;
 
   return "";
@@ -511,6 +512,9 @@ async function onNavigate(videoId: string | null): Promise<void> {
   stopWidgetObserver();
   stopWatchingLayout();
 
+  // Re-detect third-party extensions on SPA navigation
+  refreshDetection();
+
   // Reset state
   ctx.videoId = videoId;
   ctx.summary = null;
@@ -578,6 +582,9 @@ function bootstrap(): void {
 
   ctx.videoId = getCurrentVideoId();
   if (!ctx.videoId) return;
+
+  // Detect third-party extensions before injecting (Dark Reader, etc.)
+  detectExtensions();
 
   // Démarrer l'injection avec délai
   setTimeout(tryInjectWidget, 1000);
