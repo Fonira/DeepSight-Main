@@ -351,6 +351,33 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
+   PROGRESSIVE ENHANCEMENT — Fallbacks for older browsers
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+@layer utilities {
+  /* Glassmorphism: opaque fallback for browsers without backdrop-filter */
+  .glass-fallback {
+    background: rgba(18, 18, 26, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  @supports (backdrop-filter: blur(1px)) {
+    .glass-fallback {
+      background: rgba(18, 18, 26, 0.6);
+      backdrop-filter: blur(24px) saturate(150%);
+      -webkit-backdrop-filter: blur(24px) saturate(150%);
+    }
+  }
+
+  /* Scrollbar: webkit-only fallback */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
    COMPONENT LAYER — Premium UI Components
    ═══════════════════════════════════════════════════════════════════════════════ */
 
