@@ -29,6 +29,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { billingApi, ApiError } from "@/services/api";
+import { OfflineCache, CachePriority } from "@/services/OfflineCache";
+import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
@@ -258,6 +260,7 @@ export default function SubscriptionScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { user } = useAuth();
+  const isOffline = useIsOffline();
 
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -267,12 +270,40 @@ export default function SubscriptionScreen() {
   const userPlanPrice = userPlanConfig?.priceRaw ?? 0;
   const isPaidUser = userPlan !== "free";
 
-  // Statut abonnement depuis le backend
+  // Statut abonnement depuis le backend (avec cache offline)
   const { data: subStatus } = useQuery({
     queryKey: ["subscription-status"],
-    queryFn: () => billingApi.getSubscriptionStatus(),
+    queryFn: async () => {
+      const cacheKey = "subscription_status";
+
+      if (isOffline) {
+        const cached =
+          await OfflineCache.get<
+            Awaited<ReturnType<typeof billingApi.getSubscriptionStatus>>
+          >(cacheKey);
+        return cached ?? null;
+      }
+
+      try {
+        const result = await billingApi.getSubscriptionStatus();
+        // Cache billing status for read-only offline display (NORMAL priority, 1-day TTL)
+        await OfflineCache.set(cacheKey, result, {
+          priority: CachePriority.NORMAL,
+          ttlMinutes: 24 * 60,
+          tags: ["billing"],
+        });
+        return result;
+      } catch (err) {
+        const cached =
+          await OfflineCache.get<
+            Awaited<ReturnType<typeof billingApi.getSubscriptionStatus>>
+          >(cacheKey);
+        if (cached !== null) return cached;
+        throw err;
+      }
+    },
     staleTime: 60_000,
-    retry: 1,
+    retry: isOffline ? 0 : 1,
   });
 
   // ── Actions ────────────────────────────────────────────────────────────────
