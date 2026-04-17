@@ -53,6 +53,7 @@ DEFAULT_LIMITS = {
     "api": (100, 60),          # 100 appels API/min
     "export": (20, 60),        # 20 exports/min
     "tts": (10, 60),           # 10 TTS/min
+    "screenshot": (5, 60),     # 5 détections/min (base64 lourd, coût Mistral OCR+Vision)
     "auth_sensitive": (5, 60),      # 5/min — reset-password, verify-email, change-password
     "auth_email_trigger": (3, 60),  # 3/min — forgot-password, resend-verification (anti-spam email)
 }
@@ -85,6 +86,7 @@ ENDPOINT_CATEGORIES = {
     "/api/chat/ask": "chat_ask",
     "/api/export": "export",
     "/api/tts": "tts",
+    "/api/images/detect": "screenshot",
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════

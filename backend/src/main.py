@@ -1066,8 +1066,8 @@ if COMPARISON_ROUTER_AVAILABLE:
 
 # 🎨 Keyword Images router (IA illustrations for "Le Saviez-Vous")
 if IMAGES_ROUTER_AVAILABLE:
-    app.include_router(images_router, prefix="/api/images", tags=["Keyword Images"])
-    logger.info("🎨 Images router loaded (GET /api/images/keyword/{term})")
+    app.include_router(images_router, prefix="/api/images", tags=["Images & Screenshot Detection"])
+    logger.info("🎨 Images router loaded (GET /api/images/keyword/{term}, POST /api/images/detect)")
 
 # 🩺 Health check v1 router (deep health checks)
 if HEALTH_V1_ROUTER_AVAILABLE:

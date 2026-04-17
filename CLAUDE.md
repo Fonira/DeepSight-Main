@@ -725,7 +725,7 @@ export const GOOGLE_IOS_CLIENT_ID = "ios-client-id";
 
 | Composant        | Tests   | Status                                 |
 | ---------------- | ------- | -------------------------------------- |
-| Backend          | 526/526 | ✅ All passing                         |
+| Backend          | 774/774 | ✅ All passing                         |
 | Frontend         | 400/400 | ✅ All passing                         |
 | Mobile           | 178/178 | ✅ All passing                         |
 | Extension        | Partiel | ⚠️ passWithNoTests                     |
@@ -771,7 +771,11 @@ export const GOOGLE_IOS_CLIENT_ID = "ios-client-id";
 - Chat UI v4 (sidebar + watermark)
 - TikTok support (thumbnails réels)
 - Tournesol recommendations avec refresh aléatoire (offset + shuffle)
-- Tests green: backend 526, frontend 400, mobile 178
+- Tests green: backend 774, frontend 400, mobile 178
+- Screenshot detection consolidée (OCR + Vision + Brave fallback) — 20 tests dédiés
+- Duration-based video routing v3.0 opérationnel (6 tiers, chunking hiérarchique)
+- Trending search pre-cache mergé
+- Tests auth comprehensive : 46/46 passent
 
 ---
 
