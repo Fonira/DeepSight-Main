@@ -11,7 +11,17 @@ import { API_URL, getAccessToken } from "../../services/api";
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface UseVoiceChatOptions {
-  summaryId: number;
+  /** ID de l'analyse vidéo (agents explorer / tutor / quiz_coach). */
+  summaryId?: number;
+  /** ID du débat IA (agent debate_moderator). XOR avec summaryId. */
+  debateId?: number;
+  /** Type d'agent vocal. Défaut : "explorer". */
+  agentType?:
+    | "explorer"
+    | "tutor"
+    | "debate_moderator"
+    | "quiz_coach"
+    | "onboarding";
   language?: "fr" | "en";
   onError?: (error: string) => void;
 }
@@ -102,6 +112,8 @@ const ERROR_MESSAGES = {
 
 export function useVoiceChat({
   summaryId,
+  debateId,
+  agentType,
   language = "fr",
   onError,
 }: UseVoiceChatOptions): UseVoiceChatReturn {
@@ -360,7 +372,14 @@ export function useVoiceChat({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ summary_id: summaryId, language }),
+        body: JSON.stringify({
+          ...(debateId != null
+            ? { debate_id: debateId }
+            : { summary_id: summaryId }),
+          language,
+          agent_type:
+            agentType ?? (debateId != null ? "debate_moderator" : "explorer"),
+        }),
         credentials: "include",
       });
 
@@ -498,6 +517,8 @@ export function useVoiceChat({
   }, [
     status,
     summaryId,
+    debateId,
+    agentType,
     language,
     onError,
     reportError,

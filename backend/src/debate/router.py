@@ -524,6 +524,13 @@ async def _run_debate_pipeline(
                 debate.credits_used = 5
                 await session.commit()
 
+                # 🎨 Fire-and-forget avatar gen (partial debate — topic is known)
+                try:
+                    from voice.avatar import ensure_debate_avatar
+                    ensure_debate_avatar(debate)
+                except Exception as _avatar_err:
+                    logger.warning("Debate avatar kickoff failed: %s", _avatar_err)
+
                 await deduct_credits(session, user_id, 5, "debate", f"Débat partiel: {detected_topic[:50]}")
                 _debate_task_store[debate_id] = {"status": "completed", "message": "Analyse partielle terminée"}
                 return
@@ -759,6 +766,14 @@ async def _run_debate_pipeline(
             debate.credits_used = 5
             debate.status = "completed"
             await session.commit()
+
+            # 🎨 Fire-and-forget: generate dynamic avatar for the voice agent.
+            # Reuses the keyword_images pipeline with cross-debate cache on topic.
+            try:
+                from voice.avatar import ensure_debate_avatar
+                ensure_debate_avatar(debate)
+            except Exception as _avatar_err:
+                logger.warning("Debate avatar kickoff failed: %s", _avatar_err)
 
             # Deduct credits
             await deduct_credits(

@@ -2719,6 +2719,18 @@ export const debateApi = {
   ): Promise<{ messages: DebateChatMessage[] }> {
     return request(`/api/debate/chat/history/${debateId}`);
   },
+
+  async getVoiceAvatar(
+    debateId: number,
+    regenerate = false,
+  ): Promise<{
+    status: "ready" | "generating" | "unavailable";
+    url: string | null;
+    topic: string | null;
+  }> {
+    const qs = regenerate ? "?regenerate=true" : "";
+    return request(`/api/voice/debate/${debateId}/avatar${qs}`);
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

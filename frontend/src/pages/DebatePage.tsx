@@ -33,6 +33,11 @@ import DoodleBackground from "../components/DoodleBackground";
 import { DoodleDivider } from "../components/doodles";
 import DoodleEmptyState from "../components/doodles/DoodleEmptyState";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import VoiceButton from "../components/voice/VoiceButton";
+import { VoiceModal } from "../components/voice/VoiceModal";
+import { useVoiceChat } from "../components/voice/useVoiceChat";
+import { useAuth } from "../hooks/useAuth";
+import { PLAN_LIMITS, normalizePlanId } from "../config/planPrivileges";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MOCK DATA — Fallback pour dev quand l'API n'est pas dispo
@@ -245,12 +250,98 @@ export const DebatePage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // 🎙️ Voice Chat — Debate moderator agent
+  const { user } = useAuth();
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [avatarData, setAvatarData] = useState<{
+    url: string | null;
+    status: "ready" | "generating" | "unavailable";
+  }>({ url: null, status: "unavailable" });
+  const avatarPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const voiceChat = useVoiceChat({
+    debateId: selectedDebate?.id,
+    agentType: "debate_moderator",
+    language: "fr",
+  });
+
+  const ADMIN_EMAIL_VOICE = "maximeleparc3@gmail.com";
+  const isAdminVoice =
+    user?.is_admin ||
+    user?.email?.toLowerCase() === ADMIN_EMAIL_VOICE.toLowerCase();
+  const voiceEnabled =
+    isAdminVoice || PLAN_LIMITS[normalizePlanId(user?.plan)].voiceChatEnabled;
+
   // ─── Cleanup polling on unmount ───
   useEffect(() => {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (avatarPollRef.current) clearInterval(avatarPollRef.current);
     };
   }, []);
+
+  // ─── Fetch agent voice avatar when debate completes ───
+  useEffect(() => {
+    // Stop any running poll
+    if (avatarPollRef.current) {
+      clearInterval(avatarPollRef.current);
+      avatarPollRef.current = null;
+    }
+
+    if (
+      !selectedDebate ||
+      selectedDebate.status !== "completed" ||
+      !voiceEnabled
+    ) {
+      setAvatarData({ url: null, status: "unavailable" });
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 12; // ~60s at 5s interval
+
+    const fetchAvatar = async () => {
+      try {
+        const res = await debateApi.getVoiceAvatar(selectedDebate.id);
+        if (cancelled) return;
+        setAvatarData({ url: res.url, status: res.status });
+        if (res.status === "generating" && attempts < MAX_ATTEMPTS) {
+          // Schedule poll
+          if (!avatarPollRef.current) {
+            avatarPollRef.current = setInterval(async () => {
+              attempts += 1;
+              try {
+                const r = await debateApi.getVoiceAvatar(selectedDebate.id);
+                if (cancelled) return;
+                setAvatarData({ url: r.url, status: r.status });
+                if (r.status !== "generating" || attempts >= MAX_ATTEMPTS) {
+                  if (avatarPollRef.current) {
+                    clearInterval(avatarPollRef.current);
+                    avatarPollRef.current = null;
+                  }
+                }
+              } catch {
+                /* swallow — keep trying until MAX_ATTEMPTS */
+              }
+            }, 5000);
+          }
+        }
+      } catch {
+        if (!cancelled) setAvatarData({ url: null, status: "unavailable" });
+      }
+    };
+
+    fetchAvatar();
+
+    return () => {
+      cancelled = true;
+      if (avatarPollRef.current) {
+        clearInterval(avatarPollRef.current);
+        avatarPollRef.current = null;
+      }
+    };
+  }, [selectedDebate?.id, selectedDebate?.status, voiceEnabled]);
 
   // ─── Load history ───
   const loadHistory = useCallback(async () => {
@@ -715,6 +806,51 @@ export const DebatePage: React.FC = () => {
             ? renderDetail()
             : renderList()}
       </main>
+
+      {/* 🎙️ Voice chat — Debate moderator agent.
+          Shown only when a debate is selected, analysis is completed,
+          and the voice feature is available (plan gating). */}
+      {selectedDebate && selectedDebate.status === "completed" && (
+        <>
+          <VoiceButton
+            summaryId={selectedDebate.id}
+            onOpen={() => setIsVoiceModalOpen(true)}
+            disabled={!voiceEnabled}
+          />
+          <VoiceModal
+            isOpen={isVoiceModalOpen}
+            onClose={() => {
+              setIsVoiceModalOpen(false);
+              voiceChat.stop();
+            }}
+            videoTitle={selectedDebate.detected_topic || "Débat IA"}
+            channelName={
+              selectedDebate.video_a_channel && selectedDebate.video_b_channel
+                ? `${selectedDebate.video_a_channel} vs ${selectedDebate.video_b_channel}`
+                : "Modérateur de débat"
+            }
+            voiceStatus={voiceChat.status}
+            isSpeaking={voiceChat.isSpeaking}
+            messages={voiceChat.messages}
+            elapsedSeconds={voiceChat.elapsedSeconds}
+            remainingMinutes={voiceChat.remainingMinutes}
+            onStart={voiceChat.start}
+            onStop={voiceChat.stop}
+            onMuteToggle={voiceChat.toggleMute}
+            isMuted={voiceChat.isMuted}
+            inputMode={voiceChat.inputMode}
+            isTalking={voiceChat.isTalking}
+            onStartTalking={voiceChat.startTalking}
+            onStopTalking={voiceChat.stopTalking}
+            activeTool={voiceChat.activeTool}
+            error={voiceChat.error ?? undefined}
+            playbackRate={voiceChat.playbackRate}
+            avatarUrl={avatarData.url}
+            avatarStatus={avatarData.status}
+            avatarFallback="DB"
+          />
+        </>
+      )}
     </div>
   );
 };

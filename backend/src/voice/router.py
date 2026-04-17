@@ -61,6 +61,11 @@ from voice.debate_tools import (
     get_debate_fact_check,
 )
 from voice.debate_context import build_debate_rich_context
+from voice.avatar import (
+    get_debate_avatar_url,
+    ensure_debate_avatar,
+    generate_debate_avatar,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1364,6 +1369,66 @@ async def tool_debate_fact_check(request: Request, db: AsyncSession = Depends(ge
     debate, _body = await verify_debate_tool_request(request, db)
     result = await get_debate_fact_check(debate.id, db)
     return {"result": result}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /debate/{debate_id}/avatar — Dynamic avatar for the debate moderator agent
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/debate/{debate_id}/avatar")
+async def get_debate_voice_avatar(
+    debate_id: int,
+    regenerate: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Return the dynamic avatar URL for the debate moderator voice agent.
+
+    Response shape:
+      { "status": "ready" | "generating" | "unavailable",
+        "url": str | None,
+        "topic": str | None }
+
+    Strategy:
+      - status="ready"      → image cached, URL returned.
+      - status="generating" → no cache yet, generation fired in background;
+                              client should poll in a few seconds.
+      - status="unavailable"→ image pipeline disabled or debate has no topic.
+    """
+    result = await db.execute(
+        select(DebateAnalysis).where(
+            DebateAnalysis.id == debate_id,
+            DebateAnalysis.user_id == current_user.id,
+        )
+    )
+    debate = result.scalar_one_or_none()
+    if not debate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "debate_not_found", "message": "Debate not found."},
+        )
+
+    topic = (debate.detected_topic or "").strip()
+    if not topic:
+        return {"status": "unavailable", "url": None, "topic": None}
+
+    # Admin override: force regeneration (bypass cache)
+    if regenerate and current_user.is_admin:
+        url = await generate_debate_avatar(debate)
+        return {
+            "status": "ready" if url else "unavailable",
+            "url": url,
+            "topic": topic,
+        }
+
+    # Cache lookup
+    url = await get_debate_avatar_url(debate)
+    if url:
+        return {"status": "ready", "url": url, "topic": topic}
+
+    # Not cached → fire background generation, return placeholder
+    ensure_debate_avatar(debate)
+    return {"status": "generating", "url": None, "topic": topic}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

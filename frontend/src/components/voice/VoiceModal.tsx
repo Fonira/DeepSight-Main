@@ -60,6 +60,12 @@ interface VoiceModalProps {
   error?: string;
   /** Playback rate actif (badge vitesse) */
   playbackRate?: number;
+  /** Avatar dynamique de l'agent (URL) — e.g. avatar débat généré via pipeline images */
+  avatarUrl?: string | null;
+  /** Statut de génération de l'avatar : "ready" | "generating" | "unavailable" */
+  avatarStatus?: "ready" | "generating" | "unavailable";
+  /** Initiales de fallback (2 caractères max) affichées si avatar absent */
+  avatarFallback?: string;
 }
 
 /** Format seconds to MM:SS */
@@ -152,6 +158,9 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   activeTool,
   error,
   playbackRate,
+  avatarUrl,
+  avatarStatus = "unavailable",
+  avatarFallback,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -409,19 +418,45 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 flex-shrink-0">
-              <div className="flex-1 min-w-0 pr-4">
-                <h2
-                  id={titleId}
-                  className="text-sm sm:text-base font-semibold text-white truncate"
-                  title={videoTitle}
-                >
-                  {videoTitle}
-                </h2>
-                {channelName && (
-                  <p className="text-xs text-white/40 mt-0.5 truncate">
-                    {channelName}
-                  </p>
-                )}
+              <div className="flex-1 min-w-0 pr-4 flex items-center gap-3">
+                {/* Avatar dynamique de l'agent */}
+                <div className="relative flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/30 border border-white/10 flex items-center justify-center">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={tr("Avatar de l'agent", "Agent avatar")}
+                        className="w-full h-full object-cover"
+                        loading="eager"
+                      />
+                    ) : avatarStatus === "generating" ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white/80 rounded-full animate-spin" />
+                      </div>
+                    ) : (
+                      <span className="text-xs font-semibold text-white/70 uppercase">
+                        {(avatarFallback || "AI").slice(0, 2)}
+                      </span>
+                    )}
+                  </div>
+                  {voiceStatus === "speaking" && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-[#0b0b14] animate-pulse" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2
+                    id={titleId}
+                    className="text-sm sm:text-base font-semibold text-white truncate"
+                    title={videoTitle}
+                  >
+                    {videoTitle}
+                  </h2>
+                  {channelName && (
+                    <p className="text-xs text-white/40 mt-0.5 truncate">
+                      {channelName}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 {playbackRate && playbackRate > 1.0 && (
