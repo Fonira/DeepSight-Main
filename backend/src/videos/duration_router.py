@@ -175,11 +175,11 @@ _MODEL_INTERNAL = "ministral-8b-2512"
 # Concurrence adaptative par tier pour le chunking parallèle
 CONCURRENT_CHUNKS_BY_TIER = {
     VideoTier.MICRO: 1,
-    VideoTier.SHORT: 1,
-    VideoTier.MEDIUM: 2,
-    VideoTier.LONG: 2,
-    VideoTier.EXTENDED: 3,    # Était 2 — optimisé pour réduire le temps de traitement
-    VideoTier.MARATHON: 4,    # Était 2 — une vidéo 3h passe de 3min à 1.5min
+    VideoTier.SHORT: 2,
+    VideoTier.MEDIUM: 4,
+    VideoTier.LONG: 5,
+    VideoTier.EXTENDED: 6,
+    VideoTier.MARATHON: 6,
 }
 
 # Seuil de chunks au-delà duquel on utilise la synthèse hiérarchique
