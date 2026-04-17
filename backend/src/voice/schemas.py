@@ -5,7 +5,7 @@ Voice Chat Schemas — Pydantic models for voice API endpoints.
 from datetime import datetime
 from typing import Optional, List
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -19,13 +19,11 @@ class VoiceSessionRequest(BaseModel):
     language: str = Field(default="fr", description="Langue (fr, en)")
     agent_type: str = Field(default="explorer", description="Type d'agent vocal (explorer, tutor, debate_moderator, quiz_coach, onboarding)")
 
-    @field_validator("debate_id")
-    @classmethod
-    def _xor_source(cls, v: Optional[int], info) -> Optional[int]:
-        summary_id = info.data.get("summary_id")
-        if v is not None and summary_id is not None:
+    @model_validator(mode="after")
+    def _xor_source(self) -> "VoiceSessionRequest":
+        if self.summary_id is not None and self.debate_id is not None:
             raise ValueError("Fournir summary_id OU debate_id, pas les deux")
-        return v
+        return self
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
