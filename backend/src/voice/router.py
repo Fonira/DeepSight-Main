@@ -9,6 +9,7 @@ Endpoints:
   GET  /history/{summary_id}/{session_id}/transcript — Session transcript
 """
 
+import asyncio
 import hashlib
 import hmac
 import logging
@@ -43,6 +44,8 @@ from voice.schemas import (
     VoicePreferencesResponse,
     VoiceCatalogResponse,
     VoiceCatalogEntry,
+    VoiceThumbnailResponse,
+    VoiceThumbnailGradient,
 )
 from voice.quota import (
     get_voice_quota_info,
@@ -684,6 +687,8 @@ async def create_voice_session(
                 concise_block = CONCISENESS_INJECTION_FR if language == "fr" else CONCISENESS_INJECTION_EN
                 system_prompt += concise_block
 
+        conversation_token: str | None = None
+
         async with get_elevenlabs_client() as client:
             # Create the agent with user's preferred voice settings
             agent_id = await client.create_conversation_agent(
@@ -697,8 +702,22 @@ async def create_voice_session(
                 turn_config=turn_config,
             )
 
-            # Get the signed WebSocket URL
+            # Get the signed WebSocket URL (legacy web / JS SDK transport)
             signed_url, expires_at_iso = await client.get_signed_url(agent_id)
+
+            # Also fetch a LiveKit JWT conversation token for WebRTC clients
+            # (ElevenLabs React Native SDK, iOS/Android). If this fails we
+            # still return signed_url so web clients keep working.
+            try:
+                conversation_token, token_expires_iso = await client.get_conversation_token(agent_id)
+                if token_expires_iso and not expires_at_iso:
+                    expires_at_iso = token_expires_iso
+            except Exception as token_exc:
+                logger.warning(
+                    "Failed to fetch LiveKit conversation token (falling back to signed_url only)",
+                    extra={"agent_id": agent_id, "error": str(token_exc)},
+                )
+                conversation_token = None
 
         # Update session with agent_id
         voice_session.elevenlabs_agent_id = agent_id
@@ -756,6 +775,8 @@ async def create_voice_session(
     return VoiceSessionResponse(
         session_id=voice_session.id,
         signed_url=signed_url,
+        agent_id=agent_id,
+        conversation_token=conversation_token,
         expires_at=expires_at,
         quota_remaining_minutes=quota_remaining_minutes,
         max_session_minutes=max_session_minutes,
@@ -1486,3 +1507,170 @@ async def get_agent_types():
         "agent_types": list_agent_types(),
         "default": "explorer",
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /session/{summary_id}/thumbnail — Visual context for the voice modal
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_VOICE_THUMB_GRADIENT = VoiceThumbnailGradient()  # indigo → violet → cyan
+
+
+def _build_voice_thumb_term(summary: Summary) -> str:
+    """Deterministic cache key for a generated voice thumbnail (per video)."""
+    title = (summary.video_title or "").strip().lower()[:160]
+    channel = (summary.video_channel or "").strip().lower()[:80]
+    return f"voice-thumb:{summary.video_id}:{title}:{channel}"
+
+
+def _is_youtube_cdn_url(url: str) -> bool:
+    return url.startswith(("https://i.ytimg.com/", "https://img.youtube.com/"))
+
+
+async def _kick_voice_thumb_generation(summary: Summary, term: str, pool) -> None:
+    """Fire-and-forget generation of a voice thumbnail via the image pipeline."""
+    try:
+        from images.keyword_images import generate_keyword_image
+
+        definition = (
+            f"Illustration pour une conversation vocale au sujet de la vidéo "
+            f"« {summary.video_title or 'sans titre'} » "
+            f"de la chaîne « {summary.video_channel or 'chaîne inconnue'} ». "
+            f"Style : symbolique, moderne, cosmic DeepSight — palette indigo, "
+            f"violet et cyan sur fond sombre, sans texte."
+        )
+        await generate_keyword_image(
+            term=term,
+            definition=definition,
+            category="voice-thumb",
+            premium=False,
+            pool=pool,
+        )
+    except Exception as exc:
+        logger.warning(
+            "voice.thumbnail.generation_failed",
+            extra={"summary_id": summary.id, "error": str(exc)},
+        )
+
+
+async def _resolve_voice_thumbnail(summary: Summary) -> tuple[str | None, str]:
+    """Return `(url, source)` for the best available thumbnail.
+
+    Resolution order:
+      1. YouTube video_id → `img.youtube.com/.../maxresdefault.jpg` (HD).
+      2. Stored `summary.thumbnail_url` (TikTok CDN, R2, data:, etc.).
+      3. Cached generated image from the `keyword_images` pipeline.
+      4. Fire-and-forget generation + gradient-only response.
+    """
+    stored = (summary.thumbnail_url or "").strip()
+    platform = (summary.platform or "youtube").lower()
+
+    # 1. YouTube: CDN is free, cached worldwide, and `maxresdefault` is 1280x720.
+    if platform == "youtube" and summary.video_id:
+        return (
+            f"https://img.youtube.com/vi/{summary.video_id}/maxresdefault.jpg",
+            "youtube_hd",
+        )
+
+    # 2. Non-YouTube: use whatever we stored (TikTok thumb, R2 URL, data: URL…).
+    if stored:
+        source = "tiktok_stored" if platform == "tiktok" else "stored"
+        # If a non-YouTube platform somehow points at the YouTube CDN, tag it.
+        if _is_youtube_cdn_url(stored):
+            source = "youtube_standard"
+        return (stored, source)
+
+    # 3. No stored image → check the generated cache, kick generation if missing.
+    try:
+        from images.keyword_images import get_image_url, _get_pool
+
+        term = _build_voice_thumb_term(summary)
+        pool = await _get_pool()
+        cached = await get_image_url(term, pool=pool)
+        if cached:
+            return (cached, "generated")
+
+        # Not cached — fire generation in the background (non-blocking).
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_kick_voice_thumb_generation(summary, term, pool))
+            return (None, "generating")
+        except RuntimeError:
+            # No running loop (unlikely inside FastAPI) — skip silently.
+            pass
+    except Exception as exc:
+        logger.debug(
+            "voice.thumbnail.cache_lookup_failed",
+            extra={"summary_id": summary.id, "error": str(exc)},
+        )
+
+    # 4. Nothing usable → gradient-only fallback.
+    return (None, "gradient")
+
+
+@router.get(
+    "/session/{summary_id}/thumbnail",
+    response_model=VoiceThumbnailResponse,
+)
+async def get_voice_session_thumbnail(
+    summary_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Return the visual context for a voice session (video thumbnail + fallback).
+
+    The voice modal uses this to display the video's thumbnail in HD next to
+    the call UI. If no image can be resolved, the frontend falls back to a
+    DeepSight gradient (indigo → violet → cyan).
+
+    Resolution cascade:
+      1. YouTube → `img.youtube.com/vi/{video_id}/maxresdefault.jpg` (1280×720).
+      2. TikTok / others → `summary.thumbnail_url` (may be R2 URL or data: URL).
+      3. No stored image → generated image cache (fire-and-forget if absent).
+      4. Last resort → gradient-only (frontend renders indigo→violet→cyan).
+
+    The `gradient` field is ALWAYS included so the frontend can show something
+    even if the returned URL fails to load (CDN miss, network error, CORS).
+    """
+    result = await db.execute(
+        select(Summary).where(
+            Summary.id == summary_id,
+            Summary.user_id == current_user.id,
+        )
+    )
+    summary = result.scalar_one_or_none()
+    if not summary:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "summary_not_found", "message": "Analyse introuvable."},
+        )
+
+    thumbnail_url, source = await _resolve_voice_thumbnail(summary)
+
+    alt_text = (
+        f"Miniature de la vidéo « {summary.video_title or 'sans titre'} »"
+        + (f" — chaîne {summary.video_channel}" if summary.video_channel else "")
+    )
+
+    logger.info(
+        "voice.thumbnail.resolved",
+        extra={
+            "user_id": current_user.id,
+            "summary_id": summary.id,
+            "video_id": summary.video_id,
+            "platform": summary.platform or "youtube",
+            "source": source,
+            "has_url": thumbnail_url is not None,
+        },
+    )
+
+    return VoiceThumbnailResponse(
+        thumbnail_url=thumbnail_url,
+        source=source,
+        video_id=summary.video_id,
+        video_title=summary.video_title,
+        video_channel=summary.video_channel,
+        platform=summary.platform or "youtube",
+        gradient=_VOICE_THUMB_GRADIENT,
+        alt_text=alt_text,
+    )

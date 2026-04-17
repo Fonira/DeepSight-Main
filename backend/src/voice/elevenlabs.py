@@ -147,6 +147,38 @@ class ElevenLabsClient:
         data = response.json()
         return data["signed_url"], data.get("expires_at", "")
 
+    async def get_conversation_token(self, agent_id: str) -> tuple[str, str]:
+        """Get a LiveKit JWT conversation token for WebRTC-based clients.
+
+        Used by the ElevenLabs React Native SDK (and other WebRTC clients),
+        which require a LiveKit token instead of the WebSocket signed URL.
+
+        API: GET /v1/convai/conversation/token?agent_id={agent_id}
+
+        Returns:
+            (token, expires_at_iso) — token is a LiveKit-compatible JWT.
+
+        Raises:
+            httpx.HTTPStatusError: on 4xx/5xx. The caller is expected to
+                gracefully degrade to signed_url-only when this fails.
+        """
+        logger.info("elevenlabs.get_conversation_token", extra={"agent_id": agent_id})
+
+        response = await self._client.get(
+            "/convai/conversation/token",
+            params={"agent_id": agent_id},
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        token: str = data.get("token") or data.get("conversation_token") or ""
+        if not token:
+            logger.warning(
+                "elevenlabs.conversation_token_missing",
+                extra={"agent_id": agent_id, "keys": list(data.keys())},
+            )
+        return token, data.get("expires_at", "")
+
     async def delete_agent(self, agent_id: str) -> bool:
         """Delete a conversational AI agent. Returns True on success, False otherwise."""
         logger.info("elevenlabs.delete_agent", extra={"agent_id": agent_id})

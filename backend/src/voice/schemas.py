@@ -34,6 +34,8 @@ class VoiceSessionResponse(BaseModel):
     """Reponse de creation de session voice chat."""
     session_id: str
     signed_url: str
+    agent_id: str
+    conversation_token: Optional[str] = None
     expires_at: datetime
     quota_remaining_minutes: float
     max_session_minutes: int
@@ -228,3 +230,44 @@ class VoiceCatalogResponse(BaseModel):
     speed_presets: List[dict]
     voice_chat_speed_presets: List[dict]
     models: List[dict]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VOICE SESSION VISUAL CONTEXT (thumbnail for voice modal)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class VoiceThumbnailGradient(BaseModel):
+    """Gradient DeepSight (indigo → violet → cyan) rendu par le frontend en secours."""
+    from_: str = Field(alias="from", default="#6366f1")
+    via: str = Field(default="#8b5cf6")
+    to: str = Field(default="#06b6d4")
+
+    model_config = {"populate_by_name": True}
+
+
+class VoiceThumbnailResponse(BaseModel):
+    """Contexte visuel pour le modal d'appel vocal.
+
+    Le frontend utilise `thumbnail_url` en priorité (img YouTube HD, data: URL,
+    R2, ou image générée). Si l'URL échoue à charger (CDN miss, réseau), il
+    peut retomber sur `gradient` pour afficher un fond DeepSight cohérent.
+    """
+    thumbnail_url: Optional[str] = Field(
+        default=None,
+        description="URL directe de la miniature. None → gradient uniquement.",
+    )
+    source: str = Field(
+        description=(
+            "Provenance : youtube_hd | youtube_standard | tiktok_stored | "
+            "stored | generated | generating | gradient"
+        ),
+    )
+    video_id: str
+    video_title: Optional[str] = None
+    video_channel: Optional[str] = None
+    platform: str = "youtube"
+    gradient: VoiceThumbnailGradient = Field(
+        default_factory=VoiceThumbnailGradient,
+        description="Gradient DeepSight (toujours fourni comme secours CSS).",
+    )
+    alt_text: str = Field(description="Texte alternatif pour accessibilité.")
