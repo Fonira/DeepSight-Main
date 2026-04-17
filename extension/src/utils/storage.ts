@@ -28,8 +28,9 @@ export async function setStoredTokens(
   refreshToken: string,
 ): Promise<void> {
   // Bug #10: guard against undefined values
-  const payload: Record<string, string> = { accessToken };
+  const payload: Record<string, string | number> = { accessToken };
   if (refreshToken) payload.refreshToken = refreshToken;
+  payload.tokenRefreshedAt = Date.now();
   try {
     await Browser.storage.local.set(payload);
   } catch {
@@ -37,9 +38,18 @@ export async function setStoredTokens(
   }
 }
 
+export async function getTokenRefreshedAt(): Promise<number | null> {
+  try {
+    const data = (await Browser.storage.local.get("tokenRefreshedAt")) as { tokenRefreshedAt?: number };
+    return data.tokenRefreshedAt ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function clearStoredAuth(): Promise<void> {
   try {
-    await Browser.storage.local.remove(["accessToken", "refreshToken", "user"]);
+    await Browser.storage.local.remove(["accessToken", "refreshToken", "user", "tokenRefreshedAt"]);
   } catch {
     // Ignore errors on clear
   }

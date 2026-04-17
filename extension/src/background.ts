@@ -11,6 +11,7 @@ import {
   clearStoredAuth,
   getStoredUser,
   addRecentAnalysis,
+  getTokenRefreshedAt,
 } from "./utils/storage";
 import { extractVideoId } from "./utils/video";
 import type {
@@ -46,6 +47,15 @@ async function apiRequest<T>(
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
+  // Bug fix: proactive refresh if access_token is older than 20min
+  // to avoid 401 mid-request during long pollings.
+  const refreshedAt = await getTokenRefreshedAt();
+  if (accessToken && refreshedAt && Date.now() - refreshedAt > 20 * 60 * 1000) {
+    await tryRefreshToken();
+    const fresh = await getStoredTokens();
+    if (fresh.accessToken) headers["Authorization"] = `Bearer ${fresh.accessToken}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
@@ -66,6 +76,7 @@ async function apiRequest<T>(
       return retryResponse.json();
     }
     await clearStoredAuth();
+    console.warn("[DeepSight] Session expired, refresh failed. User needs to re-login.");
     throw new Error("SESSION_EXPIRED");
   }
 
@@ -81,7 +92,21 @@ async function apiRequest<T>(
 
 // ── Auth API ──
 
+let inflightRefresh: Promise<boolean> | null = null;
+
 async function tryRefreshToken(): Promise<boolean> {
+  if (inflightRefresh) return inflightRefresh;
+  inflightRefresh = (async () => {
+    try {
+      return await doRefreshToken();
+    } finally {
+      inflightRefresh = null;
+    }
+  })();
+  return inflightRefresh;
+}
+
+async function doRefreshToken(): Promise<boolean> {
   const { refreshToken } = await getStoredTokens();
   if (!refreshToken) {
     return false;
@@ -639,10 +664,16 @@ Browser.runtime.onInstalled.addListener(
   },
 );
 
+Browser.runtime.onStartup.addListener(async () => {
+  if (await isAuthenticated()) {
+    await tryRefreshToken();
+  }
+});
+
 // ── Alarms ──
 
 Browser.alarms.create("keepAlive", { periodInMinutes: 0.5 });
-Browser.alarms.create("refreshToken", { periodInMinutes: 50 }); // Refresh avant expiration (access_token = 60min)
+Browser.alarms.create("refreshToken", { periodInMinutes: 30 }); // Refresh toutes les 30min — grosse marge vs access_token 24h, + proactive refresh in-flight (20min)
 
 Browser.alarms.onAlarm.addListener(async (alarm: Alarms.Alarm) => {
   if (alarm.name === "refreshToken" && (await isAuthenticated())) {
