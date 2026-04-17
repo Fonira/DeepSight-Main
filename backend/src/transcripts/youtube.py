@@ -98,16 +98,16 @@ MAX_CONCURRENT_EXTRACTIONS = int(os.environ.get("MAX_CONCURRENT_EXTRACTIONS", "1
 _extraction_semaphore = asyncio.Semaphore(MAX_CONCURRENT_EXTRACTIONS)
 
 TIMEOUTS = {
-    "supadata": 45,           # 30 → 45 (connexions lentes)
+    "supadata": 25,           # 45 → 25 (perf: fail-fast si Supadata lent)
     "ytapi": 25,              # 15 → 25 (plus de marge)
     "invidious": 35,          # 20 → 35 (instances lentes)
     "piped": 35,              # Nouveau - Piped API
     "ytdlp_subs": 90,         # 60 → 90 (anti-bot delays)
     "ytdlp_auto": 90,         # 60 → 90 (anti-bot delays)
     "whisper_download": 240,  # 180 → 240 (vidéos longues)
-    "whisper_transcribe": 360,# 300 → 360 (fichiers volumineux)
+    "whisper_transcribe": 120,# 360 → 120 (perf: fail-fast)
     "voxtral_stt": 300,       # v7.2 - Mistral Voxtral STT (3h audio max)
-    "openai_whisper": 360,    # Nouveau - OpenAI Whisper
+    "openai_whisper": 180,    # 360 → 180 (perf: fail-fast)
     "deepgram": 300,          # Deepgram Nova-2
     "assemblyai": 300,        # Nouveau - AssemblyAI
     "elevenlabs_scribe": 300,  # ElevenLabs Scribe v2
@@ -122,7 +122,7 @@ TIMEOUTS_SHORT = {
     "ytdlp_subs": 45,         # 90 → 45
     "ytdlp_auto": 45,         # 90 → 45
     "whisper_download": 60,   # 240 → 60 (fichier audio petit)
-    "whisper_transcribe": 90, # 360 → 90 (transcription rapide)
+    "whisper_transcribe": 60, # 90 → 60 (perf: fail-fast)
     "voxtral_stt": 90,        # 300 → 90
     "openai_whisper": 90,     # 360 → 90
     "deepgram": 60,           # 300 → 60
@@ -440,8 +440,20 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     """
     Récupère les infos via Supadata (prioritaire) puis Invidious puis yt-dlp.
     🆕 v7.0: Supadata metadata en priorité
+    ⚡ v7.3: Cache Redis (TTL 12h) pour éviter re-fetch métadonnées
     """
     print(f"📺 [VIDEO INFO] Getting info for: {video_id}", flush=True)
+
+    # ─── Cache check (Redis L1) ──────────────────────────────────────────
+    _vinfo_cache_key = f"video_info:youtube:{video_id}"
+    try:
+        from core.cache import cache_service as _cache_service
+        _cached = await _cache_service.get(_vinfo_cache_key)
+        if _cached:
+            print(f"💾 [VIDEO INFO] Cache HIT for {video_id}", flush=True)
+            return _cached
+    except Exception:
+        pass
 
     # ─── Supadata metadata (PRIORITAIRE) ─────────────────────────────────
     supadata_key = get_supadata_key()
@@ -471,7 +483,7 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
                             channel_name = author.get("displayName") or author.get("username") or "Unknown"
                         else:
                             channel_name = str(raw_channel) if raw_channel else "Unknown"
-                        return {
+                        _supa_result = {
                             "video_id": video_id,
                             "title": data.get("title", "Unknown"),
                             "channel": channel_name,
@@ -489,6 +501,13 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
                             "channel_follower_count": data.get("channelFollowerCount"),
                             "content_type": "video",
                         }
+                        # Cache set (TTL 12h)
+                        try:
+                            from core.cache import cache_service as _cs
+                            await _cs.set(_vinfo_cache_key, _supa_result, ttl=43200)
+                        except Exception:
+                            pass
+                        return _supa_result
                     else:
                         print(f"  ⚠️ [SUPADATA] Metadata OK but no duration", flush=True)
                 else:
@@ -513,7 +532,7 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
                         duration = int(duration) if duration.isdigit() else 0
                     print(f"  ✅ [INVIDIOUS] {instance} - Duration: {duration}s", flush=True)
                     if duration > 0:  # Seulement si on a une durée valide
-                        return {
+                        _inv_result = {
                             "video_id": video_id,
                             "title": data.get("title", "Unknown"),
                             "channel": data.get("author", "Unknown"),
@@ -526,6 +545,13 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
                             "view_count": data.get("viewCount"),
                             "like_count": data.get("likeCount"),
                         }
+                        # Cache set (TTL 12h)
+                        try:
+                            from core.cache import cache_service as _cs
+                            await _cs.set(_vinfo_cache_key, _inv_result, ttl=43200)
+                        except Exception:
+                            pass
+                        return _inv_result
         except Exception as e:
             print(f"  ⚠️ [INVIDIOUS] {instance} error: {str(e)[:50]}", flush=True)
     
@@ -534,6 +560,12 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     ytdlp_result = await get_video_info_ytdlp(video_id)
     if ytdlp_result and ytdlp_result.get("duration", 0) > 0:
         print(f"  ✅ [YT-DLP] Duration: {ytdlp_result['duration']}s", flush=True)
+        # Cache set (TTL 12h)
+        try:
+            from core.cache import cache_service as _cs
+            await _cs.set(_vinfo_cache_key, ytdlp_result, ttl=43200)
+        except Exception:
+            pass
         return ytdlp_result
     
     # Essayer oembed pour au moins avoir le titre (pas de durée)
@@ -2247,7 +2279,8 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
 
     supadata_cb = get_circuit_breaker("supadata")
     if supadata_cb.can_execute():
-        for attempt in range(2):
+        # ⚡ v7.3: 1 attempt only (was 2) — fallback Phase 1 plus rapide en cas de lenteur Supadata
+        for attempt in range(1):
             try:
                 if transcript_metrics:
                     await transcript_metrics.increment("supadata_calls")
@@ -2262,8 +2295,6 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
                     return simple, timestamped, lang
             except Exception as e:
                 print(f"  ⚠️ [Supadata] Attempt {attempt + 1} failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
-            if attempt == 0:
-                await asyncio.sleep(calculate_backoff(attempt))
         supadata_cb.record_failure()
         print(f"  ❌ [Supadata] Failed — falling back to Phase 1", flush=True)
     else:
@@ -2308,18 +2339,58 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
             cb.record_failure()
             return None
 
-        tasks = [run_method_with_retry(name, cb_name, method) for name, cb_name, method in active_methods]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        # ⚡ Phase 1 race-cancel: first valid result wins, cancel the rest
+        tasks = [asyncio.create_task(run_method_with_retry(name, cb_name, method)) for name, cb_name, method in active_methods]
+        phase1_timeout = max(
+            TIMEOUTS.get("invidious", 35),
+            TIMEOUTS.get("piped", 35),
+            TIMEOUTS.get("ytapi", 25),
+        )
 
-        # Prendre le premier résultat valide
-        for result in results:
-            if result and not isinstance(result, Exception):
-                name, simple, timestamped, lang = result
-                print(f"", flush=True)
-                print(f"✅ SUCCESS with {name} (Phase 1 - Parallel)", flush=True)
-                print(f"{'='*70}", flush=True)
-                await _cache_success(video_id, simple, timestamped, lang, name)
-                return simple, timestamped, lang
+        winning_result = None
+        remaining = set(tasks)
+        deadline_left = phase1_timeout
+
+        # Boucle: attendre FIRST_COMPLETED, vérifier la validité, annuler si gagnant trouvé
+        while remaining and winning_result is None and deadline_left > 0:
+            start_wait = time.monotonic()
+            done, pending = await asyncio.wait(
+                remaining,
+                return_when=asyncio.FIRST_COMPLETED,
+                timeout=deadline_left,
+            )
+            deadline_left -= (time.monotonic() - start_wait)
+
+            if not done:
+                # Timeout global atteint sans nouveau résultat
+                break
+
+            for task in done:
+                try:
+                    result = task.result()
+                except Exception:
+                    continue
+                if result and not isinstance(result, Exception):
+                    name, simple, timestamped, lang = result
+                    if simple and timestamped:
+                        winning_result = (name, simple, timestamped, lang)
+                        print(f"🏁 [Phase 1] Winner: {name} — cancelling {len(pending)} pending", flush=True)
+                        break
+
+            # Recalculer le set des tasks encore en cours
+            remaining = pending
+
+        # Annuler tout ce qui reste
+        for p in remaining:
+            p.cancel()
+
+        if winning_result is not None:
+            name, simple, timestamped, lang = winning_result
+            print(f"", flush=True)
+            print(f"✅ SUCCESS with {name} (Phase 1 - Race)", flush=True)
+            print(f"{'='*70}", flush=True)
+            await _cache_success(video_id, simple, timestamped, lang, name)
+            return simple, timestamped, lang
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 2: yt-dlp (séquentiel, plus lent mais fiable)
