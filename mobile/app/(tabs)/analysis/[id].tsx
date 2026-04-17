@@ -8,7 +8,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  interpolate,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -34,8 +33,14 @@ import { DeepSightSpinner } from "@/components/ui/DeepSightSpinner";
 import { VoiceButton } from "@/components/voice/VoiceButton";
 import { VoiceScreen } from "@/components/voice/VoiceScreen";
 import { useVoiceChat } from "@/components/voice/useVoiceChat";
+import { ExportMenu } from "@/components/export";
+import { AcademicSourcesSection } from "@/components/academic";
+import { FactCheckButton } from "@/components/factcheck";
+import { WebEnrichment } from "@/components/enrichment";
+import { usePlan } from "@/contexts/PlanContext";
 
-const TAB_LABELS = ["Résumé", "Chat"] as const;
+const TAB_LABELS = ["Résumé", "Sources", "Chat"] as const;
+const TAB_COUNT = TAB_LABELS.length;
 const TAB_BAR_HEIGHT = 60;
 
 export default function AnalysisDetailScreen() {
@@ -64,8 +69,11 @@ export default function AnalysisDetailScreen() {
   const [activeTab, setActiveTab] = useState(initialTabIndex);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isVoiceVisible, setIsVoiceVisible] = useState(false);
+  const [isExportVisible, setIsExportVisible] = useState(false);
+  const [tabBarWidth, setTabBarWidth] = useState(0);
   const scrollY = useSharedValue(0);
   const tabIndicatorX = useSharedValue(initialTabIndex);
+  const { plan } = usePlan();
 
   // Sync PagerView to initialTab (only on mount)
   React.useEffect(() => {
@@ -265,17 +273,20 @@ export default function AnalysisDetailScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFullscreen]);
 
+  const tabWidth = tabBarWidth > 0 ? tabBarWidth / TAB_COUNT : 0;
   const tabIndicatorStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: interpolate(tabIndicatorX.value, [0, 1], [0, 160]) },
-    ],
+    width: tabWidth,
+    transform: [{ translateX: tabIndicatorX.value * tabWidth }],
   }));
 
   // ── Éléments réutilisables ────────────────────────────────────────────────
 
   /** Tab bar identique en mode normal et fullscreen */
   const TabBar = (
-    <View style={[styles.tabBar, { borderBottomColor: colors.border }]}>
+    <View
+      style={[styles.tabBar, { borderBottomColor: colors.border }]}
+      onLayout={(e) => setTabBarWidth(e.nativeEvent.layout.width)}
+    >
       {TAB_LABELS.map((label, index) => (
         <Pressable
           key={label}
@@ -328,6 +339,10 @@ export default function AnalysisDetailScreen() {
     ? 88 // fullscreen : header compact (~56px) + tab bar (~44px) sans video player
     : 120; // normal : header + video player + tab bar
 
+  const effectiveSummaryIdStr = resolvedSummaryId || (id as string) || "";
+  const canExport = !!summary && !isProcessing;
+  const sourcesEnabled = !!summary && !!effectiveSummaryIdStr;
+
   /** PagerView — instance unique, toujours dans le flow normal */
   const Pager = (
     <PagerView
@@ -345,6 +360,43 @@ export default function AnalysisDetailScreen() {
           error={error && !isProcessing ? "Erreur de chargement" : null}
           onRetry={() => refetch()}
         />
+      </View>
+      <View key="sources" style={styles.page}>
+        {sourcesEnabled ? (
+          <Animated.ScrollView
+            contentContainerStyle={styles.sourcesScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.sourcesHeader}>
+              <FactCheckButton
+                summaryId={effectiveSummaryIdStr}
+                disabled={isOffline}
+              />
+            </View>
+            <WebEnrichment
+              summaryId={effectiveSummaryIdStr}
+              disabled={isOffline}
+            />
+            <AcademicSourcesSection
+              summaryId={effectiveSummaryIdStr}
+              userPlan={plan}
+              onUpgrade={() => router.push("/(tabs)/subscription")}
+            />
+          </Animated.ScrollView>
+        ) : (
+          <View style={styles.sourcesEmpty}>
+            <Ionicons
+              name="library-outline"
+              size={48}
+              color={colors.textTertiary}
+            />
+            <Text
+              style={[styles.sourcesEmptyText, { color: colors.textSecondary }]}
+            >
+              Sources disponibles après l'analyse
+            </Text>
+          </View>
+        )}
       </View>
       <View key="chat" style={styles.page}>
         <ChatView
@@ -533,6 +585,21 @@ export default function AnalysisDetailScreen() {
           >
             {summary?.title || "Analyse"}
           </Text>
+          {/* Bouton export */}
+          {canExport && (
+            <Pressable
+              onPress={() => setIsExportVisible(true)}
+              style={styles.iconButton}
+              accessibilityLabel="Exporter l'analyse"
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="share-outline"
+                size={22}
+                color={colors.textTertiary}
+              />
+            </Pressable>
+          )}
           {/* Bouton nouvelle analyse */}
           <Pressable
             onPress={handleNewAnalysis}
@@ -575,6 +642,16 @@ export default function AnalysisDetailScreen() {
             onFavoriteChange={setIsFavorite}
           />
         </View>
+      )}
+
+      {/* Export Menu */}
+      {summary && (
+        <ExportMenu
+          summaryId={Number(summary.id)}
+          videoTitle={summary.title || "analyse"}
+          visible={isExportVisible}
+          onClose={() => setIsExportVisible(false)}
+        />
       )}
 
       {/* Voice Chat */}
@@ -696,14 +773,13 @@ const styles = StyleSheet.create({
     position: "relative",
     alignItems: "center",
   },
-  tabButton: { width: 160, paddingVertical: sp.md, alignItems: "center" },
+  tabButton: { flex: 1, paddingVertical: sp.md, alignItems: "center" },
   tabLabel: { fontFamily: fontFamily.body, fontSize: fontSize.sm },
   tabLabelActive: { fontFamily: fontFamily.bodySemiBold },
   tabIndicator: {
     position: "absolute",
     bottom: 0,
     left: 0,
-    width: 160,
     height: 2,
     borderRadius: 1,
   },
@@ -719,6 +795,28 @@ const styles = StyleSheet.create({
   // Pager
   pager: { flex: 1 },
   page: { flex: 1, paddingTop: sp.md },
+  // Sources tab
+  sourcesScrollContent: {
+    paddingHorizontal: sp.md,
+    paddingBottom: sp["2xl"],
+    gap: sp.md,
+  },
+  sourcesHeader: {
+    alignItems: "flex-start",
+    marginBottom: sp.sm,
+  },
+  sourcesEmpty: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: sp.md,
+    paddingHorizontal: sp["3xl"],
+  },
+  sourcesEmptyText: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.base,
+    textAlign: "center",
+  },
   // Fullscreen overlay — position absolute avec bottom: 0
   // Le container parent a paddingBottom=0 en fullscreen → cet overlay couvre tout l'écran
   fullscreenOverlay: {
