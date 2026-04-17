@@ -281,9 +281,25 @@ export function useVoiceChat({
     }
 
     // 3. Démarrer la session ElevenLabs via le SDK React Native
+    // Le SDK attend un conversationToken (JWT) — on l'extrait du signed_url
+    // backend (wss://...?conversation_signature=XXX) car l'agentId seul pointe
+    // vers l'endpoint public ElevenLabs, incompatible avec nos agents privés.
     try {
+      let conversationToken: string | undefined;
+      try {
+        const parsedUrl = new URL(sessionData.signed_url);
+        conversationToken =
+          parsedUrl.searchParams.get("conversation_signature") ??
+          parsedUrl.searchParams.get("conversation_token") ??
+          undefined;
+      } catch {
+        // URL parsing failed — will fallback to agentId below
+      }
+
       await conversation.startSession({
-        agentId: sessionData.agent_id,
+        ...(conversationToken
+          ? { conversationToken }
+          : { agentId: sessionData.agent_id }),
         overrides: {
           agent: {
             language: "fr",
