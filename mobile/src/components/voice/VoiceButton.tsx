@@ -37,6 +37,12 @@ const TAB_BAR_HEIGHT = 56;
 const ACTION_BAR_HEIGHT = 72;
 const FAB_GAP = 16;
 
+// Voice chat mobile temporairement désactivé : le SDK React Native ElevenLabs
+// utilise LiveKit et requiert un conversationToken JWT LiveKit, pas le signed_url
+// WebSocket retourné par notre backend. À réactiver une fois le backend exposera
+// un endpoint /api/voice/livekit-token adapté.
+const VOICE_CHAT_ENABLED = false;
+
 export const VoiceButton: React.FC<VoiceButtonProps> = ({
   summaryId,
   videoTitle,
@@ -48,6 +54,10 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
   const insets = useSafeAreaInsets();
   const bottomOffset =
     TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + FAB_GAP + insets.bottom;
+
+  if (!VOICE_CHAT_ENABLED) {
+    return null;
+  }
 
   // Pulse ring animation
   const ringScale = useSharedValue(1);
