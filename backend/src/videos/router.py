@@ -2998,13 +2998,11 @@ async def _analyze_video_background_v6(
                 except Exception as quota_err:
                     logger.error(f"⚠️ [QUOTA] Failed to increment daily usage: {quota_err}")
 
-            await asyncio.gather(_cache_analysis(), _increment_quota())
-
             # ═══════════════════════════════════════════════════════════════════
-            # 9. MARQUER COMME TERMINÉ
+            # 9. MARQUER COMME TERMINÉ (AVANT cache/notify — frontend voit le résultat plus tôt)
             # ═══════════════════════════════════════════════════════════════════
             enrichment_badge = get_enrichment_badge(enrichment_level, lang)
-            
+
             _task_store[task_id] = {
                 "status": "completed",
                 "progress": 100,
@@ -3030,30 +3028,36 @@ async def _analyze_video_background_v6(
                     } if enrichment_level != EnrichmentLevel.NONE else None
                 }
             }
-            
+
             await update_task_status(
                 session, task_id,
                 status="completed",
                 progress=100,
                 result=_task_store[task_id]["result"]
             )
-            
+
             logger.info(f"✅ [v6.0] Task completed: {task_id}")
             if enrichment_level != EnrichmentLevel.NONE:
                 logger.info(f"   └─ Enrichment: {enrichment_level.value}, {len(enrichment_sources)} sources")
-            
-            # 🔔 NOTIFICATION PUSH — Alerter l'utilisateur que l'analyse est prête
-            try:
-                await notify_analysis_complete(
-                    user_id=user_id,
-                    summary_id=summary_id,
-                    video_title=video_info["title"],
-                    video_id=video_id,
-                    cached=False
-                )
-                logger.info(f"🔔 [NOTIFY] Analysis complete notification sent to user {user_id}")
-            except Exception as notify_err:
-                logger.error(f"⚠️ [NOTIFY] Failed to send notification: {notify_err}")
+
+            # ⚡ Cache + quota fire-and-forget (perf v6.3) — le frontend voit "completed" 100-500ms plus tôt
+            asyncio.create_task(asyncio.gather(_cache_analysis(), _increment_quota()))
+
+            # 🔔 NOTIFICATION PUSH fire-and-forget — Alerter l'utilisateur que l'analyse est prête
+            async def _send_complete_notification():
+                try:
+                    await notify_analysis_complete(
+                        user_id=user_id,
+                        summary_id=summary_id,
+                        video_title=video_info["title"],
+                        video_id=video_id,
+                        cached=False
+                    )
+                    logger.info(f"🔔 [NOTIFY] Analysis complete notification sent to user {user_id}")
+                except Exception as notify_err:
+                    logger.error(f"⚠️ [NOTIFY] Failed to send notification: {notify_err}")
+
+            asyncio.create_task(_send_complete_notification())
             
     except Exception as e:
         error_msg = str(e)
