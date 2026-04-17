@@ -1,0 +1,17 @@
+<section class="ds-sources">
+  <h2 class="ds-section-title">Sources &amp; vérifications</h2>
+  <ul class="ds-sources-list">
+    {% for source in sources %}
+    <li class="ds-source">
+      <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">
+        <span class="ds-source-title"
+          >{{ source.title | default(source.url) }}</span
+        >
+        {% if source.site %}
+        <span class="ds-source-site">{{ source.site }}</span>
+        {% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="{{ lang | default('fr') }}" class="deepsight-share">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="color-scheme" content="dark" />
+
+    <title>{{ page_title }} — DeepSight</title>
+    <meta name="description" content="{{ page_description }}" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="DeepSight" />
+    <meta property="og:locale" content="{{ og_locale | default('fr_FR') }}" />
+    <meta property="og:title" content="{{ page_title }}" />
+    <meta property="og:description" content="{{ page_description }}" />
+    <meta property="og:url" content="{{ canonical_url }}" />
+    <meta property="og:image" content="{{ og_image_url }}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ page_title }}" />
+    <meta name="twitter:description" content="{{ page_description }}" />
+    <meta name="twitter:image" content="{{ og_image_url }}" />
+
+    <link rel="canonical" href="{{ canonical_url }}" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ api_base }}/static-share/favicon.png"
+    />
+    <link rel="stylesheet" href="{{ api_base }}/static-share/share.css" />
+
+    {% block head_extra %}{% endblock %}
+  </head>
+  <body>
+    <header class="ds-header">
+      <a
+        class="ds-brand"
+        href="{{ web_base }}/?utm_source=share&amp;utm_medium=page"
+      >
+        <img
+          class="ds-brand-logo"
+          src="{{ api_base }}/static-share/logo-mark.svg"
+          alt=""
+        />
+        <span class="ds-brand-name">DeepSight</span>
+      </a>
+      <nav class="ds-header-actions">
+        <a
+          class="ds-btn ds-btn-ghost"
+          href="{{ web_base }}/?utm_source=share&amp;utm_medium=header"
+        >
+          À propos
+        </a>
+        <a class="ds-btn ds-btn-primary" href="{{ analyze_cta_url }}">
+          Analyser cette vidéo
+        </a>
+      </nav>
+    </header>
+
+    <main class="ds-main">{% block content %}{% endblock %}</main>
+
+    <footer class="ds-footer">
+      <div class="ds-footer-inner">
+        <p class="ds-footer-text">
+          Généré par
+          <a href="{{ web_base }}/?utm_source=share&amp;utm_medium=footer"
+            >DeepSight</a
+          >, l'IA française qui analyse les vidéos YouTube et TikTok.
+        </p>
+        <p class="ds-footer-legal">
+          {{ view_count }} {{ 'vue' if view_count == 1 else 'vues' }} &middot;
+          Partagé le {{ created_at_fmt }}
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        try {
+          var b = new Blob(
+            [
+              JSON.stringify({
+                t: "{{ share_token }}",
+                r: document.referrer || "",
+              }),
+            ],
+            { type: "application/json" },
+          );
+          navigator.sendBeacon &&
+            navigator.sendBeacon(
+              "{{ api_base }}/api/share/{{ share_token }}/beacon",
+              b,
+            );
+        } catch (e) {}
+      })();
+    </script>
+  </body>
+</html>

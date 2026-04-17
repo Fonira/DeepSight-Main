@@ -1,0 +1,11 @@
+<section class="ds-verdict ds-verdict-{{ verdict.tone | default('neutral') }}">
+  <div class="ds-verdict-badge">
+    <span class="ds-verdict-icon" aria-hidden="true"
+      >{{ verdict.icon | default('🧭') }}</span
+    >
+    <span class="ds-verdict-label"
+      >{{ verdict.label | default('Verdict') }}</span
+    >
+  </div>
+  <p class="ds-verdict-body">{{ verdict.text }}</p>
+</section>

@@ -1,0 +1,51 @@
+{% extends "share/base.html" %} {% block content %}
+<article class="ds-article">
+  <section class="ds-hero">
+    <a
+      class="ds-hero-thumb"
+      href="{{ video_url }}"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {% if video_thumbnail %}
+      <img
+        src="{{ video_thumbnail }}"
+        alt="{{ video_title }}"
+        loading="eager"
+        width="1280"
+        height="720"
+      />
+      {% else %}
+      <div class="ds-hero-thumb-placeholder">🎬</div>
+      {% endif %}
+      <span class="ds-hero-play" aria-hidden="true">▶</span>
+      <span class="ds-hero-platform">
+        {{ platform_label }} {% if duration_fmt %} &middot; {{ duration_fmt }}{%
+        endif %}
+      </span>
+    </a>
+    <div class="ds-hero-meta">
+      <h1 class="ds-hero-title">{{ video_title }}</h1>
+      {% if channel %}
+      <p class="ds-hero-channel">{{ channel }}</p>
+      {% endif %} {% if tags %}
+      <ul class="ds-tags">
+        {% for tag in tags %}
+        <li class="ds-tag">{{ tag }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if verdict %} {% include "share/partials/_verdict.html" %} {% endif %}
+
+  <section class="ds-synthesis">
+    <h2 class="ds-section-title">Synthèse</h2>
+    <div class="ds-synthesis-body">{{ synthesis_html | safe }}</div>
+  </section>
+
+  {% if sources %} {% include "share/partials/_sources.html" %} {% endif %} {%
+  include "share/partials/_cta.html" %}
+</article>
+{% endblock %}
