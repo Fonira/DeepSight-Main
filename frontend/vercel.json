@@ -1,6 +1,14 @@
 {
   "framework": "vite",
   "rewrites": [
+    {
+      "source": "/s/:token/og-image.png",
+      "destination": "https://api.deepsightsynthesis.com/api/share/:token/og-image.png"
+    },
+    {
+      "source": "/s/:token/page",
+      "destination": "https://api.deepsightsynthesis.com/api/share/:token/page"
+    },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     {
       "source": "/s/:token",
