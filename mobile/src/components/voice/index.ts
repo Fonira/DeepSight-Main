@@ -9,3 +9,4 @@ export { default as VoiceWaveform } from "./VoiceWaveform";
 export { default as VoiceTranscript } from "./VoiceTranscript";
 export { default as VoiceQuotaBadge } from "./VoiceQuotaBadge";
 export { default as VoiceSettings } from "./VoiceSettings";
+export { default as VoiceAddonModal } from "./VoiceAddonModal";
