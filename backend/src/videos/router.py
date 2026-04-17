@@ -1183,9 +1183,10 @@ async def _analyze_video_background_v2(
             _task_store[task_id]["message"] = "🚀 Démarrage de l'analyse v2..."
 
             # 1. Récupérer les infos vidéo
-            # Check cancellation
             if _task_store.get(task_id, {}).get("status") == "cancelled":
-                logger.info(f"🚫 [v6.0] Task {task_id[:12]} cancelled")
+                logger.info("Task %s cancelled", task_id[:12])
+                if SECURITY_AVAILABLE:
+                    await release_reserved_credits(user_id, task_id)
                 return
             _task_store[task_id]["progress"] = 10
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
@@ -2521,10 +2522,11 @@ async def _analyze_video_background_v6(
     
     try:
         async with async_session_maker() as session:
-            # Update status
             # Check if cancelled before starting
             if _task_store.get(task_id, {}).get("status") == "cancelled":
-                logger.info(f"🚫 [v6.0] Task {task_id[:12]} cancelled before start")
+                logger.info("Task %s cancelled before start", task_id[:12])
+                if SECURITY_AVAILABLE:
+                    await release_reserved_credits(user_id, task_id)
                 return
 
             _task_store[task_id]["status"] = "processing"
@@ -2534,9 +2536,10 @@ async def _analyze_video_background_v6(
             # ═══════════════════════════════════════════════════════════════════
             # 1. RÉCUPÉRER LES INFOS VIDÉO
             # ═══════════════════════════════════════════════════════════════════
-            # Check cancellation
             if _task_store.get(task_id, {}).get("status") == "cancelled":
-                logger.info(f"🚫 [v6.0] Task {task_id[:12]} cancelled")
+                logger.info("Task %s cancelled", task_id[:12])
+                if SECURITY_AVAILABLE:
+                    await release_reserved_credits(user_id, task_id)
                 return
             _task_store[task_id]["progress"] = 10
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
@@ -2554,6 +2557,11 @@ async def _analyze_video_background_v6(
             # ═══════════════════════════════════════════════════════════════════
             # 2. EXTRAIRE LA TRANSCRIPTION (avec global cache check)
             # ═══════════════════════════════════════════════════════════════════
+            if _task_store.get(task_id, {}).get("status") == "cancelled":
+                logger.info("Task %s cancelled before transcript", task_id[:12])
+                if SECURITY_AVAILABLE:
+                    await release_reserved_credits(user_id, task_id)
+                return
             _task_store[task_id]["progress"] = 20
             _task_store[task_id]["message"] = "📝 Extraction du transcript..."
 
@@ -2796,6 +2804,11 @@ async def _analyze_video_background_v6(
                 # ════════════════════════════════════════════════════════════
                 # 📝 VIDÉO STANDARD — Analyse directe
                 # ════════════════════════════════════════════════════════════
+                if _task_store.get(task_id, {}).get("status") == "cancelled":
+                    logger.info("Task %s cancelled before Mistral summary", task_id[:12])
+                    if SECURITY_AVAILABLE:
+                        await release_reserved_credits(user_id, task_id)
+                    return
                 if web_context:
                     _task_store[task_id]["message"] = "🧠 Génération du résumé enrichi avec l'IA..."
                 else:
@@ -2836,6 +2849,11 @@ async def _analyze_video_background_v6(
             # ═══════════════════════════════════════════════════════════════════
             # 6+7. ⚡ ENTITÉS + FIABILITÉ EN PARALLÈLE (optimisation v6.1)
             # ═══════════════════════════════════════════════════════════════════
+            if _task_store.get(task_id, {}).get("status") == "cancelled":
+                logger.info("Task %s cancelled before entities extraction", task_id[:12])
+                if SECURITY_AVAILABLE:
+                    await release_reserved_credits(user_id, task_id)
+                return
             _task_store[task_id]["progress"] = 75
             _task_store[task_id]["message"] = "🔍 Extraction des entités & fiabilité..."
 
@@ -3110,16 +3128,23 @@ async def cancel_task(
     task_id: str,
     current_user: User = Depends(get_current_user),
 ):
-    """Annule une tâche d'analyse en cours."""
+    """Annule une tâche d'analyse en cours et libère les crédits réservés."""
     task = await _task_store.aget(task_id)
     if task is not None:
         if task.get("user_id") != current_user.id:
             raise HTTPException(status_code=404, detail="Task not found")
 
-        # Mark as cancelled (la mutation sync vers Redis via le proxy)
         task["status"] = "cancelled"
         task["message"] = "Analyse annulée par l'utilisateur"
-        logger.info(f"🚫 [CANCEL] Task {task_id[:12]} cancelled by user {current_user.id}")
+
+        if SECURITY_AVAILABLE:
+            try:
+                await release_reserved_credits(current_user.id, task_id)
+                logger.info("Credits released on cancel: task=%s user=%s", task_id[:12], current_user.id)
+            except Exception as e:
+                logger.warning("Failed to release credits on cancel: %s", e)
+
+        logger.info("Task %s cancelled by user %s", task_id[:12], current_user.id)
         return {"status": "cancelled", "task_id": task_id}
 
     raise HTTPException(status_code=404, detail="Task not found")
