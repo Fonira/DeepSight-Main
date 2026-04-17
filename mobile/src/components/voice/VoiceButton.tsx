@@ -5,6 +5,7 @@
 
 import React, { useCallback } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -31,6 +32,11 @@ interface VoiceButtonProps {
 const BUTTON_SIZE = 56;
 const RING_SIZE = 72;
 
+// Positionne le FAB au-dessus du CustomTabBar (56px) + ActionBar (~72px) + safe area
+const TAB_BAR_HEIGHT = 56;
+const ACTION_BAR_HEIGHT = 72;
+const FAB_GAP = 16;
+
 export const VoiceButton: React.FC<VoiceButtonProps> = ({
   summaryId,
   videoTitle,
@@ -39,6 +45,9 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
 }) => {
   const { colors } = useTheme();
   const { enabled, requiresUpgrade } = useVoiceChatGate();
+  const insets = useSafeAreaInsets();
+  const bottomOffset =
+    TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + FAB_GAP + insets.bottom;
 
   // Pulse ring animation
   const ringScale = useSharedValue(1);
@@ -93,7 +102,10 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
   const glowShadow = shadows.glow(palette.gold);
 
   return (
-    <View style={styles.container} pointerEvents={disabled ? "none" : "auto"}>
+    <View
+      style={[styles.container, { bottom: bottomOffset }]}
+      pointerEvents={disabled ? "none" : "auto"}
+    >
       {/* Pulse ring (only when feature is available) */}
       {enabled && !disabled && (
         <Animated.View
@@ -137,13 +149,13 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 24,
     right: 16,
     width: RING_SIZE,
     height: RING_SIZE,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 100,
+    zIndex: 999,
+    elevation: 999,
   },
   ring: {
     position: "absolute",
