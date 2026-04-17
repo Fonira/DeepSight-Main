@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   View,
   Text,
@@ -25,11 +31,15 @@ import Animated, {
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import type BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@/contexts/ThemeContext";
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
 import { palette } from "@/theme/colors";
 import { duration } from "@/theme/animations";
+import { VoiceQuotaBadge } from "./VoiceQuotaBadge";
+import { VoiceSettings } from "./VoiceSettings";
+import VoiceAddonModal from "./VoiceAddonModal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -246,6 +256,22 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
 }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const settingsSheetRef = useRef<BottomSheet>(null);
+  const [addonVisible, setAddonVisible] = useState(false);
+
+  const handleOpenSettings = useCallback(() => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+    settingsSheetRef.current?.expand();
+  }, []);
+
+  const handleOpenAddon = useCallback(() => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
+    setAddonVisible(true);
+  }, []);
 
   // Haptic feedback on start / stop
   const handleStart = useCallback(() => {
@@ -378,7 +404,7 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
               Quota de conversation vocale atteint
             </Text>
             <Pressable
-              onPress={onClose}
+              onPress={handleOpenAddon}
               style={({ pressed }) => [
                 styles.upgradeButton,
                 {
@@ -386,9 +412,11 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
                   opacity: pressed ? 0.85 : 1,
                 },
               ]}
+              accessibilityRole="button"
+              accessibilityLabel="Acheter un pack de minutes vocales"
             >
               <Text style={[styles.upgradeLabel, { color: palette.white }]}>
-                Passer au plan supérieur
+                Acheter des minutes
               </Text>
             </Pressable>
           </View>
@@ -480,6 +508,30 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
                 </Text>
               ) : null}
             </View>
+            <VoiceQuotaBadge
+              minutesRemaining={remainingMinutes}
+              onPress={handleOpenAddon}
+            />
+            <Pressable
+              onPress={handleOpenSettings}
+              hitSlop={12}
+              style={({ pressed }) => [
+                styles.closeButton,
+                {
+                  backgroundColor: colors.bgTertiary,
+                  opacity: pressed ? 0.7 : 1,
+                  marginLeft: sp.sm,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Paramètres vocaux"
+            >
+              <Ionicons
+                name="settings-outline"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </Pressable>
             <Pressable
               onPress={onClose}
               hitSlop={12}
@@ -488,8 +540,11 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
                 {
                   backgroundColor: colors.bgTertiary,
                   opacity: pressed ? 0.7 : 1,
+                  marginLeft: sp.xs,
                 },
               ]}
+              accessibilityRole="button"
+              accessibilityLabel="Fermer"
             >
               <Ionicons name="close" size={22} color={colors.textSecondary} />
             </Pressable>
@@ -553,7 +608,16 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
             </View>
           )}
         </Animated.View>
+
+        {/* Voice settings bottom sheet */}
+        <VoiceSettings bottomSheetRef={settingsSheetRef} />
       </Animated.View>
+
+      {/* Voice addon purchase modal */}
+      <VoiceAddonModal
+        visible={addonVisible}
+        onClose={() => setAddonVisible(false)}
+      />
     </Modal>
   );
 };

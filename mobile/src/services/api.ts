@@ -2027,6 +2027,18 @@ export const voiceApi = {
       body: { pack_id: packId },
     });
   },
+
+  async getAddonPacks(): Promise<{
+    packs: Array<{
+      id: string;
+      name: string;
+      minutes: number;
+      price_cents: number;
+      description?: string;
+    }>;
+  }> {
+    return request("/api/voice/addon/packs");
+  },
 };
 
 // ============================================
