@@ -54,6 +54,8 @@ DEFAULT_LIMITS = {
     "export": (20, 60),        # 20 exports/min
     "tts": (10, 60),           # 10 TTS/min
     "screenshot": (5, 60),     # 5 détections/min (base64 lourd, coût Mistral OCR+Vision)
+    "share_read": (60, 60),    # 60 consultations/min par IP (public, burst-friendly)
+    "share_create": (10, 60),  # 10 créations/min par user (évite spam de tokens)
     "auth_sensitive": (5, 60),      # 5/min — reset-password, verify-email, change-password
     "auth_email_trigger": (3, 60),  # 3/min — forgot-password, resend-verification (anti-spam email)
 }
@@ -87,6 +89,7 @@ ENDPOINT_CATEGORIES = {
     "/api/export": "export",
     "/api/tts": "tts",
     "/api/images/detect": "screenshot",
+    "/api/share": "share_create",
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
