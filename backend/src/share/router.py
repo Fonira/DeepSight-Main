@@ -10,6 +10,7 @@ DELETE /api/share/{video_id}            → Deactivate share link (auth required
 import json
 import secrets
 import re
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -21,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.database import get_session, SharedAnalysis, Summary, User
 from auth.dependencies import get_current_user
 from share.og_image import generate_og_image
+from share.html_renderer import render_analysis_page
 
 router = APIRouter()
 
@@ -246,6 +248,61 @@ async def get_share_og_image(
         media_type="image/png",
         headers={
             "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400",
+        },
+    )
+
+
+@router.get("/{token}/page", response_class=HTMLResponse, include_in_schema=True)
+async def get_share_page(
+    token: str,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Render the shared analysis as a standalone HTML page.
+
+    Used by:
+    - Social bots that follow redirects and parse rendered HTML.
+    - Fallback for users whose frontend SPA fails to load.
+    - Direct links from email/SMS/QR where rich preview matters.
+
+    Returns 404 if token is unknown or share has been revoked.
+    Increments view_count on each call (best-effort, non-blocking).
+    """
+    result = await session.execute(
+        select(SharedAnalysis).where(
+            SharedAnalysis.share_token == token,
+            SharedAnalysis.is_active.is_(True),
+        )
+    )
+    share: Optional[SharedAnalysis] = result.scalar_one_or_none()
+    if not share:
+        raise HTTPException(status_code=404, detail="Share not found or revoked")
+
+    try:
+        snapshot = json.loads(share.analysis_snapshot or "{}")
+    except json.JSONDecodeError:
+        snapshot = {}
+
+    # Best-effort view count increment
+    try:
+        share.view_count = (share.view_count or 0) + 1
+        await session.commit()
+    except Exception:
+        await session.rollback()
+
+    html = render_analysis_page(
+        snapshot=snapshot,
+        share_token=token,
+        view_count=share.view_count or 0,
+        created_at_iso=(share.created_at.isoformat() + "Z")
+            if share.created_at else datetime.utcnow().isoformat() + "Z",
+    )
+
+    return HTMLResponse(
+        content=html,
+        status_code=200,
+        headers={
+            "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+            "X-Robots-Tag": "index, follow",
         },
     )
 
