@@ -1116,6 +1116,18 @@ if _THUMB_URL:
     except Exception as e:
         logger.warning(f"⚠️ Thumbnail static mount failed: {e}")
 
+# 🎨 Share static files (CSS, fonts, logos for shared analysis pages)
+import os as _os_share
+from fastapi.staticfiles import StaticFiles as _StaticFilesShare
+_SHARE_STATIC_DIR = _os_share.path.join(_os_share.path.dirname(__file__), "..", "static", "share")
+if _os_share.path.isdir(_SHARE_STATIC_DIR):
+    app.mount(
+        "/static-share",
+        _StaticFilesShare(directory=_SHARE_STATIC_DIR),
+        name="share-static",
+    )
+    logger.info("🎨 Share static files mounted at /static-share")
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE
 # ═══════════════════════════════════════════════════════════════════════════════
