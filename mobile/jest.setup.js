@@ -132,6 +132,32 @@ console.warn = (...args) => {
   originalWarn.apply(console, args);
 };
 
+// Mock @react-native-community/netinfo
+jest.mock("@react-native-community/netinfo", () => ({
+  fetch: jest
+    .fn()
+    .mockResolvedValue({ isConnected: true, isInternetReachable: true }),
+  addEventListener: jest.fn(() => jest.fn()),
+  useNetInfo: jest
+    .fn()
+    .mockReturnValue({ isConnected: true, isInternetReachable: true }),
+}));
+
+// Mock @gorhom/bottom-sheet (native Reanimated dependency — not available in Jest)
+jest.mock("@gorhom/bottom-sheet", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    __esModule: true,
+    default: React.forwardRef((props, ref) =>
+      React.createElement(View, { ...props, ref }),
+    ),
+    BottomSheetScrollView: (props) => React.createElement(View, props),
+    BottomSheetView: (props) => React.createElement(View, props),
+    BottomSheetBackdrop: (props) => React.createElement(View, props),
+  };
+});
+
 // Mock fetch globally
 global.fetch = jest.fn();
 

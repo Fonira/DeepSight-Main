@@ -69,7 +69,6 @@ module.exports = (env, argv) => {
           { from: "src/styles/content.css", to: "content.css" },
           { from: "src/styles/widget.css", to: "widget.css" },
           { from: "src/styles/tokens.css", to: "tokens.css" },
-          { from: "src/styles/spinner.css", to: "spinner.css" },
           { from: "icons", to: "icons" },
           {
             from: "../frontend/public/logo.png",
@@ -89,11 +88,6 @@ module.exports = (env, argv) => {
           {
             from: "../frontend/public/spinner-wheel.jpg",
             to: "assets/spinner-wheel.jpg",
-            noErrorOnMissing: true,
-          },
-          {
-            from: "../frontend/public/deepsight-logo.png",
-            to: "assets/deepsight-logo.png",
             noErrorOnMissing: true,
           },
           { from: "public/platforms", to: "platforms", noErrorOnMissing: true },

@@ -180,7 +180,7 @@ describe("VoiceScreen", () => {
       <VoiceScreen {...defaultProps} voiceStatus="quota_exceeded" />,
     );
     expect(getByText(/[Qq]uota/)).toBeTruthy();
-    expect(getByText(/plan supérieur/)).toBeTruthy();
+    expect(getByText(/Acheter des minutes/)).toBeTruthy();
   });
 
   // ── Header ──
