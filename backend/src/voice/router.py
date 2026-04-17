@@ -474,8 +474,27 @@ async def create_voice_session(
         # ── Build context depending on agent type ────────────────────────
         context_block = ""
         rich_ctx = None
+        debate_ctx = None
 
-        if summary:
+        if debate:
+            from voice.debate_context import build_debate_rich_context, MAX_CONTEXT_DEBATE_VOICE
+            debate_ctx = await build_debate_rich_context(debate, db, include_transcripts=True)
+            context_block = debate_ctx.format_for_voice(
+                language=language, max_chars=MAX_CONTEXT_DEBATE_VOICE
+            )
+
+            logger.info(
+                "Voice session: debate context assembled",
+                extra={
+                    "debate_id": debate.id,
+                    "agent_type": agent_config.agent_type,
+                    "topic": (debate_ctx.topic or "")[:60],
+                    "formatted_chars": len(context_block),
+                    "transcript_a_chars": len(debate_ctx.transcript_a),
+                    "transcript_b_chars": len(debate_ctx.transcript_b),
+                },
+            )
+        elif summary:
             from chat.context_builder import build_rich_context
 
             rich_ctx = await build_rich_context(summary, db, include_transcript=True, include_academic=True)
@@ -493,12 +512,13 @@ async def create_voice_session(
                 },
             )
 
-        # ── Build system prompt from agent config + video context ────────
-        # Use language-aware prompt with enforcement
+        # ── Build system prompt ──
         agent_prompt = agent_config.get_system_prompt(language)
 
-        if rich_ctx:
-            # Agent with video context: combine agent prompt + video data
+        if debate_ctx:
+            ctx_label = "CONTEXTE DU DÉBAT" if language == "fr" else "DEBATE CONTEXT"
+            system_prompt = f"{agent_prompt}\n\n--- {ctx_label} ---\n{context_block}"
+        elif rich_ctx:
             ctx_label = "CONTEXTE VIDÉO" if language == "fr" else "VIDEO CONTEXT"
             title_label = "Titre" if language == "fr" else "Title"
             channel_label = "Chaîne" if language == "fr" else "Channel"
@@ -512,15 +532,20 @@ async def create_voice_session(
                 f"{context_block}"
             )
         else:
-            # Agent without video context (onboarding)
             system_prompt = agent_prompt
 
-        # Build webhook tools — filter to agent's allowed tools
+        # ── Build webhook tools (source-aware) ──
         webhook_base_url = APP_URL.rstrip("/")
-        tools_config = ElevenLabsClient.build_tools_config(
-            webhook_base_url=webhook_base_url,
-            api_token=str(request.summary_id or 0),
-        )
+        if agent_config.requires_debate and debate:
+            tools_config = ElevenLabsClient.build_debate_tools_config(
+                webhook_base_url=webhook_base_url,
+                api_token=str(debate.id),
+            )
+        else:
+            tools_config = ElevenLabsClient.build_tools_config(
+                webhook_base_url=webhook_base_url,
+                api_token=str(request.summary_id or 0),
+            )
         # Filter tools to only those allowed for this agent type
         if agent_config.tools:
             allowed_tool_names = set(agent_config.tools)
@@ -559,15 +584,16 @@ async def create_voice_session(
                 },
             )
 
-        # ── Build first message from agent config ────────────────────────
+        # ── Build first message ──
         if language == "fr":
             first_message = agent_config.first_message_fr
         else:
             first_message = agent_config.first_message
 
-        # Inject video title into first message if available
+        # Support {topic} placeholder for debate agent, {video_title} for explorer
+        if debate_ctx and debate_ctx.topic:
+            first_message = first_message.replace("{topic}", debate_ctx.topic)
         if rich_ctx and rich_ctx.video_title and "{video_title}" not in first_message:
-            # For explorer agent, personalize with video title
             if agent_config.agent_type == "explorer":
                 first_message = (
                     f"Salut ! Je suis prêt à discuter de la vidéo « {rich_ctx.video_title} ». "
