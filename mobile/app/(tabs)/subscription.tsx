@@ -32,6 +32,8 @@ import { billingApi, ApiError } from "@/services/api";
 import { OfflineCache, CachePriority } from "@/services/OfflineCache";
 import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
+import { CreditPacksModal } from "@/components/billing";
+import VoiceAddonModal from "@/components/voice/VoiceAddonModal";
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
 import { palette } from "@/theme/colors";
@@ -264,6 +266,8 @@ export default function SubscriptionScreen() {
 
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [creditPacksVisible, setCreditPacksVisible] = useState(false);
+  const [voiceAddonVisible, setVoiceAddonVisible] = useState(false);
 
   const userPlan = (user?.plan ?? "free") as PlanType;
   const userPlanConfig = PLANS_CONFIG.find((p) => p.id === userPlan);
@@ -494,6 +498,69 @@ export default function SubscriptionScreen() {
           </Pressable>
         )}
 
+        {/* ── Packs supplémentaires ── */}
+        <View style={[styles.packsSection, { borderTopColor: colors.border }]}>
+          <Text
+            style={[styles.packsSectionTitle, { color: colors.textPrimary }]}
+          >
+            Booster votre compte
+          </Text>
+          <View style={styles.packsRow}>
+            <Pressable
+              onPress={() => setCreditPacksVisible(true)}
+              style={({ pressed }) => [
+                styles.packCard,
+                {
+                  backgroundColor: colors.bgElevated,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Acheter des crédits supplémentaires"
+            >
+              <Ionicons
+                name="sparkles-outline"
+                size={24}
+                color={palette.amber}
+              />
+              <Text
+                style={[styles.packCardTitle, { color: colors.textPrimary }]}
+              >
+                Crédits
+              </Text>
+              <Text
+                style={[styles.packCardSub, { color: colors.textSecondary }]}
+              >
+                Analyses extra
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setVoiceAddonVisible(true)}
+              style={({ pressed }) => [
+                styles.packCard,
+                {
+                  backgroundColor: colors.bgElevated,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Acheter des minutes vocales"
+            >
+              <Ionicons name="mic-outline" size={24} color={palette.indigo} />
+              <Text
+                style={[styles.packCardTitle, { color: colors.textPrimary }]}
+              >
+                Minutes vocales
+              </Text>
+              <Text
+                style={[styles.packCardSub, { color: colors.textSecondary }]}
+              >
+                ElevenLabs
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
         {/* ── Footer légal ── */}
         <Text style={[styles.legalText, { color: colors.textMuted }]}>
           Les abonnements se renouvellent automatiquement. Annulable à tout
@@ -504,6 +571,16 @@ export default function SubscriptionScreen() {
           {"\n"}Paiement sécurisé par Stripe · Données hébergées en Europe.
         </Text>
       </ScrollView>
+
+      {/* Purchase modals */}
+      <CreditPacksModal
+        visible={creditPacksVisible}
+        onClose={() => setCreditPacksVisible(false)}
+      />
+      <VoiceAddonModal
+        visible={voiceAddonVisible}
+        onClose={() => setVoiceAddonVisible(false)}
+      />
     </View>
   );
 }
@@ -672,5 +749,39 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     textAlign: "center",
     lineHeight: 18,
+  },
+
+  // Packs section
+  packsSection: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: sp.xl,
+    marginTop: sp.lg,
+    marginBottom: sp.lg,
+  },
+  packsSectionTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.lg,
+    marginBottom: sp.md,
+  },
+  packsRow: {
+    flexDirection: "row",
+    gap: sp.md,
+  },
+  packCard: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: sp.lg,
+    paddingHorizontal: sp.md,
+    borderRadius: borderRadius.lg,
+    gap: sp.xs,
+  },
+  packCardTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
+    marginTop: sp.xs,
+  },
+  packCardSub: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
   },
 });
