@@ -432,6 +432,92 @@ class ElevenLabsClient:
             ),
         ]
 
+    @staticmethod
+    def build_debate_tools_config(webhook_base_url: str, api_token: str) -> list[dict]:
+        """Return the ElevenLabs webhook-tool definitions for the debate_moderator agent."""
+        auth_headers = {"Authorization": f"Bearer {api_token}"}
+
+        def _webhook_tool(name: str, description: str, url_path: str, body_schema: dict) -> dict:
+            return {
+                "type": "webhook",
+                "name": name,
+                "description": description,
+                "api_schema": {
+                    "url": f"{webhook_base_url}{url_path}",
+                    "method": "POST",
+                    "request_headers": auth_headers,
+                    "request_body_schema": body_schema,
+                },
+            }
+
+        debate_id_field = {
+            "type": "string",
+            "description": "The debate ID (same as Bearer token)",
+        }
+
+        return [
+            _webhook_tool(
+                name="get_debate_overview",
+                description="Get the debate topic, both video theses, and the cross-analysis summary. Use at session start or when the user asks for a recap.",
+                url_path="/api/voice/tools/debate-overview",
+                body_schema={
+                    "type": "object",
+                    "properties": {"debate_id": debate_id_field},
+                    "required": ["debate_id"],
+                },
+            ),
+            _webhook_tool(
+                name="get_video_thesis",
+                description="Get the full thesis and key arguments of one specific video (video_a or video_b). Use when the user asks about one side.",
+                url_path="/api/voice/tools/debate-thesis",
+                body_schema={
+                    "type": "object",
+                    "properties": {
+                        "debate_id": debate_id_field,
+                        "side": {"type": "string", "description": "Which video: 'video_a' or 'video_b'"},
+                    },
+                    "required": ["debate_id", "side"],
+                },
+            ),
+            _webhook_tool(
+                name="get_argument_comparison",
+                description="Compare the arguments of both videos on a specific sub-topic (e.g. 'price', 'audio quality'). Leave topic empty to get all divergence and convergence points.",
+                url_path="/api/voice/tools/debate-compare",
+                body_schema={
+                    "type": "object",
+                    "properties": {
+                        "debate_id": debate_id_field,
+                        "topic": {"type": "string", "description": "Sub-topic to compare (optional)"},
+                    },
+                    "required": ["debate_id"],
+                },
+            ),
+            _webhook_tool(
+                name="search_in_debate_transcript",
+                description="Search for a passage or keyword in the transcripts of both videos (or a specific one). Use when the user wants to verify a specific quote.",
+                url_path="/api/voice/tools/debate-search",
+                body_schema={
+                    "type": "object",
+                    "properties": {
+                        "debate_id": debate_id_field,
+                        "query": {"type": "string", "description": "The search query"},
+                        "side": {"type": "string", "description": "Which transcript: 'video_a', 'video_b', or 'both' (default)"},
+                    },
+                    "required": ["debate_id", "query"],
+                },
+            ),
+            _webhook_tool(
+                name="get_debate_fact_check",
+                description="Get the list of fact-checked claims with their verdicts (confirmed, nuanced, disputed, unverifiable). Use to ground the debate in evidence.",
+                url_path="/api/voice/tools/debate-fact-check",
+                body_schema={
+                    "type": "object",
+                    "properties": {"debate_id": debate_id_field},
+                    "required": ["debate_id"],
+                },
+            ),
+        ]
+
 
 # =========================================================================
 # Module-level factory
