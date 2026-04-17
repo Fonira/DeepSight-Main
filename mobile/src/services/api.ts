@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { API_BASE_URL, TIMEOUTS } from "../constants/config";
 import { tokenStorage } from "../utils/storage";
 import NetInfo from "@react-native-community/netinfo";
@@ -323,9 +324,9 @@ export const authApi = {
     return response;
   },
 
-  // Google OAuth: exchange Google access token for session tokens
+  // Google OAuth mobile: exchange Google id_token (JWT) for session tokens
   async googleTokenLogin(
-    googleAccessToken: string,
+    googleIdToken: string,
   ): Promise<{ access_token: string; refresh_token: string; user: User }> {
     const response = await request<{
       access_token: string;
@@ -333,7 +334,10 @@ export const authApi = {
       user: User;
     }>("/api/auth/google/token", {
       method: "POST",
-      body: { access_token: googleAccessToken },
+      body: {
+        id_token: googleIdToken,
+        client_platform: Platform.OS === "ios" ? "ios" : "android",
+      },
       requiresAuth: false,
     });
     await tokenStorage.setTokens(response.access_token, response.refresh_token);

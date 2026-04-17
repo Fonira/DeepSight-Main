@@ -298,14 +298,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       const response = await GoogleSignin.signIn();
 
       if (isSuccessResponse(response)) {
-        // Get the access token
-        const tokens = await GoogleSignin.getTokens();
+        // Backend expects id_token (signed Google JWT), not access_token
+        let idToken: string | undefined =
+          response?.data?.idToken ?? (response as any)?.idToken;
 
-        if (tokens.accessToken) {
-          // Exchange with backend
-          await loginWithGoogleToken(tokens.accessToken);
+        if (!idToken) {
+          try {
+            const tokens = await GoogleSignin.getTokens();
+            idToken = tokens?.idToken;
+          } catch (e) {
+            if (__DEV__) console.error("getTokens() failed:", e);
+          }
+        }
+
+        if (idToken) {
+          await loginWithGoogleToken(idToken);
         } else {
-          throw new Error("No access token received from Google");
+          throw new Error("Impossible de récupérer l'id_token Google.");
         }
       } else {
         // User cancelled

@@ -11,6 +11,12 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "../src/contexts/AuthContext";
 import { ThemeProvider } from "../src/contexts/ThemeContext";
 import { TTSProvider } from "../src/contexts/TTSContext";
+import { PlanProvider } from "../src/contexts/PlanContext";
+import { LanguageProvider } from "../src/contexts/LanguageContext";
+import { ErrorProvider } from "../src/contexts/ErrorContext";
+import { OfflineProvider } from "../src/contexts/OfflineContext";
+import { BackgroundAnalysisProvider } from "../src/contexts/BackgroundAnalysisContext";
+import { ElevenLabsProvider } from "@elevenlabs/react-native";
 import { createQueryClient } from "../src/utils/queryClient";
 import { darkColors } from "../src/theme/colors";
 import { useShareIntent } from "../src/hooks/useShareIntent";
@@ -125,11 +131,23 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <QueryClientProvider client={queryClient}>
             <ThemeProvider>
-              <AuthProvider>
-                <TTSProvider>
-                  <RootNavigator />
-                </TTSProvider>
-              </AuthProvider>
+              <LanguageProvider>
+                <ErrorProvider>
+                  <AuthProvider>
+                    <OfflineProvider>
+                      <PlanProvider>
+                        <BackgroundAnalysisProvider>
+                          <ElevenLabsProvider>
+                            <TTSProvider>
+                              <RootNavigator />
+                            </TTSProvider>
+                          </ElevenLabsProvider>
+                        </BackgroundAnalysisProvider>
+                      </PlanProvider>
+                    </OfflineProvider>
+                  </AuthProvider>
+                </ErrorProvider>
+              </LanguageProvider>
             </ThemeProvider>
           </QueryClientProvider>
         </SafeAreaProvider>
