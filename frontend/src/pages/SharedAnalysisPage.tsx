@@ -281,33 +281,37 @@ export default function SharedAnalysisPage() {
           />
         </div>
 
-        {/* CTA Block */}
-        <div className="bg-gradient-to-br from-accent-primary/5 to-accent-secondary/5 border border-accent-primary/15 rounded-2xl p-6 sm:p-8 text-center mb-10">
-          <div className="text-accent-primary font-bold text-lg mb-1">
-            DeepSight
-          </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">
-            Cette analyse a été générée en quelques secondes
-          </h2>
-          <p className="text-text-muted mb-6 max-w-lg mx-auto text-sm sm:text-base">
-            Transformez n'importe quelle vidéo YouTube en synthèse intelligente,
-            flashcards, quiz et plus encore.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              to="/register"
-              className="inline-flex items-center px-6 py-3 bg-accent-primary text-white font-semibold rounded-lg hover:bg-accent-primary-hover transition-colors"
-            >
-              Essayer gratuitement &rarr;
-            </Link>
-            <a
-              href={`/app?url=${encodeURIComponent(youtubeUrl)}`}
-              className="inline-flex items-center px-6 py-3 border border-accent-primary text-accent-primary font-semibold rounded-lg hover:bg-accent-primary/5 transition-colors"
-            >
-              Analyser cette vidéo &rarr;
-            </a>
-          </div>
-        </div>
+        {/* CTA Block — Viral primary CTA with UTM tracking */}
+        {videoId && (
+          <section className="mx-auto mt-12 max-w-3xl rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent p-8 text-center shadow-2xl">
+            <h2 className="text-2xl font-bold text-text-primary sm:text-3xl">
+              Analyse cette vidéo à ta façon
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-text-secondary">
+              DeepSight a généré cette synthèse en quelques secondes.
+              Connecte-toi pour l'analyser avec tes propres paramètres (modes,
+              profondeur, fact-check, flashcards, chat, exports…).
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <a
+                href={`/analyze?video_id=${encodeURIComponent(videoId)}&utm_source=share&utm_medium=cta_primary&utm_campaign=viral`}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:brightness-110"
+              >
+                Analyser cette vidéo
+              </a>
+              <a
+                href="/register?utm_source=share&utm_medium=cta_secondary"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-text-secondary transition hover:bg-white/5"
+              >
+                Créer un compte gratuit
+              </a>
+            </div>
+            <p className="mt-5 text-xs text-text-muted">
+              🇫🇷🇪🇺 IA française · Propulsé par Mistral AI · Vos données restent
+              en Europe
+            </p>
+          </section>
+        )}
       </main>
 
       {/* Footer */}
