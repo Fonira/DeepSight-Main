@@ -30,6 +30,7 @@ import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 import { VoiceToolIndicator } from "./VoiceToolIndicator";
 import { useTranslation } from "../../hooks/useTranslation";
 import { VoicePTTButton } from "./VoicePTTButton";
+import DoodleBackground from "../DoodleBackground";
 
 // Lazy-load VoiceSettings to avoid circular imports + reduce initial bundle
 const VoiceSettings = lazy(() => import("./VoiceSettings"));
@@ -561,15 +562,26 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
           className="fixed inset-0 z-[100] flex items-center justify-center"
           role="presentation"
         >
-          {/* Backdrop */}
+          {/* Backdrop — DeepSight dark theme + doodle pattern + brand glow */}
           <motion.div
-            className="absolute inset-0 bg-[#0a0a0f]/95 backdrop-blur-xl"
+            className="absolute inset-0 bg-[#0a0a0f]/95 backdrop-blur-xl overflow-hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             aria-hidden="true"
-          />
+          >
+            {/* Doodles arrière-plan (DeepSight signature pattern, desktop only) */}
+            <DoodleBackground variant="tech" />
+            {/* Halo radial brand (indigo / violet / cyan) — subtle, non-aurora */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(60% 50% at 50% 35%, rgba(99,102,241,0.10), transparent 60%), radial-gradient(40% 40% at 75% 85%, rgba(6,182,212,0.08), transparent 70%), radial-gradient(40% 40% at 25% 85%, rgba(139,92,246,0.08), transparent 70%)",
+              }}
+            />
+          </motion.div>
 
           {/* Dialog */}
           <motion.div
@@ -579,7 +591,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             aria-labelledby={titleId}
             aria-describedby={descId}
             tabIndex={-1}
-            className="relative z-10 w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-[720px] sm:mx-4 sm:rounded-2xl bg-white/5 backdrop-blur-xl border-0 sm:border sm:border-white/10 flex flex-col focus:outline-none overflow-hidden"
+            className="relative z-10 w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-[760px] sm:mx-4 sm:rounded-2xl bg-[#12121a]/80 backdrop-blur-2xl border-0 sm:border sm:border-white/10 shadow-[0_20px_60px_-20px_rgba(99,102,241,0.35)] flex flex-col focus:outline-none overflow-hidden"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
