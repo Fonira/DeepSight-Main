@@ -32,6 +32,7 @@ class _DeepSightSettings(BaseSettings):
     DATABASE_PATH: str = ""
     APP_URL: str = "http://localhost:8000"
     FRONTEND_URL: str = "http://localhost:5173"
+    API_PUBLIC_URL: str = "https://api.deepsightsynthesis.com"
     CUSTOM_DOMAIN: str = ""
     PORT: int = 8000
 
