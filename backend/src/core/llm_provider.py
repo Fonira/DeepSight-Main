@@ -60,7 +60,7 @@ MISTRAL_FALLBACK_ORDER = [
 ]
 
 # Max retries per model before trying next in fallback chain
-MAX_RETRIES_PER_MODEL = 2
+MAX_RETRIES_PER_MODEL = 1
 
 # Backoff base (seconds) — exponential: base * 2^attempt
 BACKOFF_BASE = 2.0
