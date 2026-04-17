@@ -100,6 +100,12 @@ function tryInjectWidget(): void {
     logBootStep("inject:platform-theme", { platform, theme });
 
     const host = createWidgetShell(theme, isTikTok);
+    if (!host) {
+      logBootStep("inject:createWidgetShell-returned-null");
+      const delay = ctx.injectionAttempts <= 10 ? 300 : 1000;
+      setTimeout(tryInjectWidget, delay);
+      return;
+    }
     const widgetCard = getExistingWidget();
     if (widgetCard) {
       widgetCard.innerHTML = buildWidgetHeader(logoImgHtml(22));
