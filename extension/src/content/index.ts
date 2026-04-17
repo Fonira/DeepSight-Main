@@ -605,10 +605,24 @@ async function handleLogout(): Promise<void> {
 function showError(message: string): void {
   const body = getWidgetBody();
   if (!body) return;
+  const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
   const errorDiv = document.createElement("div");
   errorDiv.style.cssText =
-    "padding:8px 12px;background:var(--ds-error-bg);border-radius:8px;font-size:11px;color:var(--ds-error);margin-top:8px";
-  errorDiv.textContent = `❌ ${message}`;
+    "padding:8px 12px;background:var(--ds-error-bg);border-radius:8px;font-size:11px;color:var(--ds-error);margin-top:8px;display:flex;flex-direction:column;gap:6px";
+  errorDiv.textContent = isOffline
+    ? "📡 Hors ligne — vérifiez votre connexion"
+    : `❌ ${message}`;
+  if (isOffline) {
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.textContent = "Réessayer";
+    retry.style.cssText =
+      "padding:4px 8px;border-radius:4px;background:var(--ds-gold-mid);color:#0a0a0f;border:none;font-size:10px;cursor:pointer;align-self:flex-start";
+    retry.addEventListener("click", () => {
+      void initCard();
+    });
+    errorDiv.appendChild(retry);
+  }
   body.appendChild(errorDiv);
 }
 
@@ -723,6 +737,16 @@ window.addEventListener("error", (ev) => {
 window.addEventListener("unhandledrejection", (ev) => {
   void persistCrash(ev.reason, { source: "unhandledrejection" });
 });
+
+// Auto-retry on network recovery
+if (typeof window !== "undefined") {
+  window.addEventListener("online", () => {
+    logBootStep("network:online-retry");
+    if (ctx.state === "login" || ctx.state === "ready") {
+      void initCard();
+    }
+  });
+}
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", bootstrap);
