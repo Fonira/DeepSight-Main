@@ -767,7 +767,10 @@ class VoiceSession(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(__import__('uuid').uuid4()))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    summary_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Exactement UN des deux doit être non-null (XOR validé côté application)
+    summary_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=True, index=True)
+    debate_id = Column(Integer, ForeignKey("debate_analyses.id", ondelete="CASCADE"), nullable=True, index=True)
 
     # ElevenLabs
     elevenlabs_agent_id = Column(String(100), nullable=True)
@@ -781,6 +784,9 @@ class VoiceSession(Base):
     # Status: pending, active, completed, failed, timeout
     status = Column(String(20), default="pending", nullable=False, index=True)
 
+    # Agent type (explorer | tutor | debate_moderator | quiz_coach | onboarding)
+    agent_type = Column(String(40), default="explorer", nullable=False, index=True)
+
     # Contenu
     conversation_transcript = Column(Text, nullable=True)
     language = Column(String(5), default="fr")
@@ -789,6 +795,7 @@ class VoiceSession(Base):
     # Relations
     user = relationship("User")
     summary = relationship("Summary")
+    debate = relationship("DebateAnalysis")
 
 
 class VoiceQuota(Base):
@@ -1193,6 +1200,33 @@ async def run_schema_migrations():
         "CREATE INDEX IF NOT EXISTS idx_ki_hash ON keyword_images(term_hash)",
         "CREATE INDEX IF NOT EXISTS idx_ki_status ON keyword_images(status)",
         "CREATE INDEX IF NOT EXISTS idx_ki_fun ON keyword_images(fun_score DESC)",
+        # 🎙️ Voice sessions — debate support migration (Apr 2026)
+        """
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='voice_sessions' AND column_name='debate_id'
+    ) THEN
+        ALTER TABLE voice_sessions ADD COLUMN debate_id INTEGER
+            REFERENCES debate_analyses(id) ON DELETE CASCADE;
+        CREATE INDEX IF NOT EXISTS idx_voice_sessions_debate ON voice_sessions(debate_id);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='voice_sessions' AND column_name='agent_type'
+    ) THEN
+        ALTER TABLE voice_sessions ADD COLUMN agent_type VARCHAR(40)
+            NOT NULL DEFAULT 'explorer';
+        CREATE INDEX IF NOT EXISTS idx_voice_sessions_agent_type ON voice_sessions(agent_type);
+    END IF;
+    -- Rendre summary_id nullable (pour permettre les sessions debate et onboarding)
+    BEGIN
+        ALTER TABLE voice_sessions ALTER COLUMN summary_id DROP NOT NULL;
+    EXCEPTION WHEN others THEN NULL;
+    END;
+END $$;
+""",
     ]
     async with engine.begin() as conn:
         for sql in migrations:
