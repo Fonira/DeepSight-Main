@@ -45,6 +45,24 @@ export function createWidgetShell(
   const shadow = host.attachShadow({ mode: "closed" });
   setShadowRoot(shadow);
 
+  // ── YouTube/TikTok keyboard shortcut isolation ──
+  // The host page (YouTube especially) registers keyboard shortcuts on
+  // `document` (i = miniplayer, k = play/pause, m = mute, f = fullscreen,
+  // t = theater, c = captions, j/l = seek, 0-9 = seek %). Events originating
+  // inside our shadow root bubble out through the host and reach those
+  // document-level listeners, hijacking the user's keystrokes while they
+  // type credentials or chat messages.
+  //
+  // We stop propagation at the host. Shadow-internal React handlers still
+  // run (they fire before the event crosses the shadow boundary), but
+  // nothing escapes to the page.
+  const stopKeyPropagation = (e: Event) => {
+    e.stopPropagation();
+  };
+  host.addEventListener("keydown", stopKeyPropagation);
+  host.addEventListener("keyup", stopKeyPropagation);
+  host.addEventListener("keypress", stopKeyPropagation);
+
   // Inject styles into the shadow root (fully isolated from page)
   // tokens.css uses :host selector so variables work inside the shadow boundary
   const tokensLink = document.createElement("link");
