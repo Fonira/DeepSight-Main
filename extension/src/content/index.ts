@@ -38,6 +38,8 @@ import {
 import { renderResultsState } from "./states/results";
 import { renderChatState } from "./states/chat";
 
+import { logBootStep, persistCrash } from "../utils/crash-logger";
+
 import type { Summary, User, PlanInfo, TournesolData } from "../types";
 
 // ── State Machine ──
@@ -79,64 +81,87 @@ function logoImgHtml(size = 22): string {
 // ── Widget injection avec retry ──
 
 function tryInjectWidget(): void {
-  if (ctx.injected && getExistingWidget()) return;
-  if (ctx.injectionAttempts > 30) return;
+  try {
+    if (ctx.injected && getExistingWidget()) {
+      logBootStep("inject:skip-already-injected");
+      return;
+    }
+    if (ctx.injectionAttempts > 30) {
+      logBootStep("inject:max-attempts-reached");
+      return;
+    }
 
-  ctx.injectionAttempts++;
+    ctx.injectionAttempts++;
+    logBootStep("inject:attempt", { n: ctx.injectionAttempts });
 
-  const platform = detectCurrentPagePlatform();
-  const isTikTok = platform === "tiktok";
-  const theme = detectTheme();
+    const platform = detectCurrentPagePlatform();
+    const isTikTok = platform === "tiktok";
+    const theme = detectTheme();
+    logBootStep("inject:platform-theme", { platform, theme });
 
-  const host = createWidgetShell(theme, isTikTok);
-  // The widget card is inside the shadow root — set its content
-  const widgetCard = getExistingWidget();
-  if (widgetCard) {
-    widgetCard.innerHTML = buildWidgetHeader(logoImgHtml(22));
-    const body = document.createElement("div");
-    body.className = "ds-card-body";
-    body.innerHTML = `<div class="ds-loading"><div style="color:var(--ds-gold-mid)">⏳</div><p class="ds-loading-text">Chargement...</p></div>`;
-    widgetCard.appendChild(body);
-  }
+    const host = createWidgetShell(theme, isTikTok);
+    const widgetCard = getExistingWidget();
+    if (widgetCard) {
+      widgetCard.innerHTML = buildWidgetHeader(logoImgHtml(22));
+      const body = document.createElement("div");
+      body.className = "ds-card-body";
+      body.innerHTML = `<div class="ds-loading"><div style="color:var(--ds-gold-mid)">⏳</div><p class="ds-loading-text">Chargement...</p></div>`;
+      widgetCard.appendChild(body);
+      logBootStep("inject:widget-populated");
+    } else {
+      logBootStep("inject:widgetCard-null");
+    }
 
-  const success = injectWidget(host, isTikTok);
-  if (success) {
-    ctx.injected = true;
-    ctx.injectionAttempts = 0;
-    bindMinimizeButton();
-    // Watch theme changes
-    watchTheme((t) => {
-      const w = getExistingWidget();
-      if (w) {
-        w.classList.remove("dark", "light");
-        w.classList.add(t);
-      }
+    const success = injectWidget(host, isTikTok);
+    logBootStep("inject:injectWidget-result", { success });
+
+    if (success) {
+      ctx.injected = true;
+      ctx.injectionAttempts = 0;
+      bindMinimizeButton();
+      watchTheme((t) => {
+        const w = getExistingWidget();
+        if (w) {
+          w.classList.remove("dark", "light");
+          w.classList.add(t);
+        }
+      });
+      startWidgetObserver(() => {
+        logBootStep("observer:widget-detached");
+        ctx.injected = false;
+        tryInjectWidget();
+      });
+      watchLayoutMode((mode: LayoutMode) => {
+        const hostEl = document.getElementById("deepsight-host");
+        if (!hostEl) return;
+        if (mode === "fullscreen") {
+          hostEl.style.display = "none";
+        } else if (mode === "theater") {
+          hostEl.style.cssText =
+            "all:initial;position:fixed;bottom:20px;right:20px;width:380px;max-height:80vh;z-index:2147483646;";
+          hostEl.style.display = "";
+        } else {
+          hostEl.style.cssText =
+            "all:initial;display:block;width:100%;max-width:420px;margin-bottom:12px;";
+        }
+      });
+      logBootStep("inject:success-calling-initCard");
+      initCard();
+    } else {
+      const delay = ctx.injectionAttempts <= 10 ? 300 : 1000;
+      setTimeout(tryInjectWidget, delay);
+    }
+  } catch (err) {
+    logBootStep("inject:caught-error", {
+      message: (err as Error).message,
     });
-    // Re-inject if YouTube SPA removes the widget
-    startWidgetObserver(() => {
-      ctx.injected = false;
-      tryInjectWidget();
+    void persistCrash(err, {
+      step: "tryInjectWidget",
+      attempt: ctx.injectionAttempts,
     });
-    // Adjust layout when theater/fullscreen toggles
-    watchLayoutMode((mode: LayoutMode) => {
-      const hostEl = document.getElementById("deepsight-host");
-      if (!hostEl) return;
-      if (mode === "fullscreen") {
-        hostEl.style.display = "none";
-      } else if (mode === "theater") {
-        hostEl.style.cssText =
-          "all:initial;position:fixed;bottom:20px;right:20px;width:380px;max-height:80vh;z-index:2147483646;";
-        hostEl.style.display = "";
-      } else {
-        hostEl.style.cssText =
-          "all:initial;display:block;width:100%;max-width:420px;margin-bottom:12px;";
-      }
-    });
-    initCard();
-  } else {
-    // Adaptive interval: 300ms for first 10, then 1000ms
-    const delay = ctx.injectionAttempts <= 10 ? 300 : 1000;
-    setTimeout(tryInjectWidget, delay);
+    if (ctx.injectionAttempts < 3) {
+      setTimeout(tryInjectWidget, 1000);
+    }
   }
 }
 
@@ -598,22 +623,43 @@ Browser.runtime.onMessage.addListener((message: unknown) => {
 // ── Bootstrap ──
 
 function bootstrap(): void {
-  if (!isVideoPage()) return;
+  try {
+    logBootStep("bootstrap:start", {
+      url: location.href,
+      readyState: document.readyState,
+    });
+    if (!isVideoPage()) {
+      logBootStep("bootstrap:not-video-page");
+      return;
+    }
 
-  ctx.videoId = getCurrentVideoId();
-  if (!ctx.videoId) return;
+    ctx.videoId = getCurrentVideoId();
+    if (!ctx.videoId) {
+      logBootStep("bootstrap:no-video-id");
+      return;
+    }
 
-  // Detect third-party extensions before injecting (Dark Reader, etc.)
-  detectExtensions();
-
-  // Démarrer l'injection avec délai
-  setTimeout(tryInjectWidget, 1000);
-
-  // Écouter les navigations SPA
-  watchNavigation(onNavigate);
+    logBootStep("bootstrap:video-id", { videoId: ctx.videoId });
+    detectExtensions();
+    setTimeout(tryInjectWidget, 1000);
+    watchNavigation(onNavigate);
+    logBootStep("bootstrap:ready");
+  } catch (err) {
+    logBootStep("bootstrap:caught-error", {
+      message: (err as Error).message,
+    });
+    void persistCrash(err, { step: "bootstrap" });
+  }
 }
 
-// Attendre que le DOM soit prêt
+// Global safety net: persist any uncaught error during the boot window
+window.addEventListener("error", (ev) => {
+  if (ev.error) void persistCrash(ev.error, { source: "window.onerror" });
+});
+window.addEventListener("unhandledrejection", (ev) => {
+  void persistCrash(ev.reason, { source: "unhandledrejection" });
+});
+
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", bootstrap);
 } else {
