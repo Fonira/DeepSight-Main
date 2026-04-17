@@ -8,6 +8,7 @@ DELETE /api/share/{video_id}            → Deactivate share link (auth required
 """
 
 import json
+import json as _json  # alias used by _build_share_snapshot for clarity
 import secrets
 import re
 from datetime import datetime
@@ -68,6 +69,115 @@ def _extract_verdict(content: str) -> str:
     if paragraphs:
         return paragraphs[-1][:200]
     return content[:200]
+
+
+def _build_share_snapshot(summary) -> dict:
+    """Build the rich JSON snapshot stored in SharedAnalysis.analysis_snapshot.
+
+    Consumed by the HTML page renderer (templates/share/analysis.html) and the
+    OG image generator. All fields degrade gracefully to None/[] if the source
+    Summary is missing columns. This is the canonical place to evolve the
+    snapshot shape without touching the rendering layer.
+
+    Attribute lookups use fallbacks so the helper works against both the
+    spec'd field names (tags_json, content, verdict_tone, sources_json, etc.)
+    and the real `Summary` ORM columns (tags, summary_content, video_channel,
+    thumbnail_url, video_duration, enrichment_sources).
+    """
+    # Tags: prefer JSON string, then list, then real Summary.tags (Text JSON)
+    tags: list = []
+    raw_tags = (
+        getattr(summary, "tags_json", None)
+        if getattr(summary, "tags_json", None) is not None
+        else getattr(summary, "tags", None)
+    )
+    if raw_tags is not None:
+        if isinstance(raw_tags, list):
+            tags = [str(t) for t in raw_tags]
+        elif isinstance(raw_tags, str) and raw_tags.strip():
+            try:
+                parsed = _json.loads(raw_tags)
+                if isinstance(parsed, list):
+                    tags = [str(t) for t in parsed]
+            except (ValueError, TypeError):
+                tags = []
+
+    # Sources: prefer sources_json, fallback to enrichment_sources on real Summary
+    sources: list = []
+    raw_sources = (
+        getattr(summary, "sources_json", None)
+        if getattr(summary, "sources_json", None) is not None
+        else getattr(summary, "enrichment_sources", None)
+    )
+    if raw_sources is not None:
+        parsed = None
+        if isinstance(raw_sources, list):
+            parsed = raw_sources
+        elif isinstance(raw_sources, str) and raw_sources.strip():
+            try:
+                parsed = _json.loads(raw_sources)
+            except (ValueError, TypeError):
+                parsed = None
+        if isinstance(parsed, list):
+            for src in parsed:
+                if isinstance(src, dict) and src.get("url"):
+                    sources.append({
+                        "url": src["url"],
+                        "title": src.get("title"),
+                        "site": src.get("site"),
+                    })
+
+    # Verdict object: text + tone + icon + label
+    verdict = None
+    verdict_text = getattr(summary, "verdict", None)
+    if verdict_text:
+        verdict_tone = getattr(summary, "verdict_tone", None) or "neutral"
+        verdict = {
+            "tone": verdict_tone,
+            "label": "Verdict",
+            "icon": {
+                "positive": "\u2705",
+                "cautious": "\u26a0\ufe0f",
+                "critical": "\u274c",
+            }.get(verdict_tone, "\U0001f9ed"),
+            "text": verdict_text,
+        }
+
+    # Fields with real-Summary fallbacks
+    video_thumbnail = (
+        getattr(summary, "video_thumbnail", None)
+        if getattr(summary, "video_thumbnail", None) is not None
+        else getattr(summary, "thumbnail_url", None)
+    )
+    channel = (
+        getattr(summary, "channel", None)
+        if getattr(summary, "channel", None) is not None
+        else getattr(summary, "video_channel", None)
+    )
+    duration_seconds = (
+        getattr(summary, "duration_seconds", None)
+        if getattr(summary, "duration_seconds", None) is not None
+        else getattr(summary, "video_duration", None)
+    )
+    synthesis = (
+        getattr(summary, "content", None)
+        if getattr(summary, "content", None) is not None
+        else getattr(summary, "summary_content", None)
+    ) or ""
+
+    return {
+        "video_id": getattr(summary, "video_id", "") or "",
+        "video_title": getattr(summary, "video_title", "") or "",
+        "video_thumbnail": video_thumbnail,
+        "platform": getattr(summary, "platform", None) or "youtube",
+        "duration_seconds": duration_seconds,
+        "channel": channel,
+        "tags": tags,
+        "verdict": verdict,
+        "synthesis_markdown": synthesis,
+        "summary_short": getattr(summary, "summary_short", None),
+        "sources": sources,
+    }
 
 
 def _build_og_html(shared: SharedAnalysis, share_token: str) -> str:
@@ -153,22 +263,20 @@ async def create_share_link(
     if not summary:
         raise HTTPException(status_code=404, detail="Analysis not found for this video")
 
-    # Build snapshot
+    # Build rich snapshot (used by HTML renderer and OG image generator)
     verdict = _extract_verdict(summary.summary_content or "")
-    snapshot = {
-        "video_title": summary.video_title,
-        "video_channel": summary.video_channel,
-        "video_url": summary.video_url,
-        "thumbnail_url": summary.thumbnail_url,
-        "category": summary.category,
-        "reliability_score": summary.reliability_score,
-        "summary_content": summary.summary_content,
-        "tags": summary.tags,
-        "mode": summary.mode,
-        "lang": summary.lang,
-        "video_duration": summary.video_duration,
-        "created_at": summary.created_at.isoformat() if summary.created_at else None,
-    }
+    snapshot = _build_share_snapshot(summary)
+    # Legacy verdict string (extracted from content) is still useful for the
+    # indexed column and for the current JSON API consumers that read
+    # shared.verdict directly. Promote it into the snapshot if the Summary
+    # has no structured verdict attribute of its own.
+    if snapshot.get("verdict") is None and verdict:
+        snapshot["verdict"] = {
+            "tone": "neutral",
+            "label": "Verdict",
+            "icon": "\U0001f9ed",
+            "text": verdict,
+        }
 
     token = generate_share_token()
 
@@ -176,7 +284,7 @@ async def create_share_link(
         share_token=token,
         video_id=request.video_id,
         user_id=current_user.id,
-        analysis_snapshot=json.dumps(snapshot, ensure_ascii=False),
+        analysis_snapshot=_json.dumps(snapshot, ensure_ascii=False),
         video_title=summary.video_title,
         video_thumbnail=summary.thumbnail_url,
         verdict=verdict,
