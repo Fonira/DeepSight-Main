@@ -440,6 +440,33 @@ async def create_voice_session(
                 },
             )
 
+    # Verify debate ownership (for agents requiring a debate)
+    debate = None
+    if getattr(agent_config, "requires_debate", False):
+        if not request.debate_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "debate_required",
+                    "message": f"L'agent '{agent_config.display_name_fr}' nécessite un debate_id.",
+                },
+            )
+        result = await db.execute(
+            select(DebateAnalysis).where(
+                DebateAnalysis.id == request.debate_id,
+                DebateAnalysis.user_id == current_user.id,
+            )
+        )
+        debate = result.scalar_one_or_none()
+        if not debate:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "debate_not_found",
+                    "message": "Debate not found or does not belong to you.",
+                },
+            )
+
     # Check voice quota
     quota_info = await check_voice_quota(current_user.id, plan, db)
     if not quota_info["can_use"]:
@@ -456,6 +483,8 @@ async def create_voice_session(
     voice_session = VoiceSession(
         user_id=current_user.id,
         summary_id=request.summary_id,
+        debate_id=request.debate_id,
+        agent_type=agent_config.agent_type,
         status="pending",
         started_at=datetime.utcnow(),
     )
