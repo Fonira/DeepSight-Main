@@ -328,6 +328,11 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
     voiceStatus === "listening" ||
     voiceStatus === "thinking" ||
     voiceStatus === "speaking";
+  // "Session existe" = user a démarré quelque chose qu'il peut vouloir
+  // interrompre, y compris pendant connecting et en cas d'error post-démarrage.
+  // quota_exceeded et idle : pas de bouton stop (rien à arrêter).
+  const hasActiveSession =
+    isActive || voiceStatus === "connecting" || voiceStatus === "error";
   const remainingFormatted = formatTime(remainingMinutes * 60);
 
   // Body scroll lock + focus management
@@ -647,11 +652,27 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center gap-1.5 flex-shrink-0">
                 {playbackRate && playbackRate > 1.0 && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono">
                     {playbackRate}x
                   </span>
+                )}
+                {/* Always-visible Stop button whenever a session exists
+                    (connecting / active / error). User can always abort. */}
+                {hasActiveSession && (
+                  <button
+                    type="button"
+                    onClick={safeStop}
+                    className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all focus-visible:ring-2 focus-visible:ring-red-400"
+                    title={tr("Arrêter l'appel", "Stop call")}
+                    aria-label={tr("Arrêter l'appel", "Stop call")}
+                  >
+                    <PhoneOff className="w-4 h-4" />
+                    <span className="text-xs font-semibold hidden sm:inline">
+                      {tr("Arrêter", "Stop")}
+                    </span>
+                  </button>
                 )}
                 <button
                   type="button"
