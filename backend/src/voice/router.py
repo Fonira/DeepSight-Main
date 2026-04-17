@@ -1212,6 +1212,54 @@ async def tool_check_fact(request: Request, db: AsyncSession = Depends(get_sessi
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# POST /tools/debate-* — Debate moderator agent tools (public, bearer=debate_id)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/tools/debate-overview")
+async def tool_debate_overview(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: debate overview (topic + theses + summary)."""
+    debate, _body = await verify_debate_tool_request(request, db)
+    result = await get_debate_overview(debate.id, db)
+    return {"result": result}
+
+
+@router.post("/tools/debate-thesis")
+async def tool_debate_thesis(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: thesis + arguments for video A or B."""
+    debate, body = await verify_debate_tool_request(request, db)
+    side = body.get("side") or body.get("parameters", {}).get("side", "video_a")
+    result = await get_video_thesis(debate.id, side, db)
+    return {"result": result}
+
+
+@router.post("/tools/debate-compare")
+async def tool_debate_compare(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: compare arguments on a sub-topic."""
+    debate, body = await verify_debate_tool_request(request, db)
+    topic = body.get("topic") or body.get("parameters", {}).get("topic", "")
+    result = await get_argument_comparison(debate.id, topic, db)
+    return {"result": result}
+
+
+@router.post("/tools/debate-search")
+async def tool_debate_search(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: search in one or both transcripts."""
+    debate, body = await verify_debate_tool_request(request, db)
+    query = body.get("query") or body.get("parameters", {}).get("query", "")
+    side = body.get("side") or body.get("parameters", {}).get("side", "both")
+    result = await search_in_debate_transcript(debate.id, query, side, db)
+    return {"result": result}
+
+
+@router.post("/tools/debate-fact-check")
+async def tool_debate_fact_check(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: fact-check verdicts."""
+    debate, _body = await verify_debate_tool_request(request, db)
+    result = await get_debate_fact_check(debate.id, db)
+    return {"result": result}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # GET /agents/types — List available agent types
 # ═══════════════════════════════════════════════════════════════════════════════
 
