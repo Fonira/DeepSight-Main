@@ -1006,6 +1006,113 @@ async def get_voice_transcript(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# GET /history/debate/{debate_id} — Voice session history for a debate
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/history/debate/{debate_id}", response_model=VoiceHistoryResponse)
+async def get_debate_voice_history(
+    debate_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Get all voice sessions for a given debate."""
+    result = await db.execute(
+        select(DebateAnalysis).where(
+            DebateAnalysis.id == debate_id,
+            DebateAnalysis.user_id == current_user.id,
+        )
+    )
+    debate = result.scalar_one_or_none()
+    if not debate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "debate_not_found", "message": "Debate not found."},
+        )
+
+    result = await db.execute(
+        select(VoiceSession)
+        .where(
+            VoiceSession.user_id == current_user.id,
+            VoiceSession.debate_id == debate_id,
+        )
+        .order_by(VoiceSession.started_at.desc())
+    )
+    sessions = result.scalars().all()
+
+    from voice.schemas import VoiceSessionSummary
+    session_summaries = [
+        VoiceSessionSummary(
+            session_id=s.id,
+            started_at=s.started_at,
+            ended_at=s.ended_at,
+            duration_seconds=s.duration_seconds or 0,
+            status=s.status or "unknown",
+            has_transcript=bool(s.conversation_transcript),
+        )
+        for s in sessions
+    ]
+    total_seconds = sum(s.duration_seconds or 0 for s in sessions)
+
+    return VoiceHistoryResponse(
+        summary_id=debate_id,
+        video_title=debate.detected_topic or "Débat sans sujet",
+        sessions=session_summaries,
+        total_minutes=round(total_seconds / 60.0, 2),
+    )
+
+
+@router.get(
+    "/history/debate/{debate_id}/{session_id}/transcript",
+    response_model=VoiceTranscriptResponse,
+)
+async def get_debate_voice_transcript(
+    debate_id: int,
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Get the transcript of a specific debate voice session."""
+    result = await db.execute(
+        select(DebateAnalysis).where(
+            DebateAnalysis.id == debate_id,
+            DebateAnalysis.user_id == current_user.id,
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "debate_not_found", "message": "Debate not found."},
+        )
+
+    result = await db.execute(
+        select(VoiceSession).where(
+            VoiceSession.id == session_id,
+            VoiceSession.user_id == current_user.id,
+            VoiceSession.debate_id == debate_id,
+        )
+    )
+    voice_session = result.scalar_one_or_none()
+    if not voice_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "session_not_found", "message": "Voice session not found."},
+        )
+    if not voice_session.conversation_transcript:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "transcript_not_found", "message": "No transcript available."},
+        )
+
+    return VoiceTranscriptResponse(
+        session_id=voice_session.id,
+        summary_id=debate_id,
+        started_at=voice_session.started_at,
+        duration_seconds=voice_session.duration_seconds or 0,
+        transcript=voice_session.conversation_transcript,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # GET /addon/packs — Available voice minute packs
 # ═══════════════════════════════════════════════════════════════════════════════
 
