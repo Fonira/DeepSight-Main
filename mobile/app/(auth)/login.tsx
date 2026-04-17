@@ -50,11 +50,13 @@ export default function LoginScreen() {
   const passwordRef = useRef<TextInput>(null);
 
   // Google OAuth via expo-auth-session — useIdTokenAuthRequest retourne un
-  // id_token JWT signé par Google (ce que le backend attend), pas un access_token.
+  // id_token JWT signé par Google pour l'audience passée en clientId.
+  // IMPORTANT : on n'utilise que le Web Client ID (pas iosClientId/androidClientId)
+  // pour que Google signe le token avec l'audience GOOGLE_CLIENT_ID que le
+  // backend attend. Passer iosClientId entraîne un token signé pour l'audience
+  // iOS, que le backend rejette ("Token has wrong audience").
   const [, googleResponse, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: GOOGLE_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: GOOGLE_IOS_CLIENT_ID,
   });
 
   React.useEffect(() => {
