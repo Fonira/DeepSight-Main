@@ -43,7 +43,7 @@ CHUNK_SIZE_WORDS = 2500                 # 2500 mots max par chunk (plus petit = 
 CHUNK_OVERLAP_WORDS = 300               # Chevauchement augmenté pour meilleur contexte
 
 # Retry et robustesse
-MAX_RETRIES_PER_CHUNK = 4               # 4 tentatives par chunk
+MAX_RETRIES_PER_CHUNK = 2               # 2 tentatives par chunk (fallback chain gère les échecs modèle)
 RETRY_DELAY_SECONDS = 3                 # Délai entre les tentatives
 
 # ⚠️ LEGACY — la concurrence est maintenant gérée par get_concurrent_chunks(tier)
@@ -647,35 +647,43 @@ async def analyze_chunks_parallel(
             if analysis is None:
                 failed_indices.append(index)
     
-    # Phase 2: Retry des chunks qui ont échoué
+    # Phase 2: Retry des chunks qui ont échoué (EN PARALLÈLE avec le même sémaphore)
     if failed_indices:
-        print(f"🔄 [FULL ANALYSIS] Phase 2: Retrying {len(failed_indices)} failed chunks...", flush=True)
-        
+        print(f"🔄 [FULL ANALYSIS] Phase 2: retrying {len(failed_indices)} failed chunks in parallel...", flush=True)
+
         if progress_callback:
             progress_callback(76, f"🔄 Nouvel essai pour {len(failed_indices)} parties...")
-        
-        for failed_index in failed_indices:
+
+        async def retry_with_semaphore(failed_index: int):
             chunk = chunks[failed_index]
-            print(f"🔄 [Retry] Chunk {failed_index + 1}/{total_chunks}...", flush=True)
-            
-            # Attendre un peu avant de réessayer
-            await asyncio.sleep(3)
-            
-            result = await analyze_chunk_with_retry(
-                chunk=chunk,
-                video_title=video_title,
-                category=category,
-                lang=lang,
-                mode=mode,
-                model=model,
-                max_retries=2  # Moins de retries car déjà essayé
-            )
-            
-            if result:
-                results[failed_index] = result
-                print(f"✅ [Retry] Chunk {failed_index + 1} succeeded!", flush=True)
-            else:
-                print(f"❌ [Retry] Chunk {failed_index + 1} still failed", flush=True)
+            async with semaphore:
+                print(f"🔄 [Retry] Chunk {failed_index + 1}/{total_chunks}...", flush=True)
+                result = await analyze_chunk_with_retry(
+                    chunk=chunk,
+                    video_title=video_title,
+                    category=category,
+                    lang=lang,
+                    mode=mode,
+                    model=model,
+                    max_retries=2  # Moins de retries car déjà essayé
+                )
+                if result:
+                    print(f"✅ [Retry] Chunk {failed_index + 1} succeeded!", flush=True)
+                else:
+                    print(f"❌ [Retry] Chunk {failed_index + 1} still failed", flush=True)
+                return failed_index, result
+
+        retry_tasks = [retry_with_semaphore(idx) for idx in failed_indices]
+        retry_results = await asyncio.gather(*retry_tasks, return_exceptions=True)
+
+        for retry_result in retry_results:
+            if isinstance(retry_result, Exception):
+                print(f"⚠️ Retry task exception: {retry_result}", flush=True)
+                continue
+            if isinstance(retry_result, tuple):
+                failed_index, result = retry_result
+                if result:
+                    results[failed_index] = result
     
     # Calculer le rapport de couverture
     successful_analyses = [r for r in results if r is not None]
