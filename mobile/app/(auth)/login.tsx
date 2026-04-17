@@ -49,25 +49,17 @@ export default function LoginScreen() {
 
   const passwordRef = useRef<TextInput>(null);
 
-  // Google OAuth
-  // TODO(SDK-55): Google.useAuthRequest from expo-auth-session/providers/google is deprecated.
-  // Migrate to @react-native-google-signin/google-signin (already in package.json) using:
-  //   GoogleSignin.configure({ webClientId: GOOGLE_CLIENT_ID, iosClientId: GOOGLE_IOS_CLIENT_ID });
-  //   const userInfo = await GoogleSignin.signIn();
-  //   const { idToken } = await GoogleSignin.getTokens();
-  // Then exchange idToken with the backend via authApi.googleTokenLogin(idToken).
-  const [, googleResponse, promptAsync] = Google.useAuthRequest({
+  // Google OAuth via expo-auth-session — useIdTokenAuthRequest retourne un
+  // id_token JWT signé par Google (ce que le backend attend), pas un access_token.
+  const [, googleResponse, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: GOOGLE_CLIENT_ID,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: GOOGLE_IOS_CLIENT_ID,
   });
 
   React.useEffect(() => {
-    if (
-      googleResponse?.type === "success" &&
-      googleResponse.authentication?.accessToken
-    ) {
-      handleGoogleLogin(googleResponse.authentication.accessToken);
+    if (googleResponse?.type === "success" && googleResponse.params?.id_token) {
+      handleGoogleLogin(googleResponse.params.id_token);
     }
   }, [googleResponse]);
 
@@ -121,11 +113,11 @@ export default function LoginScreen() {
   }, [email, password, validate, contextLogin, router]);
 
   const handleGoogleLogin = useCallback(
-    async (accessToken: string) => {
+    async (idToken: string) => {
       setGoogleLoading(true);
       try {
-        // Use AuthContext's loginWithGoogleToken → sets user → _layout.tsx auto-redirects
-        await loginWithGoogleToken(accessToken);
+        // Backend expects a Google id_token (JWT), not an access_token
+        await loginWithGoogleToken(idToken);
       } catch (error) {
         if (error instanceof ApiError) {
           Alert.alert(
