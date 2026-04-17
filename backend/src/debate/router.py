@@ -161,6 +161,7 @@ async def _call_mistral(
         max_tokens=max_tokens,
         temperature=temperature,
         timeout=120,
+        json_mode=json_mode,
     )
     if result:
         if result.fallback_used:
@@ -220,10 +221,82 @@ def _extract_json(raw: str) -> Optional[dict]:
     return None
 
 
-async def _search_opposing_video(
-    topic: str, thesis_a: str, lang: str = "fr", model: str = "mistral-small-2603"
+async def _brave_youtube_search(query: str, brave_key: str, count: int = 10) -> list:
+    """Run a Brave web search restricted to YouTube and return the raw results list."""
+    try:
+        async with shared_http_client() as client:
+            resp = await client.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                headers={"X-Subscription-Token": brave_key, "Accept": "application/json"},
+                params={"q": f"site:youtube.com {query}", "count": count},
+                timeout=15.0,
+            )
+            resp.raise_for_status()
+            return resp.json().get("web", {}).get("results", [])
+    except Exception as e:
+        logger.warning("Brave Search failed for query %r: %s", query[:80], str(e)[:200])
+        return []
+
+
+def _pick_distinct_youtube(
+    results: list,
+    exclude_ids: set,
+    exclude_channel: Optional[str] = None,
 ) -> Optional[Dict[str, str]]:
-    """Find opposing YouTube video: Mistral generates search query → Brave Search finds YouTube results."""
+    """Pick the first YouTube result whose video_id is not in exclude_ids."""
+    yt_pattern = re.compile(r"youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})")
+    # First pass: exclude same video AND same channel
+    # Second pass: only exclude same video (fallback if all results are from same channel)
+    for strict in (True, False):
+        for result in results:
+            url = result.get("url", "")
+            match = yt_pattern.search(url)
+            if not match:
+                continue
+            video_id = match.group(1)
+            if video_id in exclude_ids:
+                continue
+
+            raw_title = result.get("title", "")
+            try:
+                fixed_title = raw_title.encode("latin-1").decode("utf-8")
+            except (UnicodeDecodeError, UnicodeEncodeError):
+                fixed_title = raw_title
+
+            # Brave often suffixes " - YouTube" — clean it up
+            if fixed_title.endswith(" - YouTube"):
+                fixed_title = fixed_title[: -len(" - YouTube")].strip()
+
+            # On strict pass, skip results from same channel (description often contains channel)
+            if strict and exclude_channel:
+                description = (result.get("description", "") or "").lower()
+                if exclude_channel.lower() in description:
+                    continue
+
+            logger.info("Opposing video candidate: %s — %s", video_id, fixed_title[:80])
+            return {
+                "url": f"https://www.youtube.com/watch?v={video_id}",
+                "title": fixed_title,
+                "channel": "",
+            }
+        if not exclude_channel:
+            break  # No point in second pass if we didn't filter on channel
+    return None
+
+
+async def _search_opposing_video(
+    topic: str,
+    thesis_a: str,
+    video_a_id: str,
+    video_a_title: Optional[str] = None,
+    video_a_channel: Optional[str] = None,
+    lang: str = "fr",
+    model: str = "mistral-small-2603",
+) -> Optional[Dict[str, str]]:
+    """Find opposing YouTube video: Mistral generates search query → Brave Search finds YouTube results.
+
+    The returned video is guaranteed to have a video_id different from video_a_id.
+    """
     from core.config import get_brave_key
 
     brave_key = get_brave_key()
@@ -231,60 +304,62 @@ async def _search_opposing_video(
         logger.warning("No Brave Search key for opposing video search")
         return None
 
-    # Step 1: Ask Mistral for optimal YouTube search query
+    # Step 1: Ask Mistral for two distinct search queries to maximize chances of finding opposition
+    lang_instruction = (
+        "Formule les requêtes en français." if lang == "fr" else "Write the queries in English."
+    )
     query_prompt = [
         {"role": "system", "content": (
-            "Tu es un expert en recherche YouTube. "
-            "Génère une requête de recherche YouTube (5-10 mots) pour trouver une vidéo "
-            "qui défend un point de vue OPPOSÉ à la thèse ci-dessous. "
-            "Réponds UNIQUEMENT avec la requête, sans guillemets ni explication."
+            "Tu es un expert en recherche YouTube spécialisé dans l'identification de perspectives contradictoires. "
+            "Ta mission : générer DEUX requêtes de recherche YouTube (5-10 mots chacune) susceptibles de retourner "
+            "une vidéo qui CONTREDIT, CRITIQUE, ou OPPOSE la thèse donnée. "
+            "Utilise des mots-clés antagonistes (par exemple : 'critique', 'problème', 'limite', 'contre', 'arnaque', "
+            "'overrated', 'debunked', 'myth', 'issue', 'bad', 'vs') et NE REPRODUIS PAS le titre ni les mots-clés de la vidéo originale. "
+            f"{lang_instruction} "
+            "Réponds UNIQUEMENT en JSON valide : "
+            '{"query_primary": "...", "query_alternative": "..."}'
         )},
-        {"role": "user", "content": f"Sujet : {topic}\nThèse à contredire : {thesis_a}"},
+        {"role": "user", "content": (
+            f"Sujet : {topic}\n"
+            f"Thèse à contredire : {thesis_a}\n"
+            f"Titre à éviter : {video_a_title or '(inconnu)'}"
+        )},
     ]
-    search_query = await _call_mistral(query_prompt, model=model, temperature=0.5)
-    if not search_query:
-        logger.warning("Mistral failed to generate search query for opposing video")
-        return None
-    search_query = search_query.strip().strip('"').strip("'")[:100]
-    logger.info("Opposing video search query: %s", search_query)
+    query_raw = await _call_mistral(query_prompt, model=model, temperature=0.6, json_mode=True)
+    queries: list = []
+    if query_raw:
+        parsed = _extract_json(query_raw)
+        if isinstance(parsed, dict):
+            for key in ("query_primary", "query_alternative"):
+                q = parsed.get(key)
+                if isinstance(q, str) and q.strip():
+                    queries.append(q.strip().strip('"').strip("'")[:100])
 
-    # Step 2: Search YouTube via Brave Search API
-    try:
-        async with shared_http_client() as client:
-            resp = await client.get(
-                "https://api.search.brave.com/res/v1/web/search",
-                headers={"X-Subscription-Token": brave_key, "Accept": "application/json"},
-                params={"q": f"site:youtube.com {search_query}", "count": 5},
-                timeout=15.0
-            )
-            resp.raise_for_status()
-            results = resp.json().get("web", {}).get("results", [])
-    except Exception as e:
-        logger.warning("Brave Search failed for opposing video: %s", str(e)[:200])
+    # Fallback: if JSON parsing failed, treat raw as a single query
+    if not queries and query_raw:
+        queries.append(query_raw.strip().strip('"').strip("'")[:100])
+
+    if not queries:
+        logger.warning("Mistral failed to generate search queries for opposing video")
         return None
 
-    # Step 3: Extract first YouTube video URL
-    yt_pattern = re.compile(r"youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})")
-    for result in results:
-        url = result.get("url", "")
-        match = yt_pattern.search(url)
-        if match:
-            video_id = match.group(1)
-            # Fix UTF-8 encoding: Brave sometimes returns double-encoded strings
-            raw_title = result.get("title", "")
-            try:
-                # Attempt to fix mojibake (e.g. "EnquÃªte" → "Enquête")
-                fixed_title = raw_title.encode("latin-1").decode("utf-8")
-            except (UnicodeDecodeError, UnicodeEncodeError):
-                fixed_title = raw_title
-            logger.info("Found opposing video: %s — %s", video_id, fixed_title)
-            return {
-                "url": f"https://www.youtube.com/watch?v={video_id}",
-                "title": fixed_title,
-                "channel": "",
-            }
+    exclude_ids = {video_a_id}
+    logger.info("Opposing video search queries: %s", queries)
 
-    logger.warning("No YouTube video found via Brave for query: %s", search_query)
+    # Step 2: Try each query in order, return the first distinct YouTube video found
+    for query in queries:
+        results = await _brave_youtube_search(query, brave_key, count=10)
+        if not results:
+            continue
+        picked = _pick_distinct_youtube(results, exclude_ids, exclude_channel=video_a_channel)
+        if picked:
+            logger.info("Found opposing video via query %r: %s", query[:80], picked["url"])
+            return picked
+
+    logger.warning(
+        "No distinct YouTube video found via Brave for queries %s (excluded=%s)",
+        queries, exclude_ids,
+    )
     return None
 
 
@@ -407,14 +482,31 @@ async def _run_debate_pipeline(
                 debate.status = "searching"
                 await session.commit()
 
-                opposing = await _search_opposing_video(detected_topic, thesis_a, lang)
+                opposing = await _search_opposing_video(
+                    topic=detected_topic,
+                    thesis_a=thesis_a,
+                    video_a_id=video_a_id,
+                    video_a_title=debate.video_a_title,
+                    video_a_channel=debate.video_a_channel,
+                    lang=lang,
+                    model=model,
+                )
                 if opposing and opposing.get("url"):
                     try:
                         actual_platform_b, actual_video_b_id = extract_video_id(opposing["url"])
-                        debate.video_b_id = actual_video_b_id
-                        debate.video_b_title = opposing.get("title", "")[:500]
-                        debate.video_b_channel = opposing.get("channel", "")[:255]
-                        await session.commit()
+                        # Final safety net: never let video B equal video A
+                        if actual_video_b_id == video_a_id:
+                            logger.warning(
+                                "Opposing video matched video A (%s), discarding",
+                                video_a_id,
+                            )
+                            actual_video_b_id = None
+                        else:
+                            debate.video_b_id = actual_video_b_id
+                            debate.video_b_title = opposing.get("title", "")[:500]
+                            debate.video_b_channel = opposing.get("channel", "")[:255]
+                            debate.platform_b = actual_platform_b
+                            await session.commit()
                     except ValueError:
                         logger.warning("Invalid opposing video URL: %s", opposing.get("url"))
 

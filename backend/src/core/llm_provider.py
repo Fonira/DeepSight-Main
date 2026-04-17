@@ -32,7 +32,7 @@ import asyncio
 import json
 import time
 from dataclasses import dataclass, field
-from typing import AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
 
@@ -133,8 +133,18 @@ async def _call_api(
     temperature: float = 0.3,
     timeout: float = 180,
     stream: bool = False,
+    json_mode: bool = False,
 ) -> httpx.Response:
     """Low-level HTTP call to an OpenAI-compatible chat completions API."""
+    payload: Dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "stream": stream,
+    }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
     async with httpx.AsyncClient(timeout=timeout) as client:
         return await client.post(
             url,
@@ -142,13 +152,7 @@ async def _call_api(
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
-            json={
-                "model": model,
-                "messages": messages,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "stream": stream,
-            },
+            json=payload,
         )
 
 
@@ -240,6 +244,7 @@ async def llm_complete(
     timeout: float = 180,
     allowed_models: Optional[List[str]] = None,
     disable_fallback: bool = False,
+    json_mode: bool = False,
 ) -> Optional[LLMResult]:
     """
     Call an LLM with automatic fallback on 429/5xx errors.
@@ -252,6 +257,7 @@ async def llm_complete(
         timeout: Request timeout in seconds
         allowed_models: Restrict fallback to these Mistral models only
         disable_fallback: If True, only try the requested model
+        json_mode: If True, request JSON-only output (sets response_format=json_object)
 
     Returns:
         LLMResult with content and metadata, or None on total failure
@@ -299,6 +305,7 @@ async def llm_complete(
                     max_tokens=max_tokens,
                     temperature=temperature,
                     timeout=timeout,
+                    json_mode=json_mode,
                 )
 
                 if response.status_code == 200:
