@@ -22,6 +22,7 @@ import {
   setWidgetInnerHTML,
   getWidgetBody,
   isWidgetDetached,
+  isAnchorReady,
 } from "./widget";
 import { $id } from "./shadow";
 import { fetchTournesolScore } from "./tournesol";
@@ -154,8 +155,18 @@ function tryInjectWidget(): void {
       logBootStep("inject:success-calling-initCard");
       initCard();
     } else {
-      const delay = ctx.injectionAttempts <= 10 ? 300 : 1000;
-      setTimeout(tryInjectWidget, delay);
+      // Anchor-aware retry: wait up to 15s for YouTube sidebar to render,
+      // then fall back to floating widget (already handled by injectWidget).
+      const TOTAL_BUDGET_MS = 15_000;
+      const elapsed = ctx.injectionAttempts * 500;
+      if (elapsed >= TOTAL_BUDGET_MS) {
+        logBootStep("inject:budget-exceeded-force-floating");
+        ctx.injected = false;
+        setTimeout(tryInjectWidget, 1000);
+      } else {
+        const delay = ctx.injectionAttempts <= 10 ? 300 : 1000;
+        setTimeout(tryInjectWidget, delay);
+      }
     }
   } catch (err) {
     logBootStep("inject:caught-error", {
@@ -647,6 +658,7 @@ function bootstrap(): void {
 
     logBootStep("bootstrap:video-id", { videoId: ctx.videoId });
     detectExtensions();
+    logBootStep("bootstrap:anchor-ready", { ready: isAnchorReady() });
     setTimeout(tryInjectWidget, 1000);
     watchNavigation(onNavigate);
     logBootStep("bootstrap:ready");

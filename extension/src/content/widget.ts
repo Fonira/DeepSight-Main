@@ -215,3 +215,20 @@ export function bindMinimizeButton(): void {
     }
   });
 }
+
+const ANCHOR_SELECTORS = [
+  "#secondary-inner",
+  "#secondary",
+  "ytd-watch-next-secondary-results-renderer",
+  "#below",
+  "ytd-watch-metadata",
+];
+
+/** True if at least one YouTube sidebar anchor is present AND visible. */
+export function isAnchorReady(): boolean {
+  for (const sel of ANCHOR_SELECTORS) {
+    const el = document.querySelector(sel);
+    if (el instanceof HTMLElement && isSidebarVisible(el)) return true;
+  }
+  return false;
+}
