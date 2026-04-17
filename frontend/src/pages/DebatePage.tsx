@@ -33,8 +33,8 @@ import DoodleBackground from "../components/DoodleBackground";
 import { DoodleDivider } from "../components/doodles";
 import DoodleEmptyState from "../components/doodles/DoodleEmptyState";
 import { ErrorBoundary } from "../components/ErrorBoundary";
-import VoiceButton from "../components/voice/VoiceButton";
 import { VoiceModal } from "../components/voice/VoiceModal";
+import { DebateVoiceHero } from "../components/voice/DebateVoiceHero";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
 import { useAuth } from "../hooks/useAuth";
 import { PLAN_LIMITS, normalizePlanId } from "../config/planPrivileges";
@@ -583,6 +583,18 @@ export const DebatePage: React.FC = () => {
           </h1>
         </motion.div>
 
+        {/* 🎙️ Hero CTA Agent Vocal */}
+        {selectedDebate.status === "completed" && (
+          <DebateVoiceHero
+            avatarUrl={avatarData.url}
+            avatarStatus={avatarData.status}
+            debateTopic={selectedDebate.detected_topic}
+            onOpen={() => setIsVoiceModalOpen(true)}
+            voiceEnabled={voiceEnabled}
+            avatarFallback="DB"
+          />
+        )}
+
         {/* Status tracker (if in progress) */}
         {isInProgress && (
           <motion.div
@@ -812,11 +824,6 @@ export const DebatePage: React.FC = () => {
           and the voice feature is available (plan gating). */}
       {selectedDebate && selectedDebate.status === "completed" && (
         <>
-          <VoiceButton
-            summaryId={selectedDebate.id}
-            onOpen={() => setIsVoiceModalOpen(true)}
-            disabled={!voiceEnabled}
-          />
           <VoiceModal
             isOpen={isVoiceModalOpen}
             onClose={() => {

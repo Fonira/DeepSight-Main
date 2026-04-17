@@ -3,7 +3,7 @@
  * Full-screen modal with live transcript, status indicators, and controls
  */
 
-import React, { useEffect, useRef, useId, useCallback } from "react";
+import React, { useEffect, useRef, useId, useCallback, useState, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,6 +21,9 @@ import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 import { VoiceToolIndicator } from "./VoiceToolIndicator";
 import { useTranslation } from "../../hooks/useTranslation";
 import { VoicePTTButton } from "./VoicePTTButton";
+
+// Lazy-load VoiceSettings to avoid circular imports + reduce initial bundle
+const VoiceSettings = lazy(() => import("./VoiceSettings"));
 
 interface VoiceModalProps {
   isOpen: boolean;
@@ -168,6 +171,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   const titleId = useId();
   const descId = useId();
   const { language } = useTranslation();
+  const [showSettings, setShowSettings] = useState(false);
 
   const tr = useCallback(
     (fr: string, en: string) => (language === "fr" ? fr : en),
@@ -464,13 +468,15 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                     {playbackRate}x
                   </span>
                 )}
-                <a
-                  href="/settings"
+                <button
+                  type="button"
+                  onClick={() => setShowSettings(true)}
                   className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-white/70 hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
                   title={tr("Paramètres voix", "Voice settings")}
+                  aria-label={tr("Ouvrir les paramètres voix", "Open voice settings")}
                 >
                   <Settings2 className="w-4 h-4" />
-                </a>
+                </button>
                 <button
                   onClick={onClose}
                   className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
@@ -484,7 +490,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             {/* Center — status zone */}
             <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 min-h-[200px]">
               <VoiceToolIndicator
-                toolName={activeTool}
+                toolName={activeTool ?? null}
                 isActive={!!activeTool}
               />
               {renderCenterContent()}
@@ -610,6 +616,44 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 )}
               </motion.div>
             )}
+            {/* ── Settings panel overlay (in-modal) ───────────────────── */}
+            <AnimatePresence>
+              {showSettings && (
+                <motion.div
+                  key="voice-settings-panel"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="absolute inset-0 z-20 bg-[#0a0a0f]/95 backdrop-blur-xl flex flex-col"
+                >
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 flex-shrink-0">
+                    <h3 className="text-sm sm:text-base font-semibold text-white">
+                      {tr("Paramètres vocaux", "Voice settings")}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowSettings(false)}
+                      className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
+                      aria-label={tr("Fermer les paramètres", "Close settings")}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3">
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center h-40">
+                          <DeepSightSpinner size="md" />
+                        </div>
+                      }
+                    >
+                      <VoiceSettings compact onClose={() => setShowSettings(false)} />
+                    </Suspense>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </div>
       )}
