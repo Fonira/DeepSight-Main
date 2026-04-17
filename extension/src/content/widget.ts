@@ -2,6 +2,7 @@
 
 import Browser from "../utils/browser-polyfill";
 import { getShadowRoot, setShadowRoot, $id, $qs } from "./shadow";
+import { getInlineStyles } from "./styles-inline";
 
 const WIDGET_ID = "deepsight-card";
 const HOST_ID = "deepsight-host";
@@ -63,22 +64,12 @@ export function createWidgetShell(
   host.addEventListener("keyup", stopKeyPropagation);
   host.addEventListener("keypress", stopKeyPropagation);
 
-  // Inject styles into the shadow root (fully isolated from page)
-  // tokens.css uses :host selector so variables work inside the shadow boundary
-  const tokensLink = document.createElement("link");
-  tokensLink.rel = "stylesheet";
-  tokensLink.href = Browser.runtime.getURL("tokens.css");
-  shadow.appendChild(tokensLink);
-
-  const widgetStyleLink = document.createElement("link");
-  widgetStyleLink.rel = "stylesheet";
-  widgetStyleLink.href = Browser.runtime.getURL("widget.css");
-  shadow.appendChild(widgetStyleLink);
-
-  const contentStyleLink = document.createElement("link");
-  contentStyleLink.rel = "stylesheet";
-  contentStyleLink.href = Browser.runtime.getURL("content.css");
-  shadow.appendChild(contentStyleLink);
+  // Inject styles synchronously via <style> tag — eliminates the async
+  // race between <link> loading and first paint that caused "blank widget"
+  // reports. Styles are bundled into content.js at build time via raw-loader.
+  const styleEl = document.createElement("style");
+  styleEl.textContent = getInlineStyles();
+  shadow.appendChild(styleEl);
 
   // Create the actual widget card inside shadow
   const el = document.createElement("div");

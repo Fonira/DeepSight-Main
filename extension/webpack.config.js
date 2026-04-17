@@ -42,6 +42,12 @@ module.exports = (env, argv) => {
         },
         {
           test: /\.css$/,
+          resourceQuery: /raw/,
+          type: "asset/source",
+        },
+        {
+          test: /\.css$/,
+          resourceQuery: { not: [/raw/] },
           use: [MiniCssExtractPlugin.loader, "css-loader"],
         },
       ],
