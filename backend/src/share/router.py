@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session, SharedAnalysis, Summary, User
 from auth.dependencies import get_current_user
+from core.config import _settings as _cfg
 from share.og_image import generate_og_image
 from share.html_renderer import render_analysis_page
 
@@ -76,6 +77,11 @@ def _build_og_html(shared: SharedAnalysis, share_token: str) -> str:
     thumbnail = shared.video_thumbnail or ""
     share_url = f"{FRONTEND_URL}/s/{share_token}"
 
+    # Dynamic branded og-image endpoint (1200×630 PNG with title + verdict chip).
+    # Use getattr with fallback so the page still renders if the setting is absent.
+    _api_base = getattr(_cfg, "API_PUBLIC_URL", "https://api.deepsightsynthesis.com").rstrip("/")
+    og_image_url = f"{_api_base}/api/share/{share_token}/og-image.png"
+
     # Escape HTML entities in dynamic content
     safe_title = (title or "").replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
     safe_verdict = (verdict or "").replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
@@ -93,7 +99,7 @@ def _build_og_html(shared: SharedAnalysis, share_token: str) -> str:
     <meta property="og:type" content="article" />
     <meta property="og:title" content="Analyse DeepSight : {safe_title}" />
     <meta property="og:description" content="{safe_verdict}" />
-    <meta property="og:image" content="{thumbnail}" />
+    <meta property="og:image" content="{og_image_url}" />
     <meta property="og:url" content="{share_url}" />
     <meta property="og:site_name" content="DeepSight" />
     <meta property="og:locale" content="fr_FR" />
@@ -101,7 +107,7 @@ def _build_og_html(shared: SharedAnalysis, share_token: str) -> str:
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Analyse DeepSight : {safe_title}" />
     <meta name="twitter:description" content="{safe_verdict}" />
-    <meta name="twitter:image" content="{thumbnail}" />
+    <meta name="twitter:image" content="{og_image_url}" />
     <!-- Redirect to web app -->
     <script>window.location.href = "{share_url}";</script>
 </head>
