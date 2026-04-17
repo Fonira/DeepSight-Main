@@ -1671,7 +1671,9 @@ export const History: React.FC = () => {
                       {selectedVideoDetail && (
                         <div className="mb-4">
                           <AnalysisVoiceHero
-                            videoThumbnailUrl={selectedVideoDetail.thumbnail_url}
+                            videoThumbnailUrl={
+                              selectedVideoDetail.thumbnail_url
+                            }
                             videoTitle={selectedVideoDetail.video_title}
                             onOpen={() => setIsVoiceModalOpen(true)}
                             voiceEnabled={voiceEnabled}
@@ -1679,66 +1681,66 @@ export const History: React.FC = () => {
                           />
                         </div>
                       )}
-                    <div className="card">
-                      {/* Action Bar v2 — Unified */}
-                      <div className="p-4 sm:p-5 border-b border-border-subtle">
-                        <div className="flex items-center gap-2 mb-4">
-                          <BookOpen className="w-5 h-5 text-accent-primary" />
-                          <h3 className="font-semibold text-text-primary">
-                            {language === "fr" ? "Analyse" : "Analysis"}
-                          </h3>
+                      <div className="card">
+                        {/* Action Bar v2 — Unified */}
+                        <div className="p-4 sm:p-5 border-b border-border-subtle">
+                          <div className="flex items-center gap-2 mb-4">
+                            <BookOpen className="w-5 h-5 text-accent-primary" />
+                            <h3 className="font-semibold text-text-primary">
+                              {language === "fr" ? "Analyse" : "Analysis"}
+                            </h3>
+                          </div>
+                          {selectedVideoDetail && (
+                            <AnalysisActionBar
+                              summary={{
+                                id: selectedVideoDetail.id,
+                                video_id: selectedVideoDetail.video_id,
+                                video_title: selectedVideoDetail.video_title,
+                                summary_content:
+                                  selectedVideoDetail.summary_content,
+                              }}
+                              language={language as "fr" | "en"}
+                              onOpenVoice={
+                                voiceEnabled
+                                  ? () => setIsVoiceModalOpen(true)
+                                  : undefined
+                              }
+                              onOpenStudyTools={() =>
+                                setDetailShowStudyToolsModal(true)
+                              }
+                              onOpenCitation={() =>
+                                setDetailShowCitationModal(true)
+                              }
+                              showStudyTools={true}
+                              showCitation={true}
+                              sticky={false}
+                            />
+                          )}
                         </div>
-                        {selectedVideoDetail && (
-                          <AnalysisActionBar
-                            summary={{
-                              id: selectedVideoDetail.id,
-                              video_id: selectedVideoDetail.video_id,
-                              video_title: selectedVideoDetail.video_title,
-                              summary_content:
-                                selectedVideoDetail.summary_content,
-                            }}
-                            language={language as "fr" | "en"}
-                            onOpenVoice={
-                              voiceEnabled
-                                ? () => setIsVoiceModalOpen(true)
-                                : undefined
-                            }
-                            onOpenStudyTools={() =>
-                              setDetailShowStudyToolsModal(true)
-                            }
-                            onOpenCitation={() =>
-                              setDetailShowCitationModal(true)
-                            }
-                            showStudyTools={true}
-                            showCitation={true}
-                            sticky={false}
-                          />
-                        )}
-                      </div>
-                      <div className="p-4 sm:p-5 prose max-w-none">
-                        <EnrichedMarkdown
-                          language={language}
-                          onTimecodeClick={handleDetailTimecodeClick}
-                          className="text-text-primary"
-                        >
-                          {selectedVideoDetail.summary_content || ""}
-                        </EnrichedMarkdown>
-                        <div className="mt-6">
-                          <ConceptsGlossary
-                            summaryId={selectedVideoDetail.id}
+                        <div className="p-4 sm:p-5 prose max-w-none">
+                          <EnrichedMarkdown
                             language={language}
-                          />
-                        </div>
-                        <div className="mt-6 not-prose">
-                          <AcademicSourcesPanel
-                            summaryId={selectedVideoDetail.id.toString()}
-                            userPlan={user?.plan || "free"}
-                            onUpgrade={() => navigate("/pricing")}
-                            language={language as "fr" | "en"}
-                          />
+                            onTimecodeClick={handleDetailTimecodeClick}
+                            className="text-text-primary"
+                          >
+                            {selectedVideoDetail.summary_content || ""}
+                          </EnrichedMarkdown>
+                          <div className="mt-6">
+                            <ConceptsGlossary
+                              summaryId={selectedVideoDetail.id}
+                              language={language}
+                            />
+                          </div>
+                          <div className="mt-6 not-prose">
+                            <AcademicSourcesPanel
+                              summaryId={selectedVideoDetail.id.toString()}
+                              userPlan={user?.plan || "free"}
+                              onUpgrade={() => navigate("/pricing")}
+                              language={language as "fr" | "en"}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
                     </>
                   )}
                 </div>
@@ -1814,6 +1816,7 @@ export const History: React.FC = () => {
                       }}
                       videoTitle={selectedVideoDetail.video_title || "Vidéo"}
                       channelName={selectedVideoDetail.video_channel || ""}
+                      videoThumbnailUrl={selectedVideoDetail.thumbnail_url}
                       voiceStatus={voiceChat.status}
                       isSpeaking={voiceChat.isSpeaking}
                       messages={voiceChat.messages}
@@ -1824,7 +1827,7 @@ export const History: React.FC = () => {
                       onMuteToggle={voiceChat.toggleMute}
                       isMuted={voiceChat.isMuted}
                       inputMode={voiceChat.inputMode}
-            pttKey={voiceChat.pttKey}
+                      pttKey={voiceChat.pttKey}
                       isTalking={voiceChat.isTalking}
                       onStartTalking={voiceChat.startTalking}
                       onStopTalking={voiceChat.stopTalking}

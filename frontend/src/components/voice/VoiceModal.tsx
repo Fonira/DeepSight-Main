@@ -3,7 +3,15 @@
  * Full-screen modal with live transcript, status indicators, and controls
  */
 
-import React, { useEffect, useRef, useId, useCallback, useState, lazy, Suspense } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useId,
+  useCallback,
+  useState,
+  lazy,
+  Suspense,
+} from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,6 +24,7 @@ import {
   ArrowUpCircle,
   RotateCcw,
   Settings2,
+  Video,
 } from "lucide-react";
 import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 import { VoiceToolIndicator } from "./VoiceToolIndicator";
@@ -30,6 +39,8 @@ interface VoiceModalProps {
   onClose: () => void;
   videoTitle: string;
   channelName?: string;
+  /** URL de la miniature vidéo (affichée en grand au centre du modal) */
+  videoThumbnailUrl?: string | null;
   /** Status de la conversation voice */
   voiceStatus:
     | "idle"
@@ -142,13 +153,127 @@ const SoundWave: React.FC = () => (
   </div>
 );
 
+/**
+ * VideoStage — Hero visuel de l'appel : miniature vidéo en grand
+ * avec halo lumineux indigo/violet/cyan qui pulse selon l'état vocal.
+ *
+ * Fallback si pas de thumbnail : gradient + icône Video (pas d'appel réseau).
+ */
+interface VideoStageProps {
+  thumbnailUrl?: string | null;
+  isActive: boolean;
+  isSpeaking: boolean;
+  videoTitle: string;
+}
+const VideoStage: React.FC<VideoStageProps> = ({
+  thumbnailUrl,
+  isActive,
+  isSpeaking,
+  videoTitle,
+}) => {
+  return (
+    <div className="relative flex items-center justify-center w-full">
+      {/* Halo externe — intensifie quand l'IA parle */}
+      <motion.div
+        aria-hidden="true"
+        className="absolute pointer-events-none rounded-[28px]"
+        style={{
+          width: "min(92%, 460px)",
+          aspectRatio: "16 / 9",
+          background:
+            "radial-gradient(60% 60% at 50% 50%, rgba(139, 92, 246, 0.35), rgba(99, 102, 241, 0.18) 55%, transparent 80%)",
+          filter: "blur(40px)",
+        }}
+        animate={
+          isSpeaking
+            ? { opacity: [0.55, 0.95, 0.55], scale: [1, 1.04, 1] }
+            : isActive
+              ? { opacity: [0.45, 0.7, 0.45], scale: [1, 1.02, 1] }
+              : { opacity: [0.3, 0.5, 0.3], scale: [1, 1.01, 1] }
+        }
+        transition={{
+          duration: isSpeaking ? 1.6 : 3.2,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+
+      {/* Halo cyan secondaire */}
+      <motion.div
+        aria-hidden="true"
+        className="absolute pointer-events-none rounded-[28px]"
+        style={{
+          width: "min(82%, 400px)",
+          aspectRatio: "16 / 9",
+          background:
+            "radial-gradient(50% 50% at 30% 70%, rgba(6, 182, 212, 0.22), transparent 75%)",
+          filter: "blur(32px)",
+        }}
+        animate={{ opacity: [0.4, 0.8, 0.4] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+      />
+
+      {/* Thumbnail card */}
+      <motion.div
+        className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-indigo-500/20 bg-white/5 backdrop-blur-xl"
+        style={{
+          width: "min(80%, 380px)",
+          aspectRatio: "16 / 9",
+        }}
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+      >
+        {thumbnailUrl ? (
+          <img
+            src={thumbnailUrl}
+            alt={videoTitle}
+            className="w-full h-full object-cover"
+            loading="eager"
+            draggable={false}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500/30 via-violet-500/25 to-cyan-500/25">
+            <Video className="w-14 h-14 text-white/70" strokeWidth={1.5} />
+          </div>
+        )}
+
+        {/* Scanline sheen when speaking — subtle light animation */}
+        {isSpeaking && (
+          <motion.div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.10) 50%, transparent 70%)",
+            }}
+            animate={{ x: ["-100%", "100%"] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: "linear" }}
+          />
+        )}
+
+        {/* Gradient border glow at edges */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 rounded-2xl pointer-events-none"
+          style={{
+            boxShadow:
+              "inset 0 0 0 1px rgba(255,255,255,0.08), inset 0 0 30px rgba(139,92,246,0.10)",
+          }}
+        />
+      </motion.div>
+    </div>
+  );
+};
+
 export const VoiceModal: React.FC<VoiceModalProps> = ({
   isOpen,
   onClose,
   videoTitle,
   channelName,
+  videoThumbnailUrl,
   voiceStatus,
-  isSpeaking: _isSpeaking,
+  isSpeaking,
   messages,
   elapsedSeconds,
   remainingMinutes,
@@ -253,7 +378,8 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
   // PTT keyboard shortcut --- hold configured key to talk
   useEffect(() => {
-    if (!isOpen || inputMode !== "ptt" || !onStartTalking || !onStopTalking) return;
+    if (!isOpen || inputMode !== "ptt" || !onStartTalking || !onStopTalking)
+      return;
     const target = pttKey || " ";
     const isHoldingRef = { current: false };
     const matches = (e: KeyboardEvent): boolean => {
@@ -262,9 +388,17 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
     };
     const onDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        (e.target as HTMLElement)?.isContentEditable
+      )
+        return;
       if (!matches(e)) return;
-      if (e.repeat || isHoldingRef.current) { e.preventDefault(); return; }
+      if (e.repeat || isHoldingRef.current) {
+        e.preventDefault();
+        return;
+      }
       e.preventDefault();
       isHoldingRef.current = true;
       onStartTalking();
@@ -512,7 +646,10 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                   onClick={() => setShowSettings(true)}
                   className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-white/70 hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
                   title={tr("Paramètres voix", "Voice settings")}
-                  aria-label={tr("Ouvrir les paramètres voix", "Open voice settings")}
+                  aria-label={tr(
+                    "Ouvrir les paramètres voix",
+                    "Open voice settings",
+                  )}
                 >
                   <Settings2 className="w-4 h-4" />
                 </button>
@@ -526,8 +663,16 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               </div>
             </div>
 
-            {/* Center — status zone */}
-            <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 min-h-[200px]">
+            {/* Center — Thumbnail hero + status zone */}
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 py-8 min-h-[200px]">
+              {/* Large video thumbnail with glow aura (visual anchor for the call) */}
+              <VideoStage
+                thumbnailUrl={videoThumbnailUrl}
+                isActive={isActive}
+                isSpeaking={isSpeaking}
+                videoTitle={videoTitle}
+              />
+
               <VoiceToolIndicator
                 toolName={activeTool ?? null}
                 isActive={!!activeTool}
@@ -687,7 +832,10 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                         </div>
                       }
                     >
-                      <VoiceSettings compact onClose={() => setShowSettings(false)} />
+                      <VoiceSettings
+                        compact
+                        onClose={() => setShowSettings(false)}
+                      />
                     </Suspense>
                   </div>
                 </motion.div>

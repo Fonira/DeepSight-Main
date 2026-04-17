@@ -1518,7 +1518,9 @@ export const DashboardPage: React.FC = () => {
                     summary_content: selectedSummary.summary_content,
                   }}
                   language={language}
-                  onOpenVoice={voiceEnabled ? () => setIsVoiceModalOpen(true) : undefined}
+                  onOpenVoice={
+                    voiceEnabled ? () => setIsVoiceModalOpen(true) : undefined
+                  }
                   onAudioReady={(url) => setAudioPlayerUrl(url)}
                   showStudyTools={false}
                   showCitation={false}
@@ -1736,6 +1738,7 @@ export const DashboardPage: React.FC = () => {
             }}
             videoTitle={selectedSummary.video_title}
             channelName={selectedSummary.video_channel}
+            videoThumbnailUrl={selectedSummary.thumbnail_url}
             voiceStatus={voiceChat.status}
             isSpeaking={voiceChat.isSpeaking}
             messages={voiceChat.messages}
