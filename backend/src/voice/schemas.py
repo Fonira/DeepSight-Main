@@ -13,10 +13,19 @@ from pydantic import BaseModel, Field, field_validator
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class VoiceSessionRequest(BaseModel):
-    """Requete de creation de session voice chat."""
-    summary_id: Optional[int] = Field(default=None, description="ID de l'analyse video (optional for onboarding)")
+    """Requête de création de session voice chat."""
+    summary_id: Optional[int] = Field(default=None, description="ID de l'analyse vidéo (pour agents explorer/tutor/quiz)")
+    debate_id: Optional[int] = Field(default=None, description="ID du débat IA (pour agent debate_moderator)")
     language: str = Field(default="fr", description="Langue (fr, en)")
     agent_type: str = Field(default="explorer", description="Type d'agent vocal (explorer, tutor, debate_moderator, quiz_coach, onboarding)")
+
+    @field_validator("debate_id")
+    @classmethod
+    def _xor_source(cls, v: Optional[int], info) -> Optional[int]:
+        summary_id = info.data.get("summary_id")
+        if v is not None and summary_id is not None:
+            raise ValueError("Fournir summary_id OU debate_id, pas les deux")
+        return v
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
