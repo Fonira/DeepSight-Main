@@ -706,9 +706,9 @@ async def get_pre_analysis_context(
 ) -> Tuple[Optional[str], List[Dict[str, str]], EnrichmentLevel]:
     """
     🆕 v3.0: Récupère le contexte web AVANT l'analyse Mistral.
-    
+
     Ce contexte sera injecté dans le prompt Mistral pour enrichir l'analyse.
-    
+
     Returns:
         Tuple[web_context, sources, level]
         - web_context: Texte à ajouter au prompt Mistral (ou None si pas d'enrichissement)
@@ -716,14 +716,29 @@ async def get_pre_analysis_context(
         - level: Niveau d'enrichissement appliqué
     """
     level = get_enrichment_level(plan)
-    
+
     print(f"🌐 [PRE-ANALYSIS] Plan={plan}, Level={level.value}", flush=True)
-    
+
     # Seuls Pro et Expert ont l'enrichissement
     if level == EnrichmentLevel.NONE:
         print(f"⏭️ [PRE-ANALYSIS] Skipped (plan={plan})", flush=True)
         return None, [], level
-    
+
+    # 🚀 CACHE: Check Redis for cached web enrichment context
+    # Key is independent of plan/lang/transcript to maximize hit rate across users
+    cache_key = None
+    try:
+        from core.cache import cache_service
+        import hashlib
+        cache_input = f"{video_title}:{video_channel}:{category}:{lang}:{level.value}"
+        cache_key = f"web_context:{hashlib.md5(cache_input.encode()).hexdigest()}"
+        cached = await cache_service.get(cache_key)
+        if cached and isinstance(cached, dict):
+            print(f"✅ [PRE-ANALYSIS] Cache HIT for {video_title[:50]}", flush=True)
+            return cached.get("content"), cached.get("sources", []), level
+    except Exception as e:
+        print(f"⚠️ [PRE-ANALYSIS] Cache GET failed: {e}", flush=True)
+
     # Construire le prompt
     prompt = build_pre_analysis_prompt(
         level=level,
@@ -734,19 +749,30 @@ async def get_pre_analysis_context(
         lang=lang,
         upload_date=upload_date
     )
-    
+
     if not prompt:
         return None, [], level
-    
+
     # Appeler Perplexity
     result = await call_perplexity(prompt, level)
-    
+
     if not result.success:
         print(f"⚠️ [PRE-ANALYSIS] Failed: {result.error}", flush=True)
         return None, [], level
-    
+
     print(f"✅ [PRE-ANALYSIS] Got {len(result.content)} chars of context", flush=True)
-    
+
+    # 🚀 CACHE: Store in Redis (TTL 1h — web data stays fresh but avoids redundant calls)
+    if cache_key:
+        try:
+            await cache_service.set(
+                cache_key,
+                {"content": result.content, "sources": result.sources},
+                ttl=3600
+            )
+        except Exception as e:
+            print(f"⚠️ [PRE-ANALYSIS] Cache SET failed: {e}", flush=True)
+
     return result.content, result.sources, level
 
 
