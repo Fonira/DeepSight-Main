@@ -1878,6 +1878,72 @@ export const shareApi = {
 // ============================================
 // Voice Chat API
 // ============================================
+export interface VoicePreferences {
+  voice_id: string | null;
+  voice_name: string | null;
+  speed: number;
+  stability: number;
+  similarity_boost: number;
+  style: number;
+  use_speaker_boost: boolean;
+  tts_model: string;
+  voice_chat_model: string;
+  language: string;
+  gender: string;
+  input_mode: "ptt" | "vad";
+  interruptions_enabled: boolean;
+  turn_eagerness: number;
+  voice_chat_speed_preset: string;
+  turn_timeout: number;
+  soft_timeout_seconds: number;
+}
+
+export interface VoiceCatalogEntry {
+  voice_id: string;
+  name: string;
+  description_fr: string;
+  description_en: string;
+  gender: string;
+  accent: string;
+  language: string;
+  use_case: string;
+  recommended: boolean;
+  preview_url: string;
+}
+
+export interface VoiceSpeedPreset {
+  id: string;
+  label_fr: string;
+  label_en: string;
+  value: number;
+  icon: string;
+}
+
+export interface VoiceChatSpeedPreset {
+  id: string;
+  label_fr: string;
+  label_en: string;
+  api_speed: number;
+  playback_rate: number;
+  concise: boolean;
+}
+
+export interface VoiceModel {
+  id: string;
+  name: string;
+  description_fr: string;
+  description_en: string;
+  latency: string;
+  recommended_for: string;
+}
+
+export interface VoiceCatalog {
+  voices: VoiceCatalogEntry[];
+  speed_presets: VoiceSpeedPreset[];
+  voice_chat_speed_presets: VoiceChatSpeedPreset[];
+  models: VoiceModel[];
+}
+
 export const voiceApi = {
   async getQuota(): Promise<{
     plan: string;
@@ -1937,6 +2003,166 @@ export const voiceApi = {
   }> {
     return request(`/api/voice/history/${summaryId}/${sessionId}/transcript`);
   },
+
+  async getCatalog(): Promise<VoiceCatalog> {
+    return request("/api/voice/catalog");
+  },
+
+  async getPreferences(): Promise<VoicePreferences> {
+    return request("/api/voice/preferences");
+  },
+
+  async updatePreferences(
+    updates: Partial<VoicePreferences>,
+  ): Promise<VoicePreferences> {
+    return request("/api/voice/preferences", {
+      method: "PUT",
+      body: updates,
+    });
+  },
+
+  async createAddonCheckout(packId: string): Promise<{ checkout_url: string }> {
+    return request("/api/voice/addon/checkout", {
+      method: "POST",
+      body: { pack_id: packId },
+    });
+  },
+};
+
+// ============================================
+// Exports API
+// ============================================
+export const exportsApi = {
+  async pdf(summaryId: number): Promise<Blob> {
+    const token = await tokenStorage.getAccessToken();
+    const response = await fetch(
+      `${API_BASE_URL}/api/exports/${summaryId}/pdf`,
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
+    );
+    if (!response.ok) throw new ApiError("Export failed", response.status);
+    return response.blob();
+  },
+
+  async markdown(summaryId: number): Promise<string> {
+    const data = await request<{ content: string }>(
+      `/api/exports/${summaryId}/md`,
+    );
+    return data.content;
+  },
+
+  async text(summaryId: number): Promise<string> {
+    const data = await request<{ content: string }>(
+      `/api/exports/${summaryId}/txt`,
+    );
+    return data.content;
+  },
+};
+
+// ============================================
+// Trending API (public)
+// ============================================
+export interface TrendingVideo {
+  video_id: string;
+  title: string;
+  channel: string;
+  thumbnail_url: string | null;
+  category: string | null;
+  duration: number | null;
+  analysis_count: number;
+  unique_users: number;
+  avg_reliability_score: number | null;
+  latest_analyzed_at: string;
+  is_cached: boolean;
+}
+
+export interface TrendingResponse {
+  videos: TrendingVideo[];
+  period: string;
+  total_cached_videos: number;
+  generated_at: string;
+}
+
+export const trendingApi = {
+  async getTrending(
+    period: "7d" | "30d" | "all" = "30d",
+    category?: string,
+    limit: number = 20,
+  ): Promise<TrendingResponse> {
+    const params = new URLSearchParams({ period, limit: String(limit) });
+    if (category) params.set("category", category);
+    return request(`/api/trending?${params}`, { requiresAuth: false });
+  },
+};
+
+// ============================================
+// Search API — Semantic search (auth required)
+// ============================================
+export interface SemanticSearchResult {
+  video_id: string;
+  score: number;
+  text_preview: string;
+  video_title: string;
+  video_channel: string;
+  thumbnail_url: string | null;
+  category: string | null;
+}
+
+export interface SemanticSearchResponse {
+  results: SemanticSearchResult[];
+  query: string;
+  total_results: number;
+  searched_at: string;
+}
+
+export const searchApi = {
+  async semanticSearch(
+    query: string,
+    limit: number = 10,
+    category?: string,
+  ): Promise<SemanticSearchResponse> {
+    return request("/api/search/semantic", {
+      method: "POST",
+      body: { query, limit, category },
+    });
+  },
+};
+
+// ============================================
+// Reliability API
+// ============================================
+export interface ReliabilityFactor {
+  name: string;
+  score: number;
+  description: string;
+  weight: number;
+}
+
+export interface ReliabilityResult {
+  score: number;
+  level: "high" | "medium" | "low" | "unknown";
+  factors: ReliabilityFactor[];
+  summary?: string;
+  freshness?: unknown;
+  fact_check_lite?: unknown;
+  analysis_type?: string;
+  user_plan?: string;
+  full_factcheck_available?: boolean;
+}
+
+export const reliabilityApi = {
+  async getReliability(summaryId: number): Promise<ReliabilityResult> {
+    return request(`/api/videos/reliability/${summaryId}`);
+  },
+
+  async checkChannel(channelId: string): Promise<{
+    score: number;
+    level: string;
+    factors: ReliabilityFactor[];
+  }> {
+    return request(`/api/videos/channel/${channelId}/reliability`);
+  },
 };
 
 export default {
@@ -1953,5 +2179,9 @@ export default {
   notificationsApi,
   shareApi,
   voiceApi,
+  exportsApi,
+  trendingApi,
+  searchApi,
+  reliabilityApi,
   ApiError,
 };
