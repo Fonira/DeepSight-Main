@@ -624,13 +624,30 @@ async def google_token_login(
     # 4. Login ou création avec merge par email (comportement existant)
     try:
         success, user, message, session_token = await login_or_register_google_user(
-            session, google_user
+            session, google_user, auto_create=data.auto_create
         )
     except Exception as e:
         log.error(f"Google mobile login DB error for {email}: {e}")
         raise HTTPException(
             status_code=503,
             detail="Database temporarily unavailable. Please try again."
+        )
+
+    # Cas silent auto-login extension: user inexistant et auto_create=False
+    # → retourner 404 avec les claims Google pour redirect signup pré-rempli.
+    if not success and message == "NOT_REGISTERED":
+        log.info(
+            f"Google silent login: no DeepSight account for {email} "
+            f"(platform={data.client_platform}) → redirect signup"
+        )
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "user_not_registered",
+                "email": email,
+                "name": name,
+                "picture": picture,
+            },
         )
 
     if not success or not user:

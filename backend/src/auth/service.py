@@ -579,51 +579,63 @@ async def get_google_user_info(access_token: str) -> Optional[dict]:
 
 async def login_or_register_google_user(
     session: AsyncSession,
-    google_user: dict
+    google_user: dict,
+    auto_create: bool = True,
 ) -> Tuple[bool, Optional[User], str, Optional[str]]:
     """
     Connecte ou crée un utilisateur via Google OAuth.
     L'email est automatiquement vérifié.
     Si l'email correspond à ADMIN_EMAIL, l'utilisateur devient admin.
+
+    Si `auto_create=False` et qu'aucun utilisateur n'existe pour cet email
+    (ni ce google_id), retourne `(False, None, "NOT_REGISTERED", None)`. Ce
+    mode est utilisé par l'extension Chrome en auto-login silencieux: on ne
+    crée pas de compte sans interaction utilisateur, on laisse le client
+    rediriger vers le formulaire signup avec email pré-rempli.
+
     Retourne: (success, user, message, session_token)
     """
     email = google_user.get("email", "").lower().strip()
     google_id = google_user.get("id", "")
     name = google_user.get("name", email.split("@")[0])
-    
+
     if not email:
         return False, None, "❌ Email non fourni par Google", None
-    
+
     # Vérifier si c'est l'admin
     admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower().strip()
     is_admin_user = (email == admin_email)
-    
+
     # Chercher l'utilisateur existant
     result = await session.execute(
         select(User).where((User.email == email) | (User.google_id == google_id))
     )
     user = result.scalar_one_or_none()
-    
+
     if user:
         # Utilisateur existant - mettre à jour google_id si nécessaire
         if not user.google_id:
             user.google_id = google_id
             user.email_verified = True
-        
+
         # 🔐 Si c'est l'admin, s'assurer que is_admin=True et plan=pro
         if is_admin_user and not user.is_admin:
             user.is_admin = True
             user.plan = "pro"
             user.credits = 999999
             print(f"🔐 Admin privileges granted to: {email}", flush=True)
-        
+
         await session.commit()
-        
+
         # 🆕 Créer une session unique
         session_token = await create_user_session(session, user.id)
-        
+
         return True, user, "✅ Connexion Google réussie", session_token
-    
+
+    # Aucun utilisateur trouvé et création désactivée (extension silent auto-login)
+    if not auto_create:
+        return False, None, "NOT_REGISTERED", None
+
     # Nouvel utilisateur
     username = email.split("@")[0].lower()
     

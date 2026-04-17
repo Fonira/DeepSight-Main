@@ -820,6 +820,73 @@ async def test_google_callback_existing_user_links(mock_db_session):
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+async def test_google_silent_auto_create_false_returns_not_registered(mock_db_session):
+    """
+    Silent auto-login (extension Chrome): si aucun compte DeepSight n'existe
+    pour l'email Google et que auto_create=False, doit retourner
+    (False, None, "NOT_REGISTERED", None) pour que le client redirige vers
+    signup au lieu de créer un compte sans interaction.
+    """
+    from auth.service import login_or_register_google_user
+
+    mock_db_session.execute = AsyncMock()
+    mock_db_session.execute.return_value.scalar_one_or_none = MagicMock(return_value=None)
+    mock_db_session.add = MagicMock()
+    mock_db_session.commit = AsyncMock()
+
+    google_user = {
+        "email": "unknown@gmail.com",
+        "id": "google_silent_123",
+        "name": "Unknown User",
+    }
+
+    with patch("auth.service.ADMIN_CONFIG", {"ADMIN_EMAIL": "admin@test.com"}):
+        success, user, message, session_token = await login_or_register_google_user(
+            mock_db_session, google_user, auto_create=False
+        )
+
+    assert success is False
+    assert user is None
+    assert message == "NOT_REGISTERED"
+    assert session_token is None
+    mock_db_session.add.assert_not_called()
+    mock_db_session.commit.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_google_auto_create_false_still_logs_in_existing_user(mock_db_session):
+    """
+    Silent auto-login avec user existant: auto_create=False ne doit pas
+    bloquer un login normal quand le compte DeepSight existe déjà.
+    """
+    from auth.service import login_or_register_google_user
+
+    user = create_test_user(email="existing@example.com", google_id="google_existing_456")
+
+    mock_db_session.execute = AsyncMock()
+    mock_db_session.execute.return_value.scalar_one_or_none = MagicMock(return_value=user)
+    mock_db_session.commit = AsyncMock()
+
+    google_user = {
+        "email": "existing@example.com",
+        "id": "google_existing_456",
+        "name": "Existing User",
+    }
+
+    with patch("auth.service.ADMIN_CONFIG", {"ADMIN_EMAIL": "admin@test.com"}), \
+         patch("auth.service.create_user_session", new_callable=AsyncMock, return_value="sess_silent"):
+        success, returned_user, message, session_token = await login_or_register_google_user(
+            mock_db_session, google_user, auto_create=False
+        )
+
+    assert success is True
+    assert returned_user is user
+    assert session_token == "sess_silent"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
 async def test_google_exchange_code():
     """
     Test : Echange de code Google avec httpx mocke.

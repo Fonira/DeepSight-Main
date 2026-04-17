@@ -80,20 +80,49 @@ class GoogleTokenRequest(BaseModel):
 
 class GoogleMobileTokenRequest(BaseModel):
     """
-    Schéma pour Google OAuth mobile via id_token JWT (Expo / @react-native-google-signin).
-    Le mobile obtient l'id_token via GoogleSignin.signIn() puis l'envoie ici pour
-    vérification serveur + échange contre nos propres JWT.
+    Schéma pour Google OAuth via id_token JWT.
+
+    Utilisé par le mobile (Expo / @react-native-google-signin) et l'extension
+    Chrome (chrome.identity.getAuthToken). Le client obtient l'id_token puis
+    l'envoie ici pour vérification serveur + échange contre nos propres JWT.
+
+    Si `auto_create=False` et qu'aucun compte DeepSight n'existe pour l'email
+    Google, le serveur retourne HTTP 404 avec les claims Google (email, name,
+    picture) pour permettre au client de rediriger vers le formulaire signup
+    pré-rempli. Comportement utilisé par l'extension Chrome en mode
+    "silent auto-login": si connecté à Google mais pas à DeepSight, on ne crée
+    pas de compte automatiquement — on redirige vers signup.
     """
     id_token: str = Field(..., min_length=10, description="Google ID token JWT signé")
-    client_platform: Literal["ios", "android", "web"] = Field(
+    client_platform: Literal["ios", "android", "web", "extension"] = Field(
         default="web",
-        description="Plateforme cliente (pour sélectionner l'audience attendue)"
+        description="Plateforme cliente (pour sélectionner l'audience attendue + tracking)"
     )
     device_name: Optional[str] = Field(
         default=None,
         max_length=100,
         description="Nom du device pour tracking des sessions (ex: 'iPhone 15 Pro')"
     )
+    auto_create: bool = Field(
+        default=True,
+        description=(
+            "Si True (défaut mobile), crée un compte DeepSight automatiquement "
+            "si aucun n'existe pour cet email Google. Si False (extension silent "
+            "auto-login), retourne 404 pour rediriger vers signup."
+        )
+    )
+
+
+class GoogleNotRegisteredResponse(BaseModel):
+    """
+    Réponse 404 quand un ID token Google valide est fourni mais qu'aucun compte
+    DeepSight n'existe pour cet email et que `auto_create=False`. Permet au
+    client (extension Chrome) de rediriger vers signup avec email pré-rempli.
+    """
+    code: Literal["user_not_registered"] = "user_not_registered"
+    email: str
+    name: Optional[str] = None
+    picture: Optional[str] = None
 
 
 class DeleteAccountRequest(BaseModel):
