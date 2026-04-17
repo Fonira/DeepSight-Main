@@ -44,6 +44,34 @@ import { logBootStep, persistCrash } from "../utils/crash-logger";
 
 import type { Summary, User, PlanInfo, TournesolData } from "../types";
 
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (!done) {
+        done = true;
+        resolve(fallback);
+      }
+    }, ms);
+    p.then(
+      (v) => {
+        if (!done) {
+          done = true;
+          clearTimeout(timer);
+          resolve(v);
+        }
+      },
+      () => {
+        if (!done) {
+          done = true;
+          clearTimeout(timer);
+          resolve(fallback);
+        }
+      },
+    );
+  });
+}
+
 // ── State Machine ──
 
 type AppState = "login" | "ready" | "analyzing" | "results" | "chat";
@@ -195,9 +223,18 @@ function tryInjectWidget(): void {
 
 async function initCard(): Promise<void> {
   try {
-    const authResp = (await Browser.runtime.sendMessage({
-      action: "CHECK_AUTH",
-    })) as { authenticated?: boolean; user?: User | null } | undefined;
+    const authResp = await withTimeout(
+      Browser.runtime.sendMessage({ action: "CHECK_AUTH" }) as Promise<
+        { authenticated?: boolean; user?: User | null } | undefined
+      >,
+      5000,
+      { authenticated: false } as
+        | { authenticated?: boolean; user?: User | null }
+        | undefined,
+    );
+    logBootStep("initCard:auth-checked", {
+      authenticated: !!authResp?.authenticated,
+    });
 
     if (!authResp?.authenticated) {
       ctx.state = "login";
