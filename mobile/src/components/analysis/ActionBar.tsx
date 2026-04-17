@@ -12,7 +12,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { sp, borderRadius } from "../../theme/spacing";
 import { fontFamily, fontSize } from "../../theme/typography";
 import { springs } from "../../theme/animations";
-import { historyApi } from "../../services/api";
+import { historyApi, shareApi } from "../../services/api";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -68,10 +68,22 @@ export const ActionBar: React.FC<ActionBarProps> = ({
       shareScale.value = withSpring(1, springs.button);
     }, 100);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Preferred flow: POST /api/share → share https://.../s/{token}
+    // Falls back to the raw YouTube URL if the backend call fails.
+    let shareUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    try {
+      const res = await shareApi.createShareLink(videoId);
+      if (res?.share_url) shareUrl = res.share_url;
+    } catch {
+      // keep fallback URL
+    }
+
     try {
       await Share.share({
         title,
-        message: `${title}\nhttps://www.youtube.com/watch?v=${videoId}`,
+        message: `${title}\n${shareUrl}`,
+        url: shareUrl,
       });
     } catch {
       // User cancelled
