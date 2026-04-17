@@ -687,6 +687,8 @@ async def create_voice_session(
                 concise_block = CONCISENESS_INJECTION_FR if language == "fr" else CONCISENESS_INJECTION_EN
                 system_prompt += concise_block
 
+        conversation_token: str | None = None
+
         async with get_elevenlabs_client() as client:
             # Create the agent with user's preferred voice settings
             agent_id = await client.create_conversation_agent(
@@ -700,8 +702,22 @@ async def create_voice_session(
                 turn_config=turn_config,
             )
 
-            # Get the signed WebSocket URL
+            # Get the signed WebSocket URL (legacy web / JS SDK transport)
             signed_url, expires_at_iso = await client.get_signed_url(agent_id)
+
+            # Also fetch a LiveKit JWT conversation token for WebRTC clients
+            # (ElevenLabs React Native SDK, iOS/Android). If this fails we
+            # still return signed_url so web clients keep working.
+            try:
+                conversation_token, token_expires_iso = await client.get_conversation_token(agent_id)
+                if token_expires_iso and not expires_at_iso:
+                    expires_at_iso = token_expires_iso
+            except Exception as token_exc:
+                logger.warning(
+                    "Failed to fetch LiveKit conversation token (falling back to signed_url only)",
+                    extra={"agent_id": agent_id, "error": str(token_exc)},
+                )
+                conversation_token = None
 
         # Update session with agent_id
         voice_session.elevenlabs_agent_id = agent_id
@@ -759,6 +775,8 @@ async def create_voice_session(
     return VoiceSessionResponse(
         session_id=voice_session.id,
         signed_url=signed_url,
+        agent_id=agent_id,
+        conversation_token=conversation_token,
         expires_at=expires_at,
         quota_remaining_minutes=quota_remaining_minutes,
         max_session_minutes=max_session_minutes,

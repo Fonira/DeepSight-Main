@@ -1969,6 +1969,8 @@ export const voiceApi = {
     session_id: string;
     signed_url: string;
     agent_id: string;
+    /** LiveKit JWT pour @elevenlabs/react-native (WebRTC). Peut être null si ElevenLabs n'a pas pu le générer — fallback sur agent_id côté client. */
+    conversation_token: string | null;
     expires_at: string;
     quota_remaining_minutes: number;
     max_session_minutes: number;

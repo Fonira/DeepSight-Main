@@ -92,6 +92,7 @@ const defaultSessionResponse = {
   session_id: "sess_123",
   signed_url: "wss://api.elevenlabs.io/test",
   agent_id: "agent_abc",
+  conversation_token: "livekit-jwt-token-test",
   expires_at: "2026-04-15T12:00:00Z",
   quota_remaining_minutes: 30,
   max_session_minutes: 10,

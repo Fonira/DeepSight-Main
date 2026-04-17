@@ -34,6 +34,8 @@ class VoiceSessionResponse(BaseModel):
     """Reponse de creation de session voice chat."""
     session_id: str
     signed_url: str
+    agent_id: str
+    conversation_token: Optional[str] = None
     expires_at: datetime
     quota_remaining_minutes: float
     max_session_minutes: int
