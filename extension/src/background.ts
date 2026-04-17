@@ -14,6 +14,8 @@ import {
   getTokenRefreshedAt,
 } from "./utils/storage";
 import { extractVideoId } from "./utils/video";
+import { drainCrashes } from "./utils/crash-logger";
+import { reportCrashes } from "./utils/sentry-reporter";
 import type {
   ExtensionMessage,
   MessageResponse,
@@ -53,7 +55,8 @@ async function apiRequest<T>(
   if (accessToken && refreshedAt && Date.now() - refreshedAt > 20 * 60 * 1000) {
     await tryRefreshToken();
     const fresh = await getStoredTokens();
-    if (fresh.accessToken) headers["Authorization"] = `Bearer ${fresh.accessToken}`;
+    if (fresh.accessToken)
+      headers["Authorization"] = `Bearer ${fresh.accessToken}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -76,7 +79,9 @@ async function apiRequest<T>(
       return retryResponse.json();
     }
     await clearStoredAuth();
-    console.warn("[DeepSight] Session expired, refresh failed. User needs to re-login.");
+    console.warn(
+      "[DeepSight] Session expired, refresh failed. User needs to re-login.",
+    );
     throw new Error("SESSION_EXPIRED");
   }
 
@@ -656,7 +661,13 @@ Browser.runtime.onMessage.addListener(
 // ── Lifecycle Events ──
 
 Browser.runtime.onInstalled.addListener(
-  (details: Runtime.OnInstalledDetailsType) => {
+  async (details: Runtime.OnInstalledDetailsType) => {
+    try {
+      const crashes = await drainCrashes();
+      await reportCrashes(crashes);
+    } catch {
+      /* never block install on telemetry */
+    }
     if (details.reason === "install") {
       Browser.tabs.create({ url: WEBAPP_URL });
       Browser.storage.local.set({ showYouTubeRecommendation: true });
@@ -665,6 +676,12 @@ Browser.runtime.onInstalled.addListener(
 );
 
 Browser.runtime.onStartup.addListener(async () => {
+  try {
+    const crashes = await drainCrashes();
+    await reportCrashes(crashes);
+  } catch {
+    /* swallow */
+  }
   if (await isAuthenticated()) {
     await tryRefreshToken();
   }
