@@ -14,7 +14,7 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -419,6 +419,41 @@ async def get_share_page(
             "X-Robots-Tag": "index, follow",
         },
     )
+
+
+@router.post("/{token}/beacon", include_in_schema=False)
+async def share_beacon(
+    token: str,
+    background: BackgroundTasks,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Fire-and-forget analytics beacon. Always returns 204.
+
+    Used by the HTML page template (navigator.sendBeacon) to increment the
+    view_count without blocking rendering. Never reveals whether the token
+    exists — silently no-ops on unknown/revoked tokens to avoid info leakage
+    and to keep beacons noisy-safe.
+    """
+    async def _record():
+        try:
+            result = await session.execute(
+                select(SharedAnalysis).where(
+                    SharedAnalysis.share_token == token,
+                    SharedAnalysis.is_active.is_(True),
+                )
+            )
+            share = result.scalar_one_or_none()
+            if share:
+                share.view_count = (share.view_count or 0) + 1
+                await session.commit()
+        except Exception:
+            try:
+                await session.rollback()
+            except Exception:
+                pass
+
+    background.add_task(_record)
+    return Response(status_code=204)
 
 
 @router.get("/{share_token}")
