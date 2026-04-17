@@ -232,3 +232,50 @@ export function isAnchorReady(): boolean {
   }
   return false;
 }
+
+/**
+ * Minimal body shown synchronously after injection, before async auth check.
+ * If auth check hangs/fails, the user still sees a branded, clickable card
+ * with a "Réessayer" button that appears after 10s.
+ */
+export function buildSkeletonBody(
+  onRetry: () => void,
+): { html: string; bind: () => void } {
+  const html = `
+    <div class="ds-card-body">
+      <div class="ds-loading" style="padding:16px;text-align:center">
+        <div style="color:var(--ds-gold-mid);font-size:24px;margin-bottom:8px">⏳</div>
+        <p class="ds-loading-text" style="color:var(--ds-text-secondary);font-size:12px;margin:0 0 12px">
+          Chargement de DeepSight…
+        </p>
+        <button
+          type="button"
+          id="ds-skeleton-retry"
+          class="ds-btn ds-btn-primary"
+          style="font-size:11px;padding:6px 12px;display:none"
+        >
+          Réessayer
+        </button>
+      </div>
+    </div>
+  `;
+  const bind = (): void => {
+    // Reveal the retry button after 10s if the async init hasn't rendered.
+    // Uses the shadow module via dynamic import so this helper stays pure.
+    import("./shadow")
+      .then(({ $id }) => {
+        setTimeout(() => {
+          const btn = $id<HTMLButtonElement>("ds-skeleton-retry");
+          if (btn && !btn.hasAttribute("data-bound")) {
+            btn.setAttribute("data-bound", "1");
+            btn.style.display = "inline-block";
+            btn.addEventListener("click", onRetry);
+          }
+        }, 10_000);
+      })
+      .catch(() => {
+        /* swallow */
+      });
+  };
+  return { html, bind };
+}

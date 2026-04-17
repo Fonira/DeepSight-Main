@@ -23,6 +23,7 @@ import {
   getWidgetBody,
   isWidgetDetached,
   isAnchorReady,
+  buildSkeletonBody,
 } from "./widget";
 import { $id } from "./shadow";
 import { fetchTournesolScore } from "./tournesol";
@@ -110,11 +111,19 @@ function tryInjectWidget(): void {
     const widgetCard = getExistingWidget();
     if (widgetCard) {
       widgetCard.innerHTML = buildWidgetHeader(logoImgHtml(22));
-      const body = document.createElement("div");
-      body.className = "ds-card-body";
-      body.innerHTML = `<div class="ds-loading"><div style="color:var(--ds-gold-mid)">⏳</div><p class="ds-loading-text">Chargement...</p></div>`;
-      widgetCard.appendChild(body);
-      logBootStep("inject:widget-populated");
+      const skeleton = buildSkeletonBody(() => {
+        logBootStep("skeleton:retry-clicked");
+        ctx.injected = false;
+        ctx.injectionAttempts = 0;
+        removeWidget();
+        tryInjectWidget();
+      });
+      const bodyWrapper = document.createElement("div");
+      bodyWrapper.innerHTML = skeleton.html;
+      const bodyEl = bodyWrapper.firstElementChild;
+      if (bodyEl) widgetCard.appendChild(bodyEl);
+      skeleton.bind();
+      logBootStep("inject:widget-populated-with-skeleton");
     } else {
       logBootStep("inject:widgetCard-null");
     }
