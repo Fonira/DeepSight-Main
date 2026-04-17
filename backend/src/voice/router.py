@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from db.database import get_session, VoiceSession, Summary, User
+from db.database import get_session, VoiceSession, Summary, User, DebateAnalysis
 from auth.dependencies import get_current_user
 from core.config import (
     VOICE_LIMITS,
@@ -53,6 +53,14 @@ from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from voice.tools import search_in_transcript, get_analysis_section, get_sources, get_flashcards
 from voice.web_tools import web_search, deep_research, check_fact
 from voice.agent_types import get_agent_config, list_agent_types, AGENT_REGISTRY
+from voice.debate_tools import (
+    get_debate_overview,
+    get_video_thesis,
+    get_argument_comparison,
+    search_in_debate_transcript,
+    get_debate_fact_check,
+)
+from voice.debate_context import build_debate_rich_context
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +150,53 @@ async def verify_tool_request(request: Request, db: AsyncSession) -> tuple[Summa
         )
 
     return summary, body
+
+
+async def verify_debate_tool_request(
+    request: Request, db: AsyncSession
+) -> tuple[DebateAnalysis, dict]:
+    """Verify an ElevenLabs webhook request targeting a DebateAnalysis.
+
+    Same contract as verify_tool_request but for debate_id tokens.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_auth", "message": "Missing or invalid Authorization header."},
+        )
+    token = auth_header.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_auth", "message": "Empty Bearer token."},
+        )
+
+    body = await request.json()
+    debate_id = body.get("debate_id") or body.get("parameters", {}).get("debate_id")
+    if not debate_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_debate_id", "message": "No debate_id in request body."},
+        )
+
+    if str(debate_id) != str(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "token_mismatch", "message": "Bearer token does not match debate_id."},
+        )
+
+    result = await db.execute(
+        select(DebateAnalysis).where(DebateAnalysis.id == int(debate_id))
+    )
+    debate = result.scalar_one_or_none()
+    if not debate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "debate_not_found", "message": "Debate not found."},
+        )
+
+    return debate, body
 
 
 class AddonCheckoutRequest(BaseModel):
