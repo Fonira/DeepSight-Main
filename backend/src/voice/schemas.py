@@ -37,7 +37,8 @@ class VoiceSessionResponse(BaseModel):
     expires_at: datetime
     quota_remaining_minutes: float
     max_session_minutes: int
-    input_mode: str = "ptt"           # PTT or VAD mode used for this session
+    input_mode: str = "ptt"
+    ptt_key: str = " "           # Keyboard key for PTT
     playback_rate: float = 1.0        # Client-side playback rate multiplier
 
 
@@ -125,6 +126,7 @@ class VoicePreferencesRequest(BaseModel):
 
     # ── Phase 1: PTT / Interaction ────────────────────────────────────────
     input_mode: Optional[str] = Field(default=None, description="Input mode: ptt or vad")
+    ptt_key: Optional[str] = Field(default=None, description="Keyboard key for PTT (single char or name: Space, Shift, Control, Alt, etc.)")
     interruptions_enabled: Optional[bool] = Field(default=None, description="Allow user to interrupt agent")
     turn_eagerness: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Turn eagerness 0.0 (patient) to 1.0 (eager) — VAD only")
 
@@ -196,6 +198,7 @@ class VoicePreferencesResponse(BaseModel):
     gender: str = "female"
     # Phase 1
     input_mode: str = "ptt"
+    ptt_key: str = " "
     interruptions_enabled: bool = True
     turn_eagerness: float = 0.5
     # Phase 2

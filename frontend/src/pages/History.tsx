@@ -86,6 +86,7 @@ import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
 import { AnalysisActionBar } from "../components/analysis/AnalysisActionBar";
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
+import { AnalysisVoiceHero } from "../components/voice/AnalysisVoiceHero";
 import { sanitizeTitle } from "../utils/sanitize";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1665,6 +1666,19 @@ export const History: React.FC = () => {
                       </button>
                     </div>
                   ) : (
+                    <>
+                      {/* 🎙️ Hero CTA Agent Vocal */}
+                      {selectedVideoDetail && (
+                        <div className="mb-4">
+                          <AnalysisVoiceHero
+                            videoThumbnailUrl={selectedVideoDetail.thumbnail_url}
+                            videoTitle={selectedVideoDetail.video_title}
+                            onOpen={() => setIsVoiceModalOpen(true)}
+                            voiceEnabled={voiceEnabled}
+                            onPrewarm={voiceChat.prewarm}
+                          />
+                        </div>
+                      )}
                     <div className="card">
                       {/* Action Bar v2 — Unified */}
                       <div className="p-4 sm:p-5 border-b border-border-subtle">
@@ -1725,6 +1739,7 @@ export const History: React.FC = () => {
                         </div>
                       </div>
                     </div>
+                    </>
                   )}
                 </div>
 
@@ -1809,6 +1824,7 @@ export const History: React.FC = () => {
                       onMuteToggle={voiceChat.toggleMute}
                       isMuted={voiceChat.isMuted}
                       inputMode={voiceChat.inputMode}
+            pttKey={voiceChat.pttKey}
                       isTalking={voiceChat.isTalking}
                       onStartTalking={voiceChat.startTalking}
                       onStopTalking={voiceChat.stopTalking}

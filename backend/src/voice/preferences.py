@@ -55,6 +55,7 @@ class VoicePreferences:
 
     # ── Interaction mode (Phase 1 — PTT) ─────────────────────────────────
     input_mode: str = "ptt"               # "ptt" (push-to-talk) or "vad" (voice activity detection)
+    ptt_key: str = " "                    # Keyboard key for PTT (default Space). Any single char or key name like 'Space','Shift','Control'.
     interruptions_enabled: bool = True     # Allow user to interrupt agent
     turn_eagerness: float = 0.5           # 0.0 (patient) → 1.0 (eager) — VAD mode only
 

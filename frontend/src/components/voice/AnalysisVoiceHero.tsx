@@ -1,32 +1,30 @@
 /**
- * DebateVoiceHero — Hero CTA card at top of DebatePage
+ * AnalysisVoiceHero — Hero CTA card for the "Analyse simple" view
  *
- * Displays the debate voice agent avatar, topic preview, and a large
- * call-to-action button to open the voice modal. Replaces the small
- * floating-bottom-right VoiceButton on the Débat page.
+ * Affiche un bandeau d'invitation à discuter de l'analyse vidéo avec
+ * l'agent vocal IA. Mirroir de DebateVoiceHero mais adapté au contexte
+ * "analyse" : miniature vidéo en guise d'avatar + label "Analyste".
+ *
+ * Utilisé par DashboardPage et History.tsx au-dessus de l'AnalysisActionBar.
  */
 
 import React, { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Mic, Sparkles, Lock } from "lucide-react";
+import { Mic, Sparkles, Lock, Play } from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════════════════════
 
-interface DebateVoiceHeroProps {
-  /** Avatar URL dynamique généré par le pipeline d'images */
-  avatarUrl: string | null;
-  /** Statut de génération de l'avatar */
-  avatarStatus: "ready" | "generating" | "unavailable";
-  /** Titre / sujet du débat à afficher sous le label agent */
-  debateTopic: string | null;
+interface AnalysisVoiceHeroProps {
+  /** URL de la miniature vidéo (servira d'avatar dans le hero) */
+  videoThumbnailUrl?: string | null;
+  /** Titre de la vidéo analysée à afficher sous le label */
+  videoTitle: string | null;
   /** Callback d'ouverture du modal vocal */
   onOpen: () => void;
   /** Si false, affiche le CTA en mode locked (plan insuffisant) */
   voiceEnabled: boolean;
-  /** Initiales de fallback (2 chars) */
-  avatarFallback?: string;
   /** Callback de préchauffage (précharge SDK ElevenLabs). Appelé au mount + hover. */
   onPrewarm?: () => void;
 }
@@ -35,13 +33,11 @@ interface DebateVoiceHeroProps {
 // Component
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const DebateVoiceHero: React.FC<DebateVoiceHeroProps> = ({
-  avatarUrl,
-  avatarStatus,
-  debateTopic,
+export const AnalysisVoiceHero: React.FC<AnalysisVoiceHeroProps> = ({
+  videoThumbnailUrl,
+  videoTitle,
   onOpen,
   voiceEnabled,
-  avatarFallback = "DB",
   onPrewarm,
 }) => {
   // Prewarm dès le mount : précharge le SDK ElevenLabs en arrière-plan
@@ -66,7 +62,7 @@ export const DebateVoiceHero: React.FC<DebateVoiceHeroProps> = ({
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="relative w-full max-w-5xl mx-auto px-4 sm:px-6 mb-8"
+      className="relative w-full"
     >
       <div
         role="button"
@@ -74,7 +70,7 @@ export const DebateVoiceHero: React.FC<DebateVoiceHeroProps> = ({
         aria-disabled={!voiceEnabled}
         aria-label={
           voiceEnabled
-            ? "Parler avec l'agent IA Débatteur"
+            ? "Parler avec l'agent IA Analyste"
             : "Agent vocal — Plan supérieur requis"
         }
         onClick={handleClick}
@@ -109,33 +105,27 @@ export const DebateVoiceHero: React.FC<DebateVoiceHeroProps> = ({
         )}
 
         <div className="relative flex items-center gap-4 sm:gap-6">
-          {/* Avatar preview */}
+          {/* Avatar preview (miniature vidéo ou fallback Play icon) */}
           <div className="relative flex-shrink-0">
             <motion.div
               className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border border-white/15 bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/30 flex items-center justify-center shadow-lg shadow-indigo-500/10"
               whileHover={voiceEnabled ? { scale: 1.04 } : undefined}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              {avatarUrl ? (
+              {videoThumbnailUrl ? (
                 <img
-                  src={avatarUrl}
-                  alt="Avatar de l'agent débatteur"
+                  src={videoThumbnailUrl}
+                  alt="Miniature de la vidéo analysée"
                   className="w-full h-full object-cover"
                   loading="eager"
                 />
-              ) : avatarStatus === "generating" ? (
-                <div className="w-full h-full flex items-center justify-center bg-[#0b0b14]/60">
-                  <div className="w-7 h-7 border-2 border-white/30 border-t-indigo-400 rounded-full animate-spin" />
-                </div>
               ) : (
-                <span className="text-2xl font-bold text-white/80 uppercase">
-                  {avatarFallback.slice(0, 2)}
-                </span>
+                <Play className="w-8 h-8 text-white/60" />
               )}
             </motion.div>
 
             {/* Pulse dot — ready indicator */}
-            {voiceEnabled && avatarStatus === "ready" && (
+            {voiceEnabled && (
               <motion.span
                 className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-[#0a0a0f]"
                 animate={{ scale: [1, 1.2, 1], opacity: [0.8, 1, 0.8] }}
@@ -149,17 +139,17 @@ export const DebateVoiceHero: React.FC<DebateVoiceHeroProps> = ({
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="w-3.5 h-3.5 text-violet-300" />
               <span className="text-[11px] uppercase tracking-wider font-semibold text-violet-300/90">
-                Agent IA Débatteur
+                Agent IA Analyste
               </span>
             </div>
             <h3 className="text-base sm:text-lg font-semibold text-white leading-snug">
               {voiceEnabled
-                ? "Discute du débat avec un modérateur IA"
+                ? "Discute de l'analyse avec un agent IA"
                 : "Agent vocal — Plan Étudiant+ requis"}
             </h3>
-            {debateTopic && (
+            {videoTitle && (
               <p className="text-xs sm:text-sm text-white/50 mt-1 truncate">
-                Sujet : {debateTopic}
+                Vidéo : {videoTitle}
               </p>
             )}
           </div>
@@ -201,4 +191,4 @@ export const DebateVoiceHero: React.FC<DebateVoiceHeroProps> = ({
   );
 };
 
-export default DebateVoiceHero;
+export default AnalysisVoiceHero;

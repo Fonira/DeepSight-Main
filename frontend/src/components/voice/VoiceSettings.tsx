@@ -90,9 +90,15 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
   }, []);
 
   // ── Save handler ───────────────────────────────────────────────────────
+  // Optimistic update: UI reflects change instantly, rollback on error.
+  // Fixes revert-visual bug where selects snapped back to previous value
+  // during the API round-trip.
   const savePreferences = useCallback(
     async (updates: Partial<VoicePreferences>) => {
       if (!preferences) return;
+      const snapshot = preferences;
+      // Optimistic apply — UI updates immediately
+      setPreferences({ ...preferences, ...updates });
       try {
         setSaving(true);
         setError(null);
@@ -101,6 +107,8 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
         setSuccessMsg("Préférences enregistrées !");
         setTimeout(() => setSuccessMsg(null), 2000);
       } catch (err: unknown) {
+        // Rollback on failure
+        setPreferences(snapshot);
         setError("Erreur lors de la sauvegarde.");
         console.error("VoiceSettings save error:", err);
       } finally {

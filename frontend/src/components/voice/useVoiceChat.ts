@@ -52,6 +52,8 @@ interface SessionResponse {
 interface UseVoiceChatReturn {
   /** Démarrer la conversation */
   start: () => Promise<void>;
+  /** Précharger le SDK ElevenLabs (appelé au mount du Hero pour réduire la latence) */
+  prewarm: () => void;
   /** Arrêter la conversation */
   stop: () => Promise<void>;
   /** Toggle mute micro */
@@ -70,6 +72,8 @@ interface UseVoiceChatReturn {
   isTalking: boolean;
   /** Mode d'input actif */
   inputMode: "ptt" | "vad";
+  /** Touche clavier active pour PTT (depuis les préférences user) */
+  pttKey: string;
   /** Tool en cours d'exécution par l'agent */
   activeTool: string | null;
   /** Messages de la conversation */
@@ -122,6 +126,7 @@ export function useVoiceChat({
   const [isMuted, setIsMuted] = useState(false);
   const [isTalking, setIsTalking] = useState(false);
   const [inputMode, setInputMode] = useState<"ptt" | "vad">("ptt");
+  const [pttKey, setPttKey] = useState<string>(" ");
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [messages, setMessages] = useState<VoiceChatMessage[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -138,6 +143,7 @@ export function useVoiceChat({
   const playbackPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputModeRef = useRef<"ptt" | "vad">("ptt");
+  const pttKeyRef = useRef<string>(" ");
   const isMountedRef = useRef(true);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -324,6 +330,17 @@ export function useVoiceChat({
   // start()
   // ─────────────────────────────────────────────────────────────────────────
 
+  // Prewarm: précharge le SDK ElevenLabs côté client pour économiser ~200-300ms au clic
+  const prewarmedRef = useRef(false);
+  const prewarm = useCallback(() => {
+    if (prewarmedRef.current) return;
+    prewarmedRef.current = true;
+    // Fire-and-forget: le bundle sera dans le cache du navigateur au moment du start()
+    import("@elevenlabs/client").catch(() => {
+      prewarmedRef.current = false;
+    });
+  }, []);
+
   const start = useCallback(async () => {
     // Empêcher les démarrages multiples
     if (
@@ -339,13 +356,23 @@ export function useVoiceChat({
     setElapsedSeconds(0);
     setStatus("connecting");
 
-    // 1. Demander l'accès micro
+    // 1. Lancer en PARALLÈLE : accès micro + preload SDK ElevenLabs
+    //    (sans attendre la session, économie de ~200-500ms vs exécution séquentielle)
+    const sdkPromise = import("@elevenlabs/client").catch((e) => {
+      console.warn("SDK preload failed:", e);
+      return null;
+    });
+    const micPromise = navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .catch((err: unknown) => err as DOMException);
+
     let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const micResult = await micPromise;
+    if (micResult instanceof MediaStream) {
+      stream = micResult;
       mediaStreamRef.current = stream;
-    } catch (err: unknown) {
-      const mediaError = err as DOMException;
+    } else {
+      const mediaError = micResult as DOMException;
       if (
         mediaError.name === "NotAllowedError" ||
         mediaError.name === "PermissionDeniedError"
@@ -402,6 +429,9 @@ export function useVoiceChat({
       const sessionInputMode = sessionData.input_mode || "ptt";
       inputModeRef.current = sessionInputMode;
       setInputMode(sessionInputMode);
+      const sessionPttKey = sessionData.ptt_key || " ";
+      pttKeyRef.current = sessionPttKey;
+      setPttKey(sessionPttKey);
     } catch (err) {
       releaseMediaStream();
       if (err instanceof TypeError) {
@@ -413,9 +443,10 @@ export function useVoiceChat({
       return;
     }
 
-    // 3. Charger le SDK ElevenLabs et démarrer la session
+    // 3. Charger le SDK ElevenLabs (déjà preloadé en parallèle) et démarrer la session
     try {
-      const { Conversation } = await import("@elevenlabs/client");
+      const sdkModule = await sdkPromise;
+      const { Conversation } = sdkModule ?? (await import("@elevenlabs/client"));
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conversation = await (Conversation as any).startSession({
@@ -573,6 +604,7 @@ export function useVoiceChat({
 
   return {
     start,
+    prewarm,
     stop,
     toggleMute,
     startTalking,
@@ -582,6 +614,7 @@ export function useVoiceChat({
     isMuted,
     isTalking,
     inputMode,
+    pttKey,
     activeTool,
     messages,
     elapsedSeconds,

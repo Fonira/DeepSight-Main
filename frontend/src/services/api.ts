@@ -2476,6 +2476,7 @@ export interface VoiceSession {
   quota_remaining_minutes: number;
   max_session_minutes: number;
   input_mode: "ptt" | "vad";
+  ptt_key?: string;
   playback_rate: number;
 }
 
@@ -2492,6 +2493,7 @@ export interface VoicePreferences {
   language: string;
   gender: string;
   input_mode: "ptt" | "vad";
+  ptt_key: string;
   interruptions_enabled: boolean;
   turn_eagerness: number;
   voice_chat_speed_preset: string;

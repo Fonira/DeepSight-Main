@@ -592,6 +592,7 @@ export const DebatePage: React.FC = () => {
             onOpen={() => setIsVoiceModalOpen(true)}
             voiceEnabled={voiceEnabled}
             avatarFallback="DB"
+            onPrewarm={voiceChat.prewarm}
           />
         )}
 
@@ -846,6 +847,7 @@ export const DebatePage: React.FC = () => {
             onMuteToggle={voiceChat.toggleMute}
             isMuted={voiceChat.isMuted}
             inputMode={voiceChat.inputMode}
+            pttKey={voiceChat.pttKey}
             isTalking={voiceChat.isTalking}
             onStartTalking={voiceChat.startTalking}
             onStopTalking={voiceChat.stopTalking}

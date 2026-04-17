@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DEEP SIGHT v5.1 — Dashboard Page
  * Interface d'analyse complète avec design académique sobre
  *
@@ -50,7 +50,7 @@ import type {
 } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
-import { normalizePlanId } from "../config/planPrivileges";
+import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
 import { VideoPlayer, VideoPlayerRef } from "../components/VideoPlayer";
 import {
   createTimecodeMarkdownComponents,
@@ -95,6 +95,7 @@ import { sanitizeTitle } from "../utils/sanitize";
 import VoiceButton from "../components/voice/VoiceButton";
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
+import { AnalysisVoiceHero } from "../components/voice/AnalysisVoiceHero";
 
 interface ChatMessage {
   id: string;
@@ -255,6 +256,12 @@ export const DashboardPage: React.FC = () => {
 
   const normalizedPlan = normalizePlanId(user?.plan);
   const isProUser = normalizedPlan === "pro";
+  const ADMIN_EMAIL_VOICE = "maximeleparc3@gmail.com";
+  const isAdminVoice =
+    user?.is_admin ||
+    user?.email?.toLowerCase() === ADMIN_EMAIL_VOICE.toLowerCase();
+  const voiceEnabled =
+    isAdminVoice || PLAN_LIMITS[normalizedPlan].voiceChatEnabled;
   // Note: isStarterPlus réservé pour futures fonctionnalités
   const isExpertUser = normalizedPlan === "pro"; // Pro est le plan le plus élevé
   const canDeepResearch = ["pro", "expert", "admin", "unlimited"].includes(
@@ -1369,6 +1376,15 @@ export const DashboardPage: React.FC = () => {
             {/* Results */}
             {selectedSummary && !loading && (
               <div ref={resultsRef} className="space-y-6 animate-fadeInUp">
+                {/* 🎙️ Hero CTA Agent Vocal */}
+                <AnalysisVoiceHero
+                  videoThumbnailUrl={selectedSummary.thumbnail_url}
+                  videoTitle={selectedSummary.video_title}
+                  onOpen={() => setIsVoiceModalOpen(true)}
+                  voiceEnabled={voiceEnabled}
+                  onPrewarm={voiceChat.prewarm}
+                />
+
                 {/* Video Info Card */}
                 <div className="card overflow-hidden">
                   <div className="flex flex-col lg:flex-row">
@@ -1502,7 +1518,7 @@ export const DashboardPage: React.FC = () => {
                     summary_content: selectedSummary.summary_content,
                   }}
                   language={language}
-                  onOpenVoice={() => setIsVoiceModalOpen(true)}
+                  onOpenVoice={voiceEnabled ? () => setIsVoiceModalOpen(true) : undefined}
                   onAudioReady={(url) => setAudioPlayerUrl(url)}
                   showStudyTools={false}
                   showCitation={false}
@@ -1730,6 +1746,7 @@ export const DashboardPage: React.FC = () => {
             onMuteToggle={voiceChat.toggleMute}
             isMuted={voiceChat.isMuted}
             inputMode={voiceChat.inputMode}
+            pttKey={voiceChat.pttKey}
             isTalking={voiceChat.isTalking}
             onStartTalking={voiceChat.startTalking}
             onStopTalking={voiceChat.stopTalking}

@@ -57,6 +57,8 @@ interface VoiceModalProps {
   isTalking?: boolean;
   onStartTalking?: () => void;
   onStopTalking?: () => void;
+  /** Touche clavier pour PTT (depuis preferences user). Defaut: Space. */
+  pttKey?: string;
   /** Tool en cours d'exécution */
   activeTool?: string | null;
   /** Erreur eventuelle */
@@ -158,6 +160,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   isTalking = false,
   onStartTalking,
   onStopTalking,
+  pttKey = " ",
   activeTool,
   error,
   playbackRate,
@@ -247,6 +250,42 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
       return () => window.removeEventListener("keydown", handleKeyDown);
     }
   }, [isOpen, onClose]);
+
+  // PTT keyboard shortcut --- hold configured key to talk
+  useEffect(() => {
+    if (!isOpen || inputMode !== "ptt" || !onStartTalking || !onStopTalking) return;
+    const target = pttKey || " ";
+    const isHoldingRef = { current: false };
+    const matches = (e: KeyboardEvent): boolean => {
+      if (target === " ") return e.code === "Space" || e.key === " ";
+      return e.key === target || e.key.toLowerCase() === target.toLowerCase();
+    };
+    const onDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+      if (!matches(e)) return;
+      if (e.repeat || isHoldingRef.current) { e.preventDefault(); return; }
+      e.preventDefault();
+      isHoldingRef.current = true;
+      onStartTalking();
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (!matches(e) || !isHoldingRef.current) return;
+      e.preventDefault();
+      isHoldingRef.current = false;
+      onStopTalking();
+    };
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+      if (isHoldingRef.current) {
+        isHoldingRef.current = false;
+        onStopTalking();
+      }
+    };
+  }, [isOpen, inputMode, pttKey, onStartTalking, onStopTalking]);
 
   // Auto-scroll transcript
   useEffect(() => {

@@ -247,6 +247,13 @@ async def get_voice_preferences(
         voice_chat_model=prefs.voice_chat_model,
         language=prefs.language,
         gender=prefs.gender,
+        input_mode=prefs.input_mode,
+        ptt_key=prefs.ptt_key,
+        interruptions_enabled=prefs.interruptions_enabled,
+        turn_eagerness=prefs.turn_eagerness,
+        voice_chat_speed_preset=prefs.voice_chat_speed_preset,
+        turn_timeout=prefs.turn_timeout,
+        soft_timeout_seconds=prefs.soft_timeout_seconds,
     )
 
 
@@ -304,6 +311,13 @@ async def update_voice_preferences(
         voice_chat_model=prefs.voice_chat_model,
         language=prefs.language,
         gender=prefs.gender,
+        input_mode=prefs.input_mode,
+        ptt_key=prefs.ptt_key,
+        interruptions_enabled=prefs.interruptions_enabled,
+        turn_eagerness=prefs.turn_eagerness,
+        voice_chat_speed_preset=prefs.voice_chat_speed_preset,
+        turn_timeout=prefs.turn_timeout,
+        soft_timeout_seconds=prefs.soft_timeout_seconds,
     )
 
 
@@ -746,6 +760,7 @@ async def create_voice_session(
         quota_remaining_minutes=quota_remaining_minutes,
         max_session_minutes=max_session_minutes,
         input_mode=user_prefs.input_mode,
+        ptt_key=user_prefs.ptt_key,
         playback_rate=playback_rate,
     )
 
