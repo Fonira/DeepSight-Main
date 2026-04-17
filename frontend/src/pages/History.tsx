@@ -86,6 +86,7 @@ import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
 import { AnalysisActionBar } from "../components/analysis/AnalysisActionBar";
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
+import { useMicLevel } from "../components/voice/hooks/useMicLevel";
 import { AnalysisVoiceHero } from "../components/voice/AnalysisVoiceHero";
 import { sanitizeTitle } from "../utils/sanitize";
 
@@ -583,6 +584,7 @@ export const History: React.FC = () => {
     summaryId: selectedVideoDetail?.id ?? 0,
     language: language as "fr" | "en",
   });
+  const micLevel = useMicLevel(voiceChat.micStream, voiceChat.isTalking);
   const ADMIN_EMAIL_VOICE = "maximeleparc3@gmail.com";
   const isAdminVoice =
     user?.is_admin ||
@@ -1674,6 +1676,8 @@ export const History: React.FC = () => {
                             videoThumbnailUrl={
                               selectedVideoDetail.thumbnail_url
                             }
+                            videoId={selectedVideoDetail.video_id}
+                            platform={selectedVideoDetail.platform}
                             videoTitle={selectedVideoDetail.video_title}
                             onOpen={() => setIsVoiceModalOpen(true)}
                             voiceEnabled={voiceEnabled}
@@ -1816,6 +1820,7 @@ export const History: React.FC = () => {
                       }}
                       videoTitle={selectedVideoDetail.video_title || "Vidéo"}
                       channelName={selectedVideoDetail.video_channel || ""}
+                      summaryId={selectedVideoDetail.id}
                       videoThumbnailUrl={selectedVideoDetail.thumbnail_url}
                       voiceStatus={voiceChat.status}
                       isSpeaking={voiceChat.isSpeaking}
@@ -1834,6 +1839,8 @@ export const History: React.FC = () => {
                       activeTool={voiceChat.activeTool}
                       error={voiceChat.error ?? undefined}
                       playbackRate={voiceChat.playbackRate}
+                      micLevel={micLevel}
+                      onRestart={voiceChat.restart}
                     />
                   </>
                 )}

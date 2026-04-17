@@ -29,9 +29,14 @@ import {
 } from "lucide-react";
 import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 import { VoiceToolIndicator } from "./VoiceToolIndicator";
+import { VoiceWaveform } from "./VoiceWaveform";
+import { VoiceTranscript } from "./VoiceTranscript";
 import { useTranslation } from "../../hooks/useTranslation";
 import { VoicePTTButton } from "./VoicePTTButton";
 import DoodleBackground from "../DoodleBackground";
+import { voiceApi, type VoiceThumbnailResponse } from "../../services/api";
+import { ThumbnailImage } from "./utils/ThumbnailImage";
+import { subscribeVoicePrefsEvents } from "./voicePrefsBus";
 
 // Lazy-load VoiceSettings to avoid circular imports + reduce initial bundle
 const VoiceSettings = lazy(() => import("./VoiceSettings"));
@@ -41,6 +46,14 @@ interface VoiceModalProps {
   onClose: () => void;
   videoTitle: string;
   channelName?: string;
+  /**
+   * ID de l'analyse (Summary) associée. Si fourni, le modal fetche la
+   * thumbnail HD via `/api/voice/session/{summaryId}/thumbnail` pour obtenir
+   * l'image haute définition + fallback image générée. Laisser undefined pour
+   * les contextes sans summary (ex: débat IA) — dans ce cas on retombe sur
+   * `videoThumbnailUrl`.
+   */
+  summaryId?: number | string | null;
   /** URL de la miniature vidéo (affichée en grand au centre du modal) */
   videoThumbnailUrl?: string | null;
   /** Status de la conversation voice */
@@ -84,6 +97,10 @@ interface VoiceModalProps {
   avatarStatus?: "ready" | "generating" | "unavailable";
   /** Initiales de fallback (2 caractères max) affichées si avatar absent */
   avatarFallback?: string;
+  /** Niveau micro temps réel [0,1] — drive waveform + halo PTT. */
+  micLevel?: number;
+  /** Redémarre la session (stop + start) pour appliquer de nouveaux paramètres. */
+  onRestart?: () => void | Promise<void>;
 }
 
 /** Format seconds to MM:SS */
@@ -92,30 +109,6 @@ function formatTime(seconds: number): string {
   const s = seconds % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
-
-/** Pulsing microphone indicator */
-const PulsingMic: React.FC = () => (
-  <div className="relative flex items-center justify-center">
-    <motion.div
-      className="absolute w-20 h-20 rounded-full bg-green-500/20"
-      animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0.1, 0.4] }}
-      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-    />
-    <motion.div
-      className="absolute w-14 h-14 rounded-full bg-green-500/30"
-      animate={{ scale: [1, 1.2, 1], opacity: [0.6, 0.2, 0.6] }}
-      transition={{
-        duration: 1.5,
-        repeat: Infinity,
-        ease: "easeInOut",
-        delay: 0.2,
-      }}
-    />
-    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center z-10">
-      <Mic className="w-5 h-5 text-white" />
-    </div>
-  </div>
-);
 
 /** Animated thinking dots */
 const ThinkingDots: React.FC = () => (
@@ -136,43 +129,32 @@ const ThinkingDots: React.FC = () => (
   </div>
 );
 
-/** Sound wave bars for speaking state */
-const SoundWave: React.FC = () => (
-  <div className="flex items-center gap-1 h-10">
-    {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-      <motion.div
-        key={i}
-        className="w-1 rounded-full bg-violet-400"
-        animate={{ height: [8, 24 + Math.random() * 16, 8] }}
-        transition={{
-          duration: 0.6 + Math.random() * 0.4,
-          repeat: Infinity,
-          delay: i * 0.08,
-          ease: "easeInOut",
-        }}
-      />
-    ))}
-  </div>
-);
-
 /**
  * VideoStage — Hero visuel de l'appel : miniature vidéo en grand
  * avec halo lumineux indigo/violet/cyan qui pulse selon l'état vocal.
  *
- * Fallback si pas de thumbnail : gradient + icône Video (pas d'appel réseau).
+ * Thumbnail source (priorité) :
+ *  1. `voiceThumb.thumbnail_url` si fourni par le backend (HD garanti YouTube)
+ *  2. `thumbnailUrl` en fallback (prop existante venant du Summary)
+ *  3. Gradient DeepSight + icône Video si rien n'est dispo.
  */
 interface VideoStageProps {
   thumbnailUrl?: string | null;
   isActive: boolean;
   isSpeaking: boolean;
   videoTitle: string;
+  voiceThumb?: VoiceThumbnailResponse | null;
 }
 const VideoStage: React.FC<VideoStageProps> = ({
   thumbnailUrl,
   isActive,
   isSpeaking,
   videoTitle,
+  voiceThumb,
 }) => {
+  const resolvedThumbnailUrl =
+    voiceThumb?.thumbnail_url ?? thumbnailUrl ?? null;
+  const resolvedAlt = voiceThumb?.alt_text ?? videoTitle;
   return (
     <div className="relative flex items-center justify-center w-full">
       {/* Halo externe — intensifie quand l'IA parle */}
@@ -226,19 +208,16 @@ const VideoStage: React.FC<VideoStageProps> = ({
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       >
-        {thumbnailUrl ? (
-          <img
-            src={thumbnailUrl}
-            alt={videoTitle}
-            className="w-full h-full object-cover"
-            loading="eager"
-            draggable={false}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500/30 via-violet-500/25 to-cyan-500/25">
-            <Video className="w-14 h-14 text-white/70" strokeWidth={1.5} />
-          </div>
-        )}
+        <ThumbnailImage
+          src={resolvedThumbnailUrl}
+          alt={resolvedAlt}
+          className="w-full h-full object-cover"
+          fallback={
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500/30 via-violet-500/25 to-cyan-500/25">
+              <Video className="w-14 h-14 text-white/70" strokeWidth={1.5} />
+            </div>
+          }
+        />
 
         {/* Scanline sheen when speaking — subtle light animation */}
         {isSpeaking && (
@@ -273,6 +252,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   onClose,
   videoTitle,
   channelName,
+  summaryId,
   videoThumbnailUrl,
   voiceStatus,
   isSpeaking,
@@ -294,6 +274,8 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   avatarUrl,
   avatarStatus = "unavailable",
   avatarFallback,
+  micLevel = 0,
+  onRestart,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -302,6 +284,87 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   const descId = useId();
   const { language } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
+  // Flag set when a pref change requires a fresh session (voice, concise mode,
+  // model). Banner then offers a one-click restart button.
+  const [restartRequired, setRestartRequired] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribeVoicePrefsEvents((event) => {
+      if (event.type === "restart_required") {
+        setRestartRequired(true);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleRestart = useCallback(async () => {
+    if (!onRestart) return;
+    setRestarting(true);
+    try {
+      await onRestart();
+      setRestartRequired(false);
+    } finally {
+      setRestarting(false);
+    }
+  }, [onRestart]);
+
+  // 🖼️ Thumbnail HD backend (fetch asynchrone, fallback silencieux sur videoThumbnailUrl).
+  // Le backend garantit l'URL HD YouTube (maxresdefault) ou une image générée
+  // pour les plateformes sans thumbnail native.
+  const [voiceThumb, setVoiceThumb] = useState<VoiceThumbnailResponse | null>(
+    null,
+  );
+
+  useEffect(() => {
+    // Pas de summaryId (ex: DebatePage) ou modal fermé → on skippe le fetch
+    // et on laisse le VideoStage retomber sur `videoThumbnailUrl`.
+    if (
+      !isOpen ||
+      summaryId === undefined ||
+      summaryId === null ||
+      summaryId === 0
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const fetchThumb = async (allowRetry: boolean) => {
+      try {
+        const data = await voiceApi.getSessionThumbnail(summaryId);
+        if (cancelled) return;
+        setVoiceThumb(data);
+        // Image en cours de génération côté backend → re-fetch UNE fois après 5s.
+        if (allowRetry && data.source === "generating") {
+          retryTimer = setTimeout(() => {
+            if (!cancelled) {
+              void fetchThumb(false);
+            }
+          }, 5000);
+        }
+      } catch {
+        // Fallback silencieux : UI continue avec la prop videoThumbnailUrl
+        // (aucun loader bloquant, aucun toast — non critique).
+      }
+    };
+
+    void fetchThumb(true);
+
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [isOpen, summaryId]);
+
+  // Reset voiceThumb à la fermeture pour éviter de garder l'image d'une
+  // session précédente si le modal est rouvert sur un autre summary.
+  useEffect(() => {
+    if (!isOpen) {
+      setVoiceThumb(null);
+    }
+  }, [isOpen]);
 
   const tr = useCallback(
     (fr: string, en: string) => (language === "fr" ? fr : en),
@@ -479,11 +542,20 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               </>
             ) : (
               <>
-                <PulsingMic />
+                {/* Live waveform driven by real mic RMS amplitude — the user
+                    sees the mic is open and capturing their voice. */}
+                <VoiceWaveform
+                  mode="user"
+                  intensity={Math.max(0.15, micLevel)}
+                  color="indigo"
+                  size="md"
+                />
                 <p className="text-green-400 text-sm font-medium">
                   {isTalking
-                    ? tr("Parlez maintenant...", "Speak now...")
-                    : tr("A l'ecoute...", "Listening...")}
+                    ? micLevel < 0.05
+                      ? tr("Parlez, je vous écoute…", "Speak, I'm listening…")
+                      : tr("Parlez maintenant…", "Speak now…")
+                    : tr("À l'écoute…", "Listening…")}
                 </p>
               </>
             )}
@@ -503,9 +575,10 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
       case "speaking":
         return (
           <div className="flex flex-col items-center gap-4">
-            <SoundWave />
+            {/* AI speaking — fluid sine-driven waveform (violet) */}
+            <VoiceWaveform mode="ai" intensity={0.8} color="violet" size="md" />
             <p className="text-violet-300 text-sm font-medium">
-              {tr("DeepSight parle...", "DeepSight is speaking...")}
+              {tr("DeepSight parle…", "DeepSight is speaking…")}
             </p>
           </div>
         );
@@ -705,6 +778,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 isActive={isActive}
                 isSpeaking={isSpeaking}
                 videoTitle={videoTitle}
+                voiceThumb={voiceThumb}
               />
 
               <VoiceToolIndicator
@@ -714,11 +788,13 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               {renderCenterContent()}
             </div>
 
-            {/* Transcript zone */}
+            {/* Transcript zone — live bubbles with blinking cursor on the
+                currently-spoken AI message. Persists after stop so the user
+                can review before closing. */}
             {messages.length > 0 && (
               <div
                 ref={transcriptRef}
-                className="mx-4 mb-3 max-h-[200px] overflow-y-auto rounded-xl bg-white/[0.03] border border-white/5 p-4 space-y-3 scroll-smooth"
+                className="mx-4 mb-3 max-h-[220px] overflow-y-auto rounded-xl bg-white/[0.03] border border-white/5 scroll-smooth"
                 aria-label={tr(
                   "Transcription de la conversation",
                   "Conversation transcript",
@@ -726,22 +802,12 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 role="log"
                 aria-live="polite"
               >
-                {messages.map((msg, i) => (
-                  <div
-                    key={i}
-                    className={`flex ${msg.source === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[80%] px-3.5 py-2 rounded-2xl text-sm leading-relaxed ${
-                        msg.source === "user"
-                          ? "bg-indigo-500/20 border border-indigo-500/20 text-indigo-100"
-                          : "bg-white/5 border border-white/10 text-white/80"
-                      }`}
-                    >
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
+                <VoiceTranscript
+                  messages={messages}
+                  isLive={
+                    voiceStatus === "thinking" || voiceStatus === "speaking"
+                  }
+                />
               </div>
             )}
 
@@ -765,12 +831,13 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       </span>
                     </div>
 
-                    {/* PTT Button (center) */}
+                    {/* PTT Button (center) — halo scales with real mic level */}
                     <VoicePTTButton
                       onStartTalking={onStartTalking}
                       onStopTalking={onStopTalking}
                       isTalking={isTalking}
                       disabled={voiceStatus === "thinking"}
+                      micLevel={micLevel}
                     />
 
                     {/* End call (right) */}
@@ -883,20 +950,59 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       </button>
                     </div>
                   </div>
-                  {/* Banner — sets user expectation: changes land on next call */}
+                  {/* Banner — ambers when a pending change needs a new
+                      session; offers one-click restart. */}
                   {hasActiveSession && (
-                    <div className="mx-3 sm:mx-5 mt-3 flex items-start gap-2 rounded-xl bg-indigo-500/10 border border-indigo-400/25 px-3 py-2.5 text-xs text-indigo-200/90 flex-shrink-0">
-                      <Info className="w-4 h-4 text-indigo-300 flex-shrink-0 mt-0.5" />
-                      <div className="leading-relaxed">
-                        <span className="font-semibold text-indigo-200">
-                          {tr("Appel en cours", "Call in progress")}
+                    <div
+                      className={`mx-3 sm:mx-5 mt-3 flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs flex-shrink-0 transition-colors ${
+                        restartRequired
+                          ? "bg-amber-500/10 border border-amber-400/30 text-amber-100"
+                          : "bg-indigo-500/10 border border-indigo-400/25 text-indigo-200/90"
+                      }`}
+                    >
+                      <Info
+                        className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                          restartRequired ? "text-amber-300" : "text-indigo-300"
+                        }`}
+                      />
+                      <div className="leading-relaxed flex-1">
+                        <span
+                          className={`font-semibold ${
+                            restartRequired
+                              ? "text-amber-200"
+                              : "text-indigo-200"
+                          }`}
+                        >
+                          {restartRequired
+                            ? tr("Redémarrage requis", "Restart required")
+                            : tr("Appel en cours", "Call in progress")}
                           {" — "}
                         </span>
-                        {tr(
-                          "les modifications s'appliqueront au prochain appel. L'appel actuel n'est pas interrompu.",
-                          "changes will apply to your next call. The current call is not interrupted.",
-                        )}
+                        {restartRequired
+                          ? tr(
+                              "certains changements (voix, mode concis, modèle) demandent une nouvelle session pour s'appliquer.",
+                              "some changes (voice, concise mode, model) require a new session to take effect.",
+                            )
+                          : tr(
+                              "vitesse de lecture appliquée en direct. Les autres changements s'appliqueront au prochain appel.",
+                              "playback speed applies live. Other changes will apply on your next call.",
+                            )}
                       </div>
+                      {restartRequired && onRestart && (
+                        <button
+                          type="button"
+                          onClick={handleRestart}
+                          disabled={restarting}
+                          className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-500 text-[#0a0a0f] font-semibold text-[11px] hover:bg-amber-400 transition-colors disabled:opacity-60 disabled:cursor-wait flex-shrink-0 focus-visible:ring-2 focus-visible:ring-amber-300"
+                        >
+                          <RotateCcw
+                            className={`w-3.5 h-3.5 ${restarting ? "animate-spin" : ""}`}
+                          />
+                          {restarting
+                            ? tr("Redémarrage…", "Restarting…")
+                            : tr("Redémarrer", "Restart")}
+                        </button>
+                      )}
                     </div>
                   )}
                   <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3">
