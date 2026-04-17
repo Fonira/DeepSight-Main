@@ -1,10 +1,10 @@
 // ── État: résultats d'analyse ──
 
+import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
 import { setWidgetBody } from "../widget";
 import {
   escapeHtml,
-  markdownToSafeHtml,
   markdownToFullHtml,
   parseAnalysisToSummary,
 } from "../../utils/sanitize";
@@ -151,7 +151,7 @@ function buildEcosystemBridge(summaryId: number): string {
 }
 
 export async function renderResultsState(opts: ResultsOptions): Promise<void> {
-  const { summary, userPlan, onChat } = opts;
+  const { summary, userPlan, onChat: _onChat } = opts;
   const parsed = parseAnalysisToSummary(summary.summary_content);
   const detailedHtml = processTimestamps(
     markdownToFullHtml(escapeHtml(summary.summary_content)),
@@ -201,10 +201,38 @@ export async function renderResultsState(opts: ResultsOptions): Promise<void> {
   const premiumHtml = buildPremiumTeasers(userPlan);
   const bridgeHtml = buildEcosystemBridge(summary.id);
 
+  // ── Detailed section HTML (collapsed under <details>) ──
+  const detailedSectionHtml = `
+    ${keyPointsHtml ? `<div class="ds-keypoints ds-stagger">${keyPointsHtml}</div>` : ""}
+    ${tagsHtml}
+    ${factCheckHtml}
+
+    <button class="ds-toggle-detail" id="ds-toggle-detail" type="button">
+      <span class="ds-toggle-text">Voir l'analyse détaillée</span>
+      <span class="ds-toggle-arrow">▼</span>
+    </button>
+    <div class="ds-detail-panel hidden" id="ds-detail-panel">
+      <div class="ds-detail-content">${detailedHtml}</div>
+    </div>
+
+    <div class="ds-share-actions">
+      <button class="ds-btn-outline" id="ds-copy-btn" type="button">📋 Copier</button>
+    </div>
+
+    ${suggestionsHtml}
+    <div class="ds-premium-teasers">${premiumHtml}</div>
+    ${bridgeHtml}
+
+    <div class="ds-card-footer">
+      <a href="${WEBAPP_URL}" target="_blank" rel="noreferrer">🌐 deepsightsynthesis.com</a>
+    </div>
+  `;
+
+  // ── Compact results HTML ──
   const html = `
-    <div class="ds-results-container">
+    <div class="ds-results-compact">
       <div class="ds-status-bar">
-        <span class="ds-done">✅ Analyse complète</span>
+        <span class="ds-done">✅ Analyse prête</span>
         <div class="ds-status-badges">
           <span class="ds-tag">${catIcon} ${escapeHtml(summary.category)}</span>
           <span class="ds-tag ${sc}">${si} ${summary.reliability_score}%</span>
@@ -223,47 +251,36 @@ export async function renderResultsState(opts: ResultsOptions): Promise<void> {
         </div>
       </div>
 
-      <div class="ds-verdict">
+      <div class="ds-verdict-compact">
         <div class="ds-summary-tts-row">
-          <p class="ds-verdict-text" style="flex:1;margin:0">${escapeHtml(parsed.verdict)}</p>
+          <p class="ds-verdict-text-compact" style="flex:1;margin:0">${escapeHtml(parsed.verdict)}</p>
           ${ttsBtn}
         </div>
       </div>
       ${ttsToolbar}
 
-      ${keyPointsHtml ? `<div class="ds-keypoints ds-stagger">${keyPointsHtml}</div>` : ""}
-      ${tagsHtml}
-      ${factCheckHtml}
-
-      <button class="ds-toggle-detail" id="ds-toggle-detail" type="button">
-        <span class="ds-toggle-text">Voir l'analyse détaillée</span>
-        <span class="ds-toggle-arrow">▼</span>
-      </button>
-      <div class="ds-detail-panel hidden" id="ds-detail-panel">
-        <div class="ds-detail-content">${detailedHtml}</div>
-      </div>
-
-      <div class="ds-share-actions">
-        <button class="ds-btn-outline" id="ds-copy-btn" type="button">📋 Copier</button>
-        <button class="ds-btn-outline" id="ds-share-btn" type="button">🔗 Partager</button>
-      </div>
-
-      <div class="ds-summary-actions">
-        <a href="${WEBAPP_URL}/summary/${summary.id}" target="_blank" rel="noreferrer" class="ds-btn-primary-link">
-          📖 Analyse complète sur DeepSight
-        </a>
-        <button class="ds-btn-secondary-action" id="ds-chat-btn" type="button">
-          💬 Chatter avec la vidéo
+      <div class="ds-compact-actions">
+        <button class="ds-btn-primary-xl" id="ds-open-fullscreen" type="button">
+          🔍 Voir l'analyse complète
         </button>
+        <button class="ds-btn-outline-xl" id="ds-share-btn" type="button">
+          🔗 Partager cette analyse
+        </button>
+        <a href="${WEBAPP_URL}/summary/${summary.id}" target="_blank" rel="noreferrer" class="ds-link-tertiary">
+          🌐 Ouvrir sur DeepSight Web ↗
+        </a>
       </div>
 
-      ${suggestionsHtml}
-      <div class="ds-premium-teasers">${premiumHtml}</div>
-      ${bridgeHtml}
+      <details class="ds-details-wrapper">
+        <summary class="ds-details-toggle">▸ Voir le détail ici</summary>
+        <div class="ds-details-body">
+          ${detailedSectionHtml}
+        </div>
+      </details>
 
-      <div class="ds-card-footer">
-        <a href="${WEBAPP_URL}" target="_blank" rel="noreferrer">🌐 deepsightsynthesis.com</a>
-      </div>
+      <button class="ds-btn-secondary-action" id="ds-chat-btn" type="button">
+        💬 Chatter avec la vidéo
+      </button>
     </div>
   `;
 
@@ -278,7 +295,13 @@ function bindResultsHandlers(
   opts: ResultsOptions,
   suggestions: string[],
 ): void {
-  // Toggle détail
+  // Open fullscreen viewer page
+  $id("ds-open-fullscreen")?.addEventListener("click", () => {
+    const viewerUrl = Browser.runtime.getURL(`viewer.html?id=${summary.id}`);
+    Browser.tabs.create({ url: viewerUrl });
+  });
+
+  // Toggle détail (inside <details>)
   $id("ds-toggle-detail")?.addEventListener("click", () => {
     const panel = $id("ds-detail-panel");
     const btn = $id("ds-toggle-detail");
