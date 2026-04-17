@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Settings2,
   Video,
+  Info,
 } from "lucide-react";
 import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 import { VoiceToolIndicator } from "./VoiceToolIndicator";
@@ -834,6 +835,10 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               </motion.div>
             )}
             {/* ── Settings panel overlay (in-modal) ───────────────────── */}
+            {/* Non-destructive overlay: the active call keeps running behind.
+                The banner below tells the user changes apply to the NEXT call
+                so we never kill the ElevenLabs session to reconfigure — the
+                SDK must not be forced to tear down mid-call. */}
             <AnimatePresence>
               {showSettings && (
                 <motion.div
@@ -842,21 +847,58 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.18 }}
-                  className="absolute inset-0 z-20 bg-[#0a0a0f]/95 backdrop-blur-xl flex flex-col"
+                  className="absolute inset-0 z-20 bg-[#0a0a0f]/96 backdrop-blur-xl flex flex-col"
                 >
                   <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 flex-shrink-0">
-                    <h3 className="text-sm sm:text-base font-semibold text-white">
+                    <h3 className="text-sm sm:text-base font-semibold text-white flex items-center gap-2">
+                      <Settings2 className="w-4 h-4 text-indigo-300" />
                       {tr("Paramètres vocaux", "Voice settings")}
                     </h3>
-                    <button
-                      type="button"
-                      onClick={() => setShowSettings(false)}
-                      className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
-                      aria-label={tr("Fermer les paramètres", "Close settings")}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {/* Stop button also reachable from settings view */}
+                      {hasActiveSession && (
+                        <button
+                          type="button"
+                          onClick={safeStop}
+                          className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all focus-visible:ring-2 focus-visible:ring-red-400"
+                          title={tr("Arrêter l'appel", "Stop call")}
+                          aria-label={tr("Arrêter l'appel", "Stop call")}
+                        >
+                          <PhoneOff className="w-4 h-4" />
+                          <span className="text-xs font-semibold hidden sm:inline">
+                            {tr("Arrêter", "Stop")}
+                          </span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowSettings(false)}
+                        className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
+                        aria-label={tr(
+                          "Fermer les paramètres",
+                          "Close settings",
+                        )}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
+                  {/* Banner — sets user expectation: changes land on next call */}
+                  {hasActiveSession && (
+                    <div className="mx-3 sm:mx-5 mt-3 flex items-start gap-2 rounded-xl bg-indigo-500/10 border border-indigo-400/25 px-3 py-2.5 text-xs text-indigo-200/90 flex-shrink-0">
+                      <Info className="w-4 h-4 text-indigo-300 flex-shrink-0 mt-0.5" />
+                      <div className="leading-relaxed">
+                        <span className="font-semibold text-indigo-200">
+                          {tr("Appel en cours", "Call in progress")}
+                          {" — "}
+                        </span>
+                        {tr(
+                          "les modifications s'appliqueront au prochain appel. L'appel actuel n'est pas interrompu.",
+                          "changes will apply to your next call. The current call is not interrupted.",
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3">
                     <Suspense
                       fallback={
