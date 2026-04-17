@@ -1,9 +1,10 @@
 """
 Share Router — Public sharing of video analyses
-POST   /api/share           → Create a share link (auth required)
-GET    /api/share/{token}   → View shared analysis (public, JSON)
-GET    /api/share/{token}/og → OG meta tags page for social bots
-DELETE /api/share/{video_id} → Deactivate share link (auth required)
+POST   /api/share                       → Create a share link (auth required)
+GET    /api/share/{token}               → View shared analysis (public, JSON)
+GET    /api/share/{token}/og            → OG meta tags page for social bots
+GET    /api/share/{token}/og-image.png  → Dynamic 1200×630 PNG for social previews
+DELETE /api/share/{video_id}            → Deactivate share link (auth required)
 """
 
 import json
@@ -12,13 +13,14 @@ import re
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session, SharedAnalysis, Summary, User
 from auth.dependencies import get_current_user
+from share.og_image import generate_og_image
 
 router = APIRouter()
 
@@ -205,6 +207,47 @@ async def get_shared_og(
 
     html = _build_og_html(shared, share_token)
     return HTMLResponse(content=html)
+
+
+@router.get("/{token}/og-image.png", include_in_schema=True)
+async def get_share_og_image(
+    token: str,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Dynamic 1200×630 OG image for social previews.
+
+    Cached 1h client-side + 24h on CDN edge to avoid re-rendering for each
+    bot fetch. Falls back to 404 if share doesn't exist or has been revoked.
+    """
+    result = await session.execute(
+        select(SharedAnalysis).where(
+            SharedAnalysis.share_token == token,
+            SharedAnalysis.is_active.is_(True),
+        )
+    )
+    share: Optional[SharedAnalysis] = result.scalar_one_or_none()
+    if not share:
+        raise HTTPException(status_code=404, detail="Share not found")
+
+    try:
+        snapshot = json.loads(share.analysis_snapshot or "{}")
+    except json.JSONDecodeError:
+        snapshot = {}
+
+    png = generate_og_image(
+        video_title=snapshot.get("video_title") or share.video_title or "Analyse DeepSight",
+        video_thumbnail=snapshot.get("video_thumbnail") or share.video_thumbnail,
+        verdict_text=(snapshot.get("verdict") or {}).get("text") if isinstance(snapshot.get("verdict"), dict) else (snapshot.get("verdict") or share.verdict),
+        channel=snapshot.get("channel"),
+    )
+
+    return Response(
+        content=png,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400",
+        },
+    )
 
 
 @router.get("/{share_token}")

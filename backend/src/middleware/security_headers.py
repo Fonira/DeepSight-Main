@@ -148,7 +148,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # Ajouter tous les headers de sécurité
+        # Cache-Control & Pragma: ne pas écraser si l'endpoint l'a déjà défini
+        # (ex: OG images avec cache-control public pour CDN)
+        _endpoint_managed = {"cache-control", "pragma"}
         for header_name, header_value in self._security_headers.items():
+            if header_name.lower() in _endpoint_managed and header_name in response.headers:
+                continue
             response.headers[header_name] = header_value
 
         # Request ID pour le tracing cross-service
