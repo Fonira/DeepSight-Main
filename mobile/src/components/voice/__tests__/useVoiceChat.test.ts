@@ -170,7 +170,33 @@ describe("useVoiceChat", () => {
     expect(mockCreateSession).toHaveBeenCalledWith(42, "fr");
   });
 
-  it("démarre la session ElevenLabs avec l'agent_id", async () => {
+  it("démarre la session ElevenLabs avec le conversation_token LiveKit du backend", async () => {
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    // Quand le backend fournit un JWT LiveKit, le SDK RN doit le recevoir
+    // directement (et pas l'agentId qui pointe vers l'endpoint public).
+    expect(mockStartSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationToken: "livekit-jwt-token-test",
+      }),
+    );
+  });
+
+  it("retombe sur agentId quand le backend ne fournit pas de conversation_token", async () => {
+    mockCreateSession.mockResolvedValueOnce({
+      session_id: "sess_123",
+      signed_url: "wss://api.elevenlabs.io/v1/convai/conversation?agent_id=agent_abc",
+      agent_id: "agent_abc",
+      conversation_token: null,
+      expires_at: "2026-01-01T00:00:00Z",
+      quota_remaining_minutes: 10,
+      max_session_minutes: 5,
+    });
+
     const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
 
     await act(async () => {

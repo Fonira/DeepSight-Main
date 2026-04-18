@@ -27,15 +27,16 @@ jest.mock("../../../contexts/PlanContext", () => ({
 // Mock colors / shadows
 jest.mock("../../../theme/colors", () => ({
   palette: {
-    gold: "#f59e0b",
+    gold: "#C8903A",
     white: "#ffffff",
+    black: "#000000",
   },
 }));
 
 jest.mock("../../../theme/shadows", () => ({
   shadows: {
     glow: () => ({
-      shadowColor: "#f59e0b",
+      shadowColor: "#C8903A",
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0.3,
       shadowRadius: 8,
