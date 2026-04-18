@@ -8,7 +8,20 @@ export function getShadowRoot(): ShadowRoot | null {
   return _shadowRoot;
 }
 
-export function setShadowRoot(root: ShadowRoot): void {
+export function setShadowRoot(root: ShadowRoot | null): void {
+  // If we're replacing a live shadow, detach its host from the DOM first
+  // to prevent orphaned hosts accumulating after SPA navigations.
+  if (_shadowRoot && _shadowRoot !== root) {
+    const oldHost = (_shadowRoot as unknown as { host?: Element }).host;
+    const newHost = (root as unknown as { host?: Element } | null)?.host;
+    if (oldHost && oldHost.isConnected && oldHost !== newHost) {
+      try {
+        oldHost.remove();
+      } catch {
+        /* swallow */
+      }
+    }
+  }
   _shadowRoot = root;
 }
 

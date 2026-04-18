@@ -31,17 +31,13 @@ function mockMatchMedia(prefersDark: boolean): {
     value: jest.fn((query: string) => ({
       matches: query === "(prefers-color-scheme: dark)" ? prefersDark : false,
       media: query,
-      addEventListener: jest.fn(
-        (_event: string, handler: () => void) => {
-          listeners.push(handler);
-        },
-      ),
-      removeEventListener: jest.fn(
-        (_event: string, handler: () => void) => {
-          const idx = listeners.indexOf(handler);
-          if (idx >= 0) listeners.splice(idx, 1);
-        },
-      ),
+      addEventListener: jest.fn((_event: string, handler: () => void) => {
+        listeners.push(handler);
+      }),
+      removeEventListener: jest.fn((_event: string, handler: () => void) => {
+        const idx = listeners.indexOf(handler);
+        if (idx >= 0) listeners.splice(idx, 1);
+      }),
       onchange: null,
       addListener: jest.fn(),
       removeListener: jest.fn(),

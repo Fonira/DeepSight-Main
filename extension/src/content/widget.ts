@@ -2,6 +2,7 @@
 
 import Browser from "../utils/browser-polyfill";
 import { getShadowRoot, setShadowRoot, $id, $qs } from "./shadow";
+import { getInlineStyles } from "./styles-inline";
 
 const WIDGET_ID = "deepsight-card";
 const HOST_ID = "deepsight-host";
@@ -28,11 +29,14 @@ const TIKTOK_ANCHORS = [
 export function createWidgetShell(
   theme: "dark" | "light",
   isTikTok: boolean,
-): HTMLDivElement {
-  // Create the outer host element (lives in the page DOM)
-  const host = document.createElement("div");
+): HTMLDivElement | null {
+  let host: HTMLDivElement;
+  try {
+    host = document.createElement("div");
+  } catch {
+    return null;
+  }
   host.id = HOST_ID;
-  // Minimal host styles — just sizing, no visual styles that could be overridden
   host.style.cssText =
     "all:initial;display:block;width:100%;max-width:420px;margin-bottom:12px;";
 
@@ -41,21 +45,16 @@ export function createWidgetShell(
       "all:initial;position:fixed;bottom:20px;right:20px;width:360px;max-height:80vh;z-index:2147483646;";
   }
 
-  // Attach closed shadow root for full encapsulation
-  const shadow = host.attachShadow({ mode: "closed" });
+  // Attach closed shadow root — wrapped in try/catch as another extension
+  // (or policy-locked profile) may block attachShadow.
+  let shadow: ShadowRoot;
+  try {
+    shadow = host.attachShadow({ mode: "closed" });
+  } catch {
+    return null;
+  }
   setShadowRoot(shadow);
 
-  // ── YouTube/TikTok keyboard shortcut isolation ──
-  // The host page (YouTube especially) registers keyboard shortcuts on
-  // `document` (i = miniplayer, k = play/pause, m = mute, f = fullscreen,
-  // t = theater, c = captions, j/l = seek, 0-9 = seek %). Events originating
-  // inside our shadow root bubble out through the host and reach those
-  // document-level listeners, hijacking the user's keystrokes while they
-  // type credentials or chat messages.
-  //
-  // We stop propagation at the host. Shadow-internal React handlers still
-  // run (they fire before the event crosses the shadow boundary), but
-  // nothing escapes to the page.
   const stopKeyPropagation = (e: Event) => {
     e.stopPropagation();
   };
@@ -63,24 +62,11 @@ export function createWidgetShell(
   host.addEventListener("keyup", stopKeyPropagation);
   host.addEventListener("keypress", stopKeyPropagation);
 
-  // Inject styles into the shadow root (fully isolated from page)
-  // tokens.css uses :host selector so variables work inside the shadow boundary
-  const tokensLink = document.createElement("link");
-  tokensLink.rel = "stylesheet";
-  tokensLink.href = Browser.runtime.getURL("tokens.css");
-  shadow.appendChild(tokensLink);
+  // Inject styles synchronously — see styles-inline.ts for rationale.
+  const styleEl = document.createElement("style");
+  styleEl.textContent = getInlineStyles();
+  shadow.appendChild(styleEl);
 
-  const widgetStyleLink = document.createElement("link");
-  widgetStyleLink.rel = "stylesheet";
-  widgetStyleLink.href = Browser.runtime.getURL("widget.css");
-  shadow.appendChild(widgetStyleLink);
-
-  const contentStyleLink = document.createElement("link");
-  contentStyleLink.rel = "stylesheet";
-  contentStyleLink.href = Browser.runtime.getURL("content.css");
-  shadow.appendChild(contentStyleLink);
-
-  // Create the actual widget card inside shadow
   const el = document.createElement("div");
   el.id = WIDGET_ID;
   el.className = `ds-widget deepsight-card ${theme}`;
@@ -91,8 +77,7 @@ export function createWidgetShell(
   }
   shadow.appendChild(el);
 
-  // Return host — callers insert this into the page DOM
-  return host as HTMLDivElement;
+  return host;
 }
 
 export function buildWidgetHeader(logoHtml: string): string {
@@ -129,8 +114,14 @@ export function isFloatingMode(): boolean {
 }
 
 export function injectWidget(host: HTMLDivElement, isTikTok: boolean): boolean {
-  // Check if already injected
-  if (document.getElementById(HOST_ID)) return true;
+  // Zombie cleanup: if a previous host remains, remove it before inserting
+  // the new one. Without this, the live shadow root (module singleton)
+  // points to the NEW host's shadow while the OLD host stays in the DOM,
+  // unstyled.
+  const existing = document.getElementById(HOST_ID);
+  if (existing && existing !== host) {
+    existing.remove();
+  }
 
   _floatingMode = false;
 
@@ -145,7 +136,6 @@ export function injectWidget(host: HTMLDivElement, isTikTok: boolean): boolean {
     return false;
   }
 
-  // Try each strategy in order, skipping invisible elements
   for (const { selector, position } of INJECTION_STRATEGIES) {
     const el = document.querySelector(selector);
     if (!(el instanceof HTMLElement) || !isSidebarVisible(el)) continue;
@@ -153,13 +143,11 @@ export function injectWidget(host: HTMLDivElement, isTikTok: boolean): boolean {
     if (position === "prepend") {
       el.insertBefore(host, el.firstChild);
     } else {
-      // afterend — insert after the element
       el.parentElement?.insertBefore(host, el.nextSibling);
     }
     return true;
   }
 
-  // Floating fallback — no sidebar found
   _floatingMode = true;
   host.style.cssText =
     "all:initial;position:fixed;bottom:20px;right:20px;width:380px;max-height:80vh;z-index:2147483646;";
@@ -226,4 +214,69 @@ export function bindMinimizeButton(): void {
       Browser.storage.local.set({ ds_minimized: true });
     }
   });
+}
+
+const ANCHOR_SELECTORS = [
+  "#secondary-inner",
+  "#secondary",
+  "ytd-watch-next-secondary-results-renderer",
+  "#below",
+  "ytd-watch-metadata",
+];
+
+/** True if at least one YouTube sidebar anchor is present AND visible. */
+export function isAnchorReady(): boolean {
+  for (const sel of ANCHOR_SELECTORS) {
+    const el = document.querySelector(sel);
+    if (el instanceof HTMLElement && isSidebarVisible(el)) return true;
+  }
+  return false;
+}
+
+/**
+ * Minimal body shown synchronously after injection, before async auth check.
+ * If auth check hangs/fails, the user still sees a branded, clickable card
+ * with a "Réessayer" button that appears after 10s.
+ */
+export function buildSkeletonBody(onRetry: () => void): {
+  html: string;
+  bind: () => void;
+} {
+  const html = `
+    <div class="ds-card-body">
+      <div class="ds-loading" style="padding:16px;text-align:center">
+        <div style="color:var(--ds-gold-mid);font-size:24px;margin-bottom:8px">⏳</div>
+        <p class="ds-loading-text" style="color:var(--ds-text-secondary);font-size:12px;margin:0 0 12px">
+          Chargement de DeepSight…
+        </p>
+        <button
+          type="button"
+          id="ds-skeleton-retry"
+          class="ds-btn ds-btn-primary"
+          style="font-size:11px;padding:6px 12px;display:none"
+        >
+          Réessayer
+        </button>
+      </div>
+    </div>
+  `;
+  const bind = (): void => {
+    // Reveal the retry button after 10s if the async init hasn't rendered.
+    // Uses the shadow module via dynamic import so this helper stays pure.
+    import("./shadow")
+      .then(({ $id }) => {
+        setTimeout(() => {
+          const btn = $id<HTMLButtonElement>("ds-skeleton-retry");
+          if (btn && !btn.hasAttribute("data-bound")) {
+            btn.setAttribute("data-bound", "1");
+            btn.style.display = "inline-block";
+            btn.addEventListener("click", onRetry);
+          }
+        }, 10_000);
+      })
+      .catch(() => {
+        /* swallow */
+      });
+  };
+  return { html, bind };
 }
