@@ -2,7 +2,13 @@ import React from "react";
 import "./Spinner.css";
 
 export type SpinnerSize = "sm" | "md" | "lg";
-export type SpinnerEffect = "blades" | "flames" | "water" | "sparks" | "rings" | "magic";
+export type SpinnerEffect =
+  | "blades"
+  | "flames"
+  | "water"
+  | "sparks"
+  | "rings"
+  | "magic";
 
 export interface SpinnerProps {
   /** Taille visuelle : sm (96px loader), md (280px section), lg (520px hero) */

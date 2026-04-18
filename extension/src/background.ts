@@ -53,7 +53,8 @@ async function apiRequest<T>(
   if (accessToken && refreshedAt && Date.now() - refreshedAt > 20 * 60 * 1000) {
     await tryRefreshToken();
     const fresh = await getStoredTokens();
-    if (fresh.accessToken) headers["Authorization"] = `Bearer ${fresh.accessToken}`;
+    if (fresh.accessToken)
+      headers["Authorization"] = `Bearer ${fresh.accessToken}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -76,7 +77,9 @@ async function apiRequest<T>(
       return retryResponse.json();
     }
     await clearStoredAuth();
-    console.warn("[DeepSight] Session expired, refresh failed. User needs to re-login.");
+    console.warn(
+      "[DeepSight] Session expired, refresh failed. User needs to re-login.",
+    );
     throw new Error("SESSION_EXPIRED");
   }
 

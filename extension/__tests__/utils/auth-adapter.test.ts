@@ -76,7 +76,8 @@ describe("launchOAuthFlow — Chrome path", () => {
     launchOAuthFlow = (
       require("../../src/utils/auth-adapter") as AuthAdapterModule
     ).launchOAuthFlow;
-    browserPolyfill = require("../../src/utils/browser-polyfill") as BrowserPolyfillMock;
+    browserPolyfill =
+      require("../../src/utils/browser-polyfill") as BrowserPolyfillMock;
   });
 
   it("calls Browser.identity.launchWebAuthFlow and resolves with the redirect URL", async () => {

@@ -48,7 +48,11 @@ interface PttKeyPickerProps {
   onSave: (key: string) => void;
 }
 
-const PttKeyPicker: React.FC<PttKeyPickerProps> = ({ currentKey, saving, onSave }) => {
+const PttKeyPicker: React.FC<PttKeyPickerProps> = ({
+  currentKey,
+  saving,
+  onSave,
+}) => {
   const [listening, setListening] = useState(false);
 
   useEffect(() => {
@@ -67,7 +71,8 @@ const PttKeyPicker: React.FC<PttKeyPickerProps> = ({ currentKey, saving, onSave 
       setListening(false);
     };
     window.addEventListener("keydown", handler, { capture: true });
-    return () => window.removeEventListener("keydown", handler, { capture: true } as any);
+    return () =>
+      window.removeEventListener("keydown", handler, { capture: true } as any);
   }, [listening, onSave]);
 
   return (
