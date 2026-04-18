@@ -9,6 +9,7 @@ import type {
   VoiceChatSpeedPreset,
 } from "../../services/api";
 import { VoiceAnalytics } from "./voiceAnalytics";
+import { emitVoicePrefsEvent } from "./voicePrefsBus";
 
 interface VoiceChatSpeedSectionProps {
   preferences: VoicePreferences;
@@ -42,6 +43,17 @@ export const VoiceChatSpeedSection: React.FC<VoiceChatSpeedSectionProps> = ({
                   playbackRate: preset.playback_rate,
                   concise: preset.concise,
                 });
+                // Live-apply playback_rate to active session (no restart needed)
+                emitVoicePrefsEvent({
+                  type: "playback_rate_changed",
+                  value: preset.playback_rate,
+                });
+                if (preset.concise) {
+                  emitVoicePrefsEvent({
+                    type: "restart_required",
+                    reason: "concise_mode",
+                  });
+                }
               }}
               disabled={saving}
               className={`

@@ -13,6 +13,8 @@ interface VoicePTTButtonProps {
   onStopTalking: () => void;
   isTalking: boolean;
   disabled?: boolean;
+  /** Real-time mic amplitude [0, 1] — drives halo when isTalking. */
+  micLevel?: number;
 }
 
 export const VoicePTTButton: React.FC<VoicePTTButtonProps> = ({
@@ -20,6 +22,7 @@ export const VoicePTTButton: React.FC<VoicePTTButtonProps> = ({
   onStopTalking,
   isTalking,
   disabled = false,
+  micLevel = 0,
 }) => {
   const isHoldingRef = useRef(false);
 
@@ -54,19 +57,36 @@ export const VoicePTTButton: React.FC<VoicePTTButtonProps> = ({
     }
   }, [onStopTalking]);
 
+  // Halo scale reflects live mic amplitude so the user sees their voice
+  // being captured in real time (not just a decorative pulse).
+  const clampedLevel = Math.min(1, Math.max(0, micLevel));
+  const haloScale = 1 + clampedLevel * 0.55;
+  const haloOpacity = 0.25 + clampedLevel * 0.55;
+
   return (
     <div className="relative flex items-center justify-center">
-      {/* Pulsing rings when talking */}
+      {/* Amplitude-driven rings when talking */}
       {isTalking && (
         <>
           <span
-            className="absolute w-20 h-20 rounded-full bg-red-500/20 animate-ping"
-            style={{ animationDuration: "1.5s" }}
+            className="absolute w-20 h-20 rounded-full bg-red-500/30 transition-[transform,opacity] duration-75 ease-out"
+            style={{
+              transform: `scale(${haloScale})`,
+              opacity: haloOpacity,
+            }}
+            aria-hidden="true"
           />
           <span
-            className="absolute w-24 h-24 rounded-full bg-red-500/10 animate-ping"
-            style={{ animationDuration: "2s", animationDelay: "0.3s" }}
+            className="absolute w-24 h-24 rounded-full bg-red-500/15 animate-ping"
+            style={{ animationDuration: "1.8s" }}
+            aria-hidden="true"
           />
+          {clampedLevel < 0.05 && (
+            <span
+              className="absolute w-28 h-28 rounded-full border border-red-300/40 animate-pulse"
+              aria-hidden="true"
+            />
+          )}
         </>
       )}
 
@@ -111,7 +131,11 @@ export const VoicePTTButton: React.FC<VoicePTTButtonProps> = ({
 
       {/* Label */}
       <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap select-none">
-        {isTalking ? "Relâchez pour envoyer" : "Maintenez pour parler"}
+        {isTalking
+          ? clampedLevel < 0.05
+            ? "Parlez, je vous écoute…"
+            : "Relâchez pour envoyer"
+          : "Maintenez pour parler"}
       </span>
     </div>
   );

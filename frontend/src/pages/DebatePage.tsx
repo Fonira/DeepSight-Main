@@ -36,6 +36,7 @@ import { ErrorBoundary } from "../components/ErrorBoundary";
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { DebateVoiceHero } from "../components/voice/DebateVoiceHero";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
+import { useMicLevel } from "../components/voice/hooks/useMicLevel";
 import { useAuth } from "../hooks/useAuth";
 import { PLAN_LIMITS, normalizePlanId } from "../config/planPrivileges";
 
@@ -264,6 +265,7 @@ export const DebatePage: React.FC = () => {
     agentType: "debate_moderator",
     language: "fr",
   });
+  const micLevel = useMicLevel(voiceChat.micStream, voiceChat.isTalking);
 
   const ADMIN_EMAIL_VOICE = "maximeleparc3@gmail.com";
   const isAdminVoice =
@@ -857,6 +859,7 @@ export const DebatePage: React.FC = () => {
             avatarUrl={avatarData.url}
             avatarStatus={avatarData.status}
             avatarFallback="DB"
+            micLevel={micLevel}
           />
         </>
       )}
