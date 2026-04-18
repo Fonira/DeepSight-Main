@@ -40,6 +40,8 @@ interface SessionResponse {
   session_id: string;
   signed_url: string;
   agent_id: string;
+  /** LiveKit JWT fourni par le backend pour le SDK @elevenlabs/react-native. */
+  conversation_token?: string | null;
   expires_at: string;
   quota_remaining_minutes: number;
   max_session_minutes: number;
@@ -281,9 +283,16 @@ export function useVoiceChat({
     }
 
     // 3. Démarrer la session ElevenLabs via le SDK React Native
+    // Le SDK WebRTC (@elevenlabs/react-native) attend un conversationToken
+    // LiveKit JWT. Le backend l'expose désormais dans la réponse /session ;
+    // on retombe sur agentId seulement si le backend n'a pas pu le fournir.
     try {
+      const conversationToken = sessionData.conversation_token || undefined;
+
       await conversation.startSession({
-        agentId: sessionData.agent_id,
+        ...(conversationToken
+          ? { conversationToken }
+          : { agentId: sessionData.agent_id }),
         overrides: {
           agent: {
             language: "fr",

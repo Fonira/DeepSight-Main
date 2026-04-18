@@ -11,6 +11,8 @@
 import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Mic, Sparkles, Lock, Play } from "lucide-react";
+import { ThumbnailImage } from "./utils/ThumbnailImage";
+import { resolveThumbnailUrl } from "./utils/thumbnail";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -19,6 +21,10 @@ import { Mic, Sparkles, Lock, Play } from "lucide-react";
 interface AnalysisVoiceHeroProps {
   /** URL de la miniature vidéo (servira d'avatar dans le hero) */
   videoThumbnailUrl?: string | null;
+  /** video_id de la plateforme — permet de reconstruire une URL YouTube HD si l'URL d'origine est absente. */
+  videoId?: string | null;
+  /** Plateforme source (youtube, tiktok…) pour le fallback YouTube. */
+  platform?: string | null;
   /** Titre de la vidéo analysée à afficher sous le label */
   videoTitle: string | null;
   /** Callback d'ouverture du modal vocal */
@@ -35,11 +41,20 @@ interface AnalysisVoiceHeroProps {
 
 export const AnalysisVoiceHero: React.FC<AnalysisVoiceHeroProps> = ({
   videoThumbnailUrl,
+  videoId,
+  platform,
   videoTitle,
   onOpen,
   voiceEnabled,
   onPrewarm,
 }) => {
+  // Resolve thumbnail with YouTube fallback so older analyses without a
+  // thumbnail_url still display the video preview in the hero.
+  const resolvedThumb = resolveThumbnailUrl({
+    thumbnail_url: videoThumbnailUrl,
+    video_id: videoId,
+    platform,
+  });
   // Prewarm dès le mount : précharge le SDK ElevenLabs en arrière-plan
   useEffect(() => {
     if (voiceEnabled && onPrewarm) onPrewarm();
@@ -108,20 +123,20 @@ export const AnalysisVoiceHero: React.FC<AnalysisVoiceHeroProps> = ({
           {/* Avatar preview (miniature vidéo ou fallback Play icon) */}
           <div className="relative flex-shrink-0">
             <motion.div
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border border-white/15 bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/30 flex items-center justify-center shadow-lg shadow-indigo-500/10"
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border border-white/15 bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/30 flex items-center justify-center shadow-lg shadow-indigo-500/20"
               whileHover={voiceEnabled ? { scale: 1.04 } : undefined}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              {videoThumbnailUrl ? (
-                <img
-                  src={videoThumbnailUrl}
-                  alt="Miniature de la vidéo analysée"
-                  className="w-full h-full object-cover"
-                  loading="eager"
-                />
-              ) : (
-                <Play className="w-8 h-8 text-white/60" />
-              )}
+              <ThumbnailImage
+                src={resolvedThumb}
+                alt="Miniature de la vidéo analysée"
+                className="w-full h-full object-cover"
+                fallback={
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500/20 via-violet-500/20 to-fuchsia-500/20">
+                    <Play className="w-10 h-10 text-white/70" />
+                  </div>
+                }
+              />
             </motion.div>
 
             {/* Pulse dot — ready indicator */}
@@ -129,7 +144,11 @@ export const AnalysisVoiceHero: React.FC<AnalysisVoiceHeroProps> = ({
               <motion.span
                 className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-[#0a0a0f]"
                 animate={{ scale: [1, 1.2, 1], opacity: [0.8, 1, 0.8] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
               />
             )}
           </div>

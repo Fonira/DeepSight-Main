@@ -2571,6 +2571,32 @@ export interface VoiceTranscript {
   transcript: string;
 }
 
+export interface VoiceThumbnailGradient {
+  from: string;
+  via: string;
+  to: string;
+}
+
+export type VoiceThumbnailSource =
+  | "youtube_hd"
+  | "youtube_standard"
+  | "tiktok_stored"
+  | "stored"
+  | "generated"
+  | "generating"
+  | "gradient";
+
+export interface VoiceThumbnailResponse {
+  thumbnail_url: string | null;
+  source: VoiceThumbnailSource;
+  video_id: string;
+  video_title: string | null;
+  video_channel: string | null;
+  platform: string;
+  gradient: VoiceThumbnailGradient;
+  alt_text: string;
+}
+
 export const voiceApi = {
   /**
    * 🎙️ Récupère le quota vocal de l'utilisateur
@@ -2622,6 +2648,26 @@ export const voiceApi = {
       method: "POST",
       body: { pack_id: packId },
     });
+  },
+
+  /**
+   * 🖼️ Récupère la thumbnail HD d'une vidéo pour l'agent vocal.
+   * Backend garantit :
+   *  - YouTube → URL HD maxresdefault (1280x720)
+   *  - TikTok/autres → thumbnail stockée (R2 ou locale)
+   *  - Sinon → image générée ou gradient fallback
+   *
+   * Si `source === 'generating'`, le backend lance une génération background ;
+   * le frontend peut re-fetch quelques secondes plus tard.
+   *
+   * Endpoint: GET /api/voice/session/{summaryId}/thumbnail
+   */
+  async getSessionThumbnail(
+    summaryId: number | string,
+  ): Promise<VoiceThumbnailResponse> {
+    return request<VoiceThumbnailResponse>(
+      `/api/voice/session/${summaryId}/thumbnail`,
+    );
   },
 
   async getPreferences(): Promise<VoicePreferences> {

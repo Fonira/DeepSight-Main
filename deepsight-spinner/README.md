@@ -19,14 +19,14 @@ Ouvre `spinner-demo.html` dans un navigateur. Les 3 tailles tournent simultaném
 
 5 couches cumulables via prop `effects` :
 
-| Effet    | Description                                                        |
-| -------- | ------------------------------------------------------------------ |
-| `blades` | Conic-gradient scie qui tourne vite — traînées dorées/violettes    |
-| `flames` | Blobs flammes orange/rouge orbitant, flicker stroboscopique        |
-| `water`  | Mist cyan/bleu en contre-rotation                                  |
-| `sparks` | Étincelles blanches/dorées qui giclent en rotation rapide          |
-| `rings`  | Ondes magiques concentriques qui s'étendent vers l'extérieur       |
-| `magic`  | Preset tout-en-un (blades + flames + water + sparks + rings)       |
+| Effet    | Description                                                     |
+| -------- | --------------------------------------------------------------- |
+| `blades` | Conic-gradient scie qui tourne vite — traînées dorées/violettes |
+| `flames` | Blobs flammes orange/rouge orbitant, flicker stroboscopique     |
+| `water`  | Mist cyan/bleu en contre-rotation                               |
+| `sparks` | Étincelles blanches/dorées qui giclent en rotation rapide       |
+| `rings`  | Ondes magiques concentriques qui s'étendent vers l'extérieur    |
+| `magic`  | Preset tout-en-un (blades + flames + water + sparks + rings)    |
 
 ```tsx
 <Spinner size="lg" effects={["magic"]} />

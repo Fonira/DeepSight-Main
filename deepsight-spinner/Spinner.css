@@ -17,9 +17,21 @@
   inset: -18%;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 30% 40%, rgba(99, 102, 241, 0.35) 0%, transparent 55%),
-    radial-gradient(circle at 70% 60%, rgba(251, 146, 60, 0.30) 0%, transparent 55%),
-    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.25) 0%, transparent 65%);
+    radial-gradient(
+      circle at 30% 40%,
+      rgba(99, 102, 241, 0.35) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 70% 60%,
+      rgba(251, 146, 60, 0.3) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(139, 92, 246, 0.25) 0%,
+      transparent 65%
+    );
   filter: blur(28px);
   animation: ds-halo-pulse 3.5s ease-in-out infinite;
   z-index: 0;
@@ -34,35 +46,48 @@
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
-    rgba(251, 191, 36, 0.00) 10deg,
+    rgba(251, 191, 36, 0) 10deg,
     rgba(251, 191, 36, 0.55) 18deg,
     rgba(255, 255, 255, 0.85) 22deg,
     rgba(251, 191, 36, 0.55) 26deg,
     transparent 34deg,
     transparent 90deg,
-    rgba(139, 92, 246, 0.00) 100deg,
+    rgba(139, 92, 246, 0) 100deg,
     rgba(139, 92, 246, 0.55) 108deg,
     rgba(255, 255, 255, 0.85) 112deg,
     rgba(139, 92, 246, 0.55) 116deg,
     transparent 124deg,
     transparent 180deg,
-    rgba(6, 182, 212, 0.00) 190deg,
+    rgba(6, 182, 212, 0) 190deg,
     rgba(6, 182, 212, 0.55) 198deg,
     rgba(255, 255, 255, 0.85) 202deg,
     rgba(6, 182, 212, 0.55) 206deg,
     transparent 214deg,
     transparent 270deg,
-    rgba(236, 72, 153, 0.00) 280deg,
+    rgba(236, 72, 153, 0) 280deg,
     rgba(236, 72, 153, 0.55) 288deg,
     rgba(255, 255, 255, 0.85) 292deg,
     rgba(236, 72, 153, 0.55) 296deg,
     transparent 304deg,
     transparent 360deg
   );
-  -webkit-mask-image: radial-gradient(circle, transparent 48%, black 52%, black 62%, transparent 72%);
-  mask-image: radial-gradient(circle, transparent 48%, black 52%, black 62%, transparent 72%);
+  -webkit-mask-image: radial-gradient(
+    circle,
+    transparent 48%,
+    black 52%,
+    black 62%,
+    transparent 72%
+  );
+  mask-image: radial-gradient(
+    circle,
+    transparent 48%,
+    black 52%,
+    black 62%,
+    transparent 72%
+  );
   filter: blur(3px);
-  animation: ds-spin-fast calc(var(--ds-spin-duration, 6s) * 0.55) linear infinite;
+  animation: ds-spin-fast calc(var(--ds-spin-duration, 6s) * 0.55) linear
+    infinite;
   mix-blend-mode: screen;
   z-index: 0;
   pointer-events: none;
@@ -84,10 +109,30 @@
   inset: 0;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 6%,  rgba(251, 146, 60, 0.90) 0%, rgba(239, 68, 68, 0.55) 4%, transparent 10%),
-    radial-gradient(circle at 94% 50%, rgba(251, 191, 36, 0.85) 0%, rgba(239, 68, 68, 0.50) 4%, transparent 10%),
-    radial-gradient(circle at 50% 94%, rgba(239, 68, 68, 0.90) 0%, rgba(251, 146, 60, 0.55) 4%, transparent 10%),
-    radial-gradient(circle at 6% 50%,  rgba(251, 146, 60, 0.85) 0%, rgba(239, 68, 68, 0.50) 4%, transparent 10%);
+    radial-gradient(
+      circle at 50% 6%,
+      rgba(251, 146, 60, 0.9) 0%,
+      rgba(239, 68, 68, 0.55) 4%,
+      transparent 10%
+    ),
+    radial-gradient(
+      circle at 94% 50%,
+      rgba(251, 191, 36, 0.85) 0%,
+      rgba(239, 68, 68, 0.5) 4%,
+      transparent 10%
+    ),
+    radial-gradient(
+      circle at 50% 94%,
+      rgba(239, 68, 68, 0.9) 0%,
+      rgba(251, 146, 60, 0.55) 4%,
+      transparent 10%
+    ),
+    radial-gradient(
+      circle at 6% 50%,
+      rgba(251, 146, 60, 0.85) 0%,
+      rgba(239, 68, 68, 0.5) 4%,
+      transparent 10%
+    );
   filter: blur(8px);
   mix-blend-mode: screen;
   animation: ds-flicker 0.18s steps(3) infinite;
@@ -103,13 +148,30 @@
   inset: -12%;
   border-radius: 50%;
   background:
-    radial-gradient(ellipse at 20% 30%, rgba(6, 182, 212, 0.45) 0%, transparent 22%),
-    radial-gradient(ellipse at 80% 70%, rgba(59, 130, 246, 0.40) 0%, transparent 22%),
-    radial-gradient(ellipse at 30% 80%, rgba(14, 165, 233, 0.35) 0%, transparent 20%),
-    radial-gradient(ellipse at 75% 20%, rgba(34, 211, 238, 0.38) 0%, transparent 20%);
+    radial-gradient(
+      ellipse at 20% 30%,
+      rgba(6, 182, 212, 0.45) 0%,
+      transparent 22%
+    ),
+    radial-gradient(
+      ellipse at 80% 70%,
+      rgba(59, 130, 246, 0.4) 0%,
+      transparent 22%
+    ),
+    radial-gradient(
+      ellipse at 30% 80%,
+      rgba(14, 165, 233, 0.35) 0%,
+      transparent 20%
+    ),
+    radial-gradient(
+      ellipse at 75% 20%,
+      rgba(34, 211, 238, 0.38) 0%,
+      transparent 20%
+    );
   filter: blur(16px);
   mix-blend-mode: screen;
-  animation: ds-spin-reverse calc(var(--ds-spin-duration, 6s) * 1.6) linear infinite;
+  animation: ds-spin-reverse calc(var(--ds-spin-duration, 6s) * 1.6) linear
+    infinite;
   z-index: 0;
   pointer-events: none;
 }
@@ -120,14 +182,46 @@
   inset: -25%;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.95) 0%, transparent 0.6%),
-    radial-gradient(circle at 85% 15%, rgba(251, 191, 36, 0.90) 0%, transparent 0.5%),
-    radial-gradient(circle at 80% 85%, rgba(255, 255, 255, 0.90) 0%, transparent 0.6%),
-    radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.90) 0%, transparent 0.5%),
-    radial-gradient(circle at 50% 10%, rgba(6, 182, 212, 0.85) 0%, transparent 0.4%),
-    radial-gradient(circle at 95% 50%, rgba(255, 255, 255, 0.95) 0%, transparent 0.5%),
-    radial-gradient(circle at 50% 92%, rgba(251, 146, 60, 0.90) 0%, transparent 0.5%),
-    radial-gradient(circle at 8% 55%, rgba(255, 255, 255, 0.85) 0%, transparent 0.4%);
+    radial-gradient(
+      circle at 15% 20%,
+      rgba(255, 255, 255, 0.95) 0%,
+      transparent 0.6%
+    ),
+    radial-gradient(
+      circle at 85% 15%,
+      rgba(251, 191, 36, 0.9) 0%,
+      transparent 0.5%
+    ),
+    radial-gradient(
+      circle at 80% 85%,
+      rgba(255, 255, 255, 0.9) 0%,
+      transparent 0.6%
+    ),
+    radial-gradient(
+      circle at 20% 80%,
+      rgba(139, 92, 246, 0.9) 0%,
+      transparent 0.5%
+    ),
+    radial-gradient(
+      circle at 50% 10%,
+      rgba(6, 182, 212, 0.85) 0%,
+      transparent 0.4%
+    ),
+    radial-gradient(
+      circle at 95% 50%,
+      rgba(255, 255, 255, 0.95) 0%,
+      transparent 0.5%
+    ),
+    radial-gradient(
+      circle at 50% 92%,
+      rgba(251, 146, 60, 0.9) 0%,
+      transparent 0.5%
+    ),
+    radial-gradient(
+      circle at 8% 55%,
+      rgba(255, 255, 255, 0.85) 0%,
+      transparent 0.4%
+    );
   filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.9));
   animation:
     ds-spin calc(var(--ds-spin-duration, 6s) * 0.7) linear infinite,
@@ -171,7 +265,7 @@
   will-change: transform;
   box-shadow:
     0 0 40px rgba(99, 102, 241, 0.35),
-    0 0 80px rgba(251, 146, 60, 0.20),
+    0 0 80px rgba(251, 146, 60, 0.2),
     inset 0 0 60px rgba(0, 0, 0, 0.6);
 }
 
@@ -219,52 +313,113 @@
 /* ========== ANIMATIONS ========== */
 
 @keyframes ds-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes ds-spin-fast {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes ds-spin-reverse {
-  from { transform: rotate(360deg); }
-  to   { transform: rotate(0deg); }
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
 }
 
 @keyframes ds-pulse {
-  0%, 100% { opacity: 0.35; transform: scale(0.85); }
-  50%      { opacity: 0.95; transform: scale(1.08); }
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.08);
+  }
 }
 
 @keyframes ds-halo-pulse {
-  0%, 100% { opacity: 0.55; transform: scale(1); }
-  50%      { opacity: 0.95; transform: scale(1.08); }
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.08);
+  }
 }
 
 @keyframes ds-flicker {
-  0%   { opacity: 0.7;  transform: scale(1); }
-  33%  { opacity: 1.0;  transform: scale(1.05); }
-  66%  { opacity: 0.85; transform: scale(0.98); }
-  100% { opacity: 0.9;  transform: scale(1.02); }
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  33% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  66% {
+    opacity: 0.85;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 0.9;
+    transform: scale(1.02);
+  }
 }
 
 @keyframes ds-sparkle {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 @keyframes ds-ring-expand {
-  0%   { transform: scale(1);    opacity: 0.9; }
-  100% { transform: scale(1.55); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
 }
 
 /* ========== TAILLES ========== */
 
-.ds-spinner--sm { width: 96px;  height: 96px;  --ds-spin-duration: 2.2s; }
-.ds-spinner--md { width: 280px; height: 280px; --ds-spin-duration: 4.5s; }
-.ds-spinner--lg { width: 520px; height: 520px; --ds-spin-duration: 7s;   }
+.ds-spinner--sm {
+  width: 96px;
+  height: 96px;
+  --ds-spin-duration: 2.2s;
+}
+.ds-spinner--md {
+  width: 280px;
+  height: 280px;
+  --ds-spin-duration: 4.5s;
+}
+.ds-spinner--lg {
+  width: 520px;
+  height: 520px;
+  --ds-spin-duration: 7s;
+}
 
 /* Reverse */
 .ds-spinner--reverse .ds-spinner__wheel {
@@ -275,9 +430,9 @@
 
 .ds-spinner--fx-blades .ds-spinner__blades,
 .ds-spinner--fx-flames .ds-spinner__flames,
-.ds-spinner--fx-water  .ds-spinner__water,
+.ds-spinner--fx-water .ds-spinner__water,
 .ds-spinner--fx-sparks .ds-spinner__sparks,
-.ds-spinner--fx-rings  .ds-spinner__rings {
+.ds-spinner--fx-rings .ds-spinner__rings {
   display: block;
 }
 
@@ -315,5 +470,7 @@
   .ds-spinner__rings::after {
     animation: none;
   }
-  .ds-spinner__wheel { transform: rotate(0deg); }
+  .ds-spinner__wheel {
+    transform: rotate(0deg);
+  }
 }

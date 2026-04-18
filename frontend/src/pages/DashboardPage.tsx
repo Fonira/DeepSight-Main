@@ -95,6 +95,7 @@ import { sanitizeTitle } from "../utils/sanitize";
 import VoiceButton from "../components/voice/VoiceButton";
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
+import { useMicLevel } from "../components/voice/hooks/useMicLevel";
 import { AnalysisVoiceHero } from "../components/voice/AnalysisVoiceHero";
 
 interface ChatMessage {
@@ -226,6 +227,8 @@ export const DashboardPage: React.FC = () => {
     summaryId: selectedSummary?.id ?? 0,
     language: language as "fr" | "en",
   });
+  // Real-time mic amplitude — powers live waveform + PTT halo
+  const micLevel = useMicLevel(voiceChat.micStream, voiceChat.isTalking);
 
   // 🕐 États Freshness & Fact-Check LITE
   const [reliabilityData, setReliabilityData] =
@@ -1379,6 +1382,8 @@ export const DashboardPage: React.FC = () => {
                 {/* 🎙️ Hero CTA Agent Vocal */}
                 <AnalysisVoiceHero
                   videoThumbnailUrl={selectedSummary.thumbnail_url}
+                  videoId={selectedSummary.video_id}
+                  platform={selectedSummary.platform}
                   videoTitle={selectedSummary.video_title}
                   onOpen={() => setIsVoiceModalOpen(true)}
                   voiceEnabled={voiceEnabled}
@@ -1518,7 +1523,9 @@ export const DashboardPage: React.FC = () => {
                     summary_content: selectedSummary.summary_content,
                   }}
                   language={language}
-                  onOpenVoice={voiceEnabled ? () => setIsVoiceModalOpen(true) : undefined}
+                  onOpenVoice={
+                    voiceEnabled ? () => setIsVoiceModalOpen(true) : undefined
+                  }
                   onAudioReady={(url) => setAudioPlayerUrl(url)}
                   showStudyTools={false}
                   showCitation={false}
@@ -1736,6 +1743,8 @@ export const DashboardPage: React.FC = () => {
             }}
             videoTitle={selectedSummary.video_title}
             channelName={selectedSummary.video_channel}
+            summaryId={selectedSummary.id}
+            videoThumbnailUrl={selectedSummary.thumbnail_url}
             voiceStatus={voiceChat.status}
             isSpeaking={voiceChat.isSpeaking}
             messages={voiceChat.messages}
@@ -1753,6 +1762,8 @@ export const DashboardPage: React.FC = () => {
             activeTool={voiceChat.activeTool}
             error={voiceChat.error ?? undefined}
             playbackRate={voiceChat.playbackRate}
+            micLevel={micLevel}
+            onRestart={voiceChat.restart}
           />
         </>
       )}

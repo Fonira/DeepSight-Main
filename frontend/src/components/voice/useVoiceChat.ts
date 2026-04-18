@@ -3,8 +3,15 @@
  * Gère le cycle complet : micro → API session → ElevenLabs SDK → timer → cleanup
  */
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  type RefObject,
+} from "react";
 import { API_URL, getAccessToken } from "../../services/api";
+import { subscribeVoicePrefsEvents } from "./voicePrefsBus";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -46,6 +53,8 @@ interface SessionResponse {
   quota_remaining_minutes: number;
   max_session_minutes: number;
   input_mode: "ptt" | "vad";
+  /** Touche clavier configurée pour le push-to-talk. */
+  ptt_key?: string;
   playback_rate: number;
 }
 
@@ -86,6 +95,10 @@ interface UseVoiceChatReturn {
   error: string | null;
   /** Playback rate actif pour l'affichage du badge */
   playbackRate: number;
+  /** Ref vers le MediaStream du micro (pour AudioContext/AnalyserNode). */
+  micStream: RefObject<MediaStream | null>;
+  /** Redémarre la session (stop + start) pour appliquer de nouvelles prefs. */
+  restart: () => Promise<void>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -446,7 +459,8 @@ export function useVoiceChat({
     // 3. Charger le SDK ElevenLabs (déjà preloadé en parallèle) et démarrer la session
     try {
       const sdkModule = await sdkPromise;
-      const { Conversation } = sdkModule ?? (await import("@elevenlabs/client"));
+      const { Conversation } =
+        sdkModule ?? (await import("@elevenlabs/client"));
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conversation = await (Conversation as any).startSession({
@@ -516,7 +530,7 @@ export function useVoiceChat({
       conversationRef.current = conversation;
 
       // 4. PTT mode: start with mic muted (user must hold button to talk)
-      if (sessionInputMode === "ptt") {
+      if (inputModeRef.current === "ptt") {
         setMicMuted(true);
       }
 
@@ -572,6 +586,38 @@ export function useVoiceChat({
   }, [isMuted, setMicMuted]);
 
   // ─────────────────────────────────────────────────────────────────────────
+  // restart() — stop + start for applying fresh prefs to a new agent
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const restart = useCallback(async () => {
+    await stop();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await start();
+  }, [stop, start]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Live-apply playback_rate changes coming from VoiceSettings
+  // ─────────────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const unsubscribe = subscribeVoicePrefsEvents((event) => {
+      if (event.type !== "playback_rate_changed") return;
+      if (!conversationRef.current) return;
+      const rate = event.value;
+      setPlaybackRate(rate);
+      document.querySelectorAll("audio").forEach((el) => {
+        el.playbackRate = rate;
+      });
+      cleanupPlaybackObserver();
+      cleanupPlaybackPolling();
+      if (rate > 1.0) {
+        applyPlaybackRate(rate);
+      }
+    });
+    return unsubscribe;
+  }, [applyPlaybackRate, cleanupPlaybackObserver, cleanupPlaybackPolling]);
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Cleanup on unmount
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -606,6 +652,7 @@ export function useVoiceChat({
     start,
     prewarm,
     stop,
+    restart,
     toggleMute,
     startTalking,
     stopTalking,
@@ -621,5 +668,6 @@ export function useVoiceChat({
     remainingMinutes,
     error,
     playbackRate,
+    micStream: mediaStreamRef,
   };
 }
