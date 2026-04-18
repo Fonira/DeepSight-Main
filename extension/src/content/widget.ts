@@ -238,9 +238,10 @@ export function isAnchorReady(): boolean {
  * If auth check hangs/fails, the user still sees a branded, clickable card
  * with a "Réessayer" button that appears after 10s.
  */
-export function buildSkeletonBody(
-  onRetry: () => void,
-): { html: string; bind: () => void } {
+export function buildSkeletonBody(onRetry: () => void): {
+  html: string;
+  bind: () => void;
+} {
   const html = `
     <div class="ds-card-body">
       <div class="ds-loading" style="padding:16px;text-align:center">

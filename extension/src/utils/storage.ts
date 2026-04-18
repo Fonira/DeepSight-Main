@@ -40,7 +40,9 @@ export async function setStoredTokens(
 
 export async function getTokenRefreshedAt(): Promise<number | null> {
   try {
-    const data = (await Browser.storage.local.get("tokenRefreshedAt")) as { tokenRefreshedAt?: number };
+    const data = (await Browser.storage.local.get("tokenRefreshedAt")) as {
+      tokenRefreshedAt?: number;
+    };
     return data.tokenRefreshedAt ?? null;
   } catch {
     return null;
@@ -49,7 +51,12 @@ export async function getTokenRefreshedAt(): Promise<number | null> {
 
 export async function clearStoredAuth(): Promise<void> {
   try {
-    await Browser.storage.local.remove(["accessToken", "refreshToken", "user", "tokenRefreshedAt"]);
+    await Browser.storage.local.remove([
+      "accessToken",
+      "refreshToken",
+      "user",
+      "tokenRefreshedAt",
+    ]);
   } catch {
     // Ignore errors on clear
   }

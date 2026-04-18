@@ -1444,7 +1444,9 @@
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
   width: 100%;
 }
 .ds-btn-primary-xl:hover {
@@ -1495,9 +1497,15 @@
   user-select: none;
   transition: color 0.15s;
 }
-.ds-details-toggle::-webkit-details-marker { display: none; }
-.ds-details-toggle:hover { color: var(--ds-text-primary); }
-.ds-details-wrapper[open] .ds-details-toggle { color: var(--ds-text-primary); }
+.ds-details-toggle::-webkit-details-marker {
+  display: none;
+}
+.ds-details-toggle:hover {
+  color: var(--ds-text-primary);
+}
+.ds-details-wrapper[open] .ds-details-toggle {
+  color: var(--ds-text-primary);
+}
 .ds-details-body {
   padding: 8px 14px 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
