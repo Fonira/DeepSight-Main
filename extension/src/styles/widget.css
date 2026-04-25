@@ -38,14 +38,20 @@
   font-family: var(--ds-font-family) !important;
 }
 
-/* Light theme YouTube */
+/* FIX-WHITE-WIDGET: `.light` class neutralized — produces same dark output
+   as default to prevent unreadable white-text-on-white widget. */
 #deepsight-card.ds-widget.light {
-  background: rgba(255, 255, 255, 0.85) !important;
-  border-color: rgba(166, 120, 40, 0.08) !important;
-  color: #111827 !important;
+  background: var(--ds-glass-bg) !important;
+  border-color: rgba(200, 144, 58, 0.06) !important;
+  color: var(--ds-text-primary) !important;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.15),
-    0 0 20px rgba(200, 144, 58, 0.04) !important;
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(200, 144, 58, 0.05) !important;
+}
+
+/* Hard fallback on host element. */
+:host {
+  color-scheme: dark;
 }
 
 /* ══════════════════════════════════════════
@@ -175,11 +181,53 @@
   gap: 12px !important;
 }
 
-.ds-widget .ds-login-headline {
-  font-size: var(--ds-text-md) !important;
+/* FIX-WHITE-WIDGET: generic button base + ds-btn-primary (used by login).
+   Both classes were referenced in HTML but had no CSS — login submit button
+   rendered as raw HTML. */
+.ds-widget .ds-btn {
+  all: unset !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 10px !important;
+  border-radius: var(--ds-radius-md) !important;
+  cursor: pointer !important;
+  font-family: var(--ds-font-family) !important;
+  font-size: var(--ds-text-sm) !important;
+  font-weight: var(--ds-weight-medium) !important;
+  text-align: center !important;
+  transition: all var(--ds-transition-fast) !important;
+  user-select: none !important;
+}
+
+.ds-widget .ds-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+.ds-widget .ds-btn-primary {
+  background: var(--ds-gold-gradient) !important;
+  color: #0b0f19 !important;
+  border: none !important;
   font-weight: var(--ds-weight-semi) !important;
-  color: var(--ds-text-primary) !important;
-  margin-bottom: 4px !important;
+  box-shadow: 0 4px 14px rgba(200, 144, 58, 0.2) !important;
+}
+
+.ds-widget .ds-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.1) !important;
+  box-shadow: 0 6px 20px rgba(200, 144, 58, 0.3) !important;
+}
+
+.ds-widget .ds-login-headline,
+.ds-widget .ds-subtitle {
+  font-size: var(--ds-text-sm) !important;
+  font-weight: var(--ds-weight-normal) !important;
+  color: var(--ds-text-secondary) !important;
+  margin: 0 0 4px !important;
+  line-height: var(--ds-leading-relaxed) !important;
 }
 
 .ds-widget .ds-login-sub {
@@ -187,6 +235,30 @@
   color: var(--ds-text-muted) !important;
   margin-bottom: 8px !important;
   line-height: var(--ds-leading-relaxed) !important;
+}
+
+/* FIX-WHITE-WIDGET: `.ds-divider` is what login.ts actually renders. */
+.ds-widget .ds-divider {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: var(--ds-text-muted) !important;
+  font-size: var(--ds-text-xs) !important;
+  margin: 4px 0 !important;
+}
+
+.ds-widget .ds-divider::before,
+.ds-widget .ds-divider::after {
+  content: "" !important;
+  flex: 1 !important;
+  height: 1px !important;
+  background: var(--ds-border) !important;
+}
+
+.ds-widget .ds-divider span {
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: var(--ds-text-muted) !important;
 }
 
 .ds-widget .ds-btn-google {

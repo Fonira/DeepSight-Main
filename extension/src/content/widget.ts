@@ -69,7 +69,9 @@ export function createWidgetShell(
 
   const el = document.createElement("div");
   el.id = WIDGET_ID;
-  el.className = `ds-widget deepsight-card ${theme}`;
+  // FIX-WHITE-WIDGET: force dark — Shadow DOM isolates from page theme.
+  void theme;
+  el.className = `ds-widget deepsight-card dark`;
   if (isTikTok) {
     el.classList.add("deepsight-card-floating");
     el.style.cssText =

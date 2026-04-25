@@ -163,11 +163,13 @@ function tryInjectWidget(): void {
       ctx.injected = true;
       ctx.injectionAttempts = 0;
       bindMinimizeButton();
-      watchTheme((t) => {
+      // FIX-WHITE-WIDGET: theme is forced to dark in widget.ts.
+      // Keep observer running but ensure dark class is preserved.
+      watchTheme(() => {
         const w = getExistingWidget();
-        if (w) {
-          w.classList.remove("dark", "light");
-          w.classList.add(t);
+        if (w && !w.classList.contains("dark")) {
+          w.classList.remove("light");
+          w.classList.add("dark");
         }
       });
       startWidgetObserver(() => {
