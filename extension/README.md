@@ -130,3 +130,22 @@ Output goes to `dist/`. Load `dist/` as an unpacked extension in Chrome.
 - **Webpack 5** — Bundling
 - **MiniCssExtractPlugin** — CSS extraction
 - **Chrome Manifest V3** — Extension API
+
+## Crash telemetry (Sentry)
+
+Set `SENTRY_DSN_EXTENSION` in your build environment to enable crash reporting.
+
+```powershell
+$env:SENTRY_DSN_EXTENSION = "https://<key>@sentry.io/<project>"
+npm run build
+```
+
+Without a DSN, the Sentry SDK is shipped in a lazy chunk that is never
+downloaded by the extension (no runtime cost, no telemetry).
+
+Crashes captured:
+
+- Anything thrown during content-script boot (widget injection, shadow creation, YouTube DOM quirks)
+- `window.onerror` + `unhandledrejection` during the boot window
+- Persisted in `chrome.storage.local.ds_crash_log` (capped at 20 FIFO)
+- Drained on service-worker `onStartup` and `onInstalled` and shipped to Sentry

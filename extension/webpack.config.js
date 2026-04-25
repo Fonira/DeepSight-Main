@@ -63,6 +63,9 @@ module.exports = (env, argv) => {
     plugins: [
       new webpack.DefinePlugin({
         __TARGET_BROWSER__: JSON.stringify(targetBrowser),
+        __SENTRY_DSN__: JSON.stringify(
+          process.env.SENTRY_DSN_EXTENSION || "",
+        ),
       }),
       new MiniCssExtractPlugin({
         filename: "[name].css",
