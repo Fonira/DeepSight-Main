@@ -2319,18 +2319,29 @@ export interface SharedAnalysisResponse {
   is_active?: boolean;
   created_at: string;
   analysis: {
-    video_title: string;
-    video_channel: string;
-    video_url: string;
-    thumbnail_url: string;
-    category: string;
-    reliability_score: number;
-    summary_content: string;
-    tags: string;
-    mode: string;
-    lang: string;
+    video_title?: string;
+    video_id?: string;
+    video_thumbnail?: string;
+    channel?: string;
+    duration_seconds?: number;
+    synthesis_markdown?: string;
+    summary_short?: string;
+    platform?: string;
+    sources?: unknown[];
+    tags?: string[] | string;
+    verdict?:
+      | string
+      | { tone?: string; label?: string; icon?: string; text?: string };
+    video_channel?: string;
+    video_url?: string;
+    thumbnail_url?: string;
+    category?: string;
+    reliability_score?: number;
+    summary_content?: string;
+    mode?: string;
+    lang?: string;
     video_duration?: number;
-    created_at: string;
+    created_at?: string;
   };
 }
 
