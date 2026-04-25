@@ -101,6 +101,14 @@ interface VoiceModalProps {
   micLevel?: number;
   /** Redémarre la session (stop + start) pour appliquer de nouveaux paramètres. */
   onRestart?: () => void | Promise<void>;
+  /**
+   * Mode overlay flottant (~380×600 bottom-right) au lieu du full screen.
+   * Utilisé pour le Chat IA où l'utilisateur veut continuer à voir le chat
+   * texte derrière. En mode compact, ESC ne ferme PAS la modal afin de
+   * permettre au user de taper dans le chat sans interrompre la session.
+   * Spec ElevenLabs ecosystem #2 §d.
+   */
+  compact?: boolean;
 }
 
 /** Format seconds to MM:SS */
@@ -276,6 +284,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   avatarFallback,
   micLevel = 0,
   onRestart,
+  compact = false,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -419,9 +428,12 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   }, [isOpen]);
 
   // Escape key + focus trap
+  // En mode compact, ESC ne ferme PAS la modal — l'utilisateur peut taper
+  // dans le chat texte derrière sans interrompre la session vocale.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (compact) return;
         onClose();
         return;
       }
@@ -444,7 +456,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, compact]);
 
   // PTT keyboard shortcut --- hold configured key to talk
   useEffect(() => {
@@ -638,39 +650,50 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center"
+          className={
+            compact
+              ? "fixed bottom-6 right-6 z-[100] flex items-end justify-end pointer-events-none"
+              : "fixed inset-0 z-[100] flex items-center justify-center"
+          }
           role="presentation"
         >
-          {/* Backdrop — DeepSight dark theme + doodle pattern + brand glow */}
-          <motion.div
-            className="absolute inset-0 bg-[#0a0a0f]/95 backdrop-blur-xl overflow-hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            aria-hidden="true"
-          >
-            {/* Doodles arrière-plan (DeepSight signature pattern, desktop only) */}
-            <DoodleBackground variant="tech" />
-            {/* Halo radial brand (indigo / violet / cyan) — subtle, non-aurora */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(60% 50% at 50% 35%, rgba(99,102,241,0.10), transparent 60%), radial-gradient(40% 40% at 75% 85%, rgba(6,182,212,0.08), transparent 70%), radial-gradient(40% 40% at 25% 85%, rgba(139,92,246,0.08), transparent 70%)",
-              }}
-            />
-          </motion.div>
+          {/* Backdrop — full screen only. En compact, pas de backdrop pour
+              laisser voir le chat derrière (la modal devient un overlay). */}
+          {!compact && (
+            <motion.div
+              className="absolute inset-0 bg-[#0a0a0f]/95 backdrop-blur-xl overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              aria-hidden="true"
+            >
+              {/* Doodles arrière-plan (DeepSight signature pattern, desktop only) */}
+              <DoodleBackground variant="tech" />
+              {/* Halo radial brand (indigo / violet / cyan) — subtle, non-aurora */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background:
+                    "radial-gradient(60% 50% at 50% 35%, rgba(99,102,241,0.10), transparent 60%), radial-gradient(40% 40% at 75% 85%, rgba(6,182,212,0.08), transparent 70%), radial-gradient(40% 40% at 25% 85%, rgba(139,92,246,0.08), transparent 70%)",
+                }}
+              />
+            </motion.div>
+          )}
 
           {/* Dialog */}
           <motion.div
             ref={modalRef}
             role="dialog"
-            aria-modal="true"
+            aria-modal={compact ? "false" : "true"}
             aria-labelledby={titleId}
             aria-describedby={descId}
             tabIndex={-1}
-            className="relative z-10 w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-[760px] sm:mx-4 sm:rounded-2xl bg-[#12121a]/80 backdrop-blur-2xl border-0 sm:border sm:border-white/10 shadow-[0_20px_60px_-20px_rgba(99,102,241,0.35)] flex flex-col focus:outline-none overflow-hidden"
+            className={
+              compact
+                ? "pointer-events-auto relative z-10 w-[380px] h-[600px] max-h-[80vh] rounded-2xl bg-[#12121a]/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-indigo-500/30 flex flex-col focus:outline-none overflow-hidden"
+                : "relative z-10 w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-[760px] sm:mx-4 sm:rounded-2xl bg-[#12121a]/80 backdrop-blur-2xl border-0 sm:border sm:border-white/10 shadow-[0_20px_60px_-20px_rgba(99,102,241,0.35)] flex flex-col focus:outline-none overflow-hidden"
+            }
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
