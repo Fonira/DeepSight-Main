@@ -34,6 +34,7 @@ import { LanguageProvider } from "./contexts/LanguageContext";
 import { LoadingWordProvider } from "./contexts/LoadingWordContext";
 import { TTSProvider } from "./contexts/TTSContext";
 import { PrivateRoute } from "./components/PrivateRoute";
+import { AmbientLightLayer } from "./components/AmbientLightLayer";
 import { SkipLink } from "./components/SkipLink";
 
 // "Le Saviez-Vous" widgets remplacés par placements organiques dans chaque page
@@ -440,6 +441,9 @@ const AppRoutes = () => {
         <AuthProvider value={auth}>
           <TTSProvider>
             <Router>
+              {/* ✨ Couche lumineuse cosmique globale (god rays + étoiles + ambient) */}
+              <AmbientLightLayer intensity="normal" />
+
               {/* ♿ Skip Link pour l'accessibilité */}
               <SkipLink targetId="main-content" />
 
