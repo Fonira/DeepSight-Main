@@ -225,4 +225,67 @@ describe("VoiceButton (Mobile)", () => {
 
     expect(getByA11yHint(/conversation vocale/)).toBeTruthy();
   });
+
+  // ── Spec #3 — bottomOffset ──
+
+  it("applique le bottomOffset custom passé en prop", () => {
+    mockUseVoiceChatGate.mockReturnValue({
+      enabled: true,
+      requiresUpgrade: false,
+    });
+
+    const customOffset = 150;
+    const { getByLabelText } = render(
+      <VoiceButton
+        videoTitle="Test"
+        onSessionStart={onSessionStart}
+        bottomOffset={customOffset}
+      />,
+    );
+
+    // On lit l'arbre rendu — le container parent doit avoir bottom = 150
+    const button = getByLabelText(/Démarrer le chat vocal/);
+    // Le Pressable est dans un View avec style { bottom: customOffset }.
+    // Remonte d'un parent (Pressable -> View container).
+    const container = button.parent?.parent;
+    const flatStyle = Array.isArray(container?.props?.style)
+      ? container?.props?.style.flat().reduce((a: any, s: any) => ({ ...a, ...s }), {})
+      : container?.props?.style;
+    expect(flatStyle?.bottom).toBe(customOffset);
+  });
+
+  it("rend sans summaryId quand agentType=companion (mode sans vidéo)", () => {
+    mockUseVoiceChatGate.mockReturnValue({
+      enabled: true,
+      requiresUpgrade: false,
+    });
+
+    const { getByLabelText } = render(
+      <VoiceButton
+        videoTitle="Discussion libre"
+        agentType="companion"
+        onSessionStart={onSessionStart}
+      />,
+    );
+
+    expect(getByLabelText(/chat vocal/i)).toBeTruthy();
+  });
+
+  it("accepte agentType='explorer' avec summaryId présent", () => {
+    mockUseVoiceChatGate.mockReturnValue({
+      enabled: true,
+      requiresUpgrade: false,
+    });
+
+    const { getByLabelText } = render(
+      <VoiceButton
+        summaryId="42"
+        videoTitle="Test"
+        agentType="explorer"
+        onSessionStart={onSessionStart}
+      />,
+    );
+
+    expect(getByLabelText(/Démarrer le chat vocal/)).toBeTruthy();
+  });
 });
