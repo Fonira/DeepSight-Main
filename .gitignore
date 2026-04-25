@@ -17,6 +17,11 @@ backend/.env
 backend/venv/
 backend/.venv/
 
+# ─── Packages (monorepo) ───
+packages/*/node_modules/
+packages/*/dist/
+packages/*/coverage/
+
 # ─── Mobile ───
 mobile/node_modules/
 mobile/.expo/
@@ -83,4 +88,11 @@ frontend/vite.config.ts.timestamp-*.mjs
 # Secrets & local config
 id_hetzner_b64.txt
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 extension/dist/*.map
+
+# Cleanup backups
+.cleanup-backups-*/
+
+# Pip install garbage (>= mal redirigé en PowerShell)
+=*
