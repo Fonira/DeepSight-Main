@@ -84,3 +84,8 @@ frontend/vite.config.ts.timestamp-*.mjs
 id_hetzner_b64.txt
 .claude/settings.local.json
 extension/dist/*.map
+
+# Playwright e2e artifacts (chrome profiles, screenshots, traces)
+extension/dist-e2e/
+extension/e2e-report/
+extension/test-results/
