@@ -37,12 +37,14 @@ export function createWidgetShell(
     return null;
   }
   host.id = HOST_ID;
+  // FIX-WHITE-WIDGET: solid bg + color-scheme on host as last-resort backup
+  // in case the inlined widget.css ever fails to apply. Solid #0a0a0f.
   host.style.cssText =
-    "all:initial;display:block;width:100%;max-width:420px;margin-bottom:12px;";
+    "all:initial;display:block;width:100%;max-width:420px;margin-bottom:12px;background-color:#0a0a0f;color-scheme:dark;";
 
   if (isTikTok) {
     host.style.cssText =
-      "all:initial;position:fixed;bottom:20px;right:20px;width:360px;max-height:80vh;z-index:2147483646;";
+      "all:initial;position:fixed;bottom:20px;right:20px;width:360px;max-height:80vh;z-index:2147483646;background-color:#0a0a0f;color-scheme:dark;";
   }
 
   // Attach closed shadow root — wrapped in try/catch as another extension
@@ -72,10 +74,15 @@ export function createWidgetShell(
   // FIX-WHITE-WIDGET: force dark — Shadow DOM isolates from page theme.
   void theme;
   el.className = `ds-widget deepsight-card dark`;
+  // FIX-WHITE-WIDGET: inline style backup. Inline styles beat any external
+  // CSS without !important. Combined with widget.css `!important` rules,
+  // this guarantees dark rendering even if the stylesheet ever fails to load.
+  el.style.backgroundColor = "#0a0a0f";
+  el.style.color = "#f5f0e8";
   if (isTikTok) {
     el.classList.add("deepsight-card-floating");
     el.style.cssText =
-      "overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.5);border-radius:12px;";
+      "overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.5);border-radius:12px;background-color:#0a0a0f;color:#f5f0e8;";
   }
   shadow.appendChild(el);
 
