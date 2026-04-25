@@ -31,6 +31,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
 
+# Static assets served via FastAPI mounts (e.g. /static-share for public share pages).
+# Without this COPY, isdir() checks in main.py fail silently and mounts never activate.
+COPY static/ ./static/
+
 WORKDIR /app/src
 
 EXPOSE 8080
