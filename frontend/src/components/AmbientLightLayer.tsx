@@ -1,22 +1,19 @@
 /**
- * AmbientLightLayer — Couche d'effets lumineux globaux DeepSight
+ * AmbientLightLayer — Couche d'effets lumineux globaux DeepSight (web)
+ *
+ * 🆕 v2 (avril 2026) : consomme @deepsight/lighting-engine via useAmbientPreset.
+ *   - 48 keyframes interpolés (toutes les 30 min) au lieu de 6 phases discrètes
+ *   - Sun/moon beam type avec angle dynamique seedé par jour
+ *   - Mood interpolé continu ("Lune haute → Heure du loup")
  *
  * Composant fixe (position: fixed, z-[1]) à monter au plus haut niveau de l'App.
  *
- * 🆕 Variation dynamique selon l'heure (hook useTimeOfDay) :
- *   - dawn  (5h–8h)   : aurore rose/or, halo top-left
- *   - morning (8h–12h): or vif, halo top-center penché droite
- *   - noon  (12h–17h) : or éclatant + cyan, halo top-center
- *   - dusk  (17h–20h) : golden hour orange/violet, halo top-right
- *   - evening (20h–23h): nocturne indigo/cyan, halo top-center faible
- *   - night (23h–5h)  : clair de lune froid, halo bleu, lune visible, étoiles ×1.4
- *
- * Empile 5 calques cosmiques (z-[1] avec mix-blend-mode: screen pour passer
- * par-dessus les fonds opaques bg-bg-primary sans masquer le contenu) :
- *   1. Ambient gradient (couleur primaire au sommet, secondaire bottom-left, tertiaire bottom-right)
- *   2. God rays — rayons de lumière diagonaux + voile blanc + halo top
- *   3. Étoiles scintillantes — 9 ou 14 points lumineux selon densité
- *   4. Disque lunaire (uniquement la nuit + crépuscule tardif + soir)
+ * Empile 5 calques cosmiques (mix-blend-mode: screen pour passer par-dessus
+ * les fonds opaques bg-bg-primary sans masquer le contenu) :
+ *   1. Ambient gradient (3 radial-gradients superposés via cssGradient du preset)
+ *   2. Central beam (linear-gradient à l'angle calculé : sun/moon/twilight)
+ *   3. Étoiles scintillantes (densité interpolée 0..1)
+ *   4. Disque lunaire OU solaire (selon preset.moon.visible / preset.sun.visible)
  *   5. (optionnel) DoodleBackground — la signature visuelle existante
  *
  * Usage minimal :
@@ -30,15 +27,13 @@
  *
  * ⚠️ Visibilité partout : le layer est posé en z-[1] avec mix-blend-mode: screen
  * sur les calques de couleur, ce qui le rend visible PAR-DESSUS les conteneurs
- * de page qui ont un bg-bg-primary opaque, sans masquer le contenu (le mode
- * screen n'éclaircit que ce qui est plus sombre que la couleur appliquée, donc
- * sur le fond noir #0a0a0f la couleur passe, sur le contenu clair ça ne change
- * presque rien). La lune est en z-[1] sans blend-mode pour rester visible blanche.
+ * de page qui ont un bg-bg-primary opaque, sans masquer le contenu.
  */
 
 import React from "react";
 import DoodleBackground from "./DoodleBackground";
-import { useTimeOfDay } from "../hooks/useTimeOfDay";
+import { useAmbientPreset } from "../hooks/useAmbientPreset";
+import { rgbToCss } from "@deepsight/lighting-engine";
 
 type Intensity = "soft" | "normal" | "strong";
 
@@ -56,14 +51,14 @@ interface AmbientLightLayerProps {
   fixed?: boolean;
 }
 
-// Multiplicateurs d'intensité globaux (par-dessus le preset temporel).
+// Multiplicateurs d'intensité globaux (par-dessus le preset du moteur).
 const INTENSITY_MUL: Record<
   Intensity,
-  { ambient: number; rays: number; stars: number; moon: number }
+  { ambient: number; beam: number; stars: number; disc: number }
 > = {
-  soft: { ambient: 0.6, rays: 0.55, stars: 0.6, moon: 0.7 },
-  normal: { ambient: 1, rays: 1, stars: 1, moon: 1 },
-  strong: { ambient: 1.35, rays: 1.4, stars: 1.3, moon: 1.15 },
+  soft: { ambient: 0.6, beam: 0.55, stars: 0.6, disc: 0.7 },
+  normal: { ambient: 1, beam: 1, stars: 1, disc: 1 },
+  strong: { ambient: 1.35, beam: 1.4, stars: 1.3, disc: 1.15 },
 };
 
 // Durée de transition CSS entre phases (sauf si reduced-motion).
@@ -75,7 +70,7 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
   doodleOpacity = 0.45,
   fixed = true,
 }) => {
-  const { ambientPreset: p, prefersReducedMotion, phase } = useTimeOfDay();
+  const { preset, prefersReducedMotion } = useAmbientPreset();
   const mul = INTENSITY_MUL[intensity];
   const positionClass = fixed ? "fixed" : "absolute";
 
@@ -85,68 +80,107 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
         transition: `background ${TRANSITION_MS}ms cubic-bezier(0.4, 0, 0.2, 1), opacity ${TRANSITION_MS}ms cubic-bezier(0.4, 0, 0.2, 1), transform ${TRANSITION_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       };
 
-  // Helpers d'écriture rgba avec opacité scalée
-  const rgba = (rgb: string, a: number): string =>
-    `rgba(${rgb},${Math.max(0, Math.min(1, a)).toFixed(3)})`;
+  // --- Calque 1 : Ambient gradient (3 radial-gradients via le preset) ---
+  // Le moteur produit déjà cssGradient prêt à l'emploi, on applique juste
+  // l'intensity multiplier en re-construisant.
+  const ambientGradient = (() => {
+    const p = rgbToCss(
+      preset.ambient.primary,
+      Math.min(1, preset.ambient.primaryOpacity * mul.ambient),
+    );
+    const s = rgbToCss(
+      preset.ambient.secondary,
+      Math.min(1, preset.ambient.secondaryOpacity * mul.ambient),
+    );
+    const t = rgbToCss(
+      preset.ambient.tertiary,
+      Math.min(1, preset.ambient.tertiaryOpacity * mul.ambient),
+    );
+    return [
+      `radial-gradient(ellipse 80% 50% at 50% 0%, ${p} 0%, transparent 60%)`,
+      `radial-gradient(ellipse 45% 35% at 10% 100%, ${s} 0%, transparent 50%)`,
+      `radial-gradient(ellipse 50% 40% at 90% 90%, ${t} 0%, transparent 50%)`,
+    ].join(", ");
+  })();
 
-  const aPrimary = p.ambientPrimary * mul.ambient;
-  const aCyan = p.ambientCyan * mul.ambient;
-  const aViolet = p.ambientViolet * mul.ambient;
-  const aRayMain = p.rayOpacity * mul.rays;
-  const aRayGold = aRayMain * 0.5;
-  const aRayTop = p.rayTopHalo * mul.rays;
-  const sm = p.starOpacityMul * mul.stars;
-  const sa = (a: number) => Math.min(0.95, a * sm);
+  // --- Calque 2 : Central beam (linear-gradient à l'angle calculé) ---
+  const beamAngle = preset.centralBeam.angleDeg;
+  const beamOpacity = Math.min(
+    1,
+    preset.centralBeam.opacity * mul.beam,
+  );
+  const beamRgb = preset.centralBeam.rgb;
+  const beamMain = rgbToCss(beamRgb, beamOpacity);
+  const beamGold = rgbToCss(beamRgb, beamOpacity * 0.5);
+  const haloTop = rgbToCss(beamRgb, preset.rayHalo.topOpacity * mul.beam);
 
-  // Étoiles : densité variable. 9 par défaut, +5 supplémentaires en mode "dense" (nuit).
-  const baseStars = `radial-gradient(1.5px 1.5px at 12% 18%, ${rgba("255,255,255", sa(0.7))}, transparent 50%), radial-gradient(1.5px 1.5px at 28% 42%, ${rgba(p.colors.accent, sa(0.75))}, transparent 50%), radial-gradient(1px 1px at 47% 12%, ${rgba("255,255,255", sa(0.55))}, transparent 50%), radial-gradient(1.5px 1.5px at 62% 78%, ${rgba("196,181,253", sa(0.65))}, transparent 50%), radial-gradient(1px 1px at 78% 35%, ${rgba("255,255,255", sa(0.6))}, transparent 50%), radial-gradient(2px 2px at 88% 62%, ${rgba(p.colors.accent, sa(0.7))}, transparent 50%), radial-gradient(1px 1px at 8% 75%, ${rgba("196,181,253", sa(0.55))}, transparent 50%), radial-gradient(1.5px 1.5px at 35% 90%, ${rgba("255,255,255", sa(0.5))}, transparent 50%), radial-gradient(1.5px 1.5px at 92% 88%, ${rgba(p.colors.accent, sa(0.6))}, transparent 50%)`;
+  const beamGradient = `linear-gradient(${beamAngle}deg, transparent 35%, ${beamGold} 48%, ${beamMain} 50%, ${beamGold} 52%, transparent 65%), linear-gradient(75deg, transparent 42%, rgba(245,240,232,0.07) 50%, transparent 58%), linear-gradient(180deg, ${haloTop} 0%, transparent 32%)`;
 
-  const denseStars =
-    p.starDensity === "dense"
-      ? `, radial-gradient(1px 1px at 18% 55%, ${rgba("255,255,255", sa(0.6))}, transparent 50%), radial-gradient(1.5px 1.5px at 52% 28%, ${rgba("232,234,237", sa(0.7))}, transparent 50%), radial-gradient(1px 1px at 70% 15%, ${rgba("196,181,253", sa(0.55))}, transparent 50%), radial-gradient(1.5px 1.5px at 5% 38%, ${rgba("255,255,255", sa(0.65))}, transparent 50%), radial-gradient(1px 1px at 96% 22%, ${rgba("232,234,237", sa(0.6))}, transparent 50%)`
-      : "";
+  // --- Calque 3 : Étoiles ---
+  // density: 0..1 (continu) → on construit toujours le set complet de
+  // 14 étoiles, mais leur opacité globale suit density × stars.opacity × mul.
+  const starOpacityScale = Math.min(
+    1,
+    preset.stars.density * preset.stars.opacity * mul.stars,
+  );
+  const sa = (a: number) => Math.max(0, Math.min(0.95, a * starOpacityScale));
+  const starColor = "255,255,255";
+  const accentColor = `${preset.ambient.primary[0]},${preset.ambient.primary[1]},${preset.ambient.primary[2]}`;
 
-  // Position du halo principal calculée dynamiquement
-  const haloPos = `${p.haloX}% ${p.haloY}%`;
+  const starsBackground = `radial-gradient(1.5px 1.5px at 12% 18%, rgba(${starColor},${sa(0.7).toFixed(3)}), transparent 50%), radial-gradient(1.5px 1.5px at 28% 42%, rgba(${accentColor},${sa(0.75).toFixed(3)}), transparent 50%), radial-gradient(1px 1px at 47% 12%, rgba(${starColor},${sa(0.55).toFixed(3)}), transparent 50%), radial-gradient(1.5px 1.5px at 62% 78%, rgba(196,181,253,${sa(0.65).toFixed(3)}), transparent 50%), radial-gradient(1px 1px at 78% 35%, rgba(${starColor},${sa(0.6).toFixed(3)}), transparent 50%), radial-gradient(2px 2px at 88% 62%, rgba(${accentColor},${sa(0.7).toFixed(3)}), transparent 50%), radial-gradient(1px 1px at 8% 75%, rgba(196,181,253,${sa(0.55).toFixed(3)}), transparent 50%), radial-gradient(1.5px 1.5px at 35% 90%, rgba(${starColor},${sa(0.5).toFixed(3)}), transparent 50%), radial-gradient(1.5px 1.5px at 92% 88%, rgba(${accentColor},${sa(0.6).toFixed(3)}), transparent 50%), radial-gradient(1px 1px at 18% 55%, rgba(${starColor},${sa(0.6).toFixed(3)}), transparent 50%), radial-gradient(1.5px 1.5px at 52% 28%, rgba(232,234,237,${sa(0.7).toFixed(3)}), transparent 50%), radial-gradient(1px 1px at 70% 15%, rgba(196,181,253,${sa(0.55).toFixed(3)}), transparent 50%), radial-gradient(1.5px 1.5px at 5% 38%, rgba(${starColor},${sa(0.65).toFixed(3)}), transparent 50%), radial-gradient(1px 1px at 96% 22%, rgba(232,234,237,${sa(0.6).toFixed(3)}), transparent 50%)`;
+
+  // --- Calque 4 : Disque solaire OU lunaire (selon visibilité) ---
+  const showMoon = preset.moon.visible && preset.moon.opacity > 0;
+  const showSun = preset.sun.visible && preset.sun.opacity > 0;
+
+  const moonOpacity = Math.min(1, preset.moon.opacity * mul.disc);
+  const sunOpacity = Math.min(1, preset.sun.opacity * mul.disc);
 
   return (
     <>
-      {/* Calque 1 — Ambient gradient (couleur primaire au sommet, secondaire bottom-left, tertiaire bottom-right) */}
+      {/* Calque 1 — Ambient gradient (3 radial-gradients) */}
       <div
         aria-hidden="true"
-        data-time-phase={phase}
+        data-beam-type={preset.centralBeam.type}
+        data-mood={preset.mood}
         className={`${positionClass} inset-0 pointer-events-none z-[1]`}
         style={{
-          background: `radial-gradient(ellipse 80% 50% at ${haloPos}, ${rgba(p.colors.primary, aPrimary)} 0%, transparent 60%), radial-gradient(ellipse 45% 35% at 10% 100%, ${rgba(p.colors.secondary, aCyan)} 0%, transparent 50%), radial-gradient(ellipse 50% 40% at 90% 90%, ${rgba(p.colors.tertiary, aViolet)} 0%, transparent 50%)`,
+          background: ambientGradient,
           mixBlendMode: "screen",
           ...transitionStyle,
         }}
       />
 
-      {/* Calque 2 — God rays (rayons lumineux diagonaux + halo top) */}
+      {/* Calque 2 — Central beam (linear-gradient à l'angle calculé) */}
       <div
         aria-hidden="true"
         className={`${positionClass} inset-0 pointer-events-none overflow-hidden z-[1]`}
         style={{
-          background: `linear-gradient(105deg, transparent 35%, ${rgba(p.colors.rays, aRayGold)} 48%, ${rgba(p.colors.rays, aRayMain)} 50%, ${rgba(p.colors.rays, aRayGold)} 52%, transparent 65%), linear-gradient(75deg, transparent 42%, rgba(245,240,232,0.07) 50%, transparent 58%), linear-gradient(180deg, ${rgba(p.colors.rays, aRayTop)} 0%, transparent 32%)`,
+          background: beamGradient,
           mixBlendMode: "screen",
+          filter:
+            preset.centralBeam.blurPx > 0
+              ? `blur(${preset.centralBeam.blurPx}px)`
+              : undefined,
           ...transitionStyle,
         }}
       />
 
-      {/* Calque 3 — Étoiles scintillantes (9 ou 14 points lumineux fixes) */}
-      <div
-        aria-hidden="true"
-        className={`${positionClass} inset-0 pointer-events-none z-[1]`}
-        style={{
-          backgroundImage: `${baseStars}${denseStars}`,
-          mixBlendMode: "screen",
-          ...transitionStyle,
-        }}
-      />
+      {/* Calque 3 — Étoiles scintillantes */}
+      {starOpacityScale > 0.01 && (
+        <div
+          aria-hidden="true"
+          className={`${positionClass} inset-0 pointer-events-none z-[1]`}
+          style={{
+            backgroundImage: starsBackground,
+            mixBlendMode: "screen",
+            ...transitionStyle,
+          }}
+        />
+      )}
 
-      {/* Calque 4 — Disque lunaire (visible le soir et la nuit) */}
-      {p.moonVisible && p.moonOpacity > 0 && (
+      {/* Calque 4a — Disque lunaire (visible le soir et la nuit) */}
+      {showMoon && (
         <div
           aria-hidden="true"
           className={`${positionClass} inset-0 pointer-events-none z-[1]`}
@@ -155,8 +189,8 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
           <div
             style={{
               position: "absolute",
-              top: `${p.moonY}%`,
-              left: `${p.moonX}%`,
+              top: `${preset.moon.yPercent}%`,
+              left: `${preset.moon.xPercent}%`,
               width: "72px",
               height: "72px",
               borderRadius: "50%",
@@ -165,7 +199,34 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
                 "radial-gradient(circle at 38% 38%, #f8fafc 0%, #e2e8f0 55%, #cbd5e1 80%, transparent 100%)",
               boxShadow:
                 "0 0 60px 10px rgba(186,230,253,0.45), 0 0 120px 30px rgba(99,102,241,0.18)",
-              opacity: Math.min(1, p.moonOpacity * mul.moon),
+              opacity: moonOpacity,
+              ...transitionStyle,
+            }}
+          />
+        </div>
+      )}
+
+      {/* Calque 4b — Disque solaire (visible le jour) */}
+      {showSun && (
+        <div
+          aria-hidden="true"
+          className={`${positionClass} inset-0 pointer-events-none z-[1]`}
+          style={{ ...transitionStyle }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: `${preset.sun.yPercent}%`,
+              left: `${preset.sun.xPercent}%`,
+              width: "96px",
+              height: "96px",
+              borderRadius: "50%",
+              transform: "translate(-50%, 0)",
+              background:
+                "radial-gradient(circle at 50% 50%, rgba(255,243,205,0.85) 0%, rgba(252,211,77,0.55) 40%, rgba(251,146,60,0.25) 70%, transparent 100%)",
+              boxShadow:
+                "0 0 80px 20px rgba(252,211,77,0.35), 0 0 160px 50px rgba(251,146,60,0.18)",
+              opacity: sunOpacity,
               ...transitionStyle,
             }}
           />
