@@ -1,0 +1,37 @@
+{
+  "name": "@deepsight/lighting-engine",
+  "version": "2.0.0",
+  "description": "Ambient lighting engine partagé pour DeepSight Web/Mobile/Extension : 48 keyframes interpolés, sun/moon beam, variation jour-à-jour seedée.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "keywords": [
+    "deepsight",
+    "lighting",
+    "ambient",
+    "ui",
+    "design-system"
+  ],
+  "author": "DeepSight",
+  "license": "UNLICENSED"
+}
