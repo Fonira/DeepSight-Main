@@ -27,14 +27,15 @@ logger = logging.getLogger("deepsight.trending_precache")
 # ═══════════════════════════════════════════════════════════════════════════════
 
 PRECACHE_COMBOS: list[tuple[str, str | None, int]] = [
-    ("30d", None, 20),   # Default / most common request
-    ("7d",  None, 20),   # Weekly view
+    ("30d", None, 20),  # Default / most common request
+    ("7d", None, 20),  # Weekly view
 ]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Public API
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def refresh_deepsight_trending() -> Dict[str, Any]:
     """

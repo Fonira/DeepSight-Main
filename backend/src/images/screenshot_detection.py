@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
-from core.config import BRAVE_SEARCH_API_KEY, get_mistral_key
+from core.config import BRAVE_SEARCH_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -55,36 +55,96 @@ BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
 
 # Browser noise keywords to filter from OCR
 BROWSER_NOISE_KEYWORDS = [
-    "connexion", "chrome", "edge", "firefox", "copilot", "bing", "google.com",
-    "nouvel onglet", "new tab", "favoris", "bookmarks", "translate", "extensions",
-    "paramètres", "settings", "téléchargements", "downloads", "historique",
-    "http://", "https://", ".com/", ".fr/", "www.", "://", "\\|",
+    "connexion",
+    "chrome",
+    "edge",
+    "firefox",
+    "copilot",
+    "bing",
+    "google.com",
+    "nouvel onglet",
+    "new tab",
+    "favoris",
+    "bookmarks",
+    "translate",
+    "extensions",
+    "paramètres",
+    "settings",
+    "téléchargements",
+    "downloads",
+    "historique",
+    "http://",
+    "https://",
+    ".com/",
+    ".fr/",
+    "www.",
+    "://",
+    "\\|",
 ]
 
 # Platform indicator words
 YOUTUBE_INDICATORS = [
-    "youtube", "subscribe", "s'abonner", "views", "vues", "shorts",
-    "j'aime", "dislike", "partager", "enregistrer", "save",
-    "playlist", "regarder plus tard", "watch later", "abonnés", "subscribers",
+    "youtube",
+    "subscribe",
+    "s'abonner",
+    "views",
+    "vues",
+    "shorts",
+    "j'aime",
+    "dislike",
+    "partager",
+    "enregistrer",
+    "save",
+    "playlist",
+    "regarder plus tard",
+    "watch later",
+    "abonnés",
+    "subscribers",
 ]
 
 TIKTOK_INDICATORS = [
-    "tiktok", "pour toi", "for you", "fyp", "following",
-    "suivre", "likes", "duet", "stitch", "son original",
-    "original sound", "partager", "répondre", "discover", "créer",
+    "tiktok",
+    "pour toi",
+    "for you",
+    "fyp",
+    "following",
+    "suivre",
+    "likes",
+    "duet",
+    "stitch",
+    "son original",
+    "original sound",
+    "partager",
+    "répondre",
+    "discover",
+    "créer",
 ]
 
 # UI words to filter from title candidates
 UI_WORDS = [
-    "subscribe", "s'abonner", "views", "vues", "likes", "share",
-    "partager", "follow", "j'aime", "enregistrer", "save",
-    "clip", "remix", "thanks", "merci", "download",
+    "subscribe",
+    "s'abonner",
+    "views",
+    "vues",
+    "likes",
+    "share",
+    "partager",
+    "follow",
+    "j'aime",
+    "enregistrer",
+    "save",
+    "clip",
+    "remix",
+    "thanks",
+    "merci",
+    "download",
 ]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Public API
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def detect_video_screenshot(
     image: Any,
@@ -137,7 +197,10 @@ async def detect_video_screenshot(
 
         logger.info(
             "[SCREENSHOT_DETECT] Detected %s: url='%s' title='%s' channel='%s'",
-            platform, video_url, video_title, channel,
+            platform,
+            video_url,
+            video_title,
+            channel,
         )
 
         return {
@@ -198,18 +261,20 @@ async def detect_video_screenshot_vision(
                     },
                     json={
                         "model": model,
-                        "messages": [{
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:{image.mime_type};base64,{b64_data}",
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:{image.mime_type};base64,{b64_data}",
+                                        },
                                     },
-                                },
-                                {"type": "text", "text": prompt_text},
-                            ],
-                        }],
+                                    {"type": "text", "text": prompt_text},
+                                ],
+                            }
+                        ],
                         "max_tokens": 150,
                         "temperature": 0.0,
                     },
@@ -217,15 +282,23 @@ async def detect_video_screenshot_vision(
 
                 if response.status_code == 429:
                     wait = 15 if "pixtral" in model else 5
-                    logger.warning("[SCREENSHOT_VISION] %s rate-limited, retrying in %ds", model, wait)
+                    logger.warning(
+                        "[SCREENSHOT_VISION] %s rate-limited, retrying in %ds",
+                        model,
+                        wait,
+                    )
                     await asyncio.sleep(wait)
                     continue
                 if response.status_code != 200:
-                    logger.warning("[SCREENSHOT_VISION] %s error: %d", model, response.status_code)
+                    logger.warning(
+                        "[SCREENSHOT_VISION] %s error: %d", model, response.status_code
+                    )
                     continue
 
                 data = response.json()
-                answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                answer = (
+                    data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                )
                 logger.info("[SCREENSHOT_VISION] %s response: %s", model, answer[:200])
 
                 result = _parse_vision_response(answer, platform)
@@ -237,7 +310,9 @@ async def detect_video_screenshot_vision(
             continue
 
     # ── Fallback: Anthropic Claude Vision ──
-    result = await _claude_vision_screenshot(b64_data, image.mime_type, prompt_text, platform)
+    result = await _claude_vision_screenshot(
+        b64_data, image.mime_type, prompt_text, platform
+    )
     if result:
         return result
 
@@ -332,15 +407,21 @@ async def mistral_vision_request(
                             if model_idx > 0 or attempt > 0:
                                 logger.info(
                                     "[MISTRAL_VISION] Success with %s (attempt %d)",
-                                    current_model, attempt + 1,
+                                    current_model,
+                                    attempt + 1,
                                 )
                             return content.strip()
                     if response.status_code == 429:
-                        logger.warning("[MISTRAL_VISION] %s rate-limited, next model", current_model)
+                        logger.warning(
+                            "[MISTRAL_VISION] %s rate-limited, next model",
+                            current_model,
+                        )
                         break
                     logger.warning(
                         "[MISTRAL_VISION] %s error %d: %s",
-                        current_model, response.status_code, response.text[:200],
+                        current_model,
+                        response.status_code,
+                        response.text[:200],
                     )
                     break
             except Exception as e:
@@ -359,7 +440,8 @@ async def mistral_vision_request(
     for retry_idx, wait_secs in enumerate([20, 40, 60]):
         logger.info(
             "[VISION_FALLBACK] Retry %d/3 — waiting %ds for rate limit reset",
-            retry_idx + 1, wait_secs,
+            retry_idx + 1,
+            wait_secs,
         )
         await asyncio.sleep(wait_secs)
         try:
@@ -390,12 +472,22 @@ async def mistral_vision_request(
                         .get("content", "")
                     )
                     if content:
-                        logger.info("[VISION_FALLBACK] Retry %d success with %s", retry_idx + 1, retry_model)
+                        logger.info(
+                            "[VISION_FALLBACK] Retry %d success with %s",
+                            retry_idx + 1,
+                            retry_model,
+                        )
                         return content.strip()
                 if response.status_code == 429:
-                    logger.warning("[VISION_FALLBACK] Retry %d still rate-limited", retry_idx + 1)
+                    logger.warning(
+                        "[VISION_FALLBACK] Retry %d still rate-limited", retry_idx + 1
+                    )
                     continue
-                logger.warning("[VISION_FALLBACK] Retry %d error %d", retry_idx + 1, response.status_code)
+                logger.warning(
+                    "[VISION_FALLBACK] Retry %d error %d",
+                    retry_idx + 1,
+                    response.status_code,
+                )
         except Exception as e:
             logger.warning("[VISION_FALLBACK] Retry %d exception: %s", retry_idx + 1, e)
 
@@ -436,8 +528,7 @@ def is_garbage_query(query: str) -> bool:
 
     # Single "word" queries that look like garbled text
     if len(words) <= 2 and any(
-        len(w) > 5 and sum(c.isdigit() for c in w) > len(w) * 0.3
-        for w in words
+        len(w) > 5 and sum(c.isdigit() for c in w) > len(w) * 0.3 for w in words
     ):
         return True
 
@@ -453,6 +544,7 @@ def is_garbage_query(query: str) -> bool:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Internal — OCR
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _clean_base64(data: str) -> str:
     """Strip data: URI prefix from base64 string."""
@@ -481,7 +573,9 @@ async def _call_mistral_ocr(data_uri: str, api_key: str) -> Optional[str]:
             )
 
             if response.status_code != 200:
-                logger.warning("[SCREENSHOT_DETECT] OCR API error: %d", response.status_code)
+                logger.warning(
+                    "[SCREENSHOT_DETECT] OCR API error: %d", response.status_code
+                )
                 return None
 
             ocr_data = response.json()
@@ -500,14 +594,15 @@ async def _call_mistral_ocr(data_uri: str, api_key: str) -> Optional[str]:
 # Internal — URL & Platform extraction
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _extract_video_url(ocr_text: str) -> tuple[Optional[str], Optional[str]]:
     """Extract YouTube/TikTok URL from OCR text. Returns (url, platform)."""
     # YouTube URLs
     yt_patterns = [
-        r'(https?://(?:www\.)?youtube\.com/watch\?v=[A-Za-z0-9_-]+[^\s\)\"\']*)',
-        r'(https?://youtu\.be/[A-Za-z0-9_-]+[^\s\)\"\']*)',
-        r'(https?://(?:www\.)?youtube\.com/shorts/[A-Za-z0-9_-]+[^\s\)\"\']*)',
-        r'(youtube\.com/watch\?v=[A-Za-z0-9_-]+[^\s\)\"\']*)',
+        r"(https?://(?:www\.)?youtube\.com/watch\?v=[A-Za-z0-9_-]+[^\s\)\"\']*)",
+        r"(https?://youtu\.be/[A-Za-z0-9_-]+[^\s\)\"\']*)",
+        r"(https?://(?:www\.)?youtube\.com/shorts/[A-Za-z0-9_-]+[^\s\)\"\']*)",
+        r"(youtube\.com/watch\?v=[A-Za-z0-9_-]+[^\s\)\"\']*)",
     ]
     for pattern in yt_patterns:
         match = re.search(pattern, ocr_text)
@@ -520,9 +615,9 @@ def _extract_video_url(ocr_text: str) -> tuple[Optional[str], Optional[str]]:
 
     # TikTok URLs
     tt_patterns = [
-        r'(https?://(?:www\.)?tiktok\.com/@[\w.-]+/video/\d+[^\s\)\"\']*)',
-        r'(https?://vm\.tiktok\.com/[\w-]+[^\s\)\"\']*)',
-        r'(tiktok\.com/@[\w.-]+/video/\d+)',
+        r"(https?://(?:www\.)?tiktok\.com/@[\w.-]+/video/\d+[^\s\)\"\']*)",
+        r"(https?://vm\.tiktok\.com/[\w-]+[^\s\)\"\']*)",
+        r"(tiktok\.com/@[\w.-]+/video/\d+)",
     ]
     for pattern in tt_patterns:
         match = re.search(pattern, ocr_text)
@@ -558,6 +653,7 @@ def _detect_platform_from_text(ocr_text: str) -> Optional[str]:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Internal — Title & Channel extraction
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _filter_browser_noise(ocr_text: str) -> list[str]:
     """Filter browser UI noise from OCR lines."""
@@ -625,6 +721,7 @@ def _extract_title(clean_lines: list[str]) -> Optional[str]:
 # Internal — Vision response parsing
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _parse_vision_response(
     answer: str,
     platform: str,
@@ -646,7 +743,9 @@ def _parse_vision_response(
     # Extract video URL from Vision response
     video_url = None
     if url_text and url_text.upper() != "UNKNOWN":
-        yt_id_match = re.search(r"(?:v=|youtu\.be/|shorts/)([A-Za-z0-9_-]{11})", url_text)
+        yt_id_match = re.search(
+            r"(?:v=|youtu\.be/|shorts/)([A-Za-z0-9_-]{11})", url_text
+        )
         if yt_id_match:
             video_url = f"https://www.youtube.com/watch?v={yt_id_match.group(1)}"
         tt_match = re.search(r"(tiktok\.com/@[\w.-]+/video/\d+)", url_text)
@@ -665,7 +764,10 @@ def _parse_vision_response(
 
     logger.info(
         "[SCREENSHOT_VISION] Extracted: title='%s' channel='%s' url='%s' query='%s'",
-        title, channel, video_url, search_query,
+        title,
+        channel,
+        video_url,
+        search_query,
     )
 
     return {
@@ -681,6 +783,7 @@ def _parse_vision_response(
 # Internal — Claude Vision fallback
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _get_anthropic_key() -> str:
     """Get Anthropic API key from environment."""
     return os.environ.get("ANTHROPIC_API_KEY", "")
@@ -695,7 +798,9 @@ async def _claude_vision_screenshot(
     """Call Claude Vision for screenshot title extraction."""
     anthropic_key = _get_anthropic_key()
     if not anthropic_key:
-        logger.info("[SCREENSHOT_VISION] No ANTHROPIC_API_KEY, skipping Claude fallback")
+        logger.info(
+            "[SCREENSHOT_VISION] No ANTHROPIC_API_KEY, skipping Claude fallback"
+        )
         return None
 
     try:
@@ -711,20 +816,22 @@ async def _claude_vision_screenshot(
                 json={
                     "model": "claude-sonnet-4-20250514",
                     "max_tokens": 150,
-                    "messages": [{
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": mime_type,
-                                    "data": b64_data,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": mime_type,
+                                        "data": b64_data,
+                                    },
                                 },
-                            },
-                            {"type": "text", "text": prompt_text},
-                        ],
-                    }],
+                                {"type": "text", "text": prompt_text},
+                            ],
+                        }
+                    ],
                 },
             )
 
@@ -739,7 +846,8 @@ async def _claude_vision_screenshot(
             else:
                 logger.warning(
                     "[SCREENSHOT_VISION] Claude error: %d %s",
-                    response.status_code, response.text[:200],
+                    response.status_code,
+                    response.text[:200],
                 )
     except Exception as e:
         logger.warning("[SCREENSHOT_VISION] Claude exception: %s", e)
@@ -790,10 +898,17 @@ async def _claude_vision_general(
                             logger.info("[VISION_FALLBACK] Claude Vision success!")
                             return answer.strip()
                     if resp.status_code == 429:
-                        logger.warning("[VISION_FALLBACK] Claude rate-limited, attempt %d/2", attempt + 1)
+                        logger.warning(
+                            "[VISION_FALLBACK] Claude rate-limited, attempt %d/2",
+                            attempt + 1,
+                        )
                         await asyncio.sleep(5)
                         continue
-                    logger.warning("[VISION_FALLBACK] Claude error %d: %s", resp.status_code, resp.text[:200])
+                    logger.warning(
+                        "[VISION_FALLBACK] Claude error %d: %s",
+                        resp.status_code,
+                        resp.text[:200],
+                    )
                     break
             except Exception as e:
                 logger.warning("[VISION_FALLBACK] Claude exception: %s", e)
@@ -837,12 +952,20 @@ def _convert_messages_to_anthropic(messages: list) -> list:
                     # Convert data URI to Anthropic image block
                     if url_str.startswith("data:"):
                         parts = url_str.split(",", 1)
-                        media_type = parts[0].replace("data:", "").replace(";base64", "")
+                        media_type = (
+                            parts[0].replace("data:", "").replace(";base64", "")
+                        )
                         b64 = parts[1] if len(parts) > 1 else ""
-                        claude_content.append({
-                            "type": "image",
-                            "source": {"type": "base64", "media_type": media_type, "data": b64},
-                        })
+                        claude_content.append(
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": media_type,
+                                    "data": b64,
+                                },
+                            }
+                        )
                     else:
                         claude_content.append({"type": "text", "text": "[Image URL]"})
                 else:
@@ -858,6 +981,7 @@ def _convert_messages_to_anthropic(messages: list) -> list:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Internal — Video search (yt-dlp + Brave)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def _ytdlp_search(query: str, search_prefix: str = "ytsearch5") -> Optional[str]:
     """Search YouTube via yt-dlp ytsearch."""
@@ -892,7 +1016,11 @@ async def _ytdlp_search(query: str, search_prefix: str = "ytsearch5") -> Optiona
                 video_id = video.get("id")
                 if video_id:
                     url = f"https://www.youtube.com/watch?v={video_id}"
-                    logger.info("[SCREENSHOT_SEARCH] Found YouTube: %s (%s)", url, video.get("title", "?"))
+                    logger.info(
+                        "[SCREENSHOT_SEARCH] Found YouTube: %s (%s)",
+                        url,
+                        video.get("title", "?"),
+                    )
                     return url
             except json_module.JSONDecodeError:
                 continue
@@ -937,7 +1065,9 @@ async def _ytdlp_search_tiktok(query: str) -> Optional[str]:
                 uploader = video.get("uploader_id") or video.get("uploader")
                 if video_id and uploader:
                     url = f"https://www.tiktok.com/@{uploader}/video/{video_id}"
-                    logger.info("[SCREENSHOT_SEARCH] Found TikTok (constructed): %s", url)
+                    logger.info(
+                        "[SCREENSHOT_SEARCH] Found TikTok (constructed): %s", url
+                    )
                     return url
             except json_module.JSONDecodeError:
                 continue

@@ -147,8 +147,8 @@ describe("App — rendering", () => {
       new Promise(() => {}),
     );
 
-    render(<App />);
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    const { container } = render(<App />);
+    expect(container.querySelector(".loading-view")).toBeTruthy();
   });
 });
 
