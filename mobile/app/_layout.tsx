@@ -20,6 +20,7 @@ import { ElevenLabsProvider } from "@elevenlabs/react-native";
 import { createQueryClient } from "../src/utils/queryClient";
 import { darkColors } from "../src/theme/colors";
 import { useShareIntent } from "../src/hooks/useShareIntent";
+import { AmbientLightLayer } from "../src/components/backgrounds/AmbientLightLayer";
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -177,7 +178,8 @@ function RootNavigator() {
   }, [isAuthenticated, isLoading, segments]);
 
   return (
-    <>
+    <View style={rootStyles.root}>
+      <AmbientLightLayer intensity="normal" />
       <StatusBar style="light" backgroundColor={darkColors.bgPrimary} />
       <Stack
         screenOptions={{
@@ -190,6 +192,10 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="splash" />
       </Stack>
-    </>
+    </View>
   );
 }
+
+const rootStyles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: darkColors.bgPrimary },
+});
