@@ -193,7 +193,10 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 0 4px;
+  /* FIX-MISTRAL-TRUNCATION: padding-bottom raised from 4px to 18px so the
+     orbital Mistral logo (positioned bottom: -8px on the spinner) is no
+     longer clipped by `.login-view { overflow: hidden }`. */
+  padding: 8px 0 18px;
   background: radial-gradient(
     ellipse at center top,
     rgba(200, 144, 58, 0.08),

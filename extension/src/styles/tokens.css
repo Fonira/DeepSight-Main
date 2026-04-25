@@ -3,8 +3,14 @@
    Maps to design-tokens.css values for Shadow DOM isolation.
    ============================================================ */
 
+/* FIX-WHITE-WIDGET: split `:host` and `:root` into separate rules.
+   Some browsers treat the combined `:host, :root { ... }` selector list
+   as invalid inside a Shadow DOM (`:root` doesn't match anything in
+   shadow scope), which can drop the entire rule and leave CSS vars
+   undefined — producing a transparent/white widget. */
 :host,
-:root {
+:root,
+.ds-widget {
   /* === Text === */
   --ds-text-primary: #f5f0e8;
   --ds-text-secondary: #b5a89b;
