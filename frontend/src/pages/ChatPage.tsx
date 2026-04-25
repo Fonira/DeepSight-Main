@@ -36,6 +36,9 @@ import {
   Clock,
   PanelLeftClose,
   PanelLeftOpen,
+  Mic,
+  Phone,
+  Keyboard,
 } from "lucide-react";
 import {
   DeepSightSpinnerMicro,
@@ -58,17 +61,39 @@ import { ChatWelcomeInsight } from "../components/ChatWelcomeInsight";
 import { sanitizeTitle } from "../utils/sanitize";
 import DoodleBackground from "../components/DoodleBackground";
 import { CopyMessageButton } from "../components/CopyMessageButton";
+import {
+  VoiceOverlay,
+  type VoiceOverlayController,
+  type VoiceOverlayMessage,
+} from "../components/voice/VoiceOverlay";
+import { useVoiceEnabled } from "../components/voice/hooks/useVoiceEnabled";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Spec #5 — Schema unifié pour messages texte + voix dans la même timeline.
+ * `source` distingue l'origine ; `voice_session_id` + `time_in_call_secs`
+ * permettent au backend (Spec #1) de réconcilier via webhook post-call.
+ */
 interface ChatMessage {
+  /** crypto.randomUUID() obligatoire pour éviter les collisions de clés. */
   id: string;
   role: "user" | "assistant";
   content: string;
   sources?: { title: string; url: string }[];
   web_search_used?: boolean;
+  /** "text" (default), "voice_user" ou "voice_agent". */
+  source?: "text" | "voice_user" | "voice_agent";
+  /** UUID v4 retourné par POST /api/voice/session. */
+  voice_session_id?: string | null;
+  /** Position dans l'appel — utile pour réconciliation transcripts. */
+  time_in_call_secs?: number;
+  /** Si true, ne pas afficher d'actions (copy, audio) — utile pendant capture. */
+  ephemeral?: boolean;
+  /** Date.now() au moment de l'append, sépare le tri du `id`. */
+  timestamp?: number;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -84,6 +109,7 @@ const ChatPage: React.FC = () => {
   const plan = normalizePlanId(user?.plan);
   const canChat = plan !== "free";
   const { autoPlayEnabled, playText, stopPlaying } = useTTSContext();
+  const { voiceEnabled } = useVoiceEnabled();
 
   // ── State ──
   const [analyses, setAnalyses] = useState<Summary[]>([]);
@@ -100,8 +126,15 @@ const ChatPage: React.FC = () => {
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
+  // 🎙️ Spec #5 — Voice overlay state
+  const [voiceOverlayOpen, setVoiceOverlayOpen] = useState(false);
+  const voiceControllerRef = useRef<VoiceOverlayController | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  /** Tracks whether the user manually scrolled away from the bottom. */
+  const userScrolledUpRef = useRef(false);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
 
   const urlSummaryId = searchParams.get("summary");
 
@@ -128,6 +161,10 @@ const ChatPage: React.FC = () => {
           upgrade: "Voir les plans",
           back: "Retour",
           conversations: "Conversations",
+          callButton: "Appeler",
+          endCall: "Raccrocher",
+          voiceBadge: "Vocal",
+          textBadge: "Texte",
           suggestions: [
             "Résume les points clés",
             "Quels sont les arguments principaux ?",
@@ -153,6 +190,10 @@ const ChatPage: React.FC = () => {
           upgrade: "View plans",
           back: "Back",
           conversations: "Conversations",
+          callButton: "Call",
+          endCall: "Hang up",
+          voiceBadge: "Voice",
+          textBadge: "Text",
           suggestions: [
             "Summarize the key points",
             "What are the main arguments?",
@@ -191,13 +232,26 @@ const ChatPage: React.FC = () => {
         setIsLoadingMessages(true);
         const history = await chatApi.getHistory(selectedAnalysis.id);
         const mapped: ChatMessage[] = (history || []).map(
-          (msg: any, i: number) => ({
-            id: `history-${i}`,
-            role: msg.role,
-            content: msg.content,
-            sources: msg.sources,
-            web_search_used: msg.web_search_used,
-          }),
+          (msg: any, i: number) => {
+            // Spec #1 — backend renvoie source/voice_speaker/voice_session_id
+            // Rétrocompat : si source manquant, default "text".
+            const source: ChatMessage["source"] =
+              msg.source === "voice"
+                ? msg.voice_speaker === "user"
+                  ? "voice_user"
+                  : "voice_agent"
+                : "text";
+            return {
+              id: msg.id ? `history-${msg.id}` : `history-${i}`,
+              role: msg.role,
+              content: msg.content,
+              sources: msg.sources,
+              web_search_used: msg.web_search_used,
+              source,
+              voice_session_id: msg.voice_session_id ?? null,
+              time_in_call_secs: msg.time_in_call_secs,
+            };
+          },
         );
         setMessages(mapped);
       } catch (err) {
@@ -210,10 +264,22 @@ const ChatPage: React.FC = () => {
     fetchHistory();
   }, [selectedAnalysis]);
 
-  // ── Auto scroll ──
+  // ── Auto scroll (respecte le scroll user) ──
   useEffect(() => {
+    if (userScrolledUpRef.current) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // ── Detect manual scroll up to disable auto-scroll ──
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const el = e.currentTarget;
+      const distanceFromBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight;
+      userScrolledUpRef.current = distanceFromBottom > 80;
+    },
+    [],
+  );
 
   // ── Select analysis ──
   const handleSelectAnalysis = (analysis: Summary) => {
@@ -224,11 +290,13 @@ const ChatPage: React.FC = () => {
   };
 
   // ── Auto-play TTS on new assistant message ──
+  // Spec #5 garde-fou : skip si source === "voice_agent" (évite double audio
+  // car ElevenLabs joue déjà la TTS via l'overlay).
   const prevMsgCountRef = useRef(messages.length);
   useEffect(() => {
     if (messages.length > prevMsgCountRef.current && autoPlayEnabled) {
       const last = messages[messages.length - 1];
-      if (last?.role === "assistant") {
+      if (last?.role === "assistant" && last.source !== "voice_agent") {
         const text = typeof last.content === "string" ? last.content : "";
         playText(text.slice(0, 5000));
       }
@@ -236,22 +304,75 @@ const ChatPage: React.FC = () => {
     prevMsgCountRef.current = messages.length;
   }, [messages, autoPlayEnabled, playText]);
 
+  // ── Spec #5c — Sync voix → timeline chat ──
+  // Chaque transcript turn capturé dans VoiceOverlay (user OU agent) est
+  // injecté dans la même timeline `messages` que le chat texte. La
+  // persistence backend est gérée par le VoiceOverlay lui-même (avec
+  // fallback gracieux). Ici on ne fait que l'append visuel.
+  const handleVoiceMessage = useCallback((msg: VoiceOverlayMessage) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `voice-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        role: msg.source === "user" ? "user" : "assistant",
+        content: msg.text,
+        source: msg.source === "user" ? "voice_user" : "voice_agent",
+        voice_session_id: msg.voiceSessionId,
+        time_in_call_secs: msg.timeInCallSecs,
+        timestamp: Date.now(),
+      },
+    ]);
+  }, []);
+
   // ── Send message ──
+  // Spec #5d — sync texte → voix : si une session voice est active,
+  // injecte le texte dans la conversation ElevenLabs au lieu d'appeler
+  // l'API REST. L'agent répondra via onMessage du VoiceOverlay.
   const handleSend = useCallback(
     async (text?: string) => {
       const message = text || inputValue.trim();
       if (!message || !selectedAnalysis || isSending) return;
 
+      const voiceController = voiceControllerRef.current;
+      const voiceActive = !!voiceController?.isActive;
+
       stopPlaying();
       setInputValue("");
       if (inputRef.current) inputRef.current.style.height = "auto";
 
+      // Append the user's text message immediately. Mark its source so the
+      // UI can render a distinctive badge.
       const userMsg: ChatMessage = {
-        id: `user-${Date.now()}`,
+        id:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `user-${Date.now()}`,
         role: "user",
         content: message,
+        source: voiceActive ? "voice_user" : "text",
+        voice_session_id: voiceActive
+          ? voiceController?.voiceSessionId ?? null
+          : undefined,
+        timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, userMsg]);
+
+      // ROUTE A — voice session active : inject into ElevenLabs.
+      if (voiceActive && voiceController) {
+        try {
+          voiceController.sendUserMessage(message);
+        } catch (err) {
+          console.warn("[ChatPage] sendUserMessage failed:", err);
+        }
+        // The agent reply will land via handleVoiceMessage → setMessages.
+        // No need to call chatApi.send here.
+        return;
+      }
+
+      // ROUTE B — pure text mode : call REST API.
       setIsSending(true);
 
       try {
@@ -261,11 +382,16 @@ const ChatPage: React.FC = () => {
           false,
         );
         const assistantMsg: ChatMessage = {
-          id: `assistant-${Date.now()}`,
+          id:
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `assistant-${Date.now()}`,
           role: "assistant",
           content: response.response || "",
           sources: response.sources,
           web_search_used: response.web_search_used,
+          source: "text",
+          timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
       } catch (err: any) {
@@ -273,12 +399,17 @@ const ChatPage: React.FC = () => {
         setMessages((prev) => [
           ...prev,
           {
-            id: `error-${Date.now()}`,
+            id:
+              typeof crypto !== "undefined" && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `error-${Date.now()}`,
             role: "assistant",
             content:
               language === "fr"
                 ? "❌ Une erreur est survenue. Veuillez réessayer."
                 : "❌ An error occurred. Please try again.",
+            source: "text",
+            timestamp: Date.now(),
           },
         ]);
       } finally {
@@ -286,7 +417,7 @@ const ChatPage: React.FC = () => {
         inputRef.current?.focus();
       }
     },
-    [inputValue, selectedAnalysis, isSending, language],
+    [inputValue, selectedAnalysis, isSending, language, stopPlaying],
   );
 
   // ── Copy ──
@@ -563,6 +694,29 @@ const ChatPage: React.FC = () => {
         </>
       )}
 
+      {/* 🎙️ Spec #5b — Voice overlay (380×600 floating bottom-right) */}
+      {voiceEnabled && (
+        <VoiceOverlay
+          isOpen={voiceOverlayOpen}
+          onClose={() => setVoiceOverlayOpen(false)}
+          title={
+            selectedAnalysis
+              ? sanitizeTitle(selectedAnalysis.video_title)
+              : null
+          }
+          subtitle={
+            selectedAnalysis
+              ? sanitizeTitle(selectedAnalysis.video_channel)
+              : null
+          }
+          summaryId={selectedAnalysis?.id ?? null}
+          agentType={selectedAnalysis ? "explorer" : "companion"}
+          language={language as "fr" | "en"}
+          onVoiceMessage={handleVoiceMessage}
+          controllerRef={voiceControllerRef}
+        />
+      )}
+
       {/* ═══ MAIN ZONE — Chat ═══ */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* ─── Top bar ─── */}
@@ -587,7 +741,7 @@ const ChatPage: React.FC = () => {
 
           {/* Selected video info */}
           {selectedAnalysis ? (
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
               {selectedAnalysis.thumbnail_url && (
                 <img
                   src={selectedAnalysis.thumbnail_url}
@@ -605,7 +759,7 @@ const ChatPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-1">
               <img
                 src="/deepsight-logo-cosmic.png"
                 alt=""
@@ -613,6 +767,34 @@ const ChatPage: React.FC = () => {
               />
               <span className="text-sm text-white/35 font-medium">Chat IA</span>
             </div>
+          )}
+
+          {/* 🎙️ Spec #5a — Voice call header button */}
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => setVoiceOverlayOpen((v) => !v)}
+              aria-pressed={voiceOverlayOpen}
+              aria-label={voiceOverlayOpen ? t.endCall : t.callButton}
+              data-testid="chat-page-voice-toggle"
+              className={`flex-shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors border ${
+                voiceOverlayOpen
+                  ? "bg-violet-500/15 border-violet-500/35 text-violet-200"
+                  : "bg-white/[0.04] border-white/[0.06] text-white/55 hover:text-white/85 hover:border-white/[0.12]"
+              }`}
+            >
+              {voiceOverlayOpen ? (
+                <>
+                  <Phone className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{t.endCall}</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{t.callButton}</span>
+                </>
+              )}
+            </button>
           )}
         </header>
 
@@ -650,6 +832,8 @@ const ChatPage: React.FC = () => {
             <>
               {/* ═══ Messages area ═══ */}
               <div
+                ref={messagesScrollRef}
+                onScroll={handleScroll}
                 className="flex-1 overflow-y-auto"
                 style={{
                   scrollbarWidth: "thin",
@@ -705,8 +889,13 @@ const ChatPage: React.FC = () => {
                       typeof msg.content === "string"
                         ? msg.content
                         : String(msg.content || "");
+                    // Spec #5e — skip parseAskQuestions pour messages voix
+                    // (l'agent vocal ne génère pas de follow-up [[...]])
+                    const isVoiceAgent = msg.source === "voice_agent";
+                    const isVoiceUser = msg.source === "voice_user";
+                    const isVoice = isVoiceAgent || isVoiceUser;
                     const { beforeQuestions, questions } =
-                      msg.role === "assistant"
+                      msg.role === "assistant" && !isVoiceAgent
                         ? parseAskQuestions(contentStr)
                         : { beforeQuestions: contentStr, questions: [] };
                     const isUser = msg.role === "user";
@@ -725,10 +914,30 @@ const ChatPage: React.FC = () => {
                         <div
                           className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 relative group ${
                             isUser
-                              ? "bg-blue-600/80 text-white rounded-br-md"
+                              ? isVoiceUser
+                                ? "bg-violet-600/70 text-white rounded-br-md"
+                                : "bg-blue-600/80 text-white rounded-br-md"
                               : "bg-white/[0.04] text-white/80 rounded-bl-md"
                           }`}
+                          data-source={msg.source ?? "text"}
+                          data-testid={`chat-msg-${msg.source ?? "text"}`}
                         >
+                          {/* Spec #5f — Voice/Text source badge */}
+                          {isVoice && (
+                            <div className="inline-flex items-center gap-1 mb-1.5 text-[10px] font-medium text-violet-300/80 uppercase tracking-wider">
+                              <Mic className="w-2.5 h-2.5" />
+                              <span>{t.voiceBadge}</span>
+                              {typeof msg.time_in_call_secs === "number" && (
+                                <span className="text-violet-300/50 normal-case tracking-normal">
+                                  · {Math.floor(msg.time_in_call_secs / 60)}:
+                                  {Math.floor(msg.time_in_call_secs % 60)
+                                    .toString()
+                                    .padStart(2, "0")}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
                           {/* Web badge */}
                           {!isUser && msg.web_search_used && (
                             <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-white/[0.06]">
@@ -775,13 +984,16 @@ const ChatPage: React.FC = () => {
                                 </EnrichedMarkdown>
                               </div>
 
-                              {/* TTS button */}
-                              <div className="mt-2 flex justify-end">
-                                <AudioPlayerButton
-                                  text={beforeQuestions}
-                                  size="sm"
-                                />
-                              </div>
+                              {/* TTS button — Spec #5e: skip pour voice_agent
+                                 (déjà parlé par ElevenLabs via overlay) */}
+                              {!isVoiceAgent && (
+                                <div className="mt-2 flex justify-end">
+                                  <AudioPlayerButton
+                                    text={beforeQuestions}
+                                    size="sm"
+                                  />
+                                </div>
+                              )}
 
                               {questions.length > 0 && (
                                 <div className="mt-3 pt-3 border-t border-white/[0.05] flex flex-wrap gap-1.5">
