@@ -9,6 +9,7 @@ import { Send, MessageCircle } from "lucide-react";
 import { debateApi } from "../../services/api";
 import type { DebateChatMessage } from "../../services/api";
 import { DeepSightSpinnerMicro } from "../ui/DeepSightSpinner";
+import { CopyMessageButton } from "../CopyMessageButton";
 
 interface DebateChatProps {
   debateId: number;
@@ -154,13 +155,28 @@ export const DebateChat: React.FC<DebateChatProps> = ({
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg px-3.5 py-2.5 text-sm leading-relaxed border ${
+                  className={`group max-w-[80%] rounded-lg px-3.5 py-2.5 text-sm leading-relaxed border ${
                     msg.role === "user"
                       ? "bg-indigo-500/20 border-indigo-500/30 text-white/90"
                       : "bg-white/5 border-white/10 text-white/80"
                   }`}
                 >
-                  {msg.content}
+                  <div>{msg.content}</div>
+                  <div
+                    className={`mt-1.5 flex opacity-0 group-hover:opacity-100 transition-opacity ${
+                      msg.role === "user" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <CopyMessageButton
+                      text={msg.content}
+                      language="fr"
+                      className={
+                        msg.role === "user"
+                          ? "text-white/60 hover:text-white"
+                          : "text-white/35 hover:text-white/75"
+                      }
+                    />
+                  </div>
                 </div>
               </motion.div>
             ))}

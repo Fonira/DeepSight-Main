@@ -46,6 +46,7 @@ import {
 } from "./ClickableQuestions";
 import { EnrichedMarkdown } from "./EnrichedMarkdown";
 import { AudioPlayerButton } from "./AudioPlayerButton";
+import { CopyMessageButton } from "./CopyMessageButton";
 
 // =============================================================================
 // TYPES
@@ -316,7 +317,16 @@ const ChatBubble: React.FC<{
           }}
         >
           {isUser ? (
-            <span>{message.content}</span>
+            <>
+              <span>{message.content}</span>
+              <div className="mt-1.5 flex justify-end">
+                <CopyMessageButton
+                  text={message.content}
+                  language={language}
+                  className="text-[#b2ebf2]/60 hover:text-[#b2ebf2]"
+                />
+              </div>
+            </>
           ) : (
             <>
               {/* Badges row */}

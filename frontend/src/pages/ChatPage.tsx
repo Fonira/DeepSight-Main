@@ -57,6 +57,7 @@ import { useTTSContext } from "../contexts/TTSContext";
 import { ChatWelcomeInsight } from "../components/ChatWelcomeInsight";
 import { sanitizeTitle } from "../utils/sanitize";
 import DoodleBackground from "../components/DoodleBackground";
+import { CopyMessageButton } from "../components/CopyMessageButton";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -739,9 +740,18 @@ const ChatPage: React.FC = () => {
                           )}
 
                           {isUser ? (
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                              {contentStr}
-                            </p>
+                            <>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                {contentStr}
+                              </p>
+                              <div className="mt-1.5 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                <CopyMessageButton
+                                  text={contentStr}
+                                  language={language}
+                                  className="text-white/55 hover:text-white"
+                                />
+                              </div>
+                            </>
                           ) : (
                             <>
                               <div

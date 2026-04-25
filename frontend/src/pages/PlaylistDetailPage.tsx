@@ -23,6 +23,7 @@ import { useTranslation } from "../hooks/useTranslation";
 import { sanitizeTitle } from "../utils/sanitize";
 import { Sidebar } from "../components/layout/Sidebar";
 import DoodleBackground from "../components/DoodleBackground";
+import { CopyMessageButton } from "../components/CopyMessageButton";
 import {
   playlistApi,
   type PlaylistFullResponse,
@@ -697,7 +698,7 @@ const CorpusChat: React.FC<{
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-xl p-4 ${
+                  className={`group max-w-[80%] rounded-xl p-4 ${
                     msg.role === "user"
                       ? "bg-accent-primary text-white"
                       : "bg-bg-secondary text-text-secondary"
@@ -797,6 +798,23 @@ const CorpusChat: React.FC<{
                       </div>
                     </div>
                   )}
+
+                  {/* Copy button (assistant + user) */}
+                  <div
+                    className={`mt-2 flex opacity-0 group-hover:opacity-100 transition-opacity ${
+                      msg.role === "user" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <CopyMessageButton
+                      text={contentStr}
+                      language={language === "en" ? "en" : "fr"}
+                      className={
+                        msg.role === "user"
+                          ? "text-white/70 hover:text-white"
+                          : "text-text-muted hover:text-text-primary"
+                      }
+                    />
+                  </div>
                 </div>
                 {msg.role === "user" && (
                   <div className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center flex-shrink-0">

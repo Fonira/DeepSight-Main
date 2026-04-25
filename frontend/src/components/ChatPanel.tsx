@@ -32,6 +32,7 @@ import { TTSToggle } from "./TTSToggle";
 import { useTTSContext } from "../contexts/TTSContext";
 import { EnrichedMarkdown, cleanConceptMarkers } from "./EnrichedMarkdown";
 import { ThumbnailImage } from "./ThumbnailImage";
+import { CopyMessageButton } from "./CopyMessageButton";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 TYPES
@@ -394,9 +395,18 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
                     {/* Content */}
                     {isUser ? (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {contentStr}
-                      </p>
+                      <>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                          {contentStr}
+                        </p>
+                        <div className="mt-1.5 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <CopyMessageButton
+                            text={contentStr}
+                            language={language}
+                            className="text-white/55 hover:text-white"
+                          />
+                        </div>
+                      </>
                     ) : (
                       <>
                         <div
