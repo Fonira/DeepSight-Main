@@ -184,7 +184,12 @@ function RootNavigator() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: darkColors.bgPrimary },
+          // Transparent so AmbientLightLayer (rendered behind via the root
+          // View) shows through on screens that don't paint their own opaque
+          // background. Screens that DO set backgroundColor: bgPrimary keep
+          // it as-is — c'est un choix par écran. Le bg opaque global est
+          // porté par le View root (rootStyles.root).
+          contentStyle: { backgroundColor: "transparent" },
           animation: "fade",
         }}
       >
