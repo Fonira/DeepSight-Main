@@ -1962,9 +1962,26 @@ export const voiceApi = {
     return request("/api/voice/quota");
   },
 
+  /**
+   * Crée une session vocale ElevenLabs.
+   *
+   * Spec #3 — `summary_id` est optionnel pour le mode `companion` (chat libre,
+   * sans vidéo de référence). Le backend route alors vers l'agent companion qui
+   * utilise systématiquement web_search pour ancrer ses réponses.
+   *
+   * Surcharge legacy : `createSession(summaryId, language)` est conservée pour
+   * la rétro-compat avec les call-sites existants qui n'ont pas encore migré.
+   */
   async createSession(
-    summaryId: number,
-    language: string = "fr",
+    arg1:
+      | number
+      | {
+          summary_id?: number;
+          agent_type?: "explorer" | "companion" | "debate_moderator";
+          language?: string;
+          debate_id?: number;
+        },
+    legacyLanguage?: string,
   ): Promise<{
     session_id: string;
     signed_url: string;
@@ -1975,9 +1992,46 @@ export const voiceApi = {
     quota_remaining_minutes: number;
     max_session_minutes: number;
   }> {
-    return request("/api/voice/session", {
+    // Rétro-compat : appel positionnel `createSession(42, "fr")`.
+    if (typeof arg1 === "number") {
+      const body: Record<string, unknown> = {
+        summary_id: arg1,
+        agent_type: "explorer",
+        language: legacyLanguage ?? "fr",
+      };
+      return request("/api/voice/session", { method: "POST", body });
+    }
+
+    // Nouveau format objet.
+    const body: Record<string, unknown> = {
+      agent_type: arg1.agent_type ?? (arg1.summary_id ? "explorer" : "companion"),
+      language: arg1.language ?? "fr",
+    };
+    if (arg1.summary_id !== undefined && arg1.summary_id !== null) {
+      body.summary_id = arg1.summary_id;
+    }
+    if (arg1.debate_id !== undefined && arg1.debate_id !== null) {
+      body.debate_id = arg1.debate_id;
+    }
+    return request("/api/voice/session", { method: "POST", body });
+  },
+
+  /**
+   * Persiste un transcript de conversation vocale dans `chat_messages`
+   * pour la timeline unifiée chat texte ↔ voix (Spec #1 backend).
+   *
+   * Best-effort : les call-sites doivent fire-and-forget (catch silencieux)
+   * pour ne pas bloquer la conversation en cours si le réseau hoquette.
+   */
+  async appendTranscript(payload: {
+    voice_session_id: string;
+    speaker: "user" | "agent";
+    content: string;
+    time_in_call_secs: number;
+  }): Promise<{ ok: boolean }> {
+    return request("/api/voice/transcripts/append", {
       method: "POST",
-      body: { summary_id: summaryId, language },
+      body: payload,
     });
   },
 
