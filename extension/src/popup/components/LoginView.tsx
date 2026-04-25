@@ -126,10 +126,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
         />
         <span className="login-platform-sep" />
         <img
-          src={Browser.runtime.getURL("platforms/mistral-logo-white.png")}
-          alt="Mistral AI"
+          src={Browser.runtime.getURL("platforms/mistral-m-orange.svg")}
+          alt="Mistral"
           className="login-platform-logo"
-          style={{ height: 15, width: "auto" }}
+          style={{ height: 18, width: "auto" }}
         />
         <span className="login-platform-sep" />
         <img

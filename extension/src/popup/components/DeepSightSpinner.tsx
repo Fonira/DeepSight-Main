@@ -49,9 +49,9 @@ const PLATFORM_LOGOS: PlatformLogo[] = [
     delay: 0.5,
   },
   {
-    src: "platforms/mistral-logo-white.png",
+    src: "platforms/mistral-m-orange.svg",
     alt: "Mistral",
-    size: 14,
+    size: 16,
     position: { bottom: -8, left: "50%" as unknown as number },
     delay: 1,
   },
