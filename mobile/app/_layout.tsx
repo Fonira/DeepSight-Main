@@ -177,9 +177,27 @@ function RootNavigator() {
     }
   }, [isAuthenticated, isLoading, segments]);
 
+  // ────────────────────────────────────────────────────────────────
+  // Ambient light intensity selon la route active.
+  // - Écrans d'accueil (login + tab home) : "normal" — la lumière fait
+  //   partie de l'identité de la marque, on la garde forte.
+  // - Pages internes (Historique, Étude, Profil, Abo, Analysis detail,
+  //   Chat, etc.) : "minimal" — présence très douce qui ne masque pas
+  //   le contenu de travail (lecture, édition, étude).
+  // useSegments() retourne par exemple ["(auth)", "login"] ou ["(tabs)", "index"].
+  // ────────────────────────────────────────────────────────────────
+  const segsArr = segments as readonly string[];
+  const inAuthGroup = segsArr[0] === "(auth)";
+  const inTabsGroup = segsArr[0] === "(tabs)";
+  const tabName = segsArr[1];
+  // Tab home = pas de second segment OU "index"
+  const isTabHome = inTabsGroup && (tabName == null || tabName === "index");
+  const ambientIntensity: "normal" | "minimal" =
+    inAuthGroup || isTabHome ? "normal" : "minimal";
+
   return (
     <View style={rootStyles.root}>
-      <AmbientLightLayer intensity="normal" />
+      <AmbientLightLayer intensity={ambientIntensity} />
       <StatusBar style="light" backgroundColor={darkColors.bgPrimary} />
       <Stack
         screenOptions={{

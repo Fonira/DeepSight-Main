@@ -35,7 +35,7 @@ import { View, StyleSheet, ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTimeOfDay, AmbientPreset } from "../../hooks/useTimeOfDay";
 
-type Intensity = "soft" | "normal" | "strong";
+type Intensity = "minimal" | "soft" | "normal" | "strong";
 
 interface AmbientLightLayerProps {
   /** Densité de l'effet. Défaut : "normal". */
@@ -43,10 +43,15 @@ interface AmbientLightLayerProps {
 }
 
 // Multiplicateurs d'intensité globaux (par-dessus le preset temporel).
+// "minimal" : présence très subtile pour pages internes (lecture/travail).
+// "soft"    : version atténuée pour pages denses.
+// "normal"  : intensité par défaut (accueil, login).
+// "strong"  : présence renforcée pour écrans hero / marketing.
 const INTENSITY_MUL: Record<
   Intensity,
   { ambient: number; rays: number; stars: number; moon: number }
 > = {
+  minimal: { ambient: 0.3, rays: 0.25, stars: 0.35, moon: 0.4 },
   soft: { ambient: 0.6, rays: 0.55, stars: 0.6, moon: 0.7 },
   normal: { ambient: 1, rays: 1, stars: 1, moon: 1 },
   strong: { ambient: 1.35, rays: 1.4, stars: 1.3, moon: 1.15 },
