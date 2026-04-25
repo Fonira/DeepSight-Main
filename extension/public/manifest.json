@@ -12,7 +12,8 @@
     "tabs",
     "alarms",
     "identity",
-    "clipboardWrite"
+    "clipboardWrite",
+    "sidePanel"
   ],
 
   "host_permissions": [
@@ -23,7 +24,11 @@
     "https://vm.tiktok.com/*",
     "https://m.tiktok.com/*",
     "https://www.deepsightsynthesis.com/*",
-    "https://api.deepsightsynthesis.com/*"
+    "https://api.deepsightsynthesis.com/*",
+    "https://api.elevenlabs.io/*",
+    "wss://api.elevenlabs.io/*",
+    "https://*.elevenlabs.io/*",
+    "wss://*.elevenlabs.io/*"
   ],
 
   "background": {
@@ -66,6 +71,23 @@
       "128": "icons/icon128.png"
     },
     "default_title": "DeepSight"
+  },
+
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+D"
+      },
+      "description": "Open DeepSight popup"
+    }
+  },
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.deepsightsynthesis.com https://api.elevenlabs.io wss://api.elevenlabs.io https://*.elevenlabs.io wss://*.elevenlabs.io"
   },
 
   "icons": {
