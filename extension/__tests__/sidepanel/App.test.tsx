@@ -1,13 +1,13 @@
 /**
- * Tests — Popup principal (App.tsx)
- * Fichier source : src/popup/App.tsx
+ * Tests — SidePanel principal (App.tsx)
+ * Fichier source : src/sidepanel/App.tsx
  */
 
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { resetChromeMocks } from "../setup/chrome-api-mock";
-import { App } from "../../src/popup/App";
+import { App } from "../../src/sidepanel/App";
 
 // Mock useTranslation to avoid chrome.storage.sync dependency in tests
 jest.mock("../../src/i18n/useTranslation", () => ({
