@@ -37,7 +37,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Mic,
-  Phone,
   Keyboard,
 } from "lucide-react";
 import {
@@ -67,6 +66,7 @@ import {
   type VoiceOverlayMessage,
 } from "../components/voice/VoiceOverlay";
 import { useVoiceEnabled } from "../components/voice/hooks/useVoiceEnabled";
+import { VoiceCallButton } from "../components/voice/VoiceCallButton";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -271,15 +271,11 @@ const ChatPage: React.FC = () => {
   }, [messages]);
 
   // ── Detect manual scroll up to disable auto-scroll ──
-  const handleScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      const el = e.currentTarget;
-      const distanceFromBottom =
-        el.scrollHeight - el.scrollTop - el.clientHeight;
-      userScrolledUpRef.current = distanceFromBottom > 80;
-    },
-    [],
-  );
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    userScrolledUpRef.current = distanceFromBottom > 80;
+  }, []);
 
   // ── Select analysis ──
   const handleSelectAnalysis = (analysis: Summary) => {
@@ -354,7 +350,7 @@ const ChatPage: React.FC = () => {
         content: message,
         source: voiceActive ? "voice_user" : "text",
         voice_session_id: voiceActive
-          ? voiceController?.voiceSessionId ?? null
+          ? (voiceController?.voiceSessionId ?? null)
           : undefined,
         timestamp: Date.now(),
       };
@@ -769,32 +765,16 @@ const ChatPage: React.FC = () => {
             </div>
           )}
 
-          {/* 🎙️ Spec #5a — Voice call header button */}
+          {/* 🎙️ Spec #5a — Voice call header button (bigger, ElevenLabs branded) */}
           {voiceEnabled && (
-            <button
-              type="button"
+            <VoiceCallButton
+              variant="header"
+              active={voiceOverlayOpen}
               onClick={() => setVoiceOverlayOpen((v) => !v)}
-              aria-pressed={voiceOverlayOpen}
-              aria-label={voiceOverlayOpen ? t.endCall : t.callButton}
-              data-testid="chat-page-voice-toggle"
-              className={`flex-shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors border ${
-                voiceOverlayOpen
-                  ? "bg-violet-500/15 border-violet-500/35 text-violet-200"
-                  : "bg-white/[0.04] border-white/[0.06] text-white/55 hover:text-white/85 hover:border-white/[0.12]"
-              }`}
-            >
-              {voiceOverlayOpen ? (
-                <>
-                  <Phone className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{t.endCall}</span>
-                </>
-              ) : (
-                <>
-                  <Mic className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{t.callButton}</span>
-                </>
-              )}
-            </button>
+              label={t.callButton}
+              endLabel={t.endCall}
+              testId="chat-page-voice-toggle"
+            />
           )}
         </header>
 
