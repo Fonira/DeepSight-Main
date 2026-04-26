@@ -4,7 +4,6 @@ import Browser from "../utils/browser-polyfill";
 import { LoginView } from "./views/LoginView";
 import { MainView } from "./views/MainView";
 import { DeepSightSpinner } from "./shared/DeepSightSpinner";
-import MicroDoodleBackground from "./shared/MicroDoodleBackground";
 
 type ViewName = "loading" | "login" | "main";
 
@@ -133,19 +132,8 @@ export const App: React.FC = () => {
     setToast({ message: msg, type: "error" });
   }, []);
 
-  function getCurrentVariant() {
-    if (view === "loading") return "default";
-    if (view === "login") return "default";
-    if (view === "main") return "AI";
-    return "default";
-  }
-
   return (
-    <div
-      className="app-container noise-overlay ambient-glow"
-      style={{ position: "relative" }}
-    >
-      <MicroDoodleBackground variant={getCurrentVariant()} />
+    <div className="app-container" style={{ position: "relative" }}>
       <div style={{ position: "relative", zIndex: 1 }}>
         {/* Toast notification */}
         {toast && (

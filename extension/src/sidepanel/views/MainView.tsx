@@ -25,7 +25,7 @@ import { SynthesisView } from "../shared/SynthesisView";
 import { ChatView } from "./ChatView";
 import { PromoBanner } from "../components/PromoBanner";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
-import { DoodleIcon } from "../shared/doodles/DoodleIcon";
+import { BeamCard } from "../shared/BeamCard";
 import { useTranslation } from "../../i18n/useTranslation";
 
 interface MainViewProps {
@@ -290,89 +290,74 @@ export const MainView: React.FC<MainViewProps> = ({
       ? `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`
       : null;
 
+  /*
+    V3 layout reserves bottom-right ~76x76px for the parallel session's
+    <SunflowerLayer /> mascot (ambient-lighting-v3 PR). Do not place
+    floating elements (FAB, voice button, etc.) in that corner.
+  */
   return (
-    <div className="ds-app">
-      <div className="ds-app-scroll ds-stagger">
+    <div className="v3-app">
+      <div className="v3-app-scroll v3-stagger">
         {/* ── Hero header ────────────────────────────────────────── */}
-        <div className="ds-hero">
-          <div className="ds-hero-spinner">
-            <DeepSightSpinner size="sm" speed="slow" />
-          </div>
-          <h1 className="ds-hero-title">DeepSight</h1>
-          <div className="ds-hero-actions">
-            <span
-              className={`ds-plan-chip ${
-                userPlanId === "pro" || userPlanId === "expert"
-                  ? "ds-plan-chip-pro"
-                  : ""
-              }`}
-            >
-              {planLabel}
-            </span>
+        <div className="v3-hero">
+          <span className="v3-brand">DeepSight</span>
+          <span className={`v3-plan-chip${isFree ? " v3-plan-chip-free" : ""}`}>
+            {planLabel}
+          </span>
+          <button
+            className="v3-icon-btn"
+            onClick={() => Browser.tabs.create({ url: WEBAPP_URL })}
+            title="Ouvrir DeepSight"
+            aria-label="Ouvrir DeepSight"
+          >
+            <ExternalLinkIcon size={13} />
+          </button>
+          {isGuest ? (
             <button
-              className="ds-icon-btn"
-              onClick={() => Browser.tabs.create({ url: WEBAPP_URL })}
-              title="Ouvrir DeepSight"
-              aria-label="Ouvrir DeepSight"
+              className="v3-text-link"
+              onClick={onLoginRedirect}
+              aria-label={t.common.login}
             >
-              <ExternalLinkIcon size={13} />
+              {t.common.login}
             </button>
-            {isGuest ? (
-              <button
-                className="ds-button-ghost"
-                onClick={onLoginRedirect}
-                aria-label={t.common.login}
-              >
-                {t.common.login}
-              </button>
-            ) : (
-              <button
-                className="ds-icon-btn ds-icon-btn-danger"
-                onClick={onLogout}
-                title={t.common.logout}
-                aria-label={t.common.logout}
-              >
-                <LogoutIcon size={14} />
-              </button>
-            )}
-          </div>
+          ) : (
+            <button
+              className="v3-icon-btn"
+              onClick={onLogout}
+              title={t.common.logout}
+              aria-label={t.common.logout}
+            >
+              <LogoutIcon size={14} />
+            </button>
+          )}
         </div>
 
-        {/* ── User stats strip (quota + credits low) ─────────────── */}
+        {/* ── Quota strip ────────────────────────────────────────── */}
         {!isGuest && user && (
-          <div
-            style={{
-              padding: "0 18px 14px",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="v3-quota">
             {planInfo ? (
               <span
-                className={`ds-quota-strip ${quotaWarning ? "warning" : ""}`}
+                className={`v3-quota-item${quotaWarning ? " warning" : ""}`}
               >
-                <DoodleIcon name="lightning" size={11} />
                 {planInfo.analyses_this_month}/{planInfo.monthly_analyses}{" "}
                 {t.common.analyses}
               </span>
             ) : (
-              <span className="ds-quota-strip">
-                <DoodleIcon name="diamond" size={11} />
+              <span className="v3-quota-item">
                 {user.credits} {t.common.credits}
               </span>
             )}
             {creditsLow && (
               <span
-                className={`ds-quota-strip ${creditsCritical ? "warning" : ""}`}
+                className={`v3-quota-item${
+                  creditsCritical ? " critical" : " warning"
+                }`}
                 title={t.credits.remaining.replace(
                   "{count}",
                   String(creditsRemaining),
                 )}
               >
-                {creditsCritical ? "\u{1F6A8}" : "⚠️"} {creditsRemaining}{" "}
-                {t.credits.low}
+                {creditsRemaining} {t.credits.low}
               </span>
             )}
           </div>
@@ -380,12 +365,9 @@ export const MainView: React.FC<MainViewProps> = ({
 
         {/* ── Banners (severity ordered) ─────────────────────────── */}
         {!isGuest && creditsCritical && (
-          <div className="ds-banner error">
-            <span className="ds-banner-icon">
-              <DoodleIcon name="lightning" size={14} />
-            </span>
-            <div className="ds-banner-content">
-              <span className="ds-banner-title">
+          <div className="v3-banner error">
+            <div className="v3-banner-content">
+              <span className="v3-banner-title">
                 {t.credits.critical.replace(
                   "{count}",
                   String(creditsRemaining),
@@ -393,7 +375,7 @@ export const MainView: React.FC<MainViewProps> = ({
               </span>
             </div>
             <a
-              className="ds-banner-cta"
+              className="v3-banner-cta"
               href={`${WEBAPP_URL}/upgrade`}
               onClick={(e) => {
                 e.preventDefault();
@@ -406,31 +388,28 @@ export const MainView: React.FC<MainViewProps> = ({
         )}
 
         {isGuest && (
-          <div className="ds-banner cyan">
-            <span className="ds-banner-icon">
-              <DoodleIcon name="sparkle4pt" size={14} />
-            </span>
-            <div className="ds-banner-content">
-              <span className="ds-banner-subtitle">{t.guest.banner}</span>
+          <div className="v3-banner">
+            <div className="v3-banner-content">
+              <span className="v3-banner-subtitle">{t.guest.banner}</span>
             </div>
           </div>
         )}
 
         {showYtBanner && (
-          <div className="ds-banner">
+          <div className="v3-banner">
             <img
               src={Browser.runtime.getURL("platforms/youtube-icon-red.png")}
               alt="YouTube"
               style={{ height: 16, width: "auto", flexShrink: 0 }}
             />
-            <div className="ds-banner-content">
-              <span className="ds-banner-title">{t.ytRecommend.title}</span>
-              <span className="ds-banner-subtitle">
+            <div className="v3-banner-content">
+              <span className="v3-banner-title">{t.ytRecommend.title}</span>
+              <span className="v3-banner-subtitle">
                 {t.ytRecommend.subtitle}
               </span>
             </div>
             <button
-              className="ds-banner-dismiss"
+              className="v3-banner-dismiss"
               onClick={dismissYtBanner}
               title={t.ytRecommend.dismiss}
               aria-label={t.ytRecommend.dismiss}
@@ -440,68 +419,20 @@ export const MainView: React.FC<MainViewProps> = ({
           </div>
         )}
 
-        {/* ── Video detection / empty state ──────────────────────── */}
-        {video ? (
-          <div className="ds-video-card">
-            {thumbSrc ? (
-              <img
-                src={thumbSrc}
-                alt=""
-                className="ds-video-thumb"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                }}
-              />
-            ) : (
-              <div className="ds-video-thumb-fallback">
-                <DoodleIcon
-                  name="waveform"
-                  size={22}
-                  color="rgba(199, 210, 254, 0.7)"
-                />
-              </div>
-            )}
-            <div className="ds-video-info">
-              <span className="ds-video-title">{video.title}</span>
-              <div className="ds-video-meta">
-                <span className="ds-platform-pill">
-                  {isTikTok ? "TikTok" : "YouTube"}
-                </span>
-                <span className="ds-video-live-dot" title="Vidéo détectée" />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="ds-empty-card">
-            <div className="ds-empty-icon">
-              <DoodleIcon
-                name="play"
-                size={20}
-                color="var(--ds-accent-indigo)"
-              />
-            </div>
-            <span className="ds-empty-text">{t.analysis.noVideo}</span>
-          </div>
-        )}
-
         {/* ── Analysis flow (idle / quota / guest exhausted) ─────── */}
         {video && analysis.phase === "idle" && (
           <>
             {!isGuest && isQuotaExceeded ? (
-              <div className="ds-card">
-                <DoodleIcon
-                  name="shield"
-                  size={48}
-                  color="var(--ds-accent-violet)"
-                  className="ds-card-doodle"
-                />
-                <div className="ds-card-title">{t.analysis.quotaExceeded}</div>
-                <div className="ds-card-subtitle">
-                  {planInfo?.analyses_this_month}/{planInfo?.monthly_analyses} —{" "}
-                  {t.analysis.quotaExceededText}
+              <BeamCard>
+                <div className="v3-card-eyebrow">
+                  {t.analysis.quotaExceeded}
                 </div>
+                <h3 className="v3-card-title">
+                  {planInfo?.analyses_this_month}/{planInfo?.monthly_analyses}
+                </h3>
+                <p className="v3-card-desc">{t.analysis.quotaExceededText}</p>
                 <button
-                  className="ds-button-secondary"
+                  className="v3-button-secondary"
                   onClick={startQuickChat}
                   disabled={quickChatLoading}
                   style={{ marginBottom: 8 }}
@@ -511,48 +442,36 @@ export const MainView: React.FC<MainViewProps> = ({
                     : t.analysis.quickChatButton}
                 </button>
                 <a
-                  className="ds-button-primary"
+                  className="v3-button-primary"
                   href={`${WEBAPP_URL}/upgrade`}
                   onClick={(e) => {
                     e.preventDefault();
                     Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
                   }}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textDecoration: "none",
-                    boxSizing: "border-box",
-                  }}
                 >
                   {t.common.viewPlans} {"↗"}
                 </a>
-              </div>
+              </BeamCard>
             ) : isGuest && guestUsed ? (
-              <div className="ds-card">
-                <DoodleIcon
-                  name="crown"
-                  size={48}
-                  color="var(--ds-accent-violet)"
-                  className="ds-card-doodle"
-                />
-                <div className="ds-card-title">{t.guest.exhaustedText}</div>
+              <BeamCard>
+                <div className="v3-card-eyebrow">{t.guest.banner}</div>
+                <h3 className="v3-card-title">{t.guest.exhaustedText}</h3>
                 <button
-                  className="ds-button-primary"
+                  className="v3-button-primary"
                   onClick={() =>
                     Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
                   }
                 >
                   {t.common.createAccount} {"↗"}
                 </button>
-              </div>
+              </BeamCard>
             ) : (
               <>
                 {/* Mode + Lang as pill toggles */}
-                <div className="ds-pill-row">
-                  <div className="ds-pill-group">
-                    <span className="ds-pill-label">{t.analysis.mode}</span>
-                    <div className="ds-pill-toggle">
+                <div className="v3-pill-row">
+                  <div className="v3-pill-group">
+                    <span className="v3-pill-label">{t.analysis.mode}</span>
+                    <div className="v3-pill-toggle">
                       <button
                         className={mode === "standard" ? "active" : ""}
                         onClick={() => setMode("standard")}
@@ -567,9 +486,9 @@ export const MainView: React.FC<MainViewProps> = ({
                       </button>
                     </div>
                   </div>
-                  <div className="ds-pill-group">
-                    <span className="ds-pill-label">{t.analysis.language}</span>
-                    <div className="ds-pill-toggle">
+                  <div className="v3-pill-group">
+                    <span className="v3-pill-label">{t.analysis.language}</span>
+                    <div className="v3-pill-toggle">
                       {(["fr", "en", "es", "de"] as const).map((code) => (
                         <button
                           key={code}
@@ -588,39 +507,45 @@ export const MainView: React.FC<MainViewProps> = ({
                   </div>
                 </div>
 
-                {/* Primary analysis card */}
-                <div className="ds-card">
-                  <DoodleIcon
-                    name="sparkles"
-                    size={42}
-                    color="var(--ds-accent-indigo)"
-                    className="ds-card-doodle"
-                  />
-                  <div className="ds-card-title">
-                    {t.analysis.analyzeButton}
-                  </div>
-                  <div className="ds-card-subtitle">{t.mistral.badge}</div>
-                  <button className="ds-button-primary" onClick={startAnalysis}>
+                {/* Primary analysis card — video detected */}
+                <BeamCard>
+                  {thumbSrc ? (
+                    <img
+                      src={thumbSrc}
+                      alt=""
+                      className="v3-video-card-thumb"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div className="v3-video-card-thumb-fallback">
+                      {isTikTok ? "TikTok" : t.analysis.noVideo}
+                    </div>
+                  )}
+                  <span className="v3-platform-pill">
+                    {isTikTok ? "TikTok" : "YouTube"}
+                  </span>
+                  <h3 className="v3-card-title">{video.title}</h3>
+                  <p className="v3-card-desc">{t.mistral.badge}</p>
+                  <button className="v3-button-primary" onClick={startAnalysis}>
                     {t.analysis.analyzeButton} {"→"}
                   </button>
-                </div>
+                </BeamCard>
 
                 {/* Quick Chat secondary card */}
-                <div className="ds-card">
-                  <DoodleIcon
-                    name="lightbulb"
-                    size={42}
-                    color="var(--ds-accent-cyan)"
-                    className="ds-card-doodle"
-                  />
-                  <div className="ds-card-title">
+                <BeamCard>
+                  <div className="v3-card-eyebrow">
                     {t.analysis.quickChatButton}
                   </div>
-                  <div className="ds-card-subtitle">
+                  <h3 className="v3-card-title">
+                    {t.analysis.quickChatButton}
+                  </h3>
+                  <p className="v3-card-desc">
                     {t.analysis.quickChatPreparing}
-                  </div>
+                  </p>
                   <button
-                    className="ds-button-secondary"
+                    className="v3-button-secondary"
                     onClick={startQuickChat}
                     disabled={!video || quickChatLoading}
                   >
@@ -628,51 +553,49 @@ export const MainView: React.FC<MainViewProps> = ({
                       ? t.analysis.quickChatPreparing
                       : t.analysis.quickChatButton}
                   </button>
-                </div>
-
-                {/* Mistral attribution mini-strip */}
-                <div className="ds-mistral-strip">
-                  <span>{"🇫🇷"}</span>
-                  <span>{t.mistral.badge}</span>
-                </div>
+                </BeamCard>
               </>
             )}
           </>
         )}
 
+        {/* ── Empty state (no video detected) ────────────────────── */}
+        {!video && analysis.phase === "idle" && (
+          <BeamCard>
+            <div className="v3-card-eyebrow">{t.analysis.noVideo}</div>
+            <h3 className="v3-card-title">{t.analysis.analyzeButton}</h3>
+            <p className="v3-card-desc">{t.mistral.badge}</p>
+          </BeamCard>
+        )}
+
         {/* ── Analyzing state ────────────────────────────────────── */}
         {analysis.phase === "analyzing" && (
-          <div className="ds-progress-card">
+          <div className="v3-progress-card">
             <DeepSightSpinner size="md" speed="fast" />
-            <div className="ds-progress-bar">
+            <div className="v3-progress-bar">
               <div
-                className="ds-progress-fill"
+                className="v3-progress-fill"
                 style={{ width: `${analysis.progress}%` }}
               />
             </div>
-            <p className="ds-progress-text">{analysis.message}</p>
+            <p className="v3-progress-text">{analysis.message}</p>
           </div>
         )}
 
         {/* ── Error state ────────────────────────────────────────── */}
         {analysis.phase === "error" && (
-          <div className="ds-card">
-            <DoodleIcon
-              name="shield"
-              size={42}
-              color="#fca5a5"
-              className="ds-card-doodle"
-            />
-            <div className="ds-card-title" style={{ color: "#fca5a5" }}>
+          <BeamCard>
+            <div className="v3-card-eyebrow">Erreur</div>
+            <h3 className="v3-card-title" style={{ color: "#fca5a5" }}>
               {analysis.message}
-            </div>
+            </h3>
             <button
-              className="ds-button-primary"
+              className="v3-button-primary"
               onClick={() => setAnalysis({ phase: "idle" })}
             >
               {t.common.retry}
             </button>
-          </div>
+          </BeamCard>
         )}
 
         {/* ── Complete (synthesis) ───────────────────────────────── */}
@@ -686,56 +609,38 @@ export const MainView: React.FC<MainViewProps> = ({
             />
 
             {!isGuest && nextPlan && userPlanId !== "pro" && (
-              <div className="ds-card">
-                <DoodleIcon
-                  name="sparkle4pt"
-                  size={42}
-                  color="var(--ds-accent-violet)"
-                  className="ds-card-doodle"
-                />
-                <div className="ds-card-title">{nextPlan.feature}</div>
-                <div className="ds-card-subtitle">
-                  Plan {nextPlan.label} — {nextPlan.price}/
-                  {language === "fr" ? "mois" : "mo"}
-                </div>
+              <BeamCard>
+                <div className="v3-card-eyebrow">{nextPlan.label}</div>
+                <h3 className="v3-card-title">{nextPlan.feature}</h3>
+                <p className="v3-card-desc">
+                  {nextPlan.price}/{language === "fr" ? "mois" : "mo"}
+                </p>
                 <a
-                  className="ds-button-primary"
+                  className="v3-button-primary"
                   href={`${WEBAPP_URL}/upgrade`}
                   onClick={(e) => {
                     e.preventDefault();
                     Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
                   }}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textDecoration: "none",
-                    boxSizing: "border-box",
-                  }}
                 >
                   {t.common.unlock} {"↗"}
                 </a>
-              </div>
+              </BeamCard>
             )}
 
             {isGuest && (
-              <div className="ds-card">
-                <DoodleIcon
-                  name="crown"
-                  size={42}
-                  color="var(--ds-accent-violet)"
-                  className="ds-card-doodle"
-                />
-                <div className="ds-card-subtitle">{t.guest.exhaustedText}</div>
+              <BeamCard>
+                <div className="v3-card-eyebrow">{t.guest.banner}</div>
+                <p className="v3-card-desc">{t.guest.exhaustedText}</p>
                 <button
-                  className="ds-button-primary"
+                  className="v3-button-primary"
                   onClick={() =>
                     Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
                   }
                 >
                   {t.common.createAccount} {"↗"}
                 </button>
-              </div>
+              </BeamCard>
             )}
           </>
         )}
@@ -743,53 +648,39 @@ export const MainView: React.FC<MainViewProps> = ({
         {/* ── Recents ────────────────────────────────────────────── */}
         {!isGuest && analysis.phase === "idle" && recentAnalyses.length > 0 && (
           <>
-            <h3 className="ds-section-title">
-              <DoodleIcon name="book" size={11} />
-              {t.analysis.recent}
-            </h3>
-            <div className="ds-recent-list">
+            <h3 className="v3-section-title">{t.analysis.recent}</h3>
+            <ul className="v3-recents-list">
               {recentAnalyses.slice(0, 5).map((item) => (
-                <a
-                  key={item.videoId}
-                  href={`${WEBAPP_URL}/summary/${item.summaryId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="ds-recent-item"
-                >
-                  {item.platform === "tiktok" ? (
-                    <div className="ds-recent-thumb-fallback">
-                      <DoodleIcon
-                        name="waveform"
-                        size={16}
-                        color="rgba(199, 210, 254, 0.7)"
+                <li key={item.videoId}>
+                  <a
+                    href={`${WEBAPP_URL}/summary/${item.summaryId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="v3-recent-item"
+                  >
+                    {item.platform === "tiktok" ? (
+                      <div className="v3-recent-thumb-fallback">TT</div>
+                    ) : (
+                      <img
+                        src={getThumbnailUrl(item.videoId, "youtube") || ""}
+                        alt=""
+                        loading="lazy"
+                        className="v3-recent-thumb"
                       />
+                    )}
+                    <div className="v3-recent-meta">
+                      <div className="v3-recent-title">{item.title}</div>
                     </div>
-                  ) : (
-                    <img
-                      src={getThumbnailUrl(item.videoId, "youtube") || ""}
-                      alt=""
-                      loading="lazy"
-                      className="ds-recent-thumb"
-                    />
-                  )}
-                  <div className="ds-recent-meta">
-                    <div className="ds-recent-title">{item.title}</div>
-                  </div>
-                  <span className="ds-recent-chevron">{"›"}</span>
-                </a>
+                    <span className="v3-recent-chevron">{"›"}</span>
+                  </a>
+                </li>
               ))}
-            </div>
+            </ul>
           </>
         )}
 
         {/* ── Footer (Mistral attribution) ───────────────────────── */}
-        <div className="ds-footer">
-          <DoodleIcon
-            name="sparkle4pt"
-            size={12}
-            color="var(--ds-accent-indigo)"
-            className="ds-footer-doodle"
-          />
+        <div className="v3-footer">
           <span>{t.mistral.badge}</span>
         </div>
       </div>
