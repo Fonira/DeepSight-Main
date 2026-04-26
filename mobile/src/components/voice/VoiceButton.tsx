@@ -11,6 +11,13 @@
  * utilisateur — "le bouton jaune avec micro") mais on intercepte le clic
  * pour afficher un Alert « Bientôt disponible ». Quand le backend exposera
  * /api/voice/livekit-token, il suffira de flipper VOICE_CHAT_BACKEND_READY.
+ *
+ * Spec #3 (Mobile Library + Study chat) :
+ *   - `summaryId` devient optionnel (mode `companion` sans vidéo de référence).
+ *   - `agentType` paramètre l'agent backend (`explorer` par défaut si summaryId
+ *     présent, sinon `companion`).
+ *   - `bottomOffset` permet aux écrans de positionner le FAB selon le contexte
+ *     (Library / Study chat ne portent pas d'ActionBar, donc offset plus petit).
  */
 
 import React, { useCallback } from "react";
@@ -30,9 +37,26 @@ import { useVoiceChatGate } from "../../contexts/PlanContext";
 import { palette } from "../../theme/colors";
 import { shadows } from "../../theme/shadows";
 
+export type VoiceAgentType = "explorer" | "companion" | "debate_moderator";
+
 interface VoiceButtonProps {
-  summaryId: string;
+  /** ID de l'analyse vidéo. Optionnel pour le mode `companion` (chat libre). */
+  summaryId?: string;
+  /** Titre affiché dans les a11y labels. */
   videoTitle: string;
+  /**
+   * Type d'agent ElevenLabs à utiliser :
+   *   - `explorer` (default si summaryId présent) — ancré sur la vidéo.
+   *   - `companion` (default si summaryId absent) — chat libre, web search.
+   *   - `debate_moderator` — réservé pages debate.
+   */
+  agentType?: VoiceAgentType;
+  /**
+   * Override du calcul `bottom` du FAB. Utilisé par les écrans qui n'ont pas
+   * d'ActionBar (Library, Study chat) ou qui ont un layout custom.
+   * Default = TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + FAB_GAP + insets.bottom.
+   */
+  bottomOffset?: number;
   onSessionStart?: () => void;
   disabled?: boolean;
 }
@@ -61,14 +85,16 @@ const LOGO_SOURCE = require("../../../assets/images/deepsight-logo.png");
 export const VoiceButton: React.FC<VoiceButtonProps> = ({
   summaryId: _summaryId,
   videoTitle,
+  agentType: _agentType,
+  bottomOffset,
   onSessionStart,
   disabled = false,
 }) => {
   useTheme();
   const { enabled, requiresUpgrade } = useVoiceChatGate();
   const insets = useSafeAreaInsets();
-  const bottomOffset =
-    TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + FAB_GAP + insets.bottom;
+  const computedBottom =
+    bottomOffset ?? TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + FAB_GAP + insets.bottom;
 
   const ringScale = useSharedValue(1);
   const ringOpacity = useSharedValue(0.5);
@@ -148,7 +174,7 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
 
   return (
     <View
-      style={[styles.container, { bottom: bottomOffset }]}
+      style={[styles.container, { bottom: computedBottom }]}
       pointerEvents={disabled ? "none" : "auto"}
     >
       {enabled && !disabled && (

@@ -36,9 +36,13 @@ import { fontFamily, fontSize, textStyles } from "@/theme/typography";
 import { palette } from "@/theme/colors";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
 import { DeepSightSpinner } from "@/components/ui/DeepSightSpinner";
+import { VoiceButton } from "@/components/voice/VoiceButton";
 import type { AnalysisSummary } from "@/types";
 
 type SubTab = "chat" | "reviser";
+
+const TAB_BAR_HEIGHT = 56;
+const FAB_GAP = 16;
 
 export default function StudyScreen() {
   const insets = useSafeAreaInsets();
@@ -678,6 +682,14 @@ export default function StudyScreen() {
           </>
         )}
       </ScrollView>
+
+      {activeSubTab === "chat" && (
+        <VoiceButton
+          agentType="companion"
+          videoTitle="Discussion libre"
+          bottomOffset={TAB_BAR_HEIGHT + insets.bottom + FAB_GAP}
+        />
+      )}
     </View>
   );
 }

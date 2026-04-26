@@ -62,9 +62,11 @@ jest.mock("@elevenlabs/react-native", () => ({
 
 // Mock voiceApi
 const mockCreateSession = jest.fn();
+const mockAppendTranscript = jest.fn();
 jest.mock("../../../services/api", () => ({
   voiceApi: {
     createSession: (...args: unknown[]) => mockCreateSession(...args),
+    appendTranscript: (...args: unknown[]) => mockAppendTranscript(...args),
     getQuota: jest.fn(),
     getHistory: jest.fn(),
     getTranscript: jest.fn(),
@@ -112,6 +114,7 @@ describe("useVoiceChat", () => {
 
     // Default: session created OK
     mockCreateSession.mockResolvedValue(defaultSessionResponse);
+    mockAppendTranscript.mockResolvedValue({ ok: true });
 
     // Default: startSession resolves
     mockStartSession.mockResolvedValue(undefined);
@@ -167,7 +170,9 @@ describe("useVoiceChat", () => {
       await result.current.start();
     });
 
-    expect(mockCreateSession).toHaveBeenCalledWith(42, "fr");
+    expect(mockCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({ summary_id: 42, language: "fr" }),
+    );
   });
 
   it("démarre la session ElevenLabs avec le conversation_token LiveKit du backend", async () => {
@@ -236,7 +241,7 @@ describe("useVoiceChat", () => {
     expect(result.current.error).toContain("connexion internet");
   });
 
-  it("refuse de démarrer si summaryId invalide", async () => {
+  it("refuse de démarrer si summaryId invalide (NaN explicite)", async () => {
     const { result } = renderHook(() =>
       useVoiceChat({ summaryId: "not-a-number" }),
     );
@@ -245,6 +250,8 @@ describe("useVoiceChat", () => {
       await result.current.start();
     });
 
+    // summaryId fourni mais non parseable → erreur ; sans summaryId du tout
+    // → mode companion, c'est OK. Ici on teste l'invalidité explicite.
     expect(result.current.status).toBe("error");
     expect(mockCreateSession).not.toHaveBeenCalled();
   });
@@ -393,5 +400,214 @@ describe("useVoiceChat", () => {
 
     // Should only have called createSession once
     expect(mockCreateSession).toHaveBeenCalledTimes(1);
+  });
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Spec #3 — agent_type, summaryId optionnel, sync bidir transcripts
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe("Spec #3 — agent_type & summaryId optionnel", () => {
+    it("transmet agent_type=companion sans summaryId au backend", async () => {
+      const { result } = renderHook(() =>
+        useVoiceChat({ agentType: "companion" }),
+      );
+
+      await act(async () => {
+        await result.current.start();
+      });
+
+      expect(mockCreateSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agent_type: "companion",
+          summary_id: undefined,
+          language: "fr",
+        }),
+      );
+    });
+
+    it("transmet agent_type=explorer + summary_id quand summaryId fourni", async () => {
+      const { result } = renderHook(() =>
+        useVoiceChat({ summaryId: "42", agentType: "explorer" }),
+      );
+
+      await act(async () => {
+        await result.current.start();
+      });
+
+      expect(mockCreateSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agent_type: "explorer",
+          summary_id: 42,
+          language: "fr",
+        }),
+      );
+    });
+
+    it("démarre en mode companion sans summaryId (FAB Library)", async () => {
+      const { result } = renderHook(() =>
+        useVoiceChat({ agentType: "companion" }),
+      );
+
+      await act(async () => {
+        await result.current.start();
+      });
+
+      // Pas de summaryId → ne doit PAS échouer
+      expect(result.current.status).not.toBe("error");
+      expect(mockCreateSession).toHaveBeenCalled();
+    });
+
+    it("default agent_type = explorer si summaryId présent", async () => {
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+      await act(async () => {
+        await result.current.start();
+      });
+
+      expect(mockCreateSession).toHaveBeenCalledWith(
+        expect.objectContaining({ agent_type: "explorer", summary_id: 42 }),
+      );
+    });
+
+    it("default agent_type = companion si summaryId absent", async () => {
+      const { result } = renderHook(() => useVoiceChat({}));
+
+      await act(async () => {
+        await result.current.start();
+      });
+
+      expect(mockCreateSession).toHaveBeenCalledWith(
+        expect.objectContaining({ agent_type: "companion" }),
+      );
+    });
+  });
+
+  describe("Spec #3 — sync bidir onMessage → appendTranscript", () => {
+    it("appelle voiceApi.appendTranscript après réception d'un message user", async () => {
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+      await act(async () => {
+        await result.current.start();
+      });
+
+      mockAppendTranscript.mockClear();
+
+      // Simulate user transcript from SDK
+      await act(async () => {
+        capturedCallbacks.onMessage?.({
+          message: "Bonjour assistant",
+          source: "user",
+        });
+      });
+
+      // Wait for async transcript append
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(mockAppendTranscript).toHaveBeenCalledWith(
+        expect.objectContaining({
+          voice_session_id: "sess_123",
+          speaker: "user",
+          content: "Bonjour assistant",
+          time_in_call_secs: expect.any(Number),
+        }),
+      );
+    });
+
+    it("appelle voiceApi.appendTranscript après réception d'un message agent", async () => {
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+      await act(async () => {
+        await result.current.start();
+      });
+
+      mockAppendTranscript.mockClear();
+
+      await act(async () => {
+        capturedCallbacks.onMessage?.({
+          message: "Bonjour, comment puis-je vous aider ?",
+          source: "ai",
+        });
+      });
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(mockAppendTranscript).toHaveBeenCalledWith(
+        expect.objectContaining({
+          voice_session_id: "sess_123",
+          speaker: "agent",
+          content: "Bonjour, comment puis-je vous aider ?",
+          time_in_call_secs: expect.any(Number),
+        }),
+      );
+    });
+
+    it("ne crash pas si appendTranscript échoue (fire-and-forget)", async () => {
+      mockAppendTranscript.mockRejectedValueOnce(new Error("network down"));
+
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+      await act(async () => {
+        await result.current.start();
+      });
+
+      await act(async () => {
+        capturedCallbacks.onMessage?.({
+          message: "Test",
+          source: "user",
+        });
+        await Promise.resolve();
+      });
+
+      // L'état du hook ne doit PAS basculer en erreur juste parce que
+      // l'append a échoué — c'est bestbestebest-effort.
+      expect(result.current.status).not.toBe("error");
+    });
+
+    it("n'envoie pas appendTranscript si pas de session_id (avant start)", async () => {
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+      // Pas de start → pas de session
+      await act(async () => {
+        capturedCallbacks.onMessage?.({
+          message: "Test",
+          source: "user",
+        });
+        await Promise.resolve();
+      });
+
+      expect(mockAppendTranscript).not.toHaveBeenCalled();
+      expect(result.current.messages).toHaveLength(1); // mais le message local est bien stocké
+    });
+  });
+
+  describe("Spec #3 — sendUserMessage (injection chat texte → voix)", () => {
+    it("expose sendUserMessage qui appelle conversation.sendUserMessage", async () => {
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+      await act(async () => {
+        await result.current.start();
+      });
+
+      act(() => {
+        result.current.sendUserMessage?.("Question texte injectée");
+      });
+
+      expect(mockConversation.sendUserMessage).toHaveBeenCalledWith(
+        "Question texte injectée",
+      );
+    });
+
+    it("sendUserMessage est no-op si pas démarré", () => {
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+      // Pas de start → pas de session → no-op
+      expect(() => {
+        result.current.sendUserMessage?.("Texte");
+      }).not.toThrow();
+    });
   });
 });

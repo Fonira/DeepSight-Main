@@ -4,6 +4,15 @@
  *
  * Utilise @elevenlabs/react-native (useConversation) pour la gestion native audio.
  * Le SDK gère automatiquement : WebSocket, audio input/output, VAD, etc.
+ *
+ * Spec #3 (Mobile Library + Study chat) :
+ *   - `summaryId` optionnel : si absent → mode `companion` (chat libre).
+ *   - `agentType` paramétrable : explorer (default si summaryId présent) /
+ *     companion (default sinon) / debate_moderator.
+ *   - `onMessage` callback étendu : capture les transcripts et les persiste
+ *     via `voiceApi.appendTranscript` pour la timeline unifiée chat ↔ voix.
+ *   - `sendUserMessage(text)` : injection texte → voix (l'utilisateur tape
+ *     pendant que la conversation vocale tourne, l'agent répond à l'oral).
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
@@ -17,8 +26,20 @@ import { voiceApi } from "../../services/api";
 // Types
 // ═══════════════════════════════════════════════════════════════════════════════
 
+type VoiceAgentType = "explorer" | "companion" | "debate_moderator";
+
 interface UseVoiceChatOptions {
-  summaryId: string;
+  /**
+   * ID de l'analyse vidéo (string car typé via expo-router params).
+   * Optionnel : si absent, l'agent passe en mode `companion` (chat libre).
+   */
+  summaryId?: string;
+  /**
+   * Type d'agent backend. Default :
+   *   - `explorer` si summaryId présent
+   *   - `companion` sinon
+   */
+  agentType?: VoiceAgentType;
   onError?: (error: string) => void;
 }
 
@@ -54,6 +75,11 @@ interface UseVoiceChatReturn {
   stop: () => Promise<void>;
   /** Toggle mute micro */
   toggleMute: () => void;
+  /**
+   * Spec #3 — Injecte un message texte dans la conversation vocale en cours.
+   * L'agent répond à l'oral. No-op si pas de session active.
+   */
+  sendUserMessage: (text: string) => void;
   /** Status de la connexion */
   status: VoiceChatStatus;
   /** L'IA est en train de parler */
@@ -94,10 +120,10 @@ const ERROR_MESSAGES = {
 // Hook
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export function useVoiceChat({
-  summaryId,
-  onError,
-}: UseVoiceChatOptions): UseVoiceChatReturn {
+export function useVoiceChat(
+  options: UseVoiceChatOptions = {},
+): UseVoiceChatReturn {
+  const { summaryId, agentType, onError } = options;
   const [status, setStatus] = useState<VoiceChatStatus>("idle");
   const [isMuted, setIsMuted] = useState(false);
   const [messages, setMessages] = useState<VoiceChatMessage[]>([]);
@@ -110,6 +136,10 @@ export function useVoiceChat({
   const maxSecondsRef = useRef<number>(0);
   const isMountedRef = useRef(true);
   const isActiveRef = useRef(false);
+
+  // Spec #3 — refs pour la persistence des transcripts
+  const sessionIdRef = useRef<string | null>(null);
+  const sessionStartedAtRef = useRef<number>(0);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Helpers
@@ -155,6 +185,26 @@ export function useVoiceChat({
           ...prev,
           { text: message.message, source: message.source },
         ]);
+      }
+
+      // Spec #3 — persiste le transcript pour la timeline unifiée chat ↔ voix.
+      // Best-effort : fire-and-forget, on ne bloque pas la conversation si
+      // l'API hoquette. Ne s'exécute que si une session est active.
+      const sessionId = sessionIdRef.current;
+      const startedAt = sessionStartedAtRef.current;
+      if (sessionId && startedAt) {
+        const timeInCallSecs = (Date.now() - startedAt) / 1000;
+        voiceApi
+          .appendTranscript({
+            voice_session_id: sessionId,
+            speaker: message.source === "user" ? "user" : "agent",
+            content: message.message,
+            time_in_call_secs: timeInCallSecs,
+          })
+          .catch(() => {
+            // Silent fail — le webhook reconciliation backend récupérera
+            // les transcripts manqués post-call (cf. Spec #1f).
+          });
       }
     },
     onError: (err: Error | string) => {
@@ -208,6 +258,11 @@ export function useVoiceChat({
       setIsMuted(false);
       setElapsedSeconds(0);
     }
+
+    // Spec #3 — purge les refs de session pour empêcher les transcripts
+    // tardifs (post-stop) d'être attribués à la session précédente.
+    sessionIdRef.current = null;
+    sessionStartedAtRef.current = 0;
   }, [stopTimer, conversation]);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -251,15 +306,31 @@ export function useVoiceChat({
     // 2. Créer la session via notre API backend
     let sessionData: SessionResponse;
     try {
-      const numericId = parseInt(summaryId, 10);
-      if (isNaN(numericId)) {
-        reportError(ERROR_MESSAGES.SESSION_FAILED);
-        return;
+      // summaryId optionnel : présent → mode explorer, absent → mode companion
+      let numericId: number | undefined;
+      if (summaryId !== undefined && summaryId !== null && summaryId !== "") {
+        numericId = parseInt(summaryId, 10);
+        if (isNaN(numericId)) {
+          reportError(ERROR_MESSAGES.SESSION_FAILED);
+          return;
+        }
       }
 
-      sessionData = await voiceApi.createSession(numericId, "fr");
+      const resolvedAgentType: VoiceAgentType =
+        agentType ?? (numericId !== undefined ? "explorer" : "companion");
+
+      sessionData = (await voiceApi.createSession({
+        summary_id: numericId,
+        agent_type: resolvedAgentType,
+        language: "fr",
+      })) as SessionResponse;
       setRemainingMinutes(sessionData.quota_remaining_minutes);
       maxSecondsRef.current = sessionData.max_session_minutes * 60;
+
+      // Spec #3 — mémorise session_id et timestamp de démarrage pour
+      // calculer time_in_call_secs lors de chaque appendTranscript.
+      sessionIdRef.current = sessionData.session_id;
+      sessionStartedAtRef.current = Date.now();
     } catch (err: unknown) {
       // Vérifier si c'est une erreur de quota (403/429)
       const apiError = err as { status?: number; message?: string };
@@ -327,7 +398,35 @@ export function useVoiceChat({
     } catch {
       reportError(ERROR_MESSAGES.SDK_INIT_FAILED);
     }
-  }, [status, summaryId, onError, reportError, stop, conversation]);
+  }, [status, summaryId, agentType, onError, reportError, stop, conversation]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // sendUserMessage() — Spec #3 (sync chat texte → voix)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const sendUserMessage = useCallback(
+    (text: string) => {
+      if (!sessionIdRef.current) {
+        // No-op silencieux : si le user tape avant qu'on ait démarré,
+        // le caller doit gérer (start auto, ou fallback chat texte).
+        return;
+      }
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      try {
+        // Le SDK ElevenLabs accepte sendUserMessage(text) pour injecter un
+        // tour conversationnel (le LLM répond comme si l'utilisateur l'avait
+        // dit à l'oral).
+        const conv = conversation as unknown as {
+          sendUserMessage?: (msg: string) => void;
+        };
+        conv.sendUserMessage?.(trimmed);
+      } catch {
+        // SDK pas prêt ou non supporté — silent fail.
+      }
+    },
+    [conversation],
+  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // toggleMute()
@@ -403,6 +502,7 @@ export function useVoiceChat({
     start,
     stop,
     toggleMute,
+    sendUserMessage,
     status,
     isSpeaking: conversation.isSpeaking,
     isMuted,
