@@ -3,8 +3,6 @@ Fun Scoring — Priorise les mots-clés les plus intéressants visuellement.
 Score 0.0–1.0 détermine l'ordre de génération d'images (pas si on génère ou non).
 """
 
-import re
-
 # Base score par catégorie
 CATEGORY_SCORES: dict[str, float] = {
     "cognitive_bias": 0.9,
@@ -28,16 +26,39 @@ CATEGORY_SCORES: dict[str, float] = {
 
 # Mots-clés qui rendent un terme plus "fun" visuellement
 BONUS_PATTERNS = [
-    "effet", "paradox", "biais", "syndrome", "loi de",
-    "illusion", "dilemme", "principe", "théorème", "sophisme",
-    "erreur", "piège", "fallac", "heuristique",
+    "effet",
+    "paradox",
+    "biais",
+    "syndrome",
+    "loi de",
+    "illusion",
+    "dilemme",
+    "principe",
+    "théorème",
+    "sophisme",
+    "erreur",
+    "piège",
+    "fallac",
+    "heuristique",
 ]
 
 # Termes génériques / marques → score minimal
 GENERIC_TERMS = {
-    "youtube", "google", "facebook", "twitter", "instagram",
-    "tiktok", "amazon", "apple", "microsoft", "netflix",
-    "spotify", "wikipedia", "reddit", "linkedin", "snapchat",
+    "youtube",
+    "google",
+    "facebook",
+    "twitter",
+    "instagram",
+    "tiktok",
+    "amazon",
+    "apple",
+    "microsoft",
+    "netflix",
+    "spotify",
+    "wikipedia",
+    "reddit",
+    "linkedin",
+    "snapchat",
 }
 
 

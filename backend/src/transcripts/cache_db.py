@@ -16,7 +16,6 @@ import logging
 from typing import Optional, Tuple
 
 from sqlalchemy import select, delete
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import async_session_maker, TranscriptCache, TranscriptCacheChunk
 
@@ -30,6 +29,7 @@ CHUNK_SIZE = 500_000
 # READ
 # -----------------------------------------------------------------------
 
+
 async def get_cached_transcript(
     video_id: str,
 ) -> Optional[Tuple[str, str, str]]:
@@ -41,9 +41,7 @@ async def get_cached_transcript(
     """
     try:
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(TranscriptCache).where(TranscriptCache.video_id == video_id)
-            )
+            result = await session.execute(select(TranscriptCache).where(TranscriptCache.video_id == video_id))
             entry = result.scalar_one_or_none()
             if not entry:
                 return None
@@ -90,6 +88,7 @@ async def get_cached_transcript(
 # WRITE
 # -----------------------------------------------------------------------
 
+
 async def check_transcript_cached(video_id: str) -> Optional[dict]:
     """
     Check if a transcript is cached and return metadata (without full text).
@@ -97,9 +96,7 @@ async def check_transcript_cached(video_id: str) -> Optional[dict]:
     """
     try:
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(TranscriptCache).where(TranscriptCache.video_id == video_id)
-            )
+            result = await session.execute(select(TranscriptCache).where(TranscriptCache.video_id == video_id))
             entry = result.scalar_one_or_none()
             if not entry:
                 return None
@@ -157,9 +154,7 @@ async def save_transcript_to_cache(
     try:
         async with async_session_maker() as session:
             # Check if entry already exists
-            result = await session.execute(
-                select(TranscriptCache).where(TranscriptCache.video_id == video_id)
-            )
+            result = await session.execute(select(TranscriptCache).where(TranscriptCache.video_id == video_id))
             existing = result.scalar_one_or_none()
 
             # Upsert: keep the longer transcript
@@ -220,20 +215,18 @@ async def save_transcript_to_cache(
                     existing.category = category
 
                 # Delete old chunks and insert new ones
-                await session.execute(
-                    delete(TranscriptCacheChunk).where(
-                        TranscriptCacheChunk.cache_id == existing.id
-                    )
-                )
+                await session.execute(delete(TranscriptCacheChunk).where(TranscriptCacheChunk.cache_id == existing.id))
                 await session.flush()
 
                 for idx, (s_chunk, ts_chunk) in enumerate(zip(simple_chunks, ts_chunks)):
-                    session.add(TranscriptCacheChunk(
-                        cache_id=existing.id,
-                        chunk_index=idx,
-                        transcript_simple=s_chunk,
-                        transcript_timestamped=ts_chunk,
-                    ))
+                    session.add(
+                        TranscriptCacheChunk(
+                            cache_id=existing.id,
+                            chunk_index=idx,
+                            transcript_simple=s_chunk,
+                            transcript_timestamped=ts_chunk,
+                        )
+                    )
             else:
                 # Create new entry
                 entry = TranscriptCache(
@@ -253,12 +246,14 @@ async def save_transcript_to_cache(
                 await session.flush()  # Get entry.id
 
                 for idx, (s_chunk, ts_chunk) in enumerate(zip(simple_chunks, ts_chunks)):
-                    session.add(TranscriptCacheChunk(
-                        cache_id=entry.id,
-                        chunk_index=idx,
-                        transcript_simple=s_chunk,
-                        transcript_timestamped=ts_chunk,
-                    ))
+                    session.add(
+                        TranscriptCacheChunk(
+                            cache_id=entry.id,
+                            chunk_index=idx,
+                            transcript_simple=s_chunk,
+                            transcript_timestamped=ts_chunk,
+                        )
+                    )
 
             await session.commit()
 
@@ -272,6 +267,7 @@ async def save_transcript_to_cache(
             try:
                 import asyncio
                 from search.embedding_service import embed_transcript
+
                 asyncio.create_task(embed_transcript(video_id))
             except ImportError:
                 pass  # Search module not available
@@ -282,6 +278,7 @@ async def save_transcript_to_cache(
             try:
                 import asyncio
                 from transcripts.metadata_service import enrich_metadata
+
                 asyncio.create_task(enrich_metadata(video_id, platform))
             except ImportError:
                 pass  # Metadata service not available
@@ -298,6 +295,7 @@ async def save_transcript_to_cache(
 # -----------------------------------------------------------------------
 # HELPERS
 # -----------------------------------------------------------------------
+
 
 def _split_text(text: Optional[str], chunk_size: int) -> list:
     """
@@ -322,7 +320,7 @@ def _split_text(text: Optional[str], chunk_size: int) -> list:
         # Find the last newline before the chunk boundary
         newline_pos = text.rfind("\n", start, end)
         if newline_pos > start:
-            chunks.append(text[start:newline_pos + 1])
+            chunks.append(text[start : newline_pos + 1])
             start = newline_pos + 1
         else:
             # No newline found, cut at chunk_size

@@ -4,7 +4,7 @@ Tous les envois passent par la queue async avec throttling (email_queue.py).
 """
 
 from typing import Optional
-from core.config import EMAIL_CONFIG, APP_NAME, FRONTEND_URL
+from core.config import APP_NAME, FRONTEND_URL
 
 EMAIL_BASE_STYLE = """
 <style>
@@ -39,6 +39,7 @@ async def send_email(to: str, subject: str, html: str, text: Optional[str] = Non
     All auth emails (verification, reset) use priority=True.
     """
     from services.email_queue import email_queue
+
     return await email_queue.enqueue(
         to=to,
         subject=subject,
@@ -62,13 +63,16 @@ async def send_verification_email(email: str, code: str, username: str) -> bool:
         </div>
         <div class="footer"><p><strong>{APP_NAME}</strong> — Analyse vidéo intelligente</p></div>
     </div></body></html>"""
-    text = f"Bonjour {username},\n\nVotre code de vérification : {code}\n\nCe code expire dans 10 minutes.\n\n— {APP_NAME}"
+    text = (
+        f"Bonjour {username},\n\nVotre code de vérification : {code}\n\nCe code expire dans 10 minutes.\n\n— {APP_NAME}"
+    )
     return await send_email(email, subject, html, text, priority=True)
 
 
 async def send_password_reset_email(email: str, code: str) -> bool:
     """Delegates to EmailService with Jinja2 template."""
     from services.email_service import email_service
+
     reset_url = f"{FRONTEND_URL}/reset-password?code={code}&email={email}"
     return await email_service.send_reset_password(to=email, reset_url=reset_url)
 
@@ -76,4 +80,5 @@ async def send_password_reset_email(email: str, code: str) -> bool:
 async def send_welcome_email(email: str, username: str, plan: str = "free") -> bool:
     """Delegates to EmailService with Jinja2 template."""
     from services.email_service import email_service
+
     return await email_service.send_welcome(to=email, username=username)

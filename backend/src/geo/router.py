@@ -40,10 +40,7 @@ async def score_geo(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    log.info(
-        f"GEO score user={user.id} summary={req.summary_id} "
-        f"score={result.overall_score} grade={result.grade}"
-    )
+    log.info(f"GEO score user={user.id} summary={req.summary_id} score={result.overall_score} grade={result.grade}")
     return result
 
 
@@ -89,10 +86,7 @@ async def benchmark_geo_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    log.info(
-        f"GEO benchmark user={user.id} summary={req.summary_id} "
-        f"rank={result['rank']}/{result['total']}"
-    )
+    log.info(f"GEO benchmark user={user.id} summary={req.summary_id} rank={result['rank']}/{result['total']}")
     return result
 
 
@@ -115,8 +109,5 @@ async def visibility_geo(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    log.info(
-        f"GEO visibility user={user.id} summary={req.summary_id} "
-        f"score={result.get('visibility_score', 'N/A')}"
-    )
+    log.info(f"GEO visibility user={user.id} summary={req.summary_id} score={result.get('visibility_score', 'N/A')}")
     return result

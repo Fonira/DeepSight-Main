@@ -4,15 +4,16 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime, date
+from datetime import datetime
 from enum import IntEnum
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📋 ENUMS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class FSRSRating(IntEnum):
     Again = 1
@@ -31,6 +32,7 @@ class FSRSState(IntEnum):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📥 REQUESTS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class ReviewRequest(BaseModel):
     summary_id: int
@@ -54,6 +56,7 @@ class SessionEndRequest(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📤 RESPONSES
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class ReviewResponse(BaseModel):
     success: bool

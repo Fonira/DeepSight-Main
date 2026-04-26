@@ -15,7 +15,7 @@
 import logging
 import random
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import httpx
 
@@ -51,6 +51,7 @@ CACHE_PREFIX = "trending:tournesol"
 # ═══════════════════════════════════════════════════════════════════════════════
 # Public API
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def get_cached_trending(
     language: str = "fr",
@@ -133,12 +134,15 @@ async def refresh_trending_cache() -> Dict[str, Any]:
                     lang_fetched += len(results)
                     logger.info(
                         "[TRENDING_CACHE] Cached %d results for lang=%s offset=%d",
-                        len(results), lang, offset,
+                        len(results),
+                        lang,
+                        offset,
                     )
                 else:
                     logger.warning(
                         "[TRENDING_CACHE] Empty response for lang=%s offset=%d",
-                        lang, offset,
+                        lang,
+                        offset,
                     )
                 stats["fetched"] += 1
 
@@ -146,7 +150,9 @@ async def refresh_trending_cache() -> Dict[str, Any]:
                 stats["errors"] += 1
                 logger.error(
                     "[TRENDING_CACHE] Error fetching lang=%s offset=%d: %s",
-                    lang, offset, e,
+                    lang,
+                    offset,
+                    e,
                 )
 
         if lang_fetched > 0:
@@ -155,7 +161,10 @@ async def refresh_trending_cache() -> Dict[str, Any]:
     elapsed = time.time() - start
     logger.info(
         "[TRENDING_CACHE] Refresh complete in %.1fs — cached=%d errors=%d languages=%s",
-        elapsed, stats["cached"], stats["errors"], stats["languages"],
+        elapsed,
+        stats["cached"],
+        stats["errors"],
+        stats["languages"],
     )
 
     return stats
@@ -179,9 +188,7 @@ async def get_cache_stats() -> Dict[str, Any]:
                     stats["languages"][lang] = {"results": 0, "buckets": 0, "max_age_s": 0}
                 stats["languages"][lang]["results"] += count
                 stats["languages"][lang]["buckets"] += 1
-                stats["languages"][lang]["max_age_s"] = max(
-                    stats["languages"][lang]["max_age_s"], age
-                )
+                stats["languages"][lang]["max_age_s"] = max(stats["languages"][lang]["max_age_s"], age)
         stats["total_results"] += lang_total
 
     return stats
@@ -190,6 +197,7 @@ async def get_cache_stats() -> Dict[str, Any]:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Internal
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _snap_to_bucket(offset: int) -> int:
     """Snap an offset to the nearest pre-cached bucket."""

@@ -40,10 +40,12 @@ Platform = Literal["youtube", "tiktok"]
 # Lazy imports (core.cache + cache_db may be unavailable in minimal envs)
 # ---------------------------------------------------------------------------
 
+
 def _get_cache_service():
     """Return (cache_service, make_cache_key, transcript_metrics) or (None, None, None)."""
     try:
         from core.cache import cache_service, make_cache_key, transcript_metrics
+
         return cache_service, make_cache_key, transcript_metrics
     except ImportError:
         return None, None, None
@@ -53,6 +55,7 @@ def _get_db_cache():
     """Return (get_cached_transcript, save_transcript_to_cache) or (None, None)."""
     try:
         from transcripts.cache_db import get_cached_transcript, save_transcript_to_cache
+
         return get_cached_transcript, save_transcript_to_cache
     except ImportError:
         return None, None
@@ -61,6 +64,7 @@ def _get_db_cache():
 # ---------------------------------------------------------------------------
 # Service
 # ---------------------------------------------------------------------------
+
 
 class TranscriptCacheService:
     """
@@ -280,17 +284,11 @@ class TranscriptCacheService:
 
         try:
             async with async_session_maker() as session:
-                result = await session.execute(
-                    select(TranscriptCache).where(TranscriptCache.video_id == video_id)
-                )
+                result = await session.execute(select(TranscriptCache).where(TranscriptCache.video_id == video_id))
                 entry = result.scalar_one_or_none()
                 if entry is None:
                     return
-                await session.execute(
-                    delete(TranscriptCacheChunk).where(
-                        TranscriptCacheChunk.cache_id == entry.id
-                    )
-                )
+                await session.execute(delete(TranscriptCacheChunk).where(TranscriptCacheChunk.cache_id == entry.id))
                 await session.delete(entry)
                 await session.commit()
                 logger.info(f"[TRANSCRIPT-CACHE] L2 row deleted for {video_id}")
@@ -308,6 +306,7 @@ transcript_cache = TranscriptCacheService()
 # -----------------------------------------------------------------------------
 # Back-compat convenience functions (tuple-returning, mirror cache_db API)
 # -----------------------------------------------------------------------------
+
 
 async def get_transcript_cached(
     video_id: str,

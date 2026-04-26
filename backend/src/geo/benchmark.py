@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import Summary
 from .scorer import compute_geo_score
-from .schemas import GeoScoreBreakdown
 
 log = logging.getLogger("geo")
 
@@ -28,9 +27,7 @@ async def benchmark_geo(
     triées par score GEO décroissant.
     """
     # Récupérer la vidéo cible
-    result = await db.execute(
-        select(Summary).where(Summary.id == summary_id, Summary.user_id == user_id)
-    )
+    result = await db.execute(select(Summary).where(Summary.id == summary_id, Summary.user_id == user_id))
     target = result.scalar_one_or_none()
     if not target:
         raise ValueError(f"Analyse {summary_id} introuvable")
@@ -67,12 +64,13 @@ async def benchmark_geo(
     # Calculer le score GEO pour chaque vidéo
     def _quick_score(s: Summary) -> dict:
         import json
+
         entities = None
         if s.entities_extracted:
             try:
-                entities = json.loads(s.entities_extracted) if isinstance(
-                    s.entities_extracted, str
-                ) else s.entities_extracted
+                entities = (
+                    json.loads(s.entities_extracted) if isinstance(s.entities_extracted, str) else s.entities_extracted
+                )
             except (json.JSONDecodeError, TypeError):
                 pass
 
@@ -89,9 +87,7 @@ async def benchmark_geo(
             category_confidence=s.category_confidence,
             structured_index=s.structured_index,
             full_digest=s.full_digest,
-            video_upload_date=(
-                s.video_upload_date if hasattr(s, "video_upload_date") else None
-            ),
+            video_upload_date=(s.video_upload_date if hasattr(s, "video_upload_date") else None),
             engagement_rate=s.engagement_rate if hasattr(s, "engagement_rate") else None,
             view_count=s.view_count if hasattr(s, "view_count") else None,
         )

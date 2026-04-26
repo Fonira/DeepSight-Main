@@ -52,15 +52,22 @@ import time
 import contextvars
 
 from core.config import (
-    get_supadata_key, get_groq_key, get_deepgram_key,
-    get_openai_key, get_assemblyai_key, get_elevenlabs_key,
-    get_mistral_key, get_youtube_proxy, TRANSCRIPT_CONFIG
+    get_supadata_key,
+    get_groq_key,
+    get_deepgram_key,
+    get_openai_key,
+    get_assemblyai_key,
+    get_elevenlabs_key,
+    get_mistral_key,
+    get_youtube_proxy,
+    TRANSCRIPT_CONFIG,
 )
 from core.http_client import shared_http_client
 
 # 💾 Cache pour les transcripts (TTL 24h)
 try:
     from core.cache import cache_service, make_cache_key, transcript_metrics
+
     CACHE_AVAILABLE = True
 except ImportError:
     CACHE_AVAILABLE = False
@@ -70,6 +77,7 @@ except ImportError:
 # 💾 DB Cache L2 (persistent, cross-user) — kept for legacy / direct use
 try:
     from transcripts.cache_db import get_cached_transcript, save_transcript_to_cache
+
     DB_CACHE_AVAILABLE = True
 except ImportError:
     DB_CACHE_AVAILABLE = False
@@ -78,6 +86,7 @@ except ImportError:
 # 💾 Unified L1 (Redis) + L2 (DB) transcript cache orchestrator
 try:
     from transcripts.cache import transcript_cache
+
     TRANSCRIPT_CACHE_AVAILABLE = True
 except ImportError:
     TRANSCRIPT_CACHE_AVAILABLE = False
@@ -98,47 +107,47 @@ MAX_CONCURRENT_EXTRACTIONS = int(os.environ.get("MAX_CONCURRENT_EXTRACTIONS", "1
 _extraction_semaphore = asyncio.Semaphore(MAX_CONCURRENT_EXTRACTIONS)
 
 TIMEOUTS = {
-    "supadata": 25,           # 45 → 25 (perf: fail-fast si Supadata lent)
-    "ytapi": 25,              # 15 → 25 (plus de marge)
-    "invidious": 35,          # 20 → 35 (instances lentes)
-    "piped": 35,              # Nouveau - Piped API
-    "ytdlp_subs": 90,         # 60 → 90 (anti-bot delays)
-    "ytdlp_auto": 90,         # 60 → 90 (anti-bot delays)
+    "supadata": 25,  # 45 → 25 (perf: fail-fast si Supadata lent)
+    "ytapi": 25,  # 15 → 25 (plus de marge)
+    "invidious": 35,  # 20 → 35 (instances lentes)
+    "piped": 35,  # Nouveau - Piped API
+    "ytdlp_subs": 90,  # 60 → 90 (anti-bot delays)
+    "ytdlp_auto": 90,  # 60 → 90 (anti-bot delays)
     "whisper_download": 240,  # 180 → 240 (vidéos longues)
-    "whisper_transcribe": 120,# 360 → 120 (perf: fail-fast)
-    "voxtral_stt": 300,       # v7.2 - Mistral Voxtral STT (3h audio max)
-    "openai_whisper": 180,    # 360 → 180 (perf: fail-fast)
-    "deepgram": 300,          # Deepgram Nova-2
-    "assemblyai": 300,        # Nouveau - AssemblyAI
+    "whisper_transcribe": 120,  # 360 → 120 (perf: fail-fast)
+    "voxtral_stt": 300,  # v7.2 - Mistral Voxtral STT (3h audio max)
+    "openai_whisper": 180,  # 360 → 180 (perf: fail-fast)
+    "deepgram": 300,  # Deepgram Nova-2
+    "assemblyai": 300,  # Nouveau - AssemblyAI
     "elevenlabs_scribe": 300,  # ElevenLabs Scribe v2
 }
 
 # ⚡ v7.1: Timeouts réduits pour vidéos courtes (<5 min) — gain ~50% sur fallback
 TIMEOUTS_SHORT = {
-    "supadata": 20,           # 45 → 20 (petite vidéo = réponse rapide)
-    "ytapi": 15,              # 25 → 15
-    "invidious": 20,          # 35 → 20
-    "piped": 20,              # 35 → 20
-    "ytdlp_subs": 45,         # 90 → 45
-    "ytdlp_auto": 45,         # 90 → 45
-    "whisper_download": 60,   # 240 → 60 (fichier audio petit)
-    "whisper_transcribe": 60, # 90 → 60 (perf: fail-fast)
-    "voxtral_stt": 90,        # 300 → 90
-    "openai_whisper": 90,     # 360 → 90
-    "deepgram": 60,           # 300 → 60
-    "assemblyai": 60,         # 300 → 60
+    "supadata": 20,  # 45 → 20 (petite vidéo = réponse rapide)
+    "ytapi": 15,  # 25 → 15
+    "invidious": 20,  # 35 → 20
+    "piped": 20,  # 35 → 20
+    "ytdlp_subs": 45,  # 90 → 45
+    "ytdlp_auto": 45,  # 90 → 45
+    "whisper_download": 60,  # 240 → 60 (fichier audio petit)
+    "whisper_transcribe": 60,  # 90 → 60 (perf: fail-fast)
+    "voxtral_stt": 90,  # 300 → 90
+    "openai_whisper": 90,  # 360 → 90
+    "deepgram": 60,  # 300 → 60
+    "assemblyai": 60,  # 300 → 60
     "elevenlabs_scribe": 60,  # 300 → 60
 }
 
 
 # MIME types pour multipart uploads (Voxtral STT, etc.)
 AUDIO_MIME_TYPES = {
-    '.mp3': 'audio/mpeg',
-    '.m4a': 'audio/mp4',
-    '.webm': 'audio/webm',
-    '.opus': 'audio/opus',
-    '.wav': 'audio/wav',
-    '.ogg': 'audio/ogg',
+    ".mp3": "audio/mpeg",
+    ".m4a": "audio/mp4",
+    ".webm": "audio/webm",
+    ".opus": "audio/opus",
+    ".wav": "audio/wav",
+    ".ogg": "audio/ogg",
 }
 
 
@@ -147,16 +156,17 @@ def get_timeout(method: str, is_short: bool = False) -> int:
     timeouts = TIMEOUTS_SHORT if is_short else TIMEOUTS
     return timeouts.get(method, 30)
 
+
 # ⚡ v7.1: ContextVar async-safe pour timeouts adaptatifs
 # Permet à toutes les sous-fonctions d'utiliser automatiquement les bons timeouts
 # sans modifier leurs signatures. Set une seule fois dans get_transcript_with_timestamps().
-_active_timeouts: contextvars.ContextVar[dict] = contextvars.ContextVar(
-    '_active_timeouts', default=TIMEOUTS
-)
+_active_timeouts: contextvars.ContextVar[dict] = contextvars.ContextVar("_active_timeouts", default=TIMEOUTS)
+
 
 def _t(method: str) -> int:
     """Raccourci async-safe: retourne le timeout actif pour la méthode donnée."""
     return _active_timeouts.get().get(method, 30)
+
 
 # 🛡️ USER-AGENTS ROTATIFS (anti-détection)
 USER_AGENTS = [
@@ -170,14 +180,14 @@ USER_AGENTS = [
 # 🌐 INSTANCES INVIDIOUS PUBLIQUES (fallback pour contourner le blocage YouTube)
 # Liste mise à jour janvier 2025 - instances les plus fiables
 INVIDIOUS_INSTANCES = [
-    "https://invidious.fdn.fr",          # France - très fiable
-    "https://inv.nadeko.net",             # Stable
-    "https://invidious.nerdvpn.de",       # Allemagne
-    "https://yt.artemislena.eu",          # EU
-    "https://invidious.protokolla.fi",    # Finlande
-    "https://inv.tux.pizza",              # Stable
-    "https://vid.puffyan.us",             # US
-    "https://invidious.projectsegfau.lt", # EU
+    "https://invidious.fdn.fr",  # France - très fiable
+    "https://inv.nadeko.net",  # Stable
+    "https://invidious.nerdvpn.de",  # Allemagne
+    "https://yt.artemislena.eu",  # EU
+    "https://invidious.protokolla.fi",  # Finlande
+    "https://inv.tux.pizza",  # Stable
+    "https://vid.puffyan.us",  # US
+    "https://invidious.projectsegfau.lt",  # EU
     "https://invidious.privacyredirect.com",
     "https://invidious.io.lol",
 ]
@@ -185,14 +195,14 @@ INVIDIOUS_INSTANCES = [
 # 🆕 INSTANCES PIPED PUBLIQUES (alternative à Invidious)
 # Liste mise à jour janvier 2025 - instances les plus fiables
 PIPED_INSTANCES = [
-    "https://pipedapi.kavin.rocks",       # Principal - très fiable
-    "https://api.piped.yt",               # Stable
-    "https://pipedapi.tokhmi.xyz",        # Asie
-    "https://pipedapi.moomoo.me",         # EU
-    "https://pipedapi.syncpundit.io",     # EU
-    "https://api.piped.projectsegfau.lt", # EU
-    "https://pipedapi.r4fo.com",          # EU
-    "https://pipedapi.privacy.com.de",    # Allemagne
+    "https://pipedapi.kavin.rocks",  # Principal - très fiable
+    "https://api.piped.yt",  # Stable
+    "https://pipedapi.tokhmi.xyz",  # Asie
+    "https://pipedapi.moomoo.me",  # EU
+    "https://pipedapi.syncpundit.io",  # EU
+    "https://api.piped.projectsegfau.lt",  # EU
+    "https://pipedapi.r4fo.com",  # EU
+    "https://pipedapi.privacy.com.de",  # Allemagne
 ]
 
 
@@ -216,14 +226,17 @@ def get_working_piped_instance() -> Optional[str]:
 # 🔌 CIRCUIT BREAKER — Skip méthodes qui échouent répétitivement
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class CircuitState(Enum):
-    CLOSED = "closed"      # Normal - méthode active
-    OPEN = "open"          # Méthode désactivée temporairement
+    CLOSED = "closed"  # Normal - méthode active
+    OPEN = "open"  # Méthode désactivée temporairement
     HALF_OPEN = "half_open"  # Test en cours
+
 
 @dataclass
 class CircuitBreaker:
     """Circuit Breaker pattern pour éviter de perdre du temps sur méthodes cassées"""
+
     name: str
     failure_threshold: int = 5
     recovery_timeout: int = 300  # 5 minutes
@@ -257,8 +270,10 @@ class CircuitBreaker:
             return False
         return True  # HALF_OPEN
 
+
 # Instance globale des circuit breakers
 _circuit_breakers: Dict[str, CircuitBreaker] = {}
+
 
 def get_circuit_breaker(name: str) -> CircuitBreaker:
     """Récupère ou crée un circuit breaker pour une méthode"""
@@ -267,7 +282,7 @@ def get_circuit_breaker(name: str) -> CircuitBreaker:
         _circuit_breakers[name] = CircuitBreaker(
             name=name,
             failure_threshold=config.get("circuit_breaker_failure_threshold", 5),
-            recovery_timeout=config.get("circuit_breaker_recovery_timeout", 300)
+            recovery_timeout=config.get("circuit_breaker_recovery_timeout", 300),
         )
     return _circuit_breakers[name]
 
@@ -275,6 +290,7 @@ def get_circuit_breaker(name: str) -> CircuitBreaker:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📈 EXPONENTIAL BACKOFF — Retries intelligents
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def calculate_backoff(attempt: int, base: float = 1.0, max_delay: float = 30.0) -> float:
     """
@@ -285,7 +301,7 @@ def calculate_backoff(attempt: int, base: float = 1.0, max_delay: float = 30.0) 
     base = config.get("backoff_base", base)
     max_delay = config.get("backoff_max", max_delay)
 
-    delay = min(base * (2 ** attempt), max_delay)
+    delay = min(base * (2**attempt), max_delay)
     jitter = random.uniform(0, delay * 0.3)  # 30% de jitter
     return delay + jitter
 
@@ -294,22 +310,27 @@ def calculate_backoff(attempt: int, base: float = 1.0, max_delay: float = 30.0) 
 # 🏥 INSTANCE HEALTH MANAGER — Évite les instances mortes
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class InstanceHealth:
     """Suivi de santé d'une instance"""
+
     url: str
     failures: int = 0
     successes: int = 0
     last_check: float = 0
     is_healthy: bool = True
 
+
 _instance_health: Dict[str, InstanceHealth] = {}
+
 
 def get_instance_health(url: str) -> InstanceHealth:
     """Récupère ou crée le suivi de santé d'une instance"""
     if url not in _instance_health:
         _instance_health[url] = InstanceHealth(url=url)
     return _instance_health[url]
+
 
 def record_instance_success(url: str):
     """Enregistre un succès pour une instance"""
@@ -318,6 +339,7 @@ def record_instance_success(url: str):
     health.failures = max(0, health.failures - 1)  # Décrémente les échecs
     health.is_healthy = True
     health.last_check = time.time()
+
 
 def record_instance_failure(url: str):
     """Enregistre un échec pour une instance"""
@@ -331,6 +353,7 @@ def record_instance_failure(url: str):
     if health.failures >= threshold:
         health.is_healthy = False
         print(f"  🏥 [HEALTH] {url[:30]}... marqué DOWN après {health.failures} échecs", flush=True)
+
 
 def get_healthy_instances(instances: List[str]) -> List[str]:
     """Retourne les instances en bonne santé, avec les saines en premier"""
@@ -388,6 +411,7 @@ class TranscriptResult:
 
 try:
     from youtube_transcript_api import YouTubeTranscriptApi
+
     YTAPI_AVAILABLE = True
     print("✅ youtube-transcript-api available", flush=True)
 except ImportError:
@@ -401,15 +425,16 @@ executor = ThreadPoolExecutor(max_workers=4)
 # 🔍 EXTRACTION VIDEO ID / PLAYLIST ID
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def extract_video_id(url: str) -> Optional[str]:
     if not url:
         return None
     patterns = [
-        r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/v/)([a-zA-Z0-9_-]{11})',
-        r'youtube\.com/shorts/([a-zA-Z0-9_-]{11})',
-        r'youtube\.com/live/([a-zA-Z0-9_-]{11})',
-        r'music\.youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})',
-        r'^([a-zA-Z0-9_-]{11})$'
+        r"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/v/)([a-zA-Z0-9_-]{11})",
+        r"youtube\.com/shorts/([a-zA-Z0-9_-]{11})",
+        r"youtube\.com/live/([a-zA-Z0-9_-]{11})",
+        r"music\.youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})",
+        r"^([a-zA-Z0-9_-]{11})$",
     ]
     for pattern in patterns:
         match = re.search(pattern, url)
@@ -421,10 +446,7 @@ def extract_video_id(url: str) -> Optional[str]:
 def extract_playlist_id(url: str) -> Optional[str]:
     if not url:
         return None
-    patterns = [
-        r'[?&]list=([a-zA-Z0-9_-]+)',
-        r'^([a-zA-Z0-9_-]{13,})$'
-    ]
+    patterns = [r"[?&]list=([a-zA-Z0-9_-]+)", r"^([a-zA-Z0-9_-]{13,})$"]
     for pattern in patterns:
         match = re.search(pattern, url)
         if match:
@@ -435,6 +457,7 @@ def extract_playlist_id(url: str) -> Optional[str]:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📺 VIDEO INFO
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     """
@@ -448,6 +471,7 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     _vinfo_cache_key = f"video_info:youtube:{video_id}"
     try:
         from core.cache import cache_service as _cache_service
+
         _cached = await _cache_service.get(_vinfo_cache_key)
         if _cached:
             print(f"💾 [VIDEO INFO] Cache HIT for {video_id}", flush=True)
@@ -478,7 +502,12 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
                         # Channel: new format has author.displayName, legacy has channel/author string
                         raw_channel = data.get("channel", data.get("author", "Unknown"))
                         if isinstance(raw_channel, dict):
-                            channel_name = raw_channel.get("displayName") or raw_channel.get("name") or raw_channel.get("username") or "Unknown"
+                            channel_name = (
+                                raw_channel.get("displayName")
+                                or raw_channel.get("name")
+                                or raw_channel.get("username")
+                                or "Unknown"
+                            )
                         elif isinstance(author, dict) and author.get("displayName"):
                             channel_name = author.get("displayName") or author.get("username") or "Unknown"
                         else:
@@ -487,7 +516,9 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
                             "video_id": video_id,
                             "title": data.get("title", "Unknown"),
                             "channel": channel_name,
-                            "thumbnail_url": data.get("thumbnail", f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"),
+                            "thumbnail_url": data.get(
+                                "thumbnail", f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
+                            ),
                             "duration": duration,
                             "upload_date": data.get("uploadDate") or data.get("createdAt"),
                             "description": (data.get("description", "") or "")[:2000],
@@ -497,19 +528,21 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
                             "view_count": stats.get("views") or data.get("viewCount"),
                             "like_count": stats.get("likes") or data.get("likeCount"),
                             "comment_count": stats.get("comments") or data.get("commentCount"),
-                            "channel_id": (author.get("id") if isinstance(author, dict) else None) or data.get("channelId"),
+                            "channel_id": (author.get("id") if isinstance(author, dict) else None)
+                            or data.get("channelId"),
                             "channel_follower_count": data.get("channelFollowerCount"),
                             "content_type": "video",
                         }
                         # Cache set (TTL 12h)
                         try:
                             from core.cache import cache_service as _cs
+
                             await _cs.set(_vinfo_cache_key, _supa_result, ttl=43200)
                         except Exception:
                             pass
                         return _supa_result
                     else:
-                        print(f"  ⚠️ [SUPADATA] Metadata OK but no duration", flush=True)
+                        print("  ⚠️ [SUPADATA] Metadata OK but no duration", flush=True)
                 else:
                     print(f"  ⚠️ [SUPADATA] Metadata error {resp.status_code}", flush=True)
         except Exception as e:
@@ -521,9 +554,7 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
         try:
             async with shared_http_client() as client:
                 response = await client.get(
-                    f"{instance}/api/v1/videos/{video_id}",
-                    timeout=10,
-                    headers={"User-Agent": get_random_user_agent()}
+                    f"{instance}/api/v1/videos/{video_id}", timeout=10, headers={"User-Agent": get_random_user_agent()}
                 )
                 if response.status_code == 200:
                     data = response.json()
@@ -548,35 +579,37 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
                         # Cache set (TTL 12h)
                         try:
                             from core.cache import cache_service as _cs
+
                             await _cs.set(_vinfo_cache_key, _inv_result, ttl=43200)
                         except Exception:
                             pass
                         return _inv_result
         except Exception as e:
             print(f"  ⚠️ [INVIDIOUS] {instance} error: {str(e)[:50]}", flush=True)
-    
+
     # Essayer yt-dlp (plus lent mais plus fiable)
-    print(f"  🔄 [YT-DLP] Trying yt-dlp fallback...", flush=True)
+    print("  🔄 [YT-DLP] Trying yt-dlp fallback...", flush=True)
     ytdlp_result = await get_video_info_ytdlp(video_id)
     if ytdlp_result and ytdlp_result.get("duration", 0) > 0:
         print(f"  ✅ [YT-DLP] Duration: {ytdlp_result['duration']}s", flush=True)
         # Cache set (TTL 12h)
         try:
             from core.cache import cache_service as _cs
+
             await _cs.set(_vinfo_cache_key, ytdlp_result, ttl=43200)
         except Exception:
             pass
         return ytdlp_result
-    
+
     # Essayer oembed pour au moins avoir le titre (pas de durée)
-    print(f"  🔄 [OEMBED] Trying oembed fallback...", flush=True)
+    print("  🔄 [OEMBED] Trying oembed fallback...", flush=True)
     try:
         url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
         async with shared_http_client() as client:
             response = await client.get(url, timeout=10, headers={"User-Agent": get_random_user_agent()})
             if response.status_code == 200:
                 data = response.json()
-                print(f"  ⚠️ [OEMBED] Got title but no duration", flush=True)
+                print("  ⚠️ [OEMBED] Got title but no duration", flush=True)
                 return {
                     "video_id": video_id,
                     "title": data.get("title", "Unknown"),
@@ -590,7 +623,7 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
                 }
     except Exception as e:
         print(f"  ⚠️ [OEMBED] error: {e}", flush=True)
-    
+
     # Dernier recours
     print(f"  ❌ [VIDEO INFO] All methods failed for {video_id}", flush=True)
     return {
@@ -613,18 +646,24 @@ async def get_video_info_ytdlp(video_id: str) -> Optional[Dict[str, Any]]:
     """
     try:
         loop = asyncio.get_event_loop()
+
         def _get_info():
             cmd = [
-                "yt-dlp", "--dump-json", "--no-warnings", "--skip-download",
-                "--user-agent", get_random_user_agent(),
-                "--extractor-args", "youtube:player_client=android",
-                f"https://youtube.com/watch?v={video_id}"
+                "yt-dlp",
+                "--dump-json",
+                "--no-warnings",
+                "--skip-download",
+                "--user-agent",
+                get_random_user_agent(),
+                "--extractor-args",
+                "youtube:player_client=android",
+                f"https://youtube.com/watch?v={video_id}",
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             if result.returncode == 0:
                 return json.loads(result.stdout)
             return None
-        
+
         data = await loop.run_in_executor(executor, _get_info)
         if data:
             return {
@@ -651,7 +690,7 @@ async def get_video_info_ytdlp(video_id: str) -> Optional[Dict[str, Any]]:
             }
     except Exception as e:
         print(f"⚠️ yt-dlp info error: {e}", flush=True)
-    
+
     return {
         "video_id": video_id,
         "title": "Unknown Video",
@@ -669,6 +708,7 @@ async def get_video_info_ytdlp(video_id: str) -> Optional[Dict[str, Any]]:
 # 📝 HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def format_seconds_to_timestamp(seconds: float) -> str:
     h = int(seconds // 3600)
     m = int((seconds % 3600) // 60)
@@ -681,44 +721,44 @@ def format_seconds_to_timestamp(seconds: float) -> str:
 def _parse_vtt_content(content: str) -> Tuple[Optional[str], Optional[str]]:
     if not content:
         return None, None
-    
+
     lines = []
     timestamps = []
     current_time = 0
-    
-    for line in content.split('\n'):
+
+    for line in content.split("\n"):
         line = line.strip()
-        if line.startswith('WEBVTT') or line.startswith('Kind:') or line.startswith('Language:'):
+        if line.startswith("WEBVTT") or line.startswith("Kind:") or line.startswith("Language:"):
             continue
-        
-        time_match = re.match(r'(\d{1,2}):(\d{2}):(\d{2})', line)
+
+        time_match = re.match(r"(\d{1,2}):(\d{2}):(\d{2})", line)
         if time_match:
             h, m, s = map(int, time_match.groups())
             current_time = h * 3600 + m * 60 + s
             continue
-        
-        time_match2 = re.match(r'(\d{1,2}):(\d{2})[\.,]', line)
+
+        time_match2 = re.match(r"(\d{1,2}):(\d{2})[\.,]", line)
         if time_match2:
             m, s = map(int, time_match2.groups())
             current_time = m * 60 + s
             continue
-        
-        if not line or line.isdigit() or '-->' in line:
+
+        if not line or line.isdigit() or "-->" in line:
             continue
-        
-        clean = re.sub(r'<[^>]+>', '', line)
-        clean = re.sub(r'\[.*?\]', '', clean)
+
+        clean = re.sub(r"<[^>]+>", "", line)
+        clean = re.sub(r"\[.*?\]", "", clean)
         clean = clean.strip()
-        
+
         if clean and len(clean) > 1:
             lines.append(clean)
             timestamps.append(current_time)
-    
+
     if not lines:
         return None, None
-    
-    simple = ' '.join(lines)
-    
+
+    simple = " ".join(lines)
+
     timestamped_parts = []
     last_ts = -30
     for i, text in enumerate(lines):
@@ -729,41 +769,41 @@ def _parse_vtt_content(content: str) -> Tuple[Optional[str], Optional[str]]:
             last_ts = t
         else:
             timestamped_parts.append(f" {text}")
-    
+
     timestamped = "".join(timestamped_parts).strip()
     return simple, timestamped
 
 
 def _parse_subtitle_files(tmpdir: str, video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    for lang in ['fr', 'en', 'es', 'de', 'it', 'pt']:
-        for ext in ['vtt', 'srt']:
+    for lang in ["fr", "en", "es", "de", "it", "pt"]:
+        for ext in ["vtt", "srt"]:
             sub_file = Path(tmpdir) / f"{video_id}.{lang}.{ext}"
             if sub_file.exists():
-                content = sub_file.read_text(encoding='utf-8', errors='ignore')
+                content = sub_file.read_text(encoding="utf-8", errors="ignore")
                 simple, timestamped = _parse_vtt_content(content)
                 if simple and len(simple) > 50:
                     return simple, timestamped, lang
-    
+
     for f in Path(tmpdir).glob("*.vtt"):
-        content = f.read_text(encoding='utf-8', errors='ignore')
+        content = f.read_text(encoding="utf-8", errors="ignore")
         simple, timestamped = _parse_vtt_content(content)
         if simple and len(simple) > 50:
             lang = "fr"
-            parts = f.stem.split('.')
+            parts = f.stem.split(".")
             if len(parts) >= 2:
                 lang = parts[-1]
             return simple, timestamped, lang
-    
+
     for f in Path(tmpdir).glob("*.srt"):
-        content = f.read_text(encoding='utf-8', errors='ignore')
+        content = f.read_text(encoding="utf-8", errors="ignore")
         simple, timestamped = _parse_vtt_content(content)
         if simple and len(simple) > 50:
             lang = "fr"
-            parts = f.stem.split('.')
+            parts = f.stem.split(".")
             if len(parts) >= 2:
                 lang = parts[-1]
             return simple, timestamped, lang
-    
+
     return None, None, None
 
 
@@ -771,13 +811,16 @@ def _parse_subtitle_files(tmpdir: str, video_id: str) -> Tuple[Optional[str], Op
 # 🥇 MÉTHODE 1: SUPADATA
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+
+async def get_transcript_supadata(
+    video_id: str, api_key: str = None
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     api_key = api_key or get_supadata_key()
     if not api_key:
-        print(f"  ⏭️ [SUPADATA] Skipped: No API key", flush=True)
+        print("  ⏭️ [SUPADATA] Skipped: No API key", flush=True)
         return None, None, None
 
-    print(f"  🥇 [SUPADATA] Trying...", flush=True)
+    print("  🥇 [SUPADATA] Trying...", flush=True)
 
     try:
         async with shared_http_client() as client:
@@ -792,7 +835,7 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
                         "https://api.supadata.ai/v1/youtube/transcript",
                         params=params,
                         headers={"x-api-key": api_key},
-                        timeout=_t("supadata")
+                        timeout=_t("supadata"),
                     )
 
                     if response.status_code == 200:
@@ -838,18 +881,18 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
                         break
 
                 except httpx.TimeoutException:
-                    print(f"  ⚠️ [SUPADATA] YT-specific timeout", flush=True)
+                    print("  ⚠️ [SUPADATA] YT-specific timeout", flush=True)
                     break
 
             # ─── Méthode 2 : Endpoint unifié (fallback — supporte STT côté Supadata) ───
-            print(f"  🔄 [SUPADATA] Trying unified endpoint (with AI fallback)...", flush=True)
+            print("  🔄 [SUPADATA] Trying unified endpoint (with AI fallback)...", flush=True)
             try:
                 url = f"https://www.youtube.com/watch?v={video_id}"
                 response = await client.get(
                     "https://api.supadata.ai/v1/transcript",
                     params={"url": url},
                     headers={"x-api-key": api_key},
-                    timeout=60
+                    timeout=60,
                 )
 
                 if response.status_code == 200:
@@ -903,7 +946,7 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
                     print(f"  ⚠️ [SUPADATA] Unified error {response.status_code}", flush=True)
 
             except httpx.TimeoutException:
-                print(f"  ⚠️ [SUPADATA] Unified timeout", flush=True)
+                print("  ⚠️ [SUPADATA] Unified timeout", flush=True)
 
     except Exception as e:
         print(f"  ⚠️ [SUPADATA] Exception: {e}", flush=True)
@@ -915,32 +958,34 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
 # 🥈 MÉTHODE 2: YOUTUBE-TRANSCRIPT-API
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     if not YTAPI_AVAILABLE:
-        print(f"  ⏭️ [YTAPI] Skipped: Not installed", flush=True)
+        print("  ⏭️ [YTAPI] Skipped: Not installed", flush=True)
         return None, None, None
-    
-    print(f"  🥈 [YTAPI] Trying...", flush=True)
-    
+
+    print("  🥈 [YTAPI] Trying...", flush=True)
+
     try:
         loop = asyncio.get_event_loop()
-        
+
         def _fetch():
             try:
                 # 🔌 Proxy support pour youtube-transcript-api
                 proxy = get_youtube_proxy()
                 if proxy:
                     import requests as _requests
+
                     proxies = {"https": proxy, "http": proxy}
                     session = _requests.Session()
                     session.proxies.update(proxies)
                     ytt_api = YouTubeTranscriptApi(http_client=session)
-                    print(f"  🔌 [YTAPI] Using proxy", flush=True)
+                    print("  🔌 [YTAPI] Using proxy", flush=True)
                 else:
                     ytt_api = YouTubeTranscriptApi()
                 transcript_list = ytt_api.list(video_id)
-                preferred_langs = ['fr', 'en', 'es', 'de', 'it', 'pt', 'nl', 'ru', 'ja', 'ko', 'zh', 'ar']
-                
+                preferred_langs = ["fr", "en", "es", "de", "it", "pt", "nl", "ru", "ja", "ko", "zh", "ar"]
+
                 for is_manual in [True, False]:
                     for lang in preferred_langs:
                         try:
@@ -948,25 +993,25 @@ async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[s
                                 transcript = transcript_list.find_manually_created_transcript([lang])
                             else:
                                 transcript = transcript_list.find_generated_transcript([lang])
-                            
+
                             fetched = transcript.fetch()
-                            
-                            if hasattr(fetched, 'to_raw_data'):
+
+                            if hasattr(fetched, "to_raw_data"):
                                 data = fetched.to_raw_data()
-                            elif hasattr(fetched, '__iter__'):
+                            elif hasattr(fetched, "__iter__"):
                                 data = list(fetched)
                             else:
                                 continue
-                            
+
                             if data:
                                 simple_parts = []
                                 timestamped_parts = []
                                 last_ts = -30
-                                
+
                                 for entry in data:
                                     text = entry.get("text", "").strip()
                                     start = entry.get("start", 0)
-                                    if not text or text in ['[Music]', '[Applause]', '[Musique]']:
+                                    if not text or text in ["[Music]", "[Applause]", "[Musique]"]:
                                         continue
                                     simple_parts.append(text)
                                     if start - last_ts >= 30:
@@ -975,10 +1020,10 @@ async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[s
                                         last_ts = start
                                     else:
                                         timestamped_parts.append(f" {text}")
-                                
+
                                 simple = " ".join(simple_parts)
                                 timestamped = "".join(timestamped_parts).strip()
-                                
+
                                 if simple and len(simple) > 50:
                                     return simple, timestamped, lang
                         except Exception:
@@ -986,23 +1031,20 @@ async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[s
             except Exception as e:
                 print(f"  ⚠️ [YTAPI] Error: {e}", flush=True)
             return None, None, None
-        
-        simple, timestamped, lang = await asyncio.wait_for(
-            loop.run_in_executor(executor, _fetch),
-            timeout=_t("ytapi")
-        )
-        
+
+        simple, timestamped, lang = await asyncio.wait_for(loop.run_in_executor(executor, _fetch), timeout=_t("ytapi"))
+
         if simple:
             print(f"  ✅ [YTAPI] Success: {len(simple)} chars", flush=True)
             return simple, timestamped, lang
         else:
-            print(f"  ⚠️ [YTAPI] No captions found", flush=True)
-    
+            print("  ⚠️ [YTAPI] No captions found", flush=True)
+
     except asyncio.TimeoutError:
-        print(f"  ⚠️ [YTAPI] Timeout", flush=True)
+        print("  ⚠️ [YTAPI] Timeout", flush=True)
     except Exception as e:
         print(f"  ⚠️ [YTAPI] Exception: {e}", flush=True)
-    
+
     return None, None, None
 
 
@@ -1010,12 +1052,13 @@ async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[s
 # 🥉 MÉTHODE 3: INVIDIOUS API (CONTOURNE LE BLOCAGE YOUTUBE)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     🌐 Utilise Invidious pour récupérer les sous-titres
     Contourne le blocage YouTube car Invidious a ses propres IPs
     """
-    print(f"  🌐 [INVIDIOUS] Trying captions...", flush=True)
+    print("  🌐 [INVIDIOUS] Trying captions...", flush=True)
 
     for instance in INVIDIOUS_INSTANCES[:5]:  # Essayer 5 instances max (augmenté de 3)
         try:
@@ -1024,7 +1067,7 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
                 response = await client.get(
                     f"{instance}/api/v1/captions/{video_id}",
                     timeout=_t("invidious"),
-                    headers={"User-Agent": get_random_user_agent()}
+                    headers={"User-Agent": get_random_user_agent()},
                 )
 
                 if response.status_code != 200:
@@ -1048,38 +1091,36 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
                             break
                     if caption_url:
                         break
-                
+
                 if not caption_url:
                     # Prendre le premier disponible
                     caption_url = captions[0].get("url")
                     caption_lang = captions[0].get("language_code", "fr")[:2]
-                
+
                 if not caption_url:
                     continue
-                
+
                 # Télécharger les sous-titres
                 if caption_url.startswith("/"):
                     caption_url = f"{instance}{caption_url}"
-                
+
                 caption_response = await client.get(
-                    caption_url,
-                    timeout=_t("invidious"),
-                    headers={"User-Agent": get_random_user_agent()}
+                    caption_url, timeout=_t("invidious"), headers={"User-Agent": get_random_user_agent()}
                 )
-                
+
                 if caption_response.status_code == 200:
                     content = caption_response.text
                     simple, timestamped = _parse_vtt_content(content)
-                    
+
                     if simple and len(simple) > 50:
                         print(f"  ✅ [INVIDIOUS] Success: {len(simple)} chars from {instance}", flush=True)
                         return simple, timestamped, caption_lang
-        
+
         except Exception as e:
             print(f"  ⚠️ [INVIDIOUS] {instance} error: {str(e)[:50]}", flush=True)
             continue
-    
-    print(f"  ⚠️ [INVIDIOUS] No captions from any instance", flush=True)
+
+    print("  ⚠️ [INVIDIOUS] No captions from any instance", flush=True)
     return None, None, None
 
 
@@ -1087,12 +1128,13 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
 # 🥉 MÉTHODE 4: PIPED API (ALTERNATIVE À INVIDIOUS)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     🌐 Utilise Piped pour récupérer les sous-titres
     Alternative à Invidious - différentes IPs, mêmes fonctionnalités
     """
-    print(f"  🟣 [PIPED] Trying captions...", flush=True)
+    print("  🟣 [PIPED] Trying captions...", flush=True)
 
     # Utiliser les instances saines en priorité
     healthy_instances = get_healthy_instances(PIPED_INSTANCES)
@@ -1104,7 +1146,7 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
                 response = await client.get(
                     f"{instance}/streams/{video_id}",
                     timeout=_t("piped"),
-                    headers={"User-Agent": get_random_user_agent()}
+                    headers={"User-Agent": get_random_user_agent()},
                 )
 
                 if response.status_code != 200:
@@ -1144,7 +1186,7 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
                     caption_url,
                     timeout=_t("piped"),
                     headers={"User-Agent": get_random_user_agent()},
-                    follow_redirects=True
+                    follow_redirects=True,
                 )
 
                 if caption_response.status_code == 200:
@@ -1161,7 +1203,7 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
             print(f"  ⚠️ [PIPED] {instance} error: {str(e)[:50]}", flush=True)
             continue
 
-    print(f"  ⚠️ [PIPED] No captions from any instance", flush=True)
+    print("  ⚠️ [PIPED] No captions from any instance", flush=True)
     return None, None, None
 
 
@@ -1169,8 +1211,9 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
 # 🏅 MÉTHODE 5: YT-DLP SUBTITLES MANUELS (AVEC OPTIONS ANTI-BOT)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    print(f"  🏅 [YT-DLP] Trying manual subtitles...", flush=True)
+    print("  🏅 [YT-DLP] Trying manual subtitles...", flush=True)
 
     try:
         loop = asyncio.get_event_loop()
@@ -1179,44 +1222,55 @@ async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[s
             with tempfile.TemporaryDirectory() as tmpdir:
                 cmd = [
                     "yt-dlp",
-                    "--write-subs", "--sub-langs", "fr,en,es,de,it,pt,nl,ru,ja,ko,zh,ar",
-                    "--sub-format", "vtt/srt/best",
-                    "--skip-download", "--no-warnings",
-                    "--user-agent", get_random_user_agent(),
-                    "--extractor-args", "youtube:player_client=android,web,mweb",
-                    "--sleep-requests", "1.5",
-                    "--sleep-interval", "1",
-                    "--max-sleep-interval", "3",
-                    "--retries", "3",
-                    "--fragment-retries", "3",
-                    "-o", f"{tmpdir}/%(id)s.%(ext)s",
-                    f"https://youtube.com/watch?v={video_id}"
+                    "--write-subs",
+                    "--sub-langs",
+                    "fr,en,es,de,it,pt,nl,ru,ja,ko,zh,ar",
+                    "--sub-format",
+                    "vtt/srt/best",
+                    "--skip-download",
+                    "--no-warnings",
+                    "--user-agent",
+                    get_random_user_agent(),
+                    "--extractor-args",
+                    "youtube:player_client=android,web,mweb",
+                    "--sleep-requests",
+                    "1.5",
+                    "--sleep-interval",
+                    "1",
+                    "--max-sleep-interval",
+                    "3",
+                    "--retries",
+                    "3",
+                    "--fragment-retries",
+                    "3",
+                    "-o",
+                    f"{tmpdir}/%(id)s.%(ext)s",
+                    f"https://youtube.com/watch?v={video_id}",
                 ]
                 # 🔌 Proxy support — contourne le blocage IP YouTube
                 proxy = get_youtube_proxy()
                 if proxy:
                     cmd.insert(1, "--proxy")
                     cmd.insert(2, proxy)
-                    print(f"  🔌 [YT-DLP] Using proxy", flush=True)
+                    print("  🔌 [YT-DLP] Using proxy", flush=True)
                 subprocess.run(cmd, capture_output=True, text=True, timeout=_t("ytdlp_subs"))
                 return _parse_subtitle_files(tmpdir, video_id)
-        
+
         simple, timestamped, lang = await asyncio.wait_for(
-            loop.run_in_executor(executor, _fetch),
-            timeout=_t("ytdlp_subs") + 10
+            loop.run_in_executor(executor, _fetch), timeout=_t("ytdlp_subs") + 10
         )
-        
+
         if simple:
             print(f"  ✅ [YT-DLP] Success: {len(simple)} chars", flush=True)
             return simple, timestamped, lang
         else:
-            print(f"  ⚠️ [YT-DLP] No manual subtitles", flush=True)
-    
+            print("  ⚠️ [YT-DLP] No manual subtitles", flush=True)
+
     except asyncio.TimeoutError:
-        print(f"  ⚠️ [YT-DLP] Timeout", flush=True)
+        print("  ⚠️ [YT-DLP] Timeout", flush=True)
     except Exception as e:
         print(f"  ⚠️ [YT-DLP] Exception: {e}", flush=True)
-    
+
     return None, None, None
 
 
@@ -1224,8 +1278,9 @@ async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[s
 # 🎖️ MÉTHODE 5: YT-DLP AUTO-CAPTIONS (AVEC OPTIONS ANTI-BOT)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_transcript_ytdlp_auto(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    print(f"  🎖️ [YT-DLP-AUTO] Trying auto-captions...", flush=True)
+    print("  🎖️ [YT-DLP-AUTO] Trying auto-captions...", flush=True)
 
     try:
         loop = asyncio.get_event_loop()
@@ -1234,18 +1289,30 @@ async def get_transcript_ytdlp_auto(video_id: str) -> Tuple[Optional[str], Optio
             with tempfile.TemporaryDirectory() as tmpdir:
                 cmd = [
                     "yt-dlp",
-                    "--write-auto-subs", "--sub-langs", "fr,en,es,de,it,pt,nl,ru,ja,ko,zh,ar",
-                    "--sub-format", "vtt/srt/best",
-                    "--skip-download", "--no-warnings",
-                    "--user-agent", get_random_user_agent(),
-                    "--extractor-args", "youtube:player_client=android,web,mweb",
-                    "--sleep-requests", "1.5",
-                    "--sleep-interval", "1",
-                    "--max-sleep-interval", "3",
-                    "--retries", "3",
-                    "--fragment-retries", "3",
-                    "-o", f"{tmpdir}/%(id)s.%(ext)s",
-                    f"https://youtube.com/watch?v={video_id}"
+                    "--write-auto-subs",
+                    "--sub-langs",
+                    "fr,en,es,de,it,pt,nl,ru,ja,ko,zh,ar",
+                    "--sub-format",
+                    "vtt/srt/best",
+                    "--skip-download",
+                    "--no-warnings",
+                    "--user-agent",
+                    get_random_user_agent(),
+                    "--extractor-args",
+                    "youtube:player_client=android,web,mweb",
+                    "--sleep-requests",
+                    "1.5",
+                    "--sleep-interval",
+                    "1",
+                    "--max-sleep-interval",
+                    "3",
+                    "--retries",
+                    "3",
+                    "--fragment-retries",
+                    "3",
+                    "-o",
+                    f"{tmpdir}/%(id)s.%(ext)s",
+                    f"https://youtube.com/watch?v={video_id}",
                 ]
                 # 🔌 Proxy support
                 proxy = get_youtube_proxy()
@@ -1254,29 +1321,29 @@ async def get_transcript_ytdlp_auto(video_id: str) -> Tuple[Optional[str], Optio
                     cmd.insert(2, proxy)
                 subprocess.run(cmd, capture_output=True, text=True, timeout=_t("ytdlp_auto"))
                 return _parse_subtitle_files(tmpdir, video_id)
-        
+
         simple, timestamped, lang = await asyncio.wait_for(
-            loop.run_in_executor(executor, _fetch),
-            timeout=_t("ytdlp_auto") + 10
+            loop.run_in_executor(executor, _fetch), timeout=_t("ytdlp_auto") + 10
         )
-        
+
         if simple:
             print(f"  ✅ [YT-DLP-AUTO] Success: {len(simple)} chars", flush=True)
             return simple, timestamped, lang
         else:
-            print(f"  ⚠️ [YT-DLP-AUTO] No auto-captions", flush=True)
-    
+            print("  ⚠️ [YT-DLP-AUTO] No auto-captions", flush=True)
+
     except asyncio.TimeoutError:
-        print(f"  ⚠️ [YT-DLP-AUTO] Timeout", flush=True)
+        print("  ⚠️ [YT-DLP-AUTO] Timeout", flush=True)
     except Exception as e:
         print(f"  ⚠️ [YT-DLP-AUTO] Exception: {e}", flush=True)
-    
+
     return None, None, None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🎙️ MÉTHODE 6: GROQ WHISPER VIA INVIDIOUS (DERNIER RECOURS - FONCTIONNE TOUJOURS)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
@@ -1285,30 +1352,28 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
     """
     groq_key = get_groq_key()
     if not groq_key:
-        print(f"  ❌ [WHISPER] GROQ_API_KEY not configured!", flush=True)
+        print("  ❌ [WHISPER] GROQ_API_KEY not configured!", flush=True)
         return None, None, None
-    
-    print(f"  🎙️ [WHISPER] Downloading audio...", flush=True)
-    
+
+    print("  🎙️ [WHISPER] Downloading audio...", flush=True)
+
     audio_data = None
     audio_ext = ".mp3"
-    
+
     # MÉTHODE A: Essayer via Invidious d'abord (contourne le blocage)
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
             async with shared_http_client() as client:
                 # Récupérer les formats audio
                 response = await client.get(
-                    f"{instance}/api/v1/videos/{video_id}",
-                    timeout=60,
-                    headers={"User-Agent": get_random_user_agent()}
+                    f"{instance}/api/v1/videos/{video_id}", timeout=60, headers={"User-Agent": get_random_user_agent()}
                 )
-                
+
                 if response.status_code != 200:
                     continue
-                
+
                 data = response.json()
-                
+
                 # Trouver un format audio
                 audio_url = None
                 for fmt in data.get("adaptiveFormats", []):
@@ -1319,129 +1384,143 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
                         elif "audio/webm" in fmt.get("type", ""):
                             audio_ext = ".webm"
                         break
-                
+
                 if not audio_url:
                     continue
-                
-                print(f"  🎙️ [WHISPER] Downloading from Invidious...", flush=True)
-                
+
+                print("  🎙️ [WHISPER] Downloading from Invidious...", flush=True)
+
                 audio_response = await client.get(
-                    audio_url,
-                    timeout=120,
-                    headers={"User-Agent": get_random_user_agent()},
-                    follow_redirects=True
+                    audio_url, timeout=120, headers={"User-Agent": get_random_user_agent()}, follow_redirects=True
                 )
-                
+
                 if audio_response.status_code == 200 and len(audio_response.content) > 10000:
                     audio_data = audio_response.content
-                    print(f"  ✅ [WHISPER] Audio from Invidious: {len(audio_data)/1024/1024:.1f}MB", flush=True)
+                    print(f"  ✅ [WHISPER] Audio from Invidious: {len(audio_data) / 1024 / 1024:.1f}MB", flush=True)
                     break
-        
+
         except Exception as e:
             print(f"  ⚠️ [WHISPER] Invidious {instance}: {str(e)[:50]}", flush=True)
             continue
-    
+
     # MÉTHODE B: Fallback sur yt-dlp si Invidious échoue
     if not audio_data:
-        print(f"  🎙️ [WHISPER] Trying yt-dlp download...", flush=True)
+        print("  🎙️ [WHISPER] Trying yt-dlp download...", flush=True)
         try:
             loop = asyncio.get_event_loop()
-            
+
             def _download_audio():
                 with tempfile.TemporaryDirectory() as tmpdir:
                     audio_path = f"{tmpdir}/{video_id}.mp3"
-                    
+
                     cmd = [
-                        "yt-dlp", "-x", "--audio-format", "mp3", "--audio-quality", "9",
-                        "-o", audio_path, "--no-warnings", "--no-playlist",
-                        "--user-agent", get_random_user_agent(),
-                        "--extractor-args", "youtube:player_client=android",
-                        f"https://youtube.com/watch?v={video_id}"
+                        "yt-dlp",
+                        "-x",
+                        "--audio-format",
+                        "mp3",
+                        "--audio-quality",
+                        "9",
+                        "-o",
+                        audio_path,
+                        "--no-warnings",
+                        "--no-playlist",
+                        "--user-agent",
+                        get_random_user_agent(),
+                        "--extractor-args",
+                        "youtube:player_client=android",
+                        f"https://youtube.com/watch?v={video_id}",
                     ]
-                    
+
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=_t("whisper_download"))
-                    
+
                     if result.returncode != 0:
                         print(f"  ⚠️ [WHISPER] yt-dlp failed: {result.stderr[:100]}", flush=True)
                         return None, None
-                    
+
                     for f in Path(tmpdir).iterdir():
-                        if f.suffix in ['.mp3', '.m4a', '.webm', '.opus', '.wav']:
+                        if f.suffix in [".mp3", ".m4a", ".webm", ".opus", ".wav"]:
                             return f.read_bytes(), f.suffix
-                    
+
                     return None, None
-            
+
             result = await asyncio.wait_for(
-                loop.run_in_executor(executor, _download_audio),
-                timeout=_t("whisper_download")
+                loop.run_in_executor(executor, _download_audio), timeout=_t("whisper_download")
             )
-            
+
             if result and result[0]:
                 audio_data, audio_ext = result
-                print(f"  ✅ [WHISPER] Audio from yt-dlp: {len(audio_data)/1024/1024:.1f}MB", flush=True)
-        
+                print(f"  ✅ [WHISPER] Audio from yt-dlp: {len(audio_data) / 1024 / 1024:.1f}MB", flush=True)
+
         except Exception as e:
             print(f"  ⚠️ [WHISPER] yt-dlp download failed: {e}", flush=True)
-    
+
     if not audio_data:
-        print(f"  ❌ [WHISPER] Failed to download audio", flush=True)
+        print("  ❌ [WHISPER] Failed to download audio", flush=True)
         return None, None, None
-    
+
     # Compresser si trop gros
     if len(audio_data) > GROQ_MAX_FILE_SIZE:
-        print(f"  🎙️ [WHISPER] Compressing audio (>{GROQ_MAX_FILE_SIZE/1024/1024:.0f}MB)...", flush=True)
+        print(f"  🎙️ [WHISPER] Compressing audio (>{GROQ_MAX_FILE_SIZE / 1024 / 1024:.0f}MB)...", flush=True)
         try:
             with tempfile.NamedTemporaryFile(suffix=audio_ext, delete=False) as tmp_in:
                 tmp_in.write(audio_data)
                 tmp_in_path = tmp_in.name
-            
+
             tmp_out_path = tmp_in_path + "_compressed.mp3"
-            
+
             cmd = ["ffmpeg", "-i", tmp_in_path, "-b:a", "32k", "-ac", "1", "-ar", "16000", "-y", tmp_out_path]
             subprocess.run(cmd, capture_output=True, timeout=120)
-            
+
             if Path(tmp_out_path).exists():
                 audio_data = Path(tmp_out_path).read_bytes()
                 audio_ext = ".mp3"
-                print(f"  ✅ [WHISPER] Compressed to: {len(audio_data)/1024/1024:.1f}MB", flush=True)
-            
+                print(f"  ✅ [WHISPER] Compressed to: {len(audio_data) / 1024 / 1024:.1f}MB", flush=True)
+
             # Cleanup
             Path(tmp_in_path).unlink(missing_ok=True)
             Path(tmp_out_path).unlink(missing_ok=True)
-        
+
         except Exception as e:
             print(f"  ⚠️ [WHISPER] Compression failed: {e}", flush=True)
-    
+
     if len(audio_data) > GROQ_MAX_FILE_SIZE:
-        print(f"  ❌ [WHISPER] Audio still too large", flush=True)
+        print("  ❌ [WHISPER] Audio still too large", flush=True)
         return None, None, None
-    
+
     # Transcrire avec Groq
-    print(f"  🎙️ [WHISPER] Sending {len(audio_data)/1024/1024:.1f}MB to Groq...", flush=True)
-    
+    print(f"  🎙️ [WHISPER] Sending {len(audio_data) / 1024 / 1024:.1f}MB to Groq...", flush=True)
+
     try:
-        mime_types = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.webm': 'audio/webm', '.opus': 'audio/opus', '.wav': 'audio/wav'}
-        mime_type = mime_types.get(audio_ext, 'audio/mpeg')
+        mime_types = {
+            ".mp3": "audio/mpeg",
+            ".m4a": "audio/mp4",
+            ".webm": "audio/webm",
+            ".opus": "audio/opus",
+            ".wav": "audio/wav",
+        }
+        mime_type = mime_types.get(audio_ext, "audio/mpeg")
 
         async with shared_http_client() as client:
-            files = {'file': (f'audio{audio_ext}', audio_data, mime_type)}
-            data = {'model': 'whisper-large-v3', 'response_format': 'verbose_json'}
-            
+            files = {"file": (f"audio{audio_ext}", audio_data, mime_type)}
+            data = {"model": "whisper-large-v3", "response_format": "verbose_json"}
+
             start_time = time.time()
             response = await client.post(
                 "https://api.groq.com/openai/v1/audio/transcriptions",
                 headers={"Authorization": f"Bearer {groq_key}"},
-                files=files, data=data, timeout=_t("whisper_transcribe")
+                files=files,
+                data=data,
+                timeout=_t("whisper_transcribe"),
             )
             elapsed = time.time() - start_time
             print(f"  🎙️ [WHISPER] Groq response in {elapsed:.1f}s: {response.status_code}", flush=True)
-            
+
             if response.status_code == 200:
                 result = response.json()
                 full_text = result.get("text", "")
                 segments = result.get("segments", [])
                 detected_lang = result.get("language", "fr")
-                
+
                 if full_text:
                     if segments:
                         timestamped_parts = []
@@ -1460,12 +1539,12 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
                         timestamped = "".join(timestamped_parts).strip()
                     else:
                         timestamped = full_text
-                    
+
                     print(f"  ✅ [WHISPER] Success: {len(full_text)} chars", flush=True)
                     return full_text, timestamped, detected_lang
             else:
                 print(f"  ❌ [WHISPER] Groq error: {response.text[:200]}", flush=True)
-    
+
     except Exception as e:
         print(f"  ❌ [WHISPER] Transcription error: {e}", flush=True)
 
@@ -1503,26 +1582,29 @@ async def get_transcript_voxtral(
     """
     mistral_key = get_mistral_key()
     if not mistral_key:
-        print(f"  ⏭️ [VOXTRAL-STT] Skipped: No Mistral API key", flush=True)
+        print("  ⏭️ [VOXTRAL-STT] Skipped: No Mistral API key", flush=True)
         return None, None, None
 
-    print(f"  🎙️ [VOXTRAL-STT] Starting...", flush=True)
+    print("  🎙️ [VOXTRAL-STT] Starting...", flush=True)
 
     # ── Télécharger l'audio si pas fourni ────────────────────────────────
     if not audio_data:
         audio_data, audio_ext = await _download_audio_for_transcription(video_id)
         if not audio_data:
-            print(f"  ❌ [VOXTRAL-STT] Failed to download audio", flush=True)
+            print("  ❌ [VOXTRAL-STT] Failed to download audio", flush=True)
             return None, None, None
 
     if len(audio_data) > VOXTRAL_MAX_FILE_SIZE:
-        print(f"  ❌ [VOXTRAL-STT] Audio too large: {len(audio_data)/1024/1024:.1f}MB > {VOXTRAL_MAX_FILE_SIZE/1024/1024:.0f}MB", flush=True)
+        print(
+            f"  ❌ [VOXTRAL-STT] Audio too large: {len(audio_data) / 1024 / 1024:.1f}MB > {VOXTRAL_MAX_FILE_SIZE / 1024 / 1024:.0f}MB",
+            flush=True,
+        )
         return None, None, None
 
-    print(f"  🎙️ [VOXTRAL-STT] Sending {len(audio_data)/1024/1024:.1f}MB to Mistral Voxtral...", flush=True)
+    print(f"  🎙️ [VOXTRAL-STT] Sending {len(audio_data) / 1024 / 1024:.1f}MB to Mistral Voxtral...", flush=True)
 
     try:
-        mime_type = AUDIO_MIME_TYPES.get(audio_ext, 'audio/mpeg')
+        mime_type = AUDIO_MIME_TYPES.get(audio_ext, "audio/mpeg")
 
         async with shared_http_client() as client:
             # Multipart form-data: file + model + timestamp_granularities
@@ -1552,7 +1634,7 @@ async def get_transcript_voxtral(
                 full_text = result.get("text", "")
 
                 if not full_text:
-                    print(f"  ❌ [VOXTRAL-STT] Empty transcription returned", flush=True)
+                    print("  ❌ [VOXTRAL-STT] Empty transcription returned", flush=True)
                     return None, None, None
 
                 # ── Build timestamped text from segments ─────────────────
@@ -1577,7 +1659,10 @@ async def get_transcript_voxtral(
                 else:
                     timestamped = full_text
 
-                print(f"  ✅ [VOXTRAL-STT] Success: {len(full_text)} chars, lang={detected_lang}, {elapsed:.1f}s", flush=True)
+                print(
+                    f"  ✅ [VOXTRAL-STT] Success: {len(full_text)} chars, lang={detected_lang}, {elapsed:.1f}s",
+                    flush=True,
+                )
                 return full_text, timestamped, detected_lang
 
             else:
@@ -1596,6 +1681,7 @@ async def get_transcript_voxtral(
 # 🎙️ MÉTHODE 7: DEEPGRAM NOVA-2 (ALTERNATIVE À WHISPER - ULTRA-RAPIDE)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     🎙️ Deepgram Nova-2 - Transcription audio ultra-rapide
@@ -1603,10 +1689,10 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
     """
     deepgram_key = get_deepgram_key()
     if not deepgram_key:
-        print(f"  ⏭️ [DEEPGRAM] Skipped: No API key", flush=True)
+        print("  ⏭️ [DEEPGRAM] Skipped: No API key", flush=True)
         return None, None, None
 
-    print(f"  🎙️ [DEEPGRAM] Starting...", flush=True)
+    print("  🎙️ [DEEPGRAM] Starting...", flush=True)
 
     audio_data = None
     audio_ext = ".mp3"
@@ -1616,9 +1702,7 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
         try:
             async with shared_http_client() as client:
                 response = await client.get(
-                    f"{instance}/api/v1/videos/{video_id}",
-                    timeout=60,
-                    headers={"User-Agent": get_random_user_agent()}
+                    f"{instance}/api/v1/videos/{video_id}", timeout=60, headers={"User-Agent": get_random_user_agent()}
                 )
 
                 if response.status_code != 200:
@@ -1639,18 +1723,15 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
                 if not audio_url:
                     continue
 
-                print(f"  🎙️ [DEEPGRAM] Downloading audio from Invidious...", flush=True)
+                print("  🎙️ [DEEPGRAM] Downloading audio from Invidious...", flush=True)
 
                 audio_response = await client.get(
-                    audio_url,
-                    timeout=120,
-                    headers={"User-Agent": get_random_user_agent()},
-                    follow_redirects=True
+                    audio_url, timeout=120, headers={"User-Agent": get_random_user_agent()}, follow_redirects=True
                 )
 
                 if audio_response.status_code == 200 and len(audio_response.content) > 10000:
                     audio_data = audio_response.content
-                    print(f"  ✅ [DEEPGRAM] Audio downloaded: {len(audio_data)/1024/1024:.1f}MB", flush=True)
+                    print(f"  ✅ [DEEPGRAM] Audio downloaded: {len(audio_data) / 1024 / 1024:.1f}MB", flush=True)
                     break
 
         except Exception as e:
@@ -1659,7 +1740,7 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
 
     # Fallback yt-dlp si Invidious échoue
     if not audio_data:
-        print(f"  🎙️ [DEEPGRAM] Trying yt-dlp download...", flush=True)
+        print("  🎙️ [DEEPGRAM] Trying yt-dlp download...", flush=True)
         try:
             loop = asyncio.get_event_loop()
 
@@ -1668,12 +1749,23 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
                     audio_path = f"{tmpdir}/{video_id}.mp3"
 
                     cmd = [
-                        "yt-dlp", "-x", "--audio-format", "mp3", "--audio-quality", "9",
-                        "-o", audio_path, "--no-warnings", "--no-playlist",
-                        "--user-agent", get_random_user_agent(),
-                        "--extractor-args", "youtube:player_client=android,web,mweb",
-                        "--retries", "3",
-                        f"https://youtube.com/watch?v={video_id}"
+                        "yt-dlp",
+                        "-x",
+                        "--audio-format",
+                        "mp3",
+                        "--audio-quality",
+                        "9",
+                        "-o",
+                        audio_path,
+                        "--no-warnings",
+                        "--no-playlist",
+                        "--user-agent",
+                        get_random_user_agent(),
+                        "--extractor-args",
+                        "youtube:player_client=android,web,mweb",
+                        "--retries",
+                        "3",
+                        f"https://youtube.com/watch?v={video_id}",
                     ]
 
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=_t("whisper_download"))
@@ -1682,33 +1774,38 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
                         return None, None
 
                     for f in Path(tmpdir).iterdir():
-                        if f.suffix in ['.mp3', '.m4a', '.webm', '.opus', '.wav']:
+                        if f.suffix in [".mp3", ".m4a", ".webm", ".opus", ".wav"]:
                             return f.read_bytes(), f.suffix
 
                     return None, None
 
             result = await asyncio.wait_for(
-                loop.run_in_executor(executor, _download_audio),
-                timeout=_t("whisper_download")
+                loop.run_in_executor(executor, _download_audio), timeout=_t("whisper_download")
             )
 
             if result and result[0]:
                 audio_data, audio_ext = result
-                print(f"  ✅ [DEEPGRAM] Audio from yt-dlp: {len(audio_data)/1024/1024:.1f}MB", flush=True)
+                print(f"  ✅ [DEEPGRAM] Audio from yt-dlp: {len(audio_data) / 1024 / 1024:.1f}MB", flush=True)
 
         except Exception as e:
             print(f"  ⚠️ [DEEPGRAM] yt-dlp download failed: {e}", flush=True)
 
     if not audio_data:
-        print(f"  ❌ [DEEPGRAM] Failed to download audio", flush=True)
+        print("  ❌ [DEEPGRAM] Failed to download audio", flush=True)
         return None, None, None
 
     # Envoyer à Deepgram
-    print(f"  🎙️ [DEEPGRAM] Sending {len(audio_data)/1024/1024:.1f}MB to Deepgram Nova-2...", flush=True)
+    print(f"  🎙️ [DEEPGRAM] Sending {len(audio_data) / 1024 / 1024:.1f}MB to Deepgram Nova-2...", flush=True)
 
     try:
-        mime_types = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.webm': 'audio/webm', '.opus': 'audio/opus', '.wav': 'audio/wav'}
-        mime_type = mime_types.get(audio_ext, 'audio/mpeg')
+        mime_types = {
+            ".mp3": "audio/mpeg",
+            ".m4a": "audio/mp4",
+            ".webm": "audio/webm",
+            ".opus": "audio/opus",
+            ".wav": "audio/wav",
+        }
+        mime_type = mime_types.get(audio_ext, "audio/mpeg")
 
         async with shared_http_client() as client:
             start_time = time.time()
@@ -1743,7 +1840,9 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
                         paragraphs = alternatives[0].get("paragraphs", {}).get("paragraphs", [])
 
                         # Détecter la langue
-                        detected_lang = result.get("results", {}).get("channels", [{}])[0].get("detected_language", "fr")
+                        detected_lang = (
+                            result.get("results", {}).get("channels", [{}])[0].get("detected_language", "fr")
+                        )
                         if not detected_lang:
                             detected_lang = "fr"
 
@@ -1776,48 +1875,59 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
 # 🎙️ MÉTHODE 8: OPENAI WHISPER (FALLBACK SI GROQ ÉCHOUE)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def get_transcript_openai_whisper(video_id: str, audio_data: bytes = None, audio_ext: str = ".mp3") -> Tuple[Optional[str], Optional[str], Optional[str]]:
+
+async def get_transcript_openai_whisper(
+    video_id: str, audio_data: bytes = None, audio_ext: str = ".mp3"
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     🎙️ OpenAI Whisper - Fallback si Groq échoue
     Utilise l'audio pré-téléchargé si fourni, sinon télécharge
     """
     openai_key = get_openai_key()
     if not openai_key:
-        print(f"  ⏭️ [OPENAI-WHISPER] Skipped: No API key", flush=True)
+        print("  ⏭️ [OPENAI-WHISPER] Skipped: No API key", flush=True)
         return None, None, None
 
-    print(f"  🎙️ [OPENAI-WHISPER] Starting...", flush=True)
+    print("  🎙️ [OPENAI-WHISPER] Starting...", flush=True)
 
     # Si pas d'audio fourni, télécharger
     if not audio_data:
         audio_data, audio_ext = await _download_audio_for_transcription(video_id)
         if not audio_data:
-            print(f"  ❌ [OPENAI-WHISPER] Failed to download audio", flush=True)
+            print("  ❌ [OPENAI-WHISPER] Failed to download audio", flush=True)
             return None, None, None
 
     # Compresser si nécessaire
     if len(audio_data) > OPENAI_MAX_FILE_SIZE:
         audio_data, audio_ext = await _compress_audio(audio_data, audio_ext, "OPENAI-WHISPER")
         if not audio_data or len(audio_data) > OPENAI_MAX_FILE_SIZE:
-            print(f"  ❌ [OPENAI-WHISPER] Audio still too large after compression", flush=True)
+            print("  ❌ [OPENAI-WHISPER] Audio still too large after compression", flush=True)
             return None, None, None
 
     # Transcrire avec OpenAI
-    print(f"  🎙️ [OPENAI-WHISPER] Sending {len(audio_data)/1024/1024:.1f}MB to OpenAI...", flush=True)
+    print(f"  🎙️ [OPENAI-WHISPER] Sending {len(audio_data) / 1024 / 1024:.1f}MB to OpenAI...", flush=True)
 
     try:
-        mime_types = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.webm': 'audio/webm', '.opus': 'audio/opus', '.wav': 'audio/wav'}
-        mime_type = mime_types.get(audio_ext, 'audio/mpeg')
+        mime_types = {
+            ".mp3": "audio/mpeg",
+            ".m4a": "audio/mp4",
+            ".webm": "audio/webm",
+            ".opus": "audio/opus",
+            ".wav": "audio/wav",
+        }
+        mime_type = mime_types.get(audio_ext, "audio/mpeg")
 
         async with shared_http_client() as client:
-            files = {'file': (f'audio{audio_ext}', audio_data, mime_type)}
-            data = {'model': 'whisper-1', 'response_format': 'verbose_json'}
+            files = {"file": (f"audio{audio_ext}", audio_data, mime_type)}
+            data = {"model": "whisper-1", "response_format": "verbose_json"}
 
             start_time = time.time()
             response = await client.post(
                 "https://api.openai.com/v1/audio/transcriptions",
                 headers={"Authorization": f"Bearer {openai_key}"},
-                files=files, data=data, timeout=_t("openai_whisper")
+                files=files,
+                data=data,
+                timeout=_t("openai_whisper"),
             )
             elapsed = time.time() - start_time
             print(f"  🎙️ [OPENAI-WHISPER] Response in {elapsed:.1f}s: {response.status_code}", flush=True)
@@ -1862,34 +1972,37 @@ async def get_transcript_openai_whisper(video_id: str, audio_data: bytes = None,
 # 🎙️ MÉTHODE 10: ASSEMBLYAI (PREMIUM, TRÈS FIABLE)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, audio_ext: str = ".mp3") -> Tuple[Optional[str], Optional[str], Optional[str]]:
+
+async def get_transcript_assemblyai(
+    video_id: str, audio_data: bytes = None, audio_ext: str = ".mp3"
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     🎙️ AssemblyAI - Transcription premium très fiable
     Dernier recours si tous les autres services échouent
     """
     assemblyai_key = get_assemblyai_key()
     if not assemblyai_key:
-        print(f"  ⏭️ [ASSEMBLYAI] Skipped: No API key", flush=True)
+        print("  ⏭️ [ASSEMBLYAI] Skipped: No API key", flush=True)
         return None, None, None
 
-    print(f"  🎙️ [ASSEMBLYAI] Starting...", flush=True)
+    print("  🎙️ [ASSEMBLYAI] Starting...", flush=True)
 
     # Si pas d'audio fourni, télécharger
     if not audio_data:
         audio_data, audio_ext = await _download_audio_for_transcription(video_id)
         if not audio_data:
-            print(f"  ❌ [ASSEMBLYAI] Failed to download audio", flush=True)
+            print("  ❌ [ASSEMBLYAI] Failed to download audio", flush=True)
             return None, None, None
 
     try:
         async with shared_http_client() as client:
             # Étape 1: Upload de l'audio
-            print(f"  🎙️ [ASSEMBLYAI] Uploading {len(audio_data)/1024/1024:.1f}MB...", flush=True)
+            print(f"  🎙️ [ASSEMBLYAI] Uploading {len(audio_data) / 1024 / 1024:.1f}MB...", flush=True)
             upload_response = await client.post(
                 "https://api.assemblyai.com/v2/upload",
                 headers={"Authorization": assemblyai_key},
                 content=audio_data,
-                timeout=120
+                timeout=120,
             )
 
             if upload_response.status_code != 200:
@@ -1898,11 +2011,11 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
 
             upload_url = upload_response.json().get("upload_url")
             if not upload_url:
-                print(f"  ❌ [ASSEMBLYAI] No upload URL returned", flush=True)
+                print("  ❌ [ASSEMBLYAI] No upload URL returned", flush=True)
                 return None, None, None
 
             # Étape 2: Demander la transcription
-            print(f"  🎙️ [ASSEMBLYAI] Starting transcription...", flush=True)
+            print("  🎙️ [ASSEMBLYAI] Starting transcription...", flush=True)
             transcript_request = await client.post(
                 "https://api.assemblyai.com/v2/transcript",
                 headers={"Authorization": assemblyai_key},
@@ -1911,7 +2024,7 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
                     "language_detection": True,
                     "punctuate": True,
                     "format_text": True,
-                }
+                },
             )
 
             if transcript_request.status_code != 200:
@@ -1920,16 +2033,16 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
 
             transcript_id = transcript_request.json().get("id")
             if not transcript_id:
-                print(f"  ❌ [ASSEMBLYAI] No transcript ID returned", flush=True)
+                print("  ❌ [ASSEMBLYAI] No transcript ID returned", flush=True)
                 return None, None, None
 
             # Étape 3: Polling jusqu'à complétion
-            print(f"  🎙️ [ASSEMBLYAI] Waiting for transcription...", flush=True)
+            print("  🎙️ [ASSEMBLYAI] Waiting for transcription...", flush=True)
             start_time = time.time()
             while time.time() - start_time < _t("assemblyai"):
                 status_response = await client.get(
                     f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
-                    headers={"Authorization": assemblyai_key}
+                    headers={"Authorization": assemblyai_key},
                 )
 
                 if status_response.status_code != 200:
@@ -1979,7 +2092,7 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
 
                 await asyncio.sleep(3)
 
-            print(f"  ❌ [ASSEMBLYAI] Timeout waiting for transcription", flush=True)
+            print("  ❌ [ASSEMBLYAI] Timeout waiting for transcription", flush=True)
 
     except Exception as e:
         print(f"  ❌ [ASSEMBLYAI] Error: {e}", flush=True)
@@ -1991,42 +2104,53 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
 # 🎙️ MÉTHODE 11: ELEVENLABS SCRIBE v2
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def _elevenlabs_scribe_transcribe(video_id: str, audio_data: bytes = None, audio_ext: str = ".mp3", language: str = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+
+async def _elevenlabs_scribe_transcribe(
+    video_id: str, audio_data: bytes = None, audio_ext: str = ".mp3", language: str = None
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     🎙️ ElevenLabs Scribe v2 - Dernier fallback STT
     Utilise l'audio pré-téléchargé si fourni, sinon télécharge
     """
     elevenlabs_key = get_elevenlabs_key()
     if not elevenlabs_key:
-        print(f"  ⏭️ [ELEVENLABS-SCRIBE] Skipped: No API key", flush=True)
+        print("  ⏭️ [ELEVENLABS-SCRIBE] Skipped: No API key", flush=True)
         return None, None, None
 
-    print(f"  🎙️ [ELEVENLABS-SCRIBE] Starting...", flush=True)
+    print("  🎙️ [ELEVENLABS-SCRIBE] Starting...", flush=True)
 
     # Si pas d'audio fourni, télécharger
     if not audio_data:
         audio_data, audio_ext = await _download_audio_for_transcription(video_id)
         if not audio_data:
-            print(f"  ❌ [ELEVENLABS-SCRIBE] Failed to download audio", flush=True)
+            print("  ❌ [ELEVENLABS-SCRIBE] Failed to download audio", flush=True)
             return None, None, None
 
-    print(f"  🎙️ [ELEVENLABS-SCRIBE] Sending {len(audio_data)/1024/1024:.1f}MB to ElevenLabs...", flush=True)
+    print(f"  🎙️ [ELEVENLABS-SCRIBE] Sending {len(audio_data) / 1024 / 1024:.1f}MB to ElevenLabs...", flush=True)
 
     try:
-        mime_types = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.webm': 'audio/webm', '.opus': 'audio/opus', '.wav': 'audio/wav'}
-        mime_type = mime_types.get(audio_ext, 'audio/mpeg')
+        mime_types = {
+            ".mp3": "audio/mpeg",
+            ".m4a": "audio/mp4",
+            ".webm": "audio/webm",
+            ".opus": "audio/opus",
+            ".wav": "audio/wav",
+        }
+        mime_type = mime_types.get(audio_ext, "audio/mpeg")
 
         async with shared_http_client() as client:
-            files = {'file': (f'audio{audio_ext}', audio_data, mime_type)}
-            data = {'model': 'scribe_v2'}
+            files = {"file": (f"audio{audio_ext}", audio_data, mime_type)}
+            data = {"model": "scribe_v2"}
             if language:
-                data['language_code'] = language
+                data["language_code"] = language
 
             start_time = time.time()
             response = await client.post(
                 "https://api.elevenlabs.io/v1/speech-to-text",
                 headers={"xi-api-key": elevenlabs_key},
-                files=files, data=data, timeout=_t("elevenlabs_scribe")
+                files=files,
+                data=data,
+                timeout=_t("elevenlabs_scribe"),
             )
             elapsed = time.time() - start_time
             print(f"  🎙️ [ELEVENLABS-SCRIBE] Response in {elapsed:.1f}s: {response.status_code}", flush=True)
@@ -2072,9 +2196,9 @@ async def _elevenlabs_scribe_transcribe(video_id: str, audio_data: bytes = None,
 # 🔧 HELPERS AUDIO — Fonctions partagées pour le téléchargement/compression audio
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[bytes], str]:
     """Télécharge l'audio d'une vidéo YouTube pour transcription"""
-    audio_data = None
     audio_ext = ".mp3"
 
     # Essayer Invidious d'abord
@@ -2083,9 +2207,7 @@ async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[byt
         try:
             async with shared_http_client() as client:
                 response = await client.get(
-                    f"{instance}/api/v1/videos/{video_id}",
-                    timeout=60,
-                    headers={"User-Agent": get_random_user_agent()}
+                    f"{instance}/api/v1/videos/{video_id}", timeout=60, headers={"User-Agent": get_random_user_agent()}
                 )
 
                 if response.status_code != 200:
@@ -2107,10 +2229,7 @@ async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[byt
                     continue
 
                 audio_response = await client.get(
-                    audio_url,
-                    timeout=120,
-                    headers={"User-Agent": get_random_user_agent()},
-                    follow_redirects=True
+                    audio_url, timeout=120, headers={"User-Agent": get_random_user_agent()}, follow_redirects=True
                 )
 
                 if audio_response.status_code == 200 and len(audio_response.content) > 10000:
@@ -2129,12 +2248,23 @@ async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[byt
             with tempfile.TemporaryDirectory() as tmpdir:
                 audio_path = f"{tmpdir}/{video_id}.mp3"
                 cmd = [
-                    "yt-dlp", "-x", "--audio-format", "mp3", "--audio-quality", "9",
-                    "-o", audio_path, "--no-warnings", "--no-playlist",
-                    "--user-agent", get_random_user_agent(),
-                    "--extractor-args", "youtube:player_client=android,web,mweb",
-                    "--retries", "3",
-                    f"https://youtube.com/watch?v={video_id}"
+                    "yt-dlp",
+                    "-x",
+                    "--audio-format",
+                    "mp3",
+                    "--audio-quality",
+                    "9",
+                    "-o",
+                    audio_path,
+                    "--no-warnings",
+                    "--no-playlist",
+                    "--user-agent",
+                    get_random_user_agent(),
+                    "--extractor-args",
+                    "youtube:player_client=android,web,mweb",
+                    "--retries",
+                    "3",
+                    f"https://youtube.com/watch?v={video_id}",
                 ]
                 # 🔌 Proxy support pour download audio
                 proxy = get_youtube_proxy()
@@ -2145,14 +2275,11 @@ async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[byt
                 if result.returncode != 0:
                     return None, ".mp3"
                 for f in Path(tmpdir).iterdir():
-                    if f.suffix in ['.mp3', '.m4a', '.webm', '.opus', '.wav']:
+                    if f.suffix in [".mp3", ".m4a", ".webm", ".opus", ".wav"]:
                         return f.read_bytes(), f.suffix
                 return None, ".mp3"
 
-        result = await asyncio.wait_for(
-            loop.run_in_executor(executor, _download),
-            timeout=_t("whisper_download")
-        )
+        result = await asyncio.wait_for(loop.run_in_executor(executor, _download), timeout=_t("whisper_download"))
         return result
 
     except Exception:
@@ -2176,7 +2303,7 @@ async def _compress_audio(audio_data: bytes, audio_ext: str, source_name: str = 
 
         if Path(tmp_out_path).exists():
             compressed = Path(tmp_out_path).read_bytes()
-            print(f"  ✅ [{source_name}] Compressed to: {len(compressed)/1024/1024:.1f}MB", flush=True)
+            print(f"  ✅ [{source_name}] Compressed to: {len(compressed) / 1024 / 1024:.1f}MB", flush=True)
             Path(tmp_in_path).unlink(missing_ok=True)
             Path(tmp_out_path).unlink(missing_ok=True)
             return compressed, ".mp3"
@@ -2194,7 +2321,10 @@ async def _compress_audio(audio_data: bytes, audio_ext: str, source_name: str = 
 # 🎯 FONCTION PRINCIPALE — 10 MÉTHODES EN 3 PHASES (PARALLÈLE + SÉQUENTIEL)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None, is_short: bool = False, duration: int = 0) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+
+async def get_transcript_with_timestamps(
+    video_id: str, supadata_key: str = None, is_short: bool = False, duration: int = 0
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     🎯 FONCTION PRINCIPALE v7.1 - Supadata PRIORITAIRE + STT pour TOUTES vidéos
     Retourne: (transcript_simple, transcript_timestamped, lang)
@@ -2224,17 +2354,22 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
         return await _get_transcript_with_timestamps_inner(video_id, supadata_key, is_short, duration)
 
 
-async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str = None, is_short: bool = False, duration: int = 0) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+async def _get_transcript_with_timestamps_inner(
+    video_id: str, supadata_key: str = None, is_short: bool = False, duration: int = 0
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Inner function — exécutée sous le semaphore de concurrence."""
-    print(f"", flush=True)
-    print(f"{'='*70}", flush=True)
-    print(f"🔍 TRANSCRIPT EXTRACTION v7.1 for {video_id} (is_short={is_short}) [slots: {MAX_CONCURRENT_EXTRACTIONS - _extraction_semaphore._value}/{MAX_CONCURRENT_EXTRACTIONS}]", flush=True)
-    print(f"{'='*70}", flush=True)
+    print("", flush=True)
+    print(f"{'=' * 70}", flush=True)
+    print(
+        f"🔍 TRANSCRIPT EXTRACTION v7.1 for {video_id} (is_short={is_short}) [slots: {MAX_CONCURRENT_EXTRACTIONS - _extraction_semaphore._value}/{MAX_CONCURRENT_EXTRACTIONS}]",
+        flush=True,
+    )
+    print(f"{'=' * 70}", flush=True)
 
     # ⚡ v7.1: Activer les timeouts adaptatifs pour vidéos courtes
     if is_short:
         _active_timeouts.set(TIMEOUTS_SHORT)
-        print(f"⚡ [v7.1] Short video detected → using REDUCED timeouts (50% faster fallback)", flush=True)
+        print("⚡ [v7.1] Short video detected → using REDUCED timeouts (50% faster fallback)", flush=True)
     else:
         _active_timeouts.set(TIMEOUTS)
 
@@ -2246,7 +2381,7 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
             payload = await transcript_cache.get(video_id, platform="youtube")
             if payload is not None and payload.get("simple"):
                 print(f"💾 Transcript cache HIT for {video_id}", flush=True)
-                print(f"{'='*70}", flush=True)
+                print(f"{'=' * 70}", flush=True)
                 return payload.get("simple"), payload.get("timestamped"), payload.get("lang")
             else:
                 print(f"💾 Transcript cache MISS for {video_id}", flush=True)
@@ -2273,9 +2408,9 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 0: Supadata API EN PRIORITÉ (seul, le plus fiable)
     # ═══════════════════════════════════════════════════════════════════════════════
-    print(f"", flush=True)
-    print(f"🥇 PHASE 0: Supadata API (PRIORITY)", flush=True)
-    print(f"─" * 50, flush=True)
+    print("", flush=True)
+    print("🥇 PHASE 0: Supadata API (PRIORITY)", flush=True)
+    print("─" * 50, flush=True)
 
     supadata_cb = get_circuit_breaker("supadata")
     if supadata_cb.can_execute():
@@ -2289,23 +2424,23 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
                     supadata_cb.record_success()
                     if transcript_metrics:
                         await transcript_metrics.increment("supadata_successes")
-                    print(f"✅ SUCCESS with Supadata API (Phase 0 - Priority)", flush=True)
-                    print(f"{'='*70}", flush=True)
+                    print("✅ SUCCESS with Supadata API (Phase 0 - Priority)", flush=True)
+                    print(f"{'=' * 70}", flush=True)
                     await _cache_success(video_id, simple, timestamped, lang, "Supadata API")
                     return simple, timestamped, lang
             except Exception as e:
                 print(f"  ⚠️ [Supadata] Attempt {attempt + 1} failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
         supadata_cb.record_failure()
-        print(f"  ❌ [Supadata] Failed — falling back to Phase 1", flush=True)
+        print("  ❌ [Supadata] Failed — falling back to Phase 1", flush=True)
     else:
-        print(f"  ⏭️ [Supadata] Skipped (circuit OPEN)", flush=True)
+        print("  ⏭️ [Supadata] Skipped (circuit OPEN)", flush=True)
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 1: Méthodes texte EN PARALLÈLE (sans Supadata)
     # ═══════════════════════════════════════════════════════════════════════════════
-    print(f"", flush=True)
-    print(f"📋 PHASE 1: Text methods (PARALLEL — sans Supadata)", flush=True)
-    print(f"─" * 50, flush=True)
+    print("", flush=True)
+    print("📋 PHASE 1: Text methods (PARALLEL — sans Supadata)", flush=True)
+    print("─" * 50, flush=True)
 
     phase1_methods = [
         ("youtube-transcript-api", "ytapi", lambda: get_transcript_ytapi(video_id)),
@@ -2340,7 +2475,10 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
             return None
 
         # ⚡ Phase 1 race-cancel: first valid result wins, cancel the rest
-        tasks = [asyncio.create_task(run_method_with_retry(name, cb_name, method)) for name, cb_name, method in active_methods]
+        tasks = [
+            asyncio.create_task(run_method_with_retry(name, cb_name, method))
+            for name, cb_name, method in active_methods
+        ]
         phase1_timeout = max(
             TIMEOUTS.get("invidious", 35),
             TIMEOUTS.get("piped", 35),
@@ -2359,7 +2497,7 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
                 return_when=asyncio.FIRST_COMPLETED,
                 timeout=deadline_left,
             )
-            deadline_left -= (time.monotonic() - start_wait)
+            deadline_left -= time.monotonic() - start_wait
 
             if not done:
                 # Timeout global atteint sans nouveau résultat
@@ -2386,18 +2524,18 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
 
         if winning_result is not None:
             name, simple, timestamped, lang = winning_result
-            print(f"", flush=True)
+            print("", flush=True)
             print(f"✅ SUCCESS with {name} (Phase 1 - Race)", flush=True)
-            print(f"{'='*70}", flush=True)
+            print(f"{'=' * 70}", flush=True)
             await _cache_success(video_id, simple, timestamped, lang, name)
             return simple, timestamped, lang
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 2: yt-dlp (séquentiel, plus lent mais fiable)
     # ═══════════════════════════════════════════════════════════════════════════════
-    print(f"", flush=True)
-    print(f"📋 PHASE 2: yt-dlp methods (SEQUENTIAL)", flush=True)
-    print(f"─" * 50, flush=True)
+    print("", flush=True)
+    print("📋 PHASE 2: yt-dlp methods (SEQUENTIAL)", flush=True)
+    print("─" * 50, flush=True)
 
     phase2_methods = [
         ("yt-dlp manual", "ytdlp", lambda: get_transcript_ytdlp(video_id)),
@@ -2417,7 +2555,7 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
                 if simple and timestamped:
                     cb.record_success()
                     print(f"✅ SUCCESS with {name} (Phase 2)", flush=True)
-                    print(f"{'='*70}", flush=True)
+                    print(f"{'=' * 70}", flush=True)
                     await _cache_success(video_id, simple, timestamped, lang, name)
                     return simple, timestamped, lang
             except Exception as e:
@@ -2429,28 +2567,39 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 3: Audio STT (dernier recours — toutes vidéos)
     # ═══════════════════════════════════════════════════════════════════════════════
-    print(f"", flush=True)
+    print("", flush=True)
     print(f"📋 PHASE 3: Audio STT (last resort{' — SHORT' if is_short else ' — full video'})", flush=True)
-    print(f"─" * 50, flush=True)
+    print("─" * 50, flush=True)
 
     # Duration guard: skip all STT providers for videos longer than MAX_DURATION_FOR_STT
     if duration > 0 and duration > MAX_DURATION_FOR_STT:
-        print(f"  ⏭️ [STT] Skipped ALL STT providers: video duration {duration}s > MAX_DURATION_FOR_STT {MAX_DURATION_FOR_STT}s", flush=True)
+        print(
+            f"  ⏭️ [STT] Skipped ALL STT providers: video duration {duration}s > MAX_DURATION_FOR_STT {MAX_DURATION_FOR_STT}s",
+            flush=True,
+        )
     else:
         # Télécharger l'audio une seule fois pour tous les services
-        print(f"  🎵 Downloading audio for transcription...", flush=True)
+        print("  🎵 Downloading audio for transcription...", flush=True)
         audio_data, audio_ext = await _download_audio_for_transcription(video_id)
 
         if not audio_data:
-            print(f"  ❌ Failed to download audio - trying services anyway", flush=True)
+            print("  ❌ Failed to download audio - trying services anyway", flush=True)
 
         phase3_methods = [
             ("Voxtral STT", "voxtral_stt", lambda: get_transcript_voxtral(video_id, audio_data, audio_ext)),
             ("Groq Whisper", "whisper", lambda: get_transcript_whisper(video_id)),
-            ("OpenAI Whisper", "openai_whisper", lambda: get_transcript_openai_whisper(video_id, audio_data, audio_ext)),
+            (
+                "OpenAI Whisper",
+                "openai_whisper",
+                lambda: get_transcript_openai_whisper(video_id, audio_data, audio_ext),
+            ),
             ("Deepgram Nova-2", "deepgram", lambda: get_transcript_deepgram(video_id)),
             ("AssemblyAI", "assemblyai", lambda: get_transcript_assemblyai(video_id, audio_data, audio_ext)),
-            ("ElevenLabs Scribe", "elevenlabs_scribe", lambda: _elevenlabs_scribe_transcribe(video_id, audio_data, audio_ext)),
+            (
+                "ElevenLabs Scribe",
+                "elevenlabs_scribe",
+                lambda: _elevenlabs_scribe_transcribe(video_id, audio_data, audio_ext),
+            ),
         ]
 
         for name, cb_name, method in phase3_methods:
@@ -2465,7 +2614,7 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
                 if simple:
                     cb.record_success()
                     print(f"✅ SUCCESS with {name} (Phase 3 - Audio STT)", flush=True)
-                    print(f"{'='*70}", flush=True)
+                    print(f"{'=' * 70}", flush=True)
                     result_ts = timestamped or simple
                     await _cache_success(video_id, simple, result_ts, lang, name)
                     return simple, result_ts, lang
@@ -2476,20 +2625,34 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
     # ═══════════════════════════════════════════════════════════════════════════════
     # ÉCHEC TOTAL — Log détaillé pour diagnostic
     # ═══════════════════════════════════════════════════════════════════════════════
-    print(f"", flush=True)
+    print("", flush=True)
     print(f"❌ FAILED: All methods failed for {video_id} (is_short={is_short})", flush=True)
     # Log l'état des circuit breakers pour diagnostic
-    for cb_name in ["supadata", "ytapi", "invidious", "piped", "ytdlp", "ytdlp_auto", "voxtral_stt", "whisper", "openai_whisper", "deepgram", "assemblyai", "elevenlabs_scribe"]:
+    for cb_name in [
+        "supadata",
+        "ytapi",
+        "invidious",
+        "piped",
+        "ytdlp",
+        "ytdlp_auto",
+        "voxtral_stt",
+        "whisper",
+        "openai_whisper",
+        "deepgram",
+        "assemblyai",
+        "elevenlabs_scribe",
+    ]:
         cb = get_circuit_breaker(cb_name)
         if cb.state != CircuitState.CLOSED:
             print(f"  🔌 [{cb_name}] circuit={cb.state.value} failures={cb.failures}", flush=True)
-    print(f"{'='*70}", flush=True)
+    print(f"{'=' * 70}", flush=True)
     return None, None, None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📋 PLAYLISTS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def get_playlist_videos(playlist_id: str, max_videos: int = 50) -> List[Dict[str, Any]]:
     """Récupère les vidéos d'une playlist via yt-dlp ou Invidious"""
@@ -2501,52 +2664,61 @@ async def get_playlist_videos(playlist_id: str, max_videos: int = 50) -> List[Di
                 response = await client.get(
                     f"{instance}/api/v1/playlists/{playlist_id}",
                     timeout=30,
-                    headers={"User-Agent": get_random_user_agent()}
+                    headers={"User-Agent": get_random_user_agent()},
                 )
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     videos = []
                     for v in data.get("videos", [])[:max_videos]:
-                        videos.append({
-                            "video_id": v.get("videoId"),
-                            "title": v.get("title", "Unknown"),
-                            "duration": v.get("lengthSeconds", 0),
-                            "channel": v.get("author", "Unknown")
-                        })
+                        videos.append(
+                            {
+                                "video_id": v.get("videoId"),
+                                "title": v.get("title", "Unknown"),
+                                "duration": v.get("lengthSeconds", 0),
+                                "channel": v.get("author", "Unknown"),
+                            }
+                        )
                     if videos:
                         print(f"📋 Playlist {playlist_id}: {len(videos)} videos from Invidious", flush=True)
                         return videos
         except Exception as e:
             print(f"⚠️ Invidious playlist error: {e}", flush=True)
-    
+
     # Fallback yt-dlp
     try:
         loop = asyncio.get_event_loop()
+
         def _fetch():
             cmd = [
-                "yt-dlp", "--flat-playlist", "--dump-json", "--no-warnings",
-                "--user-agent", get_random_user_agent(),
-                f"https://www.youtube.com/playlist?list={playlist_id}"
+                "yt-dlp",
+                "--flat-playlist",
+                "--dump-json",
+                "--no-warnings",
+                "--user-agent",
+                get_random_user_agent(),
+                f"https://www.youtube.com/playlist?list={playlist_id}",
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
             if result.returncode != 0:
                 return []
             videos = []
-            for line in result.stdout.strip().split('\n'):
+            for line in result.stdout.strip().split("\n"):
                 if line:
                     try:
                         data = json.loads(line)
-                        videos.append({
-                            "video_id": data.get("id"),
-                            "title": data.get("title", "Unknown"),
-                            "duration": data.get("duration", 0),
-                            "channel": data.get("channel", data.get("uploader", "Unknown"))
-                        })
+                        videos.append(
+                            {
+                                "video_id": data.get("id"),
+                                "title": data.get("title", "Unknown"),
+                                "duration": data.get("duration", 0),
+                                "channel": data.get("channel", data.get("uploader", "Unknown")),
+                            }
+                        )
                     except json.JSONDecodeError:
                         continue
             return videos[:max_videos]
-        
+
         videos = await loop.run_in_executor(executor, _fetch)
         print(f"📋 Playlist {playlist_id}: {len(videos)} videos found", flush=True)
         return videos
@@ -2565,9 +2737,9 @@ async def get_playlist_info(playlist_id: str) -> Optional[Dict[str, Any]]:
                 response = await client.get(
                     f"{instance}/api/v1/playlists/{playlist_id}",
                     timeout=20,
-                    headers={"User-Agent": get_random_user_agent()}
+                    headers={"User-Agent": get_random_user_agent()},
                 )
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     return {
@@ -2575,25 +2747,30 @@ async def get_playlist_info(playlist_id: str) -> Optional[Dict[str, Any]]:
                         "title": data.get("title", "Unknown Playlist"),
                         "channel": data.get("author", "Unknown"),
                         "video_count": data.get("videoCount", len(data.get("videos", []))),
-                        "description": data.get("description", "")[:500]
+                        "description": data.get("description", "")[:500],
                     }
         except Exception:
             continue
-    
+
     # Fallback yt-dlp
     try:
         loop = asyncio.get_event_loop()
+
         def _fetch():
             cmd = [
-                "yt-dlp", "--dump-single-json", "--flat-playlist", "--no-warnings",
-                "--user-agent", get_random_user_agent(),
-                f"https://www.youtube.com/playlist?list={playlist_id}"
+                "yt-dlp",
+                "--dump-single-json",
+                "--flat-playlist",
+                "--no-warnings",
+                "--user-agent",
+                get_random_user_agent(),
+                f"https://www.youtube.com/playlist?list={playlist_id}",
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             if result.returncode == 0:
                 return json.loads(result.stdout)
             return None
-        
+
         data = await loop.run_in_executor(executor, _fetch)
         if data:
             return {
@@ -2601,17 +2778,17 @@ async def get_playlist_info(playlist_id: str) -> Optional[Dict[str, Any]]:
                 "title": data.get("title", "Unknown Playlist"),
                 "channel": data.get("channel", data.get("uploader", "Unknown")),
                 "video_count": len(data.get("entries", [])),
-                "description": data.get("description", "")[:500]
+                "description": data.get("description", "")[:500],
             }
     except Exception as e:
         print(f"⚠️ Playlist info error: {e}", flush=True)
-    
+
     return {
         "playlist_id": playlist_id,
         "title": "Unknown Playlist",
         "channel": "Unknown",
         "video_count": 0,
-        "description": ""
+        "description": "",
     }
 
 

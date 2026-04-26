@@ -11,7 +11,6 @@ import asyncio
 import os
 from typing import List, Optional
 import httpx
-from datetime import datetime
 
 from .schemas import AcademicPaper, Author, AcademicSource
 
@@ -59,14 +58,13 @@ class SemanticScholarClient:
     def __init__(self):
         self.base_url = SEMANTIC_SCHOLAR_API_URL
         self.api_key = SEMANTIC_SCHOLAR_API_KEY
-        self.fields = "paperId,title,authors,year,venue,abstract,citationCount,url,openAccessPdf,externalIds,fieldsOfStudy"
+        self.fields = (
+            "paperId,title,authors,year,venue,abstract,citationCount,url,openAccessPdf,externalIds,fieldsOfStudy"
+        )
 
     def _get_headers(self) -> dict:
         """Get request headers with optional API key"""
-        headers = {
-            "Accept": "application/json",
-            "User-Agent": "DeepSight/1.0 (academic-research)"
-        }
+        headers = {"Accept": "application/json", "User-Agent": "DeepSight/1.0 (academic-research)"}
         if self.api_key:
             headers["x-api-key"] = self.api_key
         return headers
@@ -75,10 +73,7 @@ class SemanticScholarClient:
         """Parse Semantic Scholar paper response to AcademicPaper model"""
         authors = []
         for author_data in data.get("authors", []):
-            authors.append(Author(
-                name=author_data.get("name", "Unknown"),
-                author_id=author_data.get("authorId")
-            ))
+            authors.append(Author(name=author_data.get("name", "Unknown"), author_id=author_data.get("authorId")))
 
         # Extract DOI from external IDs
         external_ids = data.get("externalIds") or {}
@@ -105,7 +100,7 @@ class SemanticScholarClient:
             source=AcademicSource.SEMANTIC_SCHOLAR,
             relevance_score=relevance_score,
             is_open_access=pdf_url is not None,
-            keywords=fields_of_study
+            keywords=fields_of_study,
         )
 
     async def search(
@@ -114,7 +109,7 @@ class SemanticScholarClient:
         limit: int = 10,
         year_from: Optional[int] = None,
         year_to: Optional[int] = None,
-        fields_of_study: Optional[List[str]] = None
+        fields_of_study: Optional[List[str]] = None,
     ) -> List[AcademicPaper]:
         """
         Search for papers on Semantic Scholar
@@ -131,11 +126,7 @@ class SemanticScholarClient:
         """
         await _rate_limit()
 
-        params = {
-            "query": query,
-            "limit": min(limit, 100),
-            "fields": self.fields
-        }
+        params = {"query": query, "limit": min(limit, 100), "fields": self.fields}
 
         # Add year filter if specified
         if year_from or year_to:
@@ -154,19 +145,13 @@ class SemanticScholarClient:
 
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
-                response = await client.get(
-                    f"{self.base_url}/paper/search",
-                    params=params,
-                    headers=self._get_headers()
-                )
+                response = await client.get(f"{self.base_url}/paper/search", params=params, headers=self._get_headers())
 
                 if response.status_code == 429:
                     # Rate limited, wait and retry once
                     await asyncio.sleep(60)
                     response = await client.get(
-                        f"{self.base_url}/paper/search",
-                        params=params,
-                        headers=self._get_headers()
+                        f"{self.base_url}/paper/search", params=params, headers=self._get_headers()
                     )
 
                 response.raise_for_status()
@@ -197,9 +182,7 @@ class SemanticScholarClient:
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(
-                    f"{self.base_url}/paper/DOI:{doi}",
-                    params={"fields": self.fields},
-                    headers=self._get_headers()
+                    f"{self.base_url}/paper/DOI:{doi}", params={"fields": self.fields}, headers=self._get_headers()
                 )
 
                 if response.status_code == 404:
@@ -213,11 +196,7 @@ class SemanticScholarClient:
             print(f"Semantic Scholar DOI lookup error: {str(e)}", flush=True)
             return None
 
-    async def get_recommendations(
-        self,
-        paper_id: str,
-        limit: int = 10
-    ) -> List[AcademicPaper]:
+    async def get_recommendations(self, paper_id: str, limit: int = 10) -> List[AcademicPaper]:
         """Get paper recommendations based on a seed paper"""
         await _rate_limit()
 
@@ -229,12 +208,8 @@ class SemanticScholarClient:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(
                     f"{self.base_url}/recommendations/v1/papers/",
-                    params={
-                        "positivePaperIds": paper_id,
-                        "limit": min(limit, 100),
-                        "fields": self.fields
-                    },
-                    headers=self._get_headers()
+                    params={"positivePaperIds": paper_id, "limit": min(limit, 100), "fields": self.fields},
+                    headers=self._get_headers(),
                 )
 
                 response.raise_for_status()

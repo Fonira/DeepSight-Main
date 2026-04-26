@@ -13,15 +13,16 @@
 import asyncio
 import json
 from datetime import datetime
-from typing import Dict, Any, Optional, List
-from celery import shared_task, chain, group
+from typing import Dict, Any, List
+from celery import chain
 from celery.exceptions import SoftTimeLimitExceeded
 
-from tasks.celery_app import celery_app, BaseTask, TaskPriority
+from tasks.celery_app import celery_app, BaseTask
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 ASYNC HELPER
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def run_async(coro):
     """Execute async function in sync context"""
@@ -37,13 +38,14 @@ def run_async(coro):
 # 🎬 VIDEO ANALYSIS TASK
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @celery_app.task(
     bind=True,
     base=BaseTask,
-    name='tasks.analyze_video_task',
+    name="tasks.analyze_video_task",
     max_retries=3,
     soft_time_limit=300,  # 5 minutes
-    time_limit=600,       # 10 minutes hard limit
+    time_limit=600,  # 10 minutes hard limit
 )
 def analyze_video_task(
     self,
@@ -57,7 +59,7 @@ def analyze_video_task(
 ) -> Dict[str, Any]:
     """
     Tâche d'analyse complète d'une vidéo YouTube.
-    
+
     Args:
         video_id: ID de la vidéo YouTube
         user_id: ID de l'utilisateur
@@ -66,16 +68,14 @@ def analyze_video_task(
         model: Modèle Mistral à utiliser
         category: Catégorie ou "auto" pour détection
         web_enrich: Activer l'enrichissement Perplexity
-    
+
     Returns:
         Dict avec summary_id et métadonnées
     """
     print(f"🎬 [TASK] Starting video analysis: {video_id} for user {user_id}", flush=True)
-    
+
     try:
-        return run_async(_analyze_video_async(
-            self, video_id, user_id, mode, lang, model, category, web_enrich
-        ))
+        return run_async(_analyze_video_async(self, video_id, user_id, mode, lang, model, category, web_enrich))
     except SoftTimeLimitExceeded:
         print(f"⚠️ [TASK] Soft time limit exceeded for {video_id}", flush=True)
         raise
@@ -95,52 +95,52 @@ async def _analyze_video_async(
     web_enrich: bool,
 ) -> Dict[str, Any]:
     """Implémentation async de l'analyse vidéo"""
-    
+
     # Import des dépendances (lazy pour éviter les imports circulaires)
     from db.database import async_session_maker, Summary, User
     from sqlalchemy import select
     from core.cache import cache
     from transcripts.youtube import get_transcript_with_timestamps
     from videos.analysis import generate_summary, detect_category, extract_entities
-    
+
     async with async_session_maker() as db:
         # ═══════════════════════════════════════════════════════════════════════
         # 📊 STEP 1: Vérifier le cache
         # ═══════════════════════════════════════════════════════════════════════
         task.update_progress(0, 100, "Vérification du cache...")
-        
+
         cached = await cache.get_analysis(video_id, user_id)
         if cached:
             print(f"✅ [TASK] Cache hit for {video_id}", flush=True)
             return cached
-        
+
         # ═══════════════════════════════════════════════════════════════════════
         # 📝 STEP 2: Récupérer la transcription
         # ═══════════════════════════════════════════════════════════════════════
         task.update_progress(10, 100, "Récupération de la transcription...")
-        
+
         # Check transcript cache
         transcript = await cache.get_transcript(video_id)
-        
+
         if not transcript:
             transcript_result = await get_transcript_with_timestamps(video_id, lang)
             if not transcript_result or not transcript_result.get("text"):
                 raise ValueError(f"Could not retrieve transcript for video {video_id}")
-            
+
             transcript = transcript_result["text"]
             await cache.cache_transcript(video_id, transcript)
-        
+
         task.update_progress(30, 100, "Transcription récupérée")
-        
+
         # ═══════════════════════════════════════════════════════════════════════
         # 🎯 STEP 3: Détecter la catégorie
         # ═══════════════════════════════════════════════════════════════════════
         task.update_progress(35, 100, "Détection de la catégorie...")
-        
+
         if category == "auto":
             detected = detect_category(title="", transcript=transcript[:5000])
             category = detected[0] if detected else "general"
-        
+
         # ═══════════════════════════════════════════════════════════════════════
         # 🌐 STEP 4: Enrichissement web (optionnel)
         # ═══════════════════════════════════════════════════════════════════════
@@ -149,18 +149,16 @@ async def _analyze_video_async(
             task.update_progress(40, 100, "Recherche de contexte web...")
             try:
                 from videos.web_enrichment import get_web_context_for_analysis
-                web_context = await get_web_context_for_analysis(
-                    transcript[:3000],
-                    lang=lang
-                )
+
+                web_context = await get_web_context_for_analysis(transcript[:3000], lang=lang)
             except Exception as e:
                 print(f"⚠️ [TASK] Web enrichment failed: {e}", flush=True)
-        
+
         # ═══════════════════════════════════════════════════════════════════════
         # 🧠 STEP 5: Générer l'analyse
         # ═══════════════════════════════════════════════════════════════════════
         task.update_progress(50, 100, "Analyse IA en cours...")
-        
+
         summary_content = await generate_summary(
             title="",  # Will be fetched from metadata
             transcript=transcript,
@@ -170,31 +168,31 @@ async def _analyze_video_async(
             model=model,
             web_context=web_context,
         )
-        
+
         if not summary_content:
             raise ValueError("Failed to generate summary")
-        
+
         task.update_progress(80, 100, "Analyse générée")
-        
+
         # ═══════════════════════════════════════════════════════════════════════
         # 🏷️ STEP 6: Extraire les entités
         # ═══════════════════════════════════════════════════════════════════════
         task.update_progress(85, 100, "Extraction des entités...")
-        
+
         entities = await extract_entities(summary_content, lang=lang)
-        
+
         # ═══════════════════════════════════════════════════════════════════════
         # 💾 STEP 7: Sauvegarder en base
         # ═══════════════════════════════════════════════════════════════════════
         task.update_progress(90, 100, "Sauvegarde...")
-        
+
         # Get user
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
-        
+
         if not user:
             raise ValueError(f"User {user_id} not found")
-        
+
         # Create summary
         summary = Summary(
             user_id=user_id,
@@ -208,23 +206,23 @@ async def _analyze_video_async(
             word_count=len(summary_content.split()),
             entities_extracted=json.dumps(entities) if entities else None,
         )
-        
+
         db.add(summary)
-        
+
         # Update user stats
         user.total_videos += 1
         user.total_words += len(summary_content.split())
         if user.credits > 0:
             user.credits -= 1
-        
+
         await db.commit()
         await db.refresh(summary)
-        
+
         # ═══════════════════════════════════════════════════════════════════════
         # 📦 STEP 8: Cache et retour
         # ═══════════════════════════════════════════════════════════════════════
         task.update_progress(100, 100, "Terminé!")
-        
+
         result = {
             "summary_id": summary.id,
             "video_id": video_id,
@@ -233,15 +231,15 @@ async def _analyze_video_async(
             "entities": entities,
             "created_at": summary.created_at.isoformat() if summary.created_at else None,
         }
-        
+
         # Cache the result
         await cache.cache_analysis(video_id, user_id, result)
-        
+
         # Invalidate user history cache
         await cache.delete_pattern(f"history:{user_id}:*")
-        
+
         print(f"✅ [TASK] Analysis complete: {video_id} -> summary {summary.id}", flush=True)
-        
+
         return result
 
 
@@ -249,13 +247,14 @@ async def _analyze_video_async(
 # 📋 PLAYLIST ANALYSIS TASK
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @celery_app.task(
     bind=True,
     base=BaseTask,
-    name='tasks.analyze_playlist_task',
+    name="tasks.analyze_playlist_task",
     max_retries=2,
     soft_time_limit=1800,  # 30 minutes
-    time_limit=3600,       # 1 hour hard limit
+    time_limit=3600,  # 1 hour hard limit
 )
 def analyze_playlist_task(
     self,
@@ -268,32 +267,32 @@ def analyze_playlist_task(
 ) -> Dict[str, Any]:
     """
     Tâche d'analyse batch d'une playlist.
-    
+
     Analyse chaque vidéo séquentiellement avec gestion de la progression.
     """
     print(f"📋 [TASK] Starting playlist analysis: {playlist_id} ({len(video_ids)} videos)", flush=True)
-    
+
     results = []
     errors = []
-    
+
     for i, video_id in enumerate(video_ids):
         try:
-            self.update_progress(i, len(video_ids), f"Analyse de la vidéo {i+1}/{len(video_ids)}")
-            
+            self.update_progress(i, len(video_ids), f"Analyse de la vidéo {i + 1}/{len(video_ids)}")
+
             # Call video analysis task synchronously
             result = analyze_video_task.apply(
                 args=(video_id, user_id),
-                kwargs={'mode': mode, 'lang': lang, 'model': model},
+                kwargs={"mode": mode, "lang": lang, "model": model},
             ).get(timeout=300)  # 5 min max per video
-            
+
             results.append(result)
-            
+
         except Exception as e:
             print(f"⚠️ [TASK] Video {video_id} failed: {e}", flush=True)
             errors.append({"video_id": video_id, "error": str(e)})
-    
+
     self.update_progress(len(video_ids), len(video_ids), "Playlist analysée!")
-    
+
     return {
         "playlist_id": playlist_id,
         "total_videos": len(video_ids),
@@ -308,13 +307,14 @@ def analyze_playlist_task(
 # 🎙️ TTS GENERATION TASK
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @celery_app.task(
     bind=True,
     base=BaseTask,
-    name='tasks.generate_tts_task',
+    name="tasks.generate_tts_task",
     max_retries=3,
-    soft_time_limit=60,   # 1 minute
-    time_limit=120,       # 2 minutes
+    soft_time_limit=60,  # 1 minute
+    time_limit=120,  # 2 minutes
 )
 def generate_tts_task(
     self,
@@ -327,7 +327,7 @@ def generate_tts_task(
     Génère l'audio TTS pour un résumé.
     """
     print(f"🎙️ [TASK] Generating TTS for summary {summary_id}", flush=True)
-    
+
     return run_async(_generate_tts_async(self, summary_id, user_id, voice, provider))
 
 
@@ -339,41 +339,38 @@ async def _generate_tts_async(
     provider: str,
 ) -> Dict[str, Any]:
     """Implémentation async de la génération TTS"""
-    
+
     from db.database import async_session_maker, Summary
     from sqlalchemy import select
     from tts.service import generate_audio
-    from core.cache import cache
-    
+
     async with async_session_maker() as db:
         # Get summary
-        result = await db.execute(
-            select(Summary).where(Summary.id == summary_id, Summary.user_id == user_id)
-        )
+        result = await db.execute(select(Summary).where(Summary.id == summary_id, Summary.user_id == user_id))
         summary = result.scalar_one_or_none()
-        
+
         if not summary:
             raise ValueError(f"Summary {summary_id} not found")
-        
+
         task.update_progress(20, 100, "Génération audio...")
-        
+
         # Generate audio
         audio_data = await generate_audio(
             text=summary.summary_content[:4000],  # Limit text length
             voice=voice,
             provider=provider,
         )
-        
+
         if not audio_data:
             raise ValueError("Failed to generate audio")
-        
+
         task.update_progress(80, 100, "Sauvegarde audio...")
-        
+
         # Store audio (base64 or file path depending on implementation)
         # This is a placeholder - actual implementation would save to S3/storage
-        
+
         task.update_progress(100, 100, "Audio généré!")
-        
+
         return {
             "summary_id": summary_id,
             "audio_size": len(audio_data) if audio_data else 0,
@@ -386,10 +383,11 @@ async def _generate_tts_async(
 # 🌐 WEB ENRICHMENT TASK
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @celery_app.task(
     bind=True,
     base=BaseTask,
-    name='tasks.enrich_analysis_task',
+    name="tasks.enrich_analysis_task",
     max_retries=2,
     soft_time_limit=60,
     time_limit=120,
@@ -404,7 +402,7 @@ def enrich_analysis_task(
     Utilisé pour les utilisateurs premium qui veulent mettre à jour une analyse.
     """
     print(f"🌐 [TASK] Enriching analysis {summary_id}", flush=True)
-    
+
     return run_async(_enrich_analysis_async(self, summary_id, user_id))
 
 
@@ -414,37 +412,35 @@ async def _enrich_analysis_async(
     user_id: int,
 ) -> Dict[str, Any]:
     """Implémentation async de l'enrichissement"""
-    
+
     from db.database import async_session_maker, Summary
     from sqlalchemy import select
     from videos.web_enrichment import enrich_existing_analysis
-    
+
     async with async_session_maker() as db:
-        result = await db.execute(
-            select(Summary).where(Summary.id == summary_id, Summary.user_id == user_id)
-        )
+        result = await db.execute(select(Summary).where(Summary.id == summary_id, Summary.user_id == user_id))
         summary = result.scalar_one_or_none()
-        
+
         if not summary:
             raise ValueError(f"Summary {summary_id} not found")
-        
+
         task.update_progress(30, 100, "Recherche d'informations actuelles...")
-        
+
         enriched_content = await enrich_existing_analysis(
             original_content=summary.summary_content,
             video_title=summary.video_title or "",
             lang=summary.lang or "fr",
         )
-        
+
         task.update_progress(80, 100, "Mise à jour de l'analyse...")
-        
+
         if enriched_content:
             summary.summary_content = enriched_content
             summary.fact_check_result = json.dumps({"enriched_at": datetime.utcnow().isoformat()})
             await db.commit()
-        
+
         task.update_progress(100, 100, "Enrichissement terminé!")
-        
+
         return {
             "summary_id": summary_id,
             "enriched": bool(enriched_content),
@@ -454,6 +450,7 @@ async def _enrich_analysis_async(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📤 TASK CHAINS (Workflows)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def create_full_analysis_workflow(
     video_id: str,
@@ -466,7 +463,7 @@ def create_full_analysis_workflow(
 ) -> chain:
     """
     Crée un workflow complet: analyse + TTS + enrichissement.
-    
+
     Usage:
         workflow = create_full_analysis_workflow(
             video_id="abc123",
@@ -478,10 +475,10 @@ def create_full_analysis_workflow(
     tasks = [
         analyze_video_task.s(video_id, user_id, mode, lang, model, "auto", web_enrich),
     ]
-    
+
     # Add TTS if requested
     if generate_tts:
         # This will receive the result of the previous task
         tasks.append(generate_tts_task.s(user_id))
-    
+
     return chain(*tasks)

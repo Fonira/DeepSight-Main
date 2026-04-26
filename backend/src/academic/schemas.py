@@ -10,6 +10,7 @@ from datetime import datetime
 
 class AcademicSource(str, Enum):
     """Source of academic paper"""
+
     SEMANTIC_SCHOLAR = "semantic_scholar"
     OPENALEX = "openalex"
     ARXIV = "arxiv"
@@ -18,6 +19,7 @@ class AcademicSource(str, Enum):
 
 class BibliographyFormat(str, Enum):
     """Supported bibliography export formats"""
+
     BIBTEX = "bibtex"
     RIS = "ris"
     APA = "apa"
@@ -28,6 +30,7 @@ class BibliographyFormat(str, Enum):
 
 class Author(BaseModel):
     """Author information"""
+
     name: str
     affiliation: Optional[str] = None
     author_id: Optional[str] = None
@@ -35,6 +38,7 @@ class Author(BaseModel):
 
 class AcademicPaper(BaseModel):
     """Academic paper data model"""
+
     id: str
     doi: Optional[str] = None
     title: str
@@ -56,6 +60,7 @@ class AcademicPaper(BaseModel):
 
 class AcademicSearchRequest(BaseModel):
     """Request model for academic search"""
+
     keywords: List[str] = Field(..., min_length=1, description="Keywords to search for")
     summary_id: Optional[str] = None
     limit: int = Field(default=10, ge=1, le=100)
@@ -67,6 +72,7 @@ class AcademicSearchRequest(BaseModel):
 
 class AcademicSearchResponse(BaseModel):
     """Response model for academic search"""
+
     papers: List[AcademicPaper]
     total_found: int
     query_keywords: List[str]
@@ -78,12 +84,14 @@ class AcademicSearchResponse(BaseModel):
 
 class AcademicEnrichRequest(BaseModel):
     """Request to enrich a summary with academic sources"""
+
     summary_id: str
     max_papers: Optional[int] = None
 
 
 class BibliographyExportRequest(BaseModel):
     """Request model for bibliography export"""
+
     paper_ids: List[str] = Field(..., min_length=1)
     format: BibliographyFormat = BibliographyFormat.BIBTEX
     summary_id: Optional[str] = None
@@ -91,6 +99,7 @@ class BibliographyExportRequest(BaseModel):
 
 class BibliographyExportResponse(BaseModel):
     """Response model for bibliography export"""
+
     content: str
     format: BibliographyFormat
     paper_count: int
@@ -99,6 +108,7 @@ class BibliographyExportResponse(BaseModel):
 
 class CachedAcademicPaper(BaseModel):
     """Database model for cached academic papers"""
+
     id: Optional[int] = None
     external_id: str
     summary_id: int

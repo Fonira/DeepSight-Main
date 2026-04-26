@@ -33,16 +33,16 @@ def sanitize_html(text: Optional[str], max_length: int = 10000) -> str:
     text = text[:max_length]
 
     # Supprimer les balises script et leur contenu
-    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.IGNORECASE | re.DOTALL)
 
     # Supprimer les event handlers (onclick, onerror, etc.)
-    text = re.sub(r'\s+on\w+\s*=\s*["\'][^"\']*["\']', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s+on\w+\s*=\s*["\'][^"\']*["\']', "", text, flags=re.IGNORECASE)
 
     # Supprimer les urls javascript:
-    text = re.sub(r'javascript:', '', text, flags=re.IGNORECASE)
+    text = re.sub(r"javascript:", "", text, flags=re.IGNORECASE)
 
     # Supprimer les data: urls potentiellement dangereux
-    text = re.sub(r'data:text/html', '', text, flags=re.IGNORECASE)
+    text = re.sub(r"data:text/html", "", text, flags=re.IGNORECASE)
 
     # Échapper les caractères HTML
     text = html.escape(text)
@@ -71,10 +71,10 @@ def sanitize_text(text: Optional[str], max_length: int = 5000) -> str:
     text = text[:max_length]
 
     # Supprimer les caractères de contrôle (sauf newlines et tabs)
-    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
 
     # Normaliser les sauts de ligne
-    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
 
     return text.strip()
 
@@ -91,7 +91,7 @@ def sanitize_username(username: str) -> str:
         return ""
 
     # Garder seulement lettres, chiffres, underscores et tirets
-    username = re.sub(r'[^a-zA-Z0-9_-]', '', username)
+    username = re.sub(r"[^a-zA-Z0-9_-]", "", username)
 
     # Convertir en minuscules
     username = username.lower()
@@ -114,7 +114,7 @@ def sanitize_email(email: str) -> str:
     email = email.strip().lower()
 
     # Validation basique du format
-    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+    if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email):
         return ""
 
     return email[:255]
@@ -133,20 +133,18 @@ def sanitize_url(url: str) -> str:
     url = url.strip()
 
     # Supprimer les espaces encodés
-    url = url.replace('%20', ' ').strip()
+    url = url.replace("%20", " ").strip()
 
     # Vérifier le protocole
     url_lower = url.lower()
-    if url_lower.startswith('javascript:') or url_lower.startswith('data:'):
+    if url_lower.startswith("javascript:") or url_lower.startswith("data:"):
         return ""
 
     # Autoriser http, https, et les URLs relatives
-    if not (url_lower.startswith('http://') or
-            url_lower.startswith('https://') or
-            url_lower.startswith('/')):
+    if not (url_lower.startswith("http://") or url_lower.startswith("https://") or url_lower.startswith("/")):
         # Ajouter https:// par défaut si c'est une URL YouTube
-        if 'youtube.com' in url_lower or 'youtu.be' in url_lower:
-            url = 'https://' + url
+        if "youtube.com" in url_lower or "youtu.be" in url_lower:
+            url = "https://" + url
 
     return url[:2000]
 
@@ -164,6 +162,6 @@ def sanitize_json_string(text: Optional[str], max_length: int = 50000) -> str:
     text = text[:max_length]
 
     # Supprimer les caractères de contrôle problématiques pour JSON
-    text = re.sub(r'[\x00-\x1f\x7f]', lambda m: f'\\u{ord(m.group()):04x}', text)
+    text = re.sub(r"[\x00-\x1f\x7f]", lambda m: f"\\u{ord(m.group()):04x}", text)
 
     return text

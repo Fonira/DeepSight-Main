@@ -248,7 +248,7 @@ class ElevenLabsClient:
                 "- Si on te pose une question factuelle, cherche d'abord dans le transcript et l'analyse ci-dessus.\n"
                 "- Utilise search_in_transcript UNIQUEMENT si tu as besoin d'un passage précis non présent dans ton contexte.\n"
                 "- Utilise get_sources pour les questions de fiabilité ou de fact-check.\n"
-                "- Si \"interroge-moi\" ou \"quiz\" → utilise get_flashcards.\n"
+                '- Si "interroge-moi" ou "quiz" → utilise get_flashcards.\n'
                 "- Si hors sujet → ramène vers la vidéo.\n"
                 "- Ton naturel, expert mais accessible. Tutoie l'utilisateur.\n"
                 "- Si le transcript est partiel (vidéo longue), dis-le et propose d'utiliser search_in_transcript.\n"
@@ -333,8 +333,7 @@ class ElevenLabsClient:
             _webhook_tool(
                 name="get_analysis_section",
                 description=(
-                    "Retrieve a specific section of the video analysis "
-                    "(e.g. key_points, arguments, conclusion)."
+                    "Retrieve a specific section of the video analysis (e.g. key_points, arguments, conclusion)."
                 ),
                 url_path="/api/voice/tools/analysis-section",
                 body_schema={
@@ -354,10 +353,7 @@ class ElevenLabsClient:
             ),
             _webhook_tool(
                 name="get_sources",
-                description=(
-                    "Get fact-check sources and reliability information "
-                    "for the claims made in the video."
-                ),
+                description=("Get fact-check sources and reliability information for the claims made in the video."),
                 url_path="/api/voice/tools/sources",
                 body_schema={
                     "type": "object",
@@ -442,10 +438,7 @@ class ElevenLabsClient:
             ),
             _webhook_tool(
                 name="check_fact",
-                description=(
-                    "Verify a factual claim by searching the web for "
-                    "supporting or contradicting evidence."
-                ),
+                description=("Verify a factual claim by searching the web for supporting or contradicting evidence."),
                 url_path="/api/voice/tools/check-fact",
                 body_schema={
                     "type": "object",
@@ -533,7 +526,10 @@ class ElevenLabsClient:
                     "properties": {
                         "debate_id": debate_id_field,
                         "query": {"type": "string", "description": "The search query"},
-                        "side": {"type": "string", "description": "Which transcript: 'video_a', 'video_b', or 'both' (default)"},
+                        "side": {
+                            "type": "string",
+                            "description": "Which transcript: 'video_a', 'video_b', or 'both' (default)",
+                        },
                     },
                     "required": ["debate_id", "query"],
                 },
@@ -562,8 +558,5 @@ def get_elevenlabs_client() -> ElevenLabsClient:
 
     api_key = get_elevenlabs_key()
     if not api_key:
-        raise ValueError(
-            "ELEVENLABS_API_KEY is not configured — "
-            "set it in .env or environment variables"
-        )
+        raise ValueError("ELEVENLABS_API_KEY is not configured — set it in .env or environment variables")
     return ElevenLabsClient(api_key=api_key)

@@ -7,6 +7,7 @@ Cache: Redis via cache_service (shared across all Uvicorn workers).
 Fallback: on cache miss -> DB query -> cache result for 1 hour.
 Pre-cache: see trending_precache.py (APScheduler job every hour).
 """
+
 import logging
 from typing import Optional, List
 from datetime import datetime, timedelta
@@ -88,19 +89,12 @@ async def _query_trending_from_db(
         if category:
             query = query.where(Summary.category == category)
 
-        query = (
-            query
-            .group_by(Summary.video_id)
-            .order_by(desc("analysis_count"))
-            .limit(limit)
-        )
+        query = query.group_by(Summary.video_id).order_by(desc("analysis_count")).limit(limit)
 
         result = await session.execute(query)
         rows = result.all()
 
-        total_cached = await session.execute(
-            select(func.count(TranscriptCache.id))
-        )
+        total_cached = await session.execute(select(func.count(TranscriptCache.id)))
         total = total_cached.scalar() or 0
 
     videos = []
@@ -110,20 +104,22 @@ async def _query_trending_from_db(
         if thumb and len(thumb) > 500:
             thumb = f"https://img.youtube.com/vi/{row.video_id}/mqdefault.jpg"
 
-        videos.append(TrendingVideo(
-            video_id=row.video_id,
-            title=row.title or "Unknown",
-            channel=row.channel or "Unknown",
-            thumbnail_url=thumb,
-            category=row.category,
-            duration=row.duration,
-            view_count=row.cache_view_count,
-            upload_date=row.cache_upload_date,
-            analysis_count=row.analysis_count,
-            unique_users=row.unique_users,
-            avg_reliability_score=round(row.avg_reliability, 1) if row.avg_reliability else None,
-            latest_analyzed_at=row.latest_at.isoformat() if row.latest_at else "",
-        ))
+        videos.append(
+            TrendingVideo(
+                video_id=row.video_id,
+                title=row.title or "Unknown",
+                channel=row.channel or "Unknown",
+                thumbnail_url=thumb,
+                category=row.category,
+                duration=row.duration,
+                view_count=row.cache_view_count,
+                upload_date=row.cache_upload_date,
+                analysis_count=row.analysis_count,
+                unique_users=row.unique_users,
+                avg_reliability_score=round(row.avg_reliability, 1) if row.avg_reliability else None,
+                latest_analyzed_at=row.latest_at.isoformat() if row.latest_at else "",
+            )
+        )
 
     return TrendingResponse(
         videos=videos,

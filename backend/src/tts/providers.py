@@ -142,9 +142,7 @@ class ElevenLabsTTSProvider(TTSProvider):
             await response.aclose()
             await client.aclose()
             elevenlabs_circuit.record_failure()
-            raise RuntimeError(
-                f"ElevenLabs error {response.status_code}: {error_body}"
-            )
+            raise RuntimeError(f"ElevenLabs error {response.status_code}: {error_body}")
 
         elevenlabs_circuit.record_success()
 
@@ -181,6 +179,7 @@ class OpenAITTSProvider(TTSProvider):
         """Safely get OpenAI API key from config."""
         try:
             from core.config import settings
+
             return getattr(settings, "OPENAI_API_KEY", None) or None
         except Exception:
             return None
@@ -240,9 +239,7 @@ class OpenAITTSProvider(TTSProvider):
             error_body = (await response.aread()).decode(errors="replace")[:200]
             await response.aclose()
             await client.aclose()
-            raise RuntimeError(
-                f"OpenAI TTS error {response.status_code}: {error_body}"
-            )
+            raise RuntimeError(f"OpenAI TTS error {response.status_code}: {error_body}")
 
         async def _stream() -> AsyncIterator[bytes]:
             try:
@@ -327,11 +324,10 @@ class VoxtralTTSProvider(TTSProvider):
 
         resolved_voice = self._resolve_voice_id(language, gender, voice_id)
         if not resolved_voice:
-            raise RuntimeError(
-                f"No Voxtral voice configured for {language}/{gender}"
-            )
+            raise RuntimeError(f"No Voxtral voice configured for {language}/{gender}")
 
         from core.config import _settings
+
         resolved_model = model_id or _settings.VOXTRAL_MODEL
 
         payload = {
@@ -369,9 +365,7 @@ class VoxtralTTSProvider(TTSProvider):
             await response.aclose()
             await client.aclose()
             _voxtral_record_failure()
-            raise RuntimeError(
-                f"Voxtral TTS error {response.status_code}: {error_body}"
-            )
+            raise RuntimeError(f"Voxtral TTS error {response.status_code}: {error_body}")
 
         _voxtral_record_success()
 
@@ -501,6 +495,5 @@ def get_tts_provider() -> TTSProvider:
         return openai_provider
 
     raise RuntimeError(
-        "No TTS provider available — ElevenLabs circuit open, "
-        "Voxtral not configured, OpenAI key missing"
+        "No TTS provider available — ElevenLabs circuit open, Voxtral not configured, OpenAI key missing"
     )

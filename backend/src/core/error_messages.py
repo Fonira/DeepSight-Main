@@ -5,8 +5,6 @@ Utilisé par les exception handlers de main.py pour renvoyer des erreurs
 localisées quand le header Accept-Language contient "fr".
 """
 
-from typing import Optional
-
 from fastapi import Request
 
 
@@ -19,17 +17,14 @@ ERROR_TRANSLATIONS_FR: dict[str, str] = {
     "Internal server error": "Erreur interne du serveur",
     "An unexpected error occurred": "Une erreur inattendue s'est produite",
     "Service temporarily unavailable": "Service temporairement indisponible",
-
     # --- Base de données ---
     "Database temporarily unavailable": "Base de données temporairement indisponible",
     "Database connection error. Please try again later.": "Erreur de connexion à la base de données. Veuillez réessayer plus tard.",
     "Request timed out. Please try again.": "La requête a expiré. Veuillez réessayer.",
-
     # --- Rate limiting ---
     "Rate limit exceeded": "Limite de requêtes dépassée",
     "Too many requests": "Trop de requêtes",
     "Too many requests. Please slow down.": "Trop de requêtes. Veuillez ralentir.",
-
     # --- Authentification ---
     "Not authenticated": "Non authentifié",
     "Could not validate credentials": "Impossible de valider les identifiants",
@@ -46,7 +41,6 @@ ERROR_TRANSLATIONS_FR: dict[str, str] = {
     "Account disabled": "Compte désactivé",
     "Invalid verification code": "Code de vérification invalide",
     "Verification code expired": "Code de vérification expiré",
-
     # --- Autorisation ---
     "Not authorized": "Non autorisé",
     "Forbidden": "Accès interdit",
@@ -54,14 +48,12 @@ ERROR_TRANSLATIONS_FR: dict[str, str] = {
     "Admin only": "Réservé aux administrateurs",
     "Insufficient permissions": "Permissions insuffisantes",
     "This feature requires a higher plan": "Cette fonctionnalité nécessite un abonnement supérieur",
-
     # --- Crédits & Quotas ---
     "Insufficient credits": "Crédits insuffisants",
     "Monthly analysis limit reached": "Limite d'analyses mensuelles atteinte",
     "Daily limit reached": "Limite quotidienne atteinte",
     "Credit limit exceeded": "Limite de crédits dépassée",
     "Not enough credits": "Pas assez de crédits",
-
     # --- Ressources ---
     "Not found": "Ressource introuvable",
     "Video not found": "Vidéo introuvable",
@@ -70,7 +62,6 @@ ERROR_TRANSLATIONS_FR: dict[str, str] = {
     "Playlist not found": "Playlist introuvable",
     "Batch not found": "Lot introuvable",
     "Analysis not found": "Analyse introuvable",
-
     # --- Validation ---
     "Invalid URL": "URL invalide",
     "Invalid YouTube URL": "URL YouTube invalide",
@@ -79,7 +70,6 @@ ERROR_TRANSLATIONS_FR: dict[str, str] = {
     "Invalid request": "Requête invalide",
     "Missing required field": "Champ obligatoire manquant",
     "Invalid format": "Format invalide",
-
     # --- Billing / Stripe ---
     "Stripe not enabled": "Paiement Stripe non activé",
     "Stripe not configured": "Stripe non configuré",
@@ -93,15 +83,12 @@ ERROR_TRANSLATIONS_FR: dict[str, str] = {
     "Invalid signature": "Signature invalide",
     "Session does not belong to current user": "La session n'appartient pas à l'utilisateur actuel",
     "Webhook secret not configured": "Secret du webhook non configuré",
-
     # --- Exports ---
     "Export failed": "Échec de l'export",
     "Unsupported export format": "Format d'export non pris en charge",
-
     # --- Chat ---
     "Chat not available": "Chat non disponible",
     "Message too long": "Message trop long",
-
     # --- Divers ---
     "Method not allowed": "Méthode non autorisée",
     "Conflict": "Conflit",
@@ -160,6 +147,7 @@ VALIDATION_TRANSLATIONS_FR: dict[str, str] = {
 # ═══════════════════════════════════════════════════════════════════════════════
 # Fonctions utilitaires
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def wants_french(request: Request) -> bool:
     """Vérifie si le client préfère le français via Accept-Language."""
@@ -225,9 +213,7 @@ def translate_detail(detail: str | dict | list, lang: str) -> str | dict | list:
     if isinstance(detail, dict):
         new_detail = dict(detail)
         if "message" in new_detail and isinstance(new_detail["message"], str):
-            new_detail["message"] = ERROR_TRANSLATIONS_FR.get(
-                new_detail["message"], new_detail["message"]
-            )
+            new_detail["message"] = ERROR_TRANSLATIONS_FR.get(new_detail["message"], new_detail["message"])
         return new_detail
 
     return detail

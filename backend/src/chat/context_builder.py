@@ -47,23 +47,23 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Seuils de taille (en caractères)
-SHORT_VIDEO_TRANSCRIPT_LIMIT = 25_000   # < 30 min → transcript complet
+SHORT_VIDEO_TRANSCRIPT_LIMIT = 25_000  # < 30 min → transcript complet
 MEDIUM_VIDEO_TRANSCRIPT_LIMIT = 80_000  # 30 min – 1h30 → digest + segments
 # > 80K → digest + résumé structuré uniquement
 
 # Limites par consumer — chat
-MAX_CONTEXT_CHAT = 50_000     # Mistral (mode expert 25K tokens ≈ 50K chars)
+MAX_CONTEXT_CHAT = 50_000  # Mistral (mode expert 25K tokens ≈ 50K chars)
 
 # Limites voice adaptatives par tier — v3.0
 # Plus la vidéo est longue, plus le full_digest est important et doit rentrer.
-MAX_CONTEXT_VOICE = 12_000    # Fallback par défaut
+MAX_CONTEXT_VOICE = 12_000  # Fallback par défaut
 MAX_CONTEXT_VOICE_BY_TIER = {
-    "micro": 8_000,       # Vidéo très courte, peu de contexte nécessaire
+    "micro": 8_000,  # Vidéo très courte, peu de contexte nécessaire
     "short": 10_000,
     "medium": 12_000,
-    "long": 16_000,       # Conférences : le digest aide beaucoup
-    "extended": 20_000,   # Podcasts 1h+ : full_digest (6-10K) + metadata
-    "marathon": 24_000,   # 2h+ : full_digest complet + summary key points
+    "long": 16_000,  # Conférences : le digest aide beaucoup
+    "extended": 20_000,  # Podcasts 1h+ : full_digest (6-10K) + metadata
+    "marathon": 24_000,  # 2h+ : full_digest complet + summary key points
 }
 
 # Taille des sections
@@ -76,6 +76,7 @@ MAX_ACADEMIC_PAPERS = 5
 # ═══════════════════════════════════════════════════════════════════════════════
 # Dataclass de sortie
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class RichContext:
@@ -93,16 +94,16 @@ class RichContext:
     video_url: str = ""
 
     # Contenu textuel
-    transcript: str = ""              # Transcript (complet ou tronqué)
-    transcript_strategy: str = ""     # "full" | "digest_plus_segments" | "digest_only"
-    transcript_total_chars: int = 0   # Taille originale complète
-    full_transcript: str = ""         # 🆕 Transcript COMPLET (non tronqué) pour recherche
-    summary_content: str = ""         # Analyse markdown
-    full_digest: str = ""             # Pipeline hiérarchique
+    transcript: str = ""  # Transcript (complet ou tronqué)
+    transcript_strategy: str = ""  # "full" | "digest_plus_segments" | "digest_only"
+    transcript_total_chars: int = 0  # Taille originale complète
+    full_transcript: str = ""  # 🆕 Transcript COMPLET (non tronqué) pour recherche
+    summary_content: str = ""  # Analyse markdown
+    full_digest: str = ""  # Pipeline hiérarchique
 
     # 🆕 v4.0: Index structuré pour navigation
-    structured_index: str = ""        # JSON index sérialisé
-    video_tier: str = ""              # "short" | "medium" | "long"
+    structured_index: str = ""  # JSON index sérialisé
+    video_tier: str = ""  # "short" | "medium" | "long"
 
     # Fact-check & enrichissement
     fact_check: str = ""
@@ -151,13 +152,12 @@ class RichContext:
 
         try:
             from videos.duration_router import (
-                categorize_video, deserialize_index, search_relevant_chunks,
+                categorize_video,
+                deserialize_index,
                 prepare_transcript_for_chat,
             )
 
-            profile = categorize_video(
-                self.duration_seconds, self.full_transcript, self.full_transcript
-            )
+            profile = categorize_video(self.duration_seconds, self.full_transcript, self.full_transcript)
 
             # Désérialiser l'index
             index_entries = deserialize_index(self.structured_index) if self.structured_index else []
@@ -180,6 +180,7 @@ class RichContext:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Fonction principale : assemblage du contexte
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def build_rich_context(
     summary: Summary,
@@ -231,8 +232,8 @@ async def build_rich_context(
 
     # ── Transcript : stratégie adaptative ───────────────────────────────
     if include_transcript:
-        ctx.transcript, ctx.transcript_strategy, ctx.transcript_total_chars = (
-            await _load_transcript_adaptive(summary, db)
+        ctx.transcript, ctx.transcript_strategy, ctx.transcript_total_chars = await _load_transcript_adaptive(
+            summary, db
         )
         # 🆕 v4.0: Stocker le transcript complet pour recherche per-question
         if ctx.transcript_strategy != "full":
@@ -245,9 +246,12 @@ async def build_rich_context(
             ctx.full_transcript = ctx.transcript
 
         # 🆕 v4.0: Charger l'index structuré et le tier
-        ctx.structured_index = summary.structured_index if hasattr(summary, 'structured_index') and summary.structured_index else ""
+        ctx.structured_index = (
+            summary.structured_index if hasattr(summary, "structured_index") and summary.structured_index else ""
+        )
         try:
             from videos.duration_router import categorize_video
+
             profile = categorize_video(ctx.duration_seconds, ctx.full_transcript, ctx.full_transcript)
             ctx.video_tier = profile.tier.value
         except Exception:
@@ -283,9 +287,13 @@ async def build_rich_context(
 
     # ── Total chars (debug) ─────────────────────────────────────────────
     ctx.total_chars = (
-        len(ctx.transcript) + len(ctx.summary_content) + len(ctx.full_digest)
-        + len(ctx.fact_check) + len(ctx.enrichment_sources)
-        + len(ctx.enrichment_data) + len(ctx.entities)
+        len(ctx.transcript)
+        + len(ctx.summary_content)
+        + len(ctx.full_digest)
+        + len(ctx.fact_check)
+        + len(ctx.enrichment_sources)
+        + len(ctx.enrichment_data)
+        + len(ctx.entities)
     )
 
     logger.info(
@@ -309,6 +317,7 @@ async def build_rich_context(
 # ═══════════════════════════════════════════════════════════════════════════════
 # Chargement adaptatif du transcript
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def _load_transcript_adaptive(
     summary: Summary,
@@ -366,9 +375,7 @@ async def _get_full_transcript_from_cache(
         return ""
 
     try:
-        result = await db.execute(
-            select(TranscriptCache).where(TranscriptCache.video_id == video_id)
-        )
+        result = await db.execute(select(TranscriptCache).where(TranscriptCache.video_id == video_id))
         cache_entry = result.scalar_one_or_none()
 
         if not cache_entry:
@@ -417,22 +424,17 @@ def _extract_key_segments(transcript: str, target_chars: int = 20_000) -> str:
 
     # Milieu : prendre un segment au centre
     mid_start = (total - middle_size) // 2
-    middle = transcript[mid_start:mid_start + middle_size]
+    middle = transcript[mid_start : mid_start + middle_size]
 
     outro = transcript[-outro_size:]
 
-    return (
-        f"{intro}\n\n"
-        f"[… passage au milieu du transcript …]\n\n"
-        f"{middle}\n\n"
-        f"[… fin du transcript …]\n\n"
-        f"{outro}"
-    )
+    return f"{intro}\n\n[… passage au milieu du transcript …]\n\n{middle}\n\n[… fin du transcript …]\n\n{outro}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Extracteurs de données enrichies
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _extract_fact_check(summary: Summary) -> str:
     """Extrait les résultats de fact-check depuis le Summary."""
@@ -556,6 +558,7 @@ async def _load_academic_papers(summary_id: int, db: AsyncSession) -> list[dict]
 # Formatage du contexte pour injection dans un prompt
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _format_context(
     ctx: RichContext,
     max_chars: int,
@@ -625,7 +628,11 @@ def _format_context(
         header = "## Vérification des faits" if is_fr else "## Fact-check"
         score_str = ""
         if ctx.reliability_score is not None:
-            score_str = f"\nScore de fiabilité : {ctx.reliability_score}/10" if is_fr else f"\nReliability score: {ctx.reliability_score}/10"
+            score_str = (
+                f"\nScore de fiabilité : {ctx.reliability_score}/10"
+                if is_fr
+                else f"\nReliability score: {ctx.reliability_score}/10"
+            )
         sections.append(f"{header}{score_str}\n{ctx.fact_check}")
     elif ctx.reliability_score is not None:
         header = "## Fiabilité" if is_fr else "## Reliability"
@@ -661,20 +668,20 @@ def _format_context(
         if ctx.transcript_strategy == "full":
             header_label = (
                 f"## Transcript complet ({ctx.transcript_total_chars:,} caractères)"
-                if is_fr else
-                f"## Full transcript ({ctx.transcript_total_chars:,} characters)"
+                if is_fr
+                else f"## Full transcript ({ctx.transcript_total_chars:,} characters)"
             )
         elif ctx.transcript_strategy == "digest_plus_segments":
             header_label = (
                 f"## Segments clés du transcript ({ctx.transcript_total_chars:,} caractères au total)"
-                if is_fr else
-                f"## Key transcript segments ({ctx.transcript_total_chars:,} total characters)"
+                if is_fr
+                else f"## Key transcript segments ({ctx.transcript_total_chars:,} total characters)"
             )
         else:
             header_label = (
                 f"## Extraits du transcript ({ctx.transcript_total_chars:,} caractères au total)"
-                if is_fr else
-                f"## Transcript excerpts ({ctx.transcript_total_chars:,} total characters)"
+                if is_fr
+                else f"## Transcript excerpts ({ctx.transcript_total_chars:,} total characters)"
             )
 
         sections.append(f"{header_label}\n{ctx.transcript}")
@@ -714,7 +721,7 @@ def _assemble_with_limit(sections: list[str], max_chars: int) -> str:
         else:
             # Tronquer cette section si c'est important (les premières et la dernière)
             if i <= 1 or i == len(sections) - 1:
-                truncated = section[:remaining - 50]
+                truncated = section[: remaining - 50]
                 # Couper proprement à la dernière fin de ligne
                 last_nl = truncated.rfind("\n")
                 if last_nl > len(truncated) // 2:
@@ -734,6 +741,7 @@ def _assemble_with_limit(sections: list[str], max_chars: int) -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Utilitaires
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _format_duration(seconds: int) -> str:
     """Formate une durée en secondes en string lisible."""

@@ -163,10 +163,7 @@ async def check_fact(
             snippet = src.get("snippet", "")
             lines.append(f"{title} : {snippet}")
 
-        formatted = (
-            f"Vérification de l'affirmation : \"{claim}\"\n\n"
-            f"Selon les sources trouvées :\n" + "\n".join(lines)
-        )
+        formatted = f'Vérification de l\'affirmation : "{claim}"\n\nSelon les sources trouvées :\n' + "\n".join(lines)
         return _truncate(formatted, 1500)
 
     except Exception as e:

@@ -22,7 +22,14 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, U
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session, User, Summary
-from auth.dependencies import get_current_user, get_verified_user, require_plan, check_daily_limit, require_feature, get_current_admin
+from auth.dependencies import (
+    get_current_user,
+    get_verified_user,
+    require_plan,
+    check_daily_limit,
+    require_feature,
+    get_current_admin,
+)
 from core.config import PLAN_LIMITS, CATEGORIES, get_mistral_key
 from core.http_client import shared_http_client
 from core.logging import logger
@@ -31,22 +38,38 @@ from core.logging import logger
 try:
     from core.security import (
         check_can_analyze as secure_check_can_analyze,
-        reserve_credits, consume_reserved_credits, release_reserved_credits,
-        get_credit_cost, generate_secure_operation_id, verify_resource_ownership
+        reserve_credits,
+        consume_reserved_credits,
+        release_reserved_credits,
+        get_credit_cost,
+        generate_secure_operation_id,
+        verify_resource_ownership,
     )
+
     SECURITY_AVAILABLE = True
 except ImportError:
     SECURITY_AVAILABLE = False
     logger.warning("⚠️ [VIDEO] Security module not available")
 
 from .schemas import (
-    AnalyzeVideoRequest, AnalyzePlaylistRequest, UpdateSummaryRequest,
-    SummaryResponse, SummaryListItem, HistoryResponse, CategoryResponse,
-    TaskStatusResponse, VideoInfoResponse, ExtensionSummaryResponse,
-    GuestAnalyzeRequest, GuestAnalyzeResponse,
-    QuickChatRequest, QuickChatResponse,
-    UpgradeQuickChatRequest, UpgradeQuickChatResponse,
-    AnalyzeImagesRequest, AnalyzeImagesResponse,
+    AnalyzeVideoRequest,
+    AnalyzePlaylistRequest,
+    UpdateSummaryRequest,
+    SummaryResponse,
+    SummaryListItem,
+    HistoryResponse,
+    CategoryResponse,
+    TaskStatusResponse,
+    VideoInfoResponse,
+    ExtensionSummaryResponse,
+    GuestAnalyzeRequest,
+    GuestAnalyzeResponse,
+    QuickChatRequest,
+    QuickChatResponse,
+    UpgradeQuickChatRequest,
+    UpgradeQuickChatResponse,
+    AnalyzeImagesRequest,
+    AnalyzeImagesResponse,
 )
 from images.screenshot_detection import (
     detect_video_screenshot as _detect_video_screenshot,
@@ -58,36 +81,58 @@ from images.screenshot_detection import (
 )
 from .summary_extractor import extract_extension_summary
 from .service import (
-    check_can_analyze, deduct_credit, save_summary,
-    get_summary_by_id, get_summary_by_video_id, get_user_history,
-    update_summary, delete_summary, delete_all_history,
-    create_playlist_analysis, get_user_playlists, get_playlist_summaries,
-    get_user_stats, create_task, update_task_status, get_task
+    check_can_analyze,
+    deduct_credit,
+    save_summary,
+    get_summary_by_id,
+    get_summary_by_video_id,
+    get_user_history,
+    update_summary,
+    delete_summary,
+    delete_all_history,
+    create_playlist_analysis,
+    get_user_playlists,
+    get_playlist_summaries,
+    get_user_stats,
+    create_task,
+    update_task_status,
+    get_task,
 )
 from .analysis import (
-    generate_summary, detect_category, extract_entities,
-    calculate_reliability_score, CATEGORIES as ANALYSIS_CATEGORIES
+    generate_summary,
+    detect_category,
+    extract_entities,
+    calculate_reliability_score,
+    CATEGORIES as ANALYSIS_CATEGORIES,
 )
 from .long_video_analyzer import (
-    needs_chunking, analyze_long_video, get_chunk_stats,
-    LongVideoResult, store_chunks_in_db,
+    needs_chunking,
+    analyze_long_video,
+    get_chunk_stats,
+    LongVideoResult,
+    store_chunks_in_db,
 )
 from .web_enrichment import (
-    get_pre_analysis_context, get_enrichment_level, get_enrichment_badge,
-    EnrichmentLevel, format_sources_markdown
+    get_pre_analysis_context,
+    get_enrichment_level,
+    get_enrichment_badge,
+    EnrichmentLevel,
+    format_sources_markdown,
 )
 from .raw_text_enhance import (
-    enhance_raw_text, generate_smart_title, generate_thumbnail,
-    SourceType, SourceContext, get_source_specific_instructions
+    enhance_raw_text,
+    generate_smart_title,
+    generate_thumbnail,
+    SourceType,
+    SourceContext,
+    get_source_specific_instructions,
 )
+
 # 📚 Import du système de définitions de concepts
-from .concept_definitions import (
-    get_concepts_with_definitions, extract_concepts, clean_concept_markers
-)
+from .concept_definitions import get_concepts_with_definitions, extract_concepts, clean_concept_markers
+
 # 📚 Import des définitions enrichies v2 (Mistral + Perplexity)
-from .enriched_definitions import (
-    get_enriched_definitions, extract_terms_from_text, get_category_info, CATEGORIES
-)
+from .enriched_definitions import get_enriched_definitions, extract_terms_from_text, get_category_info, CATEGORIES
 
 # 🆕 v2.1: Import des nouveaux modules d'analyse avancée
 try:
@@ -95,9 +140,14 @@ try:
     from .metadata_enriched import get_enriched_metadata, detect_sponsorship, detect_propaganda_risk
     from .anti_ai_prompts import build_customized_prompt, get_anti_ai_prompt, get_style_instruction
     from .schemas import (
-        AnalysisCustomization, WritingStyle, AnalyzeRequestV2, AnalyzeResponseV2,
-        CommentsAnalysis, VideoMetadataEnriched
+        AnalysisCustomization,
+        WritingStyle,
+        AnalyzeRequestV2,
+        AnalyzeResponseV2,
+        CommentsAnalysis,
+        VideoMetadataEnriched,
     )
+
     ADVANCED_ANALYSIS_AVAILABLE = True
 except ImportError as e:
     ADVANCED_ANALYSIS_AVAILABLE = False
@@ -105,39 +155,46 @@ except ImportError as e:
 
 # 🕐 Import du système de fraîcheur et fact-check LITE
 try:
-    from .freshness_factcheck import (
-        analyze_freshness, analyze_claims_lite, analyze_content_reliability,
-        FreshnessLevel
-    )
+    from .freshness_factcheck import analyze_freshness, analyze_claims_lite, analyze_content_reliability, FreshnessLevel
+
     FACTCHECK_LITE_AVAILABLE = True
 except ImportError:
     FACTCHECK_LITE_AVAILABLE = False
     logger.warning("⚠️ [VIDEO] Freshness/FactCheck LITE module not available")
 from transcripts import (
-    extract_video_id, extract_playlist_id,
-    get_video_info, get_transcript_with_timestamps,
-    get_playlist_videos, get_playlist_info
+    extract_video_id,
+    extract_playlist_id,
+    get_video_info,
+    get_transcript_with_timestamps,
+    get_playlist_videos,
+    get_playlist_info,
 )
+
 # 🎵 TikTok support
 from transcripts.tiktok import (
-    is_tiktok_url, extract_tiktok_video_id,
-    get_tiktok_video_info, get_tiktok_transcript,
-    detect_platform
+    is_tiktok_url,
+    extract_tiktok_video_id,
+    get_tiktok_video_info,
+    get_tiktok_transcript,
+    detect_platform,
 )
 
 # 🔔 Import du système de notifications (SSE)
 try:
     from notifications.router import notify_analysis_complete, notify_analysis_failed
+
     NOTIFICATIONS_AVAILABLE = True
 except ImportError:
     NOTIFICATIONS_AVAILABLE = False
     logger.warning("⚠️ [VIDEO] Notifications module not available")
-    
+
     # Fallback: fonctions vides
     async def notify_analysis_complete(*args, **kwargs):
         pass
+
     async def notify_analysis_failed(*args, **kwargs):
         pass
+
 
 router = APIRouter()
 
@@ -163,23 +220,23 @@ async def _save_structured_index(
     """
     try:
         from videos.duration_router import categorize_video, build_structured_index, serialize_index
+
         ts_source = transcript_timestamped or transcript
         profile = categorize_video(video_duration, ts_source, transcript_timestamped)
 
         if profile.tier.value != "short" and transcript_timestamped:
-            index_entries = build_structured_index(
-                transcript_timestamped, video_duration, profile.tier
-            )
+            index_entries = build_structured_index(transcript_timestamped, video_duration, profile.tier)
             if index_entries:
                 index_json = serialize_index(index_entries)
                 from sqlalchemy import update as sql_update
+
                 await session.execute(
-                    sql_update(Summary)
-                    .where(Summary.id == summary_id)
-                    .values(structured_index=index_json)
+                    sql_update(Summary).where(Summary.id == summary_id).values(structured_index=index_json)
                 )
                 await session.commit()
-                logger.info(f"📑 [v4.0] Structured index saved: {len(index_entries)} entries for summary_id={summary_id}, tier={profile.tier.value}")
+                logger.info(
+                    f"📑 [v4.0] Structured index saved: {len(index_entries)} entries for summary_id={summary_id}, tier={profile.tier.value}"
+                )
             else:
                 logger.info(f"📑 [v4.0] No index entries generated for summary_id={summary_id}")
         else:
@@ -208,6 +265,7 @@ def set_task_status(task_id: str, data: Dict[str, Any]) -> None:
 # 💾 CHECK CACHE — Public endpoint
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/check-cache/{video_id}")
 async def check_video_cache(video_id: str):
     """
@@ -217,6 +275,7 @@ async def check_video_cache(video_id: str):
     # L1: Check Redis first (fastest)
     try:
         from core.cache import cache_service, make_cache_key
+
         cache_key = make_cache_key("transcript", video_id)
         cached = await cache_service.get(cache_key)
         if cached and isinstance(cached, dict):
@@ -233,6 +292,7 @@ async def check_video_cache(video_id: str):
     # L2: Check DB (persistent, with full metadata)
     try:
         from transcripts.cache_db import check_transcript_cached
+
         result = await check_transcript_cached(video_id)
         if result:
             return {"cached": True, "source": "db", **result}
@@ -251,17 +311,19 @@ async def check_video_cache(video_id: str):
 # QUICK CHAT - Transcript-only, zero credit, acces direct au chat IA
 # =========================================================================
 
+
 @router.post("/quick-chat", response_model=QuickChatResponse)
 async def quick_chat_prepare(
     request: QuickChatRequest,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Mode Quick Chat - Prepare une video pour le chat IA sans analyse complete.
     Zero credit consomme, temps de reponse ~2-5s.
     """
     import time
+
     start_time = time.time()
     url = request.url.strip()
     platform = detect_platform(url)
@@ -292,7 +354,7 @@ async def quick_chat_prepare(
             platform=existing.platform or platform,
             transcript_available=bool(existing.transcript_context),
             word_count=existing.word_count or 0,
-            message="Analyse existante trouvee - chat disponible immediatement"
+            message="Analyse existante trouvee - chat disponible immediatement",
         )
 
     # 2b. Résoudre les URLs courtes TikTok (vm.tiktok.com → tiktok.com/@user/video/...)
@@ -365,6 +427,7 @@ async def quick_chat_prepare(
         if platform == "tiktok" and video_info.get("content_type") == "carousel":
             # 📸 Carousel pipeline for Quick Chat
             from transcripts.carousel import get_carousel_transcript
+
             carousel_images = video_info.get("carousel_images", [])
             if not carousel_images:
                 raise ValueError("Carousel détecté mais aucune image trouvée")
@@ -414,13 +477,23 @@ async def quick_chat_prepare(
     safe_thumbnail = str(thumbnail_url)[:500] if thumbnail_url else ""
     try:
         summary_id = await save_summary(
-            session=session, user_id=current_user.id,
-            video_id=safe_video_id, video_title=title, video_channel=channel,
-            video_duration=duration, video_url=safe_url, thumbnail_url=safe_thumbnail,
-            category="general", category_confidence=0.0,
-            lang=request.lang, mode="quick_chat", model_used="none",
-            summary_content="", transcript_context=transcript_text,
-            video_upload_date=upload_date, platform=platform,
+            session=session,
+            user_id=current_user.id,
+            video_id=safe_video_id,
+            video_title=title,
+            video_channel=channel,
+            video_duration=duration,
+            video_url=safe_url,
+            thumbnail_url=safe_thumbnail,
+            category="general",
+            category_confidence=0.0,
+            lang=request.lang,
+            mode="quick_chat",
+            model_used="none",
+            summary_content="",
+            transcript_context=transcript_text,
+            video_upload_date=upload_date,
+            platform=platform,
             # 📊 Engagement metadata from video_info
             view_count=video_info.get("view_count"),
             like_count=video_info.get("like_count"),
@@ -443,12 +516,18 @@ async def quick_chat_prepare(
     try:
         import asyncio as _aio_qc
         from storage.thumbnail_generator import ensure_thumbnail
-        _aio_qc.create_task(ensure_thumbnail(
-            summary_id=summary_id, video_id=video_id,
-            title=title, category="general",
-            platform=platform, original_url=thumbnail_url,
-            video_url=str(url),
-        ))
+
+        _aio_qc.create_task(
+            ensure_thumbnail(
+                summary_id=summary_id,
+                video_id=video_id,
+                title=title,
+                category="general",
+                platform=platform,
+                original_url=thumbnail_url,
+                video_url=str(url),
+            )
+        )
     except Exception as thumb_err:
         logger.error(f"⚠️ [THUMBNAIL] R2 persist failed (non-blocking): {thumb_err}")
 
@@ -456,10 +535,16 @@ async def quick_chat_prepare(
     logger.info(f"[QUICK CHAT] Done in {elapsed:.1f}s - summary_id={summary_id}, words={word_count}")
 
     return QuickChatResponse(
-        summary_id=summary_id, video_id=video_id, video_title=title,
-        video_channel=channel, video_duration=duration, thumbnail_url=thumbnail_url,
-        platform=platform, transcript_available=True, word_count=word_count,
-        message=f"Quick Chat pret en {elapsed:.1f}s - {word_count} mots disponibles"
+        summary_id=summary_id,
+        video_id=video_id,
+        video_title=title,
+        video_channel=channel,
+        video_duration=duration,
+        thumbnail_url=thumbnail_url,
+        platform=platform,
+        transcript_available=True,
+        word_count=word_count,
+        message=f"Quick Chat pret en {elapsed:.1f}s - {word_count} mots disponibles",
     )
 
 
@@ -467,12 +552,13 @@ async def quick_chat_prepare(
 # UPGRADE QUICK CHAT -> ANALYSE COMPLETE (conserve historique de chat)
 # =========================================================================
 
+
 @router.post("/quick-chat/upgrade", response_model=UpgradeQuickChatResponse)
 async def upgrade_quick_chat(
     request: UpgradeQuickChatRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """Upgrade un Quick Chat vers une analyse complete, conserve l'historique."""
     from sqlalchemy import select as sa_select, update as sa_update
@@ -487,7 +573,9 @@ async def upgrade_quick_chat(
 
     # 2. Deja analyse?
     if summary.mode and summary.mode != "quick_chat" and summary.summary_content:
-        return UpgradeQuickChatResponse(task_id="already_done", status="completed", message="Analyse complete deja disponible")
+        return UpgradeQuickChatResponse(
+            task_id="already_done", status="completed", message="Analyse complete deja disponible"
+        )
 
     # 3. Credits
     can, reason, _, _ = await check_can_analyze(session, current_user.id)
@@ -497,13 +585,21 @@ async def upgrade_quick_chat(
 
     # 4. Background task
     task_id = str(uuid4())
-    _task_store[task_id] = {"status": "processing", "progress": 10, "message": "Analyse en cours...", "summary_id": request.summary_id}
+    _task_store[task_id] = {
+        "status": "processing",
+        "progress": 10,
+        "message": "Analyse en cours...",
+        "summary_id": request.summary_id,
+    }
 
     async def run_upgrade():
         from db.database import async_session_maker
+
         try:
             async with async_session_maker() as bg_session:
-                res = await bg_session.execute(sa_select(Summary).where(Summary.id == request.summary_id, Summary.user_id == current_user.id))
+                res = await bg_session.execute(
+                    sa_select(Summary).where(Summary.id == request.summary_id, Summary.user_id == current_user.id)
+                )
                 s = res.scalar_one_or_none()
                 if not s or not s.transcript_context:
                     _task_store[task_id].update({"status": "failed", "message": "Transcript introuvable"})
@@ -517,9 +613,13 @@ async def upgrade_quick_chat(
 
                 try:
                     summary_content = await generate_summary(
-                        title=s.video_title or "", transcript=s.transcript_context,
-                        category=cat, lang=s.lang or "fr", mode=request.mode,
-                        channel=s.video_channel or "", platform=s.platform or "youtube"
+                        title=s.video_title or "",
+                        transcript=s.transcript_context,
+                        category=cat,
+                        lang=s.lang or "fr",
+                        mode=request.mode,
+                        channel=s.video_channel or "",
+                        platform=s.platform or "youtube",
                     )
                 except Exception as e:
                     _task_store[task_id].update({"status": "failed", "message": f"Erreur: {str(e)[:100]}"})
@@ -535,17 +635,25 @@ async def upgrade_quick_chat(
                 except Exception:
                     entities = {}
                 try:
-                    reliability = await calculate_reliability_score(summary_content, s.video_title or "", s.video_channel or "")
+                    reliability = await calculate_reliability_score(
+                        summary_content, s.video_title or "", s.video_channel or ""
+                    )
                 except Exception:
                     reliability = 50.0
 
                 import json as json_mod
+
                 await bg_session.execute(
-                    sa_update(Summary).where(Summary.id == request.summary_id).values(
-                        summary_content=summary_content, category=cat, mode=request.mode,
+                    sa_update(Summary)
+                    .where(Summary.id == request.summary_id)
+                    .values(
+                        summary_content=summary_content,
+                        category=cat,
+                        mode=request.mode,
                         model_used="mistral-small-2603",
                         entities_extracted=json_mod.dumps(entities) if entities else None,
-                        reliability_score=reliability, word_count=len(s.transcript_context.split())
+                        reliability_score=reliability,
+                        word_count=len(s.transcript_context.split()),
                     )
                 )
                 await bg_session.commit()
@@ -556,7 +664,10 @@ async def upgrade_quick_chat(
             _task_store[task_id].update({"status": "failed", "message": f"Erreur: {str(e)[:100]}"})
 
     background_tasks.add_task(run_upgrade)
-    return UpgradeQuickChatResponse(task_id=task_id, status="processing", message="Analyse lancee - historique conserve")
+    return UpgradeQuickChatResponse(
+        task_id=task_id, status="processing", message="Analyse lancee - historique conserve"
+    )
+
 
 @router.post("/analyze/guest", response_model=GuestAnalyzeResponse)
 async def analyze_video_guest(
@@ -582,8 +693,7 @@ async def analyze_video_guest(
 
     if not allowed:
         raise HTTPException(
-            status_code=429,
-            detail="Vous avez utilisé vos 3 analyses gratuites. Créez un compte pour continuer !"
+            status_code=429, detail="Vous avez utilisé vos 3 analyses gratuites. Créez un compte pour continuer !"
         )
 
     # 2. Détecter plateforme et valider URL
@@ -607,13 +717,15 @@ async def analyze_video_guest(
         if duration > MAX_VIDEO_DURATION_GUEST:
             raise HTTPException(
                 status_code=400,
-                detail=f"L'essai gratuit est limité aux vidéos de moins de 5 minutes. Cette vidéo dure {duration // 60}:{duration % 60:02d}."
+                detail=f"L'essai gratuit est limité aux vidéos de moins de 5 minutes. Cette vidéo dure {duration // 60}:{duration % 60:02d}.",
             )
 
         try:
             transcript_text = await get_tiktok_transcript(url)
         except Exception:
-            raise HTTPException(status_code=400, detail="Impossible de récupérer la transcription de cette vidéo TikTok.")
+            raise HTTPException(
+                status_code=400, detail="Impossible de récupérer la transcription de cette vidéo TikTok."
+            )
 
         thumbnail_url = video_info.get("thumbnail", video_info.get("thumbnail_url", ""))
     else:
@@ -631,7 +743,7 @@ async def analyze_video_guest(
         if duration > MAX_VIDEO_DURATION_GUEST:
             raise HTTPException(
                 status_code=400,
-                detail=f"L'essai gratuit est limité aux vidéos de moins de 5 minutes. Cette vidéo dure {duration // 60}:{duration % 60:02d}."
+                detail=f"L'essai gratuit est limité aux vidéos de moins de 5 minutes. Cette vidéo dure {duration // 60}:{duration % 60:02d}.",
             )
 
         # Détecter si c'est un Short (URL /shorts/ ou durée < 90s)
@@ -700,16 +812,17 @@ async def analyze_video_guest(
 # 🎬 ANALYSE VIDÉO
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/analyze", response_model=TaskStatusResponse)
 async def analyze_video(
     request: AnalyzeVideoRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(check_daily_limit),  # 🔐 Email vérifié + limite quotidienne
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     🔐 Lance l'analyse d'une vidéo YouTube avec SÉCURITÉ RENFORCÉE.
-    
+
     SÉCURITÉ:
     - Email vérifié obligatoire
     - Rate limiting appliqué
@@ -724,60 +837,55 @@ async def analyze_video(
     if platform == "tiktok":
         video_id = extract_tiktok_video_id(request.url)
         if not video_id:
-            raise HTTPException(status_code=400, detail={
-                "code": "invalid_url",
-                "message": "Invalid TikTok URL"
-            })
+            raise HTTPException(status_code=400, detail={"code": "invalid_url", "message": "Invalid TikTok URL"})
         logger.info(f"🎵 [TIKTOK] Detected TikTok video: {video_id}")
     else:
         video_id = extract_video_id(request.url)
         if not video_id:
-            raise HTTPException(status_code=400, detail={
-                "code": "invalid_url",
-                "message": "Invalid YouTube URL"
-            })
-    
+            raise HTTPException(status_code=400, detail={"code": "invalid_url", "message": "Invalid YouTube URL"})
+
     # Déterminer le modèle à utiliser
     plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
     model = request.model or plan_limits.get("default_model", "mistral-small-2603")
-    
+
     # Vérifier que le modèle est autorisé
     allowed_models = plan_limits.get("models", ["mistral-small-2603"])
     if model not in allowed_models:
         model = allowed_models[0]  # Fallback au modèle par défaut
-    
+
     # 🆕 v5.5: Vérifier si deep_research est autorisé
     deep_research = request.deep_research and plan_limits.get("deep_research_enabled", False)
     deep_research_cost = plan_limits.get("deep_research_credits_cost", 0) if deep_research else 0
-    
+
     # 🔐 Calculer le coût en crédits
     if SECURITY_AVAILABLE:
         credit_cost = get_credit_cost("video_analysis", model)
     else:
         credit_cost = 1
-    
+
     # Ajouter le coût de deep_research
     credit_cost += deep_research_cost
-    
+
     # 🔐 Vérifier les crédits avec le système sécurisé
     if SECURITY_AVAILABLE:
-        can_analyze, reason, info = await secure_check_can_analyze(
-            session, current_user.id, model
-        )
+        can_analyze, reason, info = await secure_check_can_analyze(session, current_user.id, model)
     else:
         # check_can_analyze retourne 4 valeurs: (can_analyze, reason, credits, cost)
         can_analyze, reason, credits_remaining, estimated_cost = await check_can_analyze(session, current_user.id)
         info = {"credits": credits_remaining, "cost": estimated_cost}  # Construire info dict
-    
+
     if not can_analyze:
-        raise HTTPException(status_code=403, detail={
-            "code": reason,
-            "message": info.get("message", f"Cannot analyze: {reason}"),
-            "credits": info.get("credits", 0),
-            "cost": credit_cost,
-            **info
-        })
-    
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": reason,
+                "message": info.get("message", f"Cannot analyze: {reason}"),
+                "credits": info.get("credits", 0),
+                "cost": credit_cost,
+                **info,
+            },
+        )
+
     logger.info(f"🎬 Video ID extracted: {video_id}, cost: {credit_cost} credits")
 
     # ═══════════════════════════════════════════════════════════════════════════════
@@ -786,6 +894,7 @@ async def analyze_video(
     if not request.force_refresh:
         try:
             from main import get_video_cache
+
             _vcache = get_video_cache()
             if _vcache is not None:
                 _analysis_lang = request.lang or "fr"
@@ -816,10 +925,13 @@ async def analyze_video(
                     )
                     try:
                         from core.plan_limits import increment_daily_usage
+
                         await increment_daily_usage(session, current_user.id)
                     except Exception:
                         pass
-                    logger.info(f"💾 [GLOBAL CACHE HIT] {platform}/{video_id} → summary_id={_cache_summary_id} (0 credits)")
+                    logger.info(
+                        f"💾 [GLOBAL CACHE HIT] {platform}/{video_id} → summary_id={_cache_summary_id} (0 credits)"
+                    )
                     return TaskStatusResponse(
                         task_id=f"cached_{_cache_summary_id}",
                         status="completed",
@@ -832,7 +944,7 @@ async def analyze_video(
                             "video_title": _cached.get("video_title", "Unknown"),
                             "category": _cached.get("category", "general"),
                             "cost": 0,
-                        }
+                        },
                     )
         except Exception as _vcache_err:
             logger.error(f"⚠️ [GLOBAL CACHE] Check failed (continuing): {_vcache_err}")
@@ -843,53 +955,57 @@ async def analyze_video(
     # Vérifier si déjà analysée (même vidéo, même mode) - SAUF si force_refresh
     if not request.force_refresh:
         existing = await get_summary_by_video_id(session, video_id, current_user.id)
-        
+
         if existing and existing.mode == request.mode:
             # Vérifier la fraîcheur du cache (7 jours max)
             from datetime import timedelta
+
             cache_age = datetime.now() - existing.created_at
             cache_valid = cache_age < timedelta(days=7)
-            
+
             if cache_valid:
                 logger.info(f"💾 [CACHE HIT] Using cached analysis: summary_id={existing.id} (age: {cache_age.days}d)")
                 return TaskStatusResponse(
                     task_id=f"cached_{existing.id}",
                     status="completed",
                     progress=100,
-                    message=f"✅ Analyse retrouvée en cache (gratuit!)",
+                    message="✅ Analyse retrouvée en cache (gratuit!)",
                     result={
                         "summary_id": existing.id,
                         "cached": True,
                         "cache_age_days": cache_age.days,
                         "video_title": existing.video_title,
                         "category": existing.category,
-                        "cost": 0  # Gratuit car cache
-                    }
+                        "cost": 0,  # Gratuit car cache
+                    },
                 )
             else:
                 logger.info(f"⏰ [CACHE EXPIRED] Cache too old ({cache_age.days} days), re-analyzing...")
     else:
-        logger.info(f"🔄 [FORCE REFRESH] Bypassing cache as requested")
-    
+        logger.info("🔄 [FORCE REFRESH] Bypassing cache as requested")
+
     # 🔐 Générer un ID d'opération sécurisé
     if SECURITY_AVAILABLE:
         task_id = generate_secure_operation_id(current_user.id, "video_analysis")
     else:
         task_id = str(uuid4())
-    
+
     # 🔐 RÉSERVER les crédits AVANT de lancer l'opération
     if SECURITY_AVAILABLE:
         reserved, reserve_reason, reserve_info = await reserve_credits(
             session, current_user.id, credit_cost, task_id, "video_analysis"
         )
         if not reserved:
-            raise HTTPException(status_code=403, detail={
-                "code": reserve_reason,
-                "message": f"Could not reserve credits: {reserve_reason}",
-                **reserve_info
-            })
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": reserve_reason,
+                    "message": f"Could not reserve credits: {reserve_reason}",
+                    **reserve_info,
+                },
+            )
         logger.info(f"🔒 Credits reserved: {credit_cost} for task {task_id[:12]}")
-    
+
     _task_store[task_id] = {
         "status": "pending",
         "progress": 0,
@@ -897,14 +1013,14 @@ async def analyze_video(
         "user_id": current_user.id,
         "video_id": video_id,
         "credit_cost": credit_cost,
-        "deep_research": deep_research  # 🆕 v5.5
+        "deep_research": deep_research,  # 🆕 v5.5
     }
-    
+
     logger.info(f"🚀 Task created: {task_id} (deep_research={deep_research})")
-    
+
     # Créer dans la DB aussi
     await create_task(session, task_id, current_user.id, "video_analysis")
-    
+
     # Lancer l'analyse en background
     background_tasks.add_task(
         _analyze_video_background_v6,  # 🆕 Nouvelle version
@@ -919,7 +1035,7 @@ async def analyze_video(
         user_plan=current_user.plan,
         credit_cost=credit_cost,
         deep_research=deep_research,  # 🆕 v5.5
-        platform=platform  # 🎵 TikTok support
+        platform=platform,  # 🎵 TikTok support
     )
 
     return TaskStatusResponse(
@@ -927,7 +1043,7 @@ async def analyze_video(
         status="pending",
         progress=0,
         message="Analysis started",
-        result={"cost": credit_cost, "deep_research": deep_research}
+        result={"cost": credit_cost, "deep_research": deep_research},
     )
 
 
@@ -937,12 +1053,13 @@ async def analyze_video(
 
 from .schemas import AnalyzeVideoV2Request, AnalyzeV2Response
 
+
 @router.post("/analyze/v2", response_model=AnalyzeV2Response)
 async def analyze_video_v2(
     request: AnalyzeVideoV2Request,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(check_daily_limit),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     🆕 v2.0: Analyse vidéo avec customization complète.
@@ -967,17 +1084,11 @@ async def analyze_video_v2(
     if platform == "tiktok":
         video_id = extract_tiktok_video_id(request.url)
         if not video_id:
-            raise HTTPException(status_code=400, detail={
-                "code": "invalid_url",
-                "message": "Invalid TikTok URL"
-            })
+            raise HTTPException(status_code=400, detail={"code": "invalid_url", "message": "Invalid TikTok URL"})
     else:
         video_id = extract_video_id(request.url)
         if not video_id:
-            raise HTTPException(status_code=400, detail={
-                "code": "invalid_url",
-                "message": "Invalid YouTube URL"
-            })
+            raise HTTPException(status_code=400, detail={"code": "invalid_url", "message": "Invalid YouTube URL"})
 
     # Déterminer le modèle
     plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
@@ -1007,27 +1118,29 @@ async def analyze_video_v2(
 
     # Vérifier les crédits
     if SECURITY_AVAILABLE:
-        can_analyze, reason, info = await secure_check_can_analyze(
-            session, current_user.id, model
-        )
+        can_analyze, reason, info = await secure_check_can_analyze(session, current_user.id, model)
     else:
         can_analyze, reason, credits_remaining, estimated_cost = await check_can_analyze(session, current_user.id)
         info = {"credits": credits_remaining, "cost": estimated_cost}
 
     if not can_analyze:
-        raise HTTPException(status_code=403, detail={
-            "code": reason,
-            "message": info.get("message", f"Cannot analyze: {reason}"),
-            "credits": info.get("credits", 0),
-            "cost": credit_cost,
-            **info
-        })
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": reason,
+                "message": info.get("message", f"Cannot analyze: {reason}"),
+                "credits": info.get("credits", 0),
+                "cost": credit_cost,
+                **info,
+            },
+        )
 
     # Vérifier le cache (sauf si force_refresh)
     if not request.force_refresh:
         existing = await get_summary_by_video_id(session, video_id, current_user.id)
         if existing and existing.mode == request.mode:
             from datetime import timedelta
+
             cache_age = datetime.now() - existing.created_at
             if cache_age < timedelta(days=7):
                 logger.info(f"💾 [CACHE HIT] v2: summary_id={existing.id}")
@@ -1046,8 +1159,8 @@ async def analyze_video_v2(
                         "mode": existing.mode,
                         "lang": existing.lang,
                         "cached": True,
-                        "cache_age_days": cache_age.days
-                    }
+                        "cache_age_days": cache_age.days,
+                    },
                 )
 
     # Générer l'ID de tâche
@@ -1062,11 +1175,14 @@ async def analyze_video_v2(
             session, current_user.id, credit_cost, task_id, "video_analysis_v2"
         )
         if not reserved:
-            raise HTTPException(status_code=403, detail={
-                "code": reserve_reason,
-                "message": f"Could not reserve credits: {reserve_reason}",
-                **reserve_info
-            })
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": reserve_reason,
+                    "message": f"Could not reserve credits: {reserve_reason}",
+                    **reserve_info,
+                },
+            )
         logger.info(f"🔒 [v2] Credits reserved: {credit_cost} for task {task_id[:12]}")
 
     # Préparer les options de customization
@@ -1085,7 +1201,7 @@ async def analyze_video_v2(
         "include_reliability": request.include_reliability,
         "priority": request.priority if current_user.plan in ["pro"] else "normal",
         "webhook_url": request.webhook_url,
-        "custom": request.customization or {}
+        "custom": request.customization or {},
     }
 
     # Stocker la tâche
@@ -1097,7 +1213,7 @@ async def analyze_video_v2(
         "video_id": video_id,
         "credit_cost": credit_cost,
         "deep_research": deep_research,
-        "v2_options": customization_options
+        "v2_options": customization_options,
     }
 
     logger.info(f"🚀 [v2] Task created: {task_id}")
@@ -1106,7 +1222,9 @@ async def analyze_video_v2(
     await create_task(session, task_id, current_user.id, "video_analysis_v2")
 
     # Estimer la durée
-    estimated_duration = 30 if request.summary_length == "short" else (60 if request.summary_length == "standard" else 90)
+    estimated_duration = (
+        30 if request.summary_length == "short" else (60 if request.summary_length == "standard" else 90)
+    )
     if deep_research:
         estimated_duration += 30
 
@@ -1126,7 +1244,7 @@ async def analyze_video_v2(
         deep_research=deep_research,
         options=customization_options,
         force_refresh=request.force_refresh,
-        platform=platform  # 🎵 TikTok support
+        platform=platform,  # 🎵 TikTok support
     )
 
     return AnalyzeV2Response(
@@ -1136,7 +1254,7 @@ async def analyze_video_v2(
         message="Analysis v2 started with custom options",
         estimated_duration_seconds=estimated_duration,
         cost=credit_cost,
-        applied_options=customization_options
+        applied_options=customization_options,
     )
 
 
@@ -1154,7 +1272,7 @@ async def _analyze_video_background_v2(
     deep_research: bool,
     options: Dict[str, Any],
     force_refresh: bool = False,
-    platform: str = "youtube"
+    platform: str = "youtube",
 ):
     """
     🆕 v2.0: Background analysis avec options de customization.
@@ -1206,6 +1324,7 @@ async def _analyze_video_background_v2(
                 # 📸 Carousel pipeline: Vision analysis instead of audio transcript
                 _task_store[task_id]["message"] = "📸 Analyse des images du carrousel..."
                 from transcripts.carousel import get_carousel_transcript
+
                 carousel_images = video_info.get("carousel_images", [])
                 if not carousel_images:
                     raise Exception("Carousel détecté mais aucune image trouvée")
@@ -1220,7 +1339,9 @@ async def _analyze_video_background_v2(
             else:
                 _duration = int(video_info.get("duration", 0) or 0)
                 _is_short = "/shorts/" in url or _duration <= 90
-                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id, is_short=_is_short, duration=_duration)
+                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(
+                    video_id, is_short=_is_short, duration=_duration
+                )
             if not transcript:
                 raise Exception("No transcript available for this video")
 
@@ -1229,6 +1350,7 @@ async def _analyze_video_background_v2(
 
             # 3+4. ⚡ CATÉGORIE + ENRICHISSEMENT WEB EN PARALLÈLE (perf v2.0.1)
             import asyncio
+
             _task_store[task_id]["progress"] = 30
             _task_store[task_id]["message"] = "🏷️ Détection catégorie & recherche web..."
 
@@ -1240,7 +1362,7 @@ async def _analyze_video_background_v2(
                         transcript=transcript[:3000],
                         channel=video_info.get("channel", ""),
                         tags=video_info.get("tags", []),
-                        youtube_categories=video_info.get("categories", [])
+                        youtube_categories=video_info.get("categories", []),
                     )
                 return category, 0.9
 
@@ -1255,7 +1377,7 @@ async def _analyze_video_background_v2(
                         transcript=transcript,
                         plan=user_plan,
                         lang=lang,
-                        upload_date=video_info.get("upload_date", "")
+                        upload_date=video_info.get("upload_date", ""),
                     )
                 except Exception as e:
                     logger.error(f"⚠️ [v2.0] Web enrichment failed: {e}")
@@ -1336,17 +1458,28 @@ async def _analyze_video_background_v2(
                     view_count=video_info.get("view_count") or 0,
                     user_plan=user_plan,
                 )
-                summary_content = _long_video_result.summary if isinstance(_long_video_result, LongVideoResult) else _long_video_result
+                summary_content = (
+                    _long_video_result.summary
+                    if isinstance(_long_video_result, LongVideoResult)
+                    else _long_video_result
+                )
                 # Fallback si la synthèse a échoué
                 if not summary_content:
                     logger.warning("⚠️ [v3.0] Long video analysis returned empty summary, falling back to truncated")
                     truncated = " ".join(transcript_to_analyze.split()[:8000])
                     summary_content = await generate_summary(
-                        title=video_info["title"], transcript=truncated,
-                        category=category, lang=lang, mode=mode, model=model,
-                        duration=video_duration, channel=video_info.get("channel", ""),
-                        description=video_info.get("description", "") + "\n\n⚠️ NOTE: Cette vidéo est très longue. Seule la première partie a été analysée.",
-                        web_context=full_context, video_id=video_id,
+                        title=video_info["title"],
+                        transcript=truncated,
+                        category=category,
+                        lang=lang,
+                        mode=mode,
+                        model=model,
+                        duration=video_duration,
+                        channel=video_info.get("channel", ""),
+                        description=video_info.get("description", "")
+                        + "\n\n⚠️ NOTE: Cette vidéo est très longue. Seule la première partie a été analysée.",
+                        web_context=full_context,
+                        video_id=video_id,
                         upload_date=video_info.get("upload_date", ""),
                         view_count=video_info.get("view_count") or 0,
                         like_count=video_info.get("like_count") or 0,
@@ -1400,7 +1533,7 @@ async def _analyze_video_background_v2(
             if _do_entities and _do_reliability:
                 entities, reliability = await asyncio.gather(
                     extract_entities(summary_content, lang=lang),
-                    calculate_reliability_score(summary_content, {}, lang=lang)
+                    calculate_reliability_score(summary_content, {}, lang=lang),
                 )
                 if entities and len(entities) > 5:
                     reliability = min(98, reliability + 2)
@@ -1410,10 +1543,7 @@ async def _analyze_video_background_v2(
                 reliability = await calculate_reliability_score(summary_content, {}, lang=lang)
 
             if reliability is not None and enrichment_sources:
-                reliability_bonus = {
-                    EnrichmentLevel.FULL: 8,
-                    EnrichmentLevel.DEEP: 15
-                }.get(enrichment_level, 0)
+                reliability_bonus = {EnrichmentLevel.FULL: 8, EnrichmentLevel.DEEP: 15}.get(enrichment_level, 0)
                 reliability = min(98, reliability + reliability_bonus)
 
             # 8. Consommer les crédits et sauvegarder
@@ -1422,8 +1552,7 @@ async def _analyze_video_background_v2(
 
             if SECURITY_AVAILABLE:
                 await consume_reserved_credits(
-                    session, user_id, task_id,
-                    f"Video v2: {video_info['title'][:50]} ({model})"
+                    session, user_id, task_id, f"Video v2: {video_info['title'][:50]} ({model})"
                 )
             else:
                 await deduct_credit(session, user_id, credit_cost, f"Video v2: {video_info['title'][:50]}")
@@ -1434,14 +1563,16 @@ async def _analyze_video_background_v2(
                     "level": enrichment_level.value,
                     "sources": enrichment_sources,
                     "enriched_at": datetime.utcnow().isoformat(),
-                    "v2_options": options
+                    "v2_options": options,
                 }
 
             # Thumbnail dynamique selon la plateforme
             if platform == "tiktok":
                 default_thumbnail = video_info.get("thumbnail_url", "")
             else:
-                default_thumbnail = video_info.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg")
+                default_thumbnail = video_info.get(
+                    "thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+                )
 
             summary_id = await save_summary(
                 session=session,
@@ -1481,9 +1612,7 @@ async def _analyze_video_background_v2(
 
             # 🆕 v4.0: Générer et sauvegarder l'index structuré
             await _save_structured_index(
-                session, summary_id,
-                video_info.get("duration", 0),
-                transcript, transcript_timestamped
+                session, summary_id, video_info.get("duration", 0), transcript, transcript_timestamped
             )
 
             # v3.0: Stocker les VideoChunks pour réutilisation par le digest pipeline
@@ -1496,6 +1625,7 @@ async def _analyze_video_background_v2(
             # Incrémenter le quota quotidien
             try:
                 from core.plan_limits import increment_daily_usage
+
                 await increment_daily_usage(session, user_id)
             except Exception as quota_err:
                 logger.error(f"⚠️ [v2] Quota increment failed: {quota_err}")
@@ -1520,15 +1650,14 @@ async def _analyze_video_background_v2(
                     "enrichment": {
                         "level": enrichment_level.value,
                         "sources_count": len(enrichment_sources),
-                    } if enrichment_level != EnrichmentLevel.NONE else None
-                }
+                    }
+                    if enrichment_level != EnrichmentLevel.NONE
+                    else None,
+                },
             }
 
             await update_task_status(
-                session, task_id,
-                status="completed",
-                progress=100,
-                result=_task_store[task_id]["result"]
+                session, task_id, status="completed", progress=100, result=_task_store[task_id]["result"]
             )
 
             # Notification SSE
@@ -1538,7 +1667,7 @@ async def _analyze_video_background_v2(
                     summary_id=summary_id,
                     video_title=video_info["title"],
                     video_id=video_id,
-                    cached=False
+                    cached=False,
                 )
             except Exception as notify_err:
                 logger.error(f"⚠️ [v2] Notification failed: {notify_err}")
@@ -1555,9 +1684,9 @@ async def _analyze_video_background_v2(
                                 "task_id": task_id,
                                 "summary_id": summary_id,
                                 "video_id": video_id,
-                                "status": "completed"
+                                "status": "completed",
                             },
-                            timeout=30.0
+                            timeout=30.0,
                         )
                     logger.info(f"🔔 [v2] Webhook sent to {webhook_url}")
                 except Exception as webhook_err:
@@ -1577,14 +1706,14 @@ async def _analyze_video_background_v2(
             "progress": 0,
             "message": f"Error: {error_msg}",
             "user_id": user_id,
-            "error": error_msg
+            "error": error_msg,
         }
 
         try:
             await notify_analysis_failed(
                 user_id=user_id,
-                video_title=video_info.get("title", "Vidéo") if 'video_info' in dir() else "Vidéo",
-                error=error_msg[:200]
+                video_title=video_info.get("title", "Vidéo") if "video_info" in dir() else "Vidéo",
+                error=error_msg[:200],
             )
         except Exception:
             pass
@@ -1600,12 +1729,13 @@ async def _analyze_video_background_v2(
 # 🆕 ANALYSE V2.1 — Customization AVANCÉE avec anti-AI, commentaires, etc.
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/analyze/v2.1")
 async def analyze_video_v2_1(
     request: AnalyzeRequestV2 if ADVANCED_ANALYSIS_AVAILABLE else AnalyzeVideoV2Request,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(check_daily_limit),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     🆕 v2.1: Analyse vidéo avec TOUTES les options de personnalisation avancées.
@@ -1626,10 +1756,10 @@ async def analyze_video_v2_1(
     logger.info(f"📥 [v2.1] Advanced analyze request: {request.url} by user {current_user.id}")
 
     if not ADVANCED_ANALYSIS_AVAILABLE:
-        raise HTTPException(status_code=501, detail={
-            "code": "feature_unavailable",
-            "message": "Advanced analysis features are not available"
-        })
+        raise HTTPException(
+            status_code=501,
+            detail={"code": "feature_unavailable", "message": "Advanced analysis features are not available"},
+        )
 
     # 🎵 Détecter la plateforme (YouTube ou TikTok)
     platform = detect_platform(request.url)
@@ -1637,18 +1767,12 @@ async def analyze_video_v2_1(
     if platform == "tiktok":
         video_id = extract_tiktok_video_id(request.url)
         if not video_id:
-            raise HTTPException(status_code=400, detail={
-                "code": "invalid_url",
-                "message": "Invalid TikTok URL"
-            })
+            raise HTTPException(status_code=400, detail={"code": "invalid_url", "message": "Invalid TikTok URL"})
         logger.info(f"🎵 [TIKTOK] Detected TikTok video: {video_id}")
     else:
         video_id = extract_video_id(request.url)
         if not video_id:
-            raise HTTPException(status_code=400, detail={
-                "code": "invalid_url",
-                "message": "Invalid YouTube URL"
-            })
+            raise HTTPException(status_code=400, detail={"code": "invalid_url", "message": "Invalid YouTube URL"})
 
     # Déterminer le modèle
     plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
@@ -1693,18 +1817,18 @@ async def analyze_video_v2_1(
     # Anti-AI detection: Pro only
     if customization.anti_ai_detection and not is_premium:
         customization.anti_ai_detection = False
-        logger.warning(f"⚠️ [v2.1] Anti-AI disabled (requires Pro)")
+        logger.warning("⚠️ [v2.1] Anti-AI disabled (requires Pro)")
 
     # Analyse des commentaires: Pro only
     if customization.analyze_comments and not is_premium:
         customization.analyze_comments = False
-        logger.warning(f"⚠️ [v2.1] Comments analysis disabled (requires Pro)")
+        logger.warning("⚠️ [v2.1] Comments analysis disabled (requires Pro)")
 
     # Analyse de propagande: Pro only (advanced feature)
     if customization.detect_propaganda and current_user.plan not in ["pro"]:
         customization.detect_propaganda = False
-        logger.warning(f"⚠️ [v2.1] Propaganda analysis disabled (requires Pro)")
-    
+        logger.warning("⚠️ [v2.1] Propaganda analysis disabled (requires Pro)")
+
     # Analyse d'intention: Pro/Expert only
     if customization.analyze_publication_intent and not is_premium:
         customization.analyze_publication_intent = False
@@ -1734,27 +1858,29 @@ async def analyze_video_v2_1(
 
     # Vérifier les crédits
     if SECURITY_AVAILABLE:
-        can_analyze, reason, info = await secure_check_can_analyze(
-            session, current_user.id, model
-        )
+        can_analyze, reason, info = await secure_check_can_analyze(session, current_user.id, model)
     else:
         can_analyze, reason, credits_remaining, estimated_cost = await check_can_analyze(session, current_user.id)
         info = {"credits": credits_remaining, "cost": estimated_cost}
 
     if not can_analyze:
-        raise HTTPException(status_code=403, detail={
-            "code": reason,
-            "message": info.get("message", f"Cannot analyze: {reason}"),
-            "credits": info.get("credits", 0),
-            "cost": credit_cost,
-            **info
-        })
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": reason,
+                "message": info.get("message", f"Cannot analyze: {reason}"),
+                "credits": info.get("credits", 0),
+                "cost": credit_cost,
+                **info,
+            },
+        )
 
     # Vérifier le cache (sauf si force_refresh)
     if not request.force_refresh:
         existing = await get_summary_by_video_id(session, video_id, current_user.id)
         if existing and existing.mode == request.mode:
             from datetime import timedelta
+
             cache_age = datetime.now() - existing.created_at
             if cache_age < timedelta(days=7):
                 logger.info(f"💾 [CACHE HIT] v2.1: summary_id={existing.id}")
@@ -1770,7 +1896,7 @@ async def analyze_video_v2_1(
                         "channel": existing.video_channel,
                     },
                     "applied_customization": None,
-                    "comments_analysis": None
+                    "comments_analysis": None,
                 }
 
     # Générer l'ID de tâche
@@ -1785,11 +1911,14 @@ async def analyze_video_v2_1(
             session, current_user.id, credit_cost, task_id, "video_analysis_v2.1"
         )
         if not reserved:
-            raise HTTPException(status_code=403, detail={
-                "code": reserve_reason,
-                "message": f"Could not reserve credits: {reserve_reason}",
-                **reserve_info
-            })
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": reserve_reason,
+                    "message": f"Could not reserve credits: {reserve_reason}",
+                    **reserve_info,
+                },
+            )
         logger.info(f"🔒 [v2.1] Credits reserved: {credit_cost} for task {task_id[:12]}")
 
     # Préparer les options complètes
@@ -1820,8 +1949,8 @@ async def analyze_video_v2_1(
             "detect_sponsorship": customization.detect_sponsorship,
             "detect_propaganda": customization.detect_propaganda,
             "extract_public_figures": customization.extract_public_figures,
-            "analyze_publication_intent": customization.analyze_publication_intent
-        }
+            "analyze_publication_intent": customization.analyze_publication_intent,
+        },
     }
 
     # Stocker la tâche
@@ -1833,7 +1962,7 @@ async def analyze_video_v2_1(
         "video_id": video_id,
         "credit_cost": credit_cost,
         "deep_research": deep_research,
-        "v2_1_options": full_options
+        "v2_1_options": full_options,
     }
 
     logger.info(f"🚀 [v2.1] Task created: {task_id} with advanced options")
@@ -1868,7 +1997,7 @@ async def analyze_video_v2_1(
         deep_research=deep_research,
         options=full_options,
         force_refresh=request.force_refresh,
-        platform=platform  # 🎵 TikTok support
+        platform=platform,  # 🎵 TikTok support
     )
 
     return {
@@ -1879,7 +2008,7 @@ async def analyze_video_v2_1(
         "estimated_duration_seconds": estimated_duration,
         "cost": credit_cost,
         "applied_customization": full_options.get("customization"),
-        "comments_analysis": None
+        "comments_analysis": None,
     }
 
 
@@ -1897,7 +2026,7 @@ async def _analyze_video_background_v2_1(
     deep_research: bool,
     options: Dict[str, Any],
     force_refresh: bool = False,
-    platform: str = "youtube"
+    platform: str = "youtube",
 ):
     """
     🆕 v2.1: Background analysis avec TOUTES les fonctionnalités avancées.
@@ -1916,7 +2045,7 @@ async def _analyze_video_background_v2_1(
 
     # Extraire les options de customization
     custom_opts = options.get("customization", {})
-    
+
     # Déterminer le niveau d'enrichissement
     if deep_research:
         enrichment_level = EnrichmentLevel.DEEP
@@ -1957,6 +2086,7 @@ async def _analyze_video_background_v2_1(
                 # 📸 Carousel pipeline
                 _task_store[task_id]["message"] = "📸 Analyse des images du carrousel..."
                 from transcripts.carousel import get_carousel_transcript
+
                 carousel_images = video_info.get("carousel_images", [])
                 if not carousel_images:
                     raise Exception("Carousel détecté mais aucune image trouvée")
@@ -1971,7 +2101,9 @@ async def _analyze_video_background_v2_1(
             else:
                 _duration = int(video_info.get("duration", 0) or 0)
                 _is_short = "/shorts/" in url or _duration <= 90
-                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id, is_short=_is_short, duration=_duration)
+                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(
+                    video_id, is_short=_is_short, duration=_duration
+                )
             if not transcript:
                 raise Exception("No transcript available for this video")
 
@@ -1982,6 +2114,7 @@ async def _analyze_video_background_v2_1(
             # 3+4+5+6. ⚡ CATÉGORIE + COMMENTAIRES + METADATA + WEB EN PARALLÈLE (perf v2.1.1)
             # ═══════════════════════════════════════════════════════════════════
             import asyncio
+
             _task_store[task_id]["progress"] = 22
             _task_store[task_id]["message"] = "⚡ Détection catégorie, métadonnées & recherche web..."
 
@@ -1993,7 +2126,7 @@ async def _analyze_video_background_v2_1(
                         transcript=transcript[:3000],
                         channel=video_info.get("channel", ""),
                         tags=video_info.get("tags", []),
-                        youtube_categories=video_info.get("categories", [])
+                        youtube_categories=video_info.get("categories", []),
                     )
                 return category, 0.9
 
@@ -2008,7 +2141,7 @@ async def _analyze_video_background_v2_1(
                         use_ai=True,
                         video_title=video_info["title"],
                         lang=lang,
-                        model=model
+                        model=model,
                     )
                     logger.info(f"✅ [v2.1] Comments analysis: {result.analyzed_count} comments")
                     return result
@@ -2029,9 +2162,9 @@ async def _analyze_video_background_v2_1(
                         analyze_propaganda=custom_opts.get("detect_propaganda", False),
                         analyze_intent=custom_opts.get("analyze_publication_intent", False),
                         extract_figures=custom_opts.get("extract_public_figures", True),
-                        lang=lang
+                        lang=lang,
                     )
-                    logger.info(f"✅ [v2.1] Metadata enriched")
+                    logger.info("✅ [v2.1] Metadata enriched")
                     return result
                 except Exception as e:
                     logger.error(f"⚠️ [v2.1] Metadata enrichment failed: {e}")
@@ -2048,22 +2181,24 @@ async def _analyze_video_background_v2_1(
                         transcript=transcript,
                         plan=user_plan,
                         lang=lang,
-                        upload_date=video_info.get("upload_date", "")
+                        upload_date=video_info.get("upload_date", ""),
                     )
                 except Exception as e:
                     logger.error(f"⚠️ [v2.1] Web enrichment failed: {e}")
                     return None, [], enrichment_level
 
             # ⚡ Lancer les 4 tâches en parallèle
-            (category, confidence), comments_analysis_result, metadata_enriched_result, (_web_ctx, _enrich_src, _) = await asyncio.gather(
-                _detect_cat_v21(),
-                _analyze_comments_v21(),
-                _enrich_metadata_v21(),
-                _enrich_web_v21()
+            (
+                (category, confidence),
+                comments_analysis_result,
+                metadata_enriched_result,
+                (_web_ctx, _enrich_src, _),
+            ) = await asyncio.gather(
+                _detect_cat_v21(), _analyze_comments_v21(), _enrich_metadata_v21(), _enrich_web_v21()
             )
             web_context = _web_ctx
             enrichment_sources = _enrich_src
-            logger.info(f"⚡ [v2.1.1] Category + comments + metadata + web computed in PARALLEL")
+            logger.info("⚡ [v2.1.1] Category + comments + metadata + web computed in PARALLEL")
 
             # ═══════════════════════════════════════════════════════════════════
             # 7. 🆕 CONSTRUIRE LE PROMPT PERSONNALISÉ
@@ -2073,7 +2208,7 @@ async def _analyze_video_background_v2_1(
 
             # Instructions de base selon les options
             base_instructions = []
-            
+
             if options.get("summary_length") == "short":
                 base_instructions.append("Fais un résumé COURT et CONCIS (max 500 mots).")
             elif options.get("summary_length") == "detailed":
@@ -2098,7 +2233,7 @@ async def _analyze_video_background_v2_1(
 
             # Utiliser le module anti_ai_prompts pour construire le prompt complet
             writing_style = WritingStyle(custom_opts.get("writing_style", "neutral"))
-            
+
             customized_prompt = build_customized_prompt(
                 base_prompt=base_prompt,
                 writing_style=writing_style,
@@ -2108,7 +2243,7 @@ async def _analyze_video_background_v2_1(
                 target_audience=custom_opts.get("target_audience"),
                 focus_topics=custom_opts.get("focus_topics", []),
                 exclude_topics=custom_opts.get("exclude_topics", []),
-                lang=lang
+                lang=lang,
             )
 
             # Combiner avec le contexte web
@@ -2155,17 +2290,28 @@ async def _analyze_video_background_v2_1(
                     view_count=video_info.get("view_count") or 0,
                     user_plan=user_plan,
                 )
-                summary_content = _long_video_result2.summary if isinstance(_long_video_result2, LongVideoResult) else _long_video_result2
+                summary_content = (
+                    _long_video_result2.summary
+                    if isinstance(_long_video_result2, LongVideoResult)
+                    else _long_video_result2
+                )
                 # Fallback si la synthèse a échoué
                 if not summary_content:
                     logger.warning("⚠️ [v3.0] Long video analysis returned empty summary, falling back to truncated")
                     truncated = " ".join(transcript_to_analyze.split()[:8000])
                     summary_content = await generate_summary(
-                        title=video_info["title"], transcript=truncated,
-                        category=category, lang=lang, mode=mode, model=model,
-                        duration=video_duration, channel=video_info.get("channel", ""),
-                        description=video_info.get("description", "") + "\n\n⚠️ NOTE: Cette vidéo est très longue. Seule la première partie a été analysée.",
-                        web_context=full_context, video_id=video_id,
+                        title=video_info["title"],
+                        transcript=truncated,
+                        category=category,
+                        lang=lang,
+                        mode=mode,
+                        model=model,
+                        duration=video_duration,
+                        channel=video_info.get("channel", ""),
+                        description=video_info.get("description", "")
+                        + "\n\n⚠️ NOTE: Cette vidéo est très longue. Seule la première partie a été analysée.",
+                        web_context=full_context,
+                        video_id=video_id,
                         upload_date=video_info.get("upload_date", ""),
                         view_count=video_info.get("view_count") or 0,
                         like_count=video_info.get("like_count") or 0,
@@ -2221,7 +2367,7 @@ async def _analyze_video_background_v2_1(
             if _do_entities and _do_reliability:
                 entities, reliability = await asyncio.gather(
                     extract_entities(summary_content, lang=lang),
-                    calculate_reliability_score(summary_content, {}, lang=lang)
+                    calculate_reliability_score(summary_content, {}, lang=lang),
                 )
                 if entities and len(entities) > 5:
                     reliability = min(98, reliability + 2)
@@ -2233,10 +2379,7 @@ async def _analyze_video_background_v2_1(
             if reliability is not None:
                 # Bonus si enrichi avec web
                 if enrichment_sources:
-                    reliability_bonus = {
-                        EnrichmentLevel.FULL: 8,
-                        EnrichmentLevel.DEEP: 15
-                    }.get(enrichment_level, 0)
+                    reliability_bonus = {EnrichmentLevel.FULL: 8, EnrichmentLevel.DEEP: 15}.get(enrichment_level, 0)
                     reliability = min(98, reliability + reliability_bonus)
 
                 # Malus si propagande détectée
@@ -2255,8 +2398,7 @@ async def _analyze_video_background_v2_1(
 
             if SECURITY_AVAILABLE:
                 await consume_reserved_credits(
-                    session, user_id, task_id,
-                    f"Video v2.1: {video_info['title'][:50]} ({model})"
+                    session, user_id, task_id, f"Video v2.1: {video_info['title'][:50]} ({model})"
                 )
             else:
                 await deduct_credit(session, user_id, credit_cost, f"Video v2.1: {video_info['title'][:50]}")
@@ -2268,15 +2410,21 @@ async def _analyze_video_background_v2_1(
                 "enriched_at": datetime.utcnow().isoformat(),
                 "v2_1_options": options,
                 "comments_analyzed": comments_analysis_result.analyzed_count if comments_analysis_result else 0,
-                "sponsorship_detected": metadata_enriched_result.sponsorship.type.value if metadata_enriched_result else None,
-                "propaganda_risk": metadata_enriched_result.propaganda_analysis.risk_level.value if metadata_enriched_result and metadata_enriched_result.propaganda_analysis else None
+                "sponsorship_detected": metadata_enriched_result.sponsorship.type.value
+                if metadata_enriched_result
+                else None,
+                "propaganda_risk": metadata_enriched_result.propaganda_analysis.risk_level.value
+                if metadata_enriched_result and metadata_enriched_result.propaganda_analysis
+                else None,
             }
 
             # Thumbnail dynamique selon la plateforme
             if platform == "tiktok":
                 default_thumbnail = video_info.get("thumbnail_url", "")
             else:
-                default_thumbnail = video_info.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg")
+                default_thumbnail = video_info.get(
+                    "thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+                )
 
             summary_id = await save_summary(
                 session=session,
@@ -2316,9 +2464,7 @@ async def _analyze_video_background_v2_1(
 
             # 🆕 v4.0: Index structuré
             await _save_structured_index(
-                session, summary_id,
-                video_info.get("duration", 0),
-                transcript, transcript_timestamped
+                session, summary_id, video_info.get("duration", 0), transcript, transcript_timestamped
             )
 
             # v3.0: Stocker les VideoChunks pour réutilisation par le digest pipeline
@@ -2331,6 +2477,7 @@ async def _analyze_video_background_v2_1(
             # Incrémenter le quota
             try:
                 from core.plan_limits import increment_daily_usage
+
                 await increment_daily_usage(session, user_id)
             except Exception as quota_err:
                 logger.error(f"⚠️ [v2.1] Quota increment failed: {quota_err}")
@@ -2351,7 +2498,7 @@ async def _analyze_video_background_v2_1(
                     "constructive_ratio": comments_analysis_result.constructive_ratio,
                     "controversy_score": comments_analysis_result.controversy_score,
                     "top_questions": comments_analysis_result.top_questions,
-                    "summary": comments_analysis_result.summary
+                    "summary": comments_analysis_result.summary,
                 }
 
             # Préparer les métadonnées enrichies
@@ -2365,18 +2512,22 @@ async def _analyze_video_background_v2_1(
                     "sponsorship": {
                         "type": metadata_enriched_result.sponsorship.type.value,
                         "brands": metadata_enriched_result.sponsorship.brands,
-                        "disclosed": metadata_enriched_result.sponsorship.disclosed
+                        "disclosed": metadata_enriched_result.sponsorship.disclosed,
                     },
                     "propaganda_analysis": {
                         "risk_level": metadata_enriched_result.propaganda_analysis.risk_level.value,
                         "techniques": metadata_enriched_result.propaganda_analysis.detected_techniques,
-                        "recommendation": metadata_enriched_result.propaganda_analysis.recommendation
-                    } if metadata_enriched_result.propaganda_analysis else None,
+                        "recommendation": metadata_enriched_result.propaganda_analysis.recommendation,
+                    }
+                    if metadata_enriched_result.propaganda_analysis
+                    else None,
                     "publication_intent": {
                         "primary": metadata_enriched_result.publication_intent.primary_intent,
                         "educational_score": metadata_enriched_result.publication_intent.educational_score,
-                        "commercial_score": metadata_enriched_result.publication_intent.commercial_score
-                    } if metadata_enriched_result.publication_intent else None
+                        "commercial_score": metadata_enriched_result.publication_intent.commercial_score,
+                    }
+                    if metadata_enriched_result.publication_intent
+                    else None,
                 }
 
             _task_store[task_id] = {
@@ -2397,15 +2548,14 @@ async def _analyze_video_background_v2_1(
                     "enrichment": {
                         "level": enrichment_level.value,
                         "sources_count": len(enrichment_sources),
-                    } if enrichment_level != EnrichmentLevel.NONE else None
-                }
+                    }
+                    if enrichment_level != EnrichmentLevel.NONE
+                    else None,
+                },
             }
 
             await update_task_status(
-                session, task_id,
-                status="completed",
-                progress=100,
-                result=_task_store[task_id]["result"]
+                session, task_id, status="completed", progress=100, result=_task_store[task_id]["result"]
             )
 
             # Notification SSE
@@ -2415,7 +2565,7 @@ async def _analyze_video_background_v2_1(
                     summary_id=summary_id,
                     video_title=video_info["title"],
                     video_id=video_id,
-                    cached=False
+                    cached=False,
                 )
             except Exception as notify_err:
                 logger.error(f"⚠️ [v2.1] Notification failed: {notify_err}")
@@ -2433,9 +2583,9 @@ async def _analyze_video_background_v2_1(
                                 "summary_id": summary_id,
                                 "video_id": video_id,
                                 "status": "completed",
-                                "version": "v2.1"
+                                "version": "v2.1",
                             },
-                            timeout=30.0
+                            timeout=30.0,
                         )
                     logger.info(f"🔔 [v2.1] Webhook sent to {webhook_url}")
                 except Exception as webhook_err:
@@ -2455,14 +2605,14 @@ async def _analyze_video_background_v2_1(
             "progress": 0,
             "message": f"Error: {error_msg}",
             "user_id": user_id,
-            "error": error_msg
+            "error": error_msg,
         }
 
         try:
             await notify_analysis_failed(
                 user_id=user_id,
                 video_title=video_info.get("title", "Vidéo") if video_info else "Vidéo",
-                error=error_msg[:200]
+                error=error_msg[:200],
             )
         except Exception:
             pass
@@ -2486,16 +2636,16 @@ async def _analyze_video_background_v6(
     user_plan: str,
     credit_cost: int,
     deep_research: bool = False,  # 🆕 v5.5
-    platform: str = "youtube"  # 🎵 TikTok support
+    platform: str = "youtube",  # 🎵 TikTok support
 ):
     """
     🔐 Fonction d'analyse v6.0 avec SÉCURITÉ RENFORCÉE.
-    
+
     SÉCURITÉ:
     - Crédits réservés AVANT (dans l'endpoint)
     - Crédits consommés uniquement si SUCCÈS
     - Crédits libérés si ÉCHEC
-    
+
     📊 Étapes:
     1. Récupérer les infos vidéo
     2. Extraire la transcription
@@ -2508,18 +2658,18 @@ async def _analyze_video_background_v6(
     9. Sauvegarder
     """
     from db.database import async_session_maker
-    
+
     logger.info(f"🔧 [v6.0] Background task started: {task_id} (deep_research={deep_research}, platform={platform})")
-    
+
     # 🆕 v5.5: Si deep_research activé, utiliser enrichissement maximal
     if deep_research:
         enrichment_level = EnrichmentLevel.DEEP
-        logger.info(f"🔬 [v5.5] Deep research enabled - using DEEP enrichment")
+        logger.info("🔬 [v5.5] Deep research enabled - using DEEP enrichment")
     else:
         # Déterminer le niveau d'enrichissement selon le plan
         enrichment_level = get_enrichment_level(user_plan)
     logger.info(f"🌐 [v6.0] Enrichment level: {enrichment_level.value} for plan {user_plan}")
-    
+
     try:
         async with async_session_maker() as session:
             # Check if cancelled before starting
@@ -2532,7 +2682,7 @@ async def _analyze_video_background_v6(
             _task_store[task_id]["status"] = "processing"
             _task_store[task_id]["progress"] = 5
             _task_store[task_id]["message"] = "🚀 Démarrage de l'analyse..."
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # 1. RÉCUPÉRER LES INFOS VIDÉO
             # ═══════════════════════════════════════════════════════════════════
@@ -2543,7 +2693,7 @@ async def _analyze_video_background_v6(
                 return
             _task_store[task_id]["progress"] = 10
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
-            
+
             logger.info(f"📺 Fetching video info for {video_id} (platform={platform})...")
             if platform == "tiktok":
                 video_info = await get_tiktok_video_info(url)
@@ -2551,9 +2701,9 @@ async def _analyze_video_background_v6(
                 video_info = await get_video_info(video_id)
             if not video_info:
                 raise Exception("Could not fetch video info")
-            
+
             logger.info(f"✅ Video info: {video_info.get('title', 'Unknown')[:50]}")
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # 2. EXTRAIRE LA TRANSCRIPTION (avec global cache check)
             # ═══════════════════════════════════════════════════════════════════
@@ -2571,6 +2721,7 @@ async def _analyze_video_background_v6(
             detected_lang = None
             try:
                 from main import get_video_cache
+
                 _vcache = get_video_cache()
                 if _vcache is not None:
                     _cached_t = await _vcache.get_transcript(platform, video_id)
@@ -2579,7 +2730,9 @@ async def _analyze_video_background_v6(
                         transcript_timestamped = _cached_t.get("transcript_timestamped")
                         detected_lang = _cached_t.get("detected_lang")
                         if transcript:
-                            logger.info(f"💾 [GLOBAL CACHE HIT] Transcript for {platform}/{video_id}: {len(transcript)} chars")
+                            logger.info(
+                                f"💾 [GLOBAL CACHE HIT] Transcript for {platform}/{video_id}: {len(transcript)} chars"
+                            )
             except Exception as _vce:
                 logger.error(f"⚠️ [GLOBAL CACHE] Transcript check failed: {_vce}")
 
@@ -2589,6 +2742,7 @@ async def _analyze_video_background_v6(
                     # 📸 Carousel pipeline
                     _task_store[task_id]["message"] = "📸 Analyse des images du carrousel..."
                     from transcripts.carousel import get_carousel_transcript
+
                     carousel_images = video_info.get("carousel_images", [])
                     if not carousel_images:
                         raise Exception("Carousel détecté mais aucune image trouvée")
@@ -2603,17 +2757,23 @@ async def _analyze_video_background_v6(
                 else:
                     _duration = int(video_info.get("duration", 0) or 0)
                     _is_short = "/shorts/" in url or _duration <= 90
-                    transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id, is_short=_is_short, duration=_duration)
+                    transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(
+                        video_id, is_short=_is_short, duration=_duration
+                    )
 
                 # 💾 Cache the freshly extracted transcript
                 if transcript:
                     try:
                         if _vcache is not None:
-                            await _vcache.set_transcript(platform, video_id, {
-                                "transcript": transcript,
-                                "transcript_timestamped": transcript_timestamped,
-                                "detected_lang": detected_lang,
-                            })
+                            await _vcache.set_transcript(
+                                platform,
+                                video_id,
+                                {
+                                    "transcript": transcript,
+                                    "transcript_timestamped": transcript_timestamped,
+                                    "detected_lang": detected_lang,
+                                },
+                            )
                             logger.info(f"💾 [GLOBAL CACHE SET] Transcript cached for {platform}/{video_id}")
                     except Exception:
                         pass
@@ -2623,7 +2783,9 @@ async def _analyze_video_background_v6(
                 _vid_duration = video_info.get("duration", 0) or 0
                 _vid_url = video_info.get("url") or video_info.get("webpage_url") or url
                 if _vid_duration <= 120 or not transcript:
-                    logger.info(f"🎞️ [SLIDESHOW] Empty/minimal transcript ({len(transcript or '')} chars, {_vid_duration}s), trying frame extraction...")
+                    logger.info(
+                        f"🎞️ [SLIDESHOW] Empty/minimal transcript ({len(transcript or '')} chars, {_vid_duration}s), trying frame extraction..."
+                    )
                     _task_store[task_id]["message"] = "Transcript vide — extraction des slides..."
                     _task_store[task_id]["progress"] = 22
                     try:
@@ -2631,29 +2793,50 @@ async def _analyze_video_background_v6(
                         if _slideshow_frames:
                             _task_store[task_id]["message"] = "Analyse des slides avec Vision IA..."
                             _api_key = get_mistral_key()
-                            _slide_content = [{"type": "text", "text": f"Analyse ces {len(_slideshow_frames)} slides extraites d'une video {platform}. Pour chaque slide, extrais tout le texte visible et decris le visuel. Assemble le tout comme un transcript coherent. Reponds en {'francais' if lang == 'fr' else 'anglais'}."}]
+                            _slide_content = [
+                                {
+                                    "type": "text",
+                                    "text": f"Analyse ces {len(_slideshow_frames)} slides extraites d'une video {platform}. Pour chaque slide, extrais tout le texte visible et decris le visuel. Assemble le tout comme un transcript coherent. Reponds en {'francais' if lang == 'fr' else 'anglais'}.",
+                                }
+                            ]
                             for _frame in _slideshow_frames:
                                 _data_uri = f"data:{_frame['mime_type']};base64,{_frame['data']}"
                                 _slide_content.append({"type": "image_url", "image_url": _data_uri})
                             _slide_result = await _mistral_vision_request(
                                 api_key=_api_key,
                                 messages=[
-                                    {"role": "system", "content": "Tu es un expert en OCR et analyse d'images. Extrais et decris le contenu de chaque slide."},
+                                    {
+                                        "role": "system",
+                                        "content": "Tu es un expert en OCR et analyse d'images. Extrais et decris le contenu de chaque slide.",
+                                    },
                                     {"role": "user", "content": _slide_content},
                                 ],
                                 model="mistral-small-2603",
                                 max_tokens=6000,
                                 timeout=120.0,
-                                fallback_models=["pixtral-large-2411", "pixtral-12b-2409", "mistral-small-latest", "mistral-medium-2508", "mistral-large-latest"],
+                                fallback_models=[
+                                    "pixtral-large-2411",
+                                    "pixtral-12b-2409",
+                                    "mistral-small-latest",
+                                    "mistral-medium-2508",
+                                    "mistral-large-latest",
+                                ],
                             )
                             if _slide_result:
-                                transcript = "[SLIDESHOW — " + str(len(_slideshow_frames)) + " slides]" + chr(10) + chr(10) + _slide_result
+                                transcript = (
+                                    "[SLIDESHOW — "
+                                    + str(len(_slideshow_frames))
+                                    + " slides]"
+                                    + chr(10)
+                                    + chr(10)
+                                    + _slide_result
+                                )
                                 logger.info(f"🎞️ [SLIDESHOW] Vision OCR success: {len(_slide_result)} chars")
                             else:
-                                logger.error(f"🎞️ [SLIDESHOW] Vision OCR failed")
+                                logger.error("🎞️ [SLIDESHOW] Vision OCR failed")
                     except Exception as _se:
                         logger.error(f"🎞️ [SLIDESHOW] Error: {_se}")
-                
+
                 if not transcript or len(transcript.strip()) < 30:
                     raise Exception("No transcript available for this video")
 
@@ -2662,11 +2845,12 @@ async def _analyze_video_background_v6(
             # Utiliser la langue détectée si pas spécifiée
             if not lang or lang == "auto":
                 lang = detected_lang or "fr"
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # 3+4. ⚡ CATÉGORIE + ENRICHISSEMENT WEB EN PARALLÈLE (v6.1)
             # ═══════════════════════════════════════════════════════════════════
             import asyncio
+
             _task_store[task_id]["progress"] = 30
             _task_store[task_id]["message"] = "🏷️ Détection catégorie & recherche web..."
 
@@ -2679,7 +2863,7 @@ async def _analyze_video_background_v6(
                         transcript=transcript[:3000],
                         channel=video_info.get("channel", ""),
                         tags=video_info.get("tags", []),
-                        youtube_categories=video_info.get("categories", [])
+                        youtube_categories=video_info.get("categories", []),
                     )
                     logger.info(f"🏷️ Auto-detected category: {cat} ({conf:.0%})")
                     return cat, conf
@@ -2690,7 +2874,7 @@ async def _analyze_video_background_v6(
                 if enrichment_level == EnrichmentLevel.NONE:
                     logger.warning(f"⏭️ [v5.0] Skipping web enrichment (plan={user_plan})")
                     return None, [], enrichment_level
-                logger.info(f"🌐 [v5.0] PRE-ANALYSIS: Fetching web context from Perplexity...")
+                logger.info("🌐 [v5.0] PRE-ANALYSIS: Fetching web context from Perplexity...")
                 try:
                     # Note: pour l'enrichissement, on passe "auto" comme catégorie provisoire
                     # car la catégorie finale est détectée en parallèle
@@ -2701,12 +2885,12 @@ async def _analyze_video_background_v6(
                         transcript=transcript,
                         plan=user_plan,
                         lang=lang,
-                        upload_date=video_info.get("upload_date", "")
+                        upload_date=video_info.get("upload_date", ""),
                     )
                     if _wc:
                         logger.info(f"✅ [v5.0] PRE-ANALYSIS: Got {len(_wc)} chars, {len(_es)} sources")
                     else:
-                        logger.warning(f"⚠️ [v5.0] PRE-ANALYSIS: No web context returned")
+                        logger.warning("⚠️ [v5.0] PRE-ANALYSIS: No web context returned")
                     return _wc, _es, _al
                 except Exception as e:
                     logger.error(f"⚠️ [v5.0] PRE-ANALYSIS failed (continuing without): {e}")
@@ -2714,36 +2898,35 @@ async def _analyze_video_background_v6(
 
             # ⚡ Lancer les deux en parallèle
             (category, confidence), (_web_ctx, _enrich_src, _) = await asyncio.gather(
-                _detect_category_async(),
-                _enrich_web_async()
+                _detect_category_async(), _enrich_web_async()
             )
             web_context = _web_ctx
             enrichment_sources = _enrich_src
 
             _task_store[task_id]["progress"] = 45
-            logger.info(f"⚡ [v6.1] Category + web enrichment computed in PARALLEL")
-            
+            logger.info("⚡ [v6.1] Category + web enrichment computed in PARALLEL")
+
             # ═══════════════════════════════════════════════════════════════════
             # 5. GÉNÉRER LE RÉSUMÉ (MISTRAL) AVEC CONTEXTE WEB
             # ═══════════════════════════════════════════════════════════════════
             _task_store[task_id]["progress"] = 55
-            
+
             # Déterminer le modèle selon le plan
             plan_limits = PLAN_LIMITS.get(user_plan, PLAN_LIMITS["free"])
             if not model:
                 model = plan_limits.get("default_model", "mistral-small-2603")
-            
+
             # Vérifier que le modèle est autorisé
             allowed_models = plan_limits.get("models", ["mistral-small-2603"])
             if model not in allowed_models:
                 model = allowed_models[0]
-            
+
             # 🆕 v7.0: DÉTECTION VIDÉO LONGUE ET CHUNKING
             transcript_to_analyze = transcript_timestamped or transcript
             video_duration = video_info.get("duration", 0)
-            
+
             needs_chunk, word_count, chunk_reason = needs_chunking(transcript_to_analyze)
-            
+
             # Variable pour stocker les chunks (remplie si vidéo longue)
             _long_video_result3 = None
 
@@ -2773,7 +2956,11 @@ async def _analyze_video_background_v6(
                     transcript_timestamped=transcript_timestamped,
                     user_plan=user_plan,
                 )
-                summary_content = _long_video_result3.summary if isinstance(_long_video_result3, LongVideoResult) else _long_video_result3
+                summary_content = (
+                    _long_video_result3.summary
+                    if isinstance(_long_video_result3, LongVideoResult)
+                    else _long_video_result3
+                )
 
                 if not summary_content:
                     logger.error("⚠️ [v7.0] Chunking failed, falling back to truncated analysis")
@@ -2788,7 +2975,8 @@ async def _analyze_video_background_v6(
                         model=model,
                         duration=video_duration,
                         channel=video_info.get("channel", ""),
-                        description=video_info.get("description", "") + "\n\n⚠️ NOTE: Cette vidéo est très longue. Seule la première partie a été analysée.",
+                        description=video_info.get("description", "")
+                        + "\n\n⚠️ NOTE: Cette vidéo est très longue. Seule la première partie a été analysée.",
                         web_context=web_context,
                         video_id=video_id,
                         upload_date=video_info.get("upload_date", ""),
@@ -2845,7 +3033,7 @@ async def _analyze_video_background_v6(
 
             final_word_count = len(summary_content.split())
             logger.info(f"✅ Summary generated: {final_word_count} words")
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # 6+7. ⚡ ENTITÉS + FIABILITÉ EN PARALLÈLE (optimisation v6.1)
             # ═══════════════════════════════════════════════════════════════════
@@ -2858,6 +3046,7 @@ async def _analyze_video_background_v6(
             _task_store[task_id]["message"] = "🔍 Extraction des entités & fiabilité..."
 
             import asyncio
+
             entities_task = asyncio.create_task(extract_entities(summary_content, lang=lang))
             reliability_task = asyncio.create_task(calculate_reliability_score(summary_content, {}, lang=lang))
 
@@ -2870,39 +3059,38 @@ async def _analyze_video_background_v6(
             if entities and len(entities) > 5:
                 reliability = min(98, reliability + 2)  # Bonus pour richesse d'entités
 
-            logger.info(f"⚡ [v6.1] Entities + reliability computed in PARALLEL")
-            
+            logger.info("⚡ [v6.1] Entities + reliability computed in PARALLEL")
+
             # Bonus de fiabilité si enrichi avec Perplexity (PRÉ-ANALYSE)
             if enrichment_sources:
                 reliability_bonus = {
-                    EnrichmentLevel.FULL: 8,   # Pro: +8
-                    EnrichmentLevel.DEEP: 15   # Expert: +15
+                    EnrichmentLevel.FULL: 8,  # Pro: +8
+                    EnrichmentLevel.DEEP: 15,  # Expert: +15
                 }.get(enrichment_level, 0)
                 reliability = min(98, reliability + reliability_bonus)
                 logger.info(f"🎯 [v5.0] Reliability boosted by {reliability_bonus} (web-enriched analysis)")
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # 8. SAUVEGARDER LE RÉSUMÉ
             # ═══════════════════════════════════════════════════════════════════
             _task_store[task_id]["progress"] = 92
             _task_store[task_id]["message"] = "💾 Sauvegarde des résultats..."
-            
+
             # 🔐 CONSOMMER les crédits réservés (succès de l'opération)
             if SECURITY_AVAILABLE:
                 await consume_reserved_credits(
-                    session, user_id, task_id,
-                    f"Video: {video_info['title'][:50]} ({model})"
+                    session, user_id, task_id, f"Video: {video_info['title'][:50]} ({model})"
                 )
             else:
                 await deduct_credit(session, user_id, credit_cost, f"Video: {video_info['title'][:50]}")
-            
+
             # Préparer les métadonnées d'enrichissement
             enrichment_metadata = None
             if enrichment_sources:
                 enrichment_metadata = {
                     "level": enrichment_level.value,
                     "sources": enrichment_sources,
-                    "enriched_at": datetime.utcnow().isoformat()
+                    "enriched_at": datetime.utcnow().isoformat(),
                 }
 
             # 🎵 Thumbnail par défaut selon la plateforme
@@ -2952,9 +3140,7 @@ async def _analyze_video_background_v6(
 
             # 🆕 v4.0: Index structuré
             await _save_structured_index(
-                session, summary_id,
-                video_info.get("duration", 0),
-                transcript, transcript_timestamped
+                session, summary_id, video_info.get("duration", 0), transcript, transcript_timestamped
             )
 
             # v3.0: Stocker les VideoChunks pour réutilisation par le digest pipeline
@@ -2967,6 +3153,7 @@ async def _analyze_video_background_v6(
             # 🎨 Enqueue keyword image generation (non-blocking)
             try:
                 from images.keyword_images import enqueue_images_for_summary
+
                 await enqueue_images_for_summary(summary_id)
             except Exception as img_err:
                 logger.error(f"⚠️ [IMAGES] Keyword image enqueue failed (non-blocking): {img_err}")
@@ -2974,12 +3161,18 @@ async def _analyze_video_background_v6(
             # 🖼️ Persist thumbnail to R2 (non-blocking)
             try:
                 from storage.thumbnail_generator import ensure_thumbnail
-                asyncio.create_task(ensure_thumbnail(
-                    summary_id=summary_id, video_id=video_id,
-                    title=video_info["title"], category=category,
-                    platform=platform, original_url=default_thumbnail,
-                    video_url=url,
-                ))
+
+                asyncio.create_task(
+                    ensure_thumbnail(
+                        summary_id=summary_id,
+                        video_id=video_id,
+                        title=video_info["title"],
+                        category=category,
+                        platform=platform,
+                        original_url=default_thumbnail,
+                        video_url=url,
+                    )
+                )
             except Exception as thumb_err:
                 logger.error(f"⚠️ [THUMBNAIL] R2 persist failed (non-blocking): {thumb_err}")
 
@@ -2987,31 +3180,39 @@ async def _analyze_video_background_v6(
             async def _cache_analysis():
                 try:
                     from main import get_video_cache
+
                     _vcache_post = get_video_cache()
                     if _vcache_post is not None:
-                        await _vcache_post.set_analysis(platform, video_id, mode, lang, {
-                            "summary_content": summary_content,
-                            "video_title": video_info["title"],
-                            "video_channel": video_info.get("channel", "Unknown"),
-                            "video_duration": video_info.get("duration", 0),
-                            "thumbnail_url": default_thumbnail,
-                            "category": category,
-                            "category_confidence": confidence,
-                            "lang": lang,
-                            "mode": mode,
-                            "model_used": model,
-                            "transcript_context": (transcript_timestamped or transcript)[:10000],
-                            "video_upload_date": video_info.get("upload_date"),
-                            "entities_extracted": entities,
-                            "reliability_score": reliability,
-                            "enrichment_data": enrichment_metadata,
-                        })
+                        await _vcache_post.set_analysis(
+                            platform,
+                            video_id,
+                            mode,
+                            lang,
+                            {
+                                "summary_content": summary_content,
+                                "video_title": video_info["title"],
+                                "video_channel": video_info.get("channel", "Unknown"),
+                                "video_duration": video_info.get("duration", 0),
+                                "thumbnail_url": default_thumbnail,
+                                "category": category,
+                                "category_confidence": confidence,
+                                "lang": lang,
+                                "mode": mode,
+                                "model_used": model,
+                                "transcript_context": (transcript_timestamped or transcript)[:10000],
+                                "video_upload_date": video_info.get("upload_date"),
+                                "entities_extracted": entities,
+                                "reliability_score": reliability,
+                                "enrichment_data": enrichment_metadata,
+                            },
+                        )
                 except Exception as _vce:
                     logger.error(f"⚠️ [GLOBAL CACHE] Analysis cache set failed: {_vce}")
 
             async def _increment_quota():
                 try:
                     from core.plan_limits import increment_daily_usage
+
                     await increment_daily_usage(session, user_id)
                 except Exception as quota_err:
                     logger.error(f"⚠️ [QUOTA] Failed to increment daily usage: {quota_err}")
@@ -3042,16 +3243,15 @@ async def _analyze_video_background_v6(
                     "enrichment": {
                         "level": enrichment_level.value,
                         "sources_count": len(enrichment_sources),
-                        "badge": enrichment_badge
-                    } if enrichment_level != EnrichmentLevel.NONE else None
-                }
+                        "badge": enrichment_badge,
+                    }
+                    if enrichment_level != EnrichmentLevel.NONE
+                    else None,
+                },
             }
 
             await update_task_status(
-                session, task_id,
-                status="completed",
-                progress=100,
-                result=_task_store[task_id]["result"]
+                session, task_id, status="completed", progress=100, result=_task_store[task_id]["result"]
             )
 
             logger.info(f"✅ [v6.0] Task completed: {task_id}")
@@ -3069,51 +3269,42 @@ async def _analyze_video_background_v6(
                         summary_id=summary_id,
                         video_title=video_info["title"],
                         video_id=video_id,
-                        cached=False
+                        cached=False,
                     )
                     logger.info(f"🔔 [NOTIFY] Analysis complete notification sent to user {user_id}")
                 except Exception as notify_err:
                     logger.error(f"⚠️ [NOTIFY] Failed to send notification: {notify_err}")
 
             asyncio.create_task(_send_complete_notification())
-            
+
     except Exception as e:
         error_msg = str(e)
         logger.error(f"❌ Analysis error for task {task_id}: {error_msg}")
-        
+
         # 🔐 LIBÉRER les crédits réservés (échec de l'opération)
         if SECURITY_AVAILABLE:
             await release_reserved_credits(user_id, task_id)
             logger.error(f"🔓 [SECURITY] Credits released due to failure: task={task_id[:12]}")
-        
+
         _task_store[task_id] = {
             "status": "failed",
             "progress": 0,
             "message": f"Error: {error_msg}",
             "user_id": user_id,
-            "error": error_msg
+            "error": error_msg,
         }
-        
+
         # 🔔 NOTIFICATION PUSH — Alerter l'utilisateur de l'échec
         try:
-            video_title_for_notif = video_info.get("title", "Vidéo") if 'video_info' in dir() else "Vidéo"
-            await notify_analysis_failed(
-                user_id=user_id,
-                video_title=video_title_for_notif,
-                error=error_msg[:200]
-            )
+            video_title_for_notif = video_info.get("title", "Vidéo") if "video_info" in dir() else "Vidéo"
+            await notify_analysis_failed(user_id=user_id, video_title=video_title_for_notif, error=error_msg[:200])
             logger.error(f"🔔 [NOTIFY] Analysis failure notification sent to user {user_id}")
         except Exception as notify_err:
             logger.error(f"⚠️ [NOTIFY] Failed to send failure notification: {notify_err}")
-        
+
         try:
             async with async_session_maker() as session:
-                await update_task_status(
-                    session, task_id,
-                    status="failed",
-                    progress=0,
-                    error=error_msg
-                )
+                await update_task_status(session, task_id, status="failed", progress=0, error=error_msg)
         except Exception as e:
             logger.error(f"Failed to update task status to 'failed' for task {task_id}: {e}")
 
@@ -3152,9 +3343,7 @@ async def cancel_task(
 
 @router.get("/status/{task_id}", response_model=TaskStatusResponse)
 async def get_task_status(
-    task_id: str,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    task_id: str, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """Récupère le status d'une tâche d'analyse"""
 
@@ -3175,7 +3364,7 @@ async def get_task_status(
                         "video_title": summary.video_title,
                         "category": summary.category,
                         "cost": 0,
-                    }
+                    },
                 )
         except (ValueError, Exception):
             pass
@@ -3194,28 +3383,28 @@ async def get_task_status(
             progress=task.get("progress", 0),
             message=task.get("message", ""),
             result=task.get("result"),
-            error=task.get("error")
+            error=task.get("error"),
         )
-    
+
     # Sinon chercher en DB
     task_db = await get_task(session, task_id)
     if not task_db or task_db.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     result = None
     if task_db.result:
         try:
             result = json.loads(task_db.result) if isinstance(task_db.result, str) else task_db.result
         except (json.JSONDecodeError, TypeError):
             pass
-    
+
     return TaskStatusResponse(
         task_id=task_id,
         status=task_db.status,
         progress=task_db.progress,
         message="",
         result=result,
-        error=task_db.error_message
+        error=task_db.error_message,
     )
 
 
@@ -3223,12 +3412,13 @@ async def get_task_status(
 # 📋 RÉSUMÉS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/summary/{summary_id}")
 async def get_summary(
     summary_id: int,
     format: Optional[str] = Query(default=None, description="Format de réponse: full (défaut) ou extension"),
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Récupère un résumé par son ID.
@@ -3256,27 +3446,35 @@ async def get_summary(
     entities = None
     if summary.entities_extracted:
         try:
-            entities = json.loads(summary.entities_extracted) if isinstance(summary.entities_extracted, str) else summary.entities_extracted
+            entities = (
+                json.loads(summary.entities_extracted)
+                if isinstance(summary.entities_extracted, str)
+                else summary.entities_extracted
+            )
         except (json.JSONDecodeError, TypeError):
             pass
 
     # 📊 Calculate engagement rate on-the-fly
     engagement_rate = None
-    _vc = getattr(summary, 'view_count', None)
+    _vc = getattr(summary, "view_count", None)
     if _vc and _vc > 0:
-        _total = (getattr(summary, 'like_count', 0) or 0) + (getattr(summary, 'comment_count', 0) or 0) + (getattr(summary, 'share_count', 0) or 0)
+        _total = (
+            (getattr(summary, "like_count", 0) or 0)
+            + (getattr(summary, "comment_count", 0) or 0)
+            + (getattr(summary, "share_count", 0) or 0)
+        )
         engagement_rate = round(_total / _vc * 100, 2)
 
     # Deserialize JSON fields
     _source_tags = None
-    if getattr(summary, 'source_tags_json', None):
+    if getattr(summary, "source_tags_json", None):
         try:
             _source_tags = json.loads(summary.source_tags_json)
         except (json.JSONDecodeError, TypeError):
             pass
 
     _carousel_images = None
-    if getattr(summary, 'carousel_images_json', None):
+    if getattr(summary, "carousel_images_json", None):
         try:
             _carousel_images = json.loads(summary.carousel_images_json)
         except (json.JSONDecodeError, TypeError):
@@ -3305,15 +3503,15 @@ async def get_summary(
         transcript_context=summary.transcript_context,
         created_at=summary.created_at.isoformat() if summary.created_at else None,
         # 📊 Engagement metadata
-        view_count=getattr(summary, 'view_count', None),
-        like_count=getattr(summary, 'like_count', None),
-        comment_count=getattr(summary, 'comment_count', None),
-        share_count=getattr(summary, 'share_count', None),
-        channel_follower_count=getattr(summary, 'channel_follower_count', None),
+        view_count=getattr(summary, "view_count", None),
+        like_count=getattr(summary, "like_count", None),
+        comment_count=getattr(summary, "comment_count", None),
+        share_count=getattr(summary, "share_count", None),
+        channel_follower_count=getattr(summary, "channel_follower_count", None),
         engagement_rate=engagement_rate,
-        content_type=getattr(summary, 'content_type', None) or "video",
-        music_title=getattr(summary, 'music_title', None),
-        music_author=getattr(summary, 'music_author', None),
+        content_type=getattr(summary, "content_type", None) or "video",
+        music_title=getattr(summary, "music_title", None),
+        music_author=getattr(summary, "music_author", None),
         source_tags=_source_tags,
         carousel_images=_carousel_images,
     )
@@ -3323,11 +3521,10 @@ async def get_summary(
 # 📚 CONCEPTS & DÉFINITIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/concepts/{summary_id}")
 async def get_summary_concepts(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     📚 Extrait les concepts [[terme]] d'un résumé et retourne leurs définitions.
@@ -3337,24 +3534,22 @@ async def get_summary_concepts(
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
-    
+
     # Extraire et définir les concepts
     try:
         result = await get_concepts_with_definitions(
-            text=summary.summary_content,
-            context=summary.video_title or "",
-            language=summary.lang or "fr"
+            text=summary.summary_content, context=summary.video_title or "", language=summary.lang or "fr"
         )
-        
+
         logger.info(f"📚 [Concepts] Got {result['count']} concepts for summary {summary_id}")
-        
+
         return {
             "summary_id": summary_id,
             "video_title": summary.video_title,
             "concepts": result["concepts"],
-            "count": result["count"]
+            "count": result["count"],
         }
-        
+
     except Exception as e:
         logger.error(f"❌ [Concepts] Error: {e}")
         # Fallback: extraire les termes sans définitions
@@ -3362,35 +3557,26 @@ async def get_summary_concepts(
         return {
             "summary_id": summary_id,
             "video_title": summary.video_title,
-            "concepts": [
-                {
-                    "term": c,
-                    "definition": "",
-                    "category": "other"
-                }
-                for c in concepts
-            ],
-            "count": len(concepts)
+            "concepts": [{"term": c, "definition": "", "category": "other"} for c in concepts],
+            "count": len(concepts),
         }
 
 
 @router.get("/concepts/{summary_id}/enriched")
 async def get_enriched_concepts(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     📚 Extrait les concepts [[terme]] et retourne des définitions ENRICHIES.
-    
+
     Combine Mistral (catégorisation rapide) + Perplexity (définitions web).
-    
+
     Fonctionnalités:
     - Définitions contextuelles précises
     - Catégorisation intelligente (person, company, technology, etc.)
     - Sources web quand disponibles
     - Pertinence dans le contexte de la vidéo
-    
+
     Plans:
     - Free/Starter: Définitions Mistral uniquement
     - Pro/Expert: Définitions enrichies Perplexity + sources
@@ -3399,59 +3585,60 @@ async def get_enriched_concepts(
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
-    
+
     if not summary.summary_content:
         return {
             "summary_id": summary_id,
             "video_title": summary.video_title,
             "concepts": [],
             "count": 0,
-            "provider": "none"
+            "provider": "none",
         }
-    
+
     # Extraire les termes [[marqués]]
     terms = extract_terms_from_text(summary.summary_content)
-    
+
     if not terms:
         return {
             "summary_id": summary_id,
             "video_title": summary.video_title,
             "concepts": [],
             "count": 0,
-            "provider": "none"
+            "provider": "none",
         }
-    
+
     # Déterminer si on utilise Perplexity (Pro only)
     use_perplexity = current_user.plan in ["pro"]
-    
+
     try:
         # Obtenir les définitions enrichies
         definitions = await get_enriched_definitions(
-            terms=terms,
-            context=summary.video_title or "",
-            language=summary.lang or "fr",
-            use_perplexity=use_perplexity
+            terms=terms, context=summary.video_title or "", language=summary.lang or "fr", use_perplexity=use_perplexity
         )
-        
+
         # Convertir en format JSON
         concepts_list = []
         for defn in definitions:
             cat_info = get_category_info(defn.category, summary.lang or "fr")
-            concepts_list.append({
-                "term": defn.term,
-                "definition": defn.definition,
-                "category": defn.category,
-                "category_label": cat_info["label"],
-                "category_icon": cat_info["icon"],
-                "context_relevance": defn.context_relevance,
-                "sources": defn.sources,
-                "confidence": defn.confidence,
-                "provider": defn.provider
-            })
-        
+            concepts_list.append(
+                {
+                    "term": defn.term,
+                    "definition": defn.definition,
+                    "category": defn.category,
+                    "category_label": cat_info["label"],
+                    "category_icon": cat_info["icon"],
+                    "context_relevance": defn.context_relevance,
+                    "sources": defn.sources,
+                    "confidence": defn.confidence,
+                    "provider": defn.provider,
+                }
+            )
+
         provider = "perplexity+mistral" if use_perplexity else "mistral"
-        logger.info(f"📚 [Enriched] Got {len(concepts_list)} enriched definitions for summary {summary_id} ({provider})")
-        
+        logger.info(
+            f"📚 [Enriched] Got {len(concepts_list)} enriched definitions for summary {summary_id} ({provider})"
+        )
+
         return {
             "summary_id": summary_id,
             "video_title": summary.video_title,
@@ -3462,12 +3649,12 @@ async def get_enriched_concepts(
                 cat_id: {
                     "label": cat_data.get(summary.lang or "fr", cat_data.get("fr")),
                     "icon": cat_data.get("icon"),
-                    "count": sum(1 for c in concepts_list if c["category"] == cat_id)
+                    "count": sum(1 for c in concepts_list if c["category"] == cat_id),
                 }
                 for cat_id, cat_data in CATEGORIES.items()
-            }
+            },
         }
-        
+
     except Exception as e:
         logger.error(f"❌ [Enriched] Error: {e}")
         # Fallback: termes sans définitions
@@ -3484,12 +3671,12 @@ async def get_enriched_concepts(
                     "context_relevance": "",
                     "sources": [],
                     "confidence": 0,
-                    "provider": "none"
+                    "provider": "none",
                 }
                 for t in terms
             ],
             "count": len(terms),
-            "provider": "fallback"
+            "provider": "fallback",
         }
 
 
@@ -3502,7 +3689,7 @@ async def get_history(
     favorites_only: bool = False,
     platform: Optional[str] = Query(None, description="Filtrer par plateforme: youtube, tiktok"),
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """Récupère l'historique des résumés de l'utilisateur"""
     items, total = await get_user_history(
@@ -3512,7 +3699,7 @@ async def get_history(
         per_page=per_page,
         category=category,
         search=search,
-        favorites_only=favorites_only
+        favorites_only=favorites_only,
     )
 
     # 🎵 Filtrage par plateforme côté Python (pas de modification SQL requise)
@@ -3551,24 +3738,22 @@ async def get_history(
         total=total,
         page=page,
         per_page=per_page,
-        pages=math.ceil(total / per_page) if per_page > 0 else 0
+        pages=math.ceil(total / per_page) if per_page > 0 else 0,
     )
 
 
 @router.post("/summary/{summary_id}/favorite")
 async def toggle_favorite(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """Toggle le statut favori d'un résumé"""
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
-    
+
     new_status = not summary.is_favorite
     await update_summary(session, summary_id, current_user.id, is_favorite=new_status)
-    
+
     return {"is_favorite": new_status}
 
 
@@ -3577,7 +3762,7 @@ async def update_notes(
     summary_id: int,
     data: dict,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """Met à jour les notes d'un résumé"""
     from core.sanitize import sanitize_text
@@ -3597,7 +3782,7 @@ async def update_tags(
     summary_id: int,
     data: dict,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """Met à jour les tags d'un résumé"""
     from core.sanitize import sanitize_text
@@ -3614,24 +3799,19 @@ async def update_tags(
 
 @router.delete("/summary/{summary_id}")
 async def remove_summary(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """Supprime un résumé"""
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
-    
+
     await delete_summary(session, summary_id, current_user.id)
     return {"success": True}
 
 
 @router.delete("/history")
-async def clear_history(
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
-):
+async def clear_history(current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     """Efface tout l'historique de l'utilisateur"""
     count = await delete_all_history(session, current_user.id)
     return {"success": True, "deleted": count}
@@ -3640,6 +3820,7 @@ async def clear_history(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📂 CATÉGORIES
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/categories", response_model=CategoryResponse)
 async def get_categories():
@@ -3656,11 +3837,9 @@ async def get_categories():
 # 📊 STATISTIQUES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/stats")
-async def get_stats(
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
-):
+async def get_stats(current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     """Récupère les statistiques de l'utilisateur"""
     stats = await get_user_stats(session, current_user.id)
     return stats
@@ -3672,15 +3851,14 @@ async def get_stats(
 
 from .study_tools import generate_study_card, generate_concept_map, generate_study_materials
 
+
 @router.post("/study/{summary_id}/card")
 async def create_study_card(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     🎓 Génère une fiche de révision pour une vidéo analysée.
-    
+
     Inclut:
     - Points clés classés par importance
     - Définitions des termes techniques
@@ -3688,19 +3866,19 @@ async def create_study_card(
     - Quiz QCM avec corrections
     - Conseils d'apprentissage
     """
-    
+
     # Récupérer le résumé
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Résumé non trouvé")
-    
+
     # Vérifier les crédits (1 crédit pour une fiche)
     if current_user.credits < 1:
         raise HTTPException(status_code=402, detail="Crédits insuffisants")
-    
+
     # Déduire 1 crédit
     await deduct_credit(session, current_user.id, 1, "study_card")
-    
+
     # Générer la fiche
     try:
         study_card = await generate_study_card(
@@ -3709,15 +3887,11 @@ async def create_study_card(
             summary=summary.summary_content or "",
             transcript=summary.transcript_context or "",
             lang=summary.lang or "fr",
-            model="mistral-small-2603"
+            model="mistral-small-2603",
         )
-        
-        return {
-            "success": True,
-            "summary_id": summary_id,
-            "study_card": study_card
-        }
-        
+
+        return {"success": True, "summary_id": summary_id, "study_card": study_card}
+
     except Exception as e:
         logger.error(f"❌ [STUDY_CARD] Erreur: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
@@ -3725,31 +3899,29 @@ async def create_study_card(
 
 @router.post("/study/{summary_id}/mindmap")
 async def create_concept_map(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     🌳 Génère un arbre pédagogique (mindmap) au format Mermaid.
-    
+
     Inclut:
     - Code Mermaid prêt à afficher
     - Liste des concepts avec relations
     - Parcours d'apprentissage suggéré
     """
-    
+
     # Récupérer le résumé
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Résumé non trouvé")
-    
+
     # Vérifier les crédits (1 crédit pour un mindmap)
     if current_user.credits < 1:
         raise HTTPException(status_code=402, detail="Crédits insuffisants")
-    
+
     # Déduire 1 crédit
     await deduct_credit(session, current_user.id, 1, "concept_map")
-    
+
     # Générer le mindmap
     try:
         concept_map = await generate_concept_map(
@@ -3757,15 +3929,11 @@ async def create_concept_map(
             channel=summary.video_channel or "Chaîne inconnue",
             summary=summary.summary_content or "",
             lang=summary.lang or "fr",
-            model="mistral-small-2603"
+            model="mistral-small-2603",
         )
-        
-        return {
-            "success": True,
-            "summary_id": summary_id,
-            "concept_map": concept_map
-        }
-        
+
+        return {"success": True, "summary_id": summary_id, "concept_map": concept_map}
+
     except Exception as e:
         logger.error(f"❌ [CONCEPT_MAP] Erreur: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
@@ -3773,32 +3941,30 @@ async def create_concept_map(
 
 @router.post("/study/{summary_id}/all")
 async def create_all_study_materials(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     📚 Génère tous les outils d'étude en une fois.
-    
+
     Inclut:
     - Fiche de révision complète
     - Arbre pédagogique (mindmap)
-    
+
     Coût: 2 crédits
     """
-    
+
     # Récupérer le résumé
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Résumé non trouvé")
-    
+
     # Vérifier les crédits (2 crédits pour tout)
     if current_user.credits < 2:
         raise HTTPException(status_code=402, detail="Crédits insuffisants (2 requis)")
-    
+
     # Déduire 2 crédits
     await deduct_credit(session, current_user.id, 2, "study_all")
-    
+
     # Générer tout
     try:
         materials = await generate_study_materials(
@@ -3809,15 +3975,11 @@ async def create_all_study_materials(
             lang=summary.lang or "fr",
             model="mistral-small-2603",
             include_card=True,
-            include_map=True
+            include_map=True,
         )
-        
-        return {
-            "success": True,
-            "summary_id": summary_id,
-            "materials": materials
-        }
-        
+
+        return {"success": True, "summary_id": summary_id, "materials": materials}
+
     except Exception as e:
         logger.error(f"❌ [STUDY_ALL] Erreur: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
@@ -3827,15 +3989,16 @@ async def create_all_study_materials(
 # 🔍 INTELLIGENT DISCOVERY — Recherche intelligente de vidéos
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from .intelligent_discovery import (
-    IntelligentDiscoveryService, 
-    generate_text_video_id, 
-    validate_raw_text
-)
+from .intelligent_discovery import IntelligentDiscoveryService, generate_text_video_id, validate_raw_text
 from .schemas import (
-    SmartDiscoveryRequest, DiscoveryResponse, VideoCandidateResponse,
-    HybridAnalyzeRequest, HybridAnalysisResponse, InputType,
-    CreditEstimation, RawTextAnalysisResponse
+    SmartDiscoveryRequest,
+    DiscoveryResponse,
+    VideoCandidateResponse,
+    HybridAnalyzeRequest,
+    HybridAnalysisResponse,
+    InputType,
+    CreditEstimation,
+    RawTextAnalysisResponse,
 )
 
 
@@ -3846,7 +4009,7 @@ async def discover_videos(
 ):
     """
     🔍 Découverte intelligente de vidéos YouTube.
-    
+
     GRATUIT - Ne consomme pas de crédits.
     Recherche les meilleures vidéos avec scoring multi-critères:
     - Score Tournesol (éthique et qualité)
@@ -3854,14 +4017,15 @@ async def discover_videos(
     - Engagement (likes/vues)
     - Fraîcheur (date de publication)
     - Pénalité clickbait
-    
+
     La découverte est GRATUITE, seule l'analyse coûte des crédits.
     """
     import time
+
     start = time.time()
-    
+
     logger.info(f"🔍 [DISCOVER] User {current_user.email} searching: {request.query}")
-    
+
     try:
         result = await IntelligentDiscoveryService.discover(
             query=request.query,
@@ -3870,16 +4034,13 @@ async def discover_videos(
             min_quality=request.min_quality,
             target_duration=request.target_duration,
         )
-        
+
         # Convertir en response
-        candidates = [
-            VideoCandidateResponse(**c.to_dict())
-            for c in result.candidates
-        ]
-        
+        candidates = [VideoCandidateResponse(**c.to_dict()) for c in result.candidates]
+
         duration_ms = int((time.time() - start) * 1000)
         logger.info(f"✅ [DISCOVER] Found {len(candidates)} candidates in {duration_ms}ms")
-        
+
         return DiscoveryResponse(
             query=result.query,
             reformulated_queries=result.reformulated_queries,
@@ -3889,7 +4050,7 @@ async def discover_videos(
             search_duration_ms=result.search_duration_ms,
             tournesol_available=result.tournesol_available,
         )
-        
+
     except Exception as e:
         logger.error(f"❌ [DISCOVER] Error: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur de recherche: {str(e)}")
@@ -3903,28 +4064,25 @@ async def discover_best_video(
 ):
     """
     🏆 Trouve LA meilleure vidéo pour une requête.
-    
+
     GRATUIT - Ne consomme pas de crédits.
     Retourne directement le meilleur candidat.
     """
     logger.info(f"🏆 [DISCOVER/BEST] User {current_user.email} searching: {query}")
-    
+
     lang_list = [l.strip() for l in languages.split(",")]
-    
+
     try:
         result = await IntelligentDiscoveryService.discover_single_best(
             query=query,
             languages=lang_list,
         )
-        
+
         if not result:
-            raise HTTPException(
-                status_code=404, 
-                detail="Aucune vidéo de qualité trouvée pour cette recherche"
-            )
-        
+            raise HTTPException(status_code=404, detail="Aucune vidéo de qualité trouvée pour cette recherche")
+
         return VideoCandidateResponse(**result.to_dict())
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -3962,18 +4120,20 @@ async def discover_search_videos(
         videos = []
         for c in result.candidates:
             d = c.to_dict()
-            videos.append({
-                "video_id": d.get("video_id", ""),
-                "title": d.get("title", ""),
-                "channel": d.get("channel", ""),
-                "thumbnail_url": d.get("thumbnail_url", ""),
-                "duration": d.get("duration", 0),
-                "view_count": d.get("view_count", 0),
-                "quality_score": d.get("quality_score", 0),
-                "tournesol_score": d.get("tournesol_score", 0),
-                "published_at": d.get("published_at"),
-                "is_tournesol_pick": d.get("is_tournesol_pick", False),
-            })
+            videos.append(
+                {
+                    "video_id": d.get("video_id", ""),
+                    "title": d.get("title", ""),
+                    "channel": d.get("channel", ""),
+                    "thumbnail_url": d.get("thumbnail_url", ""),
+                    "duration": d.get("duration", 0),
+                    "view_count": d.get("view_count", 0),
+                    "quality_score": d.get("quality_score", 0),
+                    "tournesol_score": d.get("tournesol_score", 0),
+                    "published_at": d.get("published_at"),
+                    "is_tournesol_pick": d.get("is_tournesol_pick", False),
+                }
+            )
 
         # Sort according to sort_by
         if sort_by == "views":
@@ -4011,16 +4171,16 @@ async def analyze_hybrid(
     request: HybridAnalyzeRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_verified_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     🔀 Analyse hybride unifiée.
-    
+
     Supporte 3 modes d'entrée:
     1. **URL** - Analyse classique d'une vidéo YouTube
     2. **RAW_TEXT** - Analyse de texte brut (comme si c'était une transcription)
     3. **SEARCH** - Découverte intelligente puis sélection
-    
+
     COÛT:
     - Découverte (SEARCH sans auto_select): GRATUIT
     - Analyse (URL, RAW_TEXT, SEARCH avec auto_select): 1+ crédits selon le modèle
@@ -4029,14 +4189,14 @@ async def analyze_hybrid(
         input_type = request.detect_input_type()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
     logger.info(f"🔀 [HYBRID] User {current_user.email} - Type: {input_type.value}")
-    
+
     # === MODE URL ===
     if input_type == InputType.URL:
         # Réutiliser le endpoint d'analyse classique
         from .schemas import AnalyzeVideoRequest
-        
+
         analyze_request = AnalyzeVideoRequest(
             url=request.url,
             mode=request.mode,
@@ -4045,14 +4205,11 @@ async def analyze_hybrid(
             model=request.model,
             deep_research=request.deep_research,
         )
-        
+
         result = await analyze_video(
-            request=analyze_request,
-            background_tasks=background_tasks,
-            current_user=current_user,
-            session=session
+            request=analyze_request, background_tasks=background_tasks, current_user=current_user, session=session
         )
-        
+
         return HybridAnalysisResponse(
             input_type=InputType.URL,
             task_id=result.task_id,
@@ -4060,27 +4217,24 @@ async def analyze_hybrid(
             message=result.message,
             result=result.result,
         )
-    
+
     # === MODE RAW_TEXT ===
     elif input_type == InputType.RAW_TEXT:
         # Valider le texte
         is_valid, error = validate_raw_text(request.raw_text)
         if not is_valid:
             raise HTTPException(status_code=400, detail=error)
-        
+
         # Vérifier les crédits
         model = request.model or "mistral-small-2603"
         credit_cost = get_credit_cost(model) if SECURITY_AVAILABLE else 1
-        
+
         if current_user.credits < credit_cost:
-            raise HTTPException(
-                status_code=402, 
-                detail=f"Crédits insuffisants ({current_user.credits}/{credit_cost})"
-            )
-        
+            raise HTTPException(status_code=402, detail=f"Crédits insuffisants ({current_user.credits}/{credit_cost})")
+
         # Générer un ID unique pour ce texte
         text_id = generate_text_video_id(request.raw_text)
-        
+
         # Créer une tâche avec user_id pour le tracking
         task_id = str(uuid4())
         _task_store[task_id] = {
@@ -4090,7 +4244,7 @@ async def analyze_hybrid(
             "text_id": text_id,
             "user_id": current_user.id,  # 🔧 FIX: Nécessaire pour le status endpoint
         }
-        
+
         # Lancer l'analyse en background
         background_tasks.add_task(
             _analyze_raw_text_background,
@@ -4105,25 +4259,22 @@ async def analyze_hybrid(
             model=model,
             category=request.category,
         )
-        
-        char_count = len(request.raw_text)
+
+        len(request.raw_text)
         word_count = len(request.raw_text.split())
-        
+
         return HybridAnalysisResponse(
             input_type=InputType.RAW_TEXT,
             task_id=task_id,
             status="processing",
             message=f"Analyse de {word_count} mots en cours...",
         )
-    
+
     # === MODE SEARCH ===
     else:
         # Valider la requête de recherche
         if not request.search_query or not request.search_query.strip():
-            raise HTTPException(
-                status_code=400,
-                detail="search_query est requis pour le mode recherche"
-            )
+            raise HTTPException(status_code=400, detail="search_query est requis pour le mode recherche")
 
         # Découverte intelligente
         discovery_result = await IntelligentDiscoveryService.discover(
@@ -4132,12 +4283,9 @@ async def analyze_hybrid(
             max_results=10 if not request.auto_select_best else 1,
             min_quality=25.0,
         )
-        
-        candidates = [
-            VideoCandidateResponse(**c.to_dict())
-            for c in discovery_result.candidates
-        ]
-        
+
+        candidates = [VideoCandidateResponse(**c.to_dict()) for c in discovery_result.candidates]
+
         discovery_response = DiscoveryResponse(
             query=discovery_result.query,
             reformulated_queries=discovery_result.reformulated_queries,
@@ -4147,11 +4295,11 @@ async def analyze_hybrid(
             search_duration_ms=discovery_result.search_duration_ms,
             tournesol_available=discovery_result.tournesol_available,
         )
-        
+
         # Si auto_select, lancer l'analyse du meilleur
         if request.auto_select_best and candidates:
             best = candidates[0]
-            
+
             analyze_request = AnalyzeVideoRequest(
                 url=f"https://youtube.com/watch?v={best.video_id}",
                 mode=request.mode,
@@ -4160,14 +4308,11 @@ async def analyze_hybrid(
                 model=request.model,
                 deep_research=request.deep_research,
             )
-            
+
             result = await analyze_video(
-                request=analyze_request,
-                background_tasks=background_tasks,
-                current_user=current_user,
-                session=session
+                request=analyze_request, background_tasks=background_tasks, current_user=current_user, session=session
             )
-            
+
             return HybridAnalysisResponse(
                 input_type=InputType.SEARCH,
                 task_id=result.task_id,
@@ -4176,7 +4321,7 @@ async def analyze_hybrid(
                 discovery=discovery_response,
                 selected_video=best,
             )
-        
+
         # Sinon, retourner les candidats pour sélection manuelle
         return HybridAnalysisResponse(
             input_type=InputType.SEARCH,
@@ -4194,7 +4339,7 @@ async def estimate_credits(
 ):
     """
     💰 Estime le coût en crédits pour une analyse.
-    
+
     Utile avant de lancer une analyse multiple ou playlist.
     """
     # Multiplicateur selon le modèle
@@ -4203,19 +4348,19 @@ async def estimate_credits(
         "mistral-medium-2508": 2.0,
         "mistral-large-2512": 3.0,
     }
-    
+
     multiplier = multipliers.get(model, 1.0)
     base_cost = num_videos
     total_cost = int(math.ceil(base_cost * multiplier))
     sufficient = current_user.credits >= total_cost
-    
+
     return CreditEstimation(
         base_cost=base_cost,
         model_multiplier=multiplier,
         total_cost=total_cost,
         user_credits=current_user.credits,
         sufficient=sufficient,
-        message="" if sufficient else f"Il vous manque {total_cost - current_user.credits} crédits"
+        message="" if sufficient else f"Il vous manque {total_cost - current_user.credits} crédits",
     )
 
 
@@ -4233,7 +4378,7 @@ async def _analyze_raw_text_background(
 ):
     """
     📝 Analyse un texte brut en background.
-    
+
     Simule une vidéo avec:
     - video_id = txt_XXXX (hash du contenu)
     - video_url = text://txt_XXXX
@@ -4241,44 +4386,44 @@ async def _analyze_raw_text_background(
     """
     from sqlalchemy.ext.asyncio import AsyncSession
     from db.database import async_session_maker
-    
+
     logger.info(f"📝 [RAW_TEXT] Starting analysis for {text_id}")
-    
+
     try:
         _task_store[task_id]["progress"] = 5
         _task_store[task_id]["message"] = "Détection de catégorie..."
-        
+
         # Détecter la catégorie
         if category and category != "auto":
             detected_category = category
             category_confidence = 1.0
         else:
             detected_category, category_confidence = detect_category(title="", transcript=text[:5000])
-        
+
         _task_store[task_id]["progress"] = 15
         _task_store[task_id]["message"] = "Analyse du contexte et génération du titre..."
-        
+
         # 🎨 v2.0: Générer titre intelligent, thumbnail ET détecter le type de source
         smart_title, thumbnail_url, source_context = await enhance_raw_text(
             text=text,
             provided_title=title,
             category=detected_category,
             lang=lang,
-            source_hint=source  # Utiliser la source comme indice
+            source_hint=source,  # Utiliser la source comme indice
         )
-        
+
         logger.info(f"🎯 [RAW_TEXT] Smart title: {smart_title}")
         logger.info(f"📚 [RAW_TEXT] Source type: {source_context.source_type.value}")
         if source_context.detected_origin:
             logger.info(f"   Origin: {source_context.detected_origin}")
         logger.info(f"🖼️ [RAW_TEXT] Thumbnail: {len(thumbnail_url) if thumbnail_url else 0} chars")
-        
+
         _task_store[task_id]["progress"] = 30
         _task_store[task_id]["message"] = "Génération du résumé adapté au contexte..."
-        
+
         # 🆕 Générer les instructions spécifiques au type de source
         source_instructions = get_source_specific_instructions(source_context, lang)
-        
+
         # Générer le résumé avec le contexte source
         word_count = len(text.split())
         summary_content = await generate_summary(
@@ -4289,30 +4434,30 @@ async def _analyze_raw_text_background(
             mode=mode,
             model=model,
             channel=source or source_context.detected_origin or "",
-            web_context=source_instructions if source_instructions else None  # Injecter les instructions
+            web_context=source_instructions if source_instructions else None,  # Injecter les instructions
         )
-        
+
         _task_store[task_id]["progress"] = 70
         _task_store[task_id]["message"] = "Extraction des entités..."
-        
+
         # Extraire les entités
         entities = await extract_entities(summary_content or text[:10000], lang=lang)
-        
+
         _task_store[task_id]["progress"] = 85
         _task_store[task_id]["message"] = "Calcul du score de fiabilité..."
-        
+
         # Score de fiabilité
         reliability = await calculate_reliability_score(summary_content or text, entities, lang=lang)
-        
+
         _task_store[task_id]["progress"] = 95
         _task_store[task_id]["message"] = "Sauvegarde..."
-        
+
         # Sauvegarder en base
         async with async_session_maker() as session:
             # Déduire les crédits
             credit_cost = get_credit_cost(model) if SECURITY_AVAILABLE else 1
             await deduct_credit(session, user_id, credit_cost, f"raw_text:{text_id}")
-            
+
             # Sauvegarder le résumé
             summary_id = await save_summary(
                 session=session,
@@ -4334,18 +4479,25 @@ async def _analyze_raw_text_background(
                 transcript_context=text[:50000],
                 platform="text",
             )
-            
+
             await session.commit()
 
         # 🖼️ Persist AI thumbnail to R2 (non-blocking)
         try:
             import asyncio as _aio_thumb
             from storage.thumbnail_generator import ensure_thumbnail
-            _aio_thumb.create_task(ensure_thumbnail(
-                summary_id=summary_id, video_id=text_id,
-                title=smart_title, category=detected_category,
-                platform="text", original_url=None, video_url=None,
-            ))
+
+            _aio_thumb.create_task(
+                ensure_thumbnail(
+                    summary_id=summary_id,
+                    video_id=text_id,
+                    title=smart_title,
+                    category=detected_category,
+                    platform="text",
+                    original_url=None,
+                    video_url=None,
+                )
+            )
         except Exception as thumb_err:
             logger.error(f"⚠️ [THUMBNAIL] R2 text thumbnail failed (non-blocking): {thumb_err}")
 
@@ -4367,18 +4519,19 @@ async def _analyze_raw_text_background(
                 video_title=title,
                 video_id=text_id,
             )
-        
+
         logger.info(f"✅ [RAW_TEXT] Analysis completed: {text_id}")
-        
+
     except Exception as e:
         logger.error(f"❌ [RAW_TEXT] Error: {e}")
         import traceback
+
         traceback.print_exc()
-        
+
         _task_store[task_id]["status"] = "failed"
         _task_store[task_id]["error"] = str(e)
         _task_store[task_id]["message"] = f"Erreur: {str(e)}"
-        
+
         if NOTIFICATIONS_AVAILABLE:
             await notify_analysis_failed(
                 user_id=user_id,
@@ -4391,35 +4544,31 @@ async def _analyze_raw_text_background(
 # 🕐 FRESHNESS & FACT-CHECK LITE — Disponible pour TOUS les plans
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/reliability/{summary_id}")
 async def get_content_reliability(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     🕐 Analyse la fiabilité d'un contenu : fraîcheur + fact-check LITE.
-    
+
     DISPONIBLE POUR TOUS LES PLANS (Free, Starter, Pro, Expert)
-    
+
     Returns:
         - freshness: Indicateur de fraîcheur de la vidéo
         - fact_check_lite: Analyse heuristique des affirmations
     """
     if not FACTCHECK_LITE_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="Service de vérification temporairement indisponible"
-        )
-    
+        raise HTTPException(status_code=503, detail="Service de vérification temporairement indisponible")
+
     # Récupérer le résumé
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Analyse non trouvée")
-    
+
     # Récupérer la date de publication depuis video_url ou utiliser created_at
     video_date = None
-    
+
     # Essayer d'obtenir la vraie date de publication
     try:
         video_id = extract_video_id(summary.video_url)
@@ -4429,32 +4578,33 @@ async def get_content_reliability(
                 video_date = video_info["publish_date"]
     except Exception:
         pass
-    
+
     # Fallback sur la date de création de l'analyse
     if not video_date:
         video_date = summary.created_at.isoformat() if summary.created_at else datetime.utcnow().isoformat()
-    
+
     # Analyser la fiabilité
     result = analyze_content_reliability(
         video_date=video_date,
         video_title=summary.video_title or "",
         summary_content=summary.summary_content or "",
         video_description="",  # Pas stocké actuellement
-        lang=summary.lang or "fr"
+        lang=summary.lang or "fr",
     )
-    
+
     # Ajouter les infos du résumé
     result["summary_id"] = summary_id
     result["video_title"] = summary.video_title
     result["video_channel"] = summary.video_channel
     result["user_plan"] = current_user.plan or "free"
-    
+
     # Indiquer si l'utilisateur peut avoir un fact-check complet
     result["full_factcheck_available"] = current_user.plan in ["pro"]
 
     # Push notification for fact-check complete
     try:
         from notifications.router import notify_factcheck_complete
+
         await notify_factcheck_complete(
             user_id=current_user.id,
             summary_id=summary_id,
@@ -4473,40 +4623,29 @@ async def analyze_text_reliability(
     title: str = Form(default="", description="Titre (optionnel)"),
     video_date: str = Form(default="", description="Date de publication (optionnel, ISO format)"),
     lang: str = Form(default="fr", description="Langue"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     🔍 Analyse directe d'un texte sans résumé préalable.
-    
+
     Utile pour analyser du contenu brut ou des extraits.
     """
     if not FACTCHECK_LITE_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="Service de vérification temporairement indisponible"
-        )
-    
+        raise HTTPException(status_code=503, detail="Service de vérification temporairement indisponible")
+
     # Validation
     if len(text) < 100:
-        raise HTTPException(
-            status_code=400,
-            detail="Texte trop court (minimum 100 caractères)"
-        )
-    
+        raise HTTPException(status_code=400, detail="Texte trop court (minimum 100 caractères)")
+
     if len(text) > 50000:
         text = text[:50000]  # Limiter
-    
+
     # Date par défaut = maintenant (considéré frais)
     if not video_date:
         video_date = datetime.utcnow().isoformat()
-    
-    result = analyze_content_reliability(
-        video_date=video_date,
-        video_title=title,
-        summary_content=text,
-        lang=lang
-    )
-    
+
+    result = analyze_content_reliability(video_date=video_date, video_title=title, summary_content=text, lang=lang)
+
     result["user_plan"] = current_user.plan or "free"
     result["full_factcheck_available"] = current_user.plan in ["pro"]
 
@@ -4515,22 +4654,20 @@ async def analyze_text_reliability(
 
 @router.get("/freshness/{summary_id}")
 async def get_video_freshness(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     📅 Obtient uniquement l'indicateur de fraîcheur d'une vidéo.
-    
+
     Endpoint léger pour afficher rapidement l'alerte de fraîcheur.
     """
     if not FACTCHECK_LITE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Service indisponible")
-    
+
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Analyse non trouvée")
-    
+
     # Récupérer la date de publication
     video_date = None
     try:
@@ -4541,27 +4678,24 @@ async def get_video_freshness(
                 video_date = video_info["publish_date"]
     except Exception:
         pass
-    
+
     if not video_date:
         video_date = summary.created_at.isoformat() if summary.created_at else datetime.utcnow().isoformat()
-    
+
     freshness = analyze_freshness(
         video_date=video_date,
         video_title=summary.video_title or "",
         video_description="",
-        transcript_excerpt=summary.summary_content[:2000] if summary.summary_content else ""
+        transcript_excerpt=summary.summary_content[:2000] if summary.summary_content else "",
     )
-    
-    return {
-        "summary_id": summary_id,
-        "video_title": summary.video_title,
-        **freshness.to_dict()
-    }
+
+    return {"summary_id": summary_id, "video_title": summary.video_title, **freshness.to_dict()}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📸 ANALYSE D'IMAGES — Input images/screenshots utilisateur
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/analyze/images", response_model=AnalyzeImagesResponse)
 async def analyze_images(
@@ -4595,14 +4729,11 @@ async def analyze_images(
     MAX_B64_SIZE = 14_000_000
     for i, img in enumerate(request.images):
         if len(img.data) > MAX_B64_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Image {i + 1} trop volumineuse (max 10 MB)"
-            )
+            raise HTTPException(status_code=400, detail=f"Image {i + 1} trop volumineuse (max 10 MB)")
         if img.mime_type not in ("image/jpeg", "image/png", "image/webp"):
             raise HTTPException(
                 status_code=400,
-                detail=f"Image {i + 1} : format non supporté ({img.mime_type}). Utiliser JPEG, PNG ou WebP."
+                detail=f"Image {i + 1} : format non supporté ({img.mime_type}). Utiliser JPEG, PNG ou WebP.",
             )
 
     # Vérifier les crédits
@@ -4610,13 +4741,11 @@ async def analyze_images(
     credit_cost = get_credit_cost(model) if SECURITY_AVAILABLE else 1
 
     if current_user.credits < credit_cost:
-        raise HTTPException(
-            status_code=402,
-            detail=f"Crédits insuffisants ({current_user.credits}/{credit_cost})"
-        )
+        raise HTTPException(status_code=402, detail=f"Crédits insuffisants ({current_user.credits}/{credit_cost})")
 
     # Générer un ID unique pour cet ensemble d'images
     import hashlib
+
     image_hash = hashlib.sha256(
         f"{current_user.id}:{len(request.images)}:{request.images[0].data[:100]}".encode()
     ).hexdigest()[:12]
@@ -4657,8 +4786,6 @@ async def analyze_images(
         estimated_duration_seconds=15 + len(request.images) * 5,
         cost=credit_cost,
     )
-
-
 
 
 # NOTE: _detect_video_screenshot, _detect_video_screenshot_vision,
@@ -4717,12 +4844,14 @@ async def _analyze_images_background(
                 video_url = screenshot_result.get("video_url")
                 search_query = ocr_query
 
-                logger.info(f"📱 [IMAGES] Screenshot detected: {platform} — OCR query: '{ocr_query}' — URL: {video_url}")
+                logger.info(
+                    f"📱 [IMAGES] Screenshot detected: {platform} — OCR query: '{ocr_query}' — URL: {video_url}"
+                )
 
                 # TOUJOURS appeler Vision quand OCR n'a pas trouvé d'URL directe
                 # Vision est beaucoup plus fiable que le parsing OCR pour extraire titre/chaîne
                 if not video_url:
-                    logger.info(f"🔍 [IMAGES] No direct URL from OCR, calling Vision for title extraction...")
+                    logger.info("🔍 [IMAGES] No direct URL from OCR, calling Vision for title extraction...")
                     _task_store[task_id]["message"] = f"Analyse visuelle du screenshot {platform}..."
                     vision_result = await _detect_video_screenshot_vision(images[0], api_key, platform)
                     if vision_result:
@@ -4738,7 +4867,7 @@ async def _analyze_images_background(
                             search_query = ocr_query
                             logger.error(f"⚠️ [IMAGES] Vision failed, using OCR query: '{search_query}'")
                         else:
-                            logger.error(f"❌ [IMAGES] Both Vision and OCR queries are garbage")
+                            logger.error("❌ [IMAGES] Both Vision and OCR queries are garbage")
                     elif not _is_garbage_query(ocr_query):
                         logger.warning(f"⚠️ [IMAGES] Vision returned nothing, using OCR query: '{search_query}'")
                     else:
@@ -4780,9 +4909,8 @@ async def _analyze_images_background(
                         # Récupérer le plan et modèle de l'utilisateur
                         async with async_session_maker() as _db:
                             from sqlalchemy import select as _select
-                            _user = (await _db.execute(
-                                _select(User).where(User.id == user_id)
-                            )).scalar_one_or_none()
+
+                            _user = (await _db.execute(_select(User).where(User.id == user_id))).scalar_one_or_none()
                             _plan = _user.plan if _user else "free"
 
                         _plan_limits = PLAN_LIMITS.get(_plan, PLAN_LIMITS["free"])
@@ -4821,7 +4949,9 @@ async def _analyze_images_background(
                         # Signaler la redirection au frontend (status "redirect" + new_task_id)
                         _task_store[task_id]["status"] = "redirect"
                         _task_store[task_id]["progress"] = 100
-                        _task_store[task_id]["message"] = f"Capture {platform} détectée ! Redirection vers l'analyse vidéo..."
+                        _task_store[task_id]["message"] = (
+                            f"Capture {platform} détectée ! Redirection vers l'analyse vidéo..."
+                        )
                         _task_store[task_id]["result"] = {
                             "new_task_id": new_task_id,
                             "platform": platform,
@@ -4833,7 +4963,9 @@ async def _analyze_images_background(
                     else:
                         logger.warning(f"⚠️ [IMAGES] Could not extract video_id from {found_url}")
                 else:
-                    logger.warning(f"⚠️ [IMAGES] Video not found for query '{search_query}', falling back to image analysis")
+                    logger.warning(
+                        f"⚠️ [IMAGES] Video not found for query '{search_query}', falling back to image analysis"
+                    )
                     _task_store[task_id]["message"] = "Vidéo non trouvée, analyse de l'image en cours..."
 
         # Construire le message multimodal
@@ -4924,7 +5056,13 @@ async def _analyze_images_background(
             temperature=0.1,
             timeout=120.0,
             max_retries=2,
-            fallback_models=["pixtral-large-2411", "pixtral-12b-2409", "mistral-small-latest", "mistral-medium-2508", "mistral-large-latest"],
+            fallback_models=[
+                "pixtral-large-2411",
+                "pixtral-12b-2409",
+                "mistral-small-latest",
+                "mistral-medium-2508",
+                "mistral-large-latest",
+            ],
         )
 
         if not vision_result:
@@ -4936,7 +5074,11 @@ async def _analyze_images_background(
         _task_store[task_id]["message"] = "Texte et visuels extraits. Génération de la synthèse..."
 
         # ─── Phase 2 : Assembler le pseudo-transcript ───
-        header = f"📸 ANALYSE D'IMAGES — {image_count} image(s)" if lang == "fr" else f"📸 IMAGE ANALYSIS — {image_count} image(s)"
+        header = (
+            f"📸 ANALYSE D'IMAGES — {image_count} image(s)"
+            if lang == "fr"
+            else f"📸 IMAGE ANALYSIS — {image_count} image(s)"
+        )
         parts = [header]
         if title:
             parts.append(f"{'Titre' if lang == 'fr' else 'Title'} : {title}")
@@ -4955,15 +5097,16 @@ async def _analyze_images_background(
             detected_category = category
             category_confidence = 1.0
         else:
-            detected_category, category_confidence = detect_category(title=title or "", transcript=pseudo_transcript[:5000])
+            detected_category, category_confidence = detect_category(
+                title=title or "", transcript=pseudo_transcript[:5000]
+            )
 
         _task_store[task_id]["progress"] = 60
         _task_store[task_id]["message"] = "Génération de la synthèse DeepSight..."
 
         # ─── Phase 4 : Générer la synthèse ───
         smart_title = title or (
-            f"Analyse d'images ({image_count})" if lang == "fr"
-            else f"Image Analysis ({image_count})"
+            f"Analyse d'images ({image_count})" if lang == "fr" else f"Image Analysis ({image_count})"
         )
 
         summary_content = await generate_summary(
@@ -4985,9 +5128,7 @@ async def _analyze_images_background(
         _task_store[task_id]["progress"] = 90
         _task_store[task_id]["message"] = "Calcul du score de fiabilité..."
 
-        reliability = await calculate_reliability_score(
-            summary_content or pseudo_transcript, entities, lang=lang
-        )
+        reliability = await calculate_reliability_score(summary_content or pseudo_transcript, entities, lang=lang)
 
         _task_store[task_id]["progress"] = 95
         _task_store[task_id]["message"] = "Sauvegarde..."
@@ -4999,6 +5140,7 @@ async def _analyze_images_background(
         image_thumbnail_url = ""
         try:
             import base64 as b64_mod
+
             first_img = images[0]
             b64_data = first_img.data
             if b64_data.startswith("data:"):
@@ -5010,6 +5152,7 @@ async def _analyze_images_background(
                 try:
                     from PIL import Image as PILImage
                     from io import BytesIO
+
                     img = PILImage.open(BytesIO(raw_bytes))
                     img.thumbnail((320, 180), PILImage.LANCZOS)
                     buffer = BytesIO()
@@ -5072,6 +5215,7 @@ async def _analyze_images_background(
     except Exception as e:
         logger.error(f"❌ [IMAGES] Error: {e}")
         import traceback
+
         traceback.print_exc()
 
         _task_store[task_id]["status"] = "failed"
@@ -5079,24 +5223,25 @@ async def _analyze_images_background(
         _task_store[task_id]["message"] = f"Erreur: {str(e)}"
 
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🎞️ SLIDESHOW — Frame extraction for image-only videos (TikTok/YouTube Shorts)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _is_empty_transcript(transcript: str) -> bool:
     """Detect if a transcript is quasi-empty (slideshow probable)."""
     if not transcript:
         return True
     import re as _re
+
     cleaned = transcript
     noise_patterns = [
-        r'\[(?:Musique|Music|Applause|Applaudissements)\]',
-        r'[♪♫🎵🎶]+',
-        r'\[.*?\]',
+        r"\[(?:Musique|Music|Applause|Applaudissements)\]",
+        r"[♪♫🎵🎶]+",
+        r"\[.*?\]",
     ]
     for pat in noise_patterns:
-        cleaned = _re.sub(pat, '', cleaned, flags=_re.IGNORECASE)
+        cleaned = _re.sub(pat, "", cleaned, flags=_re.IGNORECASE)
     cleaned = cleaned.strip()
     if len(cleaned) < 50:
         return True
@@ -5128,10 +5273,16 @@ async def _extract_slideshow_frames(
             video_path = os.path.join(tmpdir, "video.mp4")
 
             download_cmd = [
-                "yt-dlp", "--no-warnings", "--geo-bypass",
-                "-f", "worst[ext=mp4]/worst",
-                "--max-filesize", "50M",
-                "-o", video_path, video_url,
+                "yt-dlp",
+                "--no-warnings",
+                "--geo-bypass",
+                "-f",
+                "worst[ext=mp4]/worst",
+                "--max-filesize",
+                "50M",
+                "-o",
+                video_path,
+                video_url,
             ]
 
             loop = asyncio.get_event_loop()
@@ -5145,15 +5296,25 @@ async def _extract_slideshow_frames(
 
             ok = await loop.run_in_executor(None, run_dl)
             if not ok or not os.path.exists(video_path):
-                logger.error(f"🎞️ [SLIDESHOW] Download failed")
+                logger.error("🎞️ [SLIDESHOW] Download failed")
                 return None
 
             def get_dur():
                 try:
                     r = subprocess.run(
-                        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-                         "-of", "default=noprint_wrappers=1:nokey=1", video_path],
-                        capture_output=True, text=True, timeout=10,
+                        [
+                            "ffprobe",
+                            "-v",
+                            "error",
+                            "-show_entries",
+                            "format=duration",
+                            "-of",
+                            "default=noprint_wrappers=1:nokey=1",
+                            video_path,
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
                     )
                     return float(r.stdout.strip())
                 except Exception:
@@ -5170,10 +5331,19 @@ async def _extract_slideshow_frames(
 
             frames_pat = os.path.join(tmpdir, "frame_%04d.jpg")
             ff_cmd = [
-                "ffmpeg", "-i", video_path,
-                "-vf", f"fps=1/{interval},scale=640:-1",
-                "-q:v", "3", "-frames:v", str(max_frames),
-                frames_pat, "-y", "-loglevel", "error",
+                "ffmpeg",
+                "-i",
+                video_path,
+                "-vf",
+                f"fps=1/{interval},scale=640:-1",
+                "-q:v",
+                "3",
+                "-frames:v",
+                str(max_frames),
+                frames_pat,
+                "-y",
+                "-loglevel",
+                "error",
             ]
 
             def do_ff():
@@ -5185,12 +5355,12 @@ async def _extract_slideshow_frames(
 
             ok = await loop.run_in_executor(None, do_ff)
             if not ok:
-                logger.error(f"🎞️ [SLIDESHOW] ffmpeg extraction failed")
+                logger.error("🎞️ [SLIDESHOW] ffmpeg extraction failed")
                 return None
 
             frame_files = sorted(glob_module.glob(os.path.join(tmpdir, "frame_*.jpg")))
             if not frame_files:
-                logger.info(f"🎞️ [SLIDESHOW] No frames found")
+                logger.info("🎞️ [SLIDESHOW] No frames found")
                 return None
 
             frames = []
@@ -5205,6 +5375,7 @@ async def _extract_slideshow_frames(
     except Exception as e:
         logger.error(f"🎞️ [SLIDESHOW] Error: {e}")
         import traceback
+
         traceback.print_exc()
         return None
 
@@ -5212,6 +5383,7 @@ async def _extract_slideshow_frames(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 ADMIN — Backfill metadata for cached transcripts
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/admin/backfill-metadata")
 async def admin_backfill_metadata(

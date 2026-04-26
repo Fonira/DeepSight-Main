@@ -14,6 +14,7 @@ from typing import List, Optional, Tuple
 from dataclasses import dataclass, field
 
 import logging
+
 logger = logging.getLogger("deepsight.playlists.chunker")
 
 
@@ -22,22 +23,21 @@ logger = logging.getLogger("deepsight.playlists.chunker")
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Seuils de durée vidéo (en secondes)
-SHORT_VIDEO_MAX = 20 * 60       # 20 min — pas de chunking
-MEDIUM_VIDEO_MAX = 45 * 60      # 45 min — chunks larges
-LONG_VIDEO_MAX = 90 * 60        # 1h30 — chunks standards
+SHORT_VIDEO_MAX = 20 * 60  # 20 min — pas de chunking
+MEDIUM_VIDEO_MAX = 45 * 60  # 45 min — chunks larges
+LONG_VIDEO_MAX = 90 * 60  # 1h30 — chunks standards
 VERY_LONG_VIDEO_MAX = 180 * 60  # 3h — chunks compacts
 
 # Tailles de chunks en mots (adaptatives)
 CHUNK_CONFIGS = {
-    "short":     {"chunk_words": 0,    "overlap": 0,   "max_summary_tokens": 2000},
-    "medium":    {"chunk_words": 3000, "overlap": 400, "max_summary_tokens": 1500},
-    "long":      {"chunk_words": 2500, "overlap": 350, "max_summary_tokens": 1200},
+    "short": {"chunk_words": 0, "overlap": 0, "max_summary_tokens": 2000},
+    "medium": {"chunk_words": 3000, "overlap": 400, "max_summary_tokens": 1500},
+    "long": {"chunk_words": 2500, "overlap": 350, "max_summary_tokens": 1200},
     "very_long": {"chunk_words": 2000, "overlap": 300, "max_summary_tokens": 1000},
-    "ultra":     {"chunk_words": 1800, "overlap": 250, "max_summary_tokens": 800},
+    "ultra": {"chunk_words": 1800, "overlap": 250, "max_summary_tokens": 800},
 }
 
 # Limites Mistral — importées depuis core/config (source of truth unique)
-from core.config import MISTRAL_CONTEXT_WINDOWS as MISTRAL_CONTEXT_LIMITS
 
 # Estimation chars → tokens
 CHARS_PER_TOKEN = 4
@@ -47,9 +47,11 @@ CHARS_PER_TOKEN = 4
 # 📦 DATACLASSES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class PlaylistChunk:
     """Un chunk de transcript pour analyse dans le pipeline playlist."""
+
     index: int
     total_chunks: int
     text: str
@@ -68,24 +70,26 @@ class PlaylistChunk:
 @dataclass
 class ChunkingPlan:
     """Plan de découpage pour une vidéo."""
+
     video_id: str
     video_title: str
     duration_seconds: int
     total_words: int
-    tier: str                          # short | medium | long | very_long | ultra
+    tier: str  # short | medium | long | very_long | ultra
     needs_chunking: bool
     num_chunks: int
     chunk_size_words: int
     overlap_words: int
     max_summary_tokens: int
     estimated_api_calls: int
-    estimated_cost_tokens: int         # Tokens Mistral estimés
+    estimated_cost_tokens: int  # Tokens Mistral estimés
     chunks: List[PlaylistChunk] = field(default_factory=list)
 
 
 @dataclass
 class PlaylistChunkingReport:
     """Rapport global de chunking pour toute la playlist."""
+
     total_videos: int
     videos_needing_chunking: int
     total_chunks: int
@@ -99,6 +103,7 @@ class PlaylistChunkingReport:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📏 DÉTECTION DU TIER DE VIDÉO
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def get_video_tier(duration_seconds: int, word_count: int) -> str:
     """
@@ -126,13 +131,14 @@ def estimate_tokens(text: str) -> int:
 # 🔪 DÉCOUPAGE INTELLIGENT
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def create_chunking_plan(
     video_id: str,
     video_title: str,
     transcript: str,
     transcript_timestamped: Optional[str],
     duration_seconds: int,
-    model: str = "mistral-small-2603"
+    model: str = "mistral-small-2603",
 ) -> ChunkingPlan:
     """
     Crée un plan de découpage adaptatif pour une vidéo.
@@ -163,16 +169,18 @@ def create_chunking_plan(
             max_summary_tokens=config["max_summary_tokens"],
             estimated_api_calls=1,
             estimated_cost_tokens=estimate_tokens(transcript) + 2000,
-            chunks=[PlaylistChunk(
-                index=0,
-                total_chunks=1,
-                text=transcript,
-                word_count=word_count,
-                start_time="00:00",
-                end_time=_format_seconds(duration_seconds),
-                start_seconds=0,
-                end_seconds=duration_seconds,
-            )]
+            chunks=[
+                PlaylistChunk(
+                    index=0,
+                    total_chunks=1,
+                    text=transcript,
+                    word_count=word_count,
+                    start_time="00:00",
+                    end_time=_format_seconds(duration_seconds),
+                    start_seconds=0,
+                    end_seconds=duration_seconds,
+                )
+            ],
         )
 
     # Vidéo longue → chunking adaptatif
@@ -184,7 +192,7 @@ def create_chunking_plan(
         transcript_timestamped=transcript_timestamped,
         duration_seconds=duration_seconds,
         chunk_size=chunk_size,
-        overlap=overlap
+        overlap=overlap,
     )
 
     num_chunks = len(chunks)
@@ -212,16 +220,12 @@ def create_chunking_plan(
         max_summary_tokens=config["max_summary_tokens"],
         estimated_api_calls=api_calls,
         estimated_cost_tokens=est_tokens,
-        chunks=chunks
+        chunks=chunks,
     )
 
 
 def _split_transcript(
-    transcript: str,
-    transcript_timestamped: Optional[str],
-    duration_seconds: int,
-    chunk_size: int,
-    overlap: int
+    transcript: str, transcript_timestamped: Optional[str], duration_seconds: int, chunk_size: int, overlap: int
 ) -> List[PlaylistChunk]:
     """
     Découpe un transcript en chunks avec :
@@ -260,16 +264,18 @@ def _split_transcript(
             start_sec = int((current_pos / total_words) * duration_seconds) if total_words > 0 else 0
             end_sec = int((end_pos / total_words) * duration_seconds) if total_words > 0 else 0
 
-        chunks.append(PlaylistChunk(
-            index=chunk_index,
-            total_chunks=0,  # Sera mis à jour après
-            text=chunk_text,
-            word_count=chunk_word_count,
-            start_time=_format_seconds(start_sec),
-            end_time=_format_seconds(end_sec),
-            start_seconds=start_sec,
-            end_seconds=end_sec,
-        ))
+        chunks.append(
+            PlaylistChunk(
+                index=chunk_index,
+                total_chunks=0,  # Sera mis à jour après
+                text=chunk_text,
+                word_count=chunk_word_count,
+                start_time=_format_seconds(start_sec),
+                end_time=_format_seconds(end_sec),
+                start_seconds=start_sec,
+                end_seconds=end_sec,
+            )
+        )
 
         chunk_index += 1
         # Avancer avec overlap
@@ -282,12 +288,7 @@ def _split_transcript(
     return chunks
 
 
-def _find_sentence_boundary(
-    words: List[str],
-    start_pos: int,
-    target_end: int,
-    min_advance: int
-) -> int:
+def _find_sentence_boundary(words: List[str], start_pos: int, target_end: int, min_advance: int) -> int:
     """
     Cherche la fin de phrase la plus proche de target_end.
     Ne recule pas en-dessous de min_advance mots depuis start_pos.
@@ -302,7 +303,7 @@ def _find_sentence_boundary(
         if i >= len(words):
             continue
         word = words[i]
-        if word.endswith(('.', '!', '?', '."', '."')):
+        if word.endswith((".", "!", "?", '."', '."')):
             best_end = i + 1
             break
 
@@ -318,7 +319,7 @@ def _parse_timestamps(transcript_timestamped: str) -> List[Tuple[int, int]]:
         return []
 
     segments = []
-    pattern = r'\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*([^\[]*)'
+    pattern = r"\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*([^\[]*)"
     matches = re.findall(pattern, transcript_timestamped)
 
     word_offset = 0
@@ -338,10 +339,7 @@ def _parse_timestamps(transcript_timestamped: str) -> List[Tuple[int, int]]:
 
 
 def _get_timestamp_at_position(
-    timestamps: List[Tuple[int, int]],
-    word_pos: int,
-    total_words: int,
-    duration: int
+    timestamps: List[Tuple[int, int]], word_pos: int, total_words: int, duration: int
 ) -> int:
     """Retourne le timestamp (en secondes) correspondant à une position de mot."""
     if not timestamps:
@@ -372,6 +370,7 @@ def _format_seconds(seconds: int) -> str:
 # 📊 RAPPORT DE CHUNKING GLOBAL
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def create_playlist_chunking_report(plans: List[ChunkingPlan]) -> PlaylistChunkingReport:
     """
     Génère un rapport global de chunking pour toute la playlist.
@@ -401,5 +400,5 @@ def create_playlist_chunking_report(plans: List[ChunkingPlan]) -> PlaylistChunki
         total_api_calls=total_api_calls,
         estimated_total_tokens=total_tokens,
         estimated_time_seconds=estimated_time,
-        plans=plans
+        plans=plans,
     )

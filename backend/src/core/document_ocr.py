@@ -58,9 +58,11 @@ ALL_SUPPORTED_TYPES = {**SUPPORTED_DOCUMENT_TYPES, **SUPPORTED_IMAGE_TYPES}
 # DATA CLASSES
 # =============================================================================
 
+
 @dataclass
 class OCRPage:
     """A single page extracted by OCR."""
+
     index: int
     markdown: str
     header: Optional[str] = None
@@ -73,6 +75,7 @@ class OCRPage:
 @dataclass
 class OCRResult:
     """Complete OCR result for a document."""
+
     pages: List[OCRPage]
     model: str = MISTRAL_OCR_MODEL
     total_pages: int = 0
@@ -88,6 +91,7 @@ class OCRResult:
 # =============================================================================
 # OCR API — Process Document
 # =============================================================================
+
 
 async def process_document_url(
     document_url: str,
@@ -147,8 +151,7 @@ async def process_document_base64(
     """
     if len(data) > MAX_DOCUMENT_SIZE_BYTES:
         raise ValueError(
-            f"Document too large: {len(data) / 1024 / 1024:.1f}MB "
-            f"(max: {MAX_DOCUMENT_SIZE_BYTES / 1024 / 1024:.0f}MB)"
+            f"Document too large: {len(data) / 1024 / 1024:.1f}MB (max: {MAX_DOCUMENT_SIZE_BYTES / 1024 / 1024:.0f}MB)"
         )
 
     # Encode to base64
@@ -181,6 +184,7 @@ async def process_document_base64(
 # =============================================================================
 # INTERNAL — API Call
 # =============================================================================
+
 
 async def _call_ocr_api(
     document: Dict[str, Any],
@@ -234,12 +238,8 @@ async def _call_ocr_api(
 
         if response.status_code != 200:
             error_body = response.text[:300]
-            logger.error(
-                "Mistral OCR error %d: %s", response.status_code, error_body
-            )
-            raise RuntimeError(
-                f"Mistral OCR error {response.status_code}: {error_body}"
-            )
+            logger.error("Mistral OCR error %d: %s", response.status_code, error_body)
+            raise RuntimeError(f"Mistral OCR error {response.status_code}: {error_body}")
 
         data = response.json()
 
@@ -310,6 +310,7 @@ async def _call_ocr_api(
 # =============================================================================
 # ANALYZE DOCUMENT — OCR + LLM Analysis
 # =============================================================================
+
 
 async def analyze_document(
     ocr_result: OCRResult,
@@ -387,6 +388,7 @@ async def analyze_document(
 # =============================================================================
 # PROMPT BUILDERS
 # =============================================================================
+
 
 def _build_summary_system_prompt(lang: str) -> str:
     if lang == "fr":
