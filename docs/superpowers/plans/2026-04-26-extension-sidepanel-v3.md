@@ -79,6 +79,7 @@ Expected : tous les 3 passent (≥1 warning OK, 0 erreur). Si baseline rouge, **
 | `extension/src/sidepanel/components/VideoDetectedCard.tsx`            | Carte vidéo YT/TT détectée (split MainView)                                |
 | `extension/src/sidepanel/components/UrlInputCard.tsx`                 | Input URL manuel mode QG (NOUVEAU)                                         |
 | `extension/src/sidepanel/components/PlanBadge.tsx`                    | Badge plan + crédits (split MainView)                                      |
+| `extension/src/sidepanel/components/SuggestionPills.tsx`              | **Addendum 2026-04-27** — chips chat-first sous VideoDetectedCard          |
 | `extension/src/sidepanel/components/PromoBanner.tsx`                  | Banner promo (move depuis popup/)                                          |
 | `extension/src/sidepanel/shared/Icons.tsx`                            | Icônes SVG (move)                                                          |
 | `extension/src/sidepanel/shared/DeepSightSpinner.tsx`                 | Spinner cosmic (move)                                                      |
@@ -95,6 +96,7 @@ Expected : tous les 3 passent (≥1 warning OK, 0 erreur). Si baseline rouge, **
 | `extension/__tests__/sidepanel/components/RecentsList.test.tsx`       | Test RecentsList                                                           |
 | `extension/__tests__/sidepanel/components/VideoDetectedCard.test.tsx` | Test VideoDetectedCard                                                     |
 | `extension/__tests__/sidepanel/components/UrlInputCard.test.tsx`      | Test UrlInputCard                                                          |
+| `extension/__tests__/sidepanel/components/SuggestionPills.test.tsx`   | **Addendum 2026-04-27** — Test SuggestionPills                             |
 | `extension/__tests__/sidepanel/hooks/useCurrentTab.test.ts`           | Test useCurrentTab                                                         |
 | `extension/__tests__/content/url-detect.test.ts`                      | Test content script light                                                  |
 | `extension/__tests__/background/sidepanel-toggle.test.ts`             | Test setPanelBehavior + relays                                             |
@@ -1666,6 +1668,200 @@ Expected: tous passent (le test ex-`Popup.test` peut nécessiter un update si il
 git add src/sidepanel/views/HomeView.tsx src/sidepanel/App.tsx __tests__/sidepanel/views/HomeView.test.tsx
 git commit -m "feat(ext): replace MainView with HomeView dual-mode (QG / video)"
 ```
+
+### Task 16.5: Component SuggestionPills (Addendum 2026-04-27 — chat-first hybrid)
+
+**Inséré le 2026-04-27 suite au brainstorming hybride. Voir `specs/2026-04-26-extension-sidepanel-design.md` section 7bis.**
+
+**Files:**
+
+- Create: `extension/src/sidepanel/components/SuggestionPills.tsx`
+- Test: `extension/__tests__/sidepanel/components/SuggestionPills.test.tsx`
+- Modify: `extension/src/sidepanel/views/HomeView.tsx` (wire SuggestionPills sous VideoDetectedCard)
+
+- [ ] **Step 16.5.1: Test failing pour SuggestionPills**
+
+Create `__tests__/sidepanel/components/SuggestionPills.test.tsx` :
+
+```typescript
+import React from "react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { SuggestionPills } from "../../../src/sidepanel/components/SuggestionPills";
+
+describe("SuggestionPills", () => {
+  it("renders nothing when suggestions array is empty", () => {
+    const { container } = render(<SuggestionPills suggestions={[]} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("renders one chip per suggestion (max 3 visible)", () => {
+    const onTrigger = jest.fn();
+    render(
+      <SuggestionPills
+        suggestions={[
+          { id: "summary", label: "Résumé rapide", icon: "🧠", onTrigger },
+          { id: "flashcards", label: "Créer flashcards", icon: "🎴", onTrigger },
+          { id: "sources", label: "Voir sources", icon: "🔍", onTrigger },
+        ]}
+      />
+    );
+    expect(screen.getByRole("button", { name: /résumé rapide/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /créer flashcards/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /voir sources/i })).toBeInTheDocument();
+  });
+
+  it("calls onTrigger when a pill is clicked", () => {
+    const onTrigger = jest.fn();
+    render(
+      <SuggestionPills
+        suggestions={[{ id: "summary", label: "Résumé rapide", onTrigger }]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /résumé rapide/i }));
+    expect(onTrigger).toHaveBeenCalledTimes(1);
+  });
+
+  it("caps display at 3 pills even if more suggestions are passed", () => {
+    const onTrigger = jest.fn();
+    render(
+      <SuggestionPills
+        suggestions={[
+          { id: "a", label: "A", onTrigger },
+          { id: "b", label: "B", onTrigger },
+          { id: "c", label: "C", onTrigger },
+          { id: "d", label: "D", onTrigger },
+        ]}
+      />
+    );
+    expect(screen.getAllByRole("button")).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: /^d$/i })).toBeNull();
+  });
+});
+```
+
+- [ ] **Step 16.5.2: Run, verify fail**
+
+```bash
+cd extension
+npx jest __tests__/sidepanel/components/SuggestionPills.test.tsx -v
+```
+
+Expected: FAIL — module introuvable.
+
+- [ ] **Step 16.5.3: Implement SuggestionPills.tsx**
+
+Create `extension/src/sidepanel/components/SuggestionPills.tsx` :
+
+```typescript
+import React from "react";
+
+export interface Suggestion {
+  id: string;
+  label: string;
+  icon?: string;
+  onTrigger: () => void;
+}
+
+interface Props {
+  suggestions: Suggestion[];
+}
+
+const MAX_VISIBLE = 3;
+
+export function SuggestionPills({ suggestions }: Props): JSX.Element | null {
+  if (suggestions.length === 0) return null;
+  const visible = suggestions.slice(0, MAX_VISIBLE);
+  return (
+    <div className="ds-suggestion-pills" role="group" aria-label="Suggestions">
+      {visible.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          className="ds-suggestion-pill"
+          onClick={s.onTrigger}
+        >
+          {s.icon ? <span className="ds-suggestion-pill__icon">{s.icon}</span> : null}
+          <span className="ds-suggestion-pill__label">{s.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+```
+
+Ajouter le CSS minimal dans `extension/src/sidepanel/styles/sidepanel.css` (chips en row, gap 8px, fond `rgba(99,102,241,0.08)`, border `rgba(99,102,241,0.25)`, hover plus opaque).
+
+- [ ] **Step 16.5.4: Run, verify pass**
+
+```bash
+npx jest __tests__/sidepanel/components/SuggestionPills.test.tsx -v
+```
+
+Expected: 4 tests PASS.
+
+- [ ] **Step 16.5.5: Wire SuggestionPills dans HomeView (mode vidéo détectée)**
+
+Edit `extension/src/sidepanel/views/HomeView.tsx` — dans la branche « Video mode », immédiatement sous `<VideoDetectedCard ... />`, ajouter :
+
+```tsx
+<SuggestionPills
+  suggestions={[
+    {
+      id: "summary",
+      label: "Résumé rapide",
+      icon: "🧠",
+      onTrigger: onAnalyze,
+    },
+    {
+      id: "flashcards",
+      label: "Créer flashcards",
+      icon: "🎴",
+      onTrigger: () =>
+        chrome.tabs.create({
+          url: `https://www.deepsightsynthesis.com/study/${currentTab.videoId ?? ""}`,
+        }),
+    },
+    // "Voir sources" affiché conditionnellement si cacheStatus.hit === true
+    ...(cacheStatus?.hit
+      ? [
+          {
+            id: "sources",
+            label: "Voir sources",
+            icon: "🔍",
+            onTrigger: () =>
+              chrome.tabs.create({
+                url: `https://www.deepsightsynthesis.com/analysis/${cacheStatus.summaryId}#sources`,
+              }),
+          },
+        ]
+      : []),
+  ]}
+/>
+```
+
+Mettre à jour le test `HomeView.test.tsx` pour vérifier que les pills apparaissent en mode vidéo (au moins un `getByRole("button", { name: /résumé rapide/i })`).
+
+- [ ] **Step 16.5.6: Run typecheck + suite complète**
+
+```bash
+npm run typecheck
+npm test
+```
+
+Expected: 0 erreur TS, tous tests verts (incluant `HomeView` mis à jour).
+
+- [ ] **Step 16.5.7: Commit**
+
+```bash
+git add src/sidepanel/components/SuggestionPills.tsx \
+        __tests__/sidepanel/components/SuggestionPills.test.tsx \
+        src/sidepanel/views/HomeView.tsx \
+        __tests__/sidepanel/views/HomeView.test.tsx \
+        src/sidepanel/styles/sidepanel.css
+git commit -m "feat(ext): SuggestionPills chips under VideoDetectedCard (chat-first hybrid addendum)"
+```
+
+---
 
 ### Task 17: Content script light — URL detect only
 
