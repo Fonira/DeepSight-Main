@@ -1,14 +1,15 @@
 /**
- * AmbientLightLayer v2.1 — Couche d'effets lumineux DeepSight (mobile RN).
+ * AmbientLightLayer v2.2 — Couche d'effets lumineux DeepSight (mobile RN).
  *
  * VERSION LIGHT (différente de la web) :
  *   - Fond noir #0a0a0f conservé (les doodles restent bien visibles dessus)
  *   - Pas de calques 3-spots ambient qui éclairent tout l'écran
- *   - Pas d'étoiles (les doodles font la texture)
+ *   - Étoiles scintillantes (5 sparse / 9 dense) avec opacité ∝ heure
  *   - Beam mince qui traverse (35% hauteur, opacité capée à 0.18 max)
  *   - Lune = blanc PUR (#ffffff) la nuit (et non l'argenté froid de l'engine)
  *   - Soleil = warm discret le jour (60×60px disc avec glow soft)
  *   - intensityMul mobile baissé à 0.5 par défaut
+ *   - Cycle complet jour/nuit : sun le jour + moon la nuit + couleur beam dynamique
  */
 import React, { useEffect } from "react";
 import { View, StyleSheet, ViewStyle, Dimensions } from "react-native";
@@ -39,6 +40,40 @@ const TRANSITION_MS = 1500;
 
 const { height: SCREEN_H } = Dimensions.get("window");
 
+// ─── Étoiles ────────────────────────────────────────────────────────────────
+// Positions fixes, opacité finale = base × starOpacityMul du preset.
+// La nuit (preset.starDensity === "dense") on affiche les 9 étoiles.
+// Le jour (sparse) on n'affiche que les 5 premières, opacité fortement réduite
+// par l'engine (starOpacityMul ~0.1-0.2 selon l'heure).
+
+interface StarDef {
+  /** Position X en % */
+  x: number;
+  /** Position Y en % */
+  y: number;
+  /** Diamètre du point (dp) */
+  size: number;
+  /** Couleur du point */
+  color: string;
+  /** Opacité de base (multipliée par starOpacityMul du preset) */
+  baseOpacity: number;
+}
+
+const BASE_STARS: StarDef[] = [
+  { x: 12, y: 18, size: 3, color: "#ffffff", baseOpacity: 0.7 },
+  { x: 28, y: 42, size: 3, color: "#e8eaed", baseOpacity: 0.65 },
+  { x: 47, y: 12, size: 2, color: "#ffffff", baseOpacity: 0.55 },
+  { x: 62, y: 78, size: 3, color: "#c4b5fd", baseOpacity: 0.6 },
+  { x: 78, y: 35, size: 2, color: "#ffffff", baseOpacity: 0.55 },
+];
+
+const DENSE_EXTRA_STARS: StarDef[] = [
+  { x: 88, y: 62, size: 4, color: "#bae6fd", baseOpacity: 0.6 },
+  { x: 8, y: 75, size: 2, color: "#c4b5fd", baseOpacity: 0.5 },
+  { x: 35, y: 90, size: 3, color: "#ffffff", baseOpacity: 0.5 },
+  { x: 92, y: 22, size: 2, color: "#e8eaed", baseOpacity: 0.55 },
+];
+
 export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
   intensity = "soft",
 }) => {
@@ -48,10 +83,12 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
   const beamOpacityRaw = Math.min(BEAM_OPACITY_CAP, preset.beam.opacity);
   const sunOpacityRaw = Math.min(0.4, preset.sun.opacity);
   const moonOpacityRaw = Math.min(0.7, preset.moon.opacity);
+  const starMul = preset.starOpacityMul;
 
   const beamOpacity = useSharedValue(beamOpacityRaw);
   const sunOpacity = useSharedValue(sunOpacityRaw);
   const moonOpacity = useSharedValue(moonOpacityRaw);
+  const starsOpacity = useSharedValue(starMul);
   const sunX = useSharedValue(preset.sun.x);
   const sunY = useSharedValue(preset.sun.y);
   const moonX = useSharedValue(preset.moon.x);
@@ -63,6 +100,7 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
     beamOpacity.value = withTiming(beamOpacityRaw, cfg);
     sunOpacity.value = withTiming(sunOpacityRaw, cfg);
     moonOpacity.value = withTiming(moonOpacityRaw, cfg);
+    starsOpacity.value = withTiming(starMul, cfg);
     sunX.value = withTiming(preset.sun.x, cfg);
     sunY.value = withTiming(preset.sun.y, cfg);
     moonX.value = withTiming(preset.moon.x, cfg);
@@ -71,6 +109,7 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
     beamOpacityRaw,
     sunOpacityRaw,
     moonOpacityRaw,
+    starMul,
     preset.sun.x,
     preset.sun.y,
     preset.moon.x,
@@ -79,6 +118,7 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
     beamOpacity,
     sunOpacity,
     moonOpacity,
+    starsOpacity,
     sunX,
     sunY,
     moonX,
@@ -105,12 +145,50 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
     left: `${moonX.value}%`,
   }));
 
+  const animatedStarsStyle = useAnimatedStyle(() => ({
+    opacity: starsOpacity.value,
+  }));
+
+  const starsToRender =
+    preset.starDensity === "dense"
+      ? [...BASE_STARS, ...DENSE_EXTRA_STARS]
+      : BASE_STARS;
+
   return (
     <View
       style={StyleSheet.absoluteFill}
       pointerEvents="none"
       accessible={false}
     >
+      {/* Étoiles — visibles en permanence, opacité gérée par l'engine */}
+      {starMul > 0.05 && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, animatedStarsStyle]}
+          pointerEvents="none"
+        >
+          {starsToRender.map((s, i) => {
+            const dim = s.size;
+            const starStyle: ViewStyle = {
+              position: "absolute",
+              left: `${s.x}%`,
+              top: `${s.y}%`,
+              width: dim,
+              height: dim,
+              borderRadius: dim / 2,
+              backgroundColor: s.color,
+              opacity: s.baseOpacity,
+              shadowColor: s.color,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.7,
+              shadowRadius: dim * 1.5,
+              elevation: 0,
+            };
+            return <View key={i} pointerEvents="none" style={starStyle} />;
+          })}
+        </Animated.View>
+      )}
+
+      {/* Beam — rayon de soleil le jour, rayon de lune la nuit */}
       {preset.beam.opacity > 0.02 && (
         <Animated.View
           style={[
@@ -135,6 +213,7 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
         </Animated.View>
       )}
 
+      {/* Soleil — visible le jour */}
       {preset.sun.visible && sunOpacityRaw > 0.05 && (
         <Animated.View
           style={[styles.disc, styles.sunDisc, animatedSunStyle]}
@@ -144,6 +223,7 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
         </Animated.View>
       )}
 
+      {/* Lune — visible la nuit */}
       {preset.moon.visible && moonOpacityRaw > 0.05 && (
         <Animated.View
           style={[styles.disc, styles.moonDisc, animatedMoonStyle]}
