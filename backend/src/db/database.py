@@ -373,13 +373,13 @@ class PlaylistAnalysis(Base):
 
 
 class ChatMessage(Base):
-    """Table des messages de chat - v5.0 avec fact-checking"""
+    """Table des messages de chat - v6.0 unified text+voice timeline (Spec #1)"""
 
     __tablename__ = "chat_messages"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    summary_id = Column(Integer, ForeignKey("summaries.id"), nullable=False, index=True)
+    summary_id = Column(Integer, ForeignKey("summaries.id"), nullable=True, index=True)
     role = Column(String(20), nullable=False)  # user, assistant
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=func.now())
@@ -390,11 +390,29 @@ class ChatMessage(Base):
     sources_json = Column(Text, nullable=True)  # JSON des sources web
     enrichment_level = Column(String(20), nullable=True)  # none, light, full, deep
 
+    # 🆕 v6.0 (Spec #1): Unified text+voice timeline.
+    #   source            : 'text' (default) or 'voice'.
+    #   voice_session_id  : FK voice_sessions.id when source='voice'.
+    #   voice_speaker     : 'user' | 'agent' (only set for source='voice').
+    #   time_in_call_secs : offset within the call (for ordering).
+    source = Column(String(10), nullable=False, server_default="text", default="text")
+    voice_session_id = Column(
+        String(36),
+        ForeignKey("voice_sessions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    voice_speaker = Column(String(10), nullable=True)
+    time_in_call_secs = Column(Float, nullable=True)
+
     # Relations
     user = relationship("User", back_populates="chat_messages")
     summary = relationship("Summary", back_populates="chat_messages")
 
-    __table_args__ = (Index("idx_chat_messages_summary", "summary_id"),)
+    __table_args__ = (
+        Index("idx_chat_messages_summary", "summary_id"),
+        Index("ix_chat_messages_summary_created", "summary_id", "created_at"),
+        Index("ix_chat_messages_voice_session", "voice_session_id"),
+    )
 
 
 class ChatQuota(Base):

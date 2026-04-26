@@ -189,7 +189,8 @@ describe("useVoiceChat", () => {
   it("retombe sur agentId quand le backend ne fournit pas de conversation_token", async () => {
     mockCreateSession.mockResolvedValueOnce({
       session_id: "sess_123",
-      signed_url: "wss://api.elevenlabs.io/v1/convai/conversation?agent_id=agent_abc",
+      signed_url:
+        "wss://api.elevenlabs.io/v1/convai/conversation?agent_id=agent_abc",
       agent_id: "agent_abc",
       conversation_token: null,
       expires_at: "2026-01-01T00:00:00Z",

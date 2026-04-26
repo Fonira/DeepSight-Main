@@ -4,6 +4,7 @@ Voice Chat Router — ElevenLabs Conversational AI Integration
 Endpoints:
   GET  /quota                                    — Voice quota info
   POST /session                                  — Create voice session
+  POST /transcripts/append                       — Persist one voice turn (Spec #1)
   POST /webhook                                  — ElevenLabs webhook (public)
   GET  /history/{summary_id}                     — Voice session history
   GET  /history/{summary_id}/{session_id}/transcript — Session transcript
@@ -46,6 +47,8 @@ from voice.schemas import (
     VoiceCatalogEntry,
     VoiceThumbnailResponse,
     VoiceThumbnailGradient,
+    TranscriptAppendRequest,
+    TranscriptAppendResponse,
 )
 from voice.quota import (
     get_voice_quota_info,
@@ -132,6 +135,252 @@ async def _increment_user_web_search_count(user_id: int) -> int:
     current = _user_web_search_counts.get(user_id, 0) + 1
     _user_web_search_counts[user_id] = current
     return current
+
+
+# ── Spec #1, Task 7 — Rate limit for /transcripts/append ───────────────────
+# 60 calls / minute per voice_session_id. The cap is generous: a single voice
+# turn is short, but the frontend may emit several events per turn (interim,
+# final, agent reply). The Redis TTL guarantees per-minute reset.
+_transcript_append_counts: dict[str, int] = {}
+_TRANSCRIPT_APPEND_MAX = 60
+_TRANSCRIPT_APPEND_TTL = 60  # 1 minute
+
+
+async def _increment_transcript_append_count(voice_session_id: str) -> int:
+    """Increment and return the count of /transcripts/append calls for a session.
+
+    Uses Redis INCR with TTL when available, falls back to the in-memory dict.
+    """
+    count = await _redis_incr_with_ttl(
+        f"voice:transcript_append:{voice_session_id}",
+        _TRANSCRIPT_APPEND_TTL,
+    )
+    if count is not None:
+        return count
+
+    current = _transcript_append_counts.get(voice_session_id, 0) + 1
+    _transcript_append_counts[voice_session_id] = current
+    return current
+
+
+# ── Spec #1, Task 8 — Webhook reconciliation post-call ─────────────────────
+# Drift threshold: a row is considered drifted (and gets UPDATEd) when the
+# normalised character-length difference exceeds 10% of the longer string.
+_RECONCILE_DRIFT_THRESHOLD = 0.10
+
+
+def parse_transcript_canonical(transcript) -> list[dict]:
+    """Parse the ElevenLabs canonical transcript payload into structured turns.
+
+    Accepts:
+      - str  → "User: ...\\nAI: ..." multi-line format (older payloads)
+      - list → [{"role": "user", "message": "..."}, ...]   (newer payloads)
+      - None or empty → []
+
+    Returns: ``[{"speaker": "user"|"agent", "content": str}, ...]``
+    """
+    if not transcript:
+        return []
+
+    # ── Newer ElevenLabs payloads ship the transcript as a list of dicts ──
+    if isinstance(transcript, list):
+        out: list[dict] = []
+        for item in transcript:
+            if not isinstance(item, dict):
+                continue
+            role = (item.get("role") or item.get("speaker") or "").lower()
+            content = (item.get("message") or item.get("content") or "").strip()
+            if not content:
+                continue
+            speaker = "agent" if role in ("agent", "assistant", "ai") else "user"
+            out.append({"speaker": speaker, "content": content})
+        return out
+
+    if not isinstance(transcript, str):
+        return []
+
+    if not transcript.strip():
+        return []
+
+    # ── Legacy text format: 'User:' / 'AI:' / 'Assistant:' line prefixes ──
+    out: list[dict] = []
+    for raw_line in transcript.splitlines():
+        line = raw_line.strip()
+        if not line or ":" not in line:
+            continue
+        prefix, _, content = line.partition(":")
+        prefix_norm = prefix.strip().lower()
+        content = content.strip()
+        if not content:
+            continue
+        if prefix_norm in ("ai", "assistant", "agent"):
+            speaker = "agent"
+        elif prefix_norm in ("user", "human"):
+            speaker = "user"
+        else:
+            continue  # Unknown prefix → skip rather than misclassify.
+        out.append({"speaker": speaker, "content": content})
+    return out
+
+
+def _content_drift_above_threshold(a: str, b: str) -> bool:
+    """Return True iff the two strings differ enough to warrant an UPDATE.
+
+    Heuristic (deliberately simple): normalised character-length difference
+    above 10% of the longer string.
+    """
+    if a == b:
+        return False
+    longer = max(len(a), len(b))
+    if longer == 0:
+        return False
+    diff = abs(len(a) - len(b))
+    return (diff / longer) > _RECONCILE_DRIFT_THRESHOLD
+
+
+async def reconcile_voice_transcript(
+    db,
+    *,
+    voice_session_id: str,
+    user_id: int,
+    summary_id: int | None,
+    canonical_turns: list[dict],
+) -> dict:
+    """Reconcile the canonical transcript with already-persisted rows.
+
+    Strategy (positional alignment):
+      - INSERT any canonical turn beyond what was persisted live.
+      - UPDATE in-place when content drift exceeds the threshold.
+      - Otherwise: leave the row as-is (no spurious writes).
+
+    Returns ``{"inserted": int, "updated": int}``.
+    """
+    if not canonical_turns:
+        return {"inserted": 0, "updated": 0}
+
+    from db.database import ChatMessage
+
+    result = await db.execute(
+        select(ChatMessage)
+        .where(ChatMessage.voice_session_id == voice_session_id)
+        .order_by(
+            ChatMessage.time_in_call_secs.asc().nulls_last()
+            if hasattr(ChatMessage.time_in_call_secs, "asc")
+            else ChatMessage.time_in_call_secs,
+            ChatMessage.created_at.asc(),
+        )
+    )
+    existing = list(result.scalars().all())
+
+    inserted = 0
+    updated = 0
+
+    for idx, turn in enumerate(canonical_turns):
+        speaker = turn.get("speaker", "user")
+        content = (turn.get("content") or "").strip()
+        if not content:
+            continue
+
+        if idx < len(existing):
+            row = existing[idx]
+            if _content_drift_above_threshold(row.content or "", content):
+                row.content = content
+                row.voice_speaker = speaker
+                row.role = "user" if speaker == "user" else "assistant"
+                updated += 1
+        else:
+            db.add(
+                ChatMessage(
+                    user_id=user_id,
+                    summary_id=summary_id,
+                    role="user" if speaker == "user" else "assistant",
+                    content=content,
+                    source="voice",
+                    voice_session_id=voice_session_id,
+                    voice_speaker=speaker,
+                    time_in_call_secs=None,  # canonical does not carry timing
+                )
+            )
+            inserted += 1
+
+    if inserted or updated:
+        try:
+            await db.commit()
+        except Exception as exc:
+            logger.warning(
+                "reconcile_voice_transcript: commit failed (non-fatal)",
+                extra={
+                    "voice_session_id": voice_session_id,
+                    "inserted": inserted,
+                    "updated": updated,
+                    "error": str(exc),
+                },
+            )
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+
+    return {"inserted": inserted, "updated": updated}
+
+
+# ── Spec #1, Task 6 — Chat history injection into voice system_prompt ──────
+# Limits kept tight to preserve token budget for the actual analysis context:
+#   max 10 messages, max 400 chars per message → ~4 KB block worst case.
+_CHAT_HISTORY_MAX_MESSAGES = 10
+_CHAT_HISTORY_MAX_CHARS_PER_MSG = 400
+
+
+def _build_chat_history_block_for_voice(history_msgs: list[dict], language: str = "fr") -> str:
+    """Format the recent text-chat history as a block injectable into the
+    voice agent's system prompt.
+
+    The block lets the voice agent continue an in-progress text conversation
+    instead of starting fresh ("Spec #1, Task 6 — chat history injection").
+
+    Voice rows (``msg.get("source") == "voice"``) are skipped because they
+    are already reflected in the active voice session — re-injecting them
+    would duplicate context. When ``source`` is missing (legacy rows), the
+    row is kept (defensive default before Task 9 backfills the column).
+
+    Returns "" when there are no usable rows so callers can `+= block` safely.
+    """
+    if not history_msgs:
+        return ""
+
+    # Keep the last N messages only (chronological order — list assumed sorted
+    # oldest → newest by chat.service.get_chat_history's `reversed(...)`).
+    trimmed = history_msgs[-_CHAT_HISTORY_MAX_MESSAGES:]
+
+    # Drop voice rows: they belong to the active voice session, not the
+    # text-chat continuity we're re-injecting (Spec #1, Task 6 + Task 9).
+    trimmed = [m for m in trimmed if m.get("source") != "voice"]
+    if not trimmed:
+        return ""
+
+    if language == "en":
+        header = "## Recent text chat history\n"
+        user_label = "User"
+        assistant_label = "You"
+        footer = "\nContinue this conversation in the same vein.\n"
+    else:
+        header = "## Historique récent du chat texte\n"
+        user_label = "Utilisateur"
+        assistant_label = "Toi"
+        footer = "\nContinue dans la lignée de cette conversation.\n"
+
+    lines: list[str] = [header]
+    for msg in trimmed:
+        role = msg.get("role", "user")
+        content = (msg.get("content") or "").strip()
+        if not content:
+            continue
+        if len(content) > _CHAT_HISTORY_MAX_CHARS_PER_MSG:
+            content = content[: _CHAT_HISTORY_MAX_CHARS_PER_MSG - 1] + "…"
+        label = assistant_label if role == "assistant" else user_label
+        lines.append(f"- {label}: {content}")
+    lines.append(footer)
+    return "\n".join(lines)
 
 
 async def record_web_search_usage(
@@ -656,6 +905,42 @@ async def create_voice_session(
         else:
             system_prompt = agent_prompt
 
+        # ── Spec #1, Task 6 — Inject recent text-chat history when relevant ──
+        # The voice agent picks up where the text chat left off (cross-surface
+        # continuity). Skipped for debate (uses its own context block) and when
+        # there is no summary_id (companion mode without active video).
+        if request.summary_id and not debate_ctx:
+            try:
+                from chat.service import get_chat_history as _get_chat_history
+
+                _chat_history = await _get_chat_history(
+                    db,
+                    summary_id=request.summary_id,
+                    user_id=current_user.id,
+                    limit=_CHAT_HISTORY_MAX_MESSAGES,
+                )
+                _history_block = _build_chat_history_block_for_voice(_chat_history, language=language)
+                if _history_block:
+                    system_prompt = f"{system_prompt}\n\n{_history_block}"
+                    logger.info(
+                        "Voice session: chat history injected",
+                        extra={
+                            "summary_id": request.summary_id,
+                            "user_id": current_user.id,
+                            "messages_kept": min(_CHAT_HISTORY_MAX_MESSAGES, len(_chat_history)),
+                            "block_chars": len(_history_block),
+                        },
+                    )
+            except Exception as _hist_exc:
+                # Non-fatal: voice session still works without chat continuity.
+                logger.warning(
+                    "Voice session: failed to inject chat history (non-fatal)",
+                    extra={
+                        "summary_id": request.summary_id,
+                        "error": str(_hist_exc),
+                    },
+                )
+
         # ── Build webhook tools (source-aware) ──
         webhook_base_url = APP_URL.rstrip("/")
         if agent_config.requires_debate and debate:
@@ -861,6 +1146,162 @@ async def create_voice_session(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# POST /transcripts/append — Persist a single voice turn (Spec #1, Task 7)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/transcripts/append", response_model=TranscriptAppendResponse)
+async def append_transcript(
+    request: TranscriptAppendRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> TranscriptAppendResponse:
+    """Persist one voice turn into the unified chat_messages timeline.
+
+    Auth: Bearer JWT (user). IDOR: voice_session.user_id must equal
+    current_user.id (returns 404 — same code as a missing session — to
+    avoid leaking ownership info). Rate limit: 60 / min / voice_session_id
+    (Spec #1).
+
+    Dedup: a 60-second window per (voice_session_id, role, content) returns
+    the existing row id with ``created=False``. This guards against
+    network retries that emit the same payload twice; the webhook
+    reconciler (Task 8) handles content drift across the whole call.
+    """
+    # ── Rate limit: 60 / min / voice_session_id ─────────────────────────────
+    count = await _increment_transcript_append_count(request.voice_session_id)
+    if count > _TRANSCRIPT_APPEND_MAX:
+        logger.warning(
+            "Transcript append rate limit exceeded",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "user_id": current_user.id,
+                "count": count,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "transcript_append_rate_limited",
+                "message": (
+                    f"Too many transcript append calls for this voice session (limit: {_TRANSCRIPT_APPEND_MAX}/min)."
+                ),
+            },
+        )
+
+    # ── Lookup voice_session ─────────────────────────────────────────────────
+    result = await db.execute(select(VoiceSession).where(VoiceSession.id == request.voice_session_id))
+    voice_session = result.scalar_one_or_none()
+    if voice_session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "voice_session_not_found",
+                "message": "Voice session does not exist.",
+            },
+        )
+
+    # ── IDOR: caller must own the session ────────────────────────────────────
+    # Return 404 (not 403) so an attacker cannot distinguish "session does
+    # not exist" from "session exists but belongs to another user".
+    if voice_session.user_id != current_user.id:
+        logger.warning(
+            "Transcript append IDOR attempt",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "session_user_id": voice_session.user_id,
+                "caller_user_id": current_user.id,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "voice_session_not_found",
+                "message": "Voice session does not exist.",
+            },
+        )
+
+    # ── Persist into chat_messages with source='voice' ──────────────────────
+    from datetime import timedelta
+
+    from db.database import ChatMessage
+
+    role = "user" if request.speaker == "user" else "assistant"
+
+    # ── Dedup window: 60s per (voice_session_id, role, content) ─────────────
+    # A retry on the same call (e.g. network timeout, frontend re-fire) must
+    # not insert a duplicate row. The 60s window is generous enough to absorb
+    # mobile reconnects yet short enough that legitimate user repetition is
+    # preserved.
+    dedup_cutoff = datetime.utcnow() - timedelta(seconds=60)
+    dedup_result = await db.execute(
+        select(ChatMessage)
+        .where(
+            ChatMessage.voice_session_id == request.voice_session_id,
+            ChatMessage.role == role,
+            ChatMessage.content == request.content,
+            ChatMessage.created_at > dedup_cutoff,
+        )
+        .order_by(ChatMessage.created_at.desc())
+        .limit(1)
+    )
+    existing = dedup_result.scalar_one_or_none()
+    if existing is not None:
+        logger.debug(
+            "Transcript append dedup hit",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "user_id": current_user.id,
+                "existing_id": existing.id,
+            },
+        )
+        return TranscriptAppendResponse(
+            id=existing.id,
+            created=False,
+            voice_session_id=request.voice_session_id,
+        )
+
+    msg = ChatMessage(
+        user_id=current_user.id,
+        summary_id=voice_session.summary_id,  # may be None for companion
+        role=role,
+        content=request.content,
+        source="voice",
+        voice_session_id=request.voice_session_id,
+        voice_speaker=request.speaker,
+        time_in_call_secs=request.time_in_call_secs,
+    )
+    db.add(msg)
+    try:
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        logger.error(
+            "Transcript append: DB commit failed",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "user_id": current_user.id,
+                "error": str(exc),
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "transcript_append_failed",
+                "message": "Failed to persist transcript turn.",
+            },
+        )
+
+    # SQLAlchemy populates msg.id after commit (autoincrement PK).
+    await db.refresh(msg)
+    return TranscriptAppendResponse(
+        id=msg.id,
+        created=True,
+        voice_session_id=request.voice_session_id,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # POST /webhook — ElevenLabs webhook (public, no auth)
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -990,6 +1431,42 @@ async def voice_webhook(
             "status": voice_session.status,
         },
     )
+
+    # ── Spec #1, Task 8 — Reconcile transcript with chat_messages rows ──
+    # The frontend POSTs each turn live via /transcripts/append, but events
+    # may have been dropped on a flaky network. The webhook payload carries
+    # the canonical, server-side transcript: we INSERT what was missed and
+    # UPDATE rows whose live content drifted from the canonical version.
+    try:
+        canonical_payload = body.get("data", {}).get("transcript") if isinstance(body, dict) else None
+        if canonical_payload is None:
+            canonical_payload = payload.transcript
+        canonical_turns = parse_transcript_canonical(canonical_payload)
+        if canonical_turns:
+            report = await reconcile_voice_transcript(
+                db,
+                voice_session_id=voice_session.id,
+                user_id=voice_session.user_id,
+                summary_id=voice_session.summary_id,
+                canonical_turns=canonical_turns,
+            )
+            logger.info(
+                "Voice webhook: transcript reconciled",
+                extra={
+                    "session_id": voice_session.id,
+                    "canonical_turns": len(canonical_turns),
+                    **report,
+                },
+            )
+    except Exception as reconcile_exc:
+        # Non-fatal — webhook still acks so ElevenLabs won't retry.
+        logger.warning(
+            "Voice webhook: transcript reconciliation failed (non-fatal)",
+            extra={
+                "session_id": voice_session.id,
+                "error": str(reconcile_exc),
+            },
+        )
 
     # ── Cleanup: delete the ElevenLabs agent (fire-and-forget) ────────
     if voice_session.elevenlabs_agent_id:

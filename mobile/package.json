@@ -26,6 +26,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@deepsight/lighting-engine": "file:../packages/lighting-engine",
     "@elevenlabs/client": "^0.15.2",
     "@elevenlabs/react-native": "^0.5.12",
     "@expo/vector-icons": "^15.0.3",

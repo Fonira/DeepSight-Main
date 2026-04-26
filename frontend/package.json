@@ -20,6 +20,7 @@
     "analyze": "cross-env ANALYZE=true vite build"
   },
   "dependencies": {
+    "@deepsight/lighting-engine": "file:../packages/lighting-engine",
     "@elevenlabs/client": "^0.15.2",
     "@elevenlabs/react": "^0.14.3",
     "@sentry/react": "^8.0.0",

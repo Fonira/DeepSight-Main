@@ -14,7 +14,11 @@ const PLAN_LABELS: Record<Props["plan"], string> = {
   equipe: "Équipe",
 };
 
-export function PlanBadge({ plan, creditsLeft, onUpgrade }: Props): JSX.Element {
+export function PlanBadge({
+  plan,
+  creditsLeft,
+  onUpgrade,
+}: Props): JSX.Element {
   const showUpgrade = plan === "free" || plan === "etudiant";
   return (
     <div

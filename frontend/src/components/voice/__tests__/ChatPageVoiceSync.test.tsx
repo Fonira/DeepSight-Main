@@ -75,39 +75,36 @@ const Harness: React.FC<HarnessProps> = ({ controller }) => {
     ]);
   }, []);
 
-  const handleSend = useCallback(
-    async (text: string) => {
-      const voiceController = ctrlRef.current;
-      const voiceActive = !!voiceController?.isActive;
-      const userMsg: ChatMessage = {
+  const handleSend = useCallback(async (text: string) => {
+    const voiceController = ctrlRef.current;
+    const voiceActive = !!voiceController?.isActive;
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: text,
+      source: voiceActive ? "voice_user" : "text",
+      voice_session_id: voiceActive
+        ? (voiceController?.voiceSessionId ?? null)
+        : undefined,
+      timestamp: Date.now(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    if (voiceActive && voiceController) {
+      voiceController.sendUserMessage(text);
+      return;
+    }
+    const response = await sendApiMock(42, text);
+    setMessages((prev) => [
+      ...prev,
+      {
         id: crypto.randomUUID(),
-        role: "user",
-        content: text,
-        source: voiceActive ? "voice_user" : "text",
-        voice_session_id: voiceActive
-          ? voiceController?.voiceSessionId ?? null
-          : undefined,
+        role: "assistant",
+        content: response.response,
+        source: "text",
         timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, userMsg]);
-      if (voiceActive && voiceController) {
-        voiceController.sendUserMessage(text);
-        return;
-      }
-      const response = await sendApiMock(42, text);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: response.response,
-          source: "text",
-          timestamp: Date.now(),
-        },
-      ]);
-    },
-    [],
-  );
+      },
+    ]);
+  }, []);
 
   return (
     <div>

@@ -28,6 +28,7 @@ module.exports = (env, argv) => {
       authSyncMain: "./src/authSyncMain/index.ts",
       sidepanel: "./src/sidepanel/index.tsx",
       viewer: "./src/viewer.tsx",
+      sidepanel: "./src/sidepanel/index.tsx",
     },
     output: {
       path: outputDir,

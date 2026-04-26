@@ -65,66 +65,66 @@ Expected : tous les 3 passent (≥1 warning OK, 0 erreur). Si baseline rouge, **
 
 ### Files créés
 
-| Path | Responsibility |
-| ---- | -------------- |
-| `extension/public/sidepanel.html` | HTML root pour la sidebar (largeur 480px, link tokens.css + sidepanel.css) |
-| `extension/src/sidepanel/index.tsx` | Entry webpack — Preact mount du composant `App` |
-| `extension/src/sidepanel/App.tsx` | Router top-level (loading / login / main) |
-| `extension/src/sidepanel/views/HomeView.tsx` | Vue accueil — dual mode QG (hors YT) / vidéo (sur YT/TT) |
-| `extension/src/sidepanel/views/AnalysisView.tsx` | Vue analyse en cours (move depuis popup/) |
-| `extension/src/sidepanel/views/ResultsView.tsx` | Vue résultats analyse (move depuis popup/) |
-| `extension/src/sidepanel/views/ChatView.tsx` | Vue chat contextuel (rename ChatDrawer) |
-| `extension/src/sidepanel/views/LoginView.tsx` | Vue login (move depuis popup/) |
-| `extension/src/sidepanel/components/RecentsList.tsx` | Liste historique récents (split MainView) |
-| `extension/src/sidepanel/components/VideoDetectedCard.tsx` | Carte vidéo YT/TT détectée (split MainView) |
-| `extension/src/sidepanel/components/UrlInputCard.tsx` | Input URL manuel mode QG (NOUVEAU) |
-| `extension/src/sidepanel/components/PlanBadge.tsx` | Badge plan + crédits (split MainView) |
-| `extension/src/sidepanel/components/PromoBanner.tsx` | Banner promo (move depuis popup/) |
-| `extension/src/sidepanel/shared/Icons.tsx` | Icônes SVG (move) |
-| `extension/src/sidepanel/shared/DeepSightSpinner.tsx` | Spinner cosmic (move) |
-| `extension/src/sidepanel/shared/MicroDoodleBackground.tsx` | Background animé (move) |
-| `extension/src/sidepanel/shared/SynthesisView.tsx` | Rendu synthèse (move) |
-| `extension/src/sidepanel/shared/FeatureCTAGrid.tsx` | Grille CTA features (move) |
-| `extension/src/sidepanel/shared/doodles/` | Dossier doodles (move complet) |
-| `extension/src/sidepanel/hooks/useCurrentTab.ts` | Hook souscrit TAB_CHANGED + VIDEO_URL_UPDATED (NOUVEAU) |
-| `extension/src/sidepanel/hooks/useAuth.ts` | Hook auth (extraction depuis App popup) |
-| `extension/src/sidepanel/hooks/useAnalysis.ts` | Hook analyse (extraction depuis MainView) |
-| `extension/src/sidepanel/styles/sidepanel.css` | CSS sidebar full-height (NOUVEAU, remplace popup.css) |
-| `extension/__tests__/sidepanel/App.test.tsx` | Test router App |
-| `extension/__tests__/sidepanel/views/HomeView.test.tsx` | Test HomeView dual mode |
-| `extension/__tests__/sidepanel/components/RecentsList.test.tsx` | Test RecentsList |
-| `extension/__tests__/sidepanel/components/VideoDetectedCard.test.tsx` | Test VideoDetectedCard |
-| `extension/__tests__/sidepanel/components/UrlInputCard.test.tsx` | Test UrlInputCard |
-| `extension/__tests__/sidepanel/hooks/useCurrentTab.test.ts` | Test useCurrentTab |
-| `extension/__tests__/content/url-detect.test.ts` | Test content script light |
-| `extension/__tests__/background/sidepanel-toggle.test.ts` | Test setPanelBehavior + relays |
+| Path                                                                  | Responsibility                                                             |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `extension/public/sidepanel.html`                                     | HTML root pour la sidebar (largeur 480px, link tokens.css + sidepanel.css) |
+| `extension/src/sidepanel/index.tsx`                                   | Entry webpack — Preact mount du composant `App`                            |
+| `extension/src/sidepanel/App.tsx`                                     | Router top-level (loading / login / main)                                  |
+| `extension/src/sidepanel/views/HomeView.tsx`                          | Vue accueil — dual mode QG (hors YT) / vidéo (sur YT/TT)                   |
+| `extension/src/sidepanel/views/AnalysisView.tsx`                      | Vue analyse en cours (move depuis popup/)                                  |
+| `extension/src/sidepanel/views/ResultsView.tsx`                       | Vue résultats analyse (move depuis popup/)                                 |
+| `extension/src/sidepanel/views/ChatView.tsx`                          | Vue chat contextuel (rename ChatDrawer)                                    |
+| `extension/src/sidepanel/views/LoginView.tsx`                         | Vue login (move depuis popup/)                                             |
+| `extension/src/sidepanel/components/RecentsList.tsx`                  | Liste historique récents (split MainView)                                  |
+| `extension/src/sidepanel/components/VideoDetectedCard.tsx`            | Carte vidéo YT/TT détectée (split MainView)                                |
+| `extension/src/sidepanel/components/UrlInputCard.tsx`                 | Input URL manuel mode QG (NOUVEAU)                                         |
+| `extension/src/sidepanel/components/PlanBadge.tsx`                    | Badge plan + crédits (split MainView)                                      |
+| `extension/src/sidepanel/components/PromoBanner.tsx`                  | Banner promo (move depuis popup/)                                          |
+| `extension/src/sidepanel/shared/Icons.tsx`                            | Icônes SVG (move)                                                          |
+| `extension/src/sidepanel/shared/DeepSightSpinner.tsx`                 | Spinner cosmic (move)                                                      |
+| `extension/src/sidepanel/shared/MicroDoodleBackground.tsx`            | Background animé (move)                                                    |
+| `extension/src/sidepanel/shared/SynthesisView.tsx`                    | Rendu synthèse (move)                                                      |
+| `extension/src/sidepanel/shared/FeatureCTAGrid.tsx`                   | Grille CTA features (move)                                                 |
+| `extension/src/sidepanel/shared/doodles/`                             | Dossier doodles (move complet)                                             |
+| `extension/src/sidepanel/hooks/useCurrentTab.ts`                      | Hook souscrit TAB_CHANGED + VIDEO_URL_UPDATED (NOUVEAU)                    |
+| `extension/src/sidepanel/hooks/useAuth.ts`                            | Hook auth (extraction depuis App popup)                                    |
+| `extension/src/sidepanel/hooks/useAnalysis.ts`                        | Hook analyse (extraction depuis MainView)                                  |
+| `extension/src/sidepanel/styles/sidepanel.css`                        | CSS sidebar full-height (NOUVEAU, remplace popup.css)                      |
+| `extension/__tests__/sidepanel/App.test.tsx`                          | Test router App                                                            |
+| `extension/__tests__/sidepanel/views/HomeView.test.tsx`               | Test HomeView dual mode                                                    |
+| `extension/__tests__/sidepanel/components/RecentsList.test.tsx`       | Test RecentsList                                                           |
+| `extension/__tests__/sidepanel/components/VideoDetectedCard.test.tsx` | Test VideoDetectedCard                                                     |
+| `extension/__tests__/sidepanel/components/UrlInputCard.test.tsx`      | Test UrlInputCard                                                          |
+| `extension/__tests__/sidepanel/hooks/useCurrentTab.test.ts`           | Test useCurrentTab                                                         |
+| `extension/__tests__/content/url-detect.test.ts`                      | Test content script light                                                  |
+| `extension/__tests__/background/sidepanel-toggle.test.ts`             | Test setPanelBehavior + relays                                             |
 
 ### Files modifiés
 
-| Path | Changes |
-| ---- | ------- |
+| Path                             | Changes                                                                                                                                                                                        |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `extension/public/manifest.json` | + `permissions: ["sidePanel"]`, + `side_panel.default_path`, + `minimum_chrome_version: "114"`, - `action.default_popup`, - `content.css` du content_scripts, web_accessible_resources nettoyé |
-| `extension/src/background.ts` | + `chrome.sidePanel.setPanelBehavior` au onInstalled, + `chrome.tabs.onActivated` listener relay, + case `URL_CHANGED` dans handleMessage, rename `OPEN_POPUP` → `OPEN_SIDEPANEL` |
-| `extension/src/content/index.ts` | Réécriture complète : 757L → ~80L, suppression Shadow DOM, mission unique URL detect |
-| `extension/webpack.config.js` | Entry `popup` → `sidepanel`, HtmlWebpackPlugin pointe vers `sidepanel.html` |
+| `extension/src/background.ts`    | + `chrome.sidePanel.setPanelBehavior` au onInstalled, + `chrome.tabs.onActivated` listener relay, + case `URL_CHANGED` dans handleMessage, rename `OPEN_POPUP` → `OPEN_SIDEPANEL`              |
+| `extension/src/content/index.ts` | Réécriture complète : 757L → ~80L, suppression Shadow DOM, mission unique URL detect                                                                                                           |
+| `extension/webpack.config.js`    | Entry `popup` → `sidepanel`, HtmlWebpackPlugin pointe vers `sidepanel.html`                                                                                                                    |
 
 ### Files supprimés (PR 4)
 
-| Path | Reason |
-| ---- | ------ |
-| `extension/src/popup.tsx` | Entry remplacé par sidepanel/index.tsx |
-| `extension/src/popup/` (tout) | Composants migrés dans sidepanel/ |
-| `extension/src/styles/popup.css` | Remplacé par sidepanel.css |
-| `extension/public/popup.html` | Remplacé par sidepanel.html |
-| `extension/src/content/widget.ts` | Widget mort |
-| `extension/src/content/widget/*` | Helpers Shadow DOM morts |
-| `extension/src/content/states/*.ts` | State machine widget morte |
-| `extension/src/styles/widget.css` | CSS widget mort |
-| `extension/__tests__/content/widget.test.ts` | Test widget mort |
-| `extension/__tests__/content/boot-instrumentation.test.ts` | Test obsolète |
-| `extension/__tests__/content/__tests__/coexistence.test.ts` | Test obsolète |
-| `extension/__tests__/content/__tests__/theme.test.ts` | Test obsolète |
-| `extension/dist/sidepanel.html`, `.js`, `.css` (orphelins) | Régénérés par build |
+| Path                                                        | Reason                                 |
+| ----------------------------------------------------------- | -------------------------------------- |
+| `extension/src/popup.tsx`                                   | Entry remplacé par sidepanel/index.tsx |
+| `extension/src/popup/` (tout)                               | Composants migrés dans sidepanel/      |
+| `extension/src/styles/popup.css`                            | Remplacé par sidepanel.css             |
+| `extension/public/popup.html`                               | Remplacé par sidepanel.html            |
+| `extension/src/content/widget.ts`                           | Widget mort                            |
+| `extension/src/content/widget/*`                            | Helpers Shadow DOM morts               |
+| `extension/src/content/states/*.ts`                         | State machine widget morte             |
+| `extension/src/styles/widget.css`                           | CSS widget mort                        |
+| `extension/__tests__/content/widget.test.ts`                | Test widget mort                       |
+| `extension/__tests__/content/boot-instrumentation.test.ts`  | Test obsolète                          |
+| `extension/__tests__/content/__tests__/coexistence.test.ts` | Test obsolète                          |
+| `extension/__tests__/content/__tests__/theme.test.ts`       | Test obsolète                          |
+| `extension/dist/sidepanel.html`, `.js`, `.css` (orphelins)  | Régénérés par build                    |
 
 ---
 
@@ -137,6 +137,7 @@ Expected : tous les 3 passent (≥1 warning OK, 0 erreur). Si baseline rouge, **
 ### Task 1: Update manifest.json
 
 **Files:**
+
 - Modify: `extension/public/manifest.json`
 - Test: `extension/__tests__/background/sidepanel-toggle.test.ts` (à créer)
 
@@ -194,6 +195,7 @@ git commit -m "feat(ext): add sidePanel permission and default_path to manifest"
 ### Task 2: Service worker — setPanelBehavior + onInstalled
 
 **Files:**
+
 - Modify: `extension/src/background.ts`
 - Test: `extension/__tests__/background/sidepanel-toggle.test.ts`
 
@@ -202,7 +204,7 @@ git commit -m "feat(ext): add sidePanel permission and default_path to manifest"
 Créer `extension/__tests__/background/sidepanel-toggle.test.ts` :
 
 ```typescript
-import "../../src/__mocks__/chrome";  // existing chrome mock if present, else create inline below
+import "../../src/__mocks__/chrome"; // existing chrome mock if present, else create inline below
 
 // Inline mock if no shared mock exists:
 const sidePanelMock = {
@@ -217,14 +219,25 @@ const onActivatedListeners: Array<(info: { tabId: number }) => void> = [];
   sidePanel: sidePanelMock,
   runtime: {
     ...((global as any).chrome?.runtime ?? {}),
-    onInstalled: { addListener: (cb: () => void) => onInstalledListeners.push(cb) },
+    onInstalled: {
+      addListener: (cb: () => void) => onInstalledListeners.push(cb),
+    },
     sendMessage: jest.fn().mockResolvedValue(undefined),
     onMessage: { addListener: jest.fn() },
   },
   tabs: {
-    onActivated: { addListener: (cb: (info: { tabId: number }) => void) => onActivatedListeners.push(cb) },
+    onActivated: {
+      addListener: (cb: (info: { tabId: number }) => void) =>
+        onActivatedListeners.push(cb),
+    },
   },
-  storage: { local: { get: jest.fn().mockResolvedValue({}), set: jest.fn().mockResolvedValue(undefined), onChanged: { addListener: jest.fn() } } },
+  storage: {
+    local: {
+      get: jest.fn().mockResolvedValue({}),
+      set: jest.fn().mockResolvedValue(undefined),
+      onChanged: { addListener: jest.fn() },
+    },
+  },
   alarms: { create: jest.fn(), onAlarm: { addListener: jest.fn() } },
 };
 
@@ -251,7 +264,7 @@ describe("background — sidePanel toggle wiring", () => {
     expect(onActivatedListeners.length).toBeGreaterThan(0);
     onActivatedListeners.forEach((cb) => cb({ tabId: 42 }));
     expect((global as any).chrome.runtime.sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "TAB_CHANGED", tabId: 42 })
+      expect.objectContaining({ action: "TAB_CHANGED", tabId: 42 }),
     );
   });
 });
@@ -276,15 +289,15 @@ chrome.runtime.onInstalled.addListener(() => {
   if (chrome.sidePanel?.setPanelBehavior) {
     chrome.sidePanel
       .setPanelBehavior({ openPanelOnActionClick: true })
-      .catch((err) => console.error("[deepsight] setPanelBehavior failed", err));
+      .catch((err) =>
+        console.error("[deepsight] setPanelBehavior failed", err),
+      );
   }
 });
 
 // Notify sidebar when active tab changes (sync current video)
 chrome.tabs.onActivated.addListener(({ tabId }) => {
-  chrome.runtime
-    .sendMessage({ action: "TAB_CHANGED", tabId })
-    .catch(() => {});  // sidebar may not be open
+  chrome.runtime.sendMessage({ action: "TAB_CHANGED", tabId }).catch(() => {}); // sidebar may not be open
 });
 ```
 
@@ -315,6 +328,7 @@ git commit -m "feat(ext): enable sidePanel toggle behavior + tab change relay"
 ### Task 3: Service worker — URL_CHANGED relay handler
 
 **Files:**
+
 - Modify: `extension/src/background.ts`
 - Test: `extension/__tests__/background/sidepanel-toggle.test.ts` (extend)
 
@@ -323,29 +337,34 @@ git commit -m "feat(ext): enable sidePanel toggle behavior + tab change relay"
 Add à `__tests__/background/sidepanel-toggle.test.ts` dans le `describe` :
 
 ```typescript
-  it("relays URL_CHANGED to sidebar via VIDEO_URL_UPDATED", async () => {
-    const handlerRef: { fn: any } = { fn: null };
-    (global as any).chrome.runtime.onMessage.addListener = jest.fn((cb) => {
-      handlerRef.fn = cb;
-    });
-    await import("../../src/background");
-    expect(handlerRef.fn).toBeTruthy();
-
-    const sendResponse = jest.fn();
-    const sender = { tab: { id: 7 } };
-    handlerRef.fn(
-      { action: "URL_CHANGED", payload: { url: "https://youtube.com/watch?v=abc", platform: "youtube" } },
-      sender,
-      sendResponse
-    );
-
-    expect((global as any).chrome.runtime.sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "VIDEO_URL_UPDATED",
-        payload: expect.objectContaining({ url: "https://youtube.com/watch?v=abc" }),
-      })
-    );
+it("relays URL_CHANGED to sidebar via VIDEO_URL_UPDATED", async () => {
+  const handlerRef: { fn: any } = { fn: null };
+  (global as any).chrome.runtime.onMessage.addListener = jest.fn((cb) => {
+    handlerRef.fn = cb;
   });
+  await import("../../src/background");
+  expect(handlerRef.fn).toBeTruthy();
+
+  const sendResponse = jest.fn();
+  const sender = { tab: { id: 7 } };
+  handlerRef.fn(
+    {
+      action: "URL_CHANGED",
+      payload: { url: "https://youtube.com/watch?v=abc", platform: "youtube" },
+    },
+    sender,
+    sendResponse,
+  );
+
+  expect((global as any).chrome.runtime.sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      action: "VIDEO_URL_UPDATED",
+      payload: expect.objectContaining({
+        url: "https://youtube.com/watch?v=abc",
+      }),
+    }),
+  );
+});
 ```
 
 - [ ] **Step 3.2: Run test, verify fail**
@@ -392,6 +411,7 @@ git commit -m "feat(ext): relay URL_CHANGED from content to sidebar"
 ### Task 4: Stub sidepanel.html minimal
 
 **Files:**
+
 - Create: `extension/public/sidepanel.html`
 
 - [ ] **Step 4.1: Créer un sidepanel.html minimaliste**
@@ -405,7 +425,15 @@ Create `extension/public/sidepanel.html` :
     <meta charset="utf-8" />
     <title>DeepSight</title>
     <style>
-      body { margin: 0; background: #0a0a0f; color: #f5f5f7; font-family: -apple-system, sans-serif; padding: 16px; min-width: 380px; width: 480px; }
+      body {
+        margin: 0;
+        background: #0a0a0f;
+        color: #f5f5f7;
+        font-family: -apple-system, sans-serif;
+        padding: 16px;
+        min-width: 380px;
+        width: 480px;
+      }
     </style>
   </head>
   <body>
@@ -456,6 +484,7 @@ npm run build
 - [ ] **Step 5.2: Charger l'extension dans Chrome**
 
 User action :
+
 1. Ouvrir `chrome://extensions`
 2. Activer "Developer mode"
 3. "Load unpacked" → sélectionner `extension/dist/`
@@ -495,6 +524,7 @@ EOF
 ### Task 6: Move composants popup → sidepanel
 
 **Files:**
+
 - Move: `extension/src/popup/*` → `extension/src/sidepanel/`
 - Move: `extension/src/popup.tsx` → `extension/src/sidepanel/index.tsx`
 
@@ -546,6 +576,7 @@ rmdir src/popup 2>/dev/null
 ### Task 7: Adapter les imports dans les fichiers déplacés
 
 **Files:**
+
 - Modify: tous les fichiers dans `src/sidepanel/` (imports relatifs cassés après le move)
 
 - [ ] **Step 7.1: Identifier les imports cassés**
@@ -574,6 +605,7 @@ Vérifier aussi imports CSS (`../styles/popup.css` → à laisser pour l'instant
 - [ ] **Step 7.3: Fix imports dans `App.tsx` et chaque fichier déplacé**
 
 Pour chaque fichier dans `src/sidepanel/views/` et `src/sidepanel/components/` :
+
 - Remplacer `./Icons` → `../shared/Icons`
 - Remplacer `./DeepSightSpinner` → `../shared/DeepSightSpinner`
 - Remplacer `./MicroDoodleBackground` → `../shared/MicroDoodleBackground`
@@ -612,6 +644,7 @@ git commit -m "refactor(ext): move popup components to sidepanel/ structure"
 ### Task 8: Webpack — entry sidepanel + HtmlWebpackPlugin
 
 **Files:**
+
 - Modify: `extension/webpack.config.js`
 
 - [ ] **Step 8.1: Lire la config webpack actuelle**
@@ -671,6 +704,7 @@ git commit -m "refactor(ext): webpack entry popup → sidepanel"
 ### Task 9: Update sidepanel.html avec full bundle
 
 **Files:**
+
 - Modify: `extension/public/sidepanel.html`
 - Move: `extension/src/styles/popup.css` → `extension/src/sidepanel/styles/sidepanel.css`
 
@@ -713,13 +747,18 @@ Replace le contenu de `extension/public/sidepanel.html` par :
 Remplacer le contenu de `extension/src/sidepanel/styles/sidepanel.css` (ou ajouter en haut) :
 
 ```css
-html, body, #root {
+html,
+body,
+#root {
   width: 100%;
   height: 100%;
   margin: 0;
   background: #0a0a0f;
   color: #f5f5f7;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
 }
 
 #root {
@@ -732,6 +771,7 @@ html, body, #root {
 ```
 
 Find et **supprimer** les règles popup-spécifiques :
+
 - `body { width: 400px; min-height: 500px; max-height: 600px; }` → à supprimer (déjà override par body inline width 480px)
 
 - [ ] **Step 9.5: Build + verify dist**
@@ -747,6 +787,7 @@ Expected: 3 fichiers présents.
 - [ ] **Step 9.6: Reload extension dans Chrome + verify**
 
 User action :
+
 1. `chrome://extensions` → DeepSight → bouton refresh
 2. Cliquer icône extension
 3. Sidebar s'ouvre avec **le contenu complet de l'ancienne popup** (login, recents, etc.) mais en hauteur full-screen 480px largeur
@@ -831,6 +872,7 @@ EOF
 ### Task 11: Hook useCurrentTab — souscription messages
 
 **Files:**
+
 - Create: `extension/src/sidepanel/hooks/useCurrentTab.ts`
 - Test: `extension/__tests__/sidepanel/hooks/useCurrentTab.test.ts`
 
@@ -850,13 +892,19 @@ describe("useCurrentTab", () => {
     (global as any).chrome = {
       runtime: {
         onMessage: {
-          addListener: jest.fn((cb) => { messageListener = cb; }),
+          addListener: jest.fn((cb) => {
+            messageListener = cb;
+          }),
           removeListener: jest.fn(),
         },
       },
       tabs: {
         query: jest.fn().mockResolvedValue([
-          { id: 7, url: "https://www.youtube.com/watch?v=initial", active: true },
+          {
+            id: 7,
+            url: "https://www.youtube.com/watch?v=initial",
+            active: true,
+          },
         ]),
       },
     };
@@ -864,7 +912,7 @@ describe("useCurrentTab", () => {
 
   it("returns initial tab info on mount", async () => {
     const { result } = renderHook(() => useCurrentTab());
-    await act(async () => {});  // flush promises
+    await act(async () => {}); // flush promises
     expect(result.current.url).toBe("https://www.youtube.com/watch?v=initial");
     expect(result.current.platform).toBe("youtube");
   });
@@ -876,7 +924,10 @@ describe("useCurrentTab", () => {
     act(() => {
       messageListener!({
         action: "VIDEO_URL_UPDATED",
-        payload: { url: "https://www.youtube.com/watch?v=newvid", platform: "youtube" },
+        payload: {
+          url: "https://www.youtube.com/watch?v=newvid",
+          platform: "youtube",
+        },
       });
     });
     expect(result.current.url).toBe("https://www.youtube.com/watch?v=newvid");
@@ -919,7 +970,11 @@ export interface CurrentTabInfo {
 }
 
 export function useCurrentTab(): CurrentTabInfo {
-  const [info, setInfo] = useState<CurrentTabInfo>({ url: null, platform: null, tabId: null });
+  const [info, setInfo] = useState<CurrentTabInfo>({
+    url: null,
+    platform: null,
+    tabId: null,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -942,15 +997,17 @@ export function useCurrentTab(): CurrentTabInfo {
           platform: msg.payload.platform ?? null,
         }));
       } else if (msg?.action === "TAB_CHANGED") {
-        chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-          if (!tabs[0]) return;
-          const tab = tabs[0];
-          setInfo({
-            url: tab.url ?? null,
-            platform: tab.url ? detectPlatform(tab.url) : null,
-            tabId: tab.id ?? null,
+        chrome.tabs
+          .query({ active: true, currentWindow: true })
+          .then((tabs) => {
+            if (!tabs[0]) return;
+            const tab = tabs[0];
+            setInfo({
+              url: tab.url ?? null,
+              platform: tab.url ? detectPlatform(tab.url) : null,
+              tabId: tab.id ?? null,
+            });
           });
-        });
       }
     };
     chrome.runtime.onMessage.addListener(onMessage);
@@ -983,6 +1040,7 @@ git commit -m "feat(ext): add useCurrentTab hook to sync sidebar with active tab
 ### Task 12: Component RecentsList (split MainView)
 
 **Files:**
+
 - Create: `extension/src/sidepanel/components/RecentsList.tsx`
 - Test: `extension/__tests__/sidepanel/components/RecentsList.test.tsx`
 
@@ -1100,6 +1158,7 @@ git commit -m "feat(ext): split MainView — RecentsList component"
 ### Task 13: Component VideoDetectedCard (split MainView)
 
 **Files:**
+
 - Create: `extension/src/sidepanel/components/VideoDetectedCard.tsx`
 - Test: `extension/__tests__/sidepanel/components/VideoDetectedCard.test.tsx`
 
@@ -1206,6 +1265,7 @@ git commit -m "feat(ext): split MainView — VideoDetectedCard component"
 ### Task 14: Component UrlInputCard (NEW)
 
 **Files:**
+
 - Create: `extension/src/sidepanel/components/UrlInputCard.tsx`
 - Test: `extension/__tests__/sidepanel/components/UrlInputCard.test.tsx`
 
@@ -1333,6 +1393,7 @@ git commit -m "feat(ext): add UrlInputCard for QG mode (manual URL entry)"
 ### Task 15: Component PlanBadge
 
 **Files:**
+
 - Create: `extension/src/sidepanel/components/PlanBadge.tsx`
 
 - [ ] **Step 15.1: Implement directement (test léger inline)**
@@ -1422,6 +1483,7 @@ git commit -m "feat(ext): split MainView — PlanBadge component"
 ### Task 16: HomeView — assemblage dual mode
 
 **Files:**
+
 - Create: `extension/src/sidepanel/views/HomeView.tsx`
 - Test: `extension/__tests__/sidepanel/views/HomeView.test.tsx`
 - Delete: `extension/src/sidepanel/views/MainView.tsx` (sera remplacé)
@@ -1608,6 +1670,7 @@ git commit -m "feat(ext): replace MainView with HomeView dual-mode (QG / video)"
 ### Task 17: Content script light — URL detect only
 
 **Files:**
+
 - Modify: `extension/src/content/index.ts` (réécriture complète)
 - Create: `extension/__tests__/content/url-detect.test.ts`
 
@@ -1628,7 +1691,10 @@ describe("content URL detect", () => {
     };
     originalLocation = window.location;
     delete (window as any).location;
-    (window as any).location = { ...originalLocation, href: "https://www.youtube.com/watch?v=initial" };
+    (window as any).location = {
+      ...originalLocation,
+      href: "https://www.youtube.com/watch?v=initial",
+    };
   });
 
   afterEach(() => {
@@ -1641,8 +1707,10 @@ describe("content URL detect", () => {
     expect(messageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "URL_CHANGED",
-        payload: expect.objectContaining({ url: "https://www.youtube.com/watch?v=initial" }),
-      })
+        payload: expect.objectContaining({
+          url: "https://www.youtube.com/watch?v=initial",
+        }),
+      }),
     );
   });
 
@@ -1654,8 +1722,10 @@ describe("content URL detect", () => {
     expect(messageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "URL_CHANGED",
-        payload: expect.objectContaining({ url: "https://www.youtube.com/watch?v=newvid" }),
-      })
+        payload: expect.objectContaining({
+          url: "https://www.youtube.com/watch?v=newvid",
+        }),
+      }),
     );
   });
 
@@ -1704,7 +1774,10 @@ const throttledNotify = (): void => {
   }, 500);
 };
 
-new MutationObserver(throttledNotify).observe(document, { subtree: true, childList: true });
+new MutationObserver(throttledNotify).observe(document, {
+  subtree: true,
+  childList: true,
+});
 window.addEventListener("popstate", notifyUrlChange);
 
 // Initial detection
@@ -1750,8 +1823,7 @@ User : reload extension dans `chrome://extensions`.
 4. Aller sur une page non-YT (`https://example.com`) → sidebar repasse en mode QG
 5. Coller une URL YouTube dans UrlInputCard → analyse se lance
 
-**Vérification critique** :
-6. Sur une vidéo YouTube, ouvrir DevTools → console : `document.querySelector("#deepsight-host")` doit retourner `null` (le widget on-page est mort).
+**Vérification critique** : 6. Sur une vidéo YouTube, ouvrir DevTools → console : `document.querySelector("#deepsight-host")` doit retourner `null` (le widget on-page est mort).
 
 - [ ] **Step 18.3: Run full test suite + typecheck + build**
 
@@ -1792,6 +1864,7 @@ EOF
 ### Task 19: Supprimer widget + states + CSS widget
 
 **Files:**
+
 - Delete: `extension/src/content/widget.ts`, `extension/src/content/widget/`, `extension/src/content/states/`, `extension/src/styles/widget.css`, `extension/src/styles/content.css` (si plus utilisé)
 
 - [ ] **Step 19.1: Verify nothing imports widget**
@@ -1840,6 +1913,7 @@ git commit -m "chore(ext): remove dead widget + states + CSS files (~1500 lines)
 ### Task 20: Supprimer tests obsolètes
 
 **Files:**
+
 - Delete: `__tests__/content/widget.test.ts`, `__tests__/content/boot-instrumentation.test.ts`, `__tests__/content/__tests__/coexistence.test.ts`, `__tests__/content/__tests__/theme.test.ts`
 
 - [ ] **Step 20.1: Delete tests morts**
@@ -1894,6 +1968,7 @@ git commit -m "chore(ext): remove obsolete widget tests + skip voice WIP tests"
 ### Task 21: Supprimer dist orphelins + popup files
 
 **Files:**
+
 - Delete: `extension/dist/popup.{html,js}`, `extension/dist/widget.css`, `extension/dist/content.css`, `extension/public/popup.html`
 
 - [ ] **Step 21.1: Delete public/popup.html**
@@ -1986,6 +2061,7 @@ type: project
 **Statut** : Implémenté en 4 PRs (refs : feat/extension-sidepanel-v3 → main)
 
 **Architecture finale** :
+
 - Manifest V3 + permission `sidePanel`, `minimum_chrome_version: 114`
 - Service worker `setPanelBehavior({ openPanelOnActionClick: true })` → toggle clic icône
 - Content script light (~50L) : URL detect only, plus de Shadow DOM
@@ -2021,24 +2097,24 @@ git push
 
 ### Spec coverage check
 
-| Spec section | Plan coverage |
-| ------------ | ------------- |
-| Q1 — Suppression widget on-page + toggle clic | Task 17 (content rewrite) + Task 2 (setPanelBehavior) |
-| Q2a — QG permanent | Task 16 (HomeView dual mode) |
-| Q2b — Popup supprimée | Task 6 (move) + Task 21 (delete popup.html) |
-| Q3a — Largeur 480px | Task 9 (sidepanel.html body width) |
-| Q3b — Move popup → sidepanel + split MainView | Tasks 6, 12-16 |
-| Q4a — Chrome only | Tasks 1 (manifest only), FF/Safari manifests inchangés |
-| Q4b — Voice out of scope | Task 20 (skip voice tests) |
-| Manifest changes (4.1) | Task 1 |
-| Service worker changes (4.2) | Tasks 2, 3 |
-| Content light (4.3) | Task 17 |
-| Structure sidepanel/ (4.4) | Tasks 6-16 |
-| Layout/CSS (4.5) | Task 9 |
-| Webpack (4.6) | Task 8 |
-| Tests (4.7) | Tasks 2, 11-16, 17, 20 |
-| Découpage 4 PRs (5) | Tasks 1-5 (PR 1), 6-10 (PR 2), 11-18 (PR 3), 19-23 (PR 4) |
-| Risques (6) | Mitigés : SW sleep (Task 11 keepAlive), Chrome <114 (Task 1 minimum_chrome_version), YouTube SPA (Task 17 popstate + MutationObserver), voice WIP (Task 20 skip) |
+| Spec section                                  | Plan coverage                                                                                                                                                    |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1 — Suppression widget on-page + toggle clic | Task 17 (content rewrite) + Task 2 (setPanelBehavior)                                                                                                            |
+| Q2a — QG permanent                            | Task 16 (HomeView dual mode)                                                                                                                                     |
+| Q2b — Popup supprimée                         | Task 6 (move) + Task 21 (delete popup.html)                                                                                                                      |
+| Q3a — Largeur 480px                           | Task 9 (sidepanel.html body width)                                                                                                                               |
+| Q3b — Move popup → sidepanel + split MainView | Tasks 6, 12-16                                                                                                                                                   |
+| Q4a — Chrome only                             | Tasks 1 (manifest only), FF/Safari manifests inchangés                                                                                                           |
+| Q4b — Voice out of scope                      | Task 20 (skip voice tests)                                                                                                                                       |
+| Manifest changes (4.1)                        | Task 1                                                                                                                                                           |
+| Service worker changes (4.2)                  | Tasks 2, 3                                                                                                                                                       |
+| Content light (4.3)                           | Task 17                                                                                                                                                          |
+| Structure sidepanel/ (4.4)                    | Tasks 6-16                                                                                                                                                       |
+| Layout/CSS (4.5)                              | Task 9                                                                                                                                                           |
+| Webpack (4.6)                                 | Task 8                                                                                                                                                           |
+| Tests (4.7)                                   | Tasks 2, 11-16, 17, 20                                                                                                                                           |
+| Découpage 4 PRs (5)                           | Tasks 1-5 (PR 1), 6-10 (PR 2), 11-18 (PR 3), 19-23 (PR 4)                                                                                                        |
+| Risques (6)                                   | Mitigés : SW sleep (Task 11 keepAlive), Chrome <114 (Task 1 minimum_chrome_version), YouTube SPA (Task 17 popstate + MutationObserver), voice WIP (Task 20 skip) |
 
 ### Placeholder scan
 

@@ -633,7 +633,7 @@ async def get_analysis_history(
             {
                 "id": str(s.id),
                 "video_id": s.video_id,
-                "title": s.title,
+                "title": s.video_title,
                 "analyzed_at": s.created_at.isoformat() if s.created_at else None,
                 "mode": getattr(s, "mode", "standard"),
             }

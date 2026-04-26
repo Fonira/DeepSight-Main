@@ -26,15 +26,15 @@ Reproduire l'expérience "Claude in Chrome" : une **sidebar latérale droite** o
 
 ## 2. Décisions verrouillées
 
-| #   | Question                             | Décision |
-| --- | ------------------------------------ | -------- |
+| #   | Question                             | Décision                                                                                                                                 |
+| --- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | Q1  | Affichage on-page sur YouTube/TikTok | **A — Suppression totale**. Toggle exclusivement via clic icône (`chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })`). |
-| Q2a | Hors YouTube/TikTok                  | **B — QG permanent** : sidebar partout. Hors YT/TT = historique récent + input URL manuel + gestion compte. |
-| Q2b | Popup actuelle                       | **X — Suppression complète**. `action.default_popup` retiré, `src/popup/` supprimé, composants migrent vers sidebar. |
-| Q3a | Largeur sidebar initiale             | **B — 480px**. Min-width 380px. |
-| Q3b | Stratégie composants                 | **B — Move complet `popup/` → `sidepanel/`** + split `MainView.tsx` (729L → 4 sous-composants). |
-| Q4a | Cross-browser                        | **A — Chrome only en v1**. FF/Safari conservent popup. |
-| Q4b | Voice chat WIP                       | **A — Out of scope**. Branche/PR séparée. |
+| Q2a | Hors YouTube/TikTok                  | **B — QG permanent** : sidebar partout. Hors YT/TT = historique récent + input URL manuel + gestion compte.                              |
+| Q2b | Popup actuelle                       | **X — Suppression complète**. `action.default_popup` retiré, `src/popup/` supprimé, composants migrent vers sidebar.                     |
+| Q3a | Largeur sidebar initiale             | **B — 480px**. Min-width 380px.                                                                                                          |
+| Q3b | Stratégie composants                 | **B — Move complet `popup/` → `sidepanel/`** + split `MainView.tsx` (729L → 4 sous-composants).                                          |
+| Q4a | Cross-browser                        | **A — Chrome only en v1**. FF/Safari conservent popup.                                                                                   |
+| Q4b | Voice chat WIP                       | **A — Out of scope**. Branche/PR séparée.                                                                                                |
 
 ---
 
@@ -120,10 +120,12 @@ const notifyUrlChange = () => {
   const url = location.href;
   if (url === lastUrl) return;
   lastUrl = url;
-  chrome.runtime.sendMessage({
-    action: "URL_CHANGED",
-    payload: { url, platform: detectPlatform(url) }
-  }).catch(() => {});
+  chrome.runtime
+    .sendMessage({
+      action: "URL_CHANGED",
+      payload: { url, platform: detectPlatform(url) },
+    })
+    .catch(() => {});
 };
 
 let throttleTimer: number | null = null;
@@ -135,7 +137,10 @@ const throttledNotify = () => {
   }, 500);
 };
 
-new MutationObserver(throttledNotify).observe(document, { subtree: true, childList: true });
+new MutationObserver(throttledNotify).observe(document, {
+  subtree: true,
+  childList: true,
+});
 window.addEventListener("popstate", notifyUrlChange);
 notifyUrlChange();
 ```
@@ -181,13 +186,18 @@ src/sidepanel/
 
 ```css
 /* sidepanel.css */
-html, body, #root {
+html,
+body,
+#root {
   width: 100%;
   height: 100%;
   margin: 0;
   background: #0a0a0f;
   color: #f5f5f7;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
 }
 #root {
   display: flex;
@@ -242,17 +252,18 @@ html, body, #root {
 
 ### 4.7 Tests
 
-| Existant                              | Action                                                  |
-| ------------------------------------- | ------------------------------------------------------- |
-| `Popup.test.tsx`                      | Renommer → `__tests__/sidepanel/App.test.tsx`           |
-| `content/widget.test.ts`              | Supprimer                                               |
-| `content/boot.test.ts`                | Réécrire pour content léger (URL detect + throttle)     |
-| `content/boot-instrumentation.test`   | Supprimer                                               |
-| `content/__tests__/coexistence.test`  | Supprimer                                               |
-| `content/__tests__/theme.test`        | Supprimer                                               |
-| `sidepanel/useExtensionVoiceChat.test`| `.skip` (out of scope voice)                            |
+| Existant                               | Action                                              |
+| -------------------------------------- | --------------------------------------------------- |
+| `Popup.test.tsx`                       | Renommer → `__tests__/sidepanel/App.test.tsx`       |
+| `content/widget.test.ts`               | Supprimer                                           |
+| `content/boot.test.ts`                 | Réécrire pour content léger (URL detect + throttle) |
+| `content/boot-instrumentation.test`    | Supprimer                                           |
+| `content/__tests__/coexistence.test`   | Supprimer                                           |
+| `content/__tests__/theme.test`         | Supprimer                                           |
+| `sidepanel/useExtensionVoiceChat.test` | `.skip` (out of scope voice)                        |
 
 **Nouveaux** :
+
 - `sidepanel/App.test.tsx`
 - `sidepanel/hooks/useCurrentTab.test.ts`
 - `sidepanel/views/HomeView.test.tsx`
@@ -266,12 +277,12 @@ html, body, #root {
 
 ## 5. Découpage en PRs
 
-| PR  | Titre                                                          | Lignes ±    | Risque |
-| --- | -------------------------------------------------------------- | ----------- | ------ |
-| 1   | `feat(ext): manifest sidePanel + service worker toggle`        | +50 / -30   | 🟢 Bas |
-| 2   | `refactor(ext): rename popup → sidepanel + webpack reconfig`   | +200 / -200 | 🟢 Bas |
-| 3   | `feat(ext): HomeView + split MainView + URL detect content`    | +600 / -1500 | 🟡 Moyen |
-| 4   | `chore(ext): cleanup widget Shadow DOM + dist orphelins`       | -800        | 🟢 Bas |
+| PR  | Titre                                                        | Lignes ±     | Risque   |
+| --- | ------------------------------------------------------------ | ------------ | -------- |
+| 1   | `feat(ext): manifest sidePanel + service worker toggle`      | +50 / -30    | 🟢 Bas   |
+| 2   | `refactor(ext): rename popup → sidepanel + webpack reconfig` | +200 / -200  | 🟢 Bas   |
+| 3   | `feat(ext): HomeView + split MainView + URL detect content`  | +600 / -1500 | 🟡 Moyen |
+| 4   | `chore(ext): cleanup widget Shadow DOM + dist orphelins`     | -800         | 🟢 Bas   |
 
 PR 1 — manifest + setPanelBehavior + relay messages. Test : sidebar ouvre/ferme au clic icône.
 PR 2 — pure refactor structure. Sidebar existe mais layout popup encore. Test : build OK.
@@ -282,14 +293,14 @@ PR 4 — suppression code mort. Test : build clean, bundle size réduit.
 
 ## 6. Risques et mitigations
 
-| Risque                                    | Mitigation                                                                  |
-| ----------------------------------------- | --------------------------------------------------------------------------- |
-| SW s'endort, sidebar perd sync            | Réveil via `chrome.runtime.sendMessage` ; alarme keepAlive 30s déjà en place |
-| Reload extension casse session            | Auth dans `chrome.storage.local`, restauration au mount                     |
-| Chrome < 114 pas de sidePanel             | `"minimum_chrome_version": "114"` dans manifest                              |
-| YouTube SPA cassé MutationObserver        | Double détection : popstate + MutationObserver throttled 500ms              |
-| Voice WIP `voiceMessages.ts` casse build  | Hook exclu via tsconfig `exclude`. Test `.skip` jusqu'à PR voice.           |
-| Régression v2.x → v3.0                    | Migration douce : message in-sidebar au premier launch v3                   |
+| Risque                                   | Mitigation                                                                   |
+| ---------------------------------------- | ---------------------------------------------------------------------------- |
+| SW s'endort, sidebar perd sync           | Réveil via `chrome.runtime.sendMessage` ; alarme keepAlive 30s déjà en place |
+| Reload extension casse session           | Auth dans `chrome.storage.local`, restauration au mount                      |
+| Chrome < 114 pas de sidePanel            | `"minimum_chrome_version": "114"` dans manifest                              |
+| YouTube SPA cassé MutationObserver       | Double détection : popstate + MutationObserver throttled 500ms               |
+| Voice WIP `voiceMessages.ts` casse build | Hook exclu via tsconfig `exclude`. Test `.skip` jusqu'à PR voice.            |
+| Régression v2.x → v3.0                   | Migration douce : message in-sidebar au premier launch v3                    |
 
 ---
 

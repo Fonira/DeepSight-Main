@@ -457,6 +457,72 @@ async function pollAnalysis(
   throw new Error("Analysis timeout — video may be too long");
 }
 
+// ── Voice (ElevenLabs) API ──
+
+async function createVoiceSession(
+  payload: Record<string, unknown>,
+): Promise<unknown> {
+  return apiRequest<unknown>("/voice/session", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+async function appendVoiceTranscript(
+  payload: Record<string, unknown>,
+): Promise<unknown> {
+  return apiRequest<unknown>("/voice/transcripts/append", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// ── Side Panel — handler d'ouverture ──
+//
+// Le side panel API n'existe que sur Chrome (≥114) et certains forks
+// chromium. On feature-detect avant de tenter quoi que ce soit pour
+// rester compatible avec un éventuel build Firefox/Safari (no-op).
+async function openVoicePanel(
+  tabId: number | undefined,
+  context: Record<string, unknown>,
+): Promise<void> {
+  type SidePanelOptions = {
+    tabId?: number;
+    path?: string;
+    enabled?: boolean;
+  };
+  type SidePanelOpenOptions = { tabId?: number; windowId?: number };
+  const sidePanel = (
+    chrome as unknown as {
+      sidePanel?: {
+        setOptions?: (opts: SidePanelOptions) => Promise<void> | void;
+        open?: (opts: SidePanelOpenOptions) => Promise<void> | void;
+      };
+    }
+  ).sidePanel;
+  if (!sidePanel || typeof sidePanel.open !== "function") {
+    throw new Error("Side panel API not available in this browser");
+  }
+  // Persiste le contexte AVANT d'ouvrir : la page sidepanel le lit dès mount.
+  // chrome.storage.session est cleared au redémarrage de Chrome (sécurité).
+  const sessionStore = (
+    chrome as unknown as {
+      storage?: { session?: { set?: (data: unknown) => Promise<void> } };
+    }
+  ).storage?.session;
+  if (sessionStore?.set) {
+    await sessionStore.set({ voicePanelContext: context });
+  }
+  if (sidePanel.setOptions) {
+    await sidePanel.setOptions({
+      tabId,
+      path: "sidepanel.html",
+      enabled: true,
+    });
+  }
+  await sidePanel.open({ tabId });
+}
+
 // ── Message Handler ──
 
 async function handleMessage(
@@ -639,6 +705,47 @@ async function handleMessage(
       return { success: true };
     }
 
+    case "OPEN_VOICE_PANEL": {
+      const { summaryId, videoId, videoTitle, platform } =
+        (message.data as {
+          summaryId?: number | null;
+          videoId?: string | null;
+          videoTitle?: string | null;
+          platform?: string | null;
+        }) ?? {};
+      try {
+        await openVoicePanel(senderTabId, {
+          summaryId: summaryId ?? null,
+          videoId: videoId ?? null,
+          videoTitle: videoTitle ?? null,
+          platform: platform ?? null,
+        });
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "VOICE_CREATE_SESSION": {
+      const payload = (message.data as Record<string, unknown>) ?? {};
+      try {
+        const result = await createVoiceSession(payload);
+        return { success: true, result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "VOICE_APPEND_TRANSCRIPT": {
+      const payload = (message.data as Record<string, unknown>) ?? {};
+      try {
+        const result = await appendVoiceTranscript(payload);
+        return { success: true, result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
     case "OPEN_POPUP": {
       Browser.action.setBadgeText({ text: "!" });
       Browser.action.setBadgeBackgroundColor({ color: "#6366f1" });
@@ -725,6 +832,38 @@ Browser.runtime.onStartup.addListener(async () => {
     await tryRefreshToken();
   }
 });
+
+// ── Side Panel — ouverture via clic toolbar (fallback) ──
+//
+// Avec `default_popup` configuré, `chrome.action.onClicked` ne se
+// déclenche pas (le popup s'ouvre à la place). Ce handler couvre
+// le cas où l'utilisateur configure setPanelBehavior pour l'icône
+// toolbar, ou les builds futurs sans popup.
+try {
+  const action = (
+    chrome as unknown as {
+      action?: {
+        onClicked?: {
+          addListener: (cb: (tab: { id?: number }) => void) => void;
+        };
+      };
+    }
+  ).action;
+  if (action?.onClicked?.addListener) {
+    action.onClicked.addListener((tab: { id?: number }) => {
+      void openVoicePanel(tab.id, {
+        summaryId: null,
+        videoId: null,
+        videoTitle: null,
+        platform: null,
+      }).catch(() => {
+        /* swallow — pas bloquant si side panel API absent */
+      });
+    });
+  }
+} catch {
+  /* safari/firefox — no-op */
+}
 
 // ── Alarms ──
 

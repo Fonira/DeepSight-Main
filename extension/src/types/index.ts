@@ -174,7 +174,10 @@ export type MessageAction =
   | "START_GUEST_ANALYSIS"
   | "SHARE_ANALYSIS"
   | "QUICK_CHAT"
-  | "CANCEL_ANALYSIS";
+  | "CANCEL_ANALYSIS"
+  | "OPEN_VOICE_PANEL"
+  | "VOICE_CREATE_SESSION"
+  | "VOICE_APPEND_TRANSCRIPT";
 
 export interface ExtensionMessage {
   action: MessageAction;

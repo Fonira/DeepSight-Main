@@ -754,7 +754,7 @@ async def lifespan(app: FastAPI):
                     rows = (
                         await db.execute(
                             text(
-                                "SELECT id, video_id, title, thumbnail_url, category, platform "
+                                "SELECT id, video_id, video_title, thumbnail_url, category, platform "
                                 "FROM summaries "
                                 "WHERE thumbnail_url IS NULL "
                                 "OR thumbnail_url LIKE 'data:image/svg%' "
@@ -775,7 +775,7 @@ async def lifespan(app: FastAPI):
                             await ensure_thumbnail(
                                 summary_id=row.id,
                                 video_id=row.video_id or "",
-                                title=row.title or "",
+                                title=row.video_title or "",
                                 category=row.category,
                                 platform=row.platform or "youtube",
                                 original_url=row.thumbnail_url
