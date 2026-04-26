@@ -135,6 +135,54 @@ async def _increment_user_web_search_count(user_id: int) -> int:
     return current
 
 
+# ── Spec #1, Task 6 — Chat history injection into voice system_prompt ──────
+# Limits kept tight to preserve token budget for the actual analysis context:
+#   max 10 messages, max 400 chars per message → ~4 KB block worst case.
+_CHAT_HISTORY_MAX_MESSAGES = 10
+_CHAT_HISTORY_MAX_CHARS_PER_MSG = 400
+
+
+def format_chat_history_block(history: list[dict], language: str = "fr") -> str:
+    """Format the recent text-chat history as a block injectable into the
+    voice agent's system prompt.
+
+    The block lets the voice agent continue an in-progress text conversation
+    instead of starting fresh ("Spec #1, Task 6 — chat history injection").
+
+    Returns "" when history is empty so callers can `+= block` safely.
+    """
+    if not history:
+        return ""
+
+    # Keep the last N messages only (chronological order — list assumed sorted
+    # oldest → newest by chat.service.get_chat_history's `reversed(...)`).
+    trimmed = history[-_CHAT_HISTORY_MAX_MESSAGES:]
+
+    if language == "en":
+        header = "## Recent text chat history\n"
+        user_label = "User"
+        assistant_label = "You"
+        footer = "\nContinue this conversation in the same vein.\n"
+    else:
+        header = "## Historique récent du chat texte\n"
+        user_label = "Utilisateur"
+        assistant_label = "Toi"
+        footer = "\nContinue dans la lignée de cette conversation.\n"
+
+    lines: list[str] = [header]
+    for msg in trimmed:
+        role = msg.get("role", "user")
+        content = (msg.get("content") or "").strip()
+        if not content:
+            continue
+        if len(content) > _CHAT_HISTORY_MAX_CHARS_PER_MSG:
+            content = content[: _CHAT_HISTORY_MAX_CHARS_PER_MSG - 1] + "…"
+        label = assistant_label if role == "assistant" else user_label
+        lines.append(f"- {label}: {content}")
+    lines.append(footer)
+    return "\n".join(lines)
+
+
 async def record_web_search_usage(
     db: AsyncSession,
     *,
@@ -651,6 +699,44 @@ async def create_voice_session(
             )
         else:
             system_prompt = agent_prompt
+
+        # ── Spec #1, Task 6 — Inject recent text-chat history when relevant ──
+        # The voice agent picks up where the text chat left off (cross-surface
+        # continuity). Skipped for debate (uses its own context block) and when
+        # there is no summary_id (companion mode without active video).
+        if request.summary_id and not debate_ctx:
+            try:
+                from chat.service import get_chat_history as _get_chat_history
+
+                _chat_history = await _get_chat_history(
+                    db,
+                    summary_id=request.summary_id,
+                    user_id=current_user.id,
+                    limit=_CHAT_HISTORY_MAX_MESSAGES,
+                )
+                _history_block = format_chat_history_block(_chat_history, language=language)
+                if _history_block:
+                    system_prompt = f"{system_prompt}\n\n{_history_block}"
+                    logger.info(
+                        "Voice session: chat history injected",
+                        extra={
+                            "summary_id": request.summary_id,
+                            "user_id": current_user.id,
+                            "messages_kept": min(
+                                _CHAT_HISTORY_MAX_MESSAGES, len(_chat_history)
+                            ),
+                            "block_chars": len(_history_block),
+                        },
+                    )
+            except Exception as _hist_exc:
+                # Non-fatal: voice session still works without chat continuity.
+                logger.warning(
+                    "Voice session: failed to inject chat history (non-fatal)",
+                    extra={
+                        "summary_id": request.summary_id,
+                        "error": str(_hist_exc),
+                    },
+                )
 
         # ── Build webhook tools (source-aware) ──
         webhook_base_url = APP_URL.rstrip("/")
