@@ -319,6 +319,53 @@ PR 4 — suppression code mort. Test : build clean, bundle size réduit.
 
 ---
 
+## 7bis. Addendum 2026-04-27 — `SuggestionPills` (option 3 hybride)
+
+Suite à un brainstorming complémentaire (« inspiration Claude in Chrome » poussée plus loin côté UX), un seul ajout chat-first est intégré au socle v3 : un composant `SuggestionPills` rendu **sous `VideoDetectedCard`** dans `HomeView` mode vidéo.
+
+### Objectif
+
+Donner à l'utilisateur des actions contextuelles cliquables dès la détection d'une vidéo, sans imposer un parcours linéaire « Analyser → ResultsView → ChatView ». Les pills accélèrent les actions courantes et donnent un signal Claude-like.
+
+### Composant
+
+`extension/src/sidepanel/components/SuggestionPills.tsx` — chips horizontales (3 max), affichées uniquement quand `currentTab.platform ∈ {youtube, tiktok}` ET vidéo détectée.
+
+```tsx
+type Suggestion = { id: string; label: string; icon?: string; onTrigger: () => void };
+
+interface Props {
+  suggestions: Suggestion[];
+}
+
+export function SuggestionPills({ suggestions }: Props): JSX.Element { ... }
+```
+
+### Set de pills v1
+
+| Pill                | Action                             | Comportement                                                                         |
+| ------------------- | ---------------------------------- | ------------------------------------------------------------------------------------ |
+| 🧠 Résumé rapide    | équivalent au bouton « Analyser »  | déclenche `onAnalyze()` (raccourci, pas une feature distincte)                       |
+| 🎴 Créer flashcards | CTA web                            | ouvre `https://www.deepsightsynthesis.com/study/{video_id}` dans un nouvel onglet    |
+| 🔍 Voir sources     | CTA web (si analyse déjà en cache) | ouvre l'app web sur la section sources de l'analyse — masqué si pas de cache backend |
+
+### Wiring
+
+`HomeView` (Task 16 du plan) reçoit en props la liste de suggestions calculée à partir de `videoMeta` et `cacheStatus`. `HomeView` rend `<SuggestionPills suggestions={...} />` immédiatement sous `<VideoDetectedCard ... />` en mode vidéo détectée.
+
+### Hors scope de l'addendum
+
+Pas de slash commands dans `ChatView`. Pas de variantes de `Message` (synthesis/cta/system). Pas de refonte chat-first du flux principal. Ces idées sont reportées à une éventuelle v3.x ultérieure si la métrique « clic sur pill » justifie l'investissement.
+
+### Impact sur le plan d'implémentation
+
+- Nouveau fichier : `extension/src/sidepanel/components/SuggestionPills.tsx`
+- Nouveau test : `extension/__tests__/sidepanel/components/SuggestionPills.test.tsx`
+- Nouvelle Task **16.5** insérée dans PR 3, entre Task 16 (`HomeView` assemblage) et Task 17 (content script light).
+- Aucune modification de Q1-Q4b — toutes les décisions verrouillées restent valides.
+
+---
+
 ## 8. Hors scope (roadmap v3.x+)
 
 - Voice chat ElevenLabs : branche séparée, intégrée après merge v3.0
