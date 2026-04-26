@@ -14,7 +14,9 @@
 
 export type VoicePrefsEvent =
   | { type: "playback_rate_changed"; value: number }
-  | { type: "restart_required"; reason: string };
+  | { type: "restart_required"; reason: string }
+  | { type: "apply_with_restart" }
+  | { type: "call_status_changed"; active: boolean };
 
 type Listener = (event: VoicePrefsEvent) => void;
 
