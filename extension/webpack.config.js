@@ -104,6 +104,11 @@ module.exports = (env, argv) => {
             noErrorOnMissing: true,
           },
           { from: "public/platforms", to: "platforms", noErrorOnMissing: true },
+          {
+            from: "public/assets/ambient",
+            to: "assets/ambient",
+            noErrorOnMissing: true,
+          },
         ],
       }),
     ],
