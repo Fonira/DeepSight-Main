@@ -14,6 +14,7 @@ const GRID_COLS = 6;
 const GRID_ROWS = 4;
 const SHEET_W = FRAME_SIZE * GRID_COLS;
 const SHEET_H = FRAME_SIZE * GRID_ROWS;
+const READY_TIMEOUT_MS = 10000;
 
 async function renderScene(scenePath, outputName) {
   console.log(`[render] ${scenePath}`);
@@ -26,26 +27,31 @@ async function renderScene(scenePath, outputName) {
       "--use-gl=angle",
     ],
   });
-  const page = await browser.newPage();
-  await page.setViewport({ width: FRAME_SIZE, height: FRAME_SIZE });
-  await page.goto(`file://${scenePath}`);
-  await page.waitForFunction(() => window.READY === true, { timeout: 10000 });
-
-  const frames = [];
-  for (let i = 0; i < FRAMES; i++) {
-    const rotationY = (i / FRAMES) * Math.PI * 2;
-    await page.evaluate((rot) => window.renderFrame(rot), rotationY);
-    const buf = await page.screenshot({
-      type: "png",
-      omitBackground: true,
-      clip: { x: 0, y: 0, width: FRAME_SIZE, height: FRAME_SIZE },
+  let frames;
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: FRAME_SIZE, height: FRAME_SIZE });
+    await page.goto(`file://${scenePath}`);
+    await page.waitForFunction(() => window.READY === true, {
+      timeout: READY_TIMEOUT_MS,
     });
-    frames.push(buf);
-    process.stdout.write(`\r  frame ${i + 1}/${FRAMES}`);
-  }
-  process.stdout.write("\n");
 
-  await browser.close();
+    frames = [];
+    for (let i = 0; i < FRAMES; i++) {
+      const rotationY = (i / FRAMES) * Math.PI * 2;
+      await page.evaluate((rot) => window.renderFrame(rot), rotationY);
+      const buf = await page.screenshot({
+        type: "png",
+        omitBackground: true,
+        clip: { x: 0, y: 0, width: FRAME_SIZE, height: FRAME_SIZE },
+      });
+      frames.push(buf);
+      process.stdout.write(`\r  frame ${i + 1}/${FRAMES}`);
+    }
+    process.stdout.write("\n");
+  } finally {
+    await browser.close();
+  }
 
   const compositeOps = [];
   for (let i = 0; i < FRAMES; i++) {
