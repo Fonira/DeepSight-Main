@@ -834,6 +834,14 @@ class VoiceSession(Base):
     language = Column(String(5), default="fr")
     platform = Column(String(20), default="web")
 
+    # Quick Voice Call (V1) — Streaming session flags (migration 008)
+    # Marks sessions launched via Quick Voice Call (asynchronous progressive
+    # context injection). Plain (non-streaming) voice sessions keep this False.
+    is_streaming_session = Column(Boolean, default=False, nullable=False, server_default="false")
+    # Final % of transcript chunks delivered to the agent before the call ended.
+    # NULL while session is still active, [0.0, 100.0] once orchestrator settles.
+    context_completion_pct = Column(Float, nullable=True)
+
     # Relations
     user = relationship("User")
     summary = relationship("Summary")
@@ -857,6 +865,31 @@ class VoiceQuota(Base):
         UniqueConstraint("user_id", "year", "month", name="uq_voice_quota_user_month"),
         Index("ix_voice_quota_user_period", "user_id", "year", "month"),
     )
+
+
+class VoiceQuotaStreaming(Base):
+    """🎙️ Quick Voice Call A+D quota (Quick Voice Call V1, migration 008).
+
+    Tracks quota for the streaming Quick Voice Call feature using the strict
+    A+D model:
+      * Free  : ``lifetime_trial_used`` boolean, single 3-min lifetime trial
+      * Pro   : always blocked (CTA upgrade — no row needed beyond plan record)
+      * Expert: ``monthly_minutes_used`` rolling 30-day window, capped at 30
+
+    Note: this is intentionally distinct from the legacy ``VoiceQuota`` model
+    (table ``voice_quotas``, plural) which tracks per-month seconds for the
+    classic voice chat. The new table is named ``voice_quota`` (singular) per
+    the Quick Voice Call spec § a "Migration Alembic 008".
+    """
+
+    __tablename__ = "voice_quota"
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    plan = Column(String(20), nullable=False)
+    monthly_minutes_used = Column(Float, nullable=False, default=0.0, server_default="0")
+    monthly_period_start = Column(DateTime(timezone=True), nullable=False)
+    lifetime_trial_used = Column(Boolean, nullable=False, default=False, server_default="false")
+    lifetime_trial_used_at = Column(DateTime(timezone=True), nullable=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
