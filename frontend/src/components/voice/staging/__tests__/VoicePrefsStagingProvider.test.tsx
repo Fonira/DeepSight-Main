@@ -101,4 +101,90 @@ describe("VoicePrefsStagingProvider", () => {
     act(() => result.current.cancel());
     expect(result.current.staged).toEqual({});
   });
+
+  it("apply() sends a single batched updatePreferences call and resets staged", async () => {
+    vi.mocked(voiceApi.updatePreferences).mockResolvedValue({
+      ...APPLIED,
+      voice_id: "v2",
+      language: "en",
+    });
+    const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
+    await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
+    act(() => result.current.stage({ voice_id: "v2", language: "en" }));
+    await act(async () => {
+      await result.current.apply();
+    });
+    expect(voiceApi.updatePreferences).toHaveBeenCalledTimes(1);
+    expect(voiceApi.updatePreferences).toHaveBeenCalledWith({
+      voice_id: "v2",
+      language: "en",
+    });
+    expect(result.current.staged).toEqual({});
+    expect(result.current.applied?.voice_id).toBe("v2");
+  });
+
+  it("apply() emits apply_with_restart when callActive and hard field staged", async () => {
+    const { emitVoicePrefsEvent: emit, subscribeVoicePrefsEvents: sub } =
+      await import("../../voicePrefsBus");
+    const listener = vi.fn();
+    const unsub = sub(listener);
+    vi.mocked(voiceApi.updatePreferences).mockResolvedValue(APPLIED);
+    const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
+    await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
+    act(() => emit({ type: "call_status_changed", active: true }));
+    await waitFor(() => expect(result.current.callActive).toBe(true));
+    act(() => result.current.stage({ voice_id: "v2" }));
+    await act(async () => {
+      await result.current.apply();
+    });
+    expect(listener).toHaveBeenCalledWith({ type: "apply_with_restart" });
+    unsub();
+  });
+
+  it("apply() does NOT emit apply_with_restart when callActive but only soft fields staged", async () => {
+    const { subscribeVoicePrefsEvents: sub } = await import(
+      "../../voicePrefsBus"
+    );
+    const listener = vi.fn();
+    const unsub = sub(listener);
+    vi.mocked(voiceApi.updatePreferences).mockResolvedValue(APPLIED);
+    const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
+    await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
+    const { emitVoicePrefsEvent: emit } = await import("../../voicePrefsBus");
+    act(() => emit({ type: "call_status_changed", active: true }));
+    await waitFor(() => expect(result.current.callActive).toBe(true));
+    act(() => result.current.stage({ ptt_key: "Shift" }));
+    await act(async () => {
+      await result.current.apply();
+    });
+    const apply = listener.mock.calls.find(
+      ([e]) => e.type === "apply_with_restart",
+    );
+    expect(apply).toBeUndefined();
+    unsub();
+  });
+
+  it("apply() preserves staged on error and sets applyError", async () => {
+    vi.mocked(voiceApi.updatePreferences).mockRejectedValue(
+      new Error("network down"),
+    );
+    const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
+    await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
+    act(() => result.current.stage({ voice_id: "v2" }));
+    await act(async () => {
+      await result.current.apply();
+    });
+    expect(result.current.staged).toEqual({ voice_id: "v2" });
+    expect(result.current.applyError).toBe("network down");
+  });
+
+  it("apply() is a no-op when staged is empty", async () => {
+    vi.mocked(voiceApi.updatePreferences).mockResolvedValue(APPLIED);
+    const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
+    await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
+    await act(async () => {
+      await result.current.apply();
+    });
+    expect(voiceApi.updatePreferences).not.toHaveBeenCalled();
+  });
 });
