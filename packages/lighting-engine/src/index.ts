@@ -14,6 +14,11 @@ export {
   rgbToHex,
   clamp,
 } from "./interpolate";
+export {
+  detectReducedMotion,
+  detectHighContrast,
+  getReadingZoneCap,
+} from "./accessibility";
 
 export type {
   RGB,
