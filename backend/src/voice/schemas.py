@@ -22,7 +22,8 @@ class VoiceSessionRequest(BaseModel):
     debate_id: Optional[int] = Field(default=None, description="ID du débat IA (pour agent debate_moderator)")
     language: str = Field(default="fr", description="Langue (fr, en)")
     agent_type: str = Field(
-        default="explorer", description="Type d'agent vocal (explorer, tutor, debate_moderator, quiz_coach, onboarding)"
+        default="explorer",
+        description="Type d'agent vocal (explorer, tutor, debate_moderator, quiz_coach, onboarding, companion)",
     )
 
     @model_validator(mode="after")
