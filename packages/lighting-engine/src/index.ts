@@ -1,6 +1,10 @@
 // Public API of @deepsight/lighting-engine
 
-export { getAmbientPreset, findKeyframePair } from "./preset";
+export {
+  getAmbientPreset,
+  findKeyframePair,
+  getAmbientPresetV3,
+} from "./preset";
 export { KEYFRAMES } from "./keyframes";
 export { seedFromDate, mulberry32 } from "./seeded-random";
 export { computeAngleVariation, DAILY_VARIATION } from "./angle-variation";
