@@ -114,9 +114,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if IS_PRODUCTION:
             csp_directives = [
                 "default-src 'self'",
-                f"script-src 'self'",
+                "script-src 'self'",
                 "style-src 'self' 'unsafe-inline'",  # Swagger UI
-                f"img-src 'self' https://i.ytimg.com https://img.youtube.com data:",
+                "img-src 'self' https://i.ytimg.com https://img.youtube.com data:",
                 f"connect-src 'self' {' '.join(ALLOWED_CSP_DOMAINS)}",
                 "frame-ancestors 'none'",
                 "base-uri 'self'",

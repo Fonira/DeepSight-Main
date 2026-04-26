@@ -16,7 +16,6 @@ import re
 import csv
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
-from pathlib import Path
 
 from core.http_client import shared_http_client
 
@@ -340,9 +339,7 @@ def export_to_docx(
 
     # Imports lazy — chargés uniquement quand DOCX_AVAILABLE=True
     from docx import Document
-    from docx.shared import Inches, Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.enum.style import WD_STYLE_TYPE
 
     doc = Document()
     
@@ -477,7 +474,7 @@ def export_to_pdf_reportlab(
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.colors import HexColor
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
     from reportlab.lib.units import cm
 
     buffer = io.BytesIO()
@@ -765,7 +762,6 @@ def export_to_excel(
     # Imports lazy — chargés uniquement quand EXCEL_AVAILABLE=True
     from openpyxl import Workbook
     from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-    from openpyxl.utils import get_column_letter
 
     wb = Workbook()
     ws = wb.active

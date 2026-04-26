@@ -10,7 +10,6 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import asyncio
 from uuid import uuid4
 from datetime import datetime
 from typing import Optional, List
@@ -298,8 +297,6 @@ async def process_batch(batch_id: str, user_id: int):
     Traite un batch d'analyses en arrière-plan.
     """
     from db.database import async_session_maker
-    from videos.service import create_task, update_task_status
-    from videos.router import run_analysis_task
 
     batch = _batch_store.get(batch_id)
     if not batch:

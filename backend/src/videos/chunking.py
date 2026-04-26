@@ -15,10 +15,8 @@
 
 import asyncio
 import re
-import logging
 from typing import Optional, List
 from dataclasses import dataclass
-from datetime import datetime
 
 try:
     from mistralai import Mistral
@@ -27,7 +25,7 @@ except ImportError:
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.config import get_mistral_key, MISTRAL_MODELS
+from core.config import get_mistral_key
 from core.logging import logger
 from core.config import MISTRAL_INTERNAL_MODEL
 
@@ -387,13 +385,13 @@ EXEMPLE DE FORMAT:
         )
         digest = response.choices[0].message.content.strip()
         logger.info(
-            f"Chunk digest complete",
+            "Chunk digest complete",
             extra={"chunk_index": chunk.index, "digest_chars": len(digest), "time_range": time_range}
         )
         return digest
     except Exception as e:
         logger.error(
-            f"Failed to digest chunk",
+            "Failed to digest chunk",
             extra={"chunk_index": chunk.index, "error": str(e)}
         )
         # Fallback: extract first and last sentences
@@ -477,13 +475,13 @@ EXEMPLE de conservation des timecodes:
         )
         full_digest = response.choices[0].message.content.strip()
         logger.info(
-            f"Full digest built",
+            "Full digest built",
             extra={"chunk_count": len(chunks), "digest_chars": len(full_digest)}
         )
         return full_digest
     except Exception as e:
         logger.error(
-            f"Failed to build full digest",
+            "Failed to build full digest",
             extra={"chunk_count": len(chunks), "error": str(e)}
         )
         # Fallback: concatenate chunk digests
@@ -526,7 +524,7 @@ async def process_video_chunks(
     from db.database import VideoChunk, Summary
     
     logger.info(
-        f"Starting chunking pipeline",
+        "Starting chunking pipeline",
         extra={
             "summary_id": summary_id,
             "transcript_chars": len(transcript),
@@ -555,7 +553,7 @@ async def process_video_chunks(
     chunks = await asyncio.gather(*tasks)
     
     logger.info(
-        f"All chunks digested",
+        "All chunks digested",
         extra={"summary_id": summary_id, "chunk_count": len(chunks)}
     )
     
@@ -574,7 +572,7 @@ async def process_video_chunks(
     await db.flush()
     
     logger.info(
-        f"Chunks stored in database",
+        "Chunks stored in database",
         extra={"summary_id": summary_id, "chunk_count": len(chunks)}
     )
     
@@ -590,7 +588,7 @@ async def process_video_chunks(
     await db.commit()
     
     logger.info(
-        f"Chunking pipeline complete",
+        "Chunking pipeline complete",
         extra={
             "summary_id": summary_id,
             "chunk_count": len(chunks),

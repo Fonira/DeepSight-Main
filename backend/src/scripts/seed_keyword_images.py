@@ -5,8 +5,6 @@ Idempotent: skip les termes déjà existants en DB.
 """
 
 import asyncio
-import hashlib
-import sys
 
 # 50 default words (mirrored from frontend/src/data/defaultWords.ts)
 DEFAULT_WORDS = [

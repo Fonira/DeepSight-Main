@@ -298,10 +298,10 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
                 stderr = result.stderr[:200] if result.stderr else "no stderr"
                 # Détecter les erreurs spécifiques
                 if "private" in stderr.lower() or "removed" in stderr.lower():
-                    logger.warning(f"[TIKTOK] Video is private or removed")
+                    logger.warning("[TIKTOK] Video is private or removed")
                     return {"_error": "private_or_removed"}
                 if "geo" in stderr.lower() or "not available" in stderr.lower():
-                    logger.warning(f"[TIKTOK] Video is geo-restricted")
+                    logger.warning("[TIKTOK] Video is geo-restricted")
                     return {"_error": "geo_restricted"}
                 logger.warning(f"[TIKTOK] yt-dlp info failed ({label}): {stderr}")
                 return None

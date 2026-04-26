@@ -12,7 +12,7 @@ import random
 from auth.dependencies import get_current_user_optional
 from db.database import async_session_maker, User, Summary
 
-from .data import DEFAULT_WORDS, get_random_word, get_words_by_category, get_all_categories
+from .data import DEFAULT_WORDS, get_words_by_category, get_all_categories
 
 router = APIRouter()
 

@@ -9,7 +9,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
+from typing import Optional
 
 from db.database import get_session
 from auth.dependencies import get_current_admin

@@ -151,8 +151,7 @@ class RichContext:
 
         try:
             from videos.duration_router import (
-                categorize_video, deserialize_index, search_relevant_chunks,
-                prepare_transcript_for_chat,
+                categorize_video, deserialize_index, prepare_transcript_for_chat,
             )
 
             profile = categorize_video(

@@ -509,7 +509,7 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
                             pass
                         return _supa_result
                     else:
-                        print(f"  ⚠️ [SUPADATA] Metadata OK but no duration", flush=True)
+                        print("  ⚠️ [SUPADATA] Metadata OK but no duration", flush=True)
                 else:
                     print(f"  ⚠️ [SUPADATA] Metadata error {resp.status_code}", flush=True)
         except Exception as e:
@@ -556,7 +556,7 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
             print(f"  ⚠️ [INVIDIOUS] {instance} error: {str(e)[:50]}", flush=True)
     
     # Essayer yt-dlp (plus lent mais plus fiable)
-    print(f"  🔄 [YT-DLP] Trying yt-dlp fallback...", flush=True)
+    print("  🔄 [YT-DLP] Trying yt-dlp fallback...", flush=True)
     ytdlp_result = await get_video_info_ytdlp(video_id)
     if ytdlp_result and ytdlp_result.get("duration", 0) > 0:
         print(f"  ✅ [YT-DLP] Duration: {ytdlp_result['duration']}s", flush=True)
@@ -569,14 +569,14 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
         return ytdlp_result
     
     # Essayer oembed pour au moins avoir le titre (pas de durée)
-    print(f"  🔄 [OEMBED] Trying oembed fallback...", flush=True)
+    print("  🔄 [OEMBED] Trying oembed fallback...", flush=True)
     try:
         url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
         async with shared_http_client() as client:
             response = await client.get(url, timeout=10, headers={"User-Agent": get_random_user_agent()})
             if response.status_code == 200:
                 data = response.json()
-                print(f"  ⚠️ [OEMBED] Got title but no duration", flush=True)
+                print("  ⚠️ [OEMBED] Got title but no duration", flush=True)
                 return {
                     "video_id": video_id,
                     "title": data.get("title", "Unknown"),
@@ -774,10 +774,10 @@ def _parse_subtitle_files(tmpdir: str, video_id: str) -> Tuple[Optional[str], Op
 async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     api_key = api_key or get_supadata_key()
     if not api_key:
-        print(f"  ⏭️ [SUPADATA] Skipped: No API key", flush=True)
+        print("  ⏭️ [SUPADATA] Skipped: No API key", flush=True)
         return None, None, None
 
-    print(f"  🥇 [SUPADATA] Trying...", flush=True)
+    print("  🥇 [SUPADATA] Trying...", flush=True)
 
     try:
         async with shared_http_client() as client:
@@ -838,11 +838,11 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
                         break
 
                 except httpx.TimeoutException:
-                    print(f"  ⚠️ [SUPADATA] YT-specific timeout", flush=True)
+                    print("  ⚠️ [SUPADATA] YT-specific timeout", flush=True)
                     break
 
             # ─── Méthode 2 : Endpoint unifié (fallback — supporte STT côté Supadata) ───
-            print(f"  🔄 [SUPADATA] Trying unified endpoint (with AI fallback)...", flush=True)
+            print("  🔄 [SUPADATA] Trying unified endpoint (with AI fallback)...", flush=True)
             try:
                 url = f"https://www.youtube.com/watch?v={video_id}"
                 response = await client.get(
@@ -903,7 +903,7 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
                     print(f"  ⚠️ [SUPADATA] Unified error {response.status_code}", flush=True)
 
             except httpx.TimeoutException:
-                print(f"  ⚠️ [SUPADATA] Unified timeout", flush=True)
+                print("  ⚠️ [SUPADATA] Unified timeout", flush=True)
 
     except Exception as e:
         print(f"  ⚠️ [SUPADATA] Exception: {e}", flush=True)
@@ -917,10 +917,10 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
 
 async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     if not YTAPI_AVAILABLE:
-        print(f"  ⏭️ [YTAPI] Skipped: Not installed", flush=True)
+        print("  ⏭️ [YTAPI] Skipped: Not installed", flush=True)
         return None, None, None
     
-    print(f"  🥈 [YTAPI] Trying...", flush=True)
+    print("  🥈 [YTAPI] Trying...", flush=True)
     
     try:
         loop = asyncio.get_event_loop()
@@ -935,7 +935,7 @@ async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[s
                     session = _requests.Session()
                     session.proxies.update(proxies)
                     ytt_api = YouTubeTranscriptApi(http_client=session)
-                    print(f"  🔌 [YTAPI] Using proxy", flush=True)
+                    print("  🔌 [YTAPI] Using proxy", flush=True)
                 else:
                     ytt_api = YouTubeTranscriptApi()
                 transcript_list = ytt_api.list(video_id)
@@ -996,10 +996,10 @@ async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[s
             print(f"  ✅ [YTAPI] Success: {len(simple)} chars", flush=True)
             return simple, timestamped, lang
         else:
-            print(f"  ⚠️ [YTAPI] No captions found", flush=True)
+            print("  ⚠️ [YTAPI] No captions found", flush=True)
     
     except asyncio.TimeoutError:
-        print(f"  ⚠️ [YTAPI] Timeout", flush=True)
+        print("  ⚠️ [YTAPI] Timeout", flush=True)
     except Exception as e:
         print(f"  ⚠️ [YTAPI] Exception: {e}", flush=True)
     
@@ -1015,7 +1015,7 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
     🌐 Utilise Invidious pour récupérer les sous-titres
     Contourne le blocage YouTube car Invidious a ses propres IPs
     """
-    print(f"  🌐 [INVIDIOUS] Trying captions...", flush=True)
+    print("  🌐 [INVIDIOUS] Trying captions...", flush=True)
 
     for instance in INVIDIOUS_INSTANCES[:5]:  # Essayer 5 instances max (augmenté de 3)
         try:
@@ -1079,7 +1079,7 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
             print(f"  ⚠️ [INVIDIOUS] {instance} error: {str(e)[:50]}", flush=True)
             continue
     
-    print(f"  ⚠️ [INVIDIOUS] No captions from any instance", flush=True)
+    print("  ⚠️ [INVIDIOUS] No captions from any instance", flush=True)
     return None, None, None
 
 
@@ -1092,7 +1092,7 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
     🌐 Utilise Piped pour récupérer les sous-titres
     Alternative à Invidious - différentes IPs, mêmes fonctionnalités
     """
-    print(f"  🟣 [PIPED] Trying captions...", flush=True)
+    print("  🟣 [PIPED] Trying captions...", flush=True)
 
     # Utiliser les instances saines en priorité
     healthy_instances = get_healthy_instances(PIPED_INSTANCES)
@@ -1161,7 +1161,7 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
             print(f"  ⚠️ [PIPED] {instance} error: {str(e)[:50]}", flush=True)
             continue
 
-    print(f"  ⚠️ [PIPED] No captions from any instance", flush=True)
+    print("  ⚠️ [PIPED] No captions from any instance", flush=True)
     return None, None, None
 
 
@@ -1170,7 +1170,7 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    print(f"  🏅 [YT-DLP] Trying manual subtitles...", flush=True)
+    print("  🏅 [YT-DLP] Trying manual subtitles...", flush=True)
 
     try:
         loop = asyncio.get_event_loop()
@@ -1197,7 +1197,7 @@ async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[s
                 if proxy:
                     cmd.insert(1, "--proxy")
                     cmd.insert(2, proxy)
-                    print(f"  🔌 [YT-DLP] Using proxy", flush=True)
+                    print("  🔌 [YT-DLP] Using proxy", flush=True)
                 subprocess.run(cmd, capture_output=True, text=True, timeout=_t("ytdlp_subs"))
                 return _parse_subtitle_files(tmpdir, video_id)
         
@@ -1210,10 +1210,10 @@ async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[s
             print(f"  ✅ [YT-DLP] Success: {len(simple)} chars", flush=True)
             return simple, timestamped, lang
         else:
-            print(f"  ⚠️ [YT-DLP] No manual subtitles", flush=True)
+            print("  ⚠️ [YT-DLP] No manual subtitles", flush=True)
     
     except asyncio.TimeoutError:
-        print(f"  ⚠️ [YT-DLP] Timeout", flush=True)
+        print("  ⚠️ [YT-DLP] Timeout", flush=True)
     except Exception as e:
         print(f"  ⚠️ [YT-DLP] Exception: {e}", flush=True)
     
@@ -1225,7 +1225,7 @@ async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[s
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def get_transcript_ytdlp_auto(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    print(f"  🎖️ [YT-DLP-AUTO] Trying auto-captions...", flush=True)
+    print("  🎖️ [YT-DLP-AUTO] Trying auto-captions...", flush=True)
 
     try:
         loop = asyncio.get_event_loop()
@@ -1264,10 +1264,10 @@ async def get_transcript_ytdlp_auto(video_id: str) -> Tuple[Optional[str], Optio
             print(f"  ✅ [YT-DLP-AUTO] Success: {len(simple)} chars", flush=True)
             return simple, timestamped, lang
         else:
-            print(f"  ⚠️ [YT-DLP-AUTO] No auto-captions", flush=True)
+            print("  ⚠️ [YT-DLP-AUTO] No auto-captions", flush=True)
     
     except asyncio.TimeoutError:
-        print(f"  ⚠️ [YT-DLP-AUTO] Timeout", flush=True)
+        print("  ⚠️ [YT-DLP-AUTO] Timeout", flush=True)
     except Exception as e:
         print(f"  ⚠️ [YT-DLP-AUTO] Exception: {e}", flush=True)
     
@@ -1285,10 +1285,10 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
     """
     groq_key = get_groq_key()
     if not groq_key:
-        print(f"  ❌ [WHISPER] GROQ_API_KEY not configured!", flush=True)
+        print("  ❌ [WHISPER] GROQ_API_KEY not configured!", flush=True)
         return None, None, None
     
-    print(f"  🎙️ [WHISPER] Downloading audio...", flush=True)
+    print("  🎙️ [WHISPER] Downloading audio...", flush=True)
     
     audio_data = None
     audio_ext = ".mp3"
@@ -1323,7 +1323,7 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
                 if not audio_url:
                     continue
                 
-                print(f"  🎙️ [WHISPER] Downloading from Invidious...", flush=True)
+                print("  🎙️ [WHISPER] Downloading from Invidious...", flush=True)
                 
                 audio_response = await client.get(
                     audio_url,
@@ -1343,7 +1343,7 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
     
     # MÉTHODE B: Fallback sur yt-dlp si Invidious échoue
     if not audio_data:
-        print(f"  🎙️ [WHISPER] Trying yt-dlp download...", flush=True)
+        print("  🎙️ [WHISPER] Trying yt-dlp download...", flush=True)
         try:
             loop = asyncio.get_event_loop()
             
@@ -1384,7 +1384,7 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
             print(f"  ⚠️ [WHISPER] yt-dlp download failed: {e}", flush=True)
     
     if not audio_data:
-        print(f"  ❌ [WHISPER] Failed to download audio", flush=True)
+        print("  ❌ [WHISPER] Failed to download audio", flush=True)
         return None, None, None
     
     # Compresser si trop gros
@@ -1413,7 +1413,7 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
             print(f"  ⚠️ [WHISPER] Compression failed: {e}", flush=True)
     
     if len(audio_data) > GROQ_MAX_FILE_SIZE:
-        print(f"  ❌ [WHISPER] Audio still too large", flush=True)
+        print("  ❌ [WHISPER] Audio still too large", flush=True)
         return None, None, None
     
     # Transcrire avec Groq
@@ -1503,16 +1503,16 @@ async def get_transcript_voxtral(
     """
     mistral_key = get_mistral_key()
     if not mistral_key:
-        print(f"  ⏭️ [VOXTRAL-STT] Skipped: No Mistral API key", flush=True)
+        print("  ⏭️ [VOXTRAL-STT] Skipped: No Mistral API key", flush=True)
         return None, None, None
 
-    print(f"  🎙️ [VOXTRAL-STT] Starting...", flush=True)
+    print("  🎙️ [VOXTRAL-STT] Starting...", flush=True)
 
     # ── Télécharger l'audio si pas fourni ────────────────────────────────
     if not audio_data:
         audio_data, audio_ext = await _download_audio_for_transcription(video_id)
         if not audio_data:
-            print(f"  ❌ [VOXTRAL-STT] Failed to download audio", flush=True)
+            print("  ❌ [VOXTRAL-STT] Failed to download audio", flush=True)
             return None, None, None
 
     if len(audio_data) > VOXTRAL_MAX_FILE_SIZE:
@@ -1552,7 +1552,7 @@ async def get_transcript_voxtral(
                 full_text = result.get("text", "")
 
                 if not full_text:
-                    print(f"  ❌ [VOXTRAL-STT] Empty transcription returned", flush=True)
+                    print("  ❌ [VOXTRAL-STT] Empty transcription returned", flush=True)
                     return None, None, None
 
                 # ── Build timestamped text from segments ─────────────────
@@ -1603,10 +1603,10 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
     """
     deepgram_key = get_deepgram_key()
     if not deepgram_key:
-        print(f"  ⏭️ [DEEPGRAM] Skipped: No API key", flush=True)
+        print("  ⏭️ [DEEPGRAM] Skipped: No API key", flush=True)
         return None, None, None
 
-    print(f"  🎙️ [DEEPGRAM] Starting...", flush=True)
+    print("  🎙️ [DEEPGRAM] Starting...", flush=True)
 
     audio_data = None
     audio_ext = ".mp3"
@@ -1639,7 +1639,7 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
                 if not audio_url:
                     continue
 
-                print(f"  🎙️ [DEEPGRAM] Downloading audio from Invidious...", flush=True)
+                print("  🎙️ [DEEPGRAM] Downloading audio from Invidious...", flush=True)
 
                 audio_response = await client.get(
                     audio_url,
@@ -1659,7 +1659,7 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
 
     # Fallback yt-dlp si Invidious échoue
     if not audio_data:
-        print(f"  🎙️ [DEEPGRAM] Trying yt-dlp download...", flush=True)
+        print("  🎙️ [DEEPGRAM] Trying yt-dlp download...", flush=True)
         try:
             loop = asyncio.get_event_loop()
 
@@ -1700,7 +1700,7 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
             print(f"  ⚠️ [DEEPGRAM] yt-dlp download failed: {e}", flush=True)
 
     if not audio_data:
-        print(f"  ❌ [DEEPGRAM] Failed to download audio", flush=True)
+        print("  ❌ [DEEPGRAM] Failed to download audio", flush=True)
         return None, None, None
 
     # Envoyer à Deepgram
@@ -1783,23 +1783,23 @@ async def get_transcript_openai_whisper(video_id: str, audio_data: bytes = None,
     """
     openai_key = get_openai_key()
     if not openai_key:
-        print(f"  ⏭️ [OPENAI-WHISPER] Skipped: No API key", flush=True)
+        print("  ⏭️ [OPENAI-WHISPER] Skipped: No API key", flush=True)
         return None, None, None
 
-    print(f"  🎙️ [OPENAI-WHISPER] Starting...", flush=True)
+    print("  🎙️ [OPENAI-WHISPER] Starting...", flush=True)
 
     # Si pas d'audio fourni, télécharger
     if not audio_data:
         audio_data, audio_ext = await _download_audio_for_transcription(video_id)
         if not audio_data:
-            print(f"  ❌ [OPENAI-WHISPER] Failed to download audio", flush=True)
+            print("  ❌ [OPENAI-WHISPER] Failed to download audio", flush=True)
             return None, None, None
 
     # Compresser si nécessaire
     if len(audio_data) > OPENAI_MAX_FILE_SIZE:
         audio_data, audio_ext = await _compress_audio(audio_data, audio_ext, "OPENAI-WHISPER")
         if not audio_data or len(audio_data) > OPENAI_MAX_FILE_SIZE:
-            print(f"  ❌ [OPENAI-WHISPER] Audio still too large after compression", flush=True)
+            print("  ❌ [OPENAI-WHISPER] Audio still too large after compression", flush=True)
             return None, None, None
 
     # Transcrire avec OpenAI
@@ -1869,16 +1869,16 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
     """
     assemblyai_key = get_assemblyai_key()
     if not assemblyai_key:
-        print(f"  ⏭️ [ASSEMBLYAI] Skipped: No API key", flush=True)
+        print("  ⏭️ [ASSEMBLYAI] Skipped: No API key", flush=True)
         return None, None, None
 
-    print(f"  🎙️ [ASSEMBLYAI] Starting...", flush=True)
+    print("  🎙️ [ASSEMBLYAI] Starting...", flush=True)
 
     # Si pas d'audio fourni, télécharger
     if not audio_data:
         audio_data, audio_ext = await _download_audio_for_transcription(video_id)
         if not audio_data:
-            print(f"  ❌ [ASSEMBLYAI] Failed to download audio", flush=True)
+            print("  ❌ [ASSEMBLYAI] Failed to download audio", flush=True)
             return None, None, None
 
     try:
@@ -1898,11 +1898,11 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
 
             upload_url = upload_response.json().get("upload_url")
             if not upload_url:
-                print(f"  ❌ [ASSEMBLYAI] No upload URL returned", flush=True)
+                print("  ❌ [ASSEMBLYAI] No upload URL returned", flush=True)
                 return None, None, None
 
             # Étape 2: Demander la transcription
-            print(f"  🎙️ [ASSEMBLYAI] Starting transcription...", flush=True)
+            print("  🎙️ [ASSEMBLYAI] Starting transcription...", flush=True)
             transcript_request = await client.post(
                 "https://api.assemblyai.com/v2/transcript",
                 headers={"Authorization": assemblyai_key},
@@ -1920,11 +1920,11 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
 
             transcript_id = transcript_request.json().get("id")
             if not transcript_id:
-                print(f"  ❌ [ASSEMBLYAI] No transcript ID returned", flush=True)
+                print("  ❌ [ASSEMBLYAI] No transcript ID returned", flush=True)
                 return None, None, None
 
             # Étape 3: Polling jusqu'à complétion
-            print(f"  🎙️ [ASSEMBLYAI] Waiting for transcription...", flush=True)
+            print("  🎙️ [ASSEMBLYAI] Waiting for transcription...", flush=True)
             start_time = time.time()
             while time.time() - start_time < _t("assemblyai"):
                 status_response = await client.get(
@@ -1979,7 +1979,7 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
 
                 await asyncio.sleep(3)
 
-            print(f"  ❌ [ASSEMBLYAI] Timeout waiting for transcription", flush=True)
+            print("  ❌ [ASSEMBLYAI] Timeout waiting for transcription", flush=True)
 
     except Exception as e:
         print(f"  ❌ [ASSEMBLYAI] Error: {e}", flush=True)
@@ -1998,16 +1998,16 @@ async def _elevenlabs_scribe_transcribe(video_id: str, audio_data: bytes = None,
     """
     elevenlabs_key = get_elevenlabs_key()
     if not elevenlabs_key:
-        print(f"  ⏭️ [ELEVENLABS-SCRIBE] Skipped: No API key", flush=True)
+        print("  ⏭️ [ELEVENLABS-SCRIBE] Skipped: No API key", flush=True)
         return None, None, None
 
-    print(f"  🎙️ [ELEVENLABS-SCRIBE] Starting...", flush=True)
+    print("  🎙️ [ELEVENLABS-SCRIBE] Starting...", flush=True)
 
     # Si pas d'audio fourni, télécharger
     if not audio_data:
         audio_data, audio_ext = await _download_audio_for_transcription(video_id)
         if not audio_data:
-            print(f"  ❌ [ELEVENLABS-SCRIBE] Failed to download audio", flush=True)
+            print("  ❌ [ELEVENLABS-SCRIBE] Failed to download audio", flush=True)
             return None, None, None
 
     print(f"  🎙️ [ELEVENLABS-SCRIBE] Sending {len(audio_data)/1024/1024:.1f}MB to ElevenLabs...", flush=True)
@@ -2226,7 +2226,7 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
 
 async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str = None, is_short: bool = False, duration: int = 0) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Inner function — exécutée sous le semaphore de concurrence."""
-    print(f"", flush=True)
+    print("", flush=True)
     print(f"{'='*70}", flush=True)
     print(f"🔍 TRANSCRIPT EXTRACTION v7.1 for {video_id} (is_short={is_short}) [slots: {MAX_CONCURRENT_EXTRACTIONS - _extraction_semaphore._value}/{MAX_CONCURRENT_EXTRACTIONS}]", flush=True)
     print(f"{'='*70}", flush=True)
@@ -2234,7 +2234,7 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
     # ⚡ v7.1: Activer les timeouts adaptatifs pour vidéos courtes
     if is_short:
         _active_timeouts.set(TIMEOUTS_SHORT)
-        print(f"⚡ [v7.1] Short video detected → using REDUCED timeouts (50% faster fallback)", flush=True)
+        print("⚡ [v7.1] Short video detected → using REDUCED timeouts (50% faster fallback)", flush=True)
     else:
         _active_timeouts.set(TIMEOUTS)
 
@@ -2273,9 +2273,9 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 0: Supadata API EN PRIORITÉ (seul, le plus fiable)
     # ═══════════════════════════════════════════════════════════════════════════════
-    print(f"", flush=True)
-    print(f"🥇 PHASE 0: Supadata API (PRIORITY)", flush=True)
-    print(f"─" * 50, flush=True)
+    print("", flush=True)
+    print("🥇 PHASE 0: Supadata API (PRIORITY)", flush=True)
+    print("─" * 50, flush=True)
 
     supadata_cb = get_circuit_breaker("supadata")
     if supadata_cb.can_execute():
@@ -2289,23 +2289,23 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
                     supadata_cb.record_success()
                     if transcript_metrics:
                         await transcript_metrics.increment("supadata_successes")
-                    print(f"✅ SUCCESS with Supadata API (Phase 0 - Priority)", flush=True)
+                    print("✅ SUCCESS with Supadata API (Phase 0 - Priority)", flush=True)
                     print(f"{'='*70}", flush=True)
                     await _cache_success(video_id, simple, timestamped, lang, "Supadata API")
                     return simple, timestamped, lang
             except Exception as e:
                 print(f"  ⚠️ [Supadata] Attempt {attempt + 1} failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
         supadata_cb.record_failure()
-        print(f"  ❌ [Supadata] Failed — falling back to Phase 1", flush=True)
+        print("  ❌ [Supadata] Failed — falling back to Phase 1", flush=True)
     else:
-        print(f"  ⏭️ [Supadata] Skipped (circuit OPEN)", flush=True)
+        print("  ⏭️ [Supadata] Skipped (circuit OPEN)", flush=True)
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 1: Méthodes texte EN PARALLÈLE (sans Supadata)
     # ═══════════════════════════════════════════════════════════════════════════════
-    print(f"", flush=True)
-    print(f"📋 PHASE 1: Text methods (PARALLEL — sans Supadata)", flush=True)
-    print(f"─" * 50, flush=True)
+    print("", flush=True)
+    print("📋 PHASE 1: Text methods (PARALLEL — sans Supadata)", flush=True)
+    print("─" * 50, flush=True)
 
     phase1_methods = [
         ("youtube-transcript-api", "ytapi", lambda: get_transcript_ytapi(video_id)),
@@ -2386,7 +2386,7 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
 
         if winning_result is not None:
             name, simple, timestamped, lang = winning_result
-            print(f"", flush=True)
+            print("", flush=True)
             print(f"✅ SUCCESS with {name} (Phase 1 - Race)", flush=True)
             print(f"{'='*70}", flush=True)
             await _cache_success(video_id, simple, timestamped, lang, name)
@@ -2395,9 +2395,9 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 2: yt-dlp (séquentiel, plus lent mais fiable)
     # ═══════════════════════════════════════════════════════════════════════════════
-    print(f"", flush=True)
-    print(f"📋 PHASE 2: yt-dlp methods (SEQUENTIAL)", flush=True)
-    print(f"─" * 50, flush=True)
+    print("", flush=True)
+    print("📋 PHASE 2: yt-dlp methods (SEQUENTIAL)", flush=True)
+    print("─" * 50, flush=True)
 
     phase2_methods = [
         ("yt-dlp manual", "ytdlp", lambda: get_transcript_ytdlp(video_id)),
@@ -2429,20 +2429,20 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 3: Audio STT (dernier recours — toutes vidéos)
     # ═══════════════════════════════════════════════════════════════════════════════
-    print(f"", flush=True)
+    print("", flush=True)
     print(f"📋 PHASE 3: Audio STT (last resort{' — SHORT' if is_short else ' — full video'})", flush=True)
-    print(f"─" * 50, flush=True)
+    print("─" * 50, flush=True)
 
     # Duration guard: skip all STT providers for videos longer than MAX_DURATION_FOR_STT
     if duration > 0 and duration > MAX_DURATION_FOR_STT:
         print(f"  ⏭️ [STT] Skipped ALL STT providers: video duration {duration}s > MAX_DURATION_FOR_STT {MAX_DURATION_FOR_STT}s", flush=True)
     else:
         # Télécharger l'audio une seule fois pour tous les services
-        print(f"  🎵 Downloading audio for transcription...", flush=True)
+        print("  🎵 Downloading audio for transcription...", flush=True)
         audio_data, audio_ext = await _download_audio_for_transcription(video_id)
 
         if not audio_data:
-            print(f"  ❌ Failed to download audio - trying services anyway", flush=True)
+            print("  ❌ Failed to download audio - trying services anyway", flush=True)
 
         phase3_methods = [
             ("Voxtral STT", "voxtral_stt", lambda: get_transcript_voxtral(video_id, audio_data, audio_ext)),
@@ -2476,7 +2476,7 @@ async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str
     # ═══════════════════════════════════════════════════════════════════════════════
     # ÉCHEC TOTAL — Log détaillé pour diagnostic
     # ═══════════════════════════════════════════════════════════════════════════════
-    print(f"", flush=True)
+    print("", flush=True)
     print(f"❌ FAILED: All methods failed for {video_id} (is_short={is_short})", flush=True)
     # Log l'état des circuit breakers pour diagnostic
     for cb_name in ["supadata", "ytapi", "invidious", "piped", "ytdlp", "ytdlp_auto", "voxtral_stt", "whisper", "openai_whisper", "deepgram", "assemblyai", "elevenlabs_scribe"]:

@@ -7,14 +7,11 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import httpx
 import json
 import re
 import asyncio
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 from dataclasses import dataclass, asdict
-from datetime import datetime
-import os
 
 from core.config import get_mistral_key
 from core.config import MISTRAL_INTERNAL_MODEL

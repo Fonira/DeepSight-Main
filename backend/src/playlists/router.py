@@ -21,9 +21,6 @@ from uuid import uuid4
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 from collections import Counter, OrderedDict
-from functools import lru_cache
-from dataclasses import dataclass, field
-from enum import Enum
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,11 +32,9 @@ from db.database import (
 from auth.dependencies import get_current_user
 from core.config import PLAN_LIMITS, get_mistral_key
 from billing.plan_config import get_limits
-from videos.web_search_provider import web_search_and_synthesize, WebSearchResult
-from videos.analysis import generate_summary, detect_category
+from videos.web_search_provider import web_search_and_synthesize
 from transcripts import (
-    extract_video_id, extract_playlist_id,
-    get_video_info, get_transcript_with_timestamps,
+    extract_playlist_id,
     get_playlist_videos, get_playlist_info
 )
 
@@ -467,7 +462,7 @@ async def analyze_playlist(
 ):
     """Lance l'analyse d'une playlist YouTube."""
     print(f"\n{'='*60}", flush=True)
-    print(f"📚 PLAYLIST ANALYSIS REQUEST", flush=True)
+    print("📚 PLAYLIST ANALYSIS REQUEST", flush=True)
     print(f"   URL: {request.url}", flush=True)
     print(f"   Mode: {request.mode}", flush=True)
     print(f"   User: {current_user.email}", flush=True)
@@ -551,7 +546,7 @@ async def analyze_corpus(
     Preferred path is `/corpus/analyze`.
     """
     print(f"\n{'='*60}", flush=True)
-    print(f"📦 CORPUS ANALYSIS REQUEST", flush=True)
+    print("📦 CORPUS ANALYSIS REQUEST", flush=True)
     print(f"   Name: {request.name}", flush=True)
     print(f"   Videos: {len(request.urls)}", flush=True)
     
@@ -1169,7 +1164,7 @@ async def chat_with_corpus(
     - Fusion Mistral + Perplexity
     """
     print(f"\n{'='*60}", flush=True)
-    print(f"💬 CORPUS CHAT v4.0", flush=True)
+    print("💬 CORPUS CHAT v4.0", flush=True)
     print(f"   Playlist: {playlist_id}", flush=True)
     print(f"   Question: {request.message[:80]}...", flush=True)
     print(f"   Mode: {request.mode} | Web: {request.web_search}", flush=True)
@@ -1197,7 +1192,7 @@ async def _execute_corpus_chat(
     """Logique interne du chat corpus, encapsulée pour gestion d'erreur."""
     import time as _time
     _t0 = _time.time()
-    print(f"   ⏱️ [STEP 0] Starting corpus chat...", flush=True)
+    print("   ⏱️ [STEP 0] Starting corpus chat...", flush=True)
 
     # FIX v4.1: Prendre la plus récente si plusieurs analyses existent
     result = await session.execute(
@@ -1258,7 +1253,7 @@ async def _execute_corpus_chat(
     scored_videos.sort(key=lambda x: x["relevance_score"], reverse=True)
     print(f"   ⏱️ [STEP 3] Scoring done ({_time.time()-_t0:.2f}s)", flush=True)
 
-    print(f"   📊 Relevance scores:", flush=True)
+    print("   📊 Relevance scores:", flush=True)
     for sv in scored_videos[:5]:
         print(f"      - {sv['video_title'][:40]}: {sv['relevance_score']:.3f}", flush=True)
     
@@ -1282,7 +1277,7 @@ async def _execute_corpus_chat(
     )
     cached_response = _chat_cache.get(cache_key)
     if cached_response:
-        print(f"   ✅ Cache HIT!", flush=True)
+        print("   ✅ Cache HIT!", flush=True)
         return ChatCorpusResponse(
             response=cached_response["response"],
             sources=cached_response.get("sources"),
@@ -1336,11 +1331,11 @@ async def _execute_corpus_chat(
         if is_corpus_question:
             should_use_perplexity = False
             perplexity_reason = "corpus_only_question"
-            print(f"   ⏭️ Perplexity skipped: corpus-only question", flush=True)
+            print("   ⏭️ Perplexity skipped: corpus-only question", flush=True)
         elif word_count < 5 and not should_use_perplexity:
             should_use_perplexity = False
             perplexity_reason = "too_short"
-            print(f"   ⏭️ Perplexity skipped: question too short", flush=True)
+            print("   ⏭️ Perplexity skipped: question too short", flush=True)
     
     # Exécuter Perplexity si décidé
     if should_use_perplexity:
@@ -1355,7 +1350,7 @@ async def _execute_corpus_chat(
             web_search_actually_used = True
             print(f"   🌐 Perplexity: {len(perplexity_context)} chars ({perplexity_reason})", flush=True)
     elif web_search_enabled:
-        print(f"   💡 Perplexity available but not needed for this question", flush=True)
+        print("   💡 Perplexity available but not needed for this question", flush=True)
     
     print(f"   ⏱️ [STEP 5] Calling Mistral ({chat_config['model']}) — max_corpus={chat_config['max_corpus']:,} chars ({_time.time()-_t0:.2f}s)", flush=True)
     response_text = await _chat_with_mistral_corpus_v4(
@@ -1974,7 +1969,7 @@ async def _perplexity_chat_corpus_v4(
     cache_key = _web_search_cache._make_key(question, playlist_title)
     cached = _web_search_cache.get(cache_key)
     if cached:
-        print(f"[WEB_SEARCH] 💾 Cache hit!", flush=True)
+        print("[WEB_SEARCH] 💾 Cache hit!", flush=True)
         return cached
 
     context_hint = f"corpus vidéo '{playlist_title}'"

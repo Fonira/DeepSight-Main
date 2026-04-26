@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, field_validator
 
-from auth.dependencies import get_current_admin, get_current_user
+from auth.dependencies import get_current_admin
 from auth.dependencies import require_plan
 from core.config import get_mistral_key
 from db.database import User

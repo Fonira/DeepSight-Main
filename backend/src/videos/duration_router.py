@@ -27,12 +27,10 @@
 
 import re
 import json
-import math
 import logging
 from typing import Optional, List, Tuple, Dict, Set
 from dataclasses import dataclass, field
 from enum import Enum
-from collections import Counter
 
 logger = logging.getLogger(__name__)
 

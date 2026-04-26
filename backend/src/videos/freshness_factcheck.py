@@ -11,7 +11,6 @@
 """
 
 import re
-import httpx
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Tuple, Optional
 from enum import Enum

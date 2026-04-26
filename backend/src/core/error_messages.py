@@ -5,7 +5,6 @@ Utilisé par les exception handlers de main.py pour renvoyer des erreurs
 localisées quand le header Accept-Language contient "fr".
 """
 
-from typing import Optional
 
 from fastapi import Request
 

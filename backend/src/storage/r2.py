@@ -98,7 +98,6 @@ async def upload_to_r2(
 
 async def _upload_r2(image_bytes: bytes, key: str, content_type: str) -> str:
     """Upload to Cloudflare R2 via boto3."""
-    from botocore.exceptions import ClientError
 
     client = _get_r2_client()
     await asyncio.to_thread(

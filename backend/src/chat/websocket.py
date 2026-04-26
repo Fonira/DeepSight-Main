@@ -20,9 +20,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 import uuid
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from fastapi.websockets import WebSocketState
-from pydantic import BaseModel
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 TYPES & ENUMS
@@ -363,14 +362,14 @@ class ChatService:
         
         # Construire le contexte avec l'historique récent
         context_parts = [
-            f"# Contexte de la vidéo",
+            "# Contexte de la vidéo",
             f"Titre: {summary.video_title}",
             f"Chaîne: {summary.video_channel}",
-            f"",
-            f"## Résumé",
+            "",
+            "## Résumé",
             summary.summary_content[:3000],
-            f"",
-            f"## Historique de conversation récent",
+            "",
+            "## Historique de conversation récent",
         ]
         
         # Ajouter les 10 derniers messages

@@ -15,7 +15,7 @@ import httpx
 
 from db.database import get_session, User, Summary, AcademicPaper as AcademicPaperDB
 from auth.dependencies import get_current_user, get_verified_user
-from core.config import get_plan_limits, get_mistral_key
+from core.config import get_mistral_key
 from billing.plan_config import get_limits
 
 from .schemas import (
@@ -25,9 +25,7 @@ from .schemas import (
     AcademicEnrichRequest,
     BibliographyExportRequest,
     BibliographyExportResponse,
-    BibliographyFormat,
     Author,
-    AcademicSource,
 )
 from .aggregator import academic_aggregator, get_tier_limit
 from .bibliography import bibliography_exporter
@@ -61,7 +59,7 @@ async def search_academic_papers(
         return response
 
     except asyncio.TimeoutError:
-        print(f"Academic search timeout after 90s", flush=True)
+        print("Academic search timeout after 90s", flush=True)
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail={
@@ -132,7 +130,7 @@ async def enrich_summary_with_academic_sources(
         print(f"Translated keywords: {translated}", flush=True)
         keywords = translated
     else:
-        print(f"Using original keywords (translation skipped or failed)", flush=True)
+        print("Using original keywords (translation skipped or failed)", flush=True)
 
     user_plan = current_user.plan or "free"
     max_papers = request.max_papers if request else None

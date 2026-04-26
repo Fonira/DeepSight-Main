@@ -14,7 +14,6 @@ Mitigation: aggressive caching (R2 persistent + Redis), plan-based quotas
 """
 
 import hashlib
-import io
 import logging
 from typing import Optional
 

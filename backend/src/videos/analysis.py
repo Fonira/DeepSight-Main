@@ -5,13 +5,11 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import httpx
 import json
-import re
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, List, Tuple
 from datetime import datetime
 
-from core.config import get_mistral_key, get_perplexity_key, MISTRAL_MODELS, VERSION
+from core.config import get_mistral_key
 from core.config import MISTRAL_INTERNAL_MODEL
 from core.llm_provider import llm_complete
 from core.http_client import shared_http_client
@@ -571,7 +569,7 @@ def detect_category(
     tags_lower = [t.lower() for t in tags]
     transcript_lower = transcript[:8000].lower() if transcript else ""
     
-    print(f"🏷️ [CATEGORY DETECTION v3.0]", flush=True)
+    print("🏷️ [CATEGORY DETECTION v3.0]", flush=True)
     print(f"   📺 Channel: {channel}", flush=True)
     print(f"   🎬 Title: {title[:60]}...", flush=True)
     print(f"   🏷️ Tags: {tags[:5]}...", flush=True)
@@ -645,7 +643,7 @@ def detect_category(
     # 4. SÉLECTION DU MEILLEUR
     # ═══════════════════════════════════════════════════════════════════════
     if not scores:
-        print(f"   ⚠️ No matches found → general (confidence: 0.50)", flush=True)
+        print("   ⚠️ No matches found → general (confidence: 0.50)", flush=True)
         return "general", 0.50
     
     # Trier par score
@@ -655,7 +653,7 @@ def detect_category(
     best_matches = sorted_cats[0][1]["matches"]
     
     # Log des top 3
-    print(f"   📊 Top categories:", flush=True)
+    print("   📊 Top categories:", flush=True)
     for cat, info in sorted_cats[:3]:
         print(f"      - {cat}: score={info['score']} matches={info['matches'][:5]}", flush=True)
     

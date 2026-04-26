@@ -978,7 +978,7 @@ async def generate_chat_response_v4(
     # 🆕 v5.0: Détecter si la question nécessite un fact-checking critique
     needs_fact_check = _needs_critical_fact_check(question)
     if needs_fact_check:
-        print(f"⚠️ [CHAT v5.0] Critical fact-check needed for question", flush=True)
+        print("⚠️ [CHAT v5.0] Critical fact-check needed for question", flush=True)
     
     # 1. Générer la réponse de base avec Mistral
     base_response = await generate_chat_response(
@@ -1013,7 +1013,7 @@ async def generate_chat_response_v4(
             # L'utilisateur a demandé explicitement une recherche web
             if enrichment_level != EnrichmentLevel.NONE:
                 should_enrich = True
-                print(f"🌐 [CHAT v5.0] Web search requested by user", flush=True)
+                print("🌐 [CHAT v5.0] Web search requested by user", flush=True)
         
         # 🆕 v5.0: Fact-checking automatique pour questions critiques
         elif needs_fact_check:
@@ -1021,10 +1021,10 @@ async def generate_chat_response_v4(
             # Pro a accès au fact-checking
             if user_plan in ["pro"]:
                 should_enrich = True
-                print(f"🔍 [CHAT v5.0] Critical fact-check triggered (pro plan)", flush=True)
+                print("🔍 [CHAT v5.0] Critical fact-check triggered (pro plan)", flush=True)
             else:
                 # Free: pas de fact-checking, mais on ajoute un avertissement
-                print(f"⚠️ [CHAT v5.0] Fact-check needed but not available for free plan", flush=True)
+                print("⚠️ [CHAT v5.0] Fact-check needed but not available for free plan", flush=True)
 
         # Enrichissement automatique standard pour Pro
         elif enrichment_level in [EnrichmentLevel.FULL, EnrichmentLevel.DEEP]:
@@ -1061,7 +1061,7 @@ async def generate_chat_response_v4(
         disclaimer = _get_fact_check_disclaimer(lang, user_plan)
         if disclaimer:
             base_response = f"{base_response}\n\n{disclaimer}"
-            print(f"⚠️ [CHAT v5.0] Added fact-check disclaimer", flush=True)
+            print("⚠️ [CHAT v5.0] Added fact-check disclaimer", flush=True)
     
     return base_response, sources, web_search_used
 

@@ -11,7 +11,7 @@ import logging
 from typing import Optional
 
 import httpx
-from sqlalchemy import select, delete
+from sqlalchemy import select
 
 from db.database import (
     async_session_maker, TranscriptCache, TranscriptCacheChunk, TranscriptEmbedding

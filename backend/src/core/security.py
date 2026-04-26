@@ -15,9 +15,9 @@ import asyncio
 import hashlib
 import time
 import secrets
-from datetime import datetime, date, timedelta
-from typing import Optional, Dict, Any, Tuple, List
-from sqlalchemy import select, update, func, and_
+from datetime import datetime, date
+from typing import Optional, Dict, Any, Tuple
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from enum import Enum
 

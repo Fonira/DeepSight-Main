@@ -10,7 +10,7 @@
 
 import re
 import math
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict
 from dataclasses import dataclass
 from collections import Counter
 

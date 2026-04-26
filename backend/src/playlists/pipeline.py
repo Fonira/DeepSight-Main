@@ -18,22 +18,18 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List, Callable, Awaitable
 from dataclasses import dataclass, field
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
 
 from db.database import (
-    get_session, User, Summary, PlaylistAnalysis, VideoChunk
+    User, Summary, PlaylistAnalysis, VideoChunk
 )
-from core.config import get_mistral_key, PLAN_LIMITS
+from core.config import get_mistral_key
 from videos.analysis import generate_summary, detect_category
 from transcripts import (
     extract_video_id, get_video_info, get_transcript_with_timestamps
 )
 
 from .chunker import (
-    create_chunking_plan, create_playlist_chunking_report,
-    ChunkingPlan, PlaylistChunk, PlaylistChunkingReport
+    create_chunking_plan, PlaylistChunk
 )
 
 import logging

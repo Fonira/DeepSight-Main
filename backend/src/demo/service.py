@@ -5,7 +5,6 @@ Generates ultra-short summaries and handles demo chat sessions via Redis.
 
 import json
 import logging
-import uuid
 from typing import Optional, Dict, List, Tuple
 
 logger = logging.getLogger(__name__)

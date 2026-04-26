@@ -1197,7 +1197,7 @@ async def generate_chat_response_v4(
                 # L'utilisateur a demandé explicitement une recherche web
                 should_search = True
                 search_reason = "user_requested"
-                print(f"🌐 [CHAT v5.0] Web search explicitly requested by user", flush=True)
+                print("🌐 [CHAT v5.0] Web search explicitly requested by user", flush=True)
             else:
                 # Détection INTELLIGENTE: la question nécessite-t-elle des infos récentes?
                 should_search, search_reason = needs_web_search_for_chat(question, video_title)
@@ -1220,7 +1220,7 @@ async def generate_chat_response_v4(
                         web_search_used = True
                         print(f"✅ [CHAT v5.0] Got web context: {len(web_context)} chars, {len(sources)} sources", flush=True)
                     else:
-                        print(f"⚠️ [CHAT v5.0] Web search returned no useful context", flush=True)
+                        print("⚠️ [CHAT v5.0] Web search returned no useful context", flush=True)
                         
                 except Exception as e:
                     print(f"⚠️ [CHAT v5.0] Web enrichment failed: {e}", flush=True)
@@ -1256,7 +1256,7 @@ async def generate_chat_response_v4(
 
 {web_context}"""
         
-        print(f"✅ [CHAT v5.0] Added web context to response", flush=True)
+        print("✅ [CHAT v5.0] Added web context to response", flush=True)
     
     return base_response, sources, web_search_used
 

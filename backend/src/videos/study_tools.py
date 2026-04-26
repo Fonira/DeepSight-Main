@@ -6,14 +6,12 @@
 """
 
 import sys
-import httpx
 import json
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 
 # Import configuration
-from core.config import get_mistral_key
 from core.llm_provider import llm_complete
 
 # Message de startup visible
@@ -117,9 +115,9 @@ def safe_json_parse(text: str, context: str = "JSON") -> Dict[str, Any]:
     log(f"❌ [{context}] ÉCHEC PARSING - Contenu reçu:")
     log(f"--- DÉBUT ({original_len} chars) ---")
     log(text[:500])
-    log(f"--- FIN ---")
+    log("--- FIN ---")
     
-    raise ValueError(f"Impossible de parser le JSON")
+    raise ValueError("Impossible de parser le JSON")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -237,11 +235,11 @@ async def generate_study_card(
     """
     Génère une fiche de révision complète.
     """
-    log(f"")
-    log(f"🎓 ═══════════════════════════════════════════════════")
-    log(f"🎓 GÉNÉRATION FICHE DE RÉVISION")
+    log("")
+    log("🎓 ═══════════════════════════════════════════════════")
+    log("🎓 GÉNÉRATION FICHE DE RÉVISION")
     log(f"🎓 Titre: {title[:50]}...")
-    log(f"🎓 ═══════════════════════════════════════════════════")
+    log("🎓 ═══════════════════════════════════════════════════")
     
     # Préparer le prompt
     summary_short = (summary or "")[:2500]
@@ -289,11 +287,11 @@ async def generate_concept_map(
     """
     Génère un arbre pédagogique (mindmap) au format Mermaid.
     """
-    log(f"")
-    log(f"🌳 ═══════════════════════════════════════════════════")
-    log(f"🌳 GÉNÉRATION ARBRE PÉDAGOGIQUE")
+    log("")
+    log("🌳 ═══════════════════════════════════════════════════")
+    log("🌳 GÉNÉRATION ARBRE PÉDAGOGIQUE")
     log(f"🌳 Titre: {title[:50]}...")
-    log(f"🌳 ═══════════════════════════════════════════════════")
+    log("🌳 ═══════════════════════════════════════════════════")
     
     # Préparer le prompt
     summary_short = (summary or "")[:3000]

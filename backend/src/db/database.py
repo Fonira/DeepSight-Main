@@ -6,17 +6,16 @@
 
 import os
 import hashlib
-from datetime import datetime
-from typing import Optional, AsyncGenerator
+from typing import AsyncGenerator
 from sqlalchemy import (
     Column, Integer, String, Text, Float, Boolean, DateTime, Date,
-    ForeignKey, Index, create_engine, event, UniqueConstraint, text
+    ForeignKey, Index, UniqueConstraint, text
 )
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 
-from core.config import DATA_DIR, IS_RAILWAY, ADMIN_CONFIG
+from core.config import DATA_DIR, ADMIN_CONFIG
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 CONFIGURATION DATABASE

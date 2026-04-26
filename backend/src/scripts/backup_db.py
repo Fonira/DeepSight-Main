@@ -13,10 +13,8 @@ import gzip
 import io
 import os
 import sys
-import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
@@ -74,7 +72,7 @@ def dump_database_sql(dsn: str) -> bytes:
     conn.set_session(readonly=True)
 
     buf = io.StringIO()
-    buf.write(f"-- Deep Sight database backup\n")
+    buf.write("-- Deep Sight database backup\n")
     buf.write(f"-- Generated: {datetime.now(timezone.utc).isoformat()}\n")
     buf.write(f"-- Source: {urlparse(dsn).hostname}\n\n")
     buf.write("BEGIN;\n\n")

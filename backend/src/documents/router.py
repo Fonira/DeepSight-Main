@@ -9,14 +9,12 @@ Endpoints:
     POST /api/documents/ask             — Ask a question about a document
 """
 
-import base64
 import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from pydantic import BaseModel
-from typing import Optional, List
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 
-from db.database import User, get_session
+from db.database import User
 from auth.dependencies import get_current_user
 from billing.permissions import require_feature
 

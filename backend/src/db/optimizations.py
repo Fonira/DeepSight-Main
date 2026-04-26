@@ -22,13 +22,12 @@ Usage:
 """
 
 import os
-from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 
-from sqlalchemy import text, Index, event
+from sqlalchemy import text, event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy.pool import QueuePool
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 DATABASE ENGINE CONFIGURATION

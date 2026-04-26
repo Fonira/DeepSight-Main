@@ -9,16 +9,12 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import httpx
-import json
-import re
 from typing import Optional, Dict, Any, List, Tuple
 from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 
-from core.config import PLAN_LIMITS
-from videos.web_search_provider import web_search_and_synthesize, web_search_batch, WebSearchResult
+from videos.web_search_provider import web_search_and_synthesize
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1062,7 +1058,7 @@ Factuel, sources citées. Max 800 mots."""
 
 🎯 Verify claims, find contradictions, add context, update data, counter-arguments, reliability /10. Max 800 words."""
 
-    print(f"🔬 [DEEP_RESEARCH] Calling Perplexity sonar-pro...", flush=True)
+    print("🔬 [DEEP_RESEARCH] Calling Perplexity sonar-pro...", flush=True)
     result = await call_perplexity(prompt, EnrichmentLevel.DEEP_RESEARCH)
 
     if not result.success:

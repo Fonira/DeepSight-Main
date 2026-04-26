@@ -373,7 +373,7 @@ class CacheService:
             if result:
                 self.stats.deletes += 1
             return result
-        except Exception as e:
+        except Exception:
             self.stats.errors += 1
             return False
     

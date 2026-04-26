@@ -7,17 +7,15 @@
 
 import re
 import json
-import httpx
-from typing import Optional, List, Dict, Any, Tuple
-from datetime import datetime
+from typing import List, Dict, Any
 
-from core.config import get_mistral_key, get_perplexity_key
+from core.config import get_mistral_key
 from core.config import MISTRAL_INTERNAL_MODEL
 from core.http_client import shared_http_client
 
 from .schemas import (
     VideoMetadataEnriched, PublicFigure, SponsorshipInfo, SponsorshipType,
-    PropagandaAnalysis, PropagandaRisk, PublicationIntent, SentimentType
+    PropagandaAnalysis, PropagandaRisk, PublicationIntent
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════

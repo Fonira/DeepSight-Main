@@ -131,13 +131,13 @@ def export_to_docx(
     doc.add_heading(f"📺 {title}", level=1)
     
     info_para = doc.add_paragraph()
-    info_para.add_run(f"Chaîne: ").bold = True
+    info_para.add_run("Chaîne: ").bold = True
     info_para.add_run(f"{channel}\n")
-    info_para.add_run(f"URL: ").bold = True
+    info_para.add_run("URL: ").bold = True
     info_para.add_run(f"{video_url}\n")
-    info_para.add_run(f"Catégorie: ").bold = True
+    info_para.add_run("Catégorie: ").bold = True
     info_para.add_run(f"{category}\n")
-    info_para.add_run(f"Mode: ").bold = True
+    info_para.add_run("Mode: ").bold = True
     info_para.add_run(f"{mode}\n")
     
     # Ligne de séparation

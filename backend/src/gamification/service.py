@@ -4,8 +4,8 @@ Gamification service — XP, streaks, mastery, heat-map.
 
 import logging
 import math
-from datetime import date, datetime, timedelta
-from typing import List, Dict, Any, Tuple, Optional
+from datetime import date, timedelta
+from typing import List, Dict, Any, Tuple
 
 from sqlalchemy import select, func, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +14,6 @@ from db.database import (
     UserStudyStats,
     StudyDailyActivity,
     FlashcardReview,
-    StudySession,
     Summary,
 )
 
@@ -139,8 +138,6 @@ async def get_video_mastery(
     Includes videos with NO flashcard reviews (mastery = 0%).
     A card is "mastered" if state >= 2 (Review or above).
     """
-    from sqlalchemy.orm import aliased
-    from datetime import datetime as dt
 
     # ── Subquery: flashcard stats per summary ──
     review_stats = (

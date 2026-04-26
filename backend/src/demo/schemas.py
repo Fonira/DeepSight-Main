@@ -3,7 +3,7 @@ Demo Schemas — Pydantic models for landing page demo endpoints.
 """
 
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

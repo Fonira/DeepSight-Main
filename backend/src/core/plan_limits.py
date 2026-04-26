@@ -17,8 +17,6 @@ from billing.plan_config import (
     normalize_plan_id,
     get_plan,
     get_limits,
-    get_plan_index,
-    PLAN_HIERARCHY,
     PlanId,
 )
 

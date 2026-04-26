@@ -9,7 +9,7 @@ All TTS/Voice endpoints read from this to apply user-selected settings.
 import json
 import logging
 from typing import Optional
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update

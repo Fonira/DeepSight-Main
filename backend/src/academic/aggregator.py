@@ -159,7 +159,7 @@ class AcademicAggregator:
             if len(clean_title) > 10:
                 title_query = clean_title
 
-        print(f"Academic search queries:", flush=True)
+        print("Academic search queries:", flush=True)
         print(f"  Focused: {focused_query}", flush=True)
         print(f"  Broad: {broad_query}", flush=True)
         print(f"  Simple: {simple_query}", flush=True)

@@ -16,7 +16,7 @@ import json
 import logging
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select
@@ -24,9 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.http_client import shared_http_client
 from auth.dependencies import get_current_user, require_credits
-from core.config import get_mistral_key, PLAN_LIMITS
+from core.config import PLAN_LIMITS
 from core.llm_provider import llm_complete
-from videos.web_search_provider import web_search_and_synthesize, WebSearchResult
+from videos.web_search_provider import web_search_and_synthesize
 from core.credits import deduct_credits
 from db.database import (
     DebateAnalysis,

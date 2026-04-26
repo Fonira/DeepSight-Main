@@ -12,7 +12,6 @@
 """
 
 import secrets
-import hashlib
 import httpx
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
@@ -22,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import (
     JWT_CONFIG, GOOGLE_OAUTH_CONFIG, EMAIL_CONFIG, 
-    PLAN_LIMITS, FRONTEND_URL, APP_URL, ADMIN_CONFIG
+    PLAN_LIMITS, APP_URL, ADMIN_CONFIG
 )
 from db.database import User, ChatQuota, WebSearchUsage, hash_password, verify_password
 

@@ -7,14 +7,12 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import httpx
 import json
 import re
 import asyncio
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 from dataclasses import dataclass
-from datetime import datetime
 
 logger = logging.getLogger("deepsight.concepts")
 

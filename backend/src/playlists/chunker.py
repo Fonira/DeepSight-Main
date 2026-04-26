@@ -37,7 +37,6 @@ CHUNK_CONFIGS = {
 }
 
 # Limites Mistral — importées depuis core/config (source of truth unique)
-from core.config import MISTRAL_CONTEXT_WINDOWS as MISTRAL_CONTEXT_LIMITS
 
 # Estimation chars → tokens
 CHARS_PER_TOKEN = 4

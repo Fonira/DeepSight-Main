@@ -8,12 +8,9 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import os
 import base64
-import hashlib
-from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -187,7 +184,7 @@ async def upload_avatar(
     if file.content_type not in allowed_types:
         raise HTTPException(
             status_code=400,
-            detail=f"Type de fichier non supporté. Acceptés: PNG, JPG, GIF, WebP"
+            detail="Type de fichier non supporté. Acceptés: PNG, JPG, GIF, WebP"
         )
     
     # Lire le contenu

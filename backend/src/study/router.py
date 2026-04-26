@@ -9,10 +9,10 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
-from db.database import get_session, User, Summary
+from db.database import get_session, User
 from auth.dependencies import get_current_user
 from videos.service import get_summary_by_id, deduct_credit
 from videos.study_tools import generate_study_card, generate_concept_map, generate_study_materials

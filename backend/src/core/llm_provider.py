@@ -31,7 +31,7 @@ Usage:
 import asyncio
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
@@ -41,7 +41,6 @@ from core.config import (
     get_deepseek_key,
     is_deepseek_available,
     resolve_mistral_model,
-    MISTRAL_MODELS,
 )
 
 

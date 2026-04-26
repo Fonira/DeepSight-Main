@@ -383,7 +383,7 @@ LEGAL_CONFIG = {
 def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
     """Construit PLAN_LIMITS à partir du SSOT plan_config pour rétrocompatibilité."""
     try:
-        from billing.plan_config import PLANS, PlanId, get_limits
+        from billing.plan_config import PLANS, PlanId
 
         legacy = {}
         for plan_id in [PlanId.FREE, PlanId.PLUS, PlanId.PRO]:

@@ -24,12 +24,11 @@ Quality filters:
 """
 
 import asyncio
-import io
 import json
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import httpx
 from sqlalchemy import select, func, and_

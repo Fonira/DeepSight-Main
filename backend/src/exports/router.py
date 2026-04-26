@@ -14,12 +14,10 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from pydantic import BaseModel, Field
 from typing import Optional, List
-import io
 
 logger = logging.getLogger(__name__)
 
@@ -328,7 +326,7 @@ def _generate_simple_flashcards(concepts: List[str], summary: str) -> List[dict]
         else:
             flashcards.append({
                 "front": concept,
-                "back": f"Concept clé mentionné dans la vidéo."
+                "back": "Concept clé mentionné dans la vidéo."
             })
     
     return flashcards

@@ -4,7 +4,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
@@ -15,7 +15,7 @@ from .schemas import (
     UserRegister, UserLogin, RefreshTokenRequest, VerifyEmailRequest,
     ResendVerificationRequest, ForgotPasswordRequest, ResetPasswordRequest,
     ChangePasswordRequest, UpdatePreferencesRequest, GoogleCallbackRequest,
-    GoogleTokenRequest, GoogleMobileTokenRequest, DeleteAccountRequest,
+    GoogleMobileTokenRequest, DeleteAccountRequest,
     UserResponse, TokenResponse, AuthUrlResponse, MessageResponse, QuotaResponse
 )
 from .service import (
@@ -27,7 +27,7 @@ from .service import (
     login_or_register_google_user, create_user_session, invalidate_user_session,
     validate_session_token, verify_google_id_token
 )
-from .dependencies import get_current_user, get_current_user_optional
+from .dependencies import get_current_user
 from .email import send_verification_email, send_password_reset_email, send_welcome_email
 
 router = APIRouter()

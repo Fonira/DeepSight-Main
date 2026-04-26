@@ -11,7 +11,6 @@ import asyncio
 import os
 from typing import List, Optional
 import httpx
-from datetime import datetime
 
 from .schemas import AcademicPaper, Author, AcademicSource
 

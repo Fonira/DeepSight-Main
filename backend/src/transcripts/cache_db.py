@@ -16,7 +16,6 @@ import logging
 from typing import Optional, Tuple
 
 from sqlalchemy import select, delete
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import async_session_maker, TranscriptCache, TranscriptCacheChunk
 

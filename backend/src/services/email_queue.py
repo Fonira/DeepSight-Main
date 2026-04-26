@@ -24,7 +24,6 @@ import httpx
 
 from core.config import EMAIL_CONFIG, APP_NAME
 from core.email_rate_limiter import (
-    RESEND_LIMITER,
     ResendRateLimitError,
     send_with_rate_limit,
 )

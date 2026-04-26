@@ -22,13 +22,12 @@ import asyncio
 import subprocess
 import hashlib
 import time
-from typing import List, Dict, Optional, Tuple, Any, Set
+from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from collections import Counter, defaultdict
 import logging
 
-import httpx
 from core.config import MISTRAL_INTERNAL_MODEL
 from core.http_client import shared_http_client
 
@@ -1172,7 +1171,7 @@ class IntelligentDiscoveryService:
         has_tournesol = any(c.is_tournesol_pick for c in final_candidates[:5])
         
         if not has_tournesol:
-            print(f"🌻 [DISCOVER v4.0] No Tournesol in top 5, fetching one...", flush=True)
+            print("🌻 [DISCOVER v4.0] No Tournesol in top 5, fetching one...", flush=True)
             existing_ids = [c.video_id for c in final_candidates]
             tournesol_pick = await TournesolPromotion.get_tournesol_pick(query, existing_ids)
             

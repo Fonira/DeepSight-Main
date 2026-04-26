@@ -3,7 +3,6 @@ Fun Scoring — Priorise les mots-clés les plus intéressants visuellement.
 Score 0.0–1.0 détermine l'ordre de génération d'images (pas si on génère ou non).
 """
 
-import re
 
 # Base score par catégorie
 CATEGORY_SCORES: dict[str, float] = {

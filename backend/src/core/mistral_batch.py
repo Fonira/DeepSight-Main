@@ -28,11 +28,10 @@ Usage:
 """
 
 import asyncio
-import io
 import json
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from core.http_client import shared_http_client

@@ -856,7 +856,7 @@ async def analyze_video(
                     task_id=f"cached_{existing.id}",
                     status="completed",
                     progress=100,
-                    message=f"✅ Analyse retrouvée en cache (gratuit!)",
+                    message="✅ Analyse retrouvée en cache (gratuit!)",
                     result={
                         "summary_id": existing.id,
                         "cached": True,
@@ -869,7 +869,7 @@ async def analyze_video(
             else:
                 logger.info(f"⏰ [CACHE EXPIRED] Cache too old ({cache_age.days} days), re-analyzing...")
     else:
-        logger.info(f"🔄 [FORCE REFRESH] Bypassing cache as requested")
+        logger.info("🔄 [FORCE REFRESH] Bypassing cache as requested")
     
     # 🔐 Générer un ID d'opération sécurisé
     if SECURITY_AVAILABLE:
@@ -1693,17 +1693,17 @@ async def analyze_video_v2_1(
     # Anti-AI detection: Pro only
     if customization.anti_ai_detection and not is_premium:
         customization.anti_ai_detection = False
-        logger.warning(f"⚠️ [v2.1] Anti-AI disabled (requires Pro)")
+        logger.warning("⚠️ [v2.1] Anti-AI disabled (requires Pro)")
 
     # Analyse des commentaires: Pro only
     if customization.analyze_comments and not is_premium:
         customization.analyze_comments = False
-        logger.warning(f"⚠️ [v2.1] Comments analysis disabled (requires Pro)")
+        logger.warning("⚠️ [v2.1] Comments analysis disabled (requires Pro)")
 
     # Analyse de propagande: Pro only (advanced feature)
     if customization.detect_propaganda and current_user.plan not in ["pro"]:
         customization.detect_propaganda = False
-        logger.warning(f"⚠️ [v2.1] Propaganda analysis disabled (requires Pro)")
+        logger.warning("⚠️ [v2.1] Propaganda analysis disabled (requires Pro)")
     
     # Analyse d'intention: Pro/Expert only
     if customization.analyze_publication_intent and not is_premium:
@@ -2031,7 +2031,7 @@ async def _analyze_video_background_v2_1(
                         extract_figures=custom_opts.get("extract_public_figures", True),
                         lang=lang
                     )
-                    logger.info(f"✅ [v2.1] Metadata enriched")
+                    logger.info("✅ [v2.1] Metadata enriched")
                     return result
                 except Exception as e:
                     logger.error(f"⚠️ [v2.1] Metadata enrichment failed: {e}")
@@ -2063,7 +2063,7 @@ async def _analyze_video_background_v2_1(
             )
             web_context = _web_ctx
             enrichment_sources = _enrich_src
-            logger.info(f"⚡ [v2.1.1] Category + comments + metadata + web computed in PARALLEL")
+            logger.info("⚡ [v2.1.1] Category + comments + metadata + web computed in PARALLEL")
 
             # ═══════════════════════════════════════════════════════════════════
             # 7. 🆕 CONSTRUIRE LE PROMPT PERSONNALISÉ
@@ -2514,7 +2514,7 @@ async def _analyze_video_background_v6(
     # 🆕 v5.5: Si deep_research activé, utiliser enrichissement maximal
     if deep_research:
         enrichment_level = EnrichmentLevel.DEEP
-        logger.info(f"🔬 [v5.5] Deep research enabled - using DEEP enrichment")
+        logger.info("🔬 [v5.5] Deep research enabled - using DEEP enrichment")
     else:
         # Déterminer le niveau d'enrichissement selon le plan
         enrichment_level = get_enrichment_level(user_plan)
@@ -2650,7 +2650,7 @@ async def _analyze_video_background_v6(
                                 transcript = "[SLIDESHOW — " + str(len(_slideshow_frames)) + " slides]" + chr(10) + chr(10) + _slide_result
                                 logger.info(f"🎞️ [SLIDESHOW] Vision OCR success: {len(_slide_result)} chars")
                             else:
-                                logger.error(f"🎞️ [SLIDESHOW] Vision OCR failed")
+                                logger.error("🎞️ [SLIDESHOW] Vision OCR failed")
                     except Exception as _se:
                         logger.error(f"🎞️ [SLIDESHOW] Error: {_se}")
                 
@@ -2690,7 +2690,7 @@ async def _analyze_video_background_v6(
                 if enrichment_level == EnrichmentLevel.NONE:
                     logger.warning(f"⏭️ [v5.0] Skipping web enrichment (plan={user_plan})")
                     return None, [], enrichment_level
-                logger.info(f"🌐 [v5.0] PRE-ANALYSIS: Fetching web context from Perplexity...")
+                logger.info("🌐 [v5.0] PRE-ANALYSIS: Fetching web context from Perplexity...")
                 try:
                     # Note: pour l'enrichissement, on passe "auto" comme catégorie provisoire
                     # car la catégorie finale est détectée en parallèle
@@ -2706,7 +2706,7 @@ async def _analyze_video_background_v6(
                     if _wc:
                         logger.info(f"✅ [v5.0] PRE-ANALYSIS: Got {len(_wc)} chars, {len(_es)} sources")
                     else:
-                        logger.warning(f"⚠️ [v5.0] PRE-ANALYSIS: No web context returned")
+                        logger.warning("⚠️ [v5.0] PRE-ANALYSIS: No web context returned")
                     return _wc, _es, _al
                 except Exception as e:
                     logger.error(f"⚠️ [v5.0] PRE-ANALYSIS failed (continuing without): {e}")
@@ -2721,7 +2721,7 @@ async def _analyze_video_background_v6(
             enrichment_sources = _enrich_src
 
             _task_store[task_id]["progress"] = 45
-            logger.info(f"⚡ [v6.1] Category + web enrichment computed in PARALLEL")
+            logger.info("⚡ [v6.1] Category + web enrichment computed in PARALLEL")
             
             # ═══════════════════════════════════════════════════════════════════
             # 5. GÉNÉRER LE RÉSUMÉ (MISTRAL) AVEC CONTEXTE WEB
@@ -2870,7 +2870,7 @@ async def _analyze_video_background_v6(
             if entities and len(entities) > 5:
                 reliability = min(98, reliability + 2)  # Bonus pour richesse d'entités
 
-            logger.info(f"⚡ [v6.1] Entities + reliability computed in PARALLEL")
+            logger.info("⚡ [v6.1] Entities + reliability computed in PARALLEL")
             
             # Bonus de fiabilité si enrichi avec Perplexity (PRÉ-ANALYSE)
             if enrichment_sources:
@@ -4722,7 +4722,7 @@ async def _analyze_images_background(
                 # TOUJOURS appeler Vision quand OCR n'a pas trouvé d'URL directe
                 # Vision est beaucoup plus fiable que le parsing OCR pour extraire titre/chaîne
                 if not video_url:
-                    logger.info(f"🔍 [IMAGES] No direct URL from OCR, calling Vision for title extraction...")
+                    logger.info("🔍 [IMAGES] No direct URL from OCR, calling Vision for title extraction...")
                     _task_store[task_id]["message"] = f"Analyse visuelle du screenshot {platform}..."
                     vision_result = await _detect_video_screenshot_vision(images[0], api_key, platform)
                     if vision_result:
@@ -4738,7 +4738,7 @@ async def _analyze_images_background(
                             search_query = ocr_query
                             logger.error(f"⚠️ [IMAGES] Vision failed, using OCR query: '{search_query}'")
                         else:
-                            logger.error(f"❌ [IMAGES] Both Vision and OCR queries are garbage")
+                            logger.error("❌ [IMAGES] Both Vision and OCR queries are garbage")
                     elif not _is_garbage_query(ocr_query):
                         logger.warning(f"⚠️ [IMAGES] Vision returned nothing, using OCR query: '{search_query}'")
                     else:
@@ -5145,7 +5145,7 @@ async def _extract_slideshow_frames(
 
             ok = await loop.run_in_executor(None, run_dl)
             if not ok or not os.path.exists(video_path):
-                logger.error(f"🎞️ [SLIDESHOW] Download failed")
+                logger.error("🎞️ [SLIDESHOW] Download failed")
                 return None
 
             def get_dur():
@@ -5185,12 +5185,12 @@ async def _extract_slideshow_frames(
 
             ok = await loop.run_in_executor(None, do_ff)
             if not ok:
-                logger.error(f"🎞️ [SLIDESHOW] ffmpeg extraction failed")
+                logger.error("🎞️ [SLIDESHOW] ffmpeg extraction failed")
                 return None
 
             frame_files = sorted(glob_module.glob(os.path.join(tmpdir, "frame_*.jpg")))
             if not frame_files:
-                logger.info(f"🎞️ [SLIDESHOW] No frames found")
+                logger.info("🎞️ [SLIDESHOW] No frames found")
                 return None
 
             frames = []

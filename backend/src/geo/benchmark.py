@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import Summary
 from .scorer import compute_geo_score
-from .schemas import GeoScoreBreakdown
 
 log = logging.getLogger("geo")
 

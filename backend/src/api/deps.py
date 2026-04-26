@@ -2,7 +2,6 @@
 API Dependencies — Injection de dépendances pour les endpoints API.
 """
 
-from typing import Optional
 
 
 async def get_cache():

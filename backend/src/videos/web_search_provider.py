@@ -11,16 +11,15 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import httpx
 import asyncio
 import json
-from typing import Optional, List, Dict, Literal, Any
+from typing import Optional, List, Dict, Literal
 from dataclasses import dataclass, field
 import logging
 
 from core.config import get_mistral_key, get_brave_key, is_mistral_agent_available
 from core.llm_provider import llm_complete
-from videos.brave_search import _call_brave_api, BraveSearchResult
+from videos.brave_search import _call_brave_api
 
 logger = logging.getLogger(__name__)
 

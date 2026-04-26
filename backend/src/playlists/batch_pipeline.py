@@ -16,7 +16,6 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from core.llm_provider import llm_complete_batch
-from core.mistral_batch import BatchRequest
 from videos.analysis import build_analysis_prompt, detect_category
 from transcripts import extract_video_id, get_video_info, get_transcript_with_timestamps
 

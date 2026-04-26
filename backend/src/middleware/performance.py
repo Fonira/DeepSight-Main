@@ -17,8 +17,7 @@ import time
 import json
 import gzip
 from datetime import datetime
-from typing import Callable, Dict, Any, Optional
-from io import BytesIO
+from typing import Dict, Any
 
 from fastapi import Request, Response
 from fastapi.responses import StreamingResponse

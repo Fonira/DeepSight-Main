@@ -9,7 +9,6 @@ Tous ces tools lisent DebateAnalysis (pas Summary). Ownership vérifié au nivea
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Optional
 

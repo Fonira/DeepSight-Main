@@ -7,12 +7,9 @@
 
 import re
 import json
-import httpx
-import asyncio
-from typing import Optional, List, Dict, Any, Tuple
-from datetime import datetime
+from typing import List, Dict, Any, Tuple
 
-from core.config import get_mistral_key, MISTRAL_MODELS
+from core.config import get_mistral_key
 from core.http_client import shared_http_client
 
 from .schemas import (
@@ -122,11 +119,11 @@ async def fetch_youtube_comments(
         if os.path.exists(temp_path):
             os.unlink(temp_path)
         
-        print(f"⚠️ [COMMENTS] No comments found or extraction failed", flush=True)
+        print("⚠️ [COMMENTS] No comments found or extraction failed", flush=True)
         return []
         
     except subprocess.TimeoutExpired:
-        print(f"⚠️ [COMMENTS] Timeout while fetching comments", flush=True)
+        print("⚠️ [COMMENTS] Timeout while fetching comments", flush=True)
         return []
     except Exception as e:
         print(f"❌ [COMMENTS] Error fetching comments: {e}", flush=True)

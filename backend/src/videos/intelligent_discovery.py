@@ -19,9 +19,9 @@ import json
 import math
 import asyncio
 import subprocess
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from collections import Counter
 import logging
 
@@ -756,7 +756,7 @@ class QualityScorer:
                         print(f"🌻 [TOURNESOL] {video_id}: raw={raw_score}, normalized={normalized:.2f} (fallback)", flush=True)
                         return max(0.0, min(1.0, normalized))
                     
-        except Exception as e:
+        except Exception:
             # Silencieux - beaucoup de vidéos n'ont pas de score Tournesol
             pass
         
@@ -1384,7 +1384,7 @@ class IntelligentDiscovery:
         has_tournesol_in_top5 = any(c.is_tournesol_pick for c in final_candidates[:5])
         
         if not has_tournesol_in_top5:
-            print(f"🌻 [PROMO] No Tournesol in top 5, calling Tournesol API...", flush=True)
+            print("🌻 [PROMO] No Tournesol in top 5, calling Tournesol API...", flush=True)
             existing_ids = [c.video_id for c in final_candidates]
             tournesol_pick = await TournesolPromotion.get_tournesol_pick(query, existing_ids)
             
@@ -1402,7 +1402,7 @@ class IntelligentDiscovery:
                 print(f"🌻 [PROMO] API pick added at position {insert_position + 1}: {tournesol_pick.title[:40]}", flush=True)
             else:
                 # 🌻 FALLBACK HARDCODÉ - Toujours avoir une vidéo Tournesol
-                print(f"🌻 [PROMO] Using hardcoded Tournesol fallback", flush=True)
+                print("🌻 [PROMO] Using hardcoded Tournesol fallback", flush=True)
                 fallback_pick = TournesolPromotion.get_hardcoded_fallback(existing_ids)
                 if fallback_pick:
                     fallback_pick.is_tournesol_pick = True
@@ -1670,7 +1670,6 @@ class IntelligentDiscoveryService:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 import hashlib
-from core.http_client import shared_http_client
 
 def generate_text_video_id(text: str) -> str:
     """Génère un ID unique pour une analyse de texte brut"""

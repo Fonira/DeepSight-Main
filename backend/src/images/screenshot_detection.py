@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
-from core.config import BRAVE_SEARCH_API_KEY, get_mistral_key
+from core.config import BRAVE_SEARCH_API_KEY
 
 logger = logging.getLogger(__name__)
 

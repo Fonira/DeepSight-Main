@@ -4,7 +4,7 @@ Tous les envois passent par la queue async avec throttling (email_queue.py).
 """
 
 from typing import Optional
-from core.config import EMAIL_CONFIG, APP_NAME, FRONTEND_URL
+from core.config import APP_NAME, FRONTEND_URL
 
 EMAIL_BASE_STYLE = """
 <style>

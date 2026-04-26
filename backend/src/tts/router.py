@@ -15,7 +15,7 @@ from billing.permissions import require_feature
 from core.config import get_elevenlabs_key
 from middleware.rate_limiter import InMemoryBackend
 from tts.schemas import TTSRequest
-from tts.service import clean_text_for_tts, get_voice_id, DEFAULT_MODEL_ID, elevenlabs_circuit
+from tts.service import clean_text_for_tts, get_voice_id
 from tts.providers import get_tts_provider
 
 logger = logging.getLogger(__name__)
@@ -201,8 +201,6 @@ async def generate_audio_summary(
     Body (optional): { language?, gender?, speed?, force_regenerate? }
     Returns: { audio_url, duration_estimate, script_chars, cached, language, gender }
     """
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from db.database import get_session as _get_session
     from tts.audio_summary import (
         get_or_generate_audio_summary,
         AUDIO_SUMMARY_LIMITS,
@@ -249,11 +247,8 @@ async def generate_audio_summary(
     speed = max(0.25, min(4.0, float(speed)))
 
     # ── Verify summary ownership ─────────────────────────────────────────
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from db.database import get_session
 
     # We need a DB session — use the same dependency pattern
-    from fastapi import Depends as _Depends
 
     # Direct session creation for this endpoint
     from db.database import async_session_maker

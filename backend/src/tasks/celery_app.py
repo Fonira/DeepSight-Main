@@ -13,7 +13,7 @@
 
 import os
 from datetime import timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 from celery import Celery, Task
 from celery.schedules import crontab
 from kombu import Queue, Exchange
@@ -269,7 +269,7 @@ class BaseTask(Task):
                 f"task_progress:{self.request.id}",
                 f"{progress}:{message}"
             )
-        except Exception as e:
+        except Exception:
             pass  # Silently fail
     
     def _notify_failure(self, user_id: int, task_id: str, error: str):

@@ -18,7 +18,7 @@ import math
 import re
 from typing import Optional, List, Dict
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.http_client import shared_http_client

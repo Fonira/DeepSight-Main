@@ -9,7 +9,6 @@
 """
 
 import time
-from uuid import uuid4
 from typing import Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware

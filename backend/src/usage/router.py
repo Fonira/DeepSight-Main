@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
+from typing import List, Optional
 from pydantic import BaseModel
 
 from db.database import get_session, User, Summary, CreditTransaction
@@ -21,8 +21,7 @@ from core.credits import (
     calculate_playlist_cost,
     get_credits_summary,
     MODEL_COSTS,
-    FEATURE_COSTS,
-    PLAN_CREDITS
+    FEATURE_COSTS
 )
 
 router = APIRouter()

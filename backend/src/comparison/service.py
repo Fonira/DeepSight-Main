@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import Summary, VideoComparison
 from videos.study_tools import call_mistral_json, safe_json_parse
-from core.credits import deduct_credits, check_credits, MODEL_COSTS
+from core.credits import deduct_credits, check_credits
 
 logger = logging.getLogger(__name__)
 

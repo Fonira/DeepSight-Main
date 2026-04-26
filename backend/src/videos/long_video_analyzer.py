@@ -21,10 +21,8 @@
 
 import re
 import asyncio
-import httpx
 from typing import List, Tuple, Optional, Dict, Any
 from dataclasses import dataclass, field
-from datetime import datetime
 
 from core.config import get_mistral_key
 from core.http_client import shared_http_client
@@ -266,7 +264,7 @@ def split_into_chunks_with_real_timestamps(
     if has_real_timestamps:
         print(f"✅ [TIMESTAMPS] Found {len(real_segments)} real timestamps", flush=True)
     else:
-        print(f"⚠️ [TIMESTAMPS] No real timestamps, using estimation", flush=True)
+        print("⚠️ [TIMESTAMPS] No real timestamps, using estimation", flush=True)
     
     words = transcript.split()
     total_words = len(words)
@@ -708,7 +706,7 @@ async def analyze_chunks_parallel(
             chunk = chunks[idx]
             report.warnings.append(f"  - Chunk {idx + 1}: {chunk.start_time} → {chunk.end_time} ({chunk.word_count} mots)")
     
-    print(f"📊 [FULL ANALYSIS] REPORT:", flush=True)
+    print("📊 [FULL ANALYSIS] REPORT:", flush=True)
     print(f"   - Total words: {total_words}", flush=True)
     print(f"   - Chunks: {len(successful_analyses)}/{total_chunks} analyzed", flush=True)
     print(f"   - Coverage: {coverage_percent:.1f}%", flush=True)
@@ -962,7 +960,7 @@ async def analyze_long_video(
     """
     from .duration_router import (
         categorize_video, get_optimal_model, get_concurrent_chunks,
-        needs_hierarchical_synthesis, HIERARCHICAL_GROUP_SIZE, VideoTier,
+        needs_hierarchical_synthesis, HIERARCHICAL_GROUP_SIZE,
     )
 
     needs_chunk, word_count, reason = needs_chunking(transcript)
@@ -985,10 +983,10 @@ async def analyze_long_video(
     )
     max_concurrent = get_concurrent_chunks(tier)
 
-    print(f"", flush=True)
-    print(f"╔══════════════════════════════════════════════════════════════════╗", flush=True)
-    print(f"║  📚 LONG VIDEO ANALYSIS v3.0 - INTELLIGENT MODEL ROUTING         ║", flush=True)
-    print(f"╚══════════════════════════════════════════════════════════════════╝", flush=True)
+    print("", flush=True)
+    print("╔══════════════════════════════════════════════════════════════════╗", flush=True)
+    print("║  📚 LONG VIDEO ANALYSIS v3.0 - INTELLIGENT MODEL ROUTING         ║", flush=True)
+    print("╚══════════════════════════════════════════════════════════════════╝", flush=True)
     print(f"📊 Transcript: {word_count} words", flush=True)
     print(f"⏱️ Duration: {video_duration // 60} min {video_duration % 60} sec", flush=True)
     print(f"📁 Category: {category} | 🎯 Mode: {mode} | 👤 Plan: {user_plan}", flush=True)
@@ -996,7 +994,7 @@ async def analyze_long_video(
     print(f"🧠 Synthesis model: {synthesis_model} (max {synthesis_max_tokens} tokens)", flush=True)
     print(f"⚡ Concurrence: {max_concurrent} chunks simultanés (tier: {tier.value})", flush=True)
     print(f"⏱️ Real timestamps: {'YES ✅' if transcript_timestamped else 'NO (estimated)'}", flush=True)
-    print(f"", flush=True)
+    print("", flush=True)
 
     if progress_callback:
         progress_callback(35, f"📚 Vidéo longue détectée ({word_count} mots)...")
@@ -1041,7 +1039,7 @@ async def analyze_long_video(
         for warning in report.warnings:
             print(f"   {warning}", flush=True)
     else:
-        print(f"✅ PERFECT: 100% coverage achieved!", flush=True)
+        print("✅ PERFECT: 100% coverage achieved!", flush=True)
 
     if not chunk_analyses:
         print("❌ CRITICAL: No chunk analyses succeeded at all!", flush=True)
@@ -1170,14 +1168,14 @@ async def analyze_long_video(
         else:
             progress_callback(95, "❌ Échec de la synthèse")
     
-    print(f"", flush=True)
-    print(f"╔══════════════════════════════════════════════════════════════════╗", flush=True)
-    print(f"║  📊 ANALYSIS COMPLETE                                            ║", flush=True)
-    print(f"╚══════════════════════════════════════════════════════════════════╝", flush=True)
+    print("", flush=True)
+    print("╔══════════════════════════════════════════════════════════════════╗", flush=True)
+    print("║  📊 ANALYSIS COMPLETE                                            ║", flush=True)
+    print("╚══════════════════════════════════════════════════════════════════╝", flush=True)
     print(f"✅ Chunks analyzed: {report.chunks_analyzed}/{report.total_chunks}", flush=True)
     print(f"📊 Coverage: {report.coverage_percent:.1f}%", flush=True)
     print(f"📝 Final summary: {len(final_summary.split()) if final_summary else 0} words", flush=True)
-    print(f"", flush=True)
+    print("", flush=True)
 
     # Retourner le résultat complet avec les chunks pour stockage ultérieur
     return LongVideoResult(

@@ -187,7 +187,7 @@ async def get_video_metadata(video_id: str) -> Dict[str, Any]:
         # Utiliser l'API YouTube oEmbed (pas besoin de clé)
         async with shared_http_client() as client:
             response = await client.get(
-                f"https://www.youtube.com/oembed",
+                "https://www.youtube.com/oembed",
                 params={"url": f"https://www.youtube.com/watch?v={video_id}", "format": "json"},
                 timeout=10
             )

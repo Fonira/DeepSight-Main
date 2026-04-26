@@ -10,7 +10,6 @@ import os
 import re
 import base64
 import logging
-import httpx
 from typing import Optional, Tuple, Dict
 from dataclasses import dataclass
 from enum import Enum

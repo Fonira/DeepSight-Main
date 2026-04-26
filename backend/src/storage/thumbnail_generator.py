@@ -6,7 +6,6 @@ and uploads them to R2 for permanent storage.
 Reuses existing pipeline functions — no duplication.
 """
 
-import asyncio
 import json
 import logging
 from datetime import date
@@ -110,7 +109,6 @@ async def _generate_text_thumbnail(title: str, category: str | None) -> Optional
         from images.keyword_images import (
             _stage2_generate_image,
             _post_process,
-            DEEPSIGHT_STYLE_SUFFIX,
         )
 
         raw_image, model_used = await _stage2_generate_image(visual_prompt, premium=False)

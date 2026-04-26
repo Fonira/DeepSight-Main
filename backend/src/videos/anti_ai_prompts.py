@@ -12,8 +12,7 @@ L'objectif est d'améliorer la lisibilité, pas de tromper.
 """
 
 import random
-from typing import Optional, List, Dict
-from enum import Enum
+from typing import Optional, List
 
 from .schemas import WritingStyle
 

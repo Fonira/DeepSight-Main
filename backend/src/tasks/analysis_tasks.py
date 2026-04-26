@@ -13,11 +13,11 @@
 import asyncio
 import json
 from datetime import datetime
-from typing import Dict, Any, Optional, List
-from celery import shared_task, chain, group
+from typing import Dict, Any, List
+from celery import chain
 from celery.exceptions import SoftTimeLimitExceeded
 
-from tasks.celery_app import celery_app, BaseTask, TaskPriority
+from tasks.celery_app import celery_app, BaseTask
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 ASYNC HELPER
@@ -343,7 +343,6 @@ async def _generate_tts_async(
     from db.database import async_session_maker, Summary
     from sqlalchemy import select
     from tts.service import generate_audio
-    from core.cache import cache
     
     async with async_session_maker() as db:
         # Get summary

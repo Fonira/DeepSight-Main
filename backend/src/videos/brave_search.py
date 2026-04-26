@@ -10,10 +10,8 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import httpx
-import json
 import re
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Tuple
 from dataclasses import dataclass
 
 from core.config import get_brave_key

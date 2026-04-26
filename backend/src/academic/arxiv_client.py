@@ -10,7 +10,6 @@ import asyncio
 import re
 import xml.etree.ElementTree as ET
 from typing import List, Optional
-from datetime import datetime
 import httpx
 
 from .schemas import AcademicPaper, Author, AcademicSource

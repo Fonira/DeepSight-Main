@@ -10,7 +10,6 @@
 """
 
 import asyncio
-import time
 from typing import Dict, Any
 
 from tasks.celery_app import celery_app, BaseTask
@@ -144,7 +143,6 @@ def generate_default_words_images_task(self) -> Dict[str, Any]:
     print("🌱 [TASK] Starting default words image generation", flush=True)
 
     from scripts.seed_keyword_images import DEFAULT_WORDS
-    from images.fun_scoring import calculate_fun_score
 
     enqueued = 0
     for word in DEFAULT_WORDS:

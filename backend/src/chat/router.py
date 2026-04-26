@@ -207,7 +207,7 @@ async def _ask_question_legacy(
     if request.use_web_search:
         # L'utilisateur a explicitement demandé la recherche web
         use_perplexity = True
-        print(f"🌐 [CHAT] Web search: user requested", flush=True)
+        print("🌐 [CHAT] Web search: user requested", flush=True)
     elif should_search:
         # La détection automatique suggère une recherche
         # Mais on ne l'active que si l'utilisateur est Pro/Expert ET a du quota
@@ -220,10 +220,10 @@ async def _ask_question_legacy(
                 print(f"🌐 [CHAT] Web search: auto-triggered ({trigger_reason})", flush=True)
             else:
                 web_search_suggested = True
-                print(f"💡 [CHAT] Web search suggested but quota exhausted", flush=True)
+                print("💡 [CHAT] Web search suggested but quota exhausted", flush=True)
         else:
             web_search_suggested = True
-            print(f"💡 [CHAT] Web search suggested but not available for plan", flush=True)
+            print("💡 [CHAT] Web search suggested but not available for plan", flush=True)
     
     # Exécuter la recherche Perplexity si décidé
     if use_perplexity:

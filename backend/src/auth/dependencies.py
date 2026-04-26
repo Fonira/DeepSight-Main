@@ -13,7 +13,7 @@
 import os
 import logging
 
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
@@ -291,7 +291,7 @@ def require_plan(min_plan: str):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "code": "plan_required",
-                    "message": f"This feature requires Pro plan.",
+                    "message": "This feature requires Pro plan.",
                     "current_plan": user_plan,
                     "required_plan": normalized_min,
                     "action": "upgrade"

@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
 
 from core.logging import logger
-from db.database import Summary, PlaylistAnalysis, User
+from db.database import Summary, PlaylistAnalysis
 
 
 # Colonnes légères pour la liste d'historique (exclut summary_content, transcript_context, etc.)
@@ -609,7 +609,7 @@ async def delete_all_history(
     Returns:
         Nombre d'éléments supprimés
     """
-    from sqlalchemy import delete, and_
+    from sqlalchemy import delete
     from db.database import ChatMessage, PlaylistChatMessage
     
     import logging

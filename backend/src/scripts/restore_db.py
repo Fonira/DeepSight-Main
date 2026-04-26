@@ -15,8 +15,6 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
-from urllib.parse import urlparse
 
 _HERE = Path(__file__).resolve().parent.parent
 if str(_HERE) not in sys.path:

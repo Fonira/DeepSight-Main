@@ -10,7 +10,6 @@
 
 from typing import Optional
 from sqlalchemy import select, delete
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.http_client import shared_http_client
 from db.database import PushToken, async_session_maker
@@ -66,7 +65,6 @@ async def send_push(
     invalid_tokens = []
 
     try:
-        import httpx as httpx_module  # Only for TimeoutException
 
         async with shared_http_client() as client:
             response = await client.post(

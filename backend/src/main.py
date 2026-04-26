@@ -69,7 +69,7 @@ except ImportError:
                     AsyncioIntegration(),
                 ],
                 send_default_pii=False,
-                release=f"deepsight-api@3.3.0",
+                release="deepsight-api@3.3.0",
             )
             SENTRY_ENABLED = True
             logger.info("Sentry initialized (legacy mode)", environment=ENVIRONMENT)
@@ -156,7 +156,7 @@ except ImportError as e:
 try:
     from usage.router import router as usage_router
     USAGE_ROUTER_AVAILABLE = True
-except ImportError as e:
+except ImportError:
     USAGE_ROUTER_AVAILABLE = False
 
 # 🔔 NOUVEAU: Import du Notifications router (SSE)

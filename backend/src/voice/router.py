@@ -13,7 +13,7 @@ import asyncio
 import hashlib
 import hmac
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -55,7 +55,7 @@ from voice.quota import (
 from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from voice.tools import search_in_transcript, get_analysis_section, get_sources, get_flashcards
 from voice.web_tools import web_search, deep_research, check_fact
-from voice.agent_types import get_agent_config, list_agent_types, AGENT_REGISTRY
+from voice.agent_types import get_agent_config, list_agent_types
 from voice.debate_tools import (
     get_debate_overview,
     get_video_thesis,
@@ -63,7 +63,6 @@ from voice.debate_tools import (
     search_in_debate_transcript,
     get_debate_fact_check,
 )
-from voice.debate_context import build_debate_rich_context
 from voice.avatar import (
     get_debate_avatar_url,
     ensure_debate_avatar,
@@ -349,7 +348,7 @@ async def update_voice_preferences(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "code": "invalid_voice_id",
-                "message": f"Voice ID inconnu. Utilisez GET /api/voice/catalog pour la liste.",
+                "message": "Voice ID inconnu. Utilisez GET /api/voice/catalog pour la liste.",
             },
         )
 
