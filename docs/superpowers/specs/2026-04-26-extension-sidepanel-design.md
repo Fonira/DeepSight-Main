@@ -341,17 +341,27 @@ interface Props {
 export function SuggestionPills({ suggestions }: Props): JSX.Element { ... }
 ```
 
-### Set de pills v1
+### Set de pills v1 (implémenté — commit `cad57f32`)
 
-| Pill                | Action                             | Comportement                                                                         |
-| ------------------- | ---------------------------------- | ------------------------------------------------------------------------------------ |
-| 🧠 Résumé rapide    | équivalent au bouton « Analyser »  | déclenche `onAnalyze()` (raccourci, pas une feature distincte)                       |
-| 🎴 Créer flashcards | CTA web                            | ouvre `https://www.deepsightsynthesis.com/study/{video_id}` dans un nouvel onglet    |
-| 🔍 Voir sources     | CTA web (si analyse déjà en cache) | ouvre l'app web sur la section sources de l'analyse — masqué si pas de cache backend |
+Set effectivement livré, ajusté pour ne pas dupliquer le bouton « Analyser » primaire et pour rester compatible avec `MainView` V3 actuel (qui n'expose pas encore `cacheStatus`) :
 
-### Wiring
+| Pill                | Action  | Comportement                                                              |
+| ------------------- | ------- | ------------------------------------------------------------------------- |
+| 🎴 Créer flashcards | CTA web | ouvre `${WEBAPP_URL}/study/${video.videoId}` dans un nouvel onglet        |
+| 🔍 Voir sources     | CTA web | ouvre `${WEBAPP_URL}/library` (lien générique vers la bibliothèque)       |
+| 🌐 Ouvrir dans l'app | CTA web | ouvre `${WEBAPP_URL}/` (page d'accueil app web)                          |
 
-`HomeView` (Task 16 du plan) reçoit en props la liste de suggestions calculée à partir de `videoMeta` et `cacheStatus`. `HomeView` rend `<SuggestionPills suggestions={...} />` immédiatement sous `<VideoDetectedCard ... />` en mode vidéo détectée.
+**Décisions d'ajustement v1** :
+
+- **Pas de pill « 🧠 Résumé rapide »** — le bouton primary « Analyser cette vidéo » du `BeamCard` parent (juste au-dessus) couvre déjà ce cas. Une pill équivalente créerait une redondance visuelle dans une zone déjà dense.
+- **Pill « Voir sources » non conditionnelle** — la version conditionnelle (`cacheStatus?.hit` masquant la pill et URL `/analysis/{summaryId}#sources`) demande de wirer `cacheStatus` jusque dans `MainView`, ce qui dépasse le scope minimal de Task 16.5. À enrichir en v1.1 quand `useAnalysisCache` sera intégré au flux MainView.
+- **3e pill « Ouvrir dans l'app »** — choix v1 utile et non-redondant ; à itérer sur la base d'analytics réelles vers une pill plus ciblée.
+
+### Wiring (implémenté)
+
+Le wiring effectif est dans **`MainView.tsx`** (le composant V3 « Beam + halo de source » utilisé en production), juste après le primary `<BeamCard>` qui contient le bouton « Analyser », et avant le `<BeamCard>` Quick Chat secondary. Conditionnel sur `video` (pas affiché si pas de vidéo détectée).
+
+> **Note historique** : la version initiale de la spec/plan ciblait `HomeView.tsx` (composant prévu par le plan v3 original). En réalité, le redesign V3 « Beam + halo » a continué d'utiliser `MainView.tsx` comme composant hub (commits `8b38ea22` puis `58cf8848`). Le wiring de `SuggestionPills` a donc été placé dans `MainView`. `HomeView.tsx` reste dans le repo mais n'est pas le composant rendu — il pourra être supprimé ou réutilisé dans une refactorisation ultérieure.
 
 ### Hors scope de l'addendum
 
