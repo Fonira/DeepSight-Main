@@ -11,6 +11,7 @@ Endpoints:
 """
 
 import asyncio
+import difflib
 import hashlib
 import hmac
 import logging
@@ -165,8 +166,12 @@ async def _increment_transcript_append_count(voice_session_id: str) -> int:
 
 # ── Spec #1, Task 8 — Webhook reconciliation post-call ─────────────────────
 # Drift threshold: a row is considered drifted (and gets UPDATEd) when the
-# normalised character-length difference exceeds 10% of the longer string.
-_RECONCILE_DRIFT_THRESHOLD = 0.10
+# difflib similarity-based ratio exceeds 30% (i.e. the canonical and live
+# strings share less than 70% of their characters in matching subsequences).
+# Pure length-based diffs miss content-different but same-length strings
+# (e.g. "hello world" vs "world hello" → 0% length drift), so we use
+# ``difflib.SequenceMatcher`` for a semantic-aware comparison.
+_VOICE_TRANSCRIPT_DRIFT_THRESHOLD = 0.30
 
 
 def parse_transcript_canonical(transcript) -> list[dict]:
@@ -223,22 +228,37 @@ def parse_transcript_canonical(transcript) -> list[dict]:
     return out
 
 
-def _content_drift_above_threshold(a: str, b: str) -> bool:
-    """Return True iff the two strings differ enough to warrant an UPDATE.
+def _content_drift_ratio(a: str, b: str) -> float:
+    """Compute drift between two strings as ``1 - similarity_ratio``.
 
-    Heuristic (deliberately simple): normalised character-length difference
-    above 10% of the longer string.
+    Returns a float in ``[0.0, 1.0]``:
+      - ``0.0`` → identical strings.
+      - ``1.0`` → completely different (or one of them is empty).
+
+    Uses :class:`difflib.SequenceMatcher` (with ``autojunk=False`` so heuristic
+    junk-detection does not skew short, content-rich turns) for a semantic
+    comparison. This catches reorderings that pure length-difference misses
+    (e.g. ``"hello world"`` vs ``"world hello"`` returns ``~0.45`` here vs
+    ``0.0`` for a length-only metric).
     """
-    if a == b:
-        return False
-    longer = max(len(a), len(b))
-    if longer == 0:
-        return False
-    diff = abs(len(a) - len(b))
-    return (diff / longer) > _RECONCILE_DRIFT_THRESHOLD
+    if not a and not b:
+        return 0.0
+    if not a or not b:
+        return 1.0
+    matcher = difflib.SequenceMatcher(None, a, b, autojunk=False)
+    return 1.0 - matcher.ratio()
 
 
-async def reconcile_voice_transcript(
+def _content_drift_above_threshold(a: str, b: str) -> bool:
+    """Thin wrapper kept for callers that want a boolean answer.
+
+    A row is considered drifted when ``_content_drift_ratio`` exceeds
+    :data:`_VOICE_TRANSCRIPT_DRIFT_THRESHOLD` (30%).
+    """
+    return _content_drift_ratio(a, b) > _VOICE_TRANSCRIPT_DRIFT_THRESHOLD
+
+
+async def _reconcile_voice_transcript(
     db,
     *,
     voice_session_id: str,
@@ -308,7 +328,7 @@ async def reconcile_voice_transcript(
             await db.commit()
         except Exception as exc:
             logger.warning(
-                "reconcile_voice_transcript: commit failed (non-fatal)",
+                "_reconcile_voice_transcript: commit failed (non-fatal)",
                 extra={
                     "voice_session_id": voice_session_id,
                     "inserted": inserted,
@@ -1443,7 +1463,7 @@ async def voice_webhook(
             canonical_payload = payload.transcript
         canonical_turns = parse_transcript_canonical(canonical_payload)
         if canonical_turns:
-            report = await reconcile_voice_transcript(
+            report = await _reconcile_voice_transcript(
                 db,
                 voice_session_id=voice_session.id,
                 user_id=voice_session.user_id,

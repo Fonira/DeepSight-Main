@@ -76,12 +76,73 @@ def test_parse_transcript_canonical_supports_list_payload():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Drift detection.
+# Drift detection — float-based metric (SequenceMatcher).
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_drift_ratio_identical_returns_zero():
+    from voice.router import _content_drift_ratio
+
+    assert _content_drift_ratio("foo", "foo") == 0.0
+
+
+def test_drift_ratio_both_empty_returns_zero():
+    from voice.router import _content_drift_ratio
+
+    assert _content_drift_ratio("", "") == 0.0
+
+
+def test_drift_ratio_one_empty_returns_one():
+    from voice.router import _content_drift_ratio
+
+    assert _content_drift_ratio("foo", "") == 1.0
+    assert _content_drift_ratio("", "bar") == 1.0
+
+
+def test_drift_ratio_catches_reordering():
+    """Pure length-diff would return 0 (same length), but SequenceMatcher catches
+    the reordering — this is the key reason we use difflib instead of length-only.
+    """
+    from voice.router import _content_drift_ratio
+
+    drift = _content_drift_ratio("hello world", "world hello")
+    assert drift > 0.0  # Not identical despite same length.
+    assert drift < 1.0
+
+
+def test_drift_ratio_minor_edit_below_threshold():
+    """Minor punctuation edit → drift well under 30%."""
+    from voice.router import _content_drift_ratio, _VOICE_TRANSCRIPT_DRIFT_THRESHOLD
+
+    drift = _content_drift_ratio("Hello there!", "Hello there")
+    assert drift < _VOICE_TRANSCRIPT_DRIFT_THRESHOLD
+
+
+def test_drift_ratio_major_change_above_threshold():
+    """Substantial expansion → drift well above 30%."""
+    from voice.router import _content_drift_ratio, _VOICE_TRANSCRIPT_DRIFT_THRESHOLD
+
+    drift = _content_drift_ratio(
+        "Hello there!",
+        "Hello there, my friend, how are you doing today?",
+    )
+    assert drift > _VOICE_TRANSCRIPT_DRIFT_THRESHOLD
+
+
+def test_drift_threshold_is_thirty_percent():
+    """Spec #1 Task 8: drift threshold must be 30% (was 10% — too noisy)."""
+    from voice.router import _VOICE_TRANSCRIPT_DRIFT_THRESHOLD
+
+    assert _VOICE_TRANSCRIPT_DRIFT_THRESHOLD == 0.30
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Drift detection — bool wrapper used by reconcile loop.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 def test_drift_above_threshold_returns_true():
-    """Two strings differing by more than 10% length-normalised → drift."""
+    """Two strings differing substantially → drift detected."""
     from voice.router import _content_drift_above_threshold
 
     a = "Hello there!"
@@ -137,7 +198,7 @@ def _make_existing_row(speaker, content, time_offset, msg_id=1):
 @pytest.mark.asyncio
 async def test_reconcile_inserts_missing_turns():
     """Existing has 1 turn, canonical has 3 → INSERT 2 missing."""
-    from voice.router import reconcile_voice_transcript
+    from voice.router import _reconcile_voice_transcript
 
     existing = [_make_existing_row("user", "Bonjour", 0.0, msg_id=10)]
     db = _make_db_with_existing_rows(existing)
@@ -148,7 +209,7 @@ async def test_reconcile_inserts_missing_turns():
         {"speaker": "user", "content": "Ça va ?"},
     ]
 
-    result = await reconcile_voice_transcript(
+    result = await _reconcile_voice_transcript(
         db,
         voice_session_id="sess_1",
         user_id=7,
@@ -164,8 +225,8 @@ async def test_reconcile_inserts_missing_turns():
 
 @pytest.mark.asyncio
 async def test_reconcile_updates_drifted_turns():
-    """Existing differs from canonical by >10% → UPDATE existing.content."""
-    from voice.router import reconcile_voice_transcript
+    """Existing differs from canonical above the threshold → UPDATE existing.content."""
+    from voice.router import _reconcile_voice_transcript
 
     drifted = _make_existing_row("user", "He", 0.0, msg_id=11)
     existing = [drifted]
@@ -175,7 +236,7 @@ async def test_reconcile_updates_drifted_turns():
         {"speaker": "user", "content": "Hello there my friend!"},
     ]
 
-    result = await reconcile_voice_transcript(
+    result = await _reconcile_voice_transcript(
         db,
         voice_session_id="sess_1",
         user_id=7,
@@ -193,7 +254,7 @@ async def test_reconcile_updates_drifted_turns():
 @pytest.mark.asyncio
 async def test_reconcile_noop_when_everything_matches():
     """Existing == canonical → no INSERT, no UPDATE, no commit needed."""
-    from voice.router import reconcile_voice_transcript
+    from voice.router import _reconcile_voice_transcript
 
     existing = [
         _make_existing_row("user", "Hello", 0.0, msg_id=20),
@@ -206,7 +267,7 @@ async def test_reconcile_noop_when_everything_matches():
         {"speaker": "agent", "content": "Hi there!"},
     ]
 
-    result = await reconcile_voice_transcript(
+    result = await _reconcile_voice_transcript(
         db,
         voice_session_id="sess_2",
         user_id=8,
@@ -222,12 +283,12 @@ async def test_reconcile_noop_when_everything_matches():
 @pytest.mark.asyncio
 async def test_reconcile_skips_when_canonical_empty():
     """No canonical turns → do nothing (no DB writes)."""
-    from voice.router import reconcile_voice_transcript
+    from voice.router import _reconcile_voice_transcript
 
     existing = [_make_existing_row("user", "x", 0.0, msg_id=30)]
     db = _make_db_with_existing_rows(existing)
 
-    result = await reconcile_voice_transcript(
+    result = await _reconcile_voice_transcript(
         db,
         voice_session_id="sess_3",
         user_id=9,
@@ -243,7 +304,7 @@ async def test_reconcile_skips_when_canonical_empty():
 @pytest.mark.asyncio
 async def test_reconcile_inserted_rows_carry_voice_metadata():
     """Newly inserted rows must have source='voice' + voice_session_id set."""
-    from voice.router import reconcile_voice_transcript
+    from voice.router import _reconcile_voice_transcript
     from db.database import ChatMessage
 
     db = _make_db_with_existing_rows([])
@@ -251,7 +312,7 @@ async def test_reconcile_inserted_rows_carry_voice_metadata():
         {"speaker": "agent", "content": "first turn missed by frontend"},
     ]
 
-    await reconcile_voice_transcript(
+    await _reconcile_voice_transcript(
         db,
         voice_session_id="sess_4",
         user_id=10,
@@ -268,3 +329,59 @@ async def test_reconcile_inserted_rows_carry_voice_metadata():
     assert inserted.source == "voice"
     assert inserted.voice_session_id == "sess_4"
     assert inserted.voice_speaker == "agent"
+
+
+@pytest.mark.asyncio
+async def test_reconcile_idempotent():
+    """Running reconcile twice produces the same DB state — second call is a no-op.
+
+    Spec #1 Task 8 requires idempotency: the webhook may be retried by
+    ElevenLabs (network blip, 5xx from us), and we must not duplicate rows
+    or re-UPDATE on the second run. The contract: 1st call inserts N rows;
+    2nd call (same canonical, same DB state) inserts 0 and updates 0.
+    """
+    from voice.router import _reconcile_voice_transcript
+    from db.database import ChatMessage
+
+    canonical = [
+        {"speaker": "user", "content": "Bonjour"},
+        {"speaker": "agent", "content": "Salut, comment puis-je aider ?"},
+        {"speaker": "user", "content": "Quelle heure est-il ?"},
+    ]
+
+    # ── 1st call: empty DB → INSERT all 3 turns ──────────────────────────
+    db_first = _make_db_with_existing_rows([])
+    first = await _reconcile_voice_transcript(
+        db_first,
+        voice_session_id="sess_idem",
+        user_id=1,
+        summary_id=42,
+        canonical_turns=canonical,
+    )
+    assert first["inserted"] == 3
+    assert first["updated"] == 0
+    assert db_first.add.call_count == 3
+
+    # Capture the rows the first call would have committed — these become
+    # the "already-persisted" state for the second call.
+    persisted_rows = []
+    for idx, call_args in enumerate(db_first.add.call_args_list):
+        added: ChatMessage = call_args.args[0]
+        # Build a MagicMock mirror so the second call's reconcile loop sees
+        # the same content / speaker layout it would have on a real DB.
+        speaker = added.voice_speaker
+        persisted_rows.append(_make_existing_row(speaker, added.content, None, msg_id=100 + idx))
+
+    # ── 2nd call: DB now reflects the first call's writes → no-op ────────
+    db_second = _make_db_with_existing_rows(persisted_rows)
+    second = await _reconcile_voice_transcript(
+        db_second,
+        voice_session_id="sess_idem",
+        user_id=1,
+        summary_id=42,
+        canonical_turns=canonical,
+    )
+    assert second["inserted"] == 0, "2nd reconcile must not re-insert"
+    assert second["updated"] == 0, "2nd reconcile must not re-update unchanged rows"
+    db_second.add.assert_not_called()
+    db_second.commit.assert_not_awaited()

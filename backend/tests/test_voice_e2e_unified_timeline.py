@@ -11,7 +11,7 @@ Plan Task 12: cover the full happy path that the frontend exercises:
 
 The test uses a real SQLite in-memory database with the same SQLAlchemy
 models the production app uses. We exercise the *logic* of the endpoints
-(``append_transcript``, ``reconcile_voice_transcript``,
+(``append_transcript``, ``_reconcile_voice_transcript``,
 ``get_chat_history``) directly — bypassing FastAPI HTTP / auth — so the
 test is fast and deterministic but still verifies wire-up between layers.
 """
@@ -87,7 +87,7 @@ async def test_e2e_unified_timeline_append_then_webhook_reconcile(memory_db):
     final history reflects both live appends and the reconciled missing turn."""
     from voice.router import (
         append_transcript,
-        reconcile_voice_transcript,
+        _reconcile_voice_transcript,
         parse_transcript_canonical,
         _transcript_append_counts,
     )
@@ -132,7 +132,7 @@ async def test_e2e_unified_timeline_append_then_webhook_reconcile(memory_db):
     canonical_turns = parse_transcript_canonical(canonical_str)
     assert len(canonical_turns) == 3
 
-    report = await reconcile_voice_transcript(
+    report = await _reconcile_voice_transcript(
         memory_db,
         voice_session_id="sess_e2e",
         user_id=42,
