@@ -57,9 +57,7 @@ interface UseExtensionVoiceChatOptions {
   sendMessage?: <T>(message: unknown) => Promise<BackgroundResponse<T>>;
 }
 
-const defaultSend = <T>(
-  message: unknown,
-): Promise<BackgroundResponse<T>> =>
+const defaultSend = <T>(message: unknown): Promise<BackgroundResponse<T>> =>
   Browser.runtime.sendMessage<unknown, BackgroundResponse<T>>(message);
 
 export function useExtensionVoiceChat(
@@ -264,10 +262,7 @@ interface ConversationInstance {
 interface ConversationStatic {
   startSession(opts: {
     signedUrl: string;
-    onMessage?: (event: {
-      message: string;
-      source: "user" | "ai";
-    }) => void;
+    onMessage?: (event: { message: string; source: "user" | "ai" }) => void;
   }): Promise<ConversationInstance>;
 }
 

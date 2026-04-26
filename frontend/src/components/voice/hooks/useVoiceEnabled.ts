@@ -29,7 +29,7 @@ export function useVoiceEnabled(): UseVoiceEnabledReturn {
     const plan = normalizePlanId(user?.plan);
     const isAdmin =
       Boolean(user?.is_admin) ||
-      (user?.email?.toLowerCase() === ADMIN_EMAIL_VOICE.toLowerCase());
+      user?.email?.toLowerCase() === ADMIN_EMAIL_VOICE.toLowerCase();
     const voiceEnabled = isAdmin || PLAN_LIMITS[plan].voiceChatEnabled;
     return { voiceEnabled, isAdmin, plan };
   }, [user]);

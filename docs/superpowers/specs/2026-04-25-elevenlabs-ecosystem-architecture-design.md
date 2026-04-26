@@ -26,15 +26,15 @@ Au-delà de ce bug, l'utilisateur veut que l'appel vocal soit accessible partout
 
 ## Décisions verrouillées
 
-| # | Décision | Choix retenu |
-|---|---|---|
-| 1 | Découpage | Plan unifié, 5 sous-specs avec séquencement explicite |
-| 2 | Mode chat libre | `summary_id` optionnel, agent_type `companion` en interne |
-| 3 | UX Chat IA web | Bouton header + overlay flottant 380×600 non-bloquant bottom-right |
-| 4 | Sync chat ↔ voix | Bidirectionnelle full via `onMessage` (capture) + `sendUserMessage` (injection) |
-| 5 | Extension multi-browser | Chrome only V1 + roadmap explicite |
-| 6 | Agent ElevenLabs | Éphémère (création/suppression par session) — statu quo |
-| 7 | Storage timeline unifiée | Migration Alembic 007 — colonne `source` + `voice_session_id` dans `chat_messages` |
+| #   | Décision                 | Choix retenu                                                                       |
+| --- | ------------------------ | ---------------------------------------------------------------------------------- |
+| 1   | Découpage                | Plan unifié, 5 sous-specs avec séquencement explicite                              |
+| 2   | Mode chat libre          | `summary_id` optionnel, agent_type `companion` en interne                          |
+| 3   | UX Chat IA web           | Bouton header + overlay flottant 380×600 non-bloquant bottom-right                 |
+| 4   | Sync chat ↔ voix         | Bidirectionnelle full via `onMessage` (capture) + `sendUserMessage` (injection)    |
+| 5   | Extension multi-browser  | Chrome only V1 + roadmap explicite                                                 |
+| 6   | Agent ElevenLabs         | Éphémère (création/suppression par session) — statu quo                            |
+| 7   | Storage timeline unifiée | Migration Alembic 007 — colonne `source` + `voice_session_id` dans `chat_messages` |
 
 ## Architecture macro et séquencement des 5 sous-specs
 
@@ -266,13 +266,13 @@ Ordre `created_at ASC`. Voix et texte sortent mélangés chronologiquement.
 
 ### Sécurité — résumé matrices auth/IDOR/rate-limit
 
-| Endpoint | Auth | IDOR | Rate-limit |
-|---|---|---|---|
-| `POST /voice/session` | Bearer JWT user | user owns summary_id (existant) | quota minutes (existant) |
-| `POST /voice/transcripts/append` | Bearer JWT user | user owns voice_session_id (nouveau) | 60/min par session |
-| `POST /voice/webhook` | HMAC-SHA256 ElevenLabs | aucun (signé) | aucun |
-| `GET /chat/{id}/history` | Bearer JWT user | user owns summary_id (existant) | aucun |
-| `POST /voice/tools/web-search` | Bearer summary_id (existant) | existant | 15/h relevé, 60/h global |
+| Endpoint                         | Auth                         | IDOR                                 | Rate-limit               |
+| -------------------------------- | ---------------------------- | ------------------------------------ | ------------------------ |
+| `POST /voice/session`            | Bearer JWT user              | user owns summary_id (existant)      | quota minutes (existant) |
+| `POST /voice/transcripts/append` | Bearer JWT user              | user owns voice_session_id (nouveau) | 60/min par session       |
+| `POST /voice/webhook`            | HMAC-SHA256 ElevenLabs       | aucun (signé)                        | aucun                    |
+| `GET /chat/{id}/history`         | Bearer JWT user              | user owns summary_id (existant)      | aucun                    |
+| `POST /voice/tools/web-search`   | Bearer summary_id (existant) | existant                             | 15/h relevé, 60/h global |
 
 ### Tests
 
@@ -300,7 +300,7 @@ interface VoiceCallProviderProps {
   thumbnailUrl?: string;
   videoId?: string;
   platform?: string;
-  compact?: boolean;  // mode overlay flottant pour Chat IA
+  compact?: boolean; // mode overlay flottant pour Chat IA
   onVoiceMessage?: (msg: VoiceChatMessage) => void;
   children: ReactNode;
 }
@@ -312,10 +312,15 @@ Encapsule `useVoiceChat`, `useMicLevel`, `useVoiceEnabled`, `isVoiceModalOpen`, 
 
 ```tsx
 type Variant = "hero" | "header" | "fab" | "inline";
-interface Props { variant: Variant; size?: "sm" | "md" | "lg"; label?: string; }
+interface Props {
+  variant: Variant;
+  size?: "sm" | "md" | "lg";
+  label?: string;
+}
 ```
 
 Variantes :
+
 - `hero` reproduit `AnalysisVoiceHero` actuel
 - `header` bouton compact 40×40 + label "Appeler" (pour ChatPage header)
 - `fab` floating button mobile-style
@@ -359,7 +364,8 @@ interface Props {
   bottomOffset?: number;
 }
 
-const computedBottom = bottomOffset ?? (TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + insets.bottom);
+const computedBottom =
+  bottomOffset ?? TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + insets.bottom;
 ```
 
 ### b. Câblage `mobile/app/(tabs)/library.tsx`
@@ -374,13 +380,15 @@ const computedBottom = bottomOffset ?? (TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + ins
 ### c. Câblage `mobile/app/(tabs)/study.tsx` (sous-onglet `chat`)
 
 ```tsx
-{activeSubTab === "chat" && (
-  <VoiceButton
-    summaryId={selectedSummaryId}
-    agentType={selectedSummaryId ? "explorer" : "companion"}
-    bottomOffset={TAB_BAR_HEIGHT + insets.bottom + 16}
-  />
-)}
+{
+  activeSubTab === "chat" && (
+    <VoiceButton
+      summaryId={selectedSummaryId}
+      agentType={selectedSummaryId ? "explorer" : "companion"}
+      bottomOffset={TAB_BAR_HEIGHT + insets.bottom + 16}
+    />
+  );
+}
 ```
 
 ### d. Sync bidir mobile (`mobile/src/components/voice/useVoiceChat.ts`)
@@ -418,7 +426,15 @@ onMessage: ({ source, message }) => {
 
 ```json
 {
-  "permissions": ["storage", "activeTab", "tabs", "alarms", "identity", "clipboardWrite", "sidePanel"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "alarms",
+    "identity",
+    "clipboardWrite",
+    "sidePanel"
+  ],
   "side_panel": { "default_path": "sidepanel.html" },
   "host_permissions": [
     "...existant...",
@@ -440,6 +456,7 @@ Pas de patch sur `manifest.firefox.json`/`manifest.safari.json` — Chrome only 
 `extension/webpack.config.js:23` — ajouter `sidepanel: "./src/sidepanel/index.tsx"`.
 
 Nouveau dossier `extension/src/sidepanel/` :
+
 - `index.tsx` : bootstrap React/Preact
 - `App.tsx` : video card + bouton "Appeler" + VoiceModal réutilisé
 - `useExtensionVoiceChat.ts` : adapter local de `useVoiceChat` qui passe par `chrome.runtime.sendMessage` au lieu de fetch direct
@@ -485,9 +502,11 @@ case "VOICE_APPEND_TRANSCRIPT":
 
 ```tsx
 useEffect(() => {
-  chrome.storage.session.get("voicePanelContext").then(({ voicePanelContext }) => {
-    setContext(voicePanelContext);
-  });
+  chrome.storage.session
+    .get("voicePanelContext")
+    .then(({ voicePanelContext }) => {
+      setContext(voicePanelContext);
+    });
 }, []);
 ```
 
@@ -508,7 +527,7 @@ Si `summaryId` présent → `agent_type = "explorer"`. Sinon → `companion`.
 
 ```ts
 interface ChatMessage {
-  id: string;  // crypto.randomUUID() obligatoire
+  id: string; // crypto.randomUUID() obligatoire
   role: "user" | "assistant";
   content: string;
   source?: "text" | "voice_user" | "voice_agent";
@@ -516,7 +535,7 @@ interface ChatMessage {
   ephemeral?: boolean;
   sources?: { title: string; url: string }[];
   web_search_used?: boolean;
-  timestamp?: number;  // pour tri en cas de race
+  timestamp?: number; // pour tri en cas de race
 }
 ```
 
@@ -539,22 +558,28 @@ interface ChatMessage {
 ### c. Sync voix → timeline chat
 
 ```tsx
-const handleVoiceMessage = useCallback((msg: VoiceChatMessage) => {
-  setMessages(prev => [...prev, {
-    id: crypto.randomUUID(),
-    role: msg.source === "user" ? "user" : "assistant",
-    content: msg.text,
-    source: msg.source === "user" ? "voice_user" : "voice_agent",
-    voice_session_id: voiceSessionId,
-    timestamp: Date.now(),
-  }]);
-  voiceApi.appendTranscript({
-    voice_session_id: voiceSessionId,
-    speaker: msg.source === "user" ? "user" : "agent",
-    content: msg.text,
-    time_in_call_secs: (Date.now() / 1000) - sessionStartedAt,
-  });
-}, [voiceSessionId, sessionStartedAt]);
+const handleVoiceMessage = useCallback(
+  (msg: VoiceChatMessage) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: msg.source === "user" ? "user" : "assistant",
+        content: msg.text,
+        source: msg.source === "user" ? "voice_user" : "voice_agent",
+        voice_session_id: voiceSessionId,
+        timestamp: Date.now(),
+      },
+    ]);
+    voiceApi.appendTranscript({
+      voice_session_id: voiceSessionId,
+      speaker: msg.source === "user" ? "user" : "agent",
+      content: msg.text,
+      time_in_call_secs: Date.now() / 1000 - sessionStartedAt,
+    });
+  },
+  [voiceSessionId, sessionStartedAt],
+);
 ```
 
 ### d. Sync texte → voix (`handleSend` étendu)
@@ -576,22 +601,24 @@ const handleSend = async (text?: string) => {
 
 ### e. Garde-fous UX
 
-| Risque | Mitigation |
-|---|---|
-| Race conditions setMessages | UUID v4 + champ `timestamp` séparé |
-| Auto-scroll spam | Détection scroll user (si pas en bas, désactive auto-scroll) |
-| Switch vidéo pendant appel | Confirm dialog "Couper l'appel et changer de vidéo ?" |
-| TTS double audio | Skip `autoPlay` si `last.source === "voice_agent"` |
-| Suggestions follow-up | Skip `parseAskQuestions` pour messages voix |
+| Risque                      | Mitigation                                                   |
+| --------------------------- | ------------------------------------------------------------ |
+| Race conditions setMessages | UUID v4 + champ `timestamp` séparé                           |
+| Auto-scroll spam            | Détection scroll user (si pas en bas, désactive auto-scroll) |
+| Switch vidéo pendant appel  | Confirm dialog "Couper l'appel et changer de vidéo ?"        |
+| TTS double audio            | Skip `autoPlay` si `last.source === "voice_agent"`           |
+| Suggestions follow-up       | Skip `parseAskQuestions` pour messages voix                  |
 
 ### f. UI badges
 
 ```tsx
-{msg.source?.startsWith("voice_") && (
-  <span className="inline-flex items-center gap-1 text-xs text-violet-400">
-    <Mic className="w-3 h-3" /> Vocal
-  </span>
-)}
+{
+  msg.source?.startsWith("voice_") && (
+    <span className="inline-flex items-center gap-1 text-xs text-violet-400">
+      <Mic className="w-3 h-3" /> Vocal
+    </span>
+  );
+}
 ```
 
 `<CopyMessageButton>`, `<AudioPlayerButton>` désactivés si `ephemeral`.
@@ -656,22 +683,23 @@ UPDATE voice_sessions duration + status
 
 ## Error handling
 
-| Cas | Stratégie |
-|---|---|
-| Network drop pendant appel | SDK ElevenLabs reconnect auto (3 retries). Si échec → `onError` → toast user "Connexion perdue" + cleanup voice_session. Webhook reconciliation finalise transcript |
-| `appendTranscript` 5xx | Retry exponentiel 3x (2s, 4s, 8s). Si échec → buffer en mémoire, flush via webhook |
-| `appendTranscript` 403 IDOR | Log Sentry critique, `endSession()` immédiat |
-| User refuse mic | Toast "Permission micro refusée. Active-la dans Réglages > Site." + lien aide |
-| Quota minutes dépassé | Modal `VoiceAddonModal` (composant existant) |
-| `sendUserMessage` pendant `agent_speaking` | SDK gère interruption naturelle (VAD). Optionnel : `sendUserActivity()` 200ms avant |
-| Switch vidéo pendant appel | Confirm dialog → `endSession()` → cleanup |
-| Brave Search rate limit | Cache Redis évite. Sinon fallback message "Recherche indispo, réessaie dans 1 min" |
+| Cas                                        | Stratégie                                                                                                                                                           |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Network drop pendant appel                 | SDK ElevenLabs reconnect auto (3 retries). Si échec → `onError` → toast user "Connexion perdue" + cleanup voice_session. Webhook reconciliation finalise transcript |
+| `appendTranscript` 5xx                     | Retry exponentiel 3x (2s, 4s, 8s). Si échec → buffer en mémoire, flush via webhook                                                                                  |
+| `appendTranscript` 403 IDOR                | Log Sentry critique, `endSession()` immédiat                                                                                                                        |
+| User refuse mic                            | Toast "Permission micro refusée. Active-la dans Réglages > Site." + lien aide                                                                                       |
+| Quota minutes dépassé                      | Modal `VoiceAddonModal` (composant existant)                                                                                                                        |
+| `sendUserMessage` pendant `agent_speaking` | SDK gère interruption naturelle (VAD). Optionnel : `sendUserActivity()` 200ms avant                                                                                 |
+| Switch vidéo pendant appel                 | Confirm dialog → `endSession()` → cleanup                                                                                                                           |
+| Brave Search rate limit                    | Cache Redis évite. Sinon fallback message "Recherche indispo, réessaie dans 1 min"                                                                                  |
 
 ---
 
 ## Testing strategy résumée
 
 ### Backend (pytest)
+
 - Migration 007 up/down avec données existantes
 - `POST /voice/session` explorer/companion, 400 si requirement violé, IDOR
 - `POST /voice/transcripts/append` insert OK, 403, ordering
@@ -681,6 +709,7 @@ UPDATE voice_sessions duration + status
 - Tracking WebSearchUsage pour `source="voice"`
 
 ### Frontend web (vitest)
+
 - VoiceCallProvider open/close/gating/prewarm
 - VoiceCallButton variants snapshot
 - VoiceModal compact positioning + ESC
@@ -688,27 +717,30 @@ UPDATE voice_sessions duration + status
 - Snapshot Dashboard/History/Debate identiques avant/après migration
 
 ### Mobile (jest)
+
 - VoiceButton bottomOffset computed
 - Library/Study placement
 - useVoiceChat.appendTranscript après onMessage
 - agent_type routing companion vs explorer
 
 ### Extension (jest + Playwright)
+
 - Manifest CSP syntactique
 - Side panel mount avec context depuis storage.session
 - Feature detection (bouton caché sur Firefox/Safari)
 - Background handlers OPEN_VOICE_PANEL / VOICE_CREATE_SESSION / VOICE_APPEND_TRANSCRIPT
 
 ### E2E (Playwright web)
+
 - ChatPage flow complet : tape → response → Appeler → speak → transcripts → end → reload → persistance OK
 
 ---
 
 ## Variables d'environnement nouvelles
 
-| Var | Plateforme | Usage |
-|---|---|---|
-| `ELEVENLABS_COMPANION_VOICE_ID` | backend | Voice ID dédié pour agent_type=companion (optionnel, fallback DEFAULT_VOICE_ID) |
+| Var                             | Plateforme | Usage                                                                           |
+| ------------------------------- | ---------- | ------------------------------------------------------------------------------- |
+| `ELEVENLABS_COMPANION_VOICE_ID` | backend    | Voice ID dédié pour agent_type=companion (optionnel, fallback DEFAULT_VOICE_ID) |
 
 Aucune autre variable nouvelle. Les clés ElevenLabs et Brave existent déjà.
 

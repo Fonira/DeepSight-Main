@@ -19,7 +19,10 @@ interface AmbientLightLayerProps {
   intensity?: "soft" | "normal" | "strong";
 }
 
-const INTENSITY_MUL: Record<NonNullable<AmbientLightLayerProps["intensity"]>, number> = {
+const INTENSITY_MUL: Record<
+  NonNullable<AmbientLightLayerProps["intensity"]>,
+  number
+> = {
   soft: 0.7,
   normal: 1,
   strong: 1.2,
@@ -32,7 +35,7 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
 }) => {
   const intensityMul = INTENSITY_MUL[intensity];
   const [preset, setPreset] = useState<AmbientPreset>(() =>
-    getAmbientPreset(new Date(), { intensityMul })
+    getAmbientPreset(new Date(), { intensityMul }),
   );
 
   useEffect(() => {

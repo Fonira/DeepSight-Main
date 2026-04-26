@@ -35,12 +35,12 @@ L'éclairage ambient v1 (web) utilise 6 phases discrètes (dawn / morning / noon
 
 ## 4. User stories
 
-| Persona | Story |
-| --- | --- |
-| Étudiante du soir (22h) | "Quand j'ouvre DeepSight la nuit, l'app a l'air calme et bleue, pas agressive comme la version jour" |
-| Pro qui bosse 12h-14h | "Il y a une vraie différence entre 'midi pile' et '14h après le déjeuner'" |
-| Power user quotidien | "Chaque jour la lumière a un angle légèrement différent — je remarque quand je passe sur l'app, ça vit" |
-| Designer interne | "Je peux scrubber les 24h dans une dev panel pour valider les transitions" |
+| Persona                 | Story                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- |
+| Étudiante du soir (22h) | "Quand j'ouvre DeepSight la nuit, l'app a l'air calme et bleue, pas agressive comme la version jour"    |
+| Pro qui bosse 12h-14h   | "Il y a une vraie différence entre 'midi pile' et '14h après le déjeuner'"                              |
+| Power user quotidien    | "Chaque jour la lumière a un angle légèrement différent — je remarque quand je passe sur l'app, ça vit" |
+| Designer interne        | "Je peux scrubber les 24h dans une dev panel pour valider les transitions"                              |
 
 ## 5. Functional requirements
 
@@ -81,14 +81,14 @@ L'éclairage ambient v1 (web) utilise 6 phases discrètes (dawn / morning / noon
 
 ## 6. Non-functional requirements
 
-| Catégorie | Requirement |
-| --- | --- |
-| Performance | < 1ms par appel `getAmbientPreset` |
-| Bundle size | Engine < 5KB gzipped (objectif) |
-| Accessibility | Respect prefers-reduced-motion (web) + AccessibilityInfo (mobile) |
-| Tests | ≥ 50 tests unitaires sur engine, 100% green |
-| Cross-platform | Sortie identique sur web/mobile/extension pour même Date |
-| Determinism | Même date = même preset, dates différentes = angles différents |
+| Catégorie      | Requirement                                                       |
+| -------------- | ----------------------------------------------------------------- |
+| Performance    | < 1ms par appel `getAmbientPreset`                                |
+| Bundle size    | Engine < 5KB gzipped (objectif)                                   |
+| Accessibility  | Respect prefers-reduced-motion (web) + AccessibilityInfo (mobile) |
+| Tests          | ≥ 50 tests unitaires sur engine, 100% green                       |
+| Cross-platform | Sortie identique sur web/mobile/extension pour même Date          |
+| Determinism    | Même date = même preset, dates différentes = angles différents    |
 
 ## 7. Acceptance criteria
 
@@ -110,18 +110,18 @@ L'éclairage ambient v1 (web) utilise 6 phases discrètes (dawn / morning / noon
 
 ## 9. Timeline
 
-| Phase | Date | Livrable |
-| --- | --- | --- |
-| 1 | J0 (2026-04-26) | Engine package + 55 tests + intégrations 3 plateformes |
-| 2 | J+3 | Rollout PostHog 10% web |
-| 3 | J+7 | Rollout 50% web + déploiement mobile EAS update |
-| 4 | J+14 | Rollout 100% + soumission extension Chrome Web Store |
+| Phase | Date            | Livrable                                               |
+| ----- | --------------- | ------------------------------------------------------ |
+| 1     | J0 (2026-04-26) | Engine package + 55 tests + intégrations 3 plateformes |
+| 2     | J+3             | Rollout PostHog 10% web                                |
+| 3     | J+7             | Rollout 50% web + déploiement mobile EAS update        |
+| 4     | J+14            | Rollout 100% + soumission extension Chrome Web Store   |
 
 ## 10. Risks
 
-| Risk | Mitigation |
-| --- | --- |
-| Engine bundle trop gros | Mesure post-build, tree-shaking si > 8KB |
-| Reanimated v4 instabilité | Fallback CSS transitions si crash |
-| Doodles masqués sur mobile | Cap opacité beam à 0.18 + intensityMul 0.5 par défaut |
+| Risk                            | Mitigation                                                        |
+| ------------------------------- | ----------------------------------------------------------------- |
+| Engine bundle trop gros         | Mesure post-build, tree-shaking si > 8KB                          |
+| Reanimated v4 instabilité       | Fallback CSS transitions si crash                                 |
+| Doodles masqués sur mobile      | Cap opacité beam à 0.18 + intensityMul 0.5 par défaut             |
 | Variation jour-à-jour invisible | ± 15° angle, mais aussi mood/couleurs varient → cumul perceptible |

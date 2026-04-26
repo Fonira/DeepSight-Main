@@ -41,9 +41,7 @@ describe("manifest.json — Spec #4 patches", () => {
   });
 
   it("declares the sidePanel permission", () => {
-    expect(manifest.permissions).toEqual(
-      expect.arrayContaining(["sidePanel"]),
-    );
+    expect(manifest.permissions).toEqual(expect.arrayContaining(["sidePanel"]));
   });
 
   it("declares side_panel.default_path = sidepanel.html", () => {
