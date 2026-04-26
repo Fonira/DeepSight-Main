@@ -601,6 +601,43 @@ def resolve_agent_voice_id(agent_config: AgentConfig) -> Optional[str]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Agent: EXPLORER_STREAMING (Quick Voice Call V1 — async progressive context)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Independent agent (NOT a fork of the classic EXPLORER): its prompt briefs
+# the model on the [CTX UPDATE: ...] / [CTX COMPLETE] streaming protocol.
+# The classic EXPLORER assumes full context loaded upfront, so mixing the
+# two would confuse the LLM.
+#
+# requires_summary=False because the entry point is a YouTube video_id and
+# the analysis is fed asynchronously via Redis pubsub → SSE → side panel
+# → conversation.sendUserMessage(). See voice/streaming_orchestrator.py.
+
+from voice.streaming_prompts import (
+    EXPLORER_STREAMING_PROMPT_FR,
+    EXPLORER_STREAMING_PROMPT_EN,
+)
+
+EXPLORER_STREAMING = AgentConfig(
+    agent_type="explorer_streaming",
+    display_name="Streaming Explorer",
+    display_name_fr="Explorateur (streaming)",
+    description="Voice call on a YouTube video while the analysis arrives in streaming",
+    description_fr="Appel vocal sur une vidéo YouTube avec analyse en streaming",
+    system_prompt_fr=EXPLORER_STREAMING_PROMPT_FR,
+    system_prompt_en=EXPLORER_STREAMING_PROMPT_EN,
+    tools=["web_search", "deep_research", "check_fact"],
+    voice_style="warm",
+    temperature=0.7,
+    max_session_minutes=30,  # Expert tier monthly cap; runtime quota enforces per-session
+    requires_summary=False,  # context arrives via [CTX UPDATE] during the call
+    first_message_fr="Salut ! Je commence à écouter cette vidéo. Pose-moi tes questions, je m'adapte au fur et à mesure que je découvre le contenu.",
+    first_message="Hi! I'm starting to listen to this video. Ask me anything, I'll adapt as I discover the content.",
+    plan_minimum="free",  # Free has 1 lifetime trial; quota service enforces A+D
+)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # REGISTRY — All available agent types
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -611,6 +648,7 @@ AGENT_REGISTRY: dict[str, AgentConfig] = {
     "quiz_coach": QUIZ_COACH,
     "onboarding": ONBOARDING,
     "companion": COMPANION,
+    "explorer_streaming": EXPLORER_STREAMING,
 }
 
 DEFAULT_AGENT_TYPE = "explorer"
