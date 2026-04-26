@@ -16,25 +16,6 @@ from fastapi import HTTPException
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Local fixtures (avoid coupling to test_voice.py)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-@pytest.fixture
-def mock_voice_user():
-    """User mock allowed on the pro plan (voice enabled, companion requires pro)."""
-    user = MagicMock()
-    user.id = 1
-    user.email = "voice@test.fr"
-    user.plan = "pro"
-    user.is_admin = False
-    user.voice_bonus_seconds = 0
-    user.stripe_customer_id = "cus_test123"
-    user.username = "voice_tester"
-    return user
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
 # Helper: build a fully-mocked VoicePreferences-like object
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -62,7 +43,7 @@ class TestVoiceSessionCompanion:
     """Voice session creation with the companion agent (no summary required)."""
 
     @pytest.mark.asyncio
-    async def test_companion_accepts_no_summary_id(self, mock_db_session, mock_voice_user):
+    async def test_companion_accepts_no_summary_id(self, mock_db_session, mock_pro_voice_user):
         """summary_id=None must NOT raise 400 for agent_type='companion'."""
         from voice.router import create_voice_session
         from voice.schemas import VoiceSessionRequest
@@ -87,7 +68,11 @@ class TestVoiceSessionCompanion:
         # DB session: add() is sync, commit/refresh are async no-ops.
         # SQLAlchemy normally sets the default UUID at flush; in tests we mimic
         # this by assigning an id when the router calls db.add(voice_session).
+        # Capture the persisted object to assert its fields after the call.
+        captured = []
+
         def _fake_add(obj):
+            captured.append(obj)
             if getattr(obj, "id", None) is None:
                 import uuid as _uuid
 
@@ -109,7 +94,7 @@ class TestVoiceSessionCompanion:
         ):
             response = await create_voice_session(
                 request,
-                current_user=mock_voice_user,
+                current_user=mock_pro_voice_user,
                 db=mock_db_session,
             )
 
@@ -117,11 +102,23 @@ class TestVoiceSessionCompanion:
         assert response is not None
         assert response.agent_id == "agent_companion_123"
         assert response.session_id is not None
-        # Summary tools must NOT have been required: companion uses web tools only.
+
+        # DB state: exactly one VoiceSession persisted with companion + summary_id=None.
+        # Protects against future regressions where the route silently skips persistence.
+        mock_db_session.add.assert_called_once()
+        assert len(captured) == 1
+        persisted = captured[0]
+        assert persisted.agent_type == "companion"
+        assert persisted.summary_id is None
+        assert persisted.user_id == mock_pro_voice_user.id
 
     @pytest.mark.asyncio
-    async def test_explorer_still_requires_summary(self, mock_db_session, mock_voice_user):
-        """summary_id=None must raise 400 for agent_type='explorer' (requires_summary=True)."""
+    async def test_explorer_still_requires_summary(self, mock_db_session, mock_pro_voice_user):
+        """summary_id=None must raise 400 for agent_type='explorer' (requires_summary=True).
+
+        Uses pro user because the voice gating intercepts non-pro plans with 403
+        before the summary_required check runs.
+        """
         from voice.router import create_voice_session
         from voice.schemas import VoiceSessionRequest
 
@@ -134,7 +131,7 @@ class TestVoiceSessionCompanion:
             with pytest.raises(HTTPException) as exc:
                 await create_voice_session(
                     request,
-                    current_user=mock_voice_user,
+                    current_user=mock_pro_voice_user,
                     db=mock_db_session,
                 )
 
