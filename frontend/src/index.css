@@ -43,6 +43,7 @@ html {
     --text-muted: #e2e8f0; /* slate-200 — was warm-gray */
     --text-disabled: rgba(255, 255, 255, 0.45);
     --text-meta: #cbd5e1; /* slate-300 for timestamps/counts */
+    --text-tertiary: #cbd5e1; /* slate-300 — v3 white-cast equivalent of legacy warm-gray tertiary */
     --text-inverse: #0a0a0f;
 
     /* === Accent — Gold/Amber === */
