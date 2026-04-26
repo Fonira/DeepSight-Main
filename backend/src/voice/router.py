@@ -74,10 +74,35 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Rate limiting: in-memory fallback when Redis is unavailable
+# Rate limiting (Spec #0): per-summary AND per-user caps with Redis INCR + TTL.
+# In-memory dicts are used when Redis is unavailable.
 _web_search_counts: dict[str, int] = {}
-_WEB_SEARCH_MAX = 5
+_user_web_search_counts: dict[int, int] = {}
+_WEB_SEARCH_MAX = 15  # per summary_id per hour (raised from 5 in Spec #0)
+_WEB_SEARCH_USER_MAX = 60  # per user_id per hour (Spec #0 global cap)
 _WEB_SEARCH_TTL = 3600  # 1 hour
+
+
+async def _redis_incr_with_ttl(redis_key: str, ttl: int) -> int | None:
+    """Run an INCR + EXPIRE pair on the shared Redis backend.
+
+    Returns the post-increment count or ``None`` if Redis is unavailable
+    (callers should fall back to their in-memory dict).
+    """
+    try:
+        from core.cache import cache_service
+
+        if not cache_service._redis_available:
+            return None
+        redis_client = cache_service.backend.redis
+        full_key = f"deepsight:{redis_key}"
+        count = await redis_client.incr(full_key)
+        if count == 1:
+            await redis_client.expire(full_key, ttl)
+        return count
+    except Exception as exc:
+        logger.warning("Redis INCR failed for %s, falling back to in-memory: %s", redis_key, exc)
+        return None
 
 
 async def _increment_web_search_count(summary_id: str) -> int:
@@ -86,25 +111,67 @@ async def _increment_web_search_count(summary_id: str) -> int:
     Uses Redis INCR with TTL when available, falls back to the in-memory dict.
     Returns the count *after* incrementing.
     """
-    redis_key = f"voice:websearch:{summary_id}"
-
-    try:
-        from core.cache import cache_service
-
-        if cache_service._redis_available:
-            redis_client = cache_service.backend.redis
-            full_key = f"deepsight:{redis_key}"
-            count = await redis_client.incr(full_key)
-            if count == 1:
-                await redis_client.expire(full_key, _WEB_SEARCH_TTL)
-            return count
-    except Exception as exc:
-        logger.warning("Redis INCR failed for %s, falling back to in-memory: %s", redis_key, exc)
+    count = await _redis_incr_with_ttl(f"voice:websearch:{summary_id}", _WEB_SEARCH_TTL)
+    if count is not None:
+        return count
 
     # In-memory fallback
     current = _web_search_counts.get(summary_id, 0) + 1
     _web_search_counts[summary_id] = current
     return current
+
+
+async def _increment_user_web_search_count(user_id: int) -> int:
+    """Increment and return the per-user web search count.
+
+    Independent of summary_id so a user can't fan out across many videos.
+    """
+    count = await _redis_incr_with_ttl(f"voice:websearch:user:{user_id}", _WEB_SEARCH_TTL)
+    if count is not None:
+        return count
+
+    current = _user_web_search_counts.get(user_id, 0) + 1
+    _user_web_search_counts[user_id] = current
+    return current
+
+
+async def record_web_search_usage(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    summary_id: int,
+    source: str,
+    query: str,
+) -> None:
+    """Track a successful web_search invocation in WebSearchUsage.
+
+    Mirrors the chat router pattern (see videos/service.py:increment_web_search_usage)
+    and adds a structured log line so we can attribute calls to voice vs chat.
+    """
+    from videos.service import increment_web_search_usage
+
+    try:
+        await increment_web_search_usage(db, user_id)
+    except Exception as exc:
+        logger.warning(
+            "record_web_search_usage failed",
+            extra={
+                "user_id": user_id,
+                "summary_id": summary_id,
+                "source": source,
+                "error": str(exc),
+            },
+        )
+
+    logger.info(
+        "web_search_usage_recorded",
+        extra={
+            "user_id": user_id,
+            "summary_id": summary_id,
+            "source": source,
+            "query": query[:200],
+        },
+    )
 
 
 async def verify_tool_request(request: Request, db: AsyncSession) -> tuple[Summary, dict]:
@@ -1353,20 +1420,45 @@ async def tool_flashcards(request: Request, db: AsyncSession = Depends(get_sessi
 
 @router.post("/tools/web-search")
 async def tool_web_search(request: Request, db: AsyncSession = Depends(get_session)):
-    """ElevenLabs tool webhook: web search via Brave."""
+    """ElevenLabs tool webhook: web search via Brave.
+
+    Rate-limited:
+      - 15 calls / hour / summary_id (anti spam at session level)
+      - 60 calls / hour / user_id    (global cap, anti fan-out)
+
+    Successful calls are tracked in WebSearchUsage (source='voice') so the
+    monthly quota and admin dashboards see them alongside chat searches.
+    """
     summary, body = await verify_tool_request(request, db)
     query = body.get("query") or body.get("parameters", {}).get("query", "")
 
-    # Rate limiting: max 5 web searches per summary_id (Redis with in-memory fallback)
-    key = str(summary.id)
-    count = await _increment_web_search_count(key)
-    if count > _WEB_SEARCH_MAX:
+    # Per-summary rate limit (Spec #0 — raised from 5 to 15)
+    summary_count = await _increment_web_search_count(str(summary.id))
+    if summary_count > _WEB_SEARCH_MAX:
         return {
             "result": "Limite de recherches web atteinte pour cette session. "
             "Utilisez les informations déjà disponibles."
         }
 
+    # Per-user global cap (Spec #0)
+    user_count = await _increment_user_web_search_count(int(summary.user_id))
+    if user_count > _WEB_SEARCH_USER_MAX:
+        return {
+            "result": "Limite horaire de recherches web atteinte pour ton compte. "
+            "Réessaie dans quelques minutes."
+        }
+
     result = await web_search(summary.id, query, db)
+
+    # Track usage for monthly quota + voice attribution
+    await record_web_search_usage(
+        db,
+        user_id=int(summary.user_id),
+        summary_id=int(summary.id),
+        source="voice",
+        query=query,
+    )
+
     return {"result": result}
 
 
