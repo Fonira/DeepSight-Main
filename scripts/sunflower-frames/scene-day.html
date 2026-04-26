@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        margin: 0;
+        background: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" width="256" height="256"></canvas>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as THREE from "three";
+      const renderer = new THREE.WebGLRenderer({
+        canvas: document.getElementById("canvas"),
+        alpha: true,
+        antialias: true,
+      });
+      renderer.setClearColor(0x000000, 0);
+      renderer.setSize(256, 256);
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+      camera.position.set(0, 0, 5);
+      camera.lookAt(0, 0, 0);
+      // Lighting jour : directional + ambient
+      scene.add(new THREE.AmbientLight(0xfff4cc, 0.45));
+      const sun = new THREE.DirectionalLight(0xfffae1, 1.2);
+      sun.position.set(2, 3, 4);
+      scene.add(sun);
+      // Tournesol génératif
+      function buildSunflower() {
+        const group = new THREE.Group();
+        const petalGeom = new THREE.SphereGeometry(0.4, 16, 8);
+        petalGeom.scale(0.35, 1.2, 0.18);
+        for (let i = 0; i < 12; i++) {
+          const theta = (i / 12) * Math.PI * 2;
+          const petalMat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color().lerpColors(
+              new THREE.Color(0xfef9c3),
+              new THREE.Color(0xb45309),
+              0.5,
+            ),
+            roughness: 0.55,
+            metalness: 0.05,
+          });
+          const petal = new THREE.Mesh(petalGeom, petalMat);
+          petal.position.set(Math.cos(theta) * 1.2, Math.sin(theta) * 1.2, 0);
+          petal.rotation.z = theta - Math.PI / 2;
+          group.add(petal);
+        }
+        const centerGeom = new THREE.CylinderGeometry(0.85, 0.85, 0.18, 32);
+        centerGeom.rotateX(Math.PI / 2);
+        const centerMat = new THREE.MeshStandardMaterial({
+          color: 0x451a03,
+          roughness: 0.85,
+          metalness: 0.05,
+          bumpScale: 0.05,
+        });
+        const center = new THREE.Mesh(centerGeom, centerMat);
+        group.add(center);
+        return group;
+      }
+      const flower = buildSunflower();
+      scene.add(flower);
+      window.renderFrame = (rotationY) => {
+        flower.rotation.y = rotationY;
+        renderer.render(scene, camera);
+      };
+      window.READY = true;
+    </script>
+  </body>
+</html>
