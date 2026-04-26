@@ -20,6 +20,8 @@ export {
   getReadingZoneCap,
 } from "./accessibility";
 export { getSpriteFrameIndex } from "./sprite-frame";
+export { KEYFRAMES_V3 } from "./keyframes.v3";
+export type { KeyframeV3 } from "./keyframes.v3";
 
 export type {
   RGB,
