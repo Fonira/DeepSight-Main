@@ -214,14 +214,36 @@ async function loadElevenLabsSdk(): Promise<ElevenLabsSdk | null> {
     try {
       // Dynamic import — webpack code-splits ce chunk pour qu'il ne soit
       // chargé que quand l'utilisateur ouvre le sidepanel et démarre.
-      // Si le SDK n'est pas installé (V1 stub), on log et on retourne null
-      // pour que l'UI reste utilisable côté UI/UX.
-      const mod: { default?: ElevenLabsSdk; sdk?: ElevenLabsSdk } | null =
-        await import(
-          /* webpackChunkName: "elevenlabs-sdk" */ /* webpackIgnore: true */ "elevenlabs-extension-sdk"
-        ).catch(() => null);
+      // On wrappe `@elevenlabs/client` (Conversation.startSession) dans
+      // l'interface `ElevenLabsSdk` minimale utilisée par notre hook.
+      const mod = await import(
+        /* webpackChunkName: "elevenlabs-sdk" */ "@elevenlabs/client"
+      ).catch(() => null);
       if (!mod) return null;
-      cachedSdk = mod.default ?? mod.sdk ?? null;
+      const Conversation = (mod as { Conversation?: ConversationStatic })
+        .Conversation;
+      if (!Conversation) return null;
+      let activeConv: ConversationInstance | null = null;
+      cachedSdk = {
+        connect: async (opts) => {
+          activeConv = (await Conversation.startSession({
+            signedUrl: opts.signedUrl,
+            onMessage: ({ message, source }) => {
+              const speaker: TranscriptSpeaker =
+                source === "user" ? "user" : "agent";
+              opts.onMessage({ source: speaker, text: message });
+            },
+          })) as ConversationInstance;
+        },
+        disconnect: async () => {
+          try {
+            await activeConv?.endSession();
+          } catch {
+            /* swallow */
+          }
+          activeConv = null;
+        },
+      };
       return cachedSdk;
     } catch {
       return null;
@@ -230,6 +252,23 @@ async function loadElevenLabsSdk(): Promise<ElevenLabsSdk | null> {
     }
   })();
   return sdkLoading;
+}
+
+// ── Types narrow pour le SDK ElevenLabs ──
+// On évite d'importer Conversation au top-level (lazy chunk Webpack) ;
+// on déclare seulement les pièces utilisées.
+interface ConversationInstance {
+  endSession(): Promise<void>;
+}
+
+interface ConversationStatic {
+  startSession(opts: {
+    signedUrl: string;
+    onMessage?: (event: {
+      message: string;
+      source: "user" | "ai";
+    }) => void;
+  }): Promise<ConversationInstance>;
 }
 
 // Test-only escape hatch — permet d'injecter un SDK mock dans Jest sans

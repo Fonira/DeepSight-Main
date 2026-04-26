@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@deepsight/lighting-engine": "file:../packages/lighting-engine",
+    "@elevenlabs/client": "^0.15.2",
     "preact": "^10.29.1",
     "webextension-polyfill": "^0.12.0"
   }
