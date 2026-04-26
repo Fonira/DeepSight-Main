@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 describe("design tokens v3", () => {
-  const tokensPath = path.resolve(__dirname, "../tokens.css");
+  const tokensPath = path.resolve(__dirname, "../../index.css");
   const content = fs.existsSync(tokensPath)
     ? fs.readFileSync(tokensPath, "utf-8")
     : "";
