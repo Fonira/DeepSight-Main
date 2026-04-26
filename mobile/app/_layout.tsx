@@ -178,14 +178,25 @@ function RootNavigator() {
   }, [isAuthenticated, isLoading, segments]);
 
   // ────────────────────────────────────────────────────────────────
-  // Ambient light : mode "minimal" partout (juste un rayon vertical fin
-  // centré, ZÉRO lune, étoiles à peine perceptibles). Le précédent design
-  // avec "normal" sur l'accueil créait un gros blob lumineux blanc/bleu
-  // (la lune visible le soir+nuit) qui envahissait tout l'écran.
+  // Ambient light v5 : conditionnel par route.
+  // - (auth)/* + (tabs)/index (accueil) : "normal" — la lumière fait
+  //   partie de l'identité de la marque, on la garde forte sur ces écrans.
+  // - Pages internes (library/historique, study, profile, subscription,
+  //   analysis detail, etc.) : "off" — aucun calque ambient, fond bgPrimary
+  //   pur. Le user a explicitement demandé "pas d'énorme couche blanche
+  //   sur les onglets internes".
   // ────────────────────────────────────────────────────────────────
+  const segsArr = segments as readonly string[];
+  const inAuthGroup = segsArr[0] === "(auth)";
+  const inTabsGroup = segsArr[0] === "(tabs)";
+  const tabName = segsArr[1];
+  const isTabHome = inTabsGroup && (tabName == null || tabName === "index");
+  const ambientIntensity: "normal" | "off" =
+    inAuthGroup || isTabHome ? "normal" : "off";
+
   return (
     <View style={rootStyles.root}>
-      <AmbientLightLayer intensity="minimal" />
+      <AmbientLightLayer intensity={ambientIntensity} />
       <StatusBar style="light" backgroundColor={darkColors.bgPrimary} />
       <Stack
         screenOptions={{

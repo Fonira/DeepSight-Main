@@ -34,23 +34,26 @@ import { View, StyleSheet, ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTimeOfDay, AmbientPreset } from "../../hooks/useTimeOfDay";
 
-type Intensity = "minimal" | "soft" | "normal" | "strong";
+type Intensity = "off" | "minimal" | "soft" | "normal" | "strong";
 
 interface AmbientLightLayerProps {
-  /** Densité de l'effet. Défaut : "normal". */
+  /** Densité de l'effet. Défaut : "normal". "off" = early return null (rien rendu). */
   intensity?: Intensity;
 }
 
 // Multiplicateur global d'intensité par-dessus le preset temporel.
-// "minimal" v4 : juste le rayon vertical fin centré, ZÉRO lune (qui causait
-// le gros blob blanc/bleu visible le soir et la nuit), étoiles à peine
-// perceptibles. Mode utilisé par défaut sur toutes les routes mobile.
-// Les autres niveaux (soft/normal/strong) restent disponibles si besoin.
+// "off"     : return null — aucun rendu (utilisé sur pages internes).
+// "minimal" : rayon vertical ULTRA fin (~5% opacity), ZÉRO lune, ZÉRO étoile.
+//             Pour pages internes qui veulent juste une présence imperceptible.
+// "soft"    : version atténuée pour pages denses.
+// "normal"  : intensité par défaut (accueil, login).
+// "strong"  : présence renforcée pour écrans hero / marketing.
 const INTENSITY_MUL: Record<
   Intensity,
   { beam: number; star: number; moon: number }
 > = {
-  minimal: { beam: 0.1, star: 0.08, moon: 0 },
+  off: { beam: 0, star: 0, moon: 0 },
+  minimal: { beam: 0.05, star: 0, moon: 0 },
   soft: { beam: 0.35, star: 0.4, moon: 0.7 },
   normal: { beam: 0.55, star: 0.6, moon: 1 },
   strong: { beam: 0.85, star: 0.85, moon: 1.15 },
@@ -125,6 +128,10 @@ const Moon: React.FC<MoonProps> = ({ preset, moonOpacity }) => {
 export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
   intensity = "normal",
 }) => {
+  // Mode "off" : on ne rend rien du tout (utile pour pages internes qui
+  // veulent un fond pur sans aucun calque ambient).
+  if (intensity === "off") return null;
+
   const { ambientPreset: p } = useTimeOfDay();
   const mul = INTENSITY_MUL[intensity];
 
