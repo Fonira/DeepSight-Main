@@ -46,6 +46,7 @@ from voice.schemas import (
     VoiceCatalogEntry,
     VoiceThumbnailResponse,
     VoiceThumbnailGradient,
+    TranscriptAppendRequest,
 )
 from voice.quota import (
     get_voice_quota_info,
@@ -726,9 +727,7 @@ async def create_voice_session(
                         extra={
                             "summary_id": request.summary_id,
                             "user_id": current_user.id,
-                            "messages_kept": min(
-                                _CHAT_HISTORY_MAX_MESSAGES, len(_chat_history)
-                            ),
+                            "messages_kept": min(_CHAT_HISTORY_MAX_MESSAGES, len(_chat_history)),
                             "block_chars": len(_history_block),
                         },
                     )
