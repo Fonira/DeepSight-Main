@@ -138,22 +138,30 @@ export default function SharedAnalysisPage() {
 
   // ─── Success ─────────────────────────────────────────────────────────────
   const analysis = data.analysis;
-  const videoId = extractVideoId(analysis.video_url || "");
+  const videoId = analysis.video_id || extractVideoId(analysis.video_url || "");
   const thumbnailUrl =
+    analysis.video_thumbnail ||
     analysis.thumbnail_url ||
+    data.video_thumbnail ||
     (videoId ? `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg` : "");
   const youtubeUrl =
-    analysis.video_url || `https://www.youtube.com/watch?v=${videoId}`;
-  const tags = analysis.tags
-    ? analysis.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean)
-    : [];
-  const description = (data.verdict || analysis.summary_content || "").slice(
-    0,
-    160,
-  );
+    analysis.video_url ||
+    (videoId ? `https://www.youtube.com/watch?v=${videoId}` : "");
+  const rawTags = analysis.tags;
+  const tags = Array.isArray(rawTags)
+    ? rawTags.map((t) => String(t).trim()).filter(Boolean)
+    : typeof rawTags === "string" && rawTags
+      ? rawTags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : [];
+  const summaryContent =
+    analysis.synthesis_markdown || analysis.summary_content || "";
+  const channel = analysis.channel || analysis.video_channel || "";
+  const duration = analysis.duration_seconds || analysis.video_duration;
+  const createdAt = data.created_at || analysis.created_at;
+  const description = (data.verdict || summaryContent || "").slice(0, 160);
   const shareUrl = `https://deepsightsynthesis.com/s/${shareToken}`;
 
   return (
@@ -233,9 +241,9 @@ export default function SharedAnalysisPage() {
         {/* Subtitle metadata */}
         <p className="text-text-muted text-sm sm:text-base mb-6">
           {[
-            sanitizeTitle(analysis.video_channel),
-            formatDate(analysis.created_at),
-            formatDuration(analysis.video_duration),
+            sanitizeTitle(channel),
+            formatDate(createdAt),
+            formatDuration(duration),
             analysis.mode ? `Mode ${analysis.mode}` : null,
           ]
             .filter(Boolean)
@@ -276,7 +284,7 @@ export default function SharedAnalysisPage() {
           <div
             className="prose prose-invert max-w-none text-text-secondary leading-relaxed"
             dangerouslySetInnerHTML={{
-              __html: formatContent(analysis.summary_content || ""),
+              __html: formatContent(summaryContent),
             }}
           />
         </div>
