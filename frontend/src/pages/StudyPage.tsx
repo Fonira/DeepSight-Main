@@ -599,7 +599,9 @@ export const StudyPage: React.FC = () => {
         {showWarmUp && !isSessionMode && !showResults && (
           <AnimatePresence>
             <StudyWarmUp
-              category={studyData.flashcards[0]?.tags?.[0]}
+              category={
+                (studyData.flashcards[0] as { tags?: string[] })?.tags?.[0]
+              }
               onStart={() => setShowWarmUp(false)}
             />
           </AnimatePresence>

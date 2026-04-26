@@ -23,7 +23,6 @@ import {
   ChevronUp,
   Lock,
   Infinity as InfinityIcon,
-  GraduationCap,
   Star,
   Gift,
   Clock,
@@ -159,15 +158,15 @@ function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
 
     return {
       id: pid,
-      name: info.name,
-      name_en: info.nameEn,
-      description: info.description,
-      description_en: info.descriptionEn,
+      name: info.name.fr,
+      name_en: info.name.en,
+      description: info.description.fr,
+      description_en: info.description.en,
       price_monthly_cents: info.priceMonthly,
       color: info.color,
       icon: info.icon,
       badge: info.badge
-        ? { text: info.badge.text, color: info.badge.color }
+        ? { text: info.badge.fr, color: info.badge.color }
         : null,
       popular: info.popular,
       limits: limitsToSnakeCase(limits),
