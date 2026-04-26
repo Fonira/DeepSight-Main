@@ -2051,7 +2051,9 @@ async def tool_check_fact(request: Request, db: AsyncSession = Depends(get_sessi
     # Per-user global cap
     user_count = await _increment_user_web_search_count(int(summary.user_id))
     if user_count > _WEB_SEARCH_USER_MAX:
-        return {"result": "Limite horaire de vérifications web atteinte pour ton compte. Réessaie dans quelques minutes."}
+        return {
+            "result": "Limite horaire de vérifications web atteinte pour ton compte. Réessaie dans quelques minutes."
+        }
 
     result = await check_fact(summary.id, claim, db)
 
@@ -2136,10 +2138,7 @@ async def tool_debate_web_search(request: Request, db: AsyncSession = Depends(ge
     # Per-debate rate limit (reuse summary counter pool with namespaced key)
     debate_count = await _increment_web_search_count(f"debate:{debate.id}")
     if debate_count > _WEB_SEARCH_MAX:
-        return {
-            "result": "Limite de recherches web atteinte pour ce débat. "
-            "Utilise les informations déjà disponibles."
-        }
+        return {"result": "Limite de recherches web atteinte pour ce débat. Utilise les informations déjà disponibles."}
 
     # Per-user global cap
     user_count = await _increment_user_web_search_count(int(debate.user_id))
