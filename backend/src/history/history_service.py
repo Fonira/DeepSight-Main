@@ -43,7 +43,7 @@ HISTORY_LIST_COLUMNS = [
     Summary.video_url,  # 🔗 URL originale (fallback détection plateforme)
     Summary.created_at,
     # has_transcript calculé en SQL au lieu de charger tout le transcript_context
-    case((Summary.transcript_context is not None, True), else_=False).label("has_transcript"),
+    case((Summary.transcript_context.isnot(None), True), else_=False).label("has_transcript"),
 ]
 
 
@@ -85,7 +85,7 @@ async def get_user_history(
     filters = [Summary.user_id == user_id]
 
     if exclude_playlists:
-        filters.append(or_(Summary.playlist_id is None, Summary.playlist_id == ""))
+        filters.append(or_(Summary.playlist_id.is_(None), Summary.playlist_id == ""))
 
     if category and category != "all":
         filters.append(Summary.category == category)
@@ -573,7 +573,7 @@ async def get_history_stats(session: AsyncSession, user_id: int) -> Dict[str, An
     vc, pc, wc, dc, cc = await asyncio.gather(
         session.execute(
             select(func.count(Summary.id)).where(
-                Summary.user_id == user_id, or_(Summary.playlist_id is None, Summary.playlist_id == "")
+                Summary.user_id == user_id, or_(Summary.playlist_id.is_(None), Summary.playlist_id == "")
             )
         ),
         session.execute(
@@ -682,7 +682,7 @@ async def delete_all_history(
             # Récupérer les summary_ids des playlists
             playlist_summary_ids = await session.execute(
                 select(Summary.id).where(
-                    and_(Summary.user_id == user_id, Summary.playlist_id is not None, Summary.playlist_id != "")
+                    and_(Summary.user_id == user_id, Summary.playlist_id.isnot(None), Summary.playlist_id != "")
                 )
             )
             ids_to_delete = [row[0] for row in playlist_summary_ids.fetchall()]
@@ -697,7 +697,7 @@ async def delete_all_history(
             # Récupérer les summary_ids des vidéos individuelles
             video_summary_ids = await session.execute(
                 select(Summary.id).where(
-                    and_(Summary.user_id == user_id, or_(Summary.playlist_id is None, Summary.playlist_id == ""))
+                    and_(Summary.user_id == user_id, or_(Summary.playlist_id.is_(None), Summary.playlist_id == ""))
                 )
             )
             ids_to_delete = [row[0] for row in video_summary_ids.fetchall()]
@@ -728,7 +728,7 @@ async def delete_all_history(
             # Supprimer les vidéos de playlists
             playlist_videos_result = await session.execute(
                 delete(Summary).where(
-                    and_(Summary.user_id == user_id, Summary.playlist_id is not None, Summary.playlist_id != "")
+                    and_(Summary.user_id == user_id, Summary.playlist_id.isnot(None), Summary.playlist_id != "")
                 )
             )
             count += playlist_videos_result.rowcount
@@ -737,7 +737,7 @@ async def delete_all_history(
             # Supprimer seulement les vidéos individuelles
             video_result = await session.execute(
                 delete(Summary).where(
-                    and_(Summary.user_id == user_id, or_(Summary.playlist_id is None, Summary.playlist_id == ""))
+                    and_(Summary.user_id == user_id, or_(Summary.playlist_id.is_(None), Summary.playlist_id == ""))
                 )
             )
             count += video_result.rowcount
