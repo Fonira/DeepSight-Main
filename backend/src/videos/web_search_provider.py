@@ -133,7 +133,7 @@ def _build_synthesis_prompt(
     if not results_text:
         results_text = "\n(Aucun résultat Brave disponible)"
 
-    is_fr = lang.lower().startswith("fr")
+    lang.lower().startswith("fr")
 
     if purpose == "enrichment":
         system_prompt = (

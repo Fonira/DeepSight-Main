@@ -580,7 +580,7 @@ async def enqueue_images_for_summary(summary_id: int, pool=None) -> int:
             continue
 
         # Insert as pending
-        definition = concept.get("definition", concept.get("short_definition", ""))
+        concept.get("definition", concept.get("short_definition", ""))
         category = concept.get("category", "misc")
         fun_score = calculate_fun_score(concept["term"], category)
         async with pool.acquire() as conn:

@@ -2074,7 +2074,6 @@ async def _elevenlabs_scribe_transcribe(video_id: str, audio_data: bytes = None,
 
 async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[bytes], str]:
     """Télécharge l'audio d'une vidéo YouTube pour transcription"""
-    audio_data = None
     audio_ext = ".mp3"
 
     # Essayer Invidious d'abord

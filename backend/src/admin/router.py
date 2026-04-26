@@ -315,7 +315,7 @@ async def update_user(
     # 🔐 SÉCURITÉ: Valider le plan avant mise à jour
     if request.plan is not None:
         try:
-            validated_plan = request.validate_plan()
+            request.validate_plan()
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 

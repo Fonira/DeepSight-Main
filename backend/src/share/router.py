@@ -184,7 +184,6 @@ def _build_og_html(shared: SharedAnalysis, share_token: str) -> str:
     """Build OG meta tags HTML page for social bots."""
     title = shared.video_title or "Video Analysis"
     verdict = shared.verdict or ""
-    thumbnail = shared.video_thumbnail or ""
     share_url = f"{FRONTEND_URL}/s/{share_token}"
 
     # Dynamic branded og-image endpoint (1200×630 PNG with title + verdict chip).
@@ -239,7 +238,7 @@ async def create_share_link(
         select(SharedAnalysis).where(
             SharedAnalysis.user_id == current_user.id,
             SharedAnalysis.video_id == request.video_id,
-            SharedAnalysis.is_active == True,
+            SharedAnalysis.is_active,
         )
     )
     existing_share = existing.scalar_one_or_none()
@@ -313,7 +312,7 @@ async def get_shared_og(
     result = await session.execute(
         select(SharedAnalysis).where(
             SharedAnalysis.share_token == share_token,
-            SharedAnalysis.is_active == True,
+            SharedAnalysis.is_active,
         )
     )
     shared = result.scalar_one_or_none()
@@ -466,7 +465,7 @@ async def get_shared_analysis(
     result = await session.execute(
         select(SharedAnalysis).where(
             SharedAnalysis.share_token == share_token,
-            SharedAnalysis.is_active == True,
+            SharedAnalysis.is_active,
         )
     )
     shared = result.scalar_one_or_none()
@@ -514,7 +513,7 @@ async def revoke_share(
         select(SharedAnalysis).where(
             SharedAnalysis.user_id == current_user.id,
             SharedAnalysis.video_id == video_id,
-            SharedAnalysis.is_active == True,
+            SharedAnalysis.is_active,
         )
     )
     shares = result.scalars().all()

@@ -96,7 +96,7 @@ async def fetch_youtube_comments(
         ]
         
         # Exécuter yt-dlp
-        result = subprocess.run(
+        subprocess.run(
             cmd,
             capture_output=True,
             text=True,

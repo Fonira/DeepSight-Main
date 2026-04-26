@@ -39,7 +39,7 @@ async def send_push(
         result = await session.execute(
             select(PushToken).where(
                 PushToken.user_id == user_id,
-                PushToken.is_active == True,
+                PushToken.is_active,
             )
         )
         tokens = result.scalars().all()

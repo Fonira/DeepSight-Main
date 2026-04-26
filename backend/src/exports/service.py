@@ -866,7 +866,6 @@ def export_to_excel(
         cell.fill = header_fill
         row += 1
 
-        col_offset = 0
         if entities.get("concepts"):
             ws[f'A{row}'] = "Concepts clés"
             ws[f'A{row}'].font = label_font
@@ -1094,7 +1093,8 @@ def build_narrative_text(
     try:
         from tts.service import clean_text_for_tts
     except ImportError:
-        clean_text_for_tts = lambda t, **kw: t
+        def clean_text_for_tts(t, **kw):
+            return t
 
     # Build intro
     parts = []

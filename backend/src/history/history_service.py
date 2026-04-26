@@ -44,7 +44,7 @@ HISTORY_LIST_COLUMNS = [
     Summary.created_at,
     # has_transcript calculé en SQL au lieu de charger tout le transcript_context
     case(
-        (Summary.transcript_context != None, True),
+        (Summary.transcript_context is not None, True),
         else_=False
     ).label("has_transcript"),
 ]
@@ -87,13 +87,13 @@ async def get_user_history(
     filters = [Summary.user_id == user_id]
 
     if exclude_playlists:
-        filters.append(or_(Summary.playlist_id == None, Summary.playlist_id == ""))
+        filters.append(or_(Summary.playlist_id is None, Summary.playlist_id == ""))
 
     if category and category != "all":
         filters.append(Summary.category == category)
 
     if favorites_only:
-        filters.append(Summary.is_favorite == True)
+        filters.append(Summary.is_favorite)
 
     if search:
         # SECURITY: Échapper les caractères spéciaux SQL LIKE
@@ -508,7 +508,7 @@ async def get_history_stats(
         session.execute(
             select(func.count(Summary.id)).where(
                 Summary.user_id == user_id,
-                or_(Summary.playlist_id == None, Summary.playlist_id == "")
+                or_(Summary.playlist_id is None, Summary.playlist_id == "")
             )
         ),
         session.execute(
@@ -641,7 +641,7 @@ async def delete_all_history(
                 select(Summary.id).where(
                     and_(
                         Summary.user_id == user_id,
-                        Summary.playlist_id != None,
+                        Summary.playlist_id is not None,
                         Summary.playlist_id != ""
                     )
                 )
@@ -664,7 +664,7 @@ async def delete_all_history(
                 select(Summary.id).where(
                     and_(
                         Summary.user_id == user_id,
-                        or_(Summary.playlist_id == None, Summary.playlist_id == "")
+                        or_(Summary.playlist_id is None, Summary.playlist_id == "")
                     )
                 )
             )
@@ -706,7 +706,7 @@ async def delete_all_history(
                 delete(Summary).where(
                     and_(
                         Summary.user_id == user_id,
-                        Summary.playlist_id != None,
+                        Summary.playlist_id is not None,
                         Summary.playlist_id != ""
                     )
                 )
@@ -719,7 +719,7 @@ async def delete_all_history(
                 delete(Summary).where(
                     and_(
                         Summary.user_id == user_id,
-                        or_(Summary.playlist_id == None, Summary.playlist_id == "")
+                        or_(Summary.playlist_id is None, Summary.playlist_id == "")
                     )
                 )
             )

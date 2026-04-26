@@ -207,7 +207,7 @@ async def generate_audio_summary(
     )
 
     user_plan = current_user.plan or "free"
-    platform = request.query_params.get("platform", "web")
+    request.query_params.get("platform", "web")
 
     # ── Plan gating ──────────────────────────────────────────────────────
     limit = AUDIO_SUMMARY_LIMITS.get(user_plan, 0)

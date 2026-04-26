@@ -544,7 +544,7 @@ class UltraResilientTranscriptExtractor:
         if not api_key_match:
             raise Exception("Could not find INNERTUBE_API_KEY")
 
-        api_key = api_key_match.group(1)
+        api_key_match.group(1)
 
         # Extract caption tracks
         caption_tracks_match = re.search(

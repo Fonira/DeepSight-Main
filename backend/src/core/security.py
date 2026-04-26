@@ -213,7 +213,7 @@ async def check_rate_limit_for_auth(user_id: int, user_plan: str) -> Tuple[bool,
     now = time.time()
     limits = RATE_LIMITS.get(user_plan, RATE_LIMITS["free"])
     max_requests = limits["requests_per_minute"] * 2
-    burst = limits["burst"] * 2
+    limits["burst"] * 2
 
     if user_id not in _rate_limits:
         _rate_limits[user_id] = {

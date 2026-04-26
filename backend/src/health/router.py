@@ -209,7 +209,7 @@ async def health_simple():
 
     Returns 200 if healthy, 503 if unhealthy.
     """
-    start = time.perf_counter()
+    time.perf_counter()
     try:
         db_result = await _timed_check("database", _check_database())
         is_healthy = db_result["status"] == "ok"

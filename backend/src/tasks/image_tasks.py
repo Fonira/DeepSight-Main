@@ -102,7 +102,7 @@ def batch_generate_missing_images_task(self) -> Dict[str, Any]:
             try:
                 # Fetch definition from summaries if available
                 async with pool.acquire() as conn:
-                    def_row = await conn.fetchrow(
+                    await conn.fetchrow(
                         """
                         SELECT definition FROM keyword_images WHERE term_hash = $1
                         """,

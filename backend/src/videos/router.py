@@ -4106,7 +4106,7 @@ async def analyze_hybrid(
             category=request.category,
         )
         
-        char_count = len(request.raw_text)
+        len(request.raw_text)
         word_count = len(request.raw_text.split())
         
         return HybridAnalysisResponse(

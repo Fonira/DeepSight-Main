@@ -443,7 +443,7 @@ async def get_my_plan(
     ws_q = await session.execute(
         select(sa_func.count(ChatMessage.id))
         .where(ChatMessage.user_id == current_user.id)
-        .where(ChatMessage.web_search_used == True)
+        .where(ChatMessage.web_search_used)
         .where(ChatMessage.created_at >= month_start)
     )
     web_searches_this_month: int = ws_q.scalar() or 0
@@ -820,7 +820,7 @@ async def change_subscription_plan(
                 f"Upgrading user {current_user.id} from {current_plan} to {new_plan}"
             )
 
-            updated_subscription = stripe.Subscription.modify(
+            stripe.Subscription.modify(
                 current_user.stripe_subscription_id,
                 items=[
                     {
@@ -871,7 +871,7 @@ async def change_subscription_plan(
             )
 
             # Programmer le changement pour la fin de la période
-            updated_subscription = stripe.Subscription.modify(
+            stripe.Subscription.modify(
                 current_user.stripe_subscription_id,
                 items=[
                     {
@@ -963,7 +963,7 @@ async def upgrade_subscription(
     try:
         subscription_item_id = subscription["items"]["data"][0]["id"]
 
-        updated_subscription = stripe.Subscription.modify(
+        stripe.Subscription.modify(
             current_user.stripe_subscription_id,
             items=[
                 {
@@ -1081,7 +1081,7 @@ async def downgrade_subscription(
         subscription_item_id = subscription["items"]["data"][0]["id"]
 
         # Downgrade programmé à la fin de la période (pas de prorata)
-        updated_subscription = stripe.Subscription.modify(
+        stripe.Subscription.modify(
             current_user.stripe_subscription_id,
             items=[
                 {
@@ -1319,7 +1319,7 @@ async def reactivate_subscription(
         raise HTTPException(status_code=400, detail="No subscription found")
 
     try:
-        subscription = stripe.Subscription.modify(
+        stripe.Subscription.modify(
             current_user.stripe_subscription_id, cancel_at_period_end=False
         )
 

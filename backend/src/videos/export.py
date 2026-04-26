@@ -125,7 +125,7 @@ def export_to_docx(
     doc = Document()
     
     # Style du titre
-    title_para = doc.add_heading("🤿 Deep Sight — Synthèse", level=0)
+    doc.add_heading("🤿 Deep Sight — Synthèse", level=0)
     
     # Infos vidéo
     doc.add_heading(f"📺 {title}", level=1)

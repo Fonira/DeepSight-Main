@@ -388,7 +388,7 @@ async def get_user_history(
         ))
 
     if favorites_only:
-        filters.append(Summary.is_favorite == True)
+        filters.append(Summary.is_favorite)
 
     # Count query
     count_result = await session.execute(

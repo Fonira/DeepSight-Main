@@ -1290,7 +1290,6 @@ async def _execute_corpus_chat(
     
     sources = []
     perplexity_context = ""
-    web_search_actually_used = False
     
     # ═══════════════════════════════════════════════════════════════════════════════
     # 🧠 DÉTECTION INTELLIGENTE — Utiliser Perplexity seulement quand c'est utile
@@ -1347,7 +1346,6 @@ async def _execute_corpus_chat(
         if perplexity_result:
             perplexity_context = perplexity_result.get("answer", "")
             sources = perplexity_result.get("sources", [])
-            web_search_actually_used = True
             print(f"   🌐 Perplexity: {len(perplexity_context)} chars ({perplexity_reason})", flush=True)
     elif web_search_enabled:
         print("   💡 Perplexity available but not needed for this question", flush=True)
@@ -1681,9 +1679,9 @@ async def _chat_with_mistral_corpus_v4(
     max_corpus = chat_config["max_corpus"]
     max_videos_limit = chat_config["max_videos"]
     max_tokens = mode_config["max_tokens"]
-    num_segments = mode_config["num_segments"]
+    mode_config["num_segments"]
     timecode_min = mode_config["timecode_min"]
-    style_rule = mode_config["style_fr"] if lang == "fr" else mode_config["style_en"]
+    mode_config["style_fr"] if lang == "fr" else mode_config["style_en"]
     
     print(f"[CHAT v4.1] 🤖 Model: {model} | Videos: {len(videos)} | Mode: {mode}", flush=True)
     

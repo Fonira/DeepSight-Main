@@ -650,7 +650,7 @@ def detect_category(
     sorted_cats = sorted(scores.items(), key=lambda x: x[1]["score"], reverse=True)
     best_cat = sorted_cats[0][0]
     best_score = sorted_cats[0][1]["score"]
-    best_matches = sorted_cats[0][1]["matches"]
+    sorted_cats[0][1]["matches"]
     
     # Log des top 3
     print("   📊 Top categories:", flush=True)

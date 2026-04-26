@@ -540,7 +540,7 @@ def build_chat_prompt(
     }
     
     config = MODE_CONFIG.get(mode, MODE_CONFIG["standard"])
-    style = config["style_fr"] if lang == "fr" else config["style_en"]
+    config["style_fr"] if lang == "fr" else config["style_en"]
     max_context = config["max_context"]
     
     # Construire l'historique
@@ -632,7 +632,6 @@ Structure:
     response_guide = response_guide_fr if lang == "fr" else response_guide_en
     
     # Construire le contexte temporel pour le chat
-    temporal_chat_context = ""
     if video_upload_date:
         from videos.analysis import _format_video_age
         readable_date, human_age, age_days = _format_video_age(video_upload_date)

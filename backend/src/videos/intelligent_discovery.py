@@ -609,20 +609,16 @@ class QualityScorer:
             # Chercher le terme et ses synonymes
             terms_to_check = [term] + TERM_SYNONYMS.get(term, [])
             
-            term_found = False
             for check_term in terms_to_check:
                 # Score par emplacement (titre > description > chaîne)
                 if check_term in title_lower:
                     score += term_weight * 1.0  # 100% si dans le titre
-                    term_found = True
                     break
                 elif check_term in desc_lower:
                     score += term_weight * 0.5  # 50% si dans la description
-                    term_found = True
                     break
                 elif check_term in channel_lower:
                     score += term_weight * 0.3  # 30% si dans le nom de chaîne
-                    term_found = True
                     break
             
             # Bonus si c'est un nombre (année, date) trouvé exactement
@@ -1089,7 +1085,7 @@ class TournesolPromotion:
                     
                     metadata = item.get("entity", {}).get("metadata", {})
                     title = (metadata.get("name", "") or "").lower()
-                    description = (metadata.get("description", "") or "").lower()
+                    (metadata.get("description", "") or "").lower()
                     
                     # Chercher un match avec au moins 2 mots
                     title_words = set(title.split())

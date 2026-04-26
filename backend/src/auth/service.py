@@ -596,7 +596,7 @@ async def login_or_register_google_user(
     """
     email = google_user.get("email", "").lower().strip()
     google_id = google_user.get("id", "")
-    name = google_user.get("name", email.split("@")[0])
+    google_user.get("name", email.split("@")[0])
 
     if not email:
         return False, None, "❌ Email non fourni par Google", None
