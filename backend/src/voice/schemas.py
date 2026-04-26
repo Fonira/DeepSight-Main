@@ -3,7 +3,7 @@ Voice Chat Schemas — Pydantic models for voice API endpoints.
 """
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Literal, Optional, List
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -31,6 +31,21 @@ class VoiceSessionRequest(BaseModel):
         if self.summary_id is not None and self.debate_id is not None:
             raise ValueError("Fournir summary_id OU debate_id, pas les deux")
         return self
+
+
+# ── Spec #1, Task 7 — Transcript append (frontend persistence per voice turn) ──
+class TranscriptAppendRequest(BaseModel):
+    """Persist a single voice turn into chat_messages with source='voice'.
+
+    Sent by the frontend after each ``onMessage`` callback so the unified
+    text+voice timeline survives a page reload. Webhook reconciliation
+    (Task 8) corrects any drift after the call ends.
+    """
+
+    voice_session_id: str = Field(..., min_length=1, max_length=64)
+    speaker: Literal["user", "agent"]
+    content: str = Field(..., min_length=1, max_length=8000)
+    time_in_call_secs: float = Field(..., ge=0.0)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

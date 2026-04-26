@@ -4,6 +4,7 @@ Voice Chat Router — ElevenLabs Conversational AI Integration
 Endpoints:
   GET  /quota                                    — Voice quota info
   POST /session                                  — Create voice session
+  POST /transcripts/append                       — Persist one voice turn (Spec #1)
   POST /webhook                                  — ElevenLabs webhook (public)
   GET  /history/{summary_id}                     — Voice session history
   GET  /history/{summary_id}/{session_id}/transcript — Session transcript
@@ -132,6 +133,32 @@ async def _increment_user_web_search_count(user_id: int) -> int:
 
     current = _user_web_search_counts.get(user_id, 0) + 1
     _user_web_search_counts[user_id] = current
+    return current
+
+
+# ── Spec #1, Task 7 — Rate limit for /transcripts/append ───────────────────
+# 60 calls / minute per voice_session_id. The cap is generous: a single voice
+# turn is short, but the frontend may emit several events per turn (interim,
+# final, agent reply). The Redis TTL guarantees per-minute reset.
+_transcript_append_counts: dict[str, int] = {}
+_TRANSCRIPT_APPEND_MAX = 60
+_TRANSCRIPT_APPEND_TTL = 60  # 1 minute
+
+
+async def _increment_transcript_append_count(voice_session_id: str) -> int:
+    """Increment and return the count of /transcripts/append calls for a session.
+
+    Uses Redis INCR with TTL when available, falls back to the in-memory dict.
+    """
+    count = await _redis_incr_with_ttl(
+        f"voice:transcript_append:{voice_session_id}",
+        _TRANSCRIPT_APPEND_TTL,
+    )
+    if count is not None:
+        return count
+
+    current = _transcript_append_counts.get(voice_session_id, 0) + 1
+    _transcript_append_counts[voice_session_id] = current
     return current
 
 
@@ -943,6 +970,117 @@ async def create_voice_session(
         ptt_key=user_prefs.ptt_key,
         playback_rate=playback_rate,
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POST /transcripts/append — Persist a single voice turn (Spec #1, Task 7)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/transcripts/append")
+async def append_transcript(
+    request: TranscriptAppendRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Persist one voice turn into the unified chat_messages timeline.
+
+    Auth: Bearer JWT (user). IDOR: voice_session.user_id must equal
+    current_user.id. Rate limit: 60 / min / voice_session_id (Spec #1).
+
+    The endpoint is idempotent at the API level — duplicate INSERTs are
+    allowed (the webhook reconciler in Task 8 normalises drift after the
+    call ends). Frontend de-duplicates client-side via UUIDs.
+    """
+    # ── Rate limit: 60 / min / voice_session_id ─────────────────────────────
+    count = await _increment_transcript_append_count(request.voice_session_id)
+    if count > _TRANSCRIPT_APPEND_MAX:
+        logger.warning(
+            "Transcript append rate limit exceeded",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "user_id": current_user.id,
+                "count": count,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "transcript_append_rate_limited",
+                "message": (
+                    f"Too many transcript append calls for this voice session "
+                    f"(limit: {_TRANSCRIPT_APPEND_MAX}/min)."
+                ),
+            },
+        )
+
+    # ── Lookup voice_session ─────────────────────────────────────────────────
+    result = await db.execute(
+        select(VoiceSession).where(VoiceSession.id == request.voice_session_id)
+    )
+    voice_session = result.scalar_one_or_none()
+    if voice_session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "voice_session_not_found",
+                "message": "Voice session does not exist.",
+            },
+        )
+
+    # ── IDOR: caller must own the session ────────────────────────────────────
+    if voice_session.user_id != current_user.id:
+        logger.warning(
+            "Transcript append IDOR attempt",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "session_user_id": voice_session.user_id,
+                "caller_user_id": current_user.id,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "voice_session_forbidden",
+                "message": "Voice session does not belong to you.",
+            },
+        )
+
+    # ── Persist into chat_messages with source='voice' ──────────────────────
+    from db.database import ChatMessage
+
+    msg = ChatMessage(
+        user_id=current_user.id,
+        summary_id=voice_session.summary_id,  # may be None for companion
+        role="user" if request.speaker == "user" else "assistant",
+        content=request.content,
+        source="voice",
+        voice_session_id=request.voice_session_id,
+        voice_speaker=request.speaker,
+        time_in_call_secs=request.time_in_call_secs,
+    )
+    db.add(msg)
+    try:
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        logger.error(
+            "Transcript append: DB commit failed",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "user_id": current_user.id,
+                "error": str(exc),
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "transcript_append_failed",
+                "message": "Failed to persist transcript turn.",
+            },
+        )
+
+    return {"ok": True, "voice_session_id": request.voice_session_id}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
