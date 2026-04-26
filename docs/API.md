@@ -2,7 +2,7 @@
 
 Complete API documentation for the DeepSight backend.
 
-**Base URL:** `https://deep-sight-backend-v3-production.up.railway.app`
+**Base URL:** `https://api.deepsightsynthesis.com`
 
 **Interactive Docs:** [Swagger UI](/docs) | [ReDoc](/redoc)
 
@@ -13,6 +13,7 @@ Complete API documentation for the DeepSight backend.
 - [Authentication](#authentication)
 - [Videos](#videos)
 - [Chat](#chat)
+- [Voice](#voice)
 - [Study Tools](#study-tools)
 - [History](#history)
 - [Billing](#billing)
@@ -416,12 +417,14 @@ data: {"done": true, "credits_used": 8}
 
 ### Get Chat History
 
+Returns the unified text + voice timeline for a video, ordered by `created_at ASC`.
+
 ```http
 GET /api/chat/history/{summary_id}
 Authorization: Bearer <token>
 ```
 
-**Response:**
+**Response:** (Spec #1 unified schema — `source`, `voice_speaker`, `voice_session_id`, `time_in_call_secs` populated when applicable)
 
 ```json
 {
@@ -429,18 +432,40 @@ Authorization: Bearer <token>
     {
       "role": "user",
       "content": "What are the main points?",
+      "source": "text",
       "created_at": "2024-01-15T11:00:00Z"
     },
     {
       "role": "assistant",
       "content": "The main points are...",
+      "source": "text",
       "web_search_used": false,
       "fact_checked": true,
       "created_at": "2024-01-15T11:00:05Z"
+    },
+    {
+      "role": "user",
+      "content": "Can you go deeper on point 3?",
+      "source": "voice",
+      "voice_speaker": "user",
+      "voice_session_id": "vs_abc123",
+      "time_in_call_secs": 15.4,
+      "created_at": "2024-01-15T11:01:30Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Sure — the third point argues that...",
+      "source": "voice",
+      "voice_speaker": "agent",
+      "voice_session_id": "vs_abc123",
+      "time_in_call_secs": 22.1,
+      "created_at": "2024-01-15T11:01:35Z"
     }
   ]
 }
 ```
+
+> **Note:** voice rows are excluded from `check_chat_quota` (text quota is preserved across voice usage).
 
 ### Delete Chat History
 
@@ -448,6 +473,128 @@ Authorization: Bearer <token>
 DELETE /api/chat/history/{summary_id}
 Authorization: Bearer <token>
 ```
+
+---
+
+## 🎙️ Voice
+
+ElevenLabs voice agent integration — bidirectional sync between text chat and voice calls. Voice rows persist into the same `chat_messages` table as text (Spec #1 unified timeline).
+
+### Create Voice Session
+
+```http
+POST /api/voice/session
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Request body:**
+
+```json
+{
+  "summary_id": 42,
+  "agent_type": "explorer",
+  "language": "fr"
+}
+```
+
+**Fields:**
+
+- `summary_id` (int, optional) — required for `explorer`/`debate_moderator`/`tutor`/`quiz_coach`/`onboarding`. Optional for `companion` (free-form chat without video context).
+- `debate_id` (int, optional) — XOR with `summary_id`; pass exactly one (or none for `companion`).
+- `agent_type` (string) — one of `explorer`, `tutor`, `debate_moderator`, `quiz_coach`, `onboarding`, `companion`.
+- `language` (string) — `fr` or `en`.
+
+**Response:**
+
+```json
+{
+  "session_id": "vs_abc123",
+  "agent_id": "agent_xyz",
+  "signed_url": "wss://api.elevenlabs.io/v1/convai/conversation?...",
+  "conversation_token": "...",
+  "expires_at": "2026-04-26T12:00:00Z"
+}
+```
+
+**Errors:**
+
+- `400 summary_required` — `agent_type` requires a video, but `summary_id` is missing.
+- `403` — voice chat not available on your plan (Pro+ required).
+- `429 voice_quota_exceeded` — monthly voice minutes used up.
+
+### Append Transcript Turn
+
+Persist a transcript turn from the live ElevenLabs conversation into the unified chat timeline. Called from the frontend on every `onMessage` event of the SDK.
+
+```http
+POST /api/voice/transcripts/append
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Request body:**
+
+```json
+{
+  "voice_session_id": "vs_abc123",
+  "speaker": "user",
+  "content": "What does the speaker mean by X?",
+  "time_in_call_secs": 15.4
+}
+```
+
+**Fields:**
+
+- `voice_session_id` (string, required) — must belong to the authenticated user (404 otherwise).
+- `speaker` (`"user"` | `"agent"`) — server maps to `role` (`user`→`user`, `agent`→`assistant`).
+- `content` (string) — transcript text.
+- `time_in_call_secs` (float, optional) — offset within the call.
+
+**Response:**
+
+```json
+{
+  "id": 12345,
+  "created": true,
+  "voice_session_id": "vs_abc123"
+}
+```
+
+`created=false` indicates a 60-second dedup hit (same `voice_session_id` + `role` + `content` already persisted).
+
+**Errors:**
+
+- `404 voice_session_not_found` — session missing OR not owned by current user (IDOR-safe; identical response either way).
+- `429` — rate-limit exceeded (60 appends/min per session).
+- `422` — `speaker` must be `"user"` or `"agent"`.
+
+### ElevenLabs Webhook (post-call)
+
+Receives the final transcript from ElevenLabs at end-of-call. Reconciles drift with real-time appends (e.g., if a network blip dropped a turn). HMAC-SHA256 signature verified via `ELEVENLABS_WEBHOOK_SECRET`.
+
+```http
+POST /api/voice/webhook
+X-Elevenlabs-Signature: <hmac-sha256>
+Content-Type: application/json
+```
+
+The webhook is internal; clients do not call it directly. It writes any missing rows from the canonical transcript when drift > 30% (using `difflib.SequenceMatcher.ratio`).
+
+### Voice Configuration
+
+Set these env vars on the backend:
+
+```env
+ELEVENLABS_API_KEY=...
+ELEVENLABS_AGENT_TEMPLATE_ID=...
+ELEVENLABS_WEBHOOK_SECRET=...
+ELEVENLABS_VOICE_ID=...                    # default voice (Rachel)
+ELEVENLABS_COMPANION_VOICE_ID=...          # optional override for companion agent
+ELEVENLABS_MODEL_ID=eleven_flash_v2_5
+```
+
+If `ELEVENLABS_COMPANION_VOICE_ID` is empty, the companion agent falls back to `ELEVENLABS_VOICE_ID`.
 
 ---
 
