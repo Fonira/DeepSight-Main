@@ -1557,6 +1557,9 @@ async def _analyze_video_background_v2(
             else:
                 await deduct_credit(session, user_id, credit_cost, f"Video v2: {video_info['title'][:50]}")
 
+            _task_store[task_id]["progress"] = 94
+            _task_store[task_id]["message"] = "💾 Enregistrement de l'analyse..."
+
             enrichment_metadata = None
             if enrichment_sources:
                 enrichment_metadata = {
@@ -1609,6 +1612,9 @@ async def _analyze_video_background_v2(
                 music_author=video_info.get("music_author"),
                 carousel_images=video_info.get("carousel_images"),
             )
+
+            _task_store[task_id]["progress"] = 97
+            _task_store[task_id]["message"] = "🧩 Indexation et finalisation..."
 
             # 🆕 v4.0: Générer et sauvegarder l'index structuré
             await _save_structured_index(
@@ -3084,6 +3090,9 @@ async def _analyze_video_background_v6(
             else:
                 await deduct_credit(session, user_id, credit_cost, f"Video: {video_info['title'][:50]}")
 
+            _task_store[task_id]["progress"] = 94
+            _task_store[task_id]["message"] = "💾 Enregistrement de l'analyse..."
+
             # Préparer les métadonnées d'enrichissement
             enrichment_metadata = None
             if enrichment_sources:
@@ -3137,6 +3146,9 @@ async def _analyze_video_background_v6(
             )
 
             logger.info(f"💾 Summary saved: id={summary_id}")
+
+            _task_store[task_id]["progress"] = 97
+            _task_store[task_id]["message"] = "🧩 Indexation et finalisation..."
 
             # 🆕 v4.0: Index structuré
             await _save_structured_index(
