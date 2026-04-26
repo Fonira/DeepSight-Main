@@ -3,34 +3,12 @@ import type { User, PlanInfo, MessageResponse } from "../types";
 import Browser from "../utils/browser-polyfill";
 import { LoginView } from "./views/LoginView";
 import { MainView } from "./views/MainView";
-import { VoiceView } from "./VoiceView";
-import type { VoicePanelContext } from "./types";
 import { DeepSightSpinner } from "./shared/DeepSightSpinner";
 import MicroDoodleBackground from "./shared/MicroDoodleBackground";
 
 type ViewName = "loading" | "login" | "main";
 
-type SessionStorage = {
-  get: (key: string) => Promise<Record<string, unknown>>;
-};
-
-function getSessionStorage(): SessionStorage | null {
-  const storage = (Browser as unknown as { storage?: Record<string, unknown> })
-    .storage;
-  if (!storage) return null;
-  const session = storage.session as SessionStorage | undefined;
-  if (!session || typeof session.get !== "function") return null;
-  return session;
-}
-
 export const App: React.FC = () => {
-  // Voice flow integration (Spec #4): when SW set voicePanelContext in
-  // chrome.storage.session, render VoiceView instead of the regular router.
-  const [voiceContext, setVoiceContext] = useState<VoicePanelContext | null>(
-    null,
-  );
-  const [voiceChecked, setVoiceChecked] = useState(false);
-
   const [view, setView] = useState<ViewName>("loading");
   const [user, setUser] = useState<User | null>(null);
   const [planInfo, setPlanInfo] = useState<PlanInfo | null>(null);
@@ -42,28 +20,8 @@ export const App: React.FC = () => {
   } | null>(null);
 
   useEffect(() => {
-    const session = getSessionStorage();
-    if (!session) {
-      setVoiceChecked(true);
-      return;
-    }
-    session
-      .get("voicePanelContext")
-      .then((data) => {
-        const ctx = (data?.voicePanelContext as VoicePanelContext) ?? null;
-        setVoiceContext(ctx);
-      })
-      .catch(() => {
-        // No stored context — fall through to regular router.
-      })
-      .finally(() => setVoiceChecked(true));
+    checkAuth();
   }, []);
-
-  useEffect(() => {
-    if (voiceChecked && !voiceContext) {
-      checkAuth();
-    }
-  }, [voiceChecked, voiceContext]);
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -180,20 +138,6 @@ export const App: React.FC = () => {
     if (view === "login") return "default";
     if (view === "main") return "AI";
     return "default";
-  }
-
-  // Voice flow short-circuit: when SW set voicePanelContext, render VoiceView only.
-  if (!voiceChecked) {
-    return (
-      <div className="app-container">
-        <div className="loading-view">
-          <DeepSightSpinner size="md" speed="normal" />
-        </div>
-      </div>
-    );
-  }
-  if (voiceContext) {
-    return <VoiceView context={voiceContext} />;
   }
 
   return (
