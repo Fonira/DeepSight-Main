@@ -89,12 +89,28 @@ export function createWidgetShell(
   return host;
 }
 
+// Feature detection — Chrome (≥114) seulement. Firefox/Safari = no-op.
+// On masque le bouton voice si l'API n'existe pas (port reporté à Spec #6).
+function hasSidePanelApi(): boolean {
+  return (
+    typeof chrome !== "undefined" &&
+    "sidePanel" in (chrome as unknown as Record<string, unknown>)
+  );
+}
+
 export function buildWidgetHeader(logoHtml: string): string {
+  // Bouton "Appeler" — ouvre le side panel ElevenLabs.
+  // Rendered only on Chrome (where chrome.sidePanel API exists).
+  // Sur Firefox/Safari, le bouton est complètement absent du DOM.
+  const voiceBtnHtml = hasSidePanelApi()
+    ? `<button class="ds-voice-btn" id="ds-voice-btn" type="button" title="Appeler" aria-label="Appeler" style="background:transparent;border:none;color:inherit;cursor:pointer;padding:4px 8px;font-size:13px;border-radius:6px">🎙️ Appeler</button>`
+    : "";
   return `
     <div class="ds-card-header">
       <div class="ds-card-logo">${logoHtml}<span>Deep Sight</span></div>
       <div style="display:flex;align-items:center;gap:4px">
         <span class="ds-card-badge">AI</span>
+        ${voiceBtnHtml}
         <button class="ds-minimize-btn" id="ds-minimize-btn" type="button" title="Réduire">−</button>
       </div>
     </div>
@@ -222,6 +238,39 @@ export function bindMinimizeButton(): void {
       collapseWidget();
       Browser.storage.local.set({ ds_minimized: true });
     }
+  });
+}
+
+// ── Bouton "Appeler" (Spec #4) ──
+// Ouvre le side panel Chrome avec le contexte vidéo courant.
+// Idempotent via le data-attribute `data-bound`.
+export interface VoiceContextSnapshot {
+  summaryId: number | null;
+  videoId: string | null;
+  videoTitle: string | null;
+  platform: "youtube" | "tiktok" | null;
+}
+
+export function bindVoiceButton(
+  getContext: () => VoiceContextSnapshot,
+): void {
+  const btn = $id<HTMLButtonElement>("ds-voice-btn");
+  if (!btn) return;
+  // Idempotence — re-render du widget peut rappeler bindVoiceButton.
+  if (btn.dataset.bound === "1") return;
+  btn.dataset.bound = "1";
+
+  btn.addEventListener("click", () => {
+    const ctx = getContext();
+    void Browser.runtime.sendMessage({
+      action: "OPEN_VOICE_PANEL",
+      data: {
+        summaryId: ctx.summaryId,
+        videoId: ctx.videoId,
+        videoTitle: ctx.videoTitle,
+        platform: ctx.platform,
+      },
+    });
   });
 }
 

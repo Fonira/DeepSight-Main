@@ -18,6 +18,7 @@ import {
   getExistingWidget,
   buildWidgetHeader,
   bindMinimizeButton,
+  bindVoiceButton,
   setWidgetBody,
   setWidgetInnerHTML,
   getWidgetBody,
@@ -163,6 +164,15 @@ function tryInjectWidget(): void {
       ctx.injected = true;
       ctx.injectionAttempts = 0;
       bindMinimizeButton();
+      // Bouton "Appeler" — ouvre le side panel ElevenLabs avec le contexte
+      // courant. Le bouton est rendu seulement si l'API sidePanel existe
+      // (Chrome only V1).
+      bindVoiceButton(() => ({
+        summaryId: ctx.summary?.id ?? null,
+        videoId: ctx.videoId ?? null,
+        videoTitle: ctx.summary?.video_title ?? document.title ?? null,
+        platform: detectCurrentPagePlatform() as "youtube" | "tiktok" | null,
+      }));
       // FIX-WHITE-WIDGET: theme is forced to dark in widget.ts.
       // Keep observer running but ensure dark class is preserved.
       watchTheme(() => {
