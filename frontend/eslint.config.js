@@ -31,4 +31,18 @@ export default tseslint.config(
       "no-case-declarations": "off",
     },
   },
+  // Tests / mocks / setup — permissive ruleset (pre-existing helpers may be unused)
+  {
+    files: [
+      "src/__tests__/**/*.{ts,tsx}",
+      "src/**/__tests__/**/*.{ts,tsx}",
+      "src/**/*.test.{ts,tsx}",
+    ],
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "react-hooks/rules-of-hooks": "off",
+      "no-empty-pattern": "off",
+    },
+  },
 );
