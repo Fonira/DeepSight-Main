@@ -53,6 +53,7 @@ interface Preferences {
   showTournesol: boolean;
   reduceMotion: boolean;
   autoSave: boolean;
+  ambientLighting: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -76,6 +77,8 @@ export const Settings: React.FC = () => {
     showTournesol: localStorage.getItem("deepsight_tournesol") !== "false",
     reduceMotion: localStorage.getItem("deepsight_reduce_motion") === "true",
     autoSave: localStorage.getItem("deepsight_autosave") !== "false",
+    ambientLighting:
+      localStorage.getItem("ambient_lighting_enabled") !== "false",
   }));
 
   // Feedback de sauvegarde
@@ -106,6 +109,33 @@ export const Settings: React.FC = () => {
     [showToast, language],
   );
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 🌅 Save Ambient Lighting (uses native localStorage key, no deepsight_ prefix)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const saveAmbientLighting = useCallback(
+    (value: boolean) => {
+      localStorage.setItem("ambient_lighting_enabled", String(value));
+      setPreferences((prev) => ({ ...prev, ambientLighting: value }));
+      setSaved("ambientLighting");
+      setTimeout(() => setSaved(null), 1500);
+      // Best-effort sync to backend (preference stored on user profile)
+      void fetch("/api/auth/preferences", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ambient_lighting_enabled: value }),
+      }).catch(() => {
+        /* offline-friendly: localStorage is the source of truth on web */
+      });
+      showToast(
+        language === "fr" ? "Paramètre sauvegardé" : "Setting saved",
+        "success",
+      );
+    },
+    [showToast, language],
+  );
+
   const resetToDefaults = useCallback(() => {
     const defaults: Preferences = {
       notifications: true,
@@ -115,6 +145,7 @@ export const Settings: React.FC = () => {
       showTournesol: true,
       reduceMotion: false,
       autoSave: true,
+      ambientLighting: true,
     };
 
     Object.entries(defaults).forEach(([key, value]) => {
@@ -434,6 +465,29 @@ export const Settings: React.FC = () => {
                     }
                     color="bg-yellow-500"
                     saved={saved === "showTournesol"}
+                  />
+                </SettingRow>
+
+                {/* Effet ambiant lumineux (engine v3 — beam + sunflower) */}
+                <SettingRow
+                  icon={Sun}
+                  iconColor="text-amber-400"
+                  title={tr(
+                    "Effet ambiant lumineux",
+                    "Ambient lighting effect",
+                  )}
+                  description={tr(
+                    "Affiche un rayon de lumière subtil et un tournesol qui suit la course du soleil",
+                    "Show a subtle light beam and a sunflower that follows the sun's path",
+                  )}
+                >
+                  <Toggle
+                    enabled={preferences.ambientLighting}
+                    onToggle={() =>
+                      saveAmbientLighting(!preferences.ambientLighting)
+                    }
+                    color="bg-amber-400"
+                    saved={saved === "ambientLighting"}
                   />
                 </SettingRow>
 
