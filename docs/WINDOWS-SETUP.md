@@ -113,3 +113,59 @@ npx expo --version
 ```
 
 Si tout répond sans erreur d'encodage ou de raw mode → setup OK.
+
+---
+
+## Alternative "wow effect" : Tabby
+
+Si tu veux le terminal **le plus joli visuellement** (effet blur prononcé, onglets reorderable, command palette type VS Code, plugins), **Tabby** est une excellente alternative à Windows Terminal.
+
+### Installation
+
+```powershell
+winget install --id Eugeny.Tabby -e
+```
+
+### Pourquoi Tabby plutôt que Windows Terminal ?
+
+| Critère                | Windows Terminal | Tabby                          |
+| ---------------------- | ---------------- | ------------------------------ |
+| Rendu                  | GPU natif        | Electron (un peu plus lourd)   |
+| Esthétique             | Sobre            | Très moderne, animations       |
+| Profils SSH intégrés   | Manuel via JSON  | Interface graphique complète   |
+| Command palette        | Limitée          | Full (`Ctrl+Shift+P`)          |
+| Plugins                | Aucun            | Marketplace intégré            |
+| Sync paramètres        | Non              | Oui (compte Tabby Sync)        |
+| Compatibilité Claude Code CLI | ✅        | ✅                             |
+
+### Config recommandée pour DeepSight
+
+Au premier lancement de Tabby :
+
+1. **Settings → Profiles & connections** : ajouter PowerShell 7 comme profil par défaut
+2. **Working directory** : `C:\Users\33667\DeepSight-Main`
+3. **Settings → Appearance** :
+   - Theme : `Hyper` ou `Material Dark`
+   - Font : `Cascadia Code` ou `JetBrains Mono`
+   - Background : `Fluent` (effet acrylique Windows 11)
+4. **Settings → SSH** : ajouter le profil `root@89.167.23.214` avec la clé `~/.ssh/id_hetzner` (gain de temps énorme — 1 clic = connexion VPS)
+
+### Raccourcis Tabby utiles
+
+| Raccourci         | Action                  |
+| ----------------- | ----------------------- |
+| `Ctrl+Shift+T`    | Nouvel onglet           |
+| `Ctrl+Shift+D`    | Dupliquer onglet        |
+| `Ctrl+Shift+P`    | Command palette         |
+| `Ctrl+Shift+S`    | Split horizontal        |
+| `Ctrl+Shift+E`    | Split vertical          |
+| `Ctrl+Tab`        | Onglet suivant          |
+| `F11`             | Plein écran             |
+
+### Limitations à connaître
+
+- Plus lourd en RAM que Windows Terminal (~150 MB vs ~50 MB)
+- Démarrage légèrement plus lent (1-2s vs instantané)
+- Quelques bugs occasionnels avec les sessions SSH longues (rares)
+
+→ Si DeepSight tourne lourd (Expo + Vite + Docker), reste sur **Windows Terminal**. Si tu veux l'expérience la plus polie pour des sessions de code longues, **Tabby**.
