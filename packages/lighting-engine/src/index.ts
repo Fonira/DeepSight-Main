@@ -19,6 +19,7 @@ export {
   detectHighContrast,
   getReadingZoneCap,
 } from "./accessibility";
+export { getSpriteFrameIndex } from "./sprite-frame";
 
 export type {
   RGB,
