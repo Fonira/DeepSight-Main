@@ -13,11 +13,13 @@ Endpoints:
 import asyncio
 import hashlib
 import hmac
+import json
 import logging
 from datetime import datetime
 
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -56,6 +58,15 @@ from voice.quota import (
     deduct_voice_usage,
 )
 from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
+from voice.streaming_orchestrator import (
+    StreamingOrchestrator,
+    create_default_orchestrator,
+    PUBSUB_CHANNEL_PREFIX,
+)
+from billing.voice_quota import (
+    check_voice_quota as check_voice_quota_streaming,
+    consume_voice_minutes as consume_voice_minutes_streaming,
+)
 from voice.tools import search_in_transcript, get_analysis_section, get_sources, get_flashcards
 from voice.web_tools import web_search, deep_research, check_fact
 from voice.agent_types import get_agent_config, list_agent_types
@@ -135,6 +146,111 @@ async def _increment_user_web_search_count(user_id: int) -> int:
     current = _user_web_search_counts.get(user_id, 0) + 1
     _user_web_search_counts[user_id] = current
     return current
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Quick Voice Call (V1) — Streaming context SSE + Redis pubsub plumbing
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# `get_streaming_redis` returns the shared async Redis client used as pubsub
+# fan-out for `voice:ctx:{session_id}` events. Falls back to None when Redis
+# isn't configured (local dev) — the SSE endpoint surfaces a 503 in that
+# case so the side panel can decide how to degrade.
+
+
+async def get_streaming_redis() -> "object | None":
+    """Return the shared async Redis client (or None when unavailable).
+
+    Used by the Quick Voice Call streaming endpoints. Distinct from the
+    legacy `cache_service` accessor pattern so this dependency stays
+    overridable in tests via FastAPI dependency_overrides.
+    """
+    try:
+        from core.cache import cache_service
+
+        if cache_service._redis_available and cache_service.backend is not None:
+            return cache_service.backend.redis
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Quick Voice Call: Redis unavailable for SSE pubsub: %s", exc)
+    return None
+
+
+async def _get_voice_session(session_id: str, db: AsyncSession) -> VoiceSession | None:
+    """Fetch a voice session by ID (None if not found)."""
+    result = await db.execute(
+        select(VoiceSession).where(VoiceSession.id == session_id)
+    )
+    return result.scalar_one_or_none()
+
+
+@router.get("/context/stream")
+async def stream_video_context(
+    session_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+    redis=Depends(get_streaming_redis),
+) -> StreamingResponse:
+    """Server-Sent Events stream of progressive video context for a Quick
+    Voice Call session.
+
+    Subscribes to Redis pubsub channel ``voice:ctx:{session_id}`` and
+    forwards every event as ``event: <type>\\ndata: <json>\\n\\n``. The
+    stream terminates after a ``ctx_complete`` event is forwarded.
+
+    Auth + IDOR :
+      * 401 if no JWT (handled by `get_current_user`)
+      * 404 if session does not exist
+      * 403 if session.user_id != user.id (no info leak via 404 vs 403)
+
+    Events emitted (per spec § c) :
+      * transcript_chunk : {chunk_index, text, total_chunks}
+      * analysis_partial : {section, content}
+      * error            : {phase, message}
+      * ctx_complete     : {final_digest_summary}
+    """
+    session = await _get_voice_session(session_id, db)
+    if session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voice session not found")
+    if session.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    if redis is None:
+        # Streaming context requires Redis pubsub; fail loud so the side
+        # panel can fall back to web_search-only mode (per spec risk table).
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Streaming context backend (Redis pubsub) is unavailable",
+        )
+
+    channel = f"{PUBSUB_CHANNEL_PREFIX}{session_id}"
+
+    async def event_generator():
+        pubsub = redis.pubsub()
+        await pubsub.subscribe(channel)
+        try:
+            async for message in pubsub.listen():
+                # Skip the subscribe ack and any non-message entries
+                if message.get("type") != "message":
+                    continue
+                raw = message.get("data")
+                if isinstance(raw, (bytes, bytearray)):
+                    raw = raw.decode("utf-8", errors="replace")
+                try:
+                    event = json.loads(raw)
+                except (TypeError, ValueError):
+                    logger.warning("Voice ctx stream: dropped malformed pubsub payload on %s", channel)
+                    continue
+                event_type = event.get("type", "message")
+                yield f"event: {event_type}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+                if event_type == "ctx_complete":
+                    break
+        finally:
+            try:
+                await pubsub.unsubscribe(channel)
+            except Exception as unsub_exc:  # noqa: BLE001 — unsub is best-effort
+                logger.debug("Voice ctx stream unsubscribe failed for %s: %s", channel, unsub_exc)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 # ── Spec #1, Task 7 — Rate limit for /transcripts/append ───────────────────
