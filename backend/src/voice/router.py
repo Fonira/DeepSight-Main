@@ -162,6 +162,167 @@ async def _increment_transcript_append_count(voice_session_id: str) -> int:
     return current
 
 
+# ── Spec #1, Task 8 — Webhook reconciliation post-call ─────────────────────
+# Drift threshold: a row is considered drifted (and gets UPDATEd) when the
+# normalised character-length difference exceeds 10% of the longer string.
+_RECONCILE_DRIFT_THRESHOLD = 0.10
+
+
+def parse_transcript_canonical(transcript) -> list[dict]:
+    """Parse the ElevenLabs canonical transcript payload into structured turns.
+
+    Accepts:
+      - str  → "User: ...\\nAI: ..." multi-line format (older payloads)
+      - list → [{"role": "user", "message": "..."}, ...]   (newer payloads)
+      - None or empty → []
+
+    Returns: ``[{"speaker": "user"|"agent", "content": str}, ...]``
+    """
+    if not transcript:
+        return []
+
+    # ── Newer ElevenLabs payloads ship the transcript as a list of dicts ──
+    if isinstance(transcript, list):
+        out: list[dict] = []
+        for item in transcript:
+            if not isinstance(item, dict):
+                continue
+            role = (item.get("role") or item.get("speaker") or "").lower()
+            content = (item.get("message") or item.get("content") or "").strip()
+            if not content:
+                continue
+            speaker = "agent" if role in ("agent", "assistant", "ai") else "user"
+            out.append({"speaker": speaker, "content": content})
+        return out
+
+    if not isinstance(transcript, str):
+        return []
+
+    if not transcript.strip():
+        return []
+
+    # ── Legacy text format: 'User:' / 'AI:' / 'Assistant:' line prefixes ──
+    out: list[dict] = []
+    for raw_line in transcript.splitlines():
+        line = raw_line.strip()
+        if not line or ":" not in line:
+            continue
+        prefix, _, content = line.partition(":")
+        prefix_norm = prefix.strip().lower()
+        content = content.strip()
+        if not content:
+            continue
+        if prefix_norm in ("ai", "assistant", "agent"):
+            speaker = "agent"
+        elif prefix_norm in ("user", "human"):
+            speaker = "user"
+        else:
+            continue  # Unknown prefix → skip rather than misclassify.
+        out.append({"speaker": speaker, "content": content})
+    return out
+
+
+def _content_drift_above_threshold(a: str, b: str) -> bool:
+    """Return True iff the two strings differ enough to warrant an UPDATE.
+
+    Heuristic (deliberately simple): normalised character-length difference
+    above 10% of the longer string.
+    """
+    if a == b:
+        return False
+    longer = max(len(a), len(b))
+    if longer == 0:
+        return False
+    diff = abs(len(a) - len(b))
+    return (diff / longer) > _RECONCILE_DRIFT_THRESHOLD
+
+
+async def reconcile_voice_transcript(
+    db,
+    *,
+    voice_session_id: str,
+    user_id: int,
+    summary_id: int | None,
+    canonical_turns: list[dict],
+) -> dict:
+    """Reconcile the canonical transcript with already-persisted rows.
+
+    Strategy (positional alignment):
+      - INSERT any canonical turn beyond what was persisted live.
+      - UPDATE in-place when content drift exceeds the threshold.
+      - Otherwise: leave the row as-is (no spurious writes).
+
+    Returns ``{"inserted": int, "updated": int}``.
+    """
+    if not canonical_turns:
+        return {"inserted": 0, "updated": 0}
+
+    from db.database import ChatMessage
+
+    result = await db.execute(
+        select(ChatMessage)
+        .where(ChatMessage.voice_session_id == voice_session_id)
+        .order_by(
+            ChatMessage.time_in_call_secs.asc().nulls_last()
+            if hasattr(ChatMessage.time_in_call_secs, "asc")
+            else ChatMessage.time_in_call_secs,
+            ChatMessage.created_at.asc(),
+        )
+    )
+    existing = list(result.scalars().all())
+
+    inserted = 0
+    updated = 0
+
+    for idx, turn in enumerate(canonical_turns):
+        speaker = turn.get("speaker", "user")
+        content = (turn.get("content") or "").strip()
+        if not content:
+            continue
+
+        if idx < len(existing):
+            row = existing[idx]
+            if _content_drift_above_threshold(row.content or "", content):
+                row.content = content
+                row.voice_speaker = speaker
+                row.role = "user" if speaker == "user" else "assistant"
+                updated += 1
+        else:
+            db.add(
+                ChatMessage(
+                    user_id=user_id,
+                    summary_id=summary_id,
+                    role="user" if speaker == "user" else "assistant",
+                    content=content,
+                    source="voice",
+                    voice_session_id=voice_session_id,
+                    voice_speaker=speaker,
+                    time_in_call_secs=None,  # canonical does not carry timing
+                )
+            )
+            inserted += 1
+
+    if inserted or updated:
+        try:
+            await db.commit()
+        except Exception as exc:
+            logger.warning(
+                "reconcile_voice_transcript: commit failed (non-fatal)",
+                extra={
+                    "voice_session_id": voice_session_id,
+                    "inserted": inserted,
+                    "updated": updated,
+                    "error": str(exc),
+                },
+            )
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+
+    return {"inserted": inserted, "updated": updated}
+
+
 # ── Spec #1, Task 6 — Chat history injection into voice system_prompt ──────
 # Limits kept tight to preserve token budget for the actual analysis context:
 #   max 10 messages, max 400 chars per message → ~4 KB block worst case.
@@ -169,21 +330,32 @@ _CHAT_HISTORY_MAX_MESSAGES = 10
 _CHAT_HISTORY_MAX_CHARS_PER_MSG = 400
 
 
-def format_chat_history_block(history: list[dict], language: str = "fr") -> str:
+def _build_chat_history_block_for_voice(history_msgs: list[dict], language: str = "fr") -> str:
     """Format the recent text-chat history as a block injectable into the
     voice agent's system prompt.
 
     The block lets the voice agent continue an in-progress text conversation
     instead of starting fresh ("Spec #1, Task 6 — chat history injection").
 
-    Returns "" when history is empty so callers can `+= block` safely.
+    Voice rows (``msg.get("source") == "voice"``) are skipped because they
+    are already reflected in the active voice session — re-injecting them
+    would duplicate context. When ``source`` is missing (legacy rows), the
+    row is kept (defensive default before Task 9 backfills the column).
+
+    Returns "" when there are no usable rows so callers can `+= block` safely.
     """
-    if not history:
+    if not history_msgs:
         return ""
 
     # Keep the last N messages only (chronological order — list assumed sorted
     # oldest → newest by chat.service.get_chat_history's `reversed(...)`).
-    trimmed = history[-_CHAT_HISTORY_MAX_MESSAGES:]
+    trimmed = history_msgs[-_CHAT_HISTORY_MAX_MESSAGES:]
+
+    # Drop voice rows: they belong to the active voice session, not the
+    # text-chat continuity we're re-injecting (Spec #1, Task 6 + Task 9).
+    trimmed = [m for m in trimmed if m.get("source") != "voice"]
+    if not trimmed:
+        return ""
 
     if language == "en":
         header = "## Recent text chat history\n"
@@ -746,7 +918,7 @@ async def create_voice_session(
                     user_id=current_user.id,
                     limit=_CHAT_HISTORY_MAX_MESSAGES,
                 )
-                _history_block = format_chat_history_block(_chat_history, language=language)
+                _history_block = _build_chat_history_block_for_voice(_chat_history, language=language)
                 if _history_block:
                     system_prompt = f"{system_prompt}\n\n{_history_block}"
                     logger.info(
@@ -1213,6 +1385,42 @@ async def voice_webhook(
             "status": voice_session.status,
         },
     )
+
+    # ── Spec #1, Task 8 — Reconcile transcript with chat_messages rows ──
+    # The frontend POSTs each turn live via /transcripts/append, but events
+    # may have been dropped on a flaky network. The webhook payload carries
+    # the canonical, server-side transcript: we INSERT what was missed and
+    # UPDATE rows whose live content drifted from the canonical version.
+    try:
+        canonical_payload = body.get("data", {}).get("transcript") if isinstance(body, dict) else None
+        if canonical_payload is None:
+            canonical_payload = payload.transcript
+        canonical_turns = parse_transcript_canonical(canonical_payload)
+        if canonical_turns:
+            report = await reconcile_voice_transcript(
+                db,
+                voice_session_id=voice_session.id,
+                user_id=voice_session.user_id,
+                summary_id=voice_session.summary_id,
+                canonical_turns=canonical_turns,
+            )
+            logger.info(
+                "Voice webhook: transcript reconciled",
+                extra={
+                    "session_id": voice_session.id,
+                    "canonical_turns": len(canonical_turns),
+                    **report,
+                },
+            )
+    except Exception as reconcile_exc:
+        # Non-fatal — webhook still acks so ElevenLabs won't retry.
+        logger.warning(
+            "Voice webhook: transcript reconciliation failed (non-fatal)",
+            extra={
+                "session_id": voice_session.id,
+                "error": str(reconcile_exc),
+            },
+        )
 
     # ── Cleanup: delete the ElevenLabs agent (fire-and-forget) ────────
     if voice_session.elevenlabs_agent_id:
