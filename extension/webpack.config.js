@@ -104,6 +104,7 @@ module.exports = (env, argv) => {
             noErrorOnMissing: true,
           },
           { from: "public/platforms", to: "platforms", noErrorOnMissing: true },
+          { from: "public/brand", to: "brand" },
         ],
       }),
     ],

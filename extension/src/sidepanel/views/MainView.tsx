@@ -300,6 +300,13 @@ export const MainView: React.FC<MainViewProps> = ({
       <div className="v3-app-scroll v3-stagger">
         {/* ── Hero header ────────────────────────────────────────── */}
         <div className="v3-hero">
+          <img
+            src={Browser.runtime.getURL("icons/icon32.png")}
+            alt="DeepSight"
+            width={28}
+            height={28}
+            className="v3-brand-logo"
+          />
           <span className="v3-brand">DeepSight</span>
           <span className={`v3-plan-chip${isFree ? " v3-plan-chip-free" : ""}`}>
             {planLabel}
@@ -524,7 +531,16 @@ export const MainView: React.FC<MainViewProps> = ({
                     </div>
                   )}
                   <span className="v3-platform-pill">
-                    {isTikTok ? "TikTok" : "YouTube"}
+                    <img
+                      src={Browser.runtime.getURL(
+                        isTikTok ? "brand/tiktok.png" : "brand/youtube.svg",
+                      )}
+                      alt=""
+                      width={12}
+                      height={12}
+                      className="v3-platform-pill-icon"
+                    />
+                    {isTikTok ? "TIKTOK" : "YOUTUBE"}
                   </span>
                   <h3 className="v3-card-title">{video.title}</h3>
                   <p className="v3-card-desc">{t.mistral.badge}</p>
@@ -681,7 +697,13 @@ export const MainView: React.FC<MainViewProps> = ({
 
         {/* ── Footer (Mistral attribution) ───────────────────────── */}
         <div className="v3-footer">
-          <span>{t.mistral.badge}</span>
+          <span style={{ opacity: 0.5, fontSize: 10 }}>Propulsé par</span>
+          <img
+            src={Browser.runtime.getURL("brand/mistral-wordmark-white.svg")}
+            alt="Mistral AI"
+            height={12}
+            style={{ opacity: 0.7, verticalAlign: "middle", marginLeft: 6 }}
+          />
         </div>
       </div>
 
