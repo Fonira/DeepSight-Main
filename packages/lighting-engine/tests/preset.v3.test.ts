@@ -82,3 +82,63 @@ describe("getAmbientPresetV3", () => {
     expect(at0615.beam.angleDeg).toBeLessThan(-40);
   });
 });
+
+describe("getAmbientPresetV3 — PresetOptionsV3", () => {
+  it("forceTime overrides the date argument", () => {
+    // Default date arg = noon (daytime), but forceTime = midnight (night).
+    // The result must reflect midnight, proving forceTime takes priority.
+    const noon = new Date("2026-04-26T12:00:00");
+    const midnight = new Date("2026-04-26T00:00:00");
+    const preset = getAmbientPresetV3(noon, { forceTime: midnight });
+    expect(preset.frameIndex).toBe(0);
+    expect(preset.nightMode).toBe("glowing");
+  });
+
+  it("without forceTime, the date argument is used", () => {
+    const preset = getAmbientPresetV3(new Date("2026-04-26T12:00:00"));
+    expect(preset.frameIndex).toBe(12);
+    expect(preset.nightMode).toBeNull();
+  });
+
+  it("forceNightMode overrides the computed nightMode", () => {
+    // At noon, computed nightMode is null. Force it to "asleep".
+    const preset = getAmbientPresetV3(new Date("2026-04-26T12:00:00"), {
+      forceNightMode: "asleep",
+    });
+    expect(preset.nightMode).toBe("asleep");
+  });
+
+  it("forceNightMode null overrides a glowing computed value", () => {
+    // At midnight, computed nightMode is "glowing". Force it to null (daytime preview).
+    const preset = getAmbientPresetV3(new Date("2026-04-26T00:00:00"), {
+      forceNightMode: null,
+    });
+    expect(preset.nightMode).toBeNull();
+  });
+
+  it("forceTime and forceNightMode can be combined", () => {
+    const preset = getAmbientPresetV3(new Date("2026-04-26T06:00:00"), {
+      forceTime: new Date("2026-04-26T18:00:00"),
+      forceNightMode: "glowing",
+    });
+    // forceTime → frameIndex of 18h
+    expect(preset.frameIndex).toBe(18);
+    // forceNightMode wins over the value computed at 18h (which is null)
+    expect(preset.nightMode).toBe("glowing");
+  });
+
+  it("intensityMul still applies (regression check)", () => {
+    const base = getAmbientPresetV3(new Date("2026-04-26T12:00:00"));
+    const dimmed = getAmbientPresetV3(new Date("2026-04-26T12:00:00"), {
+      intensityMul: 0.5,
+    });
+    expect(dimmed.beam.opacity).toBeCloseTo(base.beam.opacity * 0.5, 5);
+  });
+
+  it("skipCssStrings still applies (regression check)", () => {
+    const preset = getAmbientPresetV3(new Date("2026-04-26T12:00:00"), {
+      skipCssStrings: true,
+    });
+    expect(preset.beam.cssColor).toBeUndefined();
+  });
+});

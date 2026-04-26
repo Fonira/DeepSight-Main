@@ -7,6 +7,7 @@ import type {
   AmbientPresetV3,
   Keyframe,
   PresetOptions,
+  PresetOptionsV3,
   RGB,
   BeamType,
 } from "./types";
@@ -240,9 +241,11 @@ function findKeyframeV3Pair(hour: number): {
  */
 export function getAmbientPresetV3(
   date: Date,
-  opts: PresetOptions = {},
+  opts: PresetOptionsV3 = {},
 ): AmbientPresetV3 {
-  const totalHour = date.getHours() + date.getMinutes() / 60;
+  // forceTime overrides the date argument (testing / dev panel).
+  const effectiveDate = opts.forceTime ?? date;
+  const totalHour = effectiveDate.getHours() + effectiveDate.getMinutes() / 60;
 
   // Trouver les 2 keyframes encadrants
   const { fromIdx, toIdx, factor } = findKeyframeV3Pair(totalHour);
@@ -272,8 +275,11 @@ export function getAmbientPresetV3(
     ? Math.min(intensity, V3_HIGH_CONTRAST_INTENSITY_CAP)
     : intensity;
 
-  // nightMode : prendre la keyframe la plus proche (pas d'interpolation pour énum)
-  const nightMode = factor < 0.5 ? from.nightMode : to.nightMode;
+  // nightMode : prendre la keyframe la plus proche (pas d'interpolation pour énum).
+  // forceNightMode overrides the computed value (testing / dev panel).
+  const computedNightMode = factor < 0.5 ? from.nightMode : to.nightMode;
+  const nightMode =
+    opts.forceNightMode !== undefined ? opts.forceNightMode : computedNightMode;
 
   // haloAccentColor : si l'une des 2 keyframes en a, garder celle de la plus proche
   const haloAccentColor =
@@ -320,7 +326,7 @@ export function getAmbientPresetV3(
       accent: V3_BRAND_ACCENT,
     },
     // === v3 fields ===
-    frameIndex: getSpriteFrameIndex(date),
+    frameIndex: getSpriteFrameIndex(effectiveDate),
     nightMode,
     haloAccentColor,
     isReducedMotion,
