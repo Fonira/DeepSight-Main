@@ -35,6 +35,8 @@ import { LoadingWordProvider } from "./contexts/LoadingWordContext";
 import { TTSProvider } from "./contexts/TTSContext";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { AmbientLightLayer } from "./components/AmbientLightLayer";
+import { SunflowerLayer } from "./components/SunflowerLayer";
+import { AmbientLightingProvider } from "./contexts/AmbientLightingContext";
 import { SkipLink } from "./components/SkipLink";
 
 // "Le Saviez-Vous" widgets remplacés par placements organiques dans chaque page
@@ -429,6 +431,25 @@ const ProtectedLayout = () => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 🌅 AMBIENT LIGHTING — read user preference (default ON)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Read the ambient lighting preference from localStorage. Default: enabled.
+ * The preference is also synced to the backend via /api/auth/preferences when
+ * the user toggles it from Settings.
+ */
+function getAmbientLightingEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem("ambient_lighting_enabled");
+    if (raw === null || raw === undefined) return true;
+    return raw !== "false";
+  } catch {
+    return true;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // 🛣️ APP ROUTES
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -441,11 +462,14 @@ const AppRoutes = () => {
         <AuthProvider value={auth}>
           <TTSProvider>
             <Router>
-              {/* ✨ Couche lumineuse cosmique globale (god rays + étoiles + ambient) */}
-              <AmbientLightLayer intensity="normal" />
+              <AmbientLightingProvider enabled={getAmbientLightingEnabled()}>
+                {/* ✨ Couche lumineuse cosmique globale (engine v3 — beam + halo) */}
+                <AmbientLightLayer />
+                {/* 🌻 Tournesol mascot suivant la course du soleil */}
+                <SunflowerLayer />
 
-              {/* ♿ Skip Link pour l'accessibilité */}
-              <SkipLink targetId="main-content" />
+                {/* ♿ Skip Link pour l'accessibilité */}
+                <SkipLink targetId="main-content" />
 
               {/* 🔮 Prefetcher intelligent */}
               <RoutePrefetcher />
@@ -886,6 +910,7 @@ const AppRoutes = () => {
               <ErrorBoundary fallback={null}>
                 <CookieBanner />
               </ErrorBoundary>
+              </AmbientLightingProvider>
             </Router>
           </TTSProvider>
         </AuthProvider>

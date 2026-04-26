@@ -3,11 +3,14 @@ import react from "@vitejs/plugin-react";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { visualizer } from "rollup-plugin-visualizer";
 import { version } from "./package.json";
+import { ambientCriticalCssPlugin } from "./src/plugins/vite-plugin-ambient-critical-css";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    // Inject ambient lighting critical CSS + sprite preload before React hydrates
+    ambientCriticalCssPlugin(),
     // Upload source maps to Sentry on production builds
     // Requires SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT env vars
     sentryVitePlugin({
