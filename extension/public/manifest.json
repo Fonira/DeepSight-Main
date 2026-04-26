@@ -5,6 +5,7 @@
   "description": "Analyze YouTube & TikTok videos with AI. Fact-checked summaries, contextual chat, flashcards. Powered by European AI (Mistral).",
   "author": "DeepSight",
   "homepage_url": "https://www.deepsightsynthesis.com",
+  "minimum_chrome_version": "114",
 
   "permissions": [
     "storage",
@@ -12,7 +13,8 @@
     "tabs",
     "alarms",
     "identity",
-    "clipboardWrite"
+    "clipboardWrite",
+    "sidePanel"
   ],
 
   "host_permissions": [
@@ -58,7 +60,6 @@
   ],
 
   "action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -66,6 +67,10 @@
       "128": "icons/icon128.png"
     },
     "default_title": "DeepSight"
+  },
+
+  "side_panel": {
+    "default_path": "sidepanel.html"
   },
 
   "icons": {
