@@ -37,7 +37,14 @@ vi.mock("../../../services/api", async () => {
 type Listener = () => void;
 let mockState: {
   messages: { text: string; source: "user" | "ai" }[];
-  status: "idle" | "connecting" | "listening" | "speaking" | "thinking" | "error" | "quota_exceeded";
+  status:
+    | "idle"
+    | "connecting"
+    | "listening"
+    | "speaking"
+    | "thinking"
+    | "error"
+    | "quota_exceeded";
   voiceSessionId: string | null;
   sessionStartedAt: number | null;
   isMuted: boolean;
@@ -156,16 +163,18 @@ describe("VoiceOverlay", () => {
   });
 
   it("ne démarre pas automatiquement si autoStart=false", () => {
-    render(
-      <VoiceOverlay isOpen={true} onClose={() => {}} autoStart={false} />,
-    );
+    render(<VoiceOverlay isOpen={true} onClose={() => {}} autoStart={false} />);
     expect(startMock).not.toHaveBeenCalled();
   });
 
   it("forward chaque transcript user/ai au callback onVoiceMessage", async () => {
     const onVoiceMessage = vi.fn();
     render(
-      <VoiceOverlay isOpen={true} onClose={() => {}} onVoiceMessage={onVoiceMessage} />,
+      <VoiceOverlay
+        isOpen={true}
+        onClose={() => {}}
+        onVoiceMessage={onVoiceMessage}
+      />,
     );
     // Simulate the call connecting and producing two turns.
     act(() => {
@@ -283,5 +292,30 @@ describe("VoiceOverlay", () => {
     await user.click(endBtn);
     await waitFor(() => expect(stopMock).toHaveBeenCalled());
     await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it("expose un bouton réglages avec aria-expanded=false par défaut", async () => {
+    render(<VoiceOverlay isOpen={true} onClose={() => {}} />);
+    const toggle = await screen.findByTestId("voice-overlay-settings-toggle");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByTestId("voice-overlay-settings-panel")).toBeNull();
+  });
+
+  it("toggle le panel de réglages au click", async () => {
+    const user = userEvent.setup();
+    render(<VoiceOverlay isOpen={true} onClose={() => {}} />);
+    const toggle = await screen.findByTestId("voice-overlay-settings-toggle");
+    await user.click(toggle);
+    await waitFor(() =>
+      expect(toggle.getAttribute("aria-expanded")).toBe("true"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("voice-overlay-settings-panel")).toBeDefined(),
+    );
+    // Re-click closes the panel
+    await user.click(toggle);
+    await waitFor(() =>
+      expect(toggle.getAttribute("aria-expanded")).toBe("false"),
+    );
   });
 });
