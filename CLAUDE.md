@@ -790,7 +790,7 @@ export const GOOGLE_IOS_CLIENT_ID = "ios-client-id";
 | Quiz            | ✅        | ✅     | ❌ CTA         |
 | Mind Maps       | ✅        | ❌ CTA | ❌ CTA         |
 | Playlists       | ✅        | ❌ CTA | ❌ CTA         |
-| Export PDF      | ✅ Pro    | ❌ CTA | ❌ CTA         |
+| Export PDF      | ✅ Pro    | ✅ Pro | ❌ CTA         |
 | Web Search      | ✅ Pro+   | ❌ CTA | ❌ CTA         |
 | Academic Search | ✅        | ✅     | ❌             |
 | Tournesol       | ✅        | ✅     | ❌             |

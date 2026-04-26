@@ -308,15 +308,20 @@ describe("API Client", () => {
       };
       mockFetchResponse(response);
 
-      const result = await authApi.googleTokenLogin("google-access-token");
+      const result = await authApi.googleTokenLogin("google-id-token");
 
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining("/api/auth/google/token"),
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ access_token: "google-access-token" }),
+          body: expect.stringContaining('"id_token":"google-id-token"'),
         }),
       );
+      const callBody = JSON.parse(
+        (global.fetch as jest.Mock).mock.calls[0][1].body,
+      );
+      expect(callBody.id_token).toBe("google-id-token");
+      expect(["ios", "android"]).toContain(callBody.client_platform);
       expect(result.user.email).toBe("google@test.com");
       expect(tokenStorage.setTokens).toHaveBeenCalledWith(
         "session-token",
