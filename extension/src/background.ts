@@ -32,6 +32,26 @@ import type {
   QuickChatResponse,
 } from "./types";
 
+// ─── SidePanel toggle behavior (Chrome 114+) ──────────────────────────────
+// Native click-to-toggle: clicking the action icon opens the sidebar; clicking again closes it.
+chrome.runtime.onInstalled.addListener(() => {
+  if (typeof chrome !== "undefined" && chrome.sidePanel?.setPanelBehavior) {
+    chrome.sidePanel
+      .setPanelBehavior({ openPanelOnActionClick: true })
+      .catch((err) =>
+        console.error("[deepsight] setPanelBehavior failed", err),
+      );
+  }
+});
+
+// Notify the sidebar when active tab changes (sync current video).
+// The sidebar subscribes to TAB_CHANGED via chrome.runtime.onMessage.
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  chrome.runtime.sendMessage({ action: "TAB_CHANGED", tabId }).catch(() => {
+    // Sidebar may not be open — silently ignored.
+  });
+});
+
 // ── Core API Request ──
 
 async function apiRequest<T>(
