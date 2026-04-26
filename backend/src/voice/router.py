@@ -809,13 +809,23 @@ async def get_voice_catalog():
 @router.post("/session", response_model=VoiceSessionResponse)
 async def create_voice_session(
     request: VoiceSessionRequest,
+    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    redis=Depends(get_streaming_redis),
 ):
     """Create a new voice chat session linked to a video analysis.
 
     Supports multiple agent types: explorer, tutor, debate_moderator, quiz_coach, onboarding.
     Agent type determines the system prompt, tools, and voice style.
+
+    Quick Voice Call (V1) — when ``request.is_streaming=True``:
+      * ``video_id`` is required (the YouTube ID being explored).
+      * Voice quota uses the A+D strict matrix (Free 1-shot trial / Pro CTA
+        upgrade / Expert 30 min monthly) instead of the legacy seconds counter.
+      * The streaming orchestrator is launched as a background task to push
+        transcript + analysis events onto the Redis pubsub channel
+        ``voice:ctx:{session_id}``.
     """
     plan = current_user.plan or "free"
 
@@ -828,8 +838,39 @@ async def create_voice_session(
     # ── Resolve agent configuration ──────────────────────────────────────
     agent_config = get_agent_config(request.agent_type)
 
-    # Check plan minimum for this agent type
-    if not is_admin:
+    # ── Quick Voice Call (V1) — streaming session quota branch ──────────
+    streaming_quota = None
+    if request.is_streaming:
+        if not request.video_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "video_id_required",
+                    "message": "video_id required for streaming sessions",
+                },
+            )
+        if not is_admin:
+            streaming_quota = await check_voice_quota_streaming(current_user, db)
+            if not streaming_quota.allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail={
+                        "code": "voice_quota_blocked",
+                        "reason": streaming_quota.reason,
+                        "cta": streaming_quota.cta,
+                        "message": (
+                            "Voice call not available on your plan."
+                            if streaming_quota.reason == "pro_no_voice"
+                            else "Voice trial already used — upgrade to continue."
+                            if streaming_quota.reason == "trial_used"
+                            else "Monthly voice quota exhausted."
+                        ),
+                    },
+                )
+
+    # Check plan minimum for this agent type — skip for streaming because
+    # the A+D quota above already enforced plan gating with a structured 402.
+    if not is_admin and not request.is_streaming:
         plan_order = {
             "free": 0,
             "etudiant": 1,
@@ -854,9 +895,11 @@ async def create_voice_session(
                 },
             )
 
-    # Check plan has voice enabled
+    # Check plan has voice enabled — skip for streaming sessions which use
+    # the new A+D quota model (legacy VOICE_LIMITS doesn't know about the
+    # Free 1-shot trial).
     plan_limits = VOICE_LIMITS.get(plan, VOICE_LIMITS.get("free", {}))
-    if not is_admin:
+    if not is_admin and not request.is_streaming:
         if not plan_limits.get("enabled", False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -921,17 +964,28 @@ async def create_voice_session(
                 },
             )
 
-    # Check voice quota
-    quota_info = await check_voice_quota(current_user.id, plan, db)
-    if not quota_info["can_use"]:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
-                "code": "voice_quota_exceeded",
-                "message": "Voice chat quota exceeded for today.",
-                **quota_info,
-            },
-        )
+    # Check voice quota — legacy seconds counter for non-streaming sessions
+    # only; streaming sessions are gated above by check_voice_quota_streaming.
+    if request.is_streaming:
+        quota_info = {
+            "can_use": True,
+            "seconds_remaining": int((streaming_quota.max_minutes if streaming_quota else 30.0) * 60),
+            "seconds_used": 0,
+            "seconds_limit": int((streaming_quota.max_minutes if streaming_quota else 30.0) * 60),
+            "bonus_seconds": 0,
+            "warning_level": None,
+        }
+    else:
+        quota_info = await check_voice_quota(current_user.id, plan, db)
+        if not quota_info["can_use"]:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "code": "voice_quota_exceeded",
+                    "message": "Voice chat quota exceeded for today.",
+                    **quota_info,
+                },
+            )
 
     # Create voice session in DB
     voice_session = VoiceSession(
@@ -939,6 +993,7 @@ async def create_voice_session(
         summary_id=request.summary_id,
         debate_id=request.debate_id,
         agent_type=agent_config.agent_type,
+        is_streaming_session=bool(request.is_streaming),
         status="pending",
         started_at=datetime.utcnow(),
     )
@@ -952,8 +1007,29 @@ async def create_voice_session(
             "user_id": current_user.id,
             "summary_id": request.summary_id,
             "session_id": voice_session.id,
+            "is_streaming": bool(request.is_streaming),
         },
     )
+
+    # ── Quick Voice Call (V1) — launch streaming orchestrator ────────────
+    # Background task fans out transcript + Mistral analysis events on
+    # voice:ctx:{session_id} for the SSE endpoint to forward.
+    if request.is_streaming and request.video_id and background_tasks is not None and redis is not None:
+        orchestrator = create_default_orchestrator(redis=redis)
+        background_tasks.add_task(
+            orchestrator.run,
+            session_id=voice_session.id,
+            video_id=request.video_id,
+            user_id=current_user.id,
+        )
+        logger.info(
+            "Quick Voice Call orchestrator scheduled",
+            extra={
+                "session_id": voice_session.id,
+                "video_id": request.video_id,
+                "user_id": current_user.id,
+            },
+        )
 
     # Generate signed URL via ElevenLabs Conversational AI API
     try:
@@ -1258,6 +1334,9 @@ async def create_voice_session(
         input_mode=user_prefs.input_mode,
         ptt_key=user_prefs.ptt_key,
         playback_rate=playback_rate,
+        is_streaming=bool(request.is_streaming),
+        is_trial=bool(streaming_quota.is_trial) if streaming_quota else False,
+        max_minutes=streaming_quota.max_minutes if streaming_quota else None,
     )
 
 
