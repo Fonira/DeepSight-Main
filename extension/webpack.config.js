@@ -2,6 +2,7 @@ const path = require("path");
 const webpack = require("webpack");
 const CopyPlugin = require("copy-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 const manifestMap = {
   chrome: "manifest.json",
@@ -25,7 +26,7 @@ module.exports = (env, argv) => {
       content: "./src/content/index.ts",
       authSync: "./src/authSync/index.ts",
       authSyncMain: "./src/authSyncMain/index.ts",
-      popup: "./src/popup.tsx",
+      sidepanel: "./src/sidepanel/index.tsx",
       viewer: "./src/viewer.tsx",
     },
     output: {
@@ -67,14 +68,17 @@ module.exports = (env, argv) => {
       new MiniCssExtractPlugin({
         filename: "[name].css",
       }),
+      new HtmlWebpackPlugin({
+        template: "./public/sidepanel.html",
+        filename: "sidepanel.html",
+        chunks: ["sidepanel"],
+        inject: "body",
+      }),
       new CopyPlugin({
         patterns: [
           { from: `public/${manifestFile}`, to: "manifest.json" },
-          { from: "public/popup.html", to: "popup.html" },
           { from: "public/viewer.html", to: "viewer.html" },
-          { from: "public/sidepanel.html", to: "sidepanel.html" },
           { from: "src/styles/design-tokens.css", to: "design-tokens.css" },
-          { from: "src/styles/popup.css", to: "popup.css" },
           { from: "src/styles/content.css", to: "content.css" },
           { from: "src/styles/widget.css", to: "widget.css" },
           { from: "src/styles/viewer.css", to: "viewer.css" },
