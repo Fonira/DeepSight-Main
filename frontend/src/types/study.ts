@@ -8,6 +8,7 @@ export interface FlashcardItem {
   front: string;
   back: string;
   category?: string;
+  tags?: string[];
 }
 
 export interface QuizQuestion {

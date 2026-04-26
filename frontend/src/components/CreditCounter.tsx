@@ -55,35 +55,7 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
 
   // Calculate urgency level based on plan and credits
   const urgency = useMemo(() => {
-    // Pro plan with higher limits - check if still good
-    if (plan === "pro" && maxCredits >= 10000) {
-      const alertLevel = shouldShowLowCreditsAlert(credits, maxCredits);
-      if (alertLevel === "critical") {
-        return {
-          level: "critical",
-          color: "text-orange-400",
-          bg: "bg-orange-500/10",
-          border: "border-orange-500/30",
-        };
-      }
-      if (alertLevel === "warning") {
-        return {
-          level: "warning",
-          color: "text-amber-400",
-          bg: "bg-amber-500/10",
-          border: "border-amber-500/30",
-        };
-      }
-      return {
-        level: "none",
-        color: "text-green-400",
-        bg: "bg-green-500/10",
-        border: "border-green-500/30",
-      };
-    }
-
-    // Use conversion triggers thresholds (percentage-based)
-    const alertLevel = shouldShowLowCreditsAlert(credits, maxCredits);
+    const isLow = shouldShowLowCreditsAlert(credits, plan);
 
     if (credits <= 0) {
       return {
@@ -93,21 +65,23 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
         border: "border-red-500/30",
       };
     }
-    if (alertLevel === "critical") {
-      return {
-        level: "critical",
-        color: "text-orange-400",
-        bg: "bg-orange-500/10",
-        border: "border-orange-500/30",
-      };
-    }
-    if (alertLevel === "warning") {
-      return {
-        level: "warning",
-        color: "text-amber-400",
-        bg: "bg-amber-500/10",
-        border: "border-amber-500/30",
-      };
+    if (isLow) {
+      // Critical when at or below 50% of low-alert threshold
+      const threshold = Math.max(Math.ceil(maxCredits * 0.1), 1);
+      const isCritical = credits <= Math.max(Math.floor(threshold / 2), 1);
+      return isCritical
+        ? {
+            level: "critical",
+            color: "text-orange-400",
+            bg: "bg-orange-500/10",
+            border: "border-orange-500/30",
+          }
+        : {
+            level: "warning",
+            color: "text-amber-400",
+            bg: "bg-amber-500/10",
+            border: "border-amber-500/30",
+          };
     }
     return {
       level: "good",

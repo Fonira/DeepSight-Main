@@ -3,26 +3,9 @@
  * Onglet Synthèse : toolbar (copy/cite/export) + contenu enrichi
  */
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
-import {
-  BookOpen,
-  Copy,
-  Check,
-  GraduationCap,
-  Brain,
-  Tags,
-  Mic,
-  Download,
-  ChevronDown,
-  FileText,
-  FileDown,
-  Share2,
-  Headphones,
-} from "lucide-react";
-import { DeepSightSpinnerMicro } from "../ui";
+import React, { useState } from "react";
+import { BookOpen } from "lucide-react";
 import { AudioPlayerButton } from "../AudioPlayerButton";
-import { AudioSummaryButton } from "../AudioSummaryButton";
 import { EnrichedMarkdown } from "../EnrichedMarkdown";
 import { DeepResearchSources } from "../SummaryReader";
 import { ConceptsGlossary } from "../ConceptsGlossary";
@@ -32,7 +15,6 @@ import { CitationExport } from "../CitationExport";
 import { StudyToolsModal } from "../StudyToolsModal";
 import { KeywordsModal } from "../KeywordsModal";
 import { AnalysisActionBar } from "../analysis/AnalysisActionBar";
-import { videoApi, shareApi } from "../../services/api";
 import { sanitizeTitle } from "../../utils/sanitize";
 import type { Summary, EnrichedConcept } from "../../services/api";
 import type { TimecodeInfo } from "../TimecodeRenderer";
@@ -69,139 +51,12 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
   voiceEnabled = false,
   onOpenVoice,
 }) => {
-  const [copied, setCopied] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
+  // Modal state — copy/share/export/keywords are handled by AnalysisActionBar
   const [showCitationModal, setShowCitationModal] = useState(false);
-  const [sharing, setSharing] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
-  // Optional toolbar features (used in History context)
   const [showStudyToolsModal, setShowStudyToolsModal] = useState(false);
   const [showKeywordsModal, setShowKeywordsModal] = useState(false);
-  const [keywordsConcepts, setKeywordsConcepts] = useState<EnrichedConcept[]>(
-    [],
-  );
-  const [keywordsLoading, setKeywordsLoading] = useState(false);
-  const exportBtnRef = useRef<HTMLButtonElement>(null);
-  const exportMenuRef = useRef<HTMLDivElement>(null);
-  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
-
-  // Position the portal menu under the Export button
-  const updateMenuPos = useCallback(() => {
-    if (exportBtnRef.current) {
-      const rect = exportBtnRef.current.getBoundingClientRect();
-      setMenuPos({
-        top: rect.bottom + 4,
-        left: Math.max(8, rect.right - 176), // 176 = w-44 = 11rem
-      });
-    }
-  }, []);
-
-  // Close export menu on click outside + scroll/resize
-  useEffect(() => {
-    if (!showExportMenu) return;
-    updateMenuPos();
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        exportMenuRef.current &&
-        !exportMenuRef.current.contains(e.target as Node) &&
-        exportBtnRef.current &&
-        !exportBtnRef.current.contains(e.target as Node)
-      ) {
-        setShowExportMenu(false);
-      }
-    };
-    const handleScrollOrResize = () => setShowExportMenu(false);
-    document.addEventListener("mousedown", handleClickOutside);
-    window.addEventListener("scroll", handleScrollOrResize, true);
-    window.addEventListener("resize", handleScrollOrResize);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      window.removeEventListener("scroll", handleScrollOrResize, true);
-      window.removeEventListener("resize", handleScrollOrResize);
-    };
-  }, [showExportMenu, updateMenuPos]);
-
-  const handleCopy = async () => {
-    if (!selectedSummary?.summary_content) return;
-    try {
-      await navigator.clipboard.writeText(selectedSummary.summary_content);
-    } catch {
-      /* clipboard API unavailable */
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleShare = async () => {
-    if (!selectedSummary?.video_id || sharing) return;
-    setSharing(true);
-    try {
-      const { share_url } = await shareApi.createShareLink(
-        selectedSummary.video_id,
-      );
-      if (navigator.share) {
-        await navigator.share({
-          title: selectedSummary.video_title
-            ? `DeepSight — ${selectedSummary.video_title}`
-            : "DeepSight Analysis",
-          url: share_url,
-        });
-      } else {
-        await navigator.clipboard.writeText(share_url);
-        setShareCopied(true);
-        setTimeout(() => setShareCopied(false), 2500);
-      }
-    } catch (err: any) {
-      if (err?.name === "AbortError") return;
-      // Fallback clipboard
-      try {
-        const { share_url } = await shareApi.createShareLink(
-          selectedSummary.video_id,
-        );
-        await navigator.clipboard.writeText(share_url);
-        setShareCopied(true);
-        setTimeout(() => setShareCopied(false), 2500);
-      } catch {
-        console.error("Share failed");
-      }
-    } finally {
-      setSharing(false);
-    }
-  };
-
-  const handleExport = async (format: "pdf" | "md" | "txt") => {
-    if (!selectedSummary?.id) return;
-    setExporting(true);
-    setShowExportMenu(false);
-    try {
-      const blob = await videoApi.exportSummary(selectedSummary.id, format);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const ext = format === "md" ? "md" : format;
-      a.download = `${selectedSummary.video_title || "analyse"}.${ext}`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Export error:", err);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // Keywords handler (loads enriched concepts on demand)
-  const handleOpenKeywords = useCallback(() => {
-    setShowKeywordsModal(true);
-    if (selectedSummary?.id && keywordsConcepts.length === 0) {
-      setKeywordsLoading(true);
-      videoApi
-        .getEnrichedConcepts(selectedSummary.id)
-        .then((data: any) => setKeywordsConcepts(data.concepts || []))
-        .catch(() => setKeywordsConcepts([]))
-        .finally(() => setKeywordsLoading(false));
-    }
-  }, [selectedSummary?.id, keywordsConcepts.length]);
+  const [keywordsConcepts] = useState<EnrichedConcept[]>([]);
+  const [keywordsLoading] = useState(false);
 
   return (
     <div>

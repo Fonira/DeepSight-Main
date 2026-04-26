@@ -2717,8 +2717,14 @@ export interface DebateStatusResponse {
   debate_id: number;
   status: string;
   progress_message: string;
+  video_a_id?: string;
+  video_b_id?: string;
   video_a_title?: string;
   video_b_title?: string;
+  video_a_channel?: string;
+  video_b_channel?: string;
+  video_a_thumbnail?: string;
+  video_b_thumbnail?: string;
 }
 
 export interface DebateChatMessage {
@@ -2795,6 +2801,17 @@ export const debateApi = {
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎮 GAMIFICATION API — XP, Badges, Streaks, FSRS Reviews
 // ═══════════════════════════════════════════════════════════════════════════════
+
+import type {
+  StudyStats,
+  HeatMapData,
+  BadgesData,
+  VideoMasteryData,
+  DueCardsData,
+  ReviewResult,
+  StudySessionData,
+  SessionEndResult,
+} from "../types/gamification";
 
 export const gamificationApi = {
   /** Get study stats (XP, level, streak) */

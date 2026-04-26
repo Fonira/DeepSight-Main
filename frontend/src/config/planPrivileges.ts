@@ -15,6 +15,8 @@ export const PLAN_HIERARCHY: PlanId[] = ["free", "plus", "pro"];
 
 export interface PlanLimits {
   monthlyAnalyses: number;
+  /** Alias for monthlyAnalyses — historic name used by older UI code. */
+  monthlyCredits: number;
   maxVideoLengthMin: number; // en minutes, -1 = illimité
   concurrentAnalyses: number;
   priorityQueue: boolean;
@@ -61,6 +63,7 @@ export interface PlanLimits {
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
     monthlyAnalyses: 5,
+    monthlyCredits: 5,
     maxVideoLengthMin: 15,
     concurrentAnalyses: 1,
     priorityQueue: false,
@@ -95,6 +98,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
 
   plus: {
     monthlyAnalyses: 25,
+    monthlyCredits: 25,
     maxVideoLengthMin: 60,
     concurrentAnalyses: 1,
     priorityQueue: false,
@@ -129,6 +133,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
 
   pro: {
     monthlyAnalyses: 100,
+    monthlyCredits: 100,
     maxVideoLengthMin: 240,
     concurrentAnalyses: 3,
     priorityQueue: true,
@@ -247,61 +252,110 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export interface PlanBadge {
-  text: string;
+  fr: string;
+  en: string;
   color: string;
+}
+
+/** Localized string used in marketing UI */
+export interface LocalizedString {
+  fr: string;
+  en: string;
 }
 
 export interface PlanInfo {
   id: PlanId;
-  name: string;
+  /** Localized display name. Use `name.fr` / `name.en` in UI. */
+  name: LocalizedString;
+  /** Plain English name (legacy compat). */
   nameEn: string;
-  description: string;
+  /** Localized description. */
+  description: LocalizedString;
+  /** Plain English description (legacy compat). */
   descriptionEn: string;
   priceMonthly: number; // en centimes
+  /** Pre-formatted price (e.g. "4.99 €" / "$4.99"). */
+  priceDisplay: LocalizedString;
+  /** Hierarchy index — higher = more powerful plan. */
+  order: number;
   color: string;
+  /** Tailwind gradient classes (e.g. "from-blue-500 to-violet-500"). */
+  gradient: string;
   icon: string;
   badge: PlanBadge | null;
   popular: boolean;
+  /** Killer feature surfaced in upgrade prompts. */
+  killerFeature: LocalizedString;
 }
 
 export const PLANS_INFO: Record<PlanId, PlanInfo> = {
   free: {
     id: "free",
-    name: "Gratuit",
+    name: { fr: "Gratuit", en: "Free" },
     nameEn: "Free",
-    description: "Découvrez DeepSight gratuitement",
+    description: {
+      fr: "Découvrez DeepSight gratuitement",
+      en: "Discover DeepSight for free",
+    },
     descriptionEn: "Discover DeepSight for free",
     priceMonthly: 0,
+    priceDisplay: { fr: "0 €", en: "Free" },
+    order: 0,
     color: "#6B7280",
+    gradient: "from-gray-500 to-gray-600",
     icon: "Zap",
     badge: null,
     popular: false,
+    killerFeature: {
+      fr: "5 analyses gratuites par mois",
+      en: "5 free analyses per month",
+    },
   },
 
   plus: {
     id: "plus",
-    name: "Plus",
+    name: { fr: "Plus", en: "Plus" },
     nameEn: "Plus",
-    description: "L'essentiel pour apprendre mieux, plus vite",
+    description: {
+      fr: "L'essentiel pour apprendre mieux, plus vite",
+      en: "Everything you need to learn better, faster",
+    },
     descriptionEn: "Everything you need to learn better, faster",
     priceMonthly: 499,
+    priceDisplay: { fr: "4,99 €/mois", en: "$4.99/mo" },
+    order: 1,
     color: "#3B82F6",
+    gradient: "from-blue-500 to-cyan-500",
     icon: "Star",
-    badge: { text: "Populaire", color: "#3B82F6" },
+    badge: { fr: "Populaire", en: "Popular", color: "#3B82F6" },
     popular: true,
+    killerFeature: {
+      fr: "25 analyses + cartes mentales + recherche web",
+      en: "25 analyses + mind maps + web search",
+    },
   },
 
   pro: {
     id: "pro",
-    name: "Pro",
+    name: { fr: "Pro", en: "Pro" },
     nameEn: "Pro",
-    description: "Toute la puissance de DeepSight, sans limites",
+    description: {
+      fr: "Toute la puissance de DeepSight, sans limites",
+      en: "The full power of DeepSight, unlimited",
+    },
     descriptionEn: "The full power of DeepSight, unlimited",
     priceMonthly: 999,
+    priceDisplay: { fr: "9,99 €/mois", en: "$9.99/mo" },
+    order: 2,
     color: "#8B5CF6",
+    gradient: "from-violet-500 to-fuchsia-500",
     icon: "Crown",
-    badge: { text: "Le + puissant", color: "#8B5CF6" },
+    badge: { fr: "Le + puissant", en: "Most powerful", color: "#8B5CF6" },
     popular: false,
+    killerFeature: {
+      fr: "Chat illimité + chat vocal + débats IA",
+      en: "Unlimited chat + voice chat + AI debates",
+    },
   },
 };
 
@@ -309,21 +363,35 @@ export const PLANS_INFO: Record<PlanId, PlanInfo> = {
 // FONCTIONS UTILITAIRES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export function hasFeature(plan: PlanId, feature: keyof PlanLimits): boolean {
-  const value = PLAN_LIMITS[plan][feature];
+/**
+ * Feature key — accepts either a `PlanLimits` key or a `PlanFeatures` key.
+ * `PlanFeatures` keys are looked up in PLAN_FEATURES first (boolean flags),
+ * falling back to PLAN_LIMITS for numeric/array limits.
+ */
+export type FeatureKey = keyof PlanLimits | keyof PlanFeatures;
+
+export function hasFeature(plan: PlanId, feature: FeatureKey): boolean {
+  // Try boolean feature flag first
+  const features = PLAN_FEATURES[plan] as unknown as Record<string, boolean>;
+  if (feature in features) {
+    return Boolean(features[feature as keyof PlanFeatures]);
+  }
+  const limits = PLAN_LIMITS[plan] as unknown as Record<string, unknown>;
+  const value = limits[feature];
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value > 0 || value === -1;
   if (Array.isArray(value)) return value.length > 0;
   return false;
 }
 
-export function getLimit(plan: PlanId, feature: keyof PlanLimits): number {
-  const value = PLAN_LIMITS[plan][feature];
+export function getLimit(plan: PlanId, feature: FeatureKey): number {
+  const limits = PLAN_LIMITS[plan] as unknown as Record<string, unknown>;
+  const value = limits[feature];
   if (typeof value === "number") return value;
   return 0;
 }
 
-export function isUnlimited(plan: PlanId, feature: keyof PlanLimits): boolean {
+export function isUnlimited(plan: PlanId, feature: FeatureKey): boolean {
   return getLimit(plan, feature) === -1;
 }
 
@@ -335,7 +403,7 @@ export function isPlanHigher(a: PlanId, b: PlanId): boolean {
   return PLAN_HIERARCHY.indexOf(a) > PLAN_HIERARCHY.indexOf(b);
 }
 
-export function getMinPlanForFeature(feature: keyof PlanLimits): PlanId {
+export function getMinPlanForFeature(feature: FeatureKey): PlanId {
   for (const plan of PLAN_HIERARCHY) {
     if (hasFeature(plan, feature)) {
       return plan;

@@ -4,9 +4,11 @@
  */
 
 import React, { memo, useState } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { Info, ExternalLink } from "lucide-react";
 import type { ConceptNodeData } from "./types";
+
+type ConceptFlowNode = Node<ConceptNodeData, "concept">;
 
 const nodeColors: Record<
   string,
@@ -45,7 +47,7 @@ const typeLabels: Record<string, { fr: string; en: string }> = {
   detail: { fr: "Détail", en: "Detail" },
 };
 
-interface ConceptNodeProps extends NodeProps<ConceptNodeData> {}
+type ConceptNodeProps = NodeProps<ConceptFlowNode>;
 
 const ConceptNode: React.FC<ConceptNodeProps> = ({ data, selected }) => {
   const [showTooltip, setShowTooltip] = useState(false);

@@ -533,6 +533,13 @@ export const StudyPage: React.FC = () => {
     );
   }
 
+  // After this point, in non-session/auto modes, studyData is guaranteed.
+  // In session modes a separate render path runs first; we still need a guard
+  // for the type-checker.
+  if (!studyData) {
+    return null;
+  }
+
   const currentProgress =
     activeTab === "flashcards" ? flashcardProgress : quizProgress;
   const hasFlashcards = studyData.flashcards.length > 0;

@@ -36,7 +36,6 @@ import {
   Maximize2,
   ExternalLink,
   Share2,
-  Mic,
   // 🆕 Toolbar icons
   Copy,
   Check,
@@ -47,7 +46,6 @@ import {
   FileText,
   FileDown,
   ChevronDown,
-  Headphones,
 } from "lucide-react";
 import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
 import { useTranslation } from "../hooks/useTranslation";
@@ -68,13 +66,7 @@ import { YouTubePlayer, YouTubePlayerRef } from "../components/YouTubePlayer";
 import { CitationExport } from "../components/CitationExport";
 import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
-import {
-  videoApi,
-  shareApi,
-  reliabilityApi,
-  chatApi,
-  debateApi,
-} from "../services/api";
+import { videoApi, shareApi, reliabilityApi, debateApi } from "../services/api";
 import type {
   Summary,
   ReliabilityResult,
@@ -235,6 +227,17 @@ const categoryEmoji: Record<string, string> = {
   general: "📺",
   education: "📚",
   culture: "🎨",
+};
+
+/** Position the portal export menu under the trigger button. */
+const computeMenuPos = (
+  btnRef: React.RefObject<HTMLButtonElement | null>,
+): { top: number; left: number } => {
+  if (btnRef.current) {
+    const rect = btnRef.current.getBoundingClientRect();
+    return { top: rect.bottom + 4, left: Math.max(8, rect.right - 176) };
+  }
+  return { top: 0, left: 0 };
 };
 
 const formatDuration = (seconds: number): string => {
@@ -506,7 +509,8 @@ export const History: React.FC = () => {
 
   // Données
   const [videos, setVideos] = useState<VideoSummary[]>([]);
-  const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [, setPlaylists] = useState<PlaylistSummary[]>([]);
   const [debates, setDebates] = useState<DebateAnalysis[]>([]);
   const [debatesTotal, setDebatesTotal] = useState(0);
   const [debatesPage, setDebatesPage] = useState(1);
@@ -519,9 +523,9 @@ export const History: React.FC = () => {
 
   // Pagination & filtres
   const [videosPage, setVideosPage] = useState(1);
-  const [playlistsPage, setPlaylistsPage] = useState(1);
   const [videosTotal, setVideosTotal] = useState(0);
-  const [playlistsTotal, setPlaylistsTotal] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [, setPlaylistsTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const perPage = 12;
@@ -542,8 +546,10 @@ export const History: React.FC = () => {
   const [selectedVideoDetail, setSelectedVideoDetail] =
     useState<Summary | null>(null);
   const [loadingVideoDetail, setLoadingVideoDetail] = useState(false);
-  const [videoDetailReliability, setVideoDetailReliability] =
-    useState<ReliabilityResult | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [, setVideoDetailReliability] = useState<ReliabilityResult | null>(
+    null,
+  );
   const [videoDetailPlayerVisible, setVideoDetailPlayerVisible] =
     useState(false);
   const [videoDetailPlayerStart, setVideoDetailPlayerStart] = useState(0);
@@ -551,30 +557,24 @@ export const History: React.FC = () => {
   const upgradeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
-  // Toolbar states pour vue détail vidéo
-  const [detailCopied, setDetailCopied] = useState(false);
+  // Toolbar states pour vue détail vidéo (legacy — handled by AnalysisActionBar)
   const [detailShowExportMenu, setDetailShowExportMenu] = useState(false);
-  const [detailExporting, setDetailExporting] = useState(false);
   const detailExportBtnRef = useRef<HTMLButtonElement>(null);
   const detailExportMenuRef = useRef<HTMLDivElement>(null);
-  const [detailExportMenuPos, setDetailExportMenuPos] = useState({
-    top: 0,
-    left: 0,
-  });
   // Quick Chat Upgrade states
   const [upgradeMode, setUpgradeMode] = useState<string>("standard");
   const [upgradeDeepResearch, setUpgradeDeepResearch] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
-  const [upgradeTaskId, setUpgradeTaskId] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [, setUpgradeTaskId] = useState<string | null>(null);
   const [detailShowCitationModal, setDetailShowCitationModal] = useState(false);
   const [detailShowStudyToolsModal, setDetailShowStudyToolsModal] =
     useState(false);
   const [detailShowKeywordsModal, setDetailShowKeywordsModal] = useState(false);
   const [detailConcepts, setDetailConcepts] = useState<EnrichedConcept[]>([]);
-  const [detailConceptsLoading, setDetailConceptsLoading] = useState(false);
-  const [detailConceptsProvider, setDetailConceptsProvider] =
-    useState<string>("none");
-  const [detailConceptsCategories, setDetailConceptsCategories] = useState<
+  const [detailConceptsLoading] = useState(false);
+  const [detailConceptsProvider] = useState<string>("none");
+  const [detailConceptsCategories] = useState<
     Record<string, { label: string; icon: string; count: number }>
   >({});
 
@@ -598,20 +598,6 @@ export const History: React.FC = () => {
     "all",
   );
   const [clearLoading, setClearLoading] = useState(false);
-
-  const isProUser = normalizePlanId(user?.plan) === "pro";
-
-  // 📦 Portal Export Menu — position helper
-  const calcExportMenuPos = useCallback(
-    (btnRef: React.RefObject<HTMLButtonElement | null>) => {
-      if (btnRef.current) {
-        const rect = btnRef.current.getBoundingClientRect();
-        return { top: rect.bottom + 4, left: Math.max(8, rect.right - 176) };
-      }
-      return { top: 0, left: 0 };
-    },
-    [],
-  );
 
   // 📦 Click-outside + scroll/resize handler for detail export menu
   useEffect(() => {
@@ -818,7 +804,6 @@ export const History: React.FC = () => {
     setSelectedVideoDetail(null);
     setVideoDetailReliability(null);
     setVideoDetailPlayerVisible(false);
-    setDetailCopied(false);
     setDetailConcepts([]);
   };
 
@@ -836,7 +821,8 @@ export const History: React.FC = () => {
       const pollInterval = setInterval(async () => {
         try {
           const status = await videoApi.getTaskStatus(response.task_id);
-          if (status.status === "completed" || status.status === "done") {
+          const statusStr = status.status as string;
+          if (statusStr === "completed" || statusStr === "done") {
             clearInterval(pollInterval);
             upgradeIntervalRef.current = null;
             // Reload the summary
@@ -848,7 +834,7 @@ export const History: React.FC = () => {
             });
             setUpgradeLoading(false);
             setUpgradeTaskId(null);
-          } else if (status.status === "error" || status.status === "failed") {
+          } else if (statusStr === "error" || statusStr === "failed") {
             clearInterval(pollInterval);
             upgradeIntervalRef.current = null;
             setUpgradeLoading(false);
@@ -877,84 +863,8 @@ export const History: React.FC = () => {
     [videoDetailPlayerVisible],
   );
 
-  const handleDetailCopy = async () => {
-    if (!selectedVideoDetail?.summary_content) return;
-    await navigator.clipboard.writeText(selectedVideoDetail.summary_content);
-    setDetailCopied(true);
-    setTimeout(() => setDetailCopied(false), 2000);
-  };
-
-  const handleDetailExport = async (format: "pdf" | "md" | "txt") => {
-    if (!selectedVideoDetail?.id) return;
-    setDetailExporting(true);
-    setDetailShowExportMenu(false);
-    try {
-      const blob = await videoApi.exportSummary(selectedVideoDetail.id, format);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${selectedVideoDetail.video_title || "analyse"}.${format === "md" ? "md" : format}`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Export error:", err);
-    } finally {
-      setDetailExporting(false);
-    }
-  };
-
-  const handleDetailAudioExport = async (audioMode: "full" | "condensed") => {
-    if (!selectedVideoDetail?.id) return;
-    setDetailExporting(true);
-    setDetailShowExportMenu(false);
-    try {
-      const result = await videoApi.exportAudio(
-        selectedVideoDetail.id,
-        undefined,
-        undefined,
-        audioMode,
-      );
-      const audioUrl = `${BASE_API_URL}${result.audio_url}`;
-      // Open audio in new tab for playback/download
-      window.open(audioUrl, "_blank");
-    } catch (err: any) {
-      console.error("Audio export error:", err);
-      const msg = err?.message || "";
-      if (msg.includes("feature_locked") || err?.status === 403) {
-        alert(
-          language === "fr"
-            ? "L'export audio nécessite un plan Pro ou supérieur."
-            : "Audio export requires Pro plan or higher.",
-        );
-      } else {
-        alert(
-          language === "fr"
-            ? "Erreur lors de l'export audio. Réessayez."
-            : "Audio export failed. Try again.",
-        );
-      }
-    } finally {
-      setDetailExporting(false);
-    }
-  };
-
-  const handleDetailOpenKeywords = () => {
-    setDetailShowKeywordsModal(true);
-    if (selectedVideoDetail?.id) {
-      setDetailConceptsLoading(true);
-      videoApi
-        .getEnrichedConcepts(selectedVideoDetail.id)
-        .then((data) => {
-          setDetailConcepts(data.concepts || []);
-          setDetailConceptsProvider(data.provider || "none");
-          setDetailConceptsCategories(data.categories || {});
-        })
-        .catch(() => {
-          setDetailConcepts([]);
-        })
-        .finally(() => setDetailConceptsLoading(false));
-    }
-  };
+  // Legacy detail handlers (handled by AnalysisActionBar) — kept removed to satisfy
+  // strict noUnusedLocals; restore if a future tab needs them again.
 
   const handleOpenVideoChat = async (video: VideoSummary) => {
     setChatTarget({
@@ -1004,10 +914,6 @@ export const History: React.FC = () => {
     // Naviguer vers PlaylistDetailPage avec l'onglet Chat actif
     // → UN SEUL endroit pour le Chat Corpus (pas de doublon)
     navigate(`/playlist/${playlist.playlist_id}?tab=chat`);
-  };
-
-  const handleViewPlaylist = (playlist: PlaylistSummary) => {
-    loadPlaylistDetail(playlist.playlist_id);
   };
 
   const handleViewPlaylistVideo = (video: PlaylistVideo) => {
@@ -1060,28 +966,7 @@ export const History: React.FC = () => {
     }
   };
 
-  const handleDeletePlaylist = async (playlist: PlaylistSummary) => {
-    if (
-      !confirm(
-        language === "fr"
-          ? "Supprimer cette playlist ?"
-          : "Delete this playlist?",
-      )
-    )
-      return;
-    try {
-      await api.deletePlaylist(playlist.playlist_id);
-      setPlaylists((prev) =>
-        prev.filter((p) => p.playlist_id !== playlist.playlist_id),
-      );
-      if (selectedPlaylist?.playlist_id === playlist.playlist_id) {
-        setSelectedPlaylist(null);
-        setSelectedPlaylistVideo(null);
-      }
-    } catch (err) {
-      console.error("Delete error:", err);
-    }
-  };
+  // handleDeletePlaylist removed (legacy — playlists handled via PlaylistDetailPage)
 
   // 🗑️ Clear All History Handler
   const handleClearHistory = async () => {
@@ -2455,7 +2340,7 @@ const VideoCard: React.FC<{
   );
 };
 
-const PlaylistCard: React.FC<{
+export const PlaylistCard: React.FC<{
   playlist: PlaylistSummary;
   language: string;
   onView: () => void;
@@ -2974,7 +2859,7 @@ const PlaylistDetailView: React.FC<{
                 <button
                   ref={exportBtnRef}
                   onClick={() => {
-                    const pos = calcExportMenuPos(exportBtnRef);
+                    const pos = computeMenuPos(exportBtnRef);
                     setExportMenuPos(pos);
                     setShowExportMenu(!showExportMenu);
                   }}
@@ -3492,7 +3377,7 @@ const PlaylistDetailView: React.FC<{
                   <button
                     ref={metaExportBtnRef}
                     onClick={() => {
-                      const pos = calcExportMenuPos(metaExportBtnRef);
+                      const pos = computeMenuPos(metaExportBtnRef);
                       setMetaExportMenuPos(pos);
                       setMetaShowExportMenu(!metaShowExportMenu);
                     }}
