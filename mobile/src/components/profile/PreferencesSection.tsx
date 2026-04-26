@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, Switch } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -12,6 +12,7 @@ import { storage } from "@/utils/storage";
 import { STORAGE_KEYS } from "@/constants/config";
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
+import { userApi } from "@/services/api";
 import type { ThemeMode } from "@/types";
 
 const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
@@ -31,15 +32,40 @@ export const PreferencesSection: React.FC = () => {
   const [activeSheet, setActiveSheet] = useState<"theme" | "language" | null>(
     null,
   );
+  const [ambientEnabled, setAmbientEnabled] = useState(true);
 
   const sheetRef = useRef<SimpleBottomSheetRef>(null);
 
-  // Charger la langue depuis AsyncStorage
+  // Charger la langue + ambient lighting depuis AsyncStorage
   useEffect(() => {
     storage.getItem(STORAGE_KEYS.LANGUAGE).then((saved) => {
       if (saved) setLanguage(saved);
     });
+    storage.getItem(STORAGE_KEYS.AMBIENT_LIGHTING_ENABLED).then((saved) => {
+      // Default to enabled when no value persisted yet
+      if (saved !== null && saved !== undefined) {
+        setAmbientEnabled(saved !== "false");
+      }
+    });
   }, []);
+
+  const handleAmbientToggle = async (value: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setAmbientEnabled(value);
+    await storage.setItem(
+      STORAGE_KEYS.AMBIENT_LIGHTING_ENABLED,
+      value ? "true" : "false",
+    );
+    // Best-effort sync to backend (endpoint accepts the field even though the
+    // local PreferencesPayload type doesn't yet expose it).
+    try {
+      await userApi.updatePreferences({
+        ambient_lighting_enabled: value,
+      } as Parameters<typeof userApi.updatePreferences>[0]);
+    } catch {
+      // Silent fail — local persistence is the source of truth for now.
+    }
+  };
 
   const openSheet = (type: "theme" | "language") => {
     setActiveSheet(type);
@@ -92,6 +118,32 @@ export const PreferencesSection: React.FC = () => {
 
         {renderRow("Thème", themeLabel, () => openSheet("theme"))}
         {renderRow("Langue", languageLabel, () => openSheet("language"))}
+
+        {/* Ambient lighting toggle (v3) */}
+        <View
+          style={[styles.row, { borderBottomColor: colors.border }]}
+          accessibilityRole="switch"
+          accessibilityLabel="Effet ambiant lumineux"
+          accessibilityState={{ checked: ambientEnabled }}
+        >
+          <View style={styles.toggleLabelWrap}>
+            <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>
+              Effet ambiant lumineux
+            </Text>
+            <Text style={[styles.rowHelp, { color: colors.textMuted }]}>
+              Affiche un rayon de lumière subtil et un tournesol qui suit la
+              course du soleil.
+            </Text>
+          </View>
+          <Switch
+            value={ambientEnabled}
+            onValueChange={handleAmbientToggle}
+            trackColor={{
+              false: colors.border,
+              true: colors.accentPrimary,
+            }}
+          />
+        </View>
       </GlassCard>
 
       <SimpleBottomSheet
@@ -194,6 +246,15 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.base,
+  },
+  rowHelp: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
+    marginTop: 2,
+  },
+  toggleLabelWrap: {
+    flex: 1,
+    paddingRight: sp.md,
   },
   rowValue: {
     fontFamily: fontFamily.body,

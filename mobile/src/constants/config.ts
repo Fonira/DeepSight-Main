@@ -42,6 +42,7 @@ export const STORAGE_KEYS = {
   THEME: "deepsight_theme",
   LANGUAGE: "deepsight_language",
   ONBOARDING_COMPLETE: "deepsight_onboarding_complete",
+  AMBIENT_LIGHTING_ENABLED: "deepsight_ambient_lighting_enabled",
 };
 
 // Plans - matches backend plan IDs (3-plan architecture: free/plus/pro)

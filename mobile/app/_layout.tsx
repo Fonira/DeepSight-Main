@@ -21,6 +21,9 @@ import { createQueryClient } from "../src/utils/queryClient";
 import { darkColors } from "../src/theme/colors";
 import { useShareIntent } from "../src/hooks/useShareIntent";
 import { AmbientLightLayer } from "../src/components/backgrounds/AmbientLightLayer";
+import { SunflowerLayer } from "../src/components/backgrounds/SunflowerLayer";
+import { AmbientLightingProvider } from "../src/contexts/AmbientLightingContext";
+import { useAmbientLightingEnabled } from "../src/hooks/useAmbientLightingEnabled";
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -177,28 +180,33 @@ function RootNavigator() {
     }
   }, [isAuthenticated, isLoading, segments]);
 
+  // Read user preference from local storage (default: enabled). Re-reads when
+  // the app comes back to the foreground so toggling in Profile takes effect.
+  const ambientEnabled = useAmbientLightingEnabled();
+
   return (
-    <View style={rootStyles.root}>
-      <StatusBar style="light" backgroundColor={darkColors.bgPrimary} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: "transparent" },
-          animation: "fade",
-        }}
-      >
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="splash" />
-      </Stack>
-      {/*
-        AmbientLightLayer rendu APRÈS le Stack → il flotte AU-DESSUS de
-        toutes les pages, peu importe si la page a un fond opaque ou non.
-        pointerEvents="none" garantit que les gestures passent à travers.
-        Opacités max 0.18 → contenu reste lisible.
-      */}
-      <AmbientLightLayer intensity="normal" />
-    </View>
+    <AmbientLightingProvider enabled={ambientEnabled}>
+      <View style={rootStyles.root}>
+        <StatusBar style="light" backgroundColor={darkColors.bgPrimary} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: "transparent" },
+            animation: "fade",
+          }}
+        >
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="splash" />
+        </Stack>
+        {/*
+          v3 ambient layers rendered AFTER the Stack → they float ABOVE every
+          page background. pointerEvents="none" lets gestures pass through.
+        */}
+        <AmbientLightLayer />
+        <SunflowerLayer />
+      </View>
+    </AmbientLightingProvider>
   );
 }
 
