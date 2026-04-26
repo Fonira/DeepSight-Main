@@ -7,14 +7,35 @@
 /* Tokens loaded inline since Shadow DOM isolates from page CSS */
 
 /* ══════════════════════════════════════════
+   NUCLEAR FIX-WHITE-WIDGET — Always dark, no var() dependency
+   These rules MUST come first and use literal values so the widget
+   is dark even if CSS variables, theme detection, or `.light` class
+   ever leak through. Solid #0a0a0f beats any backdrop-filter weirdness.
+══════════════════════════════════════════ */
+
+:host {
+  color-scheme: dark !important;
+  background-color: #0a0a0f !important;
+}
+
+#deepsight-card,
+#deepsight-card.ds-widget,
+#deepsight-card.ds-widget.dark,
+#deepsight-card.ds-widget.light {
+  background-color: #0a0a0f !important;
+  background-image: none !important;
+  color: #f5f0e8 !important;
+}
+
+/* ══════════════════════════════════════════
    WIDGET CONTAINER — PREMIUM GLASSMORPHISM
 ══════════════════════════════════════════ */
 
 #deepsight-card.ds-widget {
   all: initial;
-  /* FIX-WHITE-WIDGET: hardcoded background + color so the widget renders
-     correctly even if CSS custom properties fail to resolve in the
-     closed Shadow DOM context. var() fallbacks are kept for theming. */
+  /* FIX-WHITE-WIDGET: solid hex background — NO var(), NO rgba alpha,
+     NO glass-bg. backdrop-filter could make a 0.85 alpha look near-white
+     on a light page. Solid #0a0a0f is always dark. */
   font-family: var(
     --ds-font-family,
     -apple-system,
@@ -24,12 +45,11 @@
     sans-serif
   ) !important;
   font-size: var(--ds-text-sm, 13px) !important;
-  color: var(--ds-text-primary, #f5f0e8) !important;
-  background: var(--ds-glass-bg, rgba(10, 10, 15, 0.95)) !important;
+  color: #f5f0e8 !important;
+  background-color: #0a0a0f !important;
+  background-image: none !important;
   border: 1px solid rgba(200, 144, 58, 0.15) !important;
   border-radius: var(--ds-radius-card, 14px) !important;
-  backdrop-filter: blur(24px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
     0 0 20px rgba(200, 144, 58, 0.05) !important;
@@ -48,20 +68,16 @@
   font-family: var(--ds-font-family) !important;
 }
 
-/* FIX-WHITE-WIDGET: `.light` class neutralized — produces same dark output
-   as default to prevent unreadable white-text-on-white widget. */
+/* FIX-WHITE-WIDGET: `.light` class fully neutralized — identical to default
+   dark rendering. Solid hex, no var(). */
 #deepsight-card.ds-widget.light {
-  background: var(--ds-glass-bg) !important;
-  border-color: rgba(200, 144, 58, 0.06) !important;
-  color: var(--ds-text-primary) !important;
+  background-color: #0a0a0f !important;
+  background-image: none !important;
+  border-color: rgba(200, 144, 58, 0.15) !important;
+  color: #f5f0e8 !important;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
     0 0 20px rgba(200, 144, 58, 0.05) !important;
-}
-
-/* Hard fallback on host element. */
-:host {
-  color-scheme: dark;
 }
 
 /* ══════════════════════════════════════════
