@@ -79,8 +79,6 @@ module.exports = (env, argv) => {
           { from: `public/${manifestFile}`, to: "manifest.json" },
           { from: "public/viewer.html", to: "viewer.html" },
           { from: "src/styles/design-tokens.css", to: "design-tokens.css" },
-          { from: "src/styles/content.css", to: "content.css" },
-          { from: "src/styles/widget.css", to: "widget.css" },
           { from: "src/styles/viewer.css", to: "viewer.css" },
           { from: "src/styles/tokens.css", to: "tokens.css" },
           { from: "icons", to: "icons" },
