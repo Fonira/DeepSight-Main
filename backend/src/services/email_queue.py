@@ -37,21 +37,23 @@ RESEND_API_URL = "https://api.resend.com/emails"
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Resend rate limits (conservative — compatible plan Free & Pro)
-MAX_EMAILS_PER_SECOND = 2       # Resend Free = 1/s, Pro = 10/s → on prend 2 par sécurité
+MAX_EMAILS_PER_SECOND = 2  # Resend Free = 1/s, Pro = 10/s → on prend 2 par sécurité
 MIN_INTERVAL_SECONDS = 1.0 / MAX_EMAILS_PER_SECOND  # 0.5s entre chaque email
-MAX_RETRIES = 3                 # Nombre de retry sur 429/5xx
-RETRY_BACKOFF_BASE = 5.0        # Backoff exponentiel : 5s, 10s, 20s
-MAX_QUEUE_SIZE = 500            # Protection mémoire
-WORKER_CHECK_INTERVAL = 0.5     # Fréquence de vérification de la queue
+MAX_RETRIES = 3  # Nombre de retry sur 429/5xx
+RETRY_BACKOFF_BASE = 5.0  # Backoff exponentiel : 5s, 10s, 20s
+MAX_QUEUE_SIZE = 500  # Protection mémoire
+WORKER_CHECK_INTERVAL = 0.5  # Fréquence de vérification de la queue
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📦 EMAIL ITEM
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class EmailItem:
     """Un email en attente d'envoi."""
+
     to: str
     subject: str
     html: str
@@ -64,6 +66,7 @@ class EmailItem:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🚀 EMAIL QUEUE SERVICE
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class EmailQueue:
     """
@@ -134,7 +137,9 @@ class EmailQueue:
             return False
 
         target_queue.append(item)
-        logger.info(f"📧 Queued email to {to} [{'priority' if priority else 'normal'}] — queue size: {len(self._queue) + len(self._priority_queue)}")
+        logger.info(
+            f"📧 Queued email to {to} [{'priority' if priority else 'normal'}] — queue size: {len(self._queue) + len(self._priority_queue)}"
+        )
 
         # Auto-start worker si pas déjà running
         self._ensure_worker()
@@ -151,7 +156,9 @@ class EmailQueue:
         self._running = False
         if self._worker_task and not self._worker_task.done():
             self._worker_task.cancel()
-        logger.info(f"📧 Email queue stopped — sent: {self.total_sent}, failed: {self.total_failed}, retried: {self.total_retried}")
+        logger.info(
+            f"📧 Email queue stopped — sent: {self.total_sent}, failed: {self.total_failed}, retried: {self.total_retried}"
+        )
 
     def get_stats(self) -> dict:
         """Retourne les statistiques de la queue."""

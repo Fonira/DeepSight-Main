@@ -13,8 +13,10 @@ from datetime import datetime
 # 📥 REQUÊTES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class ChatMessageRequest(BaseModel):
     """Requête pour envoyer un message au chat vidéo"""
+
     question: str = Field(..., min_length=1, max_length=2000)
     summary_id: int
     mode: str = Field(default="standard", description="accessible, standard, expert")
@@ -24,6 +26,7 @@ class ChatMessageRequest(BaseModel):
 
 class PlaylistChatRequest(BaseModel):
     """Requête pour le chat sur playlist/corpus"""
+
     question: str = Field(..., min_length=1, max_length=2000)
     playlist_id: str
     mode: str = Field(default="standard")
@@ -33,6 +36,7 @@ class PlaylistChatRequest(BaseModel):
 
 class ClearChatRequest(BaseModel):
     """Requête pour effacer l'historique de chat"""
+
     summary_id: Optional[int] = None
     playlist_id: Optional[str] = None
 
@@ -41,19 +45,22 @@ class ClearChatRequest(BaseModel):
 # 📤 RÉPONSES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class ChatMessageResponse(BaseModel):
     """Message de chat"""
+
     id: int
     role: str  # user, assistant
     content: str
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
 
 class ChatResponse(BaseModel):
     """Réponse du chat IA"""
+
     success: bool
     answer: str
     model_used: str
@@ -65,6 +72,7 @@ class ChatResponse(BaseModel):
 
 class ChatHistoryResponse(BaseModel):
     """Historique de chat"""
+
     messages: List[ChatMessageResponse]
     video_title: Optional[str] = None
     playlist_title: Optional[str] = None
@@ -74,6 +82,7 @@ class ChatHistoryResponse(BaseModel):
 
 class ChatQuotaResponse(BaseModel):
     """Quota de chat"""
+
     daily_used: int
     daily_limit: int
     video_used: int

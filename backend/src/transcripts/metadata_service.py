@@ -20,9 +20,17 @@ logger = logging.getLogger(__name__)
 
 # Keys to strip from raw yt-dlp dump (too large / not useful)
 _STRIP_KEYS = {
-    "formats", "thumbnails", "automatic_captions", "subtitles",
-    "requested_formats", "requested_subtitles", "requested_downloads",
-    "url", "manifest_url", "fragment_base_url", "fragments",
+    "formats",
+    "thumbnails",
+    "automatic_captions",
+    "subtitles",
+    "requested_formats",
+    "requested_subtitles",
+    "requested_downloads",
+    "url",
+    "manifest_url",
+    "fragment_base_url",
+    "fragments",
 }
 
 
@@ -42,9 +50,7 @@ async def enrich_metadata(video_id: str, platform: str = "youtube") -> bool:
     """
     try:
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(TranscriptCache).where(TranscriptCache.video_id == video_id)
-            )
+            result = await session.execute(select(TranscriptCache).where(TranscriptCache.video_id == video_id))
             entry = result.scalar_one_or_none()
             if not entry:
                 logger.warning(f"[METADATA] Entry not found for {video_id}")
@@ -54,7 +60,7 @@ async def enrich_metadata(video_id: str, platform: str = "youtube") -> bool:
             if entry.metadata_enriched_at:
                 age = datetime.utcnow() - entry.metadata_enriched_at
                 if age < timedelta(hours=24):
-                    logger.info(f"[METADATA] Skip {video_id} (enriched {age.total_seconds()/3600:.1f}h ago)")
+                    logger.info(f"[METADATA] Skip {video_id} (enriched {age.total_seconds() / 3600:.1f}h ago)")
                     return False
 
             # Fetch metadata based on platform
@@ -96,9 +102,9 @@ async def enrich_metadata(video_id: str, platform: str = "youtube") -> bool:
             # Raw dump (cleaned)
             raw_data = info.get("_raw")
             if raw_data:
-                entry.metadata_json = json.dumps(
-                    _clean_raw_data(raw_data), ensure_ascii=False, default=str
-                )[:50000]  # Cap at 50KB
+                entry.metadata_json = json.dumps(_clean_raw_data(raw_data), ensure_ascii=False, default=str)[
+                    :50000
+                ]  # Cap at 50KB
 
             await session.commit()
             logger.info(
@@ -173,9 +179,12 @@ async def _get_raw_ytdlp_data(video_id: str) -> Optional[dict]:
 
         def _dump():
             cmd = [
-                "yt-dlp", "--dump-json", "--no-warnings", "--skip-download",
+                "yt-dlp",
+                "--dump-json",
+                "--no-warnings",
+                "--skip-download",
                 "--no-playlist",
-                f"https://youtube.com/watch?v={video_id}"
+                f"https://youtube.com/watch?v={video_id}",
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             if result.returncode == 0:
@@ -183,6 +192,7 @@ async def _get_raw_ytdlp_data(video_id: str) -> Optional[dict]:
             return None
 
         from concurrent.futures import ThreadPoolExecutor
+
         executor = ThreadPoolExecutor(max_workers=1)
         data = await loop.run_in_executor(executor, _dump)
         return data
@@ -241,10 +251,7 @@ async def backfill_missing_metadata(
             if processed < len(entries):
                 await asyncio.sleep(2)
 
-        logger.info(
-            f"[METADATA] Backfill done: processed={processed}, "
-            f"enriched={enriched}, failed={failed}"
-        )
+        logger.info(f"[METADATA] Backfill done: processed={processed}, enriched={enriched}, failed={failed}")
 
     except Exception as e:
         logger.error(f"[METADATA] Backfill error: {e}")

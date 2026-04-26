@@ -16,6 +16,7 @@ from core.http_client import shared_http_client
 
 try:
     from core.cache import cache_service, make_cache_key
+
     CACHE_AVAILABLE = True
 except ImportError:
     CACHE_AVAILABLE = False
@@ -24,6 +25,7 @@ except ImportError:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📅 CONTEXTUALISATION TEMPORELLE
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _format_video_age(upload_date: str) -> Tuple[Optional[str], Optional[str], int]:
     """
@@ -40,8 +42,18 @@ def _format_video_age(upload_date: str) -> Tuple[Optional[str], Optional[str], i
         age_days = delta.days
 
         months_fr = [
-            "janvier", "février", "mars", "avril", "mai", "juin",
-            "juillet", "août", "septembre", "octobre", "novembre", "décembre"
+            "janvier",
+            "février",
+            "mars",
+            "avril",
+            "mai",
+            "juin",
+            "juillet",
+            "août",
+            "septembre",
+            "octobre",
+            "novembre",
+            "décembre",
         ]
         readable_date = f"{dt.day} {months_fr[dt.month - 1]} {dt.year}"
 
@@ -73,6 +85,7 @@ def _format_view_count(count: Optional[int]) -> str:
     elif count >= 1_000:
         return f"{count / 1_000:.0f}K"
     return str(count)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📋 RÈGLES ÉPISTÉMIQUES (Raisonnement Critique Sourcé)
@@ -138,19 +151,40 @@ CATEGORIES = {
         "name": {"fr": "🎙️ Interview/Podcast", "en": "🎙️ Interview/Podcast"},
         "keywords": [
             # Termes directs
-            "interview", "podcast", "entretien", "invité", "guest", "talk", "discussion",
+            "interview",
+            "podcast",
+            "entretien",
+            "invité",
+            "guest",
+            "talk",
+            "discussion",
             # Formats d'émission
-            "live", "épisode", "episode", "émission", "show", "thinkerview", "quotidien",
-            "brut", "clique", "konbini", "hugodecrypte", "mcfly et carlito",
+            "live",
+            "épisode",
+            "episode",
+            "émission",
+            "show",
+            "thinkerview",
+            "quotidien",
+            "brut",
+            "clique",
+            "konbini",
+            "hugodecrypte",
+            "mcfly et carlito",
             # Structure interview
-            "nous recevons", "aujourd'hui avec nous", "bienvenue à", "welcome",
-            "on accueille", "notre invité", "joining us", "sit down with"
+            "nous recevons",
+            "aujourd'hui avec nous",
+            "bienvenue à",
+            "welcome",
+            "on accueille",
+            "notre invité",
+            "joining us",
+            "sit down with",
         ],
         "min_words": 1500,
         "max_words": 5000,
-        "template_focus": "dialogue_structure"  # Focus sur les échanges Q/R
+        "template_focus": "dialogue_structure",  # Focus sur les échanges Q/R
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # 📽️ DOCUMENTAIRES & REPORTAGES
     # ═══════════════════════════════════════════════════════════════════════════
@@ -158,19 +192,34 @@ CATEGORIES = {
         "name": {"fr": "📽️ Documentaire", "en": "📽️ Documentary"},
         "keywords": [
             # Termes directs
-            "documentaire", "documentary", "reportage", "enquête", "investigation",
+            "documentaire",
+            "documentary",
+            "reportage",
+            "enquête",
+            "investigation",
             # Format narratif
-            "histoire de", "story of", "l'affaire", "the case of", "true story",
-            "au coeur de", "inside", "dans les coulisses", "behind the scenes",
+            "histoire de",
+            "story of",
+            "l'affaire",
+            "the case of",
+            "true story",
+            "au coeur de",
+            "inside",
+            "dans les coulisses",
+            "behind the scenes",
             # Chaînes documentaires
-            "arte", "national geographic", "netflix documentary", "bbc documentary",
-            "france 5", "histoire", "discovery"
+            "arte",
+            "national geographic",
+            "netflix documentary",
+            "bbc documentary",
+            "france 5",
+            "histoire",
+            "discovery",
         ],
         "min_words": 1800,
         "max_words": 6000,
-        "template_focus": "narrative_arc"  # Focus sur l'arc narratif
+        "template_focus": "narrative_arc",  # Focus sur l'arc narratif
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # 🎓 TUTORIELS & HOW-TO
     # ═══════════════════════════════════════════════════════════════════════════
@@ -178,19 +227,43 @@ CATEGORIES = {
         "name": {"fr": "🎓 Tutoriel", "en": "🎓 Tutorial"},
         "keywords": [
             # Termes directs
-            "tutoriel", "tutorial", "guide", "how to", "comment", "apprendre", "learn",
+            "tutoriel",
+            "tutorial",
+            "guide",
+            "how to",
+            "comment",
+            "apprendre",
+            "learn",
             # Actions pratiques
-            "étape par étape", "step by step", "pas à pas", "tuto", "débutant",
-            "beginner", "facile", "easy", "créer", "create", "faire", "make",
+            "étape par étape",
+            "step by step",
+            "pas à pas",
+            "tuto",
+            "débutant",
+            "beginner",
+            "facile",
+            "easy",
+            "créer",
+            "create",
+            "faire",
+            "make",
             # Domaines spécifiques
-            "coding", "programmation", "diy", "bricolage", "cuisine", "cooking",
-            "photoshop", "premiere", "excel", "python", "javascript"
+            "coding",
+            "programmation",
+            "diy",
+            "bricolage",
+            "cuisine",
+            "cooking",
+            "photoshop",
+            "premiere",
+            "excel",
+            "python",
+            "javascript",
         ],
         "min_words": 1000,
         "max_words": 3500,
-        "template_focus": "actionable_steps"  # Focus sur les étapes pratiques
+        "template_focus": "actionable_steps",  # Focus sur les étapes pratiques
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # 🔬 SCIENCE & VULGARISATION
     # ═══════════════════════════════════════════════════════════════════════════
@@ -198,32 +271,101 @@ CATEGORIES = {
         "name": {"fr": "🔬 Science", "en": "🔬 Science"},
         "keywords": [
             # Termes scientifiques généraux
-            "science", "scientifique", "recherche", "étude", "study", "research",
-            "expérience", "experiment", "théorie", "theory", "découverte", "discovery",
-            "hypothèse", "hypothesis", "démonstration", "preuve", "proof",
+            "science",
+            "scientifique",
+            "recherche",
+            "étude",
+            "study",
+            "research",
+            "expérience",
+            "experiment",
+            "théorie",
+            "theory",
+            "découverte",
+            "discovery",
+            "hypothèse",
+            "hypothesis",
+            "démonstration",
+            "preuve",
+            "proof",
             # Disciplines - Physique & Cosmologie
-            "physique", "physics", "cosmologie", "cosmology", "astrophysique", "astrophysics",
-            "univers", "universe", "cosmos", "big bang", "relativité", "relativity",
-            "quantique", "quantum", "mécanique quantique", "quantum mechanics",
-            "trou noir", "black hole", "gravité", "gravity", "masse", "mass",
-            "énergie noire", "dark energy", "matière noire", "dark matter",
-            "modèle", "model", "équation", "equation", "constante", "constant",
+            "physique",
+            "physics",
+            "cosmologie",
+            "cosmology",
+            "astrophysique",
+            "astrophysics",
+            "univers",
+            "universe",
+            "cosmos",
+            "big bang",
+            "relativité",
+            "relativity",
+            "quantique",
+            "quantum",
+            "mécanique quantique",
+            "quantum mechanics",
+            "trou noir",
+            "black hole",
+            "gravité",
+            "gravity",
+            "masse",
+            "mass",
+            "énergie noire",
+            "dark energy",
+            "matière noire",
+            "dark matter",
+            "modèle",
+            "model",
+            "équation",
+            "equation",
+            "constante",
+            "constant",
             # Disciplines - Autres
-            "chimie", "chemistry", "biologie", "biology", "astronomie", "astronomy", 
-            "médecine", "medicine", "neuroscience", "neurologie", "génétique", "genetics",
-            "évolution", "evolution", "écologie", "ecology", "géologie", "geology",
+            "chimie",
+            "chemistry",
+            "biologie",
+            "biology",
+            "astronomie",
+            "astronomy",
+            "médecine",
+            "medicine",
+            "neuroscience",
+            "neurologie",
+            "génétique",
+            "genetics",
+            "évolution",
+            "evolution",
+            "écologie",
+            "ecology",
+            "géologie",
+            "geology",
             # Termes épistémiques
-            "falsifiable", "réfutable", "peer review", "publication", "consensus",
-            "Nobel", "chercheur", "researcher", "laboratoire", "laboratory",
+            "falsifiable",
+            "réfutable",
+            "peer review",
+            "publication",
+            "consensus",
+            "Nobel",
+            "chercheur",
+            "researcher",
+            "laboratoire",
+            "laboratory",
             # Chaînes scientifiques connues
-            "e-penser", "scilabus", "dirty biology", "veritasium", "kurzgesagt",
-            "vsauce", "smarter every day", "science étonnante", "scienceclic"
+            "e-penser",
+            "scilabus",
+            "dirty biology",
+            "veritasium",
+            "kurzgesagt",
+            "vsauce",
+            "smarter every day",
+            "science étonnante",
+            "scienceclic",
         ],
         "min_words": 1200,
         "max_words": 4500,
-        "template_focus": "evidence_based"  # Focus sur les preuves et méthodologie
+        "template_focus": "evidence_based",  # Focus sur les preuves et méthodologie
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # 📰 ACTUALITÉS & NEWS
     # ═══════════════════════════════════════════════════════════════════════════
@@ -231,19 +373,41 @@ CATEGORIES = {
         "name": {"fr": "📰 Actualités", "en": "📰 News"},
         "keywords": [
             # Termes d'actualité
-            "actualité", "news", "breaking", "journalisme", "info", "report",
-            "dernières nouvelles", "breaking news", "flash info", "journal",
+            "actualité",
+            "news",
+            "breaking",
+            "journalisme",
+            "info",
+            "report",
+            "dernières nouvelles",
+            "breaking news",
+            "flash info",
+            "journal",
             # Contexte temporel
-            "aujourd'hui", "today", "cette semaine", "this week", "récent", "recent",
-            "2024", "2025", "ce matin", "hier", "yesterday",
+            "aujourd'hui",
+            "today",
+            "cette semaine",
+            "this week",
+            "récent",
+            "recent",
+            "2024",
+            "2025",
+            "ce matin",
+            "hier",
+            "yesterday",
             # Médias
-            "bfm", "cnews", "lci", "france info", "cnn", "bbc news", "reuters"
+            "bfm",
+            "cnews",
+            "lci",
+            "france info",
+            "cnn",
+            "bbc news",
+            "reuters",
         ],
         "min_words": 800,
         "max_words": 2500,
-        "template_focus": "5w1h"  # Focus sur Qui/Quoi/Où/Quand/Pourquoi/Comment
+        "template_focus": "5w1h",  # Focus sur Qui/Quoi/Où/Quand/Pourquoi/Comment
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # 🎓 CONFÉRENCES & PRÉSENTATIONS
     # ═══════════════════════════════════════════════════════════════════════════
@@ -251,17 +415,33 @@ CATEGORIES = {
         "name": {"fr": "🎓 Conférence", "en": "🎓 Conference"},
         "keywords": [
             # Termes directs
-            "conférence", "conference", "ted", "tedx", "talk", "keynote", "présentation",
-            "presentation", "speech", "discours", "lecture",
+            "conférence",
+            "conference",
+            "ted",
+            "tedx",
+            "talk",
+            "keynote",
+            "présentation",
+            "presentation",
+            "speech",
+            "discours",
+            "lecture",
             # Contexte académique
-            "colloque", "symposium", "summit", "forum", "séminaire", "seminar",
-            "université", "university", "académie", "academy"
+            "colloque",
+            "symposium",
+            "summit",
+            "forum",
+            "séminaire",
+            "seminar",
+            "université",
+            "university",
+            "académie",
+            "academy",
         ],
         "min_words": 1400,
         "max_words": 4500,
-        "template_focus": "thesis_arguments"  # Focus sur thèse centrale et arguments
+        "template_focus": "thesis_arguments",  # Focus sur thèse centrale et arguments
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # ⚖️ DÉBATS & CONTROVERSES
     # ═══════════════════════════════════════════════════════════════════════════
@@ -269,17 +449,29 @@ CATEGORIES = {
         "name": {"fr": "⚖️ Débat", "en": "⚖️ Debate"},
         "keywords": [
             # Termes directs
-            "débat", "debate", "controverse", "opposition", "versus", "vs",
-            "face à face", "confrontation", "clash", "polémique", "controversy",
+            "débat",
+            "debate",
+            "controverse",
+            "opposition",
+            "versus",
+            "vs",
+            "face à face",
+            "confrontation",
+            "clash",
+            "polémique",
+            "controversy",
             # Structure de débat
-            "pour ou contre", "pros and cons", "d'un côté... de l'autre",
-            "on one hand... on the other", "disagreement", "désaccord"
+            "pour ou contre",
+            "pros and cons",
+            "d'un côté... de l'autre",
+            "on one hand... on the other",
+            "disagreement",
+            "désaccord",
         ],
         "min_words": 1500,
         "max_words": 5000,
-        "template_focus": "balanced_perspectives"  # Focus sur les deux côtés
+        "template_focus": "balanced_perspectives",  # Focus sur les deux côtés
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # 💰 FINANCE & ÉCONOMIE
     # ═══════════════════════════════════════════════════════════════════════════
@@ -287,19 +479,42 @@ CATEGORIES = {
         "name": {"fr": "💰 Finance", "en": "💰 Finance"},
         "keywords": [
             # Termes financiers
-            "finance", "investissement", "investment", "bourse", "stock", "trading",
-            "économie", "economy", "crypto", "bitcoin", "ethereum", "nft",
+            "finance",
+            "investissement",
+            "investment",
+            "bourse",
+            "stock",
+            "trading",
+            "économie",
+            "economy",
+            "crypto",
+            "bitcoin",
+            "ethereum",
+            "nft",
             # Concepts spécifiques
-            "portefeuille", "portfolio", "rendement", "return", "dividende", "dividend",
-            "action", "obligation", "bond", "etf", "marché", "market",
+            "portefeuille",
+            "portfolio",
+            "rendement",
+            "return",
+            "dividende",
+            "dividend",
+            "action",
+            "obligation",
+            "bond",
+            "etf",
+            "marché",
+            "market",
             # Immobilier
-            "immobilier", "real estate", "scpi", "location", "rental"
+            "immobilier",
+            "real estate",
+            "scpi",
+            "location",
+            "rental",
         ],
         "min_words": 1200,
         "max_words": 4000,
-        "template_focus": "risk_return"  # Focus sur risques et opportunités
+        "template_focus": "risk_return",  # Focus sur risques et opportunités
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # 💻 TECH & IA
     # ═══════════════════════════════════════════════════════════════════════════
@@ -307,19 +522,41 @@ CATEGORIES = {
         "name": {"fr": "💻 Tech", "en": "💻 Tech"},
         "keywords": [
             # Termes tech
-            "tech", "technology", "digital", "software", "hardware", "ai", "ia",
-            "intelligence artificielle", "artificial intelligence", "machine learning",
+            "tech",
+            "technology",
+            "digital",
+            "software",
+            "hardware",
+            "ai",
+            "ia",
+            "intelligence artificielle",
+            "artificial intelligence",
+            "machine learning",
             # Produits
-            "apple", "google", "microsoft", "meta", "openai", "chatgpt", "claude",
-            "iphone", "android", "startup", "licorne", "unicorn",
+            "apple",
+            "google",
+            "microsoft",
+            "meta",
+            "openai",
+            "chatgpt",
+            "claude",
+            "iphone",
+            "android",
+            "startup",
+            "licorne",
+            "unicorn",
             # Concepts
-            "algorithme", "algorithm", "data", "données", "cloud", "cybersécurité"
+            "algorithme",
+            "algorithm",
+            "data",
+            "données",
+            "cloud",
+            "cybersécurité",
         ],
         "min_words": 1200,
         "max_words": 4000,
-        "template_focus": "implications"  # Focus sur implications et tendances
+        "template_focus": "implications",  # Focus sur implications et tendances
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # 🏥 SANTÉ & BIEN-ÊTRE
     # ═══════════════════════════════════════════════════════════════════════════
@@ -327,19 +564,45 @@ CATEGORIES = {
         "name": {"fr": "🏥 Santé", "en": "🏥 Health"},
         "keywords": [
             # Termes médicaux
-            "santé", "health", "médical", "medical", "bien-être", "wellness",
-            "maladie", "disease", "traitement", "treatment", "symptôme", "symptom",
+            "santé",
+            "health",
+            "médical",
+            "medical",
+            "bien-être",
+            "wellness",
+            "maladie",
+            "disease",
+            "traitement",
+            "treatment",
+            "symptôme",
+            "symptom",
             # Prévention
-            "nutrition", "régime", "diet", "exercice", "exercise", "sommeil", "sleep",
-            "mental", "psychologie", "psychology", "stress", "anxiété", "anxiety",
+            "nutrition",
+            "régime",
+            "diet",
+            "exercice",
+            "exercise",
+            "sommeil",
+            "sleep",
+            "mental",
+            "psychologie",
+            "psychology",
+            "stress",
+            "anxiété",
+            "anxiety",
             # Sources fiables
-            "oms", "who", "médecin", "doctor", "hôpital", "hospital", "étude clinique"
+            "oms",
+            "who",
+            "médecin",
+            "doctor",
+            "hôpital",
+            "hospital",
+            "étude clinique",
         ],
         "min_words": 1200,
         "max_words": 4000,
-        "template_focus": "evidence_caution"  # Focus sur preuves + avertissements
+        "template_focus": "evidence_caution",  # Focus sur preuves + avertissements
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # 🌍 GÉOPOLITIQUE & SOCIÉTÉ
     # ═══════════════════════════════════════════════════════════════════════════
@@ -347,19 +610,41 @@ CATEGORIES = {
         "name": {"fr": "🌍 Géopolitique", "en": "🌍 Geopolitics"},
         "keywords": [
             # Termes géopolitiques
-            "géopolitique", "geopolitics", "relations internationales", "international relations",
-            "diplomatie", "diplomacy", "conflit", "conflict", "guerre", "war",
+            "géopolitique",
+            "geopolitics",
+            "relations internationales",
+            "international relations",
+            "diplomatie",
+            "diplomacy",
+            "conflit",
+            "conflict",
+            "guerre",
+            "war",
             # Entités
-            "onu", "un", "otan", "nato", "union européenne", "european union",
-            "états-unis", "usa", "chine", "china", "russie", "russia",
+            "onu",
+            "un",
+            "otan",
+            "nato",
+            "union européenne",
+            "european union",
+            "états-unis",
+            "usa",
+            "chine",
+            "china",
+            "russie",
+            "russia",
             # Concepts
-            "souveraineté", "sovereignty", "sanctions", "embargo", "traité", "treaty"
+            "souveraineté",
+            "sovereignty",
+            "sanctions",
+            "embargo",
+            "traité",
+            "treaty",
         ],
         "min_words": 1400,
         "max_words": 5000,
-        "template_focus": "stakeholders"  # Focus sur les acteurs et enjeux
+        "template_focus": "stakeholders",  # Focus sur les acteurs et enjeux
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # 🎨 CULTURE & ARTS
     # ═══════════════════════════════════════════════════════════════════════════
@@ -367,17 +652,37 @@ CATEGORIES = {
         "name": {"fr": "🎨 Culture", "en": "🎨 Culture"},
         "keywords": [
             # Arts
-            "culture", "art", "musique", "music", "cinéma", "cinema", "film",
-            "littérature", "literature", "théâtre", "theatre", "peinture", "painting",
+            "culture",
+            "art",
+            "musique",
+            "music",
+            "cinéma",
+            "cinema",
+            "film",
+            "littérature",
+            "literature",
+            "théâtre",
+            "theatre",
+            "peinture",
+            "painting",
             # Critique
-            "critique", "review", "analyse", "analysis", "chef d'oeuvre", "masterpiece",
-            "artiste", "artist", "réalisateur", "director", "auteur", "author"
+            "critique",
+            "review",
+            "analyse",
+            "analysis",
+            "chef d'oeuvre",
+            "masterpiece",
+            "artiste",
+            "artist",
+            "réalisateur",
+            "director",
+            "auteur",
+            "author",
         ],
         "min_words": 1000,
         "max_words": 3500,
-        "template_focus": "artistic_analysis"  # Focus sur l'analyse artistique
+        "template_focus": "artistic_analysis",  # Focus sur l'analyse artistique
     },
-    
     # ═══════════════════════════════════════════════════════════════════════════
     # 🎵 SHORT-FORM / TIKTOK
     # ═══════════════════════════════════════════════════════════════════════════
@@ -385,20 +690,41 @@ CATEGORIES = {
         "name": {"fr": "🎵 Short-form", "en": "🎵 Short-form"},
         "keywords": [
             # Format court
-            "tiktok", "shorts", "short", "reel", "reels", "clip",
-            "viral", "trend", "tendance", "challenge", "duet", "duo",
+            "tiktok",
+            "shorts",
+            "short",
+            "reel",
+            "reels",
+            "clip",
+            "viral",
+            "trend",
+            "tendance",
+            "challenge",
+            "duet",
+            "duo",
             # Créateurs TikTok
-            "creator", "créateur", "influenceur", "influencer",
-            "storytime", "pov", "grwm", "get ready with me",
+            "creator",
+            "créateur",
+            "influenceur",
+            "influencer",
+            "storytime",
+            "pov",
+            "grwm",
+            "get ready with me",
             # Contenus typiques
-            "hack", "astuce", "life hack", "recette rapide", "quick recipe",
-            "before after", "avant après", "transformation",
+            "hack",
+            "astuce",
+            "life hack",
+            "recette rapide",
+            "quick recipe",
+            "before after",
+            "avant après",
+            "transformation",
         ],
         "min_words": 300,
         "max_words": 1200,
-        "template_focus": "concise_impact"
+        "template_focus": "concise_impact",
     },
-
     # ═══════════════════════════════════════════════════════════════════════════
     # 📋 GÉNÉRAL (Fallback)
     # ═══════════════════════════════════════════════════════════════════════════
@@ -407,8 +733,8 @@ CATEGORIES = {
         "keywords": [],
         "min_words": 1000,
         "max_words": 3500,
-        "template_focus": "balanced"
-    }
+        "template_focus": "balanced",
+    },
 }
 
 
@@ -419,95 +745,242 @@ CATEGORIES = {
 KNOWN_CHANNELS = {
     "science": [
         # Français - Science & Vulgarisation
-        "e-penser", "scilabus", "dirty biology", "science étonnante", "le blob",
-        "balade mentale", "astronogeek", "nota bene", "science4all", "monsieur phi",
-        "hygiène mentale", "defakator", "le sense of wonder", "scienceclic",
-        "biomécanique", "science de comptoir", "string theory", "les chroniques de la science",
-        "l'esprit sorcier", "scienticfiz", "c'est pas sorcier", "florence porcel",
-        "espace des sciences", "palais de la découverte", "science&vie tv",
+        "e-penser",
+        "scilabus",
+        "dirty biology",
+        "science étonnante",
+        "le blob",
+        "balade mentale",
+        "astronogeek",
+        "nota bene",
+        "science4all",
+        "monsieur phi",
+        "hygiène mentale",
+        "defakator",
+        "le sense of wonder",
+        "scienceclic",
+        "biomécanique",
+        "science de comptoir",
+        "string theory",
+        "les chroniques de la science",
+        "l'esprit sorcier",
+        "scienticfiz",
+        "c'est pas sorcier",
+        "florence porcel",
+        "espace des sciences",
+        "palais de la découverte",
+        "science&vie tv",
         # Jean-Pierre Petit et autres physiciens
-        "jean-pierre petit", "jp petit", "janus cosmological model",
-        "etienne klein", "aurélien barrau", "thibault damour",
+        "jean-pierre petit",
+        "jp petit",
+        "janus cosmological model",
+        "etienne klein",
+        "aurélien barrau",
+        "thibault damour",
         # Anglais
-        "veritasium", "kurzgesagt", "vsauce", "smarter every day", "numberphile",
-        "minutephysics", "3blue1brown", "pbs space time", "physics girl",
-        "scishow", "tom scott", "real engineering", "mark rober", "primer",
-        "up and atom", "sabine hossenfelder", "sean carroll", "pbs eons",
-        "sixty symbols", "periodic videos", "computerphile", "lex fridman science",
+        "veritasium",
+        "kurzgesagt",
+        "vsauce",
+        "smarter every day",
+        "numberphile",
+        "minutephysics",
+        "3blue1brown",
+        "pbs space time",
+        "physics girl",
+        "scishow",
+        "tom scott",
+        "real engineering",
+        "mark rober",
+        "primer",
+        "up and atom",
+        "sabine hossenfelder",
+        "sean carroll",
+        "pbs eons",
+        "sixty symbols",
+        "periodic videos",
+        "computerphile",
+        "lex fridman science",
     ],
     "interview": [
         # Français
-        "thinkerview", "blast", "mediapart", "le média", "clique", "quotidien",
-        "brut", "konbini", "hugodecrypte", "mcfly et carlito", "popcorn",
-        "first team", "osmose podcast", "generation do it yourself", "gdiy",
-        "les grandes gueules", "on n'est pas couché", "la grande librairie",
+        "thinkerview",
+        "blast",
+        "mediapart",
+        "le média",
+        "clique",
+        "quotidien",
+        "brut",
+        "konbini",
+        "hugodecrypte",
+        "mcfly et carlito",
+        "popcorn",
+        "first team",
+        "osmose podcast",
+        "generation do it yourself",
+        "gdiy",
+        "les grandes gueules",
+        "on n'est pas couché",
+        "la grande librairie",
         # Anglais
-        "joe rogan", "lex fridman", "jordan peterson", "tim ferriss", 
-        "naval ravikant", "diary of a ceo", "impact theory", "london real",
-        "h3 podcast", "hot ones", "the breakfast club", "conan o'brien",
+        "joe rogan",
+        "lex fridman",
+        "jordan peterson",
+        "tim ferriss",
+        "naval ravikant",
+        "diary of a ceo",
+        "impact theory",
+        "london real",
+        "h3 podcast",
+        "hot ones",
+        "the breakfast club",
+        "conan o'brien",
     ],
     "tech": [
         # Français
-        "underscore", "micode", "léo duff", "guillaume slash", "nowtech",
-        "tech lead fr", "cookie connecté", "parfaitement web",
+        "underscore",
+        "micode",
+        "léo duff",
+        "guillaume slash",
+        "nowtech",
+        "tech lead fr",
+        "cookie connecté",
+        "parfaitement web",
         # Anglais
-        "linus tech tips", "mkbhd", "the verge", "wired", "cnet",
-        "fireship", "tech lead", "traversy media", "joma tech",
-        "dave2d", "unbox therapy", "austin evans", "jayztwocents",
+        "linus tech tips",
+        "mkbhd",
+        "the verge",
+        "wired",
+        "cnet",
+        "fireship",
+        "tech lead",
+        "traversy media",
+        "joma tech",
+        "dave2d",
+        "unbox therapy",
+        "austin evans",
+        "jayztwocents",
     ],
     "finance": [
         # Français
-        "xavier delmas", "finary", "matthieu louvet", "grand angle",
-        "les investisseurs 4.0", "objectif libre", "revenus et dividendes",
+        "xavier delmas",
+        "finary",
+        "matthieu louvet",
+        "grand angle",
+        "les investisseurs 4.0",
+        "objectif libre",
+        "revenus et dividendes",
         # Anglais
-        "invest with queenie", "andrei jikh", "graham stephan",
-        "meet kevin", "mark tilbury", "ali abdaal money",
+        "invest with queenie",
+        "andrei jikh",
+        "graham stephan",
+        "meet kevin",
+        "mark tilbury",
+        "ali abdaal money",
     ],
     "documentary": [
-        "arte", "france 5", "national geographic", "bbc documentary",
-        "netflix documentary", "envoyé spécial", "cash investigation",
-        "complément d'enquête", "infrarouge", "documentaire société",
-        "vice", "vox", "frontline pbs", "history channel",
+        "arte",
+        "france 5",
+        "national geographic",
+        "bbc documentary",
+        "netflix documentary",
+        "envoyé spécial",
+        "cash investigation",
+        "complément d'enquête",
+        "infrarouge",
+        "documentaire société",
+        "vice",
+        "vox",
+        "frontline pbs",
+        "history channel",
     ],
     "geopolitics": [
-        "le dessous des cartes", "géopoliticus", "mappingtheworld",
-        "tldr news", "caspian report", "visual politik", "polymatter",
-        "real life lore", "wendover productions", "half as interesting",
+        "le dessous des cartes",
+        "géopoliticus",
+        "mappingtheworld",
+        "tldr news",
+        "caspian report",
+        "visual politik",
+        "polymatter",
+        "real life lore",
+        "wendover productions",
+        "half as interesting",
     ],
     "tutorial": [
         # Français
-        "grafikart", "pierre giraud", "openclassrooms", "formation informatique",
+        "grafikart",
+        "pierre giraud",
+        "openclassrooms",
+        "formation informatique",
         # Anglais
-        "traversy media", "freecodecamp", "the coding train", "web dev simplified",
-        "fireship", "net ninja", "programming with mosh", "sentdex",
+        "traversy media",
+        "freecodecamp",
+        "the coding train",
+        "web dev simplified",
+        "fireship",
+        "net ninja",
+        "programming with mosh",
+        "sentdex",
     ],
     "health": [
-        "primum non nocere", "nutrition facts", "what i've learned",
-        "docteur jimmy mohamed", "michel cymes", "dans ton corps",
-        "andrew huberman", "dr berg", "medlife crisis",
+        "primum non nocere",
+        "nutrition facts",
+        "what i've learned",
+        "docteur jimmy mohamed",
+        "michel cymes",
+        "dans ton corps",
+        "andrew huberman",
+        "dr berg",
+        "medlife crisis",
     ],
     "news": [
-        "bfmtv", "cnews", "france info", "lci", "france 24",
-        "bbc news", "cnn", "reuters", "al jazeera", "dw news",
-        "euronews", "sky news", "abc news",
+        "bfmtv",
+        "cnews",
+        "france info",
+        "lci",
+        "france 24",
+        "bbc news",
+        "cnn",
+        "reuters",
+        "al jazeera",
+        "dw news",
+        "euronews",
+        "sky news",
+        "abc news",
     ],
     "culture": [
         # Français
-        "arte cinéma", "blow up arte", "le fossoyeur de films", "inthepanda",
-        "captain popcorn", "durendal", "les chroniques du mea",
+        "arte cinéma",
+        "blow up arte",
+        "le fossoyeur de films",
+        "inthepanda",
+        "captain popcorn",
+        "durendal",
+        "les chroniques du mea",
         # Anglais
-        "every frame a painting", "nerdwriter", "lindsay ellis",
-        "lessons from the screenplay", "channel criswell",
+        "every frame a painting",
+        "nerdwriter",
+        "lindsay ellis",
+        "lessons from the screenplay",
+        "channel criswell",
     ],
     "debate": [
-        "c dans l'air", "28 minutes arte", "l'heure des pros",
-        "bfm story", "punchline", "face à l'info",
+        "c dans l'air",
+        "28 minutes arte",
+        "l'heure des pros",
+        "bfm story",
+        "punchline",
+        "face à l'info",
     ],
     "shortform": [
         # Créateurs TikTok éducatifs connus
-        "khaby lame", "charli d'amelio", "addison rae",
-        "hank green", "sciencewithkatie", "dr. karan raj",
-        "docteur jimmy", "scienceetonnante",
+        "khaby lame",
+        "charli d'amelio",
+        "addison rae",
+        "hank green",
+        "sciencewithkatie",
+        "dr. karan raj",
+        "docteur jimmy",
+        "scienceetonnante",
     ],
 }
 
@@ -532,16 +1005,16 @@ YOUTUBE_CATEGORY_MAPPING = {
 
 
 def detect_category(
-    title: str, 
-    description: str = "", 
+    title: str,
+    description: str = "",
     transcript: str = "",
     channel: str = "",
     tags: List[str] = None,
-    youtube_categories: List[str] = None
+    youtube_categories: List[str] = None,
 ) -> Tuple[str, float]:
     """
     🆕 v3.0: Détection INTELLIGENTE de catégorie avec métadonnées complètes.
-    
+
     Utilise dans l'ordre de priorité:
     1. Nom de la chaîne (chaînes connues = très haute confiance)
     2. Tags YouTube (bonne indication du contenu)
@@ -549,7 +1022,7 @@ def detect_category(
     4. Titre (pondération x5)
     5. Description (pondération x2)
     6. Transcript (premiers 5000 mots)
-    
+
     Retourne: (category_id, confidence)
     """
     tags = tags or []
@@ -568,13 +1041,13 @@ def detect_category(
     channel_lower = channel.lower() if channel else ""
     tags_lower = [t.lower() for t in tags]
     transcript_lower = transcript[:8000].lower() if transcript else ""
-    
+
     print("🏷️ [CATEGORY DETECTION v3.0]", flush=True)
     print(f"   📺 Channel: {channel}", flush=True)
     print(f"   🎬 Title: {title[:60]}...", flush=True)
     print(f"   🏷️ Tags: {tags[:5]}...", flush=True)
     print(f"   📂 YT Categories: {youtube_categories}", flush=True)
-    
+
     # ═══════════════════════════════════════════════════════════════════════
     # 1. CHAÎNE CONNUE (PRIORITÉ MAXIMALE)
     # ═══════════════════════════════════════════════════════════════════════
@@ -583,7 +1056,7 @@ def detect_category(
             if known_channel in channel_lower:
                 print(f"   ✅ MATCH: Known channel '{known_channel}' → {cat_id} (confidence: 0.95)", flush=True)
                 return cat_id, 0.95
-    
+
     # ═══════════════════════════════════════════════════════════════════════
     # 2. CATÉGORIE YOUTUBE NATIVE (HAUTE CONFIANCE)
     # ═══════════════════════════════════════════════════════════════════════
@@ -593,70 +1066,70 @@ def detect_category(
             if mapped_cat != "general":
                 print(f"   ✅ MATCH: YouTube category '{yt_cat}' → {mapped_cat} (confidence: 0.85)", flush=True)
                 return mapped_cat, 0.85
-    
+
     # ═══════════════════════════════════════════════════════════════════════
     # 3. ANALYSE PAR MOTS-CLÉS PONDÉRÉS
     # ═══════════════════════════════════════════════════════════════════════
     scores = {}
-    
+
     for cat_id, cat_info in CATEGORIES.items():
         if cat_id == "general":
             continue
-        
+
         score = 0
         matches = []
-        
+
         for kw in cat_info["keywords"]:
             kw_lower = kw.lower()
-            
+
             # Bonus chaîne (x10)
             if kw_lower in channel_lower:
                 score += 10
                 matches.append(f"channel:{kw}")
-            
+
             # Bonus tags (x8) - très fiable
             if any(kw_lower in tag for tag in tags_lower):
                 score += 8
                 matches.append(f"tag:{kw}")
-            
+
             # Bonus titre (x5)
             if kw_lower in title_lower:
                 score += 5
                 matches.append(f"title:{kw}")
-            
+
             # Bonus description (x2)
             if kw_lower in desc_lower:
                 count = desc_lower.count(kw_lower)
                 score += min(count * 2, 6)  # Max 6 points
                 if count > 0:
                     matches.append(f"desc:{kw}x{count}")
-            
+
             # Transcript (x1)
             if kw_lower in transcript_lower:
                 count = transcript_lower.count(kw_lower)
                 score += min(count, 5)  # Max 5 points
-        
+
         if score > 0:
             scores[cat_id] = {"score": score, "matches": matches[:10]}
-    
+
     # ═══════════════════════════════════════════════════════════════════════
     # 4. SÉLECTION DU MEILLEUR
     # ═══════════════════════════════════════════════════════════════════════
     if not scores:
         print("   ⚠️ No matches found → general (confidence: 0.50)", flush=True)
         return "general", 0.50
-    
+
     # Trier par score
     sorted_cats = sorted(scores.items(), key=lambda x: x[1]["score"], reverse=True)
     best_cat = sorted_cats[0][0]
     best_score = sorted_cats[0][1]["score"]
     sorted_cats[0][1]["matches"]
-    
+
     # Log des top 3
     print("   📊 Top categories:", flush=True)
     for cat, info in sorted_cats[:3]:
         print(f"      - {cat}: score={info['score']} matches={info['matches'][:5]}", flush=True)
-    
+
     # Calculer la confiance
     if len(sorted_cats) > 1:
         second_score = sorted_cats[1][1]["score"]
@@ -664,9 +1137,9 @@ def detect_category(
         confidence = min(0.92, 0.55 + (gap * 0.25) + (min(best_score, 30) * 0.01))
     else:
         confidence = min(0.90, 0.60 + (min(best_score, 25) * 0.012))
-    
+
     print(f"   ✅ SELECTED: {best_cat} (confidence: {confidence:.2f})", flush=True)
-    
+
     return best_cat, confidence
 
 
@@ -674,9 +1147,10 @@ def detect_category(
 # 🎯 GÉNÉRATION DES PROMPTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def get_mode_instructions(mode: str, lang: str) -> str:
     """Retourne les instructions spécifiques au mode d'analyse"""
-    
+
     if lang == "fr":
         instructions = {
             "accessible": """
@@ -769,7 +1243,7 @@ def get_mode_instructions(mode: str, lang: str) -> str:
    ## 🆚 Mise en Perspective
    ## ❓ Questions Non Résolues
    ## 📍 Index Temporel Complet
-"""
+""",
         }
     else:
         instructions = {
@@ -863,9 +1337,9 @@ def get_mode_instructions(mode: str, lang: str) -> str:
    ## 🆚 Contextualization
    ## ❓ Unresolved Questions
    ## 📍 Complete Temporal Index
-"""
+""",
         }
-    
+
     return instructions.get(mode, instructions["standard"])
 
 
@@ -997,7 +1471,7 @@ def get_category_specific_instructions(category: str, lang: str) -> str:
 • Vérification : Les astuces/infos sont-elles fiables ?
 • Contexte : S'inscrit-elle dans une tendance plus large ?
 • Call to action : Que suggère le créateur ?
-"""
+""",
         }
         return instructions.get(category, "")
     else:
@@ -1012,11 +1486,7 @@ def get_transcript_limit(duration: int, mode: str) -> int:
     Pour les vidéos longues, on augmente la limite pour capturer l'intégralité du contenu.
     """
     # Limites de base par mode
-    base_limits = {
-        "accessible": 60000,
-        "standard": 100000,
-        "expert": 150000
-    }
+    base_limits = {"accessible": 60000, "standard": 100000, "expert": 150000}
     base = base_limits.get(mode, 100000)
 
     # Augmenter pour les vidéos longues (> 30 min)
@@ -1074,9 +1544,9 @@ def build_analysis_prompt(
 
     # 🆕 v5.2: Ajustements selon target_length (PRIORITAIRE)
     length_multipliers = {
-        "short": (0.25, 0.3),      # Court: 250-1050 mots pour general
-        "standard": (1.0, 1.0),    # Moyen: valeurs par défaut
-        "detailed": (1.5, 1.8),    # Long: 1500-6300 mots pour general
+        "short": (0.25, 0.3),  # Court: 250-1050 mots pour general
+        "standard": (1.0, 1.0),  # Moyen: valeurs par défaut
+        "detailed": (1.5, 1.8),  # Long: 1500-6300 mots pour general
     }
     len_min_mult, len_max_mult = length_multipliers.get(target_length, (1.0, 1.0))
     min_words = int(min_words * len_min_mult)
@@ -1098,7 +1568,7 @@ def build_analysis_prompt(
     if target_length == "short":
         max_words = min(max_words, 600)
         min_words = min(min_words, 200)
-    
+
     # Construire le bloc de contextualisation temporelle
     temporal_rule_fr = ""
     temporal_rule_en = ""
@@ -1154,7 +1624,12 @@ This video was published on {readable_date} ({human_age}).
         if stats_parts:
             stats_line = "  |  ".join(stats_parts)
             meta_parts_fr.append(stats_line)
-            meta_parts_en.append(stats_line.replace("vues", "views").replace("abonnés", "subscribers").replace("commentaires", "comments").replace("partages", "shares"))
+            meta_parts_en.append(
+                stats_line.replace("vues", "views")
+                .replace("abonnés", "subscribers")
+                .replace("commentaires", "comments")
+                .replace("partages", "shares")
+            )
 
         metadata_block_fr = "\n".join(meta_parts_fr)
         metadata_block_en = "\n".join(meta_parts_en)
@@ -1208,7 +1683,7 @@ C'est une fonctionnalité ESSENTIELLE de Deep Sight. Sans [[concepts]], la répo
 
 🌐 RÉPONDS ENTIÈREMENT EN FRANÇAIS IMPECCABLE.
 """
-        
+
         platform_label = "TikTok" if platform == "tiktok" else "YouTube"
 
         # 📊 Optional blocks
@@ -1218,7 +1693,10 @@ C'est une fonctionnalité ESSENTIELLE de Deep Sight. Sans [[concepts]], la répo
 
         chapters_block_fr = ""
         if chapters and isinstance(chapters, list) and len(chapters) > 0:
-            ch_lines = [f"  • [{int(ch.get('start_time', 0)) // 60}:{int(ch.get('start_time', 0)) % 60:02d}] {ch.get('title', '')}" for ch in chapters[:15]]
+            ch_lines = [
+                f"  • [{int(ch.get('start_time', 0)) // 60}:{int(ch.get('start_time', 0)) % 60:02d}] {ch.get('title', '')}"
+                for ch in chapters[:15]
+            ]
             chapters_block_fr = "\n📑 CHAPITRES :\n" + "\n".join(ch_lines)
 
         # 📸 Carousel-specific content label
@@ -1281,7 +1759,7 @@ TARGET LENGTH: {min_words}-{max_words} words
 
 RESPOND ENTIRELY IN ENGLISH.
 """
-        
+
         platform_label = "TikTok" if platform == "tiktok" else "YouTube"
 
         # 📊 Optional blocks
@@ -1291,7 +1769,10 @@ RESPOND ENTIRELY IN ENGLISH.
 
         chapters_block_en = ""
         if chapters and isinstance(chapters, list) and len(chapters) > 0:
-            ch_lines = [f"  • [{int(ch.get('start_time', 0)) // 60}:{int(ch.get('start_time', 0)) % 60:02d}] {ch.get('title', '')}" for ch in chapters[:15]]
+            ch_lines = [
+                f"  • [{int(ch.get('start_time', 0)) // 60}:{int(ch.get('start_time', 0)) % 60:02d}] {ch.get('title', '')}"
+                for ch in chapters[:15]
+            ]
             chapters_block_en = "\n📑 CHAPTERS:\n" + "\n".join(ch_lines)
 
         # 📸 Carousel-specific content label
@@ -1323,6 +1804,7 @@ RESPOND ENTIRELY IN ENGLISH.
 # 🤖 APPELS API MISTRAL
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def generate_summary(
     title: str,
     transcript: str,
@@ -1335,11 +1817,11 @@ async def generate_summary(
     description: str = "",
     api_key: str = None,
     web_context: str = None,  # 🆕 v3.0: Contexte web pré-analyse
-    video_id: str = None,     # 🆕 v3.1: Pour le cache
+    video_id: str = None,  # 🆕 v3.1: Pour le cache
     force_refresh: bool = False,  # 🆕 v3.1: Forcer la ré-génération
     platform: str = "youtube",  # 🎵 TikTok support
     target_length: str = "standard",  # 🆕 v5.2: short/standard/detailed
-    upload_date: str = "",        # 📅 Contextualisation temporelle
+    upload_date: str = "",  # 📅 Contextualisation temporelle
     view_count: int = 0,
     like_count: int = 0,
     channel_follower_count: int = 0,
@@ -1371,13 +1853,13 @@ async def generate_summary(
     if not api_key:
         print("❌ Mistral API key not configured", flush=True)
         return None
-    
+
     print(f"🧠 Generating summary with {model}...", flush=True)
     print(f"   Title: {title[:60]}...", flush=True)
     print(f"   Category: {category}, Mode: {mode}, Lang: {lang}", flush=True)
     if web_context:
         print(f"   📡 Web context provided: {len(web_context)} chars", flush=True)
-    
+
     system_prompt, user_prompt = build_analysis_prompt(
         title=title,
         transcript=transcript,
@@ -1399,13 +1881,13 @@ async def generate_summary(
         content_type=content_type,
         chapters=chapters,
     )
-    
+
     # 🆕 v3.0: Injecter le contexte web dans le prompt utilisateur
     if web_context:
         web_context_formatted = f"""
 
 ═══════════════════════════════════════════════════════════════════════════════
-📡 CONTEXTE WEB ACTUEL (Recherche Perplexity - {datetime.now().strftime('%Y-%m-%d')})
+📡 CONTEXTE WEB ACTUEL (Recherche Perplexity - {datetime.now().strftime("%Y-%m-%d")})
 ═══════════════════════════════════════════════════════════════════════════════
 
 {web_context}
@@ -1419,14 +1901,10 @@ async def generate_summary(
 ═══════════════════════════════════════════════════════════════════════════════
 """
         user_prompt = user_prompt + web_context_formatted
-    
+
     # 🆕 v3.1: Tokens dynamiques selon mode ET durée de la vidéo
     # 🆕 v5.2: Ajusté par target_length
-    base_tokens = {
-        "accessible": 2500,
-        "standard": 5000,
-        "expert": 10000
-    }.get(mode, 5000)
+    base_tokens = {"accessible": 2500, "standard": 5000, "expert": 10000}.get(mode, 5000)
 
     # Ajuster les tokens selon la longueur demandée
     length_token_multiplier = {
@@ -1446,11 +1924,7 @@ async def generate_summary(
         base_tokens = int(base_tokens * 1.3)
 
     # Limites maximales par mode (ajustées par longueur)
-    max_token_limits = {
-        "accessible": 4000,
-        "standard": 12000,
-        "expert": 20000
-    }
+    max_token_limits = {"accessible": 4000, "standard": 12000, "expert": 20000}
     max_limit = max_token_limits.get(mode, 12000)
     # 🆕 v5.2: Plafonner les tokens pour "short" (max ~800 mots = ~1200 tokens)
     if target_length == "short":
@@ -1460,7 +1934,7 @@ async def generate_summary(
     # Augmenter si contexte web (plus de contenu à analyser)
     if web_context:
         max_tokens = int(max_tokens * 1.2)  # +20%
-    
+
     # 🔄 Centralized LLM call with automatic fallback chain (Mistral → DeepSeek)
     messages = [
         {"role": "system", "content": system_prompt},
@@ -1494,19 +1968,16 @@ async def generate_summary(
     return None
 
 
-async def extract_entities(
-    summary: str,
-    api_key: str = None,
-    lang: str = "fr"
-) -> Optional[Dict[str, List[str]]]:
+async def extract_entities(summary: str, api_key: str = None, lang: str = "fr") -> Optional[Dict[str, List[str]]]:
     """
     Extrait les entités (personnes, concepts, organisations) d'un résumé.
     """
     api_key = api_key or get_mistral_key()
     if not api_key or not summary:
         return None
-    
-    prompt = """Analyse ce résumé et extrait les entités principales en JSON.
+
+    prompt = (
+        """Analyse ce résumé et extrait les entités principales en JSON.
 Format STRICT (JSON uniquement, sans markdown):
 {
     "concepts": ["concept1", "concept2"],
@@ -1516,7 +1987,9 @@ Format STRICT (JSON uniquement, sans markdown):
 }
 
 Résumé:
-""" if lang == "fr" else """Analyze this summary and extract main entities as JSON.
+"""
+        if lang == "fr"
+        else """Analyze this summary and extract main entities as JSON.
 STRICT format (JSON only, no markdown):
 {
     "concepts": ["concept1", "concept2"],
@@ -1527,24 +2000,22 @@ STRICT format (JSON only, no markdown):
 
 Summary:
 """
-    
+    )
+
     try:
         async with shared_http_client() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": MISTRAL_INTERNAL_MODEL,
                     "messages": [{"role": "user", "content": f"{prompt}\n\n{summary[:3000]}"}],
                     "temperature": 0.1,
-                    "max_tokens": 500
+                    "max_tokens": 500,
                 },
-                timeout=30
+                timeout=30,
             )
-            
+
             if response.status_code == 200:
                 content = response.json()["choices"][0]["message"]["content"]
                 # Nettoyer le JSON
@@ -1554,19 +2025,16 @@ Summary:
                     if content.startswith("json"):
                         content = content[4:]
                 content = content.strip()
-                
+
                 return json.loads(content)
     except Exception as e:
         print(f"⚠️ Entity extraction error: {e}", flush=True)
-    
+
     return None
 
 
 async def calculate_reliability_score(
-    summary: str,
-    entities: Optional[Dict] = None,
-    api_key: str = None,
-    lang: str = "fr"
+    summary: str, entities: Optional[Dict] = None, api_key: str = None, lang: str = "fr"
 ) -> float:
     """
     Calcule un score de fiabilité basé sur les marqueurs épistémiques.
@@ -1574,36 +2042,56 @@ async def calculate_reliability_score(
     """
     if not summary:
         return 50.0
-    
+
     # Analyse simple basée sur les marqueurs
     text = summary.lower()
-    
+
     # Marqueurs positifs (augmentent la fiabilité)
     positive_markers = [
-        "étude", "recherche", "données", "preuve", "démontré",
-        "study", "research", "data", "evidence", "demonstrated",
-        "selon", "d'après", "according to", "✅"
+        "étude",
+        "recherche",
+        "données",
+        "preuve",
+        "démontré",
+        "study",
+        "research",
+        "data",
+        "evidence",
+        "demonstrated",
+        "selon",
+        "d'après",
+        "according to",
+        "✅",
     ]
-    
+
     # Marqueurs négatifs (diminuent la fiabilité)
     negative_markers = [
-        "opinion", "je pense", "hypothèse", "spéculation",
-        "pourrait", "peut-être", "possibly", "might",
-        "⚠️", "❓", "non vérifié", "unverified"
+        "opinion",
+        "je pense",
+        "hypothèse",
+        "spéculation",
+        "pourrait",
+        "peut-être",
+        "possibly",
+        "might",
+        "⚠️",
+        "❓",
+        "non vérifié",
+        "unverified",
     ]
-    
+
     # Calculer le score
     positive_count = sum(1 for m in positive_markers if m in text)
     negative_count = sum(1 for m in negative_markers if m in text)
-    
+
     # Score de base à 60
     score = 60.0
     score += positive_count * 3  # +3 par marqueur positif
     score -= negative_count * 5  # -5 par marqueur négatif
-    
+
     # Bonus si des sources sont citées
     if entities and entities.get("persons"):
         score += min(10, len(entities["persons"]) * 2)
-    
+
     # Limiter entre 20 et 95
     return max(20.0, min(95.0, score))

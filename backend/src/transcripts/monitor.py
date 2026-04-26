@@ -15,6 +15,7 @@ from core.logging import logger
 @dataclass
 class MethodStats:
     """Statistics for a single extraction method"""
+
     success: int = 0
     failure: int = 0
     total_time_ms: int = 0
@@ -56,13 +57,7 @@ class TranscriptHealthMonitor:
         self._priority_cache: Optional[List[str]] = None
         self._priority_cache_time: Optional[datetime] = None
 
-    def record_attempt(
-        self,
-        method: str,
-        success: bool,
-        duration_ms: int,
-        error: Optional[str] = None
-    ):
+    def record_attempt(self, method: str, success: bool, duration_ms: int, error: Optional[str] = None):
         """Enregistre une tentative d'extraction"""
         stats = self.method_stats[method]
         stats.total_time_ms += duration_ms
@@ -239,15 +234,11 @@ class TranscriptHealthMonitor:
 
             # Check for persistent failures
             if stats.success_rate < 0.3:
-                recommendations.append(
-                    f"Consider disabling {method} - success rate only {stats.success_rate:.1%}"
-                )
+                recommendations.append(f"Consider disabling {method} - success rate only {stats.success_rate:.1%}")
 
             # Check for slow methods
             if stats.avg_time_ms > 15000 and stats.success_rate < 0.7:
-                recommendations.append(
-                    f"Review {method} - slow ({stats.avg_time_ms:.0f}ms avg) with low success"
-                )
+                recommendations.append(f"Review {method} - slow ({stats.avg_time_ms:.0f}ms avg) with low success")
 
             # Check error patterns
             for error_type, count in stats.error_types.items():
@@ -270,14 +261,10 @@ class TranscriptHealthMonitor:
         )
 
         if overall_success < 0.9:
-            recommendations.append(
-                f"Overall success rate is {overall_success:.1%} - below 99.5% target"
-            )
+            recommendations.append(f"Overall success rate is {overall_success:.1%} - below 99.5% target")
 
         if overall_success < 0.8:
-            recommendations.append(
-                "Consider adding additional fallback methods or paid services"
-            )
+            recommendations.append("Consider adding additional fallback methods or paid services")
 
         return recommendations
 
@@ -342,9 +329,7 @@ class TranscriptHealthMonitor:
 
             self.global_stats = data.get("global_stats", {})
             if "start_time" in self.global_stats:
-                self.global_stats["start_time"] = datetime.fromisoformat(
-                    self.global_stats["start_time"]
-                )
+                self.global_stats["start_time"] = datetime.fromisoformat(self.global_stats["start_time"])
 
             for method, stats_data in data.get("method_stats", {}).items():
                 stats = MethodStats(
@@ -375,12 +360,8 @@ health_monitor = TranscriptHealthMonitor()
 # CONVENIENCE FUNCTIONS
 # ===================================================================
 
-def record_extraction_attempt(
-    method: str,
-    success: bool,
-    duration_ms: int,
-    error: Optional[str] = None
-):
+
+def record_extraction_attempt(method: str, success: bool, duration_ms: int, error: Optional[str] = None):
     """Record an extraction attempt in the global monitor"""
     health_monitor.record_attempt(method, success, duration_ms, error)
 

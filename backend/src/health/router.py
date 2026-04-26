@@ -28,6 +28,7 @@ VERSION = os.environ.get("APP_VERSION", "")
 if not VERSION:
     try:
         from core.config import VERSION as _CFG_VERSION
+
         VERSION = _CFG_VERSION
     except ImportError:
         VERSION = "unknown"
@@ -42,6 +43,7 @@ CRITICAL_SERVICES = {"database", "stripe"}
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -78,6 +80,7 @@ async def _timed_check(
 # ─────────────────────────────────────────────────────────────────────────────
 # Individual checks
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 async def _check_database() -> Dict[str, Any]:
     from db.database import async_session_maker
@@ -202,6 +205,7 @@ async def _check_frontend() -> Dict[str, Any]:
 # Routes
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @router.get("")
 async def health_simple():
     """
@@ -283,6 +287,7 @@ async def health_deep(secret: str = Query(default="")):
     # Video Content Cache (L1 Redis + L2 PostgreSQL VPS)
     try:
         from main import get_video_cache
+
         vcache = get_video_cache()
         if vcache is not None:
             health = vcache.is_healthy
@@ -297,10 +302,7 @@ async def health_deep(secret: str = Query(default="")):
 
     # Determine overall status
     all_ok = all(s.get("status") == "ok" for s in services.values())
-    critical_down = any(
-        services.get(svc, {}).get("status") != "ok"
-        for svc in CRITICAL_SERVICES
-    )
+    critical_down = any(services.get(svc, {}).get("status") != "ok" for svc in CRITICAL_SERVICES)
 
     if critical_down:
         overall = "unhealthy"
@@ -324,6 +326,7 @@ async def health_deep(secret: str = Query(default="")):
 # ─────────────────────────────────────────────────────────────────────────────
 # GET /redis — Detailed Redis metrics (secret-protected)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @router.get("/redis")
 async def health_redis(secret: str = Query(default="")):
@@ -364,17 +367,21 @@ async def health_redis(secret: str = Query(default="")):
 
         # Slow log (last 5 entries)
         slow_log_raw: list = await r.slowlog_get(5)
-        slow_log = [
-            {
-                "id": entry.get("id"),
-                "duration_us": entry.get("duration"),
-                "command": entry.get("command", b"").decode("utf-8", errors="replace")
-                if isinstance(entry.get("command"), bytes)
-                else str(entry.get("command", "")),
-                "timestamp": entry.get("start_time"),
-            }
-            for entry in slow_log_raw
-        ] if slow_log_raw else []
+        slow_log = (
+            [
+                {
+                    "id": entry.get("id"),
+                    "duration_us": entry.get("duration"),
+                    "command": entry.get("command", b"").decode("utf-8", errors="replace")
+                    if isinstance(entry.get("command"), bytes)
+                    else str(entry.get("command", "")),
+                    "timestamp": entry.get("start_time"),
+                }
+                for entry in slow_log_raw
+            ]
+            if slow_log_raw
+            else []
+        )
 
         # Hit ratio
         hits = info_stats.get("keyspace_hits", 0)

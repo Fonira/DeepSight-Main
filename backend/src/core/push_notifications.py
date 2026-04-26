@@ -65,7 +65,6 @@ async def send_push(
     invalid_tokens = []
 
     try:
-
         async with shared_http_client() as client:
             response = await client.post(
                 EXPO_PUSH_URL,
@@ -74,7 +73,7 @@ async def send_push(
                     "Accept": "application/json",
                     "Content-Type": "application/json",
                 },
-                timeout=15.0
+                timeout=15.0,
             )
 
             if response.status_code == 200:
@@ -87,18 +86,22 @@ async def send_push(
                     elif ticket.get("status") == "error":
                         error_detail = ticket.get("details", {})
                         error_type = error_detail.get("error", "")
-                        errors.append({
-                            "token": tokens[i].token[:20] + "...",
-                            "error": ticket.get("message", "Unknown error"),
-                        })
+                        errors.append(
+                            {
+                                "token": tokens[i].token[:20] + "...",
+                                "error": ticket.get("message", "Unknown error"),
+                            }
+                        )
                         # Mark invalid tokens for cleanup
                         if error_type in ("DeviceNotRegistered", "InvalidCredentials"):
                             invalid_tokens.append(tokens[i].token)
             else:
-                errors.append({
-                    "error": f"Expo API returned {response.status_code}",
-                    "body": response.text[:200],
-                })
+                errors.append(
+                    {
+                        "error": f"Expo API returned {response.status_code}",
+                        "body": response.text[:200],
+                    }
+                )
 
     except Exception as e:
         # Catch any timeout or other errors
@@ -111,9 +114,7 @@ async def send_push(
     if invalid_tokens:
         try:
             async with async_session_maker() as session:
-                await session.execute(
-                    delete(PushToken).where(PushToken.token.in_(invalid_tokens))
-                )
+                await session.execute(delete(PushToken).where(PushToken.token.in_(invalid_tokens)))
                 await session.commit()
                 print(f"🗑️ Removed {len(invalid_tokens)} invalid push tokens", flush=True)
         except Exception as e:

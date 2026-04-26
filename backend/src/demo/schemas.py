@@ -10,13 +10,16 @@ from typing import Dict, List
 # REQUEST MODELS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class DemoAnalyzeRequest(BaseModel):
     """Requete d'analyse demo landing page."""
+
     url: str = Field(..., description="URL YouTube ou TikTok (videos < 5 min)")
 
 
 class DemoChatRequest(BaseModel):
     """Requete de chat demo (3 messages max)."""
+
     demo_session_id: str = Field(..., description="Session ID retourne par /demo/analyze")
     question: str = Field(..., min_length=1, max_length=500, description="Question sur la video")
 
@@ -25,8 +28,10 @@ class DemoChatRequest(BaseModel):
 # RESPONSE MODELS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class DemoAnalyzeResponse(BaseModel):
     """Reponse d'analyse demo — resume ultra-court structure."""
+
     status: str = "success"
     demo_session_id: str = Field(..., description="Session ID pour le chat demo")
     video_title: str
@@ -46,6 +51,7 @@ class DemoAnalyzeResponse(BaseModel):
 
 class DemoChatResponse(BaseModel):
     """Reponse de chat demo."""
+
     status: str = "success"
     response: str = Field(..., description="Reponse de l'IA")
     messages_remaining: int = Field(..., description="Messages restants (0-2)")
@@ -53,4 +59,5 @@ class DemoChatResponse(BaseModel):
 
 class DemoSuggestionsResponse(BaseModel):
     """Suggestions de questions pour le chat demo."""
+
     suggestions: List[str] = Field(..., description="3 questions suggerees")

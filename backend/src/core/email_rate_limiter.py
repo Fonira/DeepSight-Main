@@ -125,16 +125,8 @@ async def send_with_rate_limit(
             break
 
         delay = backoff_base * (2 ** (attempt - 1))
-        logger.warning(
-            f"Resend 429, retry {attempt}/{max_retries} after {delay}s "
-            f"(context={context or 'n/a'})"
-        )
+        logger.warning(f"Resend 429, retry {attempt}/{max_retries} after {delay}s (context={context or 'n/a'})")
         await asyncio.sleep(delay)
 
-    logger.error(
-        f"Resend 429 — all {max_retries} retries exhausted "
-        f"(context={context or 'n/a'})"
-    )
-    raise ResendRateLimitError(
-        f"Resend rate-limited after {max_retries} retries (context={context or 'n/a'})"
-    )
+    logger.error(f"Resend 429 — all {max_retries} retries exhausted (context={context or 'n/a'})")
+    raise ResendRateLimitError(f"Resend rate-limited after {max_retries} retries (context={context or 'n/a'})")

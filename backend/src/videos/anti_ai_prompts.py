@@ -115,10 +115,10 @@ ABSOLUTELY AVOID:
 def get_anti_ai_prompt(lang: str = "fr") -> str:
     """
     Retourne le prompt système anti-détection IA.
-    
+
     Args:
         lang: Langue ("fr" ou "en")
-    
+
     Returns:
         Prompt système complet
     """
@@ -148,9 +148,8 @@ STYLE: NEUTRAL AND FACTUAL
 - Use a measured and balanced tone
 - Cite sources when relevant
 - Clearly distinguish facts from opinions
-"""
+""",
     },
-    
     WritingStyle.ACADEMIC: {
         "fr": """
 STYLE: ACADÉMIQUE ET RIGOUREUX
@@ -171,9 +170,8 @@ STYLE: ACADEMIC AND RIGOROUS
 - Contextualize information
 - Avoid hasty generalizations
 BUT remain accessible and avoid unnecessary jargon.
-"""
+""",
     },
-    
     WritingStyle.JOURNALISTIC: {
         "fr": """
 STYLE: JOURNALISTIQUE ET DYNAMIQUE
@@ -192,9 +190,8 @@ STYLE: JOURNALISTIC AND DYNAMIC
 - Use 5W+1H (Who, What, Where, When, Why, How)
 - Humanize with concrete examples
 - Create interest and narrative tension
-"""
+""",
     },
-    
     WritingStyle.CONVERSATIONAL: {
         "fr": """
 STYLE: CONVERSATIONNEL ET ACCESSIBLE
@@ -213,9 +210,8 @@ STYLE: CONVERSATIONAL AND ACCESSIBLE
 - Add everyday anecdotes or comparisons
 - Avoid jargon, explain technical terms
 - Be enthusiastic but not excessive
-"""
+""",
     },
-    
     WritingStyle.PROFESSIONAL: {
         "fr": """
 STYLE: PROFESSIONNEL ET CORPORATE
@@ -234,9 +230,8 @@ STYLE: PROFESSIONAL AND CORPORATE
 - Avoid digressions
 - Use data and metrics when available
 - Stay concise and results-oriented
-"""
+""",
     },
-    
     WritingStyle.CREATIVE: {
         "fr": """
 STYLE: CRÉATIF ET NARRATIF
@@ -255,9 +250,8 @@ STYLE: CREATIVE AND NARRATIVE
 - Create emotion and immersion
 - Personify abstract concepts
 - End on a memorable note
-"""
+""",
     },
-    
     WritingStyle.TECHNICAL: {
         "fr": """
 STYLE: TECHNIQUE ET DOCUMENTAIRE
@@ -276,9 +270,8 @@ STYLE: TECHNICAL AND DOCUMENTARY
 - Code examples or formulas if relevant
 - No frills, clarity first
 - Anticipate technical questions
-"""
+""",
     },
-    
     WritingStyle.PEDAGOGICAL: {
         "fr": """
 STYLE: PÉDAGOGIQUE ET ÉDUCATIF
@@ -299,22 +292,19 @@ STYLE: PEDAGOGICAL AND EDUCATIONAL
 - Anticipate common confusions
 - Encourage and motivate learning
 - Use concrete and varied examples
-"""
-    }
+""",
+    },
 }
 
 
-def get_style_instruction(
-    style: WritingStyle,
-    lang: str = "fr"
-) -> str:
+def get_style_instruction(style: WritingStyle, lang: str = "fr") -> str:
     """
     Retourne les instructions de style pour un mode donné.
-    
+
     Args:
         style: Style d'écriture souhaité
         lang: Langue ("fr" ou "en")
-    
+
     Returns:
         Instructions de style
     """
@@ -329,7 +319,7 @@ def get_style_instruction(
 HUMANIZATION_LEVELS = {
     0: {  # Désactivé
         "fr": "",
-        "en": ""
+        "en": "",
     },
     1: {  # Subtil
         "fr": """
@@ -343,7 +333,7 @@ SUBTLE HUMANIZATION:
 - Naturally vary sentence length
 - Use some idiomatic expressions
 - Add slight personal nuances
-"""
+""",
     },
     2: {  # Modéré
         "fr": """
@@ -361,7 +351,7 @@ MODERATE HUMANIZATION:
 - Significantly vary paragraph structure
 - Use parentheses for asides
 - Sometimes start with "And" or "But"
-"""
+""",
     },
     3: {  # Fort
         "fr": """
@@ -385,19 +375,19 @@ STRONG HUMANIZATION:
 - Show enthusiasm or skepticism
 - Transitions aren't always perfect
 - Add spontaneous remarks in parentheses
-"""
-    }
+""",
+    },
 }
 
 
 def get_humanization_prompt(level: int, lang: str = "fr") -> str:
     """
     Retourne le prompt d'humanisation pour un niveau donné.
-    
+
     Args:
         level: Niveau d'humanisation (0-3)
         lang: Langue
-    
+
     Returns:
         Instructions d'humanisation
     """
@@ -410,6 +400,7 @@ def get_humanization_prompt(level: int, lang: str = "fr") -> str:
 # 🔧 CONSTRUCTION DU PROMPT COMPLET
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def build_customized_prompt(
     base_prompt: str,
     writing_style: WritingStyle = WritingStyle.NEUTRAL,
@@ -419,11 +410,11 @@ def build_customized_prompt(
     target_audience: Optional[str] = None,
     focus_topics: Optional[List[str]] = None,
     exclude_topics: Optional[List[str]] = None,
-    lang: str = "fr"
+    lang: str = "fr",
 ) -> str:
     """
     Construit un prompt personnalisé avec toutes les options.
-    
+
     Args:
         base_prompt: Prompt de base pour l'analyse
         writing_style: Style d'écriture
@@ -434,34 +425,36 @@ def build_customized_prompt(
         focus_topics: Sujets à mettre en avant
         exclude_topics: Sujets à éviter
         lang: Langue
-    
+
     Returns:
         Prompt complet et personnalisé
     """
     sections = []
-    
+
     # 1. Prompt anti-IA (si activé)
     if anti_ai_detection:
         sections.append(get_anti_ai_prompt(lang))
-    
+
     # 2. Instructions de style
     style_instruction = get_style_instruction(writing_style, lang)
     if style_instruction:
         sections.append(style_instruction)
-    
+
     # 3. Humanisation
     if humanize_level > 0:
         human_prompt = get_humanization_prompt(humanize_level, lang)
         if human_prompt:
             sections.append(human_prompt)
-    
+
     # 4. Public cible
     if target_audience:
         if lang == "en":
             sections.append(f"\nTARGET AUDIENCE: {target_audience}\nAdapt vocabulary and explanations accordingly.")
         else:
-            sections.append(f"\nPUBLIC CIBLE: {target_audience}\nAdapte le vocabulaire et les explications en conséquence.")
-    
+            sections.append(
+                f"\nPUBLIC CIBLE: {target_audience}\nAdapte le vocabulaire et les explications en conséquence."
+            )
+
     # 5. Sujets focus
     if focus_topics:
         topics_str = ", ".join(focus_topics)
@@ -469,7 +462,7 @@ def build_customized_prompt(
             sections.append(f"\nFOCUS TOPICS: {topics_str}\nGive special attention to these subjects.")
         else:
             sections.append(f"\nSUJETS À DÉVELOPPER: {topics_str}\nAccorde une attention particulière à ces sujets.")
-    
+
     # 6. Sujets à éviter
     if exclude_topics:
         topics_str = ", ".join(exclude_topics)
@@ -477,18 +470,18 @@ def build_customized_prompt(
             sections.append(f"\nTOPICS TO MINIMIZE: {topics_str}\nMention briefly or skip these subjects.")
         else:
             sections.append(f"\nSUJETS À MINIMISER: {topics_str}\nMentionne brièvement ou évite ces sujets.")
-    
+
     # 7. Instructions utilisateur (priorité haute)
     if user_prompt:
         if lang == "en":
             sections.append(f"\n⭐ USER INSTRUCTIONS (PRIORITY):\n{user_prompt}")
         else:
             sections.append(f"\n⭐ INSTRUCTIONS UTILISATEUR (PRIORITÉ):\n{user_prompt}")
-    
+
     # 8. Prompt de base
     sections.append("\n" + "═" * 80 + "\n")
     sections.append(base_prompt)
-    
+
     return "\n".join(sections)
 
 
@@ -511,7 +504,7 @@ SENTENCE_STARTERS = {
         "D'un autre côté,",
         "Paradoxalement,",
         "Sans surprise,",
-        "Contre toute attente,"
+        "Contre toute attente,",
     ],
     "en": [
         "Interestingly,",
@@ -525,8 +518,8 @@ SENTENCE_STARTERS = {
         "On the other hand,",
         "Paradoxically,",
         "Unsurprisingly,",
-        "Against expectations,"
-    ]
+        "Against expectations,",
+    ],
 }
 
 TRANSITIONS = {
@@ -540,7 +533,7 @@ TRANSITIONS = {
         "Qui plus est,",
         "Ajoutons que",
         "Il faut aussi considérer que",
-        "Sans oublier que"
+        "Sans oublier que",
     ],
     "en": [
         "That said,",
@@ -551,8 +544,8 @@ TRANSITIONS = {
         "Along the same lines,",
         "Moreover,",
         "Let's also consider that",
-        "Not to mention that"
-    ]
+        "Not to mention that",
+    ],
 }
 
 

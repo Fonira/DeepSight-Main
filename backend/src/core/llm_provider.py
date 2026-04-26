@@ -72,9 +72,11 @@ _circuit_breakers: Dict[str, "CircuitBreaker"] = {}
 # DATA CLASSES
 # =============================================================================
 
+
 @dataclass
 class LLMResult:
     """Result from an LLM call."""
+
     content: str
     model_used: str
     provider: str  # "mistral" or "deepseek"
@@ -88,6 +90,7 @@ class LLMResult:
 @dataclass
 class CircuitBreaker:
     """Simple circuit breaker per model to avoid hammering a rate-limited model."""
+
     failures: int = 0
     last_failure: float = 0.0
     cooldown: float = 30.0  # seconds to wait after consecutive failures
@@ -122,6 +125,7 @@ def _get_circuit_breaker(model: str) -> CircuitBreaker:
 # =============================================================================
 # INTERNAL: Single API call (no fallback)
 # =============================================================================
+
 
 async def _call_api(
     url: str,
@@ -193,6 +197,7 @@ async def _call_api_stream(
 # BUILD FALLBACK CHAIN
 # =============================================================================
 
+
 def _build_fallback_chain(
     requested_model: str,
     allowed_models: Optional[List[str]] = None,
@@ -234,6 +239,7 @@ def _build_fallback_chain(
 # =============================================================================
 # PUBLIC: llm_complete — Non-streaming with auto-fallback
 # =============================================================================
+
 
 async def llm_complete(
     messages: List[Dict[str, str]],
@@ -330,7 +336,7 @@ async def llm_complete(
 
                 elif response.status_code == 429:
                     cb.record_failure()
-                    wait_time = BACKOFF_BASE * (2 ** attempt)
+                    wait_time = BACKOFF_BASE * (2**attempt)
                     print(
                         f"⏳ [LLM] {provider}:{current_model} 429 "
                         f"(attempt {attempt + 1}/{MAX_RETRIES_PER_MODEL}), "
@@ -356,8 +362,7 @@ async def llm_complete(
                 else:
                     # 4xx other than 429 — don't retry, don't fallback
                     print(
-                        f"❌ [LLM] {provider}:{current_model} error {response.status_code}: "
-                        f"{response.text[:200]}",
+                        f"❌ [LLM] {provider}:{current_model} error {response.status_code}: {response.text[:200]}",
                         flush=True,
                     )
                     return None
@@ -365,8 +370,7 @@ async def llm_complete(
             except httpx.TimeoutException:
                 cb.record_failure()
                 print(
-                    f"❌ [LLM] {provider}:{current_model} timeout after {timeout}s "
-                    f"(attempt {attempt + 1})",
+                    f"❌ [LLM] {provider}:{current_model} timeout after {timeout}s (attempt {attempt + 1})",
                     flush=True,
                 )
                 if attempt < MAX_RETRIES_PER_MODEL - 1:
@@ -384,6 +388,7 @@ async def llm_complete(
 # =============================================================================
 # PUBLIC: llm_complete_stream — Streaming with auto-fallback
 # =============================================================================
+
 
 async def llm_complete_stream(
     messages: List[Dict[str, str]],
@@ -468,8 +473,7 @@ async def llm_complete_stream(
                     if response.status_code != 200:
                         body = await response.aread()
                         print(
-                            f"❌ [LLM-STREAM] {provider}:{current_model} {response.status_code}: "
-                            f"{body.decode()[:200]}",
+                            f"❌ [LLM-STREAM] {provider}:{current_model} {response.status_code}: {body.decode()[:200]}",
                             flush=True,
                         )
                         yield f"Error: API returned {response.status_code}"
@@ -509,6 +513,7 @@ async def llm_complete_stream(
 # =============================================================================
 # PUBLIC: llm_complete_batch — Batch processing (50% cheaper, async)
 # =============================================================================
+
 
 async def llm_complete_batch(
     items: List[Dict[str, any]],
@@ -551,23 +556,26 @@ async def llm_complete_batch(
     # Convert items to BatchRequests
     batch_requests = []
     for item in items:
-        batch_requests.append(BatchRequest(
-            custom_id=item["id"],
-            messages=item["messages"],
-            model=model,
-            max_tokens=item.get("max_tokens", max_tokens),
-            temperature=item.get("temperature", temperature),
-        ))
+        batch_requests.append(
+            BatchRequest(
+                custom_id=item["id"],
+                messages=item["messages"],
+                model=model,
+                max_tokens=item.get("max_tokens", max_tokens),
+                temperature=item.get("temperature", temperature),
+            )
+        )
 
     print(
-        f"📦 [LLM-BATCH] Submitting {len(batch_requests)} requests "
-        f"(model={model}, max_wait={max_wait}s)",
+        f"📦 [LLM-BATCH] Submitting {len(batch_requests)} requests (model={model}, max_wait={max_wait}s)",
         flush=True,
     )
 
     # Submit and wait
     batch_results = await submit_and_wait(
-        batch_requests, max_wait=max_wait, on_progress=on_progress,
+        batch_requests,
+        max_wait=max_wait,
+        on_progress=on_progress,
     )
 
     # Build a map of custom_id → BatchResult
@@ -578,16 +586,18 @@ async def llm_complete_batch(
     for item in items:
         br = result_map.get(item["id"])
         if br and br.success:
-            output.append(LLMResult(
-                content=br.content,
-                model_used=model,
-                provider="mistral_batch",
-                tokens_input=br.tokens_input,
-                tokens_output=br.tokens_output,
-                tokens_total=br.tokens_total,
-                fallback_used=False,
-                attempts=1,
-            ))
+            output.append(
+                LLMResult(
+                    content=br.content,
+                    model_used=model,
+                    provider="mistral_batch",
+                    tokens_input=br.tokens_input,
+                    tokens_output=br.tokens_output,
+                    tokens_total=br.tokens_total,
+                    fallback_used=False,
+                    attempts=1,
+                )
+            )
         else:
             error = br.error if br else "No result returned"
             print(f"⚠️ [LLM-BATCH] Item {item['id']} failed: {error}", flush=True)

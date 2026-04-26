@@ -137,9 +137,7 @@ def init_stripe():
     return False
 
 
-async def get_or_create_stripe_customer(
-    user: User, session: AsyncSession, force_recreate: bool = False
-) -> str:
+async def get_or_create_stripe_customer(user: User, session: AsyncSession, force_recreate: bool = False) -> str:
     """
     🔧 Récupère ou crée un client Stripe.
     Gère le cas où le client existe en mode test mais pas en mode live.
@@ -275,9 +273,7 @@ async def check_trial_eligibility(
             trial_plan="plus",
         )
 
-    return TrialEligibilityResponse(
-        eligible=True, reason=None, trial_days=7, trial_plan="plus"
-    )
+    return TrialEligibilityResponse(eligible=True, reason=None, trial_days=7, trial_plan="plus")
 
 
 @router.post("/start-pro-trial")
@@ -318,9 +314,7 @@ async def start_pro_trial(
         customer_id = await get_or_create_stripe_customer(current_user, session)
     except stripe.error.StripeError as e:
         logger.error(f"Error creating Stripe customer: {e}")
-        raise HTTPException(
-            status_code=500, detail="Erreur lors de la création du client Stripe"
-        )
+        raise HTTPException(status_code=500, detail="Erreur lors de la création du client Stripe")
 
     try:
         checkout_session = stripe.checkout.Session.create(
@@ -490,9 +484,7 @@ async def get_billing_info(
 
     if current_user.stripe_subscription_id and init_stripe():
         try:
-            subscription = stripe.Subscription.retrieve(
-                current_user.stripe_subscription_id
-            )
+            subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
             subscription_active = subscription.status == "active"
             if subscription_active:
                 next_renewal = datetime.fromtimestamp(subscription.current_period_end)
@@ -541,9 +533,7 @@ async def create_checkout_session(
         customer_id = await get_or_create_stripe_customer(current_user, session)
     except stripe.error.StripeError as e:
         logger.error(f"Error creating Stripe customer: {e}")
-        raise HTTPException(
-            status_code=500, detail="Erreur lors de la création du client Stripe"
-        )
+        raise HTTPException(status_code=500, detail="Erreur lors de la création du client Stripe")
 
     # Vérifier l'éligibilité au trial 7j (jamais eu de trial/achat)
     trial_eligible = False
@@ -551,17 +541,14 @@ async def create_checkout_session(
         result = await session.execute(
             select(CreditTransaction)
             .where(CreditTransaction.user_id == current_user.id)
-            .where(
-                CreditTransaction.transaction_type.in_(["purchase", "trial", "upgrade"])
-            )
+            .where(CreditTransaction.transaction_type.in_(["purchase", "trial", "upgrade"]))
             .limit(1)
         )
         trial_eligible = result.scalar_one_or_none() is None
 
     # URLs de retour (avec plan pour affichage immédiat)
     success_url = (
-        request.success_url
-        or f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={request.plan}"
+        request.success_url or f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={request.plan}"
     )
     cancel_url = request.cancel_url or f"{FRONTEND_URL}/payment/cancel"
 
@@ -590,9 +577,7 @@ async def create_checkout_session(
                 },
             }
             checkout_params["metadata"]["is_trial"] = "true"
-            logger.info(
-                f"Trial 7j enabled for user {current_user.id} on plan {request.plan}"
-            )
+            logger.info(f"Trial 7j enabled for user {current_user.id} on plan {request.plan}")
 
         checkout_session = stripe.checkout.Session.create(**checkout_params)
 
@@ -663,9 +648,7 @@ async def create_checkout_by_plan_id(
             metadata={"user_id": str(current_user.id), "plan": request.plan_id},
         )
 
-        logger.info(
-            f"Checkout session created for user {current_user.id}, plan {request.plan_id}"
-        )
+        logger.info(f"Checkout session created for user {current_user.id}, plan {request.plan_id}")
 
         return {"checkout_url": checkout_session.url, "session_id": checkout_session.id}
 
@@ -769,9 +752,7 @@ async def change_subscription_plan(
             customer_id = await get_or_create_stripe_customer(current_user, session)
         except stripe.error.StripeError as e:
             logger.error(f"Error creating Stripe customer: {e}")
-            raise HTTPException(
-                status_code=500, detail="Erreur lors de la création du client Stripe"
-            )
+            raise HTTPException(status_code=500, detail="Erreur lors de la création du client Stripe")
 
         checkout_session = stripe.checkout.Session.create(
             customer=customer_id,
@@ -816,9 +797,7 @@ async def change_subscription_plan(
 
         if is_upgrade:
             # UPGRADE: Proration immédiate
-            logger.info(
-                f"Upgrading user {current_user.id} from {current_plan} to {new_plan}"
-            )
+            logger.info(f"Upgrading user {current_user.id} from {current_plan} to {new_plan}")
 
             stripe.Subscription.modify(
                 current_user.stripe_subscription_id,
@@ -835,9 +814,7 @@ async def change_subscription_plan(
             # Mise à jour immédiate du plan (crédits depuis plan_config — source de vérité)
             new_plan_limits = get_limits(new_plan)
             old_plan_limits = get_limits(current_plan)
-            credits_bonus = new_plan_limits.get(
-                "monthly_credits", 0
-            ) - old_plan_limits.get("monthly_credits", 0)
+            credits_bonus = new_plan_limits.get("monthly_credits", 0) - old_plan_limits.get("monthly_credits", 0)
 
             current_user.plan = new_plan
             if credits_bonus > 0:
@@ -866,9 +843,7 @@ async def change_subscription_plan(
 
         else:
             # DOWNGRADE: Effectif à la fin de la période
-            logger.info(
-                f"Downgrading user {current_user.id} from {current_plan} to {new_plan}"
-            )
+            logger.info(f"Downgrading user {current_user.id} from {current_plan} to {new_plan}")
 
             # Programmer le changement pour la fin de la période
             stripe.Subscription.modify(
@@ -896,9 +871,7 @@ async def change_subscription_plan(
 
     except stripe.error.CardError as e:
         logger.error(f"Card error: {e}")
-        raise HTTPException(
-            status_code=400, detail="Erreur de paiement. Veuillez vérifier votre carte."
-        )
+        raise HTTPException(status_code=400, detail="Erreur de paiement. Veuillez vérifier votre carte.")
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -956,9 +929,7 @@ async def upgrade_subscription(
 
     new_price_id = get_price_id(target)
     if not new_price_id:
-        raise HTTPException(
-            status_code=400, detail=f"Price not configured for plan: {target}"
-        )
+        raise HTTPException(status_code=400, detail=f"Price not configured for plan: {target}")
 
     try:
         subscription_item_id = subscription["items"]["data"][0]["id"]
@@ -978,9 +949,7 @@ async def upgrade_subscription(
         # Mise à jour immédiate du plan et crédits
         new_plan_limits = get_limits(target)
         old_plan_limits = get_limits(current_plan)
-        credits_bonus = new_plan_limits.get("monthly_credits", 0) - old_plan_limits.get(
-            "monthly_credits", 0
-        )
+        credits_bonus = new_plan_limits.get("monthly_credits", 0) - old_plan_limits.get("monthly_credits", 0)
 
         current_user.plan = target
         if credits_bonus > 0:
@@ -1011,9 +980,7 @@ async def upgrade_subscription(
 
     except stripe.error.CardError as e:
         logger.error(f"Card error during upgrade: {e}")
-        raise HTTPException(
-            status_code=400, detail="Erreur de paiement. Veuillez vérifier votre carte."
-        )
+        raise HTTPException(status_code=400, detail="Erreur de paiement. Veuillez vérifier votre carte.")
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error during upgrade: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -1073,9 +1040,7 @@ async def downgrade_subscription(
 
     new_price_id = get_price_id(target)
     if not new_price_id:
-        raise HTTPException(
-            status_code=400, detail=f"Price not configured for plan: {target}"
-        )
+        raise HTTPException(status_code=400, detail=f"Price not configured for plan: {target}")
 
     try:
         subscription_item_id = subscription["items"]["data"][0]["id"]
@@ -1093,13 +1058,9 @@ async def downgrade_subscription(
             billing_cycle_anchor="unchanged",
         )
 
-        end_date = datetime.fromtimestamp(
-            subscription.current_period_end, tz=timezone.utc
-        )
+        end_date = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
 
-        logger.info(
-            f"User {current_user.id} downgrade scheduled: {current_plan} → {target} at {end_date}"
-        )
+        logger.info(f"User {current_user.id} downgrade scheduled: {current_plan} → {target} at {end_date}")
 
         return {
             "success": True,
@@ -1138,9 +1099,7 @@ async def confirm_checkout(
 
     try:
         # Récupérer la session Stripe
-        checkout_session = stripe.checkout.Session.retrieve(
-            request.session_id, expand=["subscription", "customer"]
-        )
+        checkout_session = stripe.checkout.Session.retrieve(request.session_id, expand=["subscription", "customer"])
 
         logger.info(f"🔍 Confirming checkout session: {request.session_id}")
         logger.info(f"Session status: {checkout_session.status}")
@@ -1162,12 +1121,8 @@ async def confirm_checkout(
 
         # Vérifier que c'est bien le bon utilisateur
         if user_id_from_session and int(user_id_from_session) != current_user.id:
-            logger.warning(
-                f"User mismatch: session={user_id_from_session}, current={current_user.id}"
-            )
-            raise HTTPException(
-                status_code=403, detail="Session does not belong to current user"
-            )
+            logger.warning(f"User mismatch: session={user_id_from_session}, current={current_user.id}")
+            raise HTTPException(status_code=403, detail="Session does not belong to current user")
 
         # Récupérer les infos d'abonnement
         customer_id = checkout_session.customer
@@ -1178,15 +1133,10 @@ async def confirm_checkout(
         if isinstance(subscription_id, dict):
             subscription_id = subscription_id.get("id")
 
-        logger.info(
-            f"Plan: {plan}, Customer: {customer_id}, Subscription: {subscription_id}"
-        )
+        logger.info(f"Plan: {plan}, Customer: {customer_id}, Subscription: {subscription_id}")
 
         # Vérifier si déjà mis à jour
-        if (
-            current_user.plan == plan
-            and current_user.stripe_subscription_id == subscription_id
-        ):
+        if current_user.plan == plan and current_user.stripe_subscription_id == subscription_id:
             logger.info(f"User already on plan {plan}")
             return {
                 "success": True,
@@ -1218,9 +1168,7 @@ async def confirm_checkout(
 
         await session.commit()
 
-        logger.info(
-            f"User {current_user.id} upgraded from {old_plan} to {plan}, +{credits_to_add} credits"
-        )
+        logger.info(f"User {current_user.id} upgraded from {old_plan} to {plan}, +{credits_to_add} credits")
 
         return {
             "success": True,
@@ -1268,9 +1216,7 @@ async def cancel_subscription(
             current_user.stripe_subscription_id = None
             await session.commit()
 
-            logger.info(
-                f"Subscription immediately canceled for user {current_user.id} (was {old_plan})"
-            )
+            logger.info(f"Subscription immediately canceled for user {current_user.id} (was {old_plan})")
 
             return {
                 "success": True,
@@ -1280,17 +1226,11 @@ async def cancel_subscription(
             }
         else:
             # Annuler à la fin de la période (pas immédiatement)
-            subscription = stripe.Subscription.modify(
-                current_user.stripe_subscription_id, cancel_at_period_end=True
-            )
+            subscription = stripe.Subscription.modify(current_user.stripe_subscription_id, cancel_at_period_end=True)
 
-            end_date = datetime.fromtimestamp(
-                subscription.current_period_end, tz=timezone.utc
-            )
+            end_date = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
 
-            logger.info(
-                f"Subscription canceled for user {current_user.id}, effective {end_date}"
-            )
+            logger.info(f"Subscription canceled for user {current_user.id}, effective {end_date}")
 
             return {
                 "success": True,
@@ -1319,9 +1259,7 @@ async def reactivate_subscription(
         raise HTTPException(status_code=400, detail="No subscription found")
 
     try:
-        stripe.Subscription.modify(
-            current_user.stripe_subscription_id, cancel_at_period_end=False
-        )
+        stripe.Subscription.modify(current_user.stripe_subscription_id, cancel_at_period_end=False)
 
         logger.info(f"Subscription reactivated for user {current_user.id}")
 
@@ -1462,9 +1400,7 @@ async def request_refund(
 
     except stripe.error.StripeError as e:
         logger.error(f"Stripe refund error for user {current_user.id}: {e}")
-        raise HTTPException(
-            status_code=400, detail=f"Erreur lors du remboursement: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Erreur lors du remboursement: {str(e)}")
 
 
 @router.get("/subscription-status")
@@ -1486,14 +1422,10 @@ async def get_subscription_status(current_user: User = Depends(get_current_user)
 
     if current_user.stripe_subscription_id:
         try:
-            subscription = stripe.Subscription.retrieve(
-                current_user.stripe_subscription_id
-            )
+            subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
             result["status"] = subscription.status
             result["cancel_at_period_end"] = subscription.cancel_at_period_end
-            result["current_period_end"] = datetime.fromtimestamp(
-                subscription.current_period_end
-            ).isoformat()
+            result["current_period_end"] = datetime.fromtimestamp(subscription.current_period_end).isoformat()
 
             # Vérifier si un changement de plan est programmé
             if subscription.get("schedule"):
@@ -1504,10 +1436,7 @@ async def get_subscription_status(current_user: User = Depends(get_current_user)
                     next_price_id = next_phase["items"][0]["price"]
                     # Trouver le plan correspondant
                     for plan_name, plan_config in STRIPE_CONFIG["PRICES"].items():
-                        if (
-                            plan_config.get("live") == next_price_id
-                            or plan_config.get("test") == next_price_id
-                        ):
+                        if plan_config.get("live") == next_price_id or plan_config.get("test") == next_price_id:
                             result["next_plan"] = plan_name
                             break
 
@@ -1552,9 +1481,7 @@ async def get_transactions(
 
 
 @router.post("/webhook")
-async def stripe_webhook(
-    request: Request, session: AsyncSession = Depends(get_session)
-):
+async def stripe_webhook(request: Request, session: AsyncSession = Depends(get_session)):
     """
     Webhook Stripe pour gérer les événements de paiement.
     IMPORTANT: Le body doit être lu en RAW pour la vérification de signature.
@@ -1571,9 +1498,7 @@ async def stripe_webhook(
         raise HTTPException(status_code=500, detail="Webhook secret not configured")
 
     # Lire le header de signature (plusieurs méthodes car FastAPI est capricieux)
-    stripe_signature = request.headers.get("stripe-signature") or request.headers.get(
-        "Stripe-Signature"
-    )
+    stripe_signature = request.headers.get("stripe-signature") or request.headers.get("Stripe-Signature")
     if not stripe_signature:
         logger.error("No stripe-signature header found")
         logger.info(f"Available headers: {dict(request.headers)}")
@@ -1586,9 +1511,7 @@ async def stripe_webhook(
     logger.info(f"Payload size: {len(payload)} bytes")
 
     try:
-        event = stripe.Webhook.construct_event(
-            payload=payload, sig_header=stripe_signature, secret=webhook_secret
-        )
+        event = stripe.Webhook.construct_event(payload=payload, sig_header=stripe_signature, secret=webhook_secret)
         logger.info("Signature verified successfully")
     except stripe.error.SignatureVerificationError as e:
         logger.error(f"Signature verification failed: {e}")
@@ -1709,9 +1632,7 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
         except Exception as e:
             logger.warning("Could not resolve plan from subscription: %s", e)
 
-    logger.info(
-        "Checkout data: user_id=%s plan=%s customer=%s", user_id, plan, customer_id
-    )
+    logger.info("Checkout data: user_id=%s plan=%s customer=%s", user_id, plan, customer_id)
 
     if not user_id or not plan:
         logger.warning("Checkout without user_id or plan")
@@ -1728,9 +1649,7 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
     payment_id = data.get("payment_intent") or data.get("id")
     if payment_id:
         existing = await session.execute(
-            select(CreditTransaction).where(
-                CreditTransaction.stripe_payment_id == payment_id
-            )
+            select(CreditTransaction).where(CreditTransaction.stripe_payment_id == payment_id)
         )
         if existing.scalar_one_or_none():
             logger.info("Checkout %s already processed — skipping", payment_id)
@@ -1772,9 +1691,7 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
         logger.info(f"📧 Payment success email error: {e}")
 
 
-async def _handle_voice_addon_checkout(
-    session: AsyncSession, data: dict, metadata: dict
-):
+async def _handle_voice_addon_checkout(session: AsyncSession, data: dict, metadata: dict):
     """Handle a completed voice add-on one-time payment."""
     minutes = int(metadata.get("minutes", 0))
     user_id_str = metadata.get("user_id", "0")
@@ -1787,23 +1704,17 @@ async def _handle_voice_addon_checkout(
         return
 
     if minutes <= 0 or user_id <= 0:
-        logger.warning(
-            "Voice addon: invalid minutes=%s or user_id=%s", minutes, user_id
-        )
+        logger.warning("Voice addon: invalid minutes=%s or user_id=%s", minutes, user_id)
         return
 
     # DB-level idempotency: check if this payment was already processed
     payment_id = data.get("payment_intent") or data.get("id")
     if payment_id:
         existing = await session.execute(
-            select(CreditTransaction).where(
-                CreditTransaction.stripe_payment_id == payment_id
-            )
+            select(CreditTransaction).where(CreditTransaction.stripe_payment_id == payment_id)
         )
         if existing.scalar_one_or_none():
-            logger.info(
-                "Voice addon checkout %s already processed — skipping", payment_id
-            )
+            logger.info("Voice addon checkout %s already processed — skipping", payment_id)
             return
 
     user = await session.get(User, user_id)
@@ -1841,9 +1752,7 @@ async def handle_subscription_created(session: AsyncSession, data: dict):
     customer_id = data.get("customer")
     subscription_id = data.get("id")
 
-    result = await session.execute(
-        select(User).where(User.stripe_customer_id == customer_id)
-    )
+    result = await session.execute(select(User).where(User.stripe_customer_id == customer_id))
     user = result.scalar_one_or_none()
 
     if user:
@@ -1857,9 +1766,7 @@ async def handle_subscription_updated(session: AsyncSession, data: dict):
     status = data.get("status")
     cancel_at_period_end = data.get("cancel_at_period_end", False)
 
-    result = await session.execute(
-        select(User).where(User.stripe_customer_id == customer_id)
-    )
+    result = await session.execute(select(User).where(User.stripe_customer_id == customer_id))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -1875,10 +1782,7 @@ async def handle_subscription_updated(session: AsyncSession, data: dict):
         new_plan = plan_by_price_id(new_price_id) if new_price_id else None
         if not new_plan:
             for plan_name, plan_config in STRIPE_CONFIG.get("PRICES", {}).items():
-                if (
-                    plan_config.get("live") == new_price_id
-                    or plan_config.get("test") == new_price_id
-                ):
+                if plan_config.get("live") == new_price_id or plan_config.get("test") == new_price_id:
                     new_plan = plan_name
                     break
 
@@ -1904,9 +1808,7 @@ async def handle_subscription_updated(session: AsyncSession, data: dict):
                     description=f"Upgrade: {old_plan} → {new_plan}",
                 )
                 session.add(transaction)
-                logger.info(
-                    f"User {user.id} upgraded from {old_plan} to {new_plan}, +{credits_bonus} credits"
-                )
+                logger.info(f"User {user.id} upgraded from {old_plan} to {new_plan}, +{credits_bonus} credits")
             else:
                 logger.info(f"User {user.id} downgraded from {old_plan} to {new_plan}")
 
@@ -1920,9 +1822,7 @@ async def handle_subscription_deleted(session: AsyncSession, data: dict):
     """Gère la suppression d'un abonnement"""
     customer_id = data.get("customer")
 
-    result = await session.execute(
-        select(User).where(User.stripe_customer_id == customer_id)
-    )
+    result = await session.execute(select(User).where(User.stripe_customer_id == customer_id))
     user = result.scalar_one_or_none()
 
     if user:
@@ -1930,9 +1830,7 @@ async def handle_subscription_deleted(session: AsyncSession, data: dict):
         user.plan = "free"
         user.stripe_subscription_id = None
         await session.commit()
-        logger.info(
-            f"User {user.id} subscription deleted, reverted to free (was {old_plan})"
-        )
+        logger.info(f"User {user.id} subscription deleted, reverted to free (was {old_plan})")
 
         try:
             from services.email_service import email_service
@@ -1954,9 +1852,7 @@ async def handle_invoice_paid(session: AsyncSession, data: dict):
     if not subscription_id:
         return
 
-    result = await session.execute(
-        select(User).where(User.stripe_customer_id == customer_id)
-    )
+    result = await session.execute(select(User).where(User.stripe_customer_id == customer_id))
     user = result.scalar_one_or_none()
 
     if user and user.plan != "free":
@@ -1964,9 +1860,7 @@ async def handle_invoice_paid(session: AsyncSession, data: dict):
         payment_id = data.get("payment_intent") or data.get("id")
         if payment_id:
             existing = await session.execute(
-                select(CreditTransaction).where(
-                    CreditTransaction.stripe_payment_id == payment_id
-                )
+                select(CreditTransaction).where(CreditTransaction.stripe_payment_id == payment_id)
             )
             if existing.scalar_one_or_none():
                 logger.info(f"Invoice {payment_id} already processed — skipping")
@@ -2009,9 +1903,7 @@ async def handle_payment_failed(session: AsyncSession, data: dict):
     """Gère l'échec d'un paiement"""
     customer_id = data.get("customer")
 
-    result = await session.execute(
-        select(User).where(User.stripe_customer_id == customer_id)
-    )
+    result = await session.execute(select(User).where(User.stripe_customer_id == customer_id))
     user = result.scalar_one_or_none()
 
     if user:
@@ -2042,21 +1934,15 @@ async def handle_trial_will_end(session: AsyncSession, data: dict):
         logger.warning("trial_will_end: no customer_id")
         return
 
-    result = await session.execute(
-        select(User).where(User.stripe_customer_id == customer_id)
-    )
+    result = await session.execute(select(User).where(User.stripe_customer_id == customer_id))
     user = result.scalar_one_or_none()
 
     if not user:
         logger.warning(f"trial_will_end: user not found for customer {customer_id}")
         return
 
-    trial_end_date = (
-        datetime.fromtimestamp(trial_end, tz=timezone.utc) if trial_end else None
-    )
-    formatted_date = (
-        trial_end_date.strftime("%d/%m/%Y") if trial_end_date else "bientôt"
-    )
+    trial_end_date = datetime.fromtimestamp(trial_end, tz=timezone.utc) if trial_end else None
+    formatted_date = trial_end_date.strftime("%d/%m/%Y") if trial_end_date else "bientôt"
 
     logger.info(f"Trial ending for user {user.id} ({user.email}) on {formatted_date}")
 
@@ -2157,9 +2043,7 @@ async def create_credit_pack_checkout(
     return {"checkout_url": checkout_session.url, "session_id": checkout_session.id}
 
 
-async def _handle_credit_pack_checkout(
-    session: AsyncSession, data: dict, metadata: dict
-):
+async def _handle_credit_pack_checkout(session: AsyncSession, data: dict, metadata: dict):
     """Handle a completed credit pack one-time payment."""
     credits = int(metadata.get("credits", 0))
     user_id_str = metadata.get("user_id", "0")
@@ -2172,23 +2056,17 @@ async def _handle_credit_pack_checkout(
         return
 
     if credits <= 0 or user_id <= 0:
-        logger.warning(
-            "Credit pack: invalid credits=%s or user_id=%s", credits, user_id
-        )
+        logger.warning("Credit pack: invalid credits=%s or user_id=%s", credits, user_id)
         return
 
     # DB-level idempotency
     payment_id = data.get("payment_intent") or data.get("id")
     if payment_id:
         existing = await session.execute(
-            select(CreditTransaction).where(
-                CreditTransaction.stripe_payment_id == payment_id
-            )
+            select(CreditTransaction).where(CreditTransaction.stripe_payment_id == payment_id)
         )
         if existing.scalar_one_or_none():
-            logger.info(
-                "Credit pack checkout %s already processed — skipping", payment_id
-            )
+            logger.info("Credit pack checkout %s already processed — skipping", payment_id)
             return
 
     user = await session.get(User, user_id)

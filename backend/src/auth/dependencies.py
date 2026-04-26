@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Import du service de sécurité
 try:
     from core.security import is_token_blacklisted, check_rate_limit
+
     SECURITY_AVAILABLE = True
 except ImportError:
     SECURITY_AVAILABLE = False
@@ -41,11 +42,11 @@ http_bearer = HTTPBearer(auto_error=False)
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
     token: Optional[str] = Depends(oauth2_scheme),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ) -> User:
     """
     🔐 Dépendance SÉCURISÉE pour obtenir l'utilisateur courant.
-    
+
     Vérifications v3.0:
     1. Présence du token
     2. Token non blacklisté
@@ -60,41 +61,32 @@ async def get_current_user(
         actual_token = credentials.credentials
     elif token:
         actual_token = token
-    
+
     if not actual_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "code": "not_authenticated",
-                "message": "Authentication required. Please log in."
-            },
+            detail={"code": "not_authenticated", "message": "Authentication required. Please log in."},
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # 🔒 Vérifier si le token est blacklisté (logout/révoqué)
     if SECURITY_AVAILABLE and is_token_blacklisted(actual_token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "code": "token_revoked",
-                "message": "This session has been revoked. Please log in again."
-            },
+            detail={"code": "token_revoked", "message": "This session has been revoked. Please log in again."},
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Vérifier le token
     payload = verify_token(actual_token, token_type="access")
-    
+
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "code": "token_invalid",
-                "message": "Invalid or expired token. Please log in again."
-            },
+            detail={"code": "token_invalid", "message": "Invalid or expired token. Please log in again."},
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Récupérer l'utilisateur
     sub = payload.get("sub")
     if sub is None:
@@ -114,17 +106,14 @@ async def get_current_user(
     session_token = payload.get("session")  # 🆕 Récupérer le session_token du JWT
 
     user = await get_user_by_id(session, user_id)
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "code": "user_not_found",
-                "message": "User account not found."
-            },
+            detail={"code": "user_not_found", "message": "User account not found."},
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # 🆕 Valider le session_token (session unique par utilisateur)
     if session_token:
         is_valid_session = await validate_session_token(session, user_id, session_token)
@@ -133,14 +122,11 @@ async def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
                     "code": "session_expired",
-                    "message": "Your session has expired. You may have logged in from another device."
+                    "message": "Your session has expired. You may have logged in from another device.",
                 },
-                headers={
-                    "WWW-Authenticate": "Bearer",
-                    "X-Session-Invalid": "true"
-                },
+                headers={"WWW-Authenticate": "Bearer", "X-Session-Invalid": "true"},
             )
-    
+
     # 🔒 Rate limiting (optionnel à ce niveau, plus strict dans les endpoints sensibles)
     # Admin exempt du rate limiting auth-level (protection DDoS reste au niveau Caddy)
     if SECURITY_AVAILABLE and not user.is_admin:
@@ -151,22 +137,22 @@ async def get_current_user(
                 detail={
                     "code": rate_reason,
                     "message": rate_info.get("message", "Too many requests"),
-                    "wait_seconds": rate_info.get("wait_seconds", 60)
-                }
+                    "wait_seconds": rate_info.get("wait_seconds", 60),
+                },
             )
-    
+
     return user
 
 
 async def get_current_user_optional(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
     token: Optional[str] = Depends(oauth2_scheme),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ) -> Optional[User]:
     """
     Dépendance optionnelle pour obtenir l'utilisateur courant.
     Retourne None si non authentifié (pas d'exception).
-    
+
     ⚠️ ATTENTION: N'utilisez PAS cette dépendance pour des endpoints sensibles!
     """
     actual_token = None
@@ -174,19 +160,19 @@ async def get_current_user_optional(
         actual_token = credentials.credentials
     elif token:
         actual_token = token
-    
+
     if not actual_token:
         return None
-    
+
     # Vérifier le blacklist
     if SECURITY_AVAILABLE and is_token_blacklisted(actual_token):
         return None
-    
+
     payload = verify_token(actual_token, token_type="access")
-    
+
     if not payload:
         return None
-    
+
     sub = payload.get("sub")
     if sub is None:
         return None
@@ -200,35 +186,29 @@ async def get_current_user_optional(
 
     if not user:
         return None
-    
+
     # 🆕 Valider le session_token même pour optionnel
     if session_token:
         is_valid_session = await validate_session_token(session, user_id, session_token)
         if not is_valid_session:
             return None
-    
+
     return user
 
 
-async def get_current_admin(
-    current_user: User = Depends(get_current_user)
-) -> User:
+async def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     """
     Dépendance pour vérifier que l'utilisateur est admin.
     """
     from core.config import ADMIN_CONFIG
-    
+
     # Vérifier is_admin dans la DB OU email == ADMIN_EMAIL
     admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower()
     is_admin = current_user.is_admin or ((current_user.email or "").lower() == admin_email)
-    
+
     if not is_admin:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "admin_required",
-                "message": "Admin access required"
-            }
+            status_code=status.HTTP_403_FORBIDDEN, detail={"code": "admin_required", "message": "Admin access required"}
         )
     return current_user
 
@@ -237,15 +217,13 @@ async def get_current_admin(
 async def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
     token: Optional[str] = Depends(oauth2_scheme),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ) -> Optional[User]:
     """Alias de get_current_user_optional pour compatibilité."""
     return await get_current_user_optional(credentials, token, session)
 
 
-async def get_verified_user(
-    current_user: User = Depends(get_current_user)
-) -> User:
+async def get_verified_user(current_user: User = Depends(get_current_user)) -> User:
     """
     🔐 Dépendance pour vérifier que l'email est vérifié.
     OBLIGATOIRE pour les opérations qui consomment des crédits.
@@ -253,15 +231,15 @@ async def get_verified_user(
     # Les admins sont exemptés
     if current_user.is_admin:
         return current_user
-    
+
     if not current_user.email_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
                 "code": "email_not_verified",
                 "message": "Please verify your email before using this feature.",
-                "action": "verify_email"
-            }
+                "action": "verify_email",
+            },
         )
     return current_user
 
@@ -294,8 +272,8 @@ def require_plan(min_plan: str):
                     "message": "This feature requires Pro plan.",
                     "current_plan": user_plan,
                     "required_plan": normalized_min,
-                    "action": "upgrade"
-                }
+                    "action": "upgrade",
+                },
             )
         return current_user
 
@@ -307,9 +285,9 @@ def require_credits(min_credits: int = 1):
     🔐 Factory de dépendance pour vérifier les crédits disponibles.
     Usage: Depends(require_credits(3))
     """
+
     async def check_credits(
-        current_user: User = Depends(get_verified_user),
-        session: AsyncSession = Depends(get_session)
+        current_user: User = Depends(get_verified_user), session: AsyncSession = Depends(get_session)
     ) -> User:
         # Admin users have unlimited access
         if current_user.is_admin:
@@ -325,8 +303,8 @@ def require_credits(min_credits: int = 1):
                     "message": f"Not enough credits. You have {credits}, need {min_credits}.",
                     "credits": credits,
                     "required": min_credits,
-                    "action": "upgrade"
-                }
+                    "action": "upgrade",
+                },
             )
         return current_user
 
@@ -334,8 +312,7 @@ def require_credits(min_credits: int = 1):
 
 
 async def check_daily_limit(
-    current_user: User = Depends(get_verified_user),
-    session: AsyncSession = Depends(get_session)
+    current_user: User = Depends(get_verified_user), session: AsyncSession = Depends(get_session)
 ) -> User:
     """
     🎫 Vérifie la limite quotidienne d'analyses.
@@ -356,10 +333,7 @@ async def check_daily_limit(
     )
 
     if not can_analyze:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=error_info
-        )
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error_info)
 
     return current_user
 
@@ -378,24 +352,18 @@ def require_feature(feature: str):
     - deep_research: Recherche approfondie
     - web_search: Recherche web
     """
-    async def check_feature(
-        current_user: User = Depends(get_verified_user)
-    ) -> User:
+
+    async def check_feature(current_user: User = Depends(get_verified_user)) -> User:
         # Admin bypass — toutes les features accessibles
         if current_user.is_admin:
             return current_user
 
         from core.plan_limits import check_feature_access
 
-        has_access, error_info = check_feature_access(
-            current_user, feature, lang=current_user.default_lang or "fr"
-        )
+        has_access, error_info = check_feature_access(current_user, feature, lang=current_user.default_lang or "fr")
 
         if not has_access:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_info
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error_info)
 
         return current_user
 

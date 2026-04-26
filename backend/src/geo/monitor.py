@@ -89,23 +89,27 @@ async def check_ai_visibility(
                         if position is None:
                             position = i + 1
 
-                results.append({
-                    "query": query,
-                    "found_video": found_video,
-                    "found_channel": found_channel,
-                    "position": position,
-                    "total_results": len(web_results),
-                })
+                results.append(
+                    {
+                        "query": query,
+                        "found_video": found_video,
+                        "found_channel": found_channel,
+                        "position": position,
+                        "total_results": len(web_results),
+                    }
+                )
 
             except (httpx.TimeoutException, httpx.ConnectError) as e:
                 log.warning(f"Brave Search timeout for query '{query}': {e}")
-                results.append({
-                    "query": query,
-                    "found_video": False,
-                    "found_channel": False,
-                    "position": None,
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "query": query,
+                        "found_video": False,
+                        "found_channel": False,
+                        "position": None,
+                        "error": str(e),
+                    }
+                )
 
     # Score de visibilité agrégé
     visibility_score = 0

@@ -73,10 +73,7 @@ class ArxivClient:
 
     def __init__(self):
         self.base_url = ARXIV_API_URL
-        self.ns = {
-            "atom": "http://www.w3.org/2005/Atom",
-            "arxiv": "http://arxiv.org/schemas/atom"
-        }
+        self.ns = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
 
     def _extract_arxiv_id(self, id_url: str) -> str:
         """Extract arXiv ID from URL"""
@@ -105,10 +102,12 @@ class ArxivClient:
             name_elem = author_elem.find("atom:name", ns)
             affil_elem = author_elem.find("arxiv:affiliation", ns)
             if name_elem is not None:
-                authors.append(Author(
-                    name=name_elem.text.strip() if name_elem.text else "Unknown",
-                    affiliation=affil_elem.text.strip() if affil_elem is not None and affil_elem.text else None
-                ))
+                authors.append(
+                    Author(
+                        name=name_elem.text.strip() if name_elem.text else "Unknown",
+                        affiliation=affil_elem.text.strip() if affil_elem is not None and affil_elem.text else None,
+                    )
+                )
 
         # Extract abstract (clean up whitespace)
         summary_elem = entry.find("atom:summary", ns)
@@ -163,15 +162,11 @@ class ArxivClient:
             source=AcademicSource.ARXIV,
             relevance_score=relevance_score,
             is_open_access=True,  # All arXiv papers are open access
-            keywords=keywords[:5]  # Limit to 5
+            keywords=keywords[:5],  # Limit to 5
         )
 
     async def search(
-        self,
-        query: str,
-        limit: int = 10,
-        categories: Optional[List[str]] = None,
-        sort_by: str = "relevance"
+        self, query: str, limit: int = 10, categories: Optional[List[str]] = None, sort_by: str = "relevance"
     ) -> List[AcademicPaper]:
         """
         Search for papers on arXiv
@@ -199,7 +194,7 @@ class ArxivClient:
         sort_mapping = {
             "relevance": "relevance",
             "lastUpdatedDate": "lastUpdatedDate",
-            "submittedDate": "submittedDate"
+            "submittedDate": "submittedDate",
         }
         sort_order = sort_mapping.get(sort_by, "relevance")
 
@@ -208,15 +203,12 @@ class ArxivClient:
             "start": 0,
             "max_results": min(limit, 100),
             "sortBy": sort_order,
-            "sortOrder": "descending"
+            "sortOrder": "descending",
         }
 
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
-                response = await client.get(
-                    self.base_url,
-                    params=params
-                )
+                response = await client.get(self.base_url, params=params)
 
                 response.raise_for_status()
 
@@ -255,10 +247,7 @@ class ArxivClient:
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.get(
-                    self.base_url,
-                    params={"id_list": arxiv_id}
-                )
+                response = await client.get(self.base_url, params={"id_list": arxiv_id})
 
                 response.raise_for_status()
 

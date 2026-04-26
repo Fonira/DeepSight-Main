@@ -48,6 +48,7 @@ router = APIRouter()
 # POST /submit — Submit a single card review
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/submit", response_model=ReviewResponse)
 async def submit_review(
     body: ReviewRequest,
@@ -131,9 +132,7 @@ async def submit_review(
 
         # Count distinct videos for badge context
         result = await session.execute(
-            select(FlashcardReview.summary_id)
-            .where(FlashcardReview.user_id == user_id)
-            .distinct()
+            select(FlashcardReview.summary_id).where(FlashcardReview.user_id == user_id).distinct()
         )
         distinct_videos = len(result.scalars().all())
 
@@ -172,6 +171,7 @@ async def submit_review(
 # GET /due/{summary_id} — Get due flashcards for a video
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/due/{summary_id}", response_model=DueCardsResponse)
 async def get_due_cards(
     summary_id: int,
@@ -189,9 +189,7 @@ async def get_due_cards(
 
         # Verify summary exists and belongs to user
         result = await session.execute(
-            select(Summary).where(
-                and_(Summary.id == summary_id, Summary.user_id == user_id)
-            )
+            select(Summary).where(and_(Summary.id == summary_id, Summary.user_id == user_id))
         )
         summary = result.scalar_one_or_none()
         if not summary:
@@ -223,26 +221,30 @@ async def get_due_cards(
 
             if review is None:
                 # Never reviewed — new card
-                new_cards.append({
-                    "card_index": idx,
-                    "front": front,
-                    "back": back,
-                    "category": category,
-                    "state": State.New,
-                    "due_date": None,
-                    "difficulty": 0.0,
-                })
+                new_cards.append(
+                    {
+                        "card_index": idx,
+                        "front": front,
+                        "back": back,
+                        "category": category,
+                        "state": State.New,
+                        "due_date": None,
+                        "difficulty": 0.0,
+                    }
+                )
             elif review.due_date is None or review.due_date <= now:
                 # Due for review
-                due_cards.append({
-                    "card_index": idx,
-                    "front": front,
-                    "back": back,
-                    "category": category,
-                    "state": review.state or State.New,
-                    "due_date": review.due_date.isoformat() if review.due_date else None,
-                    "difficulty": review.difficulty or 0.0,
-                })
+                due_cards.append(
+                    {
+                        "card_index": idx,
+                        "front": front,
+                        "back": back,
+                        "category": category,
+                        "state": review.state or State.New,
+                        "due_date": review.due_date.isoformat() if review.due_date else None,
+                        "difficulty": review.difficulty or 0.0,
+                    }
+                )
 
         return DueCardsResponse(
             success=True,
@@ -263,6 +265,7 @@ async def get_due_cards(
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /session/start — Start a study session
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/session/start", response_model=SessionStartResponse)
 async def start_session(
@@ -295,6 +298,7 @@ async def start_session(
 # POST /session/end — End a study session
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/session/end", response_model=SessionEndResponse)
 async def end_session(
     body: SessionEndRequest,
@@ -322,10 +326,7 @@ async def end_session(
 
         # Calculate XP for the session
         # Approximate: 10 XP per card reviewed + bonus for accuracy
-        accuracy = (
-            body.cards_correct / body.cards_reviewed
-            if body.cards_reviewed > 0 else 0.0
-        )
+        accuracy = body.cards_correct / body.cards_reviewed if body.cards_reviewed > 0 else 0.0
         session_xp = body.cards_reviewed * 10
         if accuracy >= 0.9:
             session_xp = int(session_xp * 1.5)  # 50% bonus for 90%+ accuracy
@@ -350,7 +351,8 @@ async def end_session(
 
         # Record daily activity for the session
         await record_daily_activity(
-            session, user_id,
+            session,
+            user_id,
             cards=body.cards_reviewed,
             xp=session_xp,
             time_s=body.duration_seconds,
@@ -358,9 +360,7 @@ async def end_session(
 
         # Count distinct videos
         result = await session.execute(
-            select(FlashcardReview.summary_id)
-            .where(FlashcardReview.user_id == user_id)
-            .distinct()
+            select(FlashcardReview.summary_id).where(FlashcardReview.user_id == user_id).distinct()
         )
         distinct_videos = len(result.scalars().all())
 
@@ -370,9 +370,7 @@ async def end_session(
         # Check if all cards mastered for this video
         all_mastered_video = False
         if study_session.summary_id:
-            all_mastered_video = await _check_video_all_mastered(
-                session, user_id, study_session.summary_id
-            )
+            all_mastered_video = await _check_video_all_mastered(session, user_id, study_session.summary_id)
 
         context = {
             "session_cards": body.cards_reviewed,
@@ -421,6 +419,7 @@ async def end_session(
 # HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def _get_flashcards_for_summary(
     session: AsyncSession,
     summary: Summary,
@@ -439,6 +438,7 @@ async def _get_flashcards_for_summary(
     # Try cache first
     try:
         from main import get_video_cache
+
         vcache = get_video_cache()
         if vcache is not None and video_id:
             cached = await vcache.get_studio_content(platform, video_id, "flashcards", lang)
@@ -468,32 +468,43 @@ async def _get_flashcards_for_summary(
         # Direct flashcards
         for fc in study_card.get("flashcards", []):
             if isinstance(fc, dict) and fc.get("front"):
-                flashcards.append({
-                    "front": fc.get("front", ""),
-                    "back": fc.get("back", ""),
-                    "category": fc.get("category", "General"),
-                })
+                flashcards.append(
+                    {
+                        "front": fc.get("front", ""),
+                        "back": fc.get("back", ""),
+                        "category": fc.get("category", "General"),
+                    }
+                )
 
         # Fallback: Q&A
         if not flashcards:
             for qa in study_card.get("questions_answers", study_card.get("qa", [])):
                 if isinstance(qa, dict):
-                    flashcards.append({
-                        "front": qa.get("question", qa.get("q", "")),
-                        "back": qa.get("answer", qa.get("a", "")),
-                        "category": "Questions",
-                    })
+                    flashcards.append(
+                        {
+                            "front": qa.get("question", qa.get("q", "")),
+                            "back": qa.get("answer", qa.get("a", "")),
+                            "category": "Questions",
+                        }
+                    )
 
         # Cache result
         if flashcards and video_id:
             try:
                 from main import get_video_cache
+
                 vcache = get_video_cache()
                 if vcache:
-                    await vcache.set_studio_content(platform, video_id, "flashcards", lang, {
-                        "flashcards": flashcards,
-                        "title": summary.video_title or "Flashcards",
-                    })
+                    await vcache.set_studio_content(
+                        platform,
+                        video_id,
+                        "flashcards",
+                        lang,
+                        {
+                            "flashcards": flashcards,
+                            "title": summary.video_title or "Flashcards",
+                        },
+                    )
             except Exception:
                 pass
 

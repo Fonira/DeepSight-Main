@@ -25,9 +25,11 @@ from core.http_client import shared_http_client
 # 🔧 TYPES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class ConceptDefinition:
     """Définition d'un concept"""
+
     term: str
     definition: str
     category: str  # 'person', 'technology', 'company', 'concept', 'other'
@@ -39,34 +41,35 @@ class ConceptDefinition:
 # 📝 EXTRACTION DES CONCEPTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def extract_concepts(text: str) -> List[str]:
     """
     Extrait tous les [[concepts]] d'un texte.
     Supporte: [[terme]] et [[terme|affichage]]
-    
+
     Returns:
         Liste de termes uniques (sans doublons)
     """
     if not text:
         return []
-    
+
     # Regex pour [[concept]] ou [[concept|display]]
-    pattern = r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]'
-    
+    pattern = r"\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]"
+
     matches = re.findall(pattern, text)
-    
+
     # Nettoyer et dédupliquer
     concepts = []
     seen = set()
-    
+
     for match in matches:
         term = match.strip()
         term_lower = term.lower()
-        
+
         if term and term_lower not in seen:
             concepts.append(term)
             seen.add(term_lower)
-    
+
     return concepts
 
 
@@ -78,15 +81,15 @@ def clean_concept_markers(text: str) -> str:
     """
     if not text:
         return ""
-    
+
     # Pattern pour [[term]] ou [[term|display]]
-    pattern = r'\[\[([^\]|]+?)(?:\|([^\]]+?))?\]\]'
-    
+    pattern = r"\[\[([^\]|]+?)(?:\|([^\]]+?))?\]\]"
+
     def replace_match(match):
         term = match.group(1)
         display = match.group(2)
         return display if display else term
-    
+
     return re.sub(pattern, replace_match, text)
 
 
@@ -94,19 +97,18 @@ def clean_concept_markers(text: str) -> str:
 # 🌐 PERPLEXITY API - DÉFINITIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_definitions_from_perplexity(
-    concepts: List[str],
-    context: str = "",
-    language: str = "fr"
+    concepts: List[str], context: str = "", language: str = "fr"
 ) -> Dict[str, ConceptDefinition]:
     """
     Récupère les définitions de plusieurs concepts via Perplexity.
-    
+
     Args:
         concepts: Liste des termes à définir
         context: Contexte optionnel (titre de la vidéo, sujet)
         language: 'fr' ou 'en'
-    
+
     Returns:
         Dictionnaire {terme: ConceptDefinition}
     """
@@ -213,8 +215,8 @@ IMPORTANT:
         # Nettoyer le contenu (enlever les ```json si présent)
         content = content.strip()
         if content.startswith("```"):
-            content = re.sub(r'^```\w*\n?', '', content)
-            content = re.sub(r'\n?```$', '', content)
+            content = re.sub(r"^```\w*\n?", "", content)
+            content = re.sub(r"\n?```$", "", content)
 
         parsed = json.loads(content)
         definitions = parsed.get("definitions", [])
@@ -229,7 +231,7 @@ IMPORTANT:
                     definition=item.get("definition", ""),
                     category=item.get("category", "other"),
                     source="brave_search",
-                    wiki_url=item.get("wiki_url")
+                    wiki_url=item.get("wiki_url"),
                 )
 
         logger.info(f"[Concepts] Got {len(result_dict)} definitions from Brave+Mistral")
@@ -247,10 +249,9 @@ IMPORTANT:
 # 🤖 MISTRAL FALLBACK — DÉFINITIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_definitions_from_mistral(
-    concepts: List[str],
-    context: str = "",
-    language: str = "fr"
+    concepts: List[str], context: str = "", language: str = "fr"
 ) -> Dict[str, ConceptDefinition]:
     """
     Fallback Mistral pour les définitions quand Perplexity échoue.
@@ -310,18 +311,13 @@ Reply ONLY with valid JSON:
         async with shared_http_client() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": MISTRAL_INTERNAL_MODEL,
-                    "messages": [
-                        {"role": "user", "content": prompt}
-                    ],
+                    "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 2500,
-                    "temperature": 0.2
-                }
+                    "temperature": 0.2,
+                },
             )
 
             if response.status_code != 200:
@@ -333,8 +329,8 @@ Reply ONLY with valid JSON:
 
             content = content.strip()
             if content.startswith("```"):
-                content = re.sub(r'^```\w*\n?', '', content)
-                content = re.sub(r'\n?```$', '', content)
+                content = re.sub(r"^```\w*\n?", "", content)
+                content = re.sub(r"\n?```$", "", content)
 
             parsed = json.loads(content)
             definitions = parsed.get("definitions", [])
@@ -349,7 +345,7 @@ Reply ONLY with valid JSON:
                         definition=defn,
                         category=item.get("category", "other"),
                         source="mistral",
-                        wiki_url=item.get("wiki_url")
+                        wiki_url=item.get("wiki_url"),
                     )
 
             print(f"✅ [Concepts] Mistral fallback: {len(result)} definitions")
@@ -367,19 +363,16 @@ Reply ONLY with valid JSON:
 # 🎯 FONCTION PRINCIPALE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def get_concepts_with_definitions(
-    text: str,
-    context: str = "",
-    language: str = "fr"
-) -> Dict[str, Any]:
+
+async def get_concepts_with_definitions(text: str, context: str = "", language: str = "fr") -> Dict[str, Any]:
     """
     Extrait les concepts d'un texte et récupère leurs définitions.
-    
+
     Args:
         text: Texte contenant des [[concepts]]
         context: Contexte (titre vidéo, sujet)
         language: 'fr' ou 'en'
-    
+
     Returns:
         {
             "concepts": [
@@ -396,14 +389,10 @@ async def get_concepts_with_definitions(
     """
     # Extraire les concepts
     concepts = extract_concepts(text)
-    
+
     if not concepts:
-        return {
-            "concepts": [],
-            "clean_text": text,
-            "count": 0
-        }
-    
+        return {"concepts": [], "clean_text": text, "count": 0}
+
     # Récupérer les définitions — Perplexity en priorité, Mistral en fallback
     definitions = await get_definitions_from_perplexity(concepts, context, language)
 
@@ -429,28 +418,22 @@ async def get_concepts_with_definitions(
         concept_lower = concept.lower()
         if concept_lower in definitions:
             defn = definitions[concept_lower]
-            concepts_list.append({
-                "term": defn.term,
-                "definition": defn.definition or "",
-                "category": defn.category,
-                "wiki_url": defn.wiki_url,
-                "source": defn.source
-            })
+            concepts_list.append(
+                {
+                    "term": defn.term,
+                    "definition": defn.definition or "",
+                    "category": defn.category,
+                    "wiki_url": defn.wiki_url,
+                    "source": defn.source,
+                }
+            )
         else:
             # Pas de définition trouvée même après fallback
-            concepts_list.append({
-                "term": concept,
-                "definition": "",
-                "category": "other",
-                "wiki_url": None,
-                "source": "none"
-            })
-    
-    return {
-        "concepts": concepts_list,
-        "clean_text": clean_concept_markers(text),
-        "count": len(concepts_list)
-    }
+            concepts_list.append(
+                {"term": concept, "definition": "", "category": "other", "wiki_url": None, "source": "none"}
+            )
+
+    return {"concepts": concepts_list, "clean_text": clean_concept_markers(text), "count": len(concepts_list)}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -464,12 +447,12 @@ if __name__ == "__main__":
     Elle mentionne aussi [[Loopt]] et [[Reddit]] comme exemples de ses précédents projets.
     Les outils comme [[Zod]] et [[React PDF]] sont utilisés pour la validation.
     """
-    
+
     async def test():
         result = await get_concepts_with_definitions(test_text, "Test vidéo", "fr")
         print(f"\n📚 {result['count']} concepts trouvés:")
         for c in result["concepts"]:
             print(f"  • {c['term']} ({c['category']}): {c['definition'][:60]}...")
         print(f"\n📝 Texte nettoyé:\n{result['clean_text'][:200]}...")
-    
+
     asyncio.run(test())

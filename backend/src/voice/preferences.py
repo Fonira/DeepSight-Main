@@ -23,13 +23,14 @@ logger = logging.getLogger(__name__)
 # Voice Preferences Model
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class VoicePreferences:
     """User voice preferences — maps to ElevenLabs TTS parameters."""
 
     # ── Voice selection ───────────────────────────────────────────────────
     voice_id: Optional[str] = "5jCmrHdxbpU36l1wb3Ke"  # Default: Sébas (FR natif)
-    voice_name: Optional[str] = None        # Display name for UI
+    voice_name: Optional[str] = None  # Display name for UI
 
     # ── Speed (PROMINENTLY FEATURED) ──────────────────────────────────────
     # ElevenLabs supports 0.25 → 4.0
@@ -37,10 +38,10 @@ class VoicePreferences:
 
     # ── Voice quality parameters ──────────────────────────────────────────
     # Higher stability + lower style = more consistent voice, fewer accent bugs
-    stability: float = 0.7                  # 0.0 (variable) → 1.0 (stable)
-    similarity_boost: float = 0.8           # 0.0 (diverse) → 1.0 (similar)
-    style: float = 0.0                      # 0.0 (none) → 1.0 (exaggerated)
-    use_speaker_boost: bool = True          # High-quality speaker boost
+    stability: float = 0.7  # 0.0 (variable) → 1.0 (stable)
+    similarity_boost: float = 0.8  # 0.0 (diverse) → 1.0 (similar)
+    style: float = 0.0  # 0.0 (none) → 1.0 (exaggerated)
+    use_speaker_boost: bool = True  # High-quality speaker boost
 
     # ── Model selection ───────────────────────────────────────────────────
     # eleven_multilingual_v2 (default, highest quality)
@@ -54,17 +55,19 @@ class VoicePreferences:
     gender: str = "male"
 
     # ── Interaction mode (Phase 1 — PTT) ─────────────────────────────────
-    input_mode: str = "ptt"               # "ptt" (push-to-talk) or "vad" (voice activity detection)
-    ptt_key: str = " "                    # Keyboard key for PTT (default Space). Any single char or key name like 'Space','Shift','Control'.
-    interruptions_enabled: bool = True     # Allow user to interrupt agent
-    turn_eagerness: float = 0.5           # 0.0 (patient) → 1.0 (eager) — VAD mode only
+    input_mode: str = "ptt"  # "ptt" (push-to-talk) or "vad" (voice activity detection)
+    ptt_key: str = (
+        " "  # Keyboard key for PTT (default Space). Any single char or key name like 'Space','Shift','Control'.
+    )
+    interruptions_enabled: bool = True  # Allow user to interrupt agent
+    turn_eagerness: float = 0.5  # 0.0 (patient) → 1.0 (eager) — VAD mode only
 
     # ── Voice chat speed (Phase 2) ───────────────────────────────────────
-    voice_chat_speed_preset: str = "1x"   # References VOICE_CHAT_SPEED_PRESETS[].id
+    voice_chat_speed_preset: str = "1x"  # References VOICE_CHAT_SPEED_PRESETS[].id
 
     # ── Advanced conversation params (Phase 4) ───────────────────────────
-    turn_timeout: int = 15                # Seconds of silence before agent timeout (5–60)
-    soft_timeout_seconds: int = 300       # Soft session timeout warning in seconds (60–600)
+    turn_timeout: int = 15  # Seconds of silence before agent timeout (5–60)
+    soft_timeout_seconds: int = 300  # Soft session timeout warning in seconds (60–600)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -117,11 +120,25 @@ SPEED_PRESETS = [
 # ═══════════════════════════════════════════════════════════════════════════════
 
 VOICE_CHAT_SPEED_PRESETS = [
-    {"id": "1x",   "label_fr": "Normal",       "label_en": "Normal",       "api_speed": 1.0, "playback_rate": 1.0,  "concise": False},
-    {"id": "1.5x", "label_fr": "Rapide",       "label_en": "Fast",         "api_speed": 1.2, "playback_rate": 1.25, "concise": False},
-    {"id": "2x",   "label_fr": "Très rapide",  "label_en": "Very Fast",    "api_speed": 1.2, "playback_rate": 1.67, "concise": False},
-    {"id": "3x",   "label_fr": "Turbo",        "label_en": "Turbo",        "api_speed": 1.2, "playback_rate": 2.5,  "concise": True},
-    {"id": "4x",   "label_fr": "Maximum",      "label_en": "Maximum",      "api_speed": 1.2, "playback_rate": 3.33, "concise": True},
+    {"id": "1x", "label_fr": "Normal", "label_en": "Normal", "api_speed": 1.0, "playback_rate": 1.0, "concise": False},
+    {"id": "1.5x", "label_fr": "Rapide", "label_en": "Fast", "api_speed": 1.2, "playback_rate": 1.25, "concise": False},
+    {
+        "id": "2x",
+        "label_fr": "Très rapide",
+        "label_en": "Very Fast",
+        "api_speed": 1.2,
+        "playback_rate": 1.67,
+        "concise": False,
+    },
+    {"id": "3x", "label_fr": "Turbo", "label_en": "Turbo", "api_speed": 1.2, "playback_rate": 2.5, "concise": True},
+    {
+        "id": "4x",
+        "label_fr": "Maximum",
+        "label_en": "Maximum",
+        "api_speed": 1.2,
+        "playback_rate": 3.33,
+        "concise": True,
+    },
 ]
 
 VALID_VOICE_CHAT_SPEED_IDS = {p["id"] for p in VOICE_CHAT_SPEED_PRESETS}
@@ -328,23 +345,16 @@ CATALOG_VOICE_IDS = {v["voice_id"] for v in VOICE_CATALOG}
 # Database Operations
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_user_voice_preferences(user_id: int, db: AsyncSession) -> VoicePreferences:
     """Load user voice preferences from DB."""
-    result = await db.execute(
-        select(User.voice_preferences).where(User.id == user_id)
-    )
+    result = await db.execute(select(User.voice_preferences).where(User.id == user_id))
     raw = result.scalar_one_or_none()
     return VoicePreferences.from_json(raw)
 
 
-async def save_user_voice_preferences(
-    user_id: int, prefs: VoicePreferences, db: AsyncSession
-) -> None:
+async def save_user_voice_preferences(user_id: int, prefs: VoicePreferences, db: AsyncSession) -> None:
     """Save user voice preferences to DB."""
-    await db.execute(
-        update(User)
-        .where(User.id == user_id)
-        .values(voice_preferences=prefs.to_json())
-    )
+    await db.execute(update(User).where(User.id == user_id).values(voice_preferences=prefs.to_json()))
     await db.commit()
     logger.info("Voice preferences saved", extra={"user_id": user_id})

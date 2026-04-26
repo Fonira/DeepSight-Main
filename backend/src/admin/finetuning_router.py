@@ -23,8 +23,10 @@ router = APIRouter()
 # SCHEMAS
 # =============================================================================
 
+
 class FinetuneRequest(BaseModel):
     """Request to start a fine-tuning pipeline."""
+
     max_samples: int = 300
     base_model: str = "mistral-small-latest"
     training_steps: int = 100
@@ -35,6 +37,7 @@ class FinetuneRequest(BaseModel):
 
 class ExportPreviewRequest(BaseModel):
     """Request to preview exportable training data."""
+
     max_samples: int = 100
     lang: Optional[str] = None
 
@@ -42,6 +45,7 @@ class ExportPreviewRequest(BaseModel):
 # =============================================================================
 # POST /api/admin/finetune/preview — Preview training data stats
 # =============================================================================
+
 
 @router.post("/preview")
 async def preview_training_data(
@@ -83,6 +87,7 @@ async def preview_training_data(
 # =============================================================================
 # POST /api/admin/finetune/start — Launch fine-tuning pipeline
 # =============================================================================
+
 
 @router.post("/start")
 async def start_finetuning(
@@ -131,6 +136,7 @@ async def start_finetuning(
 # POST /api/admin/finetune/start-job/{job_id} — Start a validated job
 # =============================================================================
 
+
 @router.post("/start-job/{job_id}")
 async def start_finetune_job(
     job_id: str,
@@ -151,6 +157,7 @@ async def start_finetune_job(
 # =============================================================================
 # GET /api/admin/finetune/status/{job_id} — Get job status
 # =============================================================================
+
 
 @router.get("/status/{job_id}")
 async def get_finetune_status(
@@ -178,6 +185,7 @@ async def get_finetune_status(
 # =============================================================================
 # GET /api/admin/finetune/jobs — List all jobs
 # =============================================================================
+
 
 @router.get("/jobs")
 async def list_finetune_jobs(
@@ -207,6 +215,7 @@ async def list_finetune_jobs(
 # =============================================================================
 # POST /api/admin/finetune/cancel/{job_id} — Cancel a running job
 # =============================================================================
+
 
 @router.post("/cancel/{job_id}")
 async def cancel_finetune_job(

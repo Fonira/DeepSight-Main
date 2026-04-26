@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 # 💾 Redis Cache L1 (kept for backward-compatibility imports)
 try:
     from core.cache import cache_service, make_cache_key
+
     CACHE_AVAILABLE = True
 except ImportError:
     CACHE_AVAILABLE = False
@@ -45,6 +46,7 @@ except ImportError:
 # 💾 DB Cache L2 (persistent, cross-user) — kept for legacy / direct use
 try:
     from transcripts.cache_db import get_cached_transcript, save_transcript_to_cache
+
     DB_CACHE_AVAILABLE = True
 except ImportError:
     DB_CACHE_AVAILABLE = False
@@ -53,6 +55,7 @@ except ImportError:
 # 💾 Unified L1 (Redis) + L2 (DB) transcript cache orchestrator
 try:
     from transcripts.cache import transcript_cache
+
     TRANSCRIPT_CACHE_AVAILABLE = True
 except ImportError:
     TRANSCRIPT_CACHE_AVAILABLE = False
@@ -88,12 +91,14 @@ BASE_BACKOFF_SEC = 2.0
 # 🔌 CIRCUIT BREAKER (évite de spammer TikTok si le service est down)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class CircuitBreaker:
     """Simple circuit breaker pour les requêtes TikTok."""
+
     failure_count: int = 0
     last_failure_time: float = 0.0
-    threshold: int = 5          # Nombre d'échecs avant ouverture
+    threshold: int = 5  # Nombre d'échecs avant ouverture
     reset_timeout: float = 300  # 5 min avant de réessayer
 
     def record_failure(self) -> None:
@@ -113,7 +118,9 @@ class CircuitBreaker:
             # Half-open: on laisse passer pour tester
             logger.info("[TIKTOK] Circuit breaker: half-open, allowing retry")
             return False
-        logger.warning(f"[TIKTOK] Circuit breaker OPEN ({self.failure_count} failures, retry in {int(self.reset_timeout - elapsed)}s)")
+        logger.warning(
+            f"[TIKTOK] Circuit breaker OPEN ({self.failure_count} failures, retry in {int(self.reset_timeout - elapsed)}s)"
+        )
         return True
 
 
@@ -122,21 +129,22 @@ _circuit_breaker = CircuitBreaker()
 # Patterns TikTok reconnus
 TIKTOK_PATTERNS = [
     # URL standard : https://www.tiktok.com/@user/video/1234567890
-    re.compile(r'tiktok\.com/@[\w.-]+/video/(\d+)', re.IGNORECASE),
+    re.compile(r"tiktok\.com/@[\w.-]+/video/(\d+)", re.IGNORECASE),
     # URL courte : https://vm.tiktok.com/ZMxxxxxx/
-    re.compile(r'vm\.tiktok\.com/([\w-]+)', re.IGNORECASE),
+    re.compile(r"vm\.tiktok\.com/([\w-]+)", re.IGNORECASE),
     # URL mobile : https://m.tiktok.com/v/1234567890
-    re.compile(r'm\.tiktok\.com/v/(\d+)', re.IGNORECASE),
+    re.compile(r"m\.tiktok\.com/v/(\d+)", re.IGNORECASE),
     # URL avec /t/ : https://www.tiktok.com/t/ZMxxxxxx/
-    re.compile(r'tiktok\.com/t/([\w-]+)', re.IGNORECASE),
+    re.compile(r"tiktok\.com/t/([\w-]+)", re.IGNORECASE),
     # URL desktop sans @ : https://www.tiktok.com/video/1234567890
-    re.compile(r'tiktok\.com/video/(\d+)', re.IGNORECASE),
+    re.compile(r"tiktok\.com/video/(\d+)", re.IGNORECASE),
 ]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔍 DÉTECTION & EXTRACTION D'URL
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def is_tiktok_url(url: str) -> bool:
     """Vérifie si une URL est une URL TikTok valide."""
@@ -166,6 +174,7 @@ def extract_tiktok_video_id(url: str) -> Optional[str]:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📺 MÉTADONNÉES VIDÉO
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
     """
@@ -232,7 +241,9 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
                     # 🎵 Music info from additionalData
                     music_data = additional.get("music", {}) if isinstance(additional, dict) else {}
 
-                    logger.info(f"[TIKTOK] Supadata metadata OK: {data.get('title', '')[:50]} ({duration}s, type={content_type})")
+                    logger.info(
+                        f"[TIKTOK] Supadata metadata OK: {data.get('title', '')[:50]} ({duration}s, type={content_type})"
+                    )
                     return {
                         "video_id": str(vid),
                         "title": (data.get("title", "TikTok Video") or "TikTok Video")[:500],
@@ -284,8 +295,10 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
 
             def _get_info():
                 cmd = [
-                    "yt-dlp", "--dump-json",
-                    "--no-warnings", "--skip-download",
+                    "yt-dlp",
+                    "--dump-json",
+                    "--no-warnings",
+                    "--skip-download",
                     "--no-playlist",
                 ]
                 if headers:
@@ -306,10 +319,7 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
                 logger.warning(f"[TIKTOK] yt-dlp info failed ({label}): {stderr}")
                 return None
 
-            data = await asyncio.wait_for(
-                loop.run_in_executor(audio_executor, _get_info),
-                timeout=30
-            )
+            data = await asyncio.wait_for(loop.run_in_executor(audio_executor, _get_info), timeout=30)
 
             # Gestion des erreurs détectées
             if data and "_error" in data:
@@ -344,7 +354,7 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
                 "categories": ["Social Media"],
             }
 
-            logger.info(f"[TIKTOK] Info OK ({label}): \"{info['title'][:50]}\" by {info['channel']} ({duration}s)")
+            logger.info(f'[TIKTOK] Info OK ({label}): "{info["title"][:50]}" by {info["channel"]} ({duration}s)')
             _circuit_breaker.record_success()
             return info
 
@@ -378,7 +388,7 @@ async def _resolve_short_url(url: str) -> Optional[str]:
             timeout=15.0,
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            }
+            },
         ) as client:
             resp = await client.head(url)
             resolved = str(resp.url)
@@ -437,7 +447,7 @@ async def _get_info_via_oembed(url: str) -> Optional[Dict[str, Any]]:
             "categories": ["Social Media"],
         }
 
-        logger.info(f"[TIKTOK] oEmbed OK: \"{title[:50]}\" by {author}")
+        logger.info(f'[TIKTOK] oEmbed OK: "{title[:50]}" by {author}')
         return info
 
     except Exception as e:
@@ -448,6 +458,7 @@ async def _get_info_via_oembed(url: str) -> Optional[Dict[str, Any]]:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🥇 SUPADATA API — PRIORITAIRE (texte natif ou STT côté Supadata)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def _get_transcript_supadata_tiktok(
     url: str,
@@ -519,9 +530,9 @@ async def _get_transcript_supadata_tiktok(
 # 🎙️ TRANSCRIPTION COMPLÈTE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_tiktok_transcript(
-    url: str,
-    video_id: Optional[str] = None
+    url: str, video_id: Optional[str] = None
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     🆕 v2.1: Pipeline multi-fallback de transcription TikTok.
@@ -616,7 +627,7 @@ async def get_tiktok_transcript(
 
     # ─── Phase 3 : Retry avec exponential backoff ─────────────────────────
     for retry in range(MAX_RETRIES):
-        backoff = BASE_BACKOFF_SEC * (2 ** retry)
+        backoff = BASE_BACKOFF_SEC * (2**retry)
         logger.info(f"[TIKTOK] Phase 3: retry #{retry + 1} after {backoff}s for {vid}")
         await asyncio.sleep(backoff)
 
@@ -728,7 +739,7 @@ async def _download_audio_direct(
                     return audio_data, ext
             else:
                 # C'est déjà de l'audio
-                logger.info(f"[TIKTOK] Direct audio downloaded: {len(audio_data)/1024:.0f}KB ({api['name']})")
+                logger.info(f"[TIKTOK] Direct audio downloaded: {len(audio_data) / 1024:.0f}KB ({api['name']})")
                 return audio_data, ".mp3"
 
         except Exception as e:
@@ -788,7 +799,7 @@ async def _download_media_bytes(media_url: str, source: str) -> Optional[bytes]:
         ) as client:
             resp = await client.get(media_url)
             if resp.status_code == 200 and len(resp.content) > 1000:
-                logger.info(f"[TIKTOK] Downloaded {len(resp.content)/1024:.0f}KB from {source}")
+                logger.info(f"[TIKTOK] Downloaded {len(resp.content) / 1024:.0f}KB from {source}")
                 return resp.content
             else:
                 logger.warning(f"[TIKTOK] Media download failed: status={resp.status_code}, size={len(resp.content)}")
@@ -813,11 +824,20 @@ async def _extract_audio_ffmpeg(video_data: bytes) -> Tuple[Optional[bytes], str
 
         def _convert():
             import subprocess
+
             cmd = [
-                "ffmpeg", "-i", tmp_in_path,
+                "ffmpeg",
+                "-i",
+                tmp_in_path,
                 "-vn",  # No video
-                "-b:a", "64k", "-ac", "1", "-ar", "16000",
-                "-y", tmp_out_path,
+                "-b:a",
+                "64k",
+                "-ac",
+                "1",
+                "-ar",
+                "16000",
+                "-y",
+                tmp_out_path,
             ]
             result = subprocess.run(cmd, capture_output=True, timeout=60)
             return result.returncode == 0
@@ -829,7 +849,7 @@ async def _extract_audio_ffmpeg(video_data: bytes) -> Tuple[Optional[bytes], str
 
         if success and Path(tmp_out_path).exists():
             audio_bytes = Path(tmp_out_path).read_bytes()
-            logger.info(f"[TIKTOK] ffmpeg extracted audio: {len(audio_bytes)/1024:.0f}KB")
+            logger.info(f"[TIKTOK] ffmpeg extracted audio: {len(audio_bytes) / 1024:.0f}KB")
             Path(tmp_in_path).unlink(missing_ok=True)
             Path(tmp_out_path).unlink(missing_ok=True)
             return audio_bytes, ".mp3"
@@ -846,6 +866,7 @@ async def _extract_audio_ffmpeg(video_data: bytes) -> Tuple[Optional[bytes], str
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📹 TÉLÉCHARGEMENT VIDÉO COMPLÈTE (pour Visual OCR — Phase 5)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def _download_video_bytes(url: str, video_id: str) -> Optional[bytes]:
     """
@@ -868,7 +889,7 @@ async def _download_video_bytes(url: str, video_id: str) -> Optional[bytes]:
                 continue
             video_data = await _download_media_bytes(media_url, api["name"])
             if video_data and len(video_data) > 1000:
-                logger.info(f"[TIKTOK] Video downloaded via {api['name']}: {len(video_data)/1024:.0f}KB")
+                logger.info(f"[TIKTOK] Video downloaded via {api['name']}: {len(video_data) / 1024:.0f}KB")
                 return video_data
         except Exception as e:
             logger.warning(f"[TIKTOK] Video download via {api['name']} failed: {e}")
@@ -882,10 +903,14 @@ async def _download_video_bytes(url: str, video_id: str) -> Optional[bytes]:
                 video_path = f"{tmpdir}/video.mp4"
                 cmd = [
                     "yt-dlp",
-                    "-f", "best[ext=mp4]/best",
-                    "-o", video_path,
-                    "--no-warnings", "--no-playlist",
-                    "--retries", "2",
+                    "-f",
+                    "best[ext=mp4]/best",
+                    "-o",
+                    video_path,
+                    "--no-warnings",
+                    "--no-playlist",
+                    "--retries",
+                    "2",
                     url,
                 ]
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -902,7 +927,7 @@ async def _download_video_bytes(url: str, video_id: str) -> Optional[bytes]:
             timeout=60,
         )
         if video_data:
-            logger.info(f"[TIKTOK] Video downloaded via yt-dlp: {len(video_data)/1024:.0f}KB")
+            logger.info(f"[TIKTOK] Video downloaded via yt-dlp: {len(video_data) / 1024:.0f}KB")
             return video_data
     except asyncio.TimeoutError:
         logger.warning(f"[TIKTOK] yt-dlp video download timeout for {video_id}")
@@ -915,6 +940,7 @@ async def _download_video_bytes(url: str, video_id: str) -> Optional[bytes]:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 HELPERS INTERNES
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _headers_to_args(headers: Dict[str, str]) -> list:
     """Convertit un dict de headers en arguments yt-dlp."""
@@ -982,6 +1008,7 @@ async def _transcribe_safely(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔍 DÉTECTION DE PLATEFORME (helper pour le router)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def detect_platform(url: str) -> str:
     """

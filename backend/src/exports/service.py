@@ -45,6 +45,7 @@ def _ensure_pdf():
     _PDF_CHECKED = True
     try:
         from . import pdf_generator
+
         _pdf_module = pdf_generator
         return True
     except (ImportError, OSError):
@@ -59,6 +60,7 @@ def _ensure_docx():
     _DOCX_CHECKED = True
     try:
         import docx as _d
+
         _docx_module = _d
         return True
     except ImportError:
@@ -77,11 +79,17 @@ def _ensure_reportlab():
         from reportlab.lib.colors import HexColor
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
         from reportlab.lib.units import cm
+
         _reportlab_modules = {
-            "A4": A4, "getSampleStyleSheet": getSampleStyleSheet,
-            "ParagraphStyle": ParagraphStyle, "HexColor": HexColor,
-            "SimpleDocTemplate": SimpleDocTemplate, "Paragraph": Paragraph,
-            "Spacer": Spacer, "PageBreak": PageBreak, "cm": cm,
+            "A4": A4,
+            "getSampleStyleSheet": getSampleStyleSheet,
+            "ParagraphStyle": ParagraphStyle,
+            "HexColor": HexColor,
+            "SimpleDocTemplate": SimpleDocTemplate,
+            "Paragraph": Paragraph,
+            "Spacer": Spacer,
+            "PageBreak": PageBreak,
+            "cm": cm,
         }
         return True
     except ImportError:
@@ -96,6 +104,7 @@ def _ensure_excel():
     _EXCEL_CHECKED = True
     try:
         import openpyxl as _xl
+
         _excel_module = _xl
         return True
     except ImportError:
@@ -104,15 +113,18 @@ def _ensure_excel():
 
 # ── Fonctions de compatibilité (remplacent les anciens flags booléens) ──
 
+
 def weasyprint_available() -> bool:
     """Check si WeasyPrint est disponible (lazy load)"""
     return _ensure_pdf() and _pdf_module.is_pdf_available()
+
 
 def generate_pdf_weasyprint(*args, **kwargs):
     """Proxy vers pdf_generator.generate_pdf (lazy)"""
     if not _ensure_pdf():
         raise ImportError("WeasyPrint non disponible")
     return _pdf_module.generate_pdf(*args, **kwargs)
+
 
 def get_pdf_export_type():
     """Accès lazy à PDFExportType enum"""
@@ -123,12 +135,16 @@ def get_pdf_export_type():
 
 class _LazyFlag:
     """Descriptor pour simuler un booléen avec lazy loading"""
+
     def __init__(self, checker):
         self._checker = checker
+
     def __bool__(self):
         return self._checker()
+
     def __repr__(self):
         return str(bool(self))
+
 
 DOCX_AVAILABLE = _LazyFlag(_ensure_docx)
 REPORTLAB_AVAILABLE = _LazyFlag(_ensure_reportlab)
@@ -141,11 +157,11 @@ EXCEL_AVAILABLE = _LazyFlag(_ensure_excel)
 
 # Couleurs Deep Sight (thème océan/steampunk)
 COLORS = {
-    "primary": "#0D4F4F",      # Teal profond
-    "secondary": "#D4A574",    # Cuivre/laiton
-    "accent": "#00CED1",       # Cyan
-    "text": "#1A1A2E",         # Texte sombre
-    "light": "#F5F5F5",        # Fond clair
+    "primary": "#0D4F4F",  # Teal profond
+    "secondary": "#D4A574",  # Cuivre/laiton
+    "accent": "#00CED1",  # Cyan
+    "text": "#1A1A2E",  # Texte sombre
+    "light": "#F5F5F5",  # Fond clair
 }
 
 # Template de header pour les exports
@@ -160,6 +176,7 @@ HEADER_TEMPLATE = """
 # 🔧 HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def format_duration(duration: int) -> str:
     """Formate une durée en secondes en string lisible"""
     if not duration:
@@ -173,14 +190,15 @@ def format_duration(duration: int) -> str:
 
 def clean_filename(title: str, timestamp: str) -> str:
     """Génère un nom de fichier sûr"""
-    safe_title = re.sub(r'[^\w\s-]', '', title)[:50].strip()
-    safe_title = re.sub(r'[-\s]+', '_', safe_title)
+    safe_title = re.sub(r"[^\w\s-]", "", title)[:50].strip()
+    safe_title = re.sub(r"[-\s]+", "_", safe_title)
     return f"deepsight_{safe_title}_{timestamp}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📝 EXPORT TXT
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def export_to_txt(
     title: str,
@@ -190,13 +208,13 @@ def export_to_txt(
     summary: str,
     video_url: str = "",
     duration: int = 0,
-    created_at: datetime = None
+    created_at: datetime = None,
 ) -> str:
     """Exporte l'analyse en format texte brut"""
-    
+
     duration_str = format_duration(duration)
     date_str = created_at.strftime("%d/%m/%Y %H:%M") if created_at else datetime.now().strftime("%d/%m/%Y %H:%M")
-    
+
     content = f"""{HEADER_TEMPLATE}
 ═══════════════════════════════════════════════════════════════════════════
 📺 VIDÉO ANALYSÉE
@@ -227,6 +245,7 @@ Analysé  : {date_str}
 # 📝 EXPORT MARKDOWN
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def export_to_markdown(
     title: str,
     channel: str,
@@ -239,13 +258,13 @@ def export_to_markdown(
     entities: Dict = None,
     reliability_score: float = None,
     created_at: datetime = None,
-    flashcards: List[Dict] = None
+    flashcards: List[Dict] = None,
 ) -> str:
     """Exporte l'analyse en format Markdown"""
-    
+
     duration_str = format_duration(duration) if duration else "N/A"
     date_str = created_at.strftime("%d/%m/%Y à %H:%M") if created_at else datetime.now().strftime("%d/%m/%Y à %H:%M")
-    
+
     content = f"""# 🤿 Deep Sight — Analyse
 
 ---
@@ -265,40 +284,40 @@ def export_to_markdown(
 
     if video_url:
         content += f"🔗 [Voir la vidéo]({video_url})\n\n"
-    
+
     if thumbnail_url:
         content += f"![Thumbnail]({thumbnail_url})\n\n"
-    
+
     content += "---\n\n## 📋 Synthèse\n\n"
     content += summary + "\n\n"
-    
+
     # Score de fiabilité
     if reliability_score is not None:
         emoji = "✅" if reliability_score >= 70 else "⚖️" if reliability_score >= 50 else "⚠️"
         content += f"---\n\n## 📊 Score de fiabilité\n\n{emoji} **{reliability_score}/100**\n\n"
-    
+
     # Entités extraites
     if entities:
         content += "---\n\n## 🏷️ Entités extraites\n\n"
-        
+
         if entities.get("concepts"):
             content += "### 💡 Concepts clés\n"
             for concept in entities["concepts"][:10]:
                 content += f"- {concept}\n"
             content += "\n"
-        
+
         if entities.get("persons"):
             content += "### 👤 Personnes mentionnées\n"
             for person in entities["persons"][:10]:
                 content += f"- {person}\n"
             content += "\n"
-        
+
         if entities.get("organizations"):
             content += "### 🏢 Organisations\n"
             for org in entities["organizations"][:10]:
                 content += f"- {org}\n"
             content += "\n"
-    
+
     # Flashcards
     if flashcards:
         content += "---\n\n## 📚 Flashcards de révision\n\n"
@@ -306,18 +325,19 @@ def export_to_markdown(
             content += f"### Carte {i}\n"
             content += f"**Q:** {card.get('front', card.get('question', ''))}\n\n"
             content += f"**R:** {card.get('back', card.get('answer', ''))}\n\n"
-    
+
     content += """---
 
 *Généré par [Deep Sight](https://deepsightsynthesis.com) — Analyse intelligente de vidéos YouTube*
 """
-    
+
     return content
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📄 EXPORT DOCX
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def export_to_docx(
     title: str,
@@ -330,7 +350,7 @@ def export_to_docx(
     entities: Dict = None,
     reliability_score: float = None,
     created_at: datetime = None,
-    flashcards: List[Dict] = None
+    flashcards: List[Dict] = None,
 ) -> Optional[bytes]:
     """Exporte l'analyse en format DOCX"""
 
@@ -342,64 +362,64 @@ def export_to_docx(
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     doc = Document()
-    
+
     # Titre principal
     title_para = doc.add_heading("🤿 Deep Sight — Analyse", 0)
     title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+
     # Sous-titre
     subtitle = doc.add_paragraph()
     subtitle.add_run("Analyse intelligente de vidéos YouTube").italic = True
     subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+
     doc.add_paragraph()
-    
+
     # Section vidéo
     doc.add_heading("📺 Vidéo analysée", level=1)
-    
+
     duration_str = format_duration(duration)
     date_str = created_at.strftime("%d/%m/%Y à %H:%M") if created_at else datetime.now().strftime("%d/%m/%Y à %H:%M")
-    
+
     # Tableau d'infos
     table = doc.add_table(rows=6, cols=2)
-    table.style = 'Table Grid'
-    
+    table.style = "Table Grid"
+
     info = [
         ("Titre", title),
         ("Chaîne", channel),
         ("Durée", duration_str),
         ("Catégorie", category),
         ("Mode", mode),
-        ("Analysé le", date_str)
+        ("Analysé le", date_str),
     ]
-    
+
     for i, (label, value) in enumerate(info):
         cells = table.rows[i].cells
         cells[0].text = label
         cells[0].paragraphs[0].runs[0].bold = True
         cells[1].text = value
-    
+
     if video_url:
         p = doc.add_paragraph()
         p.add_run("🔗 URL: ").bold = True
         p.add_run(video_url)
-    
+
     doc.add_paragraph()
-    
+
     # Section synthèse
     doc.add_heading("📋 Synthèse", level=1)
-    
+
     # Nettoyer et ajouter le contenu
-    for paragraph in summary.split('\n\n'):
+    for paragraph in summary.split("\n\n"):
         if paragraph.strip():
             # Détecter les headers markdown
-            if paragraph.startswith('## '):
+            if paragraph.startswith("## "):
                 doc.add_heading(paragraph[3:].strip(), level=2)
-            elif paragraph.startswith('### '):
+            elif paragraph.startswith("### "):
                 doc.add_heading(paragraph[4:].strip(), level=3)
             else:
                 p = doc.add_paragraph(paragraph.strip())
-    
+
     # Score de fiabilité
     if reliability_score is not None:
         doc.add_paragraph()
@@ -407,22 +427,22 @@ def export_to_docx(
         emoji = "✅" if reliability_score >= 70 else "⚖️" if reliability_score >= 50 else "⚠️"
         p = doc.add_paragraph()
         p.add_run(f"{emoji} {reliability_score}/100").bold = True
-    
+
     # Entités
     if entities:
         doc.add_paragraph()
         doc.add_heading("🏷️ Entités extraites", level=1)
-        
+
         if entities.get("concepts"):
             doc.add_heading("Concepts clés", level=2)
             for concept in entities["concepts"][:10]:
-                doc.add_paragraph(concept, style='List Bullet')
-        
+                doc.add_paragraph(concept, style="List Bullet")
+
         if entities.get("persons"):
             doc.add_heading("Personnes", level=2)
             for person in entities["persons"][:10]:
-                doc.add_paragraph(person, style='List Bullet')
-    
+                doc.add_paragraph(person, style="List Bullet")
+
     # Flashcards
     if flashcards:
         doc.add_paragraph()
@@ -431,17 +451,17 @@ def export_to_docx(
             doc.add_heading(f"Carte {i}", level=2)
             p = doc.add_paragraph()
             p.add_run("Question: ").bold = True
-            p.add_run(card.get('front', card.get('question', '')))
+            p.add_run(card.get("front", card.get("question", "")))
             p = doc.add_paragraph()
             p.add_run("Réponse: ").bold = True
-            p.add_run(card.get('back', card.get('answer', '')))
-    
+            p.add_run(card.get("back", card.get("answer", "")))
+
     # Footer
     doc.add_paragraph()
     footer = doc.add_paragraph()
     footer.add_run("Généré par Deep Sight — deepsightsynthesis.com").italic = True
     footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+
     # Sauvegarder en bytes
     buffer = io.BytesIO()
     doc.save(buffer)
@@ -453,6 +473,7 @@ def export_to_docx(
 # 📄 EXPORT PDF (ReportLab Fallback)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def export_to_pdf_reportlab(
     title: str,
     channel: str,
@@ -463,7 +484,7 @@ def export_to_pdf_reportlab(
     duration: int = 0,
     entities: Dict = None,
     reliability_score: float = None,
-    created_at: datetime = None
+    created_at: datetime = None,
 ) -> Optional[bytes]:
     """Export PDF de fallback avec ReportLab (moins stylé)"""
 
@@ -479,63 +500,47 @@ def export_to_pdf_reportlab(
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=2*cm,
-        leftMargin=2*cm,
-        topMargin=2*cm,
-        bottomMargin=2*cm
+        buffer, pagesize=A4, rightMargin=2 * cm, leftMargin=2 * cm, topMargin=2 * cm, bottomMargin=2 * cm
     )
-    
+
     # Styles
     styles = getSampleStyleSheet()
-    
+
     title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
+        "CustomTitle",
+        parent=styles["Heading1"],
         fontSize=24,
         textColor=HexColor(COLORS["primary"]),
         spaceAfter=20,
-        alignment=1
+        alignment=1,
     )
-    
+
     heading_style = ParagraphStyle(
-        'CustomHeading',
-        parent=styles['Heading2'],
+        "CustomHeading",
+        parent=styles["Heading2"],
         fontSize=14,
         textColor=HexColor(COLORS["primary"]),
         spaceBefore=15,
-        spaceAfter=10
+        spaceAfter=10,
     )
-    
-    body_style = ParagraphStyle(
-        'CustomBody',
-        parent=styles['Normal'],
-        fontSize=10,
-        leading=14,
-        spaceAfter=8
-    )
-    
-    info_style = ParagraphStyle(
-        'InfoStyle',
-        parent=styles['Normal'],
-        fontSize=10,
-        textColor=HexColor("#666666")
-    )
-    
+
+    body_style = ParagraphStyle("CustomBody", parent=styles["Normal"], fontSize=10, leading=14, spaceAfter=8)
+
+    info_style = ParagraphStyle("InfoStyle", parent=styles["Normal"], fontSize=10, textColor=HexColor("#666666"))
+
     # Contenu
     story = []
-    
+
     # Titre
     story.append(Paragraph("🤿 Deep Sight — Analyse", title_style))
     story.append(Spacer(1, 20))
-    
+
     # Infos vidéo
     story.append(Paragraph("📺 Vidéo analysée", heading_style))
-    
+
     duration_str = format_duration(duration)
     date_str = created_at.strftime("%d/%m/%Y à %H:%M") if created_at else datetime.now().strftime("%d/%m/%Y à %H:%M")
-    
+
     info_text = f"""
     <b>Titre:</b> {title}<br/>
     <b>Chaîne:</b> {channel}<br/>
@@ -545,42 +550,38 @@ def export_to_pdf_reportlab(
     <b>Analysé le:</b> {date_str}
     """
     story.append(Paragraph(info_text, info_style))
-    
+
     if video_url:
         story.append(Paragraph(f"<b>URL:</b> {video_url}", info_style))
-    
+
     story.append(Spacer(1, 20))
-    
+
     # Synthèse
     story.append(Paragraph("📋 Synthèse", heading_style))
-    
+
     # Nettoyer le markdown pour PDF
-    summary_clean = summary.replace('**', '')
-    summary_clean = re.sub(r'^##+ ', '', summary_clean, flags=re.MULTILINE)
-    
-    for paragraph in summary_clean.split('\n\n'):
+    summary_clean = summary.replace("**", "")
+    summary_clean = re.sub(r"^##+ ", "", summary_clean, flags=re.MULTILINE)
+
+    for paragraph in summary_clean.split("\n\n"):
         if paragraph.strip():
-            safe_text = paragraph.strip().replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            safe_text = paragraph.strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             story.append(Paragraph(safe_text, body_style))
-    
+
     # Score de fiabilité
     if reliability_score is not None:
         story.append(Spacer(1, 15))
         story.append(Paragraph("📊 Score de fiabilité", heading_style))
         emoji = "✅" if reliability_score >= 70 else "⚖️" if reliability_score >= 50 else "⚠️"
         story.append(Paragraph(f"<b>{emoji} {reliability_score}/100</b>", body_style))
-    
+
     # Footer
     story.append(Spacer(1, 30))
     footer_style = ParagraphStyle(
-        'Footer',
-        parent=styles['Normal'],
-        fontSize=8,
-        textColor=HexColor("#999999"),
-        alignment=1
+        "Footer", parent=styles["Normal"], fontSize=8, textColor=HexColor("#999999"), alignment=1
     )
     story.append(Paragraph("Généré par Deep Sight — deepsightsynthesis.com", footer_style))
-    
+
     # Build PDF
     doc.build(story)
     buffer.seek(0)
@@ -590,6 +591,7 @@ def export_to_pdf_reportlab(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📄 EXPORT PDF (Main - tries WeasyPrint first, then ReportLab)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def export_to_pdf(
     title: str,
@@ -605,16 +607,16 @@ def export_to_pdf(
     created_at: datetime = None,
     flashcards: List[Dict] = None,
     sources: List[Dict] = None,
-    export_type: str = "full"
+    export_type: str = "full",
 ) -> Optional[bytes]:
     """
     Exporte l'analyse en format PDF.
     Utilise WeasyPrint si disponible, sinon ReportLab en fallback.
-    
+
     Args:
         export_type: "full" | "summary" | "flashcards" | "study"
     """
-    
+
     # Try WeasyPrint first (beautiful HTML→PDF)
     if weasyprint_available():
         pdf = generate_pdf_weasyprint(
@@ -631,12 +633,12 @@ def export_to_pdf(
             created_at=created_at,
             flashcards=flashcards,
             sources=sources,
-            export_type=export_type
+            export_type=export_type,
         )
         if pdf:
             return pdf
         print("⚠️ WeasyPrint failed, falling back to ReportLab", flush=True)
-    
+
     # Fallback to ReportLab
     if REPORTLAB_AVAILABLE:
         return export_to_pdf_reportlab(
@@ -649,15 +651,16 @@ def export_to_pdf(
             duration=duration,
             entities=entities,
             reliability_score=reliability_score,
-            created_at=created_at
+            created_at=created_at,
         )
-    
+
     return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 EXPORT CSV
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def export_to_csv(
     title: str,
@@ -669,7 +672,7 @@ def export_to_csv(
     duration: int = 0,
     entities: Dict = None,
     reliability_score: float = None,
-    created_at: datetime = None
+    created_at: datetime = None,
 ) -> str:
     """Exporte l'analyse en format CSV (structured data)"""
 
@@ -706,8 +709,8 @@ def export_to_csv(
     writer.writerow([])
 
     # Synthèse (nettoyée du markdown)
-    summary_clean = re.sub(r'^##+ ', '', summary, flags=re.MULTILINE)
-    summary_clean = summary_clean.replace('**', '').replace('*', '')
+    summary_clean = re.sub(r"^##+ ", "", summary, flags=re.MULTILINE)
+    summary_clean = summary_clean.replace("**", "").replace("*", "")
     writer.writerow(["Synthèse"])
     writer.writerow([summary_clean])
 
@@ -742,6 +745,7 @@ def export_to_csv(
 # 📊 EXPORT EXCEL (.xlsx)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def export_to_excel(
     title: str,
     channel: str,
@@ -752,7 +756,7 @@ def export_to_excel(
     duration: int = 0,
     entities: Dict = None,
     reliability_score: float = None,
-    created_at: datetime = None
+    created_at: datetime = None,
 ) -> Optional[bytes]:
     """Exporte l'analyse en format Excel (.xlsx)"""
 
@@ -768,17 +772,17 @@ def export_to_excel(
     ws.title = "Analyse Deep Sight"
 
     # Styles
-    header_font = Font(name='Arial', size=16, bold=True, color="0D4F4F")
-    subheader_font = Font(name='Arial', size=12, bold=True, color="0D4F4F")
-    label_font = Font(name='Arial', size=10, bold=True)
-    value_font = Font(name='Arial', size=10)
+    header_font = Font(name="Arial", size=16, bold=True, color="0D4F4F")
+    subheader_font = Font(name="Arial", size=12, bold=True, color="0D4F4F")
+    label_font = Font(name="Arial", size=10, bold=True)
+    value_font = Font(name="Arial", size=10)
     header_fill = PatternFill(start_color="E8F4F4", end_color="E8F4F4", fill_type="solid")
 
     thin_border = Border(
-        left=Side(style='thin', color='CCCCCC'),
-        right=Side(style='thin', color='CCCCCC'),
-        top=Side(style='thin', color='CCCCCC'),
-        bottom=Side(style='thin', color='CCCCCC')
+        left=Side(style="thin", color="CCCCCC"),
+        right=Side(style="thin", color="CCCCCC"),
+        top=Side(style="thin", color="CCCCCC"),
+        bottom=Side(style="thin", color="CCCCCC"),
     )
 
     # Formatage durée
@@ -794,17 +798,17 @@ def export_to_excel(
     row = 1
 
     # Titre principal
-    ws.merge_cells('A1:D1')
-    cell = ws['A1']
+    ws.merge_cells("A1:D1")
+    cell = ws["A1"]
     cell.value = "🤿 Deep Sight — Analyse"
     cell.font = header_font
-    cell.alignment = Alignment(horizontal='center', vertical='center')
+    cell.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 30
     row = 3
 
     # Section Vidéo
-    ws.merge_cells(f'A{row}:D{row}')
-    cell = ws[f'A{row}']
+    ws.merge_cells(f"A{row}:D{row}")
+    cell = ws[f"A{row}"]
     cell.value = "📺 Vidéo analysée"
     cell.font = subheader_font
     cell.fill = header_fill
@@ -826,81 +830,81 @@ def export_to_excel(
         video_data.append(("Score de fiabilité", f"{emoji} {reliability_score}/100"))
 
     for label, value in video_data:
-        ws[f'A{row}'] = label
-        ws[f'A{row}'].font = label_font
-        ws[f'A{row}'].border = thin_border
-        ws.merge_cells(f'B{row}:D{row}')
-        ws[f'B{row}'] = value
-        ws[f'B{row}'].font = value_font
-        ws[f'B{row}'].border = thin_border
+        ws[f"A{row}"] = label
+        ws[f"A{row}"].font = label_font
+        ws[f"A{row}"].border = thin_border
+        ws.merge_cells(f"B{row}:D{row}")
+        ws[f"B{row}"] = value
+        ws[f"B{row}"].font = value_font
+        ws[f"B{row}"].border = thin_border
         row += 1
 
     row += 1
 
     # Section Synthèse
-    ws.merge_cells(f'A{row}:D{row}')
-    cell = ws[f'A{row}']
+    ws.merge_cells(f"A{row}:D{row}")
+    cell = ws[f"A{row}"]
     cell.value = "📋 Synthèse"
     cell.font = subheader_font
     cell.fill = header_fill
     row += 1
 
     # Contenu de la synthèse (nettoyé)
-    summary_clean = re.sub(r'^##+ ', '', summary, flags=re.MULTILINE)
-    summary_clean = summary_clean.replace('**', '').replace('*', '')
+    summary_clean = re.sub(r"^##+ ", "", summary, flags=re.MULTILINE)
+    summary_clean = summary_clean.replace("**", "").replace("*", "")
 
-    ws.merge_cells(f'A{row}:D{row}')
-    cell = ws[f'A{row}']
+    ws.merge_cells(f"A{row}:D{row}")
+    cell = ws[f"A{row}"]
     cell.value = summary_clean[:32000]  # Excel cell limit
     cell.font = value_font
-    cell.alignment = Alignment(wrap_text=True, vertical='top')
+    cell.alignment = Alignment(wrap_text=True, vertical="top")
     ws.row_dimensions[row].height = min(400, max(50, len(summary_clean) // 5))
     row += 2
 
     # Section Entités
     if entities:
-        ws.merge_cells(f'A{row}:D{row}')
-        cell = ws[f'A{row}']
+        ws.merge_cells(f"A{row}:D{row}")
+        cell = ws[f"A{row}"]
         cell.value = "🏷️ Entités extraites"
         cell.font = subheader_font
         cell.fill = header_fill
         row += 1
 
         if entities.get("concepts"):
-            ws[f'A{row}'] = "Concepts clés"
-            ws[f'A{row}'].font = label_font
+            ws[f"A{row}"] = "Concepts clés"
+            ws[f"A{row}"].font = label_font
             for i, concept in enumerate(entities["concepts"][:15]):
-                ws[f'A{row + 1 + i}'] = concept
-                ws[f'A{row + 1 + i}'].font = value_font
+                ws[f"A{row + 1 + i}"] = concept
+                ws[f"A{row + 1 + i}"].font = value_font
 
         if entities.get("persons"):
-            ws[f'B{row}'] = "Personnes"
-            ws[f'B{row}'].font = label_font
+            ws[f"B{row}"] = "Personnes"
+            ws[f"B{row}"].font = label_font
             for i, person in enumerate(entities["persons"][:15]):
-                ws[f'B{row + 1 + i}'] = person
-                ws[f'B{row + 1 + i}'].font = value_font
+                ws[f"B{row + 1 + i}"] = person
+                ws[f"B{row + 1 + i}"].font = value_font
 
         if entities.get("organizations"):
-            ws[f'C{row}'] = "Organisations"
-            ws[f'C{row}'].font = label_font
+            ws[f"C{row}"] = "Organisations"
+            ws[f"C{row}"].font = label_font
             for i, org in enumerate(entities["organizations"][:15]):
-                ws[f'C{row + 1 + i}'] = org
-                ws[f'C{row + 1 + i}'].font = value_font
+                ws[f"C{row + 1 + i}"] = org
+                ws[f"C{row + 1 + i}"].font = value_font
 
         row += 17
 
     # Footer
-    ws.merge_cells(f'A{row}:D{row}')
-    cell = ws[f'A{row}']
+    ws.merge_cells(f"A{row}:D{row}")
+    cell = ws[f"A{row}"]
     cell.value = "Généré par Deep Sight — deepsightsynthesis.com"
-    cell.font = Font(name='Arial', size=8, italic=True, color='999999')
-    cell.alignment = Alignment(horizontal='center')
+    cell.font = Font(name="Arial", size=8, italic=True, color="999999")
+    cell.alignment = Alignment(horizontal="center")
 
     # Ajuster largeur des colonnes
-    ws.column_dimensions['A'].width = 20
-    ws.column_dimensions['B'].width = 30
-    ws.column_dimensions['C'].width = 25
-    ws.column_dimensions['D'].width = 25
+    ws.column_dimensions["A"].width = 20
+    ws.column_dimensions["B"].width = 30
+    ws.column_dimensions["C"].width = 25
+    ws.column_dimensions["D"].width = 25
 
     # Sauvegarder en bytes
     buffer = io.BytesIO()
@@ -909,10 +913,10 @@ def export_to_excel(
     return buffer.getvalue()
 
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTION PRINCIPALE D'EXPORT
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def export_summary(
     format: str,
@@ -929,48 +933,66 @@ def export_summary(
     created_at: datetime = None,
     flashcards: List[Dict] = None,
     sources: List[Dict] = None,
-    pdf_export_type: str = "full"
+    pdf_export_type: str = "full",
 ) -> Tuple[Optional[bytes | str], str, str]:
     """
     Exporte un résumé dans le format demandé.
-    
+
     Args:
         format: txt, md, docx, pdf
         pdf_export_type: full, summary, flashcards, study (pour PDF uniquement)
-    
+
     Returns:
         Tuple (content, filename, mimetype)
     """
-    
+
     # Générer un nom de fichier safe
     timestamp = datetime.now().strftime("%Y%m%d")
     base_filename = clean_filename(title, timestamp)
-    
+
     if format == "txt":
-        content = export_to_txt(
-            title, channel, category, mode, summary,
-            video_url, duration, created_at
-        )
+        content = export_to_txt(title, channel, category, mode, summary, video_url, duration, created_at)
         return content, f"{base_filename}.txt", "text/plain"
-    
+
     elif format == "md":
         content = export_to_markdown(
-            title, channel, category, mode, summary,
-            video_url, duration, thumbnail_url, entities,
-            reliability_score, created_at, flashcards
+            title,
+            channel,
+            category,
+            mode,
+            summary,
+            video_url,
+            duration,
+            thumbnail_url,
+            entities,
+            reliability_score,
+            created_at,
+            flashcards,
         )
         return content, f"{base_filename}.md", "text/markdown"
-    
+
     elif format == "docx":
         if not DOCX_AVAILABLE:
             return None, "", ""
         content = export_to_docx(
-            title, channel, category, mode, summary,
-            video_url, duration, entities, reliability_score, 
-            created_at, flashcards
+            title,
+            channel,
+            category,
+            mode,
+            summary,
+            video_url,
+            duration,
+            entities,
+            reliability_score,
+            created_at,
+            flashcards,
         )
-        return content, f"{base_filename}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    
+        return (
+            content,
+            f"{base_filename}.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+
     elif format == "pdf":
         content = export_to_pdf(
             title=title,
@@ -986,11 +1008,11 @@ def export_summary(
             created_at=created_at,
             flashcards=flashcards,
             sources=sources,
-            export_type=pdf_export_type
+            export_type=pdf_export_type,
         )
         if content is None:
             return None, "", ""
-        
+
         # Ajouter le type dans le nom de fichier
         type_suffix = "" if pdf_export_type == "full" else f"_{pdf_export_type}"
         return content, f"{base_filename}{type_suffix}.pdf", "application/pdf"
@@ -998,8 +1020,7 @@ def export_summary(
 
     elif format == "csv":
         content = export_to_csv(
-            title, channel, category, mode, summary,
-            video_url, duration, entities, reliability_score, created_at
+            title, channel, category, mode, summary, video_url, duration, entities, reliability_score, created_at
         )
         return content, f"deepsight_{safe_title}_{timestamp}.csv", "text/csv"
 
@@ -1007,10 +1028,13 @@ def export_summary(
         if not EXCEL_AVAILABLE:
             return None, "", ""
         content = export_to_excel(
-            title, channel, category, mode, summary,
-            video_url, duration, entities, reliability_score, created_at
+            title, channel, category, mode, summary, video_url, duration, entities, reliability_score, created_at
         )
-        return content, f"deepsight_{safe_title}_{timestamp}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        return (
+            content,
+            f"deepsight_{safe_title}_{timestamp}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
     else:
         return None, "", ""
 
@@ -1058,6 +1082,7 @@ def is_audio_export_available() -> bool:
     """Check if audio export is available (ElevenLabs key configured)."""
     try:
         from core.config import get_elevenlabs_key
+
         return bool(get_elevenlabs_key())
     except ImportError:
         return False
@@ -1093,6 +1118,7 @@ def build_narrative_text(
     try:
         from tts.service import clean_text_for_tts
     except ImportError:
+
         def clean_text_for_tts(t, **kw):
             return t
 
@@ -1115,7 +1141,7 @@ def build_narrative_text(
             truncated = " ".join(words[:300])
             last_period = truncated.rfind(".")
             if last_period > len(truncated) * 0.5:
-                truncated = truncated[:last_period + 1]
+                truncated = truncated[: last_period + 1]
             cleaned_summary = truncated
 
     if cleaned_summary:
@@ -1127,13 +1153,13 @@ def build_narrative_text(
     full_text = " ".join(parts)
 
     # Remove any remaining markdown artifacts
-    full_text = re.sub(r'#{1,6}\s+', '', full_text)
-    full_text = re.sub(r'\*\*(.+?)\*\*', r'\1', full_text)
-    full_text = re.sub(r'\*(.+?)\*', r'\1', full_text)
-    full_text = re.sub(r'`[^`]*`', '', full_text)
-    full_text = re.sub(r'---+', '', full_text)
-    full_text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', full_text)  # [text](url) → text
-    full_text = re.sub(r'\s{2,}', ' ', full_text)
+    full_text = re.sub(r"#{1,6}\s+", "", full_text)
+    full_text = re.sub(r"\*\*(.+?)\*\*", r"\1", full_text)
+    full_text = re.sub(r"\*(.+?)\*", r"\1", full_text)
+    full_text = re.sub(r"`[^`]*`", "", full_text)
+    full_text = re.sub(r"---+", "", full_text)
+    full_text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", full_text)  # [text](url) → text
+    full_text = re.sub(r"\s{2,}", " ", full_text)
 
     return full_text.strip()
 
@@ -1156,14 +1182,14 @@ def chunk_text_for_tts(text: str, max_chunk_size: int = 4500) -> List[str]:
 
         # Find last sentence boundary within limit
         cut_point = -1
-        for sep in ['. ', '.\n', '! ', '? ', ';\n']:
+        for sep in [". ", ".\n", "! ", "? ", ";\n"]:
             idx = remaining.rfind(sep, 0, max_chunk_size)
             if idx > cut_point:
                 cut_point = idx + len(sep)
 
         if cut_point <= 0:
             # No sentence boundary found, cut at space
-            cut_point = remaining.rfind(' ', 0, max_chunk_size)
+            cut_point = remaining.rfind(" ", 0, max_chunk_size)
             if cut_point <= 0:
                 cut_point = max_chunk_size
 
@@ -1211,6 +1237,7 @@ async def export_to_audio(
     if not voice_id:
         try:
             from tts.service import get_voice_id, DEFAULT_MODEL_ID
+
             voice_id = get_voice_id("fr", "female")
             model_id = DEFAULT_MODEL_ID
         except ImportError:
@@ -1254,7 +1281,7 @@ async def export_to_audio(
 
                 if response.status_code != 200:
                     _audio_logger.error(
-                        f"ElevenLabs API error on chunk {i+1}/{len(chunks)}: "
+                        f"ElevenLabs API error on chunk {i + 1}/{len(chunks)}: "
                         f"{response.status_code} {response.text[:200]}"
                     )
                     return None

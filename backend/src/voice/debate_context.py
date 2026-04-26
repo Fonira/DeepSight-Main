@@ -68,42 +68,76 @@ def _truncate(text: str, max_chars: int, suffix: str = " [...]") -> str:
 @dataclass
 class _Labels:
     """Labels localisés FR/EN pour le format vocal."""
+
     fr: bool = True
 
     @property
-    def topic(self) -> str: return "SUJET DU DÉBAT" if self.fr else "DEBATE TOPIC"
+    def topic(self) -> str:
+        return "SUJET DU DÉBAT" if self.fr else "DEBATE TOPIC"
+
     @property
-    def video_a(self) -> str: return "VIDÉO A" if self.fr else "VIDEO A"
+    def video_a(self) -> str:
+        return "VIDÉO A" if self.fr else "VIDEO A"
+
     @property
-    def video_b(self) -> str: return "VIDÉO B" if self.fr else "VIDEO B"
+    def video_b(self) -> str:
+        return "VIDÉO B" if self.fr else "VIDEO B"
+
     @property
-    def title(self) -> str: return "Titre" if self.fr else "Title"
+    def title(self) -> str:
+        return "Titre" if self.fr else "Title"
+
     @property
-    def channel(self) -> str: return "Chaîne" if self.fr else "Channel"
+    def channel(self) -> str:
+        return "Chaîne" if self.fr else "Channel"
+
     @property
-    def theses(self) -> str: return "THÈSES" if self.fr else "THESES"
+    def theses(self) -> str:
+        return "THÈSES" if self.fr else "THESES"
+
     @property
-    def thesis(self) -> str: return "Thèse" if self.fr else "Thesis"
+    def thesis(self) -> str:
+        return "Thèse" if self.fr else "Thesis"
+
     @property
-    def arguments(self) -> str: return "ARGUMENTS" if self.fr else "ARGUMENTS"
+    def arguments(self) -> str:
+        return "ARGUMENTS" if self.fr else "ARGUMENTS"
+
     @property
-    def convergence(self) -> str: return "POINTS DE CONVERGENCE" if self.fr else "POINTS OF CONVERGENCE"
+    def convergence(self) -> str:
+        return "POINTS DE CONVERGENCE" if self.fr else "POINTS OF CONVERGENCE"
+
     @property
-    def divergence(self) -> str: return "POINTS DE DIVERGENCE" if self.fr else "POINTS OF DIVERGENCE"
+    def divergence(self) -> str:
+        return "POINTS DE DIVERGENCE" if self.fr else "POINTS OF DIVERGENCE"
+
     @property
-    def fact_check(self) -> str: return "FACT-CHECK" if self.fr else "FACT-CHECK"
+    def fact_check(self) -> str:
+        return "FACT-CHECK" if self.fr else "FACT-CHECK"
+
     @property
-    def summary(self) -> str: return "SYNTHÈSE DU DÉBAT" if self.fr else "DEBATE SUMMARY"
+    def summary(self) -> str:
+        return "SYNTHÈSE DU DÉBAT" if self.fr else "DEBATE SUMMARY"
+
     @property
-    def transcript_a(self) -> str: return "TRANSCRIPT VIDÉO A" if self.fr else "VIDEO A TRANSCRIPT"
+    def transcript_a(self) -> str:
+        return "TRANSCRIPT VIDÉO A" if self.fr else "VIDEO A TRANSCRIPT"
+
     @property
-    def transcript_b(self) -> str: return "TRANSCRIPT VIDÉO B" if self.fr else "VIDEO B TRANSCRIPT"
+    def transcript_b(self) -> str:
+        return "TRANSCRIPT VIDÉO B" if self.fr else "VIDEO B TRANSCRIPT"
+
     @property
-    def strong(self) -> str: return "fort" if self.fr else "strong"
+    def strong(self) -> str:
+        return "fort" if self.fr else "strong"
+
     @property
-    def moderate(self) -> str: return "modéré" if self.fr else "moderate"
+    def moderate(self) -> str:
+        return "modéré" if self.fr else "moderate"
+
     @property
-    def weak(self) -> str: return "faible" if self.fr else "weak"
+    def weak(self) -> str:
+        return "faible" if self.fr else "weak"
 
 
 def _format_arguments(args: list[dict], max_chars: int, L: _Labels) -> str:
@@ -119,8 +153,12 @@ def _format_arguments(args: list[dict], max_chars: int, L: _Labels) -> str:
         evidence = arg.get("evidence", "")
         strength_raw = (arg.get("strength") or "").lower()
         strength_label = {
-            "strong": L.strong, "moderate": L.moderate, "weak": L.weak,
-            "fort": L.strong, "modéré": L.moderate, "faible": L.weak,
+            "strong": L.strong,
+            "moderate": L.moderate,
+            "weak": L.weak,
+            "fort": L.strong,
+            "modéré": L.moderate,
+            "faible": L.weak,
         }.get(strength_raw, strength_raw)
         suffix = f" — [{strength_label}]" if strength_label else ""
         body = f"{i}. **{claim}**{suffix}"
@@ -162,9 +200,7 @@ class DebateRichContext:
     fact_check: list[dict] = field(default_factory=list)
     debate_summary: str = ""
 
-    def format_for_voice(
-        self, language: str = "fr", max_chars: int = MAX_CONTEXT_DEBATE_VOICE
-    ) -> str:
+    def format_for_voice(self, language: str = "fr", max_chars: int = MAX_CONTEXT_DEBATE_VOICE) -> str:
         """Formate le contexte complet pour le system prompt vocal ElevenLabs."""
         fr = language != "en"
         L = _Labels(fr)
@@ -185,12 +221,8 @@ class DebateRichContext:
 
         # Thèses
         lines.append(f"## {L.theses}")
-        lines.append(
-            f"**{L.video_a} — {L.thesis}** : {_truncate(self.thesis_a, BUDGET_THESES // 2)}"
-        )
-        lines.append(
-            f"**{L.video_b} — {L.thesis}** : {_truncate(self.thesis_b, BUDGET_THESES // 2)}"
-        )
+        lines.append(f"**{L.video_a} — {L.thesis}** : {_truncate(self.thesis_a, BUDGET_THESES // 2)}")
+        lines.append(f"**{L.video_b} — {L.thesis}** : {_truncate(self.thesis_b, BUDGET_THESES // 2)}")
         lines.append("")
 
         # Arguments A
@@ -206,9 +238,7 @@ class DebateRichContext:
         # Convergences
         if self.convergence_points:
             lines.append(f"## {L.convergence}")
-            conv_text = "\n".join(
-                f"- {str(p)}" for p in self.convergence_points[:10]
-            )
+            conv_text = "\n".join(f"- {str(p)}" for p in self.convergence_points[:10])
             lines.append(_truncate(conv_text, BUDGET_CONVERGENCE))
             lines.append("")
 
@@ -221,9 +251,7 @@ class DebateRichContext:
                     topic_d = d.get("topic", "?")
                     pos_a = d.get("position_a", "")
                     pos_b = d.get("position_b", "")
-                    div_parts.append(
-                        f"- **{topic_d}** — {L.video_a} : {pos_a} / {L.video_b} : {pos_b}"
-                    )
+                    div_parts.append(f"- **{topic_d}** — {L.video_a} : {pos_a} / {L.video_b} : {pos_b}")
                 else:
                     div_parts.append(f"- {str(d)}")
             lines.append(_truncate("\n".join(div_parts), BUDGET_DIVERGENCE))
@@ -273,6 +301,7 @@ async def _load_transcript_safely(video_id: str, db: AsyncSession) -> str:
         return ""
     try:
         from chat.context_builder import _get_full_transcript_from_cache
+
         transcript = await _get_full_transcript_from_cache(video_id, db)
         return transcript or ""
     except Exception as exc:
@@ -318,6 +347,7 @@ async def build_debate_rich_context(
     if include_transcripts:
         # Chargement parallèle des 2 transcripts
         import asyncio
+
         transcript_a, transcript_b = await asyncio.gather(
             _load_transcript_safely(ctx.video_a_id, db),
             _load_transcript_safely(ctx.video_b_id, db),

@@ -26,7 +26,14 @@ router = APIRouter()
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 
 SUPPORTED_EXTENSIONS = {
-    "pdf", "docx", "pptx", "png", "jpg", "jpeg", "avif", "webp",
+    "pdf",
+    "docx",
+    "pptx",
+    "png",
+    "jpg",
+    "jpeg",
+    "avif",
+    "webp",
 }
 
 
@@ -34,8 +41,10 @@ SUPPORTED_EXTENSIONS = {
 # SCHEMAS
 # =============================================================================
 
+
 class AnalyzeUrlRequest(BaseModel):
     """Analyze a document from a public URL."""
+
     document_url: str
     lang: str = "fr"
     table_format: str = "markdown"
@@ -46,6 +55,7 @@ class AnalyzeUrlRequest(BaseModel):
 
 class AskDocumentRequest(BaseModel):
     """Ask a question about a previously OCR'd document."""
+
     document_url: str
     question: str
     lang: str = "fr"
@@ -54,6 +64,7 @@ class AskDocumentRequest(BaseModel):
 # =============================================================================
 # POST /api/documents/analyze-url — Analyze document from URL
 # =============================================================================
+
 
 @router.post("/analyze-url")
 async def analyze_document_url(
@@ -103,7 +114,9 @@ async def analyze_document_url(
     if body.question:
         try:
             analysis = await analyze_document(
-                ocr_result, question=body.question, lang=body.lang,
+                ocr_result,
+                question=body.question,
+                lang=body.lang,
             )
         except Exception as e:
             logger.warning("Document QA failed: %s", e)
@@ -113,11 +126,14 @@ async def analyze_document_url(
         except Exception as e:
             logger.warning("Document analysis failed: %s", e)
 
-    logger.info("Document analyzed from URL", extra={
-        "user_id": current_user.id,
-        "pages": ocr_result.total_pages,
-        "chars": ocr_result.total_chars,
-    })
+    logger.info(
+        "Document analyzed from URL",
+        extra={
+            "user_id": current_user.id,
+            "pages": ocr_result.total_pages,
+            "chars": ocr_result.total_chars,
+        },
+    )
 
     return _build_response(ocr_result, analysis)
 
@@ -125,6 +141,7 @@ async def analyze_document_url(
 # =============================================================================
 # POST /api/documents/analyze-upload — Analyze uploaded document
 # =============================================================================
+
 
 @router.post("/analyze-upload")
 async def analyze_document_upload(
@@ -155,8 +172,7 @@ async def analyze_document_upload(
     if ext not in SUPPORTED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Format non supporté: .{ext}. "
-                   f"Formats acceptés: {', '.join(sorted(SUPPORTED_EXTENSIONS))}",
+            detail=f"Format non supporté: .{ext}. Formats acceptés: {', '.join(sorted(SUPPORTED_EXTENSIONS))}",
         )
 
     # Read file bytes
@@ -165,8 +181,8 @@ async def analyze_document_upload(
     if len(file_bytes) > MAX_UPLOAD_SIZE:
         raise HTTPException(
             status_code=413,
-            detail=f"Fichier trop volumineux: {len(file_bytes)/1024/1024:.1f}MB "
-                   f"(max: {MAX_UPLOAD_SIZE/1024/1024:.0f}MB)",
+            detail=f"Fichier trop volumineux: {len(file_bytes) / 1024 / 1024:.1f}MB "
+            f"(max: {MAX_UPLOAD_SIZE / 1024 / 1024:.0f}MB)",
         )
 
     if len(file_bytes) == 0:
@@ -196,7 +212,9 @@ async def analyze_document_upload(
     if question:
         try:
             analysis = await analyze_document(
-                ocr_result, question=question, lang=lang,
+                ocr_result,
+                question=question,
+                lang=lang,
             )
         except Exception as e:
             logger.warning("Document QA on upload failed: %s", e)
@@ -206,12 +224,15 @@ async def analyze_document_upload(
         except Exception as e:
             logger.warning("Document analysis on upload failed: %s", e)
 
-    logger.info("Document analyzed from upload", extra={
-        "user_id": current_user.id,
-        "filename": filename,
-        "pages": ocr_result.total_pages,
-        "chars": ocr_result.total_chars,
-    })
+    logger.info(
+        "Document analyzed from upload",
+        extra={
+            "user_id": current_user.id,
+            "filename": filename,
+            "pages": ocr_result.total_pages,
+            "chars": ocr_result.total_chars,
+        },
+    )
 
     return _build_response(ocr_result, analysis, filename=filename)
 
@@ -219,6 +240,7 @@ async def analyze_document_upload(
 # =============================================================================
 # POST /api/documents/ocr-only — Extract text only (no LLM)
 # =============================================================================
+
 
 @router.post("/ocr-only")
 async def ocr_only(
@@ -278,6 +300,7 @@ async def ocr_only(
 # GET /api/documents/formats — List supported formats
 # =============================================================================
 
+
 @router.get("/formats")
 async def list_supported_formats():
     """Return supported document formats for OCR."""
@@ -297,6 +320,7 @@ async def list_supported_formats():
 # =============================================================================
 # HELPER — Build response
 # =============================================================================
+
 
 def _build_response(
     ocr_result,

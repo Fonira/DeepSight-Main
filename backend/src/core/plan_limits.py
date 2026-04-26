@@ -66,8 +66,9 @@ async def check_daily_analysis_limit(
     """
     # Admin bypass — analyses illimitées
     from core.config import ADMIN_CONFIG
+
     admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower()
-    is_admin = getattr(user, 'is_admin', False) or (getattr(user, 'email', '') or '').lower() == admin_email
+    is_admin = getattr(user, "is_admin", False) or (getattr(user, "email", "") or "").lower() == admin_email
     if is_admin:
         return True, None
 
@@ -106,15 +107,13 @@ async def check_daily_analysis_limit(
     return True, None
 
 
-def check_feature_access(
-    user: User, feature: str, lang: str = "fr"
-) -> Tuple[bool, Optional[Dict[str, Any]]]:
+def check_feature_access(user: User, feature: str, lang: str = "fr") -> Tuple[bool, Optional[Dict[str, Any]]]:
     """
     Vérifie si l'utilisateur a accès à une fonctionnalité.
     Utilise plan_config.py comme SSOT.
     """
     # Admin bypass — toutes les features débloquées
-    if getattr(user, 'is_admin', False):
+    if getattr(user, "is_admin", False):
         return True, None
 
     raw_plan = user.plan or "free"
@@ -202,9 +201,7 @@ def get_plan_info(plan: str, lang: str = "fr") -> Dict[str, Any]:
     }
 
 
-async def get_user_limits_status(
-    session: AsyncSession, user: User, lang: str = "fr"
-) -> Dict[str, Any]:
+async def get_user_limits_status(session: AsyncSession, user: User, lang: str = "fr") -> Dict[str, Any]:
     """Retourne le statut complet des limites pour un utilisateur."""
     raw_plan = user.plan or "free"
     plan = normalize_plan_id(raw_plan)
@@ -235,9 +232,5 @@ async def get_user_limits_status(
             "monthly_allowance": limits.get("monthly_credits", 0),
         },
         "next_plan": get_next_plan(plan),
-        "next_plan_info": (
-            get_plan_info(get_next_plan(plan), lang)
-            if plan == PlanId.FREE.value
-            else None
-        ),
+        "next_plan_info": (get_plan_info(get_next_plan(plan), lang) if plan == PlanId.FREE.value else None),
     }

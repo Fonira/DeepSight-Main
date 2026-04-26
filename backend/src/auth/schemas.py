@@ -13,8 +13,10 @@ from datetime import datetime
 # 📥 REQUÊTES (Input)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class UserRegister(BaseModel):
     """Schéma pour l'inscription"""
+
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=6)
@@ -22,33 +24,39 @@ class UserRegister(BaseModel):
 
 class UserLogin(BaseModel):
     """Schéma pour la connexion"""
+
     email: EmailStr
     password: str
 
 
 class RefreshTokenRequest(BaseModel):
     """Schéma pour rafraîchir le token"""
+
     refresh_token: str
 
 
 class VerifyEmailRequest(BaseModel):
     """Schéma pour vérifier l'email"""
+
     email: EmailStr
     code: str
 
 
 class ResendVerificationRequest(BaseModel):
     """Schéma pour renvoyer le code de vérification"""
+
     email: EmailStr
 
 
 class ForgotPasswordRequest(BaseModel):
     """Schéma pour mot de passe oublié"""
+
     email: EmailStr
 
 
 class ResetPasswordRequest(BaseModel):
     """Schéma pour réinitialiser le mot de passe"""
+
     email: EmailStr
     code: str
     new_password: str = Field(..., min_length=6)
@@ -56,12 +64,14 @@ class ResetPasswordRequest(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     """Schéma pour changer le mot de passe"""
+
     current_password: str
     new_password: str = Field(..., min_length=6)
 
 
 class UpdatePreferencesRequest(BaseModel):
     """Schéma pour mettre à jour les préférences"""
+
     default_lang: Optional[str] = None
     default_mode: Optional[str] = None
     default_model: Optional[str] = None
@@ -69,12 +79,14 @@ class UpdatePreferencesRequest(BaseModel):
 
 class GoogleCallbackRequest(BaseModel):
     """Schéma pour le callback Google OAuth"""
+
     code: str
     state: Optional[str] = None
 
 
 class GoogleTokenRequest(BaseModel):
     """Schéma pour Google OAuth via access token (mobile, legacy)"""
+
     access_token: str
 
 
@@ -93,15 +105,13 @@ class GoogleMobileTokenRequest(BaseModel):
     "silent auto-login": si connecté à Google mais pas à DeepSight, on ne crée
     pas de compte automatiquement — on redirige vers signup.
     """
+
     id_token: str = Field(..., min_length=10, description="Google ID token JWT signé")
     client_platform: Literal["ios", "android", "web", "extension"] = Field(
-        default="web",
-        description="Plateforme cliente (pour sélectionner l'audience attendue + tracking)"
+        default="web", description="Plateforme cliente (pour sélectionner l'audience attendue + tracking)"
     )
     device_name: Optional[str] = Field(
-        default=None,
-        max_length=100,
-        description="Nom du device pour tracking des sessions (ex: 'iPhone 15 Pro')"
+        default=None, max_length=100, description="Nom du device pour tracking des sessions (ex: 'iPhone 15 Pro')"
     )
     auto_create: bool = Field(
         default=True,
@@ -109,7 +119,7 @@ class GoogleMobileTokenRequest(BaseModel):
             "Si True (défaut mobile), crée un compte DeepSight automatiquement "
             "si aucun n'existe pour cet email Google. Si False (extension silent "
             "auto-login), retourne 404 pour rediriger vers signup."
-        )
+        ),
     )
 
 
@@ -119,6 +129,7 @@ class GoogleNotRegisteredResponse(BaseModel):
     DeepSight n'existe pour cet email et que `auto_create=False`. Permet au
     client (extension Chrome) de rediriger vers signup avec email pré-rempli.
     """
+
     code: Literal["user_not_registered"] = "user_not_registered"
     email: str
     name: Optional[str] = None
@@ -127,6 +138,7 @@ class GoogleNotRegisteredResponse(BaseModel):
 
 class DeleteAccountRequest(BaseModel):
     """Schéma pour supprimer le compte"""
+
     password: Optional[str] = None  # Optionnel pour les comptes Google
 
 
@@ -134,8 +146,10 @@ class DeleteAccountRequest(BaseModel):
 # 📤 RÉPONSES (Output)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class UserResponse(BaseModel):
     """Schéma de réponse pour un utilisateur"""
+
     id: int
     username: str
     email: str
@@ -152,19 +166,20 @@ class UserResponse(BaseModel):
     total_words: int
     total_playlists: int
     created_at: datetime
-    
+
     @computed_field
     @property
     def credits_remaining(self) -> int:
         """Alias pour compatibilité frontend"""
         return self.credits
-    
+
     class Config:
         from_attributes = True
 
 
 class TokenResponse(BaseModel):
     """Schéma de réponse avec tokens JWT"""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -173,17 +188,20 @@ class TokenResponse(BaseModel):
 
 class AuthUrlResponse(BaseModel):
     """Schéma de réponse pour l'URL d'auth Google"""
+
     auth_url: str
 
 
 class MessageResponse(BaseModel):
     """Schéma de réponse simple avec message"""
+
     success: bool
     message: str
 
 
 class QuotaResponse(BaseModel):
     """Schéma de réponse pour les quotas"""
+
     credits: int
     monthly_credits: int
     credits_remaining: int

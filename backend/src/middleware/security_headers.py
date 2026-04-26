@@ -33,13 +33,13 @@ ALLOWED_CSP_DOMAINS = [
     "'self'",
     "https://www.deepsightsynthesis.com",
     "https://deepsightsynthesis.com",
-    "https://accounts.google.com",        # Google OAuth
-    "https://www.googleapis.com",          # Google APIs
-    "https://api.stripe.com",             # Stripe
-    "https://js.stripe.com",             # Stripe JS
-    "https://*.sentry.io",               # Sentry
-    "https://i.ytimg.com",               # YouTube thumbnails
-    "https://img.youtube.com",           # YouTube images
+    "https://accounts.google.com",  # Google OAuth
+    "https://www.googleapis.com",  # Google APIs
+    "https://api.stripe.com",  # Stripe
+    "https://js.stripe.com",  # Stripe JS
+    "https://*.sentry.io",  # Sentry
+    "https://i.ytimg.com",  # YouTube thumbnails
+    "https://img.youtube.com",  # YouTube images
 ]
 
 # Paths exclus des headers de sécurité (documentation, health)
@@ -50,15 +50,16 @@ EXCLUDED_PATHS = ["/docs", "/redoc", "/openapi.json"]
 # 🔒 MIDDLEWARE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     Ajoute des headers HTTP de sécurité à toutes les réponses.
-    
+
     Compatible avec:
     - Frontend React (SPA)
-    - Mobile Expo (React Native)  
+    - Mobile Expo (React Native)
     - Extension Chrome
-    
+
     En développement, les restrictions CSP sont assouplies.
     """
 
@@ -69,33 +70,25 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     def _build_headers(self) -> dict[str, str]:
         """Construit les headers de sécurité selon l'environnement."""
-        
+
         headers = {
             # ── Anti-MIME Sniffing ────────────────────────────────────
             # Empêche le navigateur de deviner le type MIME
             "X-Content-Type-Options": "nosniff",
-            
             # ── Anti-Clickjacking ─────────────────────────────────────
             # Interdit l'embedding dans des iframes tierces
             "X-Frame-Options": "DENY",
-            
             # ── Legacy XSS Filter ─────────────────────────────────────
             # Active le filtre XSS intégré aux vieux navigateurs
             "X-XSS-Protection": "1; mode=block",
-            
             # ── Referrer Policy ───────────────────────────────────────
             # Limite les infos envoyées dans le header Referer
             "Referrer-Policy": "strict-origin-when-cross-origin",
-            
             # ── Permissions Policy ────────────────────────────────────
             # Restreint l'accès aux APIs sensibles du navigateur
             "Permissions-Policy": (
-                "camera=(), "
-                "microphone=(), "
-                "geolocation=(), "
-                "interest-cohort=()"  # Bloque FLoC/Topics API
+                "camera=(), microphone=(), geolocation=(), interest-cohort=()"  # Bloque FLoC/Topics API
             ),
-            
             # ── Cache Control pour les réponses API ───────────────────
             "Cache-Control": "no-store, no-cache, must-revalidate, private",
             "Pragma": "no-cache",
@@ -127,15 +120,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         else:
             # Dev : CSP permissif pour le debugging
             headers["Content-Security-Policy"] = (
-                "default-src 'self' 'unsafe-inline' 'unsafe-eval' *; "
-                "frame-ancestors 'self'"
+                "default-src 'self' 'unsafe-inline' 'unsafe-eval' *; frame-ancestors 'self'"
             )
 
         return headers
 
     async def dispatch(self, request: Request, call_next) -> Response:
         """Ajoute les headers de sécurité à chaque réponse."""
-        
+
         # Skip pour docs Swagger / healthcheck
         path = request.url.path
         if any(path.startswith(excluded) for excluded in self.exclude_paths):

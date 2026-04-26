@@ -8,8 +8,18 @@ import os
 import hashlib
 from typing import AsyncGenerator
 from sqlalchemy import (
-    Column, Integer, String, Text, Float, Boolean, DateTime, Date,
-    ForeignKey, Index, UniqueConstraint, text
+    Column,
+    Integer,
+    String,
+    Text,
+    Float,
+    Boolean,
+    DateTime,
+    Date,
+    ForeignKey,
+    Index,
+    UniqueConstraint,
+    text,
 )
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base, relationship
@@ -65,12 +75,14 @@ _engine_kwargs = {
 # Chaque connexion asyncpg consomme ~5-10MB RAM
 # pool_size=5 + max_overflow=3 = 8 max = ~60MB (vs 30 × 7MB = 210MB avant)
 if DATABASE_URL.startswith("postgresql"):
-    _engine_kwargs.update({
-        "pool_size": int(os.environ.get("DB_POOL_SIZE", "5")),
-        "max_overflow": int(os.environ.get("DB_MAX_OVERFLOW", "3")),
-        "pool_timeout": 30,
-        "pool_recycle": 1800,  # Recycler toutes les 30min (vs 1h) pour libérer les connexions idle
-    })
+    _engine_kwargs.update(
+        {
+            "pool_size": int(os.environ.get("DB_POOL_SIZE", "5")),
+            "max_overflow": int(os.environ.get("DB_MAX_OVERFLOW", "3")),
+            "pool_timeout": 30,
+            "pool_recycle": 1800,  # Recycler toutes les 30min (vs 1h) pour libérer les connexions idle
+        }
+    )
 
     # Configurer SSL pour asyncpg via connect_args
     if _use_ssl:
@@ -80,12 +92,7 @@ if DATABASE_URL.startswith("postgresql"):
 engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
 # Session factory avec autoflush désactivé pour meilleures performances
-async_session_maker = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autoflush=False
-)
+async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
 
 # Base pour les modèles
 Base = declarative_base()
@@ -94,62 +101,64 @@ Base = declarative_base()
 # 📊 MODÈLES (Tables)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class User(Base):
     """Table des utilisateurs"""
+
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(100), unique=True, nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    
+
     # Vérification email
     email_verified = Column(Boolean, default=False)
     verification_code = Column(String(10))
     verification_expires = Column(DateTime)
-    
+
     # Reset password
     reset_code = Column(String(100))
     reset_expires = Column(DateTime)
-    
+
     # Plan et crédits
     plan = Column(String(20), default="free")
     credits = Column(Integer, default=10)
-    
+
     # Admin
     is_admin = Column(Boolean, default=False)
-    
+
     # Stripe
     stripe_customer_id = Column(String(100))
     stripe_subscription_id = Column(String(100))
-    
+
     # Google OAuth
     google_id = Column(String(100))
 
     # Clés API utilisateur (optionnel)
     mistral_key = Column(String(255))
     supadata_key = Column(String(255))
-    
+
     # Préférences
     default_lang = Column(String(5), default="fr")
     default_mode = Column(String(20), default="standard")
     default_model = Column(String(50), default="mistral-small-2603")
-    avatar_url = Column(Text) 
-    
+    avatar_url = Column(Text)
+
     # Stats
     total_videos = Column(Integer, default=0)
     total_words = Column(Integer, default=0)
     total_playlists = Column(Integer, default=0)
-    
+
     # Sessions
     session_token = Column(String(255))
     last_login = Column(DateTime)
-    
+
     # 🔑 API Keys (Plan Expert)
     api_key_hash = Column(String(64), unique=True, index=True)  # SHA256 hash
     api_key_created_at = Column(DateTime)
     api_key_last_used = Column(DateTime)
-    
+
     # Voice
     voice_bonus_seconds = Column(Integer, default=0)
     voice_preferences = Column(Text, default=None)  # JSON blob: voice_id, speed, stability, etc.
@@ -173,6 +182,7 @@ class User(Base):
 
 class Summary(Base):
     """Table des résumés/analyses de vidéos"""
+
     __tablename__ = "summaries"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -221,8 +231,8 @@ class Summary(Base):
 
     # 🔬 Deep Research (Mar 2026)
     deep_research = Column(Boolean, default=False, server_default="false")
-    enrichment_sources = Column(Text, nullable=True)   # JSON: [{title, url, snippet}]
-    enrichment_data = Column(Text, nullable=True)       # JSON: {level, sources, enriched_at}
+    enrichment_sources = Column(Text, nullable=True)  # JSON: [{title, url, snippet}]
+    enrichment_data = Column(Text, nullable=True)  # JSON: {level, sources, enriched_at}
 
     # Hierarchical Digest Pipeline (Feb 2026)
     full_digest = Column(Text, nullable=True)  # Assembled full digest from chunk digests (~6-10K chars)
@@ -247,37 +257,39 @@ class Summary(Base):
     # Relations
     user = relationship("User", back_populates="summaries")
     chat_messages = relationship("ChatMessage", back_populates="summary", cascade="all, delete-orphan")
-    chunks = relationship("VideoChunk", back_populates="summary", cascade="all, delete-orphan", order_by="VideoChunk.chunk_index")
+    chunks = relationship(
+        "VideoChunk", back_populates="summary", cascade="all, delete-orphan", order_by="VideoChunk.chunk_index"
+    )
 
     __table_args__ = (
-        Index('idx_summaries_user', 'user_id'),
-        Index('idx_summaries_playlist', 'playlist_id'),
+        Index("idx_summaries_user", "user_id"),
+        Index("idx_summaries_playlist", "playlist_id"),
         # 🆕 Indexes optimisés pour les requêtes fréquentes
-        Index('idx_summaries_user_created', 'user_id', 'created_at'),  # Pour history pagination
-        Index('idx_summaries_user_video', 'user_id', 'video_id'),      # Pour duplicate check
-        Index('idx_summaries_user_favorite', 'user_id', 'is_favorite'), # Pour filtrage favoris
-        Index('idx_summaries_user_category', 'user_id', 'category'),   # Pour filtrage catégorie
+        Index("idx_summaries_user_created", "user_id", "created_at"),  # Pour history pagination
+        Index("idx_summaries_user_video", "user_id", "video_id"),  # Pour duplicate check
+        Index("idx_summaries_user_favorite", "user_id", "is_favorite"),  # Pour filtrage favoris
+        Index("idx_summaries_user_category", "user_id", "category"),  # Pour filtrage catégorie
     )
 
 
 class DailyQuota(Base):
     """Table des quotas journaliers"""
+
     __tablename__ = "daily_quotas"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     quota_date = Column(String(10), nullable=False)  # YYYY-MM-DD
     videos_used = Column(Integer, default=0)
-    
-    __table_args__ = (
-        Index('idx_daily_quota_user_date', 'user_id', 'quota_date', unique=True),
-    )
+
+    __table_args__ = (Index("idx_daily_quota_user_date", "user_id", "quota_date", unique=True),)
 
 
 class CreditTransaction(Base):
     """Table des transactions de crédits"""
+
     __tablename__ = "credit_transactions"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Integer, nullable=False)
@@ -295,6 +307,7 @@ class VideoChunk(Base):
     Chaque vidéo est découpée en chunks temporels, résumés individuellement,
     puis assemblés en un full_digest complet stocké dans Summary.full_digest.
     """
+
     __tablename__ = "video_chunks"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -312,6 +325,7 @@ class VideoChunk(Base):
 
 class VideoComparison(Base):
     """Table des comparaisons entre deux vidéos (VS Mode)"""
+
     __tablename__ = "video_comparisons"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -324,35 +338,34 @@ class VideoComparison(Base):
     credits_used = Column(Integer, default=0)
     created_at = Column(DateTime, default=func.now())
 
-    __table_args__ = (
-        Index('idx_comparisons_user', 'user_id'),
-    )
+    __table_args__ = (Index("idx_comparisons_user", "user_id"),)
 
 
 class PlaylistAnalysis(Base):
     """Table des analyses de playlists"""
+
     __tablename__ = "playlist_analyses"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     playlist_id = Column(String(100), nullable=False)
     playlist_url = Column(String(500))
     playlist_title = Column(String(500))
-    
+
     # Stats
     num_videos = Column(Integer)
     num_processed = Column(Integer, default=0)
     total_duration = Column(Integer)
     total_words = Column(Integer)
-    
+
     # Résultats
     meta_analysis = Column(Text)
     all_summaries = Column(Text)  # JSON
-    
+
     # Status
     status = Column(String(20), default="pending")  # pending, processing, completed, failed
     error_message = Column(Text)
-    
+
     # Timestamps
     started_at = Column(DateTime)
     completed_at = Column(DateTime)
@@ -361,48 +374,47 @@ class PlaylistAnalysis(Base):
 
 class ChatMessage(Base):
     """Table des messages de chat - v5.0 avec fact-checking"""
+
     __tablename__ = "chat_messages"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     summary_id = Column(Integer, ForeignKey("summaries.id"), nullable=False, index=True)
     role = Column(String(20), nullable=False)  # user, assistant
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=func.now())
-    
+
     # 🆕 v5.0: Métadonnées pour fact-checking et sources
     web_search_used = Column(Boolean, default=False)
     fact_checked = Column(Boolean, default=False)
     sources_json = Column(Text, nullable=True)  # JSON des sources web
     enrichment_level = Column(String(20), nullable=True)  # none, light, full, deep
-    
+
     # Relations
     user = relationship("User", back_populates="chat_messages")
     summary = relationship("Summary", back_populates="chat_messages")
-    
-    __table_args__ = (
-        Index('idx_chat_messages_summary', 'summary_id'),
-    )
+
+    __table_args__ = (Index("idx_chat_messages_summary", "summary_id"),)
 
 
 class ChatQuota(Base):
     """Table des quotas de chat journaliers"""
+
     __tablename__ = "chat_quotas"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     quota_date = Column(String(10), nullable=False)
     daily_count = Column(Integer, default=0)
-    
-    __table_args__ = (
-        Index('idx_chat_quotas_user_date', 'user_id', 'quota_date', unique=True),
-    )
+
+    __table_args__ = (Index("idx_chat_quotas_user_date", "user_id", "quota_date", unique=True),)
 
 
 class PlaylistChatMessage(Base):
     """Table des messages de chat pour playlists"""
+
     __tablename__ = "playlist_chat_messages"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     playlist_id = Column(String(100), nullable=False, index=True)
@@ -413,23 +425,23 @@ class PlaylistChatMessage(Base):
 
 class WebSearchUsage(Base):
     """Table d'usage de la recherche web"""
+
     __tablename__ = "web_search_usage"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     month_year = Column(String(7), nullable=False)  # YYYY-MM
     search_count = Column(Integer, default=0)
     last_search_at = Column(DateTime)
-    
-    __table_args__ = (
-        Index('idx_web_search_usage', 'user_id', 'month_year', unique=True),
-    )
+
+    __table_args__ = (Index("idx_web_search_usage", "user_id", "month_year", unique=True),)
 
 
 class AdminLog(Base):
     """Table des logs admin"""
+
     __tablename__ = "admin_logs"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     admin_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     action = Column(String(100), nullable=False)
@@ -440,8 +452,9 @@ class AdminLog(Base):
 
 class ApiStatus(Base):
     """Table du status des APIs externes"""
+
     __tablename__ = "api_status"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     api_name = Column(String(50), unique=True, nullable=False)
     status = Column(String(20), default="ok")
@@ -454,8 +467,9 @@ class ApiStatus(Base):
 
 class TaskStatus(Base):
     """Table pour le tracking des tâches de fond (analyses longues)"""
+
     __tablename__ = "task_status"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     task_id = Column(String(100), unique=True, nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -473,26 +487,26 @@ class ApiUsage(Base):
     📊 Tracking de l'utilisation de l'API REST publique (Expert Plan)
     Permet de suivre les quotas journaliers et les crédits consommés
     """
+
     __tablename__ = "api_usage"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     date = Column(Date, nullable=False, index=True)  # Date du jour (pour quotas journaliers)
-    request_count = Column(Integer, default=0)       # Nombre de requêtes ce jour
-    credits_used = Column(Integer, default=0)        # Crédits consommés via API
-    error_count = Column(Integer, default=0)         # Nombre d'erreurs (pour monitoring)
-    
+    request_count = Column(Integer, default=0)  # Nombre de requêtes ce jour
+    credits_used = Column(Integer, default=0)  # Crédits consommés via API
+    error_count = Column(Integer, default=0)  # Nombre d'erreurs (pour monitoring)
+
     # Relation avec User
     user = relationship("User", back_populates="api_usage")
-    
+
     # Contrainte unique: un seul enregistrement par user/jour
-    __table_args__ = (
-        UniqueConstraint('user_id', 'date', name='uix_api_usage_user_date'),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "date", name="uix_api_usage_user_date"),)
 
 
 class PushToken(Base):
     """Push notification tokens (Expo Push Service)"""
+
     __tablename__ = "push_tokens"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -504,13 +518,14 @@ class PushToken(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     __table_args__ = (
-        Index('idx_push_tokens_user', 'user_id'),
-        Index('idx_push_tokens_token', 'token', unique=True),
+        Index("idx_push_tokens_user", "user_id"),
+        Index("idx_push_tokens_token", "token", unique=True),
     )
 
 
 class AnalyticsEvent(Base):
     """📊 Analytics events from mobile/web/extension clients"""
+
     __tablename__ = "analytics_events"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -524,10 +539,10 @@ class AnalyticsEvent(Base):
     created_at = Column(DateTime, default=func.now())
 
     __table_args__ = (
-        Index('idx_analytics_event_name', 'event_name'),
-        Index('idx_analytics_user_id', 'user_id'),
-        Index('idx_analytics_timestamp', 'event_timestamp'),
-        Index('idx_analytics_platform', 'platform'),
+        Index("idx_analytics_event_name", "event_name"),
+        Index("idx_analytics_user_id", "user_id"),
+        Index("idx_analytics_timestamp", "event_timestamp"),
+        Index("idx_analytics_platform", "platform"),
     )
 
 
@@ -536,6 +551,7 @@ class AcademicPaper(Base):
     📚 Academic papers linked to video analyses
     Caches papers from Semantic Scholar, OpenAlex, and arXiv
     """
+
     __tablename__ = "academic_papers"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -567,8 +583,8 @@ class AcademicPaper(Base):
     created_at = Column(DateTime, default=func.now())
 
     __table_args__ = (
-        Index('idx_academic_papers_summary', 'summary_id'),
-        Index('idx_academic_papers_doi', 'doi'),
+        Index("idx_academic_papers_summary", "summary_id"),
+        Index("idx_academic_papers_doi", "doi"),
     )
 
 
@@ -578,6 +594,7 @@ class TranscriptCache(Base):
     Un seul transcript par video_id, partagé entre tous les utilisateurs.
     Le contenu est stocké dans TranscriptCacheChunk (1+ chunks).
     """
+
     __tablename__ = "transcript_cache"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -597,14 +614,14 @@ class TranscriptCache(Base):
     view_count = Column(Integer)
     like_count = Column(Integer)
     comment_count = Column(Integer)
-    upload_date = Column(String(20))          # YYYYMMDD
-    description = Column(Text)                # truncated 2000 chars
-    tags_json = Column(Text)                  # JSON array
-    language = Column(String(10))             # video language (≠ transcript lang)
+    upload_date = Column(String(20))  # YYYYMMDD
+    description = Column(Text)  # truncated 2000 chars
+    tags_json = Column(Text)  # JSON array
+    language = Column(String(10))  # video language (≠ transcript lang)
     channel_id = Column(String(100))
     channel_url = Column(Text)
     channel_follower_count = Column(Integer)  # subscribers
-    metadata_json = Column(Text)              # raw yt-dlp dump (sans formats/thumbnails)
+    metadata_json = Column(Text)  # raw yt-dlp dump (sans formats/thumbnails)
     metadata_enriched_at = Column(DateTime)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -618,8 +635,8 @@ class TranscriptCache(Base):
     )
 
     __table_args__ = (
-        Index('idx_transcript_cache_video', 'video_id'),
-        Index('idx_transcript_cache_platform', 'platform'),
+        Index("idx_transcript_cache_video", "video_id"),
+        Index("idx_transcript_cache_platform", "platform"),
     )
 
 
@@ -629,6 +646,7 @@ class TranscriptCacheChunk(Base):
     YouTube long (3h30+) → plusieurs chunks de ~500K chars.
     TikTok (max 15min) → toujours 1 seul chunk.
     """
+
     __tablename__ = "transcript_cache_chunks"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -640,8 +658,8 @@ class TranscriptCacheChunk(Base):
     cache_entry = relationship("TranscriptCache", back_populates="chunks")
 
     __table_args__ = (
-        UniqueConstraint('cache_id', 'chunk_index', name='uix_cache_chunk_index'),
-        Index('idx_transcript_cache_chunks_cache', 'cache_id'),
+        UniqueConstraint("cache_id", "chunk_index", name="uix_cache_chunk_index"),
+        Index("idx_transcript_cache_chunks_cache", "cache_id"),
     )
 
 
@@ -650,10 +668,13 @@ class TranscriptEmbedding(Base):
     🔍 Vector embeddings for semantic search.
     Stored as JSON text (no pgvector) for Railway compatibility.
     """
+
     __tablename__ = "transcript_embeddings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    video_id = Column(String(100), ForeignKey("transcript_cache.video_id", ondelete="CASCADE"), nullable=False, index=True)
+    video_id = Column(
+        String(100), ForeignKey("transcript_cache.video_id", ondelete="CASCADE"), nullable=False, index=True
+    )
     chunk_index = Column(Integer, nullable=False, default=0)
     embedding_json = Column(Text, nullable=False)  # JSON array of 1024 floats
     text_preview = Column(String(500))
@@ -661,13 +682,14 @@ class TranscriptEmbedding(Base):
     created_at = Column(DateTime, default=func.now())
 
     __table_args__ = (
-        UniqueConstraint('video_id', 'chunk_index', name='uix_embedding_video_chunk'),
-        Index('idx_transcript_embeddings_video', 'video_id'),
+        UniqueConstraint("video_id", "chunk_index", name="uix_embedding_video_chunk"),
+        Index("idx_transcript_embeddings_video", "video_id"),
     )
 
 
 class DebateAnalysis(Base):
     """Table des débats IA — confrontation de perspectives vidéo"""
+
     __tablename__ = "debate_analyses"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -699,7 +721,9 @@ class DebateAnalysis(Base):
     debate_summary = Column(Text)
 
     # Métadonnées
-    status = Column(String(20), default="pending")  # pending/searching/analyzing_b/comparing/fact_checking/completed/failed
+    status = Column(
+        String(20), default="pending"
+    )  # pending/searching/analyzing_b/comparing/fact_checking/completed/failed
     mode = Column(String(10), default="auto")  # auto / manual
     platform = Column(String(20), default="web")
     model_used = Column(String(50))
@@ -714,13 +738,14 @@ class DebateAnalysis(Base):
     chat_messages = relationship("DebateChatMessage", back_populates="debate", cascade="all, delete-orphan")
 
     __table_args__ = (
-        Index('idx_debate_analyses_user', 'user_id'),
-        Index('idx_debate_analyses_user_created', 'user_id', 'created_at'),
+        Index("idx_debate_analyses_user", "user_id"),
+        Index("idx_debate_analyses_user_created", "user_id", "created_at"),
     )
 
 
 class DebateChatMessage(Base):
     """Messages de chat dans le contexte d'un débat"""
+
     __tablename__ = "debate_chat_messages"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -733,13 +758,12 @@ class DebateChatMessage(Base):
     # Relations
     debate = relationship("DebateAnalysis", back_populates="chat_messages")
 
-    __table_args__ = (
-        Index('idx_debate_chat_messages_debate', 'debate_id'),
-    )
+    __table_args__ = (Index("idx_debate_chat_messages_debate", "debate_id"),)
 
 
 class SharedAnalysis(Base):
     """Table des analyses partagées (liens publics)"""
+
     __tablename__ = "shared_analyses"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -755,16 +779,17 @@ class SharedAnalysis(Base):
     created_at = Column(DateTime, default=func.now())
 
     __table_args__ = (
-        Index('idx_shared_analyses_token', 'share_token'),
-        Index('idx_shared_analyses_user_video', 'user_id', 'video_id'),
+        Index("idx_shared_analyses_token", "share_token"),
+        Index("idx_shared_analyses_user_video", "user_id", "video_id"),
     )
 
 
 class VoiceSession(Base):
     """🎙️ Sessions de conversation vocale avec l'IA (ElevenLabs)"""
+
     __tablename__ = "voice_sessions"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(__import__('uuid').uuid4()))
+    id = Column(String(36), primary_key=True, default=lambda: str(__import__("uuid").uuid4()))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Exactement UN des deux doit être non-null (XOR validé côté application)
@@ -799,6 +824,7 @@ class VoiceSession(Base):
 
 class VoiceQuota(Base):
     """🎙️ Quotas mensuels de conversation vocale"""
+
     __tablename__ = "voice_quotas"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -819,8 +845,10 @@ class VoiceQuota(Base):
 # 📚 GAMIFICATION & SPACED REPETITION (Mar 2026)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class FlashcardReview(Base):
     """Stocke chaque review FSRS d'une flashcard par un utilisateur"""
+
     __tablename__ = "flashcard_reviews"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -847,13 +875,14 @@ class FlashcardReview(Base):
     user = relationship("User", back_populates="flashcard_reviews")
 
     __table_args__ = (
-        Index('idx_review_user_summary', 'user_id', 'summary_id'),
-        Index('idx_review_due', 'user_id', 'due_date'),
+        Index("idx_review_user_summary", "user_id", "summary_id"),
+        Index("idx_review_due", "user_id", "due_date"),
     )
 
 
 class StudySession(Base):
     """Historique des sessions de révision"""
+
     __tablename__ = "study_sessions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -869,13 +898,12 @@ class StudySession(Base):
 
     user = relationship("User", back_populates="study_sessions")
 
-    __table_args__ = (
-        Index('idx_session_user_date', 'user_id', 'started_at'),
-    )
+    __table_args__ = (Index("idx_session_user_date", "user_id", "started_at"),)
 
 
 class UserStudyStats(Base):
     """Stats agrégées de gamification par utilisateur (singleton par user)"""
+
     __tablename__ = "user_study_stats"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -898,6 +926,7 @@ class UserStudyStats(Base):
 
 class Badge(Base):
     """Définitions des badges (statique, remplie au démarrage)"""
+
     __tablename__ = "badges"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -914,6 +943,7 @@ class Badge(Base):
 
 class UserBadge(Base):
     """Badges débloqués par un utilisateur"""
+
     __tablename__ = "user_badges"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -924,13 +954,12 @@ class UserBadge(Base):
     user = relationship("User", back_populates="user_badges")
     badge = relationship("Badge")
 
-    __table_args__ = (
-        UniqueConstraint('user_id', 'badge_id', name='uq_user_badge'),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "badge_id", name="uq_user_badge"),)
 
 
 class StudyDailyActivity(Base):
     """Pour le heat map (1 row par jour par user)"""
+
     __tablename__ = "study_daily_activities"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -942,14 +971,15 @@ class StudyDailyActivity(Base):
     time_seconds = Column(Integer, default=0)
 
     __table_args__ = (
-        UniqueConstraint('user_id', 'date', name='uq_daily_activity'),
-        Index('idx_daily_user_date', 'user_id', 'date'),
+        UniqueConstraint("user_id", "date", name="uq_daily_activity"),
+        Index("idx_daily_user_date", "user_id", "date"),
     )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTIONS DATABASE
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Dependency pour obtenir une session DB"""
@@ -961,13 +991,15 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
                 await session.close()
     except Exception as e:
         error_msg = str(e).lower()
-        if "password authentication" in error_msg or "could not connect" in error_msg or "connection refused" in error_msg:
+        if (
+            "password authentication" in error_msg
+            or "could not connect" in error_msg
+            or "connection refused" in error_msg
+        ):
             print(f"❌ Database connection failed: {e}", flush=True)
             from fastapi import HTTPException
-            raise HTTPException(
-                status_code=503,
-                detail="Database temporarily unavailable. Please try again later."
-            )
+
+            raise HTTPException(status_code=503, detail="Database temporarily unavailable. Please try again later.")
         raise
 
 
@@ -1247,7 +1279,7 @@ async def init_db():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all, checkfirst=True)
     except Exception as e:
-        print(f'⚠️ create_all warning (tables may already exist): {e}', flush=True)
+        print(f"⚠️ create_all warning (tables may already exist): {e}", flush=True)
 
     # Appliquer la migration CASCADE delete
     await run_cascade_migration()
@@ -1271,15 +1303,14 @@ def hash_password(password: str) -> str:
     """
     try:
         import bcrypt
+
         # Utiliser bcrypt pour un hashing sécurisé
         salt = bcrypt.gensalt(rounds=12)
-        return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+        return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
     except ImportError:
         # Fallback SHA256 si bcrypt non disponible
         print("⚠️ bcrypt not available, using SHA256 fallback", flush=True)
-        return hashlib.sha256(
-            (f"deepsight_v1_ocean_salt_{password}").encode()
-        ).hexdigest()
+        return hashlib.sha256((f"deepsight_v1_ocean_salt_{password}").encode()).hexdigest()
 
 
 def verify_password(password: str, password_hash: str) -> bool:
@@ -1294,40 +1325,38 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
     # Détection du type de hash
-    if password_hash.startswith('$2b$') or password_hash.startswith('$2a$'):
+    if password_hash.startswith("$2b$") or password_hash.startswith("$2a$"):
         # Hash bcrypt
         try:
             import bcrypt
-            return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+
+            return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
         except ImportError:
             print("⚠️ bcrypt not available for verification", flush=True)
             return False
     else:
         # Ancien hash SHA256 - vérification et migration recommandée
-        legacy_hash = hashlib.sha256(
-            (f"deepsight_v1_ocean_salt_{password}").encode()
-        ).hexdigest()
+        legacy_hash = hashlib.sha256((f"deepsight_v1_ocean_salt_{password}").encode()).hexdigest()
         return legacy_hash == password_hash
 
 
 async def create_admin_if_not_exists():
     """Crée l'utilisateur admin s'il n'existe pas"""
     from sqlalchemy import select
-    
+
     async with async_session_maker() as session:
         # Vérifier si l'admin existe
         # scalars().first() au lieu de scalar_one_or_none() pour éviter
         # "Multiple rows found" si username ET email matchent des users différents
         result = await session.execute(
-            select(User).where(
-                (User.username == ADMIN_CONFIG["ADMIN_USERNAME"]) |
-                (User.email == ADMIN_CONFIG["ADMIN_EMAIL"])
-            ).order_by(User.id)
+            select(User)
+            .where((User.username == ADMIN_CONFIG["ADMIN_USERNAME"]) | (User.email == ADMIN_CONFIG["ADMIN_EMAIL"]))
+            .order_by(User.id)
         )
         existing = result.scalars().first()
-        
+
         correct_hash = hash_password(ADMIN_CONFIG["ADMIN_PASSWORD"])
-        
+
         if not existing:
             # Créer l'admin
             admin = User(
@@ -1337,7 +1366,7 @@ async def create_admin_if_not_exists():
                 email_verified=True,
                 plan="unlimited",
                 is_admin=True,
-                credits=999999
+                credits=999999,
             )
             session.add(admin)
             await session.commit()
@@ -1348,4 +1377,3 @@ async def create_admin_if_not_exists():
                 existing.password_hash = correct_hash
                 existing.is_admin = True
                 existing.plan = "unlimited"
-                

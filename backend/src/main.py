@@ -6,6 +6,7 @@
 ║  🆕 v3.3: Logging structuré + Middlewares de monitoring                            ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,19 +23,30 @@ import sys
 try:
     from core.logging import logger, set_request_context
     from core.middleware import LoggingMiddleware, PerformanceMiddleware
+
     LOGGING_AVAILABLE = True
     logger.info("Logging module initialized")
 except ImportError as e:
     LOGGING_AVAILABLE = False
     logger.warning(f"⚠️ Logging module not available: {e}")
-    
+
     # Fallback logger
     class FallbackLogger:
-        def info(self, msg, **kwargs): logger.info(f"ℹ️ {msg}")
-        def warning(self, msg, **kwargs): logger.warning(f"⚠️ {msg}")
-        def error(self, msg, **kwargs): logger.error(f"❌ {msg}")
-        def debug(self, msg, **kwargs): logger.info(f"🔍 {msg}")
-        def exception(self, msg, **kwargs): logger.error(f"💥 {msg}")
+        def info(self, msg, **kwargs):
+            logger.info(f"ℹ️ {msg}")
+
+        def warning(self, msg, **kwargs):
+            logger.warning(f"⚠️ {msg}")
+
+        def error(self, msg, **kwargs):
+            logger.error(f"❌ {msg}")
+
+        def debug(self, msg, **kwargs):
+            logger.info(f"🔍 {msg}")
+
+        def exception(self, msg, **kwargs):
+            logger.error(f"💥 {msg}")
+
     logger = FallbackLogger()
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -43,6 +55,7 @@ except ImportError as e:
 
 try:
     from core.sentry import init_sentry, SENTRY_ENABLED
+
     sentry_initialized = init_sentry()
     if sentry_initialized:
         logger.info("Sentry error tracking enabled")
@@ -50,14 +63,14 @@ except ImportError:
     # Fallback sur l'ancienne méthode
     SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
     ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
-    
+
     if SENTRY_DSN:
         try:
             import sentry_sdk
             from sentry_sdk.integrations.fastapi import FastApiIntegration
             from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
             from sentry_sdk.integrations.asyncio import AsyncioIntegration
-            
+
             sentry_sdk.init(
                 dsn=SENTRY_DSN,
                 environment=ENVIRONMENT,
@@ -95,6 +108,7 @@ from demo.router import router as demo_router
 # 🎯 GEO (Generative Engine Optimization)
 try:
     from geo.router import router as geo_router
+
     GEO_ROUTER_AVAILABLE = True
 except ImportError as e:
     GEO_ROUTER_AVAILABLE = False
@@ -105,6 +119,7 @@ from core.http_client import init_http_client, close_http_client
 # 🔒 Security Headers
 try:
     from middleware.security_headers import SecurityHeadersMiddleware
+
     SECURITY_HEADERS_AVAILABLE = True
 except ImportError as e:
     SECURITY_HEADERS_AVAILABLE = False
@@ -114,6 +129,7 @@ except ImportError as e:
 try:
     from middleware.rate_limiter import RateLimitMiddleware, init_rate_limiter
     from core.config import RATE_LIMIT_ENABLED
+
     RATE_LIMITER_AVAILABLE = RATE_LIMIT_ENABLED
     if not RATE_LIMIT_ENABLED:
         logger.info("ℹ️ Rate limiter disabled via RATE_LIMIT_ENABLED=false")
@@ -123,6 +139,7 @@ except ImportError as e:
 
 try:
     from core.cache import init_cache, cache_service
+
     CACHE_AVAILABLE = True
 except ImportError as e:
     CACHE_AVAILABLE = False
@@ -131,6 +148,7 @@ except ImportError as e:
 # ✅ NOUVEAU: Import du Profile router (avec fallback si absent)
 try:
     from profile.router import router as profile_router
+
     PROFILE_ROUTER_AVAILABLE = True
 except ImportError as e:
     PROFILE_ROUTER_AVAILABLE = False
@@ -139,6 +157,7 @@ except ImportError as e:
 # 🌻 NOUVEAU: Import du Tournesol proxy router
 try:
     from tournesol.router import router as tournesol_router
+
     TOURNESOL_ROUTER_AVAILABLE = True
 except ImportError as e:
     TOURNESOL_ROUTER_AVAILABLE = False
@@ -147,6 +166,7 @@ except ImportError as e:
 # 🎙️ TTS router (Text-to-Speech for summaries)
 try:
     from tts.router import router as tts_router
+
     TTS_ROUTER_AVAILABLE = True
 except ImportError as e:
     TTS_ROUTER_AVAILABLE = False
@@ -155,6 +175,7 @@ except ImportError as e:
 # 📊 NOUVEAU: Import du Usage router (statistiques)
 try:
     from usage.router import router as usage_router
+
     USAGE_ROUTER_AVAILABLE = True
 except ImportError:
     USAGE_ROUTER_AVAILABLE = False
@@ -162,6 +183,7 @@ except ImportError:
 # 🔔 NOUVEAU: Import du Notifications router (SSE)
 try:
     from notifications.router import router as notifications_router
+
     NOTIFICATIONS_ROUTER_AVAILABLE = True
 except ImportError as e:
     NOTIFICATIONS_ROUTER_AVAILABLE = False
@@ -170,6 +192,7 @@ except ImportError as e:
 # 🔑 NOUVEAU: Import du Public API router (Plan Expert)
 try:
     from api_public.router import router as api_public_router
+
     API_PUBLIC_ROUTER_AVAILABLE = True
 except ImportError as e:
     API_PUBLIC_ROUTER_AVAILABLE = False
@@ -178,6 +201,7 @@ except ImportError as e:
 # 🧠 NOUVEAU: Import du Words router ("Le Saviez-Vous")
 try:
     from words.router import router as words_router
+
     WORDS_ROUTER_AVAILABLE = True
 except ImportError as e:
     WORDS_ROUTER_AVAILABLE = False
@@ -186,6 +210,7 @@ except ImportError as e:
 # 📚 NOUVEAU: Study router (mobile-compatible study tools)
 try:
     from study.router import router as study_router
+
     STUDY_ROUTER_AVAILABLE = True
 except ImportError as e:
     STUDY_ROUTER_AVAILABLE = False
@@ -194,6 +219,7 @@ except ImportError as e:
 # 📦 NOUVEAU: Batch router (analyses en lot - API v2)
 try:
     from batch.router import router as batch_router
+
     BATCH_ROUTER_AVAILABLE = True
 except ImportError as e:
     BATCH_ROUTER_AVAILABLE = False
@@ -202,6 +228,7 @@ except ImportError as e:
 # 📚 NOUVEAU: Import du Academic router (Sources Académiques)
 try:
     from academic.router import router as academic_router
+
     ACADEMIC_ROUTER_AVAILABLE = True
 except ImportError as e:
     ACADEMIC_ROUTER_AVAILABLE = False
@@ -211,6 +238,7 @@ except ImportError as e:
 try:
     from monitoring.router import router as monitoring_router, set_startup_time
     from monitoring.scheduler import monitoring_job
+
     MONITORING_AVAILABLE = True
 except ImportError as e:
     MONITORING_AVAILABLE = False
@@ -219,6 +247,7 @@ except ImportError as e:
 # 📬 Contact router (contact form)
 try:
     from contact.router import router as contact_router
+
     CONTACT_AVAILABLE = True
 except ImportError as e:
     CONTACT_AVAILABLE = False
@@ -227,6 +256,7 @@ except ImportError as e:
 # 🔗 Share router (public analysis sharing)
 try:
     from share.router import router as share_router
+
     SHARE_ROUTER_AVAILABLE = True
 except ImportError as e:
     SHARE_ROUTER_AVAILABLE = False
@@ -235,6 +265,7 @@ except ImportError as e:
 # 📊 Analytics router (event tracking)
 try:
     from analytics.router import router as analytics_router
+
     ANALYTICS_ROUTER_AVAILABLE = True
 except ImportError as e:
     ANALYTICS_ROUTER_AVAILABLE = False
@@ -243,6 +274,7 @@ except ImportError as e:
 # 🔥 Trending router (most-analyzed videos)
 try:
     from trending.router import router as trending_router
+
     TRENDING_ROUTER_AVAILABLE = True
 except ImportError as e:
     TRENDING_ROUTER_AVAILABLE = False
@@ -251,6 +283,7 @@ except ImportError as e:
 # 🔍 Search router (semantic search)
 try:
     from search.router import router as search_router
+
     SEARCH_ROUTER_AVAILABLE = True
 except ImportError as e:
     SEARCH_ROUTER_AVAILABLE = False
@@ -259,6 +292,7 @@ except ImportError as e:
 # 🎭 Debate router (AI Debate — confrontation de perspectives)
 try:
     from debate.router import router as debate_router
+
     DEBATE_ROUTER_AVAILABLE = True
 except ImportError as e:
     DEBATE_ROUTER_AVAILABLE = False
@@ -267,6 +301,7 @@ except ImportError as e:
 # 🆚 Comparison router (Video VS Mode)
 try:
     from comparison.router import router as comparison_router
+
     COMPARISON_ROUTER_AVAILABLE = True
 except ImportError as e:
     COMPARISON_ROUTER_AVAILABLE = False
@@ -275,6 +310,7 @@ except ImportError as e:
 # 🎨 Keyword Images router (IA illustrations for "Le Saviez-Vous")
 try:
     from images.router import router as images_router
+
     IMAGES_ROUTER_AVAILABLE = True
 except Exception as e:
     IMAGES_ROUTER_AVAILABLE = False
@@ -283,6 +319,7 @@ except Exception as e:
 # 🩺 Health check v2 router (deep health checks)
 try:
     from health.router import router as health_v1_router
+
     HEALTH_V1_ROUTER_AVAILABLE = True
 except ImportError as e:
     HEALTH_V1_ROUTER_AVAILABLE = False
@@ -292,6 +329,7 @@ except ImportError as e:
 try:
     from services.video_content_cache import VideoContentCacheService
     from api.v1.cache import router as cache_router, set_cache_service
+
     VIDEO_CACHE_AVAILABLE = True
 except ImportError as e:
     VIDEO_CACHE_AVAILABLE = False
@@ -300,6 +338,7 @@ except ImportError as e:
 # 🎙️ Voice chat router (ElevenLabs Conversational AI)
 try:
     from voice.router import router as voice_router
+
     VOICE_ROUTER_AVAILABLE = True
 except ImportError as e:
     VOICE_ROUTER_AVAILABLE = False
@@ -308,6 +347,7 @@ except ImportError as e:
 # 🎮 Gamification router (XP, badges, streaks, heat-map)
 try:
     from gamification.router import router as gamification_router
+
     GAMIFICATION_ROUTER_AVAILABLE = True
 except ImportError as e:
     GAMIFICATION_ROUTER_AVAILABLE = False
@@ -316,6 +356,7 @@ except ImportError as e:
 # 📖 Study Review router (FSRS spaced-repetition)
 try:
     from study.review_router import router as study_review_router
+
     STUDY_REVIEW_ROUTER_AVAILABLE = True
 except ImportError as e:
     STUDY_REVIEW_ROUTER_AVAILABLE = False
@@ -324,6 +365,7 @@ except ImportError as e:
 # 📄 Documents router (Mistral OCR — PDF/Image analysis)
 try:
     from documents.router import router as documents_router
+
     DOCUMENTS_ROUTER_AVAILABLE = True
 except ImportError as e:
     DOCUMENTS_ROUTER_AVAILABLE = False
@@ -336,6 +378,7 @@ _video_cache: "VideoContentCacheService | None" = None
 def get_video_cache():
     """Getter pour le service de cache vidéo global."""
     return _video_cache
+
 
 VERSION = "3.8.1"  # Phase 4.1: Analytics, Store Review, Push i18n
 APP_NAME = "Deep Sight API"
@@ -390,20 +433,32 @@ async def run_auto_migrations():
     """
     from sqlalchemy import text
     from db.database import async_session_maker
-    
+
     migrations = [
         # Migration v5.0: Métadonnées chat pour fact-checking
-        ("chat_messages", "web_search_used", "ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS web_search_used BOOLEAN DEFAULT FALSE"),
-        ("chat_messages", "fact_checked", "ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS fact_checked BOOLEAN DEFAULT FALSE"),
+        (
+            "chat_messages",
+            "web_search_used",
+            "ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS web_search_used BOOLEAN DEFAULT FALSE",
+        ),
+        (
+            "chat_messages",
+            "fact_checked",
+            "ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS fact_checked BOOLEAN DEFAULT FALSE",
+        ),
         ("chat_messages", "sources_json", "ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sources_json TEXT"),
-        ("chat_messages", "enrichment_level", "ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS enrichment_level VARCHAR(20)"),
+        (
+            "chat_messages",
+            "enrichment_level",
+            "ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS enrichment_level VARCHAR(20)",
+        ),
     ]
-    
+
     # Migration spéciale: thumbnail_url VARCHAR(500) -> TEXT pour images base64
     alter_column_migrations = [
         ("summaries", "thumbnail_url", "ALTER TABLE summaries ALTER COLUMN thumbnail_url TYPE TEXT"),
     ]
-    
+
     async with async_session_maker() as session:
         for table, column, sql in migrations:
             try:
@@ -417,7 +472,7 @@ async def run_auto_migrations():
                     logger.info(f"  ℹ️ Already exists: {table}.{column}")
                 else:
                     logger.warning(f"  ⚠️ Migration warning for {table}.{column}: {e}")
-        
+
         # Migrations ALTER COLUMN (changement de type)
         for table, column, sql in alter_column_migrations:
             try:
@@ -433,12 +488,7 @@ async def run_auto_migrations():
 import asyncio
 
 # État de l'application pour healthcheck
-_app_state = {
-    "ready": False,
-    "db_initialized": False,
-    "migrations_completed": False,
-    "error": None
-}
+_app_state = {"ready": False, "db_initialized": False, "migrations_completed": False, "error": None}
 
 
 async def initialize_database_background():
@@ -465,9 +515,8 @@ async def initialize_database_background():
         if CACHE_AVAILABLE:
             redis_url = os.environ.get("REDIS_URL")
             await init_cache(redis_url)
-            logger.info("Cache service initialized", 
-                       backend="redis" if cache_service.is_redis else "memory")
-        
+            logger.info("Cache service initialized", backend="redis" if cache_service.is_redis else "memory")
+
         # Étape 4: Initialiser le rate limiter avec Redis si disponible
         if RATE_LIMITER_AVAILABLE:
             redis_url = os.environ.get("REDIS_URL")
@@ -480,10 +529,12 @@ async def initialize_database_background():
             if redis_url and CACHE_AVAILABLE and cache_service.is_redis:
                 redis_client = cache_service.backend.redis
                 from core.task_store import task_store, guest_limiter
+
                 await task_store.init_redis(redis_client)
                 await guest_limiter.init_redis(redis_client)
                 try:
                     from academic.arxiv_client import init_arxiv_redis
+
                     await init_arxiv_redis(redis_client)
                 except ImportError:
                     pass
@@ -496,6 +547,7 @@ async def initialize_database_background():
         # Étape 5: Démarrer la queue email (throttled Resend)
         try:
             from services.email_queue import email_queue
+
             email_queue.start()
             logger.info("Email queue started")
         except Exception as eq_err:
@@ -506,6 +558,7 @@ async def initialize_database_background():
         if VIDEO_CACHE_AVAILABLE:
             try:
                 from core.config import CACHE_CONFIG
+
                 redis_url = CACHE_CONFIG.get("REDIS_URL", "")
                 vps_db_url = CACHE_CONFIG.get("VPS_DATABASE_URL", "")
                 if redis_url and vps_db_url:
@@ -526,6 +579,7 @@ async def initialize_database_background():
         try:
             from gamification.badges import seed_badges
             from db.database import async_session_maker
+
             async with async_session_maker() as badge_session:
                 await seed_badges(badge_session)
             logger.info("Gamification badges seeded")
@@ -552,6 +606,7 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     import time as _time
+
     _startup_ts = _time.time()
     if MONITORING_AVAILABLE:
         set_startup_time(_startup_ts)
@@ -579,6 +634,7 @@ async def lifespan(app: FastAPI):
         async def _scheduled_backup():
             try:
                 from scripts.backup_db import run_backup
+
                 logger.info("Scheduled backup starting")
                 result = await run_backup(upload=True)
                 logger.info("Scheduled backup completed", status=result.get("status"))
@@ -599,6 +655,7 @@ async def lifespan(app: FastAPI):
         # 🩺 Health monitoring job (every 5 minutes)
         if MONITORING_AVAILABLE:
             from apscheduler.triggers.interval import IntervalTrigger
+
             scheduler.add_job(
                 monitoring_job,
                 IntervalTrigger(minutes=5),
@@ -618,12 +675,11 @@ async def lifespan(app: FastAPI):
                 lock_acquired = False
                 try:
                     from core.cache import cache_service
-                    if hasattr(cache_service, 'backend') and hasattr(cache_service.backend, 'redis'):
+
+                    if hasattr(cache_service, "backend") and hasattr(cache_service.backend, "redis"):
                         redis = cache_service.backend.redis
                         # SET NX EX = set-if-not-exists avec TTL 5min
-                        lock_acquired = await redis.set(
-                            "deepsight:lock:onboarding_emails", "1", nx=True, ex=300
-                        )
+                        lock_acquired = await redis.set("deepsight:lock:onboarding_emails", "1", nx=True, ex=300)
                     else:
                         lock_acquired = True  # Pas de Redis → fallback (idempotent)
                 except Exception:
@@ -633,8 +689,10 @@ async def lifespan(app: FastAPI):
                     return  # Un autre worker a déjà le lock
 
                 from db.database import get_session as _get_sess
+
                 async for db in _get_sess():
                     from services.onboarding_emails import process_onboarding_emails
+
                     stats = await process_onboarding_emails(db)
                     logger.info("Onboarding emails processed", extra=stats)
                     break
@@ -655,6 +713,7 @@ async def lifespan(app: FastAPI):
             """Generate 1 keyword image per hour."""
             try:
                 from images.keyword_images import generate_hourly_image
+
                 await generate_hourly_image()
             except Exception as e:
                 logger.error(f"Hourly image generation failed: {e}")
@@ -676,11 +735,10 @@ async def lifespan(app: FastAPI):
                 lock_acquired = False
                 try:
                     from core.cache import cache_service
-                    if hasattr(cache_service, 'backend') and hasattr(cache_service.backend, 'redis'):
+
+                    if hasattr(cache_service, "backend") and hasattr(cache_service.backend, "redis"):
                         redis = cache_service.backend.redis
-                        lock_acquired = await redis.set(
-                            "deepsight:lock:thumbnail_retry", "1", nx=True, ex=600
-                        )
+                        lock_acquired = await redis.set("deepsight:lock:thumbnail_retry", "1", nx=True, ex=600)
                     else:
                         lock_acquired = True
                 except Exception:
@@ -691,21 +749,27 @@ async def lifespan(app: FastAPI):
 
                 from db.database import get_session as _get_sess
                 from sqlalchemy import text
+
                 async for db in _get_sess():
-                    rows = (await db.execute(text(
-                        "SELECT id, video_id, title, thumbnail_url, category, platform "
-                        "FROM summaries "
-                        "WHERE thumbnail_url IS NULL "
-                        "OR thumbnail_url LIKE 'data:image/svg%' "
-                        "OR thumbnail_url = '' "
-                        "ORDER BY id DESC LIMIT 10"
-                    ))).fetchall()
+                    rows = (
+                        await db.execute(
+                            text(
+                                "SELECT id, video_id, title, thumbnail_url, category, platform "
+                                "FROM summaries "
+                                "WHERE thumbnail_url IS NULL "
+                                "OR thumbnail_url LIKE 'data:image/svg%' "
+                                "OR thumbnail_url = '' "
+                                "ORDER BY id DESC LIMIT 10"
+                            )
+                        )
+                    ).fetchall()
 
                     if not rows:
                         break
 
                     from storage.thumbnail_generator import ensure_thumbnail
                     import asyncio as _aio_sched
+
                     for row in rows:
                         try:
                             await ensure_thumbnail(
@@ -714,7 +778,9 @@ async def lifespan(app: FastAPI):
                                 title=row.title or "",
                                 category=row.category,
                                 platform=row.platform or "youtube",
-                                original_url=row.thumbnail_url if row.thumbnail_url and not row.thumbnail_url.startswith("data:") else None,
+                                original_url=row.thumbnail_url
+                                if row.thumbnail_url and not row.thumbnail_url.startswith("data:")
+                                else None,
                                 video_url=None,
                             )
                             await _aio_sched.sleep(5)
@@ -738,6 +804,7 @@ async def lifespan(app: FastAPI):
             """Pre-cache Tournesol trending recommendations."""
             try:
                 from tournesol.trending_cache import refresh_trending_cache
+
                 await refresh_trending_cache()
             except Exception as e:
                 logger.error(f"Trending cache refresh failed: {e}")
@@ -759,6 +826,7 @@ async def lifespan(app: FastAPI):
             """Pre-cache DeepSight most-analyzed videos."""
             try:
                 from trending.trending_precache import refresh_deepsight_trending
+
                 await refresh_deepsight_trending()
             except Exception as e:
                 logger.error(f"DeepSight trending pre-cache failed: {e}")
@@ -793,6 +861,7 @@ async def lifespan(app: FastAPI):
     # Stop email queue worker
     try:
         from services.email_queue import email_queue
+
         email_queue.stop()
         logger.info("Email queue stopped")
     except Exception:
@@ -810,6 +879,7 @@ async def lifespan(app: FastAPI):
     await close_db()
     logger.info("Application shutdown")
 
+
 app = FastAPI(
     title=APP_NAME,
     version=VERSION,
@@ -826,6 +896,7 @@ app = FastAPI(
 async def health_check():
     """Healthcheck liveness pour Hetzner/Docker."""
     from fastapi.responses import JSONResponse
+
     if not _app_state.get("ready", False):
         error = _app_state.get("error")
         return JSONResponse(
@@ -835,7 +906,7 @@ async def health_check():
                 "db_initialized": _app_state.get("db_initialized", False),
                 "migrations_completed": _app_state.get("migrations_completed", False),
                 "error": error,
-            }
+            },
         )
     return {"status": "ok", "db": "ready"}
 
@@ -855,16 +926,14 @@ async def health_ready():
 
     # 1. App state
     if not _app_state.get("ready", False):
-        return JSONResponse(status_code=503, content={
-            "status": "starting",
-            "checks": {"app": {"status": "starting"}}
-        })
+        return JSONResponse(status_code=503, content={"status": "starting", "checks": {"app": {"status": "starting"}}})
 
     # 2. Database check (SELECT 1)
     try:
         _db_start = _t.time()
         from db.database import get_session
         from sqlalchemy import text
+
         async for session in get_session():
             await session.execute(text("SELECT 1"))
             break
@@ -878,7 +947,8 @@ async def health_ready():
     try:
         _redis_start = _t.time()
         from core.cache import cache_service
-        if hasattr(cache_service, 'backend') and hasattr(cache_service.backend, 'redis'):
+
+        if hasattr(cache_service, "backend") and hasattr(cache_service.backend, "redis"):
             pong = await cache_service.backend.redis.ping()
             _redis_ms = round((_t.time() - _redis_start) * 1000, 1)
             checks["redis"] = {"status": "ok" if pong else "error", "latency_ms": _redis_ms}
@@ -891,6 +961,7 @@ async def health_ready():
     # 4. HTTP client pool
     try:
         from core.http_client import get_http_client_optional
+
         client = get_http_client_optional()
         if client is not None:
             checks["http_pool"] = {"status": "ok"}
@@ -905,7 +976,7 @@ async def health_ready():
         content={
             "status": "ok" if overall_ok else "degraded",
             "checks": checks,
-        }
+        },
     )
 
 
@@ -948,7 +1019,7 @@ if RATE_LIMITER_AVAILABLE:
             "/openapi.json",
             "/redoc",
             "/",
-        ]
+        ],
     )
     logger.info("Rate limiting middleware enabled")
 
@@ -1108,8 +1179,10 @@ _THUMB_URL = os.environ.get("THUMBNAIL_BASE_URL", "")
 if _THUMB_URL:
     try:
         import mimetypes
+
         mimetypes.add_type("image/webp", ".webp")
         from fastapi.staticfiles import StaticFiles
+
         os.makedirs(_THUMB_DIR, exist_ok=True)
         app.mount("/api/thumbnails", StaticFiles(directory=_THUMB_DIR), name="thumbnails")
         logger.info(f"🖼️ Thumbnail static files mounted at /api/thumbnails → {_THUMB_DIR}")
@@ -1119,6 +1192,7 @@ if _THUMB_URL:
 # 🎨 Share static files (CSS, fonts, logos for shared analysis pages)
 import os as _os_share
 from fastapi.staticfiles import StaticFiles as _StaticFilesShare
+
 _SHARE_STATIC_DIR = _os_share.path.join(_os_share.path.dirname(__file__), "..", "static", "share")
 if _os_share.path.isdir(_SHARE_STATIC_DIR):
     app.mount(
@@ -1131,6 +1205,7 @@ if _os_share.path.isdir(_SHARE_STATIC_DIR):
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @app.get("/")
 async def root():
@@ -1156,8 +1231,8 @@ async def root():
             "tts": "/api/tts" if TTS_ROUTER_AVAILABLE else "not available",
             "usage": "/api/usage" if USAGE_ROUTER_AVAILABLE else "not available",
             "api_v1": "/api/v1" if API_PUBLIC_ROUTER_AVAILABLE else "not available (Expert plan)",
-            "words": "/api/words" if WORDS_ROUTER_AVAILABLE else "not available"
-        }
+            "words": "/api/words" if WORDS_ROUTER_AVAILABLE else "not available",
+        },
     }
 
 
@@ -1169,6 +1244,7 @@ async def health_ready():
     """
     if not _app_state.get("ready", False):
         from fastapi.responses import JSONResponse
+
         return JSONResponse(
             status_code=503,
             content={
@@ -1177,7 +1253,7 @@ async def health_ready():
                 "db_initialized": _app_state.get("db_initialized", False),
                 "migrations_completed": _app_state.get("migrations_completed", False),
                 "error": _app_state.get("error"),
-            }
+            },
         )
     return {
         "status": "ready",
@@ -1224,73 +1300,70 @@ async def health_detailed():
         "environment": ENVIRONMENT,
         "timestamp": datetime.utcnow().isoformat(),
         "checks": {},
-        "metrics": {}
+        "metrics": {},
     }
 
     # Check database — une seule requête combinée (vs 4 avant)
     try:
         from db.database import async_session_maker
         from sqlalchemy import text
+
         async with async_session_maker() as session:
             db_start = time.time()
             # Une seule requête pour tout : ping + stats approximatives
             # pg_class.reltuples est une estimation rapide (pas de COUNT(*) coûteux)
-            result = await session.execute(text("""
+            result = await session.execute(
+                text("""
                 SELECT
                     (SELECT reltuples::bigint FROM pg_class WHERE relname = 'users') as user_count,
                     (SELECT reltuples::bigint FROM pg_class WHERE relname = 'summaries') as summary_count,
                     (SELECT count(*) FROM task_status WHERE status IN ('pending', 'processing')) as active_tasks
-            """))
+            """)
+            )
             row = result.one()
             db_latency = (time.time() - db_start) * 1000
 
             health_data["checks"]["database"] = {
                 "status": "healthy",
                 "latency_ms": round(db_latency, 2),
-                "connection_pool": "active"
+                "connection_pool": "active",
             }
             health_data["metrics"]["database"] = {
                 "total_users": max(row.user_count or 0, 0),
                 "total_summaries": max(row.summary_count or 0, 0),
-                "active_tasks": row.active_tasks or 0
+                "active_tasks": row.active_tasks or 0,
             }
     except Exception as e:
-        health_data["checks"]["database"] = {
-            "status": "unhealthy",
-            "error": str(e)[:100]
-        }
+        health_data["checks"]["database"] = {"status": "unhealthy", "error": str(e)[:100]}
         health_data["status"] = "degraded"
 
     # Check cache
     try:
         from core.cache import cache
+
         cache_health = await cache.health_check()
         cache_metrics = cache.get_metrics()
         health_data["checks"]["cache"] = {
             "status": cache_health.get("status", "unknown"),
             "redis": cache_health.get("redis", "unknown"),
             "memory_cache_size": cache_metrics.get("memory_cache_size", 0),
-            "hit_rate": cache_metrics.get("hit_rate", "0%")
+            "hit_rate": cache_metrics.get("hit_rate", "0%"),
         }
     except Exception as e:
-        health_data["checks"]["cache"] = {
-            "status": "unavailable",
-            "error": str(e)[:100]
-        }
+        health_data["checks"]["cache"] = {"status": "unavailable", "error": str(e)[:100]}
 
     # Check rate limiting metrics
     try:
         from core.security import _rate_limits, _ip_rate_limits, cleanup_expired_ip_limits
+
         expired_cleaned = cleanup_expired_ip_limits()
         health_data["metrics"]["rate_limiting"] = {
             "active_user_sessions": len(_rate_limits),
             "active_ip_sessions": len(_ip_rate_limits),
-            "expired_cleaned": expired_cleaned
+            "expired_cleaned": expired_cleaned,
         }
     except Exception as e:
-        health_data["metrics"]["rate_limiting"] = {
-            "error": str(e)[:50]
-        }
+        health_data["metrics"]["rate_limiting"] = {"error": str(e)[:50]}
 
     # System metrics — sans interval blocking (cpu_percent(interval=0) = non-bloquant)
     try:
@@ -1303,9 +1376,7 @@ async def health_detailed():
             "process_threads": process.num_threads(),
         }
     except Exception as e:
-        health_data["metrics"]["system"] = {
-            "error": str(e)[:50]
-        }
+        health_data["metrics"]["system"] = {"error": str(e)[:50]}
 
     # Check external services
     health_data["checks"]["services"] = {
@@ -1318,13 +1389,14 @@ async def health_detailed():
         "api_public_router": API_PUBLIC_ROUTER_AVAILABLE,
         "study_router": STUDY_ROUTER_AVAILABLE,
         "academic_router": ACADEMIC_ROUTER_AVAILABLE,
-        "batch_router": BATCH_ROUTER_AVAILABLE
+        "batch_router": BATCH_ROUTER_AVAILABLE,
     }
 
     # External API status — requête légère (pas de JOIN, table petite)
     try:
         from db.database import ApiStatus, async_session_maker as _sm
         from sqlalchemy import select
+
         async with _sm() as session:
             api_statuses = await session.execute(select(ApiStatus))
             apis = api_statuses.scalars().all()
@@ -1332,7 +1404,7 @@ async def health_detailed():
                 api.api_name: {
                     "status": api.status,
                     "error_count": api.error_count,
-                    "last_success": api.last_success_at.isoformat() if api.last_success_at else None
+                    "last_success": api.last_success_at.isoformat() if api.last_success_at else None,
                 }
                 for api in apis
             }
@@ -1364,15 +1436,14 @@ async def health_ready():
     try:
         from db.database import async_session_maker
         from sqlalchemy import text
+
         async with async_session_maker() as session:
             await session.execute(text("SELECT 1"))
         return {"ready": True, "version": VERSION}
     except Exception as e:
         from fastapi.responses import JSONResponse
-        return JSONResponse(
-            status_code=503,
-            content={"ready": False, "error": str(e)[:100]}
-        )
+
+        return JSONResponse(status_code=503, content={"ready": False, "error": str(e)[:100]})
 
 
 @app.get("/health/live")
@@ -1382,6 +1453,7 @@ async def health_live():
     Si ce check échoue, le conteneur sera redémarré.
     """
     return {"alive": True, "version": VERSION}
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # GESTION GLOBALE DES ERREURS (avec traduction i18n)
@@ -1432,6 +1504,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     SÉCURITÉ: Ne jamais exposer les détails d'erreur en production.
     """
     import uuid
+
     error_id = str(uuid.uuid4())[:8]
     error_msg = str(exc)
     lang = get_lang(request)
@@ -1440,6 +1513,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     # Envoyer à Sentry si activé
     if SENTRY_ENABLED:
         import sentry_sdk
+
         sentry_sdk.capture_exception(exc)
         with sentry_sdk.push_scope() as scope:
             scope.set_tag("error_id", error_id)
@@ -1450,7 +1524,12 @@ async def global_exception_handler(request: Request, exc: Exception):
     # Classify error for safe client response (never leak internal details)
     safe_error = "An unexpected error occurred"
     error_lower = error_msg.lower()
-    if "password authentication" in error_lower or "could not connect" in error_lower or "connection refused" in error_lower or "connection reset" in error_lower:
+    if (
+        "password authentication" in error_lower
+        or "could not connect" in error_lower
+        or "connection refused" in error_lower
+        or "connection reset" in error_lower
+    ):
         safe_error = "Database connection error. Please try again later."
     elif "timeout" in error_lower:
         safe_error = "Request timed out. Please try again."
@@ -1466,18 +1545,10 @@ async def global_exception_handler(request: Request, exc: Exception):
     if ENVIRONMENT == "production":
         return JSONResponse(
             status_code=500,
-            content={
-                "detail": detail_msg,
-                "error": safe_error,
-                "error_id": error_id,
-                "support": support_msg
-            }
+            content={"detail": detail_msg, "error": safe_error, "error_id": error_id, "support": support_msg},
         )
     else:
-        return JSONResponse(
-            status_code=500,
-            content={"detail": detail_msg, "error": error_msg, "error_id": error_id}
-        )
+        return JSONResponse(status_code=500, content={"detail": detail_msg, "error": error_msg, "error_id": error_id})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1485,6 +1556,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if ENVIRONMENT != "production":
+
     @app.get("/debug/sentry")
     async def debug_sentry():
         """
@@ -1524,10 +1596,6 @@ else:
 
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=port,
-        reload=os.environ.get("ENV", "development") == "development"
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=os.environ.get("ENV", "development") == "development")

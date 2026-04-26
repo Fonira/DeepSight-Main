@@ -13,9 +13,7 @@ from typing import Optional
 import httpx
 from sqlalchemy import select
 
-from db.database import (
-    async_session_maker, TranscriptCache, TranscriptCacheChunk, TranscriptEmbedding
-)
+from db.database import async_session_maker, TranscriptCache, TranscriptCacheChunk, TranscriptEmbedding
 from core.config import MISTRAL_API_KEY
 
 logger = logging.getLogger(__name__)
@@ -79,7 +77,7 @@ def _chunk_text(text: str, words_per_chunk: int = CHUNK_WORDS) -> list[str]:
 
     chunks = []
     for i in range(0, len(words), words_per_chunk):
-        chunk = " ".join(words[i:i + words_per_chunk])
+        chunk = " ".join(words[i : i + words_per_chunk])
         if chunk.strip():
             chunks.append(chunk)
     return chunks
@@ -104,18 +102,14 @@ async def embed_transcript(video_id: str) -> bool:
         async with async_session_maker() as session:
             # Check if already embedded
             existing = await session.execute(
-                select(TranscriptEmbedding).where(
-                    TranscriptEmbedding.video_id == video_id
-                ).limit(1)
+                select(TranscriptEmbedding).where(TranscriptEmbedding.video_id == video_id).limit(1)
             )
             if existing.scalar_one_or_none():
                 logger.info(f"[EMBED] Already embedded: {video_id}")
                 return True
 
             # Get transcript from cache
-            cache_entry = await session.execute(
-                select(TranscriptCache).where(TranscriptCache.video_id == video_id)
-            )
+            cache_entry = await session.execute(select(TranscriptCache).where(TranscriptCache.video_id == video_id))
             entry = cache_entry.scalar_one_or_none()
             if not entry:
                 return False
@@ -139,7 +133,7 @@ async def embed_transcript(video_id: str) -> bool:
             # Generate embeddings in batches
             all_embeddings = []
             for i in range(0, len(text_chunks), BATCH_SIZE):
-                batch = text_chunks[i:i + BATCH_SIZE]
+                batch = text_chunks[i : i + BATCH_SIZE]
                 embeddings = await generate_embeddings_batch(batch)
                 all_embeddings.extend(embeddings)
 
@@ -148,13 +142,15 @@ async def embed_transcript(video_id: str) -> bool:
             for idx, (chunk_text, embedding) in enumerate(zip(text_chunks, all_embeddings)):
                 if embedding is None:
                     continue
-                session.add(TranscriptEmbedding(
-                    video_id=video_id,
-                    chunk_index=idx,
-                    embedding_json=json.dumps(embedding),
-                    text_preview=chunk_text[:500],
-                    token_count=len(chunk_text.split()),
-                ))
+                session.add(
+                    TranscriptEmbedding(
+                        video_id=video_id,
+                        chunk_index=idx,
+                        embedding_json=json.dumps(embedding),
+                        text_preview=chunk_text[:500],
+                        token_count=len(chunk_text.split()),
+                    )
+                )
                 stored += 1
 
             await session.commit()
@@ -182,19 +178,16 @@ async def search_similar(
     try:
         async with async_session_maker() as session:
             # Load all embeddings (with optional category filter)
-            stmt = (
-                select(
-                    TranscriptEmbedding.video_id,
-                    TranscriptEmbedding.chunk_index,
-                    TranscriptEmbedding.embedding_json,
-                    TranscriptEmbedding.text_preview,
-                    TranscriptCache.video_title,
-                    TranscriptCache.video_channel,
-                    TranscriptCache.thumbnail_url,
-                    TranscriptCache.category,
-                )
-                .join(TranscriptCache, TranscriptEmbedding.video_id == TranscriptCache.video_id)
-            )
+            stmt = select(
+                TranscriptEmbedding.video_id,
+                TranscriptEmbedding.chunk_index,
+                TranscriptEmbedding.embedding_json,
+                TranscriptEmbedding.text_preview,
+                TranscriptCache.video_title,
+                TranscriptCache.video_channel,
+                TranscriptCache.thumbnail_url,
+                TranscriptCache.category,
+            ).join(TranscriptCache, TranscriptEmbedding.video_id == TranscriptCache.video_id)
 
             if category:
                 stmt = stmt.where(TranscriptCache.category == category)
@@ -212,16 +205,18 @@ async def search_similar(
                 embedding = json.loads(row.embedding_json)
                 score = _cosine_similarity(query_embedding, embedding)
                 if score >= MIN_SIMILARITY:
-                    scored.append({
-                        "video_id": row.video_id,
-                        "chunk_index": row.chunk_index,
-                        "score": round(score, 4),
-                        "text_preview": row.text_preview,
-                        "video_title": row.video_title or "Unknown",
-                        "video_channel": row.video_channel or "Unknown",
-                        "thumbnail_url": row.thumbnail_url,
-                        "category": row.category,
-                    })
+                    scored.append(
+                        {
+                            "video_id": row.video_id,
+                            "chunk_index": row.chunk_index,
+                            "score": round(score, 4),
+                            "text_preview": row.text_preview,
+                            "video_title": row.video_title or "Unknown",
+                            "video_channel": row.video_channel or "Unknown",
+                            "thumbnail_url": row.thumbnail_url,
+                            "category": row.category,
+                        }
+                    )
 
             # Sort by score descending
             scored.sort(key=lambda x: x["score"], reverse=True)

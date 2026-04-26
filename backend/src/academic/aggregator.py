@@ -22,12 +22,7 @@ from .arxiv_client import arxiv_client
 from .crossref_client import crossref_client
 
 # Source weights for scoring
-SOURCE_WEIGHTS = {
-    "semantic_scholar": 1.0,
-    "openalex": 0.95,
-    "crossref": 0.90,
-    "arxiv": 0.85
-}
+SOURCE_WEIGHTS = {"semantic_scholar": 1.0, "openalex": 0.95, "crossref": 0.90, "arxiv": 0.85}
 
 # Tier limits for academic papers
 TIER_LIMITS = {
@@ -37,7 +32,7 @@ TIER_LIMITS = {
     "etudiant": 15,  # Handled by normalize_plan_id → pro
     "pro": 30,
     "expert": 30,  # Maps to pro (normalize_plan_id)
-    "unlimited": 30  # Maps to pro (normalize_plan_id)
+    "unlimited": 30,  # Maps to pro (normalize_plan_id)
 }
 
 
@@ -126,10 +121,7 @@ class AcademicAggregator:
         return " ".join(kw.strip() for kw in top_keywords if kw.strip())
 
     async def search(
-        self,
-        request: AcademicSearchRequest,
-        user_plan: str = "free",
-        video_title: Optional[str] = None
+        self, request: AcademicSearchRequest, user_plan: str = "free", video_title: Optional[str] = None
     ) -> AcademicSearchResponse:
         """
         Search all academic sources with multi-query fallback strategy.
@@ -153,9 +145,10 @@ class AcademicAggregator:
         if video_title:
             # Clean the title: remove channel names, episode numbers, etc.
             import re
-            clean_title = re.sub(r'\s*[|\-–—]\s*.*$', '', video_title)  # Remove "| Channel Name"
-            clean_title = re.sub(r'#\d+', '', clean_title)  # Remove #123
-            clean_title = re.sub(r'\s+', ' ', clean_title).strip()
+
+            clean_title = re.sub(r"\s*[|\-–—]\s*.*$", "", video_title)  # Remove "| Channel Name"
+            clean_title = re.sub(r"#\d+", "", clean_title)  # Remove #123
+            clean_title = re.sub(r"\s+", " ", clean_title).strip()
             if len(clean_title) > 10:
                 title_query = clean_title
 
@@ -183,10 +176,7 @@ class AcademicAggregator:
         sources_queried: List[str] = []
 
         try:
-            results = await asyncio.wait_for(
-                asyncio.gather(*primary_tasks, return_exceptions=True),
-                timeout=30.0
-            )
+            results = await asyncio.wait_for(asyncio.gather(*primary_tasks, return_exceptions=True), timeout=30.0)
         except asyncio.TimeoutError:
             print("Phase 1 timeout — continuing with partial results", flush=True)
             results = []
@@ -237,8 +227,7 @@ class AcademicAggregator:
             if phase2_tasks:
                 try:
                     results2 = await asyncio.wait_for(
-                        asyncio.gather(*phase2_tasks, return_exceptions=True),
-                        timeout=30.0
+                        asyncio.gather(*phase2_tasks, return_exceptions=True), timeout=30.0
                     )
                 except asyncio.TimeoutError:
                     print("Phase 2 timeout", flush=True)
@@ -266,9 +255,9 @@ class AcademicAggregator:
                     asyncio.gather(
                         self._search_openalex(simple_query, request),
                         self._search_crossref(simple_query, request),
-                        return_exceptions=True
+                        return_exceptions=True,
                     ),
-                    timeout=20.0
+                    timeout=20.0,
                 )
                 for result in results3:
                     if isinstance(result, list):
@@ -301,14 +290,10 @@ class AcademicAggregator:
             sources_queried=sources_queried,
             cached=False,
             tier_limit_reached=tier_limit_reached,
-            tier_limit=tier_limit if tier_limit_reached else None
+            tier_limit=tier_limit if tier_limit_reached else None,
         )
 
-    async def _search_semantic_scholar(
-        self,
-        query: str,
-        request: AcademicSearchRequest
-    ) -> List[AcademicPaper]:
+    async def _search_semantic_scholar(self, query: str, request: AcademicSearchRequest) -> List[AcademicPaper]:
         """Search Semantic Scholar"""
         try:
             print(f"  → Semantic Scholar: {query[:60]}...", flush=True)
@@ -317,66 +302,45 @@ class AcademicAggregator:
                 limit=min(request.limit * 2, 40),
                 year_from=request.year_from,
                 year_to=request.year_to,
-                fields_of_study=request.fields_of_study
+                fields_of_study=request.fields_of_study,
             )
             return results
         except Exception as e:
             print(f"  Semantic Scholar error: {e}", flush=True)
             return []
 
-    async def _search_openalex(
-        self,
-        query: str,
-        request: AcademicSearchRequest
-    ) -> List[AcademicPaper]:
+    async def _search_openalex(self, query: str, request: AcademicSearchRequest) -> List[AcademicPaper]:
         """Search OpenAlex"""
         try:
             print(f"  → OpenAlex: {query[:60]}...", flush=True)
             results = await self.openalex.search(
-                query=query,
-                limit=min(request.limit * 2, 50),
-                year_from=request.year_from,
-                year_to=request.year_to
+                query=query, limit=min(request.limit * 2, 50), year_from=request.year_from, year_to=request.year_to
             )
             return results
         except Exception as e:
             print(f"  OpenAlex error: {e}", flush=True)
             return []
 
-    async def _search_crossref(
-        self,
-        query: str,
-        request: AcademicSearchRequest
-    ) -> List[AcademicPaper]:
+    async def _search_crossref(self, query: str, request: AcademicSearchRequest) -> List[AcademicPaper]:
         """Search CrossRef"""
         try:
             print(f"  → CrossRef: {query[:60]}...", flush=True)
             results = await self.crossref.search(
-                query=query,
-                limit=min(request.limit * 2, 40),
-                year_from=request.year_from,
-                year_to=request.year_to
+                query=query, limit=min(request.limit * 2, 40), year_from=request.year_from, year_to=request.year_to
             )
             return results
         except Exception as e:
             print(f"  CrossRef error: {e}", flush=True)
             return []
 
-    async def _search_arxiv(
-        self,
-        query: str,
-        request: AcademicSearchRequest
-    ) -> List[AcademicPaper]:
+    async def _search_arxiv(self, query: str, request: AcademicSearchRequest) -> List[AcademicPaper]:
         """Search arXiv (if preprints included)"""
         if not request.include_preprints:
             return []
 
         try:
             print(f"  → arXiv: {query[:60]}...", flush=True)
-            results = await self.arxiv.search(
-                query=query,
-                limit=min(request.limit * 2, 20)
-            )
+            results = await self.arxiv.search(query=query, limit=min(request.limit * 2, 20))
             return results
         except Exception as e:
             print(f"  arXiv error: {e}", flush=True)
@@ -442,11 +406,7 @@ class AcademicAggregator:
         score += SOURCE_WEIGHTS.get(paper.source, 0.5)
         return score
 
-    def _score_papers(
-        self,
-        papers: List[AcademicPaper],
-        keywords: List[str]
-    ) -> List[AcademicPaper]:
+    def _score_papers(self, papers: List[AcademicPaper], keywords: List[str]) -> List[AcademicPaper]:
         """
         Calculate final relevance score for each paper based on:
         - Original source relevance
@@ -466,31 +426,23 @@ class AcademicAggregator:
 
             # Combined score with weights
             final_score = (
-                0.30 * source_relevance +
-                0.25 * citation_score +
-                0.20 * recency_score +
-                0.20 * keyword_score +
-                0.05 * source_weight
+                0.30 * source_relevance
+                + 0.25 * citation_score
+                + 0.20 * recency_score
+                + 0.20 * keyword_score
+                + 0.05 * source_weight
             )
 
             paper.relevance_score = round(final_score, 4)
 
         return papers
 
-    def _calculate_keyword_match(
-        self,
-        paper: AcademicPaper,
-        keywords_lower: List[str]
-    ) -> float:
+    def _calculate_keyword_match(self, paper: AcademicPaper, keywords_lower: List[str]) -> float:
         """Calculate how well paper matches search keywords"""
         if not keywords_lower:
             return 0.5
 
-        text = " ".join([
-            paper.title.lower(),
-            (paper.abstract or "").lower(),
-            " ".join(paper.keywords).lower()
-        ])
+        text = " ".join([paper.title.lower(), (paper.abstract or "").lower(), " ".join(paper.keywords).lower()])
 
         matches = sum(1 for kw in keywords_lower if kw in text)
         return matches / len(keywords_lower)

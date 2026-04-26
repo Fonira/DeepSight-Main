@@ -33,7 +33,7 @@ def _get_pg_dsn() -> str:
     # Normalise driver prefix to plain postgresql://
     for prefix in ("postgresql+asyncpg://", "postgres://"):
         if url.startswith(prefix):
-            url = "postgresql://" + url[len(prefix):]
+            url = "postgresql://" + url[len(prefix) :]
     # Strip query params (sslmode handled separately)
     if "?" in url:
         url = url.split("?", 1)[0]
@@ -64,6 +64,7 @@ def _s3_prefix() -> str:
 # Core backup logic
 # ---------------------------------------------------------------------------
 
+
 def dump_database_sql(dsn: str) -> bytes:
     """Connect via psycopg2 and produce a full SQL dump (schema + data)."""
     import psycopg2
@@ -90,7 +91,8 @@ def dump_database_sql(dsn: str) -> bytes:
     # Validate table names to prevent SQL injection via f-string interpolation below.
     # Table names come from pg_tables but we validate them as an extra safety measure.
     import re as _re
-    _SAFE_TABLE_NAME = _re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+
+    _SAFE_TABLE_NAME = _re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
     for table in tables:
         # Validate table name before using in f-string SQL interpolation
@@ -98,18 +100,21 @@ def dump_database_sql(dsn: str) -> bytes:
             raise ValueError(f"Unsafe table name detected, aborting backup: {table!r}")
 
         # Schema: CREATE TABLE via pg_dump-style information_schema query
-        cur.execute("""
+        cur.execute(
+            """
             SELECT column_name, data_type, character_maximum_length,
                    column_default, is_nullable
             FROM information_schema.columns
             WHERE table_schema = 'public' AND table_name = %s
             ORDER BY ordinal_position
-        """, (table,))
+        """,
+            (table,),
+        )
         columns = cur.fetchall()
 
         buf.write(f"-- Table: {table}\n")
-        buf.write(f"DROP TABLE IF EXISTS \"{table}\" CASCADE;\n")
-        buf.write(f"CREATE TABLE \"{table}\" (\n")
+        buf.write(f'DROP TABLE IF EXISTS "{table}" CASCADE;\n')
+        buf.write(f'CREATE TABLE "{table}" (\n')
 
         col_defs = []
         col_names = []
@@ -118,7 +123,7 @@ def dump_database_sql(dsn: str) -> bytes:
             type_str = dtype.upper()
             if max_len:
                 type_str = f"{type_str}({max_len})"
-            parts = [f"  \"{col_name}\" {type_str}"]
+            parts = [f'  "{col_name}" {type_str}']
             if default:
                 parts.append(f"DEFAULT {default}")
             if nullable == "NO":
@@ -153,7 +158,7 @@ def dump_database_sql(dsn: str) -> bytes:
                     else:
                         escaped = str(val).replace("'", "''")
                         values.append(f"'{escaped}'")
-                buf.write(f"INSERT INTO \"{table}\" ({quoted_cols}) VALUES ({', '.join(values)});\n")
+                buf.write(f'INSERT INTO "{table}" ({quoted_cols}) VALUES ({", ".join(values)});\n')
             buf.write("\n")
 
     # Sequences
@@ -165,7 +170,7 @@ def dump_database_sql(dsn: str) -> bytes:
         # Validate sequence name before using in f-string SQL interpolation
         if not _SAFE_TABLE_NAME.match(seq_name):
             raise ValueError(f"Unsafe sequence name detected, aborting backup: {seq_name!r}")
-        cur.execute(f"SELECT last_value FROM \"{seq_name}\"")
+        cur.execute(f'SELECT last_value FROM "{seq_name}"')
         last_val = cur.fetchone()[0]
         buf.write(f"SELECT setval('\"{seq_name}\"', {last_val}, true);\n")
 
@@ -227,6 +232,7 @@ def save_local(compressed: bytes, filename: str) -> str:
 # ---------------------------------------------------------------------------
 # High-level run_backup (called by scheduler and admin endpoint)
 # ---------------------------------------------------------------------------
+
 
 async def run_backup(upload: bool = True) -> dict:
     """

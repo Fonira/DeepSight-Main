@@ -28,6 +28,7 @@ router = APIRouter()
 # SCHEMAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class StatsResponse(BaseModel):
     success: bool = True
     total_xp: int = 0
@@ -95,6 +96,7 @@ class VideoMasteryResponse(BaseModel):
 # ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/stats", response_model=StatsResponse)
 async def get_stats(
     current_user: User = Depends(get_current_user),
@@ -106,9 +108,7 @@ async def get_stats(
         return StatsResponse(
             total_xp=stats.total_xp or 0,
             level=stats.level or 1,
-            xp_for_next_level=xp_for_next_level(
-                stats.total_xp or 0, stats.level or 1
-            ),
+            xp_for_next_level=xp_for_next_level(stats.total_xp or 0, stats.level or 1),
             current_streak=stats.current_streak or 0,
             longest_streak=stats.longest_streak or 0,
             total_cards_reviewed=stats.total_cards_reviewed or 0,
@@ -152,9 +152,7 @@ async def get_badges(
         all_badges = result.scalars().all()
 
         # Earned badges
-        result = await session.execute(
-            select(UserBadge).where(UserBadge.user_id == current_user.id)
-        )
+        result = await session.execute(select(UserBadge).where(UserBadge.user_id == current_user.id))
         earned_map = {ub.badge_id: ub for ub in result.scalars().all()}
 
         # Stats for progress calculation
@@ -170,17 +168,19 @@ async def get_badges(
             if badge.condition_type == "threshold" and not earned:
                 progress = _calc_progress(badge, stats)
 
-            items.append(BadgeItem(
-                code=badge.code,
-                name=badge.name,
-                description=badge.description,
-                icon=badge.icon,
-                rarity=badge.rarity,
-                category=badge.category,
-                earned=earned,
-                earned_at=ub.earned_at.isoformat() if earned and ub.earned_at else None,
-                progress=progress,
-            ))
+            items.append(
+                BadgeItem(
+                    code=badge.code,
+                    name=badge.name,
+                    description=badge.description,
+                    icon=badge.icon,
+                    rarity=badge.rarity,
+                    category=badge.category,
+                    earned=earned,
+                    earned_at=ub.earned_at.isoformat() if earned and ub.earned_at else None,
+                    progress=progress,
+                )
+            )
 
         earned_count = sum(1 for i in items if i.earned)
         return BadgesResponse(
@@ -212,6 +212,7 @@ async def get_video_mastery_endpoint(
 # ═══════════════════════════════════════════════════════════════════════════════
 # HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _calc_progress(badge: Badge, stats: UserStudyStats) -> Optional[float]:
     """Calculate 0-1 progress for threshold badges."""

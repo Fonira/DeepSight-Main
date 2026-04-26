@@ -41,10 +41,7 @@ class CrossRefClient:
 
     def _get_headers(self) -> dict:
         """Get request headers with polite pool email"""
-        return {
-            "Accept": "application/json",
-            "User-Agent": f"DeepSight/1.0 (mailto:{self.email})"
-        }
+        return {"Accept": "application/json", "User-Agent": f"DeepSight/1.0 (mailto:{self.email})"}
 
     def _parse_item(self, data: dict, relevance_score: float = 0.0) -> Optional[AcademicPaper]:
         """Parse CrossRef work item to AcademicPaper model"""
@@ -64,10 +61,7 @@ class CrossRefClient:
                 continue
             affiliation_list = author_data.get("affiliation", [])
             affiliation = affiliation_list[0].get("name") if affiliation_list else None
-            authors.append(Author(
-                name=name,
-                affiliation=affiliation
-            ))
+            authors.append(Author(name=name, affiliation=affiliation))
 
         # Extract DOI
         doi = data.get("DOI")
@@ -94,7 +88,8 @@ class CrossRefClient:
         if abstract:
             # Clean HTML tags from abstract
             import re
-            abstract = re.sub(r'<[^>]+>', '', abstract).strip()
+
+            abstract = re.sub(r"<[^>]+>", "", abstract).strip()
             if len(abstract) > 2000:
                 abstract = abstract[:2000] + "..."
 
@@ -137,7 +132,7 @@ class CrossRefClient:
             source=AcademicSource.CROSSREF,
             relevance_score=relevance_score,
             is_open_access=is_oa,
-            keywords=keywords
+            keywords=keywords,
         )
 
     async def search(
@@ -146,7 +141,7 @@ class CrossRefClient:
         limit: int = 10,
         year_from: Optional[int] = None,
         year_to: Optional[int] = None,
-        sort: str = "relevance"
+        sort: str = "relevance",
     ) -> List[AcademicPaper]:
         """
         Search for works on CrossRef.
@@ -172,8 +167,8 @@ class CrossRefClient:
             "sort": sort if sort != "cited" else "is-referenced-by-count",
             "order": "desc",
             "select": "DOI,title,author,published-print,published-online,created,"
-                      "container-title,abstract,is-referenced-by-count,URL,link,"
-                      "license,subject,type"
+            "container-title,abstract,is-referenced-by-count,URL,link,"
+            "license,subject,type",
         }
 
         # Add date filter
@@ -194,20 +189,12 @@ class CrossRefClient:
 
         try:
             async with httpx.AsyncClient(timeout=25.0) as client:
-                response = await client.get(
-                    f"{self.base_url}/works",
-                    params=params,
-                    headers=self._get_headers()
-                )
+                response = await client.get(f"{self.base_url}/works", params=params, headers=self._get_headers())
 
                 if response.status_code == 429:
                     # Rate limited — wait and retry once
                     await asyncio.sleep(2)
-                    response = await client.get(
-                        f"{self.base_url}/works",
-                        params=params,
-                        headers=self._get_headers()
-                    )
+                    response = await client.get(f"{self.base_url}/works", params=params, headers=self._get_headers())
 
                 response.raise_for_status()
                 data = response.json()
@@ -243,10 +230,7 @@ class CrossRefClient:
 
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
-                response = await client.get(
-                    f"{self.base_url}/works/{doi}",
-                    headers=self._get_headers()
-                )
+                response = await client.get(f"{self.base_url}/works/{doi}", headers=self._get_headers())
 
                 if response.status_code == 404:
                     return None

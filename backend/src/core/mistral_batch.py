@@ -65,11 +65,13 @@ TERMINAL_STATUSES = {STATUS_SUCCESS, STATUS_FAILED, STATUS_TIMEOUT, STATUS_CANCE
 # DATA TYPES
 # =============================================================================
 
+
 @dataclass
 class BatchRequest:
     """A single request within a batch."""
-    custom_id: str                            # Unique ID to match request → result
-    messages: List[Dict[str, str]]            # Chat messages (system + user)
+
+    custom_id: str  # Unique ID to match request → result
+    messages: List[Dict[str, str]]  # Chat messages (system + user)
     model: str = "mistral-small-2603"
     max_tokens: int = 4000
     temperature: float = 0.3
@@ -78,6 +80,7 @@ class BatchRequest:
 @dataclass
 class BatchResult:
     """A single result from a completed batch."""
+
     custom_id: str
     success: bool
     content: str = ""
@@ -90,8 +93,9 @@ class BatchResult:
 @dataclass
 class BatchJobStatus:
     """Status of a batch job."""
+
     job_id: str
-    status: str                               # QUEUED, RUNNING, SUCCESS, FAILED, etc.
+    status: str  # QUEUED, RUNNING, SUCCESS, FAILED, etc.
     total_requests: int = 0
     completed_requests: int = 0
     failed_requests: int = 0
@@ -103,6 +107,7 @@ class BatchJobStatus:
 # =============================================================================
 # INTERNAL: Build JSONL content
 # =============================================================================
+
 
 def _build_jsonl(requests: List[BatchRequest]) -> bytes:
     """
@@ -131,6 +136,7 @@ def _build_jsonl(requests: List[BatchRequest]) -> bytes:
 # STEP 1: Upload JSONL file
 # =============================================================================
 
+
 async def upload_batch_file(
     requests: List[BatchRequest],
     timeout: float = 30.0,
@@ -149,10 +155,7 @@ async def upload_batch_file(
     jsonl_content = _build_jsonl(requests)
     file_size_kb = len(jsonl_content) / 1024
 
-    logger.info(
-        f"[BATCH] Uploading JSONL: {len(requests)} requests, "
-        f"{file_size_kb:.1f} KB"
-    )
+    logger.info(f"[BATCH] Uploading JSONL: {len(requests)} requests, {file_size_kb:.1f} KB")
 
     try:
         async with shared_http_client() as client:
@@ -163,7 +166,7 @@ async def upload_batch_file(
                     "file": ("batch_requests.jsonl", jsonl_content, "application/jsonl"),
                 },
                 data={"purpose": "batch"},
-                timeout=timeout
+                timeout=timeout,
             )
 
             if response.status_code in (200, 201):
@@ -172,10 +175,7 @@ async def upload_batch_file(
                 logger.info(f"[BATCH] File uploaded: {file_id}")
                 return file_id
             else:
-                logger.error(
-                    f"[BATCH] Upload failed: {response.status_code} "
-                    f"{response.text[:300]}"
-                )
+                logger.error(f"[BATCH] Upload failed: {response.status_code} {response.text[:300]}")
                 return None
 
     except Exception as e:
@@ -186,6 +186,7 @@ async def upload_batch_file(
 # =============================================================================
 # STEP 2: Create batch job
 # =============================================================================
+
 
 async def create_batch_job(
     file_id: str,
@@ -221,7 +222,7 @@ async def create_batch_job(
                     "Content-Type": "application/json",
                 },
                 json=body,
-                timeout=timeout
+                timeout=timeout,
             )
 
             if response.status_code in (200, 201):
@@ -230,10 +231,7 @@ async def create_batch_job(
                 logger.info(f"[BATCH] Job created: {job_id} (model={model})")
                 return job_id
             else:
-                logger.error(
-                    f"[BATCH] Job creation failed: {response.status_code} "
-                    f"{response.text[:300]}"
-                )
+                logger.error(f"[BATCH] Job creation failed: {response.status_code} {response.text[:300]}")
                 return None
 
     except Exception as e:
@@ -244,6 +242,7 @@ async def create_batch_job(
 # =============================================================================
 # STEP 3: Poll job status
 # =============================================================================
+
 
 async def poll_batch_job(
     job_id: str,
@@ -259,9 +258,7 @@ async def poll_batch_job(
     try:
         async with shared_http_client() as client:
             response = await client.get(
-                f"{MISTRAL_BATCH_JOBS_URL}/{job_id}",
-                headers={"Authorization": f"Bearer {api_key}"},
-                timeout=timeout
+                f"{MISTRAL_BATCH_JOBS_URL}/{job_id}", headers={"Authorization": f"Bearer {api_key}"}, timeout=timeout
             )
 
             if response.status_code == 200:
@@ -284,13 +281,16 @@ async def poll_batch_job(
 
     except Exception as e:
         return BatchJobStatus(
-            job_id=job_id, status="ERROR", error=str(e),
+            job_id=job_id,
+            status="ERROR",
+            error=str(e),
         )
 
 
 # =============================================================================
 # STEP 4: Download and parse results
 # =============================================================================
+
 
 async def get_batch_results(
     output_file_id: str,
@@ -308,14 +308,11 @@ async def get_batch_results(
             response = await client.get(
                 f"{MISTRAL_FILES_URL}/{output_file_id}/content",
                 headers={"Authorization": f"Bearer {api_key}"},
-                timeout=timeout
+                timeout=timeout,
             )
 
             if response.status_code != 200:
-                logger.error(
-                    f"[BATCH] Download failed: {response.status_code} "
-                    f"{response.text[:200]}"
-                )
+                logger.error(f"[BATCH] Download failed: {response.status_code} {response.text[:200]}")
                 return []
 
             results = []
@@ -329,11 +326,13 @@ async def get_batch_results(
                     error = entry.get("error")
 
                     if error:
-                        results.append(BatchResult(
-                            custom_id=custom_id,
-                            success=False,
-                            error=str(error),
-                        ))
+                        results.append(
+                            BatchResult(
+                                custom_id=custom_id,
+                                success=False,
+                                error=str(error),
+                            )
+                        )
                         continue
 
                     status_code = resp.get("status_code", 0)
@@ -343,20 +342,24 @@ async def get_batch_results(
                         choices = body.get("choices", [])
                         content = choices[0]["message"]["content"].strip() if choices else ""
                         usage = body.get("usage", {})
-                        results.append(BatchResult(
-                            custom_id=custom_id,
-                            success=True,
-                            content=content,
-                            tokens_input=usage.get("prompt_tokens", 0),
-                            tokens_output=usage.get("completion_tokens", 0),
-                            tokens_total=usage.get("total_tokens", 0),
-                        ))
+                        results.append(
+                            BatchResult(
+                                custom_id=custom_id,
+                                success=True,
+                                content=content,
+                                tokens_input=usage.get("prompt_tokens", 0),
+                                tokens_output=usage.get("completion_tokens", 0),
+                                tokens_total=usage.get("total_tokens", 0),
+                            )
+                        )
                     else:
-                        results.append(BatchResult(
-                            custom_id=custom_id,
-                            success=False,
-                            error=f"API {status_code}: {json.dumps(body)[:200]}",
-                        ))
+                        results.append(
+                            BatchResult(
+                                custom_id=custom_id,
+                                success=False,
+                                error=f"API {status_code}: {json.dumps(body)[:200]}",
+                            )
+                        )
 
                 except json.JSONDecodeError:
                     logger.warning(f"[BATCH] Skipping malformed line: {line[:100]}")
@@ -377,6 +380,7 @@ async def get_batch_results(
 # =============================================================================
 # HIGH-LEVEL: Submit and wait for results
 # =============================================================================
+
 
 async def submit_and_wait(
     requests: List[BatchRequest],
@@ -408,19 +412,13 @@ async def submit_and_wait(
     # Determine the model from first request (Batch API requires single model)
     model = requests[0].model
 
-    logger.info(
-        f"[BATCH] submit_and_wait: {len(requests)} requests, "
-        f"model={model}, max_wait={max_wait}s"
-    )
+    logger.info(f"[BATCH] submit_and_wait: {len(requests)} requests, model={model}, max_wait={max_wait}s")
 
     # Step 1: Upload
     file_id = await upload_batch_file(requests)
     if not file_id:
         logger.error("[BATCH] File upload failed")
-        return [
-            BatchResult(custom_id=r.custom_id, success=False, error="Batch upload failed")
-            for r in requests
-        ]
+        return [BatchResult(custom_id=r.custom_id, success=False, error="Batch upload failed") for r in requests]
 
     # Step 2: Create job
     job_id = await create_batch_job(
@@ -430,10 +428,7 @@ async def submit_and_wait(
     )
     if not job_id:
         logger.error("[BATCH] Job creation failed")
-        return [
-            BatchResult(custom_id=r.custom_id, success=False, error="Batch job creation failed")
-            for r in requests
-        ]
+        return [BatchResult(custom_id=r.custom_id, success=False, error="Batch job creation failed") for r in requests]
 
     # Step 3: Poll
     poll_idx = 0
@@ -448,14 +443,11 @@ async def submit_and_wait(
                     await client.post(
                         f"{MISTRAL_BATCH_JOBS_URL}/{job_id}/cancel",
                         headers={"Authorization": f"Bearer {api_key}"},
-                        timeout=10
+                        timeout=10,
                     )
             except Exception:
                 pass
-            return [
-                BatchResult(custom_id=r.custom_id, success=False, error="Batch timeout")
-                for r in requests
-            ]
+            return [BatchResult(custom_id=r.custom_id, success=False, error="Batch timeout") for r in requests]
 
         status = await poll_batch_job(job_id)
 
@@ -475,11 +467,7 @@ async def submit_and_wait(
             break
 
         # Adaptive polling interval
-        interval = (
-            POLL_INTERVALS[poll_idx]
-            if poll_idx < len(POLL_INTERVALS)
-            else POLL_INTERVAL_MAX
-        )
+        interval = POLL_INTERVALS[poll_idx] if poll_idx < len(POLL_INTERVALS) else POLL_INTERVAL_MAX
         poll_idx += 1
         await asyncio.sleep(interval)
 
@@ -488,7 +476,8 @@ async def submit_and_wait(
         logger.error(f"[BATCH] Job ended with status: {status.status}")
         return [
             BatchResult(
-                custom_id=r.custom_id, success=False,
+                custom_id=r.custom_id,
+                success=False,
                 error=f"Batch job {status.status}: {status.error or 'unknown'}",
             )
             for r in requests
@@ -496,10 +485,7 @@ async def submit_and_wait(
 
     if not status.output_file_id:
         logger.error("[BATCH] No output file ID in completed job")
-        return [
-            BatchResult(custom_id=r.custom_id, success=False, error="No output file")
-            for r in requests
-        ]
+        return [BatchResult(custom_id=r.custom_id, success=False, error="No output file") for r in requests]
 
     results = await get_batch_results(status.output_file_id)
 
@@ -508,8 +494,7 @@ async def submit_and_wait(
     total_tokens = sum(r.tokens_total for r in results)
 
     logger.info(
-        f"[BATCH] Complete: {success_count}/{len(results)} success, "
-        f"{total_tokens:,} tokens, {elapsed:.1f}s total"
+        f"[BATCH] Complete: {success_count}/{len(results)} success, {total_tokens:,} tokens, {elapsed:.1f}s total"
     )
 
     return results
@@ -518,6 +503,7 @@ async def submit_and_wait(
 # =============================================================================
 # UTILITY: Create inline batch (for <10k requests, no file upload)
 # =============================================================================
+
 
 async def submit_inline_batch(
     requests: List[BatchRequest],
@@ -537,10 +523,7 @@ async def submit_inline_batch(
 
     api_key = get_mistral_key()
     if not api_key:
-        return [
-            BatchResult(custom_id=r.custom_id, success=False, error="No API key")
-            for r in requests
-        ]
+        return [BatchResult(custom_id=r.custom_id, success=False, error="No API key") for r in requests]
 
     model = requests[0].model
     start_time = time.time()
@@ -548,15 +531,17 @@ async def submit_inline_batch(
     # Build inline requests
     inline_reqs = []
     for req in requests:
-        inline_reqs.append({
-            "custom_id": req.custom_id,
-            "body": {
-                "model": req.model,
-                "messages": req.messages,
-                "max_tokens": req.max_tokens,
-                "temperature": req.temperature,
-            },
-        })
+        inline_reqs.append(
+            {
+                "custom_id": req.custom_id,
+                "body": {
+                    "model": req.model,
+                    "messages": req.messages,
+                    "max_tokens": req.max_tokens,
+                    "temperature": req.temperature,
+                },
+            }
+        )
 
     logger.info(f"[BATCH-INLINE] Submitting {len(requests)} requests (model={model})")
 
@@ -574,34 +559,27 @@ async def submit_inline_batch(
                     "endpoint": "/v1/chat/completions",
                     "metadata": {"source": "deepsight_inline", "count": str(len(requests))},
                 },
-                timeout=30
+                timeout=30,
             )
 
             if response.status_code not in (200, 201):
                 logger.error(f"[BATCH-INLINE] Failed: {response.status_code}")
                 return [
-                    BatchResult(custom_id=r.custom_id, success=False, error="Inline batch failed")
-                    for r in requests
+                    BatchResult(custom_id=r.custom_id, success=False, error="Inline batch failed") for r in requests
                 ]
 
             job_id = response.json().get("id")
 
     except Exception as e:
         logger.error(f"[BATCH-INLINE] Exception: {e}")
-        return [
-            BatchResult(custom_id=r.custom_id, success=False, error=str(e))
-            for r in requests
-        ]
+        return [BatchResult(custom_id=r.custom_id, success=False, error=str(e)) for r in requests]
 
     # Poll and get results (reuse same logic)
     poll_idx = 0
     while True:
         elapsed = time.time() - start_time
         if elapsed > max_wait:
-            return [
-                BatchResult(custom_id=r.custom_id, success=False, error="Batch timeout")
-                for r in requests
-            ]
+            return [BatchResult(custom_id=r.custom_id, success=False, error="Batch timeout") for r in requests]
 
         status = await poll_batch_job(job_id)
         if on_progress:
@@ -613,20 +591,12 @@ async def submit_inline_batch(
         if status.status in TERMINAL_STATUSES:
             break
 
-        interval = (
-            POLL_INTERVALS[poll_idx]
-            if poll_idx < len(POLL_INTERVALS)
-            else POLL_INTERVAL_MAX
-        )
+        interval = POLL_INTERVALS[poll_idx] if poll_idx < len(POLL_INTERVALS) else POLL_INTERVAL_MAX
         poll_idx += 1
         await asyncio.sleep(interval)
 
     if status.status != STATUS_SUCCESS or not status.output_file_id:
-        return [
-            BatchResult(custom_id=r.custom_id, success=False,
-                        error=f"Batch {status.status}")
-            for r in requests
-        ]
+        return [BatchResult(custom_id=r.custom_id, success=False, error=f"Batch {status.status}") for r in requests]
 
     return await get_batch_results(status.output_file_id)
 

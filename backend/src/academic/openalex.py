@@ -42,10 +42,7 @@ class OpenAlexClient:
 
     def _get_headers(self) -> dict:
         """Get request headers with polite pool email"""
-        return {
-            "Accept": "application/json",
-            "User-Agent": f"DeepSight/1.0 (mailto:{self.email})"
-        }
+        return {"Accept": "application/json", "User-Agent": f"DeepSight/1.0 (mailto:{self.email})"}
 
     def _parse_paper(self, data: dict, relevance_score: float = 0.0) -> AcademicPaper:
         """Parse OpenAlex work response to AcademicPaper model"""
@@ -57,11 +54,13 @@ class OpenAlexClient:
             institutions = authorship.get("institutions", [])
             if institutions:
                 institution = institutions[0].get("display_name")
-            authors.append(Author(
-                name=author_data.get("display_name", "Unknown"),
-                author_id=author_data.get("id"),
-                affiliation=institution
-            ))
+            authors.append(
+                Author(
+                    name=author_data.get("display_name", "Unknown"),
+                    author_id=author_data.get("id"),
+                    affiliation=institution,
+                )
+            )
 
         # Extract DOI
         doi = data.get("doi")
@@ -113,7 +112,7 @@ class OpenAlexClient:
             source=AcademicSource.OPENALEX,
             relevance_score=relevance_score,
             is_open_access=open_access.get("is_oa", False),
-            keywords=keywords
+            keywords=keywords,
         )
 
     def _reconstruct_abstract(self, inverted_index: Optional[dict]) -> Optional[str]:
@@ -141,7 +140,7 @@ class OpenAlexClient:
         limit: int = 10,
         year_from: Optional[int] = None,
         year_to: Optional[int] = None,
-        open_access_only: bool = False
+        open_access_only: bool = False,
     ) -> List[AcademicPaper]:
         """
         Search for works on OpenAlex
@@ -167,22 +166,14 @@ class OpenAlexClient:
         if open_access_only:
             filters.append("is_oa:true")
 
-        params = {
-            "search": query,
-            "per_page": min(limit, 200),
-            "sort": "relevance_score:desc"
-        }
+        params = {"search": query, "per_page": min(limit, 200), "sort": "relevance_score:desc"}
 
         if filters:
             params["filter"] = ",".join(filters)
 
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
-                response = await client.get(
-                    f"{self.base_url}/works",
-                    params=params,
-                    headers=self._get_headers()
-                )
+                response = await client.get(f"{self.base_url}/works", params=params, headers=self._get_headers())
 
                 response.raise_for_status()
                 data = response.json()
@@ -215,8 +206,7 @@ class OpenAlexClient:
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(
-                    f"{self.base_url}/works/doi:{quote(doi, safe='')}",
-                    headers=self._get_headers()
+                    f"{self.base_url}/works/doi:{quote(doi, safe='')}", headers=self._get_headers()
                 )
 
                 if response.status_code == 404:
@@ -230,11 +220,7 @@ class OpenAlexClient:
             print(f"OpenAlex DOI lookup error: {str(e)}", flush=True)
             return None
 
-    async def search_by_concepts(
-        self,
-        concepts: List[str],
-        limit: int = 10
-    ) -> List[AcademicPaper]:
+    async def search_by_concepts(self, concepts: List[str], limit: int = 10) -> List[AcademicPaper]:
         """Search for works related to specific concepts"""
         # OpenAlex concept search uses the filter parameter
         query = " ".join(concepts)

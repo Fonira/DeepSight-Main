@@ -24,8 +24,10 @@ router = APIRouter()
 # 📋 SCHEMAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class QuizQuestion(BaseModel):
     """Question de quiz"""
+
     question: str
     options: List[str]
     correct_index: int
@@ -34,6 +36,7 @@ class QuizQuestion(BaseModel):
 
 class QuizResponse(BaseModel):
     """Réponse quiz générée"""
+
     success: bool
     summary_id: int
     quiz: List[QuizQuestion]
@@ -43,6 +46,7 @@ class QuizResponse(BaseModel):
 
 class FlashcardItem(BaseModel):
     """Flashcard item"""
+
     front: str
     back: str
     category: Optional[str] = None
@@ -50,6 +54,7 @@ class FlashcardItem(BaseModel):
 
 class FlashcardsResponse(BaseModel):
     """Réponse flashcards générées"""
+
     success: bool
     summary_id: int
     flashcards: List[FlashcardItem]
@@ -58,6 +63,7 @@ class FlashcardsResponse(BaseModel):
 
 class MindmapResponse(BaseModel):
     """Réponse mindmap générée"""
+
     success: bool
     summary_id: int
     mermaid_code: str
@@ -69,11 +75,10 @@ class MindmapResponse(BaseModel):
 # 📝 QUIZ ENDPOINT
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/quiz/{summary_id}", response_model=QuizResponse)
 async def generate_quiz(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     🎯 Génère un quiz de compréhension pour une vidéo analysée.
@@ -92,6 +97,7 @@ async def generate_quiz(
     _s_lang = summary.lang or "fr"
     try:
         from main import get_video_cache
+
         _vcache = get_video_cache()
         if _vcache is not None and _s_vid:
             _cached = await _vcache.get_studio_content(_s_platform, _s_vid, "quiz", _s_lang)
@@ -122,7 +128,7 @@ async def generate_quiz(
             summary=summary.summary_content or "",
             transcript=summary.transcript_context or "",
             lang=summary.lang or "fr",
-            model="mistral-small-2603"
+            model="mistral-small-2603",
         )
 
         # Extraire les questions QCM de la fiche
@@ -131,32 +137,42 @@ async def generate_quiz(
             raw_quiz = study_card.get("quiz", [])
             for q in raw_quiz:
                 if isinstance(q, dict):
-                    quiz_questions.append(QuizQuestion(
-                        question=q.get("question", ""),
-                        options=q.get("options", q.get("choices", [])),
-                        correct_index=q.get("correct_index", q.get("answer", 0)),
-                        explanation=q.get("explanation", "")
-                    ))
+                    quiz_questions.append(
+                        QuizQuestion(
+                            question=q.get("question", ""),
+                            options=q.get("options", q.get("choices", [])),
+                            correct_index=q.get("correct_index", q.get("answer", 0)),
+                            explanation=q.get("explanation", ""),
+                        )
+                    )
         elif study_card and "questions" in study_card:
             # Alternative format
             for q in study_card.get("questions", []):
                 if isinstance(q, dict) and "options" in q:
-                    quiz_questions.append(QuizQuestion(
-                        question=q.get("question", ""),
-                        options=q.get("options", []),
-                        correct_index=q.get("correct_index", 0),
-                        explanation=q.get("explanation", "")
-                    ))
+                    quiz_questions.append(
+                        QuizQuestion(
+                            question=q.get("question", ""),
+                            options=q.get("options", []),
+                            correct_index=q.get("correct_index", 0),
+                            explanation=q.get("explanation", ""),
+                        )
+                    )
 
         # 💾 Cache the generated quiz
         if quiz_questions and _s_vid:
             try:
                 if _vcache is not None:
-                    await _vcache.set_studio_content(_s_platform, _s_vid, "quiz", _s_lang, {
-                        "quiz": [q.model_dump() for q in quiz_questions],
-                        "title": summary.video_title or "Quiz",
-                        "difficulty": "standard",
-                    })
+                    await _vcache.set_studio_content(
+                        _s_platform,
+                        _s_vid,
+                        "quiz",
+                        _s_lang,
+                        {
+                            "quiz": [q.model_dump() for q in quiz_questions],
+                            "title": summary.video_title or "Quiz",
+                            "difficulty": "standard",
+                        },
+                    )
             except Exception:
                 pass
 
@@ -165,7 +181,7 @@ async def generate_quiz(
             summary_id=summary_id,
             quiz=quiz_questions,
             title=summary.video_title or "Quiz",
-            difficulty="standard"
+            difficulty="standard",
         )
 
     except Exception as e:
@@ -177,11 +193,10 @@ async def generate_quiz(
 # 🧠 MINDMAP ENDPOINT
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/mindmap/{summary_id}", response_model=MindmapResponse)
 async def generate_mindmap(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     🌳 Génère un mindmap (carte conceptuelle) pour une vidéo analysée.
@@ -201,6 +216,7 @@ async def generate_mindmap(
     _vcache = None
     try:
         from main import get_video_cache
+
         _vcache = get_video_cache()
         if _vcache is not None and _s_vid:
             _cached = await _vcache.get_studio_content(_s_platform, _s_vid, "mindmap", _s_lang)
@@ -229,7 +245,7 @@ async def generate_mindmap(
             channel=summary.video_channel or "Chaîne inconnue",
             summary=summary.summary_content or "",
             lang=summary.lang or "fr",
-            model="mistral-small-2603"
+            model="mistral-small-2603",
         )
 
         mermaid_code = ""
@@ -243,11 +259,17 @@ async def generate_mindmap(
         if mermaid_code and _s_vid:
             try:
                 if _vcache is not None:
-                    await _vcache.set_studio_content(_s_platform, _s_vid, "mindmap", _s_lang, {
-                        "mermaid_code": mermaid_code,
-                        "concepts": concepts,
-                        "title": summary.video_title or "Mindmap",
-                    })
+                    await _vcache.set_studio_content(
+                        _s_platform,
+                        _s_vid,
+                        "mindmap",
+                        _s_lang,
+                        {
+                            "mermaid_code": mermaid_code,
+                            "concepts": concepts,
+                            "title": summary.video_title or "Mindmap",
+                        },
+                    )
             except Exception:
                 pass
 
@@ -256,7 +278,7 @@ async def generate_mindmap(
             summary_id=summary_id,
             mermaid_code=mermaid_code,
             concepts=concepts,
-            title=summary.video_title or "Mindmap"
+            title=summary.video_title or "Mindmap",
         )
 
     except Exception as e:
@@ -268,11 +290,10 @@ async def generate_mindmap(
 # 📇 FLASHCARDS ENDPOINT
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/flashcards/{summary_id}", response_model=FlashcardsResponse)
 async def generate_flashcards(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     📇 Génère des flashcards de révision pour une vidéo analysée.
@@ -292,6 +313,7 @@ async def generate_flashcards(
     _vcache = None
     try:
         from main import get_video_cache
+
         _vcache = get_video_cache()
         if _vcache is not None and _s_vid:
             _cached = await _vcache.get_studio_content(_s_platform, _s_vid, "flashcards", _s_lang)
@@ -321,7 +343,7 @@ async def generate_flashcards(
             summary=summary.summary_content or "",
             transcript=summary.transcript_context or "",
             lang=summary.lang or "fr",
-            model="mistral-small-2603"
+            model="mistral-small-2603",
         )
 
         flashcards = []
@@ -331,22 +353,24 @@ async def generate_flashcards(
             raw_flashcards = study_card.get("flashcards", [])
             for fc in raw_flashcards:
                 if isinstance(fc, dict) and fc.get("front"):
-                    flashcards.append(FlashcardItem(
-                        front=fc.get("front", ""),
-                        back=fc.get("back", ""),
-                        category=fc.get("category", "Général")
-                    ))
+                    flashcards.append(
+                        FlashcardItem(
+                            front=fc.get("front", ""), back=fc.get("back", ""), category=fc.get("category", "Général")
+                        )
+                    )
 
             # Fallback: Q&A pairs
             if not flashcards:
                 qa_pairs = study_card.get("questions_answers", study_card.get("qa", []))
                 for qa in qa_pairs:
                     if isinstance(qa, dict):
-                        flashcards.append(FlashcardItem(
-                            front=qa.get("question", qa.get("q", "")),
-                            back=qa.get("answer", qa.get("a", "")),
-                            category="Questions"
-                        ))
+                        flashcards.append(
+                            FlashcardItem(
+                                front=qa.get("question", qa.get("q", "")),
+                                back=qa.get("answer", qa.get("a", "")),
+                                category="Questions",
+                            )
+                        )
 
             # Fallback: Definitions (transformées en questions)
             if not flashcards:
@@ -355,28 +379,29 @@ async def generate_flashcards(
                     if isinstance(defn, dict):
                         term = defn.get("term", defn.get("front", ""))
                         definition = defn.get("definition", defn.get("back", ""))
-                        flashcards.append(FlashcardItem(
-                            front=f"Qu'est-ce que {term} ?",
-                            back=definition,
-                            category="Définitions"
-                        ))
+                        flashcards.append(
+                            FlashcardItem(front=f"Qu'est-ce que {term} ?", back=definition, category="Définitions")
+                        )
 
         # 💾 Cache the generated flashcards
         if flashcards and _s_vid:
             try:
                 if _vcache is not None:
-                    await _vcache.set_studio_content(_s_platform, _s_vid, "flashcards", _s_lang, {
-                        "flashcards": [fc.model_dump() for fc in flashcards],
-                        "title": summary.video_title or "Flashcards",
-                    })
+                    await _vcache.set_studio_content(
+                        _s_platform,
+                        _s_vid,
+                        "flashcards",
+                        _s_lang,
+                        {
+                            "flashcards": [fc.model_dump() for fc in flashcards],
+                            "title": summary.video_title or "Flashcards",
+                        },
+                    )
             except Exception:
                 pass
 
         return FlashcardsResponse(
-            success=True,
-            summary_id=summary_id,
-            flashcards=flashcards,
-            title=summary.video_title or "Flashcards"
+            success=True, summary_id=summary_id, flashcards=flashcards, title=summary.video_title or "Flashcards"
         )
 
     except Exception as e:
@@ -388,11 +413,10 @@ async def generate_flashcards(
 # 📚 ALL MATERIALS ENDPOINT
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/all/{summary_id}")
 async def generate_all_materials(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     📚 Génère tous les outils d'étude en une fois.
@@ -421,14 +445,10 @@ async def generate_all_materials(
             lang=summary.lang or "fr",
             model="mistral-small-2603",
             include_card=True,
-            include_map=True
+            include_map=True,
         )
 
-        return {
-            "success": True,
-            "summary_id": summary_id,
-            "materials": materials
-        }
+        return {"success": True, "summary_id": summary_id, "materials": materials}
 
     except Exception as e:
         print(f"❌ [STUDY_ALL] Erreur: {e}", flush=True)

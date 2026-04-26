@@ -14,6 +14,7 @@ from enum import IntEnum
 # 📋 ENUMS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class FSRSRating(IntEnum):
     Again = 1
     Hard = 2
@@ -31,6 +32,7 @@ class FSRSState(IntEnum):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📥 REQUESTS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class ReviewRequest(BaseModel):
     summary_id: int
@@ -54,6 +56,7 @@ class SessionEndRequest(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📤 RESPONSES
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class ReviewResponse(BaseModel):
     success: bool

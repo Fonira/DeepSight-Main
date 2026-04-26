@@ -27,7 +27,7 @@ def _get_pg_dsn() -> str:
         raise RuntimeError("DATABASE_URL is not set")
     for prefix in ("postgresql+asyncpg://", "postgres://"):
         if url.startswith(prefix):
-            url = "postgresql://" + url[len(prefix):]
+            url = "postgresql://" + url[len(prefix) :]
     if "?" in url:
         url = url.split("?", 1)[0]
     return url
@@ -56,6 +56,7 @@ def _s3_prefix() -> str:
 # List backups
 # ---------------------------------------------------------------------------
 
+
 def list_local_backups() -> list[dict]:
     """List backups in DATA_DIR/backups/."""
     from core.config import DATA_DIR
@@ -67,13 +68,15 @@ def list_local_backups() -> list[dict]:
     results = []
     for f in sorted(backup_dir.glob("*.sql.gz"), reverse=True):
         stat = f.stat()
-        results.append({
-            "source": "local",
-            "filename": f.name,
-            "path": str(f),
-            "size_bytes": stat.st_size,
-            "modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
-        })
+        results.append(
+            {
+                "source": "local",
+                "filename": f.name,
+                "path": str(f),
+                "size_bytes": stat.st_size,
+                "modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+            }
+        )
     return results
 
 
@@ -94,13 +97,15 @@ def list_s3_backups() -> list[dict]:
                 key = obj["Key"]
                 if not key.endswith(".sql.gz"):
                     continue
-                results.append({
-                    "source": "s3",
-                    "filename": key.split("/")[-1],
-                    "key": key,
-                    "size_bytes": obj["Size"],
-                    "modified": obj["LastModified"].isoformat(),
-                })
+                results.append(
+                    {
+                        "source": "s3",
+                        "filename": key.split("/")[-1],
+                        "key": key,
+                        "size_bytes": obj["Size"],
+                        "modified": obj["LastModified"].isoformat(),
+                    }
+                )
     except Exception as e:
         print(f"S3 list error: {e}", flush=True)
 
@@ -123,6 +128,7 @@ async def list_all_backups() -> list[dict]:
 # Download from S3
 # ---------------------------------------------------------------------------
 
+
 def download_from_s3(key: str) -> bytes:
     """Download a backup file from S3. Returns raw (compressed) bytes."""
     client = _s3_client()
@@ -134,6 +140,7 @@ def download_from_s3(key: str) -> bytes:
 # ---------------------------------------------------------------------------
 # Restore logic
 # ---------------------------------------------------------------------------
+
 
 def restore_sql(dsn: str, sql: str) -> int:
     """Execute SQL dump against the database. Returns number of statements."""

@@ -42,7 +42,8 @@ async def _check_ai_budget() -> bool:
     """Check if we haven't exceeded the daily AI thumbnail budget."""
     try:
         from core.cache import cache_service
-        if hasattr(cache_service, 'backend') and hasattr(cache_service.backend, 'redis'):
+
+        if hasattr(cache_service, "backend") and hasattr(cache_service.backend, "redis"):
             redis = cache_service.backend.redis
             key = f"{_REDIS_COUNTER_PREFIX}:{date.today().isoformat()}"
             count = await redis.get(key)
@@ -59,7 +60,8 @@ async def _increment_ai_budget() -> None:
     """Increment the daily AI thumbnail counter."""
     try:
         from core.cache import cache_service
-        if hasattr(cache_service, 'backend') and hasattr(cache_service.backend, 'redis'):
+
+        if hasattr(cache_service, "backend") and hasattr(cache_service.backend, "redis"):
             redis = cache_service.backend.redis
             key = f"{_REDIS_COUNTER_PREFIX}:{date.today().isoformat()}"
             await redis.incr(key)
@@ -194,10 +196,7 @@ async def ensure_thumbnail(
 
         if card_url:
             await _update_summary_thumbnail(summary_id, card_url)
-            logger.info(
-                f"Thumbnail persisted to R2: {video_id} ({platform}, "
-                f"card={len(processed.get('card', b''))}B)"
-            )
+            logger.info(f"Thumbnail persisted to R2: {video_id} ({platform}, card={len(processed.get('card', b''))}B)")
 
         return card_url
 

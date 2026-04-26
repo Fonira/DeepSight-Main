@@ -98,45 +98,62 @@ def build_podcast_script(
     parts: list[str] = []
 
     # ── 1. Introduction ──────────────────────────────────────────────────
-    title = getattr(summary, 'video_title', None) or getattr(summary, 'title', None) or "cette vidéo"
-    channel = getattr(summary, 'video_channel', None) or getattr(summary, 'channel_name', None) or "un créateur"
+    title = getattr(summary, "video_title", None) or getattr(summary, "title", None) or "cette vidéo"
+    channel = getattr(summary, "video_channel", None) or getattr(summary, "channel_name", None) or "un créateur"
 
     if language == "fr":
-        parts.append(
-            f"Voici la synthèse audio de la vidéo « {title} » "
-            f"par {channel}."
-        )
+        parts.append(f"Voici la synthèse audio de la vidéo « {title} » par {channel}.")
     else:
-        parts.append(
-            f"Here's the audio summary of the video \"{title}\" "
-            f"by {channel}."
-        )
+        parts.append(f'Here\'s the audio summary of the video "{title}" by {channel}.')
 
     # ── 2. Points clés ───────────────────────────────────────────────────
-    key_points = _extract_section(content, [
-        "points clés", "key points", "points essentiels",
-        "idées principales", "résumé", "summary", "vue d'ensemble",
-    ])
+    key_points = _extract_section(
+        content,
+        [
+            "points clés",
+            "key points",
+            "points essentiels",
+            "idées principales",
+            "résumé",
+            "summary",
+            "vue d'ensemble",
+        ],
+    )
     if key_points:
         transition = "Commençons par les points essentiels." if language == "fr" else "Let's start with the key points."
         parts.append(transition)
         parts.append(key_points)
 
     # ── 3. Analyse critique ──────────────────────────────────────────────
-    critical = _extract_section(content, [
-        "analyse critique", "critical analysis", "évaluation",
-        "limites", "nuances", "strengths", "weaknesses",
-    ])
+    critical = _extract_section(
+        content,
+        [
+            "analyse critique",
+            "critical analysis",
+            "évaluation",
+            "limites",
+            "nuances",
+            "strengths",
+            "weaknesses",
+        ],
+    )
     if critical:
         transition = "Passons à l'analyse critique." if language == "fr" else "Now for the critical analysis."
         parts.append(transition)
         parts.append(critical)
 
     # ── 4. Conclusion ────────────────────────────────────────────────────
-    conclusion = _extract_section(content, [
-        "conclusion", "en résumé", "takeaways", "pour conclure",
-        "en bref", "to summarize",
-    ])
+    conclusion = _extract_section(
+        content,
+        [
+            "conclusion",
+            "en résumé",
+            "takeaways",
+            "pour conclure",
+            "en bref",
+            "to summarize",
+        ],
+    )
     if conclusion:
         transition = "Pour conclure." if language == "fr" else "To wrap up."
         parts.append(transition)
@@ -220,8 +237,11 @@ async def _generate_audio_bytes(
     if voxtral.is_available():
         try:
             return await voxtral.generate_bytes(
-                text=text, voice_id=voice_id,
-                language=language, gender=gender, speed=speed,
+                text=text,
+                voice_id=voice_id,
+                language=language,
+                gender=gender,
+                speed=speed,
             )
         except Exception as e:
             errors.append(f"Voxtral: {e}")
@@ -236,9 +256,7 @@ async def _generate_audio_bytes(
             errors.append(f"OpenAI: {e}")
             logger.warning("OpenAI audio_summary failed: %s", e)
 
-    raise RuntimeError(
-        f"All TTS providers failed for audio summary: {'; '.join(errors)}"
-    )
+    raise RuntimeError(f"All TTS providers failed for audio summary: {'; '.join(errors)}")
 
 
 async def _elevenlabs_generate_bytes(
@@ -289,9 +307,7 @@ async def _elevenlabs_generate_bytes(
         if response.status_code != 200:
             elevenlabs_circuit.record_failure()
             error_body = response.text[:200]
-            raise RuntimeError(
-                f"ElevenLabs TTS error {response.status_code}: {error_body}"
-            )
+            raise RuntimeError(f"ElevenLabs TTS error {response.status_code}: {error_body}")
 
         elevenlabs_circuit.record_success()
         return response.content
@@ -307,8 +323,11 @@ async def _stream_to_bytes(
 ) -> bytes:
     """Collect streaming provider output into full bytes (for OpenAI fallback)."""
     stream, _client, _media = await provider.generate_stream(
-        text=text, voice_id=voice_id,
-        language=language, gender=gender, speed=speed,
+        text=text,
+        voice_id=voice_id,
+        language=language,
+        gender=gender,
+        speed=speed,
     )
     chunks = []
     async for chunk in stream:
@@ -348,9 +367,7 @@ async def get_or_generate_audio_summary(
         RuntimeError: if TTS generation fails
     """
     # ── 1. Load summary ──────────────────────────────────────────────────
-    result = await db.execute(
-        select(Summary).where(Summary.id == summary_id)
-    )
+    result = await db.execute(select(Summary).where(Summary.id == summary_id))
     summary = result.scalar_one_or_none()
 
     if not summary:
@@ -556,9 +573,7 @@ async def get_or_generate_dubbed_audio(
     Returns same dict as get_or_generate_audio_summary + target_language field.
     """
     # ── 1. Load summary ──────────────────────────────────────────────────
-    result = await db.execute(
-        select(Summary).where(Summary.id == summary_id)
-    )
+    result = await db.execute(select(Summary).where(Summary.id == summary_id))
     summary = result.scalar_one_or_none()
 
     if not summary:
