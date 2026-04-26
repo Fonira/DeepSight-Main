@@ -42,12 +42,15 @@ interface AmbientLightLayerProps {
 }
 
 // Multiplicateur global d'intensité par-dessus le preset temporel.
-// Volontairement très bas pour éviter l'effet "écran blanc" du précédent design.
+// "minimal" v4 : juste le rayon vertical fin centré, ZÉRO lune (qui causait
+// le gros blob blanc/bleu visible le soir et la nuit), étoiles à peine
+// perceptibles. Mode utilisé par défaut sur toutes les routes mobile.
+// Les autres niveaux (soft/normal/strong) restent disponibles si besoin.
 const INTENSITY_MUL: Record<
   Intensity,
   { beam: number; star: number; moon: number }
 > = {
-  minimal: { beam: 0.18, star: 0.25, moon: 0.4 },
+  minimal: { beam: 0.1, star: 0.08, moon: 0 },
   soft: { beam: 0.35, star: 0.4, moon: 0.7 },
   normal: { beam: 0.55, star: 0.6, moon: 1 },
   strong: { beam: 0.85, star: 0.85, moon: 1.15 },
@@ -187,8 +190,8 @@ export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
       {/* Étoiles discrètes (la nuit seulement) */}
       {showStars && stars}
 
-      {/* Disque lunaire (visible le soir et la nuit) */}
-      {p.moonVisible && p.moonOpacity > 0 && (
+      {/* Disque lunaire (visible le soir et la nuit) — skip si mul.moon = 0 */}
+      {mul.moon > 0.01 && p.moonVisible && p.moonOpacity > 0 && (
         <Moon preset={p} moonOpacity={Math.min(1, p.moonOpacity * mul.moon)} />
       )}
     </View>
