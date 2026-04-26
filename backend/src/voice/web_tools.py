@@ -13,7 +13,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_brave_key
-from videos.brave_search import _call_brave_api
+from voice.web_tools_cache import cached_brave_search
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ async def web_search(
         return "Aucune requête de recherche fournie."
 
     try:
-        result = await _call_brave_api(query.strip(), count=5)
+        result = await cached_brave_search(query.strip(), count=5)
 
         if not result.success or not result.sources:
             return f"Aucun résultat trouvé pour la recherche : {query}"
@@ -99,7 +99,7 @@ async def deep_research(
         ]
 
         results = await asyncio.gather(
-            *[_call_brave_api(qr, count=5) for qr in queries],
+            *[cached_brave_search(qr, count=5) for qr in queries],
             return_exceptions=True,
         )
 
@@ -152,7 +152,7 @@ async def check_fact(
 
     try:
         search_query = f"{claim.strip()} fact check verification"
-        result = await _call_brave_api(search_query, count=5)
+        result = await cached_brave_search(search_query, count=5)
 
         if not result.success or not result.sources:
             return f"Aucune source trouvée pour vérifier cette affirmation : {claim}"
