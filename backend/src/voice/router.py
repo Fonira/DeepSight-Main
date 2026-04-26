@@ -4,6 +4,7 @@ Voice Chat Router — ElevenLabs Conversational AI Integration
 Endpoints:
   GET  /quota                                    — Voice quota info
   POST /session                                  — Create voice session
+  POST /transcripts/append                       — Persist one voice turn (Spec #1)
   POST /webhook                                  — ElevenLabs webhook (public)
   GET  /history/{summary_id}                     — Voice session history
   GET  /history/{summary_id}/{session_id}/transcript — Session transcript
@@ -13,7 +14,7 @@ import asyncio
 import hashlib
 import hmac
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -46,6 +47,8 @@ from voice.schemas import (
     VoiceCatalogEntry,
     VoiceThumbnailResponse,
     VoiceThumbnailGradient,
+    TranscriptAppendRequest,
+    TranscriptAppendResponse,
 )
 from voice.quota import (
     get_voice_quota_info,
@@ -55,7 +58,7 @@ from voice.quota import (
 from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from voice.tools import search_in_transcript, get_analysis_section, get_sources, get_flashcards
 from voice.web_tools import web_search, deep_research, check_fact
-from voice.agent_types import get_agent_config, list_agent_types, AGENT_REGISTRY
+from voice.agent_types import get_agent_config, list_agent_types
 from voice.debate_tools import (
     get_debate_overview,
     get_video_thesis,
@@ -63,7 +66,6 @@ from voice.debate_tools import (
     search_in_debate_transcript,
     get_debate_fact_check,
 )
-from voice.debate_context import build_debate_rich_context
 from voice.avatar import (
     get_debate_avatar_url,
     ensure_debate_avatar,
@@ -133,6 +135,252 @@ async def _increment_user_web_search_count(user_id: int) -> int:
     current = _user_web_search_counts.get(user_id, 0) + 1
     _user_web_search_counts[user_id] = current
     return current
+
+
+# ── Spec #1, Task 7 — Rate limit for /transcripts/append ───────────────────
+# 60 calls / minute per voice_session_id. The cap is generous: a single voice
+# turn is short, but the frontend may emit several events per turn (interim,
+# final, agent reply). The Redis TTL guarantees per-minute reset.
+_transcript_append_counts: dict[str, int] = {}
+_TRANSCRIPT_APPEND_MAX = 60
+_TRANSCRIPT_APPEND_TTL = 60  # 1 minute
+
+
+async def _increment_transcript_append_count(voice_session_id: str) -> int:
+    """Increment and return the count of /transcripts/append calls for a session.
+
+    Uses Redis INCR with TTL when available, falls back to the in-memory dict.
+    """
+    count = await _redis_incr_with_ttl(
+        f"voice:transcript_append:{voice_session_id}",
+        _TRANSCRIPT_APPEND_TTL,
+    )
+    if count is not None:
+        return count
+
+    current = _transcript_append_counts.get(voice_session_id, 0) + 1
+    _transcript_append_counts[voice_session_id] = current
+    return current
+
+
+# ── Spec #1, Task 8 — Webhook reconciliation post-call ─────────────────────
+# Drift threshold: a row is considered drifted (and gets UPDATEd) when the
+# normalised character-length difference exceeds 10% of the longer string.
+_RECONCILE_DRIFT_THRESHOLD = 0.10
+
+
+def parse_transcript_canonical(transcript) -> list[dict]:
+    """Parse the ElevenLabs canonical transcript payload into structured turns.
+
+    Accepts:
+      - str  → "User: ...\\nAI: ..." multi-line format (older payloads)
+      - list → [{"role": "user", "message": "..."}, ...]   (newer payloads)
+      - None or empty → []
+
+    Returns: ``[{"speaker": "user"|"agent", "content": str}, ...]``
+    """
+    if not transcript:
+        return []
+
+    # ── Newer ElevenLabs payloads ship the transcript as a list of dicts ──
+    if isinstance(transcript, list):
+        out: list[dict] = []
+        for item in transcript:
+            if not isinstance(item, dict):
+                continue
+            role = (item.get("role") or item.get("speaker") or "").lower()
+            content = (item.get("message") or item.get("content") or "").strip()
+            if not content:
+                continue
+            speaker = "agent" if role in ("agent", "assistant", "ai") else "user"
+            out.append({"speaker": speaker, "content": content})
+        return out
+
+    if not isinstance(transcript, str):
+        return []
+
+    if not transcript.strip():
+        return []
+
+    # ── Legacy text format: 'User:' / 'AI:' / 'Assistant:' line prefixes ──
+    out: list[dict] = []
+    for raw_line in transcript.splitlines():
+        line = raw_line.strip()
+        if not line or ":" not in line:
+            continue
+        prefix, _, content = line.partition(":")
+        prefix_norm = prefix.strip().lower()
+        content = content.strip()
+        if not content:
+            continue
+        if prefix_norm in ("ai", "assistant", "agent"):
+            speaker = "agent"
+        elif prefix_norm in ("user", "human"):
+            speaker = "user"
+        else:
+            continue  # Unknown prefix → skip rather than misclassify.
+        out.append({"speaker": speaker, "content": content})
+    return out
+
+
+def _content_drift_above_threshold(a: str, b: str) -> bool:
+    """Return True iff the two strings differ enough to warrant an UPDATE.
+
+    Heuristic (deliberately simple): normalised character-length difference
+    above 10% of the longer string.
+    """
+    if a == b:
+        return False
+    longer = max(len(a), len(b))
+    if longer == 0:
+        return False
+    diff = abs(len(a) - len(b))
+    return (diff / longer) > _RECONCILE_DRIFT_THRESHOLD
+
+
+async def reconcile_voice_transcript(
+    db,
+    *,
+    voice_session_id: str,
+    user_id: int,
+    summary_id: int | None,
+    canonical_turns: list[dict],
+) -> dict:
+    """Reconcile the canonical transcript with already-persisted rows.
+
+    Strategy (positional alignment):
+      - INSERT any canonical turn beyond what was persisted live.
+      - UPDATE in-place when content drift exceeds the threshold.
+      - Otherwise: leave the row as-is (no spurious writes).
+
+    Returns ``{"inserted": int, "updated": int}``.
+    """
+    if not canonical_turns:
+        return {"inserted": 0, "updated": 0}
+
+    from db.database import ChatMessage
+
+    result = await db.execute(
+        select(ChatMessage)
+        .where(ChatMessage.voice_session_id == voice_session_id)
+        .order_by(
+            ChatMessage.time_in_call_secs.asc().nulls_last()
+            if hasattr(ChatMessage.time_in_call_secs, "asc")
+            else ChatMessage.time_in_call_secs,
+            ChatMessage.created_at.asc(),
+        )
+    )
+    existing = list(result.scalars().all())
+
+    inserted = 0
+    updated = 0
+
+    for idx, turn in enumerate(canonical_turns):
+        speaker = turn.get("speaker", "user")
+        content = (turn.get("content") or "").strip()
+        if not content:
+            continue
+
+        if idx < len(existing):
+            row = existing[idx]
+            if _content_drift_above_threshold(row.content or "", content):
+                row.content = content
+                row.voice_speaker = speaker
+                row.role = "user" if speaker == "user" else "assistant"
+                updated += 1
+        else:
+            db.add(
+                ChatMessage(
+                    user_id=user_id,
+                    summary_id=summary_id,
+                    role="user" if speaker == "user" else "assistant",
+                    content=content,
+                    source="voice",
+                    voice_session_id=voice_session_id,
+                    voice_speaker=speaker,
+                    time_in_call_secs=None,  # canonical does not carry timing
+                )
+            )
+            inserted += 1
+
+    if inserted or updated:
+        try:
+            await db.commit()
+        except Exception as exc:
+            logger.warning(
+                "reconcile_voice_transcript: commit failed (non-fatal)",
+                extra={
+                    "voice_session_id": voice_session_id,
+                    "inserted": inserted,
+                    "updated": updated,
+                    "error": str(exc),
+                },
+            )
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+
+    return {"inserted": inserted, "updated": updated}
+
+
+# ── Spec #1, Task 6 — Chat history injection into voice system_prompt ──────
+# Limits kept tight to preserve token budget for the actual analysis context:
+#   max 10 messages, max 400 chars per message → ~4 KB block worst case.
+_CHAT_HISTORY_MAX_MESSAGES = 10
+_CHAT_HISTORY_MAX_CHARS_PER_MSG = 400
+
+
+def _build_chat_history_block_for_voice(history_msgs: list[dict], language: str = "fr") -> str:
+    """Format the recent text-chat history as a block injectable into the
+    voice agent's system prompt.
+
+    The block lets the voice agent continue an in-progress text conversation
+    instead of starting fresh ("Spec #1, Task 6 — chat history injection").
+
+    Voice rows (``msg.get("source") == "voice"``) are skipped because they
+    are already reflected in the active voice session — re-injecting them
+    would duplicate context. When ``source`` is missing (legacy rows), the
+    row is kept (defensive default before Task 9 backfills the column).
+
+    Returns "" when there are no usable rows so callers can `+= block` safely.
+    """
+    if not history_msgs:
+        return ""
+
+    # Keep the last N messages only (chronological order — list assumed sorted
+    # oldest → newest by chat.service.get_chat_history's `reversed(...)`).
+    trimmed = history_msgs[-_CHAT_HISTORY_MAX_MESSAGES:]
+
+    # Drop voice rows: they belong to the active voice session, not the
+    # text-chat continuity we're re-injecting (Spec #1, Task 6 + Task 9).
+    trimmed = [m for m in trimmed if m.get("source") != "voice"]
+    if not trimmed:
+        return ""
+
+    if language == "en":
+        header = "## Recent text chat history\n"
+        user_label = "User"
+        assistant_label = "You"
+        footer = "\nContinue this conversation in the same vein.\n"
+    else:
+        header = "## Historique récent du chat texte\n"
+        user_label = "Utilisateur"
+        assistant_label = "Toi"
+        footer = "\nContinue dans la lignée de cette conversation.\n"
+
+    lines: list[str] = [header]
+    for msg in trimmed:
+        role = msg.get("role", "user")
+        content = (msg.get("content") or "").strip()
+        if not content:
+            continue
+        if len(content) > _CHAT_HISTORY_MAX_CHARS_PER_MSG:
+            content = content[: _CHAT_HISTORY_MAX_CHARS_PER_MSG - 1] + "…"
+        label = assistant_label if role == "assistant" else user_label
+        lines.append(f"- {label}: {content}")
+    lines.append(footer)
+    return "\n".join(lines)
 
 
 async def record_web_search_usage(
@@ -227,9 +475,7 @@ async def verify_tool_request(request: Request, db: AsyncSession) -> tuple[Summa
     return summary, body
 
 
-async def verify_debate_tool_request(
-    request: Request, db: AsyncSession
-) -> tuple[DebateAnalysis, dict]:
+async def verify_debate_tool_request(request: Request, db: AsyncSession) -> tuple[DebateAnalysis, dict]:
     """Verify an ElevenLabs webhook request targeting a DebateAnalysis.
 
     Same contract as verify_tool_request but for debate_id tokens.
@@ -261,9 +507,7 @@ async def verify_debate_tool_request(
             detail={"code": "token_mismatch", "message": "Bearer token does not match debate_id."},
         )
 
-    result = await db.execute(
-        select(DebateAnalysis).where(DebateAnalysis.id == int(debate_id))
-    )
+    result = await db.execute(select(DebateAnalysis).where(DebateAnalysis.id == int(debate_id)))
     debate = result.scalar_one_or_none()
     if not debate:
         raise HTTPException(
@@ -282,6 +526,7 @@ class AddonCheckoutRequest(BaseModel):
 # GET /quota — Voice quota info
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/quota", response_model=VoiceQuotaResponse)
 async def get_voice_quota(
     current_user: User = Depends(get_current_user),
@@ -295,6 +540,7 @@ async def get_voice_quota(
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /preferences — Get user voice preferences
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/preferences", response_model=VoicePreferencesResponse)
 async def get_voice_preferences(
@@ -331,6 +577,7 @@ async def get_voice_preferences(
 # PUT /preferences — Update user voice preferences
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.put("/preferences", response_model=VoicePreferencesResponse)
 async def update_voice_preferences(
     request: VoicePreferencesRequest,
@@ -349,7 +596,7 @@ async def update_voice_preferences(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "code": "invalid_voice_id",
-                "message": f"Voice ID inconnu. Utilisez GET /api/voice/catalog pour la liste.",
+                "message": "Voice ID inconnu. Utilisez GET /api/voice/catalog pour la liste.",
             },
         )
 
@@ -394,6 +641,7 @@ async def update_voice_preferences(
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /catalog — Voice catalog (available voices + speed presets + models)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/catalog", response_model=VoiceCatalogResponse)
 async def get_voice_catalog():
@@ -441,6 +689,7 @@ async def get_voice_catalog():
 # POST /session — Create a voice session
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/session", response_model=VoiceSessionResponse)
 async def create_voice_session(
     request: VoiceSessionRequest,
@@ -456,6 +705,7 @@ async def create_voice_session(
 
     # ── Admin bypass — skip all plan/quota checks ────────────────────────
     from core.config import ADMIN_CONFIG
+
     admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower()
     is_admin = current_user.is_admin or (current_user.email or "").lower() == admin_email
 
@@ -466,9 +716,13 @@ async def create_voice_session(
     if not is_admin:
         plan_order = {
             "free": 0,
-            "etudiant": 1, "starter": 1, "student": 1,  # Legacy aliases → pro
+            "etudiant": 1,
+            "starter": 1,
+            "student": 1,  # Legacy aliases → pro
             "pro": 1,
-            "equipe": 1, "team": 1, "unlimited": 1,     # Legacy aliases → pro
+            "equipe": 1,
+            "team": 1,
+            "unlimited": 1,  # Legacy aliases → pro
             "expert": 1,  # Maps to pro
         }
         user_plan_level = plan_order.get(plan, 0)
@@ -596,10 +850,9 @@ async def create_voice_session(
 
         if debate:
             from voice.debate_context import build_debate_rich_context, MAX_CONTEXT_DEBATE_VOICE
+
             debate_ctx = await build_debate_rich_context(debate, db, include_transcripts=True)
-            context_block = debate_ctx.format_for_voice(
-                language=language, max_chars=MAX_CONTEXT_DEBATE_VOICE
-            )
+            context_block = debate_ctx.format_for_voice(language=language, max_chars=MAX_CONTEXT_DEBATE_VOICE)
 
             logger.info(
                 "Voice session: debate context assembled",
@@ -652,6 +905,42 @@ async def create_voice_session(
         else:
             system_prompt = agent_prompt
 
+        # ── Spec #1, Task 6 — Inject recent text-chat history when relevant ──
+        # The voice agent picks up where the text chat left off (cross-surface
+        # continuity). Skipped for debate (uses its own context block) and when
+        # there is no summary_id (companion mode without active video).
+        if request.summary_id and not debate_ctx:
+            try:
+                from chat.service import get_chat_history as _get_chat_history
+
+                _chat_history = await _get_chat_history(
+                    db,
+                    summary_id=request.summary_id,
+                    user_id=current_user.id,
+                    limit=_CHAT_HISTORY_MAX_MESSAGES,
+                )
+                _history_block = _build_chat_history_block_for_voice(_chat_history, language=language)
+                if _history_block:
+                    system_prompt = f"{system_prompt}\n\n{_history_block}"
+                    logger.info(
+                        "Voice session: chat history injected",
+                        extra={
+                            "summary_id": request.summary_id,
+                            "user_id": current_user.id,
+                            "messages_kept": min(_CHAT_HISTORY_MAX_MESSAGES, len(_chat_history)),
+                            "block_chars": len(_history_block),
+                        },
+                    )
+            except Exception as _hist_exc:
+                # Non-fatal: voice session still works without chat continuity.
+                logger.warning(
+                    "Voice session: failed to inject chat history (non-fatal)",
+                    extra={
+                        "summary_id": request.summary_id,
+                        "error": str(_hist_exc),
+                    },
+                )
+
         # ── Build webhook tools (source-aware) ──
         webhook_base_url = APP_URL.rstrip("/")
         if agent_config.requires_debate and debate:
@@ -667,19 +956,18 @@ async def create_voice_session(
         # Filter tools to only those allowed for this agent type
         if agent_config.tools:
             allowed_tool_names = set(agent_config.tools)
-            tools_config = [
-                t for t in tools_config
-                if t.get("name", "") in allowed_tool_names
-            ]
+            tools_config = [t for t in tools_config if t.get("name", "") in allowed_tool_names]
 
         # Get voice ID from user preferences (fallback to config)
         from voice.preferences import get_user_voice_preferences
+
         user_prefs = await get_user_voice_preferences(current_user.id, db)
 
         if user_prefs.voice_id:
             voice_id = user_prefs.voice_id
         else:
             from core.config import _settings
+
             voice_id = _settings.ELEVENLABS_VOICE_ID or "21m00Tcm4TlvDq8ikWAM"  # Default: Rachel
 
         # ── FR accent check: warn if voice is not FR-safe ────────────────
@@ -714,11 +1002,12 @@ async def create_voice_session(
         if rich_ctx and rich_ctx.video_title and "{video_title}" not in first_message:
             if agent_config.agent_type == "explorer":
                 first_message = (
-                    f"Salut ! Je suis prêt à discuter de la vidéo « {rich_ctx.video_title} ». "
-                    "Qu'est-ce que tu veux savoir ?"
-                ) if language == "fr" else (
-                    f"Hi! I'm ready to discuss the video \"{rich_ctx.video_title}\". "
-                    "What would you like to know?"
+                    (
+                        f"Salut ! Je suis prêt à discuter de la vidéo « {rich_ctx.video_title} ». "
+                        "Qu'est-ce que tu veux savoir ?"
+                    )
+                    if language == "fr"
+                    else (f'Hi! I\'m ready to discuss the video "{rich_ctx.video_title}". What would you like to know?')
                 )
 
         # Build voice settings from user preferences
@@ -727,6 +1016,7 @@ async def create_voice_session(
 
         # ── Build turn configuration from user preferences (Phase 1: PTT) ──
         from voice.preferences import get_voice_chat_speed_preset, CONCISENESS_INJECTION_FR, CONCISENESS_INJECTION_EN
+
         # ElevenLabs turn config — API April 2026: mode is "turn" or "silence"
         # "turn" = PTT-style (wait for user turn), "silence" = VAD auto-detect
         # eagerness renamed to turn_eagerness enum: "patient"|"normal"|"eager"
@@ -826,12 +1116,14 @@ async def create_voice_session(
     # Parse expires_at from ISO string, fallback to +10min
     try:
         from datetime import timedelta
+
         if expires_at_iso:
             expires_at = datetime.fromisoformat(expires_at_iso.replace("Z", "+00:00")).replace(tzinfo=None)
         else:
             expires_at = datetime.utcnow() + timedelta(minutes=10)
     except (ValueError, TypeError):
         from datetime import timedelta
+
         expires_at = datetime.utcnow() + timedelta(minutes=10)
 
     # Compute quota remaining
@@ -854,8 +1146,165 @@ async def create_voice_session(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# POST /transcripts/append — Persist a single voice turn (Spec #1, Task 7)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/transcripts/append", response_model=TranscriptAppendResponse)
+async def append_transcript(
+    request: TranscriptAppendRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> TranscriptAppendResponse:
+    """Persist one voice turn into the unified chat_messages timeline.
+
+    Auth: Bearer JWT (user). IDOR: voice_session.user_id must equal
+    current_user.id (returns 404 — same code as a missing session — to
+    avoid leaking ownership info). Rate limit: 60 / min / voice_session_id
+    (Spec #1).
+
+    Dedup: a 60-second window per (voice_session_id, role, content) returns
+    the existing row id with ``created=False``. This guards against
+    network retries that emit the same payload twice; the webhook
+    reconciler (Task 8) handles content drift across the whole call.
+    """
+    # ── Rate limit: 60 / min / voice_session_id ─────────────────────────────
+    count = await _increment_transcript_append_count(request.voice_session_id)
+    if count > _TRANSCRIPT_APPEND_MAX:
+        logger.warning(
+            "Transcript append rate limit exceeded",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "user_id": current_user.id,
+                "count": count,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "transcript_append_rate_limited",
+                "message": (
+                    f"Too many transcript append calls for this voice session (limit: {_TRANSCRIPT_APPEND_MAX}/min)."
+                ),
+            },
+        )
+
+    # ── Lookup voice_session ─────────────────────────────────────────────────
+    result = await db.execute(select(VoiceSession).where(VoiceSession.id == request.voice_session_id))
+    voice_session = result.scalar_one_or_none()
+    if voice_session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "voice_session_not_found",
+                "message": "Voice session does not exist.",
+            },
+        )
+
+    # ── IDOR: caller must own the session ────────────────────────────────────
+    # Return 404 (not 403) so an attacker cannot distinguish "session does
+    # not exist" from "session exists but belongs to another user".
+    if voice_session.user_id != current_user.id:
+        logger.warning(
+            "Transcript append IDOR attempt",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "session_user_id": voice_session.user_id,
+                "caller_user_id": current_user.id,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "voice_session_not_found",
+                "message": "Voice session does not exist.",
+            },
+        )
+
+    # ── Persist into chat_messages with source='voice' ──────────────────────
+    from datetime import timedelta
+
+    from db.database import ChatMessage
+
+    role = "user" if request.speaker == "user" else "assistant"
+
+    # ── Dedup window: 60s per (voice_session_id, role, content) ─────────────
+    # A retry on the same call (e.g. network timeout, frontend re-fire) must
+    # not insert a duplicate row. The 60s window is generous enough to absorb
+    # mobile reconnects yet short enough that legitimate user repetition is
+    # preserved.
+    dedup_cutoff = datetime.utcnow() - timedelta(seconds=60)
+    dedup_result = await db.execute(
+        select(ChatMessage)
+        .where(
+            ChatMessage.voice_session_id == request.voice_session_id,
+            ChatMessage.role == role,
+            ChatMessage.content == request.content,
+            ChatMessage.created_at > dedup_cutoff,
+        )
+        .order_by(ChatMessage.created_at.desc())
+        .limit(1)
+    )
+    existing = dedup_result.scalar_one_or_none()
+    if existing is not None:
+        logger.debug(
+            "Transcript append dedup hit",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "user_id": current_user.id,
+                "existing_id": existing.id,
+            },
+        )
+        return TranscriptAppendResponse(
+            id=existing.id,
+            created=False,
+            voice_session_id=request.voice_session_id,
+        )
+
+    msg = ChatMessage(
+        user_id=current_user.id,
+        summary_id=voice_session.summary_id,  # may be None for companion
+        role=role,
+        content=request.content,
+        source="voice",
+        voice_session_id=request.voice_session_id,
+        voice_speaker=request.speaker,
+        time_in_call_secs=request.time_in_call_secs,
+    )
+    db.add(msg)
+    try:
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        logger.error(
+            "Transcript append: DB commit failed",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "user_id": current_user.id,
+                "error": str(exc),
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "transcript_append_failed",
+                "message": "Failed to persist transcript turn.",
+            },
+        )
+
+    # SQLAlchemy populates msg.id after commit (autoincrement PK).
+    await db.refresh(msg)
+    return TranscriptAppendResponse(
+        id=msg.id,
+        created=True,
+        voice_session_id=request.voice_session_id,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # POST /webhook — ElevenLabs webhook (public, no auth)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/webhook", response_model=WebhookAckResponse)
 async def voice_webhook(
@@ -869,6 +1318,7 @@ async def voice_webhook(
     """
     # ── HMAC signature verification ──────────────────────────────────────
     from core.config import _settings
+
     webhook_secret = _settings.ELEVENLABS_WEBHOOK_SECRET
 
     raw_body = await request.body()
@@ -905,6 +1355,7 @@ async def voice_webhook(
 
     # ── Parse payload ────────────────────────────────────────────────────
     import json
+
     try:
         body = json.loads(raw_body)
     except (json.JSONDecodeError, TypeError):
@@ -921,13 +1372,9 @@ async def voice_webhook(
     # Find the voice session by conversation_id or metadata session_id
     session_query = None
     if payload.conversation_id:
-        session_query = select(VoiceSession).where(
-            VoiceSession.elevenlabs_conversation_id == payload.conversation_id
-        )
+        session_query = select(VoiceSession).where(VoiceSession.elevenlabs_conversation_id == payload.conversation_id)
     elif payload.metadata and payload.metadata.get("session_id"):
-        session_query = select(VoiceSession).where(
-            VoiceSession.id == payload.metadata["session_id"]
-        )
+        session_query = select(VoiceSession).where(VoiceSession.id == payload.metadata["session_id"])
 
     # Also try matching by agent_id if conversation_id didn't match
     if session_query is None and payload.agent_id:
@@ -985,6 +1432,42 @@ async def voice_webhook(
         },
     )
 
+    # ── Spec #1, Task 8 — Reconcile transcript with chat_messages rows ──
+    # The frontend POSTs each turn live via /transcripts/append, but events
+    # may have been dropped on a flaky network. The webhook payload carries
+    # the canonical, server-side transcript: we INSERT what was missed and
+    # UPDATE rows whose live content drifted from the canonical version.
+    try:
+        canonical_payload = body.get("data", {}).get("transcript") if isinstance(body, dict) else None
+        if canonical_payload is None:
+            canonical_payload = payload.transcript
+        canonical_turns = parse_transcript_canonical(canonical_payload)
+        if canonical_turns:
+            report = await reconcile_voice_transcript(
+                db,
+                voice_session_id=voice_session.id,
+                user_id=voice_session.user_id,
+                summary_id=voice_session.summary_id,
+                canonical_turns=canonical_turns,
+            )
+            logger.info(
+                "Voice webhook: transcript reconciled",
+                extra={
+                    "session_id": voice_session.id,
+                    "canonical_turns": len(canonical_turns),
+                    **report,
+                },
+            )
+    except Exception as reconcile_exc:
+        # Non-fatal — webhook still acks so ElevenLabs won't retry.
+        logger.warning(
+            "Voice webhook: transcript reconciliation failed (non-fatal)",
+            extra={
+                "session_id": voice_session.id,
+                "error": str(reconcile_exc),
+            },
+        )
+
     # ── Cleanup: delete the ElevenLabs agent (fire-and-forget) ────────
     if voice_session.elevenlabs_agent_id:
         try:
@@ -1014,6 +1497,7 @@ async def voice_webhook(
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /history/{summary_id} — Voice session history
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/history/{summary_id}", response_model=VoiceHistoryResponse)
 async def get_voice_history(
@@ -1052,6 +1536,7 @@ async def get_voice_history(
 
     # Build session summaries
     from voice.schemas import VoiceSessionSummary
+
     session_summaries = [
         VoiceSessionSummary(
             session_id=s.id,
@@ -1077,6 +1562,7 @@ async def get_voice_history(
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /history/{summary_id}/{session_id}/transcript — Session transcript
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get(
     "/history/{summary_id}/{session_id}/transcript",
@@ -1146,6 +1632,7 @@ async def get_voice_transcript(
 # GET /history/debate/{debate_id} — Voice session history for a debate
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/history/debate/{debate_id}", response_model=VoiceHistoryResponse)
 async def get_debate_voice_history(
     debate_id: int,
@@ -1177,6 +1664,7 @@ async def get_debate_voice_history(
     sessions = result.scalars().all()
 
     from voice.schemas import VoiceSessionSummary
+
     session_summaries = [
         VoiceSessionSummary(
             session_id=s.id,
@@ -1266,16 +1754,14 @@ async def get_voice_addon_packs(
     current_user: User = Depends(get_current_user),
 ):
     """Retourne les packs de minutes vocales disponibles."""
-    packs = [
-        {"id": pack_id, **pack_info}
-        for pack_id, pack_info in VOICE_ADDON_PACKS.items()
-    ]
+    packs = [{"id": pack_id, **pack_info} for pack_id, pack_info in VOICE_ADDON_PACKS.items()]
     return {"packs": packs}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /addon/checkout — Create Stripe checkout for voice pack
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _init_stripe() -> bool:
     """Initialise Stripe avec la bonne clé."""
@@ -1337,17 +1823,19 @@ async def create_voice_addon_checkout(
         checkout_session = stripe.checkout.Session.create(
             customer=customer_id,
             payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": pack["currency"],
-                    "unit_amount": pack["price_cents"],
-                    "product_data": {
-                        "name": f"DeepSight — {pack['name']}",
-                        "description": f"{pack['minutes']} minutes de chat vocal",
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": pack["currency"],
+                        "unit_amount": pack["price_cents"],
+                        "product_data": {
+                            "name": f"DeepSight — {pack['name']}",
+                            "description": f"{pack['minutes']} minutes de chat vocal",
+                        },
                     },
-                },
-                "quantity": 1,
-            }],
+                    "quantity": 1,
+                }
+            ],
             mode="payment",
             success_url=success_url,
             cancel_url=cancel_url,
@@ -1382,6 +1870,7 @@ async def create_voice_addon_checkout(
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /tools/* — ElevenLabs webhook tool endpoints (public, no auth)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/tools/search-transcript")
 async def tool_search_transcript(request: Request, db: AsyncSession = Depends(get_session)):
@@ -1443,10 +1932,7 @@ async def tool_web_search(request: Request, db: AsyncSession = Depends(get_sessi
     # Per-user global cap (Spec #0)
     user_count = await _increment_user_web_search_count(int(summary.user_id))
     if user_count > _WEB_SEARCH_USER_MAX:
-        return {
-            "result": "Limite horaire de recherches web atteinte pour ton compte. "
-            "Réessaie dans quelques minutes."
-        }
+        return {"result": "Limite horaire de recherches web atteinte pour ton compte. Réessaie dans quelques minutes."}
 
     result = await web_search(summary.id, query, db)
 
@@ -1483,6 +1969,7 @@ async def tool_check_fact(request: Request, db: AsyncSession = Depends(get_sessi
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /tools/debate-* — Debate moderator agent tools (public, bearer=debate_id)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/tools/debate-overview")
 async def tool_debate_overview(request: Request, db: AsyncSession = Depends(get_session)):
@@ -1531,6 +2018,7 @@ async def tool_debate_fact_check(request: Request, db: AsyncSession = Depends(ge
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /debate/{debate_id}/avatar — Dynamic avatar for the debate moderator agent
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/debate/{debate_id}/avatar")
 async def get_debate_voice_avatar(
@@ -1591,6 +2079,7 @@ async def get_debate_voice_avatar(
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /agents/types — List available agent types
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/agents/types")
 async def get_agent_types():
@@ -1739,9 +2228,8 @@ async def get_voice_session_thumbnail(
 
     thumbnail_url, source = await _resolve_voice_thumbnail(summary)
 
-    alt_text = (
-        f"Miniature de la vidéo « {summary.video_title or 'sans titre'} »"
-        + (f" — chaîne {summary.video_channel}" if summary.video_channel else "")
+    alt_text = f"Miniature de la vidéo « {summary.video_title or 'sans titre'} »" + (
+        f" — chaîne {summary.video_channel}" if summary.video_channel else ""
     )
 
     logger.info(

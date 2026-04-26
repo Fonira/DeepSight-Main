@@ -65,9 +65,11 @@ _AGENT_MAX_FAILURES: int = 3
 # DATA TYPES
 # =============================================================================
 
+
 @dataclass
 class AgentSearchResult:
     """Result from an Agent web search call."""
+
     success: bool
     content: str
     sources: List[Dict[str, str]] = field(default_factory=list)
@@ -79,6 +81,7 @@ class AgentSearchResult:
 # =============================================================================
 # CIRCUIT BREAKER
 # =============================================================================
+
 
 def _is_agent_circuit_open() -> bool:
     """Check if the Agent API circuit breaker is open (should skip)."""
@@ -152,6 +155,7 @@ _AGENT_SYSTEM_INSTRUCTIONS = (
 # AGENT LIFECYCLE — Create once, reuse
 # =============================================================================
 
+
 async def ensure_agent(
     model: str = DEFAULT_AGENT_MODEL,
     force_recreate: bool = False,
@@ -196,22 +200,16 @@ async def ensure_agent(
                             "top_p": 0.95,
                         },
                     },
-                    timeout=30
+                    timeout=30,
                 )
 
                 if response.status_code in (200, 201):
                     data = response.json()
                     _agent_id = data.get("id")
-                    logger.info(
-                        f"[AGENT] Created DeepSight Analyst agent: {_agent_id} "
-                        f"(model={model})"
-                    )
+                    logger.info(f"[AGENT] Created DeepSight Analyst agent: {_agent_id} (model={model})")
                     return _agent_id
                 else:
-                    logger.error(
-                        f"[AGENT] Failed to create agent: {response.status_code} "
-                        f"{response.text[:300]}"
-                    )
+                    logger.error(f"[AGENT] Failed to create agent: {response.status_code} {response.text[:300]}")
                     return None
 
         except Exception as e:
@@ -222,6 +220,7 @@ async def ensure_agent(
 # =============================================================================
 # RESPONSE PARSING
 # =============================================================================
+
 
 def _parse_conversation_response(data: dict) -> AgentSearchResult:
     """
@@ -254,12 +253,14 @@ def _parse_conversation_response(data: dict) -> AgentSearchResult:
                         url = chunk.get("url", "")
                         if url and url not in seen_urls:
                             seen_urls.add(url)
-                            sources.append({
-                                "title": chunk.get("title", ""),
-                                "url": url,
-                                "snippet": chunk.get("snippet", ""),
-                                "source": chunk.get("source", "web"),
-                            })
+                            sources.append(
+                                {
+                                    "title": chunk.get("title", ""),
+                                    "url": url,
+                                    "snippet": chunk.get("snippet", ""),
+                                    "source": chunk.get("source", "web"),
+                                }
+                            )
 
     usage = data.get("usage", {})
     tokens = usage.get("total_tokens", 0)
@@ -278,6 +279,7 @@ def _parse_conversation_response(data: dict) -> AgentSearchResult:
 # =============================================================================
 # PUBLIC: agent_web_search — One-shot search + synthesis
 # =============================================================================
+
 
 async def agent_web_search(
     query: str,
@@ -321,12 +323,7 @@ async def agent_web_search(
     purpose_hint = _INSTRUCTIONS_BY_PURPOSE.get(purpose, "")
     lang_hint = "Réponds en français." if lang.lower().startswith("fr") else f"Reply in {lang}."
 
-    user_message = (
-        f"{purpose_hint}\n\n"
-        f"Contexte : {context}\n\n"
-        f"Requête : {query}\n\n"
-        f"{lang_hint}"
-    )
+    user_message = f"{purpose_hint}\n\nContexte : {context}\n\nRequête : {query}\n\n{lang_hint}"
 
     start_time = time.time()
 
@@ -343,7 +340,7 @@ async def agent_web_search(
                     "inputs": user_message,
                     "store": False,  # Don't persist conversation in Mistral cloud
                 },
-                timeout=timeout
+                timeout=timeout,
             )
 
             latency_ms = int((time.time() - start_time) * 1000)
@@ -368,17 +365,12 @@ async def agent_web_search(
 
             elif response.status_code >= 500:
                 _record_agent_failure()
-                logger.error(
-                    f"[AGENT] Server error {response.status_code} ({latency_ms}ms): "
-                    f"{response.text[:200]}"
-                )
+                logger.error(f"[AGENT] Server error {response.status_code} ({latency_ms}ms): {response.text[:200]}")
                 return None
 
             else:
                 # 4xx (not 429) — log but don't trigger circuit breaker heavily
-                logger.error(
-                    f"[AGENT] Error {response.status_code}: {response.text[:300]}"
-                )
+                logger.error(f"[AGENT] Error {response.status_code}: {response.text[:300]}")
                 return None
 
     except httpx.TimeoutException:
@@ -396,6 +388,7 @@ async def agent_web_search(
 # =============================================================================
 # PUBLIC: agent_web_search_stream — Streaming SSE
 # =============================================================================
+
 
 async def agent_web_search_stream(
     query: str,
@@ -435,12 +428,7 @@ async def agent_web_search_stream(
     purpose_hint = _INSTRUCTIONS_BY_PURPOSE.get(purpose, "")
     lang_hint = "Réponds en français." if lang.lower().startswith("fr") else f"Reply in {lang}."
 
-    user_message = (
-        f"{purpose_hint}\n\n"
-        f"Contexte : {context}\n\n"
-        f"Requête : {query}\n\n"
-        f"{lang_hint}"
-    )
+    user_message = f"{purpose_hint}\n\nContexte : {context}\n\nRequête : {query}\n\n{lang_hint}"
 
     sources: List[Dict[str, str]] = []
     seen_urls: set = set()
@@ -460,7 +448,7 @@ async def agent_web_search_stream(
                     "store": False,
                     "stream": True,
                 },
-                timeout=timeout
+                timeout=timeout,
             ) as response:
                 if response.status_code == 429:
                     _record_agent_failure()
@@ -476,10 +464,7 @@ async def agent_web_search_stream(
 
                 if response.status_code != 200:
                     body = await response.aread()
-                    logger.error(
-                        f"[AGENT-STREAM] Error {response.status_code}: "
-                        f"{body.decode()[:200]}"
-                    )
+                    logger.error(f"[AGENT-STREAM] Error {response.status_code}: {body.decode()[:200]}")
                     return
 
                 _record_agent_success()
@@ -518,20 +503,19 @@ async def agent_web_search_stream(
                                     url = chunk.get("url", "")
                                     if url and url not in seen_urls:
                                         seen_urls.add(url)
-                                        sources.append({
-                                            "title": chunk.get("title", ""),
-                                            "url": url,
-                                            "snippet": chunk.get("snippet", ""),
-                                        })
+                                        sources.append(
+                                            {
+                                                "title": chunk.get("title", ""),
+                                                "url": url,
+                                                "snippet": chunk.get("snippet", ""),
+                                            }
+                                        )
 
                     elif event_type == "conversation.response.completed":
                         # Final event with usage stats
                         usage = event.get("usage", {})
                         tokens = usage.get("total_tokens", 0)
-                        logger.info(
-                            f"[AGENT-STREAM] Complete: {tokens} tokens, "
-                            f"{len(sources)} sources"
-                        )
+                        logger.info(f"[AGENT-STREAM] Complete: {tokens} tokens, {len(sources)} sources")
 
         # Yield sources as final block if any were collected
         if sources:
@@ -550,6 +534,7 @@ async def agent_web_search_stream(
 # UTILITY: Delete agent (cleanup)
 # =============================================================================
 
+
 async def delete_agent() -> bool:
     """Delete the current DeepSight Analyst agent. Useful for cleanup/recreation."""
     global _agent_id
@@ -564,9 +549,7 @@ async def delete_agent() -> bool:
     try:
         async with shared_http_client() as client:
             response = await client.delete(
-                f"{MISTRAL_AGENTS_URL}/{_agent_id}",
-                headers={"Authorization": f"Bearer {api_key}"},
-                timeout=15
+                f"{MISTRAL_AGENTS_URL}/{_agent_id}", headers={"Authorization": f"Bearer {api_key}"}, timeout=15
             )
             if response.status_code in (200, 204, 404):
                 logger.info(f"[AGENT] Deleted agent {_agent_id}")

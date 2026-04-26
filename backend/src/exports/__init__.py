@@ -14,15 +14,9 @@ from .service import (
     export_to_txt,
     export_to_markdown,
     export_to_docx,
-    export_to_pdf
+    export_to_pdf,
 )
-from .pdf_generator import (
-    PDFGenerator,
-    PDFExportType,
-    generate_pdf,
-    is_pdf_available,
-    PDF_EXPORT_OPTIONS
-)
+from .pdf_generator import PDFGenerator, PDFExportType, generate_pdf, is_pdf_available, PDF_EXPORT_OPTIONS
 
 __all__ = [
     "router",
@@ -37,5 +31,5 @@ __all__ = [
     "PDFExportType",
     "generate_pdf",
     "is_pdf_available",
-    "PDF_EXPORT_OPTIONS"
+    "PDF_EXPORT_OPTIONS",
 ]

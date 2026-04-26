@@ -9,7 +9,6 @@ Tous ces tools lisent DebateAnalysis (pas Summary). Ownership vérifié au nivea
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Optional
 
@@ -23,9 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 async def _load_debate(debate_id: int, db: AsyncSession) -> Optional[DebateAnalysis]:
-    result = await db.execute(
-        select(DebateAnalysis).where(DebateAnalysis.id == debate_id)
-    )
+    result = await db.execute(select(DebateAnalysis).where(DebateAnalysis.id == debate_id))
     return result.scalar_one_or_none()
 
 
@@ -65,9 +62,7 @@ async def get_video_thesis(debate_id: int, side: str, db: AsyncSession) -> str:
     title = (debate.video_a_title if is_a else debate.video_b_title) or "titre inconnu"
     channel = (debate.video_a_channel if is_a else debate.video_b_channel) or "chaîne inconnue"
     thesis = (debate.thesis_a if is_a else debate.thesis_b) or "(non identifiée)"
-    arguments = _safe_json_list(
-        debate.arguments_a if is_a else debate.arguments_b
-    )
+    arguments = _safe_json_list(debate.arguments_a if is_a else debate.arguments_b)
 
     lines = [
         f"## {'Vidéo A' if is_a else 'Vidéo B'} — {title}",
@@ -95,9 +90,7 @@ async def get_video_thesis(debate_id: int, side: str, db: AsyncSession) -> str:
     return _truncate("\n".join(lines), 3000)
 
 
-async def get_argument_comparison(
-    debate_id: int, topic: str, db: AsyncSession
-) -> str:
+async def get_argument_comparison(debate_id: int, topic: str, db: AsyncSession) -> str:
     """Compare les positions A vs B sur un sous-thème."""
     logger.info("debate_tool.compare", extra={"debate_id": debate_id, "topic": (topic or "")[:60]})
     debate = await _load_debate(debate_id, db)
@@ -118,8 +111,7 @@ async def get_argument_comparison(
             for d in divergence[:6]:
                 if isinstance(d, dict):
                     lines.append(
-                        f"- **{d.get('topic', '?')}** — A : {d.get('position_a', '')}"
-                        f" / B : {d.get('position_b', '')}"
+                        f"- **{d.get('topic', '?')}** — A : {d.get('position_a', '')} / B : {d.get('position_b', '')}"
                     )
                 else:
                     lines.append(f"- {d}")
@@ -131,17 +123,10 @@ async def get_argument_comparison(
         return _truncate("\n".join(lines), 2500) or "Aucun point comparatif disponible."
 
     matching_divergences = [
-        d for d in divergence
-        if isinstance(d, dict) and topic_norm in (d.get("topic") or "").lower()
+        d for d in divergence if isinstance(d, dict) and topic_norm in (d.get("topic") or "").lower()
     ]
-    matching_args_a = [
-        a for a in arguments_a
-        if isinstance(a, dict) and topic_norm in (a.get("claim") or "").lower()
-    ]
-    matching_args_b = [
-        a for a in arguments_b
-        if isinstance(a, dict) and topic_norm in (a.get("claim") or "").lower()
-    ]
+    matching_args_a = [a for a in arguments_a if isinstance(a, dict) and topic_norm in (a.get("claim") or "").lower()]
+    matching_args_b = [a for a in arguments_b if isinstance(a, dict) and topic_norm in (a.get("claim") or "").lower()]
 
     if not (matching_divergences or matching_args_a or matching_args_b):
         return (
@@ -151,10 +136,7 @@ async def get_argument_comparison(
 
     lines = [f"## Comparaison sur : {topic}", ""]
     for d in matching_divergences:
-        lines.append(
-            f"**{d.get('topic', '?')}** — A : {d.get('position_a', '')}"
-            f" / B : {d.get('position_b', '')}"
-        )
+        lines.append(f"**{d.get('topic', '?')}** — A : {d.get('position_a', '')} / B : {d.get('position_b', '')}")
     if matching_args_a:
         lines.append("\n**Arguments vidéo A** :")
         for a in matching_args_a[:3]:
@@ -174,7 +156,9 @@ async def search_in_debate_transcript(
     db: AsyncSession,
 ) -> str:
     """Recherche BM25 dans le transcript de la vidéo A, B, ou les deux."""
-    logger.info("debate_tool.search_transcript", extra={"debate_id": debate_id, "query": (query or "")[:60], "side": side})
+    logger.info(
+        "debate_tool.search_transcript", extra={"debate_id": debate_id, "query": (query or "")[:60], "side": side}
+    )
     debate = await _load_debate(debate_id, db)
     if debate is None:
         return "Débat introuvable."
@@ -209,8 +193,10 @@ async def search_in_debate_transcript(
             continue
         try:
             passages = search_relevant_passages(
-                question=query, transcript=transcript,
-                video_duration=0, max_passages=3,
+                question=query,
+                transcript=transcript,
+                video_duration=0,
+                max_passages=3,
             )
         except Exception as exc:
             logger.warning("search_in_debate_transcript: %s smart_search failed: %s", label, exc)
@@ -245,8 +231,10 @@ async def get_debate_fact_check(debate_id: int, db: AsyncSession) -> str:
         source = item.get("source", "")
         explanation = item.get("explanation", "")
         verdict_fr = {
-            "confirmed": "confirmé", "nuanced": "nuancé",
-            "disputed": "contesté", "unverifiable": "invérifiable",
+            "confirmed": "confirmé",
+            "nuanced": "nuancé",
+            "disputed": "contesté",
+            "unverifiable": "invérifiable",
         }.get(verdict, verdict)
         lines.append(f"{i}. **{claim}** → [{verdict_fr.upper()}]")
         if explanation:

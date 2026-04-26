@@ -199,11 +199,7 @@ def _format_authors_harvard(authors: List[Author]) -> str:
 class BibliographyExporter:
     """Exports papers to various bibliography formats"""
 
-    def export(
-        self,
-        papers: List[AcademicPaper],
-        format: BibliographyFormat
-    ) -> str:
+    def export(self, papers: List[AcademicPaper], format: BibliographyFormat) -> str:
         """
         Export papers to specified format
 

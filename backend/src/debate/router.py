@@ -16,7 +16,7 @@ import json
 import logging
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select
@@ -24,9 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.http_client import shared_http_client
 from auth.dependencies import get_current_user, require_credits
-from core.config import get_mistral_key, PLAN_LIMITS
+from core.config import PLAN_LIMITS
 from core.llm_provider import llm_complete
-from videos.web_search_provider import web_search_and_synthesize, WebSearchResult
+from videos.web_search_provider import web_search_and_synthesize
 from core.credits import deduct_credits
 from db.database import (
     DebateAnalysis,
@@ -77,6 +77,7 @@ MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
 # 🔧 HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _parse_json_field(value: Optional[str]) -> Any:
     """Parse a JSON text column, return empty list/dict on failure."""
     if not value:
@@ -105,8 +106,8 @@ def _debate_to_result(debate: DebateAnalysis) -> DebateResultResponse:
         id=debate.id,
         video_a_id=debate.video_a_id,
         video_b_id=debate.video_b_id,
-        platform_a=getattr(debate, 'platform_a', None) or "youtube",
-        platform_b=getattr(debate, 'platform_b', None),
+        platform_a=getattr(debate, "platform_a", None) or "youtube",
+        platform_b=getattr(debate, "platform_b", None),
         video_a_title=debate.video_a_title or "Vidéo A",
         video_b_title=debate.video_b_title,
         video_a_channel=debate.video_a_channel,
@@ -132,13 +133,9 @@ def _debate_to_result(debate: DebateAnalysis) -> DebateResultResponse:
     )
 
 
-async def _get_debate_owned(
-    db: AsyncSession, debate_id: int, user_id: int
-) -> DebateAnalysis:
+async def _get_debate_owned(db: AsyncSession, debate_id: int, user_id: int) -> DebateAnalysis:
     """Fetch a debate, verify ownership, raise 404/403."""
-    result = await db.execute(
-        select(DebateAnalysis).where(DebateAnalysis.id == debate_id)
-    )
+    result = await db.execute(select(DebateAnalysis).where(DebateAnalysis.id == debate_id))
     debate = result.scalar_one_or_none()
     if not debate:
         raise HTTPException(status_code=404, detail="Débat introuvable")
@@ -175,12 +172,7 @@ async def _call_perplexity(query: str, context: str = "") -> Optional[str]:
     """Recherche web (Brave+Mistral) pour fact-checking. Nom gardé pour compat."""
     try:
         result = await web_search_and_synthesize(
-            query=query,
-            context=context,
-            purpose="debate",
-            lang="fr",
-            max_sources=5,
-            max_tokens=1500
+            query=query, context=context, purpose="debate", lang="fr", max_sources=5, max_tokens=1500
         )
         if result.success:
             return result.content
@@ -305,25 +297,27 @@ async def _search_opposing_video(
         return None
 
     # Step 1: Ask Mistral for two distinct search queries to maximize chances of finding opposition
-    lang_instruction = (
-        "Formule les requêtes en français." if lang == "fr" else "Write the queries in English."
-    )
+    lang_instruction = "Formule les requêtes en français." if lang == "fr" else "Write the queries in English."
     query_prompt = [
-        {"role": "system", "content": (
-            "Tu es un expert en recherche YouTube spécialisé dans l'identification de perspectives contradictoires. "
-            "Ta mission : générer DEUX requêtes de recherche YouTube (5-10 mots chacune) susceptibles de retourner "
-            "une vidéo qui CONTREDIT, CRITIQUE, ou OPPOSE la thèse donnée. "
-            "Utilise des mots-clés antagonistes (par exemple : 'critique', 'problème', 'limite', 'contre', 'arnaque', "
-            "'overrated', 'debunked', 'myth', 'issue', 'bad', 'vs') et NE REPRODUIS PAS le titre ni les mots-clés de la vidéo originale. "
-            f"{lang_instruction} "
-            "Réponds UNIQUEMENT en JSON valide : "
-            '{"query_primary": "...", "query_alternative": "..."}'
-        )},
-        {"role": "user", "content": (
-            f"Sujet : {topic}\n"
-            f"Thèse à contredire : {thesis_a}\n"
-            f"Titre à éviter : {video_a_title or '(inconnu)'}"
-        )},
+        {
+            "role": "system",
+            "content": (
+                "Tu es un expert en recherche YouTube spécialisé dans l'identification de perspectives contradictoires. "
+                "Ta mission : générer DEUX requêtes de recherche YouTube (5-10 mots chacune) susceptibles de retourner "
+                "une vidéo qui CONTREDIT, CRITIQUE, ou OPPOSE la thèse donnée. "
+                "Utilise des mots-clés antagonistes (par exemple : 'critique', 'problème', 'limite', 'contre', 'arnaque', "
+                "'overrated', 'debunked', 'myth', 'issue', 'bad', 'vs') et NE REPRODUIS PAS le titre ni les mots-clés de la vidéo originale. "
+                f"{lang_instruction} "
+                "Réponds UNIQUEMENT en JSON valide : "
+                '{"query_primary": "...", "query_alternative": "..."}'
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Sujet : {topic}\nThèse à contredire : {thesis_a}\nTitre à éviter : {video_a_title or '(inconnu)'}"
+            ),
+        },
     ]
     query_raw = await _call_mistral(query_prompt, model=model, temperature=0.6, json_mode=True)
     queries: list = []
@@ -358,7 +352,8 @@ async def _search_opposing_video(
 
     logger.warning(
         "No distinct YouTube video found via Brave for queries %s (excluded=%s)",
-        queries, exclude_ids,
+        queries,
+        exclude_ids,
     )
     return None
 
@@ -366,6 +361,7 @@ async def _search_opposing_video(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔄 BACKGROUND TASK — Main debate analysis pipeline
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def _run_debate_pipeline(
     debate_id: int,
@@ -399,9 +395,7 @@ async def _run_debate_pipeline(
             # ── Step 1: Get video A info + transcript ──
             _debate_task_store[debate_id] = {"status": "pending", "message": "Extraction vidéo A..."}
 
-            result = await session.execute(
-                select(DebateAnalysis).where(DebateAnalysis.id == debate_id)
-            )
+            result = await session.execute(select(DebateAnalysis).where(DebateAnalysis.id == debate_id))
             debate = result.scalar_one_or_none()
             if not debate:
                 logger.error("Debate %d not found in DB", debate_id)
@@ -430,7 +424,11 @@ async def _run_debate_pipeline(
             if platform_a == "tiktok":
                 tiktok_url_a = f"https://www.tiktok.com/@user/video/{video_a_id}"
                 transcript_a_result = await get_tiktok_transcript(tiktok_url_a)
-                transcript_a = transcript_a_result if isinstance(transcript_a_result, str) else (transcript_a_result[0] if transcript_a_result else None)
+                transcript_a = (
+                    transcript_a_result
+                    if isinstance(transcript_a_result, str)
+                    else (transcript_a_result[0] if transcript_a_result else None)
+                )
                 lang_a = "fr"
             else:
                 transcript_a, _, lang_a = await get_transcript_with_timestamps(video_a_id)
@@ -449,12 +447,15 @@ async def _run_debate_pipeline(
             _debate_task_store[debate_id] = {"status": "pending", "message": "Détection du sujet et de la thèse A..."}
 
             topic_prompt = [
-                {"role": "system", "content": (
-                    "Tu es un analyste expert en argumentation. "
-                    "Extrais le sujet principal et la thèse défendue dans cette transcription vidéo. "
-                    "Réponds UNIQUEMENT en JSON valide avec le format : "
-                    '{"topic": "...", "thesis": "...", "key_arguments": [{"claim": "...", "evidence": "...", "strength": "strong|moderate|weak"}, ...]}'
-                )},
+                {
+                    "role": "system",
+                    "content": (
+                        "Tu es un analyste expert en argumentation. "
+                        "Extrais le sujet principal et la thèse défendue dans cette transcription vidéo. "
+                        "Réponds UNIQUEMENT en JSON valide avec le format : "
+                        '{"topic": "...", "thesis": "...", "key_arguments": [{"claim": "...", "evidence": "...", "strength": "strong|moderate|weak"}, ...]}'
+                    ),
+                },
                 {"role": "user", "content": f"Transcription de la vidéo :\n\n{transcript_a_short}"},
             ]
 
@@ -478,7 +479,10 @@ async def _run_debate_pipeline(
             actual_platform_b = platform_b
 
             if mode == "auto" and not video_b_id:
-                _debate_task_store[debate_id] = {"status": "searching", "message": "Recherche d'un point de vue opposé..."}
+                _debate_task_store[debate_id] = {
+                    "status": "searching",
+                    "message": "Recherche d'un point de vue opposé...",
+                }
                 debate.status = "searching"
                 await session.commit()
 
@@ -527,6 +531,7 @@ async def _run_debate_pipeline(
                 # 🎨 Fire-and-forget avatar gen (partial debate — topic is known)
                 try:
                     from voice.avatar import ensure_debate_avatar
+
                     ensure_debate_avatar(debate)
                 except Exception as _avatar_err:
                     logger.warning("Debate avatar kickoff failed: %s", _avatar_err)
@@ -539,7 +544,7 @@ async def _run_debate_pipeline(
             _debate_task_store[debate_id] = {"status": "analyzing_b", "message": "Analyse de la vidéo opposée..."}
 
             # Determine platform B (auto-discovered videos are always YouTube from Brave Search)
-            actual_platform_b = getattr(debate, 'platform_b', None) or platform_b or "youtube"
+            actual_platform_b = getattr(debate, "platform_b", None) or platform_b or "youtube"
 
             if actual_platform_b == "tiktok":
                 tiktok_url_b = f"https://www.tiktok.com/@user/video/{actual_video_b_id}"
@@ -562,7 +567,11 @@ async def _run_debate_pipeline(
             if actual_platform_b == "tiktok":
                 tiktok_url_b = f"https://www.tiktok.com/@user/video/{actual_video_b_id}"
                 transcript_b_result = await get_tiktok_transcript(tiktok_url_b)
-                transcript_b = transcript_b_result if isinstance(transcript_b_result, str) else (transcript_b_result[0] if transcript_b_result else None)
+                transcript_b = (
+                    transcript_b_result
+                    if isinstance(transcript_b_result, str)
+                    else (transcript_b_result[0] if transcript_b_result else None)
+                )
             else:
                 transcript_b, _, _ = await get_transcript_with_timestamps(actual_video_b_id)
 
@@ -581,27 +590,33 @@ async def _run_debate_pipeline(
             await session.commit()
 
             compare_prompt = [
-                {"role": "system", "content": (
-                    "Tu es un analyste expert en argumentation et en pensée critique. "
-                    "Compare les deux vidéos ci-dessous de manière équilibrée et nuancée. "
-                    f"Langue de réponse : {lang}. "
-                    "Réponds UNIQUEMENT en JSON valide avec ce format :\n"
-                    "{\n"
-                    '  "thesis_b": "Thèse défendue par la vidéo B",\n'
-                    '  "arguments_b": [{"claim": "...", "evidence": "...", "strength": "strong|moderate|weak"}, ...],\n'
-                    '  "convergence_points": ["point commun 1", "point commun 2"],\n'
-                    '  "divergence_points": [{"topic": "sujet du désaccord", "position_a": "position vidéo A", "position_b": "position vidéo B"}, ...],\n'
-                    '  "summary": "Synthèse nuancée du débat en 3-5 paragraphes"\n'
-                    "}"
-                )},
-                {"role": "user", "content": (
-                    f"SUJET : {detected_topic}\n\n"
-                    f"=== VIDÉO A : {debate.video_a_title} ===\n"
-                    f"Thèse : {thesis_a}\n"
-                    f"Transcription :\n{transcript_a_short}\n\n"
-                    f"=== VIDÉO B : {debate.video_b_title} ===\n"
-                    f"Transcription :\n{transcript_b_short}"
-                )},
+                {
+                    "role": "system",
+                    "content": (
+                        "Tu es un analyste expert en argumentation et en pensée critique. "
+                        "Compare les deux vidéos ci-dessous de manière équilibrée et nuancée. "
+                        f"Langue de réponse : {lang}. "
+                        "Réponds UNIQUEMENT en JSON valide avec ce format :\n"
+                        "{\n"
+                        '  "thesis_b": "Thèse défendue par la vidéo B",\n'
+                        '  "arguments_b": [{"claim": "...", "evidence": "...", "strength": "strong|moderate|weak"}, ...],\n'
+                        '  "convergence_points": ["point commun 1", "point commun 2"],\n'
+                        '  "divergence_points": [{"topic": "sujet du désaccord", "position_a": "position vidéo A", "position_b": "position vidéo B"}, ...],\n'
+                        '  "summary": "Synthèse nuancée du débat en 3-5 paragraphes"\n'
+                        "}"
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"SUJET : {detected_topic}\n\n"
+                        f"=== VIDÉO A : {debate.video_a_title} ===\n"
+                        f"Thèse : {thesis_a}\n"
+                        f"Transcription :\n{transcript_a_short}\n\n"
+                        f"=== VIDÉO B : {debate.video_b_title} ===\n"
+                        f"Transcription :\n{transcript_b_short}"
+                    ),
+                },
             ]
 
             # Retry up to 2 times if Mistral returns invalid JSON
@@ -623,12 +638,18 @@ async def _run_debate_pipeline(
                     compare_data = _extract_json(compare_result)
 
                 if compare_data and compare_data.get("thesis_b"):
-                    logger.info("[DEBATE] Comparative analysis parsed OK (attempt %d), keys=%s", attempt + 1, list(compare_data.keys()))
+                    logger.info(
+                        "[DEBATE] Comparative analysis parsed OK (attempt %d), keys=%s",
+                        attempt + 1,
+                        list(compare_data.keys()),
+                    )
                     break
 
                 logger.warning(
                     "[DEBATE] Failed to parse comparison (attempt %d), raw response (%d chars), first 800: %s",
-                    attempt + 1, len(compare_result), compare_result[:800]
+                    attempt + 1,
+                    len(compare_result),
+                    compare_result[:800],
                 )
                 compare_data = None
 
@@ -663,34 +684,47 @@ async def _run_debate_pipeline(
 
             fact_check_results = []
             from core.config import is_web_search_available
+
             if is_web_search_available():
                 # Build a concise search query for web search (not the full JSON prompt)
-                args_a_str = ", ".join(a.get("claim", str(a)) if isinstance(a, dict) else str(a) for a in arguments_a[:3])
-                args_b_str = ", ".join(a.get("claim", str(a)) if isinstance(a, dict) else str(a) for a in arguments_b[:3])
+                args_a_str = ", ".join(
+                    a.get("claim", str(a)) if isinstance(a, dict) else str(a) for a in arguments_a[:3]
+                )
+                args_b_str = ", ".join(
+                    a.get("claim", str(a)) if isinstance(a, dict) else str(a) for a in arguments_b[:3]
+                )
                 web_query = f"fact check: {detected_topic} — {thesis_a[:100]} vs {thesis_b[:100]}"
                 fact_web_result = await _call_perplexity(web_query)
 
                 # web_search_and_synthesize returns natural language, NOT JSON.
                 # Use Mistral to structure the web search results into JSON format.
                 structuring_prompt = [
-                    {"role": "system", "content": (
-                        "Tu es un fact-checker rigoureux. À partir du contexte de recherche web ci-dessous, "
-                        "identifie 3 à 6 affirmations clés du débat et évalue leur véracité. "
-                        "Le verdict DOIT être exactement : confirmed, nuanced, disputed, ou unverifiable. "
-                        "Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour : "
-                        '[{"claim": "...", "verdict": "confirmed|nuanced|disputed|unverifiable", "source": "...", "explanation": "..."}]'
-                    )},
-                    {"role": "user", "content": (
-                        f"Sujet du débat : {detected_topic}\n"
-                        f"Thèse A : {thesis_a}\n"
-                        f"Thèse B : {thesis_b}\n"
-                        f"Arguments A : {args_a_str}\n"
-                        f"Arguments B : {args_b_str}\n\n"
-                        f"Résultats de recherche web :\n{fact_web_result or 'Aucun résultat de recherche disponible.'}\n\n"
-                        f"Produis le tableau JSON de fact-check."
-                    )},
+                    {
+                        "role": "system",
+                        "content": (
+                            "Tu es un fact-checker rigoureux. À partir du contexte de recherche web ci-dessous, "
+                            "identifie 3 à 6 affirmations clés du débat et évalue leur véracité. "
+                            "Le verdict DOIT être exactement : confirmed, nuanced, disputed, ou unverifiable. "
+                            "Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour : "
+                            '[{"claim": "...", "verdict": "confirmed|nuanced|disputed|unverifiable", "source": "...", "explanation": "..."}]'
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Sujet du débat : {detected_topic}\n"
+                            f"Thèse A : {thesis_a}\n"
+                            f"Thèse B : {thesis_b}\n"
+                            f"Arguments A : {args_a_str}\n"
+                            f"Arguments B : {args_b_str}\n\n"
+                            f"Résultats de recherche web :\n{fact_web_result or 'Aucun résultat de recherche disponible.'}\n\n"
+                            f"Produis le tableau JSON de fact-check."
+                        ),
+                    },
                 ]
-                structured_result = await _call_mistral(structuring_prompt, model=model, temperature=0.2, json_mode=False)
+                structured_result = await _call_mistral(
+                    structuring_prompt, model=model, temperature=0.2, json_mode=False
+                )
                 if structured_result:
                     parsed = _extract_json(structured_result)
                     if parsed is None:
@@ -710,19 +744,36 @@ async def _run_debate_pipeline(
                         elif isinstance(parsed, dict) and "fact_check" in parsed:
                             fact_check_results = parsed["fact_check"]
                         # Normalize verdicts to frontend-expected values
-                        verdict_map = {"vraie": "confirmed", "vrai": "confirmed", "confirmé": "confirmed",
-                                       "confirmed": "confirmed", "true": "confirmed",
-                                       "partiellement vraie": "nuanced", "nuancé": "nuanced",
-                                       "partially true": "nuanced", "nuanced": "nuanced",
-                                       "fausse": "disputed", "faux": "disputed", "contesté": "disputed",
-                                       "disputed": "disputed", "false": "disputed",
-                                       "non vérifiable": "unverifiable", "invérifiable": "unverifiable",
-                                       "unverifiable": "unverifiable", "unknown": "unverifiable"}
+                        verdict_map = {
+                            "vraie": "confirmed",
+                            "vrai": "confirmed",
+                            "confirmé": "confirmed",
+                            "confirmed": "confirmed",
+                            "true": "confirmed",
+                            "partiellement vraie": "nuanced",
+                            "nuancé": "nuanced",
+                            "partially true": "nuanced",
+                            "nuanced": "nuanced",
+                            "fausse": "disputed",
+                            "faux": "disputed",
+                            "contesté": "disputed",
+                            "disputed": "disputed",
+                            "false": "disputed",
+                            "non vérifiable": "unverifiable",
+                            "invérifiable": "unverifiable",
+                            "unverifiable": "unverifiable",
+                            "unknown": "unverifiable",
+                        }
                         for item in fact_check_results:
                             if isinstance(item, dict) and "verdict" in item:
                                 v = item["verdict"].strip().lower()
-                                item["verdict"] = verdict_map.get(v, v if v in ("confirmed", "nuanced", "disputed", "unverifiable") else "unverifiable")
-                        logger.info("[DEBATE] Fact-check produced %d items for debate_id=%d", len(fact_check_results), debate_id)
+                                item["verdict"] = verdict_map.get(
+                                    v,
+                                    v if v in ("confirmed", "nuanced", "disputed", "unverifiable") else "unverifiable",
+                                )
+                        logger.info(
+                            "[DEBATE] Fact-check produced %d items for debate_id=%d", len(fact_check_results), debate_id
+                        )
                     else:
                         logger.warning("[DEBATE] Failed to parse structured fact-check: %s", structured_result[:300])
                 else:
@@ -732,16 +783,22 @@ async def _run_debate_pipeline(
                 if not fact_check_results:
                     logger.info("[DEBATE] Fact-check fallback: generating from debate context without web search")
                     fallback_prompt = [
-                        {"role": "system", "content": (
-                            "Tu es un fact-checker. Analyse les affirmations de ce débat et évalue leur solidité "
-                            "en te basant sur tes connaissances. Indique 'unverifiable' si tu n'es pas sûr. "
-                            "Réponds UNIQUEMENT avec un tableau JSON : "
-                            '[{"claim": "...", "verdict": "confirmed|nuanced|disputed|unverifiable", "source": "connaissances générales", "explanation": "..."}]'
-                        )},
-                        {"role": "user", "content": (
-                            f"Sujet : {detected_topic}\nThèse A : {thesis_a}\nThèse B : {thesis_b}\n"
-                            f"Arguments A : {args_a_str}\nArguments B : {args_b_str}"
-                        )},
+                        {
+                            "role": "system",
+                            "content": (
+                                "Tu es un fact-checker. Analyse les affirmations de ce débat et évalue leur solidité "
+                                "en te basant sur tes connaissances. Indique 'unverifiable' si tu n'es pas sûr. "
+                                "Réponds UNIQUEMENT avec un tableau JSON : "
+                                '[{"claim": "...", "verdict": "confirmed|nuanced|disputed|unverifiable", "source": "connaissances générales", "explanation": "..."}]'
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": (
+                                f"Sujet : {detected_topic}\nThèse A : {thesis_a}\nThèse B : {thesis_b}\n"
+                                f"Arguments A : {args_a_str}\nArguments B : {args_b_str}"
+                            ),
+                        },
                     ]
                     fallback_result = await _call_mistral(fallback_prompt, model=model, temperature=0.2)
                     if fallback_result:
@@ -758,7 +815,12 @@ async def _run_debate_pipeline(
                             for item in fact_check_results:
                                 if isinstance(item, dict) and "verdict" in item:
                                     v = item["verdict"].strip().lower()
-                                    item["verdict"] = verdict_map.get(v, v if v in ("confirmed", "nuanced", "disputed", "unverifiable") else "unverifiable")
+                                    item["verdict"] = verdict_map.get(
+                                        v,
+                                        v
+                                        if v in ("confirmed", "nuanced", "disputed", "unverifiable")
+                                        else "unverifiable",
+                                    )
                             logger.info("[DEBATE] Fact-check fallback produced %d items", len(fact_check_results))
 
             debate.fact_check_results = json.dumps(fact_check_results, ensure_ascii=False)
@@ -771,13 +833,17 @@ async def _run_debate_pipeline(
             # Reuses the keyword_images pipeline with cross-debate cache on topic.
             try:
                 from voice.avatar import ensure_debate_avatar
+
                 ensure_debate_avatar(debate)
             except Exception as _avatar_err:
                 logger.warning("Debate avatar kickoff failed: %s", _avatar_err)
 
             # Deduct credits
             await deduct_credits(
-                session, user_id, 5, "debate",
+                session,
+                user_id,
+                5,
+                "debate",
                 f"Débat: {detected_topic[:50]}",
                 metadata={"debate_id": debate_id, "model": model},
             )
@@ -802,6 +868,7 @@ async def _run_debate_pipeline(
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /create — Lancer un débat IA
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/create", response_model=DebateCreateResponse)
 async def create_debate(
@@ -877,6 +944,7 @@ async def create_debate(
 # GET /status/{debate_id} — Poll status
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/status/{debate_id}", response_model=DebateStatusResponse)
 async def get_debate_status(
     debate_id: int,
@@ -917,6 +985,7 @@ async def get_debate_status(
 # GET /history — Liste des débats de l'utilisateur (paginé)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/history", response_model=DebateHistoryResponse)
 async def get_debate_history(
     page: int = Query(1, ge=1),
@@ -929,9 +998,7 @@ async def get_debate_history(
 
     # Count total
     count_result = await db.execute(
-        select(func.count(DebateAnalysis.id)).where(
-            DebateAnalysis.user_id == current_user.id
-        )
+        select(func.count(DebateAnalysis.id)).where(DebateAnalysis.user_id == current_user.id)
     )
     total = count_result.scalar() or 0
 
@@ -966,6 +1033,7 @@ async def get_debate_history(
 # GET /{debate_id} — Résultat complet d'un débat
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/{debate_id}", response_model=DebateResultResponse)
 async def get_debate_result(
     debate_id: int,
@@ -981,6 +1049,7 @@ async def get_debate_result(
 # DELETE /{debate_id} — Supprimer un débat
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.delete("/{debate_id}")
 async def delete_debate(
     debate_id: int,
@@ -990,9 +1059,7 @@ async def delete_debate(
     """Supprime un débat et ses messages de chat associés."""
     debate = await _get_debate_owned(db, debate_id, current_user.id)
 
-    await db.execute(
-        delete(DebateChatMessage).where(DebateChatMessage.debate_id == debate_id)
-    )
+    await db.execute(delete(DebateChatMessage).where(DebateChatMessage.debate_id == debate_id))
     await db.delete(debate)
     await db.commit()
 
@@ -1005,6 +1072,7 @@ async def delete_debate(
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /chat — Chat avec contexte des 2 vidéos
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/chat", response_model=DebateChatResponse)
 async def debate_chat(
@@ -1053,13 +1121,16 @@ async def debate_chat(
 
     # Build messages for Mistral
     messages = [
-        {"role": "system", "content": (
-            "Tu es un assistant expert en analyse de débats. "
-            "Tu réponds aux questions de l'utilisateur en te basant sur le contexte du débat ci-dessous. "
-            "Sois équilibré, nuancé et cite les arguments des deux côtés. "
-            f"Langue : {debate.lang or 'fr'}.\n\n"
-            f"CONTEXTE DU DÉBAT :\n{context}"
-        )},
+        {
+            "role": "system",
+            "content": (
+                "Tu es un assistant expert en analyse de débats. "
+                "Tu réponds aux questions de l'utilisateur en te basant sur le contexte du débat ci-dessous. "
+                "Sois équilibré, nuancé et cite les arguments des deux côtés. "
+                f"Langue : {debate.lang or 'fr'}.\n\n"
+                f"CONTEXTE DU DÉBAT :\n{context}"
+            ),
+        },
     ]
     for msg in recent_messages:
         messages.append({"role": msg.role, "content": msg.content})
@@ -1098,6 +1169,7 @@ async def debate_chat(
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /chat/history/{debate_id} — Historique chat débat
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/chat/history/{debate_id}")
 async def get_debate_chat_history(

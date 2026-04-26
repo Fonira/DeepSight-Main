@@ -28,12 +28,12 @@ executor = ThreadPoolExecutor(max_workers=2)
 
 # MIME types pour les fichiers audio
 AUDIO_MIME_TYPES = {
-    '.mp3': 'audio/mpeg',
-    '.m4a': 'audio/mp4',
-    '.webm': 'audio/webm',
-    '.opus': 'audio/opus',
-    '.wav': 'audio/wav',
-    '.ogg': 'audio/ogg',
+    ".mp3": "audio/mpeg",
+    ".m4a": "audio/mp4",
+    ".webm": "audio/webm",
+    ".opus": "audio/opus",
+    ".wav": "audio/wav",
+    ".ogg": "audio/ogg",
 }
 
 
@@ -51,11 +51,8 @@ def format_seconds_to_timestamp(seconds: float) -> str:
 # 🔧 COMPRESSION AUDIO
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def compress_audio(
-    audio_data: bytes,
-    audio_ext: str,
-    source_name: str = "AUDIO"
-) -> Tuple[Optional[bytes], str]:
+
+async def compress_audio(audio_data: bytes, audio_ext: str, source_name: str = "AUDIO") -> Tuple[Optional[bytes], str]:
     """
     Compresse l'audio avec ffmpeg si trop volumineux pour Groq (>25MB).
     Retourne (audio_bytes, extension) ou (None, ext) si échec.
@@ -63,7 +60,10 @@ async def compress_audio(
     if len(audio_data) <= GROQ_MAX_FILE_SIZE:
         return audio_data, audio_ext
 
-    print(f"  🎙️ [{source_name}] Compressing audio ({len(audio_data)/1024/1024:.1f}MB > {GROQ_MAX_FILE_SIZE/1024/1024:.0f}MB)...", flush=True)
+    print(
+        f"  🎙️ [{source_name}] Compressing audio ({len(audio_data) / 1024 / 1024:.1f}MB > {GROQ_MAX_FILE_SIZE / 1024 / 1024:.0f}MB)...",
+        flush=True,
+    )
 
     try:
         with tempfile.NamedTemporaryFile(suffix=audio_ext, delete=False) as tmp_in:
@@ -72,16 +72,15 @@ async def compress_audio(
 
         tmp_out_path = tmp_in_path + "_compressed.mp3"
 
-        cmd = [
-            "ffmpeg", "-i", tmp_in_path,
-            "-b:a", "32k", "-ac", "1", "-ar", "16000",
-            "-y", tmp_out_path
-        ]
+        cmd = ["ffmpeg", "-i", tmp_in_path, "-b:a", "32k", "-ac", "1", "-ar", "16000", "-y", tmp_out_path]
         subprocess.run(cmd, capture_output=True, timeout=120)
 
         if Path(tmp_out_path).exists():
             compressed = Path(tmp_out_path).read_bytes()
-            print(f"  ✅ [{source_name}] Compressed: {len(audio_data)/1024/1024:.1f}MB → {len(compressed)/1024/1024:.1f}MB", flush=True)
+            print(
+                f"  ✅ [{source_name}] Compressed: {len(audio_data) / 1024 / 1024:.1f}MB → {len(compressed) / 1024 / 1024:.1f}MB",
+                flush=True,
+            )
             Path(tmp_in_path).unlink(missing_ok=True)
             Path(tmp_out_path).unlink(missing_ok=True)
             return compressed, ".mp3"
@@ -99,10 +98,9 @@ async def compress_audio(
 # 🎙️ TRANSCRIPTION GROQ WHISPER
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def transcribe_audio_groq(
-    audio_data: bytes,
-    audio_ext: str = ".mp3",
-    source_name: str = "AUDIO"
+    audio_data: bytes, audio_ext: str = ".mp3", source_name: str = "AUDIO"
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Transcrit un fichier audio via Groq Whisper API.
@@ -124,17 +122,20 @@ async def transcribe_audio_groq(
     audio_data, audio_ext = await compress_audio(audio_data, audio_ext, source_name)
 
     if len(audio_data) > GROQ_MAX_FILE_SIZE:
-        print(f"  ❌ [{source_name}] Audio still too large after compression: {len(audio_data)/1024/1024:.1f}MB", flush=True)
+        print(
+            f"  ❌ [{source_name}] Audio still too large after compression: {len(audio_data) / 1024 / 1024:.1f}MB",
+            flush=True,
+        )
         return None, None, None
 
-    print(f"  🎙️ [{source_name}] Sending {len(audio_data)/1024/1024:.1f}MB to Groq Whisper...", flush=True)
+    print(f"  🎙️ [{source_name}] Sending {len(audio_data) / 1024 / 1024:.1f}MB to Groq Whisper...", flush=True)
 
     try:
-        mime_type = AUDIO_MIME_TYPES.get(audio_ext, 'audio/mpeg')
+        mime_type = AUDIO_MIME_TYPES.get(audio_ext, "audio/mpeg")
 
         async with httpx.AsyncClient() as client:
-            files = {'file': (f'audio{audio_ext}', audio_data, mime_type)}
-            data = {'model': 'whisper-large-v3', 'response_format': 'verbose_json'}
+            files = {"file": (f"audio{audio_ext}", audio_data, mime_type)}
+            data = {"model": "whisper-large-v3", "response_format": "verbose_json"}
 
             start_time = time.time()
             response = await client.post(
@@ -142,7 +143,7 @@ async def transcribe_audio_groq(
                 headers={"Authorization": f"Bearer {groq_key}"},
                 files=files,
                 data=data,
-                timeout=GROQ_TRANSCRIBE_TIMEOUT
+                timeout=GROQ_TRANSCRIBE_TIMEOUT,
             )
             elapsed = time.time() - start_time
             print(f"  🎙️ [{source_name}] Groq response in {elapsed:.1f}s: {response.status_code}", flush=True)
@@ -173,7 +174,10 @@ async def transcribe_audio_groq(
                     else:
                         timestamped = full_text
 
-                    print(f"  ✅ [{source_name}] Transcription OK: {len(full_text)} chars, lang={detected_lang}", flush=True)
+                    print(
+                        f"  ✅ [{source_name}] Transcription OK: {len(full_text)} chars, lang={detected_lang}",
+                        flush=True,
+                    )
                     return full_text, timestamped, detected_lang
             else:
                 print(f"  ❌ [{source_name}] Groq error {response.status_code}: {response.text[:200]}", flush=True)
@@ -216,10 +220,10 @@ async def transcribe_audio_voxtral(
         print(f"  ⏭️ [{source_name}] VOXTRAL-STT: No Mistral API key", flush=True)
         return None, None, None
 
-    print(f"  🎙️ [{source_name}] Sending {len(audio_data)/1024/1024:.1f}MB to Voxtral STT...", flush=True)
+    print(f"  🎙️ [{source_name}] Sending {len(audio_data) / 1024 / 1024:.1f}MB to Voxtral STT...", flush=True)
 
     try:
-        mime_type = AUDIO_MIME_TYPES.get(audio_ext, 'audio/mpeg')
+        mime_type = AUDIO_MIME_TYPES.get(audio_ext, "audio/mpeg")
 
         async with httpx.AsyncClient() as client:
             files = {"file": (f"audio{audio_ext}", audio_data, mime_type)}
@@ -264,10 +268,14 @@ async def transcribe_audio_voxtral(
                     else:
                         timestamped = full_text
 
-                    print(f"  ✅ [{source_name}] Voxtral STT OK: {len(full_text)} chars, lang={detected_lang}", flush=True)
+                    print(
+                        f"  ✅ [{source_name}] Voxtral STT OK: {len(full_text)} chars, lang={detected_lang}", flush=True
+                    )
                     return full_text, timestamped, detected_lang
             else:
-                print(f"  ❌ [{source_name}] Voxtral STT error {response.status_code}: {response.text[:200]}", flush=True)
+                print(
+                    f"  ❌ [{source_name}] Voxtral STT error {response.status_code}: {response.text[:200]}", flush=True
+                )
 
     except Exception as e:
         print(f"  ❌ [{source_name}] Voxtral STT error: {e}", flush=True)
@@ -279,11 +287,9 @@ async def transcribe_audio_voxtral(
 # 📥 TÉLÉCHARGEMENT AUDIO VIA YT-DLP (générique — YouTube, TikTok, etc.)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def download_audio_ytdlp(
-    url: str,
-    source_name: str = "AUDIO",
-    timeout: int = 240,
-    extra_args: Optional[list] = None
+    url: str, source_name: str = "AUDIO", timeout: int = 240, extra_args: Optional[list] = None
 ) -> Tuple[Optional[bytes], str]:
     """
     Télécharge l'audio d'une URL via yt-dlp (supporte YouTube, TikTok, Instagram, etc.)
@@ -308,11 +314,17 @@ async def download_audio_ytdlp(
 
                 cmd = [
                     "yt-dlp",
-                    "-x", "--audio-format", "mp3",
-                    "--audio-quality", "9",  # Qualité basse = petit fichier
-                    "-o", audio_path,
-                    "--no-warnings", "--no-playlist",
-                    "--retries", "3",
+                    "-x",
+                    "--audio-format",
+                    "mp3",
+                    "--audio-quality",
+                    "9",  # Qualité basse = petit fichier
+                    "-o",
+                    audio_path,
+                    "--no-warnings",
+                    "--no-playlist",
+                    "--retries",
+                    "3",
                 ]
 
                 if extra_args:
@@ -320,9 +332,7 @@ async def download_audio_ytdlp(
 
                 cmd.append(url)
 
-                result = subprocess.run(
-                    cmd, capture_output=True, text=True, timeout=timeout
-                )
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
                 if result.returncode != 0:
                     print(f"  ⚠️ [{source_name}] yt-dlp failed: {result.stderr[:150]}", flush=True)
@@ -330,17 +340,17 @@ async def download_audio_ytdlp(
 
                 # Chercher le fichier audio produit
                 for f in Path(tmpdir).iterdir():
-                    if f.suffix in ['.mp3', '.m4a', '.webm', '.opus', '.wav', '.ogg']:
+                    if f.suffix in [".mp3", ".m4a", ".webm", ".opus", ".wav", ".ogg"]:
                         data = f.read_bytes()
-                        print(f"  ✅ [{source_name}] Audio downloaded: {len(data)/1024/1024:.1f}MB ({f.suffix})", flush=True)
+                        print(
+                            f"  ✅ [{source_name}] Audio downloaded: {len(data) / 1024 / 1024:.1f}MB ({f.suffix})",
+                            flush=True,
+                        )
                         return data, f.suffix
 
                 return None, ".mp3"
 
-        result = await asyncio.wait_for(
-            loop.run_in_executor(executor, _download),
-            timeout=timeout
-        )
+        result = await asyncio.wait_for(loop.run_in_executor(executor, _download), timeout=timeout)
         return result
 
     except asyncio.TimeoutError:

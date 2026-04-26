@@ -9,6 +9,7 @@ from typing import Optional, Literal
 
 class TTSRequest(BaseModel):
     """Request body for TTS generation."""
+
     model_config = {"protected_namespaces": ()}
 
     text: str = Field(..., min_length=1, max_length=5000, description="Text to convert to speech")
@@ -30,8 +31,7 @@ class TTSRequest(BaseModel):
     def validate_voice_id(cls, v: Optional[str]) -> Optional[str]:
         if v is not None:
             from tts.service import KNOWN_VOICE_IDS
+
             if v not in KNOWN_VOICE_IDS:
-                raise ValueError(
-                    f"Voice ID inconnu: {v}. Utilisez GET /api/tts/voices pour la liste."
-                )
+                raise ValueError(f"Voice ID inconnu: {v}. Utilisez GET /api/tts/voices pour la liste.")
         return v

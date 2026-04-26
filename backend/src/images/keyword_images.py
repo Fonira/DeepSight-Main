@@ -45,6 +45,7 @@ def _is_image_gen_available() -> bool:
     """Check if ANY image generation backend is available."""
     return bool(get_mistral_image_agent_id()) or bool(get_openai_key()) or bool(get_together_key())
 
+
 ART_DIRECTOR_PROMPT = """Tu es un directeur artistique brillant et espiègle, mélange entre Magritte et un mémeur intellectuel.
 
 PROCESSUS OBLIGATOIRE — Raisonne étape par étape :
@@ -79,6 +80,7 @@ Réponds UNIQUEMENT avec ce JSON strict, sans markdown ni commentaires :
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def _term_hash(term: str) -> str:
     """SHA-256 hash of normalized term for deduplication."""
     return hashlib.sha256(term.lower().strip().encode("utf-8")).hexdigest()
@@ -86,9 +88,8 @@ def _term_hash(term: str) -> str:
 
 # ─── Stage 1: Mistral Art Director ────────────────────────────────────────────
 
-async def _stage1_art_director(
-    term: str, definition: str, category: str | None
-) -> dict:
+
+async def _stage1_art_director(term: str, definition: str, category: str | None) -> dict:
     """Ask Mistral to invent a visual metaphor for the term."""
     try:
         from mistralai.client import Mistral
@@ -127,6 +128,7 @@ async def _stage1_art_director(
 
 # ─── Stage 2a: DALL-E 3 (Premium) ────────────────────────────────────────────
 
+
 async def _stage2_dalle3(visual_prompt: str) -> tuple[bytes, str]:
     """Call OpenAI DALL-E 3 to generate the image. Returns (raw_bytes, model_used)."""
     openai_key = get_openai_key()
@@ -159,6 +161,7 @@ async def _stage2_dalle3(visual_prompt: str) -> tuple[bytes, str]:
 
 # ─── Stage 2b: FLUX Schnell (Free) ──────────────────────────────────────────
 
+
 async def _stage2_flux_schnell(visual_prompt: str) -> tuple[bytes, str]:
     """Call Together AI FLUX Schnell to generate the image. Returns (raw_bytes, model_used)."""
     together_key = get_together_key()
@@ -185,6 +188,7 @@ async def _stage2_flux_schnell(visual_prompt: str) -> tuple[bytes, str]:
         result = resp.json()
 
     import base64
+
     image_bytes = base64.b64decode(result["data"][0]["b64_json"])
 
     logger.info(f"🖼️ Image generated (FLUX Schnell): {len(image_bytes)} bytes")
@@ -192,6 +196,7 @@ async def _stage2_flux_schnell(visual_prompt: str) -> tuple[bytes, str]:
 
 
 # ─── Stage 2c: Mistral Agent (FLUX Pro Ultra via Agents API) ────────────────
+
 
 async def _stage2_mistral_agent(visual_prompt: str) -> tuple[bytes, str]:
     """Generate image via Mistral Agent with built-in image_generation tool.
@@ -209,10 +214,7 @@ async def _stage2_mistral_agent(visual_prompt: str) -> tuple[bytes, str]:
         raise RuntimeError("MISTRAL_IMAGE_AGENT_ID not configured")
 
     # Combine the visual prompt with DeepSight style instructions
-    full_prompt = (
-        f"Generate an image for this concept: {visual_prompt}. "
-        f"Style requirements: {DEEPSIGHT_STYLE_SUFFIX}"
-    )
+    full_prompt = f"Generate an image for this concept: {visual_prompt}. Style requirements: {DEEPSIGHT_STYLE_SUFFIX}"
 
     # Start a conversation with the agent — the agent will invoke image_generation
     response = client.beta.conversations.start(
@@ -242,22 +244,17 @@ async def _stage2_mistral_agent(visual_prompt: str) -> tuple[bytes, str]:
             for chunk in entry.content
         ]
         logger.warning(f"⚠️ Mistral Agent response chunk types: {output_types}")
-        raise RuntimeError(
-            "Mistral Agent did not return an image file. "
-            f"Got {len(response.outputs)} output entries."
-        )
+        raise RuntimeError(f"Mistral Agent did not return an image file. Got {len(response.outputs)} output entries.")
 
     # Download the generated image from Mistral Files API
     file_bytes = client.files.download(file_id=file_id).read()
 
-    logger.info(
-        f"🖼️ Image generated (Mistral Agent / FLUX Pro Ultra): "
-        f"{len(file_bytes)} bytes, file_id={file_id}"
-    )
+    logger.info(f"🖼️ Image generated (Mistral Agent / FLUX Pro Ultra): {len(file_bytes)} bytes, file_id={file_id}")
     return file_bytes, "mistral-agent-flux-pro-ultra"
 
 
 # ─── Stage 2: Router (picks model based on premium flag) ────────────────────
+
 
 async def _stage2_generate_image(visual_prompt: str, premium: bool = False) -> tuple[bytes, str]:
     """Route to the appropriate image generation backend.
@@ -291,12 +288,12 @@ async def _stage2_generate_image(visual_prompt: str, premium: bool = False) -> t
         return await _stage2_dalle3(visual_prompt)
 
     raise RuntimeError(
-        "No image generation backend available. "
-        "Configure MISTRAL_IMAGE_AGENT_ID, OPENAI_API_KEY, or TOGETHER_API_KEY."
+        "No image generation backend available. Configure MISTRAL_IMAGE_AGENT_ID, OPENAI_API_KEY, or TOGETHER_API_KEY."
     )
 
 
 # ─── Post-processing ─────────────────────────────────────────────────────────
+
 
 def _post_process(image_bytes: bytes) -> bytes:
     """Resize to 512x512 and convert to WebP."""
@@ -371,9 +368,16 @@ async def _upload_and_save(
                 error_message = NULL,
                 updated_at = NOW()
             """,
-            term, thash, category, prompt_used,
+            term,
+            thash,
+            category,
+            prompt_used,
             json.dumps(metaphor_data, ensure_ascii=False),
-            image_url, r2_key, model, generation_time_ms, fun_score,
+            image_url,
+            r2_key,
+            model,
+            generation_time_ms,
+            fun_score,
         )
 
     logger.info(f"✅ Keyword image saved: '{term}' → {r2_key}")
@@ -381,6 +385,7 @@ async def _upload_and_save(
 
 
 # ─── Main orchestrator ────────────────────────────────────────────────────────
+
 
 async def generate_keyword_image(
     term: str,
@@ -420,8 +425,16 @@ async def generate_keyword_image(
             pool = await _get_pool()
 
         image_url = await _upload_and_save(
-            webp_bytes, term, thash, category,
-            metaphor, visual_prompt, fun_score, elapsed_ms, model_used, pool,
+            webp_bytes,
+            term,
+            thash,
+            category,
+            metaphor,
+            visual_prompt,
+            fun_score,
+            elapsed_ms,
+            model_used,
+            pool,
         )
         return image_url
 
@@ -444,7 +457,12 @@ async def generate_keyword_image(
                         generation_time_ms = EXCLUDED.generation_time_ms,
                         updated_at = NOW()
                     """,
-                    term, thash, category, fun_score, str(e)[:500], elapsed_ms,
+                    term,
+                    thash,
+                    category,
+                    fun_score,
+                    str(e)[:500],
+                    elapsed_ms,
                 )
         except Exception:
             pass
@@ -455,12 +473,14 @@ async def generate_keyword_image(
 
 _pool = None
 
+
 async def _get_pool():
     """Get or create asyncpg connection pool."""
     global _pool
     if _pool is None:
         import os
         import asyncpg
+
         db_url = os.environ.get("DATABASE_URL", "")
         if not db_url:
             raise RuntimeError("DATABASE_URL not set — keyword images require PostgreSQL")
@@ -480,6 +500,7 @@ async def _get_pool():
 
 
 # ─── Lookup ───────────────────────────────────────────────────────────────────
+
 
 async def get_image_url(term: str, pool=None) -> Optional[str]:
     """Lookup image URL for a term by hash."""
@@ -512,6 +533,7 @@ async def batch_get_image_urls(terms: list[str], pool=None) -> dict[str, str]:
 
 # ─── Enqueue from summary ────────────────────────────────────────────────────
 
+
 async def enqueue_images_for_summary(summary_id: int, pool=None) -> int:
     """Extract concepts from a summary and enqueue image generation for new ones.
     Returns count of enqueued tasks."""
@@ -531,7 +553,11 @@ async def enqueue_images_for_summary(summary_id: int, pool=None) -> int:
         return 0
 
     try:
-        entities = json.loads(row["entities_extracted"]) if isinstance(row["entities_extracted"], str) else row["entities_extracted"]
+        entities = (
+            json.loads(row["entities_extracted"])
+            if isinstance(row["entities_extracted"], str)
+            else row["entities_extracted"]
+        )
     except (json.JSONDecodeError, TypeError):
         return 0
 
@@ -580,7 +606,7 @@ async def enqueue_images_for_summary(summary_id: int, pool=None) -> int:
             continue
 
         # Insert as pending
-        definition = concept.get("definition", concept.get("short_definition", ""))
+        concept.get("definition", concept.get("short_definition", ""))
         category = concept.get("category", "misc")
         fun_score = calculate_fun_score(concept["term"], category)
         async with pool.acquire() as conn:
@@ -590,7 +616,10 @@ async def enqueue_images_for_summary(summary_id: int, pool=None) -> int:
                 VALUES ($1, $2, $3, 'pending', $4)
                 ON CONFLICT (term_hash) DO NOTHING
                 """,
-                concept["term"], thash, category, fun_score,
+                concept["term"],
+                thash,
+                category,
+                fun_score,
             )
         enqueued += 1
 
@@ -599,6 +628,7 @@ async def enqueue_images_for_summary(summary_id: int, pool=None) -> int:
 
 
 # ─── Hourly generation (APScheduler) ─────────────────────────────────────────
+
 
 async def generate_hourly_image():
     """Pick 1 keyword without image and generate it. Called hourly by APScheduler."""

@@ -3,7 +3,7 @@ Gamification badges — definitions & award logic.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -144,6 +144,7 @@ BADGES_DEFINITIONS: List[Dict[str, Any]] = [
 # BADGE CHECKING
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def check_and_award_badges(
     session: AsyncSession,
     user_id: int,
@@ -170,9 +171,7 @@ async def check_and_award_badges(
     all_badges = {b.code: b for b in result.scalars().all()}
 
     # Load already-earned badge ids for this user
-    result = await session.execute(
-        select(UserBadge.badge_id).where(UserBadge.user_id == user_id)
-    )
+    result = await session.execute(select(UserBadge.badge_id).where(UserBadge.user_id == user_id))
     earned_badge_ids = set(result.scalars().all())
 
     new_badges: List[str] = []
@@ -251,6 +250,7 @@ def _check_badge_condition(
 # ═══════════════════════════════════════════════════════════════════════════════
 # SEED BADGES IN DB
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def seed_badges(session: AsyncSession) -> None:
     """Insert badge definitions into DB if not already present."""

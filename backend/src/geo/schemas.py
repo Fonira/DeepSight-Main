@@ -12,12 +12,8 @@ class CitableQuote(BaseModel):
     score: float = Field(..., ge=0.0, le=1.0, description="Score de citabilité (0-1)")
     marker: str = Field(..., description="Marqueur épistémique (SOLID/PLAUSIBLE/etc.)")
     has_stats: bool = Field(default=False, description="Contient des chiffres/statistiques")
-    is_self_contained: bool = Field(
-        default=False, description="Phrase autonome compréhensible hors contexte"
-    )
-    improvement_hint: Optional[str] = Field(
-        default=None, description="Suggestion d'amélioration pour la citabilité"
-    )
+    is_self_contained: bool = Field(default=False, description="Phrase autonome compréhensible hors contexte")
+    improvement_hint: Optional[str] = Field(default=None, description="Suggestion d'amélioration pour la citabilité")
 
 
 class GeoScoreBreakdown(BaseModel):
@@ -36,9 +32,7 @@ class GeoRecommendation(BaseModel):
     category: str = Field(..., description="sourcing | structure | citability | coverage | freshness")
     priority: str = Field(..., description="high | medium | low")
     message: str
-    impact_estimate: float = Field(
-        ..., ge=0, le=30, description="Gain potentiel en points GEO"
-    )
+    impact_estimate: float = Field(..., ge=0, le=30, description="Gain potentiel en points GEO")
 
 
 class GeoScoreResponse(BaseModel):

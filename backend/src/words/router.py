@@ -12,7 +12,7 @@ import random
 from auth.dependencies import get_current_user_optional
 from db.database import async_session_maker, User, Summary
 
-from .data import DEFAULT_WORDS, get_random_word, get_words_by_category, get_all_categories
+from .data import DEFAULT_WORDS, get_words_by_category, get_all_categories
 
 router = APIRouter()
 
@@ -20,6 +20,7 @@ router = APIRouter()
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📦 MODÈLES
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class WordResponse(BaseModel):
     term: str
@@ -40,6 +41,7 @@ class DefaultWordsResponse(BaseModel):
 # 🎲 EXTRACTION MOTS-CLÉS HISTORIQUE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_keywords_from_history(user_id: int, lang: str = "fr") -> List[dict]:
     """
     Extrait les mots-clés intéressants des analyses précédentes de l'utilisateur.
@@ -50,10 +52,7 @@ async def get_keywords_from_history(user_id: int, lang: str = "fr") -> List[dict
 
         # Récupérer les 20 dernières analyses
         result = await session.execute(
-            select(Summary)
-            .where(Summary.user_id == user_id)
-            .order_by(desc(Summary.created_at))
-            .limit(20)
+            select(Summary).where(Summary.user_id == user_id).order_by(desc(Summary.created_at)).limit(20)
         )
         summaries = result.scalars().all()
 
@@ -76,15 +75,17 @@ async def get_keywords_from_history(user_id: int, lang: str = "fr") -> List[dict
 
                 if term_to_check in content and term_to_check not in seen_terms:
                     seen_terms.add(term_to_check)
-                    keywords.append({
-                        "term": word["term"] if lang == "fr" else word["term_en"],
-                        "definition": word["definition_fr"] if lang == "fr" else word["definition_en"],
-                        "short_definition": word["short_fr"] if lang == "fr" else word["short_en"],
-                        "category": word["category"],
-                        "wiki_url": word.get("wiki_url"),
-                        "source": "history",
-                        "video_title": summary.video_title  # Contexte
-                    })
+                    keywords.append(
+                        {
+                            "term": word["term"] if lang == "fr" else word["term_en"],
+                            "definition": word["definition_fr"] if lang == "fr" else word["definition_en"],
+                            "short_definition": word["short_fr"] if lang == "fr" else word["short_en"],
+                            "category": word["category"],
+                            "wiki_url": word.get("wiki_url"),
+                            "source": "history",
+                            "video_title": summary.video_title,  # Contexte
+                        }
+                    )
 
                     if len(keywords) >= 10:
                         return keywords
@@ -96,12 +97,13 @@ async def get_keywords_from_history(user_id: int, lang: str = "fr") -> List[dict
 # 🎯 ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/random", response_model=WordResponse)
 async def get_random_word_endpoint(
     lang: str = Query(default="fr", description="Language: fr | en"),
     exclude: Optional[str] = Query(default=None, description="Comma-separated terms to exclude"),
     category: Optional[str] = Query(default=None, description="Filter by category"),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """
     🎲 Retourne un mot aléatoire.
@@ -136,7 +138,7 @@ async def get_random_word_endpoint(
                 short_definition=word["short_definition"],
                 category=word["category"],
                 source="history",
-                wiki_url=word.get("wiki_url")
+                wiki_url=word.get("wiki_url"),
             )
 
     # Fallback: mot aléatoire de la liste par défaut
@@ -144,9 +146,9 @@ async def get_random_word_endpoint(
 
     # Filtrer les mots exclus
     if exclude_list:
-        available_words = [w for w in available_words
-                         if w["term"] not in exclude_list
-                         and w["term_en"] not in exclude_list]
+        available_words = [
+            w for w in available_words if w["term"] not in exclude_list and w["term_en"] not in exclude_list
+        ]
 
     # Filtrer par catégorie si spécifié
     if category:
@@ -163,14 +165,14 @@ async def get_random_word_endpoint(
         short_definition=word["short_fr"] if lang == "fr" else word["short_en"],
         category=word["category"],
         source="curated",
-        wiki_url=word.get("wiki_url")
+        wiki_url=word.get("wiki_url"),
     )
 
 
 @router.get("/defaults", response_model=DefaultWordsResponse)
 async def get_default_words(
     lang: str = Query(default="fr", description="Language: fr | en"),
-    category: Optional[str] = Query(default=None, description="Filter by category")
+    category: Optional[str] = Query(default=None, description="Filter by category"),
 ):
     """
     📚 Retourne la liste complète des mots par défaut.
@@ -187,19 +189,17 @@ async def get_default_words(
     # Formater selon la langue
     formatted_words = []
     for w in words:
-        formatted_words.append({
-            "term": w["term"] if lang == "fr" else w["term_en"],
-            "definition": w["definition_fr"] if lang == "fr" else w["definition_en"],
-            "short_definition": w["short_fr"] if lang == "fr" else w["short_en"],
-            "category": w["category"],
-            "wiki_url": w.get("wiki_url")
-        })
+        formatted_words.append(
+            {
+                "term": w["term"] if lang == "fr" else w["term_en"],
+                "definition": w["definition_fr"] if lang == "fr" else w["definition_en"],
+                "short_definition": w["short_fr"] if lang == "fr" else w["short_en"],
+                "category": w["category"],
+                "wiki_url": w.get("wiki_url"),
+            }
+        )
 
-    return DefaultWordsResponse(
-        words=formatted_words,
-        total=len(formatted_words),
-        categories=get_all_categories()
-    )
+    return DefaultWordsResponse(words=formatted_words, total=len(formatted_words), categories=get_all_categories())
 
 
 @router.get("/categories")
@@ -210,8 +210,4 @@ async def get_categories():
     categories = get_all_categories()
     counts = {cat: len(get_words_by_category(cat)) for cat in categories}
 
-    return {
-        "categories": categories,
-        "counts": counts,
-        "total": len(DEFAULT_WORDS)
-    }
+    return {"categories": categories, "counts": counts, "total": len(DEFAULT_WORDS)}

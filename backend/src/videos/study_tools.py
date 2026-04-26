@@ -6,14 +6,12 @@
 """
 
 import sys
-import httpx
 import json
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 
 # Import configuration
-from core.config import get_mistral_key
 from core.llm_provider import llm_complete
 
 # Message de startup visible
@@ -35,14 +33,14 @@ def safe_json_parse(text: str, context: str = "JSON") -> Dict[str, Any]:
     """
     if not text:
         raise ValueError(f"[{context}] Contenu vide")
-    
+
     original_len = len(text)
     log(f"📝 [{context}] Parsing {original_len} caractères...")
-    
+
     # Preview pour debug
-    preview = text[:80].replace('\n', '\\n').replace('\r', '\\r')
+    preview = text[:80].replace("\n", "\\n").replace("\r", "\\r")
     log(f"📝 [{context}] Début: {preview}")
-    
+
     # === Méthode 1: Direct ===
     try:
         result = json.loads(text)
@@ -50,7 +48,7 @@ def safe_json_parse(text: str, context: str = "JSON") -> Dict[str, Any]:
         return result
     except json.JSONDecodeError:
         pass
-    
+
     # === Méthode 2: Strip whitespace ===
     cleaned = text.strip()
     try:
@@ -59,20 +57,20 @@ def safe_json_parse(text: str, context: str = "JSON") -> Dict[str, Any]:
         return result
     except json.JSONDecodeError:
         pass
-    
+
     # === Méthode 3: Supprimer BOM et caractères invisibles ===
-    cleaned = cleaned.lstrip('\ufeff\u200b\u200c\u200d\u2060\n\r\t ')
-    cleaned = cleaned.rstrip('\n\r\t ')
+    cleaned = cleaned.lstrip("\ufeff\u200b\u200c\u200d\u2060\n\r\t ")
+    cleaned = cleaned.rstrip("\n\r\t ")
     try:
         result = json.loads(cleaned)
         log(f"✅ [{context}] Parsé après nettoyage BOM")
         return result
     except json.JSONDecodeError:
         pass
-    
+
     # === Méthode 4: Extraire du markdown ===
-    if '```' in cleaned:
-        match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', cleaned)
+    if "```" in cleaned:
+        match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
         if match:
             extracted = match.group(1).strip()
             try:
@@ -81,52 +79,54 @@ def safe_json_parse(text: str, context: str = "JSON") -> Dict[str, Any]:
                 return result
             except json.JSONDecodeError:
                 pass
-    
+
     # === Méthode 5: Trouver { } ===
-    start = cleaned.find('{')
-    end = cleaned.rfind('}')
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
     if start != -1 and end > start:
-        json_str = cleaned[start:end+1]
+        json_str = cleaned[start : end + 1]
         try:
             result = json.loads(json_str)
             log(f"✅ [{context}] Extrait entre accolades")
             return result
         except json.JSONDecodeError:
             pass
-        
+
         # === Méthode 6: Réparer les accolades manquantes ===
-        open_b = json_str.count('{')
-        close_b = json_str.count('}')
-        open_br = json_str.count('[')
-        close_br = json_str.count(']')
-        
+        open_b = json_str.count("{")
+        close_b = json_str.count("}")
+        open_br = json_str.count("[")
+        close_br = json_str.count("]")
+
         repaired = json_str
         if open_br > close_br:
-            repaired += ']' * (open_br - close_br)
+            repaired += "]" * (open_br - close_br)
         if open_b > close_b:
-            repaired += '}' * (open_b - close_b)
-        
+            repaired += "}" * (open_b - close_b)
+
         try:
             result = json.loads(repaired)
             log(f"✅ [{context}] JSON réparé")
             return result
         except json.JSONDecodeError:
             pass
-    
+
     # === Échec total - Afficher le contenu pour debug ===
     log(f"❌ [{context}] ÉCHEC PARSING - Contenu reçu:")
     log(f"--- DÉBUT ({original_len} chars) ---")
     log(text[:500])
-    log(f"--- FIN ---")
-    
-    raise ValueError(f"Impossible de parser le JSON")
+    log("--- FIN ---")
+
+    raise ValueError("Impossible de parser le JSON")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PROMPTS OPTIMISÉS POUR JSON
 # ═══════════════════════════════════════════════════════════════════════════════
 
-STUDY_CARD_SYSTEM = """Tu es un assistant pédagogique expert. Tu génères UNIQUEMENT du JSON valide, sans texte avant ou après."""
+STUDY_CARD_SYSTEM = (
+    """Tu es un assistant pédagogique expert. Tu génères UNIQUEMENT du JSON valide, sans texte avant ou après."""
+)
 
 STUDY_CARD_USER = """Génère une fiche de révision JSON pour cette vidéo.
 
@@ -167,7 +167,9 @@ Retourne EXACTEMENT ce format JSON:
   "study_tips": ["Conseil d'étude 1", "Conseil d'étude 2"]
 }}"""
 
-CONCEPT_MAP_SYSTEM = """Tu es un expert en cartographie conceptuelle. Tu génères UNIQUEMENT du JSON valide avec du code Mermaid."""
+CONCEPT_MAP_SYSTEM = (
+    """Tu es un expert en cartographie conceptuelle. Tu génères UNIQUEMENT du JSON valide avec du code Mermaid."""
+)
 
 CONCEPT_MAP_USER = """Génère un mindmap JSON avec code Mermaid pour cette vidéo.
 
@@ -192,12 +194,13 @@ Retourne EXACTEMENT ce format JSON:
 # FONCTIONS DE GÉNÉRATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def call_mistral_json(
     system_prompt: str,
     user_prompt: str,
     model: str = "mistral-small-2603",
     max_tokens: int = 2500,
-    temperature: float = 0.1
+    temperature: float = 0.1,
 ) -> str:
     """
     Appelle l'API Mistral avec fallback automatique (Mistral → DeepSeek).
@@ -227,95 +230,70 @@ async def call_mistral_json(
 
 
 async def generate_study_card(
-    title: str,
-    channel: str,
-    summary: str,
-    transcript: str = "",
-    lang: str = "fr",
-    model: str = "mistral-small-2603"
+    title: str, channel: str, summary: str, transcript: str = "", lang: str = "fr", model: str = "mistral-small-2603"
 ) -> Dict[str, Any]:
     """
     Génère une fiche de révision complète.
     """
-    log(f"")
-    log(f"🎓 ═══════════════════════════════════════════════════")
-    log(f"🎓 GÉNÉRATION FICHE DE RÉVISION")
+    log("")
+    log("🎓 ═══════════════════════════════════════════════════")
+    log("🎓 GÉNÉRATION FICHE DE RÉVISION")
     log(f"🎓 Titre: {title[:50]}...")
-    log(f"🎓 ═══════════════════════════════════════════════════")
-    
+    log("🎓 ═══════════════════════════════════════════════════")
+
     # Préparer le prompt
     summary_short = (summary or "")[:2500]
-    user_prompt = STUDY_CARD_USER.format(
-        title=title,
-        channel=channel,
-        summary=summary_short
-    )
-    
+    user_prompt = STUDY_CARD_USER.format(title=title, channel=channel, summary=summary_short)
+
     try:
         # Appeler Mistral avec mode JSON
         content = await call_mistral_json(
-            system_prompt=STUDY_CARD_SYSTEM,
-            user_prompt=user_prompt,
-            model=model,
-            max_tokens=3000,
-            temperature=0.1
+            system_prompt=STUDY_CARD_SYSTEM, user_prompt=user_prompt, model=model, max_tokens=3000, temperature=0.1
         )
-        
+
         # Parser le JSON
         study_card = safe_json_parse(content, "STUDY_CARD")
-        
+
         # Ajouter métadonnées
         study_card["generated_at"] = datetime.utcnow().isoformat()
         study_card["source_video"] = title
         study_card["source_channel"] = channel
         study_card["lang"] = lang
-        
+
         log(f"✅ Fiche générée: {len(study_card.get('key_points', []))} points clés")
-        
+
         return study_card
-        
+
     except Exception as e:
         log(f"❌ ERREUR generate_study_card: {type(e).__name__}: {e}")
         raise
 
 
 async def generate_concept_map(
-    title: str,
-    channel: str,
-    summary: str,
-    lang: str = "fr",
-    model: str = "mistral-small-2603"
+    title: str, channel: str, summary: str, lang: str = "fr", model: str = "mistral-small-2603"
 ) -> Dict[str, Any]:
     """
     Génère un arbre pédagogique (mindmap) au format Mermaid.
     """
-    log(f"")
-    log(f"🌳 ═══════════════════════════════════════════════════")
-    log(f"🌳 GÉNÉRATION ARBRE PÉDAGOGIQUE")
+    log("")
+    log("🌳 ═══════════════════════════════════════════════════")
+    log("🌳 GÉNÉRATION ARBRE PÉDAGOGIQUE")
     log(f"🌳 Titre: {title[:50]}...")
-    log(f"🌳 ═══════════════════════════════════════════════════")
-    
+    log("🌳 ═══════════════════════════════════════════════════")
+
     # Préparer le prompt
     summary_short = (summary or "")[:3000]
-    user_prompt = CONCEPT_MAP_USER.format(
-        title=title,
-        channel=channel,
-        summary=summary_short
-    )
-    
+    user_prompt = CONCEPT_MAP_USER.format(title=title, channel=channel, summary=summary_short)
+
     try:
         # Appeler Mistral avec mode JSON
         content = await call_mistral_json(
-            system_prompt=CONCEPT_MAP_SYSTEM,
-            user_prompt=user_prompt,
-            model=model,
-            max_tokens=2000,
-            temperature=0.2
+            system_prompt=CONCEPT_MAP_SYSTEM, user_prompt=user_prompt, model=model, max_tokens=2000, temperature=0.2
         )
-        
+
         # Parser le JSON
         concept_map = safe_json_parse(content, "CONCEPT_MAP")
-        
+
         # Nettoyer le code Mermaid
         mermaid = concept_map.get("mermaid_code", "")
         if mermaid:
@@ -323,16 +301,16 @@ async def generate_concept_map(
             if not mermaid.strip().startswith("mindmap"):
                 mermaid = "mindmap\n" + mermaid
             concept_map["mermaid_code"] = mermaid
-        
+
         # Ajouter métadonnées
         concept_map["generated_at"] = datetime.utcnow().isoformat()
         concept_map["source_video"] = title
         concept_map["lang"] = lang
-        
+
         log(f"✅ Mindmap générée: {concept_map.get('total_concepts', 0)} concepts")
-        
+
         return concept_map
-        
+
     except Exception as e:
         log(f"❌ ERREUR generate_concept_map: {type(e).__name__}: {e}")
         raise
@@ -346,44 +324,35 @@ async def generate_study_materials(
     lang: str = "fr",
     model: str = "mistral-small-2603",
     include_card: bool = True,
-    include_map: bool = True
+    include_map: bool = True,
 ) -> Dict[str, Any]:
     """
     Génère tous les outils d'étude en une fois.
     """
     log(f"📚 Génération complète pour: {title[:40]}...")
-    
+
     result = {
         "generated_at": datetime.utcnow().isoformat(),
         "source": {"title": title, "channel": channel},
-        "lang": lang
+        "lang": lang,
     }
-    
+
     if include_card:
         try:
             result["study_card"] = await generate_study_card(
-                title=title,
-                channel=channel,
-                summary=summary,
-                transcript=transcript,
-                lang=lang,
-                model=model
+                title=title, channel=channel, summary=summary, transcript=transcript, lang=lang, model=model
             )
         except Exception as e:
             log(f"⚠️ Erreur fiche: {e}")
             result["study_card_error"] = str(e)
-    
+
     if include_map:
         try:
             result["concept_map"] = await generate_concept_map(
-                title=title,
-                channel=channel,
-                summary=summary,
-                lang=lang,
-                model=model
+                title=title, channel=channel, summary=summary, lang=lang, model=model
             )
         except Exception as e:
             log(f"⚠️ Erreur mindmap: {e}")
             result["concept_map_error"] = str(e)
-    
+
     return result

@@ -9,27 +9,25 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import httpx
-import json
-import re
 from typing import Optional, Dict, Any, List, Tuple
 from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 
-from core.config import PLAN_LIMITS
-from videos.web_search_provider import web_search_and_synthesize, web_search_batch, WebSearchResult
+from videos.web_search_provider import web_search_and_synthesize
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION D'ENRICHISSEMENT PAR PLAN
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class EnrichmentLevel(Enum):
     """Niveaux d'enrichissement Perplexity"""
-    NONE = "none"      # Free/Starter: Pas d'enrichissement
-    FULL = "full"      # Pro: Enrichissement standard
-    DEEP = "deep"      # Expert: Analyse exhaustive
+
+    NONE = "none"  # Free/Starter: Pas d'enrichissement
+    FULL = "full"  # Pro: Enrichissement standard
+    DEEP = "deep"  # Expert: Analyse exhaustive
     DEEP_RESEARCH = "deep_research"  # Pro+: Brave massif + Perplexity sonar-pro croisé
 
 
@@ -38,19 +36,14 @@ class EnrichmentLevel(Enum):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 ENRICHMENT_CONFIG = {
-    EnrichmentLevel.NONE: {
-        "enabled": False,
-        "max_queries": 0,
-        "max_sources": 0,
-        "features": []
-    },
+    EnrichmentLevel.NONE: {"enabled": False, "max_queries": 0, "max_sources": 0, "features": []},
     EnrichmentLevel.FULL: {
         "enabled": True,
         "max_queries": 2,
         "max_sources": 5,
         "max_tokens": 1500,
         "features": ["context", "recent_news", "fact_check"],
-        "model": "sonar"
+        "model": "sonar",
     },
     EnrichmentLevel.DEEP: {
         "enabled": True,
@@ -58,7 +51,7 @@ ENRICHMENT_CONFIG = {
         "max_sources": 8,
         "max_tokens": 2500,
         "features": ["context", "recent_news", "fact_check", "expert_opinions", "counter_arguments"],
-        "model": "sonar-pro"
+        "model": "sonar-pro",
     },
     EnrichmentLevel.DEEP_RESEARCH: {
         "enabled": True,
@@ -66,8 +59,15 @@ ENRICHMENT_CONFIG = {
         "max_sources": 10,
         "max_tokens": 3000,
         "model": "sonar-pro",
-        "features": ["context", "recent_news", "fact_check", "expert_opinions", "counter_arguments", "source_cross_check"],
-    }
+        "features": [
+            "context",
+            "recent_news",
+            "fact_check",
+            "expert_opinions",
+            "counter_arguments",
+            "source_cross_check",
+        ],
+    },
 }
 
 
@@ -78,7 +78,7 @@ def get_enrichment_level(plan: str) -> EnrichmentLevel:
         "starter": EnrichmentLevel.FULL,  # Maps to pro (normalize_plan_id)
         "pro": EnrichmentLevel.FULL,
         "expert": EnrichmentLevel.FULL,  # Maps to pro (normalize_plan_id)
-        "unlimited": EnrichmentLevel.FULL  # Maps to pro (normalize_plan_id)
+        "unlimited": EnrichmentLevel.FULL,  # Maps to pro (normalize_plan_id)
     }
     return plan_mapping.get(plan, EnrichmentLevel.NONE)
 
@@ -93,7 +93,7 @@ def _extract_site_name(domain: str) -> str:
     """
     # Nettoyer le domaine
     domain = domain.lower().strip()
-    
+
     # Supprimer www. et sous-domaines communs
     if domain.startswith("www."):
         domain = domain[4:]
@@ -101,7 +101,7 @@ def _extract_site_name(domain: str) -> str:
         domain = domain[3:]
     if domain.startswith("m."):
         domain = domain[2:]
-    
+
     # Mapping des domaines connus vers des noms lisibles
     SITE_NAMES = {
         # Médias français
@@ -123,7 +123,6 @@ def _extract_site_name(domain: str) -> str:
         "lesechos.fr": "Les Échos",
         "latribune.fr": "La Tribune",
         "courrierinternational.com": "Courrier International",
-        
         # Médias internationaux
         "nytimes.com": "NY Times",
         "theguardian.com": "The Guardian",
@@ -152,12 +151,10 @@ def _extract_site_name(domain: str) -> str:
         "theverge.com": "The Verge",
         "engadget.com": "Engadget",
         "cnet.com": "CNET",
-        
         # Références & Encyclopédies
         "wikipedia.org": "Wikipedia",
         "britannica.com": "Britannica",
         "larousse.fr": "Larousse",
-        
         # Sites académiques & scientifiques
         "nature.com": "Nature",
         "science.org": "Science",
@@ -172,7 +169,6 @@ def _extract_site_name(domain: str) -> str:
         "ncbi.nlm.nih.gov": "NCBI",
         "who.int": "OMS",
         "cdc.gov": "CDC",
-        
         # Sites gouvernementaux
         "gouv.fr": "Gouv.fr",
         "service-public.fr": "Service Public",
@@ -183,7 +179,6 @@ def _extract_site_name(domain: str) -> str:
         "elysee.fr": "Élysée",
         "europa.eu": "Europa",
         "un.org": "ONU",
-        
         # Plateformes
         "youtube.com": "YouTube",
         "twitter.com": "Twitter/X",
@@ -194,14 +189,12 @@ def _extract_site_name(domain: str) -> str:
         "quora.com": "Quora",
         "stackoverflow.com": "Stack Overflow",
         "github.com": "GitHub",
-        
         # Fact-checking
         "snopes.com": "Snopes",
         "factcheck.org": "FactCheck",
         "politifact.com": "PolitiFact",
         "fullfact.org": "Full Fact",
         "lesdecodeurs.blog.lemonde.fr": "Les Décodeurs",
-        
         # Autres
         "imdb.com": "IMDb",
         "rottentomatoes.com": "Rotten Tomatoes",
@@ -209,24 +202,24 @@ def _extract_site_name(domain: str) -> str:
         "amazon.com": "Amazon",
         "amazon.fr": "Amazon FR",
     }
-    
+
     # Vérifier le mapping exact
     if domain in SITE_NAMES:
         return SITE_NAMES[domain]
-    
+
     # Vérifier les sous-domaines (ex: fr.wikipedia.org → wikipedia.org)
     for known_domain, name in SITE_NAMES.items():
         if domain.endswith("." + known_domain) or domain == known_domain:
             return name
-    
+
     # Fallback: Extraire et formater le nom du domaine
     # "example-site.com" → "Example Site"
     base_domain = domain.split(".")[0] if "." in domain else domain
-    
+
     # Supprimer les tirets et capitaliser
     words = base_domain.replace("-", " ").replace("_", " ").split()
     formatted = " ".join(word.capitalize() for word in words)
-    
+
     return formatted if formatted else domain
 
 
@@ -243,134 +236,265 @@ def get_enrichment_config(plan: str) -> Dict[str, Any]:
 # Cutoff Mistral: Les modèles Mistral ont été entraînés jusqu'à fin 2024
 MISTRAL_CUTOFF_YEAR = 2024
 
+
 def needs_web_search_for_chat(question: str, video_title: str = "", video_date: str = "") -> Tuple[bool, str]:
     """
     🧠 Détecte si une question de chat nécessite une recherche web.
-    
+
     Critères de déclenchement:
     1. Questions sur des événements récents/actuels
     2. Questions demandant des infos post-cutoff Mistral (2024)
     3. Questions de vérification de faits
     4. Questions sur des données qui changent (prix, stats, positions)
-    
+
     Returns:
         Tuple[should_search: bool, reason: str]
     """
     question_lower = question.lower()
-    
+
     # ═══════════════════════════════════════════════════════════════════════════
     # 📅 MOTS-CLÉS TEMPORELS (indiquent besoin d'infos récentes)
     # ═══════════════════════════════════════════════════════════════════════════
     TEMPORAL_KEYWORDS = [
         # Français
-        "aujourd'hui", "maintenant", "actuellement", "en ce moment",
-        "récemment", "dernièrement", "cette année", "ce mois", "cette semaine",
-        "en 2025", "en 2026", "après 2024", "depuis 2024", "depuis 2025",
-        "dernière mise à jour", "dernières nouvelles", "actualité",
-        "qu'est-ce qui s'est passé", "que s'est-il passé",
+        "aujourd'hui",
+        "maintenant",
+        "actuellement",
+        "en ce moment",
+        "récemment",
+        "dernièrement",
+        "cette année",
+        "ce mois",
+        "cette semaine",
+        "en 2025",
+        "en 2026",
+        "après 2024",
+        "depuis 2024",
+        "depuis 2025",
+        "dernière mise à jour",
+        "dernières nouvelles",
+        "actualité",
+        "qu'est-ce qui s'est passé",
+        "que s'est-il passé",
         # Anglais
-        "today", "now", "currently", "at the moment", 
-        "recently", "lately", "this year", "this month", "this week",
-        "in 2025", "in 2026", "after 2024", "since 2024", "since 2025",
-        "latest update", "latest news", "current",
-        "what happened", "what's happening"
+        "today",
+        "now",
+        "currently",
+        "at the moment",
+        "recently",
+        "lately",
+        "this year",
+        "this month",
+        "this week",
+        "in 2025",
+        "in 2026",
+        "after 2024",
+        "since 2024",
+        "since 2025",
+        "latest update",
+        "latest news",
+        "current",
+        "what happened",
+        "what's happening",
     ]
-    
+
     for keyword in TEMPORAL_KEYWORDS:
         if keyword in question_lower:
             return True, f"temporal_keyword:{keyword}"
-    
+
     # ═══════════════════════════════════════════════════════════════════════════
     # 🔍 QUESTIONS DE VÉRIFICATION
     # ═══════════════════════════════════════════════════════════════════════════
     VERIFICATION_PATTERNS = [
         # Français
-        "est-ce vrai", "est-ce que c'est vrai", "c'est vrai",
-        "est-ce exact", "est-ce correct", "vérifier", "confirmer",
-        "est-ce toujours", "est-ce encore", "existe encore",
-        "est-il toujours", "est-elle toujours", "sont-ils toujours",
+        "est-ce vrai",
+        "est-ce que c'est vrai",
+        "c'est vrai",
+        "est-ce exact",
+        "est-ce correct",
+        "vérifier",
+        "confirmer",
+        "est-ce toujours",
+        "est-ce encore",
+        "existe encore",
+        "est-il toujours",
+        "est-elle toujours",
+        "sont-ils toujours",
         # Anglais
-        "is it true", "is this true", "is that true",
-        "is it correct", "verify", "confirm", "fact check",
-        "is it still", "is he still", "is she still", "are they still",
-        "does it still", "do they still"
+        "is it true",
+        "is this true",
+        "is that true",
+        "is it correct",
+        "verify",
+        "confirm",
+        "fact check",
+        "is it still",
+        "is he still",
+        "is she still",
+        "are they still",
+        "does it still",
+        "do they still",
     ]
-    
+
     for pattern in VERIFICATION_PATTERNS:
         if pattern in question_lower:
             return True, f"verification:{pattern}"
-    
+
     # ═══════════════════════════════════════════════════════════════════════════
     # 📊 DONNÉES DYNAMIQUES (changent fréquemment)
     # ═══════════════════════════════════════════════════════════════════════════
     DYNAMIC_DATA_KEYWORDS = [
         # Français
-        "prix actuel", "cours actuel", "valeur actuelle",
-        "combien coûte", "quel est le prix",
-        "derniers chiffres", "dernières statistiques", "dernières données",
-        "qui est le président", "qui est le ceo", "qui dirige",
-        "qui a gagné", "résultat", "score",
-        "où en est", "quel est le statut", "état actuel",
+        "prix actuel",
+        "cours actuel",
+        "valeur actuelle",
+        "combien coûte",
+        "quel est le prix",
+        "derniers chiffres",
+        "dernières statistiques",
+        "dernières données",
+        "qui est le président",
+        "qui est le ceo",
+        "qui dirige",
+        "qui a gagné",
+        "résultat",
+        "score",
+        "où en est",
+        "quel est le statut",
+        "état actuel",
         # Anglais
-        "current price", "current value", "how much does",
-        "latest figures", "latest statistics", "latest data",
-        "who is the president", "who is the ceo", "who leads",
-        "who won", "result", "score",
-        "status of", "current status", "current state"
+        "current price",
+        "current value",
+        "how much does",
+        "latest figures",
+        "latest statistics",
+        "latest data",
+        "who is the president",
+        "who is the ceo",
+        "who leads",
+        "who won",
+        "result",
+        "score",
+        "status of",
+        "current status",
+        "current state",
     ]
-    
+
     for keyword in DYNAMIC_DATA_KEYWORDS:
         if keyword in question_lower:
             return True, f"dynamic_data:{keyword}"
-    
+
     # ═══════════════════════════════════════════════════════════════════════════
     # 📰 SUJETS À ÉVOLUTION RAPIDE
     # ═══════════════════════════════════════════════════════════════════════════
     FAST_CHANGING_TOPICS = [
-        "ukraine", "gaza", "israel", "palestine", "guerre", "war",
-        "crypto", "bitcoin", "ethereum", "nft",
-        "ia", "ai", "chatgpt", "openai", "anthropic", "claude",
-        "tesla", "spacex", "elon musk",
-        "élection", "election", "vote",
-        "bourse", "stock", "nasdaq", "cac40",
-        "covid", "pandemic", "virus",
-        "climate", "climat", "cop28", "cop29"
+        "ukraine",
+        "gaza",
+        "israel",
+        "palestine",
+        "guerre",
+        "war",
+        "crypto",
+        "bitcoin",
+        "ethereum",
+        "nft",
+        "ia",
+        "ai",
+        "chatgpt",
+        "openai",
+        "anthropic",
+        "claude",
+        "tesla",
+        "spacex",
+        "elon musk",
+        "élection",
+        "election",
+        "vote",
+        "bourse",
+        "stock",
+        "nasdaq",
+        "cac40",
+        "covid",
+        "pandemic",
+        "virus",
+        "climate",
+        "climat",
+        "cop28",
+        "cop29",
     ]
-    
+
     for topic in FAST_CHANGING_TOPICS:
         if topic in question_lower:
             # Vérifier si c'est une question factuelle, pas juste une mention
-            factual_indicators = ["?", "combien", "quand", "où", "qui", "quel", 
-                                  "how", "when", "where", "who", "what", "which"]
+            factual_indicators = [
+                "?",
+                "combien",
+                "quand",
+                "où",
+                "qui",
+                "quel",
+                "how",
+                "when",
+                "where",
+                "who",
+                "what",
+                "which",
+            ]
             if any(ind in question_lower for ind in factual_indicators):
                 return True, f"fast_changing_topic:{topic}"
-    
+
     # ═══════════════════════════════════════════════════════════════════════════
     # 🎯 QUESTIONS EXPLICITES DE MISE À JOUR
     # ═══════════════════════════════════════════════════════════════════════════
     UPDATE_PATTERNS = [
-        "mise à jour", "update", "nouveauté", "new",
-        "a changé", "has changed", "ont changé", "have changed",
-        "évolué", "evolved", "progression", "progress"
+        "mise à jour",
+        "update",
+        "nouveauté",
+        "new",
+        "a changé",
+        "has changed",
+        "ont changé",
+        "have changed",
+        "évolué",
+        "evolved",
+        "progression",
+        "progress",
     ]
-    
+
     for pattern in UPDATE_PATTERNS:
         if pattern in question_lower:
             return True, f"update_request:{pattern}"
-    
+
     # ═══════════════════════════════════════════════════════════════════════════
     # 📅 VIDÉO ANCIENNE + SUJET ÉVOLUTIF → recherche automatique
     # ═══════════════════════════════════════════════════════════════════════════
     if video_date:
         from videos.analysis import _format_video_age
+
         _, _, age_days = _format_video_age(video_date)
 
         if age_days > 0:
             # Catégories à évolution rapide
             FAST_EVOLVING_KEYWORDS = [
-                "tech", "science", "politi", "financ", "santé", "health",
-                "économi", "econom", "crypto", "ia", "ai", "climat", "climate",
-                "médecin", "medic", "cyber", "startup", "législat", "regulat"
+                "tech",
+                "science",
+                "politi",
+                "financ",
+                "santé",
+                "health",
+                "économi",
+                "econom",
+                "crypto",
+                "ia",
+                "ai",
+                "climat",
+                "climate",
+                "médecin",
+                "medic",
+                "cyber",
+                "startup",
+                "législat",
+                "regulat",
             ]
             title_lower = video_title.lower()
             is_fast_evolving = any(kw in title_lower or kw in question_lower for kw in FAST_EVOLVING_KEYWORDS)
@@ -388,6 +512,7 @@ def needs_web_search_for_chat(question: str, video_title: str = "", video_date: 
 # 🔍 PROMPTS D'ENRICHISSEMENT PRÉ-ANALYSE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def build_pre_analysis_prompt(
     level: EnrichmentLevel,
     video_title: str,
@@ -395,22 +520,27 @@ def build_pre_analysis_prompt(
     category: str,
     transcript_excerpt: str,
     lang: str = "fr",
-    upload_date: str = ""
+    upload_date: str = "",
 ) -> str:
     """
     🆕 v3.0: Construit le prompt pour enrichir AVANT l'analyse Mistral.
     Le but est de fournir du contexte actuel à Mistral.
     """
-    
+
     # Construire le contexte temporel pour Perplexity
     from videos.analysis import _format_video_age
+
     temporal_hint_fr = ""
     temporal_hint_en = ""
     if upload_date:
         readable_date, human_age, age_days = _format_video_age(upload_date)
         if readable_date:
-            temporal_hint_fr = f"\n📅 Vidéo publiée le {readable_date} ({human_age}). Vérifie si les informations ont évolué depuis."
-            temporal_hint_en = f"\n📅 Video published on {readable_date} ({human_age}). Check if information has changed since then."
+            temporal_hint_fr = (
+                f"\n📅 Vidéo publiée le {readable_date} ({human_age}). Vérifie si les informations ont évolué depuis."
+            )
+            temporal_hint_en = (
+                f"\n📅 Video published on {readable_date} ({human_age}). Check if information has changed since then."
+            )
 
     if level == EnrichmentLevel.FULL:
         if lang == "fr":
@@ -549,12 +679,7 @@ Be comprehensive but structured. Max 700 words."""
     return ""
 
 
-def build_chat_enrichment_prompt(
-    question: str,
-    video_context: str,
-    trigger_reason: str,
-    lang: str = "fr"
-) -> str:
+def build_chat_enrichment_prompt(question: str, video_context: str, trigger_reason: str, lang: str = "fr") -> str:
     """
     🆕 v3.0: Prompt pour enrichir une réponse de chat avec des infos actuelles.
     """
@@ -611,9 +736,11 @@ Be concise and factual. Max 250 words."""
 # 📊 DATACLASS POUR LES RÉSULTATS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class EnrichmentResult:
     """Résultat d'un enrichissement Perplexity"""
+
     success: bool
     content: str
     sources: List[Dict[str, str]]
@@ -626,10 +753,8 @@ class EnrichmentResult:
 # 🌐 WEB SEARCH (Brave Search + Mistral) — remplace Perplexity
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def call_perplexity(
-    prompt: str,
-    level: EnrichmentLevel
-) -> EnrichmentResult:
+
+async def call_perplexity(prompt: str, level: EnrichmentLevel) -> EnrichmentResult:
     """
     Wrapper de compatibilité : redirige vers web_search_and_synthesize().
     Le nom est gardé pour ne pas casser les appelants existants.
@@ -657,7 +782,7 @@ async def call_perplexity(
             lang="fr",
             max_sources=max_sources,
             max_tokens=max_tokens,
-            timeout=30.0
+            timeout=30.0,
         )
 
         if result.success:
@@ -667,33 +792,22 @@ async def call_perplexity(
                 content=result.content,
                 sources=result.sources,
                 level=level,
-                tokens_used=result.tokens_used
+                tokens_used=result.tokens_used,
             )
         else:
             error_msg = result.error or "Unknown error"
             print(f"❌ [WEB_SEARCH] {error_msg}", flush=True)
-            return EnrichmentResult(
-                success=False,
-                content="",
-                sources=[],
-                level=level,
-                error=error_msg
-            )
+            return EnrichmentResult(success=False, content="", sources=[], level=level, error=error_msg)
     except Exception as e:
         error_msg = str(e)
         print(f"❌ [WEB_SEARCH] Exception: {error_msg}", flush=True)
-        return EnrichmentResult(
-            success=False,
-            content="",
-            sources=[],
-            level=level,
-            error=error_msg
-        )
+        return EnrichmentResult(success=False, content="", sources=[], level=level, error=error_msg)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🎯 FONCTIONS D'ENRICHISSEMENT PRINCIPALES v3.0
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def get_pre_analysis_context(
     video_title: str,
@@ -702,7 +816,7 @@ async def get_pre_analysis_context(
     transcript: str,
     plan: str,
     lang: str = "fr",
-    upload_date: str = ""
+    upload_date: str = "",
 ) -> Tuple[Optional[str], List[Dict[str, str]], EnrichmentLevel]:
     """
     🆕 v3.0: Récupère le contexte web AVANT l'analyse Mistral.
@@ -730,6 +844,7 @@ async def get_pre_analysis_context(
     try:
         from core.cache import cache_service
         import hashlib
+
         cache_input = f"{video_title}:{video_channel}:{category}:{lang}:{level.value}"
         cache_key = f"web_context:{hashlib.md5(cache_input.encode()).hexdigest()}"
         cached = await cache_service.get(cache_key)
@@ -747,7 +862,7 @@ async def get_pre_analysis_context(
         category=category,
         transcript_excerpt=transcript[:3000],
         lang=lang,
-        upload_date=upload_date
+        upload_date=upload_date,
     )
 
     if not prompt:
@@ -765,11 +880,7 @@ async def get_pre_analysis_context(
     # 🚀 CACHE: Store in Redis (TTL 1h — web data stays fresh but avoids redundant calls)
     if cache_key:
         try:
-            await cache_service.set(
-                cache_key,
-                {"content": result.content, "sources": result.sources},
-                ttl=3600
-            )
+            await cache_service.set(cache_key, {"content": result.content, "sources": result.sources}, ttl=3600)
         except Exception as e:
             print(f"⚠️ [PRE-ANALYSIS] Cache SET failed: {e}", flush=True)
 
@@ -777,12 +888,7 @@ async def get_pre_analysis_context(
 
 
 async def enrich_chat_if_needed(
-    question: str,
-    video_title: str,
-    video_context: str,
-    plan: str,
-    lang: str = "fr",
-    video_date: str = ""
+    question: str, video_title: str, video_context: str, plan: str, lang: str = "fr", video_date: str = ""
 ) -> Tuple[Optional[str], List[Dict[str, str]], bool]:
     """
     🆕 v3.0: Enrichit une réponse chat SI la question le nécessite.
@@ -800,29 +906,26 @@ async def enrich_chat_if_needed(
 
     # Détecter si la question nécessite une recherche web
     needs_search, reason = needs_web_search_for_chat(question, video_title, video_date=video_date)
-    
+
     if not needs_search:
         print(f"⏭️ [CHAT ENRICHMENT] Not needed: {reason}", flush=True)
         return None, [], False
-    
+
     print(f"🔍 [CHAT ENRICHMENT] Triggered: {reason}", flush=True)
-    
+
     # Construire et exécuter le prompt
     prompt = build_chat_enrichment_prompt(
-        question=question,
-        video_context=video_context,
-        trigger_reason=reason,
-        lang=lang
+        question=question, video_context=video_context, trigger_reason=reason, lang=lang
     )
-    
+
     result = await call_perplexity(prompt, level)
-    
+
     if not result.success:
         print(f"⚠️ [CHAT ENRICHMENT] Failed: {result.error}", flush=True)
         return None, [], False
-    
+
     print(f"✅ [CHAT ENRICHMENT] Got {len(result.content)} chars", flush=True)
-    
+
     return result.content, result.sources, True
 
 
@@ -830,17 +933,18 @@ async def enrich_chat_if_needed(
 # 📊 UTILITAIRES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def format_web_context_for_mistral(web_context: str, lang: str = "fr") -> str:
     """
     Formate le contexte web pour l'injecter dans le prompt Mistral.
     """
     if not web_context:
         return ""
-    
+
     if lang == "fr":
         return f"""
 ═══════════════════════════════════════════════════════════════════════════════
-📡 CONTEXTE WEB ACTUEL (Recherche Perplexity - {datetime.now().strftime('%Y-%m-%d')})
+📡 CONTEXTE WEB ACTUEL (Recherche Perplexity - {datetime.now().strftime("%Y-%m-%d")})
 ═══════════════════════════════════════════════════════════════════════════════
 
 {web_context}
@@ -854,7 +958,7 @@ def format_web_context_for_mistral(web_context: str, lang: str = "fr") -> str:
     else:
         return f"""
 ═══════════════════════════════════════════════════════════════════════════════
-📡 CURRENT WEB CONTEXT (Perplexity Search - {datetime.now().strftime('%Y-%m-%d')})
+📡 CURRENT WEB CONTEXT (Perplexity Search - {datetime.now().strftime("%Y-%m-%d")})
 ═══════════════════════════════════════════════════════════════════════════════
 
 {web_context}
@@ -871,10 +975,10 @@ def format_sources_markdown(sources: List[Dict[str, str]], lang: str = "fr") -> 
     """Formate les sources en markdown"""
     if not sources:
         return ""
-    
+
     header = "📚 Sources" if lang == "fr" else "📚 Sources"
     lines = [f"\n### {header}\n"]
-    
+
     for i, source in enumerate(sources[:5], 1):
         title = source.get("title", "Source")
         url = source.get("url", "")
@@ -882,9 +986,8 @@ def format_sources_markdown(sources: List[Dict[str, str]], lang: str = "fr") -> 
             lines.append(f"{i}. [{title}]({url})")
         else:
             lines.append(f"{i}. {title}")
-    
-    return "\n".join(lines)
 
+    return "\n".join(lines)
 
 
 def get_enrichment_badge(level: EnrichmentLevel, lang: str = "fr") -> str:
@@ -902,39 +1005,36 @@ def get_enrichment_badge(level: EnrichmentLevel, lang: str = "fr") -> str:
 # 🆕 v5.0: ENRICHISSEMENT CHAT AVEC FUSION INTELLIGENTE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def enrich_chat_response(
-    question: str,
-    base_response: str,
-    video_context: str,
-    plan: str,
-    lang: str = "fr"
+    question: str, base_response: str, video_context: str, plan: str, lang: str = "fr"
 ) -> Tuple[str, List[Dict[str, str]], EnrichmentLevel]:
     """
     🆕 v5.0: Enrichit une réponse chat avec Perplexity et FUSIONNE intelligemment.
-    
+
     Différence avec enrich_chat_if_needed:
     - Prend en entrée la réponse de base de Mistral
     - Fusionne la réponse Perplexity avec la réponse originale
     - Retourne une réponse enrichie cohérente
-    
+
     Args:
         question: Question de l'utilisateur
         base_response: Réponse générée par Mistral (basée sur la vidéo)
         video_context: Contexte de la vidéo (titre + résumé)
         plan: Plan de l'utilisateur (détermine le niveau d'enrichissement)
         lang: Langue de réponse
-    
+
     Returns:
         Tuple[enriched_response, sources, level]
     """
     level = get_enrichment_level(plan)
-    
+
     # Pas d'enrichissement pour NONE
     if level == EnrichmentLevel.NONE:
         return base_response, [], level
-    
+
     print(f"🔍 [ENRICH CHAT v5.0] Starting enrichment for plan={plan}, level={level.value}", flush=True)
-    
+
     # Construire le prompt de fact-checking
     if lang == "fr":
         prompt = f"""🎯 MISSION: Vérifier et compléter cette réponse avec des informations ACTUELLES et FIABLES.
@@ -982,32 +1082,34 @@ Give a CORRECTED and UPDATED response that:
 - Is concise (max 300 words)
 
 If original response is correct, confirm it. Otherwise, correct with real facts."""
-    
+
     # Appeler Perplexity
     result = await call_perplexity(prompt, level)
-    
+
     if not result.success:
         print(f"⚠️ [ENRICH CHAT v5.0] Perplexity call failed: {result.error}", flush=True)
         return base_response, [], level
-    
-    print(f"✅ [ENRICH CHAT v5.0] Got enrichment: {len(result.content)} chars, {len(result.sources)} sources", flush=True)
-    
+
+    print(
+        f"✅ [ENRICH CHAT v5.0] Got enrichment: {len(result.content)} chars, {len(result.sources)} sources", flush=True
+    )
+
     # Formater la réponse enrichie
     enriched_response = result.content
-    
+
     # Ajouter les sources si disponibles
     if result.sources:
         sources_text = format_sources_markdown(result.sources, lang)
         if sources_text:
             enriched_response = f"{enriched_response}\n\n{sources_text}"
-    
-    return enriched_response, result.sources, level
 
+    return enriched_response, result.sources, level
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔬 DEEP RESEARCH: Synthèse croisée Brave + Perplexity sonar-pro
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def get_deep_research_context(
     video_title: str,
@@ -1015,8 +1117,8 @@ async def get_deep_research_context(
     transcript_excerpt: str,
     brave_results_text: str,
     brave_sources: "List[Dict[str, str]]",
-    lang: str = "fr"
-) -> "Tuple[Optional[str], List[Dict[str, str]]]": 
+    lang: str = "fr",
+) -> "Tuple[Optional[str], List[Dict[str, str]]]":
     # Note: Plus besoin de vérifier Perplexity — web_search_provider gère la dispo
     brave_context = brave_results_text[:4000] if brave_results_text else ""
     sources_summary = ""
@@ -1062,7 +1164,7 @@ Factuel, sources citées. Max 800 mots."""
 
 🎯 Verify claims, find contradictions, add context, update data, counter-arguments, reliability /10. Max 800 words."""
 
-    print(f"🔬 [DEEP_RESEARCH] Calling Perplexity sonar-pro...", flush=True)
+    print("🔬 [DEEP_RESEARCH] Calling Perplexity sonar-pro...", flush=True)
     result = await call_perplexity(prompt, EnrichmentLevel.DEEP_RESEARCH)
 
     if not result.success:
@@ -1077,9 +1179,12 @@ Factuel, sources citées. Max 800 mots."""
             seen_urls.add(ps.get("url", ""))
 
     context_text = (
-        "═══ 🔬🦁 RECHERCHE CROISÉE APPROFONDIE ═══" + chr(10)
-        + f"Synthèse de {len(all_sources)} sources web croisées." + chr(10) * 2
-        + f"{result.content}" + chr(10) * 2
+        "═══ 🔬🦁 RECHERCHE CROISÉE APPROFONDIE ═══"
+        + chr(10)
+        + f"Synthèse de {len(all_sources)} sources web croisées."
+        + chr(10) * 2
+        + f"{result.content}"
+        + chr(10) * 2
         + f"📚 {len(all_sources)} sources analysées et croisées."
     )
 

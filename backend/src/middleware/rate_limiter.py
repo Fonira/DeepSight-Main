@@ -20,7 +20,7 @@ import time
 import asyncio
 import logging
 from collections import OrderedDict
-from typing import Optional, Callable, Dict, Any, Tuple
+from typing import Optional, Callable, Tuple
 from dataclasses import dataclass
 from functools import wraps
 
@@ -44,19 +44,19 @@ CLEANUP_INTERVAL = 300  # 5 minutes
 
 # Limites par défaut (requests/window_seconds)
 DEFAULT_LIMITS = {
-    "global": (100, 60),       # 100 req/min par IP (global)
-    "auth_login": (5, 60),     # 5 tentatives de login/min par IP
+    "global": (100, 60),  # 100 req/min par IP (global)
+    "auth_login": (5, 60),  # 5 tentatives de login/min par IP
     "auth_register": (3, 60),  # 3 inscriptions/min par IP (anti-spam)
-    "analysis": (10, 60),      # 10 analyses/min par user
-    "chat": (20, 60),          # 20 messages chat/min par user
-    "chat_ask": (20, 60),      # 20 questions/min par user
-    "api": (100, 60),          # 100 appels API/min
-    "export": (20, 60),        # 20 exports/min
-    "tts": (10, 60),           # 10 TTS/min
-    "screenshot": (5, 60),     # 5 détections/min (base64 lourd, coût Mistral OCR+Vision)
-    "share_read": (60, 60),    # 60 consultations/min par IP (public, burst-friendly)
+    "analysis": (10, 60),  # 10 analyses/min par user
+    "chat": (20, 60),  # 20 messages chat/min par user
+    "chat_ask": (20, 60),  # 20 questions/min par user
+    "api": (100, 60),  # 100 appels API/min
+    "export": (20, 60),  # 20 exports/min
+    "tts": (10, 60),  # 10 TTS/min
+    "screenshot": (5, 60),  # 5 détections/min (base64 lourd, coût Mistral OCR+Vision)
+    "share_read": (60, 60),  # 60 consultations/min par IP (public, burst-friendly)
     "share_create": (10, 60),  # 10 créations/min par user (évite spam de tokens)
-    "auth_sensitive": (5, 60),      # 5/min — reset-password, verify-email, change-password
+    "auth_sensitive": (5, 60),  # 5/min — reset-password, verify-email, change-password
     "auth_email_trigger": (3, 60),  # 3/min — forgot-password, resend-verification (anti-spam email)
 }
 
@@ -96,9 +96,11 @@ ENDPOINT_CATEGORIES = {
 # 📊 TYPES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class RateLimitResult:
     """Résultat d'une vérification de rate limit"""
+
     allowed: bool
     limit: int
     remaining: int
@@ -109,24 +111,21 @@ class RateLimitResult:
 @dataclass
 class RateLimitConfig:
     """Configuration d'un rate limiter"""
+
     requests: int
     window_seconds: int
     key_prefix: str = ""
-    
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 💾 RATE LIMITER BACKEND
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class RateLimiterBackend:
     """Backend abstrait pour le rate limiting"""
-    
-    async def check_and_increment(
-        self, 
-        key: str, 
-        limit: int, 
-        window_seconds: int
-    ) -> RateLimitResult:
+
+    async def check_and_increment(self, key: str, limit: int, window_seconds: int) -> RateLimitResult:
         raise NotImplementedError
 
 
@@ -169,8 +168,7 @@ class InMemoryBackend(RateLimiterBackend):
                 del self.requests[key]
             if keys_to_delete:
                 rate_limit_logger.info(
-                    f"Cleanup: removed {len(keys_to_delete)} expired keys, "
-                    f"{len(self.requests)} active keys remaining"
+                    f"Cleanup: removed {len(keys_to_delete)} expired keys, {len(self.requests)} active keys remaining"
                 )
 
     def _evict_lru(self):
@@ -178,12 +176,7 @@ class InMemoryBackend(RateLimiterBackend):
         while len(self.requests) > self._max_keys:
             self.requests.popitem(last=False)  # Remove oldest (LRU)
 
-    async def check_and_increment(
-        self,
-        key: str,
-        limit: int,
-        window_seconds: int
-    ) -> RateLimitResult:
+    async def check_and_increment(self, key: str, limit: int, window_seconds: int) -> RateLimitResult:
         async with self._lock:
             now = time.time()
             window_start = now - window_seconds
@@ -229,47 +222,42 @@ class InMemoryBackend(RateLimiterBackend):
 
 class RedisBackend(RateLimiterBackend):
     """Backend Redis avec sliding window précis"""
-    
+
     def __init__(self, redis_client):
         self.redis = redis_client
-    
-    async def check_and_increment(
-        self, 
-        key: str, 
-        limit: int, 
-        window_seconds: int
-    ) -> RateLimitResult:
+
+    async def check_and_increment(self, key: str, limit: int, window_seconds: int) -> RateLimitResult:
         now = time.time()
         window_start = now - window_seconds
-        
+
         # Use Redis sorted set for sliding window
         pipe = self.redis.pipeline()
-        
+
         # Remove old entries
         pipe.zremrangebyscore(key, 0, window_start)
-        
+
         # Count current entries
         pipe.zcount(key, window_start, now)
-        
+
         # Add current request
         pipe.zadd(key, {str(now): now})
-        
+
         # Set expiry
         pipe.expire(key, window_seconds + 1)
-        
+
         results = await pipe.execute()
         current_count = results[1]
-        
+
         reset_at = int(now + window_seconds)
-        
+
         if current_count >= limit:
             # Rate limited - remove the request we just added
             await self.redis.zrem(key, str(now))
-            
+
             # Find retry_after
             oldest = await self.redis.zrange(key, 0, 0, withscores=True)
             retry_after = int(oldest[0][1] + window_seconds - now) + 1 if oldest else window_seconds
-            
+
             return RateLimitResult(
                 allowed=False,
                 limit=limit,
@@ -277,7 +265,7 @@ class RedisBackend(RateLimiterBackend):
                 reset_at=reset_at,
                 retry_after=retry_after,
             )
-        
+
         return RateLimitResult(
             allowed=True,
             limit=limit,
@@ -290,30 +278,32 @@ class RedisBackend(RateLimiterBackend):
 # 🚦 RATE LIMITER SERVICE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class RateLimiter:
     """
     Service de rate limiting avec support multi-backend.
     """
-    
+
     _instance: Optional["RateLimiter"] = None
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
-    
+
     def __init__(self):
-        if hasattr(self, '_initialized'):
+        if hasattr(self, "_initialized"):
             return
-        
+
         self._initialized = True
         self.backend: RateLimiterBackend = InMemoryBackend()
         self._redis_available = False
-    
+
     async def init_redis(self, redis_url: str):
         """Initialize Redis backend"""
         try:
             import redis.asyncio as redis
+
             client = redis.from_url(redis_url, decode_responses=True)
             await client.ping()
             self.backend = RedisBackend(client)
@@ -321,17 +311,13 @@ class RateLimiter:
             print("✅ [RATE_LIMITER] Redis backend initialized", flush=True)
         except Exception as e:
             print(f"⚠️ [RATE_LIMITER] Redis unavailable, using in-memory: {e}", flush=True)
-    
-    def _get_limit_for_category(
-        self, 
-        category: str, 
-        user_plan: str = "free"
-    ) -> Tuple[int, int]:
+
+    def _get_limit_for_category(self, category: str, user_plan: str = "free") -> Tuple[int, int]:
         """Get rate limit (requests, window) for a category and plan"""
         base_limit, window = DEFAULT_LIMITS.get(category, DEFAULT_LIMITS["global"])
         multiplier = PLAN_MULTIPLIERS.get(user_plan, 1.0)
         return int(base_limit * multiplier), window
-    
+
     async def check(
         self,
         key: str,
@@ -340,7 +326,7 @@ class RateLimiter:
     ) -> RateLimitResult:
         """
         Check if request is allowed and increment counter.
-        
+
         Args:
             key: Unique identifier (e.g., user_id, IP)
             category: Rate limit category
@@ -348,9 +334,9 @@ class RateLimiter:
         """
         limit, window = self._get_limit_for_category(category, user_plan)
         full_key = f"ratelimit:{category}:{key}"
-        
+
         return await self.backend.check_and_increment(full_key, limit, window)
-    
+
     async def check_request(
         self,
         request: Request,
@@ -358,19 +344,19 @@ class RateLimiter:
     ) -> RateLimitResult:
         """
         Check rate limit for a FastAPI request.
-        
+
         Automatically extracts user info and IP.
         """
         # Get category from endpoint if not provided
         if category is None:
             path = request.url.path
             category = ENDPOINT_CATEGORIES.get(path, "global")
-        
+
         # Get user info
         user = getattr(request.state, "user", None)
         user_id = user.id if user else None
         user_plan = user.plan if user else "free"
-        
+
         # Build key: prefer user_id, fallback to IP
         if user_id:
             key = f"user:{user_id}"
@@ -381,7 +367,7 @@ class RateLimiter:
             if forwarded:
                 client_ip = forwarded.split(",")[0].strip()
             key = f"ip:{client_ip}"
-        
+
         return await self.check(key, category, user_plan)
 
 
@@ -393,11 +379,12 @@ rate_limiter = RateLimiter()
 # 🔧 FASTAPI MIDDLEWARE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """
     Middleware FastAPI pour le rate limiting automatique.
     """
-    
+
     def __init__(self, app, exclude_paths: list = None):
         super().__init__(app)
         self.exclude_paths = exclude_paths or [
@@ -406,7 +393,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             "/openapi.json",
             "/static",
         ]
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip excluded paths
         path = request.url.path
@@ -423,22 +410,22 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Check rate limit
         result = await rate_limiter.check_request(request)
-        
+
         if not result.allowed:
             # 📝 Log la violation pour monitoring
             client_ip = request.client.host if request.client else "unknown"
             forwarded = request.headers.get("X-Forwarded-For")
             if forwarded:
                 client_ip = forwarded.split(",")[0].strip()
-            
+
             user = getattr(request.state, "user", None)
             user_info = f"user_id={user.id}" if user else f"ip={client_ip}"
-            
+
             rate_limit_logger.warning(
                 f"🚫 Rate limit exceeded: {request.method} {path} | "
                 f"{user_info} | limit={result.limit} | retry_after={result.retry_after}s"
             )
-            
+
             return JSONResponse(
                 status_code=429,
                 content={
@@ -453,21 +440,22 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "Retry-After": str(result.retry_after),
                 },
             )
-        
+
         # Process request
         response = await call_next(request)
-        
+
         # Add rate limit headers to response
         response.headers["X-RateLimit-Limit"] = str(result.limit)
         response.headers["X-RateLimit-Remaining"] = str(result.remaining)
         response.headers["X-RateLimit-Reset"] = str(result.reset_at)
-        
+
         return response
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🎨 DECORATOR FOR ROUTES
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def rate_limit(
     category: str = "global",
@@ -476,18 +464,19 @@ def rate_limit(
 ):
     """
     Decorator for rate limiting specific routes.
-    
+
     Usage:
         @router.post("/analyze")
         @rate_limit(category="analysis")
         async def analyze(request: Request):
             ...
-        
+
         # Or with custom limits:
         @rate_limit(requests=5, window_seconds=60)
         async def limited_endpoint():
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -499,14 +488,14 @@ def rate_limit(
                     break
             if not request:
                 request = kwargs.get("request")
-            
+
             if not request:
                 # No request found, skip rate limiting
                 return await func(*args, **kwargs)
-            
+
             # Check rate limit
             result = await rate_limiter.check_request(request, category)
-            
+
             if not result.allowed:
                 raise HTTPException(
                     status_code=429,
@@ -518,16 +507,18 @@ def rate_limit(
                         "Retry-After": str(result.retry_after),
                     },
                 )
-            
+
             return await func(*args, **kwargs)
-        
+
         return wrapper
+
     return decorator
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔌 FASTAPI INTEGRATION
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def init_rate_limiter(redis_url: Optional[str] = None):
     """Initialize rate limiter with Redis if available, start cleanup loop."""
@@ -547,13 +538,14 @@ def add_rate_limiting(app, exclude_paths: list = None):
 # 📤 DEPENDENCY FOR ROUTES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def check_rate_limit(
     request: Request,
     category: str = "global",
 ) -> RateLimitResult:
     """
     FastAPI dependency for checking rate limits.
-    
+
     Usage:
         @router.post("/analyze")
         async def analyze(
@@ -563,12 +555,12 @@ async def check_rate_limit(
             ...
     """
     result = await rate_limiter.check_request(request, category)
-    
+
     if not result.allowed:
         raise HTTPException(
             status_code=429,
             detail="Rate limit exceeded",
             headers={"Retry-After": str(result.retry_after)},
         )
-    
+
     return result

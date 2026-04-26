@@ -14,9 +14,7 @@ from .plan_config import (
     get_limits,
     is_feature_available,
     get_minimum_plan_for,
-    get_plan_index,
     PLANS,
-    PlanId,
     PLAN_HIERARCHY,
 )
 
@@ -53,7 +51,10 @@ def require_feature(
 
     logger.info(
         "Feature locked: user_plan=%s feature=%s platform=%s required=%s",
-        user_plan, feature, platform, required_plan,
+        user_plan,
+        feature,
+        platform,
+        required_plan,
     )
 
     raise HTTPException(
@@ -97,7 +98,10 @@ def require_quota(
 
     logger.info(
         "Quota exceeded: user_plan=%s feature=%s used=%d limit=%d",
-        user_plan, feature, current_usage, limit_value,
+        user_plan,
+        feature,
+        current_usage,
+        limit_value,
     )
 
     raise HTTPException(
@@ -140,7 +144,9 @@ def require_video_length(
 
     logger.info(
         "Video too long: user_plan=%s duration=%.1fmin max=%dmin",
-        user_plan, duration_minutes, max_length,
+        user_plan,
+        duration_minutes,
+        max_length,
     )
 
     raise HTTPException(

@@ -2697,6 +2697,28 @@ export const voiceApi = {
       body: updates,
     });
   },
+
+  /**
+   * 🎙️ Persiste un transcript voix (Spec #5 — sync bidir Chat IA)
+   * Endpoint: POST /api/voice/transcripts/append
+   *
+   * Le backend insère une row dans `chat_messages` avec source='voice'.
+   * Auth Bearer JWT user. Vérifie IDOR (user owns voice_session_id).
+   *
+   * ⚠️ Cet endpoint dépend de Spec #1 (B1) — fallback gracieux côté caller
+   * (skip + console.warn) si pas encore live (404 / 405 / network).
+   */
+  async appendTranscript(payload: {
+    voice_session_id: string;
+    speaker: "user" | "agent";
+    content: string;
+    time_in_call_secs: number;
+  }): Promise<{ ok: true }> {
+    return request("/api/voice/transcripts/append", {
+      method: "POST",
+      body: payload,
+    });
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

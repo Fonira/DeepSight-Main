@@ -11,6 +11,7 @@ from datetime import datetime
 # REQUEST
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class ComparisonRequest(BaseModel):
     summary_a_id: int = Field(..., description="ID du premier résumé à comparer")
     summary_b_id: int = Field(..., description="ID du second résumé à comparer")
@@ -22,6 +23,7 @@ class ComparisonRequest(BaseModel):
 # RESPONSE — Structure JSON retournée par Mistral
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class SimilarityItem(BaseModel):
     theme: str
     description: str
@@ -29,11 +31,13 @@ class SimilarityItem(BaseModel):
     evidence_b: str
     strength: str  # "forte", "modérée", "faible"
 
+
 class DifferenceItem(BaseModel):
     topic: str
     position_a: str
     position_b: str
     significance: str  # "majeure", "mineure", "contextuelle"
+
 
 class ContradictionItem(BaseModel):
     topic: str
@@ -42,10 +46,12 @@ class ContradictionItem(BaseModel):
     severity: str  # "directe", "nuancée", "contextuelle"
     context: str
 
+
 class ReliabilityAssessment(BaseModel):
     score_a: float = Field(..., ge=0, le=10)
     score_b: float = Field(..., ge=0, le=10)
     reasoning: str
+
 
 class ComparisonResult(BaseModel):
     similarities: list[SimilarityItem] = []
@@ -59,6 +65,7 @@ class ComparisonResult(BaseModel):
 # API RESPONSES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class ComparisonResponse(BaseModel):
     id: int
     video_a: dict  # {id, title, channel, thumbnail_url}
@@ -68,6 +75,7 @@ class ComparisonResponse(BaseModel):
     credits_used: int
     lang: str
     created_at: datetime
+
 
 class ComparisonHistoryItem(BaseModel):
     id: int

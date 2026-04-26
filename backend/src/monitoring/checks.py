@@ -27,6 +27,7 @@ def _now_iso() -> str:
 # Individual checks
 # ---------------------------------------------------------------------------
 
+
 async def check_database() -> ServiceStatus:
     """Ping database with SELECT 1."""
     try:
@@ -245,8 +246,10 @@ async def check_resend() -> ServiceStatus:
 def get_memory_usage() -> Dict[str, Any]:
     """Return current process memory usage — critical for Railway 512MB."""
     import os
+
     try:
         import resource
+
         # Linux: getrusage returns max RSS in KB
         rusage = resource.getrusage(resource.RUSAGE_SELF)
         rss_mb = round(rusage.ru_maxrss / 1024, 2)  # KB → MB
@@ -271,9 +274,12 @@ def get_memory_usage() -> Dict[str, Any]:
         "limit_mb": limit_mb,
         "usage_percent": round((rss_mb / limit_mb) * 100, 1) if rss_mb else None,
         "status": (
-            "critical" if rss_mb and rss_mb > limit_mb * 0.85
-            else "warning" if rss_mb and rss_mb > limit_mb * 0.70
-            else "healthy" if rss_mb
+            "critical"
+            if rss_mb and rss_mb > limit_mb * 0.85
+            else "warning"
+            if rss_mb and rss_mb > limit_mb * 0.70
+            else "healthy"
+            if rss_mb
             else "unknown"
         ),
     }
@@ -282,6 +288,7 @@ def get_memory_usage() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Aggregate
 # ---------------------------------------------------------------------------
+
 
 async def run_all_checks() -> List[ServiceStatus]:
     """Run all health checks concurrently and return results."""
@@ -298,13 +305,15 @@ async def run_all_checks() -> List[ServiceStatus]:
     names = ["database", "stripe", "mistral", "web_search", "resend"]
     for i, result in enumerate(results):
         if isinstance(result, Exception):
-            sanitized.append({
-                "name": names[i],
-                "status": "down",
-                "latency_ms": None,
-                "message": str(result)[:120],
-                "last_checked": _now_iso(),
-            })
+            sanitized.append(
+                {
+                    "name": names[i],
+                    "status": "down",
+                    "latency_ms": None,
+                    "message": str(result)[:120],
+                    "last_checked": _now_iso(),
+                }
+            )
         else:
             sanitized.append(result)
 

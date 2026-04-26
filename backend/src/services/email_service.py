@@ -96,15 +96,9 @@ class EmailService:
             ),
         )
 
-    async def send_payment_success(
-        self, to: str, username: str, plan: str, credits: int
-    ) -> bool:
-        plan_display = {"starter": "Starter", "pro": "Pro", "expert": "Expert"}.get(
-            plan, plan.capitalize()
-        )
-        price_display = {"starter": "4,99", "pro": "9,99", "expert": "14,99"}.get(
-            plan, "—"
-        )
+    async def send_payment_success(self, to: str, username: str, plan: str, credits: int) -> bool:
+        plan_display = {"starter": "Starter", "pro": "Pro", "expert": "Expert"}.get(plan, plan.capitalize())
+        price_display = {"starter": "4,99", "pro": "9,99", "expert": "14,99"}.get(plan, "—")
         html = self._render(
             "payment_success.html",
             username=username,
@@ -125,9 +119,7 @@ class EmailService:
         )
 
     async def send_payment_failed(self, to: str, username: str, plan: str) -> bool:
-        plan_display = {"starter": "Starter", "pro": "Pro", "expert": "Expert"}.get(
-            plan, plan.capitalize()
-        )
+        plan_display = {"starter": "Starter", "pro": "Pro", "expert": "Expert"}.get(plan, plan.capitalize())
         html = self._render(
             "payment_failed.html",
             username=username,

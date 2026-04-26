@@ -56,9 +56,7 @@ def _download_thumbnail(url: str, timeout: float = 4.0) -> Optional[Image.Image]
 
 def _rounded_mask(size: tuple[int, int], radius: int) -> Image.Image:
     mask = Image.new("L", size, 0)
-    ImageDraw.Draw(mask).rounded_rectangle(
-        [(0, 0), (size[0] - 1, size[1] - 1)], radius=radius, fill=255
-    )
+    ImageDraw.Draw(mask).rounded_rectangle([(0, 0), (size[0] - 1, size[1] - 1)], radius=radius, fill=255)
     return mask
 
 

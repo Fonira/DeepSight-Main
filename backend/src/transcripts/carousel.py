@@ -27,8 +27,8 @@ logger = logging.getLogger("deepsight.carousel")
 # Constants
 # ═══════════════════════════════════════════════════════════════════════════════
 
-MAX_IMAGES_PER_BATCH = 8      # Mistral Vision limit
-MAX_TOTAL_IMAGES = 24          # 3 batches max to control cost
+MAX_IMAGES_PER_BATCH = 8  # Mistral Vision limit
+MAX_TOTAL_IMAGES = 24  # 3 batches max to control cost
 MAX_IMAGE_SIZE_BYTES = 10_000_000  # 10 MB per image
 DOWNLOAD_TIMEOUT = 15.0
 DOWNLOAD_CONCURRENCY = 5
@@ -39,6 +39,7 @@ VISION_TIMEOUT = 120.0
 # ═══════════════════════════════════════════════════════════════════════════════
 # Public API
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def get_carousel_transcript(
     images: list[str],
@@ -125,6 +126,7 @@ async def get_carousel_transcript(
 # Image selection & download
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _select_images(urls: list[str], max_count: int) -> list[str]:
     """
     Select representative images if there are more than max_count.
@@ -195,9 +197,10 @@ async def _download_images(urls: list[str]) -> list[dict]:
 # Batching & Vision analysis
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _batch_images(images: list[dict], batch_size: int) -> list[list[dict]]:
     """Split images into batches of batch_size."""
-    return [images[i:i + batch_size] for i in range(0, len(images), batch_size)]
+    return [images[i : i + batch_size] for i in range(0, len(images), batch_size)]
 
 
 async def _analyze_batch(
@@ -291,6 +294,7 @@ async def _analyze_batch(
 # ═══════════════════════════════════════════════════════════════════════════════
 # Transcript assembly
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _assemble_transcript(
     batch_results: list[str],

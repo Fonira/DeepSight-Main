@@ -40,15 +40,11 @@ MAX_PENDING_NOTIFICATIONS = 50
 
 
 async def send_notification_to_user(
-    user_id: int,
-    notification_type: str,
-    title: str,
-    message: str,
-    data: Optional[dict] = None
+    user_id: int, notification_type: str, title: str, message: str, data: Optional[dict] = None
 ):
     """
     Envoie une notification à un utilisateur via SSE.
-    
+
     Args:
         user_id: ID de l'utilisateur
         notification_type: Type de notification (analysis_complete, error, info)
@@ -61,11 +57,11 @@ async def send_notification_to_user(
         "title": title,
         "message": message,
         "data": data or {},
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
-    
+
     user_queues = _user_connections.get(user_id, set())
-    
+
     if user_queues:
         # Envoyer à toutes les connexions de l'utilisateur
         print(f"🔔 [NOTIFY] Sending to {len(user_queues)} connections for user {user_id}", flush=True)
@@ -84,11 +80,7 @@ async def send_notification_to_user(
 
 
 async def notify_analysis_complete(
-    user_id: int,
-    summary_id: int,
-    video_title: str,
-    video_id: str,
-    cached: bool = False
+    user_id: int, summary_id: int, video_title: str, video_id: str, cached: bool = False
 ):
     """Notification spécifique pour une analyse terminée (SSE + Push)."""
     # SSE notification (web)
@@ -96,18 +88,19 @@ async def notify_analysis_complete(
         user_id=user_id,
         notification_type="analysis_complete",
         title="✅ Analyse terminée" if not cached else "📦 Analyse retrouvée",
-        message=f"L'analyse de \"{video_title[:50]}...\" est prête !",
+        message=f'L\'analyse de "{video_title[:50]}..." est prête !',
         data={
             "summary_id": summary_id,
             "video_id": video_id,
             "video_title": video_title,
             "cached": cached,
-            "action_url": f"/dashboard?id={summary_id}"
-        }
+            "action_url": f"/dashboard?id={summary_id}",
+        },
     )
     # Push notification (mobile)
     try:
         from core.push_notifications import send_analysis_complete_push
+
         await send_analysis_complete_push(
             user_id=user_id,
             video_title=video_title,
@@ -118,25 +111,19 @@ async def notify_analysis_complete(
         print(f"⚠️ [PUSH] Failed to send analysis push: {e}", flush=True)
 
 
-async def notify_analysis_failed(
-    user_id: int,
-    video_title: str,
-    error: str
-):
+async def notify_analysis_failed(user_id: int, video_title: str, error: str):
     """Notification pour une analyse échouée (SSE + Push)."""
     await send_notification_to_user(
         user_id=user_id,
         notification_type="analysis_error",
         title="❌ Analyse échouée",
-        message=f"L'analyse de \"{video_title[:50]}...\" a échoué: {error[:100]}",
-        data={
-            "video_title": video_title,
-            "error": error
-        }
+        message=f'L\'analyse de "{video_title[:50]}..." a échoué: {error[:100]}',
+        data={"video_title": video_title, "error": error},
     )
     # Push notification (mobile)
     try:
         from core.push_notifications import send_push
+
         await send_push(
             user_id=user_id,
             title="❌ Analyse échouée",
@@ -158,15 +145,16 @@ async def notify_factcheck_complete(
         user_id=user_id,
         notification_type="factcheck_complete",
         title="✅ Fact-check terminé",
-        message=f"Le fact-check de \"{video_title[:50]}...\" est prêt",
+        message=f'Le fact-check de "{video_title[:50]}..." est prêt',
         data={
             "summary_id": summary_id,
             "video_title": video_title,
             "reliability_score": reliability_score,
-        }
+        },
     )
     try:
         from core.push_notifications import send_factcheck_complete_push
+
         await send_factcheck_complete_push(
             user_id=user_id,
             video_title=video_title,
@@ -180,6 +168,7 @@ async def notify_factcheck_complete(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📲 PUSH TOKEN REGISTRATION
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class PushTokenRequest(BaseModel):
     push_token: str
@@ -211,9 +200,7 @@ async def register_push_token(
     One active token per device (unique token constraint).
     """
     # Check if this token already exists
-    existing = await session.execute(
-        select(PushToken).where(PushToken.token == payload.push_token)
-    )
+    existing = await session.execute(select(PushToken).where(PushToken.token == payload.push_token))
     existing_token = existing.scalar_one_or_none()
 
     if existing_token:
@@ -257,16 +244,15 @@ async def unregister_push_token(
 # 🌐 ENDPOINTS SSE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/stream")
-async def notification_stream(
-    current_user: User = Depends(get_current_user)
-):
+async def notification_stream(current_user: User = Depends(get_current_user)):
     """
     🔔 Stream SSE de notifications en temps réel.
-    
+
     Le frontend se connecte à cet endpoint et reçoit les notifications
     en temps réel (analyse terminée, erreurs, etc.)
-    
+
     Usage frontend:
     ```javascript
     const eventSource = new EventSource('/api/notifications/stream', {
@@ -280,11 +266,11 @@ async def notification_stream(
     """
     user_id = current_user.id
     queue = asyncio.Queue()
-    
+
     # Enregistrer la connexion
     _user_connections[user_id].add(queue)
     print(f"🔌 [SSE] User {user_id} connected (total: {len(_user_connections[user_id])} connections)", flush=True)
-    
+
     async def event_generator():
         try:
             # Envoyer les notifications en attente
@@ -292,10 +278,10 @@ async def notification_stream(
             if pending:
                 for notification in pending:
                     yield f"data: {json.dumps(notification)}\n\n"
-            
+
             # Envoyer un heartbeat initial
             yield f"data: {json.dumps({'type': 'connected', 'message': 'Connected to notifications'})}\n\n"
-            
+
             while True:
                 try:
                     # Attendre une notification (avec timeout pour heartbeat)
@@ -304,7 +290,7 @@ async def notification_stream(
                 except asyncio.TimeoutError:
                     # Envoyer un heartbeat pour garder la connexion ouverte
                     yield f"data: {json.dumps({'type': 'heartbeat', 'timestamp': datetime.now().isoformat()})}\n\n"
-                    
+
         except asyncio.CancelledError:
             pass
         finally:
@@ -313,37 +299,30 @@ async def notification_stream(
             if not _user_connections[user_id]:
                 del _user_connections[user_id]
             print(f"🔌 [SSE] User {user_id} disconnected", flush=True)
-    
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"  # Disable nginx buffering
-        }
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
     )
 
 
 @router.get("/pending")
-async def get_pending_notifications(
-    current_user: User = Depends(get_current_user)
-):
+async def get_pending_notifications(current_user: User = Depends(get_current_user)):
     """
     Récupère les notifications en attente (pour les utilisateurs
     qui n'utilisent pas SSE).
     """
     pending = _pending_notifications.pop(current_user.id, [])
-    return {
-        "notifications": pending,
-        "count": len(pending)
-    }
+    return {"notifications": pending, "count": len(pending)}
 
 
 @router.post("/test")
-async def send_test_notification(
-    current_user: User = Depends(get_current_user)
-):
+async def send_test_notification(current_user: User = Depends(get_current_user)):
     """
     🧪 Envoie une notification de test (pour debug).
     """
@@ -352,9 +331,9 @@ async def send_test_notification(
         notification_type="test",
         title="🧪 Test Notification",
         message="This is a test notification from Deep Sight!",
-        data={"test": True}
+        data={"test": True},
     )
-    
+
     return {"status": "sent", "user_id": current_user.id}
 
 
@@ -362,16 +341,15 @@ async def send_test_notification(
 # 📊 STATS (pour admin/debug)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/stats")
-async def get_notification_stats(
-    current_user: User = Depends(get_current_user)
-):
+async def get_notification_stats(current_user: User = Depends(get_current_user)):
     """Stats des connexions SSE (admin only)."""
     if current_user.plan != "unlimited":
         raise HTTPException(status_code=403, detail="Admin only")
-    
+
     return {
         "active_users": len(_user_connections),
         "total_connections": sum(len(q) for q in _user_connections.values()),
-        "pending_notifications": sum(len(n) for n in _pending_notifications.values())
+        "pending_notifications": sum(len(n) for n in _pending_notifications.values()),
     }

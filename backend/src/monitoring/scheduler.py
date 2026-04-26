@@ -1,4 +1,4 @@
-﻿"""
+"""
 Background monitoring job - runs every 5 minutes.
 
 Sends alert emails ONLY on status transitions (operational -> down/degraded,
@@ -25,6 +25,7 @@ PERSISTENT_COOLDOWN = timedelta(hours=24)
 
 # ─── Alert emails ────────────────────────────────────────────────────────────
 
+
 def _build_alert_html(service_name: str, status: str, message: Optional[str]) -> str:
     color = "#ef4444" if status == "down" else "#f59e0b"
     return f"""\
@@ -47,11 +48,11 @@ def _build_alert_html(service_name: str, status: str, message: Optional[str]) ->
     </tr>
     <tr>
       <td style="padding:8px 0;color:#a1a1b5;">Message</td>
-      <td style="padding:8px 0;">{message or '—'}</td>
+      <td style="padding:8px 0;">{message or "—"}</td>
     </tr>
     <tr>
       <td style="padding:8px 0;color:#a1a1b5;">Time (UTC)</td>
-      <td style="padding:8px 0;">{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}</td>
+      <td style="padding:8px 0;">{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}</td>
     </tr>
   </table>
   <p style="font-size:13px;color:#6b6b80;margin:0;">
@@ -79,7 +80,7 @@ def _build_recovery_html(service_name: str) -> str:
     </tr>
     <tr>
       <td style="padding:8px 0;color:#a1a1b5;">Time (UTC)</td>
-      <td style="padding:8px 0;">{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}</td>
+      <td style="padding:8px 0;">{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}</td>
     </tr>
   </table>
   <p style="font-size:13px;color:#6b6b80;margin:0;">
@@ -91,6 +92,7 @@ def _build_recovery_html(service_name: str) -> str:
 async def _send_alert(to: str, subject: str, html: str) -> None:
     try:
         from services.email_service import EmailService
+
         svc = EmailService()
         await svc.send_email(to=to, subject=subject, html_content=html)
     except Exception as e:
@@ -98,6 +100,7 @@ async def _send_alert(to: str, subject: str, html: str) -> None:
 
 
 # ─── Main job ────────────────────────────────────────────────────────────────
+
 
 async def monitoring_job() -> None:
     """Run all health checks, log summary, send alerts on STATUS TRANSITIONS only."""

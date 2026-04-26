@@ -1,297 +1,389 @@
 /**
- * AmbientLightLayer — Couche d'effets lumineux DeepSight (mobile RN)
+ * AmbientLightLayer v2.3 — Couche d'effets lumineux DeepSight (mobile RN).
  *
- * Port React Native de frontend/src/components/AmbientLightLayer.tsx avec
- * variation dynamique selon l'heure (hook useTimeOfDay).
+ * VERSION LIGHT (différente de la web) :
+ *   - Fond noir #0a0a0f conservé (les doodles restent bien visibles dessus)
+ *   - PAS de calques 3-spots ambient qui éclairent tout l'écran
+ *   - Cycle complet jour/nuit basé sur useTimeOfDay :
+ *       • dawn/morning/noon/dusk → soleil visible + rayon doré
+ *       • evening/night          → lune visible + rayon argenté/lunaire
+ *   - Étoiles scintillantes (5 base + 4 dense la nuit)
+ *   - Beam mince qui traverse (35% hauteur, opacité capée à 0.18 max)
+ *   - intensityMul mobile baissé pour rester discret
  *
- * 6 phases (cf. useTimeOfDay) :
- *   - dawn  (5h–8h)   : aurore rose/or, halo top-left
- *   - morning (8h–12h): or vif, halo top-center penché droite
- *   - noon  (12h–17h) : or éclatant + cyan, halo top-center
- *   - dusk  (17h–20h) : golden hour orange/violet, halo top-right
- *   - evening (20h–23h): nocturne indigo/cyan, halo top-center faible
- *   - night (23h–5h)  : clair de lune froid, halo bleu, lune visible, étoiles ×1.4
- *
- * Empile les calques cosmiques :
- *   1. Ambient gradient (couleur primaire au sommet)
- *   2. Ambient secondaire bottom-left (cyan / indigo)
- *   3. Ambient tertiaire bottom-right (violet)
- *   4. God rays diagonaux + voile blanc + halo top
- *   5. Étoiles scintillantes — 9 ou 14 points lumineux selon densité
- *   6. Disque lunaire (visible le soir et la nuit)
- *
- * Notes RN :
- *   - radial-gradient n'existe pas en RN → on simule avec plusieurs
- *     LinearGradient empilés à des angles différents.
- *   - mix-blend-mode: screen non disponible → opacités réglées dans le preset.
- *   - prefers-reduced-motion via AccessibilityInfo : god rays masqués et
- *     transitions figées.
- *   - pointerEvents: 'none' sur tous les calques pour ne jamais
- *     intercepter les gestures.
- *   - StyleSheet.absoluteFill cover le parent (qui doit être flex: 1).
+ * Utilise useTimeOfDay (hook legacy interne) — PAS @deepsight/lighting-engine
+ * (ce dernier ne se résout pas correctement dans Metro/EAS).
  */
-import React, { useMemo } from "react";
-import { View, StyleSheet, ViewStyle } from "react-native";
+import React, { useEffect, useMemo } from "react";
+import { View, StyleSheet, ViewStyle, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useTimeOfDay, AmbientPreset } from "../../hooks/useTimeOfDay";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
+import { useTimeOfDay, type TimePhase } from "../../hooks/useTimeOfDay";
 
 type Intensity = "soft" | "normal" | "strong";
 
 interface AmbientLightLayerProps {
-  /** Densité de l'effet. Défaut : "normal". */
   intensity?: Intensity;
 }
 
-// Multiplicateurs d'intensité globaux (par-dessus le preset temporel).
-const INTENSITY_MUL: Record<
-  Intensity,
-  { ambient: number; rays: number; stars: number; moon: number }
-> = {
-  soft: { ambient: 0.6, rays: 0.55, stars: 0.6, moon: 0.7 },
-  normal: { ambient: 1, rays: 1, stars: 1, moon: 1 },
-  strong: { ambient: 1.35, rays: 1.4, stars: 1.3, moon: 1.15 },
+const INTENSITY_MUL: Record<Intensity, number> = {
+  soft: 0.5,
+  normal: 0.75,
+  strong: 1.0,
 };
 
-interface Star {
-  /** Position X en % */
-  x: number;
-  /** Position Y en % */
-  y: number;
-  /** Taille du point (rayon en dp) */
-  size: number;
-  /** Couleur (utilisée seulement si dense=false ou variant standard) */
-  color: string;
-  /** Opacité de base (multiplée par starOpacityMul) */
-  opacity: number;
-}
+const BEAM_OPACITY_CAP = 0.18;
+const BEAM_HEIGHT_PCT = 0.35;
+const TRANSITION_MS = 1500;
 
-// 9 étoiles de base (toujours visibles)
-const BASE_STARS: Star[] = [
-  { x: 12, y: 18, size: 1.5, color: "#ffffff", opacity: 0.7 },
-  { x: 28, y: 42, size: 1.5, color: "#d4a054", opacity: 0.75 },
-  { x: 47, y: 12, size: 1, color: "#ffffff", opacity: 0.55 },
-  { x: 62, y: 78, size: 1.5, color: "#c4b5fd", opacity: 0.65 },
-  { x: 78, y: 35, size: 1, color: "#ffffff", opacity: 0.6 },
-  { x: 88, y: 62, size: 2, color: "#d4a054", opacity: 0.7 },
-  { x: 8, y: 75, size: 1, color: "#c4b5fd", opacity: 0.55 },
-  { x: 35, y: 90, size: 1.5, color: "#ffffff", opacity: 0.5 },
-  { x: 92, y: 88, size: 1.5, color: "#d4a054", opacity: 0.6 },
-];
+const { height: SCREEN_H } = Dimensions.get("window");
 
-// 5 étoiles supplémentaires en mode "dense" (nuit, +30% densité)
-const DENSE_EXTRA_STARS: Star[] = [
-  { x: 18, y: 55, size: 1, color: "#ffffff", opacity: 0.6 },
-  { x: 52, y: 28, size: 1.5, color: "#e8eaed", opacity: 0.7 },
-  { x: 70, y: 15, size: 1, color: "#c4b5fd", opacity: 0.55 },
-  { x: 5, y: 38, size: 1.5, color: "#ffffff", opacity: 0.65 },
-  { x: 96, y: 22, size: 1, color: "#e8eaed", opacity: 0.6 },
-];
+// ─── Phase config — soleil/lune/couleur du beam ─────────────────────────────
 
-// Helper rgba avec opacité scalée et clampée
-function rgba(rgb: string, a: number): string {
-  const clamped = Math.max(0, Math.min(1, a));
-  return `rgba(${rgb},${clamped.toFixed(3)})`;
-}
-
-interface MoonProps {
-  preset: AmbientPreset;
+interface PhaseConfig {
+  /** Couleur du beam au format "r,g,b" */
+  beamRgb: string;
+  /** Opacité du beam (avant cap & intensity mul) */
+  beamOpacity: number;
+  /** Soleil visible ? */
+  sunVisible: boolean;
+  /** Position soleil en % */
+  sunX: number;
+  sunY: number;
+  /** Opacité soleil */
+  sunOpacity: number;
+  /** Lune visible ? */
+  moonVisible: boolean;
+  moonX: number;
+  moonY: number;
   moonOpacity: number;
+  /** Multiplicateur opacité étoiles */
+  starsMul: number;
 }
 
-/**
- * Disque lunaire avec halo bleu froid simulé via shadow.
- * Utilise plusieurs Views imbriquées pour simuler un glow plus fort.
- */
-const Moon: React.FC<MoonProps> = ({ preset, moonOpacity }) => {
-  const moonStyle: ViewStyle = {
-    position: "absolute",
-    left: `${preset.moonX}%`,
-    top: `${preset.moonY}%`,
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    transform: [{ translateX: -36 }],
-    backgroundColor: "#f1f5f9",
-    opacity: moonOpacity,
-    // Halo bleu froid via shadow (iOS) / elevation (Android approximation)
-    shadowColor: "#bae6fd",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 40,
-    elevation: 20,
-  };
-
-  // Glow extérieur indigo (calque additionnel pour renforcer l'effet sur Android
-  // où shadowRadius est limité — un cercle plus grand avec opacité faible)
-  const haloStyle: ViewStyle = {
-    position: "absolute",
-    left: `${preset.moonX}%`,
-    top: `${preset.moonY}%`,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    transform: [{ translateX: -70 }, { translateY: -34 }],
-    backgroundColor: "rgba(99,102,241,0.18)",
-    opacity: moonOpacity * 0.8,
-  };
-
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <View pointerEvents="none" style={haloStyle} />
-      <View pointerEvents="none" style={moonStyle} />
-    </View>
-  );
+const PHASE_CONFIG: Record<TimePhase, PhaseConfig> = {
+  dawn: {
+    beamRgb: "248,180,140",
+    beamOpacity: 0.55,
+    sunVisible: true,
+    sunX: 18,
+    sunY: 14,
+    sunOpacity: 0.35,
+    moonVisible: false,
+    moonX: 0,
+    moonY: 0,
+    moonOpacity: 0,
+    starsMul: 0.25,
+  },
+  morning: {
+    beamRgb: "253,224,71",
+    beamOpacity: 0.65,
+    sunVisible: true,
+    sunX: 50,
+    sunY: 12,
+    sunOpacity: 0.4,
+    moonVisible: false,
+    moonX: 0,
+    moonY: 0,
+    moonOpacity: 0,
+    starsMul: 0.1,
+  },
+  noon: {
+    beamRgb: "254,240,138",
+    beamOpacity: 0.7,
+    sunVisible: true,
+    sunX: 75,
+    sunY: 10,
+    sunOpacity: 0.45,
+    moonVisible: false,
+    moonX: 0,
+    moonY: 0,
+    moonOpacity: 0,
+    starsMul: 0.05,
+  },
+  dusk: {
+    beamRgb: "251,146,60",
+    beamOpacity: 0.6,
+    sunVisible: true,
+    sunX: 88,
+    sunY: 18,
+    sunOpacity: 0.3,
+    moonVisible: false,
+    moonX: 0,
+    moonY: 0,
+    moonOpacity: 0,
+    starsMul: 0.4,
+  },
+  evening: {
+    beamRgb: "165,180,252",
+    beamOpacity: 0.55,
+    sunVisible: false,
+    sunX: 0,
+    sunY: 0,
+    sunOpacity: 0,
+    moonVisible: true,
+    moonX: 22,
+    moonY: 16,
+    moonOpacity: 0.55,
+    starsMul: 0.7,
+  },
+  night: {
+    beamRgb: "186,230,253",
+    beamOpacity: 0.5,
+    sunVisible: false,
+    sunX: 0,
+    sunY: 0,
+    sunOpacity: 0,
+    moonVisible: true,
+    moonX: 18,
+    moonY: 12,
+    moonOpacity: 0.7,
+    starsMul: 1.0,
+  },
 };
+
+// ─── Étoiles ────────────────────────────────────────────────────────────────
+
+interface StarDef {
+  x: number;
+  y: number;
+  size: number;
+  color: string;
+  baseOpacity: number;
+}
+
+const BASE_STARS: StarDef[] = [
+  { x: 12, y: 18, size: 3, color: "#ffffff", baseOpacity: 0.7 },
+  { x: 28, y: 42, size: 3, color: "#e8eaed", baseOpacity: 0.65 },
+  { x: 47, y: 12, size: 2, color: "#ffffff", baseOpacity: 0.55 },
+  { x: 62, y: 78, size: 3, color: "#c4b5fd", baseOpacity: 0.6 },
+  { x: 78, y: 35, size: 2, color: "#ffffff", baseOpacity: 0.55 },
+];
+
+const DENSE_EXTRA_STARS: StarDef[] = [
+  { x: 88, y: 62, size: 4, color: "#bae6fd", baseOpacity: 0.6 },
+  { x: 8, y: 75, size: 2, color: "#c4b5fd", baseOpacity: 0.5 },
+  { x: 35, y: 90, size: 3, color: "#ffffff", baseOpacity: 0.5 },
+  { x: 92, y: 22, size: 2, color: "#e8eaed", baseOpacity: 0.55 },
+];
+
+// ─── Component ──────────────────────────────────────────────────────────────
 
 export const AmbientLightLayer: React.FC<AmbientLightLayerProps> = ({
-  intensity = "normal",
+  intensity = "soft",
 }) => {
-  const { ambientPreset: p, prefersReducedMotion } = useTimeOfDay();
-  const mul = INTENSITY_MUL[intensity];
+  const intensityMul = INTENSITY_MUL[intensity];
+  const { phase, prefersReducedMotion } = useTimeOfDay();
+  const cfg = PHASE_CONFIG[phase];
 
-  // Opacités finales (preset × intensity multiplier)
-  const aPrimary = p.ambientPrimary * mul.ambient;
-  const aCyan = p.ambientCyan * mul.ambient;
-  const aViolet = p.ambientViolet * mul.ambient;
-  const aRayMain = p.rayOpacity * mul.rays;
-  const aRayGold = aRayMain * 0.5;
-  const aRayTop = p.rayTopHalo * mul.rays;
-  const sm = p.starOpacityMul * mul.stars;
+  const beamOpacityRaw = Math.min(
+    BEAM_OPACITY_CAP,
+    cfg.beamOpacity * intensityMul,
+  );
+  const sunOpacityRaw = Math.min(0.5, cfg.sunOpacity * intensityMul);
+  const moonOpacityRaw = Math.min(0.8, cfg.moonOpacity * intensityMul);
+  const starsMul = Math.min(1, cfg.starsMul * intensityMul);
 
-  // Étoiles à afficher (densité variable selon la phase)
-  const starsToRender = useMemo<Star[]>(() => {
-    return p.starDensity === "dense"
+  const beamOpacity = useSharedValue(beamOpacityRaw);
+  const sunOpacity = useSharedValue(sunOpacityRaw);
+  const moonOpacity = useSharedValue(moonOpacityRaw);
+  const starsOpacity = useSharedValue(starsMul);
+  const sunX = useSharedValue(cfg.sunX);
+  const sunY = useSharedValue(cfg.sunY);
+  const moonX = useSharedValue(cfg.moonX);
+  const moonY = useSharedValue(cfg.moonY);
+
+  useEffect(() => {
+    const ms = prefersReducedMotion ? 0 : TRANSITION_MS;
+    const tcfg = { duration: ms, easing: Easing.bezier(0.4, 0, 0.2, 1) };
+    beamOpacity.value = withTiming(beamOpacityRaw, tcfg);
+    sunOpacity.value = withTiming(sunOpacityRaw, tcfg);
+    moonOpacity.value = withTiming(moonOpacityRaw, tcfg);
+    starsOpacity.value = withTiming(starsMul, tcfg);
+    sunX.value = withTiming(cfg.sunX, tcfg);
+    sunY.value = withTiming(cfg.sunY, tcfg);
+    moonX.value = withTiming(cfg.moonX, tcfg);
+    moonY.value = withTiming(cfg.moonY, tcfg);
+  }, [
+    beamOpacityRaw,
+    sunOpacityRaw,
+    moonOpacityRaw,
+    starsMul,
+    cfg.sunX,
+    cfg.sunY,
+    cfg.moonX,
+    cfg.moonY,
+    prefersReducedMotion,
+    beamOpacity,
+    sunOpacity,
+    moonOpacity,
+    starsOpacity,
+    sunX,
+    sunY,
+    moonX,
+    moonY,
+  ]);
+
+  const beamRgb = `rgb(${cfg.beamRgb})`;
+  const beamRgbHalf = `rgba(${cfg.beamRgb},0.5)`;
+
+  const animatedBeamStyle = useAnimatedStyle(() => ({
+    opacity: beamOpacity.value,
+  }));
+
+  const animatedSunStyle = useAnimatedStyle(() => ({
+    opacity: sunOpacity.value,
+    top: `${sunY.value}%`,
+    left: `${sunX.value}%`,
+  }));
+
+  const animatedMoonStyle = useAnimatedStyle(() => ({
+    opacity: moonOpacity.value,
+    top: `${moonY.value}%`,
+    left: `${moonX.value}%`,
+  }));
+
+  const animatedStarsStyle = useAnimatedStyle(() => ({
+    opacity: starsOpacity.value,
+  }));
+
+  const starsToRender = useMemo(() => {
+    return phase === "evening" || phase === "night" || phase === "dusk"
       ? [...BASE_STARS, ...DENSE_EXTRA_STARS]
       : BASE_STARS;
-  }, [p.starDensity]);
-
-  const stars = useMemo(
-    () =>
-      starsToRender.map((s, i) => {
-        const opacity = Math.min(0.9, s.opacity * sm);
-        const dim = s.size * 2;
-        // La nuit, on remplace les étoiles or par du blanc-argenté pour
-        // matcher l'accent défini dans le preset (#e8eaed).
-        const color =
-          p.starDensity === "dense" && s.color === "#d4a054"
-            ? "#e8eaed"
-            : s.color;
-        const starStyle: ViewStyle = {
-          position: "absolute",
-          left: `${s.x}%`,
-          top: `${s.y}%`,
-          width: dim,
-          height: dim,
-          borderRadius: s.size,
-          backgroundColor: color,
-          opacity,
-          shadowColor: color,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.7,
-          shadowRadius: dim,
-          elevation: 0,
-        };
-        return <View key={i} pointerEvents="none" style={starStyle} />;
-      }),
-    [starsToRender, sm, p.starDensity],
-  );
-
-  // Halo top — position dynamique. On simule un radial-gradient en utilisant
-  // un LinearGradient vertical descendant centré, mais shifté visuellement par
-  // sa colorisation. L'effet n'est pas parfaitement positionné en X mais reste
-  // cohérent avec le brief (l'opacité décroît verticalement, pas radialement).
-  // Pour matcher la position X du halo, on utilise un gradient diagonal avec
-  // start ajusté.
-  const haloStartX = p.haloX / 100;
+  }, [phase]);
 
   return (
     <View
+      style={StyleSheet.absoluteFill}
       pointerEvents="none"
-      style={[StyleSheet.absoluteFill, styles.container]}
+      accessible={false}
     >
-      {/* 1 — Ambient principal (couleur primaire, halo top, position dynamique) */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={[rgba(p.colors.primary, aPrimary), "transparent"]}
-        locations={[0, 0.6]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: haloStartX, y: 0 }}
-        end={{ x: haloStartX, y: 1 }}
-      />
-
-      {/* 2 — Ambient secondaire bottom-left (cyan / indigo selon phase) */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={[rgba(p.colors.secondary, aCyan), "transparent"]}
-        locations={[0, 0.5]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 1 }}
-        end={{ x: 0.6, y: 0.4 }}
-      />
-
-      {/* 3 — Ambient tertiaire bottom-right (violet) */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={[rgba(p.colors.tertiary, aViolet), "transparent"]}
-        locations={[0, 0.5]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 1, y: 1 }}
-        end={{ x: 0.4, y: 0.4 }}
-      />
-
-      {/* 4 — God rays — masqués si prefers-reduced-motion */}
-      {!prefersReducedMotion && (
-        <>
-          <LinearGradient
-            pointerEvents="none"
-            colors={[
-              "transparent",
-              rgba(p.colors.rays, aRayGold),
-              rgba(p.colors.rays, aRayMain),
-              rgba(p.colors.rays, aRayGold),
-              "transparent",
-            ]}
-            locations={[0.35, 0.48, 0.5, 0.52, 0.65]}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 1 }}
-            end={{ x: 1, y: 0 }}
-          />
-
-          <LinearGradient
-            pointerEvents="none"
-            colors={["transparent", "rgba(245,240,232,0.07)", "transparent"]}
-            locations={[0.42, 0.5, 0.58]}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 1, y: 1 }}
-            end={{ x: 0, y: 0 }}
-          />
-
-          <LinearGradient
-            pointerEvents="none"
-            colors={[rgba(p.colors.rays, aRayTop), "transparent"]}
-            locations={[0, 0.32]}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-          />
-        </>
+      {/* Étoiles — visibles selon la phase */}
+      {starsMul > 0.05 && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, animatedStarsStyle]}
+          pointerEvents="none"
+        >
+          {starsToRender.map((s, i) => {
+            const dim = s.size;
+            const starStyle: ViewStyle = {
+              position: "absolute",
+              left: `${s.x}%`,
+              top: `${s.y}%`,
+              width: dim,
+              height: dim,
+              borderRadius: dim / 2,
+              backgroundColor: s.color,
+              opacity: s.baseOpacity,
+              shadowColor: s.color,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.7,
+              shadowRadius: dim * 1.5,
+              elevation: 0,
+            };
+            return <View key={i} pointerEvents="none" style={starStyle} />;
+          })}
+        </Animated.View>
       )}
 
-      {/* 5 — Étoiles scintillantes (9 ou 14 selon densité) */}
-      {stars}
+      {/* Beam — rayon de soleil le jour, rayon de lune la nuit */}
+      {cfg.beamOpacity > 0.02 && (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { height: SCREEN_H * BEAM_HEIGHT_PCT, top: SCREEN_H * 0.32 },
+            animatedBeamStyle,
+          ]}
+          pointerEvents="none"
+        >
+          <LinearGradient
+            colors={[
+              "transparent",
+              beamRgbHalf,
+              beamRgb,
+              beamRgbHalf,
+              "transparent",
+            ]}
+            start={{ x: 0.55, y: 0 }}
+            end={{ x: 0.45, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+      )}
 
-      {/* 6 — Disque lunaire (visible le soir et la nuit) */}
-      {p.moonVisible && p.moonOpacity > 0 && (
-        <Moon preset={p} moonOpacity={Math.min(1, p.moonOpacity * mul.moon)} />
+      {/* Soleil — visible le jour */}
+      {cfg.sunVisible && sunOpacityRaw > 0.05 && (
+        <Animated.View
+          style={[styles.disc, styles.sunDisc, animatedSunStyle]}
+          pointerEvents="none"
+        >
+          <View style={styles.sunGlow} pointerEvents="none" />
+        </Animated.View>
+      )}
+
+      {/* Lune — visible la nuit */}
+      {cfg.moonVisible && moonOpacityRaw > 0.05 && (
+        <Animated.View
+          style={[styles.disc, styles.moonDisc, animatedMoonStyle]}
+          pointerEvents="none"
+        >
+          <View style={styles.moonGlow} pointerEvents="none" />
+        </Animated.View>
       )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    overflow: "hidden",
-  },
+  disc: {
+    position: "absolute",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    transform: [{ translateX: -30 }, { translateY: 0 }],
+  } as ViewStyle,
+  sunDisc: {
+    backgroundColor: "#fde68a",
+    shadowColor: "#fbbf24",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 8,
+  } as ViewStyle,
+  sunGlow: {
+    position: "absolute",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    top: -10,
+    left: -10,
+    backgroundColor: "#fef3c7",
+    opacity: 0.25,
+  } as ViewStyle,
+  moonDisc: {
+    backgroundColor: "#ffffff",
+    shadowColor: "#ffffff",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 25,
+    elevation: 8,
+  } as ViewStyle,
+  moonGlow: {
+    position: "absolute",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    top: -10,
+    left: -10,
+    backgroundColor: "#ffffff",
+    opacity: 0.18,
+  } as ViewStyle,
 });
 
 export default AmbientLightLayer;
