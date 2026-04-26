@@ -4,6 +4,15 @@
  * Enhanced with glassmorphism, glow effects, and polished interactions
  */
 
+:root {
+  /* === Text tokens v3 (ambient lighting) === */
+  --v3-text-primary: #ffffff;
+  --v3-text-secondary: #f1f5f9;
+  --v3-text-muted: #e2e8f0;
+  --v3-text-disabled: rgba(255, 255, 255, 0.45);
+  --v3-text-meta: #cbd5e1;
+}
+
 /* ── SidePanel v3.0 — full-height layout ─────────────────────────────── */
 html,
 body,
