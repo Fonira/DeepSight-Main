@@ -36,7 +36,9 @@ export function rgbToHex(rgb: RGB): string {
     "#" +
     rgb
       .map((v) =>
-        Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")
+        Math.max(0, Math.min(255, Math.round(v)))
+          .toString(16)
+          .padStart(2, "0"),
       )
       .join("")
   );

@@ -1,4 +1,7 @@
-import { pickAgentType, type VoicePanelContext } from "../../src/sidepanel/types";
+import {
+  pickAgentType,
+  type VoicePanelContext,
+} from "../../src/sidepanel/types";
 
 describe("pickAgentType", () => {
   it("returns 'companion' when ctx is null", () => {

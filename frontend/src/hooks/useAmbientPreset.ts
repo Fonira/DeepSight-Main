@@ -30,18 +30,16 @@ export interface UseAmbientPresetResult {
   prefersReducedMotion: boolean;
 }
 
-export function useAmbientPreset(
-  opts?: PresetOptions
-): UseAmbientPresetResult {
+export function useAmbientPreset(opts?: PresetOptions): UseAmbientPresetResult {
   const [preset, setPreset] = useState<AmbientPreset>(() =>
-    getAmbientPreset(new Date(), opts)
+    getAmbientPreset(new Date(), opts),
   );
 
   const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(
     () => {
       if (typeof window === "undefined" || !window.matchMedia) return false;
       return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    }
+    },
   );
 
   // Stable opts deps — JSON stringify keeps it cheap and stable

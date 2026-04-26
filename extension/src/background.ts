@@ -32,6 +32,45 @@ import type {
   QuickChatResponse,
 } from "./types";
 
+// ─── SidePanel toggle behavior (Chrome 114+) ──────────────────────────────
+// Native click-to-toggle: clicking the action icon opens the sidebar; clicking again closes it.
+chrome.runtime.onInstalled.addListener(() => {
+  if (typeof chrome !== "undefined" && chrome.sidePanel?.setPanelBehavior) {
+    chrome.sidePanel
+      .setPanelBehavior({ openPanelOnActionClick: true })
+      .catch((err) =>
+        console.error("[deepsight] setPanelBehavior failed", err),
+      );
+  }
+});
+
+// Notify the sidebar when active tab changes (sync current video).
+// The sidebar subscribes to TAB_CHANGED via chrome.runtime.onMessage.
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  chrome.runtime.sendMessage({ action: "TAB_CHANGED", tabId }).catch(() => {
+    // Sidebar may not be open — silently ignored.
+  });
+});
+
+// ─── URL_CHANGED relay (content script → sidebar) ─────────────────────────
+// Content script observes URL changes on YouTube/TikTok SPAs and emits URL_CHANGED.
+// We re-emit as VIDEO_URL_UPDATED so the sidebar (separate context) can react.
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.action === "URL_CHANGED") {
+    chrome.runtime
+      .sendMessage({
+        action: "VIDEO_URL_UPDATED",
+        payload: message.payload,
+      })
+      .catch(() => {
+        // Sidebar may not be open — silently ignored.
+      });
+    sendResponse?.({ ok: true });
+    return false; // synchronous response
+  }
+  return undefined; // not our message — let other listeners handle
+});
+
 // ── Core API Request ──
 
 async function apiRequest<T>(
@@ -801,11 +840,15 @@ Browser.runtime.onStartup.addListener(async () => {
 // le cas où l'utilisateur configure setPanelBehavior pour l'icône
 // toolbar, ou les builds futurs sans popup.
 try {
-  const action = (chrome as unknown as {
-    action?: {
-      onClicked?: { addListener: (cb: (tab: { id?: number }) => void) => void };
-    };
-  }).action;
+  const action = (
+    chrome as unknown as {
+      action?: {
+        onClicked?: {
+          addListener: (cb: (tab: { id?: number }) => void) => void;
+        };
+      };
+    }
+  ).action;
   if (action?.onClicked?.addListener) {
     action.onClicked.addListener((tab: { id?: number }) => {
       void openVoicePanel(tab.id, {

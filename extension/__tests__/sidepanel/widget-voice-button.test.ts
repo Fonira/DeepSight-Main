@@ -1,9 +1,6 @@
 /** @jest-environment jsdom */
 
-import {
-  buildWidgetHeader,
-  bindVoiceButton,
-} from "../../src/content/widget";
+import { buildWidgetHeader, bindVoiceButton } from "../../src/content/widget";
 import { setShadowRoot } from "../../src/content/shadow";
 
 interface ChromeFeatureFlags {

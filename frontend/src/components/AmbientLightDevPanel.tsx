@@ -113,8 +113,8 @@ export const AmbientLightDevPanel: React.FC = () => {
           {preset.debug?.angleVariation.toFixed(1)}°)
         </div>
         <div>
-          <span className="opacity-60">Beam color:</span>{" "}
-          rgb({preset.beam.color.join(",")}) @{preset.beam.opacity.toFixed(2)}
+          <span className="opacity-60">Beam color:</span> rgb(
+          {preset.beam.color.join(",")}) @{preset.beam.opacity.toFixed(2)}
         </div>
         <div>
           <span className="opacity-60">Sun:</span>{" "}

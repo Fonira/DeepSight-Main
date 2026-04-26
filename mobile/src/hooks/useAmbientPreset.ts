@@ -31,7 +31,7 @@ export function useAmbientPreset(opts?: PresetOptions): UseAmbientPresetResult {
   };
 
   const [preset, setPreset] = useState<AmbientPreset>(() =>
-    getAmbientPreset(new Date(), merged)
+    getAmbientPreset(new Date(), merged),
   );
 
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -66,7 +66,7 @@ export function useAmbientPreset(opts?: PresetOptions): UseAmbientPresetResult {
     if (Platform.OS === "ios" || Platform.OS === "android") {
       const sub = AccessibilityInfo.addEventListener?.(
         "reduceMotionChanged",
-        (v: boolean) => setReduceMotion(v)
+        (v: boolean) => setReduceMotion(v),
       );
       return () => {
         cancelled = true;
