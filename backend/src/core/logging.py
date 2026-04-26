@@ -371,7 +371,7 @@ if __name__ == "__main__":
     
     try:
         raise ValueError("Test exception")
-    except:
+    except Exception:
         logger.exception("Exception caught", context="test")
     
     clear_request_context()
