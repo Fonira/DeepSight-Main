@@ -9,7 +9,7 @@ Use get_agent_config(type) to retrieve, list_agent_types() for the API.
 
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -581,12 +581,8 @@ AVAILABLE TOOLS:
     temperature=0.7,
     max_session_minutes=10,
     requires_summary=False,
-    first_message_fr=(
-        "Salut ! Je suis ton compagnon de réflexion. De quoi veux-tu qu'on parle ?"
-    ),
-    first_message=(
-        "Hi! I'm your reflection companion. What would you like to talk about?"
-    ),
+    first_message_fr=("Salut ! Je suis ton compagnon de réflexion. De quoi veux-tu qu'on parle ?"),
+    first_message=("Hi! I'm your reflection companion. What would you like to talk about?"),
     plan_minimum="pro",
     voice_id_env_var=COMPANION_VOICE_ID_ENV,
 )

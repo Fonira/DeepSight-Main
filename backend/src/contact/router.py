@@ -45,6 +45,7 @@ async def _check_rate_limit(ip: str) -> bool:
 # Schema
 # ───────────────────────────────────────────────────────────────────────────
 
+
 class ContactRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
@@ -55,6 +56,7 @@ class ContactRequest(BaseModel):
 # ───────────────────────────────────────────────────────────────────────────
 # Email template
 # ───────────────────────────────────────────────────────────────────────────
+
 
 def _build_contact_html(data: ContactRequest) -> str:
     # Escape all user inputs to prevent HTML injection
@@ -91,7 +93,7 @@ def _build_contact_html(data: ContactRequest) -> str:
     </tr>
     <tr>
       <td style="padding:10px 0;color:#a1a1b5;vertical-align:top;">Date</td>
-      <td style="padding:10px 0;">{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}</td>
+      <td style="padding:10px 0;">{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}</td>
     </tr>
   </table>
   <p style="font-size:13px;color:#6b6b80;margin:0;">

@@ -11,16 +11,15 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import httpx
 import asyncio
 import json
-from typing import Optional, List, Dict, Literal, Any
+from typing import Optional, List, Dict, Literal
 from dataclasses import dataclass, field
 import logging
 
 from core.config import get_mistral_key, get_brave_key, is_mistral_agent_available
 from core.llm_provider import llm_complete
-from videos.brave_search import _call_brave_api, BraveSearchResult
+from videos.brave_search import _call_brave_api
 
 logger = logging.getLogger(__name__)
 
@@ -28,21 +27,24 @@ logger = logging.getLogger(__name__)
 # 📊 TYPES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class WebSearchResult:
     """Résultat d'une synthèse web search + Mistral"""
+
     success: bool
-    content: str                                          # Texte synthétisé
+    content: str  # Texte synthétisé
     sources: List[Dict[str, str]] = field(default_factory=list)  # [{title, url, snippet}]
     tokens_used: int = 0
     error: Optional[str] = None
-    raw_brave_results: Optional[str] = None              # Debug: résultats bruts Brave
-    provider: str = "brave"                               # "agent" or "brave" — which pipeline served the result
+    raw_brave_results: Optional[str] = None  # Debug: résultats bruts Brave
+    provider: str = "brave"  # "agent" or "brave" — which pipeline served the result
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ✅ CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def is_web_search_available() -> bool:
     """Vérifie que au moins un pipeline web search est disponible."""
@@ -56,6 +58,7 @@ ENRICHMENT_AVAILABLE = is_web_search_available()
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🤖 PRIMARY: MISTRAL AGENT WEB SEARCH
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def _try_agent_search(
     query: str,
@@ -97,9 +100,7 @@ async def _try_agent_search(
             )
 
         # Agent returned but with empty/failed result
-        logger.warning(
-            f"[WEB_SEARCH] Agent returned no result: {result.error if result else 'None'}"
-        )
+        logger.warning(f"[WEB_SEARCH] Agent returned no result: {result.error if result else 'None'}")
         return None
 
     except Exception as e:
@@ -111,12 +112,13 @@ async def _try_agent_search(
 # 📝 FALLBACK: CONSTRUCTION DES PROMPTS MISTRAL PAR PURPOSE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _build_synthesis_prompt(
     purpose: Literal["enrichment", "fact_check", "chat", "debate", "deep_research"],
     query: str,
     context: str,
     brave_results: List[Dict[str, str]],
-    lang: str = "fr"
+    lang: str = "fr",
 ) -> str:
     """
     Génère un prompt système-adapté pour Mistral selon le purpose.
@@ -134,7 +136,7 @@ def _build_synthesis_prompt(
     if not results_text:
         results_text = "\n(Aucun résultat Brave disponible)"
 
-    is_fr = lang.lower().startswith("fr")
+    lang.lower().startswith("fr")
 
     if purpose == "enrichment":
         system_prompt = (
@@ -216,21 +218,16 @@ def _build_synthesis_prompt(
         system_prompt = "Tu es un assistant utile."
         user_prompt = f"Query: {query}\n\nResults:\n{results_text}"
 
-    return json.dumps({
-        "system": system_prompt,
-        "user": user_prompt
-    }, ensure_ascii=False, indent=2)
+    return json.dumps({"system": system_prompt, "user": user_prompt}, ensure_ascii=False, indent=2)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🦁 FALLBACK: BRAVE SEARCH + MISTRAL SYNTHESIS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def _call_mistral_api(
-    prompt_json: str,
-    model: str = "mistral-small-2603",
-    max_tokens: int = 1500,
-    timeout: float = 30.0
+    prompt_json: str, model: str = "mistral-small-2603", max_tokens: int = 1500, timeout: float = 30.0
 ) -> tuple[str, int]:
     """
     Appelle l'API Mistral (via llm_provider avec fallback) pour synthétiser les résultats web.
@@ -259,8 +256,7 @@ async def _call_mistral_api(
     if result:
         fallback_info = f" [fallback: {result.provider}:{result.model_used}]" if result.fallback_used else ""
         logger.info(
-            f"[BRAVE-FALLBACK] Mistral OK: {len(result.content)} chars, "
-            f"{result.tokens_total} tokens{fallback_info}"
+            f"[BRAVE-FALLBACK] Mistral OK: {len(result.content)} chars, {result.tokens_total} tokens{fallback_info}"
         )
         return result.content, result.tokens_total
 
@@ -301,7 +297,13 @@ async def _brave_fallback_search(
         short_parts = []
         for line in lines:
             line = line.strip()
-            if not line or line.startswith("{") or line.startswith("⚠") or line.startswith("📚") or line.startswith("IMPORTANT"):
+            if (
+                not line
+                or line.startswith("{")
+                or line.startswith("⚠")
+                or line.startswith("📚")
+                or line.startswith("IMPORTANT")
+            ):
                 continue
             if "JSON" in line or "format exact" in line or "Réponds" in line or "Reply" in line:
                 continue
@@ -316,37 +318,36 @@ async def _brave_fallback_search(
 
     try:
         # Step 1: Brave Search
-        brave_result = await asyncio.wait_for(
-            _call_brave_api(brave_query, count=max_sources),
-            timeout=timeout * 0.4
-        )
+        brave_result = await asyncio.wait_for(_call_brave_api(brave_query, count=max_sources), timeout=timeout * 0.4)
 
         if not brave_result.success or not brave_result.sources:
             error = brave_result.error if not brave_result.success else "No results"
             logger.warning(f"[BRAVE-FALLBACK] Brave failed: {error}")
             return WebSearchResult(
-                success=False, content="", sources=[],
-                error=f"Brave search failed: {error}", provider="brave",
+                success=False,
+                content="",
+                sources=[],
+                error=f"Brave search failed: {error}",
+                provider="brave",
             )
 
         logger.info(f"[BRAVE-FALLBACK] Brave found {len(brave_result.sources)} sources")
 
         # Step 2: Mistral synthesis
         prompt_json = _build_synthesis_prompt(
-            purpose=purpose, query=query, context=context,
-            brave_results=brave_result.sources, lang=lang,
+            purpose=purpose,
+            query=query,
+            context=context,
+            brave_results=brave_result.sources,
+            lang=lang,
         )
 
         synthesis_content, tokens_used = await asyncio.wait_for(
-            _call_mistral_api(prompt_json=prompt_json, model=model,
-                              max_tokens=max_tokens, timeout=timeout * 0.4),
-            timeout=timeout * 0.4
+            _call_mistral_api(prompt_json=prompt_json, model=model, max_tokens=max_tokens, timeout=timeout * 0.4),
+            timeout=timeout * 0.4,
         )
 
-        logger.info(
-            f"[BRAVE-FALLBACK] Success: {len(synthesis_content)} chars, "
-            f"{len(brave_result.sources)} sources"
-        )
+        logger.info(f"[BRAVE-FALLBACK] Success: {len(synthesis_content)} chars, {len(brave_result.sources)} sources")
 
         return WebSearchResult(
             success=True,
@@ -359,20 +360,27 @@ async def _brave_fallback_search(
 
     except asyncio.TimeoutError:
         return WebSearchResult(
-            success=False, content="", sources=[],
-            error=f"Brave fallback timeout after {timeout}s", provider="brave",
+            success=False,
+            content="",
+            sources=[],
+            error=f"Brave fallback timeout after {timeout}s",
+            provider="brave",
         )
     except Exception as e:
         logger.error(f"[BRAVE-FALLBACK] Exception: {e}")
         return WebSearchResult(
-            success=False, content="", sources=[],
-            error=str(e), provider="brave",
+            success=False,
+            content="",
+            sources=[],
+            error=str(e),
+            provider="brave",
         )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔍 FONCTION PRINCIPALE: WEB SEARCH + SYNTHESIS (Agent → Brave fallback)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def web_search_and_synthesize(
     query: str,
@@ -382,7 +390,7 @@ async def web_search_and_synthesize(
     max_sources: int = 5,
     max_tokens: int = 1500,
     mistral_model: Optional[str] = None,
-    timeout: float = 30.0
+    timeout: float = 30.0,
 ) -> WebSearchResult:
     """
     Exécute une recherche web + synthèse IA.
@@ -399,8 +407,11 @@ async def web_search_and_synthesize(
 
     # --- Try Agent first ---
     agent_result = await _try_agent_search(
-        query=query, context=context, purpose=purpose,
-        lang=lang, timeout=timeout,
+        query=query,
+        context=context,
+        purpose=purpose,
+        lang=lang,
+        timeout=timeout,
     )
 
     if agent_result and agent_result.success:
@@ -410,9 +421,14 @@ async def web_search_and_synthesize(
     logger.info("[WEB_SEARCH] Agent unavailable, falling back to Brave pipeline")
 
     return await _brave_fallback_search(
-        query=query, context=context, purpose=purpose,
-        lang=lang, max_sources=max_sources, max_tokens=max_tokens,
-        mistral_model=mistral_model, timeout=timeout,
+        query=query,
+        context=context,
+        purpose=purpose,
+        lang=lang,
+        max_sources=max_sources,
+        max_tokens=max_tokens,
+        mistral_model=mistral_model,
+        timeout=timeout,
     )
 
 
@@ -420,13 +436,14 @@ async def web_search_and_synthesize(
 # 🔄 RECHERCHES MULTIPLES (BATCH) — Agent pour chaque query, Brave fallback
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def web_search_batch(
     queries: List[str],
     context: str,
     purpose: Literal["enrichment", "fact_check", "chat", "debate", "deep_research"],
     lang: str = "fr",
     max_sources_per_query: int = 3,
-    mistral_model: Optional[str] = None
+    mistral_model: Optional[str] = None,
 ) -> WebSearchResult:
     """
     Exécute N requêtes en parallèle, puis consolide en un seul résultat.
@@ -440,7 +457,9 @@ async def web_search_batch(
 
     if not ENRICHMENT_AVAILABLE:
         return WebSearchResult(
-            success=False, content="", sources=[],
+            success=False,
+            content="",
+            sources=[],
             error="Web search not configured",
         )
 
@@ -450,8 +469,7 @@ async def web_search_batch(
             from core.mistral_agent import agent_web_search
 
             agent_tasks = [
-                agent_web_search(query=q, context=context, purpose=purpose, lang=lang, timeout=30.0)
-                for q in queries
+                agent_web_search(query=q, context=context, purpose=purpose, lang=lang, timeout=30.0) for q in queries
             ]
             agent_results = await asyncio.gather(*agent_tasks, return_exceptions=True)
 
@@ -463,7 +481,7 @@ async def web_search_batch(
 
             for i, (q, result) in enumerate(zip(queries, agent_results)):
                 if isinstance(result, Exception):
-                    logger.warning(f"[WEB_SEARCH_BATCH] Agent query {i+1} exception: {result}")
+                    logger.warning(f"[WEB_SEARCH_BATCH] Agent query {i + 1} exception: {result}")
                     continue
                 if not result or not result.success:
                     continue
@@ -494,8 +512,7 @@ async def web_search_batch(
                 )
 
             logger.warning(
-                f"[WEB_SEARCH_BATCH] Agent only got {agent_successes}/{len(queries)}, "
-                f"falling back to Brave batch"
+                f"[WEB_SEARCH_BATCH] Agent only got {agent_successes}/{len(queries)}, falling back to Brave batch"
             )
 
         except Exception as e:
@@ -506,7 +523,9 @@ async def web_search_batch(
 
     if not (get_brave_key() and get_mistral_key()):
         return WebSearchResult(
-            success=False, content="", sources=[],
+            success=False,
+            content="",
+            sources=[],
             error="Brave batch fallback not configured",
         )
 
@@ -514,8 +533,7 @@ async def web_search_batch(
 
     try:
         brave_results = await asyncio.gather(
-            *[_call_brave_api(q, count=max_sources_per_query) for q in queries],
-            return_exceptions=True
+            *[_call_brave_api(q, count=max_sources_per_query) for q in queries], return_exceptions=True
         )
 
         all_sources = []
@@ -530,7 +548,7 @@ async def web_search_batch(
                 logger.warning(f"[WEB_SEARCH_BATCH] Brave query {i} failed: {result.error}")
                 continue
 
-            consolidated_results_text += f"\n🔎 Search {i}: \"{query}\"\n{result.snippets}\n"
+            consolidated_results_text += f'\n🔎 Search {i}: "{query}"\n{result.snippets}\n'
             for src in result.sources:
                 if src["url"] not in seen_urls:
                     seen_urls.add(src["url"])
@@ -539,24 +557,30 @@ async def web_search_batch(
 
         if not all_sources:
             return WebSearchResult(
-                success=False, content="", sources=[],
+                success=False,
+                content="",
+                sources=[],
                 error="All Brave searches failed or returned no results",
                 provider="brave",
             )
 
         logger.info(
-            f"[WEB_SEARCH_BATCH] Brave consolidated {len(all_sources)} unique sources "
-            f"from {len(queries)} queries"
+            f"[WEB_SEARCH_BATCH] Brave consolidated {len(all_sources)} unique sources from {len(queries)} queries"
         )
 
         prompt_json = _build_synthesis_prompt(
-            purpose=purpose, query=" + ".join(queries),
-            context=context, brave_results=all_sources, lang=lang,
+            purpose=purpose,
+            query=" + ".join(queries),
+            context=context,
+            brave_results=all_sources,
+            lang=lang,
         )
 
         synthesis_content, tokens_used = await _call_mistral_api(
-            prompt_json=prompt_json, model=model,
-            max_tokens=2000, timeout=60.0,
+            prompt_json=prompt_json,
+            model=model,
+            max_tokens=2000,
+            timeout=60.0,
         )
 
         return WebSearchResult(
@@ -571,8 +595,11 @@ async def web_search_batch(
     except Exception as e:
         logger.error(f"[WEB_SEARCH_BATCH] Exception: {e}")
         return WebSearchResult(
-            success=False, content="", sources=[],
-            error=str(e), provider="brave",
+            success=False,
+            content="",
+            sources=[],
+            error=str(e),
+            provider="brave",
         )
 
 

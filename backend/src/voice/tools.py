@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 # Helper : découpage en segments
 # ─────────────────────────────────────────────────────────────────────
 
+
 def split_into_segments(text: str, max_words: int = 200) -> list[str]:
     """Découpe un texte en segments de *max_words* mots.
 
@@ -67,6 +68,7 @@ def split_into_segments(text: str, max_words: int = 200) -> list[str]:
 # Tool 1 : Recherche dans le transcript
 # ─────────────────────────────────────────────────────────────────────
 
+
 async def search_in_transcript(
     summary_id: int,
     query: str,
@@ -84,9 +86,7 @@ async def search_in_transcript(
     )
 
     try:
-        result = await db.execute(
-            select(Summary).where(Summary.id == summary_id)
-        )
+        result = await db.execute(select(Summary).where(Summary.id == summary_id))
         summary = result.scalar_one_or_none()
 
         if summary is None:
@@ -99,6 +99,7 @@ async def search_in_transcript(
         if summary.video_id:
             try:
                 from chat.context_builder import _get_full_transcript_from_cache
+
                 transcript = await _get_full_transcript_from_cache(summary.video_id, db)
                 if transcript:
                     logger.info(
@@ -164,7 +165,7 @@ async def search_in_transcript(
             elif len(query_lower) > 10:
                 query_parts = query_lower.split()
                 for i in range(len(query_parts) - 2):
-                    sub = " ".join(query_parts[i:i+3])
+                    sub = " ".join(query_parts[i : i + 3])
                     if sub in segment_lower:
                         base_score += 0.2
                         break
@@ -177,8 +178,7 @@ async def search_in_transcript(
 
         if not top:
             return (
-                f"Aucun passage trouvé dans le transcript pour la requête "
-                f"\"{query}\". Essayez avec d'autres mots-clés."
+                f'Aucun passage trouvé dans le transcript pour la requête "{query}". Essayez avec d\'autres mots-clés.'
             )
 
         parts: list[str] = []
@@ -230,15 +230,10 @@ async def get_analysis_section(
     )
 
     if section not in _VALID_SECTIONS:
-        return (
-            f"Section \"{section}\" inconnue. "
-            f"Sections disponibles : {', '.join(sorted(_VALID_SECTIONS))}."
-        )
+        return f'Section "{section}" inconnue. Sections disponibles : {", ".join(sorted(_VALID_SECTIONS))}.'
 
     try:
-        result = await db.execute(
-            select(Summary).where(Summary.id == summary_id)
-        )
+        result = await db.execute(select(Summary).where(Summary.id == summary_id))
         summary = result.scalar_one_or_none()
 
         if summary is None:
@@ -269,12 +264,12 @@ async def get_analysis_section(
 
         if not captured:
             return (
-                f"Section \"{section}\" non trouvée dans l'analyse. "
+                f'Section "{section}" non trouvée dans l\'analyse. '
                 "Le format de l'analyse ne contient peut-être pas cette section."
             )
 
         text = "\n".join(captured).strip()
-        return text if text else f"La section \"{section}\" est vide."
+        return text if text else f'La section "{section}" est vide.'
 
     except Exception as e:
         logger.error("get_analysis_section error: %s", e, exc_info=True)
@@ -285,14 +280,13 @@ async def get_analysis_section(
 # Tool 3 : Sources et fact-check
 # ─────────────────────────────────────────────────────────────────────
 
+
 async def get_sources(summary_id: int, db: AsyncSession) -> str:
     """Récupère les sources, le fact-check et les papiers académiques."""
     logger.info("get_sources called", extra={"summary_id": summary_id})
 
     try:
-        result = await db.execute(
-            select(Summary).where(Summary.id == summary_id)
-        )
+        result = await db.execute(select(Summary).where(Summary.id == summary_id))
         summary = result.scalar_one_or_none()
 
         if summary is None:
@@ -315,9 +309,7 @@ async def get_sources(summary_id: int, db: AsyncSession) -> str:
             items = []
             for src in sources_list:
                 if isinstance(src, dict):
-                    items.append(
-                        src.get("title") or src.get("url") or str(src)
-                    )
+                    items.append(src.get("title") or src.get("url") or str(src))
                 else:
                     items.append(str(src))
             parts.append("## Sources citées\n" + "\n".join(f"- {s}" for s in items))
@@ -358,9 +350,7 @@ async def get_sources(summary_id: int, db: AsyncSession) -> str:
                     label = p.title or "Sans titre"
                     source = p.source or "inconnu"
                     paper_lines.append(f"- {label} ({source})")
-                parts.append(
-                    "## Papiers académiques\n" + "\n".join(paper_lines)
-                )
+                parts.append("## Papiers académiques\n" + "\n".join(paper_lines))
         except Exception as e:
             logger.warning("get_sources: academic papers query failed: %s", e)
 
@@ -377,6 +367,7 @@ async def get_sources(summary_id: int, db: AsyncSession) -> str:
 # ─────────────────────────────────────────────────────────────────────
 # Tool 4 : Flashcards
 # ─────────────────────────────────────────────────────────────────────
+
 
 async def get_flashcards(
     summary_id: int,
@@ -401,9 +392,7 @@ async def get_flashcards(
         if db is None:
             return "Aucune flashcard disponible (session DB manquante)."
 
-        result = await db.execute(
-            select(Summary).where(Summary.id == summary_id)
-        )
+        result = await db.execute(select(Summary).where(Summary.id == summary_id))
         summary = result.scalar_one_or_none()
 
         if summary is None:
@@ -420,9 +409,7 @@ async def get_flashcards(
 
             vcache = get_video_cache()
             if vcache is not None and video_id:
-                cached = await vcache.get_studio_content(
-                    platform, video_id, "flashcards", lang
-                )
+                cached = await vcache.get_studio_content(platform, video_id, "flashcards", lang)
                 if cached and cached.get("flashcards"):
                     flashcards_data = cached["flashcards"]
         except Exception as e:
@@ -430,8 +417,7 @@ async def get_flashcards(
 
         if not flashcards_data:
             return (
-                "Aucune flashcard générée pour cette vidéo. "
-                "Génère-les d'abord depuis l'onglet Étude de l'application."
+                "Aucune flashcard générée pour cette vidéo. Génère-les d'abord depuis l'onglet Étude de l'application."
             )
 
         # Limiter au count demandé
@@ -442,9 +428,7 @@ async def get_flashcards(
             question = card.get("question") or card.get("front", "")
             answer = card.get("answer") or card.get("back", "")
             if question and answer:
-                parts.append(
-                    f"**Question {i}** : {question}\n**Réponse** : {answer}"
-                )
+                parts.append(f"**Question {i}** : {question}\n**Réponse** : {answer}")
 
         if not parts:
             return "Aucune flashcard exploitable trouvée pour cette vidéo."

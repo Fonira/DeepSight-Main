@@ -36,9 +36,7 @@ def _get_summary_field(summary: Summary, field: str, default=None):
 
 async def _get_summary(summary_id: int, user_id: int, db: AsyncSession) -> Summary:
     """Récupère un Summary ou lève ValueError."""
-    result = await db.execute(
-        select(Summary).where(Summary.id == summary_id, Summary.user_id == user_id)
-    )
+    result = await db.execute(select(Summary).where(Summary.id == summary_id, Summary.user_id == user_id))
     summary = result.scalar_one_or_none()
     if not summary:
         raise ValueError(f"Analyse {summary_id} introuvable")
@@ -69,18 +67,14 @@ async def get_geo_score(summary_id: int, user_id: int, db: AsyncSession) -> GeoS
     )
 
 
-async def get_geo_report(
-    summary_id: int, user_id: int, db: AsyncSession
-) -> GeoReportResponse | None:
+async def get_geo_report(summary_id: int, user_id: int, db: AsyncSession) -> GeoReportResponse | None:
     """Génère un rapport GEO complet via Mistral. Consomme des crédits."""
     # 1. Calculer le score GEO d'abord
     geo = await get_geo_score(summary_id, user_id, db)
     summary = await _get_summary(summary_id, user_id, db)
 
     # 2. Préparer le texte des quotes pour le prompt
-    quotes_text = "\n".join(
-        f"- [{q.marker}] (score {q.score}) {q.text}" for q in geo.citable_quotes[:10]
-    )
+    quotes_text = "\n".join(f"- [{q.marker}] (score {q.score}) {q.text}" for q in geo.citable_quotes[:10])
 
     # 3. Extraire un extrait du contenu
     content_excerpt = (summary.summary_content or "")[:2000]
@@ -110,12 +104,14 @@ async def get_geo_report(
     action_plan = []
     for action in report_data.get("action_plan", []):
         if isinstance(action, dict):
-            action_plan.append(GeoReportAction(
-                action=action.get("action", ""),
-                impact=action.get("impact", "medium"),
-                effort=action.get("effort", "medium"),
-                expected_gain=action.get("expected_gain", 5),
-            ))
+            action_plan.append(
+                GeoReportAction(
+                    action=action.get("action", ""),
+                    impact=action.get("impact", "medium"),
+                    effort=action.get("effort", "medium"),
+                    expected_gain=action.get("expected_gain", 5),
+                )
+            )
 
     return GeoReportResponse(
         summary_id=summary_id,
@@ -133,16 +129,12 @@ async def get_geo_report(
     )
 
 
-async def get_geo_benchmark(
-    summary_id: int, user_id: int, db: AsyncSession
-) -> dict:
+async def get_geo_benchmark(summary_id: int, user_id: int, db: AsyncSession) -> dict:
     """Compare le score GEO avec les autres analyses du même utilisateur."""
     return await benchmark_geo(summary_id, user_id, db)
 
 
-async def get_geo_visibility(
-    summary_id: int, user_id: int, db: AsyncSession
-) -> dict:
+async def get_geo_visibility(summary_id: int, user_id: int, db: AsyncSession) -> dict:
     """Vérifie la visibilité d'une vidéo dans les moteurs de recherche."""
     from .monitor import check_ai_visibility
 

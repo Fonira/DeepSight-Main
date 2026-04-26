@@ -12,8 +12,6 @@ Pattern:
 import json
 import asyncio
 import logging
-import time
-from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import redis.asyncio as aioredis
@@ -23,10 +21,10 @@ logger = logging.getLogger("deepsight.video_cache")
 
 # TTL Redis par type de contenu (en secondes)
 REDIS_TTL: dict[str, int] = {
-    "transcript": 7 * 86400,   # 7 jours
-    "analysis": 3 * 86400,     # 3 jours
-    "studio": 2 * 86400,       # 2 jours
-    "factcheck": 5 * 86400,    # 5 jours
+    "transcript": 7 * 86400,  # 7 jours
+    "analysis": 3 * 86400,  # 3 jours
+    "studio": 2 * 86400,  # 2 jours
+    "factcheck": 5 * 86400,  # 5 jours
 }
 
 
@@ -84,9 +82,7 @@ class VideoContentCacheService:
 
         # PostgreSQL L2
         try:
-            self._pg_pool = await asyncpg.create_pool(
-                self._vps_database_url, min_size=2, max_size=10
-            )
+            self._pg_pool = await asyncpg.create_pool(self._vps_database_url, min_size=2, max_size=10)
             logger.info("PostgreSQL L2 pool created")
         except Exception as e:
             logger.warning("PostgreSQL L2 unavailable: %s", e)
@@ -166,9 +162,7 @@ class VideoContentCacheService:
     # TRANSCRIPT
     # ═══════════════════════════════════════════════════════════════
 
-    async def get_transcript(
-        self, platform: str, video_id: str
-    ) -> Optional[dict]:
+    async def get_transcript(self, platform: str, video_id: str) -> Optional[dict]:
         """Récupère un transcript depuis le cache L1/L2."""
         key = _build_key("transcript", platform, video_id)
 
@@ -191,9 +185,7 @@ class VideoContentCacheService:
         self._record_stat("transcript", "miss")
         return None
 
-    async def set_transcript(
-        self, platform: str, video_id: str, data: dict
-    ) -> None:
+    async def set_transcript(self, platform: str, video_id: str, data: dict) -> None:
         """Stocke un transcript dans L1 + L2."""
         key = _build_key("transcript", platform, video_id)
         await asyncio.gather(
@@ -202,9 +194,7 @@ class VideoContentCacheService:
             return_exceptions=True,
         )
 
-    async def _pg_get_transcript(
-        self, platform: str, video_id: str
-    ) -> Optional[dict]:
+    async def _pg_get_transcript(self, platform: str, video_id: str) -> Optional[dict]:
         if not self._pg_pool:
             return None
         try:
@@ -225,9 +215,7 @@ class VideoContentCacheService:
             logger.warning("PG GET transcript error: %s", e)
         return None
 
-    async def _pg_upsert_transcript(
-        self, platform: str, video_id: str, data: dict
-    ) -> None:
+    async def _pg_upsert_transcript(self, platform: str, video_id: str, data: dict) -> None:
         if not self._pg_pool:
             return
         try:
@@ -250,9 +238,7 @@ class VideoContentCacheService:
     # ANALYSIS
     # ═══════════════════════════════════════════════════════════════
 
-    async def get_analysis(
-        self, platform: str, video_id: str, mode: str, language: str
-    ) -> Optional[dict]:
+    async def get_analysis(self, platform: str, video_id: str, mode: str, language: str) -> Optional[dict]:
         """Récupère une analyse depuis le cache L1/L2."""
         key = _build_key("analysis", platform, video_id, mode=mode, language=language)
 
@@ -273,9 +259,7 @@ class VideoContentCacheService:
         self._record_stat("analysis", "miss")
         return None
 
-    async def set_analysis(
-        self, platform: str, video_id: str, mode: str, language: str, data: dict
-    ) -> None:
+    async def set_analysis(self, platform: str, video_id: str, mode: str, language: str, data: dict) -> None:
         """Stocke une analyse dans L1 + L2."""
         key = _build_key("analysis", platform, video_id, mode=mode, language=language)
         await asyncio.gather(
@@ -284,9 +268,7 @@ class VideoContentCacheService:
             return_exceptions=True,
         )
 
-    async def _pg_get_analysis(
-        self, platform: str, video_id: str, mode: str, language: str
-    ) -> Optional[dict]:
+    async def _pg_get_analysis(self, platform: str, video_id: str, mode: str, language: str) -> Optional[dict]:
         if not self._pg_pool:
             return None
         try:
@@ -309,9 +291,7 @@ class VideoContentCacheService:
             logger.warning("PG GET analysis error: %s", e)
         return None
 
-    async def _pg_upsert_analysis(
-        self, platform: str, video_id: str, mode: str, language: str, data: dict
-    ) -> None:
+    async def _pg_upsert_analysis(self, platform: str, video_id: str, mode: str, language: str, data: dict) -> None:
         if not self._pg_pool:
             return
         try:
@@ -370,9 +350,7 @@ class VideoContentCacheService:
             return_exceptions=True,
         )
 
-    async def _pg_get_studio(
-        self, platform: str, video_id: str, content_type: str, language: str
-    ) -> Optional[dict]:
+    async def _pg_get_studio(self, platform: str, video_id: str, content_type: str, language: str) -> Optional[dict]:
         if not self._pg_pool:
             return None
         try:
@@ -422,9 +400,7 @@ class VideoContentCacheService:
     # FACTCHECK
     # ═══════════════════════════════════════════════════════════════
 
-    async def get_factcheck(
-        self, platform: str, video_id: str, language: str
-    ) -> Optional[dict]:
+    async def get_factcheck(self, platform: str, video_id: str, language: str) -> Optional[dict]:
         """Récupère un factcheck depuis le cache L1/L2."""
         key = _build_key("factcheck", platform, video_id, language=language)
 
@@ -445,9 +421,7 @@ class VideoContentCacheService:
         self._record_stat("factcheck", "miss")
         return None
 
-    async def set_factcheck(
-        self, platform: str, video_id: str, language: str, data: dict
-    ) -> None:
+    async def set_factcheck(self, platform: str, video_id: str, language: str, data: dict) -> None:
         """Stocke un factcheck dans L1 + L2."""
         key = _build_key("factcheck", platform, video_id, language=language)
         await asyncio.gather(
@@ -456,9 +430,7 @@ class VideoContentCacheService:
             return_exceptions=True,
         )
 
-    async def _pg_get_factcheck(
-        self, platform: str, video_id: str, language: str
-    ) -> Optional[dict]:
+    async def _pg_get_factcheck(self, platform: str, video_id: str, language: str) -> Optional[dict]:
         if not self._pg_pool:
             return None
         try:
@@ -480,9 +452,7 @@ class VideoContentCacheService:
             logger.warning("PG GET factcheck error: %s", e)
         return None
 
-    async def _pg_upsert_factcheck(
-        self, platform: str, video_id: str, language: str, data: dict
-    ) -> None:
+    async def _pg_upsert_factcheck(self, platform: str, video_id: str, language: str, data: dict) -> None:
         if not self._pg_pool:
             return
         try:
@@ -611,9 +581,7 @@ class VideoContentCacheService:
 
                 total = stats["hits_l1"] + stats["hits_l2"] + stats["misses"]
                 if total > 0:
-                    stats["hit_rate"] = round(
-                        (stats["hits_l1"] + stats["hits_l2"]) / total * 100, 1
-                    )
+                    stats["hit_rate"] = round((stats["hits_l1"] + stats["hits_l2"]) / total * 100, 1)
         except Exception as e:
             logger.warning("get_cache_stats_summary error: %s", e)
 

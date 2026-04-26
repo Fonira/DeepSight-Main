@@ -23,6 +23,7 @@ from core.logging import logger
 # 📦 TASK STATUS DICT — dict subclass qui notifie le store parent
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TaskStatusDict(dict):
     """
     Dict subclass qui signale les mutations au TaskStore parent.
@@ -49,6 +50,7 @@ class TaskStatusDict(dict):
 # 🗄️ TASK STORE — Proxy dict avec sync Redis batché
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TaskStore:
     """
     Drop-in replacement pour le dict _task_store.
@@ -61,8 +63,8 @@ class TaskStore:
     - aget() est la méthode async pour lire depuis Redis (cross-worker).
     """
 
-    TTL = 86400          # 24h — durée de vie d'une tâche
-    FLUSH_DELAY = 0.05   # 50ms — fenêtre de batching
+    TTL = 86400  # 24h — durée de vie d'une tâche
+    FLUSH_DELAY = 0.05  # 50ms — fenêtre de batching
     PREFIX = "deepsight:task:"
 
     def __init__(self):
@@ -133,10 +135,7 @@ class TaskStore:
         try:
             loop = asyncio.get_running_loop()
             if self._flush_handle is None or self._flush_handle.cancelled():
-                self._flush_handle = loop.call_later(
-                    self.FLUSH_DELAY,
-                    lambda: loop.create_task(self._flush())
-                )
+                self._flush_handle = loop.call_later(self.FLUSH_DELAY, lambda: loop.create_task(self._flush()))
         except RuntimeError:
             pass  # Pas de loop active (tests unitaires, init)
 
@@ -155,9 +154,7 @@ class TaskStore:
                 data = self._local.get(task_id)
                 if data is not None:
                     key = f"{self.PREFIX}{task_id}"
-                    serialized = json.dumps(
-                        dict(data), ensure_ascii=False, default=str
-                    )
+                    serialized = json.dumps(dict(data), ensure_ascii=False, default=str)
                     pipe.setex(key, self.TTL, serialized)
             await pipe.execute()
         except Exception as e:
@@ -172,6 +169,7 @@ class TaskStore:
 # 🆓 GUEST LIMITER — Rate limiting par IP via Redis ZSET
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class GuestLimiter:
     """
     Rate limiter pour les analyses guest (3 par IP par 24h).
@@ -185,7 +183,7 @@ class GuestLimiter:
     """
 
     PREFIX = "deepsight:guest:"
-    WINDOW = 86400       # 24h
+    WINDOW = 86400  # 24h
     MAX_ANALYSES = 3
 
     def __init__(self):
@@ -264,10 +262,7 @@ class GuestLimiter:
     def cleanup_local(self):
         """Purge les IPs expirées du cache local (optionnel, Redis gère ses TTLs)."""
         now = time.time()
-        expired = [
-            ip for ip, timestamps in self._local.items()
-            if all(now - ts > self.WINDOW for ts in timestamps)
-        ]
+        expired = [ip for ip, timestamps in self._local.items() if all(now - ts > self.WINDOW for ts in timestamps)]
         for ip in expired:
             del self._local[ip]
 

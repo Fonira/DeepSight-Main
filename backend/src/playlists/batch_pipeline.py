@@ -16,7 +16,6 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from core.llm_provider import llm_complete_batch
-from core.mistral_batch import BatchRequest
 from videos.analysis import build_analysis_prompt, detect_category
 from transcripts import extract_video_id, get_video_info, get_transcript_with_timestamps
 
@@ -26,6 +25,7 @@ logger = logging.getLogger("deepsight.playlists.batch")
 # =============================================================================
 # DATA TYPES
 # =============================================================================
+
 
 class BatchVideoInput:
     """Input data for one video in a batch analysis."""
@@ -75,6 +75,7 @@ class BatchVideoResult:
 # PHASE 1: Prepare video data (parallel transcript extraction)
 # =============================================================================
 
+
 async def prepare_videos_for_batch(
     urls: List[str],
     lang: str = "fr",
@@ -112,7 +113,9 @@ async def prepare_videos_for_batch(
 
                 # Get transcript
                 transcript_result = await get_transcript_with_timestamps(
-                    video_id, lang, duration=duration,
+                    video_id,
+                    lang,
+                    duration=duration,
                 )
 
                 transcript = ""
@@ -168,6 +171,7 @@ async def prepare_videos_for_batch(
 # PHASE 2: Build batch requests from prepared videos
 # =============================================================================
 
+
 def build_batch_requests(
     videos: List[BatchVideoInput],
     mode: str = "standard",
@@ -204,14 +208,16 @@ def build_batch_requests(
         max_limits = {"accessible": 4000, "standard": 12000, "expert": 20000}
         max_tokens = min(base_tokens, max_limits.get(mode, 12000))
 
-        items.append({
-            "id": video.video_id,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "max_tokens": max_tokens,
-        })
+        items.append(
+            {
+                "id": video.video_id,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "max_tokens": max_tokens,
+            }
+        )
 
     logger.info(f"[BATCH-BUILD] Built {len(items)} batch requests (mode={mode})")
     return items
@@ -220,6 +226,7 @@ def build_batch_requests(
 # =============================================================================
 # PHASE 3: Submit batch and collect results
 # =============================================================================
+
 
 async def run_batch_analysis(
     videos: List[BatchVideoInput],
@@ -248,10 +255,7 @@ async def run_batch_analysis(
 
     items = build_batch_requests(videos, mode=mode, lang=lang, model=model)
 
-    logger.info(
-        f"[BATCH-ANALYSIS] Submitting {len(items)} video analyses "
-        f"(model={model}, 50% discount)"
-    )
+    logger.info(f"[BATCH-ANALYSIS] Submitting {len(items)} video analyses (model={model}, 50% discount)")
 
     # Submit via llm_complete_batch
     results = await llm_complete_batch(
@@ -271,27 +275,30 @@ async def run_batch_analysis(
         title = video.title if video else video_id
 
         if llm_result and llm_result.content:
-            output.append(BatchVideoResult(
-                video_id=video_id,
-                title=title,
-                success=True,
-                content=llm_result.content,
-                tokens_used=llm_result.tokens_total,
-            ))
+            output.append(
+                BatchVideoResult(
+                    video_id=video_id,
+                    title=title,
+                    success=True,
+                    content=llm_result.content,
+                    tokens_used=llm_result.tokens_total,
+                )
+            )
         else:
-            output.append(BatchVideoResult(
-                video_id=video_id,
-                title=title,
-                success=False,
-                error="Batch analysis failed for this video",
-            ))
+            output.append(
+                BatchVideoResult(
+                    video_id=video_id,
+                    title=title,
+                    success=False,
+                    error="Batch analysis failed for this video",
+                )
+            )
 
     success_count = sum(1 for r in output if r.success)
     total_tokens = sum(r.tokens_used for r in output)
 
     logger.info(
-        f"[BATCH-ANALYSIS] Complete: {success_count}/{len(output)} success, "
-        f"{total_tokens:,} tokens (batch pricing)"
+        f"[BATCH-ANALYSIS] Complete: {success_count}/{len(output)} success, {total_tokens:,} tokens (batch pricing)"
     )
 
     return output
@@ -300,6 +307,7 @@ async def run_batch_analysis(
 # =============================================================================
 # FULL PIPELINE: Prepare + Batch + Fallback
 # =============================================================================
+
 
 async def run_playlist_batch(
     urls: List[str],
@@ -337,8 +345,12 @@ async def run_playlist_batch(
     # Phase 2: Batch analysis
     try:
         results = await run_batch_analysis(
-            videos=videos, mode=mode, lang=lang,
-            model=model, max_wait=max_wait, on_progress=on_progress,
+            videos=videos,
+            mode=mode,
+            lang=lang,
+            model=model,
+            max_wait=max_wait,
+            on_progress=on_progress,
         )
     except Exception as e:
         logger.error(f"[PLAYLIST-BATCH] Batch failed: {e}, falling back to sequential")
@@ -395,28 +407,34 @@ async def _sequential_fallback(
             )
 
             if result and result.content:
-                results.append(BatchVideoResult(
-                    video_id=video.video_id,
-                    title=video.title,
-                    success=True,
-                    content=result.content,
-                    tokens_used=result.tokens_total,
-                ))
+                results.append(
+                    BatchVideoResult(
+                        video_id=video.video_id,
+                        title=video.title,
+                        success=True,
+                        content=result.content,
+                        tokens_used=result.tokens_total,
+                    )
+                )
             else:
-                results.append(BatchVideoResult(
+                results.append(
+                    BatchVideoResult(
+                        video_id=video.video_id,
+                        title=video.title,
+                        success=False,
+                        error="Sequential analysis failed",
+                    )
+                )
+
+        except Exception as e:
+            results.append(
+                BatchVideoResult(
                     video_id=video.video_id,
                     title=video.title,
                     success=False,
-                    error="Sequential analysis failed",
-                ))
-
-        except Exception as e:
-            results.append(BatchVideoResult(
-                video_id=video.video_id,
-                title=video.title,
-                success=False,
-                error=str(e)[:200],
-            ))
+                    error=str(e)[:200],
+                )
+            )
 
     return results
 

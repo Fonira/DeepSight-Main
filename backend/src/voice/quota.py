@@ -21,12 +21,12 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 VOICE_LIMITS = {
-    "free":      {"enabled": False, "monthly_minutes": 0,   "max_session_minutes": 0},
-    "etudiant":  {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},  # Legacy alias
-    "starter":   {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},  # Maps to pro
-    "pro":       {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},
-    "expert":    {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},  # Maps to pro
-    "unlimited": {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},  # Maps to pro
+    "free": {"enabled": False, "monthly_minutes": 0, "max_session_minutes": 0},
+    "etudiant": {"enabled": True, "monthly_minutes": 15, "max_session_minutes": 10},  # Legacy alias
+    "starter": {"enabled": True, "monthly_minutes": 15, "max_session_minutes": 10},  # Maps to pro
+    "pro": {"enabled": True, "monthly_minutes": 15, "max_session_minutes": 10},
+    "expert": {"enabled": True, "monthly_minutes": 15, "max_session_minutes": 10},  # Maps to pro
+    "unlimited": {"enabled": True, "monthly_minutes": 15, "max_session_minutes": 10},  # Maps to pro
 }
 
 WARNING_THRESHOLDS = [50, 80, 95, 100]
@@ -36,9 +36,8 @@ WARNING_THRESHOLDS = [50, 80, 95, 100]
 # 📊 FONCTIONS DE GESTION DES QUOTAS
 # =============================================================================
 
-async def get_or_create_voice_quota(
-    user_id: int, plan: str, db: AsyncSession
-) -> VoiceQuota:
+
+async def get_or_create_voice_quota(user_id: int, plan: str, db: AsyncSession) -> VoiceQuota:
     """Récupère ou crée le quota vocal pour le mois en cours."""
     now = datetime.now()
     year = now.year
@@ -69,15 +68,15 @@ async def get_or_create_voice_quota(
         await db.flush()
         logger.info(
             "Created voice quota for user %d (%s): %d seconds",
-            user_id, plan, seconds_limit,
+            user_id,
+            plan,
+            seconds_limit,
         )
 
     return quota
 
 
-async def check_voice_quota(
-    user_id: int, plan: str, db: AsyncSession
-) -> dict:
+async def check_voice_quota(user_id: int, plan: str, db: AsyncSession) -> dict:
     """Vérifie le quota vocal et retourne l'état détaillé."""
     quota = await get_or_create_voice_quota(user_id, plan, db)
 
@@ -126,9 +125,7 @@ async def check_voice_quota(
     }
 
 
-async def deduct_voice_usage(
-    user_id: int, duration_seconds: int, db: AsyncSession
-) -> float:
+async def deduct_voice_usage(user_id: int, duration_seconds: int, db: AsyncSession) -> float:
     """Déduit l'usage vocal du quota. Minimum 5 secondes facturées.
 
     Retourne les minutes déduites.
@@ -155,7 +152,10 @@ async def deduct_voice_usage(
         user.voice_bonus_seconds -= deduct_from_bonus
         logger.info(
             "User %d exceeded plan quota by %ds, deducted %ds from bonus (remaining: %ds)",
-            user_id, overage, deduct_from_bonus, user.voice_bonus_seconds,
+            user_id,
+            overage,
+            deduct_from_bonus,
+            user.voice_bonus_seconds,
         )
 
     await db.commit()
@@ -163,14 +163,15 @@ async def deduct_voice_usage(
     minutes_deducted = duration_seconds / 60
     logger.info(
         "Deducted %.2f min voice usage for user %d (total used: %ds/%ds)",
-        minutes_deducted, user_id, quota.seconds_used, quota.seconds_limit,
+        minutes_deducted,
+        user_id,
+        quota.seconds_used,
+        quota.seconds_limit,
     )
     return minutes_deducted
 
 
-async def get_voice_quota_info(
-    user_id: int, plan: str, db: AsyncSession
-) -> dict:
+async def get_voice_quota_info(user_id: int, plan: str, db: AsyncSession) -> dict:
     """Retourne les informations complètes du quota vocal."""
     quota = await get_or_create_voice_quota(user_id, plan, db)
     limits = VOICE_LIMITS.get(plan, VOICE_LIMITS["free"])

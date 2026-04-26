@@ -25,6 +25,7 @@ THUMBNAIL_BASE_URL = os.environ.get("THUMBNAIL_BASE_URL", "")
 # Availability checks
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _is_r2_credentials_set() -> bool:
     """Check if R2 S3-compatible credentials are configured (not CHANGEME)."""
     key = R2_CONFIG.get("ACCESS_KEY_ID", "")
@@ -44,6 +45,7 @@ def is_r2_available() -> bool:
 # ═══════════════════════════════════════════════════════════════════════════════
 # R2 client (only initialized when credentials exist)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @lru_cache(maxsize=1)
 def _get_r2_client():
@@ -69,6 +71,7 @@ def _get_r2_client():
 # Public URL builders
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def get_r2_public_url(key: str) -> str:
     """Build public URL for a stored thumbnail (R2 or local)."""
     if _is_r2_credentials_set():
@@ -85,6 +88,7 @@ def get_r2_public_url(key: str) -> str:
 # Upload (dual-mode: R2 or local)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def upload_to_r2(
     image_bytes: bytes,
     key: str,
@@ -98,7 +102,6 @@ async def upload_to_r2(
 
 async def _upload_r2(image_bytes: bytes, key: str, content_type: str) -> str:
     """Upload to Cloudflare R2 via boto3."""
-    from botocore.exceptions import ClientError
 
     client = _get_r2_client()
     await asyncio.to_thread(
@@ -132,6 +135,7 @@ def _write_file(path: Path, data: bytes) -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Exists check (dual-mode)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def check_exists_r2(key: str) -> bool:
     """Check whether a thumbnail already exists (R2 or local)."""

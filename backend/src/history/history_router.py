@@ -18,7 +18,7 @@ import math
 import re
 from typing import Optional, List, Dict
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.http_client import shared_http_client
@@ -36,7 +36,7 @@ from .history_service import (
     delete_summary,
     delete_playlist,
     delete_all_history,
-    get_summary_by_id
+    get_summary_by_id,
 )
 
 router = APIRouter(tags=["history"])
@@ -45,6 +45,7 @@ router = APIRouter(tags=["history"])
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔍 DÉTECTION PLATEFORME (fallback pour anciennes entrées sans champ platform)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _resolve_platform_from_row(row) -> str:
     """
@@ -78,7 +79,7 @@ def _resolve_platform_from_row(row) -> str:
     if vid:
         if vid.startswith("txt_"):
             return "text"
-        is_youtube_id = bool(re.match(r'^[A-Za-z0-9_-]{11}$', vid))
+        is_youtube_id = bool(re.match(r"^[A-Za-z0-9_-]{11}$", vid))
         if not is_youtube_id:
             return "tiktok"
 
@@ -88,6 +89,7 @@ def _resolve_platform_from_row(row) -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📦 SCHEMAS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class VideoSummaryItem(BaseModel):
     id: int
@@ -197,6 +199,7 @@ class HistoryStatsResponse(BaseModel):
 # 📹 HISTORIQUE VIDÉOS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/videos", response_model=VideoHistoryResponse)
 async def get_videos_history(
     page: int = Query(1, ge=1),
@@ -206,7 +209,7 @@ async def get_videos_history(
     favorites_only: bool = False,
     cursor: Optional[int] = Query(None, description="Cursor-based pagination: ID of last item seen"),
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Récupère l'historique des vidéos simples (hors playlists).
@@ -223,7 +226,7 @@ async def get_videos_history(
         search=search,
         favorites_only=favorites_only,
         exclude_playlists=True,
-        cursor=cursor
+        cursor=cursor,
     )
 
     items = result["items"]
@@ -254,7 +257,7 @@ async def get_videos_history(
                 is_favorite=row.is_favorite or False,
                 has_transcript=row.has_transcript,
                 platform=_resolve_platform_from_row(row),
-                created_at=row.created_at.isoformat() if row.created_at else None
+                created_at=row.created_at.isoformat() if row.created_at else None,
             )
             for row in items
         ],
@@ -262,15 +265,13 @@ async def get_videos_history(
         page=page,
         per_page=per_page,
         pages=math.ceil(total / per_page) if per_page > 0 else 0,
-        next_cursor=result["next_cursor"]
+        next_cursor=result["next_cursor"],
     )
 
 
 @router.get("/videos/{summary_id}")
 async def get_video_detail(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     Récupère le détail complet d'une vidéo pour réouvrir le chat.
@@ -278,7 +279,7 @@ async def get_video_detail(
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Video not found")
-    
+
     plat = _resolve_platform_from_row(summary)
     return {
         "id": summary.id,
@@ -287,7 +288,8 @@ async def get_video_detail(
         "video_channel": summary.video_channel,
         "video_duration": summary.video_duration or 0,
         "video_url": summary.video_url,
-        "thumbnail_url": summary.thumbnail_url or (f"https://img.youtube.com/vi/{summary.video_id}/mqdefault.jpg" if plat == "youtube" else ""),
+        "thumbnail_url": summary.thumbnail_url
+        or (f"https://img.youtube.com/vi/{summary.video_id}/mqdefault.jpg" if plat == "youtube" else ""),
         "category": summary.category,
         "mode": summary.mode,
         "lang": summary.lang,
@@ -300,13 +302,14 @@ async def get_video_detail(
         "tags": summary.tags,
         "has_transcript": bool(summary.transcript_context),
         "platform": plat,
-        "created_at": summary.created_at.isoformat() if summary.created_at else None
+        "created_at": summary.created_at.isoformat() if summary.created_at else None,
     }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📚 HISTORIQUE PLAYLISTS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/playlists", response_model=PlaylistHistoryResponse)
 async def get_playlists_history(
@@ -315,18 +318,13 @@ async def get_playlists_history(
     search: Optional[str] = None,
     status: Optional[str] = None,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Récupère l'historique des playlists/corpus.
     """
     items, total = await get_user_playlists(
-        session=session,
-        user_id=current_user.id,
-        page=page,
-        per_page=per_page,
-        search=search,
-        status=status
+        session=session, user_id=current_user.id, page=page, per_page=per_page, search=search, status=status
     )
 
     # Récupérer les thumbnails des vidéos pour chaque playlist
@@ -359,31 +357,29 @@ async def get_playlists_history(
                 has_meta_analysis=bool(item.meta_analysis),
                 thumbnail_url=thumbnail_map.get(item.playlist_id),
                 created_at=item.created_at.isoformat() if item.created_at else None,
-                completed_at=item.completed_at.isoformat() if item.completed_at else None
+                completed_at=item.completed_at.isoformat() if item.completed_at else None,
             )
             for item in items
         ],
         total=total,
         page=page,
         per_page=per_page,
-        pages=math.ceil(total / per_page) if per_page > 0 else 0
+        pages=math.ceil(total / per_page) if per_page > 0 else 0,
     )
 
 
 @router.get("/playlists/{playlist_id}", response_model=PlaylistDetailResponse)
 async def get_playlist_detail(
-    playlist_id: str,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    playlist_id: str, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     Récupère le détail d'une playlist avec toutes ses vidéos individuelles.
     """
     playlist, videos = await get_playlist_with_videos(session, playlist_id, current_user.id)
-    
+
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist not found")
-    
+
     return PlaylistDetailResponse(
         playlist_id=playlist.playlist_id,
         playlist_title=playlist.playlist_title,
@@ -401,7 +397,12 @@ async def get_playlist_detail(
                 video_title=v.video_title,
                 video_channel=v.video_channel or "Unknown",
                 video_duration=v.video_duration or 0,
-                thumbnail_url=v.thumbnail_url or (f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg" if _resolve_platform_from_row(v) == "youtube" else ""),
+                thumbnail_url=v.thumbnail_url
+                or (
+                    f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg"
+                    if _resolve_platform_from_row(v) == "youtube"
+                    else ""
+                ),
                 category=v.category,
                 mode=v.mode,
                 lang=v.lang,
@@ -410,12 +411,12 @@ async def get_playlist_detail(
                 is_favorite=v.is_favorite or False,
                 has_transcript=bool(v.transcript_context),
                 platform=_resolve_platform_from_row(v),
-                created_at=v.created_at.isoformat() if v.created_at else None
+                created_at=v.created_at.isoformat() if v.created_at else None,
             )
             for v in videos
         ],
         created_at=playlist.created_at.isoformat() if playlist.created_at else None,
-        completed_at=playlist.completed_at.isoformat() if playlist.completed_at else None
+        completed_at=playlist.completed_at.isoformat() if playlist.completed_at else None,
     )
 
 
@@ -424,16 +425,16 @@ async def get_playlist_video_detail(
     playlist_id: str,
     video_id: str,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Récupère le détail d'une vidéo spécifique d'une playlist.
     """
     video = await get_playlist_video(session, playlist_id, video_id, current_user.id)
-    
+
     if not video:
         raise HTTPException(status_code=404, detail="Video not found in playlist")
-    
+
     vplat = _resolve_platform_from_row(video)
     return {
         "id": video.id,
@@ -441,7 +442,8 @@ async def get_playlist_video_detail(
         "video_title": video.video_title,
         "video_channel": video.video_channel,
         "video_duration": video.video_duration or 0,
-        "thumbnail_url": video.thumbnail_url or (f"https://img.youtube.com/vi/{video.video_id}/mqdefault.jpg" if vplat == "youtube" else ""),
+        "thumbnail_url": video.thumbnail_url
+        or (f"https://img.youtube.com/vi/{video.video_id}/mqdefault.jpg" if vplat == "youtube" else ""),
         "category": video.category,
         "mode": video.mode,
         "lang": video.lang,
@@ -452,13 +454,14 @@ async def get_playlist_video_detail(
         "playlist_position": video.playlist_position,
         "has_transcript": bool(video.transcript_context),
         "platform": vplat,
-        "created_at": video.created_at.isoformat() if video.created_at else None
+        "created_at": video.created_at.isoformat() if video.created_at else None,
     }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔍 RECHERCHE
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/search", response_model=SearchResponse)
 async def search_history(
@@ -467,7 +470,7 @@ async def search_history(
     include_playlists: bool = True,
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Recherche simple dans l'historique (titre, chaîne).
@@ -478,9 +481,9 @@ async def search_history(
         query=q,
         include_videos=include_videos,
         include_playlists=include_playlists,
-        limit=limit
+        limit=limit,
     )
-    
+
     return SearchResponse(
         query=q,
         videos=[
@@ -490,7 +493,12 @@ async def search_history(
                 video_title=v.video_title,
                 video_channel=v.video_channel or "Unknown",
                 video_duration=v.video_duration or 0,
-                thumbnail_url=v.thumbnail_url or (f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg" if _resolve_platform_from_row(v) == "youtube" else ""),
+                thumbnail_url=v.thumbnail_url
+                or (
+                    f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg"
+                    if _resolve_platform_from_row(v) == "youtube"
+                    else ""
+                ),
                 category=v.category,
                 mode=v.mode,
                 lang=v.lang,
@@ -499,7 +507,7 @@ async def search_history(
                 is_favorite=v.is_favorite or False,
                 has_transcript=bool(v.transcript_context),
                 platform=_resolve_platform_from_row(v),
-                created_at=v.created_at.isoformat() if v.created_at else None
+                created_at=v.created_at.isoformat() if v.created_at else None,
             )
             for v in results["videos"]
         ],
@@ -515,12 +523,12 @@ async def search_history(
                 status=p.status or "pending",
                 has_meta_analysis=bool(p.meta_analysis),
                 created_at=p.created_at.isoformat() if p.created_at else None,
-                completed_at=p.completed_at.isoformat() if p.completed_at else None
+                completed_at=p.completed_at.isoformat() if p.completed_at else None,
             )
             for p in results["playlists"]
         ],
         total_videos=results["total_videos"],
-        total_playlists=results["total_playlists"]
+        total_playlists=results["total_playlists"],
     )
 
 
@@ -532,7 +540,7 @@ async def search_history_by_content(
     min_score: float = Query(0.1, ge=0, le=1),
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Recherche sémantique dans le contenu des résumés et méta-analyses.
@@ -544,42 +552,46 @@ async def search_history_by_content(
         include_videos=include_videos,
         include_playlists=include_playlists,
         min_score=min_score,
-        limit=limit
+        limit=limit,
     )
-    
+
     # Fusionner et trier les résultats par score
     all_results = []
-    
+
     for v_result in results["videos"]:
         v = v_result["item"]
-        all_results.append(SearchResultItem(
-            id=v.id,
-            type="video",
-            title=v.video_title,
-            thumbnail_url=v.thumbnail_url or f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg",
-            score=v_result["score"],
-            created_at=v.created_at.isoformat() if v.created_at else None
-        ))
-    
+        all_results.append(
+            SearchResultItem(
+                id=v.id,
+                type="video",
+                title=v.video_title,
+                thumbnail_url=v.thumbnail_url or f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg",
+                score=v_result["score"],
+                created_at=v.created_at.isoformat() if v.created_at else None,
+            )
+        )
+
     for p_result in results["playlists"]:
         p = p_result["item"]
-        all_results.append(SearchResultItem(
-            id=0,  # Utiliser playlist_id à la place
-            type="playlist",
-            title=p.playlist_title,
-            thumbnail_url=None,
-            score=p_result["score"],
-            created_at=p.created_at.isoformat() if p.created_at else None
-        ))
-    
+        all_results.append(
+            SearchResultItem(
+                id=0,  # Utiliser playlist_id à la place
+                type="playlist",
+                title=p.playlist_title,
+                thumbnail_url=None,
+                score=p_result["score"],
+                created_at=p.created_at.isoformat() if p.created_at else None,
+            )
+        )
+
     # Trier par score décroissant
     all_results.sort(key=lambda x: x.score, reverse=True)
-    
+
     return SemanticSearchResponse(
         query=q,
         query_keywords=results["query_keywords"],
         results=all_results[:limit],
-        total_results=results["total_results"]
+        total_results=results["total_results"],
     )
 
 
@@ -587,29 +599,27 @@ async def search_history_by_content(
 # 📊 STATISTIQUES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/stats", response_model=HistoryStatsResponse)
-async def get_stats(
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
-):
+async def get_stats(current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     """
     Récupère les statistiques de l'historique.
     """
     stats = await get_history_stats(session, current_user.id)
-    
+
     # Formater la durée
     seconds = stats["total_duration_seconds"]
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     duration_formatted = f"{hours}h {minutes}min" if hours > 0 else f"{minutes}min"
-    
+
     return HistoryStatsResponse(
         total_videos=stats["total_videos"],
         total_playlists=stats["total_playlists"],
         total_words=stats["total_words"],
         total_duration_seconds=seconds,
         total_duration_formatted=duration_formatted,
-        categories=stats["categories"]
+        categories=stats["categories"],
     )
 
 
@@ -617,11 +627,10 @@ async def get_stats(
 # 🗑️ SUPPRESSION
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.delete("/videos/{summary_id}")
 async def delete_video(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     Supprime une vidéo de l'historique.
@@ -629,15 +638,13 @@ async def delete_video(
     deleted = await delete_summary(session, summary_id, current_user.id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Video not found")
-    
+
     return {"success": True, "message": "Video deleted"}
 
 
 @router.delete("/playlists/{playlist_id}")
 async def delete_playlist_endpoint(
-    playlist_id: str,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    playlist_id: str, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     Supprime une playlist et toutes ses vidéos.
@@ -645,7 +652,7 @@ async def delete_playlist_endpoint(
     count = await delete_playlist(session, playlist_id, current_user.id)
     if count == 0:
         raise HTTPException(status_code=404, detail="Playlist not found")
-    
+
     return {"success": True, "message": f"Playlist deleted ({count} items removed)"}
 
 
@@ -653,42 +660,35 @@ async def delete_playlist_endpoint(
 async def clear_history_by_type(
     type: str = Query("all", description="Type to clear: all, videos, playlists"),
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     🗑️ Supprime l'historique par type.
-    
+
     - type=all: Supprime vidéos ET playlists
     - type=videos: Supprime uniquement les vidéos
     - type=playlists: Supprime uniquement les playlists
     """
     import logging
+
     logger = logging.getLogger(__name__)
-    
+
     logger.info(f"🗑️ Clear history request: type={type}, user_id={current_user.id}")
-    
+
     if type not in ["all", "videos", "playlists"]:
         raise HTTPException(status_code=400, detail="Invalid type. Use: all, videos, playlists")
-    
+
     include_playlists = type in ["all", "playlists"]
     include_videos = type in ["all", "videos"]
-    
+
     try:
         count = await delete_all_history(
-            session, 
-            current_user.id, 
-            include_playlists=include_playlists,
-            include_videos=include_videos
+            session, current_user.id, include_playlists=include_playlists, include_videos=include_videos
         )
-        
+
         logger.info(f"✅ History cleared: {count} items removed")
-        
-        return {
-            "success": True, 
-            "type": type,
-            "count": count,
-            "message": f"History cleared: {count} items removed"
-        }
+
+        return {"success": True, "type": type, "count": count, "message": f"History cleared: {count} items removed"}
     except Exception as e:
         logger.error(f"❌ Error clearing history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -698,7 +698,7 @@ async def clear_history_by_type(
 async def clear_all_history(
     include_playlists: bool = False,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Supprime tout l'historique (legacy endpoint).
@@ -714,8 +714,10 @@ async def clear_all_history(
 # Cache simple en mémoire pour les définitions générées
 _definitions_cache: Dict[str, dict] = {}
 
+
 class KeywordItem(BaseModel):
     """Mot-clé extrait d'une analyse avec définition"""
+
     term: str
     summary_id: int
     video_title: Optional[str]
@@ -734,6 +736,7 @@ class KeywordItem(BaseModel):
 
 class KeywordsResponse(BaseModel):
     """Réponse avec tous les mots-clés de l'historique"""
+
     keywords: List[KeywordItem]
     total: int
     has_history: bool
@@ -809,19 +812,14 @@ IMPORTANT:
         async with shared_http_client() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": "mistral-small-2603",
-                    "messages": [
-                        {"role": "user", "content": prompt}
-                    ],
+                    "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 4000,
-                    "temperature": 0.3
+                    "temperature": 0.3,
                 },
-                timeout=20.0
+                timeout=20.0,
             )
 
             if response.status_code != 200:
@@ -834,8 +832,8 @@ IMPORTANT:
             # Nettoyer le JSON
             content = content.strip()
             if content.startswith("```"):
-                content = re.sub(r'^```\w*\n?', '', content)
-                content = re.sub(r'\n?```$', '', content)
+                content = re.sub(r"^```\w*\n?", "", content)
+                content = re.sub(r"\n?```$", "", content)
 
             parsed = json.loads(content)
             definitions = parsed.get("definitions", [])
@@ -850,7 +848,7 @@ IMPORTANT:
                         "definition": item.get("definition", ""),
                         "wiki_url": item.get("wiki_url"),
                         "confidence": item.get("confidence", "medium"),
-                        "source": "mistral-academic"
+                        "source": "mistral-academic",
                     }
 
             print(f"✅ [Keywords] Generated {len(definitions)} academic definitions")
@@ -868,7 +866,7 @@ async def get_all_keywords(
     limit: int = Query(100, ge=1, le=500),
     with_definitions: bool = Query(False, description="Inclure les définitions IA (appel Mistral, plus lent)"),
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     🧠 Récupère tous les mots-clés extraits des analyses de l'utilisateur.
@@ -893,15 +891,10 @@ async def get_all_keywords(
             Summary.video_title,
             Summary.video_id,
             Summary.category,
-            Summary.created_at
+            Summary.created_at,
         )
         .where(Summary.user_id == current_user.id)
-        .where(
-            or_(
-                Summary.tags.isnot(None),
-                Summary.summary_content.isnot(None)
-            )
-        )
+        .where(or_(Summary.tags.isnot(None), Summary.summary_content.isnot(None)))
         .order_by(Summary.created_at.desc())
         .limit(200)  # ⚡ Limiter les analyses scannées
     )
@@ -923,14 +916,16 @@ async def get_all_keywords(
         if len(keywords_raw) >= limit:
             return
         seen_terms.add(term_lower)
-        keywords_raw.append({
-            "term": term,
-            "summary_id": row.id,
-            "video_title": row.video_title,
-            "video_id": row.video_id,
-            "category": row.category,
-            "created_at": row.created_at.isoformat() if row.created_at else None
-        })
+        keywords_raw.append(
+            {
+                "term": term,
+                "summary_id": row.id,
+                "video_title": row.video_title,
+                "video_id": row.video_id,
+                "category": row.category,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            }
+        )
 
     for row in rows:
         if len(keywords_raw) >= limit:
@@ -938,7 +933,7 @@ async def get_all_keywords(
 
         # 1. PRIORITÉ: Extraire les [[concepts]] du contenu
         if row.summary_content:
-            concept_pattern = r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]'
+            concept_pattern = r"\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]"
             concepts = re.findall(concept_pattern, row.summary_content)
             for concept in concepts:
                 _add_keyword(concept, row)
@@ -964,13 +959,13 @@ async def get_all_keywords(
                 kw["confidence"] = def_data.get("confidence", "medium")
                 full_def = def_data.get("definition", "")
                 if full_def:
-                    sentences = full_def.split('. ')
+                    sentences = full_def.split(". ")
                     if len(sentences) >= 2:
-                        short = sentences[0] + '. ' + sentences[1] + '.'
+                        short = sentences[0] + ". " + sentences[1] + "."
                     else:
                         short = full_def
                     if len(short) > 180:
-                        short = short[:177] + '...'
+                        short = short[:177] + "..."
                     kw["short_definition"] = short
                 else:
                     kw["short_definition"] = None
@@ -993,8 +988,10 @@ async def get_all_keywords(
             placeholders = ", ".join(f":h{i}" for i in range(len(hashes)))
             params = {f"h{i}": h for i, h in enumerate(hashes)}
             img_result = await session.execute(
-                sa_text(f"SELECT term_hash, image_url FROM keyword_images WHERE term_hash IN ({placeholders}) AND status = 'ready'"),
-                params
+                sa_text(
+                    f"SELECT term_hash, image_url FROM keyword_images WHERE term_hash IN ({placeholders}) AND status = 'ready'"
+                ),
+                params,
             )
             hash_to_url = {r.term_hash: r.image_url for r in img_result}
 
@@ -1008,11 +1005,7 @@ async def get_all_keywords(
 
     keywords = [KeywordItem(**kw) for kw in keywords_raw]
 
-    return KeywordsResponse(
-        keywords=keywords,
-        total=len(keywords),
-        has_history=len(rows) > 0
-    )
+    return KeywordsResponse(keywords=keywords, total=len(keywords), has_history=len(rows) > 0)
 
 
 @router.get("/keywords/define")

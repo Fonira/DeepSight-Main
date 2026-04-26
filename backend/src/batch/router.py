@@ -10,7 +10,6 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import asyncio
 from uuid import uuid4
 from datetime import datetime
 from typing import Optional, List
@@ -30,8 +29,10 @@ router = APIRouter()
 # 📋 SCHEMAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class BatchVideoItem(BaseModel):
     """Une vidéo à analyser dans un batch"""
+
     url: str = Field(..., description="URL de la vidéo YouTube")
     mode: str = Field(default="standard", description="Mode: accessible, standard, expert")
     category: Optional[str] = Field(default=None, description="Catégorie (auto si None)")
@@ -40,12 +41,14 @@ class BatchVideoItem(BaseModel):
 
 class BatchAnalyzeRequest(BaseModel):
     """Requête pour analyser plusieurs vidéos"""
+
     videos: List[BatchVideoItem] = Field(..., description="Liste des vidéos à analyser")
     priority: str = Field(default="normal", description="Priorité: low, normal, high (Team only)")
 
 
 class BatchItemStatus(BaseModel):
     """Statut d'un item dans un batch"""
+
     url: str
     status: str  # pending, processing, completed, failed
     task_id: Optional[str] = None
@@ -55,6 +58,7 @@ class BatchItemStatus(BaseModel):
 
 class BatchStatusResponse(BaseModel):
     """Statut d'un batch complet"""
+
     batch_id: str
     status: str  # pending, processing, completed, partial, failed
     total: int
@@ -67,6 +71,7 @@ class BatchStatusResponse(BaseModel):
 
 class BatchCreateResponse(BaseModel):
     """Réponse de création d'un batch"""
+
     batch_id: str
     status: str
     total: int
@@ -104,12 +109,13 @@ def get_batch_limit(plan: str) -> int:
 # 📦 ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/analyze", response_model=BatchCreateResponse)
 async def create_batch_analysis(
     request: BatchAnalyzeRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_verified_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Crée une analyse en lot pour plusieurs vidéos YouTube.
@@ -126,14 +132,11 @@ async def create_batch_analysis(
     if len(request.videos) > batch_limit:
         raise HTTPException(
             status_code=400,
-            detail=f"Batch limit exceeded. Your plan ({user_plan}) allows max {batch_limit} videos per batch."
+            detail=f"Batch limit exceeded. Your plan ({user_plan}) allows max {batch_limit} videos per batch.",
         )
 
     if len(request.videos) == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="At least one video is required."
-        )
+        raise HTTPException(status_code=400, detail="At least one video is required.")
 
     # Vérifier priorité (high = Pro only)
     if request.priority == "high" and user_plan not in ["pro"]:
@@ -147,8 +150,7 @@ async def create_batch_analysis(
     # Vérifier les crédits disponibles
     if (current_user.credits or 0) < total_credits:
         raise HTTPException(
-            status_code=402,
-            detail=f"Insufficient credits. Need {total_credits}, have {current_user.credits or 0}."
+            status_code=402, detail=f"Insufficient credits. Need {total_credits}, have {current_user.credits or 0}."
         )
 
     # Générer un batch_id
@@ -156,13 +158,7 @@ async def create_batch_analysis(
 
     # Créer les items de statut
     items = [
-        BatchItemStatus(
-            url=video.url,
-            status="pending",
-            task_id=None,
-            summary_id=None,
-            error=None
-        )
+        BatchItemStatus(url=video.url, status="pending", task_id=None, summary_id=None, error=None)
         for video in request.videos
     ]
 
@@ -193,7 +189,7 @@ async def create_batch_analysis(
         status="pending",
         total=len(request.videos),
         credits_reserved=total_credits,
-        message=f"Batch created. {len(request.videos)} videos queued for analysis."
+        message=f"Batch created. {len(request.videos)} videos queued for analysis.",
     )
 
 
@@ -272,10 +268,7 @@ async def cancel_batch(
         raise HTTPException(status_code=403, detail="Access denied")
 
     if batch["status"] not in ["pending", "processing"]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot cancel batch with status: {batch['status']}"
-        )
+        raise HTTPException(status_code=400, detail=f"Cannot cancel batch with status: {batch['status']}")
 
     # Marquer comme annulé
     batch["status"] = "cancelled"
@@ -293,13 +286,12 @@ async def cancel_batch(
 # 🔄 TRAITEMENT EN ARRIÈRE-PLAN
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def process_batch(batch_id: str, user_id: int):
     """
     Traite un batch d'analyses en arrière-plan.
     """
     from db.database import async_session_maker
-    from videos.service import create_task, update_task_status
-    from videos.router import run_analysis_task
 
     batch = _batch_store.get(batch_id)
     if not batch:
@@ -333,17 +325,25 @@ async def process_batch(batch_id: str, user_id: int):
 
                 # Extraire video_id depuis l'URL
                 from transcripts import extract_video_id
+
                 vid = extract_video_id(video_config.url)
                 if not vid:
                     raise ValueError(f"URL invalide: {video_config.url}")
 
                 # Lancer l'analyse réelle via le pipeline v6
                 from videos.router import _analyze_video_background_v6, set_task_status
-                set_task_status(task_id, {
-                    "status": "pending", "progress": 0,
-                    "message": "Queued (batch)", "user_id": user_id,
-                    "video_id": vid, "credit_cost": 1,
-                })
+
+                set_task_status(
+                    task_id,
+                    {
+                        "status": "pending",
+                        "progress": 0,
+                        "message": "Queued (batch)",
+                        "user_id": user_id,
+                        "video_id": vid,
+                        "credit_cost": 1,
+                    },
+                )
                 await _analyze_video_background_v6(
                     task_id=task_id,
                     video_id=vid,
@@ -360,6 +360,7 @@ async def process_batch(batch_id: str, user_id: int):
 
                 # Vérifier le résultat
                 from videos.router import get_task_status as _get_ts
+
                 result = await _get_ts(task_id)
                 if result and result.get("status") == "completed":
                     item["status"] = "completed"

@@ -38,6 +38,7 @@ def set_startup_time(t: float) -> None:
 # GET /ping
 # ───────────────────────────────────────────────────────────────────────────
 
+
 @router.get("/ping")
 async def ping():
     """Lightweight liveness probe."""
@@ -47,6 +48,7 @@ async def ping():
 # ───────────────────────────────────────────────────────────────────────────
 # GET /status
 # ───────────────────────────────────────────────────────────────────────────
+
 
 @router.get("/status")
 async def status():
@@ -79,6 +81,7 @@ async def status():
 # ───────────────────────────────────────────────────────────────────────────
 # GET /deep — Secret-protected deep health check
 # ───────────────────────────────────────────────────────────────────────────
+
 
 @router.get("/deep")
 async def deep_status(secret: str = ""):
@@ -123,6 +126,7 @@ async def deep_status(secret: str = ""):
 async def _check_redis() -> dict:
     """Check Redis connectivity and return enriched metrics."""
     import os
+
     redis_url = os.environ.get("REDIS_URL", "")
     if not redis_url:
         return {
@@ -139,6 +143,7 @@ async def _check_redis() -> dict:
         }
     try:
         import redis.asyncio as aioredis
+
         start = time.perf_counter()
         r = aioredis.from_url(redis_url, socket_timeout=5)
         await r.ping()
@@ -185,6 +190,7 @@ async def _check_redis() -> dict:
 # GET /db — Database health with version, migrations, size, connections
 # ───────────────────────────────────────────────────────────────────────────
 
+
 @router.get("/db")
 async def db_health():
     """
@@ -223,30 +229,28 @@ async def db_health():
             latency = round((time.time() - start) * 1000, 2)
 
             # Database size
-            row = await session.execute(
-                text("SELECT pg_database_size(current_database())")
-            )
+            row = await session.execute(text("SELECT pg_database_size(current_database())"))
             db_size_bytes = row.scalar() or 0
             size_mb = round(db_size_bytes / (1024 * 1024), 2)
 
             # Active connections
-            row = await session.execute(
-                text("SELECT count(*) FROM pg_stat_activity WHERE state = 'active'")
-            )
+            row = await session.execute(text("SELECT count(*) FROM pg_stat_activity WHERE state = 'active'"))
             active_conns = row.scalar() or 0
 
             # Max connections
             row = await session.execute(text("SHOW max_connections"))
             max_conns = int(row.scalar() or 100)
 
-            result["database"].update({
-                "status": "healthy",
-                "latency_ms": latency,
-                "version": pg_version,
-                "size_mb": size_mb,
-                "active_connections": active_conns,
-                "max_connections": max_conns,
-            })
+            result["database"].update(
+                {
+                    "status": "healthy",
+                    "latency_ms": latency,
+                    "version": pg_version,
+                    "size_mb": size_mb,
+                    "active_connections": active_conns,
+                    "max_connections": max_conns,
+                }
+            )
 
     except Exception as e:
         result["database"]["status"] = "unhealthy"
@@ -259,9 +263,8 @@ async def db_health():
         from alembic.runtime.migration import MigrationContext
 
         import os
-        alembic_cfg = Config(
-            os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
-        )
+
+        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini"))
         alembic_cfg.set_main_option(
             "script_location",
             os.path.join(os.path.dirname(__file__), "..", "..", "alembic"),
@@ -271,7 +274,9 @@ async def db_health():
 
         # Get current revision from DB
         from db.database import engine
+
         async with engine.connect() as conn:
+
             def _get_current(sync_conn):
                 ctx = MigrationContext.configure(sync_conn)
                 return ctx.get_current_revision()
@@ -283,12 +288,14 @@ async def db_health():
             revs = list(script.iterate_revisions(head_rev, current_rev or "base"))
             pending = len(revs)
 
-        result["migrations"].update({
-            "current_revision": current_rev,
-            "head_revision": head_rev,
-            "pending": pending,
-            "is_up_to_date": current_rev == head_rev,
-        })
+        result["migrations"].update(
+            {
+                "current_revision": current_rev,
+                "head_revision": head_rev,
+                "pending": pending,
+                "is_up_to_date": current_rev == head_rev,
+            }
+        )
 
     except Exception as e:
         result["migrations"]["error"] = str(e)[:200]
@@ -300,9 +307,11 @@ async def db_health():
 # POST /cron/onboarding — Trigger onboarding email sequence
 # ───────────────────────────────────────────────────────────────────────────
 
+
 async def _verify_cron_secret(x_cron_secret: str = Header(None)) -> None:
     """Vérifie le secret CRON pour protéger les endpoints internes."""
     from core.config import CRON_SECRET
+
     expected = CRON_SECRET
     if not x_cron_secret or x_cron_secret != expected:
         raise HTTPException(status_code=403, detail="Invalid CRON secret")
@@ -325,6 +334,7 @@ async def trigger_onboarding_emails(
 
     try:
         from services.onboarding_emails import process_onboarding_emails
+
         stats = await process_onboarding_emails(db)
         logger.info("Onboarding CRON completed", extra=stats)
         return {

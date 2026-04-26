@@ -13,7 +13,7 @@ import asyncio
 import hashlib
 import hmac
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -55,7 +55,7 @@ from voice.quota import (
 from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from voice.tools import search_in_transcript, get_analysis_section, get_sources, get_flashcards
 from voice.web_tools import web_search, deep_research, check_fact
-from voice.agent_types import get_agent_config, list_agent_types, AGENT_REGISTRY
+from voice.agent_types import get_agent_config, list_agent_types
 from voice.debate_tools import (
     get_debate_overview,
     get_video_thesis,
@@ -63,7 +63,6 @@ from voice.debate_tools import (
     search_in_debate_transcript,
     get_debate_fact_check,
 )
-from voice.debate_context import build_debate_rich_context
 from voice.avatar import (
     get_debate_avatar_url,
     ensure_debate_avatar,
@@ -275,9 +274,7 @@ async def verify_tool_request(request: Request, db: AsyncSession) -> tuple[Summa
     return summary, body
 
 
-async def verify_debate_tool_request(
-    request: Request, db: AsyncSession
-) -> tuple[DebateAnalysis, dict]:
+async def verify_debate_tool_request(request: Request, db: AsyncSession) -> tuple[DebateAnalysis, dict]:
     """Verify an ElevenLabs webhook request targeting a DebateAnalysis.
 
     Same contract as verify_tool_request but for debate_id tokens.
@@ -309,9 +306,7 @@ async def verify_debate_tool_request(
             detail={"code": "token_mismatch", "message": "Bearer token does not match debate_id."},
         )
 
-    result = await db.execute(
-        select(DebateAnalysis).where(DebateAnalysis.id == int(debate_id))
-    )
+    result = await db.execute(select(DebateAnalysis).where(DebateAnalysis.id == int(debate_id)))
     debate = result.scalar_one_or_none()
     if not debate:
         raise HTTPException(
@@ -330,6 +325,7 @@ class AddonCheckoutRequest(BaseModel):
 # GET /quota — Voice quota info
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/quota", response_model=VoiceQuotaResponse)
 async def get_voice_quota(
     current_user: User = Depends(get_current_user),
@@ -343,6 +339,7 @@ async def get_voice_quota(
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /preferences — Get user voice preferences
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/preferences", response_model=VoicePreferencesResponse)
 async def get_voice_preferences(
@@ -379,6 +376,7 @@ async def get_voice_preferences(
 # PUT /preferences — Update user voice preferences
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.put("/preferences", response_model=VoicePreferencesResponse)
 async def update_voice_preferences(
     request: VoicePreferencesRequest,
@@ -397,7 +395,7 @@ async def update_voice_preferences(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "code": "invalid_voice_id",
-                "message": f"Voice ID inconnu. Utilisez GET /api/voice/catalog pour la liste.",
+                "message": "Voice ID inconnu. Utilisez GET /api/voice/catalog pour la liste.",
             },
         )
 
@@ -442,6 +440,7 @@ async def update_voice_preferences(
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /catalog — Voice catalog (available voices + speed presets + models)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/catalog", response_model=VoiceCatalogResponse)
 async def get_voice_catalog():
@@ -489,6 +488,7 @@ async def get_voice_catalog():
 # POST /session — Create a voice session
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/session", response_model=VoiceSessionResponse)
 async def create_voice_session(
     request: VoiceSessionRequest,
@@ -504,6 +504,7 @@ async def create_voice_session(
 
     # ── Admin bypass — skip all plan/quota checks ────────────────────────
     from core.config import ADMIN_CONFIG
+
     admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower()
     is_admin = current_user.is_admin or (current_user.email or "").lower() == admin_email
 
@@ -514,9 +515,13 @@ async def create_voice_session(
     if not is_admin:
         plan_order = {
             "free": 0,
-            "etudiant": 1, "starter": 1, "student": 1,  # Legacy aliases → pro
+            "etudiant": 1,
+            "starter": 1,
+            "student": 1,  # Legacy aliases → pro
             "pro": 1,
-            "equipe": 1, "team": 1, "unlimited": 1,     # Legacy aliases → pro
+            "equipe": 1,
+            "team": 1,
+            "unlimited": 1,  # Legacy aliases → pro
             "expert": 1,  # Maps to pro
         }
         user_plan_level = plan_order.get(plan, 0)
@@ -644,10 +649,9 @@ async def create_voice_session(
 
         if debate:
             from voice.debate_context import build_debate_rich_context, MAX_CONTEXT_DEBATE_VOICE
+
             debate_ctx = await build_debate_rich_context(debate, db, include_transcripts=True)
-            context_block = debate_ctx.format_for_voice(
-                language=language, max_chars=MAX_CONTEXT_DEBATE_VOICE
-            )
+            context_block = debate_ctx.format_for_voice(language=language, max_chars=MAX_CONTEXT_DEBATE_VOICE)
 
             logger.info(
                 "Voice session: debate context assembled",
@@ -753,19 +757,18 @@ async def create_voice_session(
         # Filter tools to only those allowed for this agent type
         if agent_config.tools:
             allowed_tool_names = set(agent_config.tools)
-            tools_config = [
-                t for t in tools_config
-                if t.get("name", "") in allowed_tool_names
-            ]
+            tools_config = [t for t in tools_config if t.get("name", "") in allowed_tool_names]
 
         # Get voice ID from user preferences (fallback to config)
         from voice.preferences import get_user_voice_preferences
+
         user_prefs = await get_user_voice_preferences(current_user.id, db)
 
         if user_prefs.voice_id:
             voice_id = user_prefs.voice_id
         else:
             from core.config import _settings
+
             voice_id = _settings.ELEVENLABS_VOICE_ID or "21m00Tcm4TlvDq8ikWAM"  # Default: Rachel
 
         # ── FR accent check: warn if voice is not FR-safe ────────────────
@@ -800,11 +803,12 @@ async def create_voice_session(
         if rich_ctx and rich_ctx.video_title and "{video_title}" not in first_message:
             if agent_config.agent_type == "explorer":
                 first_message = (
-                    f"Salut ! Je suis prêt à discuter de la vidéo « {rich_ctx.video_title} ». "
-                    "Qu'est-ce que tu veux savoir ?"
-                ) if language == "fr" else (
-                    f"Hi! I'm ready to discuss the video \"{rich_ctx.video_title}\". "
-                    "What would you like to know?"
+                    (
+                        f"Salut ! Je suis prêt à discuter de la vidéo « {rich_ctx.video_title} ». "
+                        "Qu'est-ce que tu veux savoir ?"
+                    )
+                    if language == "fr"
+                    else (f'Hi! I\'m ready to discuss the video "{rich_ctx.video_title}". What would you like to know?')
                 )
 
         # Build voice settings from user preferences
@@ -813,6 +817,7 @@ async def create_voice_session(
 
         # ── Build turn configuration from user preferences (Phase 1: PTT) ──
         from voice.preferences import get_voice_chat_speed_preset, CONCISENESS_INJECTION_FR, CONCISENESS_INJECTION_EN
+
         # ElevenLabs turn config — API April 2026: mode is "turn" or "silence"
         # "turn" = PTT-style (wait for user turn), "silence" = VAD auto-detect
         # eagerness renamed to turn_eagerness enum: "patient"|"normal"|"eager"
@@ -912,12 +917,14 @@ async def create_voice_session(
     # Parse expires_at from ISO string, fallback to +10min
     try:
         from datetime import timedelta
+
         if expires_at_iso:
             expires_at = datetime.fromisoformat(expires_at_iso.replace("Z", "+00:00")).replace(tzinfo=None)
         else:
             expires_at = datetime.utcnow() + timedelta(minutes=10)
     except (ValueError, TypeError):
         from datetime import timedelta
+
         expires_at = datetime.utcnow() + timedelta(minutes=10)
 
     # Compute quota remaining
@@ -943,6 +950,7 @@ async def create_voice_session(
 # POST /webhook — ElevenLabs webhook (public, no auth)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/webhook", response_model=WebhookAckResponse)
 async def voice_webhook(
     request: Request,
@@ -955,6 +963,7 @@ async def voice_webhook(
     """
     # ── HMAC signature verification ──────────────────────────────────────
     from core.config import _settings
+
     webhook_secret = _settings.ELEVENLABS_WEBHOOK_SECRET
 
     raw_body = await request.body()
@@ -991,6 +1000,7 @@ async def voice_webhook(
 
     # ── Parse payload ────────────────────────────────────────────────────
     import json
+
     try:
         body = json.loads(raw_body)
     except (json.JSONDecodeError, TypeError):
@@ -1007,13 +1017,9 @@ async def voice_webhook(
     # Find the voice session by conversation_id or metadata session_id
     session_query = None
     if payload.conversation_id:
-        session_query = select(VoiceSession).where(
-            VoiceSession.elevenlabs_conversation_id == payload.conversation_id
-        )
+        session_query = select(VoiceSession).where(VoiceSession.elevenlabs_conversation_id == payload.conversation_id)
     elif payload.metadata and payload.metadata.get("session_id"):
-        session_query = select(VoiceSession).where(
-            VoiceSession.id == payload.metadata["session_id"]
-        )
+        session_query = select(VoiceSession).where(VoiceSession.id == payload.metadata["session_id"])
 
     # Also try matching by agent_id if conversation_id didn't match
     if session_query is None and payload.agent_id:
@@ -1101,6 +1107,7 @@ async def voice_webhook(
 # GET /history/{summary_id} — Voice session history
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/history/{summary_id}", response_model=VoiceHistoryResponse)
 async def get_voice_history(
     summary_id: int,
@@ -1138,6 +1145,7 @@ async def get_voice_history(
 
     # Build session summaries
     from voice.schemas import VoiceSessionSummary
+
     session_summaries = [
         VoiceSessionSummary(
             session_id=s.id,
@@ -1163,6 +1171,7 @@ async def get_voice_history(
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /history/{summary_id}/{session_id}/transcript — Session transcript
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get(
     "/history/{summary_id}/{session_id}/transcript",
@@ -1232,6 +1241,7 @@ async def get_voice_transcript(
 # GET /history/debate/{debate_id} — Voice session history for a debate
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/history/debate/{debate_id}", response_model=VoiceHistoryResponse)
 async def get_debate_voice_history(
     debate_id: int,
@@ -1263,6 +1273,7 @@ async def get_debate_voice_history(
     sessions = result.scalars().all()
 
     from voice.schemas import VoiceSessionSummary
+
     session_summaries = [
         VoiceSessionSummary(
             session_id=s.id,
@@ -1352,16 +1363,14 @@ async def get_voice_addon_packs(
     current_user: User = Depends(get_current_user),
 ):
     """Retourne les packs de minutes vocales disponibles."""
-    packs = [
-        {"id": pack_id, **pack_info}
-        for pack_id, pack_info in VOICE_ADDON_PACKS.items()
-    ]
+    packs = [{"id": pack_id, **pack_info} for pack_id, pack_info in VOICE_ADDON_PACKS.items()]
     return {"packs": packs}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /addon/checkout — Create Stripe checkout for voice pack
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _init_stripe() -> bool:
     """Initialise Stripe avec la bonne clé."""
@@ -1423,17 +1432,19 @@ async def create_voice_addon_checkout(
         checkout_session = stripe.checkout.Session.create(
             customer=customer_id,
             payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": pack["currency"],
-                    "unit_amount": pack["price_cents"],
-                    "product_data": {
-                        "name": f"DeepSight — {pack['name']}",
-                        "description": f"{pack['minutes']} minutes de chat vocal",
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": pack["currency"],
+                        "unit_amount": pack["price_cents"],
+                        "product_data": {
+                            "name": f"DeepSight — {pack['name']}",
+                            "description": f"{pack['minutes']} minutes de chat vocal",
+                        },
                     },
-                },
-                "quantity": 1,
-            }],
+                    "quantity": 1,
+                }
+            ],
             mode="payment",
             success_url=success_url,
             cancel_url=cancel_url,
@@ -1468,6 +1479,7 @@ async def create_voice_addon_checkout(
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /tools/* — ElevenLabs webhook tool endpoints (public, no auth)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/tools/search-transcript")
 async def tool_search_transcript(request: Request, db: AsyncSession = Depends(get_session)):
@@ -1529,10 +1541,7 @@ async def tool_web_search(request: Request, db: AsyncSession = Depends(get_sessi
     # Per-user global cap (Spec #0)
     user_count = await _increment_user_web_search_count(int(summary.user_id))
     if user_count > _WEB_SEARCH_USER_MAX:
-        return {
-            "result": "Limite horaire de recherches web atteinte pour ton compte. "
-            "Réessaie dans quelques minutes."
-        }
+        return {"result": "Limite horaire de recherches web atteinte pour ton compte. Réessaie dans quelques minutes."}
 
     result = await web_search(summary.id, query, db)
 
@@ -1569,6 +1578,7 @@ async def tool_check_fact(request: Request, db: AsyncSession = Depends(get_sessi
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /tools/debate-* — Debate moderator agent tools (public, bearer=debate_id)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/tools/debate-overview")
 async def tool_debate_overview(request: Request, db: AsyncSession = Depends(get_session)):
@@ -1617,6 +1627,7 @@ async def tool_debate_fact_check(request: Request, db: AsyncSession = Depends(ge
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /debate/{debate_id}/avatar — Dynamic avatar for the debate moderator agent
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/debate/{debate_id}/avatar")
 async def get_debate_voice_avatar(
@@ -1677,6 +1688,7 @@ async def get_debate_voice_avatar(
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /agents/types — List available agent types
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/agents/types")
 async def get_agent_types():
@@ -1825,9 +1837,8 @@ async def get_voice_session_thumbnail(
 
     thumbnail_url, source = await _resolve_voice_thumbnail(summary)
 
-    alt_text = (
-        f"Miniature de la vidéo « {summary.video_title or 'sans titre'} »"
-        + (f" — chaîne {summary.video_channel}" if summary.video_channel else "")
+    alt_text = f"Miniature de la vidéo « {summary.video_title or 'sans titre'} »" + (
+        f" — chaîne {summary.video_channel}" if summary.video_channel else ""
     )
 
     logger.info(

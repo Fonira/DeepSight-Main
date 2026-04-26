@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import Summary, VideoComparison
 from videos.study_tools import call_mistral_json, safe_json_parse
-from core.credits import deduct_credits, check_credits, MODEL_COSTS
+from core.credits import deduct_credits, check_credits
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,6 @@ Tu utilises les marqueurs épistémiques DeepSight :
 ⚠️ À VÉRIFIER — Affirmation d'une seule source, non corroborée
 
 Réponds UNIQUEMENT en JSON valide.""",
-
     "en": """You are an expert analyst rigorously comparing two analyzed videos.
 
 You use DeepSight epistemic markers:
@@ -81,7 +80,6 @@ Retourne EXACTEMENT ce format JSON:
   }},
   "verdict": "Synthèse globale en 3-5 phrases avec marqueurs épistémiques. Utilise ✅ ⚖️ ❌ ⚠️ pour qualifier les conclusions."
 }}""",
-
     "en": """Compare these two videos in depth.
 
 ═══ VIDEO A ═══
@@ -141,6 +139,7 @@ def get_comparison_cost(model: str) -> int:
 # SERVICE PRINCIPAL
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def generate_comparison(
     session: AsyncSession,
     user_id: int,
@@ -161,16 +160,12 @@ async def generate_comparison(
     """
 
     # 1. Charger les summaries
-    result_a = await session.execute(
-        select(Summary).where(Summary.id == summary_a_id, Summary.user_id == user_id)
-    )
+    result_a = await session.execute(select(Summary).where(Summary.id == summary_a_id, Summary.user_id == user_id))
     summary_a = result_a.scalar_one_or_none()
     if not summary_a:
         raise ValueError(f"Résumé A introuvable (id={summary_a_id})")
 
-    result_b = await session.execute(
-        select(Summary).where(Summary.id == summary_b_id, Summary.user_id == user_id)
-    )
+    result_b = await session.execute(select(Summary).where(Summary.id == summary_b_id, Summary.user_id == user_id))
     summary_b = result_b.scalar_one_or_none()
     if not summary_b:
         raise ValueError(f"Résumé B introuvable (id={summary_b_id})")
@@ -340,8 +335,7 @@ async def get_comparison_history(
         summary_ids.add(c.summary_b_id)
 
     summaries_result = await session.execute(
-        select(Summary.id, Summary.video_title, Summary.thumbnail_url)
-        .where(Summary.id.in_(summary_ids))
+        select(Summary.id, Summary.video_title, Summary.thumbnail_url).where(Summary.id.in_(summary_ids))
     )
     summaries_map = {row.id: row for row in summaries_result.all()}
 
@@ -349,16 +343,18 @@ async def get_comparison_history(
     for c in comparisons:
         sa = summaries_map.get(c.summary_a_id)
         sb = summaries_map.get(c.summary_b_id)
-        items.append({
-            "id": c.id,
-            "video_a_title": sa.video_title if sa else "Supprimé",
-            "video_b_title": sb.video_title if sb else "Supprimé",
-            "video_a_thumbnail": sa.thumbnail_url if sa else None,
-            "video_b_thumbnail": sb.thumbnail_url if sb else None,
-            "model_used": c.model_used,
-            "credits_used": c.credits_used,
-            "created_at": c.created_at.isoformat() if c.created_at else None,
-        })
+        items.append(
+            {
+                "id": c.id,
+                "video_a_title": sa.video_title if sa else "Supprimé",
+                "video_b_title": sb.video_title if sb else "Supprimé",
+                "video_a_thumbnail": sa.thumbnail_url if sa else None,
+                "video_b_thumbnail": sb.thumbnail_url if sb else None,
+                "model_used": c.model_used,
+                "credits_used": c.credits_used,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            }
+        )
 
     return {
         "items": items,

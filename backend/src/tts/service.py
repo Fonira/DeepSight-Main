@@ -22,16 +22,17 @@ def is_tts_available() -> bool:
 
 VOICES = {
     "fr": {
-        "male": "TX3LPaxmHKxFdv7VOQHJ",      # Liam — multilingual, bon accent FR
-        "female": "pFZP5JQG7iQjIQuC4Bku",     # Lily — multilingual, bon accent FR
+        "male": "TX3LPaxmHKxFdv7VOQHJ",  # Liam — multilingual, bon accent FR
+        "female": "pFZP5JQG7iQjIQuC4Bku",  # Lily — multilingual, bon accent FR
     },
     "en": {
-        "male": "TX3LPaxmHKxFdv7VOQHJ",      # Liam — multilingual
-        "female": "pFZP5JQG7iQjIQuC4Bku",     # Lily — multilingual
-    }
+        "male": "TX3LPaxmHKxFdv7VOQHJ",  # Liam — multilingual
+        "female": "pFZP5JQG7iQjIQuC4Bku",  # Lily — multilingual
+    },
 }
 
 DEFAULT_MODEL_ID = "eleven_multilingual_v2"
+
 
 # Set of all known voice IDs (for validation) — includes catalog voices
 def _build_known_voice_ids() -> set[str]:
@@ -39,9 +40,11 @@ def _build_known_voice_ids() -> set[str]:
     base = {vid for lang_voices in VOICES.values() for vid in lang_voices.values()}
     try:
         from voice.preferences import CATALOG_VOICE_IDS
+
         return base | CATALOG_VOICE_IDS
     except ImportError:
         return base
+
 
 KNOWN_VOICE_IDS = _build_known_voice_ids()
 
@@ -67,23 +70,23 @@ _STRIP_PATTERNS = re.compile(
 
 # Emoji range
 _EMOJI_RE = re.compile(
-    r"[\U00010000-\U0010ffff]"       # Supplementary planes (most emojis)
-    r"|[\u2600-\u27bf]"              # Misc symbols
-    r"|[\ufe00-\ufe0f]"             # Variation selectors
-    r"|[\u200d]"                     # ZWJ
-    r"|[\u20e3]",                    # Combining enclosing keycap
+    r"[\U00010000-\U0010ffff]"  # Supplementary planes (most emojis)
+    r"|[\u2600-\u27bf]"  # Misc symbols
+    r"|[\ufe00-\ufe0f]"  # Variation selectors
+    r"|[\u200d]"  # ZWJ
+    r"|[\u20e3]",  # Combining enclosing keycap
 )
 
 # Markdown patterns
 _MARKDOWN_RE = re.compile(
-    r"\*\*(.+?)\*\*"        # **bold**
-    r"|__(.+?)__"           # __bold__
-    r"|\*(.+?)\*"           # *italic*
-    r"|_(.+?)_"             # _italic_
+    r"\*\*(.+?)\*\*"  # **bold**
+    r"|__(.+?)__"  # __bold__
+    r"|\*(.+?)\*"  # *italic*
+    r"|_(.+?)_"  # _italic_
     r"|`{1,3}[^`]*`{1,3}"  # `code` or ```code```
-    r"|#{1,6}\s+"           # ## headers
-    r"|\[ask:([^\]]+)\]"    # [ask:question] interactive
-    r"|\[\[([^\]]+)\]\]"    # [[concept]] interactive
+    r"|#{1,6}\s+"  # ## headers
+    r"|\[ask:([^\]]+)\]"  # [ask:question] interactive
+    r"|\[\[([^\]]+)\]\]"  # [[concept]] interactive
 )
 
 
@@ -105,7 +108,7 @@ def clean_text_for_tts(text: str, strip_questions: bool = True) -> str:
     if strip_questions:
         match = _STRIP_PATTERNS.search(cleaned)
         if match:
-            cleaned = cleaned[:match.start()].rstrip()
+            cleaned = cleaned[: match.start()].rstrip()
 
     # 2) Remove [ask:...] and [[...]] interactive tags (keep inner text for concepts)
     cleaned = re.sub(r"\[ask:[^\]]+\]", "", cleaned)
@@ -137,7 +140,7 @@ def clean_text_for_tts(text: str, strip_questions: bool = True) -> str:
         # Try to cut at a sentence boundary
         cut_point = cleaned.rfind(". ", 4500, 5000)
         if cut_point > 4500:
-            cleaned = cleaned[:cut_point + 1]
+            cleaned = cleaned[: cut_point + 1]
         else:
             cleaned = cleaned[:5000]
 
@@ -147,6 +150,7 @@ def clean_text_for_tts(text: str, strip_questions: bool = True) -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔌 CIRCUIT BREAKER — Protection contre ElevenLabs down
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class CircuitBreaker:
     """
@@ -188,7 +192,9 @@ class CircuitBreaker:
             self._opened_at = now
             logger.warning(
                 "ElevenLabs circuit breaker OPEN — %d failures in %ds, blocking for %ds",
-                len(self._failures), self.failure_window, self.recovery_timeout,
+                len(self._failures),
+                self.failure_window,
+                self.recovery_timeout,
             )
 
     def can_execute(self) -> bool:
