@@ -270,7 +270,7 @@ async def check_chat_quota(session: AsyncSession, user_id: int, summary_id: int)
     if per_video_limit != -1:
         video_result = await session.execute(
             select(func.count(ChatMessage.id)).where(
-                ChatMessage.user_id == user_id, ChatMessage.summary_id == summary_id, ChatMessage.role == "user"
+                ChatMessage.user_id == user_id, ChatMessage.summary_id == summary_id, ChatMessage.role == "user", ChatMessage.source == "text"
             )
         )
         video_used = video_result.scalar() or 0
@@ -437,6 +437,16 @@ async def get_chat_history(
                     pass
             if hasattr(m, "enrichment_level") and m.enrichment_level:
                 msg_data["enrichment_level"] = m.enrichment_level
+
+            # 🆕 v6.0 (Spec #1, Task 9): Voice metadata for unified timeline.
+            if hasattr(m, "source") and m.source:
+                msg_data["source"] = m.source
+            if hasattr(m, "voice_speaker") and m.voice_speaker:
+                msg_data["voice_speaker"] = m.voice_speaker
+            if hasattr(m, "voice_session_id") and m.voice_session_id:
+                msg_data["voice_session_id"] = m.voice_session_id
+            if hasattr(m, "time_in_call_secs") and m.time_in_call_secs is not None:
+                msg_data["time_in_call_secs"] = m.time_in_call_secs
 
             history.append(msg_data)
 
