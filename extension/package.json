@@ -40,6 +40,7 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "@deepsight/lighting-engine": "file:../packages/lighting-engine",
     "preact": "^10.29.1",
     "webextension-polyfill": "^0.12.0"
   }

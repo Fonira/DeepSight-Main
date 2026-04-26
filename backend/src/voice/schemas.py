@@ -3,7 +3,7 @@ Voice Chat Schemas — Pydantic models for voice API endpoints.
 """
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Literal, Optional, List
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -22,7 +22,8 @@ class VoiceSessionRequest(BaseModel):
     debate_id: Optional[int] = Field(default=None, description="ID du débat IA (pour agent debate_moderator)")
     language: str = Field(default="fr", description="Langue (fr, en)")
     agent_type: str = Field(
-        default="explorer", description="Type d'agent vocal (explorer, tutor, debate_moderator, quiz_coach, onboarding)"
+        default="explorer",
+        description="Type d'agent vocal (explorer, tutor, debate_moderator, quiz_coach, onboarding, companion)",
     )
 
     @model_validator(mode="after")
@@ -30,6 +31,40 @@ class VoiceSessionRequest(BaseModel):
         if self.summary_id is not None and self.debate_id is not None:
             raise ValueError("Fournir summary_id OU debate_id, pas les deux")
         return self
+
+
+# ── Spec #1, Task 7 — Transcript append (frontend persistence per voice turn) ──
+class TranscriptAppendRequest(BaseModel):
+    """Persist a single voice turn into chat_messages with source='voice'.
+
+    Sent by the frontend after each ``onMessage`` callback so the unified
+    text+voice timeline survives a page reload. Webhook reconciliation
+    (Task 8) corrects any drift after the call ends.
+
+    Schema rationale (decision 2026-04-25): the original spec triad
+    ``role + voice_speaker + timestamp_ms`` was simplified to a single
+    ``speaker`` discriminator (mapped to ``role`` server-side) plus
+    ``time_in_call_secs``. The frontend contract
+    (``frontend/src/services/api.ts::voiceApi.appendTranscript``) already
+    posts exactly this shape, so we keep the simplified form.
+    """
+
+    voice_session_id: str = Field(..., min_length=1, max_length=64)
+    speaker: Literal["user", "agent"]
+    content: str = Field(..., min_length=1, max_length=8000)
+    time_in_call_secs: float = Field(..., ge=0.0)
+
+
+class TranscriptAppendResponse(BaseModel):
+    """Acknowledgement after appending (or de-duplicating) a voice turn.
+
+    ``created`` is False when a 60-second dedup window matched an existing
+    row — the frontend can use that signal to detect benign network retries.
+    """
+
+    id: int = Field(..., description="chat_messages.id of the inserted (or pre-existing) row")
+    created: bool = Field(..., description="True if a new row was inserted, False on dedup hit")
+    voice_session_id: str = Field(..., description="Echoed for frontend confirmation")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -1,6 +1,6 @@
 """
 Voice Agent Types — Specialized agents for different DeepSight contexts
-v1.1 — Explorer, Tutor, Debate Moderator, Quiz Coach, Onboarding
+v1.2 — Explorer, Tutor, Debate Moderator, Quiz Coach, Onboarding, Companion
        Bilingual FR/EN support with strict language enforcement.
 
 Each agent has its own system prompt, tools, voice style, and session config.
@@ -8,7 +8,9 @@ Use get_agent_config(type) to retrieve, list_agent_types() for the API.
 """
 
 import logging
+import os
 from dataclasses import dataclass
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +65,10 @@ class AgentConfig:
     first_message: str = ""
     first_message_fr: str = ""
     plan_minimum: str = "pro"  # free, pro, expert
+    # Optional: env-var name whose value (if set) overrides the user's voice_id
+    # for sessions that use this agent type. Falls back to user prefs / default
+    # voice when the env var is unset. See COMPANION agent (Spec #1).
+    voice_id_env_var: Optional[str] = None
 
     @property
     def system_prompt(self) -> str:
@@ -485,6 +491,116 @@ Your style:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Agent: COMPANION (no-video reflection partner — Spec #1)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Voice ID resolution:
+#   - ELEVENLABS_COMPANION_VOICE_ID env var when set (allows future ops swap).
+#   - Otherwise, falls back to the global default (Rachel) — Decision #1
+#     "DÉFAUT: Rachel statu quo" in the spec.
+#
+# We compute it lazily inside get_agent_config() so changes to the env var
+# at runtime are honoured (matters for tests / hot-reload).
+
+COMPANION_VOICE_ID_ENV = "ELEVENLABS_COMPANION_VOICE_ID"
+
+
+def _companion_voice_id() -> Optional[str]:
+    """Resolve the voice ID for the companion agent at call time."""
+    return os.environ.get(COMPANION_VOICE_ID_ENV) or None
+
+
+COMPANION = AgentConfig(
+    agent_type="companion",
+    display_name="Reflection Companion",
+    display_name_fr="Compagnon de réflexion",
+    description="Free-form voice chat without a video — uses web search to ground answers",
+    description_fr="Discussion vocale libre sans vidéo — utilise web_search pour ancrer les réponses",
+    system_prompt_fr="""\
+Tu es le compagnon de réflexion vocal DeepSight. Tu as une conversation \
+ouverte avec l'utilisateur, sans vidéo de référence préchargée.
+
+CONTEXTE IMPORTANT :
+- Tu n'as PAS de transcript ni d'analyse de vidéo en mémoire.
+- Quand la question porte sur un fait, une actualité, un nom, un chiffre, ou \
+un sujet sur lequel tu n'es pas absolument sûr, utilise SYSTÉMATIQUEMENT \
+web_search pour ancrer ta réponse — n'invente jamais.
+- Annonce brièvement "Je vais chercher sur le web" avant l'appel pour gérer \
+la latence.
+
+TON RÔLE :
+- Aider à structurer une réflexion, brainstormer, organiser des idées.
+- Approfondir un sujet quand l'utilisateur en exprime le besoin.
+- Rebondir sur l'historique du chat texte (s'il est fourni) pour continuer \
+dans la lignée de la conversation.
+
+TON STYLE :
+- Concis (2-4 phrases par réponse), clair, naturel.
+- Curieux et chaleureux, pose des questions de relance.
+- Si tu utilises web_search, cite la source brièvement \
+("D'après une dépêche AFP de 2026...").
+
+TOOLS DISPONIBLES :
+- web_search(query, num_results=5) : recherche web Brave Search.
+- deep_research(query, num_queries=3) : recherche multi-requêtes (synthèse).
+- check_fact(claim) : vérification d'affirmation factuelle.""",
+    system_prompt_en="""\
+You are the DeepSight reflection companion voice agent. You have an open \
+conversation with the user, without any preloaded video reference.
+
+IMPORTANT CONTEXT:
+- You DO NOT have a transcript or video analysis in memory.
+- When the question is about a fact, current event, name, number, or any \
+topic you are not 100% sure about, ALWAYS use web_search to ground your \
+answer — never make things up.
+- Briefly announce "Let me search the web" before the call to handle \
+latency.
+
+YOUR ROLE:
+- Help structure a thought, brainstorm, organize ideas.
+- Go deeper on a topic when the user wants to.
+- Pick up on the text-chat history (if provided) to continue in line with \
+the existing conversation.
+
+YOUR STYLE:
+- Concise (2-4 sentences per answer), clear, natural.
+- Curious and warm, ask follow-up questions.
+- If you use web_search, briefly cite the source \
+("According to a 2026 AFP report...").
+
+AVAILABLE TOOLS:
+- web_search(query, num_results=5): Brave Search web search.
+- deep_research(query, num_queries=3): multi-query research synthesis.
+- check_fact(claim): factual claim verification.""",
+    tools=[
+        "web_search",
+        "deep_research",
+        "check_fact",
+    ],
+    voice_style="warm",
+    temperature=0.7,
+    max_session_minutes=10,
+    requires_summary=False,
+    first_message_fr=("Salut ! Je suis ton compagnon de réflexion. De quoi veux-tu qu'on parle ?"),
+    first_message=("Hi! I'm your reflection companion. What would you like to talk about?"),
+    plan_minimum="pro",
+    voice_id_env_var=COMPANION_VOICE_ID_ENV,
+)
+
+
+def resolve_agent_voice_id(agent_config: AgentConfig) -> Optional[str]:
+    """Return an env-var override for the agent's voice_id, or None.
+
+    None means: keep the user preference / default voice (statu quo).
+    """
+    if agent_config.voice_id_env_var:
+        value = os.environ.get(agent_config.voice_id_env_var)
+        if value:
+            return value
+    return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # REGISTRY — All available agent types
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -494,6 +610,7 @@ AGENT_REGISTRY: dict[str, AgentConfig] = {
     "debate_moderator": DEBATE_MODERATOR,
     "quiz_coach": QUIZ_COACH,
     "onboarding": ONBOARDING,
+    "companion": COMPANION,
 }
 
 DEFAULT_AGENT_TYPE = "explorer"

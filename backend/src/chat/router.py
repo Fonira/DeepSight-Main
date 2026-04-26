@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Any, Dict, Literal, Optional, List
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -92,11 +92,24 @@ class ChatResponseV4(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    """Message de chat"""
+    """Message de chat — v6.0 unified text+voice timeline (Spec #1, Task 9).
 
+    The schema is rendering-aware: the frontend uses ``source`` to display
+    a Voice/Text badge and the optional ``voice_*`` fields to group voice
+    turns. Backward compatibility: legacy callers receiving objects without
+    the new fields will see ``source='text'`` defaulted in.
+    """
+
+    id: Optional[int] = None
     role: str
     content: str
     created_at: datetime
+    source: Literal["text", "voice"] = "text"
+    voice_speaker: Optional[Literal["user", "agent"]] = None
+    voice_session_id: Optional[str] = None
+    time_in_call_secs: Optional[float] = None
+    web_search_used: bool = False
+    sources: Optional[List[Dict[str, Any]]] = None
 
 
 class ChatHistoryResponse(BaseModel):
