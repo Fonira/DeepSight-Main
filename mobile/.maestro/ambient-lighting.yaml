@@ -1,0 +1,17 @@
+# Maestro snapshot flow — ambient lighting v3
+#
+# Captures:
+#   - The Home tab with the sunflower mascot pinned bottom-right
+#   - The Profile screen with the "Effet ambiant lumineux" toggle visible
+#
+# Run locally with: maestro test mobile/.maestro/ambient-lighting.yaml
+appId: com.deepsight.app
+---
+- launchApp:
+    clearState: false
+- assertVisible:
+    id: "sunflower-mascot"
+- takeScreenshot: "ambient-lighting-home"
+- tapOn: "Profil"
+- assertVisible: "Effet ambiant lumineux"
+- takeScreenshot: "ambient-lighting-settings"
