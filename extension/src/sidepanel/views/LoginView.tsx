@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import Browser from "../../utils/browser-polyfill";
-import { GoogleIcon } from "./Icons";
-import { DoodleIcon } from "./doodles/DoodleIcon";
-import { DeepSightSpinner } from "./DeepSightSpinner";
+import { GoogleIcon } from "../shared/Icons";
+import { DoodleIcon } from "../shared/doodles/DoodleIcon";
+import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
 
 interface LoginViewProps {

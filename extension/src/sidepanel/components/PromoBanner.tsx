@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import type { PlanInfo } from "../../types";
 import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
-import { DoodleIcon } from "./doodles/DoodleIcon";
+import { DoodleIcon } from "../shared/doodles/DoodleIcon";
 import { useTranslation } from "../../i18n/useTranslation";
 
 interface Promo {

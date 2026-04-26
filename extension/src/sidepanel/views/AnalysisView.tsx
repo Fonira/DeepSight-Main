@@ -14,9 +14,9 @@ import {
   incrementFreeAnalysisCount,
 } from "../../utils/storage";
 import { WEBAPP_URL } from "../../utils/config";
-import { LogoutIcon, ExternalLinkIcon } from "./Icons";
-import { DeepSightSpinner } from "./DeepSightSpinner";
-import { DoodleIcon } from "./doodles/DoodleIcon";
+import { LogoutIcon, ExternalLinkIcon } from "../shared/Icons";
+import { DeepSightSpinner } from "../shared/DeepSightSpinner";
+import { DoodleIcon } from "../shared/doodles/DoodleIcon";
 import { useTranslation } from "../../i18n/useTranslation";
 
 interface AnalysisViewProps {

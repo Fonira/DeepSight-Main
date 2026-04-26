@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import type { User, PlanInfo, MessageResponse } from "../types";
 import Browser from "../utils/browser-polyfill";
-import { LoginView } from "./components/LoginView";
-import { MainView } from "./components/MainView";
-import { DeepSightSpinner } from "./components/DeepSightSpinner";
-import MicroDoodleBackground from "./components/MicroDoodleBackground";
+import { LoginView } from "./views/LoginView";
+import { MainView } from "./views/MainView";
+import { DeepSightSpinner } from "./shared/DeepSightSpinner";
+import MicroDoodleBackground from "./shared/MicroDoodleBackground";
 
 type ViewName = "loading" | "login" | "main";
 

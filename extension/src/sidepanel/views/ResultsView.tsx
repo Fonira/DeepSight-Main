@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import type { Summary, PlanInfo, User } from "../../types";
 import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
-import { ExternalLinkIcon } from "./Icons";
-import { SynthesisView } from "./SynthesisView";
-import { FeatureCTAGrid } from "./FeatureCTAGrid";
-import { ChatDrawer } from "./ChatDrawer";
+import { ExternalLinkIcon } from "../shared/Icons";
+import { SynthesisView } from "../shared/SynthesisView";
+import { FeatureCTAGrid } from "../shared/FeatureCTAGrid";
+import { ChatView } from "./ChatView";
 import { useTranslation } from "../../i18n/useTranslation";
 
 interface ResultsViewProps {
@@ -32,7 +32,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
 
   if (chatOpen) {
     return (
-      <ChatDrawer
+      <ChatView
         summaryId={summaryId}
         videoTitle={summary.video_title}
         onClose={() => setChatOpen(false)}

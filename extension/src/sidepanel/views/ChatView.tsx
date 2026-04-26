@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import type { ChatMessage, ChatOptions, MessageResponse } from "../../types";
 import Browser from "../../utils/browser-polyfill";
 import { escapeHtml, markdownToFullHtml } from "../../utils/sanitize";
-import { BackIcon, SendIcon } from "./Icons";
-import { DoodleIcon } from "./doodles/DoodleIcon";
-import { DeepSightSpinner } from "./DeepSightSpinner";
+import { BackIcon, SendIcon } from "../shared/Icons";
+import { DoodleIcon } from "../shared/doodles/DoodleIcon";
+import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
 
 // ── [ask:] parser ──────────────────────────────────────────────────
@@ -46,7 +46,7 @@ function canUseWebSearch(plan?: string): boolean {
 }
 
 // ── Props ─────────────────────────────────────────────────────────
-interface ChatDrawerProps {
+interface ChatViewProps {
   summaryId: number;
   videoTitle: string;
   onClose: () => void;
@@ -54,7 +54,7 @@ interface ChatDrawerProps {
   userPlan?: string;
 }
 
-export const ChatDrawer: React.FC<ChatDrawerProps> = ({
+export const ChatView: React.FC<ChatViewProps> = ({
   summaryId,
   videoTitle,
   onClose,

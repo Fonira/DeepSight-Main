@@ -21,12 +21,12 @@ import {
 } from "../../utils/storage";
 import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
-import { LogoutIcon, PlayIcon, ExternalLinkIcon } from "./Icons";
-import { SynthesisView } from "./SynthesisView";
-import { ChatDrawer } from "./ChatDrawer";
-import { PromoBanner } from "./PromoBanner";
-import { DeepSightSpinner } from "./DeepSightSpinner";
-import { DoodleIcon } from "./doodles/DoodleIcon";
+import { LogoutIcon, PlayIcon, ExternalLinkIcon } from "../shared/Icons";
+import { SynthesisView } from "../shared/SynthesisView";
+import { ChatView } from "./ChatView";
+import { PromoBanner } from "../components/PromoBanner";
+import { DeepSightSpinner } from "../shared/DeepSightSpinner";
+import { DoodleIcon } from "../shared/doodles/DoodleIcon";
 import { useTranslation } from "../../i18n/useTranslation";
 
 interface MainViewProps {
@@ -264,7 +264,7 @@ export const MainView: React.FC<MainViewProps> = ({
   // Chat view
   if (chatOpen && analysis.phase === "complete") {
     return (
-      <ChatDrawer
+      <ChatView
         summaryId={analysis.summaryId}
         videoTitle={analysis.summary.video_title}
         onClose={() => setChatOpen(false)}
