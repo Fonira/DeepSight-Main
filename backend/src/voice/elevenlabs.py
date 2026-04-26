@@ -544,6 +544,23 @@ class ElevenLabsClient:
                     "required": ["debate_id"],
                 },
             ),
+            _webhook_tool(
+                name="web_search",
+                description=(
+                    "Search the web for current information. Use SYSTEMATICALLY when the user asks "
+                    "about recent events, facts not already in the debate, or when you are unsure of a claim. "
+                    "Cite sources briefly to the user."
+                ),
+                url_path="/api/voice/tools/debate-web-search",
+                body_schema={
+                    "type": "object",
+                    "properties": {
+                        "debate_id": debate_id_field,
+                        "query": {"type": "string", "description": "The web search query"},
+                    },
+                    "required": ["debate_id", "query"],
+                },
+            ),
         ]
 
 
