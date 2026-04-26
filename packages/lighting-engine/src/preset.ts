@@ -183,6 +183,22 @@ export function getAmbientPreset(
 // v3 — getAmbientPresetV3 (added alongside v2 — does not modify v2)
 // =====================================================================
 
+// === v3 brand & layout constants ===
+/** Sun & moon screen position for v3 (top-center, fixed). */
+const V3_SOURCE_POSITION = { x: 50, y: 20 } as const;
+/** Brand indigo-500 — emitted as the tertiary palette color. */
+const V3_BRAND_TERTIARY: RGB = [99, 102, 241];
+/** Brand indigo-300 — emitted as the accent palette color. */
+const V3_BRAND_ACCENT: RGB = [165, 180, 252];
+/** Multiplier applied to the capped intensity for the primary ambient layer. */
+const V3_AMBIENT_PRIMARY_MUL = 0.3;
+/** Multiplier applied to the capped intensity for the secondary ambient layer. */
+const V3_AMBIENT_SECONDARY_MUL = 0.2;
+/** Multiplier applied to the capped intensity for the tertiary ambient layer. */
+const V3_AMBIENT_TERTIARY_MUL = 0.1;
+/** Cap applied to the intensity when high-contrast is active. */
+const V3_HIGH_CONTRAST_INTENSITY_CAP = 0.3;
+
 /**
  * Find the 2 v3 keyframes surrounding a given hour + interpolation factor.
  * v3 keyframes are also at exact 0.5h increments (48 entries from 0..23.5),
@@ -252,7 +268,9 @@ export function getAmbientPresetV3(
     lerp(from.intensity, to.intensity, f) * (opts.intensityMul ?? 1);
 
   // Cap intensity en haute-contraste (s'applique aux ambient layers)
-  const cappedIntensity = isHighContrast ? Math.min(intensity, 0.3) : intensity;
+  const cappedIntensity = isHighContrast
+    ? Math.min(intensity, V3_HIGH_CONTRAST_INTENSITY_CAP)
+    : intensity;
 
   // nightMode : prendre la keyframe la plus proche (pas d'interpolation pour énum)
   const nightMode = factor < 0.5 ? from.nightMode : to.nightMode;
@@ -276,30 +294,30 @@ export function getAmbientPresetV3(
     sun: {
       visible: nightMode === null,
       opacity: nightMode === null ? opacity : 0,
-      x: 50,
-      y: 20,
+      x: V3_SOURCE_POSITION.x,
+      y: V3_SOURCE_POSITION.y,
     },
     moon: {
       visible: nightMode !== null,
       opacity: nightMode !== null ? opacity : 0,
-      x: 50,
-      y: 20,
+      x: V3_SOURCE_POSITION.x,
+      y: V3_SOURCE_POSITION.y,
     },
     ambient: {
-      primary: 0.3 * cappedIntensity,
-      secondary: 0.2 * cappedIntensity,
-      tertiary: 0.1 * cappedIntensity,
+      primary: V3_AMBIENT_PRIMARY_MUL * cappedIntensity,
+      secondary: V3_AMBIENT_SECONDARY_MUL * cappedIntensity,
+      tertiary: V3_AMBIENT_TERTIARY_MUL * cappedIntensity,
     },
     starOpacityMul: nightMode !== null ? 1 : 0,
     starDensity: nightMode !== null ? "dense" : "sparse",
-    haloX: 50,
-    haloY: 20,
+    haloX: V3_SOURCE_POSITION.x,
+    haloY: V3_SOURCE_POSITION.y,
     colors: {
       primary: haloRgb,
       secondary: beamRgb,
-      tertiary: [99, 102, 241],
+      tertiary: V3_BRAND_TERTIARY,
       rays: beamRgb,
-      accent: [165, 180, 252],
+      accent: V3_BRAND_ACCENT,
     },
     // === v3 fields ===
     frameIndex: getSpriteFrameIndex(date),
