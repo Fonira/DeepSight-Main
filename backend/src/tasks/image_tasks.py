@@ -10,7 +10,6 @@
 """
 
 import asyncio
-import time
 from typing import Dict, Any
 
 from tasks.celery_app import celery_app, BaseTask
@@ -30,10 +29,11 @@ def run_async(coro):
 # 🎨 SINGLE IMAGE GENERATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @celery_app.task(
     bind=True,
     base=BaseTask,
-    name='tasks.generate_keyword_image_task',
+    name="tasks.generate_keyword_image_task",
     max_retries=2,
     soft_time_limit=90,
     time_limit=120,
@@ -49,6 +49,7 @@ def generate_keyword_image_task(
 
     try:
         from images.keyword_images import generate_keyword_image
+
         image_url = run_async(generate_keyword_image(term, definition, category))
 
         if image_url:
@@ -67,10 +68,11 @@ def generate_keyword_image_task(
 # 🌙 BATCH NIGHTLY GENERATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @celery_app.task(
     bind=True,
     base=BaseTask,
-    name='tasks.batch_generate_missing_images_task',
+    name="tasks.batch_generate_missing_images_task",
     max_retries=1,
     soft_time_limit=1800,
     time_limit=3600,
@@ -103,7 +105,7 @@ def batch_generate_missing_images_task(self) -> Dict[str, Any]:
             try:
                 # Fetch definition from summaries if available
                 async with pool.acquire() as conn:
-                    def_row = await conn.fetchrow(
+                    await conn.fetchrow(
                         """
                         SELECT definition FROM keyword_images WHERE term_hash = $1
                         """,
@@ -111,7 +113,10 @@ def batch_generate_missing_images_task(self) -> Dict[str, Any]:
                     )
                 definition = ""  # Batch mode may not have definitions
                 result = await generate_keyword_image(
-                    row["term"], definition, row["category"], pool=pool,
+                    row["term"],
+                    definition,
+                    row["category"],
+                    pool=pool,
                 )
                 if result:
                     generated += 1
@@ -131,10 +136,11 @@ def batch_generate_missing_images_task(self) -> Dict[str, Any]:
 # 🌱 SEED DEFAULT WORDS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @celery_app.task(
     bind=True,
     base=BaseTask,
-    name='tasks.generate_default_words_images_task',
+    name="tasks.generate_default_words_images_task",
     max_retries=1,
     soft_time_limit=3600,
     time_limit=7200,
@@ -144,7 +150,6 @@ def generate_default_words_images_task(self) -> Dict[str, Any]:
     print("🌱 [TASK] Starting default words image generation", flush=True)
 
     from scripts.seed_keyword_images import DEFAULT_WORDS
-    from images.fun_scoring import calculate_fun_score
 
     enqueued = 0
     for word in DEFAULT_WORDS:

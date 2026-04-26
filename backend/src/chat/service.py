@@ -1,4 +1,4 @@
-﻿"""
+"""
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║  💬 CHAT SERVICE v5.0 — ENRICHISSEMENT WEB (Brave Search + Mistral)                ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
@@ -28,10 +28,9 @@ from videos.web_search_provider import web_search_and_synthesize, WebSearchResul
 
 SEMANTIC_SCHOLAR_API = "https://api.semanticscholar.org/graph/v1"
 
+
 async def search_semantic_scholar(
-    query: str,
-    limit: int = 5,
-    fields: str = "title,authors,year,abstract,url,citationCount"
+    query: str, limit: int = 5, fields: str = "title,authors,year,abstract,url,citationCount"
 ) -> List[Dict[str, Any]]:
     """
     Recherche des articles académiques sur Semantic Scholar (API gratuite).
@@ -48,12 +47,8 @@ async def search_semantic_scholar(
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{SEMANTIC_SCHOLAR_API}/paper/search",
-                params={
-                    "query": query,
-                    "limit": limit,
-                    "fields": fields
-                },
-                timeout=10
+                params={"query": query, "limit": limit, "fields": fields},
+                timeout=10,
             )
 
             if response.status_code == 200:
@@ -69,14 +64,16 @@ async def search_semantic_scholar(
                         if len(authors) > 3:
                             author_names += " et al."
 
-                        results.append({
-                            "title": paper.get("title"),
-                            "authors": author_names,
-                            "year": paper.get("year"),
-                            "abstract": paper.get("abstract", "")[:500] if paper.get("abstract") else None,
-                            "url": paper.get("url"),
-                            "citations": paper.get("citationCount", 0)
-                        })
+                        results.append(
+                            {
+                                "title": paper.get("title"),
+                                "authors": author_names,
+                                "year": paper.get("year"),
+                                "abstract": paper.get("abstract", "")[:500] if paper.get("abstract") else None,
+                                "url": paper.get("url"),
+                                "citations": paper.get("citationCount", 0),
+                            }
+                        )
 
                 print(f"📚 [SCHOLAR] Found {len(results)} papers for '{query}'", flush=True)
                 return results
@@ -103,17 +100,33 @@ def _detect_complex_question(question: str) -> bool:
 
     COMPLEX_PATTERNS = [
         # Analyses comparatives
-        "compare", "différence entre", "avantages et inconvénients",
-        "difference between", "pros and cons", "versus", " vs ",
+        "compare",
+        "différence entre",
+        "avantages et inconvénients",
+        "difference between",
+        "pros and cons",
+        "versus",
+        " vs ",
         # Multi-étapes
-        "étapes pour", "comment faire pour", "processus de",
-        "steps to", "how to", "process of",
+        "étapes pour",
+        "comment faire pour",
+        "processus de",
+        "steps to",
+        "how to",
+        "process of",
         # Raisonnement abstrait
-        "pourquoi", "implications", "conséquences",
-        "why", "implications", "consequences",
+        "pourquoi",
+        "implications",
+        "conséquences",
+        "why",
+        "implications",
+        "consequences",
         # Synthèse
-        "résume et analyse", "synthétise", "en quoi",
-        "summarize and analyze", "synthesize",
+        "résume et analyse",
+        "synthétise",
+        "en quoi",
+        "summarize and analyze",
+        "synthesize",
         # Questions longues (>20 mots)
     ]
 
@@ -148,10 +161,7 @@ async def select_chat_model(question: str, user_plan: str) -> str:
 
 
 async def generate_openai_response(
-    question: str,
-    system_prompt: str,
-    user_prompt: str,
-    max_tokens: int = 4000
+    question: str, system_prompt: str, user_prompt: str, max_tokens: int = 4000
 ) -> Optional[str]:
     """
     Génère une réponse avec OpenAI GPT-4 pour les questions complexes.
@@ -164,20 +174,17 @@ async def generate_openai_response(
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": "gpt-4-turbo-preview",
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
+                        {"role": "user", "content": user_prompt},
                     ],
                     "max_tokens": max_tokens,
-                    "temperature": 0.3
+                    "temperature": 0.3,
                 },
-                timeout=90
+                timeout=90,
             )
 
             if response.status_code == 200:
@@ -197,9 +204,13 @@ async def generate_openai_response(
 
 try:
     from videos.web_enrichment import (
-        enrich_chat_response, get_enrichment_level, get_enrichment_badge,
-        EnrichmentLevel, get_enrichment_config
+        enrich_chat_response,
+        get_enrichment_level,
+        get_enrichment_badge,
+        EnrichmentLevel,
+        get_enrichment_config,
     )
+
     ENRICHMENT_AVAILABLE = True
 except ImportError:
     ENRICHMENT_AVAILABLE = False
@@ -210,11 +221,8 @@ except ImportError:
 # 📊 QUOTAS CHAT
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def check_chat_quota(
-    session: AsyncSession,
-    user_id: int,
-    summary_id: int
-) -> Tuple[bool, str, Dict[str, int]]:
+
+async def check_chat_quota(session: AsyncSession, user_id: int, summary_id: int) -> Tuple[bool, str, Dict[str, int]]:
     """
     Vérifie si l'utilisateur peut poser une question.
     Retourne: (can_ask, reason, quota_info)
@@ -234,90 +242,85 @@ async def check_chat_quota(
 
     daily_limit = limits.get("chat_daily_limit", 10)
     per_video_limit = limits.get("chat_per_video_limit", 5)
-    
+
     # -1 = illimité
     if daily_limit == -1 and per_video_limit == -1:
         return True, "unlimited", {"daily_limit": -1, "per_video_limit": -1}
-    
+
     today = date.today().isoformat()
-    
+
     # Vérifier le quota journalier
     if daily_limit != -1:
         daily_result = await session.execute(
-            select(ChatQuota).where(
-                ChatQuota.user_id == user_id,
-                ChatQuota.quota_date == today
-            )
+            select(ChatQuota).where(ChatQuota.user_id == user_id, ChatQuota.quota_date == today)
         )
         daily_quota = daily_result.scalar_one_or_none()
         daily_used = daily_quota.daily_count if daily_quota else 0
-        
+
         if daily_used >= daily_limit:
-            return False, "daily_limit_reached", {
-                "daily_limit": daily_limit,
-                "daily_used": daily_used,
-                "per_video_limit": per_video_limit
-            }
+            return (
+                False,
+                "daily_limit_reached",
+                {"daily_limit": daily_limit, "daily_used": daily_used, "per_video_limit": per_video_limit},
+            )
     else:
         daily_used = 0
-    
+
     # Vérifier le quota par vidéo
     if per_video_limit != -1:
         video_result = await session.execute(
             select(func.count(ChatMessage.id)).where(
-                ChatMessage.user_id == user_id,
-                ChatMessage.summary_id == summary_id,
-                ChatMessage.role == "user"
+                ChatMessage.user_id == user_id, ChatMessage.summary_id == summary_id, ChatMessage.role == "user", ChatMessage.source == "text"
             )
         )
         video_used = video_result.scalar() or 0
-        
+
         if video_used >= per_video_limit:
-            return False, "video_limit_reached", {
-                "daily_limit": daily_limit,
-                "daily_used": daily_used,
-                "per_video_limit": per_video_limit,
-                "video_used": video_used
-            }
+            return (
+                False,
+                "video_limit_reached",
+                {
+                    "daily_limit": daily_limit,
+                    "daily_used": daily_used,
+                    "per_video_limit": per_video_limit,
+                    "video_used": video_used,
+                },
+            )
     else:
         video_used = 0
-    
-    return True, "ok", {
-        "daily_limit": daily_limit,
-        "daily_used": daily_used,
-        "per_video_limit": per_video_limit,
-        "video_used": video_used
-    }
+
+    return (
+        True,
+        "ok",
+        {
+            "daily_limit": daily_limit,
+            "daily_used": daily_used,
+            "per_video_limit": per_video_limit,
+            "video_used": video_used,
+        },
+    )
 
 
 async def increment_chat_quota(session: AsyncSession, user_id: int):
     """Incrémente le quota de chat journalier"""
     today = date.today().isoformat()
-    
-    result = await session.execute(
-        select(ChatQuota).where(
-            ChatQuota.user_id == user_id,
-            ChatQuota.quota_date == today
-        )
-    )
+
+    result = await session.execute(select(ChatQuota).where(ChatQuota.user_id == user_id, ChatQuota.quota_date == today))
     quota = result.scalar_one_or_none()
-    
+
     if quota:
         quota.daily_count += 1
     else:
-        quota = ChatQuota(
-            user_id=user_id,
-            quota_date=today,
-            daily_count=1
-        )
+        quota = ChatQuota(user_id=user_id, quota_date=today, daily_count=1)
         session.add(quota)
-    
+
     await session.commit()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 💬 MESSAGES CHAT
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def save_chat_message(
     session: AsyncSession,
@@ -328,12 +331,12 @@ async def save_chat_message(
     web_search_used: bool = False,
     fact_checked: bool = False,
     sources: list = None,
-    enrichment_level: str = None
+    enrichment_level: str = None,
 ) -> int:
     """
     Sauvegarde un message de chat avec métadonnées v5.0.
     ⚠️ Rétrocompatible avec les anciennes bases sans nouvelles colonnes
-    
+
     Args:
         session: Session DB
         user_id: ID utilisateur
@@ -347,7 +350,7 @@ async def save_chat_message(
     """
     import json
     from sqlalchemy import text
-    
+
     try:
         # 🆕 Essayer d'abord avec toutes les colonnes (v5.0+)
         message = ChatMessage(
@@ -358,18 +361,18 @@ async def save_chat_message(
             web_search_used=web_search_used,
             fact_checked=fact_checked,
             sources_json=json.dumps(sources) if sources else None,
-            enrichment_level=enrichment_level
+            enrichment_level=enrichment_level,
         )
         session.add(message)
         await session.commit()
         await session.refresh(message)
         return message.id
-        
+
     except Exception as e:
         # ⚠️ Fallback: Les nouvelles colonnes n'existent pas encore
         print(f"⚠️ [save_chat_message] Fallback to basic columns: {e}", flush=True)
         await session.rollback()
-        
+
         try:
             # Insertion SQL brute avec uniquement les colonnes de base
             result = await session.execute(
@@ -378,12 +381,7 @@ async def save_chat_message(
                     VALUES (:user_id, :summary_id, :role, :content, NOW())
                     RETURNING id
                 """),
-                {
-                    "user_id": user_id,
-                    "summary_id": summary_id,
-                    "role": role,
-                    "content": content
-                }
+                {"user_id": user_id, "summary_id": summary_id, "role": role, "content": content},
             )
             await session.commit()
             row = result.fetchone()
@@ -398,7 +396,7 @@ async def get_chat_history(
     session: AsyncSession,
     summary_id: int,
     user_id: int,
-    limit: int = 50  # Augmenté pour plus d'historique
+    limit: int = 50,  # Augmenté pour plus d'historique
 ) -> List[Dict[str, Any]]:
     """
     Récupère l'historique de chat pour une vidéo.
@@ -407,54 +405,61 @@ async def get_chat_history(
     """
     import json
     from sqlalchemy import text
-    
+
     try:
         # 🆕 Essayer d'abord avec les nouvelles colonnes (v5.0+)
         result = await session.execute(
             select(ChatMessage)
-            .where(
-                ChatMessage.summary_id == summary_id,
-                ChatMessage.user_id == user_id
-            )
+            .where(ChatMessage.summary_id == summary_id, ChatMessage.user_id == user_id)
             .order_by(ChatMessage.created_at.desc())
             .limit(limit)
         )
         messages = result.scalars().all()
-        
+
         history = []
         for m in reversed(messages):
             msg_data = {
                 "id": m.id,
                 "role": m.role,
                 "content": m.content,
-                "created_at": m.created_at.isoformat() if m.created_at else None
+                "created_at": m.created_at.isoformat() if m.created_at else None,
             }
-            
+
             # Ajouter les métadonnées v5.0 si disponibles
-            if hasattr(m, 'web_search_used') and m.web_search_used:
+            if hasattr(m, "web_search_used") and m.web_search_used:
                 msg_data["web_search_used"] = True
-            if hasattr(m, 'fact_checked') and m.fact_checked:
+            if hasattr(m, "fact_checked") and m.fact_checked:
                 msg_data["fact_checked"] = True
-            if hasattr(m, 'sources_json') and m.sources_json:
+            if hasattr(m, "sources_json") and m.sources_json:
                 try:
                     msg_data["sources"] = json.loads(m.sources_json)
                 except (json.JSONDecodeError, TypeError):
                     pass
-            if hasattr(m, 'enrichment_level') and m.enrichment_level:
+            if hasattr(m, "enrichment_level") and m.enrichment_level:
                 msg_data["enrichment_level"] = m.enrichment_level
-            
+
+            # 🆕 v6.0 (Spec #1, Task 9): Voice metadata for unified timeline.
+            if hasattr(m, "source") and m.source:
+                msg_data["source"] = m.source
+            if hasattr(m, "voice_speaker") and m.voice_speaker:
+                msg_data["voice_speaker"] = m.voice_speaker
+            if hasattr(m, "voice_session_id") and m.voice_session_id:
+                msg_data["voice_session_id"] = m.voice_session_id
+            if hasattr(m, "time_in_call_secs") and m.time_in_call_secs is not None:
+                msg_data["time_in_call_secs"] = m.time_in_call_secs
+
             history.append(msg_data)
-        
+
         return history
-        
+
     except Exception as e:
         # ⚠️ Fallback: Les nouvelles colonnes n'existent pas encore
         # Utiliser une requête SQL brute avec uniquement les colonnes de base
         print(f"⚠️ [chat_history] Fallback to basic columns: {e}", flush=True)
-        
+
         # ⚠️ IMPORTANT: Rollback la transaction échouée avant de continuer
         await session.rollback()
-        
+
         try:
             result = await session.execute(
                 text("""
@@ -464,20 +469,20 @@ async def get_chat_history(
                     ORDER BY created_at DESC
                     LIMIT :limit
                 """),
-                {"summary_id": summary_id, "user_id": user_id, "limit": limit}
+                {"summary_id": summary_id, "user_id": user_id, "limit": limit},
             )
             rows = result.fetchall()
-            
+
             history = []
             for row in reversed(rows):
                 msg_data = {
                     "id": row[0],
                     "role": row[1],
                     "content": row[2],
-                    "created_at": row[3].isoformat() if row[3] else None
+                    "created_at": row[3].isoformat() if row[3] else None,
                 }
                 history.append(msg_data)
-            
+
             return history
         except Exception as e2:
             print(f"❌ [chat_history] Error: {e2}", flush=True)
@@ -485,19 +490,12 @@ async def get_chat_history(
             return []
 
 
-async def clear_chat_history(
-    session: AsyncSession,
-    summary_id: int,
-    user_id: int
-) -> int:
+async def clear_chat_history(session: AsyncSession, summary_id: int, user_id: int) -> int:
     """Efface l'historique de chat pour une vidéo"""
     from sqlalchemy import delete
-    
+
     result = await session.execute(
-        delete(ChatMessage).where(
-            ChatMessage.summary_id == summary_id,
-            ChatMessage.user_id == user_id
-        )
+        delete(ChatMessage).where(ChatMessage.summary_id == summary_id, ChatMessage.user_id == user_id)
     )
     await session.commit()
     return result.rowcount
@@ -507,6 +505,7 @@ async def clear_chat_history(
 # 🤖 GÉNÉRATION RÉPONSE CHAT v4.0
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def build_chat_prompt(
     question: str,
     video_title: str,
@@ -515,7 +514,7 @@ def build_chat_prompt(
     chat_history: List[Dict],
     mode: str,
     lang: str,
-    video_upload_date: str = ""
+    video_upload_date: str = "",
 ) -> Tuple[str, str]:
     """
     Construit le prompt pour le chat.
@@ -525,69 +524,116 @@ def build_chat_prompt(
         "accessible": {
             "max_context": 8000,
             "style_fr": "Réponds de façon concise (2-4 phrases). Langage simple, accessible.",
-            "style_en": "Answer concisely (2-4 sentences). Simple, accessible language."
+            "style_en": "Answer concisely (2-4 sentences). Simple, accessible language.",
         },
         "standard": {
             "max_context": 15000,
             "style_fr": "Réponds de façon complète (4-8 phrases). Équilibre clarté et détail.",
-            "style_en": "Answer completely (4-8 sentences). Balance clarity and detail."
+            "style_en": "Answer completely (4-8 sentences). Balance clarity and detail.",
         },
         "expert": {
             "max_context": 25000,
             "style_fr": "Réponds de façon exhaustive et rigoureuse. Analyse critique.",
-            "style_en": "Answer exhaustively and rigorously. Critical analysis."
-        }
+            "style_en": "Answer exhaustively and rigorously. Critical analysis.",
+        },
     }
-    
+
     config = MODE_CONFIG.get(mode, MODE_CONFIG["standard"])
-    style = config["style_fr"] if lang == "fr" else config["style_en"]
+    config["style_fr"] if lang == "fr" else config["style_en"]
     max_context = config["max_context"]
-    
+
     # Construire l'historique
     history_text = ""
     if chat_history:
         for msg in chat_history[-6:]:
             role = "Utilisateur" if msg["role"] == "user" else "Assistant"
             history_text += f"\n{role}: {msg['content']}"
-    
+
     # Tronquer le transcript si nécessaire
     transcript_truncated = transcript[:max_context] if transcript else ""
-    
+
     # ═══════════════════════════════════════════════════════════════════════════════
     # 🧠 DÉTECTION INTELLIGENTE DU TYPE DE QUESTION
     # ═══════════════════════════════════════════════════════════════════════════════
     question_lower = question.lower().strip()
-    
+
     # Déterminer le type de réponse attendue
     FACTUAL_PATTERNS = [
-        "c'est quoi", "qu'est-ce que", "qui est", "combien", "quand", "où",
-        "what is", "who is", "how many", "when", "where", "define",
-        "quelle est", "quel est", "donne-moi", "cite", "liste", "énumère"
+        "c'est quoi",
+        "qu'est-ce que",
+        "qui est",
+        "combien",
+        "quand",
+        "où",
+        "what is",
+        "who is",
+        "how many",
+        "when",
+        "where",
+        "define",
+        "quelle est",
+        "quel est",
+        "donne-moi",
+        "cite",
+        "liste",
+        "énumère",
     ]
-    
+
     SUMMARY_PATTERNS = [
-        "résume", "résumé", "synthèse", "en bref", "principaux points",
-        "summarize", "summary", "main points", "key takeaways", "tldr",
-        "bullet points", "grandes lignes", "idées principales"
+        "résume",
+        "résumé",
+        "synthèse",
+        "en bref",
+        "principaux points",
+        "summarize",
+        "summary",
+        "main points",
+        "key takeaways",
+        "tldr",
+        "bullet points",
+        "grandes lignes",
+        "idées principales",
     ]
-    
+
     YES_NO_PATTERNS = [
-        "est-ce que", "est-il", "peut-on", "y a-t-il", "faut-il",
-        "is it", "does it", "can we", "should", "is there", "are there"
+        "est-ce que",
+        "est-il",
+        "peut-on",
+        "y a-t-il",
+        "faut-il",
+        "is it",
+        "does it",
+        "can we",
+        "should",
+        "is there",
+        "are there",
     ]
-    
+
     DEEP_ANALYSIS_PATTERNS = [
-        "explique", "pourquoi", "comment", "analyse", "compare", "différence",
-        "explain", "why", "how does", "analyze", "compare", "difference",
-        "avantages", "inconvénients", "implications", "conséquences"
+        "explique",
+        "pourquoi",
+        "comment",
+        "analyse",
+        "compare",
+        "différence",
+        "explain",
+        "why",
+        "how does",
+        "analyze",
+        "compare",
+        "difference",
+        "avantages",
+        "inconvénients",
+        "implications",
+        "conséquences",
     ]
-    
+
     # Classifier la question
     is_factual = any(p in question_lower for p in FACTUAL_PATTERNS)
     is_summary = any(p in question_lower for p in SUMMARY_PATTERNS)
     is_yes_no = any(p in question_lower for p in YES_NO_PATTERNS)
     is_deep = any(p in question_lower for p in DEEP_ANALYSIS_PATTERNS)
-    
+
     # Déterminer le format de réponse idéal
     if is_yes_no:
         response_guide_fr = """📌 FORMAT: Commence par OUI/NON direct, puis explique en 1-2 phrases max.
@@ -628,13 +674,13 @@ Structure:
         response_guide_en = """📌 FORMAT: Adapt length to complexity.
 • Simple question → short answer (2-3 sentences)  
 • Complex question → developed answer"""
-    
+
     response_guide = response_guide_fr if lang == "fr" else response_guide_en
-    
+
     # Construire le contexte temporel pour le chat
-    temporal_chat_context = ""
     if video_upload_date:
         from videos.analysis import _format_video_age
+
         readable_date, human_age, age_days = _format_video_age(video_upload_date)
         if readable_date:
             temporal_chat_context_fr = f"\n📅 Publiée le {readable_date} ({human_age})."
@@ -695,7 +741,7 @@ PISTES DE RÉFLEXION (OBLIGATOIRE en fin de réponse) :
 Génère TOUJOURS 4 questions de suivi, courtes (max 10 mots), variées et spécifiques au contenu de ta réponse. Alterne entre approfondissement, lien avec un autre point de la vidéo, question critique, et perspective différente.
 🌐 Réponds uniquement en français.
 """
-        
+
         user_prompt = f"""Résumé de la vidéo :
 {summary[:4000] if summary else "Non disponible"}
 
@@ -752,7 +798,7 @@ REFLECTION QUESTIONS (MANDATORY at end of response):
 ALWAYS generate 4 follow-up questions, short (max 10 words), varied and specific to your response content. Alternate between: deepening the topic, linking to another video point, a critical question, and a different perspective.
 🌐 Respond only in English.
 """
-        
+
         user_prompt = f"""Video summary:
 {summary[:4000] if summary else "Not available"}
 
@@ -776,7 +822,7 @@ async def generate_chat_response(
     lang: str = "fr",
     model: str = "mistral-small-2603",
     api_key: str = None,
-    video_upload_date: str = ""
+    video_upload_date: str = "",
 ) -> Optional[str]:
     """Génère une réponse de chat intelligente et adaptée avec Mistral"""
     api_key = api_key or get_mistral_key()
@@ -784,71 +830,78 @@ async def generate_chat_response(
         return None
 
     system_prompt, user_prompt = build_chat_prompt(
-        question, video_title, transcript, summary, chat_history, mode, lang,
-        video_upload_date=video_upload_date
+        question, video_title, transcript, summary, chat_history, mode, lang, video_upload_date=video_upload_date
     )
-    
+
     # ═══════════════════════════════════════════════════════════════════════════════
     # 🧠 TOKENS ADAPTATIFS selon le type de question
     # ═══════════════════════════════════════════════════════════════════════════════
     question_lower = question.lower()
     word_count = len(question.split())
-    
+
     # Questions simples = réponses adaptées mais pas trop courtes
-    is_simple = word_count < 8 or any(p in question_lower for p in [
-        "est-ce que", "c'est quoi", "qui est", "is it", "what is", "who is"
-    ])
-    
-    base_tokens = {
-        "accessible": 800,
-        "standard": 1200,
-        "expert": 2000
-    }.get(mode, 1200)
+    is_simple = word_count < 8 or any(
+        p in question_lower for p in ["est-ce que", "c'est quoi", "qui est", "is it", "what is", "who is"]
+    )
+
+    base_tokens = {"accessible": 800, "standard": 1200, "expert": 2000}.get(mode, 1200)
 
     # Réponses concises par défaut, plus longues seulement si question complexe
     max_tokens = min(base_tokens, 600) if is_simple else base_tokens
-    
+
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": model,
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
+                        {"role": "user", "content": user_prompt},
                     ],
                     "max_tokens": max_tokens,
-                    "temperature": 0.7  # Plus naturel et conversationnel
+                    "temperature": 0.7,  # Plus naturel et conversationnel
                 },
-                timeout=60
+                timeout=60,
             )
-            
+
             if response.status_code == 200:
                 answer = response.json()["choices"][0]["message"]["content"].strip()
-                
+
                 # ═══════════════════════════════════════════════════════════════════
                 # 🧹 POST-PROCESSING: Supprimer les préambules indésirables
                 # ═══════════════════════════════════════════════════════════════════
                 preambles_to_remove = [
-                    "Bien sûr!", "Bien sûr,", "Bien sûr ", "Certainement!", "Certainement,",
-                    "Excellente question!", "Bonne question!", "C'est une bonne question.",
-                    "C'est une excellente question.", "Je vais répondre à votre question.",
-                    "Permettez-moi de répondre.", "Avec plaisir!", "Avec plaisir,",
-                    "Sure!", "Certainly!", "Great question!", "Good question!",
-                    "Let me answer that.", "I'll explain.", "Of course!",
-                    "That's a great question.", "Happy to help!"
+                    "Bien sûr!",
+                    "Bien sûr,",
+                    "Bien sûr ",
+                    "Certainement!",
+                    "Certainement,",
+                    "Excellente question!",
+                    "Bonne question!",
+                    "C'est une bonne question.",
+                    "C'est une excellente question.",
+                    "Je vais répondre à votre question.",
+                    "Permettez-moi de répondre.",
+                    "Avec plaisir!",
+                    "Avec plaisir,",
+                    "Sure!",
+                    "Certainly!",
+                    "Great question!",
+                    "Good question!",
+                    "Let me answer that.",
+                    "I'll explain.",
+                    "Of course!",
+                    "That's a great question.",
+                    "Happy to help!",
                 ]
-                
+
                 for preamble in preambles_to_remove:
                     if answer.startswith(preamble):
-                        answer = answer[len(preamble):].strip()
+                        answer = answer[len(preamble) :].strip()
                         break
-                
+
                 # Supprimer aussi les formules de politesse de fin
                 endings_to_trim = [
                     "\n\nN'hésitez pas à poser d'autres questions!",
@@ -857,19 +910,19 @@ async def generate_chat_response(
                     "\n\nJ'espère que cela vous aide!",
                     "\n\nFeel free to ask more questions!",
                     "\n\nHope this helps!",
-                    "\n\nLet me know if you have more questions."
+                    "\n\nLet me know if you have more questions.",
                 ]
-                
+
                 for ending in endings_to_trim:
                     if answer.endswith(ending):
-                        answer = answer[:-len(ending)].strip()
+                        answer = answer[: -len(ending)].strip()
                         break
-                
+
                 return answer
             else:
                 print(f"❌ Chat API error: {response.status_code}", flush=True)
                 return None
-                
+
     except Exception as e:
         print(f"❌ Chat generation error: {e}", flush=True)
         return None
@@ -885,7 +938,7 @@ async def generate_chat_response_stream(
     lang: str = "fr",
     model: str = "mistral-small-2603",
     api_key: str = None,
-    video_upload_date: str = ""
+    video_upload_date: str = "",
 ) -> AsyncGenerator[str, None]:
     """Génère une réponse de chat en streaming"""
     api_key = api_key or get_mistral_key()
@@ -894,32 +947,28 @@ async def generate_chat_response_stream(
         return
 
     system_prompt, user_prompt = build_chat_prompt(
-        question, video_title, transcript, summary, chat_history, mode, lang,
-        video_upload_date=video_upload_date
+        question, video_title, transcript, summary, chat_history, mode, lang, video_upload_date=video_upload_date
     )
-    
+
     max_tokens = {"accessible": 800, "standard": 1200, "expert": 2000}.get(mode, 1200)
-    
+
     try:
         async with httpx.AsyncClient() as client:
             async with client.stream(
                 "POST",
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": model,
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
+                        {"role": "user", "content": user_prompt},
                     ],
                     "max_tokens": max_tokens,
                     "temperature": 0.7,
-                    "stream": True
+                    "stream": True,
                 },
-                timeout=120
+                timeout=120,
             ) as response:
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):
@@ -948,16 +997,16 @@ async def generate_chat_response_v4(
     lang: str = "fr",
     model: str = "mistral-small-2603",
     web_search_requested: bool = False,
-    video_upload_date: str = ""
+    video_upload_date: str = "",
 ) -> Tuple[str, List[Dict[str, str]], bool]:
     """
     🆕 v5.0: Génère une réponse chat avec FACT-CHECKING INTELLIGENT.
-    
+
     NOUVEAUTÉ v5.0:
     - Détection automatique des questions factuelles critiques
     - Fact-checking Perplexity même pour Starter (quota limité: 10/jour)
     - Avertissement automatique si les faits ne peuvent pas être vérifiés
-    
+
     Args:
         question: Question de l'utilisateur
         video_title: Titre de la vidéo
@@ -969,17 +1018,17 @@ async def generate_chat_response_v4(
         lang: Langue
         model: Modèle Mistral
         web_search_requested: Si l'utilisateur a demandé explicitement une recherche web
-    
+
     Returns:
         Tuple[response, sources, web_search_used]
     """
     print(f"💬 [CHAT v5.0] Generating response for plan: {user_plan}", flush=True)
-    
+
     # 🆕 v5.0: Détecter si la question nécessite un fact-checking critique
     needs_fact_check = _needs_critical_fact_check(question)
     if needs_fact_check:
-        print(f"⚠️ [CHAT v5.0] Critical fact-check needed for question", flush=True)
-    
+        print("⚠️ [CHAT v5.0] Critical fact-check needed for question", flush=True)
+
     # 1. Générer la réponse de base avec Mistral
     base_response = await generate_chat_response(
         question=question,
@@ -990,41 +1039,41 @@ async def generate_chat_response_v4(
         mode=mode,
         lang=lang,
         model=model,
-        video_upload_date=video_upload_date
+        video_upload_date=video_upload_date,
     )
-    
+
     if not base_response:
         return "Désolé, je n'ai pas pu générer de réponse.", [], False
-    
+
     print(f"✅ [CHAT v5.0] Base response: {len(base_response)} chars", flush=True)
-    
+
     # 2. Enrichir avec Perplexity si disponible et autorisé
     sources = []
     web_search_used = False
     fact_checked = False
-    
+
     if ENRICHMENT_AVAILABLE:
         enrichment_level = get_enrichment_level(user_plan)
-        
+
         # Déterminer si on doit enrichir
         should_enrich = False
-        
+
         if web_search_requested:
             # L'utilisateur a demandé explicitement une recherche web
             if enrichment_level != EnrichmentLevel.NONE:
                 should_enrich = True
-                print(f"🌐 [CHAT v5.0] Web search requested by user", flush=True)
-        
+                print("🌐 [CHAT v5.0] Web search requested by user", flush=True)
+
         # 🆕 v5.0: Fact-checking automatique pour questions critiques
         elif needs_fact_check:
             # Pour les questions factuelles critiques, on ESSAIE de vérifier
             # Pro a accès au fact-checking
             if user_plan in ["pro"]:
                 should_enrich = True
-                print(f"🔍 [CHAT v5.0] Critical fact-check triggered (pro plan)", flush=True)
+                print("🔍 [CHAT v5.0] Critical fact-check triggered (pro plan)", flush=True)
             else:
                 # Free: pas de fact-checking, mais on ajoute un avertissement
-                print(f"⚠️ [CHAT v5.0] Fact-check needed but not available for free plan", flush=True)
+                print("⚠️ [CHAT v5.0] Fact-check needed but not available for free plan", flush=True)
 
         # Enrichissement automatique standard pour Pro
         elif enrichment_level in [EnrichmentLevel.FULL, EnrichmentLevel.DEEP]:
@@ -1038,31 +1087,31 @@ async def generate_chat_response_v4(
 
                 # 🆕 v5.0: Plan Pro obtient accès au fact-check complet
                 effective_plan = user_plan
-                
+
                 enriched_response, sources, actual_level = await enrich_chat_response(
                     question=question,
                     base_response=base_response,
                     video_context=video_context,
                     plan=effective_plan,
-                    lang=lang
+                    lang=lang,
                 )
-                
+
                 if sources:
                     base_response = enriched_response
                     web_search_used = True
                     fact_checked = True
                     print(f"✅ [CHAT v5.0] Enriched with {len(sources)} sources", flush=True)
-                    
+
             except Exception as e:
                 print(f"⚠️ [CHAT v5.0] Enrichment failed: {e}", flush=True)
-    
+
     # 🆕 v5.0: Ajouter un avertissement si fact-check nécessaire mais non effectué
     if needs_fact_check and not fact_checked:
         disclaimer = _get_fact_check_disclaimer(lang, user_plan)
         if disclaimer:
             base_response = f"{base_response}\n\n{disclaimer}"
-            print(f"⚠️ [CHAT v5.0] Added fact-check disclaimer", flush=True)
-    
+            print("⚠️ [CHAT v5.0] Added fact-check disclaimer", flush=True)
+
     return base_response, sources, web_search_used
 
 
@@ -1084,39 +1133,77 @@ def _get_fact_check_disclaimer(lang: str, plan: str) -> str:
 
 def _should_auto_enrich_chat(question: str, video_title: str) -> bool:
     """
-    Détermine si une question devrait automatiquement déclencher 
+    Détermine si une question devrait automatiquement déclencher
     un enrichissement Perplexity (pour Pro/Expert).
     """
     question_lower = question.lower()
-    
+
     # Mots-clés qui déclenchent l'enrichissement
     TRIGGER_KEYWORDS = [
         # Vérification
-        "vrai", "faux", "vérifier", "confirmer", "exact", "correct",
-        "true", "false", "verify", "confirm", "accurate",
+        "vrai",
+        "faux",
+        "vérifier",
+        "confirmer",
+        "exact",
+        "correct",
+        "true",
+        "false",
+        "verify",
+        "confirm",
+        "accurate",
         # Actualité
-        "actuel", "récent", "aujourd'hui", "maintenant", "dernière",
-        "current", "recent", "today", "now", "latest",
+        "actuel",
+        "récent",
+        "aujourd'hui",
+        "maintenant",
+        "dernière",
+        "current",
+        "recent",
+        "today",
+        "now",
+        "latest",
         # Sources
-        "source", "preuve", "étude", "recherche", "données",
-        "evidence", "study", "research", "data",
+        "source",
+        "preuve",
+        "étude",
+        "recherche",
+        "données",
+        "evidence",
+        "study",
+        "research",
+        "data",
         # Comparaison
-        "comparer", "différence", "alternative", "autre",
-        "compare", "difference", "alternative", "other",
+        "comparer",
+        "différence",
+        "alternative",
+        "autre",
+        "compare",
+        "difference",
+        "alternative",
+        "other",
         # Questions factuelles
-        "combien", "quand", "où", "qui a", "statistique",
-        "how many", "when", "where", "who", "statistic"
+        "combien",
+        "quand",
+        "où",
+        "qui a",
+        "statistique",
+        "how many",
+        "when",
+        "where",
+        "who",
+        "statistic",
     ]
-    
+
     # Vérifier si la question contient des mots-clés déclencheurs
     for keyword in TRIGGER_KEYWORDS:
         if keyword in question_lower:
             return True
-    
+
     # Questions longues et complexes méritent souvent un enrichissement
     if len(question.split()) > 15:
         return True
-    
+
     return False
 
 
@@ -1124,68 +1211,125 @@ def _needs_critical_fact_check(question: str) -> bool:
     """
     🆕 v5.0: Détecte les questions qui NÉCESSITENT une vérification factuelle.
     Ces questions concernent des faits vérifiables qui peuvent être FAUX dans la vidéo.
-    
+
     Exemples:
     - "Quand est sorti de prison X ?" → Date vérifiable
     - "Qui est le président actuel ?" → Fait actuel
     - "Quel est le prix de X aujourd'hui ?" → Donnée dynamique
     """
     question_lower = question.lower()
-    
+
     # 1. Questions sur des DATES spécifiques
     DATE_PATTERNS = [
-        "quand", "quelle date", "à quelle date", "depuis quand",
-        "when", "what date", "since when",
-        "en quelle année", "quel jour", "quel mois",
-        "date de", "jour de", "année de"
+        "quand",
+        "quelle date",
+        "à quelle date",
+        "depuis quand",
+        "when",
+        "what date",
+        "since when",
+        "en quelle année",
+        "quel jour",
+        "quel mois",
+        "date de",
+        "jour de",
+        "année de",
     ]
-    
+
     # 2. Questions sur des ÉVÉNEMENTS RÉCENTS (2024-2025)
     RECENT_EVENT_PATTERNS = [
-        "récemment", "dernièrement", "actuellement", "en ce moment",
-        "recently", "currently", "right now", "at the moment",
-        "2024", "2025", "cette année", "ce mois", "cette semaine",
-        "sorti de prison", "élu", "nommé", "décédé", "mort",
-        "démissionné", "arrêté", "condamné", "libéré"
+        "récemment",
+        "dernièrement",
+        "actuellement",
+        "en ce moment",
+        "recently",
+        "currently",
+        "right now",
+        "at the moment",
+        "2024",
+        "2025",
+        "cette année",
+        "ce mois",
+        "cette semaine",
+        "sorti de prison",
+        "élu",
+        "nommé",
+        "décédé",
+        "mort",
+        "démissionné",
+        "arrêté",
+        "condamné",
+        "libéré",
     ]
-    
+
     # 3. Questions sur des PERSONNES PUBLIQUES + faits vérifiables
     PERSON_FACT_PATTERNS = [
-        "est-il", "est-elle", "a-t-il", "a-t-elle",
-        "is he", "is she", "did he", "did she", "has he", "has she",
-        "où est", "où habite", "que fait", "que devient",
-        "where is", "what happened to"
+        "est-il",
+        "est-elle",
+        "a-t-il",
+        "a-t-elle",
+        "is he",
+        "is she",
+        "did he",
+        "did she",
+        "has he",
+        "has she",
+        "où est",
+        "où habite",
+        "que fait",
+        "que devient",
+        "where is",
+        "what happened to",
     ]
-    
+
     # 4. Questions sur des DONNÉES qui changent
     DYNAMIC_DATA_PATTERNS = [
-        "quel est le prix", "combien coûte", "quel est le score",
-        "what is the price", "how much", "what is the score",
-        "population", "taux", "pourcentage actuel",
-        "classement", "ranking", "position"
+        "quel est le prix",
+        "combien coûte",
+        "quel est le score",
+        "what is the price",
+        "how much",
+        "what is the score",
+        "population",
+        "taux",
+        "pourcentage actuel",
+        "classement",
+        "ranking",
+        "position",
     ]
-    
+
     # Vérifier chaque catégorie
     all_patterns = DATE_PATTERNS + RECENT_EVENT_PATTERNS + PERSON_FACT_PATTERNS + DYNAMIC_DATA_PATTERNS
-    
+
     for pattern in all_patterns:
         if pattern in question_lower:
             return True
-    
+
     # Détection de questions sur des personnes + événements
     # Ex: "Sarkozy prison" ou "Macron démission"
     FAMOUS_NAMES = [
-        "sarkozy", "macron", "trump", "biden", "poutine", "putin",
-        "musk", "zuckerberg", "bezos", "gates",
-        "mbappé", "mbappe", "messi", "ronaldo"
+        "sarkozy",
+        "macron",
+        "trump",
+        "biden",
+        "poutine",
+        "putin",
+        "musk",
+        "zuckerberg",
+        "bezos",
+        "gates",
+        "mbappé",
+        "mbappe",
+        "messi",
+        "ronaldo",
     ]
-    
+
     for name in FAMOUS_NAMES:
         if name in question_lower:
             # Si c'est une question sur une personne célèbre, vérifier
             if any(word in question_lower for word in ["quand", "when", "où", "where", "fait", "did"]):
                 return True
-    
+
     return False
 
 
@@ -1193,10 +1337,8 @@ def _needs_critical_fact_check(question: str) -> bool:
 # 🔍 PERPLEXITY (Recherche Web) - LEGACY + v4.0
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def check_web_search_quota(
-    session: AsyncSession,
-    user_id: int
-) -> Tuple[bool, int, int]:
+
+async def check_web_search_quota(session: AsyncSession, user_id: int) -> Tuple[bool, int, int]:
     """
     Vérifie le quota de recherche web.
     Retourne: (can_search, used, limit)
@@ -1213,69 +1355,49 @@ async def check_web_search_quota(
 
     plan = user.plan or "free"
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-    
+
     if not limits.get("web_search_enabled", False):
         return False, 0, 0
-    
+
     monthly_limit = limits.get("web_search_monthly", 0)
     if monthly_limit == -1:
         return True, 0, -1  # Illimité
-    
+
     # Vérifier l'usage ce mois
     month = date.today().strftime("%Y-%m")
     usage_result = await session.execute(
-        select(WebSearchUsage).where(
-            WebSearchUsage.user_id == user_id,
-            WebSearchUsage.month_year == month
-        )
+        select(WebSearchUsage).where(WebSearchUsage.user_id == user_id, WebSearchUsage.month_year == month)
     )
     usage = usage_result.scalar_one_or_none()
     used = usage.search_count if usage else 0
-    
+
     return used < monthly_limit, used, monthly_limit
 
 
 async def increment_web_search_usage(session: AsyncSession, user_id: int):
     """Incrémente le compteur de recherche web"""
     month = date.today().strftime("%Y-%m")
-    
+
     result = await session.execute(
-        select(WebSearchUsage).where(
-            WebSearchUsage.user_id == user_id,
-            WebSearchUsage.month_year == month
-        )
+        select(WebSearchUsage).where(WebSearchUsage.user_id == user_id, WebSearchUsage.month_year == month)
     )
     usage = result.scalar_one_or_none()
-    
+
     if usage:
         usage.search_count += 1
         usage.last_search_at = datetime.now()
     else:
-        usage = WebSearchUsage(
-            user_id=user_id,
-            month_year=month,
-            search_count=1,
-            last_search_at=datetime.now()
-        )
+        usage = WebSearchUsage(user_id=user_id, month_year=month, search_count=1, last_search_at=datetime.now())
         session.add(usage)
-    
+
     await session.commit()
 
 
-async def search_with_perplexity(
-    question: str,
-    context: str,
-    lang: str = "fr"
-) -> Optional[str]:
+async def search_with_perplexity(question: str, context: str, lang: str = "fr") -> Optional[str]:
     """Recherche web avec Brave+Mistral. Nom gardé pour compatibilité avec chat/router.py."""
     try:
         result = await web_search_and_synthesize(
-            query=question,
-            context=context[:2000],
-            purpose="chat",
-            lang=lang,
-            max_sources=5,
-            max_tokens=2500
+            query=question, context=context[:2000], purpose="chat", lang=lang, max_sources=5, max_tokens=2500
         )
         if result.success:
             return result.content
@@ -1289,17 +1411,18 @@ async def search_with_perplexity(
 # 🎯 FONCTION PRINCIPALE DE CHAT v4.0
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def process_chat_message_v4(
     session: AsyncSession,
     user_id: int,
     summary_id: int,
     question: str,
     web_search: bool = False,
-    mode: str = "standard"
+    mode: str = "standard",
 ) -> Dict[str, Any]:
     """
     🆕 v4.0: Traite un message chat avec enrichissement progressif.
-    
+
     Returns:
         {
             "response": str,
@@ -1318,9 +1441,9 @@ async def process_chat_message_v4(
             "sources": [],
             "enrichment_level": "none",
             "quota_info": quota_info,
-            "error": reason
+            "error": reason,
         }
-    
+
     # 2. Récupérer le résumé et le contexte
     result = await session.execute(select(Summary).where(Summary.id == summary_id, Summary.user_id == user_id))
     summary = result.scalar_one_or_none()
@@ -1332,14 +1455,14 @@ async def process_chat_message_v4(
             "sources": [],
             "enrichment_level": "none",
             "quota_info": quota_info,
-            "error": "summary_not_found"
+            "error": "summary_not_found",
         }
-    
+
     # 3. Récupérer l'utilisateur pour le plan
     user_result = await session.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     user_plan = user.plan if user else "free"
-    
+
     # 4. Récupérer l'historique
     chat_history = await get_chat_history(session, summary_id, user_id, limit=10)
 
@@ -1350,19 +1473,26 @@ async def process_chat_message_v4(
     # 5.5 🆕 Assembler le contexte riche (transcript complet + fact-check + enrichment)
     try:
         from chat.context_builder import build_rich_context
+
         rich_ctx = await build_rich_context(summary, session, include_transcript=True, include_academic=True)
 
         # 🆕 v5.3: Per-question chunk search pour MEDIUM, LONG, EXTENDED, MARATHON
         # Les vidéos MICRO/SHORT utilisent le transcript complet tel quel
         if rich_ctx.video_tier in ("medium", "long", "extended", "marathon") and rich_ctx.full_transcript:
             enriched_transcript = rich_ctx.search_relevant_passages(question, lang=summary.lang or "fr")
-            print(f"🔍 [CHAT v5.3] Per-question chunk search for {rich_ctx.video_tier.upper()} video: {len(enriched_transcript)} chars", flush=True)
+            print(
+                f"🔍 [CHAT v5.3] Per-question chunk search for {rich_ctx.video_tier.upper()} video: {len(enriched_transcript)} chars",
+                flush=True,
+            )
         else:
             enriched_transcript = rich_ctx.transcript or summary.transcript_context or ""
 
         # Assembler un contexte étendu pour le summary (analyse + digest + fact-check + enrichment)
         enriched_summary = rich_ctx.format_for_chat(language=summary.lang or "fr", mode=mode)
-        print(f"🧠 [CHAT v5.2] Rich context: tier={rich_ctx.video_tier}, transcript={rich_ctx.transcript_strategy} ({len(enriched_transcript)} chars), context={len(enriched_summary)} chars", flush=True)
+        print(
+            f"🧠 [CHAT v5.2] Rich context: tier={rich_ctx.video_tier}, transcript={rich_ctx.transcript_strategy} ({len(enriched_transcript)} chars), context={len(enriched_summary)} chars",
+            flush=True,
+        )
     except Exception as e:
         print(f"⚠️ [CHAT v5.1] Rich context fallback: {e}", flush=True)
         enriched_transcript = summary.transcript_context or ""
@@ -1380,25 +1510,29 @@ async def process_chat_message_v4(
         lang=summary.lang or "fr",
         model=model,
         web_search_requested=web_search,
-        video_upload_date=summary.video_upload_date or ""
+        video_upload_date=summary.video_upload_date or "",
     )
-    
+
     # 7. Déterminer le niveau d'enrichissement AVANT de sauvegarder
     enrichment_level = "none"
     if ENRICHMENT_AVAILABLE:
         level = get_enrichment_level(user_plan)
         enrichment_level = level.value
-    
+
     # 8. Sauvegarder les messages avec métadonnées v5.0
     await save_chat_message(session, user_id, summary_id, "user", question)
     await save_chat_message(
-        session, user_id, summary_id, "assistant", response,
+        session,
+        user_id,
+        summary_id,
+        "assistant",
+        response,
         web_search_used=web_search_used,
         fact_checked=web_search_used and len(sources) > 0,
         sources=sources,
-        enrichment_level=enrichment_level if ENRICHMENT_AVAILABLE else None
+        enrichment_level=enrichment_level if ENRICHMENT_AVAILABLE else None,
     )
-    
+
     # 9. Incrémenter les quotas
     await increment_chat_quota(session, user_id)
     if web_search_used:
@@ -1422,5 +1556,5 @@ async def process_chat_message_v4(
         "web_search_used": web_search_used,
         "sources": sources,
         "enrichment_level": enrichment_level,
-        "quota_info": quota_info
+        "quota_info": quota_info,
     }

@@ -108,13 +108,21 @@ def _extract_frames_sync(video_data: bytes, video_id: str) -> list[bytes]:
 
         # Méthode 1: Détection de changement de scène (idéal pour slides)
         cmd = [
-            "ffmpeg", "-i", str(video_path),
-            "-vf", "select=gt(scene\\,0.25),scale=1024:-1",
-            "-vsync", "vfr",
-            "-q:v", "4",
-            "-frames:v", str(MAX_FRAMES),
+            "ffmpeg",
+            "-i",
+            str(video_path),
+            "-vf",
+            "select=gt(scene\\,0.25),scale=1024:-1",
+            "-vsync",
+            "vfr",
+            "-q:v",
+            "4",
+            "-frames:v",
+            str(MAX_FRAMES),
             output_pattern,
-            "-y", "-loglevel", "error",
+            "-y",
+            "-loglevel",
+            "error",
         ]
 
         try:
@@ -134,12 +142,19 @@ def _extract_frames_sync(video_data: bytes, video_id: str) -> list[bytes]:
         if len(frame_files) < 2:
             output_pattern2 = str(Path(tmpdir) / "fallback_%03d.jpg")
             cmd2 = [
-                "ffmpeg", "-i", str(video_path),
-                "-vf", "fps=0.5,scale=1024:-1",
-                "-q:v", "4",
-                "-frames:v", str(MAX_FRAMES),
+                "ffmpeg",
+                "-i",
+                str(video_path),
+                "-vf",
+                "fps=0.5,scale=1024:-1",
+                "-q:v",
+                "4",
+                "-frames:v",
+                str(MAX_FRAMES),
                 output_pattern2,
-                "-y", "-loglevel", "error",
+                "-y",
+                "-loglevel",
+                "error",
             ]
             try:
                 subprocess.run(cmd2, capture_output=True, text=True, timeout=30)
@@ -171,25 +186,29 @@ async def _call_pixtral_ocr(
     # Construire le message multimodal (images + instruction)
     content = []
     for i, b64 in enumerate(frames_b64):
-        content.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
-        })
+        content.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+            }
+        )
 
-    content.append({
-        "type": "text",
-        "text": (
-            "Ces images sont les slides d'un TikTok (carrousel d'images). "
-            "Pour chaque slide, extrais TOUT le texte visible exactement comme écrit. "
-            "Puis donne une synthèse du message global de ce TikTok.\n\n"
-            "Format de réponse:\n"
-            "SLIDE 1:\n[texte exact de la slide]\n\n"
-            "SLIDE 2:\n[texte exact de la slide]\n\n"
-            "...\n\n"
-            "SYNTHÈSE:\n[résumé du message global en 2-3 phrases]\n\n"
-            "Réponds dans la langue du texte sur les slides."
-        ),
-    })
+    content.append(
+        {
+            "type": "text",
+            "text": (
+                "Ces images sont les slides d'un TikTok (carrousel d'images). "
+                "Pour chaque slide, extrais TOUT le texte visible exactement comme écrit. "
+                "Puis donne une synthèse du message global de ce TikTok.\n\n"
+                "Format de réponse:\n"
+                "SLIDE 1:\n[texte exact de la slide]\n\n"
+                "SLIDE 2:\n[texte exact de la slide]\n\n"
+                "...\n\n"
+                "SYNTHÈSE:\n[résumé du message global en 2-3 phrases]\n\n"
+                "Réponds dans la langue du texte sur les slides."
+            ),
+        }
+    )
 
     # Fallback chain: essayer chaque modèle en séquence
     for model in PIXTRAL_MODELS:
@@ -215,10 +234,7 @@ async def _call_pixtral_ocr(
                     logger.warning(f"[VISUAL_OCR] {model} rate-limited, trying next...")
                     continue
                 if response.status_code != 200:
-                    logger.error(
-                        f"[VISUAL_OCR] {model} API error {response.status_code}: "
-                        f"{response.text[:300]}"
-                    )
+                    logger.error(f"[VISUAL_OCR] {model} API error {response.status_code}: {response.text[:300]}")
                     continue
 
                 result = response.json()
@@ -226,10 +242,7 @@ async def _call_pixtral_ocr(
 
                 lang = _detect_lang_simple(text)
 
-                logger.info(
-                    f"[VISUAL_OCR] {model} response for {video_id}: "
-                    f"{len(text)} chars, detected_lang={lang}"
-                )
+                logger.info(f"[VISUAL_OCR] {model} response for {video_id}: {len(text)} chars, detected_lang={lang}")
                 return text, lang
 
         except httpx.TimeoutException:

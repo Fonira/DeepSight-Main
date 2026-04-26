@@ -16,14 +16,19 @@ from typing import Dict, List
 from fastapi import APIRouter, HTTPException, Request
 
 from .schemas import (
-    DemoAnalyzeRequest, DemoAnalyzeResponse,
-    DemoChatRequest, DemoChatResponse,
+    DemoAnalyzeRequest,
+    DemoAnalyzeResponse,
+    DemoChatRequest,
+    DemoChatResponse,
 )
 from .service import (
-    generate_demo_summary, generate_demo_chat_response,
+    generate_demo_summary,
+    generate_demo_chat_response,
     generate_demo_suggestions,
-    store_demo_session, get_demo_session,
-    increment_demo_chat, append_demo_chat_history,
+    store_demo_session,
+    get_demo_session,
+    increment_demo_chat,
+    append_demo_chat_history,
     MAX_DEMO_CHAT_MESSAGES,
 )
 
@@ -40,9 +45,8 @@ _demo_usage: Dict[str, List[float]] = {}
 
 # Whitelisted IPs bypass demo rate limits (env: DEMO_WHITELIST_IPS, comma-separated)
 import os
-_WHITELIST_IPS: set = set(
-    ip.strip() for ip in os.environ.get("DEMO_WHITELIST_IPS", "").split(",") if ip.strip()
-)
+
+_WHITELIST_IPS: set = set(ip.strip() for ip in os.environ.get("DEMO_WHITELIST_IPS", "").split(",") if ip.strip())
 
 
 def _get_client_ip(request: Request) -> str:
@@ -80,10 +84,7 @@ def _record_usage(client_ip: str) -> int:
     _demo_usage[client_ip].append(now)
 
     # Cleanup old IPs (avoid memory leak)
-    expired_ips = [
-        ip for ip, timestamps in _demo_usage.items()
-        if all(now - ts > 86400 for ts in timestamps)
-    ]
+    expired_ips = [ip for ip, timestamps in _demo_usage.items() if all(now - ts > 86400 for ts in timestamps)]
     for ip in expired_ips:
         del _demo_usage[ip]
 
@@ -93,6 +94,7 @@ def _record_usage(client_ip: str) -> int:
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /api/demo/analyze — Ultra-short demo analysis
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/analyze", response_model=DemoAnalyzeResponse)
 async def demo_analyze(request: DemoAnalyzeRequest, raw_request: Request):
@@ -115,17 +117,13 @@ async def demo_analyze(request: DemoAnalyzeRequest, raw_request: Request):
                 "error": {
                     "code": "RATE_LIMITED",
                     "message": "Vous avez utilise vos 3 analyses gratuites. Creez un compte pour continuer !",
-                }
-            }
+                },
+            },
         )
 
     # 2. Import video utilities (same as guest endpoint)
-    from transcripts import (
-        extract_video_id, get_video_info, get_transcript_with_timestamps
-    )
-    from transcripts.tiktok import (
-        extract_tiktok_video_id, get_tiktok_video_info, get_tiktok_transcript
-    )
+    from transcripts import extract_video_id, get_video_info, get_transcript_with_timestamps
+    from transcripts.tiktok import extract_tiktok_video_id, get_tiktok_video_info, get_tiktok_transcript
     from videos.analysis import detect_category
 
     MAX_VIDEO_DURATION = 300  # 5 minutes
@@ -154,7 +152,7 @@ async def demo_analyze(request: DemoAnalyzeRequest, raw_request: Request):
         if duration > MAX_VIDEO_DURATION:
             raise HTTPException(
                 status_code=400,
-                detail=f"La demo est limitee aux videos de moins de 5 minutes. Cette video dure {duration // 60}:{duration % 60:02d}."
+                detail=f"La demo est limitee aux videos de moins de 5 minutes. Cette video dure {duration // 60}:{duration % 60:02d}.",
             )
 
         try:
@@ -178,7 +176,7 @@ async def demo_analyze(request: DemoAnalyzeRequest, raw_request: Request):
         if duration > MAX_VIDEO_DURATION:
             raise HTTPException(
                 status_code=400,
-                detail=f"La demo est limitee aux videos de moins de 5 minutes. Cette video dure {duration // 60}:{duration % 60:02d}."
+                detail=f"La demo est limitee aux videos de moins de 5 minutes. Cette video dure {duration // 60}:{duration % 60:02d}.",
             )
 
         is_short = "/shorts/" in url or duration <= 90
@@ -229,7 +227,9 @@ async def demo_analyze(request: DemoAnalyzeRequest, raw_request: Request):
     # 9. Record usage
     analyses_remaining = _record_usage(client_ip)
 
-    logger.info(f"[DEMO] Analysis complete for IP {client_ip[:10]}... | session={demo_session_id[:8]} | remaining={analyses_remaining}")
+    logger.info(
+        f"[DEMO] Analysis complete for IP {client_ip[:10]}... | session={demo_session_id[:8]} | remaining={analyses_remaining}"
+    )
 
     return DemoAnalyzeResponse(
         demo_session_id=demo_session_id,
@@ -251,6 +251,7 @@ async def demo_analyze(request: DemoAnalyzeRequest, raw_request: Request):
 # POST /api/demo/chat — Demo chat (3 messages max)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/chat", response_model=DemoChatResponse)
 async def demo_chat(request: DemoChatRequest):
     """
@@ -269,8 +270,8 @@ async def demo_chat(request: DemoChatRequest):
                 "error": {
                     "code": "SESSION_EXPIRED",
                     "message": "Session demo expiree. Relancez une analyse.",
-                }
-            }
+                },
+            },
         )
 
     # 2. Check chat limit
@@ -283,8 +284,8 @@ async def demo_chat(request: DemoChatRequest):
                 "error": {
                     "code": "DEMO_CHAT_LIMIT",
                     "message": "Vous avez utilise vos 3 questions demo. Creez un compte pour un chat illimite !",
-                }
-            }
+                },
+            },
         )
 
     # 3. Store user message
@@ -314,6 +315,7 @@ async def demo_chat(request: DemoChatRequest):
 # POST /api/demo/suggestions — Pre-filled question chips
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/suggestions/{demo_session_id}")
 async def get_demo_suggestions(demo_session_id: str):
     """
@@ -325,6 +327,7 @@ async def get_demo_suggestions(demo_session_id: str):
         raise HTTPException(status_code=404, detail="Session demo expiree.")
 
     import json
+
     key_points = json.loads(session_data.get("key_points", "[]"))
     conclusion = session_data.get("conclusion", "")
 

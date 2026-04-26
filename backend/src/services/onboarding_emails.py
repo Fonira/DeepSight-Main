@@ -55,9 +55,7 @@ class OnboardingEmailLog(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, nullable=False, index=True)
-    email_key = Column(
-        String(20), nullable=False
-    )  # "j1", "j3", "j5", "j7", "j10", "j14"
+    email_key = Column(String(20), nullable=False)  # "j1", "j3", "j5", "j7", "j10", "j14"
     sent_at = Column(DateTime, default=func.now())
 
 
@@ -65,24 +63,14 @@ async def _ensure_table_exists(db: AsyncSession) -> None:
     """Cree la table onboarding_email_log si elle n'existe pas."""
     try:
         conn = await db.connection()
-        await conn.run_sync(
-            lambda sync_conn: OnboardingEmailLog.__table__.create(
-                sync_conn, checkfirst=True
-            )
-        )
+        await conn.run_sync(lambda sync_conn: OnboardingEmailLog.__table__.create(sync_conn, checkfirst=True))
     except Exception as e:
-        logger.warning(
-            "Could not ensure onboarding_email_log table", extra={"error": str(e)}
-        )
+        logger.warning("Could not ensure onboarding_email_log table", extra={"error": str(e)})
 
 
 async def _get_sent_keys(db: AsyncSession, user_id: int) -> set[str]:
     """Retourne les cles d'emails onboarding deja envoyes pour un user."""
-    result = await db.execute(
-        select(OnboardingEmailLog.email_key).where(
-            OnboardingEmailLog.user_id == user_id
-        )
-    )
+    result = await db.execute(select(OnboardingEmailLog.email_key).where(OnboardingEmailLog.user_id == user_id))
     return {row[0] for row in result.fetchall()}
 
 
@@ -324,9 +312,7 @@ async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
 
         except Exception as e:
             stats["errors"] += 1
-            logger.error(
-                "Onboarding email error", extra={"user_id": user.id, "error": str(e)}
-            )
+            logger.error("Onboarding email error", extra={"user_id": user.id, "error": str(e)})
 
     # Commit final unique
     try:

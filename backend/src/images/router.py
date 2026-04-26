@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, field_validator
 
-from auth.dependencies import get_current_admin, get_current_user
+from auth.dependencies import get_current_admin
 from auth.dependencies import require_plan
 from core.config import get_mistral_key
 from db.database import User
@@ -47,6 +47,7 @@ class GenerateRequest(BaseModel):
 
 
 # ─── Public endpoints ────────────────────────────────────────────────────────
+
 
 @router.get("/keyword/{term}", response_model=ImageResponse)
 async def get_keyword_image(term: str):
@@ -81,6 +82,7 @@ async def serve_local_image(filename: str):
 
 # ─── Admin endpoints ────────────────────────────────────────────────────────
 
+
 @router.post("/generate", response_model=dict)
 async def trigger_generate(
     request: GenerateRequest,
@@ -90,7 +92,10 @@ async def trigger_generate(
     from images.keyword_images import generate_keyword_image
 
     url = await generate_keyword_image(
-        request.term, request.definition, request.category, premium=False,
+        request.term,
+        request.definition,
+        request.category,
+        premium=False,
     )
     return {
         "term": request.term,
@@ -109,26 +114,106 @@ async def trigger_seed(
 
     # Default words to seed (curated concepts for "Le Saviez-Vous")
     SEED_WORDS = [
-        {"term": "Effet Dunning-Kruger", "definition": "Biais cognitif où les personnes peu compétentes surestiment leurs capacités, tandis que les experts sous-estiment les leurs.", "category": "cognitive_bias"},
-        {"term": "Biais de confirmation", "definition": "Tendance à rechercher et interpréter les informations de manière à confirmer ses croyances préexistantes.", "category": "cognitive_bias"},
-        {"term": "Effet de halo", "definition": "Biais cognitif où l'impression positive sur un trait influence le jugement sur d'autres traits non liés.", "category": "cognitive_bias"},
-        {"term": "Dissonance cognitive", "definition": "Tension mentale ressentie lorsqu'on maintient simultanément deux croyances contradictoires.", "category": "psychology"},
-        {"term": "Rasoir d'Ockham", "definition": "Principe selon lequel l'explication la plus simple est généralement la meilleure.", "category": "philosophy"},
-        {"term": "Effet Streisand", "definition": "Phénomène où tenter de cacher une information la rend paradoxalement plus visible.", "category": "culture"},
-        {"term": "Paradoxe de Fermi", "definition": "Contradiction entre la haute probabilité d'existence de civilisations extraterrestres et l'absence de preuves.", "category": "science"},
-        {"term": "Biais d'ancrage", "definition": "Tendance à s'appuyer excessivement sur la première information reçue pour prendre une décision.", "category": "cognitive_bias"},
-        {"term": "Effet Pygmalion", "definition": "Phénomène où les attentes élevées envers quelqu'un améliorent effectivement ses performances.", "category": "psychology"},
-        {"term": "Loi de Goodhart", "definition": "Quand une mesure devient un objectif, elle cesse d'être une bonne mesure.", "category": "economics"},
-        {"term": "Sophisme du survivant", "definition": "Erreur logique consistant à ne considérer que les succès visibles en ignorant les échecs invisibles.", "category": "cognitive_bias"},
-        {"term": "Effet Mandela", "definition": "Phénomène de faux souvenirs partagés par un grand nombre de personnes.", "category": "psychology"},
-        {"term": "Paradoxe de Simpson", "definition": "Phénomène statistique où une tendance présente dans des groupes séparés s'inverse quand on les combine.", "category": "science"},
-        {"term": "Fenêtre d'Overton", "definition": "Gamme d'idées politiques considérées comme acceptables par le public à un moment donné.", "category": "culture"},
-        {"term": "Effet Barnum", "definition": "Tendance à accepter des descriptions vagues comme spécifiquement applicables à soi-même.", "category": "psychology"},
-        {"term": "Loi de Conway", "definition": "Les organisations conçoivent des systèmes qui reflètent leur propre structure de communication.", "category": "technology"},
-        {"term": "Paradoxe de Moravec", "definition": "En IA, les tâches faciles pour les humains sont difficiles pour les machines, et inversement.", "category": "technology"},
-        {"term": "Effet IKEA", "definition": "Tendance à accorder plus de valeur aux choses qu'on a partiellement créées soi-même.", "category": "psychology"},
-        {"term": "Tragédie des communs", "definition": "Situation où des individus agissant dans leur intérêt propre épuisent une ressource partagée.", "category": "economics"},
-        {"term": "Chambre d'écho", "definition": "Environnement où les opinions sont amplifiées par répétition au sein d'un système fermé.", "category": "culture"},
+        {
+            "term": "Effet Dunning-Kruger",
+            "definition": "Biais cognitif où les personnes peu compétentes surestiment leurs capacités, tandis que les experts sous-estiment les leurs.",
+            "category": "cognitive_bias",
+        },
+        {
+            "term": "Biais de confirmation",
+            "definition": "Tendance à rechercher et interpréter les informations de manière à confirmer ses croyances préexistantes.",
+            "category": "cognitive_bias",
+        },
+        {
+            "term": "Effet de halo",
+            "definition": "Biais cognitif où l'impression positive sur un trait influence le jugement sur d'autres traits non liés.",
+            "category": "cognitive_bias",
+        },
+        {
+            "term": "Dissonance cognitive",
+            "definition": "Tension mentale ressentie lorsqu'on maintient simultanément deux croyances contradictoires.",
+            "category": "psychology",
+        },
+        {
+            "term": "Rasoir d'Ockham",
+            "definition": "Principe selon lequel l'explication la plus simple est généralement la meilleure.",
+            "category": "philosophy",
+        },
+        {
+            "term": "Effet Streisand",
+            "definition": "Phénomène où tenter de cacher une information la rend paradoxalement plus visible.",
+            "category": "culture",
+        },
+        {
+            "term": "Paradoxe de Fermi",
+            "definition": "Contradiction entre la haute probabilité d'existence de civilisations extraterrestres et l'absence de preuves.",
+            "category": "science",
+        },
+        {
+            "term": "Biais d'ancrage",
+            "definition": "Tendance à s'appuyer excessivement sur la première information reçue pour prendre une décision.",
+            "category": "cognitive_bias",
+        },
+        {
+            "term": "Effet Pygmalion",
+            "definition": "Phénomène où les attentes élevées envers quelqu'un améliorent effectivement ses performances.",
+            "category": "psychology",
+        },
+        {
+            "term": "Loi de Goodhart",
+            "definition": "Quand une mesure devient un objectif, elle cesse d'être une bonne mesure.",
+            "category": "economics",
+        },
+        {
+            "term": "Sophisme du survivant",
+            "definition": "Erreur logique consistant à ne considérer que les succès visibles en ignorant les échecs invisibles.",
+            "category": "cognitive_bias",
+        },
+        {
+            "term": "Effet Mandela",
+            "definition": "Phénomène de faux souvenirs partagés par un grand nombre de personnes.",
+            "category": "psychology",
+        },
+        {
+            "term": "Paradoxe de Simpson",
+            "definition": "Phénomène statistique où une tendance présente dans des groupes séparés s'inverse quand on les combine.",
+            "category": "science",
+        },
+        {
+            "term": "Fenêtre d'Overton",
+            "definition": "Gamme d'idées politiques considérées comme acceptables par le public à un moment donné.",
+            "category": "culture",
+        },
+        {
+            "term": "Effet Barnum",
+            "definition": "Tendance à accepter des descriptions vagues comme spécifiquement applicables à soi-même.",
+            "category": "psychology",
+        },
+        {
+            "term": "Loi de Conway",
+            "definition": "Les organisations conçoivent des systèmes qui reflètent leur propre structure de communication.",
+            "category": "technology",
+        },
+        {
+            "term": "Paradoxe de Moravec",
+            "definition": "En IA, les tâches faciles pour les humains sont difficiles pour les machines, et inversement.",
+            "category": "technology",
+        },
+        {
+            "term": "Effet IKEA",
+            "definition": "Tendance à accorder plus de valeur aux choses qu'on a partiellement créées soi-même.",
+            "category": "psychology",
+        },
+        {
+            "term": "Tragédie des communs",
+            "definition": "Situation où des individus agissant dans leur intérêt propre épuisent une ressource partagée.",
+            "category": "economics",
+        },
+        {
+            "term": "Chambre d'écho",
+            "definition": "Environnement où les opinions sont amplifiées par répétition au sein d'un système fermé.",
+            "category": "culture",
+        },
     ]
 
     results = []
@@ -136,7 +221,9 @@ async def trigger_seed(
     for word in SEED_WORDS[:count]:
         logger.info(f"🌱 Seed: generating '{word['term']}'...")
         url = await generate_keyword_image(
-            word["term"], word["definition"], word.get("category", "misc"),
+            word["term"],
+            word["definition"],
+            word.get("category", "misc"),
             premium=False,
         )
         status = "ready" if url else "failed"
@@ -188,6 +275,7 @@ MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 class ScreenshotDetectRequest(BaseModel):
     """Body pour POST /detect."""
+
     image_base64: Optional[str] = None
     image_url: Optional[str] = None
 
@@ -201,6 +289,7 @@ class ScreenshotDetectRequest(BaseModel):
 
 class DetectedVideo(BaseModel):
     """Vidéo détectée dans le screenshot."""
+
     platform: str
     video_url: Optional[str] = None
     video_title: Optional[str] = None
@@ -211,6 +300,7 @@ class DetectedVideo(BaseModel):
 
 class ScreenshotDetectResponse(BaseModel):
     """Réponse de POST /detect."""
+
     detected: bool
     video: Optional[DetectedVideo] = None
     searched_url: Optional[str] = None
@@ -224,6 +314,7 @@ class SupportedPlatform(BaseModel):
 
 class ScreenshotSupportedResponse(BaseModel):
     """Réponse de GET /supported."""
+
     platforms: List[SupportedPlatform]
     max_image_size_mb: int
     supported_formats: List[str]
@@ -232,6 +323,7 @@ class ScreenshotSupportedResponse(BaseModel):
 
 class _ImageData:
     """Objet minimal compatible avec detect_video_screenshot(image=...)."""
+
     def __init__(self, data: str, mime_type: str) -> None:
         self.data = data
         self.mime_type = mime_type
@@ -257,7 +349,7 @@ async def _download_image(url: str) -> tuple[str, str]:
     if len(resp.content) > MAX_IMAGE_SIZE_BYTES:
         raise HTTPException(
             400,
-            f"Image too large ({len(resp.content) // (1024*1024)}MB). Max {MAX_IMAGE_SIZE_BYTES // (1024*1024)}MB.",
+            f"Image too large ({len(resp.content) // (1024 * 1024)}MB). Max {MAX_IMAGE_SIZE_BYTES // (1024 * 1024)}MB.",
         )
 
     b64 = base64.b64encode(resp.content).decode("ascii")
@@ -316,9 +408,7 @@ async def detect_screenshot(
     result = await detect_video_screenshot(image, api_key)
 
     # --- Step 2 : Vision fallback si OCR échoue ou garbage ---
-    if result is None or (
-        result.get("search_query") and is_garbage_query(result["search_query"])
-    ):
+    if result is None or (result.get("search_query") and is_garbage_query(result["search_query"])):
         platform_hint = (result or {}).get("platform", "youtube")
         vision_result = await detect_video_screenshot_vision(image, api_key, platform_hint)
         if vision_result:
@@ -332,7 +422,8 @@ async def detect_screenshot(
     searched_url: Optional[str] = None
     if not result.get("video_url") and result.get("search_query"):
         searched_url = await search_video_from_screenshot(
-            result["search_query"], result["platform"],
+            result["search_query"],
+            result["platform"],
         )
 
     confidence = _compute_confidence(result)
@@ -348,7 +439,10 @@ async def detect_screenshot(
 
     logger.info(
         "[SCREENSHOT] User %s detected %s video (confidence=%s, method=%s)",
-        user.id, result["platform"], confidence, method,
+        user.id,
+        result["platform"],
+        confidence,
+        method,
     )
 
     return ScreenshotDetectResponse(

@@ -7,14 +7,11 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import httpx
 import json
 import re
 import asyncio
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 from dataclasses import dataclass, asdict
-from datetime import datetime
-import os
 
 from core.config import get_mistral_key
 from core.config import MISTRAL_INTERNAL_MODEL
@@ -25,9 +22,11 @@ from core.http_client import shared_http_client
 # 📋 TYPES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class EnrichedDefinition:
     """Définition enrichie d'un concept"""
+
     term: str
     definition: str
     category: str  # 'person', 'company', 'technology', 'concept', 'event', 'place', 'other'
@@ -46,48 +45,38 @@ class EnrichedDefinition:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 CATEGORIES = {
-    'person': {
-        'fr': 'Personnes',
-        'en': 'People',
-        'icon': '👤',
-        'keywords': ['ceo', 'fondateur', 'président', 'ministre', 'auteur', 'scientifique']
+    "person": {
+        "fr": "Personnes",
+        "en": "People",
+        "icon": "👤",
+        "keywords": ["ceo", "fondateur", "président", "ministre", "auteur", "scientifique"],
     },
-    'company': {
-        'fr': 'Entreprises',
-        'en': 'Companies', 
-        'icon': '🏢',
-        'keywords': ['entreprise', 'société', 'startup', 'groupe', 'organisation']
+    "company": {
+        "fr": "Entreprises",
+        "en": "Companies",
+        "icon": "🏢",
+        "keywords": ["entreprise", "société", "startup", "groupe", "organisation"],
     },
-    'technology': {
-        'fr': 'Technologies',
-        'en': 'Technologies',
-        'icon': '⚡',
-        'keywords': ['ia', 'ai', 'logiciel', 'algorithme', 'framework', 'api', 'machine learning']
+    "technology": {
+        "fr": "Technologies",
+        "en": "Technologies",
+        "icon": "⚡",
+        "keywords": ["ia", "ai", "logiciel", "algorithme", "framework", "api", "machine learning"],
     },
-    'concept': {
-        'fr': 'Concepts',
-        'en': 'Concepts',
-        'icon': '💡',
-        'keywords': ['théorie', 'méthode', 'principe', 'stratégie', 'approche']
+    "concept": {
+        "fr": "Concepts",
+        "en": "Concepts",
+        "icon": "💡",
+        "keywords": ["théorie", "méthode", "principe", "stratégie", "approche"],
     },
-    'event': {
-        'fr': 'Événements',
-        'en': 'Events',
-        'icon': '📅',
-        'keywords': ['guerre', 'élection', 'crise', 'sommet', 'accord']
+    "event": {
+        "fr": "Événements",
+        "en": "Events",
+        "icon": "📅",
+        "keywords": ["guerre", "élection", "crise", "sommet", "accord"],
     },
-    'place': {
-        'fr': 'Lieux',
-        'en': 'Places',
-        'icon': '📍',
-        'keywords': ['pays', 'ville', 'région', 'continent']
-    },
-    'other': {
-        'fr': 'Autres',
-        'en': 'Others',
-        'icon': '📌',
-        'keywords': []
-    }
+    "place": {"fr": "Lieux", "en": "Places", "icon": "📍", "keywords": ["pays", "ville", "région", "continent"]},
+    "other": {"fr": "Autres", "en": "Others", "icon": "📌", "keywords": []},
 }
 
 
@@ -95,10 +84,9 @@ CATEGORIES = {
 # 🤖 MISTRAL - Catégorisation rapide
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def categorize_with_mistral(
-    terms: List[str],
-    context: str = "",
-    language: str = "fr"
+    terms: List[str], context: str = "", language: str = "fr"
 ) -> Dict[str, Dict[str, Any]]:
     """
     Utilise Mistral pour catégoriser rapidement les termes.
@@ -107,9 +95,9 @@ async def categorize_with_mistral(
     api_key = get_mistral_key()
     if not api_key or not terms:
         return {}
-    
+
     terms = terms[:30]  # Augmenté de 20 → 30 (Ministral 8B quasi gratuit)
-    
+
     prompt = f"""Tu es un assistant expert en analyse de contenu. Catégorise chaque terme et donne une définition TRÈS COURTE (max 30 mots) UNIQUEMENT si tu es CERTAIN.
 
 ⚠️ RÈGLES ANTI-HALLUCINATION:
@@ -155,36 +143,31 @@ IMPORTANT: JSON uniquement, pas de texte avant/après. Préférer null à l'ince
         async with shared_http_client() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": MISTRAL_INTERNAL_MODEL,
-                    "messages": [
-                        {"role": "user", "content": prompt}
-                    ],
+                    "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 3000,
-                    "temperature": 0.1
-                }
+                    "temperature": 0.1,
+                },
             )
-            
+
             if response.status_code != 200:
                 print(f"❌ [Mistral] Error: {response.status_code}")
                 return {}
-            
+
             data = response.json()
             content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            
+
             # Nettoyer le JSON
             content = content.strip()
             if content.startswith("```"):
-                content = re.sub(r'^```\w*\n?', '', content)
-                content = re.sub(r'\n?```$', '', content)
-            
+                content = re.sub(r"^```\w*\n?", "", content)
+                content = re.sub(r"\n?```$", "", content)
+
             parsed = json.loads(content)
             results = parsed.get("results", [])
-            
+
             # Construire le dictionnaire
             output = {}
             for item in results:
@@ -196,12 +179,12 @@ IMPORTANT: JSON uniquement, pas de texte avant/après. Préférer null à l'ince
                         "definition": item.get("definition", ""),
                         "relevance": item.get("relevance", ""),
                         "wiki_url": item.get("wiki_url"),
-                        "source": "mistral"
+                        "source": "mistral",
                     }
-            
+
             print(f"✅ [Mistral] Categorized {len(output)} terms")
             return output
-            
+
     except Exception as e:
         print(f"❌ [Mistral] Error: {e}")
         return {}
@@ -211,20 +194,20 @@ IMPORTANT: JSON uniquement, pas de texte avant/après. Préférer null à l'ince
 # 🔍 PERPLEXITY - Définitions web enrichies
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def enrich_with_perplexity(
-    terms: List[str],
-    context: str = "",
-    language: str = "fr"
+    terms: List[str], context: str = "", language: str = "fr"
 ) -> Dict[str, Dict[str, Any]]:
     """
     Utilise Perplexity pour enrichir les définitions avec des sources web.
     """
     from core.config import is_web_search_available
+
     if not is_web_search_available() or not terms:
         return {}
 
     terms = terms[:20]
-    
+
     prompt = f"""Tu es un assistant de recherche. Pour chaque terme, donne UNIQUEMENT des informations VÉRIFIABLES:
 1. Une définition FACTUELLE et PRÉCISE (2-3 phrases max)
 2. Le contexte de pourquoi c'est pertinent
@@ -267,13 +250,14 @@ IMPORTANT:
 
     try:
         from videos.web_search_provider import web_search_and_synthesize
+
         result = await web_search_and_synthesize(
             query=prompt,
             context="Définitions de concepts pour analyse vidéo",
             purpose="enrichment",
             lang="fr",
             max_sources=5,
-            max_tokens=3500
+            max_tokens=3500,
         )
 
         if not result.success:
@@ -286,8 +270,8 @@ IMPORTANT:
         # Nettoyer le JSON
         content = content.strip()
         if content.startswith("```"):
-            content = re.sub(r'^```\w*\n?', '', content)
-            content = re.sub(r'\n?```$', '', content)
+            content = re.sub(r"^```\w*\n?", "", content)
+            content = re.sub(r"\n?```$", "", content)
 
         parsed = json.loads(content)
         definitions = parsed.get("definitions", [])
@@ -297,7 +281,7 @@ IMPORTANT:
             term = item.get("term", "")
             if term:
                 # Associer des sources si disponibles
-                term_sources = citations[i:i+2] if citations and i < len(citations) else []
+                term_sources = citations[i : i + 2] if citations and i < len(citations) else []
 
                 output[term.lower()] = {
                     "term": term,
@@ -306,7 +290,7 @@ IMPORTANT:
                     "context_relevance": item.get("context_relevance", ""),
                     "sources": term_sources,
                     "wiki_url": item.get("wiki_url"),
-                    "source": "brave_search"
+                    "source": "brave_search",
                 }
 
         print(f"✅ [WebSearch] Enriched {len(output)} definitions")
@@ -324,32 +308,30 @@ IMPORTANT:
 # 🎯 FONCTION PRINCIPALE - Définitions enrichies combinées
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def get_enriched_definitions(
-    terms: List[str],
-    context: str = "",
-    language: str = "fr",
-    use_perplexity: bool = True
+    terms: List[str], context: str = "", language: str = "fr", use_perplexity: bool = True
 ) -> List[EnrichedDefinition]:
     """
     Obtient des définitions enrichies en combinant Mistral et Perplexity.
-    
+
     Flow:
     1. Mistral catégorise rapidement tous les termes
     2. Perplexity enrichit les définitions avec sources web (si activé)
     3. Fusion des résultats avec priorité à Perplexity
-    
+
     Args:
         terms: Liste des termes à définir
         context: Contexte (titre vidéo, sujet)
         language: 'fr' ou 'en'
         use_perplexity: Si True, utilise aussi Perplexity (plus lent mais plus riche)
-    
+
     Returns:
         Liste d'EnrichedDefinition
     """
     if not terms:
         return []
-    
+
     # Dédupliquer les termes
     seen = set()
     unique_terms = []
@@ -358,22 +340,20 @@ async def get_enriched_definitions(
         if t_lower and t_lower not in seen:
             unique_terms.append(t.strip())
             seen.add(t_lower)
-    
+
     terms = unique_terms[:40]  # Augmenté de 25 → 40 (Ministral 8B couvre le surplus)
-    
+
     print(f"📚 [Definitions] Processing {len(terms)} terms...")
-    
+
     # Lancer les deux en parallèle si Perplexity activé
     if use_perplexity:
         mistral_task = categorize_with_mistral(terms, context, language)
         perplexity_task = enrich_with_perplexity(terms, context, language)
-        
+
         mistral_results, perplexity_results = await asyncio.gather(
-            mistral_task, 
-            perplexity_task,
-            return_exceptions=True
+            mistral_task, perplexity_task, return_exceptions=True
         )
-        
+
         # Gérer les exceptions
         if isinstance(mistral_results, Exception):
             print(f"⚠️ [Mistral] Exception: {mistral_results}")
@@ -384,51 +364,57 @@ async def get_enriched_definitions(
     else:
         mistral_results = await categorize_with_mistral(terms, context, language)
         perplexity_results = {}
-    
+
     # Fusionner les résultats
     definitions = []
-    
+
     for term in terms:
         term_lower = term.lower()
-        
+
         # Priorité: Perplexity > Mistral > Fallback
         perplexity_data = perplexity_results.get(term_lower, {})
         mistral_data = mistral_results.get(term_lower, {})
-        
+
         if perplexity_data:
-            definitions.append(EnrichedDefinition(
-                term=perplexity_data.get("term", term),
-                definition=perplexity_data.get("definition", mistral_data.get("definition", "")),
-                category=perplexity_data.get("category", mistral_data.get("category", "other")),
-                context_relevance=perplexity_data.get("context_relevance", mistral_data.get("relevance", "")),
-                sources=perplexity_data.get("sources", []),
-                confidence=0.9,
-                provider="brave_search",
-                wiki_url=perplexity_data.get("wiki_url") or mistral_data.get("wiki_url")
-            ))
+            definitions.append(
+                EnrichedDefinition(
+                    term=perplexity_data.get("term", term),
+                    definition=perplexity_data.get("definition", mistral_data.get("definition", "")),
+                    category=perplexity_data.get("category", mistral_data.get("category", "other")),
+                    context_relevance=perplexity_data.get("context_relevance", mistral_data.get("relevance", "")),
+                    sources=perplexity_data.get("sources", []),
+                    confidence=0.9,
+                    provider="brave_search",
+                    wiki_url=perplexity_data.get("wiki_url") or mistral_data.get("wiki_url"),
+                )
+            )
         elif mistral_data:
-            definitions.append(EnrichedDefinition(
-                term=mistral_data.get("term", term),
-                definition=mistral_data.get("definition", ""),
-                category=mistral_data.get("category", "other"),
-                context_relevance=mistral_data.get("relevance", ""),
-                sources=[],
-                confidence=0.7,
-                provider="mistral",
-                wiki_url=mistral_data.get("wiki_url")
-            ))
+            definitions.append(
+                EnrichedDefinition(
+                    term=mistral_data.get("term", term),
+                    definition=mistral_data.get("definition", ""),
+                    category=mistral_data.get("category", "other"),
+                    context_relevance=mistral_data.get("relevance", ""),
+                    sources=[],
+                    confidence=0.7,
+                    provider="mistral",
+                    wiki_url=mistral_data.get("wiki_url"),
+                )
+            )
         else:
             # Fallback - terme sans définition
-            definitions.append(EnrichedDefinition(
-                term=term,
-                definition="",
-                category="other",
-                context_relevance="",
-                sources=[],
-                confidence=0.0,
-                provider="none"
-            ))
-    
+            definitions.append(
+                EnrichedDefinition(
+                    term=term,
+                    definition="",
+                    category="other",
+                    context_relevance="",
+                    sources=[],
+                    confidence=0.0,
+                    provider="none",
+                )
+            )
+
     print(f"✅ [Definitions] Generated {len(definitions)} enriched definitions")
     return definitions
 
@@ -437,6 +423,7 @@ async def get_enriched_definitions(
 # 🔧 UTILITAIRES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def extract_terms_from_text(text: str) -> List[str]:
     """
     Extrait les termes [[marqués]] d'un texte.
@@ -444,10 +431,10 @@ def extract_terms_from_text(text: str) -> List[str]:
     """
     if not text:
         return []
-    
-    pattern = r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]'
+
+    pattern = r"\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]"
     matches = re.findall(pattern, text)
-    
+
     seen = set()
     terms = []
     for match in matches:
@@ -456,7 +443,7 @@ def extract_terms_from_text(text: str) -> List[str]:
         if term and term_lower not in seen:
             terms.append(term)
             seen.add(term_lower)
-    
+
     return terms
 
 
@@ -466,7 +453,7 @@ def get_category_info(category: str, language: str = "fr") -> Dict[str, str]:
     return {
         "id": category,
         "label": cat_data.get(language, cat_data.get("fr", "Autre")),
-        "icon": cat_data.get("icon", "📌")
+        "icon": cat_data.get("icon", "📌"),
     }
 
 
@@ -475,21 +462,11 @@ def get_category_info(category: str, language: str = "fr") -> Dict[str, str]:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    test_terms = [
-        "Emmanuel Macron",
-        "GAFAM",
-        "Intelligence Artificielle",
-        "Rassemblement National",
-        "ChatGPT"
-    ]
-    
+    test_terms = ["Emmanuel Macron", "GAFAM", "Intelligence Artificielle", "Rassemblement National", "ChatGPT"]
+
     async def test():
-        results = await get_enriched_definitions(
-            test_terms,
-            context="Analyse politique française",
-            language="fr"
-        )
-        
+        results = await get_enriched_definitions(test_terms, context="Analyse politique française", language="fr")
+
         print(f"\n📚 {len(results)} définitions enrichies:")
         for d in results:
             print(f"\n  {CATEGORIES.get(d.category, {}).get('icon', '📌')} {d.term}")
@@ -498,5 +475,5 @@ if __name__ == "__main__":
             if d.context_relevance:
                 print(f"     Pertinence: {d.context_relevance[:80]}...")
             print(f"     Provider: {d.provider} (conf: {d.confidence})")
-    
+
     asyncio.run(test())

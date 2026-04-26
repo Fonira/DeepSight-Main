@@ -58,7 +58,7 @@ def _extract_verdict(content: str) -> str:
     for marker in ["**Conclusion", "**Verdict", "**Synthèse", "## Conclusion", "## Verdict"]:
         idx = content.find(marker)
         if idx != -1:
-            block = content[idx:idx + 300]
+            block = content[idx : idx + 300]
             lines = block.split("\n")
             for line in lines[1:]:
                 stripped = line.strip().strip("*").strip("-").strip()
@@ -121,11 +121,13 @@ def _build_share_snapshot(summary) -> dict:
         if isinstance(parsed, list):
             for src in parsed:
                 if isinstance(src, dict) and src.get("url"):
-                    sources.append({
-                        "url": src["url"],
-                        "title": src.get("title"),
-                        "site": src.get("site"),
-                    })
+                    sources.append(
+                        {
+                            "url": src["url"],
+                            "title": src.get("title"),
+                            "site": src.get("site"),
+                        }
+                    )
 
     # Verdict object: text + tone + icon + label
     verdict = None
@@ -184,7 +186,6 @@ def _build_og_html(shared: SharedAnalysis, share_token: str) -> str:
     """Build OG meta tags HTML page for social bots."""
     title = shared.video_title or "Video Analysis"
     verdict = shared.verdict or ""
-    thumbnail = shared.video_thumbnail or ""
     share_url = f"{FRONTEND_URL}/s/{share_token}"
 
     # Dynamic branded og-image endpoint (1200×630 PNG with title + verdict chip).
@@ -193,8 +194,8 @@ def _build_og_html(shared: SharedAnalysis, share_token: str) -> str:
     og_image_url = f"{_api_base}/api/share/{share_token}/og-image.png"
 
     # Escape HTML entities in dynamic content
-    safe_title = (title or "").replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
-    safe_verdict = (verdict or "").replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
+    safe_title = (title or "").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+    safe_verdict = (verdict or "").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
     # Truncate description to 160 chars
     if len(safe_verdict) > 160:
         safe_verdict = safe_verdict[:157] + "..."
@@ -239,7 +240,7 @@ async def create_share_link(
         select(SharedAnalysis).where(
             SharedAnalysis.user_id == current_user.id,
             SharedAnalysis.video_id == request.video_id,
-            SharedAnalysis.is_active == True,
+            SharedAnalysis.is_active,
         )
     )
     existing_share = existing.scalar_one_or_none()
@@ -253,10 +254,12 @@ async def create_share_link(
 
     # Find the user's analysis for this video
     result = await session.execute(
-        select(Summary).where(
+        select(Summary)
+        .where(
             Summary.user_id == current_user.id,
             Summary.video_id == request.video_id,
-        ).order_by(Summary.created_at.desc())
+        )
+        .order_by(Summary.created_at.desc())
     )
     summary = result.scalar_one_or_none()
 
@@ -313,7 +316,7 @@ async def get_shared_og(
     result = await session.execute(
         select(SharedAnalysis).where(
             SharedAnalysis.share_token == share_token,
-            SharedAnalysis.is_active == True,
+            SharedAnalysis.is_active,
         )
     )
     shared = result.scalar_one_or_none()
@@ -353,7 +356,9 @@ async def get_share_og_image(
     png = generate_og_image(
         video_title=snapshot.get("video_title") or share.video_title or "Analyse DeepSight",
         video_thumbnail=snapshot.get("video_thumbnail") or share.video_thumbnail,
-        verdict_text=(snapshot.get("verdict") or {}).get("text") if isinstance(snapshot.get("verdict"), dict) else (snapshot.get("verdict") or share.verdict),
+        verdict_text=(snapshot.get("verdict") or {}).get("text")
+        if isinstance(snapshot.get("verdict"), dict)
+        else (snapshot.get("verdict") or share.verdict),
         channel=snapshot.get("channel"),
     )
 
@@ -408,7 +413,8 @@ async def get_share_page(
         share_token=token,
         view_count=share.view_count or 0,
         created_at_iso=(share.created_at.isoformat() + "Z")
-            if share.created_at else datetime.utcnow().isoformat() + "Z",
+        if share.created_at
+        else datetime.utcnow().isoformat() + "Z",
     )
 
     return HTMLResponse(
@@ -434,6 +440,7 @@ async def share_beacon(
     exists — silently no-ops on unknown/revoked tokens to avoid info leakage
     and to keep beacons noisy-safe.
     """
+
     async def _record():
         try:
             result = await session.execute(
@@ -466,7 +473,7 @@ async def get_shared_analysis(
     result = await session.execute(
         select(SharedAnalysis).where(
             SharedAnalysis.share_token == share_token,
-            SharedAnalysis.is_active == True,
+            SharedAnalysis.is_active,
         )
     )
     shared = result.scalar_one_or_none()
@@ -499,7 +506,7 @@ async def get_shared_analysis(
             "is_active": shared.is_active,
             "created_at": shared.created_at.isoformat() if shared.created_at else None,
             "analysis": snapshot,
-        }
+        },
     }
 
 
@@ -514,7 +521,7 @@ async def revoke_share(
         select(SharedAnalysis).where(
             SharedAnalysis.user_id == current_user.id,
             SharedAnalysis.video_id == video_id,
-            SharedAnalysis.is_active == True,
+            SharedAnalysis.is_active,
         )
     )
     shares = result.scalars().all()

@@ -14,12 +14,10 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from pydantic import BaseModel, Field
 from typing import Optional, List
-import io
 
 logger = logging.getLogger(__name__)
 
@@ -42,22 +40,19 @@ router = APIRouter()
 # 📋 SCHEMAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class ExportRequest(BaseModel):
     """Requête d'export"""
+
     summary_id: int
     format: str = "md"  # txt, md, csv, docx, pdf, xlsx
-    pdf_type: Optional[str] = Field(
-        default="full",
-        description="Type d'export PDF: full, summary, flashcards, study"
-    )
-    include_flashcards: bool = Field(
-        default=False,
-        description="Inclure les flashcards (génère si absent)"
-    )
+    pdf_type: Optional[str] = Field(default="full", description="Type d'export PDF: full, summary, flashcards, study")
+    include_flashcards: bool = Field(default=False, description="Inclure les flashcards (génère si absent)")
 
 
 class FormatInfo(BaseModel):
     """Info sur un format d'export"""
+
     format: str
     name: str
     description: str
@@ -66,6 +61,7 @@ class FormatInfo(BaseModel):
 
 class PDFOptionInfo(BaseModel):
     """Info sur une option d'export PDF"""
+
     type: str
     name: str
     description: str
@@ -74,6 +70,7 @@ class PDFOptionInfo(BaseModel):
 
 class FormatsResponse(BaseModel):
     """Réponse listant les formats disponibles"""
+
     formats: List[str]
     pdf_options: List[PDFOptionInfo]
 
@@ -82,46 +79,37 @@ class FormatsResponse(BaseModel):
 # 📄 ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/formats", response_model=FormatsResponse)
 async def list_formats():
     """
     Liste les formats d'export disponibles et les options PDF.
-    
+
     Returns:
         formats: Liste des formats (txt, md, docx, pdf)
         pdf_options: Options d'export PDF avec descriptions
     """
     pdf_options = [
-        PDFOptionInfo(
-            type=opt["type"],
-            name=opt["name"],
-            description=opt["description"],
-            icon=opt["icon"]
-        )
+        PDFOptionInfo(type=opt["type"], name=opt["name"], description=opt["description"], icon=opt["icon"])
         for opt in get_pdf_export_options()
     ]
-    
-    return FormatsResponse(
-        formats=get_available_formats(),
-        pdf_options=pdf_options
-    )
+
+    return FormatsResponse(formats=get_available_formats(), pdf_options=pdf_options)
 
 
 @router.post("/")
 async def export_analysis(
-    request: ExportRequest,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    request: ExportRequest, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     Exporte une analyse dans le format demandé.
-    
+
     Formats supportés:
     - **txt**: Texte brut
     - **md**: Markdown (avec tables et metadata)
     - **docx**: Document Word
     - **pdf**: PDF professionnel (avec options: full, summary, flashcards, study)
-    
+
     Pour les exports PDF, utilisez pdf_type pour choisir le contenu:
     - **full**: Synthèse complète avec concepts, timestamps, entités
     - **summary**: Résumé condensé uniquement
@@ -131,24 +119,18 @@ async def export_analysis(
     # Vérifier le format
     available = get_available_formats()
     if request.format not in available:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Format not available. Choose from: {', '.join(available)}"
-        )
-    
+        raise HTTPException(status_code=400, detail=f"Format not available. Choose from: {', '.join(available)}")
+
     # Vérifier le type PDF
     valid_pdf_types = ["full", "summary", "flashcards", "study"]
     if request.format == "pdf" and request.pdf_type not in valid_pdf_types:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid PDF type. Choose from: {', '.join(valid_pdf_types)}"
-        )
-    
+        raise HTTPException(status_code=400, detail=f"Invalid PDF type. Choose from: {', '.join(valid_pdf_types)}")
+
     # Récupérer le résumé
     summary = await get_summary_by_id(session, request.summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
-    
+
     # Parser les entités si présentes
     entities = None
     if summary.entities_extracted:
@@ -161,7 +143,7 @@ async def export_analysis(
     flashcards = None
     if request.include_flashcards or request.pdf_type in ["flashcards", "study"]:
         flashcards = await _get_or_generate_flashcards(session, summary, current_user)
-    
+
     # Sources (si disponibles dans le fact-checking)
     sources = None
     if summary.fact_check_result:
@@ -171,7 +153,7 @@ async def export_analysis(
                 sources = fact_check["sources"]
         except (json.JSONDecodeError, TypeError) as e:
             logger.warning(f"Failed to parse fact_check_result for summary {request.summary_id}: {e}")
-    
+
     # Générer l'export
     content, filename, mimetype = export_summary(
         format=request.format,
@@ -188,25 +170,18 @@ async def export_analysis(
         created_at=summary.created_at,
         flashcards=flashcards,
         sources=sources,
-        pdf_export_type=request.pdf_type or "full"
+        pdf_export_type=request.pdf_type or "full",
     )
-    
+
     if content is None:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate {request.format} export"
-        )
-    
+        raise HTTPException(status_code=500, detail=f"Failed to generate {request.format} export")
+
     # Retourner le fichier
     if isinstance(content, str):
-        content = content.encode('utf-8')
-    
+        content = content.encode("utf-8")
+
     return Response(
-        content=content,
-        media_type=mimetype,
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
-        }
+        content=content, media_type=mimetype, headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
 
@@ -216,19 +191,19 @@ async def export_analysis_get(
     format: str,
     pdf_type: str = Query(default="full", description="PDF export type"),
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Export via GET (pour liens directs de téléchargement).
-    
+
     GET /api/exports/123/pdf?pdf_type=full → PDF complet
     GET /api/exports/123/pdf?pdf_type=flashcards → PDF avec flashcards
     """
     request = ExportRequest(
-        summary_id=summary_id, 
+        summary_id=summary_id,
         format=format,
         pdf_type=pdf_type,
-        include_flashcards=(pdf_type in ["flashcards", "study"])
+        include_flashcards=(pdf_type in ["flashcards", "study"]),
     )
     return await export_analysis(request, current_user, session)
 
@@ -239,98 +214,77 @@ async def get_pdf_options():
     Retourne les options d'export PDF disponibles.
     Utile pour le frontend pour afficher les choix.
     """
-    return {
-        "options": get_pdf_export_options(),
-        "default": "full"
-    }
+    return {"options": get_pdf_export_options(), "default": "full"}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def _get_or_generate_flashcards(
-    session: AsyncSession, 
-    summary: Summary,
-    user: User
-) -> Optional[List[dict]]:
+
+async def _get_or_generate_flashcards(session: AsyncSession, summary: Summary, user: User) -> Optional[List[dict]]:
     """
     Récupère les flashcards existantes ou en génère de nouvelles.
-    
+
     Note: Pour une v2, on pourrait stocker les flashcards en DB.
     Pour l'instant, on génère à la volée si besoin.
     """
     # Try to extract from summary content (if embedded)
     # Some summaries include flashcards in markdown format
     flashcards = _extract_flashcards_from_summary(summary.summary_content)
-    
+
     if flashcards:
         return flashcards
-    
+
     # Generate simple flashcards from key concepts
     if summary.entities_extracted:
         try:
             entities = json.loads(summary.entities_extracted)
             if entities.get("concepts"):
-                return _generate_simple_flashcards(
-                    entities["concepts"][:10],
-                    summary.summary_content
-                )
+                return _generate_simple_flashcards(entities["concepts"][:10], summary.summary_content)
         except Exception as e:
             logger.error(f"Failed to generate flashcards from entities: {e}")
-    
+
     return None
 
 
 def _extract_flashcards_from_summary(summary: str) -> Optional[List[dict]]:
     """Tente d'extraire des flashcards depuis le contenu du résumé"""
     import re
-    
+
     flashcards = []
-    
+
     # Pattern 1: Q: ... A: ... format
-    qa_pattern = r'(?:Q:|Question:)\s*(.+?)\n(?:A:|Answer:|Réponse:)\s*(.+?)(?=\n(?:Q:|Question:)|\Z)'
+    qa_pattern = r"(?:Q:|Question:)\s*(.+?)\n(?:A:|Answer:|Réponse:)\s*(.+?)(?=\n(?:Q:|Question:)|\Z)"
     matches = re.findall(qa_pattern, summary, re.DOTALL | re.IGNORECASE)
-    
+
     for q, a in matches:
-        flashcards.append({
-            "front": q.strip(),
-            "back": a.strip()
-        })
-    
+        flashcards.append({"front": q.strip(), "back": a.strip()})
+
     # Pattern 2: **Term**: Definition
-    term_pattern = r'\*\*([^*]+)\*\*:\s*([^\n]+)'
+    term_pattern = r"\*\*([^*]+)\*\*:\s*([^\n]+)"
     term_matches = re.findall(term_pattern, summary)
-    
+
     for term, definition in term_matches[:5]:  # Limit to avoid noise
         if len(definition) > 20:  # Only substantial definitions
-            flashcards.append({
-                "front": f"Qu'est-ce que {term}?",
-                "back": definition.strip()
-            })
-    
+            flashcards.append({"front": f"Qu'est-ce que {term}?", "back": definition.strip()})
+
     return flashcards if flashcards else None
 
 
 def _generate_simple_flashcards(concepts: List[str], summary: str) -> List[dict]:
     """Génère des flashcards simples à partir des concepts clés"""
     flashcards = []
-    
+
     for concept in concepts[:8]:
         # Find relevant sentence in summary
         context = _find_concept_context(concept, summary)
-        
+
         if context:
-            flashcards.append({
-                "front": f"Qu'est-ce que {concept}?",
-                "back": context
-            })
+            flashcards.append({"front": f"Qu'est-ce que {concept}?", "back": context})
         else:
-            flashcards.append({
-                "front": concept,
-                "back": f"Concept clé mentionné dans la vidéo."
-            })
-    
+            flashcards.append({"front": concept, "back": "Concept clé mentionné dans la vidéo."})
+
     return flashcards
 
 
@@ -339,7 +293,7 @@ def _find_concept_context(concept: str, summary: str) -> Optional[str]:
     import re
 
     # Look for sentence containing the concept
-    sentences = re.split(r'[.!?]\s+', summary)
+    sentences = re.split(r"[.!?]\s+", summary)
 
     concept_lower = concept.lower()
     for sentence in sentences:
@@ -357,14 +311,13 @@ def _find_concept_context(concept: str, summary: str) -> Optional[str]:
 # 🔊 AUDIO EXPORT ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class AudioExportRequest(BaseModel):
     """Requête d'export audio"""
+
     voice_id: Optional[str] = None
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
-    audio_mode: str = Field(
-        default="full",
-        description="'full' = synthèse complète, 'condensed' = résumé ~2 min"
-    )
+    audio_mode: str = Field(default="full", description="'full' = synthèse complète, 'condensed' = résumé ~2 min")
 
 
 @router.post("/{summary_id}/audio")
@@ -392,7 +345,7 @@ async def export_analysis_audio(
                 "current_plan": plan,
                 "required_plan": "pro",
                 "action": "upgrade",
-            }
+            },
         )
 
     # Get the summary
@@ -415,10 +368,7 @@ async def export_analysis_audio(
     )
 
     if not result:
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to generate audio export. ElevenLabs may be unavailable."
-        )
+        raise HTTPException(status_code=500, detail="Failed to generate audio export. ElevenLabs may be unavailable.")
 
     return {
         "status": "success",
@@ -426,7 +376,7 @@ async def export_analysis_audio(
             "audio_url": f"/api/exports/audio/{result['file_id']}",
             "file_id": result["file_id"],
             "duration_estimate": result["duration_estimate"],
-        }
+        },
     }
 
 
@@ -445,11 +395,12 @@ async def stream_audio_file(
         raise HTTPException(status_code=404, detail="Audio file not found or expired")
 
     import os
+
     file_size = os.path.getsize(file_path)
 
     # Check for Range header (for seeking in audio player)
     range_header = None
-    if request and hasattr(request, 'headers'):
+    if request and hasattr(request, "headers"):
         range_header = request.headers.get("range")
 
     if range_header and range_header.startswith("bytes="):
@@ -477,7 +428,7 @@ async def stream_audio_file(
                 "Accept-Ranges": "bytes",
                 "Content-Length": str(content_length),
                 "Cache-Control": "public, max-age=3600",
-            }
+            },
         )
 
     # No Range header — return full file
@@ -492,5 +443,5 @@ async def stream_audio_file(
             "Content-Length": str(file_size),
             "Content-Disposition": f'inline; filename="{file_id}.mp3"',
             "Cache-Control": "public, max-age=3600",
-        }
+        },
     )

@@ -7,6 +7,7 @@
 ║  Gère le lifecycle via le lifespan FastAPI (startup/shutdown).                     ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
+
 import httpx
 from typing import Optional
 
@@ -16,17 +17,17 @@ from typing import Optional
 
 # Limits: pool de connexions partagé
 _LIMITS = httpx.Limits(
-    max_connections=100,          # Total max connexions TCP ouvertes
-    max_keepalive_connections=20, # Connexions keep-alive en idle
-    keepalive_expiry=30.0,        # Timeout idle keep-alive (secondes)
+    max_connections=100,  # Total max connexions TCP ouvertes
+    max_keepalive_connections=20,  # Connexions keep-alive en idle
+    keepalive_expiry=30.0,  # Timeout idle keep-alive (secondes)
 )
 
 # Timeout par défaut (overridable par requête)
 _DEFAULT_TIMEOUT = httpx.Timeout(
-    connect=10.0,    # Connexion TCP
-    read=30.0,       # Lecture réponse
-    write=10.0,      # Écriture requête
-    pool=10.0,       # Attente d'une connexion du pool
+    connect=10.0,  # Connexion TCP
+    read=30.0,  # Lecture réponse
+    write=10.0,  # Écriture requête
+    pool=10.0,  # Attente d'une connexion du pool
 )
 
 # Timeout long pour les opérations lentes (yt-dlp, STT, etc.)
@@ -82,10 +83,7 @@ def get_http_client() -> httpx.AsyncClient:
     Raise RuntimeError si non initialisé (= bug d'ordre de lifecycle).
     """
     if _client is None:
-        raise RuntimeError(
-            "HTTP client not initialized. "
-            "Call init_http_client() in FastAPI lifespan first."
-        )
+        raise RuntimeError("HTTP client not initialized. Call init_http_client() in FastAPI lifespan first.")
     return _client
 
 

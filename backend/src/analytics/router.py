@@ -29,6 +29,7 @@ router = APIRouter()
 # 📦 SCHEMAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class EventPayload(BaseModel):
     name: str
     properties: Optional[dict] = None
@@ -39,17 +40,35 @@ class EventPayload(BaseModel):
     @classmethod
     def validate_name(cls, v: str) -> str:
         allowed = {
-            "app_opened", "app_backgrounded", "screen_viewed",
-            "analysis_started", "analysis_completed", "analysis_failed",
-            "chat_message_sent", "tab_switched",
-            "share_intent_received", "upgrade_cta_viewed", "upgrade_cta_clicked",
-            "search_performed", "flashcard_generated", "quiz_generated",
-            "mindmap_generated", "factcheck_requested", "export_requested",
-            "favorite_toggled", "video_deleted",
-            "notification_received", "notification_tapped",
-            "share_link_created", "login", "register", "logout",
-            "study_content_generated", "upgrade_plan_selected",
-            "upgrade_checkout_started", "analysis_deleted",
+            "app_opened",
+            "app_backgrounded",
+            "screen_viewed",
+            "analysis_started",
+            "analysis_completed",
+            "analysis_failed",
+            "chat_message_sent",
+            "tab_switched",
+            "share_intent_received",
+            "upgrade_cta_viewed",
+            "upgrade_cta_clicked",
+            "search_performed",
+            "flashcard_generated",
+            "quiz_generated",
+            "mindmap_generated",
+            "factcheck_requested",
+            "export_requested",
+            "favorite_toggled",
+            "video_deleted",
+            "notification_received",
+            "notification_tapped",
+            "share_link_created",
+            "login",
+            "register",
+            "logout",
+            "study_content_generated",
+            "upgrade_plan_selected",
+            "upgrade_checkout_started",
+            "analysis_deleted",
         }
         if v not in allowed:
             raise ValueError(f"Unknown event: {v}")
@@ -71,6 +90,7 @@ class EventBatch(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📥 INGESTION
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/events")
 async def ingest_events(
@@ -118,6 +138,7 @@ async def ingest_events(
 # 📊 DASHBOARD (Admin)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/summary")
 async def get_analytics_summary(
     days: int = 7,
@@ -131,11 +152,7 @@ async def get_analytics_summary(
     since = datetime.utcnow() - timedelta(days=days)
 
     # Total events
-    total = await session.execute(
-        select(func.count(AnalyticsEvent.id)).where(
-            AnalyticsEvent.event_timestamp >= since
-        )
-    )
+    total = await session.execute(select(func.count(AnalyticsEvent.id)).where(AnalyticsEvent.event_timestamp >= since))
 
     # Events par type
     by_type = await session.execute(
@@ -150,9 +167,7 @@ async def get_analytics_summary(
 
     # Unique sessions
     sessions_count = await session.execute(
-        select(func.count(func.distinct(AnalyticsEvent.session_id))).where(
-            AnalyticsEvent.event_timestamp >= since
-        )
+        select(func.count(func.distinct(AnalyticsEvent.session_id))).where(AnalyticsEvent.event_timestamp >= since)
     )
 
     # Unique users
@@ -178,12 +193,6 @@ async def get_analytics_summary(
         "total_events": total.scalar() or 0,
         "unique_sessions": sessions_count.scalar() or 0,
         "unique_users": users_count.scalar() or 0,
-        "events_by_type": [
-            {"name": row.event_name, "count": row.count}
-            for row in by_type.all()
-        ],
-        "events_by_platform": [
-            {"platform": row.platform, "count": row.count}
-            for row in by_platform.all()
-        ],
+        "events_by_type": [{"name": row.event_name, "count": row.count} for row in by_type.all()],
+        "events_by_platform": [{"platform": row.platform, "count": row.count} for row in by_platform.all()],
     }

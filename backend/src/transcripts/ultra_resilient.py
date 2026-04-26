@@ -26,13 +26,18 @@ import os
 
 from core.logging import logger
 from core.config import (
-    get_supadata_key, get_groq_key, get_deepgram_key,
-    get_openai_key, get_assemblyai_key, TRANSCRIPT_CONFIG
+    get_supadata_key,
+    get_groq_key,
+    get_deepgram_key,
+    get_openai_key,
+    get_assemblyai_key,
+    TRANSCRIPT_CONFIG,
 )
 
 
 class ExtractionMethod(Enum):
     """Methodes d'extraction par ordre de priorite"""
+
     YOUTUBE_TRANSCRIPT_API = "youtube_transcript_api"
     YT_DLP_NATIVE = "yt_dlp_native"
     YT_DLP_AUTO_SUBS = "yt_dlp_auto_subs"
@@ -52,6 +57,7 @@ class ExtractionMethod(Enum):
 @dataclass
 class TranscriptResult:
     """Resultat d'extraction avec metadonnees"""
+
     text: str
     language: str
     method: ExtractionMethod
@@ -92,6 +98,7 @@ class TranscriptResult:
 @dataclass
 class ExtractionAttempt:
     """Log d'une tentative d'extraction"""
+
     method: ExtractionMethod
     success: bool
     error: Optional[str] = None
@@ -109,13 +116,13 @@ class CircuitBreaker:
         self.state: Dict[str, str] = {}  # 'closed', 'open', 'half-open'
 
     def can_execute(self, method: str) -> bool:
-        if method not in self.state or self.state[method] == 'closed':
+        if method not in self.state or self.state[method] == "closed":
             return True
 
-        if self.state[method] == 'open':
+        if self.state[method] == "open":
             last = self.last_failure.get(method)
             if last and datetime.now() - last > timedelta(seconds=self.recovery_timeout):
-                self.state[method] = 'half-open'
+                self.state[method] = "half-open"
                 return True
             return False
 
@@ -123,14 +130,14 @@ class CircuitBreaker:
 
     def record_success(self, method: str):
         self.failures[method] = 0
-        self.state[method] = 'closed'
+        self.state[method] = "closed"
 
     def record_failure(self, method: str):
         self.failures[method] = self.failures.get(method, 0) + 1
         self.last_failure[method] = datetime.now()
 
         if self.failures[method] >= self.failure_threshold:
-            self.state[method] = 'open'
+            self.state[method] = "open"
             logger.warning(f"Circuit breaker OPEN for {method}")
 
 
@@ -232,7 +239,7 @@ class UltraResilientTranscriptExtractor:
     def __init__(self):
         self.circuit_breaker = CircuitBreaker(
             failure_threshold=TRANSCRIPT_CONFIG.get("circuit_breaker_failure_threshold", 5),
-            recovery_timeout=TRANSCRIPT_CONFIG.get("circuit_breaker_recovery_timeout", 300)
+            recovery_timeout=TRANSCRIPT_CONFIG.get("circuit_breaker_recovery_timeout", 300),
         )
         self.instance_health = InstanceHealthManager()
         self.http_client: Optional[httpx.AsyncClient] = None
@@ -266,9 +273,9 @@ class UltraResilientTranscriptExtractor:
     def _extract_video_id(self, url_or_id: str) -> str:
         """Extrait l'ID video depuis n'importe quel format d'URL YouTube"""
         patterns = [
-            r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/v/)([a-zA-Z0-9_-]{11})',
-            r'youtube\.com/shorts/([a-zA-Z0-9_-]{11})',
-            r'^([a-zA-Z0-9_-]{11})$',
+            r"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/v/)([a-zA-Z0-9_-]{11})",
+            r"youtube\.com/shorts/([a-zA-Z0-9_-]{11})",
+            r"^([a-zA-Z0-9_-]{11})$",
         ]
         for pattern in patterns:
             match = re.search(pattern, url_or_id)
@@ -293,7 +300,7 @@ class UltraResilientTranscriptExtractor:
         """Calculate exponential backoff with jitter"""
         base = TRANSCRIPT_CONFIG.get("backoff_base", 1.0)
         max_delay = TRANSCRIPT_CONFIG.get("backoff_max", 30.0)
-        delay = min(base * (2 ** attempt), max_delay)
+        delay = min(base * (2**attempt), max_delay)
         jitter = random.uniform(0, delay * 0.3)
         return delay + jitter
 
@@ -301,9 +308,7 @@ class UltraResilientTranscriptExtractor:
     # METHOD 1: youtube-transcript-api (most reliable generally)
     # ===================================================================
 
-    async def _method_youtube_transcript_api(
-        self, video_id: str, languages: List[str]
-    ) -> TranscriptResult:
+    async def _method_youtube_transcript_api(self, video_id: str, languages: List[str]) -> TranscriptResult:
         """Uses the youtube-transcript-api library"""
         try:
             from youtube_transcript_api import YouTubeTranscriptApi
@@ -363,9 +368,7 @@ class UltraResilientTranscriptExtractor:
     # METHOD 2: yt-dlp native subtitles
     # ===================================================================
 
-    async def _method_yt_dlp_native(
-        self, video_id: str, languages: List[str]
-    ) -> TranscriptResult:
+    async def _method_yt_dlp_native(self, video_id: str, languages: List[str]) -> TranscriptResult:
         """Uses yt-dlp to extract subtitles"""
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -379,9 +382,12 @@ class UltraResilientTranscriptExtractor:
                 f"--sub-langs={lang_str}",
                 "--sub-format=json3/srv3/vtt/ttml/best",
                 "--convert-subs=srt",
-                "--user-agent", self._get_random_user_agent(),
-                "--extractor-args", "youtube:player_client=android",
-                "-o", output_template,
+                "--user-agent",
+                self._get_random_user_agent(),
+                "--extractor-args",
+                "youtube:player_client=android",
+                "-o",
+                output_template,
                 f"https://www.youtube.com/watch?v={video_id}",
             ]
 
@@ -390,10 +396,7 @@ class UltraResilientTranscriptExtractor:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=90
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=90)
 
             # Find subtitle file
             for file in os.listdir(tmpdir):
@@ -420,9 +423,7 @@ class UltraResilientTranscriptExtractor:
     # METHOD 3: yt-dlp auto subtitles
     # ===================================================================
 
-    async def _method_yt_dlp_auto_subs(
-        self, video_id: str, languages: List[str]
-    ) -> TranscriptResult:
+    async def _method_yt_dlp_auto_subs(self, video_id: str, languages: List[str]) -> TranscriptResult:
         """Uses yt-dlp to extract auto-generated subtitles"""
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -436,10 +437,14 @@ class UltraResilientTranscriptExtractor:
                 f"--sub-langs={lang_str}",
                 "--sub-format=json3/srv3/vtt/best",
                 "--convert-subs=srt",
-                "--user-agent", self._get_random_user_agent(),
-                "--extractor-args", "youtube:player_client=mweb",
-                "--sleep-requests", "1",
-                "-o", output_template,
+                "--user-agent",
+                self._get_random_user_agent(),
+                "--extractor-args",
+                "youtube:player_client=mweb",
+                "--sleep-requests",
+                "1",
+                "-o",
+                output_template,
                 f"https://www.youtube.com/watch?v={video_id}",
             ]
 
@@ -448,10 +453,7 @@ class UltraResilientTranscriptExtractor:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=90
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=90)
 
             for file in os.listdir(tmpdir):
                 if file.endswith(".srt"):
@@ -483,13 +485,15 @@ class UltraResilientTranscriptExtractor:
                 try:
                     timecode = lines[1]
                     text = " ".join(lines[2:])
-                    text = re.sub(r'<[^>]+>', '', text)  # Remove HTML tags
+                    text = re.sub(r"<[^>]+>", "", text)  # Remove HTML tags
                     start, end = timecode.split(" --> ")
-                    segments.append({
-                        "text": text.strip(),
-                        "start": self._srt_time_to_seconds(start),
-                        "duration": self._srt_time_to_seconds(end) - self._srt_time_to_seconds(start),
-                    })
+                    segments.append(
+                        {
+                            "text": text.strip(),
+                            "start": self._srt_time_to_seconds(start),
+                            "duration": self._srt_time_to_seconds(end) - self._srt_time_to_seconds(start),
+                        }
+                    )
                 except Exception:
                     pass
 
@@ -506,9 +510,7 @@ class UltraResilientTranscriptExtractor:
     # METHOD 4: Innertube API (internal YouTube endpoint)
     # ===================================================================
 
-    async def _method_innertube_api(
-        self, video_id: str, languages: List[str]
-    ) -> TranscriptResult:
+    async def _method_innertube_api(self, video_id: str, languages: List[str]) -> TranscriptResult:
         """
         Uses YouTube's internal Innertube API
         Discovered by reverse engineering the YouTube app
@@ -544,13 +546,10 @@ class UltraResilientTranscriptExtractor:
         if not api_key_match:
             raise Exception("Could not find INNERTUBE_API_KEY")
 
-        api_key = api_key_match.group(1)
+        api_key_match.group(1)
 
         # Extract caption tracks
-        caption_tracks_match = re.search(
-            r'"captionTracks":\s*(\[.*?\])',
-            response.text
-        )
+        caption_tracks_match = re.search(r'"captionTracks":\s*(\[.*?\])', response.text)
 
         if not caption_tracks_match:
             raise Exception("No caption tracks found")
@@ -597,11 +596,13 @@ class UltraResilientTranscriptExtractor:
             if "segs" in event:
                 text = "".join([seg.get("utf8", "") for seg in event["segs"]])
                 if text.strip():
-                    segments.append({
-                        "text": text.strip(),
-                        "start": event.get("tStartMs", 0) / 1000,
-                        "duration": event.get("dDurationMs", 0) / 1000,
-                    })
+                    segments.append(
+                        {
+                            "text": text.strip(),
+                            "start": event.get("tStartMs", 0) / 1000,
+                            "duration": event.get("dDurationMs", 0) / 1000,
+                        }
+                    )
 
         full_text = " ".join([s["text"] for s in segments])
 
@@ -618,19 +619,14 @@ class UltraResilientTranscriptExtractor:
     # METHOD 5: Timedtext API Direct
     # ===================================================================
 
-    async def _method_timedtext_direct(
-        self, video_id: str, languages: List[str]
-    ) -> TranscriptResult:
+    async def _method_timedtext_direct(self, video_id: str, languages: List[str]) -> TranscriptResult:
         """Direct call to timedtext API (legacy but sometimes works)"""
         await self._rate_limit()
 
         for lang in languages:
             for fmt in ["json3", "srv3", "vtt"]:
                 try:
-                    url = (
-                        f"https://www.youtube.com/api/timedtext"
-                        f"?v={video_id}&lang={lang}&fmt={fmt}"
-                    )
+                    url = f"https://www.youtube.com/api/timedtext?v={video_id}&lang={lang}&fmt={fmt}"
 
                     response = await self.http_client.get(
                         url,
@@ -664,11 +660,13 @@ class UltraResilientTranscriptExtractor:
             if "segs" in event:
                 text = "".join([seg.get("utf8", "") for seg in event["segs"]])
                 if text.strip():
-                    segments.append({
-                        "text": text.strip(),
-                        "start": event.get("tStartMs", 0) / 1000,
-                        "duration": event.get("dDurationMs", 0) / 1000,
-                    })
+                    segments.append(
+                        {
+                            "text": text.strip(),
+                            "start": event.get("tStartMs", 0) / 1000,
+                            "duration": event.get("dDurationMs", 0) / 1000,
+                        }
+                    )
 
         full_text = " ".join([s["text"] for s in segments if s["text"]])
 
@@ -703,12 +701,14 @@ class UltraResilientTranscriptExtractor:
 
                 if text_lines:
                     text = " ".join(text_lines)
-                    text = re.sub(r'<[^>]+>', '', text)  # Remove HTML tags
-                    segments.append({
-                        "text": text,
-                        "start": start,
-                        "duration": end - start,
-                    })
+                    text = re.sub(r"<[^>]+>", "", text)  # Remove HTML tags
+                    segments.append(
+                        {
+                            "text": text,
+                            "start": start,
+                            "duration": end - start,
+                        }
+                    )
             i += 1
 
         full_text = " ".join([s["text"] for s in segments])
@@ -727,9 +727,7 @@ class UltraResilientTranscriptExtractor:
     # METHOD 6: Watch Page Scraping
     # ===================================================================
 
-    async def _method_watch_page_scrape(
-        self, video_id: str, languages: List[str]
-    ) -> TranscriptResult:
+    async def _method_watch_page_scrape(self, video_id: str, languages: List[str]) -> TranscriptResult:
         """Scrape watch page to extract transcript data"""
         await self._rate_limit()
 
@@ -744,14 +742,14 @@ class UltraResilientTranscriptExtractor:
 
         # Search for ytInitialPlayerResponse
         match = re.search(
-            r'var\s+ytInitialPlayerResponse\s*=\s*(\{.+?\});',
+            r"var\s+ytInitialPlayerResponse\s*=\s*(\{.+?\});",
             response.text,
             re.DOTALL,
         )
 
         if not match:
             match = re.search(
-                r'ytInitialPlayerResponse\s*=\s*(\{.+?\});',
+                r"ytInitialPlayerResponse\s*=\s*(\{.+?\});",
                 response.text,
                 re.DOTALL,
             )
@@ -762,10 +760,7 @@ class UltraResilientTranscriptExtractor:
         player_response = json.loads(match.group(1))
 
         captions = player_response.get("captions", {})
-        caption_tracks = (
-            captions.get("playerCaptionsTracklistRenderer", {})
-            .get("captionTracks", [])
-        )
+        caption_tracks = captions.get("playerCaptionsTracklistRenderer", {}).get("captionTracks", [])
 
         if not caption_tracks:
             raise Exception("No caption tracks in player response")
@@ -795,10 +790,7 @@ class UltraResilientTranscriptExtractor:
             base_url += "&fmt=json3"
 
         transcript_response = await self.http_client.get(base_url)
-        result = self._parse_json3_transcript(
-            transcript_response.text,
-            best_track.get("languageCode", languages[0])
-        )
+        result = self._parse_json3_transcript(transcript_response.text, best_track.get("languageCode", languages[0]))
         result.method = ExtractionMethod.WATCH_PAGE_SCRAPE
         result.is_auto_generated = is_auto
         return result
@@ -807,9 +799,7 @@ class UltraResilientTranscriptExtractor:
     # METHOD 7: Invidious API
     # ===================================================================
 
-    async def _method_invidious_api(
-        self, video_id: str, languages: List[str]
-    ) -> TranscriptResult:
+    async def _method_invidious_api(self, video_id: str, languages: List[str]) -> TranscriptResult:
         """Uses Invidious public instances"""
         await self._rate_limit()
 
@@ -882,9 +872,7 @@ class UltraResilientTranscriptExtractor:
     # METHOD 8: Piped API
     # ===================================================================
 
-    async def _method_piped_api(
-        self, video_id: str, languages: List[str]
-    ) -> TranscriptResult:
+    async def _method_piped_api(self, video_id: str, languages: List[str]) -> TranscriptResult:
         """Uses Piped public instances"""
         await self._rate_limit()
 
@@ -957,9 +945,7 @@ class UltraResilientTranscriptExtractor:
     # METHOD 9: Supadata API (paid backup)
     # ===================================================================
 
-    async def _method_supadata_api(
-        self, video_id: str, languages: List[str]
-    ) -> TranscriptResult:
+    async def _method_supadata_api(self, video_id: str, languages: List[str]) -> TranscriptResult:
         """Uses Supadata API as paid backup"""
 
         api_key = get_supadata_key()
@@ -1004,9 +990,7 @@ class UltraResilientTranscriptExtractor:
     # METHOD 10: Whisper Fallback (audio transcription)
     # ===================================================================
 
-    async def _method_whisper_fallback(
-        self, video_id: str, languages: List[str]
-    ) -> TranscriptResult:
+    async def _method_whisper_fallback(self, video_id: str, languages: List[str]) -> TranscriptResult:
         """
         Last resort: download audio and transcribe with Whisper
         Requires OpenAI API or Groq API
@@ -1023,10 +1007,14 @@ class UltraResilientTranscriptExtractor:
             cmd = [
                 "yt-dlp",
                 "-x",
-                "--audio-format", "mp3",
-                "--audio-quality", "5",
-                "--user-agent", self._get_random_user_agent(),
-                "-o", audio_path,
+                "--audio-format",
+                "mp3",
+                "--audio-quality",
+                "5",
+                "--user-agent",
+                self._get_random_user_agent(),
+                "-o",
+                audio_path,
                 f"https://www.youtube.com/watch?v={video_id}",
             ]
 
@@ -1067,9 +1055,7 @@ class UltraResilientTranscriptExtractor:
 
             raise Exception("All Whisper transcription methods failed")
 
-    async def _transcribe_with_groq(
-        self, audio_path: str, language: str, api_key: str
-    ) -> TranscriptResult:
+    async def _transcribe_with_groq(self, audio_path: str, language: str, api_key: str) -> TranscriptResult:
         """Transcribe with Groq Whisper API"""
         with open(audio_path, "rb") as audio_file:
             files = {"file": (os.path.basename(audio_path), audio_file, "audio/mpeg")}
@@ -1111,9 +1097,7 @@ class UltraResilientTranscriptExtractor:
             segments=segments,
         )
 
-    async def _transcribe_with_openai(
-        self, audio_path: str, language: str, api_key: str
-    ) -> TranscriptResult:
+    async def _transcribe_with_openai(self, audio_path: str, language: str, api_key: str) -> TranscriptResult:
         """Transcribe with OpenAI Whisper API"""
         with open(audio_path, "rb") as audio_file:
             files = {"file": (os.path.basename(audio_path), audio_file, "audio/mpeg")}
@@ -1217,11 +1201,13 @@ class UltraResilientTranscriptExtractor:
                 extraction_time = int((datetime.now() - start_time).total_seconds() * 1000)
                 result.extraction_time_ms = extraction_time
 
-                attempts.append(ExtractionAttempt(
-                    method=method_enum,
-                    success=True,
-                    duration_ms=int((datetime.now() - attempt_start).total_seconds() * 1000),
-                ))
+                attempts.append(
+                    ExtractionAttempt(
+                        method=method_enum,
+                        success=True,
+                        duration_ms=int((datetime.now() - attempt_start).total_seconds() * 1000),
+                    )
+                )
 
                 logger.info(
                     f"Successfully extracted transcript using {method_name}",
@@ -1238,21 +1224,20 @@ class UltraResilientTranscriptExtractor:
             except Exception as e:
                 self.circuit_breaker.record_failure(method_name)
 
-                attempts.append(ExtractionAttempt(
-                    method=method_enum,
-                    success=False,
-                    error=str(e),
-                    duration_ms=int((datetime.now() - attempt_start).total_seconds() * 1000),
-                ))
+                attempts.append(
+                    ExtractionAttempt(
+                        method=method_enum,
+                        success=False,
+                        error=str(e),
+                        duration_ms=int((datetime.now() - attempt_start).total_seconds() * 1000),
+                    )
+                )
 
                 logger.warning(f"{method_name} failed: {e}")
                 continue
 
         # All methods failed
-        error_summary = "; ".join([
-            f"{a.method.value}: {a.error}"
-            for a in attempts if not a.success
-        ])
+        error_summary = "; ".join([f"{a.method.value}: {a.error}" for a in attempts if not a.success])
 
         logger.error(
             f"All transcript extraction methods failed for {video_id}",
@@ -1261,15 +1246,13 @@ class UltraResilientTranscriptExtractor:
             errors=error_summary,
         )
 
-        raise Exception(
-            f"Failed to extract transcript after {len(attempts)} attempts. "
-            f"Errors: {error_summary}"
-        )
+        raise Exception(f"Failed to extract transcript after {len(attempts)} attempts. Errors: {error_summary}")
 
 
 # ===================================================================
 # FACTORY FUNCTION FOR SIMPLE USAGE
 # ===================================================================
+
 
 async def get_transcript(
     video_url_or_id: str,
@@ -1293,10 +1276,8 @@ async def get_transcript(
 # BACKWARD COMPATIBILITY WITH EXISTING YOUTUBE.PY
 # ===================================================================
 
-async def extract_transcript_for_analysis(
-    video_id: str,
-    user_language: str = "en"
-) -> Dict[str, Any]:
+
+async def extract_transcript_for_analysis(video_id: str, user_language: str = "en") -> Dict[str, Any]:
     """
     Main entry point for transcript extraction
     Compatible with existing analysis pipeline

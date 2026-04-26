@@ -15,10 +15,10 @@ import markdown as md_lib
 
 
 _EXTENSIONS = [
-    "extra",       # tables, fenced code, footnotes
+    "extra",  # tables, fenced code, footnotes
     "sane_lists",  # correct <ul>/<ol> semantics
-    "smarty",      # smart quotes
-    "nl2br",       # preserve line breaks
+    "smarty",  # smart quotes
+    "nl2br",  # preserve line breaks
 ]
 
 _UNSAFE_TAG_PATTERN = re.compile(

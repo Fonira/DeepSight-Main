@@ -8,6 +8,16 @@
 
 /* Fonts loaded via <link> in index.html for non-render-blocking loading */
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   GLOBAL UI SCALE — Bump root font-size to 18px (+12.5% over the 16px default).
+   This scales every Tailwind utility expressed in rem (text-*, p-*, m-*, gap-*…)
+   while leaving px-based values (icons, borders, fixed widths) untouched.
+   Applied at the root (html) so it cascades everywhere without layout shifts.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+html {
+  font-size: 18px;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

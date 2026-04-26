@@ -77,6 +77,7 @@ def _build_definition(debate: DebateAnalysis) -> str:
 
 # ─── Cache lookup ─────────────────────────────────────────────────────────────
 
+
 async def get_debate_avatar_url(debate: DebateAnalysis, pool=None) -> Optional[str]:
     """Return the cached avatar URL for this debate, or None if not ready."""
     term = build_avatar_term(debate.detected_topic)
@@ -88,6 +89,7 @@ async def get_debate_avatar_url(debate: DebateAnalysis, pool=None) -> Optional[s
 
 
 # ─── Generation ───────────────────────────────────────────────────────────────
+
 
 async def generate_debate_avatar(debate: DebateAnalysis, pool=None) -> Optional[str]:
     """Synchronously generate the avatar via the full image pipeline.

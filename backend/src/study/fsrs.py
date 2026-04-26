@@ -22,6 +22,7 @@ from typing import Optional, Tuple
 # 📋 ENUMS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class Rating(IntEnum):
     Again = 1
     Hard = 2
@@ -40,16 +41,18 @@ class State(IntEnum):
 # 📦 DATACLASSES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class FSRSCard:
     """État FSRS d'une carte mémoire"""
-    stability: float = 0.0          # Stabilité mémoire (jours)
-    difficulty: float = 0.0         # Difficulté 0-1
-    elapsed_days: int = 0           # Jours depuis dernière review
-    scheduled_days: int = 0         # Jours planifiés jusqu'à prochaine review
-    reps: int = 0                   # Nombre de répétitions
-    lapses: int = 0                 # Nombre d'oublis
-    state: State = State.New        # État courant
+
+    stability: float = 0.0  # Stabilité mémoire (jours)
+    difficulty: float = 0.0  # Difficulté 0-1
+    elapsed_days: int = 0  # Jours depuis dernière review
+    scheduled_days: int = 0  # Jours planifiés jusqu'à prochaine review
+    reps: int = 0  # Nombre de répétitions
+    lapses: int = 0  # Nombre d'oublis
+    state: State = State.New  # État courant
     due: Optional[datetime] = None  # Prochaine date de révision
     last_review: Optional[datetime] = None
 
@@ -57,6 +60,7 @@ class FSRSCard:
 @dataclass
 class FSRSReviewLog:
     """Log d'une review"""
+
     rating: Rating
     elapsed_days: int
     scheduled_days: int
@@ -70,25 +74,25 @@ class FSRSReviewLog:
 
 # 19 paramètres w0..w18 — valeurs par défaut FSRS v5
 DEFAULT_WEIGHTS: list[float] = [
-    0.4072,   # w0  — initial stability for Again
-    1.1829,   # w1  — initial stability for Hard
-    3.1262,   # w2  — initial stability for Good
+    0.4072,  # w0  — initial stability for Again
+    1.1829,  # w1  — initial stability for Hard
+    3.1262,  # w2  — initial stability for Good
     15.4722,  # w3  — initial stability for Easy
-    7.2102,   # w4  — difficulty weight
-    0.5316,   # w5  — difficulty base
-    1.0651,   # w6  — difficulty multiplier
-    0.0046,   # w7  — difficulty penalty
-    1.5418,   # w8  — stability factor (success)
-    0.1466,   # w9  — stability revert (success)
-    1.0014,   # w10 — stability factor (fail)
-    1.9395,   # w11 — stability revert (fail)
-    0.1118,   # w12 — stability recovery
-    0.3050,   # w13 — stability recovery ease
-    2.1730,   # w14 — stability post-lapse
-    0.2272,   # w15 — stability post-lapse min
-    2.8755,   # w16 — difficulty damping
-    0.2975,   # w17 — difficulty delta
-    0.5567,   # w18 — short-term stability modifier
+    7.2102,  # w4  — difficulty weight
+    0.5316,  # w5  — difficulty base
+    1.0651,  # w6  — difficulty multiplier
+    0.0046,  # w7  — difficulty penalty
+    1.5418,  # w8  — stability factor (success)
+    0.1466,  # w9  — stability revert (success)
+    1.0014,  # w10 — stability factor (fail)
+    1.9395,  # w11 — stability revert (fail)
+    0.1118,  # w12 — stability recovery
+    0.3050,  # w13 — stability recovery ease
+    2.1730,  # w14 — stability post-lapse
+    0.2272,  # w15 — stability post-lapse min
+    2.8755,  # w16 — difficulty damping
+    0.2975,  # w17 — difficulty delta
+    0.5567,  # w18 — short-term stability modifier
 ]
 
 # Rétention cible (90% par défaut, comme Anki)
@@ -111,6 +115,7 @@ MIN_SHORT_INTERVAL: int = 1
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🧮 FORMULES FSRS v5
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _clamp(value: float, low: float, high: float) -> float:
     """Contraindre une valeur entre low et high."""
@@ -158,10 +163,7 @@ def next_difficulty(d: float, rating: Rating, w: list[float] = DEFAULT_WEIGHTS) 
     return _clamp(d_new, 0.01, 1.0)
 
 
-def next_stability_success(
-    d: float, s: float, r: float, rating: Rating,
-    w: list[float] = DEFAULT_WEIGHTS
-) -> float:
+def next_stability_success(d: float, s: float, r: float, rating: Rating, w: list[float] = DEFAULT_WEIGHTS) -> float:
     """
     Prochaine stabilité après un rappel réussi (Good/Hard/Easy).
     S'_r = S * (e^(w8) * (11 - D) * S^(-w9) * (e^(w10 * (1-R)) - 1) * f(G))
@@ -171,30 +173,17 @@ def next_stability_success(
     easy_factor = w[16] if rating == Rating.Easy else 1.0
 
     s_new = s * (
-        math.exp(w[8])
-        * (11.0 - d)
-        * (s ** (-w[9]))
-        * (math.exp(w[10] * (1.0 - r)) - 1.0)
-        * hard_factor
-        * easy_factor
+        math.exp(w[8]) * (11.0 - d) * (s ** (-w[9])) * (math.exp(w[10] * (1.0 - r)) - 1.0) * hard_factor * easy_factor
     )
     return max(s_new, 0.01)
 
 
-def next_stability_fail(
-    d: float, s: float, r: float,
-    w: list[float] = DEFAULT_WEIGHTS
-) -> float:
+def next_stability_fail(d: float, s: float, r: float, w: list[float] = DEFAULT_WEIGHTS) -> float:
     """
     Prochaine stabilité après un oubli (Again).
     S'_f = w11 * D^(-w12) * ((S+1)^w13 - 1) * e^(w14 * (1-R))
     """
-    s_new = (
-        w[11]
-        * (d ** (-w[12]))
-        * ((s + 1.0) ** w[13] - 1.0)
-        * math.exp(w[14] * (1.0 - r))
-    )
+    s_new = w[11] * (d ** (-w[12])) * ((s + 1.0) ** w[13] - 1.0) * math.exp(w[14] * (1.0 - r))
     return _clamp(s_new, 0.01, s)  # Ne peut pas dépasser l'ancienne stabilité
 
 
@@ -212,6 +201,7 @@ def next_interval(stability: float, desired_retention: float = DESIRED_RETENTION
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🎯 SCHEDULER PRINCIPAL
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def schedule_card(
     card: FSRSCard,
@@ -304,8 +294,11 @@ def schedule_card(
         elif rating == Rating.Good:
             r = retrievability(elapsed, card.stability) if card.stability > 0 else 0.0
             new_card.stability = next_stability_success(
-                new_card.difficulty, card.stability if card.stability > 0 else init_stability(Rating.Good, w),
-                r, rating, w
+                new_card.difficulty,
+                card.stability if card.stability > 0 else init_stability(Rating.Good, w),
+                r,
+                rating,
+                w,
             )
             new_card.state = State.Review
             interval = next_interval(new_card.stability, desired_retention)
@@ -313,8 +306,11 @@ def schedule_card(
         else:  # Easy
             r = retrievability(elapsed, card.stability) if card.stability > 0 else 0.0
             new_card.stability = next_stability_success(
-                new_card.difficulty, card.stability if card.stability > 0 else init_stability(Rating.Easy, w),
-                r, rating, w
+                new_card.difficulty,
+                card.stability if card.stability > 0 else init_stability(Rating.Easy, w),
+                r,
+                rating,
+                w,
             )
             new_card.state = State.Review
             interval = next_interval(new_card.stability, desired_retention)
@@ -357,6 +353,7 @@ def schedule_card(
 # 🏆 XP & LEVEL
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def calculate_xp(rating: Rating) -> int:
     """XP gagné pour un rating donné."""
     return XP_MAP.get(rating, 0)
@@ -370,7 +367,7 @@ def xp_for_level(level: int) -> int:
     """
     if level <= 1:
         return 0
-    return round(100 * (level ** 1.5))
+    return round(100 * (level**1.5))
 
 
 def level_from_xp(total_xp: int) -> int:
@@ -395,6 +392,7 @@ def xp_progress_in_level(total_xp: int) -> Tuple[int, int]:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔥 STREAK
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def check_streak(
     last_study_date: Optional[datetime],

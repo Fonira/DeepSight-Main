@@ -13,28 +13,28 @@
 Usage:
     # Appliquer les optimisations
     python -m db.optimizations apply
-    
+
     # Vérifier les index manquants
     python -m db.optimizations check
-    
+
     # Analyser les requêtes lentes
     python -m db.optimizations analyze
 """
 
 import os
-from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 
-from sqlalchemy import text, Index, event
+from sqlalchemy import text, event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy.pool import QueuePool
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 DATABASE ENGINE CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
 
 def create_optimized_engine(
     url: str = DATABASE_URL,
@@ -46,7 +46,7 @@ def create_optimized_engine(
 ):
     """
     Crée un engine SQLAlchemy optimisé avec connection pooling avancé.
-    
+
     Args:
         url: URL de la base de données
         pool_size: Nombre de connexions dans le pool
@@ -63,20 +63,18 @@ def create_optimized_engine(
         max_overflow=max_overflow,
         pool_pre_ping=pool_pre_ping,
         pool_recycle=pool_recycle,
-        
         # Performance
         echo=echo,
         future=True,
-        
         # Connection args pour PostgreSQL
         connect_args={
             "server_settings": {
                 "jit": "off",  # Désactiver JIT pour les requêtes courtes
                 "statement_timeout": "30000",  # 30s timeout
             }
-        }
+        },
     )
-    
+
     # Event listeners pour le monitoring
     @event.listens_for(engine.sync_engine, "connect")
     def set_search_path(dbapi_connection, connection_record):
@@ -84,7 +82,7 @@ def create_optimized_engine(
         cursor = dbapi_connection.cursor()
         cursor.execute("SET search_path TO public")
         cursor.close()
-    
+
     return engine
 
 
@@ -277,9 +275,10 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY mv_global_metrics;
 # 🔧 QUERY OPTIMIZATION HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class QueryOptimizer:
     """Helpers pour optimiser les requêtes fréquentes"""
-    
+
     @staticmethod
     async def get_user_history_optimized(
         session: AsyncSession,
@@ -311,30 +310,30 @@ class QueryOptimizer:
             FROM summaries s
             WHERE s.user_id = :user_id
         """
-        
+
         params = {"user_id": user_id, "limit": limit, "offset": offset}
-        
+
         # Filtres conditionnels
         if category:
             base_query += " AND s.category = :category"
             params["category"] = category
-        
+
         if favorites_only:
             base_query += " AND s.is_favorite = true"
-        
+
         if search_query:
             base_query += """
                 AND to_tsvector('french', s.video_title || ' ' || COALESCE(s.summary_content, '')) 
                 @@ plainto_tsquery('french', :search_query)
             """
             params["search_query"] = search_query
-        
+
         # Tri et pagination
         base_query += " ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset"
-        
+
         result = await session.execute(text(base_query), params)
         rows = result.fetchall()
-        
+
         return [
             {
                 "id": row.id,
@@ -351,7 +350,7 @@ class QueryOptimizer:
             }
             for row in rows
         ]
-    
+
     @staticmethod
     async def get_user_stats_fast(
         session: AsyncSession,
@@ -363,11 +362,10 @@ class QueryOptimizer:
         """
         try:
             result = await session.execute(
-                text("SELECT * FROM mv_user_stats WHERE user_id = :user_id"),
-                {"user_id": user_id}
+                text("SELECT * FROM mv_user_stats WHERE user_id = :user_id"), {"user_id": user_id}
             )
             row = result.fetchone()
-            
+
             if row:
                 return {
                     "total_summaries": row.total_summaries,
@@ -379,7 +377,7 @@ class QueryOptimizer:
                 }
         except Exception:
             pass
-        
+
         # Fallback
         result = await session.execute(
             text("""
@@ -390,10 +388,10 @@ class QueryOptimizer:
                 FROM summaries
                 WHERE user_id = :user_id
             """),
-            {"user_id": user_id}
+            {"user_id": user_id},
         )
         row = result.fetchone()
-        
+
         return {
             "total_summaries": row.total_summaries,
             "summaries_30d": row.summaries_30d,
@@ -405,12 +403,13 @@ class QueryOptimizer:
 # 🛠️ MAINTENANCE FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def apply_indexes():
     """Applique tous les index recommandés"""
     async with engine.begin() as conn:
-        for statement in RECOMMENDED_INDEXES.strip().split(';'):
+        for statement in RECOMMENDED_INDEXES.strip().split(";"):
             statement = statement.strip()
-            if statement and not statement.startswith('--'):
+            if statement and not statement.startswith("--"):
                 try:
                     await conn.execute(text(statement))
                     print(f"✅ Applied: {statement[:60]}...")
@@ -421,9 +420,9 @@ async def apply_indexes():
 async def create_materialized_views():
     """Crée les vues matérialisées"""
     async with engine.begin() as conn:
-        for statement in MATERIALIZED_VIEWS.strip().split(';'):
+        for statement in MATERIALIZED_VIEWS.strip().split(";"):
             statement = statement.strip()
-            if statement and not statement.startswith('--'):
+            if statement and not statement.startswith("--"):
                 try:
                     await conn.execute(text(statement))
                     print(f"✅ Created view: {statement[:60]}...")
@@ -434,9 +433,9 @@ async def create_materialized_views():
 async def refresh_materialized_views():
     """Rafraîchit les vues matérialisées"""
     async with engine.begin() as conn:
-        for statement in REFRESH_MATERIALIZED_VIEWS.strip().split(';'):
+        for statement in REFRESH_MATERIALIZED_VIEWS.strip().split(";"):
             statement = statement.strip()
-            if statement and not statement.startswith('--'):
+            if statement and not statement.startswith("--"):
                 try:
                     await conn.execute(text(statement))
                     print(f"✅ Refreshed: {statement[:60]}...")
@@ -446,8 +445,8 @@ async def refresh_materialized_views():
 
 async def analyze_tables():
     """Analyse les tables pour optimiser les plans de requête"""
-    tables = ['users', 'summaries', 'chat_messages', 'playlists', 'playlist_items', 'task_status']
-    
+    tables = ["users", "summaries", "chat_messages", "playlists", "playlist_items", "task_status"]
+
     async with engine.begin() as conn:
         for table in tables:
             await conn.execute(text(f"ANALYZE {table}"))
@@ -472,11 +471,11 @@ async def check_missing_indexes():
         ORDER BY seq_tup_read DESC
         LIMIT 20;
     """
-    
+
     async with engine.begin() as conn:
         result = await conn.execute(text(query))
         rows = result.fetchall()
-        
+
         print("\n📊 Tables avec beaucoup de sequential scans:")
         print("-" * 80)
         for row in rows:
@@ -490,31 +489,31 @@ async def check_missing_indexes():
 if __name__ == "__main__":
     import sys
     import asyncio
-    
+
     async def main():
         command = sys.argv[1] if len(sys.argv) > 1 else "help"
-        
+
         if command == "apply":
             print("🔧 Applying database optimizations...")
             await apply_indexes()
             await create_materialized_views()
             await analyze_tables()
             print("\n✅ Done!")
-            
+
         elif command == "refresh":
             print("🔄 Refreshing materialized views...")
             await refresh_materialized_views()
             print("\n✅ Done!")
-            
+
         elif command == "check":
             print("🔍 Checking for missing indexes...")
             await check_missing_indexes()
-            
+
         elif command == "analyze":
             print("📊 Analyzing tables...")
             await analyze_tables()
             print("\n✅ Done!")
-            
+
         else:
             print("""
 Usage: python -m db.optimizations <command>
@@ -525,5 +524,5 @@ Commands:
     check     - Check for missing indexes
     analyze   - Analyze tables for query optimization
             """)
-    
+
     asyncio.run(main())

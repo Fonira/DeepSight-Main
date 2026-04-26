@@ -15,7 +15,7 @@ from billing.permissions import require_feature
 from core.config import get_elevenlabs_key
 from middleware.rate_limiter import InMemoryBackend
 from tts.schemas import TTSRequest
-from tts.service import clean_text_for_tts, get_voice_id, DEFAULT_MODEL_ID, elevenlabs_circuit
+from tts.service import clean_text_for_tts, get_voice_id
 from tts.providers import get_tts_provider
 
 logger = logging.getLogger(__name__)
@@ -73,6 +73,7 @@ async def check_tts_rate_limit(current_user: User = Depends(get_current_user)):
 # POST /api/tts — Generate TTS audio (v5 — multi-provider)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("")
 async def tts_generate(
     request: Request,
@@ -106,6 +107,7 @@ async def tts_generate(
     if tts_req.use_preferences:
         try:
             from voice.preferences import get_user_voice_preferences
+
             user_prefs = await get_user_voice_preferences(current_user.id, db)
 
             # Only apply pref if request didn't explicitly override
@@ -162,14 +164,17 @@ async def tts_generate(
         logger.error("TTS unexpected error (provider=%s): %s", provider.name, e)
         raise HTTPException(status_code=500, detail="TTS generation failed")
 
-    logger.info("TTS generated", extra={
-        "user_id": current_user.id,
-        "plan": current_user.plan,
-        "provider": provider.name,
-        "text_length": len(tts_req.text),
-        "language": tts_req.language,
-        "estimated_chars": len(cleaned_text),
-    })
+    logger.info(
+        "TTS generated",
+        extra={
+            "user_id": current_user.id,
+            "plan": current_user.plan,
+            "provider": provider.name,
+            "text_length": len(tts_req.text),
+            "language": tts_req.language,
+            "estimated_chars": len(cleaned_text),
+        },
+    )
 
     return StreamingResponse(
         audio_stream,
@@ -184,6 +189,7 @@ async def tts_generate(
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /api/tts/summary/{summary_id} — Generate Audio Summary (Podcast Mode)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/summary/{summary_id}")
 async def generate_audio_summary(
@@ -201,15 +207,13 @@ async def generate_audio_summary(
     Body (optional): { language?, gender?, speed?, force_regenerate? }
     Returns: { audio_url, duration_estimate, script_chars, cached, language, gender }
     """
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from db.database import get_session as _get_session
     from tts.audio_summary import (
         get_or_generate_audio_summary,
         AUDIO_SUMMARY_LIMITS,
     )
 
     user_plan = current_user.plan or "free"
-    platform = request.query_params.get("platform", "web")
+    request.query_params.get("platform", "web")
 
     # ── Plan gating ──────────────────────────────────────────────────────
     limit = AUDIO_SUMMARY_LIMITS.get(user_plan, 0)
@@ -229,6 +233,7 @@ async def generate_audio_summary(
         # Handle double-stringified JSON from frontend
         if isinstance(body, str):
             import json as json_module
+
             body = json_module.loads(body)
     except Exception:
         body = {}
@@ -249,14 +254,12 @@ async def generate_audio_summary(
     speed = max(0.25, min(4.0, float(speed)))
 
     # ── Verify summary ownership ─────────────────────────────────────────
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from db.database import get_session
 
     # We need a DB session — use the same dependency pattern
-    from fastapi import Depends as _Depends
 
     # Direct session creation for this endpoint
     from db.database import async_session_maker
+
     async with async_session_maker() as db:
         from sqlalchemy import select as _select
         from db.database import Summary
@@ -300,12 +303,15 @@ async def generate_audio_summary(
                 },
             )
 
-    logger.info("Audio summary served", extra={
-        "user_id": current_user.id,
-        "summary_id": summary_id,
-        "cached": result["cached"],
-        "language": language,
-    })
+    logger.info(
+        "Audio summary served",
+        extra={
+            "user_id": current_user.id,
+            "summary_id": summary_id,
+            "cached": result["cached"],
+            "language": language,
+        },
+    )
 
     return result
 
@@ -313,6 +319,7 @@ async def generate_audio_summary(
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /api/tts/dub/{summary_id} — Dubbed Audio (translated summary)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/dub/{summary_id}")
 async def generate_dubbed_audio(
@@ -413,21 +420,21 @@ async def generate_dubbed_audio(
 # GET /api/tts/dub/languages — List supported dubbing languages
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/dub/languages")
 async def list_dubbing_languages():
     """Return supported languages for audio dubbing."""
     from tts.audio_summary import SUPPORTED_DUBBING_LANGUAGES
+
     return {
-        "languages": [
-            {"code": code, "name": name}
-            for code, name in SUPPORTED_DUBBING_LANGUAGES.items()
-        ],
+        "languages": [{"code": code, "name": name} for code, name in SUPPORTED_DUBBING_LANGUAGES.items()],
     }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /api/tts/voices — List available voices (plan-gated)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/voices")
 async def list_voices(
@@ -462,10 +469,7 @@ async def list_voices(
             )
 
             if response.status_code != 200:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail="Failed to fetch voices from ElevenLabs"
-                )
+                raise HTTPException(status_code=response.status_code, detail="Failed to fetch voices from ElevenLabs")
 
             data = response.json()
             voices = [
@@ -504,6 +508,7 @@ async def list_voices(
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /api/tts/status — TTS availability check (v5 — multi-provider)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/status")
 async def tts_status():
@@ -547,4 +552,3 @@ async def tts_status():
         "supported_genders": ["male", "female"],
         "speed_range": {"min": 0.7, "max": 3.0, "default": 1.0},
     }
-           

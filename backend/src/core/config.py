@@ -20,6 +20,7 @@ from core.logging import logger
 # PYDANTIC SETTINGS — Validated env vars
 # =============================================================================
 
+
 class _DeepSightSettings(BaseSettings):
     """Validated environment configuration. Refuses to start with insecure
     defaults in production."""
@@ -90,8 +91,8 @@ class _DeepSightSettings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = ""
-    GOOGLE_IOS_CLIENT_ID: str = ""       # Mobile iOS client ID (fallback: GOOGLE_CLIENT_ID)
-    GOOGLE_ANDROID_CLIENT_ID: str = ""   # Mobile Android client ID (fallback: GOOGLE_CLIENT_ID)
+    GOOGLE_IOS_CLIENT_ID: str = ""  # Mobile iOS client ID (fallback: GOOGLE_CLIENT_ID)
+    GOOGLE_ANDROID_CLIENT_ID: str = ""  # Mobile Android client ID (fallback: GOOGLE_CLIENT_ID)
 
     # -- CRON --
     CRON_SECRET: str = ""
@@ -110,9 +111,9 @@ class _DeepSightSettings(BaseSettings):
     REDIS_URL: str = ""
     VPS_DATABASE_URL: str = ""  # PostgreSQL VPS pour cache L2 (video content cache)
     CACHE_MAX_SIZE: int = 10000
-    CACHE_TTL_TRANSCRIPT: int = 86400   # 24h
-    CACHE_TTL_ANALYSIS: int = 3600      # 1h
-    CACHE_TTL_FACTCHECK: int = 1800     # 30min
+    CACHE_TTL_TRANSCRIPT: int = 86400  # 24h
+    CACHE_TTL_ANALYSIS: int = 3600  # 1h
+    CACHE_TTL_FACTCHECK: int = 1800  # 30min
 
     # -- TTS --
     TTS_PROVIDER: str = "openai"
@@ -124,7 +125,7 @@ class _DeepSightSettings(BaseSettings):
 
     # -- Voxtral TTS (Mistral) --
     VOXTRAL_MODEL: str = "voxtral-mini-tts-2603"
-    VOXTRAL_VOICE_FR_FEMALE: str = ""   # voice_id created via Mistral Voices API
+    VOXTRAL_VOICE_FR_FEMALE: str = ""  # voice_id created via Mistral Voices API
     VOXTRAL_VOICE_FR_MALE: str = ""
     VOXTRAL_VOICE_EN_FEMALE: str = ""
     VOXTRAL_VOICE_EN_MALE: str = ""
@@ -200,7 +201,7 @@ class _DeepSightSettings(BaseSettings):
 
         if errors:
             msg = "\n  PRODUCTION CONFIG ERRORS:\n  - " + "\n  - ".join(errors)
-            print(f"\n{'='*60}\n{msg}\n{'='*60}\n", file=sys.stderr, flush=True)
+            print(f"\n{'=' * 60}\n{msg}\n{'=' * 60}\n", file=sys.stderr, flush=True)
             raise SystemExit(1)
 
         return self
@@ -272,7 +273,6 @@ def get_mistral_image_agent_id() -> Optional[str]:
     return MISTRAL_IMAGE_AGENT_ID or None
 
 
-
 # =============================================================================
 # CRON
 # =============================================================================
@@ -291,9 +291,7 @@ EMAIL_CONFIG = {
 }
 
 # Resend API rate limit (per-worker, intra-process). See email_rate_limiter.py.
-RESEND_RATE_LIMIT_PER_SEC: int = int(
-    os.getenv("RESEND_RATE_LIMIT_PER_SEC", str(_settings.RESEND_RATE_LIMIT_PER_SEC))
-)
+RESEND_RATE_LIMIT_PER_SEC: int = int(os.getenv("RESEND_RATE_LIMIT_PER_SEC", str(_settings.RESEND_RATE_LIMIT_PER_SEC)))
 
 # =============================================================================
 # STRIPE
@@ -311,12 +309,14 @@ STRIPE_CONFIG = {
         "plus": {
             "test": _settings.STRIPE_PRICE_PLUS_TEST,
             "live": _settings.STRIPE_PRICE_PLUS_LIVE,
-            "amount": 499, "name": "Plus"
+            "amount": 499,
+            "name": "Plus",
         },
         "pro": {
             "test": _settings.STRIPE_PRICE_PRO_TEST,
             "live": _settings.STRIPE_PRICE_PRO_LIVE,
-            "amount": 999, "name": "Pro"
+            "amount": 999,
+            "name": "Pro",
         },
     },
 }
@@ -383,7 +383,7 @@ LEGAL_CONFIG = {
 def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
     """Construit PLAN_LIMITS à partir du SSOT plan_config pour rétrocompatibilité."""
     try:
-        from billing.plan_config import PLANS, PlanId, get_limits
+        from billing.plan_config import PLANS, PlanId
 
         legacy = {}
         for plan_id in [PlanId.FREE, PlanId.PLUS, PlanId.PRO]:
@@ -409,51 +409,95 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
                 "voice_chat_enabled": limits.get("voice_chat_enabled", False),
                 "voice_monthly_minutes": limits.get("voice_monthly_minutes", 0),
                 "blocked_features": (
-                    [] if key == "pro" else
-                    ["playlists", "deep_research", "voice_chat", "tts"] if key == "plus" else
-                    ["playlists", "export_csv", "export_excel", "batch_api",
-                     "tts", "deep_research", "voice_chat", "mindmap"]
+                    []
+                    if key == "pro"
+                    else ["playlists", "deep_research", "voice_chat", "tts"]
+                    if key == "plus"
+                    else [
+                        "playlists",
+                        "export_csv",
+                        "export_excel",
+                        "batch_api",
+                        "tts",
+                        "deep_research",
+                        "voice_chat",
+                        "mindmap",
+                    ]
                 ),
                 "upgrade_prompt": {
-                    "fr": ("Vous avez le plan Pro, toutes les fonctionnalités sont débloquées !"
-                           if key == "pro"
-                           else "Passez à Plus pour débloquer mind maps, exports et recherche web !"
-                           if key == "free"
-                           else "Passez à Pro pour débloquer playlists, Deep Research et chat vocal !"),
-                    "en": ("You have the Pro plan, all features are unlocked!"
-                           if key == "pro"
-                           else "Upgrade to Plus to unlock mind maps, exports and web search!"
-                           if key == "free"
-                           else "Upgrade to Pro to unlock playlists, Deep Research and voice chat!"),
+                    "fr": (
+                        "Vous avez le plan Pro, toutes les fonctionnalités sont débloquées !"
+                        if key == "pro"
+                        else "Passez à Plus pour débloquer mind maps, exports et recherche web !"
+                        if key == "free"
+                        else "Passez à Pro pour débloquer playlists, Deep Research et chat vocal !"
+                    ),
+                    "en": (
+                        "You have the Pro plan, all features are unlocked!"
+                        if key == "pro"
+                        else "Upgrade to Plus to unlock mind maps, exports and web search!"
+                        if key == "free"
+                        else "Upgrade to Pro to unlock playlists, Deep Research and voice chat!"
+                    ),
                 },
             }
         # Admin "unlimited" — copie pro avec limites levées (défense en profondeur)
         if "pro" in legacy:
             pro_copy = dict(legacy["pro"])
-            pro_copy.update({
-                "monthly_credits": 999999,
-                "daily_analyses": -1,
-                "chat_daily_limit": -1,
-                "chat_per_video_limit": -1,
-                "web_search_monthly": -1,
-                "web_search_enabled": True,
-                "can_use_playlists": True,
-                "max_playlist_videos": 999,
-                "deep_research_enabled": True,
-                "voice_chat_enabled": True,
-                "voice_monthly_minutes": 999,
-                "blocked_features": [],
-            })
+            pro_copy.update(
+                {
+                    "monthly_credits": 999999,
+                    "daily_analyses": -1,
+                    "chat_daily_limit": -1,
+                    "chat_per_video_limit": -1,
+                    "web_search_monthly": -1,
+                    "web_search_enabled": True,
+                    "can_use_playlists": True,
+                    "max_playlist_videos": 999,
+                    "deep_research_enabled": True,
+                    "voice_chat_enabled": True,
+                    "voice_monthly_minutes": 999,
+                    "blocked_features": [],
+                }
+            )
             legacy["unlimited"] = pro_copy
 
         return legacy
     except Exception:
         # Fallback minimal si plan_config n'est pas chargeable (tests unitaires)
         return {
-            "free": {"monthly_credits": 250, "daily_analyses": 5, "blocked_features": ["playlists", "tts", "deep_research", "voice_chat", "mindmap"], "models": ["mistral-small-2603"], "default_model": "mistral-small-2603"},
-            "plus": {"monthly_credits": 3000, "daily_analyses": 25, "blocked_features": ["playlists", "deep_research", "voice_chat", "tts"], "models": ["mistral-small-2603", "mistral-medium-2508"], "default_model": "mistral-medium-2508"},
-            "pro": {"monthly_credits": 15000, "daily_analyses": 100, "blocked_features": [], "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"], "default_model": "mistral-large-2512"},
-            "unlimited": {"monthly_credits": 999999, "daily_analyses": -1, "chat_daily_limit": -1, "chat_per_video_limit": -1, "web_search_monthly": -1, "web_search_enabled": True, "blocked_features": [], "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"], "default_model": "mistral-large-2512"},
+            "free": {
+                "monthly_credits": 250,
+                "daily_analyses": 5,
+                "blocked_features": ["playlists", "tts", "deep_research", "voice_chat", "mindmap"],
+                "models": ["mistral-small-2603"],
+                "default_model": "mistral-small-2603",
+            },
+            "plus": {
+                "monthly_credits": 3000,
+                "daily_analyses": 25,
+                "blocked_features": ["playlists", "deep_research", "voice_chat", "tts"],
+                "models": ["mistral-small-2603", "mistral-medium-2508"],
+                "default_model": "mistral-medium-2508",
+            },
+            "pro": {
+                "monthly_credits": 15000,
+                "daily_analyses": 100,
+                "blocked_features": [],
+                "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
+                "default_model": "mistral-large-2512",
+            },
+            "unlimited": {
+                "monthly_credits": 999999,
+                "daily_analyses": -1,
+                "chat_daily_limit": -1,
+                "chat_per_video_limit": -1,
+                "web_search_monthly": -1,
+                "web_search_enabled": True,
+                "blocked_features": [],
+                "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
+                "default_model": "mistral-large-2512",
+            },
         }
 
 
@@ -492,9 +536,9 @@ R2_CONFIG = {
 # =============================================================================
 
 VOICE_LIMITS: Dict[str, Dict[str, Any]] = {
-    "free": {"enabled": False, "monthly_minutes": 0,  "max_session_minutes": 0},
-    "plus": {"enabled": False, "monthly_minutes": 0,  "max_session_minutes": 0},
-    "pro":  {"enabled": True,  "monthly_minutes": 45, "max_session_minutes": 15},
+    "free": {"enabled": False, "monthly_minutes": 0, "max_session_minutes": 0},
+    "plus": {"enabled": False, "monthly_minutes": 0, "max_session_minutes": 0},
+    "pro": {"enabled": True, "monthly_minutes": 45, "max_session_minutes": 15},
 }
 
 VOICE_CHAT_CONFIG: Dict[str, Any] = {
@@ -528,10 +572,9 @@ MISTRAL_MODELS = {
         "use_cases": ["entity_extraction", "flashcards", "classification", "study_tools"],
         "description": {
             "fr": "Ultra-rapide pour les tâches automatiques (extraction, flashcards)",
-            "en": "Ultra-fast for automated tasks (extraction, flashcards)"
-        }
+            "en": "Ultra-fast for automated tasks (extraction, flashcards)",
+        },
     },
-
     # ── Tier 1 : Standard (Free + Plus + Pro) ──
     "mistral-small-2603": {
         "name": "Mistral Small 3.1",
@@ -543,10 +586,9 @@ MISTRAL_MODELS = {
         "plans": ["free", "plus", "pro"],
         "description": {
             "fr": "Rapide et intelligent, idéal pour les analyses courantes",
-            "en": "Fast and smart, ideal for standard analyses"
-        }
+            "en": "Fast and smart, ideal for standard analyses",
+        },
     },
-
     # ── Tier 2 : Avancé (Plus + Pro) ──
     "mistral-medium-2508": {
         "name": "Mistral Medium 3.1",
@@ -558,10 +600,9 @@ MISTRAL_MODELS = {
         "plans": ["plus", "pro"],
         "description": {
             "fr": "Analyses approfondies, raisonnement de niveau GPT-4",
-            "en": "Deep analyses, GPT-4 level reasoning"
-        }
+            "en": "Deep analyses, GPT-4 level reasoning",
+        },
     },
-
     # ── Tier 3 : Premium (Pro uniquement) ──
     "mistral-large-2512": {
         "name": "Mistral Large 3",
@@ -573,8 +614,8 @@ MISTRAL_MODELS = {
         "plans": ["pro"],
         "description": {
             "fr": "Maximum de qualité, contexte 262K pour vidéos longues",
-            "en": "Maximum quality, 262K context for long videos"
-        }
+            "en": "Maximum quality, 262K context for long videos",
+        },
     },
 }
 
@@ -642,6 +683,7 @@ CATEGORIES = {
 # =============================================================================
 # UTILITY FUNCTIONS (backward compatible)
 # =============================================================================
+
 
 def get_stripe_key() -> str:
     if STRIPE_CONFIG["TEST_MODE"]:
@@ -820,13 +862,16 @@ if __name__ != "__main__":
     logger.info(f"  Web Search (Brave+Mistral): {'yes' if is_web_search_available() else 'no'}")
     logger.info(f"  Supadata: {'yes' if SUPADATA_API_KEY else 'no'}")
     logger.info(f"  YouTube Proxy: {'yes' if YOUTUBE_PROXY else 'no (direct)'}")
-    logger.info(f"  Audio: Groq={'yes' if get_groq_key() else 'no'}"
-          f" OpenAI={'yes' if get_openai_key() else 'no'}"
-          f" Deepgram={'yes' if get_deepgram_key() else 'no'}"
-          f" AssemblyAI={'yes' if get_assemblyai_key() else 'no'}"
-          f" ElevenLabs={'yes' if get_elevenlabs_key() else 'no'}")
+    logger.info(
+        f"  Audio: Groq={'yes' if get_groq_key() else 'no'}"
+        f" OpenAI={'yes' if get_openai_key() else 'no'}"
+        f" Deepgram={'yes' if get_deepgram_key() else 'no'}"
+        f" AssemblyAI={'yes' if get_assemblyai_key() else 'no'}"
+        f" ElevenLabs={'yes' if get_elevenlabs_key() else 'no'}"
+    )
     logger.info(f"  Rate Limit: {RATE_LIMIT_ENABLED}")
-    logger.warning(f"  Cache: Redis={'yes' if _settings.REDIS_URL else 'no (memory fallback)'}"
-          f" max_size={_settings.CACHE_MAX_SIZE}")
+    logger.warning(
+        f"  Cache: Redis={'yes' if _settings.REDIS_URL else 'no (memory fallback)'} max_size={_settings.CACHE_MAX_SIZE}"
+    )
     logger.info(f"  Video Cache L2: {'yes' if _settings.VPS_DATABASE_URL else 'no (VPS_DATABASE_URL not set)'}")
     logger.info(f"  Backup S3: {'yes' if _settings.AWS_ACCESS_KEY_ID else 'no'}")

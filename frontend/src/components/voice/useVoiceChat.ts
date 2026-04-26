@@ -71,6 +71,23 @@ interface UseVoiceChatReturn {
   startTalking: () => void;
   /** PTT: relâcher pour que l'agent réponde */
   stopTalking: () => void;
+  /**
+   * Spec #5 — Inject un message texte dans la conversation ElevenLabs active.
+   * Utilisé par le Chat IA pour le mode hybride (user tape un message texte
+   * pendant que l'appel voice est actif). L'agent répond via onMessage.
+   * No-op si pas de session active.
+   */
+  sendUserMessage: (text: string) => void;
+  /**
+   * Spec #5 — voice_session_id de la session ElevenLabs courante (depuis backend).
+   * Utilisé pour persister les transcripts via /api/voice/transcripts/append.
+   */
+  voiceSessionId: string | null;
+  /**
+   * Spec #5 — timestamp (ms) auquel la session voice a démarré (onConnect).
+   * Permet de calculer time_in_call_secs précis.
+   */
+  sessionStartedAt: number | null;
   /** Status de la connexion */
   status: VoiceChatStatus;
   /** L'IA est en train de parler */
@@ -146,6 +163,9 @@ export function useVoiceChat({
   const [remainingMinutes, setRemainingMinutes] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
+  // Spec #5 — exposition session info pour persistance Chat IA
+  const [voiceSessionId, setVoiceSessionId] = useState<string | null>(null);
+  const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
 
   // Refs pour le cleanup
   const conversationRef = useRef<unknown>(null);
@@ -331,6 +351,9 @@ export function useVoiceChat({
       setActiveTool(null);
       setElapsedSeconds(0);
       setPlaybackRate(1.0);
+      // Spec #5 — reset session info
+      setVoiceSessionId(null);
+      setSessionStartedAt(null);
     }
   }, [
     stopTimer,
@@ -338,6 +361,25 @@ export function useVoiceChat({
     cleanupPlaybackObserver,
     cleanupPlaybackPolling,
   ]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Spec #5 — sendUserMessage()
+  // Inject un message texte dans la conversation ElevenLabs active.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const sendUserMessage = useCallback((text: string) => {
+    if (!conversationRef.current || !text || !text.trim()) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const conv = conversationRef.current as any;
+      if (typeof conv.sendUserMessage === "function") {
+        conv.sendUserMessage(text);
+      }
+    } catch (err) {
+      // SDK method unavailable — pas critique
+      console.warn("[useVoiceChat] sendUserMessage failed:", err);
+    }
+  }, []);
 
   // ─────────────────────────────────────────────────────────────────────────
   // start()
@@ -438,6 +480,8 @@ export function useVoiceChat({
       sessionData = await response.json();
       setRemainingMinutes(sessionData.quota_remaining_minutes);
       maxSecondsRef.current = sessionData.max_session_minutes * 60;
+      // Spec #5 — expose session_id pour la persistance des transcripts
+      setVoiceSessionId(sessionData.session_id);
       // Store input mode from session response
       const sessionInputMode = sessionData.input_mode || "ptt";
       inputModeRef.current = sessionInputMode;
@@ -468,6 +512,8 @@ export function useVoiceChat({
         onConnect: () => {
           if (isMountedRef.current) {
             setStatus("listening");
+            // Spec #5 — timestamp précis du démarrage pour time_in_call_secs
+            setSessionStartedAt(Date.now());
           }
         },
         onDisconnect: () => {
@@ -656,6 +702,7 @@ export function useVoiceChat({
     toggleMute,
     startTalking,
     stopTalking,
+    sendUserMessage,
     status,
     isSpeaking,
     isMuted,
@@ -669,5 +716,7 @@ export function useVoiceChat({
     error,
     playbackRate,
     micStream: mediaStreamRef,
+    voiceSessionId,
+    sessionStartedAt,
   };
 }

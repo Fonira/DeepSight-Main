@@ -57,6 +57,8 @@ def get_database_url() -> str:
     # Convert to sync driver for Alembic
     url = url.replace("postgresql+asyncpg://", "postgresql://")
     url = url.replace("postgres://", "postgresql://")
+    # SQLite async (aiosqlite) → sync driver for Alembic
+    url = url.replace("sqlite+aiosqlite://", "sqlite://")
 
     return url
 

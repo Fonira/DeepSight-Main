@@ -18,25 +18,16 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List, Callable, Awaitable
 from dataclasses import dataclass, field
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
 
-from db.database import (
-    get_session, User, Summary, PlaylistAnalysis, VideoChunk
-)
-from core.config import get_mistral_key, PLAN_LIMITS
+from db.database import User, Summary, PlaylistAnalysis, VideoChunk
+from core.config import get_mistral_key
 from videos.analysis import generate_summary, detect_category
-from transcripts import (
-    extract_video_id, get_video_info, get_transcript_with_timestamps
-)
+from transcripts import extract_video_id, get_video_info, get_transcript_with_timestamps
 
-from .chunker import (
-    create_chunking_plan, create_playlist_chunking_report,
-    ChunkingPlan, PlaylistChunk, PlaylistChunkingReport
-)
+from .chunker import create_chunking_plan, PlaylistChunk
 
 import logging
+
 logger = logging.getLogger("deepsight.playlists.pipeline")
 
 
@@ -44,12 +35,12 @@ logger = logging.getLogger("deepsight.playlists.pipeline")
 # 🔧 CONFIGURATION PIPELINE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-MAX_CONCURRENT_VIDEOS = 3       # Vidéos traitées en parallèle
-MAX_CONCURRENT_CHUNKS = 2       # Chunks par vidéo en parallèle
-CHUNK_SUMMARY_TIMEOUT = 120     # Timeout par chunk (secondes)
-MERGE_SUMMARY_TIMEOUT = 180     # Timeout pour le merge final
-MAX_RETRIES = 3                 # Retries par chunk
-RETRY_DELAY = 2                 # Délai entre retries (secondes)
+MAX_CONCURRENT_VIDEOS = 3  # Vidéos traitées en parallèle
+MAX_CONCURRENT_CHUNKS = 2  # Chunks par vidéo en parallèle
+CHUNK_SUMMARY_TIMEOUT = 120  # Timeout par chunk (secondes)
+MERGE_SUMMARY_TIMEOUT = 180  # Timeout pour le merge final
+MAX_RETRIES = 3  # Retries par chunk
+RETRY_DELAY = 2  # Délai entre retries (secondes)
 
 # Modèles par plan
 PLAN_MODELS = {
@@ -65,9 +56,11 @@ PLAN_MODELS = {
 # 📦 DATACLASSES RÉSULTAT
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class VideoResult:
     """Résultat du traitement d'une seule vidéo."""
+
     video_id: str
     video_title: str
     video_channel: str
@@ -75,24 +68,25 @@ class VideoResult:
     category: str
     category_confidence: float
     summary_content: str
-    full_digest: str                    # Digest complet (chunks concaténés)
-    transcript_context: str             # Pour le chat
+    full_digest: str  # Digest complet (chunks concaténés)
+    transcript_context: str  # Pour le chat
     word_count: int
     thumbnail_url: str
     position: int
-    tier: str                           # Tier de chunking
+    tier: str  # Tier de chunking
     num_chunks: int
-    was_cached: bool = False            # Réutilisé depuis le cache
+    was_cached: bool = False  # Réutilisé depuis le cache
     error: Optional[str] = None
 
 
 @dataclass
 class PipelineProgress:
     """État du pipeline pour le polling frontend."""
+
     total_videos: int
     completed_videos: int
     current_video_title: str = ""
-    current_step: str = "init"          # init | transcript | chunking | summary | merge | meta
+    current_step: str = "init"  # init | transcript | chunking | summary | merge | meta
     current_chunk: int = 0
     total_chunks: int = 0
     percent: int = 0
@@ -103,6 +97,7 @@ class PipelineProgress:
 @dataclass
 class PipelineResult:
     """Résultat final du pipeline complet."""
+
     corpus_id: str
     corpus_name: str
     videos: List[VideoResult]
@@ -125,6 +120,7 @@ ProgressCallback = Callable[[PipelineProgress], Awaitable[None]]
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🚀 PIPELINE PRINCIPAL
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def run_playlist_pipeline(
     urls: List[str],
@@ -163,7 +159,7 @@ async def run_playlist_pipeline(
         total_videos=len(urls),
         completed_videos=0,
         current_step="init",
-        message="Préparation du pipeline..." if lang == "fr" else "Preparing pipeline..."
+        message="Préparation du pipeline..." if lang == "fr" else "Preparing pipeline...",
     )
 
     async def _notify(p: PipelineProgress):
@@ -192,7 +188,9 @@ async def run_playlist_pipeline(
         raise ValueError("Aucune URL valide fournie")
 
     progress.total_videos = len(video_ids)
-    progress.message = f"Analyse de {len(video_ids)} vidéos..." if lang == "fr" else f"Analyzing {len(video_ids)} videos..."
+    progress.message = (
+        f"Analyse de {len(video_ids)} vidéos..." if lang == "fr" else f"Analyzing {len(video_ids)} videos..."
+    )
     progress.percent = 5
     await _notify(progress)
 
@@ -216,30 +214,21 @@ async def run_playlist_pipeline(
                 results[idx] = result
             except Exception as e:
                 logger.error(f"pipeline_video_error: video={video_id} error={e}")
-                progress.skipped_videos.append({
-                    "video_id": video_id,
-                    "reason": str(e)[:200]
-                })
+                progress.skipped_videos.append({"video_id": video_id, "reason": str(e)[:200]})
             finally:
                 progress.completed_videos += 1
                 progress.percent = 5 + int((progress.completed_videos / progress.total_videos) * 75)
                 await _notify(progress)
 
     # Lancer toutes les vidéos en parallèle (contrôlé par semaphore)
-    tasks = [
-        asyncio.create_task(process_one_video(idx, vid))
-        for idx, vid in enumerate(video_ids)
-    ]
+    tasks = [asyncio.create_task(process_one_video(idx, vid)) for idx, vid in enumerate(video_ids)]
     await asyncio.gather(*tasks, return_exceptions=True)
 
     # Filtrer les résultats valides
     valid_results = [r for r in results if r is not None]
 
     if not valid_results:
-        raise ValueError(
-            "Aucune vidéo n'a pu être analysée. "
-            f"Raisons : {progress.skipped_videos}"
-        )
+        raise ValueError(f"Aucune vidéo n'a pu être analysée. Raisons : {progress.skipped_videos}")
 
     # ─── PHASE 3 : MÉTA-ANALYSE MULTI-PASS ───
     progress.current_step = "meta"
@@ -304,6 +293,7 @@ async def run_playlist_pipeline(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📹 TRAITEMENT D'UNE VIDÉO (avec chunking si nécessaire)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def _process_single_video(
     video_id: str,
@@ -406,7 +396,9 @@ async def _process_single_video(
 
         # Transcript context : stocker autant que possible
         max_ctx = min(len(transcript_simple), 150000)
-        transcript_ctx = transcript_timestamped[:max_ctx] if isinstance(transcript_timestamped, str) else transcript_simple[:max_ctx]
+        transcript_ctx = (
+            transcript_timestamped[:max_ctx] if isinstance(transcript_timestamped, str) else transcript_simple[:max_ctx]
+        )
 
         return VideoResult(
             video_id=video_id,
@@ -427,8 +419,7 @@ async def _process_single_video(
 
     # ── Étape 5b : Vidéo longue → chunked pipeline ──
     logger.info(
-        f"chunked_analysis: video={video_id} chunks={plan.num_chunks} "
-        f"tier={plan.tier} words={plan.total_words:,}"
+        f"chunked_analysis: video={video_id} chunks={plan.num_chunks} tier={plan.tier} words={plan.total_words:,}"
     )
 
     chunk_digests = await _process_chunks_parallel(
@@ -445,7 +436,9 @@ async def _process_single_video(
 
     # ── Étape 6 : Merge des chunk digests ──
     progress.current_step = "merge"
-    progress.message = f"Fusion des {plan.num_chunks} segments..." if lang == "fr" else f"Merging {plan.num_chunks} segments..."
+    progress.message = (
+        f"Fusion des {plan.num_chunks} segments..." if lang == "fr" else f"Merging {plan.num_chunks} segments..."
+    )
     await notify(progress)
 
     merged_summary = await _merge_chunk_summaries(
@@ -460,15 +453,13 @@ async def _process_single_video(
     )
 
     # Full digest = tous les chunk digests concaténés (pour la méta-analyse)
-    full_digest = "\n\n---\n\n".join([
-        f"[{c['time_range']}] {c['digest']}"
-        for c in chunk_digests
-        if c.get('digest')
-    ])
+    full_digest = "\n\n---\n\n".join([f"[{c['time_range']}] {c['digest']}" for c in chunk_digests if c.get("digest")])
 
     # Transcript context élargi pour vidéos longues
     max_ctx = min(len(transcript_simple), 200000)
-    transcript_ctx = transcript_timestamped[:max_ctx] if isinstance(transcript_timestamped, str) else transcript_simple[:max_ctx]
+    transcript_ctx = (
+        transcript_timestamped[:max_ctx] if isinstance(transcript_timestamped, str) else transcript_simple[:max_ctx]
+    )
 
     return VideoResult(
         video_id=video_id,
@@ -491,6 +482,7 @@ async def _process_single_video(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔪 TRAITEMENT PARALLÈLE DES CHUNKS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def _process_chunks_parallel(
     chunks: List[PlaylistChunk],
@@ -539,8 +531,7 @@ async def _process_chunks_parallel(
                         await asyncio.sleep(RETRY_DELAY * (attempt + 1))
                     else:
                         logger.warning(
-                            f"chunk_failed: video={title[:30]} chunk={idx} "
-                            f"error={e} after {MAX_RETRIES} retries"
+                            f"chunk_failed: video={title[:30]} chunk={idx} error={e} after {MAX_RETRIES} retries"
                         )
                         results[idx] = {
                             "index": chunk.index,
@@ -551,10 +542,7 @@ async def _process_chunks_parallel(
                             "end_seconds": chunk.end_seconds,
                         }
 
-    tasks = [
-        asyncio.create_task(process_chunk(chunk, idx))
-        for idx, chunk in enumerate(chunks)
-    ]
+    tasks = [asyncio.create_task(process_chunk(chunk, idx)) for idx, chunk in enumerate(chunks)]
     await asyncio.gather(*tasks, return_exceptions=True)
 
     # Retourner dans l'ordre
@@ -615,10 +603,7 @@ Length: 150-300 words.
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://api.mistral.ai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            },
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
@@ -638,6 +623,7 @@ Length: 150-300 words.
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔗 MERGE DES CHUNK SUMMARIES → RÉSUMÉ UNIFIÉ
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def _merge_chunk_summaries(
     chunk_digests: List[Dict[str, Any]],
@@ -730,10 +716,7 @@ Format:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": model,
                     "messages": [{"role": "user", "content": prompt}],
@@ -756,6 +739,7 @@ Format:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🧠 MÉTA-ANALYSE MULTI-PASS v5.0
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def _generate_meta_analysis_multipass(
     videos: List[VideoResult],
@@ -842,10 +826,7 @@ Be analytical and precise. Cite videos by number.
             # Pass 1
             response1 = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": model,
                     "messages": [{"role": "user", "content": pass1_prompt}],
@@ -888,7 +869,7 @@ Les 5-7 apprentissages les plus importants, avec références aux vidéos.
 ## 📈 Statistiques
 - **Vidéos analysées :** {num_videos}
 - **Durée totale :** {duration_str}
-- **Catégories :** {', '.join(categories) if categories else 'Variées'}
+- **Catégories :** {", ".join(categories) if categories else "Variées"}
 - **Mots analysés :** {total_words:,}
 
 ## 🎬 Parcours Suggéré
@@ -921,7 +902,7 @@ The 5-7 most important learnings, with video references.
 ## 📈 Statistics
 - **Videos analyzed:** {num_videos}
 - **Total duration:** {duration_str}
-- **Categories:** {', '.join(categories) if categories else 'Various'}
+- **Categories:** {", ".join(categories) if categories else "Various"}
 - **Words analyzed:** {total_words:,}
 
 ## 🎬 Suggested Path
@@ -934,10 +915,7 @@ Be exhaustive and analytical. The quality of this meta-analysis is critical.
             max_tokens_pass2 = min(6000, 2000 + num_videos * 500)
             response2 = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": model,
                     "messages": [{"role": "user", "content": pass2_prompt}],
@@ -981,6 +959,7 @@ def _fallback_meta(videos: List[VideoResult], corpus_name: str, lang: str) -> st
 # ═══════════════════════════════════════════════════════════════════════════════
 # 💾 PERSISTANCE BDD
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def _persist_results(
     corpus_id: str,
@@ -1047,7 +1026,7 @@ async def _persist_results(
                 )
 
                 # Stocker le full_digest si différent du summary
-                if hasattr(summary, 'full_digest') and v.full_digest != v.summary_content:
+                if hasattr(summary, "full_digest") and v.full_digest != v.summary_content:
                     summary.full_digest = v.full_digest
 
                 session.add(summary)
@@ -1063,8 +1042,8 @@ async def _persist_results(
                         end_sec = 0
                         digest_text = part
                         if part.startswith("[") and "]" in part:
-                            time_part = part[1:part.index("]")]
-                            digest_text = part[part.index("]") + 2:]
+                            time_part = part[1 : part.index("]")]
+                            digest_text = part[part.index("]") + 2 :]
                             # Parser "00:00 → 15:30"
                             if "→" in time_part:
                                 parts = time_part.split("→")

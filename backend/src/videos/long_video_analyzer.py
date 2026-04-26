@@ -21,10 +21,8 @@
 
 import re
 import asyncio
-import httpx
 from typing import List, Tuple, Optional, Dict, Any
 from dataclasses import dataclass, field
-from datetime import datetime
 
 from core.config import get_mistral_key
 from core.http_client import shared_http_client
@@ -34,35 +32,36 @@ from core.http_client import shared_http_client
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Seuils pour déclencher le chunking
-LONG_VIDEO_THRESHOLD_WORDS = 5000       # ~20 min de vidéo
-VERY_LONG_VIDEO_THRESHOLD_WORDS = 15000 # ~1h de vidéo
-ULTRA_LONG_VIDEO_THRESHOLD_WORDS = 45000 # ~3h de vidéo
+LONG_VIDEO_THRESHOLD_WORDS = 5000  # ~20 min de vidéo
+VERY_LONG_VIDEO_THRESHOLD_WORDS = 15000  # ~1h de vidéo
+ULTRA_LONG_VIDEO_THRESHOLD_WORDS = 45000  # ~3h de vidéo
 
 # Taille des chunks — OPTIMISÉE pour garantir un traitement complet
-CHUNK_SIZE_WORDS = 2500                 # 2500 mots max par chunk (plus petit = plus sûr)
-CHUNK_OVERLAP_WORDS = 300               # Chevauchement augmenté pour meilleur contexte
+CHUNK_SIZE_WORDS = 2500  # 2500 mots max par chunk (plus petit = plus sûr)
+CHUNK_OVERLAP_WORDS = 300  # Chevauchement augmenté pour meilleur contexte
 
 # Retry et robustesse
-MAX_RETRIES_PER_CHUNK = 2               # 2 tentatives par chunk (fallback chain gère les échecs modèle)
-RETRY_DELAY_SECONDS = 3                 # Délai entre les tentatives
+MAX_RETRIES_PER_CHUNK = 2  # 2 tentatives par chunk (fallback chain gère les échecs modèle)
+RETRY_DELAY_SECONDS = 3  # Délai entre les tentatives
 
 # ⚠️ LEGACY — la concurrence est maintenant gérée par get_concurrent_chunks(tier)
 # dans duration_router.py. Cette constante reste en fallback si tier non fourni.
-MAX_CONCURRENT_CHUNKS = 2               # Fallback si pas de tier
+MAX_CONCURRENT_CHUNKS = 2  # Fallback si pas de tier
 
-CHUNK_TIMEOUT_SECONDS = 180             # Timeout 3 min par chunk
+CHUNK_TIMEOUT_SECONDS = 180  # Timeout 3 min par chunk
 
 # GARANTIE 100% - PAS DE LIMITE sur le nombre de chunks
-MAX_CHUNKS = None                       # Illimité - on traite TOUT le transcript
+MAX_CHUNKS = None  # Illimité - on traite TOUT le transcript
 
 # Pour le stockage du transcript complet pour le chat IA
 STORE_FULL_TRANSCRIPT = True
-MAX_TRANSCRIPT_STORAGE_CHARS = 500000   # 500k caractères max en BDD (~3h de vidéo)
+MAX_TRANSCRIPT_STORAGE_CHARS = 500000  # 500k caractères max en BDD (~3h de vidéo)
 
 
 @dataclass
 class TranscriptChunk:
     """Représente un morceau de transcript"""
+
     index: int
     total_chunks: int
     text: str
@@ -71,7 +70,7 @@ class TranscriptChunk:
     end_time: Optional[str] = None
     start_word_index: int = 0
     end_word_index: int = 0
-    
+
     # Tracking du traitement
     processed: bool = False
     retry_count: int = 0
@@ -81,6 +80,7 @@ class TranscriptChunk:
 @dataclass
 class ChunkAnalysis:
     """Résultat d'analyse d'un chunk"""
+
     chunk_index: int
     summary: str
     key_points: List[str] = field(default_factory=list)
@@ -93,6 +93,7 @@ class ChunkAnalysis:
 @dataclass
 class AnalysisReport:
     """Rapport de l'analyse complète"""
+
     total_words: int
     total_chunks: int
     chunks_analyzed: int
@@ -109,6 +110,7 @@ class LongVideoResult:
     Contient le summary ET les chunks analysés pour permettre au router
     de stocker les VideoChunks en DB (réutilisés par le digest pipeline).
     """
+
     summary: str
     chunks: List[TranscriptChunk] = field(default_factory=list)
     chunk_analyses: List[ChunkAnalysis] = field(default_factory=list)
@@ -119,16 +121,17 @@ class LongVideoResult:
 # 📏 DÉTECTION ET DÉCOUPAGE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def needs_chunking(transcript: str) -> Tuple[bool, int, str]:
     """
     Détermine si un transcript nécessite un découpage.
-    
+
     Returns:
         (needs_chunking, word_count, reason)
     """
     words = transcript.split()
     word_count = len(words)
-    
+
     if word_count > VERY_LONG_VIDEO_THRESHOLD_WORDS:
         return True, word_count, f"very_long ({word_count} mots ≈ {word_count // 150} min)"
     elif word_count > LONG_VIDEO_THRESHOLD_WORDS:
@@ -141,24 +144,24 @@ def estimate_timecode(word_index: int, total_words: int, video_duration: int) ->
     """
     Estime le timecode basé sur la position dans le transcript.
     ⚠️ FALLBACK: Utilisé seulement si pas de vrais timestamps disponibles.
-    
+
     Args:
         word_index: Index du mot dans le transcript
         total_words: Nombre total de mots
         video_duration: Durée de la vidéo en secondes
-    
+
     Returns:
         Timecode au format HH:MM:SS ou MM:SS
     """
     if total_words == 0:
         return "00:00"
-    
+
     seconds = int((word_index / total_words) * video_duration)
-    
+
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     secs = seconds % 60
-    
+
     if hours > 0:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     else:
@@ -168,21 +171,21 @@ def estimate_timecode(word_index: int, total_words: int, video_duration: int) ->
 def parse_real_timestamps(transcript_timestamped: str) -> List[Tuple[int, str]]:
     """
     🆕 v3.0: Parse les VRAIS timestamps du transcript YouTube.
-    
+
     Le format attendu est: "[00:30] texte [01:00] suite..."
-    
+
     Returns:
         Liste de tuples (seconds, text) avec les vrais timestamps
     """
     if not transcript_timestamped:
         return []
-    
+
     segments = []
     # Pattern pour capturer [HH:MM:SS] ou [MM:SS] suivi du texte
-    pattern = r'\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*([^\[]*)'
-    
+    pattern = r"\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*([^\[]*)"
+
     matches = re.findall(pattern, transcript_timestamped)
-    
+
     for match in matches:
         if match[2]:  # Format HH:MM:SS
             hours, minutes, seconds = int(match[0]), int(match[1]), int(match[2])
@@ -190,40 +193,37 @@ def parse_real_timestamps(transcript_timestamped: str) -> List[Tuple[int, str]]:
         else:  # Format MM:SS
             minutes, seconds = int(match[0]), int(match[1])
             total_seconds = minutes * 60 + seconds
-        
+
         text = match[3].strip()
         if text:
             segments.append((total_seconds, text))
-    
+
     return segments
 
 
 def get_timestamp_at_word_index(
-    transcript_timestamped: str, 
-    word_index: int,
-    total_words: int,
-    video_duration: int
+    transcript_timestamped: str, word_index: int, total_words: int, video_duration: int
 ) -> str:
     """
     🆕 v3.0: Obtient le VRAI timestamp à une position donnée.
-    
+
     1. Parse les vrais timestamps
     2. Trouve le segment correspondant à word_index
     3. Fallback sur estimation si pas de vrais timestamps
     """
     segments = parse_real_timestamps(transcript_timestamped)
-    
+
     if not segments:
         # Fallback: estimation
         return estimate_timecode(word_index, total_words, video_duration)
-    
+
     # Calculer la position relative (0 à 1)
     position_ratio = word_index / max(total_words, 1)
-    
+
     # Trouver le segment correspondant
     # On suppose une distribution uniforme des mots dans le temps
     target_time = position_ratio * video_duration
-    
+
     # Trouver le segment le plus proche
     best_segment = segments[0]
     for seg_time, seg_text in segments:
@@ -231,13 +231,13 @@ def get_timestamp_at_word_index(
             best_segment = (seg_time, seg_text)
         else:
             break
-    
+
     # Formater le timestamp
     seconds = best_segment[0]
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     secs = seconds % 60
-    
+
     if hours > 0:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     else:
@@ -249,11 +249,11 @@ def split_into_chunks_with_real_timestamps(
     transcript_timestamped: str,
     video_duration: int = 0,
     chunk_size: int = CHUNK_SIZE_WORDS,
-    overlap: int = CHUNK_OVERLAP_WORDS
+    overlap: int = CHUNK_OVERLAP_WORDS,
 ) -> List[TranscriptChunk]:
     """
     🆕 v3.0: Divise le transcript en chunks avec VRAIS timestamps YouTube.
-    
+
     Amélioration majeure:
     - Parse les timestamps réels du transcript_timestamped
     - Assigne les vrais timecodes à chaque chunk
@@ -262,15 +262,15 @@ def split_into_chunks_with_real_timestamps(
     # Parser les vrais timestamps
     real_segments = parse_real_timestamps(transcript_timestamped)
     has_real_timestamps = len(real_segments) > 0
-    
+
     if has_real_timestamps:
         print(f"✅ [TIMESTAMPS] Found {len(real_segments)} real timestamps", flush=True)
     else:
-        print(f"⚠️ [TIMESTAMPS] No real timestamps, using estimation", flush=True)
-    
+        print("⚠️ [TIMESTAMPS] No real timestamps, using estimation", flush=True)
+
     words = transcript.split()
     total_words = len(words)
-    
+
     if total_words <= chunk_size:
         end_time = "00:00"
         if has_real_timestamps and real_segments:
@@ -282,87 +282,84 @@ def split_into_chunks_with_real_timestamps(
             end_time = f"{hours:02d}:{minutes:02d}:{secs:02d}" if hours > 0 else f"{minutes:02d}:{secs:02d}"
         else:
             end_time = estimate_timecode(total_words, total_words, video_duration)
-            
-        return [TranscriptChunk(
-            index=0,
-            total_chunks=1,
-            text=transcript,
-            word_count=total_words,
-            start_time="00:00",
-            end_time=end_time,
-            start_word_index=0,
-            end_word_index=total_words
-        )]
-    
+
+        return [
+            TranscriptChunk(
+                index=0,
+                total_chunks=1,
+                text=transcript,
+                word_count=total_words,
+                start_time="00:00",
+                end_time=end_time,
+                start_word_index=0,
+                end_word_index=total_words,
+            )
+        ]
+
     chunks = []
     current_pos = 0
     chunk_index = 0
-    
+
     # Estimer le nombre total de chunks
     estimated_chunks = max(1, (total_words - overlap) // (chunk_size - overlap))
-    
+
     while current_pos < total_words:
         # Calculer la fin du chunk
         end_pos = min(current_pos + chunk_size, total_words)
-        
+
         # Ajuster pour finir sur une phrase (chercher un point)
         if end_pos < total_words:
             search_start = max(current_pos + chunk_size - 200, current_pos)
             search_text = " ".join(words[search_start:end_pos])
-            
-            last_period = search_text.rfind('.')
+
+            last_period = search_text.rfind(".")
             if last_period == -1:
-                last_period = search_text.rfind('!')
+                last_period = search_text.rfind("!")
             if last_period == -1:
-                last_period = search_text.rfind('?')
-            
+                last_period = search_text.rfind("?")
+
             if last_period > 0:
                 words_before_period = len(search_text[:last_period].split())
                 end_pos = search_start + words_before_period + 1
-        
+
         # Créer le chunk
         chunk_text = " ".join(words[current_pos:end_pos])
-        
+
         # 🆕 Obtenir les VRAIS timestamps
         if has_real_timestamps:
-            start_time = get_timestamp_at_word_index(
-                transcript_timestamped, current_pos, total_words, video_duration
-            )
-            end_time = get_timestamp_at_word_index(
-                transcript_timestamped, end_pos, total_words, video_duration
-            )
+            start_time = get_timestamp_at_word_index(transcript_timestamped, current_pos, total_words, video_duration)
+            end_time = get_timestamp_at_word_index(transcript_timestamped, end_pos, total_words, video_duration)
         else:
             start_time = estimate_timecode(current_pos, total_words, video_duration)
             end_time = estimate_timecode(end_pos, total_words, video_duration)
-        
-        chunks.append(TranscriptChunk(
-            index=chunk_index,
-            total_chunks=estimated_chunks,
-            text=chunk_text,
-            word_count=end_pos - current_pos,
-            start_time=start_time,
-            end_time=end_time,
-            start_word_index=current_pos,
-            end_word_index=end_pos
-        ))
-        
+
+        chunks.append(
+            TranscriptChunk(
+                index=chunk_index,
+                total_chunks=estimated_chunks,
+                text=chunk_text,
+                word_count=end_pos - current_pos,
+                start_time=start_time,
+                end_time=end_time,
+                start_word_index=current_pos,
+                end_word_index=end_pos,
+            )
+        )
+
         # Avancer avec chevauchement
         current_pos = end_pos - overlap if end_pos < total_words else total_words
         chunk_index += 1
-    
+
     # Mettre à jour le total de chunks
     for chunk in chunks:
         chunk.total_chunks = len(chunks)
-    
+
     return chunks
 
 
 # Garder l'ancienne fonction pour compatibilité
 def split_into_chunks(
-    transcript: str,
-    video_duration: int = 0,
-    chunk_size: int = CHUNK_SIZE_WORDS,
-    overlap: int = CHUNK_OVERLAP_WORDS
+    transcript: str, video_duration: int = 0, chunk_size: int = CHUNK_SIZE_WORDS, overlap: int = CHUNK_OVERLAP_WORDS
 ) -> List[TranscriptChunk]:
     """
     ⚠️ LEGACY: Utiliser split_into_chunks_with_real_timestamps de préférence.
@@ -373,13 +370,14 @@ def split_into_chunks(
         transcript_timestamped="",  # Pas de vrais timestamps
         video_duration=video_duration,
         chunk_size=chunk_size,
-        overlap=overlap
+        overlap=overlap,
     )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🧠 ANALYSE PAR CHUNKS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def analyze_chunk_with_retry(
     chunk: TranscriptChunk,
@@ -389,20 +387,20 @@ async def analyze_chunk_with_retry(
     mode: str,
     model: str = "mistral-small-2603",
     api_key: str = None,
-    max_retries: int = MAX_RETRIES_PER_CHUNK
+    max_retries: int = MAX_RETRIES_PER_CHUNK,
 ) -> Optional[ChunkAnalysis]:
     """
     🔄 Analyse un chunk avec retry automatique en cas d'échec.
-    
+
     GARANTIE: Tente jusqu'à max_retries fois avant d'abandonner.
     """
     api_key = api_key or get_mistral_key()
     if not api_key:
         print(f"❌ [Chunk {chunk.index}] No API key!", flush=True)
         return None
-    
+
     last_error = None
-    
+
     for attempt in range(max_retries):
         try:
             result = await _analyze_chunk_internal(
@@ -412,9 +410,9 @@ async def analyze_chunk_with_retry(
                 lang=lang,
                 mode=mode,
                 model=model,
-                api_key=api_key
+                api_key=api_key,
             )
-            
+
             if result:
                 result.word_count_analyzed = chunk.word_count
                 chunk.processed = True
@@ -423,16 +421,16 @@ async def analyze_chunk_with_retry(
                 return result
             else:
                 last_error = "Empty result"
-                
+
         except Exception as e:
             last_error = str(e)
             chunk.retry_count = attempt + 1
             print(f"⚠️ [Chunk {chunk.index}] Attempt {attempt + 1}/{max_retries} failed: {e}", flush=True)
-        
+
         # Attendre avant de réessayer
         if attempt < max_retries - 1:
             await asyncio.sleep(RETRY_DELAY_SECONDS * (attempt + 1))  # Backoff progressif
-    
+
     # Échec après toutes les tentatives
     chunk.error = last_error
     print(f"❌ [Chunk {chunk.index}] FAILED after {max_retries} attempts: {last_error}", flush=True)
@@ -440,13 +438,7 @@ async def analyze_chunk_with_retry(
 
 
 async def _analyze_chunk_internal(
-    chunk: TranscriptChunk,
-    video_title: str,
-    category: str,
-    lang: str,
-    mode: str,
-    model: str,
-    api_key: str
+    chunk: TranscriptChunk, video_title: str, category: str, lang: str, mode: str, model: str, api_key: str
 ) -> Optional[ChunkAnalysis]:
     """
     Analyse interne d'un chunk (appelée par analyze_chunk_with_retry).
@@ -459,7 +451,7 @@ async def _analyze_chunk_internal(
         position_context = "C'est la FIN de la vidéo. Note les conclusions, recommandations, et points finaux."
     else:
         position_context = f"C'est la PARTIE {chunk.index + 1}/{chunk.total_chunks} de la vidéo (milieu). Identifie les arguments et développements."
-    
+
     system_prompt = f"""Tu es un analyste expert qui résume des segments de vidéos longues.
 
 CONTEXTE:
@@ -504,29 +496,24 @@ N'omets aucun point important mentionné dans ce segment."""
     async with shared_http_client() as client:
         response = await client.post(
             "https://api.mistral.ai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            },
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
                 "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
+                "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
                 "max_tokens": 2000,  # Augmenté pour des résumés plus complets
                 "temperature": 0.3,
-                "response_format": {"type": "json_object"}
+                "response_format": {"type": "json_object"},
             },
-            timeout=CHUNK_TIMEOUT_SECONDS
+            timeout=CHUNK_TIMEOUT_SECONDS,
         )
-        
+
         if response.status_code == 200:
             data = response.json()
             content = data["choices"][0]["message"]["content"]
-            
+
             # Parser le JSON
             import json
+
             try:
                 parsed = json.loads(content)
                 return ChunkAnalysis(
@@ -536,7 +523,7 @@ N'omets aucun point important mentionné dans ce segment."""
                     important_quotes=parsed.get("quotes", []),
                     topics=parsed.get("topics", []),
                     time_range=f"{chunk.start_time} - {chunk.end_time}",
-                    word_count_analyzed=chunk.word_count
+                    word_count_analyzed=chunk.word_count,
                 )
             except json.JSONDecodeError:
                 # Si pas de JSON valide, utiliser le texte brut
@@ -547,7 +534,7 @@ N'omets aucun point important mentionné dans ce segment."""
                     important_quotes=[],
                     topics=[],
                     time_range=f"{chunk.start_time} - {chunk.end_time}",
-                    word_count_analyzed=chunk.word_count
+                    word_count_analyzed=chunk.word_count,
                 )
         else:
             raise Exception(f"API error {response.status_code}: {response.text[:200]}")
@@ -561,17 +548,11 @@ async def analyze_chunk(
     lang: str,
     mode: str,
     model: str = "mistral-small-2603",
-    api_key: str = None
+    api_key: str = None,
 ) -> Optional[ChunkAnalysis]:
     """Wrapper pour compatibilité - utilise la version avec retry."""
     return await analyze_chunk_with_retry(
-        chunk=chunk,
-        video_title=video_title,
-        category=category,
-        lang=lang,
-        mode=mode,
-        model=model,
-        api_key=api_key
+        chunk=chunk, video_title=video_title, category=category, lang=lang, mode=mode, model=model, api_key=api_key
     )
 
 
@@ -583,7 +564,7 @@ async def analyze_chunks_parallel(
     mode: str,
     model: str = "mistral-small-2603",
     max_concurrent: int = MAX_CONCURRENT_CHUNKS,
-    progress_callback = None,
+    progress_callback=None,
     max_tokens_per_chunk: int = 2000,
 ) -> Tuple[List[ChunkAnalysis], AnalysisReport]:
     """
@@ -598,43 +579,43 @@ async def analyze_chunks_parallel(
     """
     total_chunks = len(chunks)
     total_words = sum(c.word_count for c in chunks)
-    
+
     print(f"📚 [FULL ANALYSIS] Starting analysis of {total_chunks} chunks ({total_words} words total)", flush=True)
-    
+
     results: List[Optional[ChunkAnalysis]] = [None] * total_chunks
     semaphore = asyncio.Semaphore(max_concurrent)
-    
+
     async def analyze_with_semaphore(chunk: TranscriptChunk, index: int):
         async with semaphore:
             if progress_callback:
                 # Progress de 40% à 75% pendant l'analyse des chunks
                 progress = 40 + int((index / total_chunks) * 35)
-                progress_callback(progress, f"📝 Analyse partie {index + 1}/{total_chunks} ({chunk.word_count} mots)...")
-            
-            print(f"🔍 [Chunk {index + 1}/{total_chunks}] Analyzing {chunk.word_count} words ({chunk.start_time} → {chunk.end_time})...", flush=True)
-            
-            result = await analyze_chunk_with_retry(
-                chunk=chunk,
-                video_title=video_title,
-                category=category,
-                lang=lang,
-                mode=mode,
-                model=model
+                progress_callback(
+                    progress, f"📝 Analyse partie {index + 1}/{total_chunks} ({chunk.word_count} mots)..."
+                )
+
+            print(
+                f"🔍 [Chunk {index + 1}/{total_chunks}] Analyzing {chunk.word_count} words ({chunk.start_time} → {chunk.end_time})...",
+                flush=True,
             )
-            
+
+            result = await analyze_chunk_with_retry(
+                chunk=chunk, video_title=video_title, category=category, lang=lang, mode=mode, model=model
+            )
+
             if result:
                 print(f"✅ [Chunk {index + 1}/{total_chunks}] Done - {len(result.summary)} chars summary", flush=True)
             else:
                 print(f"❌ [Chunk {index + 1}/{total_chunks}] FAILED after all retries", flush=True)
-            
+
             return index, result
-    
+
     # Phase 1: Analyse initiale de TOUS les chunks
     print(f"🚀 [FULL ANALYSIS] Phase 1: Initial analysis of all {total_chunks} chunks...", flush=True)
-    
+
     tasks = [analyze_with_semaphore(chunk, i) for i, chunk in enumerate(chunks)]
     task_results = await asyncio.gather(*tasks, return_exceptions=True)
-    
+
     # Collecter les résultats
     failed_indices = []
     for result in task_results:
@@ -646,7 +627,7 @@ async def analyze_chunks_parallel(
             results[index] = analysis
             if analysis is None:
                 failed_indices.append(index)
-    
+
     # Phase 2: Retry des chunks qui ont échoué (EN PARALLÈLE avec le même sémaphore)
     if failed_indices:
         print(f"🔄 [FULL ANALYSIS] Phase 2: retrying {len(failed_indices)} failed chunks in parallel...", flush=True)
@@ -665,7 +646,7 @@ async def analyze_chunks_parallel(
                     lang=lang,
                     mode=mode,
                     model=model,
-                    max_retries=2  # Moins de retries car déjà essayé
+                    max_retries=2,  # Moins de retries car déjà essayé
                 )
                 if result:
                     print(f"✅ [Retry] Chunk {failed_index + 1} succeeded!", flush=True)
@@ -684,43 +665,46 @@ async def analyze_chunks_parallel(
                 failed_index, result = retry_result
                 if result:
                     results[failed_index] = result
-    
+
     # Calculer le rapport de couverture
     successful_analyses = [r for r in results if r is not None]
     final_failed = [i for i, r in enumerate(results) if r is None]
-    
+
     words_analyzed = sum(a.word_count_analyzed for a in successful_analyses)
     coverage_percent = (words_analyzed / total_words * 100) if total_words > 0 else 0
-    
+
     report = AnalysisReport(
         total_words=total_words,
         total_chunks=total_chunks,
         chunks_analyzed=len(successful_analyses),
         chunks_failed=len(final_failed),
         coverage_percent=coverage_percent,
-        failed_chunks=final_failed
+        failed_chunks=final_failed,
     )
-    
+
     # Warnings si couverture incomplète
     if coverage_percent < 100:
         report.warnings.append(f"⚠️ Couverture: {coverage_percent:.1f}% - {len(final_failed)} chunks non analysés")
         for idx in final_failed:
             chunk = chunks[idx]
-            report.warnings.append(f"  - Chunk {idx + 1}: {chunk.start_time} → {chunk.end_time} ({chunk.word_count} mots)")
-    
-    print(f"📊 [FULL ANALYSIS] REPORT:", flush=True)
+            report.warnings.append(
+                f"  - Chunk {idx + 1}: {chunk.start_time} → {chunk.end_time} ({chunk.word_count} mots)"
+            )
+
+    print("📊 [FULL ANALYSIS] REPORT:", flush=True)
     print(f"   - Total words: {total_words}", flush=True)
     print(f"   - Chunks: {len(successful_analyses)}/{total_chunks} analyzed", flush=True)
     print(f"   - Coverage: {coverage_percent:.1f}%", flush=True)
     if final_failed:
         print(f"   - ⚠️ FAILED chunks: {final_failed}", flush=True)
-    
+
     return successful_analyses, report
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔄 FUSION DES ANALYSES
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def synthesize_chunk_analyses(
     analyses: List[ChunkAnalysis],
@@ -745,17 +729,17 @@ async def synthesize_chunk_analyses(
     api_key = api_key or get_mistral_key()
     if not api_key:
         return None
-    
+
     # Formater les analyses de chunks
     chunk_summaries = []
     all_quotes = []
     all_topics = set()
-    
+
     # 🔧 FIX: Échantillonnage ÉQUILIBRÉ des points clés sur TOUTE la vidéo
     # On garde 2 points clés de CHAQUE chunk pour garantir une couverture complète
     balanced_key_points = []
     points_per_chunk = max(2, 20 // len(analyses)) if analyses else 2  # Au moins 2 par chunk
-    
+
     for analysis in sorted(analyses, key=lambda x: x.chunk_index):
         chunk_summaries.append(f"""
 ### Segment {analysis.chunk_index + 1} ({analysis.time_range})
@@ -764,38 +748,41 @@ async def synthesize_chunk_analyses(
         # Prendre les N premiers points clés de CE chunk (avec timecodes de cette partie)
         chunk_points = analysis.key_points[:points_per_chunk] if analysis.key_points else []
         balanced_key_points.extend(chunk_points)
-        
+
         all_quotes.extend(analysis.important_quotes)
         all_topics.update(analysis.topics)
-    
+
     # Formater le contenu pour la synthèse
     chunks_content = "\n".join(chunk_summaries)
-    
+
     # Points clés équilibrés sur toute la vidéo (dédupliqués mais gardant l'ordre chronologique)
     unique_key_points = list(dict.fromkeys(balanced_key_points))
-    
+
     mode_instructions = {
         "accessible": "Crée une synthèse COURTE et PERCUTANTE (500-800 mots). Utilise un langage simple et des analogies.",
         "standard": "Crée une synthèse ÉQUILIBRÉE (1000-1500 mots). Structure claire avec sections thématiques.",
-        "expert": "Crée une synthèse APPROFONDIE (1500-2500 mots). Analyse critique avec évaluation épistémique."
+        "expert": "Crée une synthèse APPROFONDIE (1500-2500 mots). Analyse critique avec évaluation épistémique.",
     }
-    
+
     # Durée formatée
     hours = video_duration // 3600
     minutes = (video_duration % 3600) // 60
     duration_str = f"{hours}h{minutes:02d}" if hours > 0 else f"{minutes} min"
-    
+
     # Contextualisation temporelle pour vidéos longues
     temporal_context = ""
     if upload_date:
         from videos.analysis import _format_video_age, _format_view_count
+
         readable_date, human_age, age_days = _format_video_age(upload_date)
         if readable_date:
             temporal_context = f"\n📅 Publiée le {readable_date} ({human_age})."
             if view_count:
                 temporal_context += f" 👁️ {_format_view_count(view_count)} vues."
             if age_days > 365:
-                temporal_context += "\n⚠️ Vidéo de plus d'un an : signale les données chiffrées/stats potentiellement obsolètes."
+                temporal_context += (
+                    "\n⚠️ Vidéo de plus d'un an : signale les données chiffrées/stats potentiellement obsolètes."
+                )
 
     system_prompt = f"""Tu es un expert en synthèse de contenus longs.
 
@@ -839,12 +826,12 @@ RÉSUMÉS DES SEGMENTS:
 ═══════════════════════════════════════════════════════════════════════════════
 POINTS CLÉS EXTRAITS:
 ═══════════════════════════════════════════════════════════════════════════════
-{chr(10).join('• ' + p for p in unique_key_points)}
+{chr(10).join("• " + p for p in unique_key_points)}
 
 ═══════════════════════════════════════════════════════════════════════════════
 THÈMES IDENTIFIÉS:
 ═══════════════════════════════════════════════════════════════════════════════
-{', '.join(all_topics)}
+{", ".join(all_topics)}
 
 """
 
@@ -871,32 +858,25 @@ Crée maintenant la SYNTHÈSE FINALE en {"français" if lang == "fr" else "angla
     # max_tokens : priorité au paramètre fourni par get_optimal_model(),
     # sinon fallback sur les valeurs par défaut par mode.
     if not max_tokens:
-        max_tokens = {
-            "accessible": 2000,
-            "standard": 4000,
-            "expert": 6000
-        }.get(mode, 4000)
+        max_tokens = {"accessible": 2000, "standard": 4000, "expert": 6000}.get(mode, 4000)
 
     try:
         async with shared_http_client() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": model,
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
+                        {"role": "user", "content": user_prompt},
                     ],
                     "max_tokens": max_tokens,
-                    "temperature": 0.3
+                    "temperature": 0.3,
                 },
-                timeout=180  # 3 minutes pour la synthèse
+                timeout=180,  # 3 minutes pour la synthèse
             )
-            
+
             if response.status_code == 200:
                 data = response.json()
                 synthesis = data["choices"][0]["message"]["content"].strip()
@@ -906,7 +886,7 @@ Crée maintenant la SYNTHÈSE FINALE en {"français" if lang == "fr" else "angla
             else:
                 print(f"❌ Synthesis failed: {response.status_code} - {response.text}", flush=True)
                 return None
-                
+
     except Exception as e:
         print(f"❌ Synthesis error: {e}", flush=True)
         return None
@@ -915,6 +895,7 @@ Crée maintenant la SYNTHÈSE FINALE en {"français" if lang == "fr" else "angla
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🎯 FONCTION PRINCIPALE
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def analyze_long_video(
     title: str,
@@ -925,7 +906,7 @@ async def analyze_long_video(
     mode: str,
     model: str = "mistral-small-2603",
     web_context: str = None,
-    progress_callback = None,
+    progress_callback=None,
     transcript_timestamped: str = None,
     upload_date: str = "",
     view_count: int = 0,
@@ -961,8 +942,11 @@ async def analyze_long_video(
         Synthèse finale COMPLÈTE ou None si erreur critique
     """
     from .duration_router import (
-        categorize_video, get_optimal_model, get_concurrent_chunks,
-        needs_hierarchical_synthesis, HIERARCHICAL_GROUP_SIZE, VideoTier,
+        categorize_video,
+        get_optimal_model,
+        get_concurrent_chunks,
+        needs_hierarchical_synthesis,
+        HIERARCHICAL_GROUP_SIZE,
     )
 
     needs_chunk, word_count, reason = needs_chunking(transcript)
@@ -985,10 +969,10 @@ async def analyze_long_video(
     )
     max_concurrent = get_concurrent_chunks(tier)
 
-    print(f"", flush=True)
-    print(f"╔══════════════════════════════════════════════════════════════════╗", flush=True)
-    print(f"║  📚 LONG VIDEO ANALYSIS v3.0 - INTELLIGENT MODEL ROUTING         ║", flush=True)
-    print(f"╚══════════════════════════════════════════════════════════════════╝", flush=True)
+    print("", flush=True)
+    print("╔══════════════════════════════════════════════════════════════════╗", flush=True)
+    print("║  📚 LONG VIDEO ANALYSIS v3.0 - INTELLIGENT MODEL ROUTING         ║", flush=True)
+    print("╚══════════════════════════════════════════════════════════════════╝", flush=True)
     print(f"📊 Transcript: {word_count} words", flush=True)
     print(f"⏱️ Duration: {video_duration // 60} min {video_duration % 60} sec", flush=True)
     print(f"📁 Category: {category} | 🎯 Mode: {mode} | 👤 Plan: {user_plan}", flush=True)
@@ -996,7 +980,7 @@ async def analyze_long_video(
     print(f"🧠 Synthesis model: {synthesis_model} (max {synthesis_max_tokens} tokens)", flush=True)
     print(f"⚡ Concurrence: {max_concurrent} chunks simultanés (tier: {tier.value})", flush=True)
     print(f"⏱️ Real timestamps: {'YES ✅' if transcript_timestamped else 'NO (estimated)'}", flush=True)
-    print(f"", flush=True)
+    print("", flush=True)
 
     if progress_callback:
         progress_callback(35, f"📚 Vidéo longue détectée ({word_count} mots)...")
@@ -1005,9 +989,7 @@ async def analyze_long_video(
     # 1. DÉCOUPAGE EN CHUNKS (AVEC VRAIS TIMESTAMPS)
     # ═══════════════════════════════════════════════════════════════════════
     chunks = split_into_chunks_with_real_timestamps(
-        transcript=transcript,
-        transcript_timestamped=transcript_timestamped or "",
-        video_duration=video_duration
+        transcript=transcript, transcript_timestamped=transcript_timestamped or "", video_duration=video_duration
     )
 
     # Vérifier que le découpage couvre tout
@@ -1041,7 +1023,7 @@ async def analyze_long_video(
         for warning in report.warnings:
             print(f"   {warning}", flush=True)
     else:
-        print(f"✅ PERFECT: 100% coverage achieved!", flush=True)
+        print("✅ PERFECT: 100% coverage achieved!", flush=True)
 
     if not chunk_analyses:
         print("❌ CRITICAL: No chunk analyses succeeded at all!", flush=True)
@@ -1054,7 +1036,9 @@ async def analyze_long_video(
         if report.coverage_percent == 100:
             progress_callback(78, f"✅ {len(chunk_analyses)} parties analysées (100%)")
         else:
-            progress_callback(78, f"⚠️ {len(chunk_analyses)}/{len(chunks)} parties analysées ({report.coverage_percent:.0f}%)")
+            progress_callback(
+                78, f"⚠️ {len(chunk_analyses)}/{len(chunks)} parties analysées ({report.coverage_percent:.0f}%)"
+            )
 
     # ═══════════════════════════════════════════════════════════════════════
     # 3. FUSION EN SYNTHÈSE FINALE (HIÉRARCHIQUE SI >25 CHUNKS)
@@ -1064,7 +1048,9 @@ async def analyze_long_video(
 
     if needs_hierarchical_synthesis(len(chunk_analyses)):
         # ── Synthèse hiérarchique (vidéos ultra-longues 6h+) ──
-        print(f"🏗️ Hierarchical synthesis: {len(chunk_analyses)} chunks > {HIERARCHICAL_GROUP_SIZE} threshold", flush=True)
+        print(
+            f"🏗️ Hierarchical synthesis: {len(chunk_analyses)} chunks > {HIERARCHICAL_GROUP_SIZE} threshold", flush=True
+        )
 
         inter_model, inter_max_tokens = get_optimal_model(
             tier=tier, user_plan=user_plan, task="intermediate_synthesis", transcript_words=word_count
@@ -1073,15 +1059,16 @@ async def analyze_long_video(
         # Étape 1 : Grouper par blocs et synthétiser chaque groupe
         groups = []
         for i in range(0, len(chunk_analyses), HIERARCHICAL_GROUP_SIZE):
-            groups.append(chunk_analyses[i:i + HIERARCHICAL_GROUP_SIZE])
+            groups.append(chunk_analyses[i : i + HIERARCHICAL_GROUP_SIZE])
 
         print(f"   └─ {len(groups)} groupes de ~{HIERARCHICAL_GROUP_SIZE} chunks", flush=True)
 
         intermediate_analyses = []
         for g_idx, group in enumerate(groups):
             if progress_callback:
-                progress_callback(80 + int((g_idx / len(groups)) * 10),
-                                  f"🔄 Synthèse groupe {g_idx + 1}/{len(groups)}...")
+                progress_callback(
+                    80 + int((g_idx / len(groups)) * 10), f"🔄 Synthèse groupe {g_idx + 1}/{len(groups)}..."
+                )
 
             inter_summary = await synthesize_chunk_analyses(
                 analyses=group,
@@ -1100,16 +1087,20 @@ async def analyze_long_video(
             if inter_summary:
                 # Créer un ChunkAnalysis synthétique pour la synthèse finale
                 time_ranges = [a.time_range for a in group if a.time_range]
-                combined_range = f"{time_ranges[0].split(' - ')[0]} - {time_ranges[-1].split(' - ')[-1]}" if time_ranges else ""
-                intermediate_analyses.append(ChunkAnalysis(
-                    chunk_index=g_idx,
-                    summary=inter_summary,
-                    key_points=[],
-                    important_quotes=[],
-                    topics=[],
-                    time_range=combined_range,
-                    word_count_analyzed=sum(a.word_count_analyzed for a in group),
-                ))
+                combined_range = (
+                    f"{time_ranges[0].split(' - ')[0]} - {time_ranges[-1].split(' - ')[-1]}" if time_ranges else ""
+                )
+                intermediate_analyses.append(
+                    ChunkAnalysis(
+                        chunk_index=g_idx,
+                        summary=inter_summary,
+                        key_points=[],
+                        important_quotes=[],
+                        topics=[],
+                        time_range=combined_range,
+                        word_count_analyzed=sum(a.word_count_analyzed for a in group),
+                    )
+                )
                 print(f"   ✅ Groupe {g_idx + 1}: {len(inter_summary)} chars", flush=True)
 
         # Étape 2 : Synthèse finale des synthèses intermédiaires
@@ -1144,7 +1135,7 @@ async def analyze_long_video(
             upload_date=upload_date,
             view_count=view_count,
         )
-    
+
     # ═══════════════════════════════════════════════════════════════════════
     # 4. AJOUTER LE RAPPORT DE COUVERTURE À LA SYNTHÈSE
     # ═══════════════════════════════════════════════════════════════════════
@@ -1161,23 +1152,23 @@ async def analyze_long_video(
                 coverage_badge = f"\n\n---\n📊 **Complete analysis** — {word_count} words analyzed in {len(chunk_analyses)} parts (100% of video)"
             else:
                 coverage_badge = f"\n\n---\n⚠️ **Partial analysis** — {report.chunks_analyzed}/{report.total_chunks} parts analyzed ({report.coverage_percent:.0f}% of video)"
-        
+
         final_summary += coverage_badge
-    
+
     if progress_callback:
         if final_summary:
             progress_callback(95, "✅ Synthèse finale générée")
         else:
             progress_callback(95, "❌ Échec de la synthèse")
-    
-    print(f"", flush=True)
-    print(f"╔══════════════════════════════════════════════════════════════════╗", flush=True)
-    print(f"║  📊 ANALYSIS COMPLETE                                            ║", flush=True)
-    print(f"╚══════════════════════════════════════════════════════════════════╝", flush=True)
+
+    print("", flush=True)
+    print("╔══════════════════════════════════════════════════════════════════╗", flush=True)
+    print("║  📊 ANALYSIS COMPLETE                                            ║", flush=True)
+    print("╚══════════════════════════════════════════════════════════════════╝", flush=True)
     print(f"✅ Chunks analyzed: {report.chunks_analyzed}/{report.total_chunks}", flush=True)
     print(f"📊 Coverage: {report.coverage_percent:.1f}%", flush=True)
     print(f"📝 Final summary: {len(final_summary.split()) if final_summary else 0} words", flush=True)
-    print(f"", flush=True)
+    print("", flush=True)
 
     # Retourner le résultat complet avec les chunks pour stockage ultérieur
     return LongVideoResult(
@@ -1191,6 +1182,7 @@ async def analyze_long_video(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 💾 STOCKAGE DES CHUNKS EN DB
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _parse_time_to_seconds(time_str: Optional[str]) -> int:
     """Convertit un timestamp 'MM:SS' ou 'HH:MM:SS' en secondes."""
@@ -1262,28 +1254,24 @@ async def store_chunks_in_db(
 # 📊 UTILITAIRES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def get_chunk_stats(transcript: str) -> Dict[str, Any]:
     """
     Retourne des statistiques sur le chunking nécessaire.
     Utile pour l'UI (afficher le nombre de parties).
     """
     needs_chunk, word_count, reason = needs_chunking(transcript)
-    
+
     if not needs_chunk:
-        return {
-            "needs_chunking": False,
-            "word_count": word_count,
-            "estimated_chunks": 1,
-            "reason": reason
-        }
-    
+        return {"needs_chunking": False, "word_count": word_count, "estimated_chunks": 1, "reason": reason}
+
     estimated_chunks = max(1, (word_count - CHUNK_OVERLAP_WORDS) // (CHUNK_SIZE_WORDS - CHUNK_OVERLAP_WORDS))
-    
+
     return {
         "needs_chunking": True,
         "word_count": word_count,
         "estimated_chunks": estimated_chunks,
         "estimated_duration_per_chunk": "~30s",
         "reason": reason,
-        "chunk_size": CHUNK_SIZE_WORDS
+        "chunk_size": CHUNK_SIZE_WORDS,
     }

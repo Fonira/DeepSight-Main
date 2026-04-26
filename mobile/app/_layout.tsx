@@ -179,16 +179,10 @@ function RootNavigator() {
 
   return (
     <View style={rootStyles.root}>
-      <AmbientLightLayer intensity="normal" />
       <StatusBar style="light" backgroundColor={darkColors.bgPrimary} />
       <Stack
         screenOptions={{
           headerShown: false,
-          // Transparent so AmbientLightLayer (rendered behind via the root
-          // View) shows through on screens that don't paint their own opaque
-          // background. Screens that DO set backgroundColor: bgPrimary keep
-          // it as-is — c'est un choix par écran. Le bg opaque global est
-          // porté par le View root (rootStyles.root).
           contentStyle: { backgroundColor: "transparent" },
           animation: "fade",
         }}
@@ -197,6 +191,13 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="splash" />
       </Stack>
+      {/*
+        AmbientLightLayer rendu APRÈS le Stack → il flotte AU-DESSUS de
+        toutes les pages, peu importe si la page a un fond opaque ou non.
+        pointerEvents="none" garantit que les gestures passent à travers.
+        Opacités max 0.18 → contenu reste lisible.
+      */}
+      <AmbientLightLayer intensity="normal" />
     </View>
   );
 }

@@ -24,12 +24,11 @@ Quality filters:
 """
 
 import asyncio
-import io
 import json
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import httpx
 from sqlalchemy import select, func, and_
@@ -50,13 +49,13 @@ MISTRAL_FINETUNE_URL = "https://api.mistral.ai/v1/fine_tuning/jobs"
 DEFAULT_BASE_MODEL = "mistral-small-latest"
 
 # Quality thresholds for training data
-MIN_ANALYSIS_CHARS = 1000      # Skip very short analyses
-MIN_TRANSCRIPT_CHARS = 500     # Skip analyses without real transcripts
-MAX_TRANSCRIPT_CHARS = 30000   # Truncate very long transcripts (token budget)
-MAX_ANALYSIS_CHARS = 15000     # Truncate very long analyses
-MIN_TRAINING_SAMPLES = 50      # Minimum viable training set
-RECOMMENDED_SAMPLES = 200      # Ideal training set size
-VALIDATION_SPLIT = 0.1         # 10% for validation
+MIN_ANALYSIS_CHARS = 1000  # Skip very short analyses
+MIN_TRANSCRIPT_CHARS = 500  # Skip analyses without real transcripts
+MAX_TRANSCRIPT_CHARS = 30000  # Truncate very long transcripts (token budget)
+MAX_ANALYSIS_CHARS = 15000  # Truncate very long analyses
+MIN_TRAINING_SAMPLES = 50  # Minimum viable training set
+RECOMMENDED_SAMPLES = 200  # Ideal training set size
+VALIDATION_SPLIT = 0.1  # 10% for validation
 
 # Default hyperparameters
 DEFAULT_HYPERPARAMS = {
@@ -69,9 +68,11 @@ DEFAULT_HYPERPARAMS = {
 # DATA CLASSES
 # =============================================================================
 
+
 @dataclass
 class TrainingSample:
     """A single fine-tuning training example."""
+
     system_prompt: str
     user_prompt: str
     assistant_response: str
@@ -83,6 +84,7 @@ class TrainingSample:
 @dataclass
 class ExportResult:
     """Result of the training data export."""
+
     training_samples: List[Dict[str, Any]] = field(default_factory=list)
     validation_samples: List[Dict[str, Any]] = field(default_factory=list)
     total_exported: int = 0
@@ -95,6 +97,7 @@ class ExportResult:
 @dataclass
 class FinetuneJobStatus:
     """Status of a fine-tuning job."""
+
     job_id: str
     status: str  # QUEUED, VALIDATED, RUNNING, SUCCEEDED, FAILED, CANCELLED
     fine_tuned_model: Optional[str] = None
@@ -106,6 +109,7 @@ class FinetuneJobStatus:
 # =============================================================================
 # 1. EXPORT TRAINING DATA FROM DB
 # =============================================================================
+
 
 async def export_training_data(
     db: AsyncSession,
@@ -142,7 +146,7 @@ async def export_training_data(
             and_(
                 Summary.summary_content.isnot(None),
                 func.length(Summary.summary_content) >= min_quality_chars,
-                Summary.is_deleted.is_(False) if hasattr(Summary, 'is_deleted') else True,
+                Summary.is_deleted.is_(False) if hasattr(Summary, "is_deleted") else True,
             )
         )
         .order_by(Summary.created_at.desc())
@@ -170,8 +174,8 @@ async def export_training_data(
             continue
 
         # Need transcript data for the user prompt
-        transcript = getattr(summary, 'transcript_text', None) or ""
-        if not transcript and hasattr(summary, 'video_id'):
+        transcript = getattr(summary, "transcript_text", None) or ""
+        if not transcript and hasattr(summary, "video_id"):
             # Try to get from transcript cache
             transcript = await _get_cached_transcript(db, summary.video_id)
 
@@ -180,12 +184,12 @@ async def export_training_data(
             continue
 
         # ── Build training pair ──────────────────────────────────────────
-        title = getattr(summary, 'video_title', '') or getattr(summary, 'title', '') or ''
-        category = getattr(summary, 'category', 'general') or 'general'
-        analysis_lang = getattr(summary, 'lang', 'fr') or 'fr'
-        mode = getattr(summary, 'analysis_mode', 'standard') or 'standard'
-        channel = getattr(summary, 'video_channel', '') or getattr(summary, 'channel_name', '') or ''
-        duration = getattr(summary, 'video_duration', 0) or 0
+        title = getattr(summary, "video_title", "") or getattr(summary, "title", "") or ""
+        category = getattr(summary, "category", "general") or "general"
+        analysis_lang = getattr(summary, "lang", "fr") or "fr"
+        mode = getattr(summary, "analysis_mode", "standard") or "standard"
+        channel = getattr(summary, "video_channel", "") or getattr(summary, "channel_name", "") or ""
+        duration = getattr(summary, "video_duration", 0) or 0
 
         # Filter by category if specified
         if categories and category not in categories:
@@ -244,9 +248,7 @@ async def _get_cached_transcript(db: AsyncSession, video_id: str) -> str:
     try:
         from db.database import TranscriptCache, TranscriptCacheChunk
 
-        cache_result = await db.execute(
-            select(TranscriptCache).where(TranscriptCache.video_id == video_id).limit(1)
-        )
+        cache_result = await db.execute(select(TranscriptCache).where(TranscriptCache.video_id == video_id).limit(1))
         cache = cache_result.scalar_one_or_none()
         if not cache:
             return ""
@@ -266,6 +268,7 @@ async def _get_cached_transcript(db: AsyncSession, video_id: str) -> str:
 # 2. BUILD JSONL FILE
 # =============================================================================
 
+
 def build_jsonl(samples: List[Dict[str, Any]]) -> bytes:
     """
     Convert training samples to JSONL bytes for upload.
@@ -281,6 +284,7 @@ def build_jsonl(samples: List[Dict[str, Any]]) -> bytes:
 # =============================================================================
 # 3. UPLOAD FILE TO MISTRAL
 # =============================================================================
+
 
 async def upload_training_file(
     jsonl_bytes: bytes,
@@ -318,6 +322,7 @@ async def upload_training_file(
 # =============================================================================
 # 4. CREATE FINE-TUNING JOB
 # =============================================================================
+
 
 async def create_finetune_job(
     training_file_id: str,
@@ -386,6 +391,7 @@ async def create_finetune_job(
 # =============================================================================
 # 5. MONITOR JOB
 # =============================================================================
+
 
 async def get_job_status(job_id: str) -> FinetuneJobStatus:
     """Get current status of a fine-tuning job."""
@@ -496,6 +502,7 @@ async def cancel_job(job_id: str) -> bool:
 # 6. LIST JOBS
 # =============================================================================
 
+
 async def list_jobs() -> List[FinetuneJobStatus]:
     """List all fine-tuning jobs."""
     api_key = get_mistral_key()
@@ -528,6 +535,7 @@ async def list_jobs() -> List[FinetuneJobStatus]:
 # =============================================================================
 # 7. FULL PIPELINE — Export → Upload → Train
 # =============================================================================
+
 
 async def run_finetune_pipeline(
     db: AsyncSession,
@@ -562,8 +570,7 @@ async def run_finetune_pipeline(
     if export.total_exported < MIN_TRAINING_SAMPLES:
         return {
             "success": False,
-            "error": f"Insufficient training data: {export.total_exported} samples "
-                     f"(minimum: {MIN_TRAINING_SAMPLES})",
+            "error": f"Insufficient training data: {export.total_exported} samples (minimum: {MIN_TRAINING_SAMPLES})",
             "export_stats": {
                 "total": export.total_exported,
                 "skipped_short": export.skipped_short,
@@ -581,15 +588,11 @@ async def run_finetune_pipeline(
     )
 
     # ── Step 3: Upload files ─────────────────────────────────────────────
-    training_file_id = await upload_training_file(
-        training_jsonl, filename="deepsight_training.jsonl"
-    )
+    training_file_id = await upload_training_file(training_jsonl, filename="deepsight_training.jsonl")
 
     validation_file_id = None
     if validation_jsonl:
-        validation_file_id = await upload_training_file(
-            validation_jsonl, filename="deepsight_validation.jsonl"
-        )
+        validation_file_id = await upload_training_file(validation_jsonl, filename="deepsight_validation.jsonl")
 
     # ── Step 4: Create job ───────────────────────────────────────────────
     job = await create_finetune_job(

@@ -55,9 +55,7 @@ def _video_url(platform: str, video_id: str) -> str:
 
 
 def _platform_label(platform: str) -> str:
-    return {"youtube": "YouTube", "tiktok": "TikTok", "text": "Texte"}.get(
-        platform, platform.title()
-    )
+    return {"youtube": "YouTube", "tiktok": "TikTok", "text": "Texte"}.get(platform, platform.title())
 
 
 def _api_base() -> str:
@@ -89,16 +87,10 @@ def render_analysis_page(
     platform = snapshot.get("platform", "youtube")
     video_title = snapshot.get("video_title") or "Analyse DeepSight"
 
-    analyze_cta_url = (
-        f"{web_base}/analyze?video_id={video_id}"
-        f"&utm_source=share&utm_medium=cta&utm_campaign=viral"
-    )
+    analyze_cta_url = f"{web_base}/analyze?video_id={video_id}&utm_source=share&utm_medium=cta&utm_campaign=viral"
 
     synthesis_markdown = (
-        snapshot.get("synthesis_markdown")
-        or snapshot.get("summary_content")
-        or snapshot.get("content")
-        or ""
+        snapshot.get("synthesis_markdown") or snapshot.get("summary_content") or snapshot.get("content") or ""
     )
 
     context = {
@@ -106,8 +98,8 @@ def render_analysis_page(
         "og_locale": "fr_FR" if lang == "fr" else "en_US",
         "page_title": video_title,
         "page_description": (snapshot.get("verdict", {}) or {}).get("text")
-            or snapshot.get("summary_short")
-            or f"Synthèse IA de « {video_title} » par DeepSight.",
+        or snapshot.get("summary_short")
+        or f"Synthèse IA de « {video_title} » par DeepSight.",
         "canonical_url": f"{web_base}/s/{share_token}",
         "og_image_url": f"{api_base}/api/share/{share_token}/og-image.png",
         "api_base": api_base,
@@ -133,5 +125,5 @@ def render_analysis_page(
     # Normalize doctype to uppercase (HTML5 canonical form) regardless of template casing
     if html.lstrip().lower().startswith("<!doctype html>"):
         idx = html.lower().find("<!doctype html>")
-        html = html[:idx] + "<!DOCTYPE html>" + html[idx + len("<!doctype html>"):]
+        html = html[:idx] + "<!DOCTYPE html>" + html[idx + len("<!doctype html>") :]
     return html

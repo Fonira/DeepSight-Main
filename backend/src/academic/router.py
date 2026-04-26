@@ -15,7 +15,7 @@ import httpx
 
 from db.database import get_session, User, Summary, AcademicPaper as AcademicPaperDB
 from auth.dependencies import get_current_user, get_verified_user
-from core.config import get_plan_limits, get_mistral_key
+from core.config import get_mistral_key
 from billing.plan_config import get_limits
 
 from .schemas import (
@@ -25,9 +25,7 @@ from .schemas import (
     AcademicEnrichRequest,
     BibliographyExportRequest,
     BibliographyExportResponse,
-    BibliographyFormat,
     Author,
-    AcademicSource,
 )
 from .aggregator import academic_aggregator, get_tier_limit
 from .bibliography import bibliography_exporter
@@ -39,11 +37,12 @@ router = APIRouter(prefix="/api/academic", tags=["academic"])
 # 🔍 SEARCH ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/search", response_model=AcademicSearchResponse)
 async def search_academic_papers(
     request: AcademicSearchRequest,
     current_user: User = Depends(get_verified_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Search for academic papers across OpenAlex, CrossRef, Semantic Scholar, and arXiv.
@@ -57,28 +56,32 @@ async def search_academic_papers(
         # Search all sources
         response = await academic_aggregator.search(request, user_plan)
 
-        print(f"Academic search completed: {response.total_found} papers found from {len(response.sources_queried)} sources", flush=True)
+        print(
+            f"Academic search completed: {response.total_found} papers found from {len(response.sources_queried)} sources",
+            flush=True,
+        )
         return response
 
     except asyncio.TimeoutError:
-        print(f"Academic search timeout after 90s", flush=True)
+        print("Academic search timeout after 90s", flush=True)
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail={
                 "code": "academic_search_timeout",
-                "message": "Search took too long. Please try again with more specific keywords."
-            }
+                "message": "Search took too long. Please try again with more specific keywords.",
+            },
         )
     except Exception as e:
         print(f"Academic search error: {str(e)}", flush=True)
         import traceback
+
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "code": "academic_search_failed",
-                "message": "Failed to search academic sources. Please try again."
-            }
+                "message": "Failed to search academic sources. Please try again.",
+            },
         )
 
 
@@ -87,7 +90,7 @@ async def enrich_summary_with_academic_sources(
     summary_id: int,
     request: Optional[AcademicEnrichRequest] = None,
     current_user: User = Depends(get_verified_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Enrich a video analysis with relevant academic sources.
@@ -96,21 +99,13 @@ async def enrich_summary_with_academic_sources(
     Results are cached in the database for future retrieval.
     """
     # Verify summary ownership
-    result = await session.execute(
-        select(Summary).where(
-            Summary.id == summary_id,
-            Summary.user_id == current_user.id
-        )
-    )
+    result = await session.execute(select(Summary).where(Summary.id == summary_id, Summary.user_id == current_user.id))
     summary = result.scalar_one_or_none()
 
     if not summary:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": "summary_not_found",
-                "message": "Analysis not found or access denied."
-            }
+            detail={"code": "summary_not_found", "message": "Analysis not found or access denied."},
         )
 
     # Extract keywords from summary (AI-powered topic analysis)
@@ -120,10 +115,7 @@ async def enrich_summary_with_academic_sources(
     if not keywords:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "no_keywords",
-                "message": "Could not extract keywords from this analysis."
-            }
+            detail={"code": "no_keywords", "message": "Could not extract keywords from this analysis."},
         )
 
     # 🌍 Translate keywords FR → EN for English-centric academic APIs
@@ -132,7 +124,7 @@ async def enrich_summary_with_academic_sources(
         print(f"Translated keywords: {translated}", flush=True)
         keywords = translated
     else:
-        print(f"Using original keywords (translation skipped or failed)", flush=True)
+        print("Using original keywords (translation skipped or failed)", flush=True)
 
     user_plan = current_user.plan or "free"
     max_papers = request.max_papers if request else None
@@ -140,24 +132,20 @@ async def enrich_summary_with_academic_sources(
     # Build search request with top keywords (AI topics first, then structured)
     search_keywords = keywords[:15]
     search_request = AcademicSearchRequest(
-        keywords=search_keywords,
-        summary_id=str(summary_id),
-        limit=max_papers or get_tier_limit(user_plan)
+        keywords=search_keywords, summary_id=str(summary_id), limit=max_papers or get_tier_limit(user_plan)
     )
 
     try:
         # Pass video title for title-based search fallback
         video_title = summary.video_title if summary.video_title else None
-        response = await academic_aggregator.search(
-            search_request,
-            user_plan,
-            video_title=video_title
-        )
+        response = await academic_aggregator.search(search_request, user_plan, video_title=video_title)
 
         # Cache papers in database
         await _cache_papers(session, summary_id, response.papers)
 
-        print(f"Enrichment completed: {response.total_found} papers found and cached for summary {summary_id}", flush=True)
+        print(
+            f"Enrichment completed: {response.total_found} papers found and cached for summary {summary_id}", flush=True
+        )
         return response
 
     except asyncio.TimeoutError:
@@ -166,44 +154,34 @@ async def enrich_summary_with_academic_sources(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail={
                 "code": "academic_search_timeout",
-                "message": "Search took too long. The analysis may have too many keywords. Please try again."
-            }
+                "message": "Search took too long. The analysis may have too many keywords. Please try again.",
+            },
         )
 
 
 @router.get("/papers/{summary_id}", response_model=AcademicSearchResponse)
 async def get_cached_papers(
-    summary_id: int,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
     Get cached academic papers for a summary.
     Returns papers that were previously found and cached.
     """
     # Verify summary ownership
-    result = await session.execute(
-        select(Summary).where(
-            Summary.id == summary_id,
-            Summary.user_id == current_user.id
-        )
-    )
+    result = await session.execute(select(Summary).where(Summary.id == summary_id, Summary.user_id == current_user.id))
     summary = result.scalar_one_or_none()
 
     if not summary:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": "summary_not_found",
-                "message": "Analysis not found or access denied."
-            }
+            detail={"code": "summary_not_found", "message": "Analysis not found or access denied."},
         )
 
     # Fetch cached papers
     result = await session.execute(
-        select(AcademicPaperDB).where(
-            AcademicPaperDB.summary_id == summary_id
-        ).order_by(AcademicPaperDB.relevance_score.desc())
+        select(AcademicPaperDB)
+        .where(AcademicPaperDB.summary_id == summary_id)
+        .order_by(AcademicPaperDB.relevance_score.desc())
     )
     cached_papers = result.scalars().all()
 
@@ -220,7 +198,7 @@ async def get_cached_papers(
         sources_queried=[],
         cached=True,
         tier_limit_reached=len(papers) > tier_limit,
-        tier_limit=tier_limit if len(papers) > tier_limit else None
+        tier_limit=tier_limit if len(papers) > tier_limit else None,
     )
 
 
@@ -228,11 +206,12 @@ async def get_cached_papers(
 # 📚 BIBLIOGRAPHY EXPORT ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/export", response_model=BibliographyExportResponse)
 async def export_bibliography(
     request: BibliographyExportRequest,
     current_user: User = Depends(get_verified_user),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """
     Export selected papers as bibliography in various formats.
@@ -247,8 +226,8 @@ async def export_bibliography(
                 "message": "Bibliography export requires Pro plan or higher.",
                 "current_plan": user_plan,
                 "required_plan": "pro",
-                "action": "upgrade"
-            }
+                "action": "upgrade",
+            },
         )
 
     papers = await _get_papers_by_ids(session, current_user.id, request.paper_ids)
@@ -256,27 +235,19 @@ async def export_bibliography(
     if not papers:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": "papers_not_found",
-                "message": "No papers found with the specified IDs."
-            }
+            detail={"code": "papers_not_found", "message": "No papers found with the specified IDs."},
         )
 
     content = bibliography_exporter.export(papers, request.format)
     filename = bibliography_exporter.get_filename(request.format)
 
     return BibliographyExportResponse(
-        content=content,
-        format=request.format,
-        paper_count=len(papers),
-        filename=filename
+        content=content, format=request.format, paper_count=len(papers), filename=filename
     )
 
 
 @router.get("/formats")
-async def get_available_formats(
-    current_user: User = Depends(get_current_user)
-):
+async def get_available_formats(current_user: User = Depends(get_current_user)):
     """Get available bibliography export formats for the user's plan."""
     user_plan = current_user.plan or "free"
 
@@ -291,11 +262,7 @@ async def get_available_formats(
 
     can_export = _can_export_bibliography(user_plan)
 
-    return {
-        "formats": all_formats if can_export else [],
-        "can_export": can_export,
-        "user_plan": user_plan
-    }
+    return {"formats": all_formats if can_export else [], "can_export": can_export, "user_plan": user_plan}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -399,15 +366,51 @@ async def _translate_keywords_to_english(keywords: List[str]) -> List[str]:
     # Quick check: if keywords appear to be already in English, skip
     text_lower = " ".join(keywords).lower()
     french_indicators = {
-        "artificielle", "apprentissage", "profond", "réseau", "neurone",
-        "cerveau", "données", "modèle", "système", "analyse", "théorie",
-        "société", "économie", "philosophie", "psychologie", "biologie",
-        "histoire", "politique", "mathématique", "physique", "chimie",
-        "environnement", "climatique", "énergie", "santé", "médecine",
-        "génétique", "numérique", "quantique", "relativité", "maladie",
-        "évolution", "cognitif", "conscience", "comportement", "langage",
-        "traitement", "récepteur", "neurotransmetteur", "molécule",
-        "cellule", "protéine", "dépression", "addiction", "drogue",
+        "artificielle",
+        "apprentissage",
+        "profond",
+        "réseau",
+        "neurone",
+        "cerveau",
+        "données",
+        "modèle",
+        "système",
+        "analyse",
+        "théorie",
+        "société",
+        "économie",
+        "philosophie",
+        "psychologie",
+        "biologie",
+        "histoire",
+        "politique",
+        "mathématique",
+        "physique",
+        "chimie",
+        "environnement",
+        "climatique",
+        "énergie",
+        "santé",
+        "médecine",
+        "génétique",
+        "numérique",
+        "quantique",
+        "relativité",
+        "maladie",
+        "évolution",
+        "cognitif",
+        "conscience",
+        "comportement",
+        "langage",
+        "traitement",
+        "récepteur",
+        "neurotransmetteur",
+        "molécule",
+        "cellule",
+        "protéine",
+        "dépression",
+        "addiction",
+        "drogue",
     }
 
     has_french = any(ind in text_lower for ind in french_indicators)
@@ -485,22 +488,19 @@ JSON array:"""
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": "mistral-small-2603",
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 500,
-                    "temperature": 0.1
-                }
+                    "temperature": 0.1,
+                },
             )
             response.raise_for_status()
             data = response.json()
             text = data["choices"][0]["message"]["content"].strip()
 
-            json_match = re.search(r'\[.*?\]', text, re.DOTALL)
+            json_match = re.search(r"\[.*?\]", text, re.DOTALL)
             if json_match:
                 result = json.loads(json_match.group())
                 if isinstance(result, list):
@@ -515,12 +515,21 @@ JSON array:"""
 def _strip_accents(text: str) -> str:
     """Remove French accents from text as last-resort translation"""
     replacements = {
-        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
-        'à': 'a', 'â': 'a', 'ä': 'a',
-        'ù': 'u', 'û': 'u', 'ü': 'u',
-        'ô': 'o', 'ö': 'o',
-        'ï': 'i', 'î': 'i',
-        'ç': 'c',
+        "é": "e",
+        "è": "e",
+        "ê": "e",
+        "ë": "e",
+        "à": "a",
+        "â": "a",
+        "ä": "a",
+        "ù": "u",
+        "û": "u",
+        "ü": "u",
+        "ô": "o",
+        "ö": "o",
+        "ï": "i",
+        "î": "i",
+        "ç": "c",
     }
     for fr, en in replacements.items():
         text = text.replace(fr, en)
@@ -544,30 +553,197 @@ async def _extract_keywords_from_summary(summary: Summary) -> List[str]:
     Target: 20-25 diverse, academically-relevant keywords.
     """
     keywords_prioritized: List[str] = []  # AI topics go first
-    keywords_structured: List[str] = []   # Structured extraction
+    keywords_structured: List[str] = []  # Structured extraction
 
     stop_words = {
-        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-        "have", "has", "had", "do", "does", "did", "will", "would", "could",
-        "should", "may", "might", "must", "can", "and", "or", "but", "if",
-        "then", "else", "when", "where", "why", "how", "all", "each", "every",
-        "both", "few", "more", "most", "other", "some", "such", "no", "nor",
-        "not", "only", "own", "same", "so", "than", "too", "very", "just",
-        "about", "into", "through", "during", "before", "after", "above", "below",
-        "from", "up", "down", "in", "out", "on", "off", "over", "under", "again",
-        "further", "once", "here", "there", "that", "these", "those", "what", "which",
-        "who", "whom", "this", "am", "as", "at", "by", "for", "it", "its",
-        "of", "to", "with", "you", "your", "we", "our", "they", "their", "them",
-        "he", "him", "his", "she", "her", "hers", "me", "my", "mine", "us",
-        "le", "la", "les", "un", "une", "des", "de", "du", "et", "ou", "pour",
-        "dans", "sur", "avec", "par", "en", "au", "aux", "ce", "cette", "ces",
-        "qui", "que", "dont", "où", "est", "sont", "être", "avoir", "fait",
-        "faire", "plus", "comme", "tout", "tous", "toute", "toutes", "même",
-        "aussi", "bien", "très", "pas", "ne", "sans", "sous", "après", "avant",
-        "nous", "vous", "ils", "elles", "leur", "leurs", "lui", "elle", "se",
-        "son", "sa", "ses", "mon", "ma", "mes", "ton", "ta", "tes",
-        "vidéo", "video", "chaîne", "partie", "épisode", "episode",
-        "youtube", "abonnez", "commentaire", "lien", "description",
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "must",
+        "can",
+        "and",
+        "or",
+        "but",
+        "if",
+        "then",
+        "else",
+        "when",
+        "where",
+        "why",
+        "how",
+        "all",
+        "each",
+        "every",
+        "both",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "just",
+        "about",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "from",
+        "up",
+        "down",
+        "in",
+        "out",
+        "on",
+        "off",
+        "over",
+        "under",
+        "again",
+        "further",
+        "once",
+        "here",
+        "there",
+        "that",
+        "these",
+        "those",
+        "what",
+        "which",
+        "who",
+        "whom",
+        "this",
+        "am",
+        "as",
+        "at",
+        "by",
+        "for",
+        "it",
+        "its",
+        "of",
+        "to",
+        "with",
+        "you",
+        "your",
+        "we",
+        "our",
+        "they",
+        "their",
+        "them",
+        "he",
+        "him",
+        "his",
+        "she",
+        "her",
+        "hers",
+        "me",
+        "my",
+        "mine",
+        "us",
+        "le",
+        "la",
+        "les",
+        "un",
+        "une",
+        "des",
+        "de",
+        "du",
+        "et",
+        "ou",
+        "pour",
+        "dans",
+        "sur",
+        "avec",
+        "par",
+        "en",
+        "au",
+        "aux",
+        "ce",
+        "cette",
+        "ces",
+        "qui",
+        "que",
+        "dont",
+        "où",
+        "est",
+        "sont",
+        "être",
+        "avoir",
+        "fait",
+        "faire",
+        "plus",
+        "comme",
+        "tout",
+        "tous",
+        "toute",
+        "toutes",
+        "même",
+        "aussi",
+        "bien",
+        "très",
+        "pas",
+        "ne",
+        "sans",
+        "sous",
+        "après",
+        "avant",
+        "nous",
+        "vous",
+        "ils",
+        "elles",
+        "leur",
+        "leurs",
+        "lui",
+        "elle",
+        "se",
+        "son",
+        "sa",
+        "ses",
+        "mon",
+        "ma",
+        "mes",
+        "ton",
+        "ta",
+        "tes",
+        "vidéo",
+        "video",
+        "chaîne",
+        "partie",
+        "épisode",
+        "episode",
+        "youtube",
+        "abonnez",
+        "commentaire",
+        "lien",
+        "description",
     }
 
     # ── 1. 🧠 AI TOPIC EXTRACTION (highest priority) ──────────────────────
@@ -575,7 +751,7 @@ async def _extract_keywords_from_summary(summary: Summary) -> List[str]:
     content_for_ai = ""
     if summary.summary_content:
         # Clean the summary: remove [[markers]], trim to ~3000 chars for efficiency
-        clean = re.sub(r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]', r'\1', summary.summary_content)
+        clean = re.sub(r"\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]", r"\1", summary.summary_content)
         content_for_ai = clean[:3000]
 
     if not content_for_ai and summary.full_digest:
@@ -593,7 +769,7 @@ async def _extract_keywords_from_summary(summary: Summary) -> List[str]:
 
     # ── 2. 🎯 Extract [[concepts]] markers ──────────────────────────────
     if summary.summary_content:
-        concept_pattern = r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]'
+        concept_pattern = r"\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]"
         concept_matches = re.findall(concept_pattern, summary.summary_content)
         for term in concept_matches:
             term = term.strip()
@@ -603,7 +779,9 @@ async def _extract_keywords_from_summary(summary: Summary) -> List[str]:
     # ── 3. Extract from video title ─────────────────────────────────────
     if summary.video_title:
         # Multi-word capitalized phrases (proper nouns, names)
-        capitalized = re.findall(r'\b[A-Z][a-zéèêëàâäùûüôöïîç]+(?:\s+[A-Z][a-zéèêëàâäùûüôöïîç]+)*\b', summary.video_title)
+        capitalized = re.findall(
+            r"\b[A-Z][a-zéèêëàâäùûüôöïîç]+(?:\s+[A-Z][a-zéèêëàâäùûüôöïîç]+)*\b", summary.video_title
+        )
         for term in capitalized:
             if term.lower() not in stop_words and len(term) > 2:
                 keywords_structured.append(term)
@@ -643,23 +821,20 @@ async def _extract_keywords_from_summary(summary: Summary) -> List[str]:
 
     # ── 7. TF analysis from content (always run, not just fallback) ────
     if summary.summary_content:
-        clean_content = re.sub(r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]', r'\1', summary.summary_content)
+        clean_content = re.sub(r"\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]", r"\1", summary.summary_content)
 
         # Extract multi-word terms (2-3 word phrases that appear together)
         bigrams = re.findall(
-            r'\b([a-zA-ZéèêëàâäùûüôöïîçÉÈÊËÀÂÄÙÛÜÔÖÏÎÇ]{3,}\s+[a-zA-ZéèêëàâäùûüôöïîçÉÈÊËÀÂÄÙÛÜÔÖÏÎÇ]{3,})\b',
-            clean_content.lower()
+            r"\b([a-zA-ZéèêëàâäùûüôöïîçÉÈÊËÀÂÄÙÛÜÔÖÏÎÇ]{3,}\s+[a-zA-ZéèêëàâäùûüôöïîçÉÈÊËÀÂÄÙÛÜÔÖÏÎÇ]{3,})\b",
+            clean_content.lower(),
         )
-        bigram_freq = Counter(
-            bg for bg in bigrams
-            if not all(w in stop_words for w in bg.split())
-        )
+        bigram_freq = Counter(bg for bg in bigrams if not all(w in stop_words for w in bg.split()))
         for bigram, count in bigram_freq.most_common(8):
             if count >= 2:  # Must appear at least twice
                 keywords_structured.append(bigram)
 
         # Single words (high frequency)
-        words = re.findall(r'\b[a-zA-ZéèêëàâäùûüôöïîçÉÈÊËÀÂÄÙÛÜÔÖÏÎÇ]{4,}\b', clean_content.lower())
+        words = re.findall(r"\b[a-zA-ZéèêëàâäùûüôöïîçÉÈÊËÀÂÄÙÛÜÔÖÏÎÇ]{4,}\b", clean_content.lower())
         word_freq = Counter(w for w in words if w not in stop_words)
         for word, count in word_freq.most_common(12):
             if count >= 2:
@@ -681,7 +856,10 @@ async def _extract_keywords_from_summary(summary: Summary) -> List[str]:
                 if len(unique_keywords) >= 25:
                     break
 
-    print(f"Extracted {len(unique_keywords)} keywords (AI:{len(keywords_prioritized)} + struct:{len(keywords_structured)}): {unique_keywords}", flush=True)
+    print(
+        f"Extracted {len(unique_keywords)} keywords (AI:{len(keywords_prioritized)} + struct:{len(keywords_structured)}): {unique_keywords}",
+        flush=True,
+    )
     return unique_keywords
 
 
@@ -734,23 +912,20 @@ JSON array:"""
         async with httpx.AsyncClient(timeout=12.0) as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": "mistral-small-2603",
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 600,
-                    "temperature": 0.2
-                }
+                    "temperature": 0.2,
+                },
             )
             response.raise_for_status()
             data = response.json()
             text = data["choices"][0]["message"]["content"].strip()
 
             # Parse JSON array from response
-            json_match = re.search(r'\[.*?\]', text, re.DOTALL)
+            json_match = re.search(r"\[.*?\]", text, re.DOTALL)
             if json_match:
                 result = json.loads(json_match.group())
                 if isinstance(result, list):
@@ -763,15 +938,9 @@ JSON array:"""
         return []
 
 
-async def _cache_papers(
-    session: AsyncSession,
-    summary_id: int,
-    papers: List[AcademicPaper]
-):
+async def _cache_papers(session: AsyncSession, summary_id: int, papers: List[AcademicPaper]):
     """Cache papers in the database"""
-    await session.execute(
-        delete(AcademicPaperDB).where(AcademicPaperDB.summary_id == summary_id)
-    )
+    await session.execute(delete(AcademicPaperDB).where(AcademicPaperDB.summary_id == summary_id))
 
     for paper in papers:
         db_paper = AcademicPaperDB(
@@ -789,7 +958,7 @@ async def _cache_papers(
             source=paper.source,
             relevance_score=paper.relevance_score,
             is_open_access=paper.is_open_access,
-            keywords_json=json.dumps(paper.keywords)
+            keywords_json=json.dumps(paper.keywords),
         )
         session.add(db_paper)
 
@@ -827,23 +996,16 @@ def _db_to_model(db_paper: AcademicPaperDB) -> AcademicPaper:
         source=db_paper.source,
         relevance_score=db_paper.relevance_score,
         is_open_access=db_paper.is_open_access,
-        keywords=keywords
+        keywords=keywords,
     )
 
 
-async def _get_papers_by_ids(
-    session: AsyncSession,
-    user_id: int,
-    paper_ids: List[str]
-) -> List[AcademicPaper]:
+async def _get_papers_by_ids(session: AsyncSession, user_id: int, paper_ids: List[str]) -> List[AcademicPaper]:
     """Get papers by external IDs, verifying user ownership"""
     result = await session.execute(
         select(AcademicPaperDB)
         .join(Summary)
-        .where(
-            Summary.user_id == user_id,
-            AcademicPaperDB.external_id.in_(paper_ids)
-        )
+        .where(Summary.user_id == user_id, AcademicPaperDB.external_id.in_(paper_ids))
     )
     db_papers = result.scalars().all()
     return [_db_to_model(p) for p in db_papers]

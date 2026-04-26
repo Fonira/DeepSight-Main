@@ -5,7 +5,6 @@ Generates ultra-short summaries and handles demo chat sessions via Redis.
 
 import json
 import logging
-import uuid
 from typing import Optional, Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
@@ -26,6 +25,7 @@ async def _get_redis():
     try:
         from core.config import settings
         import redis.asyncio as aioredis
+
         redis_url = getattr(settings, "REDIS_URL", None)
         if redis_url:
             return aioredis.from_url(redis_url, decode_responses=True)

@@ -1,0 +1,46 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+extend-exclude = ["alembic/versions", "migrations"]
+
+[tool.ruff.lint]
+# Conserve la sélection ruff par défaut (E, F, W) et ignore les règles trop strictes pour ce codebase.
+ignore = [
+    "E501",  # line too long — gere par le formatter et historique mixte
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Re-exports intentionnels dans les __init__.py (façade module)
+"**/__init__.py" = ["F401", "F403"]
+
+# Imports optionnels guards par try/except ImportError, redefinitions FastAPI routes,
+# imports retardes (E402) et helpers locaux. Ces patterns sont historiques et hors scope.
+"src/main.py" = ["E402", "F401", "F811"]
+"src/videos/router.py" = ["E402", "F401", "F811", "E741"]
+"src/videos/service.py" = ["E402", "F401"]
+"src/videos/schemas.py" = ["E402"]
+"src/videos/intelligent_discovery.py" = ["E402", "E741"]
+"src/videos/duration_router.py" = ["E402"]
+"src/videos/concept_definitions.py" = ["E402"]
+"src/videos/streaming.py" = ["F401"]
+"src/videos/export.py" = ["F401"]
+"src/videos/raw_text_enhance.py" = ["E741"]
+"src/chat/router.py" = ["E402", "F401"]
+"src/chat/service.py" = ["F401"]
+"src/admin/router.py" = ["E402"]
+"src/billing/router.py" = ["E402"]
+"src/exports/router.py" = ["E402"]
+"src/exports/service.py" = ["E402", "F821"]
+"src/exports/pdf_generator.py" = ["F401"]
+"src/demo/router.py" = ["E402"]
+"src/core/http_client.py" = ["E402"]
+"src/core/cache.py" = ["F401"]
+"src/core/mistral_agent.py" = ["F821"]
+"src/api_public/router.py" = ["F401"]
+"src/transcripts/tiktok.py" = ["F401"]
+"src/transcripts/ultra_resilient.py" = ["F401"]
+"src/transcripts/youtube.py" = ["F401"]
+"src/voice/debate_context.py" = ["E741"]
+
+# Tests : tolerance plus large
+"tests/**/*.py" = ["F401", "F811", "F841", "E402", "E741"]

@@ -27,12 +27,10 @@
 
 import re
 import json
-import math
 import logging
 from typing import Optional, List, Tuple, Dict, Set
 from dataclasses import dataclass, field
 from enum import Enum
-from collections import Counter
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +39,14 @@ logger = logging.getLogger(__name__)
 # 📊 ENUMS & TYPES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class VideoTier(str, Enum):
     """Catégorisation fine des vidéos par durée."""
-    MICRO = "micro"        # <1 min (TikTok, Shorts, Reels)
-    SHORT = "short"        # 1-5 min (clips courts)
-    MEDIUM = "medium"      # 5-15 min (vidéos classiques)
-    LONG = "long"          # 15-45 min (conférences, tutoriels)
+
+    MICRO = "micro"  # <1 min (TikTok, Shorts, Reels)
+    SHORT = "short"  # 1-5 min (clips courts)
+    MEDIUM = "medium"  # 5-15 min (vidéos classiques)
+    LONG = "long"  # 15-45 min (conférences, tutoriels)
     EXTENDED = "extended"  # 45min-2h (podcasts, cours)
     MARATHON = "marathon"  # 2h+ (interviews longues, live replay)
 
@@ -54,6 +54,7 @@ class VideoTier(str, Enum):
 @dataclass
 class VideoProfile:
     """Profil complet d'une vidéo pour le routage."""
+
     tier: VideoTier
     duration_seconds: int
     transcript_chars: int
@@ -68,13 +69,14 @@ class VideoProfile:
     chunk_duration_minutes: int = 0
     index_granularity_seconds: int = 0
     analysis_model_preference: str = ""
-    chat_max_chunks: int = 3      # Nombre de passages pertinents pour le chat
+    chat_max_chunks: int = 3  # Nombre de passages pertinents pour le chat
     chat_chunk_context: int = 3000  # Taille de chaque passage extrait
 
 
 @dataclass
 class IndexEntry:
     """Une entrée dans l'index structuré (table des matières)."""
+
     timestamp_seconds: int
     timestamp_str: str
     title: str
@@ -89,51 +91,51 @@ class IndexEntry:
 
 TIER_CONFIG = {
     VideoTier.MICRO: {
-        "max_duration": 60,            # 1 min
+        "max_duration": 60,  # 1 min
         "needs_chunking": False,
         "max_transcript_for_analysis": 15_000,
         "max_transcript_for_chat": 15_000,
         "chunk_duration_minutes": 0,
-        "index_granularity_seconds": 0,       # Pas d'index
+        "index_granularity_seconds": 0,  # Pas d'index
         "analysis_model_preference": "fast",
         "chat_max_chunks": 1,
         "chat_chunk_context": 2000,
     },
     VideoTier.SHORT: {
-        "max_duration": 300,           # 5 min
+        "max_duration": 300,  # 5 min
         "needs_chunking": False,
         "max_transcript_for_analysis": 50_000,
         "max_transcript_for_chat": 50_000,
         "chunk_duration_minutes": 0,
-        "index_granularity_seconds": 0,       # Pas d'index
+        "index_granularity_seconds": 0,  # Pas d'index
         "analysis_model_preference": "fast",
         "chat_max_chunks": 2,
         "chat_chunk_context": 3000,
     },
     VideoTier.MEDIUM: {
-        "max_duration": 900,           # 15 min
+        "max_duration": 900,  # 15 min
         "needs_chunking": False,
         "max_transcript_for_analysis": 100_000,
         "max_transcript_for_chat": 80_000,
         "chunk_duration_minutes": 0,
-        "index_granularity_seconds": 120,     # Toutes les 2 min
+        "index_granularity_seconds": 120,  # Toutes les 2 min
         "analysis_model_preference": "standard",
         "chat_max_chunks": 3,
         "chat_chunk_context": 4000,
     },
     VideoTier.LONG: {
-        "max_duration": 2700,          # 45 min
-        "needs_chunking": False,       # Un seul prompt Mistral gère 45min
+        "max_duration": 2700,  # 45 min
+        "needs_chunking": False,  # Un seul prompt Mistral gère 45min
         "max_transcript_for_analysis": 150_000,
         "max_transcript_for_chat": 60_000,
         "chunk_duration_minutes": 0,
-        "index_granularity_seconds": 60,      # Toute la minute
+        "index_granularity_seconds": 60,  # Toute la minute
         "analysis_model_preference": "standard",
         "chat_max_chunks": 4,
         "chat_chunk_context": 4000,
     },
     VideoTier.EXTENDED: {
-        "max_duration": 7200,          # 2h
+        "max_duration": 7200,  # 2h
         "needs_chunking": True,
         "max_transcript_for_analysis": 300_000,
         "max_transcript_for_chat": 50_000,
@@ -148,8 +150,8 @@ TIER_CONFIG = {
         "needs_chunking": True,
         "max_transcript_for_analysis": 400_000,
         "max_transcript_for_chat": 50_000,
-        "chunk_duration_minutes": 15,         # Chunks plus larges
-        "index_granularity_seconds": 120,     # Toutes les 2 min (sinon trop d'entrées)
+        "chunk_duration_minutes": 15,  # Chunks plus larges
+        "index_granularity_seconds": 120,  # Toutes les 2 min (sinon trop d'entrées)
         "analysis_model_preference": "quality",
         "chat_max_chunks": 6,
         "chat_chunk_context": 5000,
@@ -209,69 +211,65 @@ _TIER_GROUP = {
 _MODEL_MATRIX = {
     # ── Analyse de chunk individuel (léger, rapide, beaucoup d'appels) ──
     "chunk_analysis": {
-        ("light", "free"):    (_MODEL_SMALL,    1500),
-        ("light", "plus"):    (_MODEL_SMALL,    1500),
-        ("light", "pro"):     (_MODEL_SMALL,    1500),
-        ("medium", "free"):   (_MODEL_SMALL,    2000),
-        ("medium", "plus"):   (_MODEL_SMALL,    2000),
-        ("medium", "pro"):    (_MODEL_SMALL,    2000),
-        ("heavy", "free"):    (_MODEL_SMALL,    2000),
-        ("heavy", "plus"):    (_MODEL_SMALL,    2000),
-        ("heavy", "pro"):     (_MODEL_SMALL,    2000),
+        ("light", "free"): (_MODEL_SMALL, 1500),
+        ("light", "plus"): (_MODEL_SMALL, 1500),
+        ("light", "pro"): (_MODEL_SMALL, 1500),
+        ("medium", "free"): (_MODEL_SMALL, 2000),
+        ("medium", "plus"): (_MODEL_SMALL, 2000),
+        ("medium", "pro"): (_MODEL_SMALL, 2000),
+        ("heavy", "free"): (_MODEL_SMALL, 2000),
+        ("heavy", "plus"): (_MODEL_SMALL, 2000),
+        ("heavy", "pro"): (_MODEL_SMALL, 2000),
     },
-
     # ── Synthèse finale (1 appel, qualité critique) ──
     # Upgrade automatique pour les vidéos longues : un user free obtient
     # quand même medium pour la synthèse d'une vidéo EXTENDED/MARATHON.
     "synthesis": {
-        ("light", "free"):    (_MODEL_SMALL,    3000),
-        ("light", "plus"):    (_MODEL_MEDIUM,   4000),
-        ("light", "pro"):     (_MODEL_MEDIUM,   4000),
-        ("medium", "free"):   (_MODEL_MEDIUM,   4000),   # upgrade auto
-        ("medium", "plus"):   (_MODEL_MEDIUM,   5000),
-        ("medium", "pro"):    (_MODEL_LARGE,    6000),
-        ("heavy", "free"):    (_MODEL_MEDIUM,   5000),   # upgrade auto
-        ("heavy", "plus"):    (_MODEL_LARGE,    6000),   # upgrade auto
-        ("heavy", "pro"):     (_MODEL_LARGE,    8000),
+        ("light", "free"): (_MODEL_SMALL, 3000),
+        ("light", "plus"): (_MODEL_MEDIUM, 4000),
+        ("light", "pro"): (_MODEL_MEDIUM, 4000),
+        ("medium", "free"): (_MODEL_MEDIUM, 4000),  # upgrade auto
+        ("medium", "plus"): (_MODEL_MEDIUM, 5000),
+        ("medium", "pro"): (_MODEL_LARGE, 6000),
+        ("heavy", "free"): (_MODEL_MEDIUM, 5000),  # upgrade auto
+        ("heavy", "plus"): (_MODEL_LARGE, 6000),  # upgrade auto
+        ("heavy", "pro"): (_MODEL_LARGE, 8000),
     },
-
     # ── Synthèse intermédiaire (hiérarchique, groupes de 8-10 chunks) ──
     "intermediate_synthesis": {
-        ("light", "free"):    (_MODEL_SMALL,    2000),
-        ("light", "plus"):    (_MODEL_SMALL,    2000),
-        ("light", "pro"):     (_MODEL_SMALL,    2000),
-        ("medium", "free"):   (_MODEL_SMALL,    2500),
-        ("medium", "plus"):   (_MODEL_SMALL,    2500),
-        ("medium", "pro"):    (_MODEL_MEDIUM,   3000),
-        ("heavy", "free"):    (_MODEL_SMALL,    2500),
-        ("heavy", "plus"):    (_MODEL_MEDIUM,   3000),
-        ("heavy", "pro"):     (_MODEL_MEDIUM,   3000),
+        ("light", "free"): (_MODEL_SMALL, 2000),
+        ("light", "plus"): (_MODEL_SMALL, 2000),
+        ("light", "pro"): (_MODEL_SMALL, 2000),
+        ("medium", "free"): (_MODEL_SMALL, 2500),
+        ("medium", "plus"): (_MODEL_SMALL, 2500),
+        ("medium", "pro"): (_MODEL_MEDIUM, 3000),
+        ("heavy", "free"): (_MODEL_SMALL, 2500),
+        ("heavy", "plus"): (_MODEL_MEDIUM, 3000),
+        ("heavy", "pro"): (_MODEL_MEDIUM, 3000),
     },
-
     # ── Digest background (chunking.py — plus léger, moins critique) ──
     "digest": {
-        ("light", "free"):    (_MODEL_INTERNAL, 700),
-        ("light", "plus"):    (_MODEL_INTERNAL, 700),
-        ("light", "pro"):     (_MODEL_INTERNAL, 700),
-        ("medium", "free"):   (_MODEL_INTERNAL, 700),
-        ("medium", "plus"):   (_MODEL_INTERNAL, 700),
-        ("medium", "pro"):    (_MODEL_INTERNAL, 700),
-        ("heavy", "free"):    (_MODEL_SMALL,    800),   # upgrade pour MARATHON
-        ("heavy", "plus"):    (_MODEL_SMALL,    800),
-        ("heavy", "pro"):     (_MODEL_SMALL,    800),
+        ("light", "free"): (_MODEL_INTERNAL, 700),
+        ("light", "plus"): (_MODEL_INTERNAL, 700),
+        ("light", "pro"): (_MODEL_INTERNAL, 700),
+        ("medium", "free"): (_MODEL_INTERNAL, 700),
+        ("medium", "plus"): (_MODEL_INTERNAL, 700),
+        ("medium", "pro"): (_MODEL_INTERNAL, 700),
+        ("heavy", "free"): (_MODEL_SMALL, 800),  # upgrade pour MARATHON
+        ("heavy", "plus"): (_MODEL_SMALL, 800),
+        ("heavy", "pro"): (_MODEL_SMALL, 800),
     },
-
     # ── Assemblage du full_digest (1 appel, qualité importante) ──
     "digest_assembly": {
-        ("light", "free"):    (_MODEL_SMALL,    2000),
-        ("light", "plus"):    (_MODEL_MEDIUM,   3000),
-        ("light", "pro"):     (_MODEL_MEDIUM,   3000),
-        ("medium", "free"):   (_MODEL_MEDIUM,   3000),
-        ("medium", "plus"):   (_MODEL_MEDIUM,   4000),
-        ("medium", "pro"):    (_MODEL_LARGE,    4000),
-        ("heavy", "free"):    (_MODEL_MEDIUM,   4000),
-        ("heavy", "plus"):    (_MODEL_LARGE,    4000),
-        ("heavy", "pro"):     (_MODEL_LARGE,    5000),
+        ("light", "free"): (_MODEL_SMALL, 2000),
+        ("light", "plus"): (_MODEL_MEDIUM, 3000),
+        ("light", "pro"): (_MODEL_MEDIUM, 3000),
+        ("medium", "free"): (_MODEL_MEDIUM, 3000),
+        ("medium", "plus"): (_MODEL_MEDIUM, 4000),
+        ("medium", "pro"): (_MODEL_LARGE, 4000),
+        ("heavy", "free"): (_MODEL_MEDIUM, 4000),
+        ("heavy", "plus"): (_MODEL_LARGE, 4000),
+        ("heavy", "pro"): (_MODEL_LARGE, 5000),
     },
 }
 
@@ -335,7 +333,7 @@ def get_optimal_model(
             "model": model_id,
             "max_tokens": max_tokens,
             "transcript_words": transcript_words,
-        }
+        },
     )
 
     return model_id, max_tokens
@@ -355,37 +353,205 @@ def needs_hierarchical_synthesis(num_chunks: int) -> bool:
 # 🌍 STOP-WORDS BILINGUES (FR + EN)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-STOP_WORDS_FR = frozenset({
-    "dans", "pour", "avec", "cette", "plus", "tout", "fait", "être", "avoir",
-    "nous", "vous", "mais", "donc", "comme", "aussi", "même", "encore", "très",
-    "bien", "alors", "sont", "peut", "elle", "elles", "leur", "quel", "quoi",
-    "dont", "entre", "autre", "après", "avant", "quand", "depuis", "parce",
-    "cela", "ceux", "celle", "celles", "sera", "était", "aurait", "serait",
-    "pouvoir", "vouloir", "savoir", "devoir", "falloir", "aller", "venir",
-    "dire", "faire", "voir", "prendre", "donner", "passer", "trouver",
-    "parler", "mettre", "rester", "partir", "arriver", "tenir", "porter",
-    "croire", "écrire", "lire", "jour", "temps", "fois", "chose", "moment",
-    "gens", "monde", "homme", "femme", "partie", "point", "place",
-    "quelque", "chaque", "toute", "toutes", "tous", "rien", "personne",
-    "jamais", "toujours", "souvent", "parfois", "vraiment", "simplement",
-    "exactement", "justement", "seulement", "maintenant", "beaucoup",
-    "vidéo", "vidéos", "chaîne", "channel", "youtube", "tiktok",
-    "merci", "bonjour", "salut", "allez", "voilà", "alors",
-})
+STOP_WORDS_FR = frozenset(
+    {
+        "dans",
+        "pour",
+        "avec",
+        "cette",
+        "plus",
+        "tout",
+        "fait",
+        "être",
+        "avoir",
+        "nous",
+        "vous",
+        "mais",
+        "donc",
+        "comme",
+        "aussi",
+        "même",
+        "encore",
+        "très",
+        "bien",
+        "alors",
+        "sont",
+        "peut",
+        "elle",
+        "elles",
+        "leur",
+        "quel",
+        "quoi",
+        "dont",
+        "entre",
+        "autre",
+        "après",
+        "avant",
+        "quand",
+        "depuis",
+        "parce",
+        "cela",
+        "ceux",
+        "celle",
+        "celles",
+        "sera",
+        "était",
+        "aurait",
+        "serait",
+        "pouvoir",
+        "vouloir",
+        "savoir",
+        "devoir",
+        "falloir",
+        "aller",
+        "venir",
+        "dire",
+        "faire",
+        "voir",
+        "prendre",
+        "donner",
+        "passer",
+        "trouver",
+        "parler",
+        "mettre",
+        "rester",
+        "partir",
+        "arriver",
+        "tenir",
+        "porter",
+        "croire",
+        "écrire",
+        "lire",
+        "jour",
+        "temps",
+        "fois",
+        "chose",
+        "moment",
+        "gens",
+        "monde",
+        "homme",
+        "femme",
+        "partie",
+        "point",
+        "place",
+        "quelque",
+        "chaque",
+        "toute",
+        "toutes",
+        "tous",
+        "rien",
+        "personne",
+        "jamais",
+        "toujours",
+        "souvent",
+        "parfois",
+        "vraiment",
+        "simplement",
+        "exactement",
+        "justement",
+        "seulement",
+        "maintenant",
+        "beaucoup",
+        "vidéo",
+        "vidéos",
+        "chaîne",
+        "channel",
+        "youtube",
+        "tiktok",
+        "merci",
+        "bonjour",
+        "salut",
+        "allez",
+        "voilà",
+        "alors",
+    }
+)
 
-STOP_WORDS_EN = frozenset({
-    "the", "and", "that", "this", "with", "from", "have", "been", "were",
-    "will", "would", "could", "should", "about", "which", "their", "there",
-    "these", "those", "other", "than", "then", "when", "what", "where",
-    "here", "also", "just", "more", "some", "very", "much", "such",
-    "like", "even", "only", "over", "into", "back", "them", "they",
-    "make", "made", "know", "think", "want", "come", "take", "give",
-    "look", "find", "tell", "call", "keep", "going", "being", "really",
-    "actually", "basically", "literally", "right", "things", "people",
-    "something", "everything", "nothing", "getting", "doing", "saying",
-    "video", "videos", "channel", "youtube", "tiktok", "subscribe",
-    "hello", "guys", "today", "gonna", "thing", "stuff",
-})
+STOP_WORDS_EN = frozenset(
+    {
+        "the",
+        "and",
+        "that",
+        "this",
+        "with",
+        "from",
+        "have",
+        "been",
+        "were",
+        "will",
+        "would",
+        "could",
+        "should",
+        "about",
+        "which",
+        "their",
+        "there",
+        "these",
+        "those",
+        "other",
+        "than",
+        "then",
+        "when",
+        "what",
+        "where",
+        "here",
+        "also",
+        "just",
+        "more",
+        "some",
+        "very",
+        "much",
+        "such",
+        "like",
+        "even",
+        "only",
+        "over",
+        "into",
+        "back",
+        "them",
+        "they",
+        "make",
+        "made",
+        "know",
+        "think",
+        "want",
+        "come",
+        "take",
+        "give",
+        "look",
+        "find",
+        "tell",
+        "call",
+        "keep",
+        "going",
+        "being",
+        "really",
+        "actually",
+        "basically",
+        "literally",
+        "right",
+        "things",
+        "people",
+        "something",
+        "everything",
+        "nothing",
+        "getting",
+        "doing",
+        "saying",
+        "video",
+        "videos",
+        "channel",
+        "youtube",
+        "tiktok",
+        "subscribe",
+        "hello",
+        "guys",
+        "today",
+        "gonna",
+        "thing",
+        "stuff",
+    }
+)
 
 STOP_WORDS_ALL = STOP_WORDS_FR | STOP_WORDS_EN
 
@@ -393,6 +559,7 @@ STOP_WORDS_ALL = STOP_WORDS_FR | STOP_WORDS_EN
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🌐 DÉTECTION DE LANGUE SIMPLE
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _detect_language(text: str) -> str:
     """Détection rapide FR vs EN sur les 2000 premiers caractères."""
@@ -415,6 +582,7 @@ def _detect_language(text: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🎯 FONCTION PRINCIPALE : CATEGORISER UNE VIDEO
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def categorize_video(
     duration_seconds: int,
@@ -446,10 +614,10 @@ def categorize_video(
     # Validation stricte des timestamps : au moins 5 matches [MM:SS] ou MM:SS
     has_timestamps = False
     if transcript_timestamped and len(transcript_timestamped) > 50:
-        ts_count = len(re.findall(r'\[\d{1,2}:\d{2}(?::\d{2})?\]', transcript_timestamped))
+        ts_count = len(re.findall(r"\[\d{1,2}:\d{2}(?::\d{2})?\]", transcript_timestamped))
         if ts_count < 5:
             # Essayer le format sans crochets
-            ts_count = len(re.findall(r'(?:^|\n)\d{1,2}:\d{2}(?::\d{2})?\s', transcript_timestamped))
+            ts_count = len(re.findall(r"(?:^|\n)\d{1,2}:\d{2}(?::\d{2})?\s", transcript_timestamped))
         has_timestamps = ts_count >= 5
         if not has_timestamps:
             logger.info(f"Timestamps insuffisants ({ts_count} trouvés, minimum 5). Fallback estimation.")
@@ -490,12 +658,15 @@ def categorize_video(
     logger.info(
         "video_categorized",
         extra={
-            "tier": tier.value, "duration": duration_seconds,
-            "transcript_chars": transcript_chars, "transcript_words": transcript_words,
-            "has_timestamps": has_timestamps, "lang": lang,
+            "tier": tier.value,
+            "duration": duration_seconds,
+            "transcript_chars": transcript_chars,
+            "transcript_words": transcript_words,
+            "has_timestamps": has_timestamps,
+            "lang": lang,
             "needs_chunking": profile.needs_chunking,
             "chunk_minutes": profile.chunk_duration_minutes,
-        }
+        },
     )
 
     return profile
@@ -504,6 +675,7 @@ def categorize_video(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📑 INDEX STRUCTURÉ — Table des matières temporelle
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def build_structured_index(
     transcript_timestamped: str,
@@ -565,9 +737,11 @@ def build_structured_index(
     logger.info(
         "structured_index_built",
         extra={
-            "tier": tier.value, "total_segments": len(segments),
-            "index_entries": len(entries), "duration": duration_seconds,
-        }
+            "tier": tier.value,
+            "total_segments": len(segments),
+            "index_entries": len(entries),
+            "duration": duration_seconds,
+        },
     )
 
     return entries
@@ -582,13 +756,13 @@ def _estimate_segments_from_text(text: str, duration_seconds: int) -> List[Tuple
         return []
 
     # Découper en phrases
-    sentences = re.split(r'(?<=[.!?])\s+', text)
+    sentences = re.split(r"(?<=[.!?])\s+", text)
     if len(sentences) < 3:
         # Pas assez de phrases → découper par blocs de ~200 mots
         words = text.split()
         sentences = []
         for i in range(0, len(words), 200):
-            sentences.append(" ".join(words[i:i + 200]))
+            sentences.append(" ".join(words[i : i + 200]))
 
     if not sentences:
         return []
@@ -616,14 +790,16 @@ def serialize_index(entries: List[IndexEntry]) -> str:
 
     data = []
     for entry in entries:
-        data.append({
-            "ts": entry.timestamp_seconds,
-            "t": entry.timestamp_str,
-            "title": entry.title[:100],
-            "summary": entry.summary[:250],
-            "kw": entry.keywords[:6],
-            "bg": entry.bigrams[:4],
-        })
+        data.append(
+            {
+                "ts": entry.timestamp_seconds,
+                "t": entry.timestamp_str,
+                "title": entry.title[:100],
+                "summary": entry.summary[:250],
+                "kw": entry.keywords[:6],
+                "bg": entry.bigrams[:4],
+            }
+        )
 
     return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
@@ -637,14 +813,16 @@ def deserialize_index(json_str: str) -> List[IndexEntry]:
         data = json.loads(json_str)
         entries = []
         for item in data:
-            entries.append(IndexEntry(
-                timestamp_seconds=item.get("ts", 0),
-                timestamp_str=item.get("t", "0:00"),
-                title=item.get("title", ""),
-                summary=item.get("summary", ""),
-                keywords=item.get("kw", []),
-                bigrams=item.get("bg", []),
-            ))
+            entries.append(
+                IndexEntry(
+                    timestamp_seconds=item.get("ts", 0),
+                    timestamp_str=item.get("t", "0:00"),
+                    title=item.get("title", ""),
+                    summary=item.get("summary", ""),
+                    keywords=item.get("kw", []),
+                    bigrams=item.get("bg", []),
+                )
+            )
         return entries
     except (json.JSONDecodeError, TypeError, KeyError) as e:
         logger.warning(f"Failed to deserialize structured index: {e}")
@@ -669,6 +847,7 @@ def format_index_for_prompt(entries: List[IndexEntry], lang: str = "fr") -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔍 RECHERCHE DANS LES CHUNKS — Pour le chat IA
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def search_relevant_chunks(
     query: str,
@@ -708,7 +887,7 @@ def search_relevant_chunks(
     passages = []
     used_ranges: List[Tuple[int, int]] = []  # Éviter les chevauchements
 
-    for score, entry in scored_entries[:max_chunks * 2]:
+    for score, entry in scored_entries[: max_chunks * 2]:
         # Vérifier qu'on ne chevauche pas un passage déjà extrait
         if _overlaps(entry.timestamp_seconds, chunk_context_chars, used_ranges):
             continue
@@ -720,13 +899,15 @@ def search_relevant_chunks(
         )
 
         if passage and len(passage) > 50:
-            passages.append({
-                "timestamp": entry.timestamp_str,
-                "seconds": entry.timestamp_seconds,
-                "title": entry.title,
-                "text": passage,
-                "score": score,
-            })
+            passages.append(
+                {
+                    "timestamp": entry.timestamp_str,
+                    "seconds": entry.timestamp_seconds,
+                    "title": entry.title,
+                    "text": passage,
+                    "score": score,
+                }
+            )
             used_ranges.append((entry.timestamp_seconds - 60, entry.timestamp_seconds + 120))
 
         if len(passages) >= max_chunks:
@@ -769,6 +950,7 @@ def _overlaps(ts: int, context_chars: int, used_ranges: List[Tuple[int, int]]) -
 # 🔧 FONCTIONS INTERNES — Parsing
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _parse_timestamped_segments(transcript: str) -> List[Tuple[int, str]]:
     """
     Parse un transcript timestampé en paires (secondes, texte).
@@ -776,10 +958,10 @@ def _parse_timestamped_segments(transcript: str) -> List[Tuple[int, str]]:
     Valide que les timestamps sont monotones (croissants).
     """
     patterns = [
-        (r'\[(\d{1,2}):(\d{2}):(\d{2})\]\s*(.*?)(?=\[\d{1,2}:\d{2}|\Z)', "hms_bracket"),
-        (r'\[(\d{1,2}):(\d{2})\]\s*(.*?)(?=\[\d{1,2}:\d{2}|\Z)', "ms_bracket"),
-        (r'(?:^|\n)(\d{1,2}):(\d{2}):(\d{2})\s+(.*?)(?=\n\d{1,2}:\d{2}|\Z)', "hms_bare"),
-        (r'(?:^|\n)(\d{1,2}):(\d{2})\s+(.*?)(?=\n\d{1,2}:\d{2}|\Z)', "ms_bare"),
+        (r"\[(\d{1,2}):(\d{2}):(\d{2})\]\s*(.*?)(?=\[\d{1,2}:\d{2}|\Z)", "hms_bracket"),
+        (r"\[(\d{1,2}):(\d{2})\]\s*(.*?)(?=\[\d{1,2}:\d{2}|\Z)", "ms_bracket"),
+        (r"(?:^|\n)(\d{1,2}):(\d{2}):(\d{2})\s+(.*?)(?=\n\d{1,2}:\d{2}|\Z)", "hms_bare"),
+        (r"(?:^|\n)(\d{1,2}):(\d{2})\s+(.*?)(?=\n\d{1,2}:\d{2}|\Z)", "ms_bare"),
     ]
 
     for pattern, fmt in patterns:
@@ -836,6 +1018,7 @@ def _format_timestamp(seconds: int) -> str:
 # 🔧 FONCTIONS INTERNES — Index & Keywords
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _create_index_entry(
     start_seconds: int,
     texts: List[str],
@@ -848,7 +1031,7 @@ def _create_index_entry(
     combined = " ".join(texts)
 
     # Titre : première phrase significative, tronquée à 100 chars
-    sentences = re.split(r'[.!?]\s', combined)
+    sentences = re.split(r"[.!?]\s", combined)
     title = ""
     for sent in sentences:
         sent = sent.strip()
@@ -864,7 +1047,7 @@ def _create_index_entry(
 
     # Mots-clés avec stop-words bilingues
     stop_words = STOP_WORDS_ALL
-    words = re.findall(r'\b\w{3,}\b', combined.lower())
+    words = re.findall(r"\b\w{3,}\b", combined.lower())
     word_freq: Dict[str, int] = {}
     for w in words:
         if w not in stop_words and not w.isdigit():
@@ -888,7 +1071,7 @@ def _create_index_entry(
 
 def _extract_bigrams_from_text(text: str, stop_words: frozenset = STOP_WORDS_ALL) -> List[str]:
     """Extrait les bigrams significatifs (paires de mots consécutifs non-stop)."""
-    words = re.findall(r'\b\w{3,}\b', text.lower())
+    words = re.findall(r"\b\w{3,}\b", text.lower())
     bigram_freq: Dict[str, int] = {}
 
     for i in range(len(words) - 1):
@@ -903,13 +1086,14 @@ def _extract_bigrams_from_text(text: str, stop_words: frozenset = STOP_WORDS_ALL
 
 def _extract_query_terms(query_lower: str) -> Set[str]:
     """Extrait les termes significatifs d'une requête (filtrage stop-words)."""
-    words = set(re.findall(r'\b\w{3,}\b', query_lower))
+    words = set(re.findall(r"\b\w{3,}\b", query_lower))
     return words - STOP_WORDS_ALL
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTIONS INTERNES — Scoring & Recherche
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _score_entry_relevance(
     entry: IndexEntry,
@@ -955,7 +1139,7 @@ def _score_entry_relevance(
     query_terms_list = query_lower.split()
     for length in range(min(4, len(query_terms_list)), 1, -1):
         for i in range(len(query_terms_list) - length + 1):
-            phrase = " ".join(query_terms_list[i:i + length])
+            phrase = " ".join(query_terms_list[i : i + length])
             if len(phrase) > 6:
                 if phrase in title_lower:
                     score += 3.0
@@ -978,7 +1162,7 @@ def _extract_passage_at_timestamp(
 
     # Chercher le timestamp exact ou le plus proche
     best_pos = -1
-    for pattern in [rf'\[{re.escape(target_str)}\]', rf'(?:^|\n){re.escape(target_str)}\s']:
+    for pattern in [rf"\[{re.escape(target_str)}\]", rf"(?:^|\n){re.escape(target_str)}\s"]:
         match = re.search(pattern, transcript, re.MULTILINE)
         if match:
             best_pos = match.start()
@@ -992,7 +1176,7 @@ def _extract_passage_at_timestamp(
                 if nearby < 0:
                     continue
                 nearby_str = _format_timestamp(nearby)
-                for pat in [rf'\[{re.escape(nearby_str)}\]', rf'(?:^|\n){re.escape(nearby_str)}\s']:
+                for pat in [rf"\[{re.escape(nearby_str)}\]", rf"(?:^|\n){re.escape(nearby_str)}\s"]:
                     match = re.search(pat, transcript, re.MULTILINE)
                     if match:
                         best_pos = match.start()
@@ -1007,11 +1191,11 @@ def _extract_passage_at_timestamp(
         total_len = len(transcript)
         if target_seconds > 0:
             # Chercher la durée totale via le dernier timestamp
-            last_ts = re.findall(r'\[(\d{1,2}):(\d{2}(?::\d{2})?)\]', transcript)
+            last_ts = re.findall(r"\[(\d{1,2}):(\d{2}(?::\d{2})?)\]", transcript)
             if last_ts:
                 last_parts = last_ts[-1]
-                if ':' in last_parts[1]:
-                    max_ts = int(last_parts[0]) * 3600 + int(last_parts[1].split(':')[0]) * 60
+                if ":" in last_parts[1]:
+                    max_ts = int(last_parts[0]) * 3600 + int(last_parts[1].split(":")[0]) * 60
                 else:
                     max_ts = int(last_parts[0]) * 60 + int(last_parts[1])
                 if max_ts > 0:
@@ -1030,14 +1214,14 @@ def _extract_passage_at_timestamp(
 
     # Nettoyer : commencer/finir sur des frontières de phrase
     if start > 0:
-        first_break = passage.find('. ')
+        first_break = passage.find(". ")
         if 0 < first_break < 200:
-            passage = passage[first_break + 2:]
+            passage = passage[first_break + 2 :]
 
     if end < len(transcript):
-        last_break = passage.rfind('. ')
+        last_break = passage.rfind(". ")
         if last_break > len(passage) - 200 and last_break > 0:
-            passage = passage[:last_break + 1]
+            passage = passage[: last_break + 1]
 
     return passage
 
@@ -1059,7 +1243,7 @@ def _brute_search_transcript(
     windows = []
 
     for i in range(0, len(transcript), step):
-        window = transcript[i:i + chunk_size]
+        window = transcript[i : i + chunk_size]
         if len(window) < 100:
             continue
 
@@ -1076,20 +1260,24 @@ def _brute_search_transcript(
                     positions.append(pos)
             if len(positions) >= 2:
                 positions.sort()
-                avg_distance = sum(positions[i + 1] - positions[i] for i in range(len(positions) - 1)) / (len(positions) - 1)
+                avg_distance = sum(positions[i + 1] - positions[i] for i in range(len(positions) - 1)) / (
+                    len(positions) - 1
+                )
                 if avg_distance < 500:
                     score += 1.5  # Bonus densité
 
         # Extraire le timestamp le plus proche
-        ts_match = re.search(r'\[(\d{1,2}:\d{2}(?::\d{2})?)\]', window)
+        ts_match = re.search(r"\[(\d{1,2}:\d{2}(?::\d{2})?)\]", window)
         ts_str = ts_match.group(1) if ts_match else "?"
 
         if score > 0:
-            windows.append({
-                "timestamp": ts_str,
-                "text": window.strip(),
-                "score": score,
-            })
+            windows.append(
+                {
+                    "timestamp": ts_str,
+                    "text": window.strip(),
+                    "score": score,
+                }
+            )
 
     windows.sort(key=lambda x: x["score"], reverse=True)
     return windows[:max_results]
@@ -1098,6 +1286,7 @@ def _brute_search_transcript(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🚀 HELPERS : Préparer le transcript pour analyse et chat
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def prepare_transcript_for_analysis(
     profile: VideoProfile,
@@ -1115,20 +1304,20 @@ def prepare_transcript_for_analysis(
     source = transcript_timestamped if transcript_timestamped else transcript
 
     if profile.tier in (VideoTier.MICRO, VideoTier.SHORT):
-        return source[:profile.max_transcript_for_analysis]
+        return source[: profile.max_transcript_for_analysis]
 
     if profile.tier in (VideoTier.MEDIUM, VideoTier.LONG):
         index_text = ""
         if index_entries:
             index_text = format_index_for_prompt(index_entries, profile.detected_lang) + "\n\n"
-        return (index_text + source)[:profile.max_transcript_for_analysis]
+        return (index_text + source)[: profile.max_transcript_for_analysis]
 
     # EXTENDED/MARATHON → ne devrait pas arriver ici (chunking séparé)
     logger.warning(f"prepare_transcript_for_analysis called for {profile.tier.value} — should use analyze_long_video()")
     index_text = ""
     if index_entries:
         index_text = format_index_for_prompt(index_entries, profile.detected_lang) + "\n\n"
-    return (index_text + source)[:profile.max_transcript_for_analysis]
+    return (index_text + source)[: profile.max_transcript_for_analysis]
 
 
 def prepare_transcript_for_chat(
@@ -1248,14 +1437,14 @@ from pydantic import BaseModel
 class AnalysisStrategy(BaseModel):
     """Stratégie d'analyse déterminée par la durée, le transcript et le plan."""
 
-    tier: str                   # VideoTier value ("micro", "short", ...)
-    chunk_size: int             # Taille des chunks en mots (0 = pas de chunking)
-    model_override: str         # Modèle Mistral à utiliser pour la synthèse finale
-    two_pass: bool              # True = synthèse en 2 passes (chunks → merge)
-    max_context_chars: int      # Max chars envoyés en un seul prompt
-    max_tokens: int             # max_tokens pour la synthèse finale
-    concurrent_chunks: int      # Nombre de chunks traités en parallèle
-    needs_chunking: bool        # Shortcut: True si chunking obligatoire
+    tier: str  # VideoTier value ("micro", "short", ...)
+    chunk_size: int  # Taille des chunks en mots (0 = pas de chunking)
+    model_override: str  # Modèle Mistral à utiliser pour la synthèse finale
+    two_pass: bool  # True = synthèse en 2 passes (chunks → merge)
+    max_context_chars: int  # Max chars envoyés en un seul prompt
+    max_tokens: int  # max_tokens pour la synthèse finale
+    concurrent_chunks: int  # Nombre de chunks traités en parallèle
+    needs_chunking: bool  # Shortcut: True si chunking obligatoire
 
 
 async def get_analysis_strategy(
@@ -1316,7 +1505,7 @@ async def get_analysis_strategy(
                     "tier": profile.tier.value,
                     "transcript_chars": transcript_length,
                     "reason": "transcript > 50K chars",
-                }
+                },
             )
 
     needs_chunking = profile.needs_chunking or force_chunking
@@ -1348,7 +1537,7 @@ async def get_analysis_strategy(
             "chunking": strategy.needs_chunking,
             "two_pass": strategy.two_pass,
             "chunk_size": strategy.chunk_size,
-        }
+        },
     )
 
     return strategy

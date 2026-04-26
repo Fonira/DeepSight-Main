@@ -9,6 +9,7 @@
 - Chat intelligent sur corpus
 - Modes: accessible | standard | expert
 """
+
 from .router import router
 
 __all__ = ["router"]

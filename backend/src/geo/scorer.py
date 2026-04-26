@@ -25,7 +25,9 @@ W_FRESHNESS = 0.10
 
 # Regex marqueurs épistémiques (comptage)
 _SOLID_COUNT_RE = re.compile(r"✅\s*(?:SOLIDE|SOLID)", re.IGNORECASE)
-_ALL_MARKERS_RE = re.compile(r"[✅⚖️❓⚠️]\s*(?:SOLIDE|SOLID|PLAUSIBLE|INCERTAIN|UNCERTAIN|À VÉRIFIER|TO VERIFY)", re.IGNORECASE)
+_ALL_MARKERS_RE = re.compile(
+    r"[✅⚖️❓⚠️]\s*(?:SOLIDE|SOLID|PLAUSIBLE|INCERTAIN|UNCERTAIN|À VÉRIFIER|TO VERIFY)", re.IGNORECASE
+)
 
 
 def _score_citability(summary_content: str, quotes: list[CitableQuote]) -> tuple[float, int, int]:
@@ -239,64 +241,78 @@ def _generate_recommendations(
     # Citabilité
     if breakdown.citability < 50:
         if total_claims == 0:
-            recs.append(GeoRecommendation(
-                category="citability",
-                priority="high",
-                message="La vidéo ne contient aucun claim marqué. Ajouter des affirmations factuelles sourcées améliorerait considérablement la citabilité IA.",
-                impact_estimate=20,
-            ))
+            recs.append(
+                GeoRecommendation(
+                    category="citability",
+                    priority="high",
+                    message="La vidéo ne contient aucun claim marqué. Ajouter des affirmations factuelles sourcées améliorerait considérablement la citabilité IA.",
+                    impact_estimate=20,
+                )
+            )
         elif solid_claims < total_claims * 0.3:
-            recs.append(GeoRecommendation(
-                category="citability",
-                priority="high",
-                message=f"Seulement {solid_claims}/{total_claims} claims sont SOLID. Sourcer davantage les affirmations augmenterait la citabilité.",
-                impact_estimate=15,
-            ))
+            recs.append(
+                GeoRecommendation(
+                    category="citability",
+                    priority="high",
+                    message=f"Seulement {solid_claims}/{total_claims} claims sont SOLID. Sourcer davantage les affirmations augmenterait la citabilité.",
+                    impact_estimate=15,
+                )
+            )
 
     quotes_without_stats = [q for q in quotes if q.marker == "SOLID" and not q.has_stats]
     if len(quotes_without_stats) >= 3:
-        recs.append(GeoRecommendation(
-            category="citability",
-            priority="medium",
-            message=f"{len(quotes_without_stats)} claims SOLID sans chiffres. Ajouter des statistiques précises les rendrait plus citables.",
-            impact_estimate=10,
-        ))
+        recs.append(
+            GeoRecommendation(
+                category="citability",
+                priority="medium",
+                message=f"{len(quotes_without_stats)} claims SOLID sans chiffres. Ajouter des statistiques précises les rendrait plus citables.",
+                impact_estimate=10,
+            )
+        )
 
     # Structure
     if breakdown.structure < 50:
-        recs.append(GeoRecommendation(
-            category="structure",
-            priority="high",
-            message="Structurer le contenu en chapitres avec des réponses directes aux questions. Les IA préfèrent le contenu bien organisé.",
-            impact_estimate=15,
-        ))
+        recs.append(
+            GeoRecommendation(
+                category="structure",
+                priority="high",
+                message="Structurer le contenu en chapitres avec des réponses directes aux questions. Les IA préfèrent le contenu bien organisé.",
+                impact_estimate=15,
+            )
+        )
 
     # Autorité
     if breakdown.authority < 40:
-        recs.append(GeoRecommendation(
-            category="sourcing",
-            priority="high",
-            message="Renforcer l'autorité : citer des experts nommés, référencer des études, ajouter des sources vérifiables.",
-            impact_estimate=20,
-        ))
+        recs.append(
+            GeoRecommendation(
+                category="sourcing",
+                priority="high",
+                message="Renforcer l'autorité : citer des experts nommés, référencer des études, ajouter des sources vérifiables.",
+                impact_estimate=20,
+            )
+        )
 
     # Couverture
     if breakdown.coverage < 40:
-        recs.append(GeoRecommendation(
-            category="coverage",
-            priority="medium",
-            message="La couverture thématique est limitée. Approfondir le sujet avec des sous-thèmes et des exemples concrets.",
-            impact_estimate=10,
-        ))
+        recs.append(
+            GeoRecommendation(
+                category="coverage",
+                priority="medium",
+                message="La couverture thématique est limitée. Approfondir le sujet avec des sous-thèmes et des exemples concrets.",
+                impact_estimate=10,
+            )
+        )
 
     # Fraîcheur
     if breakdown.freshness < 30:
-        recs.append(GeoRecommendation(
-            category="freshness",
-            priority="low",
-            message="Le contenu est ancien ou peu engageant. Les IA privilégient le contenu frais et populaire.",
-            impact_estimate=5,
-        ))
+        recs.append(
+            GeoRecommendation(
+                category="freshness",
+                priority="low",
+                message="Le contenu est ancien ou peu engageant. Les IA privilégient le contenu frais et populaire.",
+                impact_estimate=5,
+            )
+        )
 
     recs.sort(key=lambda r: r.impact_estimate, reverse=True)
     return recs[:6]

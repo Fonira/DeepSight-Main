@@ -13,8 +13,10 @@ from pydantic import BaseModel, Field
 # 📥 REQUEST SCHEMAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class DebateCreateRequest(BaseModel):
     """Requête pour créer un débat IA"""
+
     url_a: str = Field(..., description="URL de la vidéo source (YouTube/TikTok)")
     url_b: Optional[str] = Field(None, description="URL de la vidéo opposée (optionnel, auto-recherche si absent)")
     lang: str = Field("fr", description="Langue de l'analyse")
@@ -23,6 +25,7 @@ class DebateCreateRequest(BaseModel):
 
 class DebateChatRequest(BaseModel):
     """Requête pour chatter dans le contexte d'un débat"""
+
     debate_id: int = Field(..., description="ID du débat")
     message: str = Field(..., min_length=1, max_length=2000, description="Message utilisateur")
 
@@ -31,14 +34,17 @@ class DebateChatRequest(BaseModel):
 # 📤 RESPONSE SCHEMAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class DebateCreateResponse(BaseModel):
     """Réponse après création d'un débat"""
+
     debate_id: int
     status: str
 
 
 class DebateStatusResponse(BaseModel):
     """Réponse pour le polling de statut"""
+
     debate_id: int
     status: str
     progress_message: str
@@ -54,6 +60,7 @@ class DebateStatusResponse(BaseModel):
 
 class DebateResultResponse(BaseModel):
     """Résultat complet d'un débat"""
+
     id: int
     video_a_id: str
     video_b_id: Optional[str] = None
@@ -88,12 +95,14 @@ class DebateResultResponse(BaseModel):
 
 class DebateChatResponse(BaseModel):
     """Réponse du chat débat"""
+
     response: str
     sources: list = Field(default_factory=list)
 
 
 class DebateListItem(BaseModel):
     """Item dans la liste des débats"""
+
     id: int
     detected_topic: Optional[str] = None
     video_a_title: Optional[str] = None
@@ -109,12 +118,14 @@ class DebateListItem(BaseModel):
 
 class DebateHistoryResponse(BaseModel):
     """Réponse paginée de l'historique des débats"""
+
     debates: list[DebateListItem]
     total: int
 
 
 class DebateChatMessageResponse(BaseModel):
     """Message de chat dans un débat"""
+
     id: int
     debate_id: int
     role: str

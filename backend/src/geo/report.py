@@ -109,6 +109,7 @@ async def generate_geo_report(
         return None
 
     import json
+
     try:
         return json.loads(result.content)
     except json.JSONDecodeError:
