@@ -48,6 +48,7 @@ from voice.schemas import (
     VoiceThumbnailResponse,
     VoiceThumbnailGradient,
     TranscriptAppendRequest,
+    TranscriptAppendResponse,
 )
 from voice.quota import (
     get_voice_quota_info,
@@ -1149,20 +1150,23 @@ async def create_voice_session(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@router.post("/transcripts/append")
+@router.post("/transcripts/append", response_model=TranscriptAppendResponse)
 async def append_transcript(
     request: TranscriptAppendRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-):
+) -> TranscriptAppendResponse:
     """Persist one voice turn into the unified chat_messages timeline.
 
     Auth: Bearer JWT (user). IDOR: voice_session.user_id must equal
-    current_user.id. Rate limit: 60 / min / voice_session_id (Spec #1).
+    current_user.id (returns 404 — same code as a missing session — to
+    avoid leaking ownership info). Rate limit: 60 / min / voice_session_id
+    (Spec #1).
 
-    The endpoint is idempotent at the API level — duplicate INSERTs are
-    allowed (the webhook reconciler in Task 8 normalises drift after the
-    call ends). Frontend de-duplicates client-side via UUIDs.
+    Dedup: a 60-second window per (voice_session_id, role, content) returns
+    the existing row id with ``created=False``. This guards against
+    network retries that emit the same payload twice; the webhook
+    reconciler (Task 8) handles content drift across the whole call.
     """
     # ── Rate limit: 60 / min / voice_session_id ─────────────────────────────
     count = await _increment_transcript_append_count(request.voice_session_id)
@@ -1198,6 +1202,8 @@ async def append_transcript(
         )
 
     # ── IDOR: caller must own the session ────────────────────────────────────
+    # Return 404 (not 403) so an attacker cannot distinguish "session does
+    # not exist" from "session exists but belongs to another user".
     if voice_session.user_id != current_user.id:
         logger.warning(
             "Transcript append IDOR attempt",
@@ -1208,20 +1214,57 @@ async def append_transcript(
             },
         )
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                "code": "voice_session_forbidden",
-                "message": "Voice session does not belong to you.",
+                "code": "voice_session_not_found",
+                "message": "Voice session does not exist.",
             },
         )
 
     # ── Persist into chat_messages with source='voice' ──────────────────────
+    from datetime import timedelta
+
     from db.database import ChatMessage
+
+    role = "user" if request.speaker == "user" else "assistant"
+
+    # ── Dedup window: 60s per (voice_session_id, role, content) ─────────────
+    # A retry on the same call (e.g. network timeout, frontend re-fire) must
+    # not insert a duplicate row. The 60s window is generous enough to absorb
+    # mobile reconnects yet short enough that legitimate user repetition is
+    # preserved.
+    dedup_cutoff = datetime.utcnow() - timedelta(seconds=60)
+    dedup_result = await db.execute(
+        select(ChatMessage)
+        .where(
+            ChatMessage.voice_session_id == request.voice_session_id,
+            ChatMessage.role == role,
+            ChatMessage.content == request.content,
+            ChatMessage.created_at > dedup_cutoff,
+        )
+        .order_by(ChatMessage.created_at.desc())
+        .limit(1)
+    )
+    existing = dedup_result.scalar_one_or_none()
+    if existing is not None:
+        logger.debug(
+            "Transcript append dedup hit",
+            extra={
+                "voice_session_id": request.voice_session_id,
+                "user_id": current_user.id,
+                "existing_id": existing.id,
+            },
+        )
+        return TranscriptAppendResponse(
+            id=existing.id,
+            created=False,
+            voice_session_id=request.voice_session_id,
+        )
 
     msg = ChatMessage(
         user_id=current_user.id,
         summary_id=voice_session.summary_id,  # may be None for companion
-        role="user" if request.speaker == "user" else "assistant",
+        role=role,
         content=request.content,
         source="voice",
         voice_session_id=request.voice_session_id,
@@ -1249,7 +1292,13 @@ async def append_transcript(
             },
         )
 
-    return {"ok": True, "voice_session_id": request.voice_session_id}
+    # SQLAlchemy populates msg.id after commit (autoincrement PK).
+    await db.refresh(msg)
+    return TranscriptAppendResponse(
+        id=msg.id,
+        created=True,
+        voice_session_id=request.voice_session_id,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

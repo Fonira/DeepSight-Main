@@ -40,12 +40,31 @@ class TranscriptAppendRequest(BaseModel):
     Sent by the frontend after each ``onMessage`` callback so the unified
     text+voice timeline survives a page reload. Webhook reconciliation
     (Task 8) corrects any drift after the call ends.
+
+    Schema rationale (decision 2026-04-25): the original spec triad
+    ``role + voice_speaker + timestamp_ms`` was simplified to a single
+    ``speaker`` discriminator (mapped to ``role`` server-side) plus
+    ``time_in_call_secs``. The frontend contract
+    (``frontend/src/services/api.ts::voiceApi.appendTranscript``) already
+    posts exactly this shape, so we keep the simplified form.
     """
 
     voice_session_id: str = Field(..., min_length=1, max_length=64)
     speaker: Literal["user", "agent"]
     content: str = Field(..., min_length=1, max_length=8000)
     time_in_call_secs: float = Field(..., ge=0.0)
+
+
+class TranscriptAppendResponse(BaseModel):
+    """Acknowledgement after appending (or de-duplicating) a voice turn.
+
+    ``created`` is False when a 60-second dedup window matched an existing
+    row — the frontend can use that signal to detect benign network retries.
+    """
+
+    id: int = Field(..., description="chat_messages.id of the inserted (or pre-existing) row")
+    created: bool = Field(..., description="True if a new row was inserted, False on dedup hit")
+    voice_session_id: str = Field(..., description="Echoed for frontend confirmation")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
