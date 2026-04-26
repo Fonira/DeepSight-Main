@@ -284,9 +284,15 @@ class ElevenLabsClient:
     def build_tools_config(webhook_base_url: str, api_token: str) -> list[dict]:
         """Return the ElevenLabs server-tool definitions (webhook format).
 
-        Each tool calls back into the DeepSight API with the user's JWT.
+        IMPORTANT: summary_id is injected as a `constant_value` (server-side, not
+        provided by the LLM). This is required because the agent has no way to know
+        the summary_id from its context, and the backend rejects mismatching tokens.
         """
         auth_headers = {"Authorization": f"Bearer {api_token}"}
+
+        # ElevenLabs schema rule: when constant_value is set, no other field
+        # (description, dynamic_variable, is_system_provided) can be set.
+        summary_id_const = {"type": "string", "constant_value": str(api_token)}
 
         def _webhook_tool(
             name: str,
@@ -322,12 +328,9 @@ class ElevenLabsClient:
                             "type": "string",
                             "description": "The search query (keyword or phrase)",
                         },
-                        "summary_id": {
-                            "type": "string",
-                            "description": "The analysis / summary ID",
-                        },
+                        "summary_id": summary_id_const,
                     },
-                    "required": ["query", "summary_id"],
+                    "required": ["query"],
                 },
             ),
             _webhook_tool(
@@ -343,12 +346,9 @@ class ElevenLabsClient:
                             "type": "string",
                             "description": "Section name (key_points, arguments, conclusion, context, etc.)",
                         },
-                        "summary_id": {
-                            "type": "string",
-                            "description": "The analysis / summary ID",
-                        },
+                        "summary_id": summary_id_const,
                     },
-                    "required": ["section", "summary_id"],
+                    "required": ["section"],
                 },
             ),
             _webhook_tool(
@@ -362,12 +362,9 @@ class ElevenLabsClient:
                             "type": "string",
                             "description": "The specific claim to verify (optional, returns all if omitted)",
                         },
-                        "summary_id": {
-                            "type": "string",
-                            "description": "The analysis / summary ID",
-                        },
+                        "summary_id": summary_id_const,
                     },
-                    "required": ["summary_id"],
+                    "required": [],
                 },
             ),
             _webhook_tool(
@@ -380,23 +377,22 @@ class ElevenLabsClient:
                 body_schema={
                     "type": "object",
                     "properties": {
-                        "summary_id": {
-                            "type": "string",
-                            "description": "The analysis / summary ID",
-                        },
+                        "summary_id": summary_id_const,
                         "count": {
                             "type": "integer",
                             "description": "Number of flashcards to return (default 5)",
                         },
                     },
-                    "required": ["summary_id"],
+                    "required": [],
                 },
             ),
             _webhook_tool(
                 name="web_search",
                 description=(
                     "Search the web for current information about a topic. "
-                    "Use when the user asks about recent events, news, or facts not in the video."
+                    "Use SYSTEMATICALLY when the user asks about recent events, news, "
+                    "facts not in the video, or when you are unsure of an answer. "
+                    "Cite sources briefly to the user."
                 ),
                 url_path="/api/voice/tools/web-search",
                 body_schema={
@@ -406,12 +402,9 @@ class ElevenLabsClient:
                             "type": "string",
                             "description": "The web search query",
                         },
-                        "summary_id": {
-                            "type": "string",
-                            "description": "The analysis / summary ID",
-                        },
+                        "summary_id": summary_id_const,
                     },
-                    "required": ["query", "summary_id"],
+                    "required": ["query"],
                 },
             ),
             _webhook_tool(
@@ -428,12 +421,9 @@ class ElevenLabsClient:
                             "type": "string",
                             "description": "The research query or topic",
                         },
-                        "summary_id": {
-                            "type": "string",
-                            "description": "The analysis / summary ID",
-                        },
+                        "summary_id": summary_id_const,
                     },
-                    "required": ["query", "summary_id"],
+                    "required": ["query"],
                 },
             ),
             _webhook_tool(
@@ -447,20 +437,24 @@ class ElevenLabsClient:
                             "type": "string",
                             "description": "The factual claim to verify",
                         },
-                        "summary_id": {
-                            "type": "string",
-                            "description": "The analysis / summary ID",
-                        },
+                        "summary_id": summary_id_const,
                     },
-                    "required": ["claim", "summary_id"],
+                    "required": ["claim"],
                 },
             ),
         ]
 
     @staticmethod
     def build_debate_tools_config(webhook_base_url: str, api_token: str) -> list[dict]:
-        """Return the ElevenLabs webhook-tool definitions for the debate_moderator agent."""
+        """Return the ElevenLabs webhook-tool definitions for the debate_moderator agent.
+
+        IMPORTANT: debate_id is injected as a `constant_value` (server-side). The LLM
+        does not provide it — the backend would reject mismatching tokens otherwise.
+        """
         auth_headers = {"Authorization": f"Bearer {api_token}"}
+
+        # ElevenLabs schema rule: constant_value cannot coexist with description/etc.
+        debate_id_const = {"type": "string", "constant_value": str(api_token)}
 
         def _webhook_tool(name: str, description: str, url_path: str, body_schema: dict) -> dict:
             return {
@@ -475,11 +469,6 @@ class ElevenLabsClient:
                 },
             }
 
-        debate_id_field = {
-            "type": "string",
-            "description": "The debate ID (same as Bearer token)",
-        }
-
         return [
             _webhook_tool(
                 name="get_debate_overview",
@@ -487,8 +476,8 @@ class ElevenLabsClient:
                 url_path="/api/voice/tools/debate-overview",
                 body_schema={
                     "type": "object",
-                    "properties": {"debate_id": debate_id_field},
-                    "required": ["debate_id"],
+                    "properties": {"debate_id": debate_id_const},
+                    "required": [],
                 },
             ),
             _webhook_tool(
@@ -498,10 +487,10 @@ class ElevenLabsClient:
                 body_schema={
                     "type": "object",
                     "properties": {
-                        "debate_id": debate_id_field,
+                        "debate_id": debate_id_const,
                         "side": {"type": "string", "description": "Which video: 'video_a' or 'video_b'"},
                     },
-                    "required": ["debate_id", "side"],
+                    "required": ["side"],
                 },
             ),
             _webhook_tool(
@@ -511,10 +500,10 @@ class ElevenLabsClient:
                 body_schema={
                     "type": "object",
                     "properties": {
-                        "debate_id": debate_id_field,
+                        "debate_id": debate_id_const,
                         "topic": {"type": "string", "description": "Sub-topic to compare (optional)"},
                     },
-                    "required": ["debate_id"],
+                    "required": [],
                 },
             ),
             _webhook_tool(
@@ -524,14 +513,14 @@ class ElevenLabsClient:
                 body_schema={
                     "type": "object",
                     "properties": {
-                        "debate_id": debate_id_field,
+                        "debate_id": debate_id_const,
                         "query": {"type": "string", "description": "The search query"},
                         "side": {
                             "type": "string",
                             "description": "Which transcript: 'video_a', 'video_b', or 'both' (default)",
                         },
                     },
-                    "required": ["debate_id", "query"],
+                    "required": ["query"],
                 },
             ),
             _webhook_tool(
@@ -540,8 +529,8 @@ class ElevenLabsClient:
                 url_path="/api/voice/tools/debate-fact-check",
                 body_schema={
                     "type": "object",
-                    "properties": {"debate_id": debate_id_field},
-                    "required": ["debate_id"],
+                    "properties": {"debate_id": debate_id_const},
+                    "required": [],
                 },
             ),
             _webhook_tool(
@@ -555,10 +544,10 @@ class ElevenLabsClient:
                 body_schema={
                     "type": "object",
                     "properties": {
-                        "debate_id": debate_id_field,
+                        "debate_id": debate_id_const,
                         "query": {"type": "string", "description": "The web search query"},
                     },
-                    "required": ["debate_id", "query"],
+                    "required": ["query"],
                 },
             ),
         ]
