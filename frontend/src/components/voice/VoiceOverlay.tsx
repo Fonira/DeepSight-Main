@@ -20,7 +20,13 @@
  * pas de drag pour V1.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -31,9 +37,11 @@ import {
   AlertCircle,
   Loader2,
   Volume2,
+  Settings,
 } from "lucide-react";
 import { useVoiceChat } from "./useVoiceChat";
 import { VoiceQuotaBadge } from "./VoiceQuotaBadge";
+import { VoiceLiveSettings } from "./VoiceLiveSettings";
 import { voiceApi } from "../../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -61,7 +69,12 @@ export interface VoiceOverlayProps {
   /** Summary id for the agent (omit for companion mode). */
   summaryId?: number | null;
   /** Agent type — defaults to "explorer" if summaryId, "companion" otherwise. */
-  agentType?: "explorer" | "companion" | "tutor" | "debate_moderator" | "quiz_coach";
+  agentType?:
+    | "explorer"
+    | "companion"
+    | "tutor"
+    | "debate_moderator"
+    | "quiz_coach";
   /** Language used by the agent. */
   language?: "fr" | "en";
   /**
@@ -113,6 +126,7 @@ const I18N = {
     transcriptEmpty: "La conversation s'affichera ici en temps réel.",
     minutesLeft: "min restantes",
     micMuted: "Micro coupé",
+    settings: "Réglages",
   },
   en: {
     callTitle: "Voice call",
@@ -128,6 +142,7 @@ const I18N = {
     transcriptEmpty: "The conversation will appear here in real time.",
     minutesLeft: "min left",
     micMuted: "Mic muted",
+    settings: "Settings",
   },
 } as const;
 
@@ -151,6 +166,9 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
   const resolvedAgent: VoiceOverlayProps["agentType"] =
     agentType ?? (summaryId ? "explorer" : "companion");
 
+  // ── Settings panel collapsible state ──
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   // ── Voice chat hook ──
   const voice = useVoiceChat({
     summaryId: summaryId ?? undefined,
@@ -163,7 +181,10 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
 
   // ── Forward new transcripts to parent + persist to backend ──
   useEffect(() => {
-    if (!voice.messages || voice.messages.length <= lastForwardedIndexRef.current) {
+    if (
+      !voice.messages ||
+      voice.messages.length <= lastForwardedIndexRef.current
+    ) {
       return;
     }
     const startedAt = voice.sessionStartedAt;
@@ -204,7 +225,12 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
           });
       }
     });
-  }, [voice.messages, voice.sessionStartedAt, voice.voiceSessionId, onVoiceMessage]);
+  }, [
+    voice.messages,
+    voice.sessionStartedAt,
+    voice.voiceSessionId,
+    onVoiceMessage,
+  ]);
 
   // ── Reset the forwarded index when a new session starts ──
   useEffect(() => {
@@ -326,19 +352,55 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
                   {title || t.callTitle}
                 </p>
                 <p className="text-[11px] text-white/40 truncate">
-                  {subtitle || (resolvedAgent === "companion" ? t.companion : null)}
+                  {subtitle ||
+                    (resolvedAgent === "companion" ? t.companion : null)}
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleClose}
-              aria-label={t.close}
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white/70 transition-colors flex-shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((v) => !v)}
+                aria-label={t.settings}
+                aria-expanded={settingsOpen}
+                aria-controls="voice-overlay-settings-panel"
+                data-testid="voice-overlay-settings-toggle"
+                className={`p-1.5 rounded-lg transition-colors ${
+                  settingsOpen
+                    ? "bg-violet-500/20 text-violet-200"
+                    : "hover:bg-white/[0.06] text-white/40 hover:text-white/70"
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                aria-label={t.close}
+                className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white/70 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </header>
+
+          {/* ── Live settings panel (collapsible) ── */}
+          <AnimatePresence initial={false}>
+            {settingsOpen && (
+              <motion.div
+                key="voice-overlay-settings"
+                id="voice-overlay-settings-panel"
+                data-testid="voice-overlay-settings-panel"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="flex-shrink-0 overflow-hidden"
+              >
+                <VoiceLiveSettings language={language} />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* ── Status + quota row ── */}
           <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-white/[0.04] flex-shrink-0">
