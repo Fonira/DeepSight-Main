@@ -19,6 +19,7 @@ export type {
   RGB,
   StarDensity,
   BeamType,
+  NightMode,
   Keyframe,
   KeyframeColors,
   BeamPreset,
