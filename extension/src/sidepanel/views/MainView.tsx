@@ -11,7 +11,6 @@ import {
   extractVideoId,
   getThumbnailUrl,
   detectPlatform,
-  type VideoPlatform,
 } from "../../utils/video";
 import {
   addRecentAnalysis,
@@ -21,7 +20,7 @@ import {
 } from "../../utils/storage";
 import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
-import { LogoutIcon, PlayIcon, ExternalLinkIcon } from "../shared/Icons";
+import { LogoutIcon, ExternalLinkIcon } from "../shared/Icons";
 import { SynthesisView } from "../shared/SynthesisView";
 import { ChatView } from "./ChatView";
 import { PromoBanner } from "../components/PromoBanner";
@@ -261,7 +260,7 @@ export const MainView: React.FC<MainViewProps> = ({
     }
   }, [video, mode, lang, isGuest, t]);
 
-  // Chat view
+  // Chat view (unchanged)
   if (chatOpen && analysis.phase === "complete") {
     return (
       <ChatView
@@ -278,293 +277,362 @@ export const MainView: React.FC<MainViewProps> = ({
     ? t.plans[planInfo.plan_id as keyof typeof t.plans] || planInfo.plan_name
     : null;
   const isFree = !user || user.plan === "free";
+  const planLabel = isGuest
+    ? t.common.login
+    : isFree
+      ? planName || t.plans.free
+      : planName || "";
+
+  const platform = video ? detectPlatform(video.url) : null;
+  const isTikTok = platform === "tiktok";
+  const thumbSrc =
+    video && !isTikTok
+      ? `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`
+      : null;
 
   return (
-    <div className="main-view">
-      {/* Header */}
-      <div className="main-header">
-        <div className="main-header-left">
-          <DeepSightSpinner size="xs" speed="slow" />
-          {isGuest ? (
-            <h1>DeepSight</h1>
-          ) : isFree ? (
-            <h1>DeepSight {planName || t.plans.free}</h1>
-          ) : (
-            <h1>DeepSight {planName}</h1>
-          )}
-        </div>
-        <div className="main-header-actions">
-          <button
-            className="btn-open-webapp"
-            onClick={() => Browser.tabs.create({ url: WEBAPP_URL })}
-            title="Ouvrir DeepSight"
-          >
-            <ExternalLinkIcon size={12} /> Web
-          </button>
-          {isGuest ? (
-            <button className="btn-header-login" onClick={onLoginRedirect}>
-              {t.common.login}
-            </button>
-          ) : (
+    <div className="ds-app">
+      <div className="ds-app-scroll ds-stagger">
+        {/* ── Hero header ────────────────────────────────────────── */}
+        <div className="ds-hero">
+          <div className="ds-hero-spinner">
+            <DeepSightSpinner size="sm" speed="slow" />
+          </div>
+          <h1 className="ds-hero-title">DeepSight</h1>
+          <div className="ds-hero-actions">
+            <span
+              className={`ds-plan-chip ${
+                userPlanId === "pro" || userPlanId === "expert"
+                  ? "ds-plan-chip-pro"
+                  : ""
+              }`}
+            >
+              {planLabel}
+            </span>
             <button
-              className="icon-btn icon-btn-danger"
-              onClick={onLogout}
-              title={t.common.logout}
+              className="ds-icon-btn"
+              onClick={() => Browser.tabs.create({ url: WEBAPP_URL })}
+              title="Ouvrir DeepSight"
+              aria-label="Ouvrir DeepSight"
             >
-              <LogoutIcon size={16} />
+              <ExternalLinkIcon size={13} />
             </button>
-          )}
+            {isGuest ? (
+              <button
+                className="ds-button-ghost"
+                onClick={onLoginRedirect}
+                aria-label={t.common.login}
+              >
+                {t.common.login}
+              </button>
+            ) : (
+              <button
+                className="ds-icon-btn ds-icon-btn-danger"
+                onClick={onLogout}
+                title={t.common.logout}
+                aria-label={t.common.logout}
+              >
+                <LogoutIcon size={14} />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* User/Plan bar */}
-      {!isGuest && user && (
-        <div className="user-bar">
-          <span className={`plan-badge plan-${user.plan}`}>
-            {t.plans[user.plan as keyof typeof t.plans] || user.plan}
-          </span>
-          {planInfo ? (
-            <span
-              className={`user-quota ${quotaWarning ? "quota-warning" : ""}`}
-            >
-              {planInfo.analyses_this_month}/{planInfo.monthly_analyses}{" "}
-              {t.common.analyses}
-            </span>
-          ) : (
-            <span className="user-credits">
-              {user.credits} {t.common.credits}
-            </span>
-          )}
-          {creditsLow && (
-            <span
-              className={`credits-urgency ${creditsCritical ? "credits-critical" : "credits-low"}`}
-              title={t.credits.remaining.replace(
-                "{count}",
-                String(creditsRemaining),
-              )}
-            >
-              {creditsCritical ? "\u{1F6A8}" : "\u26A0\uFE0F"}{" "}
-              {creditsRemaining} {t.credits.low}
-            </span>
-          )}
-        </div>
-      )}
-
-      {!isGuest && creditsCritical && (
-        <div className="credits-banner-critical">
-          <span>
-            {t.credits.critical.replace(
-              "{count}",
-              String(creditsRemaining),
-            )}{" "}
-          </span>
-          <a
-            href={`${WEBAPP_URL}/upgrade`}
-            onClick={(e) => {
-              e.preventDefault();
-              Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
+        {/* ── User stats strip (quota + credits low) ─────────────── */}
+        {!isGuest && user && (
+          <div
+            style={{
+              padding: "0 18px 14px",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
             }}
           >
-            {t.credits.recharge} {"\u2197"}
-          </a>
-        </div>
-      )}
-
-      {isGuest && (
-        <div className="guest-banner">
-          <span>{t.guest.banner}</span>
-        </div>
-      )}
-
-      {/* YouTube recommendation banner */}
-      {showYtBanner && (
-        <div className="yt-recommend-banner">
-          <div className="yt-recommend-content">
-            <img
-              src={Browser.runtime.getURL("platforms/youtube-icon-red.png")}
-              alt="YouTube"
-              style={{ height: 18, width: "auto", flexShrink: 0 }}
-            />
-            <div className="yt-recommend-text">
-              <span className="yt-recommend-title">{t.ytRecommend.title}</span>
-              <span className="yt-recommend-subtitle">
-                {t.ytRecommend.subtitle}
+            {planInfo ? (
+              <span
+                className={`ds-quota-strip ${quotaWarning ? "warning" : ""}`}
+              >
+                <DoodleIcon name="lightning" size={11} />
+                {planInfo.analyses_this_month}/{planInfo.monthly_analyses}{" "}
+                {t.common.analyses}
               </span>
-            </div>
-          </div>
-          <button
-            className="yt-recommend-dismiss"
-            onClick={dismissYtBanner}
-            title={t.ytRecommend.dismiss}
-          >
-            {"\u2715"}
-          </button>
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="main-content">
-        {/* Video status */}
-        {video ? (
-          (() => {
-            const platform = detectPlatform(video.url);
-            const isTikTok = platform === "tiktok";
-            const thumbSrc = isTikTok
-              ? null
-              : `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`;
-            const urlLabel = isTikTok
-              ? `tiktok.com/video/${video.videoId}`
-              : `youtube.com/watch?v=${video.videoId}`;
-            return (
-              <div className="video-status-card">
-                {thumbSrc ? (
-                  <img
-                    src={thumbSrc}
-                    alt=""
-                    className="video-thumbnail"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div
-                    className="video-thumbnail"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(200,144,58,0.1)",
-                    }}
-                  >
-                    <DoodleIcon
-                      name="waveform"
-                      size={20}
-                      color="var(--accent-primary)"
-                    />
-                  </div>
+            ) : (
+              <span className="ds-quota-strip">
+                <DoodleIcon name="diamond" size={11} />
+                {user.credits} {t.common.credits}
+              </span>
+            )}
+            {creditsLow && (
+              <span
+                className={`ds-quota-strip ${creditsCritical ? "warning" : ""}`}
+                title={t.credits.remaining.replace(
+                  "{count}",
+                  String(creditsRemaining),
                 )}
-                <div className="video-status-body">
-                  <span className="video-status-title">
-                    {video.title.length > 52
-                      ? video.title.substring(0, 52) + "\u2026"
-                      : video.title}
-                  </span>
-                  <span className="video-status-url">{urlLabel}</span>
-                </div>
-                <div className="video-live-dot" title="Video detected" />
-              </div>
-            );
-          })()
-        ) : (
-          <div className="video-status">
-            <div className="video-status-icon">
-              <DoodleIcon name="play" size={16} color="var(--text-muted)" />
-            </div>
-            <span className="video-status-text video-status-none">
-              {t.analysis.noVideo}
-            </span>
+              >
+                {creditsCritical ? "\u{1F6A8}" : "⚠️"} {creditsRemaining}{" "}
+                {t.credits.low}
+              </span>
+            )}
           </div>
         )}
 
-        {/* Analysis controls */}
+        {/* ── Banners (severity ordered) ─────────────────────────── */}
+        {!isGuest && creditsCritical && (
+          <div className="ds-banner error">
+            <span className="ds-banner-icon">
+              <DoodleIcon name="lightning" size={14} />
+            </span>
+            <div className="ds-banner-content">
+              <span className="ds-banner-title">
+                {t.credits.critical.replace(
+                  "{count}",
+                  String(creditsRemaining),
+                )}
+              </span>
+            </div>
+            <a
+              className="ds-banner-cta"
+              href={`${WEBAPP_URL}/upgrade`}
+              onClick={(e) => {
+                e.preventDefault();
+                Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
+              }}
+            >
+              {t.credits.recharge} {"↗"}
+            </a>
+          </div>
+        )}
+
+        {isGuest && (
+          <div className="ds-banner cyan">
+            <span className="ds-banner-icon">
+              <DoodleIcon name="sparkle4pt" size={14} />
+            </span>
+            <div className="ds-banner-content">
+              <span className="ds-banner-subtitle">{t.guest.banner}</span>
+            </div>
+          </div>
+        )}
+
+        {showYtBanner && (
+          <div className="ds-banner">
+            <img
+              src={Browser.runtime.getURL("platforms/youtube-icon-red.png")}
+              alt="YouTube"
+              style={{ height: 16, width: "auto", flexShrink: 0 }}
+            />
+            <div className="ds-banner-content">
+              <span className="ds-banner-title">{t.ytRecommend.title}</span>
+              <span className="ds-banner-subtitle">
+                {t.ytRecommend.subtitle}
+              </span>
+            </div>
+            <button
+              className="ds-banner-dismiss"
+              onClick={dismissYtBanner}
+              title={t.ytRecommend.dismiss}
+              aria-label={t.ytRecommend.dismiss}
+            >
+              {"✕"}
+            </button>
+          </div>
+        )}
+
+        {/* ── Video detection / empty state ──────────────────────── */}
+        {video ? (
+          <div className="ds-video-card">
+            {thumbSrc ? (
+              <img
+                src={thumbSrc}
+                alt=""
+                className="ds-video-thumb"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            ) : (
+              <div className="ds-video-thumb-fallback">
+                <DoodleIcon
+                  name="waveform"
+                  size={22}
+                  color="rgba(199, 210, 254, 0.7)"
+                />
+              </div>
+            )}
+            <div className="ds-video-info">
+              <span className="ds-video-title">{video.title}</span>
+              <div className="ds-video-meta">
+                <span className="ds-platform-pill">
+                  {isTikTok ? "TikTok" : "YouTube"}
+                </span>
+                <span className="ds-video-live-dot" title="Vidéo détectée" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="ds-empty-card">
+            <div className="ds-empty-icon">
+              <DoodleIcon
+                name="play"
+                size={20}
+                color="var(--ds-accent-indigo)"
+              />
+            </div>
+            <span className="ds-empty-text">{t.analysis.noVideo}</span>
+          </div>
+        )}
+
+        {/* ── Analysis flow (idle / quota / guest exhausted) ─────── */}
         {video && analysis.phase === "idle" && (
           <>
             {!isGuest && isQuotaExceeded ? (
-              <div className="quota-exceeded">
-                <p className="quota-exceeded-text">
-                  {t.analysis.quotaExceeded} ({planInfo?.analyses_this_month}/
-                  {planInfo?.monthly_analyses}) — {t.analysis.quotaExceededText}
-                </p>
+              <div className="ds-card">
+                <DoodleIcon
+                  name="shield"
+                  size={48}
+                  color="var(--ds-accent-violet)"
+                  className="ds-card-doodle"
+                />
+                <div className="ds-card-title">{t.analysis.quotaExceeded}</div>
+                <div className="ds-card-subtitle">
+                  {planInfo?.analyses_this_month}/{planInfo?.monthly_analyses} —{" "}
+                  {t.analysis.quotaExceededText}
+                </div>
                 <button
-                  className="analyze-btn analyze-btn-disabled btn-shimmer"
-                  disabled
-                >
-                  {t.analysis.analyzeButton}
-                </button>
-                <button
-                  className="quickchat-btn"
+                  className="ds-button-secondary"
                   onClick={startQuickChat}
                   disabled={quickChatLoading}
+                  style={{ marginBottom: 8 }}
                 >
                   {quickChatLoading
                     ? t.analysis.quickChatPreparing
                     : t.analysis.quickChatButton}
                 </button>
                 <a
+                  className="ds-button-primary"
                   href={`${WEBAPP_URL}/upgrade`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-upgrade-cta"
                   onClick={(e) => {
                     e.preventDefault();
                     Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
                   }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textDecoration: "none",
+                    boxSizing: "border-box",
+                  }}
                 >
-                  {t.common.viewPlans} {"\u2197"}
+                  {t.common.viewPlans} {"↗"}
                 </a>
               </div>
             ) : isGuest && guestUsed ? (
-              <div className="guest-exhausted">
-                <p className="guest-exhausted-text">{t.guest.exhaustedText}</p>
+              <div className="ds-card">
+                <DoodleIcon
+                  name="crown"
+                  size={48}
+                  color="var(--ds-accent-violet)"
+                  className="ds-card-doodle"
+                />
+                <div className="ds-card-title">{t.guest.exhaustedText}</div>
                 <button
-                  className="btn-create-account"
+                  className="ds-button-primary"
                   onClick={() =>
                     Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
                   }
                 >
-                  {t.common.createAccount} {"\u2197"}
+                  {t.common.createAccount} {"↗"}
                 </button>
               </div>
             ) : (
               <>
-                <div className="selectors-row">
-                  <div className="ds-select-wrapper">
-                    <label>{t.analysis.mode}</label>
-                    <select
-                      className="ds-select"
-                      value={mode}
-                      onChange={(e) => setMode(e.target.value)}
-                    >
-                      <option value="standard">
+                {/* Mode + Lang as pill toggles */}
+                <div className="ds-pill-row">
+                  <div className="ds-pill-group">
+                    <span className="ds-pill-label">{t.analysis.mode}</span>
+                    <div className="ds-pill-toggle">
+                      <button
+                        className={mode === "standard" ? "active" : ""}
+                        onClick={() => setMode("standard")}
+                      >
                         {t.analysis.modes.standard}
-                      </option>
-                      <option value="accessible">
+                      </button>
+                      <button
+                        className={mode === "accessible" ? "active" : ""}
+                        onClick={() => setMode("accessible")}
+                      >
                         {t.analysis.modes.accessible}
-                      </option>
-                    </select>
+                      </button>
+                    </div>
                   </div>
-                  <div className="ds-select-wrapper">
-                    <label>{t.analysis.language}</label>
-                    <select
-                      className="ds-select"
-                      value={lang}
-                      onChange={(e) => setLang(e.target.value)}
-                    >
-                      <option value="fr">{t.analysis.languages.fr}</option>
-                      <option value="en">{t.analysis.languages.en}</option>
-                      <option value="es">{t.analysis.languages.es}</option>
-                      <option value="de">{t.analysis.languages.de}</option>
-                    </select>
+                  <div className="ds-pill-group">
+                    <span className="ds-pill-label">{t.analysis.language}</span>
+                    <div className="ds-pill-toggle">
+                      {(["fr", "en", "es", "de"] as const).map((code) => (
+                        <button
+                          key={code}
+                          className={lang === code ? "active" : ""}
+                          onClick={() => setLang(code)}
+                          aria-label={
+                            t.analysis.languages[
+                              code as keyof typeof t.analysis.languages
+                            ]
+                          }
+                        >
+                          {code.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <button
-                  className="quickchat-btn"
-                  onClick={startQuickChat}
-                  disabled={!video || quickChatLoading}
-                >
-                  {quickChatLoading
-                    ? t.analysis.quickChatPreparing
-                    : t.analysis.quickChatButton}
-                </button>
-                <button
-                  className="analyze-btn btn-shimmer"
-                  onClick={startAnalysis}
-                  style={{ animation: "float 3s ease-in-out infinite" }}
-                >
-                  {t.analysis.analyzeButton}
-                </button>
-                <div className="mistral-badge">
-                  <span>{"\uD83C\uDDEB\uD83C\uDDF7"}</span>
+
+                {/* Primary analysis card */}
+                <div className="ds-card">
+                  <DoodleIcon
+                    name="sparkles"
+                    size={42}
+                    color="var(--ds-accent-indigo)"
+                    className="ds-card-doodle"
+                  />
+                  <div className="ds-card-title">
+                    {t.analysis.analyzeButton}
+                  </div>
+                  <div className="ds-card-subtitle">{t.mistral.badge}</div>
+                  <button className="ds-button-primary" onClick={startAnalysis}>
+                    {t.analysis.analyzeButton} {"→"}
+                  </button>
+                </div>
+
+                {/* Quick Chat secondary card */}
+                <div className="ds-card">
+                  <DoodleIcon
+                    name="lightbulb"
+                    size={42}
+                    color="var(--ds-accent-cyan)"
+                    className="ds-card-doodle"
+                  />
+                  <div className="ds-card-title">
+                    {t.analysis.quickChatButton}
+                  </div>
+                  <div className="ds-card-subtitle">
+                    {t.analysis.quickChatPreparing}
+                  </div>
+                  <button
+                    className="ds-button-secondary"
+                    onClick={startQuickChat}
+                    disabled={!video || quickChatLoading}
+                  >
+                    {quickChatLoading
+                      ? t.analysis.quickChatPreparing
+                      : t.analysis.quickChatButton}
+                  </button>
+                </div>
+
+                {/* Mistral attribution mini-strip */}
+                <div className="ds-mistral-strip">
+                  <span>{"🇫🇷"}</span>
                   <span>{t.mistral.badge}</span>
                 </div>
               </>
@@ -572,55 +640,42 @@ export const MainView: React.FC<MainViewProps> = ({
           </>
         )}
 
-        {/* Progress */}
+        {/* ── Analyzing state ────────────────────────────────────── */}
         {analysis.phase === "analyzing" && (
-          <div className="progress-container">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                marginBottom: 8,
-              }}
-            >
-              <DeepSightSpinner size="sm" speed="fast" />
-            </div>
-            <div className="progress-bar">
+          <div className="ds-progress-card">
+            <DeepSightSpinner size="md" speed="fast" />
+            <div className="ds-progress-bar">
               <div
-                className="progress-fill"
+                className="ds-progress-fill"
                 style={{ width: `${analysis.progress}%` }}
               />
             </div>
-            <p className="progress-text">{analysis.message}</p>
+            <p className="ds-progress-text">{analysis.message}</p>
           </div>
         )}
 
-        {/* Error */}
+        {/* ── Error state ────────────────────────────────────────── */}
         {analysis.phase === "error" && (
-          <div style={{ textAlign: "center", padding: "12px" }}>
-            <p
-              style={{
-                color: "var(--error)",
-                fontSize: "13px",
-                marginBottom: "8px",
-              }}
-            >
+          <div className="ds-card">
+            <DoodleIcon
+              name="shield"
+              size={42}
+              color="#fca5a5"
+              className="ds-card-doodle"
+            />
+            <div className="ds-card-title" style={{ color: "#fca5a5" }}>
               {analysis.message}
-            </p>
+            </div>
             <button
-              className="analyze-btn btn-shimmer"
+              className="ds-button-primary"
               onClick={() => setAnalysis({ phase: "idle" })}
-              style={{
-                height: "40px",
-                fontSize: "13px",
-                animation: "float 3s ease-in-out infinite",
-              }}
             >
               {t.common.retry}
             </button>
           </div>
         )}
 
-        {/* Synthesis */}
+        {/* ── Complete (synthesis) ───────────────────────────────── */}
         {analysis.phase === "complete" && (
           <>
             <SynthesisView
@@ -631,80 +686,82 @@ export const MainView: React.FC<MainViewProps> = ({
             />
 
             {!isGuest && nextPlan && userPlanId !== "pro" && (
-              <div className="post-analysis-upsell">
-                <div className="upsell-content">
-                  <DoodleIcon
-                    name="sparkle4pt"
-                    size={18}
-                    color="var(--accent-primary)"
-                  />
-                  <div className="upsell-text">
-                    <span className="upsell-headline">{nextPlan.feature}</span>
-                    <span className="upsell-sub">
-                      Plan {nextPlan.label} — {nextPlan.price}/
-                      {language === "fr" ? "mois" : "mo"}
-                    </span>
-                  </div>
+              <div className="ds-card">
+                <DoodleIcon
+                  name="sparkle4pt"
+                  size={42}
+                  color="var(--ds-accent-violet)"
+                  className="ds-card-doodle"
+                />
+                <div className="ds-card-title">{nextPlan.feature}</div>
+                <div className="ds-card-subtitle">
+                  Plan {nextPlan.label} — {nextPlan.price}/
+                  {language === "fr" ? "mois" : "mo"}
                 </div>
                 <a
+                  className="ds-button-primary"
                   href={`${WEBAPP_URL}/upgrade`}
-                  className="upsell-btn"
                   onClick={(e) => {
                     e.preventDefault();
                     Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
                   }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textDecoration: "none",
+                    boxSizing: "border-box",
+                  }}
                 >
-                  {t.common.unlock} {"\u2197"}
+                  {t.common.unlock} {"↗"}
                 </a>
               </div>
             )}
 
             {isGuest && (
-              <div className="guest-post-analysis">
-                <p>{t.guest.exhaustedText}</p>
+              <div className="ds-card">
+                <DoodleIcon
+                  name="crown"
+                  size={42}
+                  color="var(--ds-accent-violet)"
+                  className="ds-card-doodle"
+                />
+                <div className="ds-card-subtitle">{t.guest.exhaustedText}</div>
                 <button
-                  className="btn-create-account"
+                  className="ds-button-primary"
                   onClick={() =>
                     Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
                   }
                 >
-                  {t.common.createAccount} {"\u2197"}
+                  {t.common.createAccount} {"↗"}
                 </button>
               </div>
             )}
           </>
         )}
 
-        {/* Recent */}
+        {/* ── Recents ────────────────────────────────────────────── */}
         {!isGuest && analysis.phase === "idle" && recentAnalyses.length > 0 && (
-          <div className="recent-section">
-            <h3>{t.analysis.recent}</h3>
-            <div className="recent-list">
+          <>
+            <h3 className="ds-section-title">
+              <DoodleIcon name="book" size={11} />
+              {t.analysis.recent}
+            </h3>
+            <div className="ds-recent-list">
               {recentAnalyses.slice(0, 5).map((item) => (
                 <a
                   key={item.videoId}
                   href={`${WEBAPP_URL}/summary/${item.summaryId}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="recent-item"
+                  className="ds-recent-item"
                 >
                   {item.platform === "tiktok" ? (
-                    <div
-                      style={{
-                        width: 48,
-                        height: 36,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background: "rgba(200,144,58,0.1)",
-                        borderRadius: 4,
-                        flexShrink: 0,
-                      }}
-                    >
+                    <div className="ds-recent-thumb-fallback">
                       <DoodleIcon
                         name="waveform"
                         size={16}
-                        color="var(--accent-primary)"
+                        color="rgba(199, 210, 254, 0.7)"
                       />
                     </div>
                   ) : (
@@ -712,17 +769,32 @@ export const MainView: React.FC<MainViewProps> = ({
                       src={getThumbnailUrl(item.videoId, "youtube") || ""}
                       alt=""
                       loading="lazy"
+                      className="ds-recent-thumb"
                     />
                   )}
-                  <span className="recent-title">{item.title}</span>
+                  <div className="ds-recent-meta">
+                    <div className="ds-recent-title">{item.title}</div>
+                  </div>
+                  <span className="ds-recent-chevron">{"›"}</span>
                 </a>
               ))}
             </div>
-          </div>
+          </>
         )}
+
+        {/* ── Footer (Mistral attribution) ───────────────────────── */}
+        <div className="ds-footer">
+          <DoodleIcon
+            name="sparkle4pt"
+            size={12}
+            color="var(--ds-accent-indigo)"
+            className="ds-footer-doodle"
+          />
+          <span>{t.mistral.badge}</span>
+        </div>
       </div>
 
-      {/* Promo Banner */}
+      {/* Promo Banner — kept at the bottom */}
       <PromoBanner planInfo={planInfo} />
     </div>
   );
