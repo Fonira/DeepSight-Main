@@ -13,7 +13,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "outDir": "./dist",
-    "rootDir": "./src",
     "sourceMap": false,
     "declaration": false,
     "types": ["chrome"]

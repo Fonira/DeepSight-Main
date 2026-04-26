@@ -7,6 +7,11 @@ import { VoiceView } from "./VoiceView";
 import type { VoicePanelContext } from "./types";
 import { DeepSightSpinner } from "./shared/DeepSightSpinner";
 import MicroDoodleBackground from "./shared/MicroDoodleBackground";
+import { AmbientLightingProvider } from "./contexts/AmbientLightingContext";
+import { AmbientLightLayer } from "./components/AmbientLightLayer";
+import { SunflowerLayer } from "./components/SunflowerLayer";
+
+const AMBIENT_PREF_KEY = "ambient_lighting_enabled";
 
 type ViewName = "loading" | "login" | "main";
 
@@ -40,6 +45,32 @@ export const App: React.FC = () => {
     message: string;
     type: "error" | "success";
   } | null>(null);
+
+  // Ambient lighting v3 — pref `ambient_lighting_enabled` (default true).
+  // Synced with backend pref via /api/auth/preferences (PR1 backend), but
+  // for the extension we read the locally cached value to avoid blocking
+  // the first paint on a network round-trip.
+  const [ambientEnabled, setAmbientEnabled] = useState<boolean>(true);
+  useEffect(() => {
+    const localStore = (
+      Browser as unknown as {
+        storage?: { local?: { get?: (k: string) => Promise<unknown> } };
+      }
+    ).storage?.local;
+    if (!localStore?.get) return;
+    localStore
+      .get(AMBIENT_PREF_KEY)
+      .then((data) => {
+        const raw = (data as Record<string, unknown> | undefined)?.[
+          AMBIENT_PREF_KEY
+        ];
+        // Default ON when undefined; OFF only on explicit `false`.
+        if (raw === false) setAmbientEnabled(false);
+      })
+      .catch(() => {
+        /* fall back to default ON */
+      });
+  }, []);
 
   useEffect(() => {
     const session = getSessionStorage();
@@ -185,65 +216,79 @@ export const App: React.FC = () => {
   // Voice flow short-circuit: when SW set voicePanelContext, render VoiceView only.
   if (!voiceChecked) {
     return (
-      <div className="app-container">
-        <div className="loading-view">
-          <DeepSightSpinner size="md" speed="normal" />
+      <AmbientLightingProvider enabled={ambientEnabled}>
+        <AmbientLightLayer />
+        <SunflowerLayer />
+        <div className="app-container">
+          <div className="loading-view">
+            <DeepSightSpinner size="md" speed="normal" />
+          </div>
         </div>
-      </div>
+      </AmbientLightingProvider>
     );
   }
   if (voiceContext) {
-    return <VoiceView context={voiceContext} />;
+    return (
+      <AmbientLightingProvider enabled={ambientEnabled}>
+        <AmbientLightLayer />
+        <SunflowerLayer />
+        <VoiceView context={voiceContext} />
+      </AmbientLightingProvider>
+    );
   }
 
   return (
-    <div
-      className="app-container noise-overlay ambient-glow"
-      style={{ position: "relative" }}
-    >
-      <MicroDoodleBackground variant={getCurrentVariant()} />
-      <div style={{ position: "relative", zIndex: 1 }}>
-        {/* Toast notification */}
-        {toast && (
-          <div
-            className={`ds-toast ds-toast-${toast.type}`}
-            onClick={() => setToast(null)}
-          >
-            {toast.message}
-          </div>
-        )}
+    <AmbientLightingProvider enabled={ambientEnabled}>
+      <AmbientLightLayer />
+      <SunflowerLayer />
+      <div
+        className="app-container noise-overlay ambient-glow"
+        style={{ position: "relative" }}
+      >
+        <MicroDoodleBackground variant={getCurrentVariant()} />
+        <div style={{ position: "relative", zIndex: 1 }}>
+          {/* Toast notification */}
+          {toast && (
+            <div
+              className={`ds-toast ds-toast-${toast.type}`}
+              onClick={() => setToast(null)}
+            >
+              {toast.message}
+            </div>
+          )}
 
-        {view === "loading" && (
-          <div className="loading-view">
-            <DeepSightSpinner
-              size="md"
-              speed="normal"
-              showLabel
-              label="DeepSight"
+          {view === "loading" && (
+            <div className="loading-view">
+              <DeepSightSpinner
+                size="md"
+                speed="normal"
+                showLabel
+                label="DeepSight"
+              />
+            </div>
+          )}
+
+          {view === "login" && (
+            <LoginView
+              onLogin={handleLogin}
+              onGoogleLogin={handleGoogleLogin}
+              onGuestMode={handleGuestMode}
+              error={error}
             />
-          </div>
-        )}
+          )}
 
-        {view === "login" && (
-          <LoginView
-            onLogin={handleLogin}
-            onGoogleLogin={handleGoogleLogin}
-            onGuestMode={handleGuestMode}
-            error={error}
-          />
-        )}
-
-        {view === "main" && (
-          <MainView
-            user={user}
-            planInfo={planInfo}
-            isGuest={isGuest}
-            onLogout={handleLogout}
-            onLoginRedirect={handleLoginRedirect}
-            onError={showError}
-          />
-        )}
+          {view === "main" && (
+            <MainView
+              user={user}
+              planInfo={planInfo}
+              isGuest={isGuest}
+              onLogout={handleLogout}
+              onLoginRedirect={handleLoginRedirect}
+              onError={showError}
+            />
+          )}
+        </div>
       </div>
-    </div>
+    </AmbientLightingProvider>
   );
 };
