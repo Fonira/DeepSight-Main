@@ -1180,16 +1180,13 @@ async def append_transcript(
             detail={
                 "code": "transcript_append_rate_limited",
                 "message": (
-                    f"Too many transcript append calls for this voice session "
-                    f"(limit: {_TRANSCRIPT_APPEND_MAX}/min)."
+                    f"Too many transcript append calls for this voice session (limit: {_TRANSCRIPT_APPEND_MAX}/min)."
                 ),
             },
         )
 
     # ── Lookup voice_session ─────────────────────────────────────────────────
-    result = await db.execute(
-        select(VoiceSession).where(VoiceSession.id == request.voice_session_id)
-    )
+    result = await db.execute(select(VoiceSession).where(VoiceSession.id == request.voice_session_id))
     voice_session = result.scalar_one_or_none()
     if voice_session is None:
         raise HTTPException(
