@@ -72,6 +72,7 @@ module.exports = (env, argv) => {
           { from: `public/${manifestFile}`, to: "manifest.json" },
           { from: "public/popup.html", to: "popup.html" },
           { from: "public/viewer.html", to: "viewer.html" },
+          { from: "public/sidepanel.html", to: "sidepanel.html" },
           { from: "src/styles/design-tokens.css", to: "design-tokens.css" },
           { from: "src/styles/popup.css", to: "popup.css" },
           { from: "src/styles/content.css", to: "content.css" },
