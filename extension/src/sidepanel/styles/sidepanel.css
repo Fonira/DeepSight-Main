@@ -2409,6 +2409,45 @@ a:hover {
   color: var(--v3-accent);
 }
 
+/* ── Suggestion pills (chips under primary video card) ─────────────── */
+.v3-suggestion-pills {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  margin: -4px 18px 12px;
+  flex-wrap: wrap;
+}
+
+.v3-suggestion-pill {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 8px 10px !important;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.v3-suggestion-pill:hover {
+  transform: translateY(-1px);
+}
+
+.v3-suggestion-pill-icon {
+  margin-right: 6px;
+  display: inline-block;
+}
+
+.v3-suggestion-pill-label {
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  color: #f5f0e8;
+}
+
 .v3-recents-list {
   list-style: none;
   margin: 0;

@@ -24,6 +24,7 @@ import { LogoutIcon, ExternalLinkIcon } from "../shared/Icons";
 import { SynthesisView } from "../shared/SynthesisView";
 import { ChatView } from "./ChatView";
 import { PromoBanner } from "../components/PromoBanner";
+import { SuggestionPills } from "../components/SuggestionPills";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { BeamCard } from "../shared/BeamCard";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -548,6 +549,40 @@ export const MainView: React.FC<MainViewProps> = ({
                     {t.analysis.analyzeButton} {"→"}
                   </button>
                 </BeamCard>
+
+                {video && (
+                  <SuggestionPills
+                    suggestions={[
+                      {
+                        id: "flashcards",
+                        label: "Créer flashcards",
+                        icon: "🎴",
+                        onTrigger: () =>
+                          Browser.tabs.create({
+                            url: `${WEBAPP_URL}/study/${video.videoId}`,
+                          }),
+                      },
+                      {
+                        id: "sources",
+                        label: "Voir sources",
+                        icon: "🔍",
+                        onTrigger: () =>
+                          Browser.tabs.create({
+                            url: `${WEBAPP_URL}/library`,
+                          }),
+                      },
+                      {
+                        id: "openweb",
+                        label: "Ouvrir dans l'app",
+                        icon: "🌐",
+                        onTrigger: () =>
+                          Browser.tabs.create({
+                            url: `${WEBAPP_URL}/`,
+                          }),
+                      },
+                    ]}
+                  />
+                )}
 
                 {/* Quick Chat secondary card */}
                 <BeamCard>
