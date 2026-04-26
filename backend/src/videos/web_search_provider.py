@@ -20,6 +20,7 @@ import logging
 from core.config import get_mistral_key, get_brave_key, is_mistral_agent_available
 from core.llm_provider import llm_complete
 from videos.brave_search import _call_brave_api
+from videos.perplexity_provider import perplexity_search, is_perplexity_provider_available
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +49,12 @@ class WebSearchResult:
 
 def is_web_search_available() -> bool:
     """Vérifie que au moins un pipeline web search est disponible."""
-    # Agent Mistral OU Brave+Mistral
-    return is_mistral_agent_available() or (bool(get_brave_key()) and bool(get_mistral_key()))
+    # Agent Mistral OU Perplexity OU Brave+Mistral
+    return (
+        is_mistral_agent_available()
+        or is_perplexity_provider_available()
+        or (bool(get_brave_key()) and bool(get_mistral_key()))
+    )
 
 
 ENRICHMENT_AVAILABLE = is_web_search_available()
@@ -395,17 +400,18 @@ async def web_search_and_synthesize(
     """
     Exécute une recherche web + synthèse IA.
 
-    Pipeline:
-      1. PRIMARY: Mistral Agent (web_search natif, 1 appel API)
-      2. FALLBACK: Brave Search + Mistral synthesis (2 appels API)
+    Pipeline (chaîne de fallback) :
+      1. PRIMARY  : Mistral Agent (web_search natif, 1 appel API)
+      2. FALLBACK : Perplexity sonar-pro (citations natives, 1 appel API)
+      3. FALLBACK : Brave Search + Mistral synthesis (2 appels API)
 
     Interface inchangée — les appelants n'ont pas besoin de modifier leur code.
-    Le champ `provider` indique quel pipeline a servi le résultat ("agent" ou "brave").
+    Le champ `provider` indique quel pipeline a servi le résultat ("agent", "perplexity" ou "brave").
     """
 
     logger.info(f"[WEB_SEARCH] Starting: query='{query[:80]}', purpose={purpose}, lang={lang}")
 
-    # --- Try Agent first ---
+    # --- 1. Try Mistral Agent first ---
     agent_result = await _try_agent_search(
         query=query,
         context=context,
@@ -417,8 +423,25 @@ async def web_search_and_synthesize(
     if agent_result and agent_result.success:
         return agent_result
 
-    # --- Fallback to Brave + Mistral ---
-    logger.info("[WEB_SEARCH] Agent unavailable, falling back to Brave pipeline")
+    # --- 2. Fallback: Perplexity sonar-pro ---
+    if is_perplexity_provider_available():
+        logger.info("[WEB_SEARCH] Agent unavailable, trying Perplexity")
+        try:
+            perplexity_result = await perplexity_search(
+                query=query,
+                context=context,
+                purpose=purpose,
+                lang=lang,
+                max_tokens=max_tokens,
+                timeout=min(timeout * 0.5, 15.0),
+            )
+            if perplexity_result and perplexity_result.success:
+                return perplexity_result
+        except Exception as e:
+            logger.warning(f"[WEB_SEARCH] Perplexity exception (will fallback to Brave): {e}")
+
+    # --- 3. Fallback: Brave + Mistral ---
+    logger.info("[WEB_SEARCH] Falling back to Brave + Mistral pipeline")
 
     return await _brave_fallback_search(
         query=query,

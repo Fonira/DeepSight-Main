@@ -2015,6 +2015,79 @@ async def tool_debate_fact_check(request: Request, db: AsyncSession = Depends(ge
     return {"result": result}
 
 
+@router.post("/tools/debate-web-search")
+async def tool_debate_web_search(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: web search for debate moderator agents.
+
+    Same multi-provider chain as /tools/web-search (Mistral Agent → Perplexity → Brave),
+    but authenticates against debate_id instead of summary_id since debate agents
+    are not bound to a single video summary.
+
+    Rate-limited:
+      - 15 calls / hour / debate_id (anti spam)
+      - 60 calls / hour / user_id   (global cap, anti fan-out)
+    """
+    debate, body = await verify_debate_tool_request(request, db)
+    query = body.get("query") or body.get("parameters", {}).get("query", "")
+
+    if not query or not query.strip():
+        return {"result": "Aucune requête de recherche fournie."}
+
+    # Per-debate rate limit (reuse summary counter pool with namespaced key)
+    debate_count = await _increment_web_search_count(f"debate:{debate.id}")
+    if debate_count > _WEB_SEARCH_MAX:
+        return {
+            "result": "Limite de recherches web atteinte pour ce débat. "
+            "Utilise les informations déjà disponibles."
+        }
+
+    # Per-user global cap
+    user_count = await _increment_user_web_search_count(int(debate.user_id))
+    if user_count > _WEB_SEARCH_USER_MAX:
+        return {"result": "Limite horaire de recherches web atteinte pour ton compte. Réessaie dans quelques minutes."}
+
+    # Build context from the debate topic so Perplexity/Brave search is well-grounded
+    debate_topic = (debate.detected_topic or "").strip()
+    context_str = f"Débat sur : {debate_topic}" if debate_topic else ""
+
+    try:
+        from videos.web_search_provider import web_search_and_synthesize
+
+        result = await web_search_and_synthesize(
+            query=query.strip(),
+            context=context_str,
+            purpose="debate",
+            lang="fr",
+            max_sources=5,
+            max_tokens=1500,
+            timeout=20.0,
+        )
+        if result.success:
+            answer = result.content
+            # Include up to 3 source URLs in plain text for the agent to mention briefly
+            if result.sources:
+                src_lines = []
+                for src in result.sources[:3]:
+                    title = src.get("title", "")
+                    url = src.get("url", "")
+                    if title or url:
+                        src_lines.append(f"• {title} — {url}")
+                if src_lines:
+                    answer = answer + "\n\nSources :\n" + "\n".join(src_lines)
+            await record_web_search_usage(
+                db,
+                user_id=int(debate.user_id),
+                summary_id=0,  # debate context, no summary
+                source="voice_debate",
+                query=query.strip(),
+            )
+            return {"result": answer[:2000]}
+        return {"result": f"Aucun résultat trouvé pour la recherche : {query[:100]}"}
+    except Exception as e:
+        logger.error("debate-web-search error: %s", e, exc_info=True)
+        return {"result": "Une erreur est survenue lors de la recherche web."}
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # GET /debate/{debate_id}/avatar — Dynamic avatar for the debate moderator agent
 # ═══════════════════════════════════════════════════════════════════════════════
