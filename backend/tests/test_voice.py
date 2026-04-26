@@ -36,34 +36,6 @@ def mock_voice_quota():
 
 
 @pytest.fixture
-def mock_voice_user():
-    """User mock with voice-related fields."""
-    user = MagicMock()
-    user.id = 1
-    user.email = "voice@test.fr"
-    user.plan = "starter"
-    user.is_admin = False
-    user.voice_bonus_seconds = 0
-    user.stripe_customer_id = "cus_test123"
-    user.username = "voice_tester"
-    return user
-
-
-@pytest.fixture
-def mock_pro_voice_user():
-    """User mock with pro plan."""
-    user = MagicMock()
-    user.id = 2
-    user.email = "pro@test.fr"
-    user.plan = "pro"
-    user.is_admin = False
-    user.voice_bonus_seconds = 300  # 5 min bonus
-    user.stripe_customer_id = "cus_pro456"
-    user.username = "pro_tester"
-    return user
-
-
-@pytest.fixture
 def mock_summary():
     """Summary mock for voice tools."""
     summary = MagicMock()

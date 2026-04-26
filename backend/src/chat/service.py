@@ -270,7 +270,10 @@ async def check_chat_quota(session: AsyncSession, user_id: int, summary_id: int)
     if per_video_limit != -1:
         video_result = await session.execute(
             select(func.count(ChatMessage.id)).where(
-                ChatMessage.user_id == user_id, ChatMessage.summary_id == summary_id, ChatMessage.role == "user", ChatMessage.source == "text"
+                ChatMessage.user_id == user_id,
+                ChatMessage.summary_id == summary_id,
+                ChatMessage.role == "user",
+                ChatMessage.source == "text",
             )
         )
         video_used = video_result.scalar() or 0
