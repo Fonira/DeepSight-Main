@@ -77,4 +77,41 @@ describe("background — sidePanel toggle wiring", () => {
       expect.objectContaining({ action: "TAB_CHANGED", tabId: 42 }),
     );
   });
+
+  it("relays URL_CHANGED to sidebar via VIDEO_URL_UPDATED", async () => {
+    // The polyfill mock aliases Browser.runtime.onMessage to chrome.runtime.onMessage,
+    // so both the dedicated URL_CHANGED listener and the main switch handler register
+    // here. Collect all listeners and dispatch URL_CHANGED to each.
+    const listeners: Array<(...args: any[]) => any> = [];
+    (global as any).chrome.runtime.onMessage.addListener = jest.fn((cb) => {
+      listeners.push(cb);
+    });
+    await import("../../src/background");
+    expect(listeners.length).toBeGreaterThan(0);
+
+    const sendResponse = jest.fn();
+    const sender = { tab: { id: 7 } };
+    listeners.forEach((fn) =>
+      fn(
+        {
+          action: "URL_CHANGED",
+          payload: {
+            url: "https://youtube.com/watch?v=abc",
+            platform: "youtube",
+          },
+        },
+        sender,
+        sendResponse,
+      ),
+    );
+
+    expect((global as any).chrome.runtime.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "VIDEO_URL_UPDATED",
+        payload: expect.objectContaining({
+          url: "https://youtube.com/watch?v=abc",
+        }),
+      }),
+    );
+  });
 });

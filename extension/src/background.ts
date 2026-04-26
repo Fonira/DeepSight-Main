@@ -52,6 +52,25 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
   });
 });
 
+// ─── URL_CHANGED relay (content script → sidebar) ─────────────────────────
+// Content script observes URL changes on YouTube/TikTok SPAs and emits URL_CHANGED.
+// We re-emit as VIDEO_URL_UPDATED so the sidebar (separate context) can react.
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.action === "URL_CHANGED") {
+    chrome.runtime
+      .sendMessage({
+        action: "VIDEO_URL_UPDATED",
+        payload: message.payload,
+      })
+      .catch(() => {
+        // Sidebar may not be open — silently ignored.
+      });
+    sendResponse?.({ ok: true });
+    return false; // synchronous response
+  }
+  return undefined; // not our message — let other listeners handle
+});
+
 // ── Core API Request ──
 
 async function apiRequest<T>(
