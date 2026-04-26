@@ -5,6 +5,23 @@ All notable changes to DeepSight will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-04-26
+
+### Added — Ambient Lighting v2 (killer feature frontend cross-plateforme)
+
+- **Nouveau package `@deepsight/lighting-engine`** : moteur d'éclairage ambiant temporel partagé entre web, mobile et extension
+  - 48 keyframes (toutes les 30 minutes sur 24h) avec moods nommés ("Minuit profond", "Magic hour", "Hypnagogique", "Aurore rosée", etc.)
+  - Sun-beam doré chaud le jour, moon-beam argenté froid la nuit
+  - Cross-fade twilight automatique aux crépuscules (5h-7h et 17h-19h)
+  - Variation seedée jour-à-jour sur l'angle du beam (± 15°, déterministe par date)
+  - Trajectoires solaire et lunaire indépendantes (East→West avec arc parabolique)
+  - 55 tests unitaires passants, perf moyenne < 0.3ms par appel
+- **Frontend (web)** : nouveau composant `AmbientLightLayer.tsx` v2 qui consomme l'engine via `useAmbientPreset()` + `AmbientLightDevPanel.tsx` (scrubber 24h pour QA visuelle)
+- **Mobile** : `AmbientLightLayer.tsx` v2.1 LIGHT — version épurée (lune blanche pure `#ffffff`, soleil discret 60×60, beam mince capé à opacité 0.18, fond noir conservé pour préserver les doodles)
+- **Extension Chrome** : composants pour popup (380×600 mini) et viewer (plein écran)
+- **Hook PostHog** : `useAmbientLightingFeatureFlag()` pour rollout progressif (flag `ambient_lighting_v2`)
+- **Documentation** : `docs/PRD-ambient-lighting-v2.md`
+
 ## [3.1.0] - 2026-01-29
 
 ### Added
