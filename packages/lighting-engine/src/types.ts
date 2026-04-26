@@ -101,7 +101,7 @@ export interface AmbientPreset {
     angleVariation: number;
   };
 
-  // === v3 extensions ===
+  // === v3 extensions (optional on the v2 base for backward-compat) ===
   /** Sunflower sprite frame index (0..23, one per hour). Optional for v2 backward-compat. */
   frameIndex?: number;
   /** Night mood for sunflower & accents ('asleep' deep night | 'glowing' twilight night | null daytime). */
@@ -116,9 +116,43 @@ export interface AmbientPreset {
   readingZoneIntensityCap?: number;
 }
 
+/**
+ * v3 preset shape with the v3-specific fields promoted to **required**.
+ *
+ * `getAmbientPresetV3` always emits these fields, so consumers (PR2 web,
+ * PR3 mobile, PR4 extension) can rely on them without `?? defaultValue`
+ * fallbacks scattered across call sites.
+ *
+ * `haloAccentColor` stays optional — it is only set at twilights & night.
+ */
+export interface AmbientPresetV3 extends AmbientPreset {
+  frameIndex: number;
+  nightMode: NightMode | null;
+  haloAccentColor?: string;
+  isReducedMotion: boolean;
+  isHighContrast: boolean;
+  readingZoneIntensityCap: number;
+}
+
 export interface PresetOptions {
   intensityMul?: number;
   disableDailyVariation?: boolean;
   skipCssStrings?: boolean;
   seedOverride?: number;
+}
+
+/**
+ * Options accepted by `getAmbientPresetV3`.
+ *
+ * Distinct from the v2 `PresetOptions` because v3 ignores `disableDailyVariation`
+ * and `seedOverride` (v3 has no daily seeded angle variation), and adds
+ * `forceTime`/`forceNightMode` for testing & dev panels.
+ */
+export interface PresetOptionsV3 {
+  intensityMul?: number;
+  skipCssStrings?: boolean;
+  /** Override the current time (testing / dev panel). When provided, replaces the `date` argument's clock. */
+  forceTime?: Date;
+  /** Force a specific night mode (testing / dev panel). When provided, overrides the computed nightMode. */
+  forceNightMode?: NightMode | null;
 }

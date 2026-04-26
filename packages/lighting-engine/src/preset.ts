@@ -4,6 +4,7 @@ import { KEYFRAMES } from "./keyframes";
 import { KEYFRAMES_V3 } from "./keyframes.v3";
 import type {
   AmbientPreset,
+  AmbientPresetV3,
   Keyframe,
   PresetOptions,
   RGB,
@@ -224,7 +225,7 @@ function findKeyframeV3Pair(hour: number): {
 export function getAmbientPresetV3(
   date: Date,
   opts: PresetOptions = {},
-): AmbientPreset {
+): AmbientPresetV3 {
   const totalHour = date.getHours() + date.getMinutes() / 60;
 
   // Trouver les 2 keyframes encadrants

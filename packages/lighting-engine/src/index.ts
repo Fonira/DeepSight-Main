@@ -39,5 +39,7 @@ export type {
   AmbientLayerPreset,
   ColorPalettePreset,
   AmbientPreset,
+  AmbientPresetV3,
   PresetOptions,
+  PresetOptionsV3,
 } from "./types";

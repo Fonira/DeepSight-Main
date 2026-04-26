@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { AmbientPreset, NightMode } from "../src/types";
+import { getAmbientPresetV3 } from "../src/preset";
+import type { AmbientPreset, AmbientPresetV3, NightMode } from "../src/types";
 
 describe("AmbientPreset v3 type extensions", () => {
   it("accepts frameIndex 0-23", () => {
@@ -41,5 +42,42 @@ describe("AmbientPreset v3 type extensions", () => {
     const g: NightMode = "glowing";
     expect(a).toBe("asleep");
     expect(g).toBe("glowing");
+  });
+});
+
+describe("AmbientPresetV3 (required v3 fields)", () => {
+  it("getAmbientPresetV3 always returns the required v3 fields", () => {
+    // This test asserts the runtime shape — the type guarantee is enforced
+    // by the compiler via the AmbientPresetV3 return type of getAmbientPresetV3.
+    const preset: AmbientPresetV3 = getAmbientPresetV3(
+      new Date("2026-04-26T12:00:00"),
+    );
+
+    // frameIndex must be a number, not undefined
+    expect(typeof preset.frameIndex).toBe("number");
+    expect(preset.frameIndex).toBeGreaterThanOrEqual(0);
+    expect(preset.frameIndex).toBeLessThanOrEqual(23);
+
+    // nightMode must be present (null is a valid required value, but not undefined)
+    expect(
+      preset.nightMode === null || typeof preset.nightMode === "string",
+    ).toBe(true);
+    expect(preset).toHaveProperty("nightMode");
+
+    // accessibility flags must be booleans, not undefined
+    expect(typeof preset.isReducedMotion).toBe("boolean");
+    expect(typeof preset.isHighContrast).toBe("boolean");
+
+    // readingZoneIntensityCap must be a number, not undefined
+    expect(typeof preset.readingZoneIntensityCap).toBe("number");
+  });
+
+  it("AmbientPresetV3 extends AmbientPreset (assignable upwards)", () => {
+    const v3: AmbientPresetV3 = getAmbientPresetV3(
+      new Date("2026-04-26T12:00:00"),
+    );
+    // Should be assignable to a v2-shaped variable since AmbientPresetV3 extends AmbientPreset
+    const v2: AmbientPreset = v3;
+    expect(v2.hour).toBe(v3.hour);
   });
 });
