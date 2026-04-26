@@ -121,6 +121,7 @@ class _DeepSightSettings(BaseSettings):
     ELEVENLABS_AGENT_TEMPLATE_ID: str = ""
     ELEVENLABS_WEBHOOK_SECRET: str = ""
     ELEVENLABS_VOICE_ID: str = ""
+    ELEVENLABS_COMPANION_VOICE_ID: str = ""  # Optional override for companion agent; falls back to ELEVENLABS_VOICE_ID
     ELEVENLABS_MODEL_ID: str = "eleven_flash_v2_5"
 
     # -- Voxtral TTS (Mistral) --
