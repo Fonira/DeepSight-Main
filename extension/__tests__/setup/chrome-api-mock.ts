@@ -143,6 +143,20 @@ const chromeTabs = {
   ),
   sendMessage: jest.fn(() => Promise.resolve()),
   create: jest.fn(() => Promise.resolve({ id: 2 })),
+  onActivated: {
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+  },
+};
+
+// Append onStartup support to runtime mock (Chrome API surface)
+(
+  chromeRuntime as unknown as {
+    onStartup: { addListener: jest.Mock; removeListener: jest.Mock };
+  }
+).onStartup = {
+  addListener: jest.fn(),
+  removeListener: jest.fn(),
 };
 
 // ── chrome.identity ──

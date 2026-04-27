@@ -525,11 +525,82 @@ async function openVoicePanel(
 
 // ── Message Handler ──
 
-async function handleMessage(
-  message: ExtensionMessage,
-  senderTabId?: number,
+/**
+ * Quick Voice Call dispatcher (Task 10) — handles `{ type: "OPEN_VOICE_CALL", … }`
+ * messages emitted from the YouTube widget. Stores the video context in
+ * `chrome.storage.session` (cleared on Chrome restart, secure for ephemeral
+ * intents) then opens the side panel on the originating window.
+ */
+interface VoiceCallMessage {
+  type: "OPEN_VOICE_CALL" | "VOICE_CALL_STARTED" | "VOICE_CALL_ENDED";
+  videoId?: string;
+  videoTitle?: string;
+}
+
+export async function handleMessage(
+  message: ExtensionMessage | VoiceCallMessage,
+  sender?: chrome.runtime.MessageSender | number,
 ): Promise<MessageResponse> {
-  switch (message.action) {
+  // Backwards compat: accept either a full sender object (preferred) or a
+  // bare tabId (legacy callers that don't propagate sender).
+  const senderTabId =
+    typeof sender === "number"
+      ? sender
+      : (sender as chrome.runtime.MessageSender | undefined)?.tab?.id;
+
+  // ── Quick Voice Call dispatch (type-based messages) ──
+  const typed = message as VoiceCallMessage;
+  if (typed?.type === "OPEN_VOICE_CALL") {
+    const fullSender = sender as chrome.runtime.MessageSender | undefined;
+    const windowId = fullSender?.tab?.windowId;
+    if (!windowId) return { success: false, error: "No source window" };
+    const sessionStore = (
+      chrome as unknown as {
+        storage: { session?: { set?: (data: unknown) => Promise<void> } };
+      }
+    ).storage.session;
+    const sidePanel = (
+      chrome as unknown as {
+        sidePanel?: {
+          open?: (opts: { windowId: number }) => Promise<void>;
+        };
+      }
+    ).sidePanel;
+    if (sessionStore?.set) {
+      await sessionStore.set({
+        pendingVoiceCall: {
+          videoId: typed.videoId,
+          videoTitle: typed.videoTitle,
+        },
+      });
+    }
+    if (sidePanel?.open) {
+      await sidePanel.open({ windowId });
+    }
+    return { success: true };
+  }
+  if (typed?.type === "VOICE_CALL_STARTED") {
+    if (senderTabId !== undefined) {
+      try {
+        await Browser.tabs.sendMessage(senderTabId, { type: "DUCK_AUDIO" });
+      } catch {
+        /* tab may have closed */
+      }
+    }
+    return { success: true };
+  }
+  if (typed?.type === "VOICE_CALL_ENDED") {
+    if (senderTabId !== undefined) {
+      try {
+        await Browser.tabs.sendMessage(senderTabId, { type: "RESTORE_AUDIO" });
+      } catch {
+        /* tab may have closed */
+      }
+    }
+    return { success: true };
+  }
+
+  switch ((message as ExtensionMessage).action) {
     case "CHECK_AUTH": {
       if (await isAuthenticated()) {
         try {
@@ -796,8 +867,10 @@ Browser.runtime.onMessage.addListener(
     sender: Runtime.MessageSender,
     sendResponse: (response: MessageResponse) => void,
   ) => {
-    const senderTabId = sender.tab?.id;
-    handleMessage(message as ExtensionMessage, senderTabId)
+    handleMessage(
+      message as ExtensionMessage,
+      sender as unknown as chrome.runtime.MessageSender,
+    )
       .then(sendResponse)
       .catch((e) => sendResponse({ error: (e as Error).message }));
     return true;
