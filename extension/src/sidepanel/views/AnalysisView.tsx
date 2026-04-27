@@ -65,16 +65,18 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
   }, [isGuest]);
 
   useEffect(() => {
-    Browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-      const url = tabs[0]?.url || "";
-      const videoId = extractVideoId(url);
-      if (videoId) {
-        const platform = detectPlatform(url);
-        const fallbackTitle =
-          platform === "tiktok" ? "TikTok Video" : "YouTube Video";
-        setVideo({ url, videoId, title: tabs[0]?.title || fallbackTitle });
-      }
-    });
+    Browser.tabs
+      .query({ active: true, lastFocusedWindow: true })
+      .then((tabs) => {
+        const url = tabs[0]?.url || "";
+        const videoId = extractVideoId(url);
+        if (videoId) {
+          const platform = detectPlatform(url);
+          const fallbackTitle =
+            platform === "tiktok" ? "TikTok Video" : "YouTube Video";
+          setVideo({ url, videoId, title: tabs[0]?.title || fallbackTitle });
+        }
+      });
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };

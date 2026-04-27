@@ -105,7 +105,8 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
           height: outerSize,
         }}
       >
-        {/* Platform logos orbiting */}
+        {/* Platform logos orbiting (kept outside the round clip so they can
+            extend beyond the disk) */}
         {canShowLogos &&
           PLATFORM_LOGOS.map((logo, i) => {
             const logoUrl = Browser.runtime.getURL(logo.src);
@@ -136,48 +137,65 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
             );
           })}
 
-        {/* Cosmic background with color cycling */}
-        {showFlames && (
+        {/* Round clip wrapper — clips both cosmic + wheel JPGs (which have
+            opaque black backgrounds) into a circle, so the square corners
+            don't show through the dark side panel background. */}
+        <div
+          style={{
+            position: "absolute",
+            width: containerPx,
+            height: containerPx,
+            left: canShowLogos ? 20 : 0,
+            top: canShowLogos ? 20 : 0,
+            borderRadius: "50%",
+            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {/* Cosmic background with color cycling */}
+          {showFlames && (
+            <img
+              src={cosmicUrl}
+              alt=""
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                width: "100%",
+                height: "100%",
+                left: 0,
+                top: 0,
+                objectFit: "cover",
+                maskImage:
+                  "radial-gradient(circle at center, transparent 0%, transparent 38%, rgba(0,0,0,0.4) 45%, black 52%, black 100%)",
+                WebkitMaskImage:
+                  "radial-gradient(circle at center, transparent 0%, transparent 38%, rgba(0,0,0,0.4) 45%, black 52%, black 100%)",
+                zIndex: 1,
+                mixBlendMode: "screen",
+                animation: "colorCycle 12s ease-in-out infinite",
+              }}
+            />
+          )}
+
+          {/* Spinning wheel / gouvernail */}
           <img
-            src={cosmicUrl}
+            src={wheelUrl}
             alt=""
             aria-hidden="true"
             style={{
-              position: "absolute",
-              width: containerPx,
-              height: containerPx,
-              left: canShowLogos ? 20 : 0,
-              top: canShowLogos ? 20 : 0,
-              objectFit: "cover",
-              maskImage:
-                "radial-gradient(circle at center, transparent 0%, transparent 38%, rgba(0,0,0,0.4) 45%, black 52%, black 100%)",
-              WebkitMaskImage:
-                "radial-gradient(circle at center, transparent 0%, transparent 38%, rgba(0,0,0,0.4) 45%, black 52%, black 100%)",
-              zIndex: 1,
+              width: wheelPx,
+              height: wheelPx,
+              position: "relative",
+              zIndex: 10,
               mixBlendMode: "screen",
-              borderRadius: "50%",
-              animation: "colorCycle 12s ease-in-out infinite",
+              opacity: 0.85,
+              filter: "brightness(1.2) contrast(1.25) saturate(1.1)",
+              animation: `gouvernailSpin ${duration}s linear infinite`,
+              willChange: "transform",
             }}
           />
-        )}
-
-        {/* Spinning wheel / gouvernail */}
-        <img
-          src={wheelUrl}
-          alt=""
-          aria-hidden="true"
-          style={{
-            width: wheelPx,
-            height: wheelPx,
-            position: "relative",
-            zIndex: 10,
-            mixBlendMode: "screen",
-            opacity: 0.85,
-            filter: "brightness(1.2) contrast(1.25) saturate(1.1)",
-            animation: `gouvernailSpin ${duration}s linear infinite`,
-            willChange: "transform",
-          }}
-        />
+        </div>
       </div>
       {showLabel && (
         <span

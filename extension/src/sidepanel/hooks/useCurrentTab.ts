@@ -10,7 +10,10 @@ export interface CurrentTabInfo {
 }
 
 const queryActiveTab = async (): Promise<CurrentTabInfo> => {
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tabs = await chrome.tabs.query({
+    active: true,
+    lastFocusedWindow: true,
+  });
   const tab = tabs[0];
   if (!tab) {
     return { url: null, platform: null, tabId: null };

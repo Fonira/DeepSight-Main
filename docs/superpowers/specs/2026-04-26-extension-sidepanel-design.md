@@ -319,6 +319,90 @@ PR 4 — suppression code mort. Test : build clean, bundle size réduit.
 
 ---
 
+## 7bis. Addendum 2026-04-27 — `SuggestionPills` (option 3 hybride)
+
+Suite à un brainstorming complémentaire (« inspiration Claude in Chrome » poussée plus loin côté UX), un seul ajout chat-first est intégré au socle v3 : un composant `SuggestionPills` rendu **sous `VideoDetectedCard`** dans `HomeView` mode vidéo.
+
+### Objectif
+
+Donner à l'utilisateur des actions contextuelles cliquables dès la détection d'une vidéo, sans imposer un parcours linéaire « Analyser → ResultsView → ChatView ». Les pills accélèrent les actions courantes et donnent un signal Claude-like.
+
+### Composant
+
+`extension/src/sidepanel/components/SuggestionPills.tsx` — chips horizontales (3 max), affichées uniquement quand `currentTab.platform ∈ {youtube, tiktok}` ET vidéo détectée.
+
+```tsx
+type Suggestion = { id: string; label: string; icon?: string; onTrigger: () => void };
+
+interface Props {
+  suggestions: Suggestion[];
+}
+
+export function SuggestionPills({ suggestions }: Props): JSX.Element { ... }
+```
+
+### Set de pills v1 (implémenté — commit `cad57f32`)
+
+Set effectivement livré, ajusté pour ne pas dupliquer le bouton « Analyser » primaire et pour rester compatible avec `MainView` V3 actuel (qui n'expose pas encore `cacheStatus`) :
+
+| Pill                | Action  | Comportement                                                              |
+| ------------------- | ------- | ------------------------------------------------------------------------- |
+| 🎴 Créer flashcards | CTA web | ouvre `${WEBAPP_URL}/study/${video.videoId}` dans un nouvel onglet        |
+| 🔍 Voir sources     | CTA web | ouvre `${WEBAPP_URL}/library` (lien générique vers la bibliothèque)       |
+| 🌐 Ouvrir dans l'app | CTA web | ouvre `${WEBAPP_URL}/` (page d'accueil app web)                          |
+
+**Décisions d'ajustement v1** :
+
+- **Pas de pill « 🧠 Résumé rapide »** — le bouton primary « Analyser cette vidéo » du `BeamCard` parent (juste au-dessus) couvre déjà ce cas. Une pill équivalente créerait une redondance visuelle dans une zone déjà dense.
+- **Pill « Voir sources » non conditionnelle** — la version conditionnelle (`cacheStatus?.hit` masquant la pill et URL `/analysis/{summaryId}#sources`) demande de wirer `cacheStatus` jusque dans `MainView`, ce qui dépasse le scope minimal de Task 16.5. À enrichir en v1.1 quand `useAnalysisCache` sera intégré au flux MainView.
+- **3e pill « Ouvrir dans l'app »** — choix v1 utile et non-redondant ; à itérer sur la base d'analytics réelles vers une pill plus ciblée.
+
+### Wiring (implémenté)
+
+Le wiring effectif est dans **`MainView.tsx`** (le composant V3 « Beam + halo de source » utilisé en production), juste après le primary `<BeamCard>` qui contient le bouton « Analyser », et avant le `<BeamCard>` Quick Chat secondary. Conditionnel sur `video` (pas affiché si pas de vidéo détectée).
+
+> **Note historique** : la version initiale de la spec/plan ciblait `HomeView.tsx` (composant prévu par le plan v3 original). En réalité, le redesign V3 « Beam + halo » a continué d'utiliser `MainView.tsx` comme composant hub (commits `8b38ea22` puis `58cf8848`). Le wiring de `SuggestionPills` a donc été placé dans `MainView`. `HomeView.tsx` reste dans le repo mais n'est pas le composant rendu — il pourra être supprimé ou réutilisé dans une refactorisation ultérieure.
+
+### Hors scope de l'addendum
+
+Pas de slash commands dans `ChatView`. Pas de variantes de `Message` (synthesis/cta/system). Pas de refonte chat-first du flux principal. Ces idées sont reportées à une éventuelle v3.x ultérieure si la métrique « clic sur pill » justifie l'investissement.
+
+### Impact sur le plan d'implémentation
+
+- Nouveau fichier : `extension/src/sidepanel/components/SuggestionPills.tsx`
+- Nouveau test : `extension/__tests__/sidepanel/components/SuggestionPills.test.tsx`
+- Nouvelle Task **16.5** insérée dans PR 3, entre Task 16 (`HomeView` assemblage) et Task 17 (content script light).
+- Aucune modification de Q1-Q4b — toutes les décisions verrouillées restent valides.
+
+---
+
+## 7ter. Addendum 2026-04-27 — Fix détection vidéo side panel
+
+### Bug observé en validation visuelle
+
+Au premier reload de l'extension après la livraison de SuggestionPills, le side panel ouvert sur une vraie vidéo YouTube affichait l'empty state « OUVRE UNE VIDÉO YOUTUBE OU TIKTOK POUR L'ANALYSER ». Conséquence en cascade : pas de BeamCard primary, pas de SuggestionPills (gated par `video !== null`), pas de Quick Chat.
+
+### Cause racine
+
+`Browser.tabs.query({ active: true, currentWindow: true })` dans `MainView.tsx` (et plus largement dans tout consumer side panel) ne fait pas ce que le pattern popup fait. Dans un Chrome side panel, `currentWindow` cible la fenêtre du panel (contexte d'exécution distinct), pas la fenêtre browser principale. Le tab[0] retourné est `undefined` ou un tab non-vidéo → `extractVideoId()` rend `null` → `video` reste `null`.
+
+### Fix v1 (commits `7192961a` + suivant)
+
+1. **Tous les `tabs.query` du side panel** passent à `lastFocusedWindow: true` (cible la dernière fenêtre browser focused, jamais le panel).
+2. **`MainView` re-detect live** : ajout de `chrome.tabs.onActivated` + `chrome.tabs.onUpdated` (filtré sur `changeInfo.url` pour éviter le flood) avec cleanup.
+3. **`setVideo(null)` quand l'URL n'est plus vidéo** (cohérent avec le critère « hors YT/TT → historique » §6).
+4. **Tests TDD** : 5 nouveaux tests dans `__tests__/sidepanel/views/MainView.video-detection.test.tsx` couvrant initial detection, switch tab, navigation in-tab, cleanup, et un trap mock prouvant que `currentWindow:true` n'est plus utilisé.
+
+### Divergence d'architecture vs §4
+
+§4.4 décrit un pattern à 3 niveaux : background SW relaie `chrome.tabs.onActivated` → message `TAB_CHANGED` → consumer s'abonne via `useCurrentTab` hook. Le fix v1 met les listeners `chrome.tabs.*` directement dans `MainView` (court-circuit du hook).
+
+**Justification** : à la date du fix, `useCurrentTab` n'est consommé que par `HomeView` (qui n'est pas rendu en V3 — `MainView` reste la vue principale). Routage via background SW + hook ajouterait du code dans 3 fichiers pour zéro bénéfice fonctionnel actuel. Si une migration vers le pattern §4 est entreprise plus tard, les listeners `MainView` doivent être supprimés et `useCurrentTab` consommé à la place.
+
+`useCurrentTab.ts` et `views/AnalysisView.tsx` (code non rendu en V3) sont aussi alignés sur `lastFocusedWindow:true` pour éviter qu'ils portent un bug latent en cas de réutilisation.
+
+---
+
 ## 8. Hors scope (roadmap v3.x+)
 
 - Voice chat ElevenLabs : branche séparée, intégrée après merge v3.0
