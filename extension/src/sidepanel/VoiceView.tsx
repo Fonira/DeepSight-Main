@@ -252,7 +252,7 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     // ⚠️ URL doit pointer vers la route web /upgrade (pas /billing/checkout
     // qui n'existe pas — cf. frontend/src/App.tsx lazy routes). Le param
     // ?source=voice_call est lu par UpgradePage pour le tracking PostHog.
-    const url = `${WEBAPP_URL}/upgrade?plan=expert&source=voice_call`;
+    const url = `${WEBAPP_URL}/upgrade?plan=pro&source=voice_call`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 

@@ -590,8 +590,26 @@ export async function handleMessage(
   const typed = message as VoiceCallMessage;
   if (typed?.type === "OPEN_VOICE_CALL") {
     const fullSender = sender as chrome.runtime.MessageSender | undefined;
-    const windowId = fullSender?.tab?.windowId;
-    if (!windowId) return { success: false, error: "No source window" };
+    // Two valid sources for OPEN_VOICE_CALL:
+    //   1. Content script in a YouTube tab → sender.tab.windowId is set
+    //   2. The side panel itself (VoiceCallButton.tsx) → sender.tab is
+    //      undefined; we fall back to chrome.windows.getCurrent() so the
+    //      message is not dropped on the floor.
+    let windowId = fullSender?.tab?.windowId;
+    if (!windowId) {
+      try {
+        const windows = (
+          chrome as unknown as {
+            windows?: { getCurrent?: () => Promise<{ id?: number }> };
+          }
+        ).windows;
+        const current = await windows?.getCurrent?.();
+        windowId = current?.id;
+      } catch {
+        // Ignore — we still set pendingVoiceCall below so an already-open
+        // side panel will pick it up via the storage.onChanged listener.
+      }
+    }
     const sessionStore = (
       chrome as unknown as {
         storage: { session?: { set?: (data: unknown) => Promise<void> } };
@@ -604,6 +622,9 @@ export async function handleMessage(
         };
       }
     ).sidePanel;
+    // Always store the pending call first — the side panel may already be
+    // open (storage.onChanged listener in App.tsx triggers VoiceView mount)
+    // even when sidePanel.open() is unavailable or has no windowId target.
     if (sessionStore?.set) {
       await sessionStore.set({
         pendingVoiceCall: {
@@ -613,7 +634,7 @@ export async function handleMessage(
         },
       });
     }
-    if (sidePanel?.open) {
+    if (sidePanel?.open && windowId) {
       await sidePanel.open({ windowId });
     }
     return { success: true };

@@ -7,12 +7,13 @@
 // Click → chrome.runtime.sendMessage({ type: "OPEN_VOICE_CALL", … }) au
 // service worker, qui ouvre le side panel et stocke le contexte vidéo.
 //
-// Affichage conditionnel :
+// Affichage conditionnel (mis à jour 2026-04-27 — Expert tier retiré du
+// pricing, Pro est devenu le top tier voice à 30 min/mois) :
 //   - Pas de videoId → null (le bouton n'a pas de sens hors d'une page vidéo)
-//   - free + !trialUsed → badge "1 essai gratuit"
-//   - free + trialUsed  → bouton désactivé "Essai utilisé"
-//   - pro               → CTA upgrade (Pro n'a pas voice call dans le mix A+D)
-//   - expert            → "X min restantes" (sur 30 min/mois)
+//   - free + !trialUsed   → badge "1 essai gratuit"
+//   - free + trialUsed    → bouton désactivé "Essai utilisé"
+//   - pro / expert        → "X min restantes" (sur 30 min/mois)
+//   - autre (starter/...) → pas de badge ; backend renverra 402 + UpgradeCTA
 import React from "react";
 import Browser from "../../utils/browser-polyfill";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -49,12 +50,12 @@ export const VoiceCallButton: React.FC<VoiceCallButtonProps> = ({
   let badge: string | null = null;
   if (plan === "free" && !trialUsed) badge = t.voiceCall.trialBadge;
   else if (plan === "free" && trialUsed) badge = t.voiceCall.trialUsed;
-  else if (plan === "expert") {
+  else if (plan === "pro" || plan === "expert") {
     badge = t.voiceCall.minutesRemaining.replace(
       "{count}",
       String(remainingMinutes),
     );
-  } else if (plan === "pro") badge = t.voiceCall.upgradeBadge;
+  }
 
   const handleClick = (): void => {
     if (isDisabled) return;
