@@ -20,9 +20,12 @@ describe("CallActiveView", () => {
     render(
       <CallActiveView elapsedSec={0} onMute={jest.fn()} onHangup={jest.fn()} />,
     );
-    expect(screen.getByRole("button", { name: /Mute/ })).toBeInTheDocument();
+    // aria-label dominate accessible name → on cherche par aria-label FR.
     expect(
-      screen.getByRole("button", { name: /Raccrocher/ }),
+      screen.getByRole("button", { name: /Couper le micro/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Terminer l'appel/ }),
     ).toBeInTheDocument();
   });
 
@@ -31,7 +34,9 @@ describe("CallActiveView", () => {
     render(
       <CallActiveView elapsedSec={0} onMute={jest.fn()} onHangup={onHangup} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Raccrocher/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Terminer l'appel/ }),
+    );
     expect(onHangup).toHaveBeenCalled();
   });
 
@@ -40,7 +45,7 @@ describe("CallActiveView", () => {
     render(
       <CallActiveView elapsedSec={0} onMute={onMute} onHangup={jest.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Mute/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Couper le micro/ }));
     expect(onMute).toHaveBeenCalled();
   });
 

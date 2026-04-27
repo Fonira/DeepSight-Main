@@ -35,6 +35,7 @@ import type {
 } from "./types";
 import { WEBAPP_URL } from "../utils/config";
 import { track } from "../utils/analytics";
+import { useTranslation } from "../i18n/useTranslation";
 
 interface VoiceViewProps {
   /** Legacy compat : ouverture du sidepanel via OPEN_VOICE_PANEL. */
@@ -48,6 +49,7 @@ interface VoiceViewProps {
 }
 
 export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) => {
+  const { t } = useTranslation();
   const [state, setState] = useState<VoiceCallState>({ phase: "idle" });
   const [elapsedSec, setElapsedSec] = useState(0);
   const startedRef = useRef(false);
@@ -240,9 +242,9 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) =>
   if (state.phase === "error_mic_permission") {
     return (
       <div className="ds-error" role="alert">
-        <p>Permission micro requise.</p>
+        <p>{t.voiceCall.errors.micPermission}</p>
         <button type="button" onClick={() => location.reload()}>
-          Réessayer
+          {t.common.retry}
         </button>
       </div>
     );
@@ -250,9 +252,11 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) =>
   if (state.phase === "error_generic") {
     return (
       <div className="ds-error" role="alert">
-        <p>Erreur : {state.message}</p>
+        <p>
+          {t.voiceCall.errors.genericPrefix} {state.message}
+        </p>
         <button type="button" onClick={() => setState({ phase: "idle" })}>
-          Fermer
+          {t.voiceCall.errors.close}
         </button>
       </div>
     );
@@ -260,7 +264,7 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) =>
   if (state.phase === "ended_expert") {
     return (
       <div className="ds-call-ended">
-        <p>Appel terminé.</p>
+        <p>{t.voiceCall.errors.callEnded}</p>
       </div>
     );
   }

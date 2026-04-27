@@ -13,6 +13,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { resetChromeMocks } from "../../setup/chrome-api-mock";
 
 // Mock useTranslation pour ne pas dépendre de chrome.storage.sync.
+// Inclut tout ce que MainView, VoiceCallButton et PromoBanner utilisent.
 jest.mock("../../../src/i18n/useTranslation", () => ({
   useTranslation: () => ({
     t: {
@@ -57,6 +58,16 @@ jest.mock("../../../src/i18n/useTranslation", () => ({
       credits: { critical: "{count}", recharge: "x", remaining: "{count}", low: "x" },
       mistral: { badge: "Mistral" },
       ytRecommend: { title: "x", subtitle: "x", dismiss: "x" },
+      voiceCall: {
+        buttonLabel: "Appel rapide",
+        buttonAriaLabel: "Lancer un appel vocal",
+        buttonLabelFloating: "🎙️ Appeler la vidéo",
+        trialBadge: "1 essai gratuit",
+        trialUsed: "Essai utilisé",
+        trialUsedTitle: "Essai utilisé — passer en Expert",
+        minutesRemaining: "{count} min restantes",
+        upgradeBadge: "Passer en Expert",
+      },
     },
     language: "fr",
     setLanguage: jest.fn(),

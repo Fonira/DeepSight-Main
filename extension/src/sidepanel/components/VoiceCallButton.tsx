@@ -15,6 +15,7 @@
 //   - expert            → "X min restantes" (sur 30 min/mois)
 import React from "react";
 import Browser from "../../utils/browser-polyfill";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const EXPERT_MONTHLY_MIN = 30;
 
@@ -33,17 +34,27 @@ export const VoiceCallButton: React.FC<VoiceCallButtonProps> = ({
   videoId,
   videoTitle,
 }) => {
+  const { t } = useTranslation();
   if (!videoId) return null;
 
   const isDisabled = plan === "free" && trialUsed === true;
 
+  // [N5] Math.max protège contre overflow si backend renvoie used > quota
+  // (race condition consume_voice_minutes ; mieux afficher 0 que -5).
+  const remainingMinutes = Math.max(
+    0,
+    EXPERT_MONTHLY_MIN - (monthlyMinutesUsed ?? 0),
+  );
+
   let badge: string | null = null;
-  if (plan === "free" && !trialUsed) badge = "1 essai gratuit";
-  else if (plan === "free" && trialUsed) badge = "Essai utilisé";
+  if (plan === "free" && !trialUsed) badge = t.voiceCall.trialBadge;
+  else if (plan === "free" && trialUsed) badge = t.voiceCall.trialUsed;
   else if (plan === "expert") {
-    const remaining = EXPERT_MONTHLY_MIN - (monthlyMinutesUsed ?? 0);
-    badge = `${remaining} min restantes`;
-  } else if (plan === "pro") badge = "Passer en Expert";
+    badge = t.voiceCall.minutesRemaining.replace(
+      "{count}",
+      String(remainingMinutes),
+    );
+  } else if (plan === "pro") badge = t.voiceCall.upgradeBadge;
 
   const handleClick = (): void => {
     if (isDisabled) return;
@@ -66,12 +77,13 @@ export const VoiceCallButton: React.FC<VoiceCallButtonProps> = ({
       }
       disabled={isDisabled}
       onClick={handleClick}
-      title={isDisabled ? "Essai utilisé — passer en Expert" : undefined}
+      title={isDisabled ? t.voiceCall.trialUsedTitle : undefined}
+      aria-label={t.voiceCall.buttonAriaLabel}
       data-testid="voice-call-btn"
     >
       <span className="voice-call-btn-label">
         <span aria-hidden>🎙️</span>
-        <span>Appel rapide</span>
+        <span>{t.voiceCall.buttonLabel}</span>
       </span>
       {badge && <span className="voice-call-btn-badge">{badge}</span>}
     </button>
