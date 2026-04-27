@@ -391,6 +391,9 @@ export function useVoiceChat({
 
   // Prewarm: précharge le SDK ElevenLabs côté client pour économiser ~200-300ms au clic
   const prewarmedRef = useRef(false);
+  // Guard contre les démarrages concurrents — closure-safe (les refs ne sont
+  // jamais capturées de façon obsolète, contrairement à la valeur de `status`).
+  const isStartingRef = useRef(false);
   const prewarm = useCallback(() => {
     if (prewarmedRef.current) return;
     prewarmedRef.current = true;
@@ -401,15 +404,15 @@ export function useVoiceChat({
   }, []);
 
   const start = useCallback(async () => {
-    // Empêcher les démarrages multiples
-    if (
-      status === "connecting" ||
-      status === "listening" ||
-      status === "speaking"
-    ) {
+    // Empêcher les démarrages multiples (ref-based pour éviter le closure trap :
+    // une useCallback qui dépend de `status` capture une valeur obsolète quand
+    // restart() relance start() depuis le bus listener).
+    if (isStartingRef.current || conversationRef.current) {
       return;
     }
+    isStartingRef.current = true;
 
+    try {
     setError(null);
     setMessages([]);
     setElapsedSeconds(0);
@@ -610,8 +613,10 @@ export function useVoiceChat({
       releaseMediaStream();
       reportError(ERROR_MESSAGES.SDK_LOAD_FAILED);
     }
+    } finally {
+      isStartingRef.current = false;
+    }
   }, [
-    status,
     summaryId,
     debateId,
     agentType,
