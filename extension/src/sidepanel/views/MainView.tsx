@@ -340,11 +340,12 @@ export const MainView: React.FC<MainViewProps> = ({
         {/* ── Hero header ────────────────────────────────────────── */}
         <div className="v3-hero">
           <img
-            src={Browser.runtime.getURL("icons/icon32.png")}
+            src={Browser.runtime.getURL("assets/deepsight-logo-cosmic.png")}
             alt="DeepSight"
             width={28}
             height={28}
             className="v3-brand-logo"
+            style={{ borderRadius: "50%", objectFit: "cover" }}
           />
           <span className="v3-brand">DeepSight</span>
           <span className={`v3-plan-chip${isFree ? " v3-plan-chip-free" : ""}`}>
@@ -767,6 +768,37 @@ export const MainView: React.FC<MainViewProps> = ({
             </ul>
           </>
         )}
+
+        {/* ── Sources & analyse — platform strip ─────────────────── */}
+        <div className="v3-platform-strip">
+          <img
+            src={Browser.runtime.getURL("platforms/youtube-icon-red.png")}
+            alt="YouTube"
+            className="v3-platform-strip-icon"
+            style={{ height: 16 }}
+          />
+          <span className="v3-platform-strip-sep" />
+          <img
+            src={Browser.runtime.getURL("platforms/tiktok-note-white.png")}
+            alt="TikTok"
+            className="v3-platform-strip-icon"
+            style={{ height: 14 }}
+          />
+          <span className="v3-platform-strip-sep" />
+          <img
+            src={Browser.runtime.getURL("platforms/mistral-m-orange.svg")}
+            alt="Mistral"
+            className="v3-platform-strip-icon"
+            style={{ height: 14 }}
+          />
+          <span className="v3-platform-strip-sep" />
+          <img
+            src={Browser.runtime.getURL("platforms/tournesol-logo.png")}
+            alt="Tournesol"
+            className="v3-platform-strip-icon"
+            style={{ height: 14 }}
+          />
+        </div>
 
         {/* ── Footer (Mistral attribution) ───────────────────────── */}
         <div className="v3-footer">
