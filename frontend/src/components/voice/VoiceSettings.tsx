@@ -4,11 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { voiceApi } from "../../services/api";
-import {
-  DeepSightSpinner,
-  DeepSightSpinnerMicro,
-} from "../ui/DeepSightSpinner";
+import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 import {
   MessageSquare,
   Zap,
@@ -20,12 +16,12 @@ import {
 import { CollapsibleSection } from "./CollapsibleSection";
 import { InteractionModeSection } from "./InteractionModeSection";
 import { VoiceChatSpeedSection } from "./VoiceChatSpeedSection";
+import { useVoicePrefsStaging } from "./staging/VoicePrefsStagingProvider";
 import type {
   VoicePreferences,
   VoiceCatalogEntry,
   VoiceSpeedPreset,
   VoiceModel,
-  VoiceCatalog,
 } from "../../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -46,12 +42,14 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
   compact = false,
 }) => {
   // ── State ──────────────────────────────────────────────────────────────
-  const [preferences, setPreferences] = useState<VoicePreferences | null>(null);
-  const [catalog, setCatalog] = useState<VoiceCatalog | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const { applied, staged, catalog, stage } = useVoicePrefsStaging();
+  const preferences = applied
+    ? ({ ...applied, ...staged } as VoicePreferences)
+    : null;
+  const loading = applied === null || catalog === null;
+  const saving = false;
+  const error: string | null = null;
+  const successMsg: string | null = null;
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     interaction: true,
     chatSpeed: true,
@@ -68,54 +66,14 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  // ── Load data ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const [prefs, cat] = await Promise.all([
-          voiceApi.getPreferences(),
-          voiceApi.getCatalog(),
-        ]);
-        setPreferences(prefs);
-        setCatalog(cat);
-      } catch (err: unknown) {
-        setError("Impossible de charger les préférences vocales.");
-        console.error("VoiceSettings load error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
-
   // ── Save handler ───────────────────────────────────────────────────────
-  // Optimistic update: UI reflects change instantly, rollback on error.
-  // Fixes revert-visual bug where selects snapped back to previous value
-  // during the API round-trip.
+  // Stages updates in the VoicePrefsStagingProvider; the floating Apply
+  // toolbar is responsible for committing them server-side.
   const savePreferences = useCallback(
     async (updates: Partial<VoicePreferences>) => {
-      if (!preferences) return;
-      const snapshot = preferences;
-      // Optimistic apply — UI updates immediately
-      setPreferences({ ...preferences, ...updates });
-      try {
-        setSaving(true);
-        setError(null);
-        const updated = await voiceApi.updatePreferences(updates);
-        setPreferences(updated);
-        setSuccessMsg("Préférences enregistrées !");
-        setTimeout(() => setSuccessMsg(null), 2000);
-      } catch (err: unknown) {
-        // Rollback on failure
-        setPreferences(snapshot);
-        setError("Erreur lors de la sauvegarde.");
-        console.error("VoiceSettings save error:", err);
-      } finally {
-        setSaving(false);
-      }
+      stage(updates);
     },
-    [preferences],
+    [stage],
   );
 
   // ── Voice preview ──────────────────────────────────────────────────────
@@ -224,9 +182,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           preferences={preferences}
           saving={saving}
           onSave={savePreferences}
-          onLocalUpdate={(updates) =>
-            setPreferences({ ...preferences, ...updates })
-          }
+          onLocalUpdate={(updates) => stage(updates)}
         />
       </CollapsibleSection>
 
@@ -422,13 +378,8 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
               step="0.05"
               value={preferences.speed}
               onChange={(e) =>
-                setPreferences({
-                  ...preferences,
-                  speed: parseFloat(e.target.value),
-                })
+                stage({ speed: parseFloat(e.target.value) })
               }
-              onMouseUp={() => savePreferences({ speed: preferences.speed })}
-              onTouchEnd={() => savePreferences({ speed: preferences.speed })}
               className="flex-1 accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
                 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg"
@@ -578,16 +529,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
               step="0.05"
               value={preferences.stability}
               onChange={(e) =>
-                setPreferences({
-                  ...preferences,
-                  stability: parseFloat(e.target.value),
-                })
-              }
-              onMouseUp={() =>
-                savePreferences({ stability: preferences.stability })
-              }
-              onTouchEnd={() =>
-                savePreferences({ stability: preferences.stability })
+                stage({ stability: parseFloat(e.target.value) })
               }
               className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
@@ -619,20 +561,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
               step="0.05"
               value={preferences.similarity_boost}
               onChange={(e) =>
-                setPreferences({
-                  ...preferences,
-                  similarity_boost: parseFloat(e.target.value),
-                })
-              }
-              onMouseUp={() =>
-                savePreferences({
-                  similarity_boost: preferences.similarity_boost,
-                })
-              }
-              onTouchEnd={() =>
-                savePreferences({
-                  similarity_boost: preferences.similarity_boost,
-                })
+                stage({ similarity_boost: parseFloat(e.target.value) })
               }
               className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
@@ -664,13 +593,8 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
               step="0.05"
               value={preferences.style}
               onChange={(e) =>
-                setPreferences({
-                  ...preferences,
-                  style: parseFloat(e.target.value),
-                })
+                stage({ style: parseFloat(e.target.value) })
               }
-              onMouseUp={() => savePreferences({ style: preferences.style })}
-              onTouchEnd={() => savePreferences({ style: preferences.style })}
               className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
                 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
@@ -733,16 +657,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
               step="1"
               value={preferences.turn_timeout}
               onChange={(e) =>
-                setPreferences({
-                  ...preferences,
-                  turn_timeout: parseInt(e.target.value),
-                })
-              }
-              onMouseUp={() =>
-                savePreferences({ turn_timeout: preferences.turn_timeout })
-              }
-              onTouchEnd={() =>
-                savePreferences({ turn_timeout: preferences.turn_timeout })
+                stage({ turn_timeout: parseInt(e.target.value) })
               }
               className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
@@ -777,20 +692,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
               step="30"
               value={preferences.soft_timeout_seconds}
               onChange={(e) =>
-                setPreferences({
-                  ...preferences,
-                  soft_timeout_seconds: parseInt(e.target.value),
-                })
-              }
-              onMouseUp={() =>
-                savePreferences({
-                  soft_timeout_seconds: preferences.soft_timeout_seconds,
-                })
-              }
-              onTouchEnd={() =>
-                savePreferences({
-                  soft_timeout_seconds: preferences.soft_timeout_seconds,
-                })
+                stage({ soft_timeout_seconds: parseInt(e.target.value) })
               }
               className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
@@ -888,13 +790,6 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
         </div>
       </CollapsibleSection>
 
-      {/* Saving indicator */}
-      {saving && (
-        <div className="fixed bottom-6 right-6 bg-indigo-500/90 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm">
-          <DeepSightSpinnerMicro />
-          Enregistrement...
-        </div>
-      )}
     </div>
   );
 };
