@@ -1840,7 +1840,6 @@ export const History: React.FC = () => {
                       error={voiceChat.error ?? undefined}
                       playbackRate={voiceChat.playbackRate}
                       micLevel={micLevel}
-                      onRestart={voiceChat.restart}
                     />
                   </>
                 )}

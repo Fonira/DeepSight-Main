@@ -1,13 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { StagedPrefsToolbar } from "../StagedPrefsToolbar";
-import { VoicePrefsStagingProvider } from "../VoicePrefsStagingProvider";
 import type { VoicePrefsStagingContextValue } from "../VoicePrefsStagingProvider";
 import * as ProviderModule from "../VoicePrefsStagingProvider";
 
-function renderWithStaging(
-  override: Partial<VoicePrefsStagingContextValue>,
-) {
+function renderWithStaging(override: Partial<VoicePrefsStagingContextValue>) {
   const value: VoicePrefsStagingContextValue = {
     applied: null,
     catalog: null,
@@ -63,7 +60,9 @@ describe("StagedPrefsToolbar", () => {
       callActive: false,
       staged: { ptt_key: "Shift" },
     });
-    expect(screen.getByTestId("staged-apply").textContent).toMatch(/appliquer/i);
+    expect(screen.getByTestId("staged-apply").textContent).toMatch(
+      /appliquer/i,
+    );
     expect(screen.getByTestId("staged-apply").textContent).not.toMatch(
       /redémarrer/i,
     );

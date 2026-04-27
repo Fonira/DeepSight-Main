@@ -35,8 +35,11 @@ class MediaStreamPolyfill {
     return [{ stop: vi.fn(), enabled: true }];
   }
 }
-if (typeof (globalThis as any).MediaStream === "undefined") {
-  (globalThis as any).MediaStream = MediaStreamPolyfill;
+{
+  const g = globalThis as unknown as { MediaStream?: unknown };
+  if (typeof g.MediaStream === "undefined") {
+    g.MediaStream = MediaStreamPolyfill;
+  }
 }
 
 // Mock navigator.mediaDevices
@@ -274,10 +277,12 @@ describe("useVoiceChat — call_status_changed events", () => {
           playback_rate: 1.0,
         }),
     });
-    mockStartSession.mockImplementation(async (opts: any) => {
-      opts.onConnect?.();
-      return { endSession: mockEndSession, setVolume: vi.fn() };
-    });
+    mockStartSession.mockImplementation(
+      async (opts: { onConnect?: () => void }) => {
+        opts.onConnect?.();
+        return { endSession: mockEndSession, setVolume: vi.fn() };
+      },
+    );
   });
 
   afterEach(() => {
@@ -341,10 +346,12 @@ describe("useVoiceChat — apply_with_restart", () => {
           playback_rate: 1.0,
         }),
     });
-    mockStartSession.mockImplementation(async (opts: any) => {
-      opts.onConnect?.();
-      return { endSession: mockEndSession, setVolume: vi.fn() };
-    });
+    mockStartSession.mockImplementation(
+      async (opts: { onConnect?: () => void }) => {
+        opts.onConnect?.();
+        return { endSession: mockEndSession, setVolume: vi.fn() };
+      },
+    );
   });
 
   afterEach(() => {

@@ -97,8 +97,6 @@ interface VoiceModalProps {
   avatarFallback?: string;
   /** Niveau micro temps réel [0,1] — drive waveform + halo PTT. */
   micLevel?: number;
-  /** Redémarre la session (stop + start) pour appliquer de nouveaux paramètres. */
-  onRestart?: () => void | Promise<void>;
 }
 
 /** Format seconds to MM:SS */
@@ -273,7 +271,6 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   avatarStatus = "unavailable",
   avatarFallback,
   micLevel = 0,
-  onRestart,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
