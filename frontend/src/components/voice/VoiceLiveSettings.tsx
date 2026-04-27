@@ -21,9 +21,9 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { Volume2, Mic, Keyboard, Globe, Gauge } from "lucide-react";
-import { voiceApi } from "../../services/api";
 import type { VoicePreferences } from "../../services/api";
 import { emitVoicePrefsEvent } from "./voicePrefsBus";
+import { useVoicePrefsStaging } from "./staging/VoicePrefsStagingProvider";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // I18N
@@ -95,57 +95,26 @@ export const VoiceLiveSettings: React.FC<VoiceLiveSettingsProps> = ({
 }) => {
   const t = I18N[language];
 
-  const [prefs, setPrefs] = useState<VoicePreferences | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { applied, staged, stage } = useVoicePrefsStaging();
+  const prefs = applied
+    ? ({ ...applied, ...staged } as VoicePreferences)
+    : null;
+  const loading = applied === null;
+  const error = null; // surfaced by the toolbar if any
+  const saving = false;
+
   // Local volume slider (0-100). Independent from prefs since volume is
   // applied client-side to <audio> elements, not persisted to the backend.
   const [volume, setVolume] = useState<number>(100);
   const [pttListening, setPttListening] = useState(false);
 
-  // ── Initial load ────────────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        setLoading(true);
-        const next = await voiceApi.getPreferences();
-        if (!cancelled) {
-          setPrefs(next);
-          setError(null);
-        }
-      } catch {
-        if (!cancelled) setError(t.error);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [t.error]);
-
-  // ── Save helper (optimistic) ────────────────────────────────────────────
+  // ── Save helper — routes updates through staging ────────────────────────
   const save = useCallback(
     async (updates: Partial<VoicePreferences>) => {
-      if (!prefs) return;
-      const snapshot = prefs;
-      setPrefs({ ...prefs, ...updates });
-      setSaving(true);
-      try {
-        const next = await voiceApi.updatePreferences(updates);
-        setPrefs(next);
-        onChange?.(updates);
-      } catch {
-        // Rollback on failure.
-        setPrefs(snapshot);
-      } finally {
-        setSaving(false);
-      }
+      stage(updates);
+      onChange?.(updates);
     },
-    [prefs, onChange],
+    [stage, onChange],
   );
 
   // ── Volume change → live-apply via bus + local state ────────────────────
