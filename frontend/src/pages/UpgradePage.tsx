@@ -36,6 +36,7 @@ import DoodleBackground from "../components/DoodleBackground";
 import { DeepSightSpinnerMicro } from "../components/ui";
 import { billingApi, type ApiBillingPlan } from "../services/api";
 import { SEO } from "../components/SEO";
+import { analytics } from "../services/analytics";
 import {
   PLANS_INFO as FALLBACK_PLANS_INFO,
   PLAN_LIMITS as FALLBACK_PLAN_LIMITS,
@@ -955,6 +956,27 @@ export const UpgradePage: React.FC = () => {
   const [trialLoading, setTrialLoading] = useState(false);
 
   const currentPlan = useMemo(() => plans.find((p) => p.is_current), [plans]);
+
+  // ── Source tracking (PostHog) ──────────────────────────────────────────────
+  // Quand l'utilisateur arrive depuis l'extension Quick Voice Call (clic
+  // "Passer en Expert" sur l'UpgradeCTA), VoiceView ouvre l'URL avec
+  // ?source=voice_call. On capte l'event au mount pour le funnel.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get("source");
+    const planParam = params.get("plan");
+    if (source) {
+      analytics.capture("upgrade_page_viewed", {
+        source,
+        plan_param: planParam,
+      });
+      if (source === "voice_call") {
+        analytics.capture("voice_call_upgrade_landed", {
+          plan_param: planParam,
+        });
+      }
+    }
+  }, []);
 
   // ── Load data ──────────────────────────────────────────────────────────────
   useEffect(() => {
