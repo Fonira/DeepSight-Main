@@ -59,7 +59,39 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
   // Utilisé par le bouton "Autoriser le micro" — chaque clic = user gesture
   // frais → getUserMedia peut afficher le prompt natif Chrome.
   const [retryKey, setRetryKey] = useState(0);
+  // [B7] Track Chrome microphone permission state. Si "denied", getUserMedia
+  // rejette IMMÉDIATEMENT sans afficher de prompt — le user doit débloquer
+  // manuellement via chrome://settings. On détecte ça pour lui afficher
+  // des instructions claires + un bouton qui ouvre la bonne page.
+  const [micPermState, setMicPermState] = useState<
+    "unknown" | "prompt" | "granted" | "denied"
+  >("unknown");
   const startedRef = useRef(false);
+
+  // ── [B7] Surveille la permission micro Chrome ──
+  // navigator.permissions.query est dispo dans extension pages (Chrome 64+).
+  // L'event onchange permet de reagir si le user débloque manuellement.
+  useEffect(() => {
+    if (!navigator.permissions?.query) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const status = await navigator.permissions.query({
+          name: "microphone" as PermissionName,
+        });
+        if (cancelled) return;
+        setMicPermState(status.state as "prompt" | "granted" | "denied");
+        status.onchange = () => {
+          setMicPermState(status.state as "prompt" | "granted" | "denied");
+        };
+      } catch {
+        // Browser sans support → on laisse "unknown", le code fallback gère.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Legacy compat : on passe un context au hook si fourni en prop. Le nouveau
   // flow utilise startSession() directement avec videoId du pendingVoiceCall.
@@ -93,13 +125,20 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
       // Le stream est libéré immédiatement — le SDK le re-demandera mais
       // Chrome cache la permission, donc pas de double prompt.
       try {
+        console.log("[VoiceView] preflight getUserMedia({audio:true})…");
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
         for (const track of stream.getTracks()) track.stop();
+        console.log("[VoiceView] preflight micro OK");
       } catch (micErr) {
         if (cancelled) return;
         const errName = (micErr as Error).name;
+        console.error(
+          "[VoiceView] preflight getUserMedia failed:",
+          errName,
+          micErr,
+        );
         if (
           errName === "NotAllowedError" ||
           errName === "PermissionDeniedError"
@@ -318,13 +357,21 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     );
   }
   if (state.phase === "error_mic_permission") {
+    // [B7] Si Chrome a mémorisé "Bloquer", getUserMedia rejette
+    // IMMÉDIATEMENT sans aucun prompt — impossible à débloquer en JS.
+    // La seule issue : ouvrir chrome://settings/content/siteDetails pour
+    // l'extension, le user clique "Autoriser" pour Microphone, puis revient.
+    const isDenied = micPermState === "denied";
+    const handleOpenChromeSettings = (): void => {
+      const extensionId = chrome.runtime.id;
+      const settingsUrl = `chrome://settings/content/siteDetails?site=chrome-extension://${extensionId}`;
+      void chrome.tabs.create({ url: settingsUrl });
+    };
     // [B6] Click handler = user gesture frais → getUserMedia peut afficher le
-    // prompt natif Chrome. On lance directement la demande ici (pas après
-    // un await intermédiaire) sinon le user gesture est perdu.
+    // prompt natif Chrome. On lance la demande synchroneously dans le click
+    // handler (pas dans .then d'un await précédent) pour préserver le user
+    // gesture context.
     const handleEnableMic = (): void => {
-      // Ne pas attendre la promise — Chrome a besoin que getUserMedia soit
-      // appelé synchroneously dans le click handler. On relâche le stream et
-      // on relance le bootstrap dans le .then.
       navigator.mediaDevices
         .getUserMedia({ audio: true })
         .then((stream) => {
@@ -333,17 +380,35 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
           setState({ phase: "idle" });
           setRetryKey((k) => k + 1);
         })
-        .catch(() => {
-          // Toujours refusé — reste sur cet écran. L'utilisateur doit
-          // débloquer manuellement via l'icône cadenas Chrome.
+        .catch((err) => {
+          // Loggé pour debug DevTools console (sidepanel inspector).
+          console.error("[VoiceView] getUserMedia rejected", err);
+          // Si Chrome bascule en denied après ce refus, le useEffect
+          // permissions onchange va re-render avec isDenied=true et
+          // l'UX changera automatiquement.
         });
     };
     return (
       <div className="ds-error" role="alert">
-        <p>{t.voiceCall.errors.micPermission}</p>
-        <button type="button" onClick={handleEnableMic}>
-          {t.voiceCall.errors.enableMic}
-        </button>
+        {isDenied ? (
+          <>
+            <p>
+              Le micro est bloqué dans Chrome pour cette extension. Ouvre les
+              paramètres Chrome, choisis « Autoriser » pour Microphone, puis
+              recharge le side panel.
+            </p>
+            <button type="button" onClick={handleOpenChromeSettings}>
+              ⚙️ Ouvrir les paramètres Chrome
+            </button>
+          </>
+        ) : (
+          <>
+            <p>{t.voiceCall.errors.micPermission}</p>
+            <button type="button" onClick={handleEnableMic}>
+              {t.voiceCall.errors.enableMic}
+            </button>
+          </>
+        )}
       </div>
     );
   }
