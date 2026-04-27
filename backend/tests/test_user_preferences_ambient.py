@@ -203,3 +203,172 @@ async def test_update_preferences_returns_false_on_unknown_user(db_session):
         ambient_lighting_enabled=True,
     )
     assert success is False
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ✅ TASK 16 — UserResponse expose preferences dans GET /api/auth/me
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Le frontend a besoin de connaître l'état actuel des préférences (notamment
+# ambient_lighting_enabled) après login/refresh pour rendre la bonne UI dès
+# le mount, sans round-trip supplémentaire vers /api/auth/preferences.
+
+
+@pytest.mark.unit
+def test_user_response_schema_has_preferences_field():
+    """UserResponse Pydantic schema déclare bien le champ `preferences`."""
+    from auth.schemas import UserResponse
+
+    fields = UserResponse.model_fields
+    assert "preferences" in fields, (
+        "UserResponse.preferences manquant — le frontend ne peut pas connaître "
+        "l'état des prefs après login (Task 16)"
+    )
+
+
+@pytest.mark.unit
+def test_user_response_serializes_preferences_round_trip():
+    """UserResponse.model_validate(user) propage user.preferences dans la réponse."""
+    from datetime import datetime
+    from types import SimpleNamespace
+    from auth.schemas import UserResponse
+
+    user = SimpleNamespace(
+        id=42,
+        username="ambient_user",
+        email="ambient@example.com",
+        email_verified=True,
+        plan="pro",
+        credits=100,
+        credits_monthly=1500,
+        is_admin=False,
+        avatar_url=None,
+        default_lang="fr",
+        default_mode="standard",
+        default_model="mistral-medium-2508",
+        total_videos=0,
+        total_words=0,
+        total_playlists=0,
+        created_at=datetime(2026, 4, 27),
+        preferences={"ambient_lighting_enabled": False, "extra_key": "value"},
+    )
+
+    resp = UserResponse.model_validate(user)
+    assert resp.preferences == {"ambient_lighting_enabled": False, "extra_key": "value"}
+
+
+@pytest.mark.unit
+def test_user_response_preferences_defaults_to_empty_dict_when_missing():
+    """UserResponse.preferences default = {} (jamais None côté frontend)."""
+    from datetime import datetime
+    from auth.schemas import UserResponse
+
+    # Construction manuelle sans le champ preferences → doit utiliser default_factory
+    resp = UserResponse(
+        id=1,
+        username="no_prefs",
+        email="noprefs@example.com",
+        email_verified=True,
+        plan="free",
+        credits=5,
+        credits_monthly=5,
+        is_admin=False,
+        avatar_url=None,
+        default_lang="fr",
+        default_mode="standard",
+        default_model="mistral-small-2603",
+        total_videos=0,
+        total_words=0,
+        total_playlists=0,
+        created_at=datetime(2026, 4, 27),
+    )
+    assert resp.preferences == {}, "default doit être empty dict, pas None"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_me_endpoint_returns_user_preferences(db_session, existing_user):
+    """GET /api/auth/me retourne user.preferences dans la réponse JSON.
+
+    Vérifie le contrat HTTP complet : write side (update_user_preferences)
+    → read side (GET /me sérialise la pref). Sans cela, le frontend doit
+    appeler un endpoint séparé pour connaître l'état des prefs après login.
+    """
+    import importlib
+    from auth.service import update_user_preferences
+    from httpx import AsyncClient, ASGITransport
+    from main import app
+    from db.database import get_session
+    from auth.dependencies import get_current_user
+
+    # 1. Persister une préférence ambient_lighting_enabled=False + extra
+    await update_user_preferences(
+        db_session,
+        existing_user.id,
+        ambient_lighting_enabled=False,
+        extra_preferences={"theme_variant": "ocean"},
+    )
+
+    # 2. Re-fetch user avec preferences à jour
+    from db.database import User
+    from sqlalchemy import select
+
+    result = await db_session.execute(select(User).where(User.id == existing_user.id))
+    user_with_prefs = result.scalar_one()
+
+    # 3. Mock get_current_user + get_session pour appeler /api/auth/me
+    async def override_user():
+        return user_with_prefs
+
+    async def override_session():
+        return db_session
+
+    app.dependency_overrides[get_current_user] = override_user
+    app.dependency_overrides[get_session] = override_session
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+        ) as client:
+            resp = await client.get("/api/auth/me")
+            assert resp.status_code == 200, f"Got {resp.status_code}: {resp.text}"
+            data = resp.json()
+            assert "preferences" in data, "GET /me response doit inclure 'preferences'"
+            assert data["preferences"].get("ambient_lighting_enabled") is False
+            assert data["preferences"].get("theme_variant") == "ocean"
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_me_endpoint_returns_empty_dict_for_user_without_prefs(db_session, existing_user):
+    """GET /api/auth/me pour un user sans prefs → preferences == {} (jamais null)."""
+    from httpx import AsyncClient, ASGITransport
+    from main import app
+    from db.database import get_session
+    from auth.dependencies import get_current_user
+
+    async def override_user():
+        return existing_user
+
+    async def override_session():
+        return db_session
+
+    app.dependency_overrides[get_current_user] = override_user
+    app.dependency_overrides[get_session] = override_session
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+        ) as client:
+            resp = await client.get("/api/auth/me")
+            assert resp.status_code == 200, f"Got {resp.status_code}: {resp.text}"
+            data = resp.json()
+            assert data.get("preferences") == {}, (
+                "User sans prefs persistées → preferences == {} (default), pas null/None"
+            )
+    finally:
+        app.dependency_overrides.clear()

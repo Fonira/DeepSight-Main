@@ -174,6 +174,15 @@ class UserResponse(BaseModel):
     total_words: int
     total_playlists: int
     created_at: datetime
+    # User preferences JSON (Ambient Lighting v3 + future feature flags).
+    # Persisté server-side dans User.preferences (migration 008) ; exposé ici
+    # pour que le frontend connaisse l'état actuel des prefs après login/refresh
+    # et puisse rendre la bonne UI dès le mount sans round-trip supplémentaire.
+    # Toujours un dict (jamais None) pour simplifier le frontend.
+    preferences: dict = Field(
+        default_factory=dict,
+        description="User preferences JSON (ambient_lighting_enabled, future feature flags)",
+    )
 
     @computed_field
     @property

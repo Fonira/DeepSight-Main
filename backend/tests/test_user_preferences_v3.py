@@ -72,6 +72,9 @@ def make_mock_user(**overrides):
         "stripe_customer_id": None,
         "stripe_subscription_id": None,
         "google_id": None,
+        # Task 16: UserResponse expose preferences ; default {} pour les mocks
+        # qui n'ont pas explicitement de prefs (sinon MagicMock attribute → ValidationError).
+        "preferences": {},
     }
     defaults.update(overrides)
     for key, value in defaults.items():

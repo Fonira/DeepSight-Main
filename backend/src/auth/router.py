@@ -334,6 +334,9 @@ async def get_me(current_user=Depends(get_current_user)):
         "total_words": current_user.total_words,
         "total_playlists": current_user.total_playlists,
         "created_at": current_user.created_at,
+        # Ambient Lighting v3 + future feature flags. `or {}` garantit que le
+        # frontend ne reçoit jamais null (default = empty dict côté client).
+        "preferences": getattr(current_user, "preferences", None) or {},
     }
 
     return UserResponse(**user_data)
