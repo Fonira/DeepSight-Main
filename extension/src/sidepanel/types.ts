@@ -48,3 +48,31 @@ export type VoiceSessionStatus =
   | "ending"
   | "ended"
   | "error";
+
+// ── Quick Voice Call (Task 16) — phase machine ──
+//
+// State machine de la VoiceView pour le flow Quick Voice Call (V1).
+// Toutes les transitions sont gérées dans `VoiceView.tsx`.
+export type VoiceCallState =
+  | { phase: "idle" }
+  | { phase: "connecting"; videoId: string; videoTitle: string }
+  | {
+      phase: "live_streaming";
+      videoId: string;
+      sessionId: string;
+      startedAt: number;
+    }
+  | {
+      phase: "live_complete";
+      videoId: string;
+      sessionId: string;
+      startedAt: number;
+    }
+  | { phase: "ended_free_cta"; reason: "trial_used" }
+  | { phase: "ended_expert" }
+  | {
+      phase: "error_quota";
+      reason: "trial_used" | "pro_no_voice" | "monthly_quota";
+    }
+  | { phase: "error_mic_permission" }
+  | { phase: "error_generic"; message: string };

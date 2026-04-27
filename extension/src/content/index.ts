@@ -18,10 +18,14 @@ import { YouTubeAudioController } from "./youtubeAudioController";
 
 // Audio ducking pendant les voice calls — instance unique par tab.
 const audioController = new YouTubeAudioController();
-chrome.runtime.onMessage.addListener((msg: { type?: string }) => {
-  if (msg?.type === "DUCK_AUDIO") audioController.attach();
-  if (msg?.type === "RESTORE_AUDIO") audioController.detach();
-});
+// Defensive : `chrome.runtime.onMessage` peut ne pas exister dans certains
+// contextes de test où le mock chrome est minimaliste.
+if (chrome?.runtime?.onMessage?.addListener) {
+  chrome.runtime.onMessage.addListener((msg: { type?: string }) => {
+    if (msg?.type === "DUCK_AUDIO") audioController.attach();
+    if (msg?.type === "RESTORE_AUDIO") audioController.detach();
+  });
+}
 
 let lastUrl = location.href;
 

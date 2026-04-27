@@ -1,106 +1,261 @@
-import React, { useEffect, useRef } from "react";
-import { useExtensionVoiceChat } from "./useExtensionVoiceChat";
-import { pickAgentType, type VoicePanelContext } from "./types";
+// extension/src/sidepanel/VoiceView.tsx
+//
+// Quick Voice Call (Task 16) — state machine pour le flow d'appel voix
+// déclenché depuis le widget YouTube.
+//
+// Phases :
+//   idle              → écran neutre (rare, App.tsx n'arrive ici qu'avec un pending call)
+//   connecting        → ConnectingView (mic pulsant, ~1-2s)
+//   live_streaming    → CallActiveView + ContextProgressBar (analyse en cours)
+//   live_complete     → CallActiveView (analyse complète, agent a tout le contexte)
+//   ended_free_cta    → UpgradeCTA reason=trial_used (post-call free)
+//   ended_expert      → écran fermeture neutre
+//   error_quota       → UpgradeCTA reason=… (Pro/free saturé)
+//   error_mic_perm    → message + retry
+//   error_generic     → message + close
+//
+// Compat backwards : accepte un `context?: VoicePanelContext | null` legacy
+// (utilisé par l'ancien flow OPEN_VOICE_PANEL via App.tsx). Si pas de
+// pendingVoiceCall NI de context vidéo, on retombe sur le UI legacy via
+// `useExtensionVoiceChat({ context })`.
+import React, { useEffect, useState, useRef } from "react";
+import { ConnectingView } from "./components/ConnectingView";
+import { CallActiveView } from "./components/CallActiveView";
+import { ContextProgressBar } from "./components/ContextProgressBar";
+import { UpgradeCTA } from "./components/UpgradeCTA";
+import {
+  useExtensionVoiceChat,
+  VoiceQuotaError,
+} from "./useExtensionVoiceChat";
+import { useStreamingVideoContext } from "./hooks/useStreamingVideoContext";
+import type { VoiceCallState, VoicePanelContext } from "./types";
+import { WEBAPP_URL } from "../utils/config";
 
 interface VoiceViewProps {
-  context: VoicePanelContext | null;
+  context?: VoicePanelContext | null;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  idle: "Prêt à appeler",
-  requesting: "Création de la session…",
-  connecting: "Connexion à l'agent…",
-  listening: "Conversation en cours",
-  ending: "Fin de l'appel…",
-  ended: "Appel terminé",
-  error: "Erreur",
-};
+interface PendingVoiceCall {
+  videoId: string;
+  videoTitle: string;
+}
+
+interface SessionStorageShape {
+  get: (key: string) => Promise<Record<string, unknown>>;
+  remove?: (key: string) => Promise<void>;
+}
+
+function getSessionStorage(): SessionStorageShape | null {
+  const c = (
+    chrome as unknown as {
+      storage?: { session?: SessionStorageShape };
+    }
+  ).storage;
+  if (!c?.session?.get) return null;
+  return c.session;
+}
 
 export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
-  const { status, error, transcripts, isActive, start, stop } =
-    useExtensionVoiceChat({ context });
+  const [state, setState] = useState<VoiceCallState>({ phase: "idle" });
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const startedRef = useRef(false);
 
-  const transcriptsRef = useRef<HTMLDivElement | null>(null);
+  // Legacy compat : on passe un context au hook si fourni en prop. Le nouveau
+  // flow utilise startSession() directement avec videoId du pendingVoiceCall.
+  const voiceChat = useExtensionVoiceChat({ context: context ?? null });
 
-  // Auto-scroll quand un nouveau transcript arrive — UX classique chat.
+  // ── Bootstrap : lit pendingVoiceCall + démarre la session ──
   useEffect(() => {
-    const el = transcriptsRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [transcripts]);
+    if (startedRef.current) return;
+    startedRef.current = true;
 
-  const agentType = pickAgentType(context);
-  const title = context?.videoTitle || "DeepSight Voice";
-  const subtitle = context?.summaryId
-    ? `Analyse #${context.summaryId} · ${context.videoId ?? ""}`.trim()
-    : "Mode compagnon — sans contexte vidéo";
+    const session = getSessionStorage();
+    if (!session) {
+      // Pas d'API session storage (Firefox/Safari) — reste en idle.
+      return;
+    }
 
-  const onClickMic = (): void => {
-    if (isActive || status === "requesting") {
-      void stop();
+    let cancelled = false;
+    void session
+      .get("pendingVoiceCall")
+      .then(async (data) => {
+        const pending = data?.pendingVoiceCall as PendingVoiceCall | undefined;
+        if (!pending?.videoId) {
+          // Aucun pending call — soit on a un context legacy, soit on stay idle.
+          return;
+        }
+        if (cancelled) return;
+
+        setState({
+          phase: "connecting",
+          videoId: pending.videoId,
+          videoTitle: pending.videoTitle,
+        });
+        try {
+          await session.remove?.("pendingVoiceCall");
+        } catch {
+          /* best-effort */
+        }
+
+        try {
+          const created = await voiceChat.startSession({
+            videoId: pending.videoId,
+            videoTitle: pending.videoTitle,
+            agentType: "explorer_streaming",
+            isStreaming: true,
+          });
+          if (cancelled) return;
+          chrome.runtime.sendMessage({ type: "VOICE_CALL_STARTED" });
+          setState({
+            phase: "live_streaming",
+            videoId: pending.videoId,
+            sessionId: created.session_id,
+            startedAt: Date.now(),
+          });
+        } catch (e) {
+          if (cancelled) return;
+          // Detect quota errors via instanceof OR duck-typed `status: 402`
+          // (les tests injectent un `Error` augmenté avec `.status/.detail`).
+          const errAny = e as Error & {
+            status?: number;
+            detail?: { reason?: string };
+          };
+          const isQuota = e instanceof VoiceQuotaError || errAny.status === 402;
+          if (isQuota) {
+            const detailReason = errAny.detail?.reason as
+              | "trial_used"
+              | "pro_no_voice"
+              | "monthly_quota"
+              | undefined;
+            setState({
+              phase: "error_quota",
+              reason: detailReason ?? "trial_used",
+            });
+          } else if (errAny.name === "NotAllowedError") {
+            setState({ phase: "error_mic_permission" });
+          } else {
+            setState({
+              phase: "error_generic",
+              message: String(errAny?.message ?? e),
+            });
+          }
+        }
+      })
+      .catch(() => {
+        // Lecture session storage échouée — reste en idle.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Elapsed timer ──
+  useEffect(() => {
+    if (state.phase !== "live_streaming" && state.phase !== "live_complete") {
+      return;
+    }
+    const startedAt = state.startedAt;
+    const t = setInterval(() => {
+      setElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [state]);
+
+  const sessionId =
+    state.phase === "live_streaming" || state.phase === "live_complete"
+      ? state.sessionId
+      : null;
+  const { contextProgress, contextComplete } = useStreamingVideoContext(
+    sessionId,
+    voiceChat.conversation,
+  );
+
+  // Promote live_streaming → live_complete quand le SSE annonce ctx_complete.
+  useEffect(() => {
+    if (contextComplete && state.phase === "live_streaming") {
+      setState((s) =>
+        s.phase === "live_streaming"
+          ? {
+              phase: "live_complete",
+              videoId: s.videoId,
+              sessionId: s.sessionId,
+              startedAt: s.startedAt,
+            }
+          : s,
+      );
+    }
+  }, [contextComplete, state.phase]);
+
+  const handleHangup = (): void => {
+    void voiceChat.endSession();
+    chrome.runtime.sendMessage({ type: "VOICE_CALL_ENDED" });
+    if (voiceChat.lastSessionWasTrial) {
+      setState({ phase: "ended_free_cta", reason: "trial_used" });
     } else {
-      void start();
+      setState({ phase: "ended_expert" });
     }
   };
 
-  return (
-    <div className="dsp-app">
-      <div className="dsp-header">
-        <span className="dsp-title">DeepSight Voice</span>
-        <span className="dsp-badge">ElevenLabs</span>
-      </div>
+  const handleUpgrade = (): void => {
+    const url = `${WEBAPP_URL}/billing/checkout?plan=expert&source=voice_call`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
-      <div className="dsp-card" data-testid="voice-context-card">
-        <p className="dsp-card-title">{title}</p>
-        <p className="dsp-card-meta">{subtitle}</p>
-        <span className="dsp-mode" data-testid="agent-type">
-          <span className="dsp-mode-dot" />
-          Agent : {agentType}
-        </span>
-      </div>
-
-      <div className="dsp-voice-zone">
-        <button
-          type="button"
-          className="dsp-mic-btn"
-          data-testid="voice-toggle-btn"
-          data-active={isActive ? "true" : "false"}
-          onClick={onClickMic}
-          disabled={status === "requesting" || status === "ending"}
-          aria-label={isActive ? "Terminer l'appel" : "Démarrer l'appel"}
-        >
-          {isActive ? "■" : "🎙"}
+  // ── Rendering ──
+  if (state.phase === "connecting") return <ConnectingView />;
+  if (state.phase === "live_streaming" || state.phase === "live_complete") {
+    return (
+      <>
+        <CallActiveView
+          elapsedSec={elapsedSec}
+          onMute={voiceChat.toggleMute}
+          onHangup={handleHangup}
+        />
+        <ContextProgressBar
+          progress={contextProgress}
+          complete={contextComplete}
+        />
+      </>
+    );
+  }
+  if (state.phase === "ended_free_cta" || state.phase === "error_quota") {
+    const reason = state.phase === "error_quota" ? state.reason : "trial_used";
+    return (
+      <UpgradeCTA
+        reason={reason}
+        onUpgrade={handleUpgrade}
+        onDismiss={() => setState({ phase: "idle" })}
+      />
+    );
+  }
+  if (state.phase === "error_mic_permission") {
+    return (
+      <div className="ds-error" role="alert">
+        <p>Permission micro requise.</p>
+        <button type="button" onClick={() => location.reload()}>
+          Réessayer
         </button>
-        <p className="dsp-status" data-testid="voice-status">
-          {STATUS_LABELS[status] ?? status}
-        </p>
-        {error && (
-          <p className="dsp-error" role="alert" data-testid="voice-error">
-            {error}
-          </p>
-        )}
       </div>
-
-      <div className="dsp-transcripts" ref={transcriptsRef}>
-        {transcripts.length === 0 ? (
-          <p className="dsp-empty">
-            Les transcripts apparaîtront ici en temps réel.
-          </p>
-        ) : (
-          transcripts.map((t, i) => (
-            <div
-              key={`${t.ts}-${i}`}
-              className="dsp-transcript"
-              data-speaker={t.speaker}
-            >
-              {t.content}
-            </div>
-          ))
-        )}
+    );
+  }
+  if (state.phase === "error_generic") {
+    return (
+      <div className="ds-error" role="alert">
+        <p>Erreur : {state.message}</p>
+        <button type="button" onClick={() => setState({ phase: "idle" })}>
+          Fermer
+        </button>
       </div>
-
-      <p className="dsp-footer">
-        Conversation chiffrée · Tokens stockés dans le service worker.
-      </p>
-    </div>
-  );
+    );
+  }
+  if (state.phase === "ended_expert") {
+    return (
+      <div className="ds-call-ended">
+        <p>Appel terminé.</p>
+      </div>
+    );
+  }
+  return null;
 };

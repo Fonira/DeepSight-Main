@@ -24,11 +24,15 @@ function getSessionStorage(): SessionStorage | null {
 }
 
 export const App: React.FC = () => {
-  // Voice flow integration (Spec #4): when SW set voicePanelContext in
-  // chrome.storage.session, render VoiceView instead of the regular router.
+  // Voice flow integration (Spec #4 + Quick Voice Call Task 16) :
+  // - `voicePanelContext` (legacy)         → ouvre VoiceView avec context
+  // - `pendingVoiceCall` (Quick Voice Call) → VoiceView lit elle-même la clé
+  // Dans les deux cas on rend `<VoiceView />` ; on lui passe le legacy ctx
+  // si dispo pour compat.
   const [voiceContext, setVoiceContext] = useState<VoicePanelContext | null>(
     null,
   );
+  const [hasPendingVoiceCall, setHasPendingVoiceCall] = useState(false);
   const [voiceChecked, setVoiceChecked] = useState(false);
 
   const [view, setView] = useState<ViewName>("loading");
@@ -47,23 +51,31 @@ export const App: React.FC = () => {
       setVoiceChecked(true);
       return;
     }
-    session
-      .get("voicePanelContext")
-      .then((data) => {
-        const ctx = (data?.voicePanelContext as VoicePanelContext) ?? null;
+    Promise.all([
+      session
+        .get("voicePanelContext")
+        .then(
+          (data) =>
+            (data?.voicePanelContext as VoicePanelContext | null) ?? null,
+        )
+        .catch(() => null),
+      session
+        .get("pendingVoiceCall")
+        .then((data) => Boolean(data?.pendingVoiceCall))
+        .catch(() => false),
+    ])
+      .then(([ctx, pending]) => {
         setVoiceContext(ctx);
-      })
-      .catch(() => {
-        // No stored context — fall through to regular router.
+        setHasPendingVoiceCall(pending);
       })
       .finally(() => setVoiceChecked(true));
   }, []);
 
   useEffect(() => {
-    if (voiceChecked && !voiceContext) {
+    if (voiceChecked && !voiceContext && !hasPendingVoiceCall) {
       checkAuth();
     }
-  }, [voiceChecked, voiceContext]);
+  }, [voiceChecked, voiceContext, hasPendingVoiceCall]);
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -192,7 +204,7 @@ export const App: React.FC = () => {
       </div>
     );
   }
-  if (voiceContext) {
+  if (voiceContext || hasPendingVoiceCall) {
     return <VoiceView context={voiceContext} />;
   }
 
