@@ -471,445 +471,472 @@ const AppRoutes = () => {
                 {/* ♿ Skip Link pour l'accessibilité */}
                 <SkipLink targetId="main-content" />
 
-              {/* 🔮 Prefetcher intelligent */}
-              <RoutePrefetcher />
+                {/* 🔮 Prefetcher intelligent */}
+                <RoutePrefetcher />
 
-              <ErrorBoundary>
-                <Routes>
-                  {/* Routes publiques */}
-                  <Route path="/" element={<HomeRoute />} />
+                <ErrorBoundary>
+                  <Routes>
+                    {/* Routes publiques */}
+                    <Route path="/" element={<HomeRoute />} />
 
-                  <Route
-                    path="/login"
-                    element={
-                      <RouteErrorBoundary variant="full" componentName="Login">
-                        <Suspense fallback={<PageSkeleton variant="simple" />}>
-                          <Login />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/auth/callback"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="AuthCallback"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="simple" />}>
-                          <AuthCallback />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/legal/cgu"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="LegalCGU"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="full" />}>
-                          <LegalCGU />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/legal/cgv"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="LegalCGV"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="full" />}>
-                          <LegalCGV />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/legal/privacy"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="PrivacyPolicy"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="full" />}>
-                          <PrivacyPolicy />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/legal"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="LegalPage"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="full" />}>
-                          <LegalPage />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/status"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="StatusPage"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="simple" />}>
-                          <StatusPage />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/contact"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="ContactPage"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="full" />}>
-                          <ContactPage />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/about"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="AboutPage"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="full" />}>
-                          <AboutPage />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/payment/success"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="PaymentSuccess"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="simple" />}>
-                          <PaymentSuccess />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/payment/cancel"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="PaymentCancel"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="simple" />}>
-                          <PaymentCancel />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/api-docs"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="ApiDocsPage"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="full" />}>
-                          <ApiDocsPage />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  <Route
-                    path="/s/:shareToken"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="SharedAnalysisPage"
-                      >
-                        <Suspense fallback={<PageSkeleton variant="simple" />}>
-                          <SharedAnalysisPage />
-                        </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
-
-                  {/* Routes protégées */}
-                  <Route
-                    element={
-                      <PrivateRoute>
-                        <ProtectedLayout />
-                      </PrivateRoute>
-                    }
-                  >
                     <Route
-                      path="/dashboard"
+                      path="/login"
                       element={
                         <RouteErrorBoundary
                           variant="full"
-                          componentName="DashboardPage"
-                          showDetails
+                          componentName="Login"
                         >
                           <Suspense
-                            fallback={<PageSkeleton variant="dashboard" />}
+                            fallback={<PageSkeleton variant="simple" />}
                           >
-                            <DashboardPage />
+                            <Login />
                           </Suspense>
                         </RouteErrorBoundary>
                       }
                     />
 
                     <Route
-                      path="/playlists"
-                      element={<Navigate to="/debate" replace />}
-                    />
-
-                    <Route
-                      path="/playlist/:id"
+                      path="/auth/callback"
                       element={
-                        <Suspense
-                          fallback={<PageSkeleton variant="dashboard" />}
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="AuthCallback"
                         >
-                          <PlaylistDetailPage />
-                        </Suspense>
+                          <Suspense
+                            fallback={<PageSkeleton variant="simple" />}
+                          >
+                            <AuthCallback />
+                          </Suspense>
+                        </RouteErrorBoundary>
                       }
                     />
 
                     <Route
-                      path="/history"
+                      path="/legal/cgu"
                       element={
                         <RouteErrorBoundary
                           variant="full"
-                          componentName="History"
+                          componentName="LegalCGU"
                         >
                           <Suspense fallback={<PageSkeleton variant="full" />}>
-                            <History />
+                            <LegalCGU />
                           </Suspense>
                         </RouteErrorBoundary>
                       }
                     />
 
                     <Route
-                      path="/upgrade"
+                      path="/legal/cgv"
                       element={
                         <RouteErrorBoundary
                           variant="full"
-                          componentName="UpgradePage"
-                        >
-                          <Suspense fallback={<PageSkeleton variant="form" />}>
-                            <UpgradePage />
-                          </Suspense>
-                        </RouteErrorBoundary>
-                      }
-                    />
-
-                    <Route
-                      path="/usage"
-                      element={
-                        <RouteErrorBoundary
-                          variant="full"
-                          componentName="UsageDashboard"
-                        >
-                          <Suspense
-                            fallback={<PageSkeleton variant="dashboard" />}
-                          >
-                            <UsageDashboard />
-                          </Suspense>
-                        </RouteErrorBoundary>
-                      }
-                    />
-
-                    <Route
-                      path="/analytics"
-                      element={
-                        <Suspense
-                          fallback={<PageSkeleton variant="dashboard" />}
-                        >
-                          <AnalyticsPage />
-                        </Suspense>
-                      }
-                    />
-
-                    <Route
-                      path="/settings"
-                      element={
-                        <RouteErrorBoundary
-                          variant="full"
-                          componentName="Settings"
-                        >
-                          <Suspense fallback={<PageSkeleton variant="form" />}>
-                            <Settings />
-                          </Suspense>
-                        </RouteErrorBoundary>
-                      }
-                    />
-
-                    <Route
-                      path="/account"
-                      element={
-                        <RouteErrorBoundary
-                          variant="full"
-                          componentName="MyAccount"
-                        >
-                          <Suspense fallback={<PageSkeleton variant="form" />}>
-                            <MyAccount />
-                          </Suspense>
-                        </RouteErrorBoundary>
-                      }
-                    />
-
-                    <Route
-                      path="/admin"
-                      element={
-                        <RouteErrorBoundary
-                          variant="full"
-                          componentName="AdminPage"
-                        >
-                          <Suspense
-                            fallback={<PageSkeleton variant="dashboard" />}
-                          >
-                            <AdminPage />
-                          </Suspense>
-                        </RouteErrorBoundary>
-                      }
-                    />
-
-                    <Route
-                      path="/chat"
-                      element={
-                        <RouteErrorBoundary
-                          variant="full"
-                          componentName="ChatPage"
+                          componentName="LegalCGV"
                         >
                           <Suspense fallback={<PageSkeleton variant="full" />}>
-                            <ChatPage />
+                            <LegalCGV />
                           </Suspense>
                         </RouteErrorBoundary>
                       }
                     />
 
                     <Route
-                      path="/study"
+                      path="/legal/privacy"
                       element={
                         <RouteErrorBoundary
                           variant="full"
-                          componentName="StudyHubPage"
+                          componentName="PrivacyPolicy"
                         >
-                          <Suspense
-                            fallback={<PageSkeleton variant="dashboard" />}
-                          >
-                            <StudyHubPage />
+                          <Suspense fallback={<PageSkeleton variant="full" />}>
+                            <PrivacyPolicy />
                           </Suspense>
                         </RouteErrorBoundary>
                       }
                     />
 
                     <Route
-                      path="/study/:summaryId"
-                      element={
-                        <Suspense
-                          fallback={<PageSkeleton variant="dashboard" />}
-                        >
-                          <StudyPage />
-                        </Suspense>
-                      }
-                    />
-
-                    <Route
-                      path="/debate"
+                      path="/legal"
                       element={
                         <RouteErrorBoundary
                           variant="full"
-                          componentName="DebatePage"
+                          componentName="LegalPage"
                         >
-                          <Suspense
-                            fallback={<PageSkeleton variant="dashboard" />}
-                          >
-                            <DebatePage />
+                          <Suspense fallback={<PageSkeleton variant="full" />}>
+                            <LegalPage />
                           </Suspense>
                         </RouteErrorBoundary>
                       }
                     />
 
                     <Route
-                      path="/debate/:id"
+                      path="/status"
                       element={
                         <RouteErrorBoundary
                           variant="full"
-                          componentName="DebatePage"
+                          componentName="StatusPage"
                         >
                           <Suspense
-                            fallback={<PageSkeleton variant="dashboard" />}
+                            fallback={<PageSkeleton variant="simple" />}
                           >
-                            <DebatePage />
+                            <StatusPage />
                           </Suspense>
                         </RouteErrorBoundary>
                       }
                     />
-                  </Route>
 
-                  {/* Extension Welcome — post-install landing */}
-                  <Route
-                    path="/extension-welcome"
-                    element={
-                      <RouteErrorBoundary
-                        variant="full"
-                        componentName="ExtensionWelcome"
-                      >
+                    <Route
+                      path="/contact"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="ContactPage"
+                        >
+                          <Suspense fallback={<PageSkeleton variant="full" />}>
+                            <ContactPage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/about"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="AboutPage"
+                        >
+                          <Suspense fallback={<PageSkeleton variant="full" />}>
+                            <AboutPage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/payment/success"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="PaymentSuccess"
+                        >
+                          <Suspense
+                            fallback={<PageSkeleton variant="simple" />}
+                          >
+                            <PaymentSuccess />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/payment/cancel"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="PaymentCancel"
+                        >
+                          <Suspense
+                            fallback={<PageSkeleton variant="simple" />}
+                          >
+                            <PaymentCancel />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/api-docs"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="ApiDocsPage"
+                        >
+                          <Suspense fallback={<PageSkeleton variant="full" />}>
+                            <ApiDocsPage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/s/:shareToken"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="SharedAnalysisPage"
+                        >
+                          <Suspense
+                            fallback={<PageSkeleton variant="simple" />}
+                          >
+                            <SharedAnalysisPage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    {/* Routes protégées */}
+                    <Route
+                      element={
+                        <PrivateRoute>
+                          <ProtectedLayout />
+                        </PrivateRoute>
+                      }
+                    >
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="DashboardPage"
+                            showDetails
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="dashboard" />}
+                            >
+                              <DashboardPage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/playlists"
+                        element={<Navigate to="/debate" replace />}
+                      />
+
+                      <Route
+                        path="/playlist/:id"
+                        element={
+                          <Suspense
+                            fallback={<PageSkeleton variant="dashboard" />}
+                          >
+                            <PlaylistDetailPage />
+                          </Suspense>
+                        }
+                      />
+
+                      <Route
+                        path="/history"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="History"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="full" />}
+                            >
+                              <History />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/upgrade"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="UpgradePage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="form" />}
+                            >
+                              <UpgradePage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/usage"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="UsageDashboard"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="dashboard" />}
+                            >
+                              <UsageDashboard />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/analytics"
+                        element={
+                          <Suspense
+                            fallback={<PageSkeleton variant="dashboard" />}
+                          >
+                            <AnalyticsPage />
+                          </Suspense>
+                        }
+                      />
+
+                      <Route
+                        path="/settings"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="Settings"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="form" />}
+                            >
+                              <Settings />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/account"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="MyAccount"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="form" />}
+                            >
+                              <MyAccount />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/admin"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="AdminPage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="dashboard" />}
+                            >
+                              <AdminPage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/chat"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="ChatPage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="full" />}
+                            >
+                              <ChatPage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/study"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="StudyHubPage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="dashboard" />}
+                            >
+                              <StudyHubPage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/study/:summaryId"
+                        element={
+                          <Suspense
+                            fallback={<PageSkeleton variant="dashboard" />}
+                          >
+                            <StudyPage />
+                          </Suspense>
+                        }
+                      />
+
+                      <Route
+                        path="/debate"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="DebatePage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="dashboard" />}
+                            >
+                              <DebatePage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/debate/:id"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="DebatePage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="dashboard" />}
+                            >
+                              <DebatePage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+                    </Route>
+
+                    {/* Extension Welcome — post-install landing */}
+                    <Route
+                      path="/extension-welcome"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="ExtensionWelcome"
+                        >
+                          <Suspense
+                            fallback={<PageSkeleton variant="simple" />}
+                          >
+                            <ExtensionWelcomePage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    {/* 404 Page */}
+                    <Route
+                      path="*"
+                      element={
                         <Suspense fallback={<PageSkeleton variant="simple" />}>
-                          <ExtensionWelcomePage />
+                          <NotFoundPage />
                         </Suspense>
-                      </RouteErrorBoundary>
-                    }
-                  />
+                      }
+                    />
+                  </Routes>
+                </ErrorBoundary>
 
-                  {/* 404 Page */}
-                  <Route
-                    path="*"
-                    element={
-                      <Suspense fallback={<PageSkeleton variant="simple" />}>
-                        <NotFoundPage />
-                      </Suspense>
-                    }
-                  />
-                </Routes>
-              </ErrorBoundary>
+                <CrispChat />
 
-              <CrispChat />
+                {/* 🔒 Modal upgrade global (403/429 interceptor) — wrapped to prevent crash */}
+                <ErrorBoundary fallback={null}>
+                  <UpgradeModal />
+                </ErrorBoundary>
 
-              {/* 🔒 Modal upgrade global (403/429 interceptor) — wrapped to prevent crash */}
-              <ErrorBoundary fallback={null}>
-                <UpgradeModal />
-              </ErrorBoundary>
-
-              {/* 🍪 RGPD: Cookie consent banner — wrapped to prevent crash */}
-              <ErrorBoundary fallback={null}>
-                <CookieBanner />
-              </ErrorBoundary>
+                {/* 🍪 RGPD: Cookie consent banner — wrapped to prevent crash */}
+                <ErrorBoundary fallback={null}>
+                  <CookieBanner />
+                </ErrorBoundary>
               </AmbientLightingProvider>
             </Router>
           </TTSProvider>

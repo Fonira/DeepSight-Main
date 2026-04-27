@@ -345,11 +345,11 @@ export function SuggestionPills({ suggestions }: Props): JSX.Element { ... }
 
 Set effectivement livré, ajusté pour ne pas dupliquer le bouton « Analyser » primaire et pour rester compatible avec `MainView` V3 actuel (qui n'expose pas encore `cacheStatus`) :
 
-| Pill                | Action  | Comportement                                                              |
-| ------------------- | ------- | ------------------------------------------------------------------------- |
-| 🎴 Créer flashcards | CTA web | ouvre `${WEBAPP_URL}/study/${video.videoId}` dans un nouvel onglet        |
-| 🔍 Voir sources     | CTA web | ouvre `${WEBAPP_URL}/library` (lien générique vers la bibliothèque)       |
-| 🌐 Ouvrir dans l'app | CTA web | ouvre `${WEBAPP_URL}/` (page d'accueil app web)                          |
+| Pill                 | Action  | Comportement                                                        |
+| -------------------- | ------- | ------------------------------------------------------------------- |
+| 🎴 Créer flashcards  | CTA web | ouvre `${WEBAPP_URL}/study/${video.videoId}` dans un nouvel onglet  |
+| 🔍 Voir sources      | CTA web | ouvre `${WEBAPP_URL}/library` (lien générique vers la bibliothèque) |
+| 🌐 Ouvrir dans l'app | CTA web | ouvre `${WEBAPP_URL}/` (page d'accueil app web)                     |
 
 **Décisions d'ajustement v1** :
 

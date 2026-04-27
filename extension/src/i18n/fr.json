@@ -211,6 +211,58 @@
   "results": {
     "backToAnalysis": "Nouvelle analyse"
   },
+  "voiceCall": {
+    "buttonLabel": "Appel rapide",
+    "buttonAriaLabel": "Lancer un appel vocal avec un agent IA sur cette vidéo",
+    "buttonLabelFloating": "🎙️ Appeler la vidéo",
+    "trialBadge": "1 essai gratuit",
+    "trialUsed": "Essai utilisé",
+    "trialUsedTitle": "Essai utilisé — passer en Expert",
+    "minutesRemaining": "{count} min restantes",
+    "upgradeBadge": "Passer en Expert",
+    "connecting": {
+      "title": "Connexion à l'agent…",
+      "subtitle": "DeepSight commence à analyser la vidéo en parallèle. L'appel démarre dans une seconde.",
+      "ariaStatus": "Connexion vocale en cours"
+    },
+    "callActive": {
+      "live": "En appel",
+      "mute": "🔇 Mute",
+      "hangup": "📞 Raccrocher",
+      "muteAriaLabel": "Couper le micro",
+      "hangupAriaLabel": "Terminer l'appel"
+    },
+    "ctxBar": {
+      "inProgress": "Analyse en cours · {percent}% du transcript reçu",
+      "complete": "Analyse complète",
+      "ariaInProgress": "Progression analyse vidéo : {percent} pourcent",
+      "ariaComplete": "Analyse vidéo complète"
+    },
+    "upgradeCta": {
+      "trialUsedHeadline": "Tu as adoré ?",
+      "monthlyQuotaHeadline": "Tu as épuisé ton quota",
+      "proNoVoiceHeadline": "Voice call exclusif Expert",
+      "headlineSuffix": "Continue avec 30 min/mois",
+      "trialUsedBody": "Tu viens d'utiliser ton essai gratuit. Upgrade vers Expert pour appeler n'importe quelle vidéo, autant que tu veux.",
+      "monthlyQuotaBody": "Tu as utilisé tes 30 min de voice call ce mois-ci. Patience jusqu'au mois prochain… ou upgrade pour plus.",
+      "proNoVoiceBody": "Le voice call est inclus uniquement dans le plan Expert (30 min/mois).",
+      "planName": "Expert",
+      "planPrice": "14.99€",
+      "planPeriod": "/mois",
+      "feature1": "✓ 30 min de voice call/mois",
+      "feature2": "✓ Analyses illimitées",
+      "feature3": "✓ Mind maps, web search, exports",
+      "ctaPrimary": "Passer en Expert →",
+      "ctaDismiss": "Continuer en Free (sans voice)"
+    },
+    "errors": {
+      "micPermission": "Permission micro requise.",
+      "callEnded": "Appel terminé.",
+      "genericPrefix": "Erreur :",
+      "close": "Fermer",
+      "connectingTimeout": "Délai de connexion dépassé. Vérifie ta connexion."
+    }
+  },
   "promos": {
     "free": [
       {

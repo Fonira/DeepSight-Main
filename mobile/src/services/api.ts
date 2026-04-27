@@ -2004,7 +2004,8 @@ export const voiceApi = {
 
     // Nouveau format objet.
     const body: Record<string, unknown> = {
-      agent_type: arg1.agent_type ?? (arg1.summary_id ? "explorer" : "companion"),
+      agent_type:
+        arg1.agent_type ?? (arg1.summary_id ? "explorer" : "companion"),
       language: arg1.language ?? "fr",
     };
     if (arg1.summary_id !== undefined && arg1.summary_id !== null) {

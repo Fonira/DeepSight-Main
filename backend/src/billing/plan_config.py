@@ -140,6 +140,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
+                "voice_call_quick": True,  # Quick Voice Call V1 — 1-shot lifetime trial
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
@@ -157,6 +158,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
+                "voice_call_quick": True,  # Quick Voice Call V1 — 1-shot lifetime trial
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
@@ -174,6 +176,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
+                "voice_call_quick": True,  # Quick Voice Call V1 — 1-shot lifetime trial
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
@@ -267,6 +270,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
+                "voice_call_quick": False,  # Quick Voice Call: CTA-only — upgrade to Pro
                 "debate": True,
                 "deep_research": False,
                 "geo": True,
@@ -284,6 +288,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
+                "voice_call_quick": False,  # Quick Voice Call: CTA-only — upgrade to Pro
                 "debate": False,
                 "deep_research": False,
                 "geo": True,
@@ -301,6 +306,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
+                "voice_call_quick": False,  # Quick Voice Call: CTA-only — upgrade to Pro
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
@@ -397,6 +403,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": True,
                 "history": True,
                 "voice_chat": True,
+                "voice_call_quick": True,  # Quick Voice Call V1 — 30 min/mois
                 "debate": True,
                 "deep_research": True,
                 "geo": True,
@@ -414,6 +421,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": True,
                 "history": True,
                 "voice_chat": True,
+                "voice_call_quick": True,  # Quick Voice Call V1 — 30 min/mois
                 "debate": False,
                 "deep_research": False,
                 "geo": True,
@@ -431,6 +439,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
+                "voice_call_quick": True,  # Quick Voice Call V1 — 30 min/mois
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
@@ -544,6 +553,51 @@ def is_feature_available(plan_id: str, feature: str, platform: str = "web") -> b
     """Vérifie si une feature est disponible pour un plan sur une plateforme."""
     platform_features = get_platform_features(plan_id, platform)
     return platform_features.get(feature, False)
+
+
+# ─── Quick Voice Call (V1) — capability matrix ───────────────────────────
+#
+# Spec § f maps each plan to a (policy, value) tuple. Decoupled from the
+# boolean `is_feature_available` because the policy carries semantic info
+# the frontend uses to surface the right CTA / counter (trial badge,
+# upgrade card, monthly minutes remaining indicator).
+#
+# Plan label mapping (spec ↔ current SSOT):
+#   spec "free"   ↔ current `free`
+#   spec "pro"    ↔ current `plus` (intermediate paid — CTA upgrade)
+#   spec "expert" ↔ current `pro` (premium tier — 30 min/mois)
+#
+# `expert` is also accepted as an alias to current `pro` so the spec's
+# literal terminology continues to work.
+
+VOICE_CALL_QUICK_CAPABILITY: dict[str, tuple[str, int | None]] = {
+    "free": ("trial_only", 3),
+    "plus": ("upgrade_cta", None),
+    "pro": ("monthly_minutes", 30),
+    # Aliases preserving spec terminology
+    "expert": ("monthly_minutes", 30),
+    "etudiant": ("upgrade_cta", None),
+    "starter": ("upgrade_cta", None),
+    "student": ("upgrade_cta", None),
+    "equipe": ("monthly_minutes", 30),
+    "team": ("monthly_minutes", 30),
+    "unlimited": ("monthly_minutes", 30),
+}
+
+
+def get_voice_call_quick_capability(plan_id: str) -> tuple[str, int | None]:
+    """Return the Quick Voice Call (V1) capability tuple for ``plan_id``.
+
+    Returns one of :
+      * ``("trial_only", 3)``       → 1-shot 3-min lifetime trial
+      * ``("upgrade_cta", None)``   → blocked, CTA upgrade to premium
+      * ``("monthly_minutes", 30)`` → 30 min per rolling 30-day window
+
+    Unknown plans default to the Free policy.
+    """
+    if not plan_id:
+        return VOICE_CALL_QUICK_CAPABILITY["free"]
+    return VOICE_CALL_QUICK_CAPABILITY.get(plan_id.lower(), VOICE_CALL_QUICK_CAPABILITY["free"])
 
 
 def get_plan_index(plan_id: str) -> int:

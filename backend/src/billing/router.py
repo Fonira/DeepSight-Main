@@ -21,6 +21,7 @@ from db.database import (
     Summary,
     ChatMessage,
     AdminLog,
+    VoiceQuotaStreaming,
 )
 from auth.dependencies import get_current_user, get_current_user_optional
 from core.config import STRIPE_CONFIG, FRONTEND_URL, get_stripe_key
@@ -442,6 +443,29 @@ async def get_my_plan(
     )
     web_searches_this_month: int = ws_q.scalar() or 0
 
+    # ── Voice quota A+D (Quick Voice Call I4) ──
+    # Expose lifetime_trial_used (Free) + monthly_minutes_used (Expert) pour
+    # que l'extension puisse afficher des badges honnêtes ("Essai utilisé"
+    # vs "X min restantes") sans appeler un endpoint séparé. Backend reste
+    # SoT au moment du POST /voice/session pour le quota check strict.
+    voice_quota_q = await session.execute(
+        select(VoiceQuotaStreaming).where(
+            VoiceQuotaStreaming.user_id == current_user.id
+        )
+    )
+    voice_quota_row = voice_quota_q.scalar_one_or_none()
+    voice_quota_payload: dict[str, Any] = {
+        "trial_used": False,
+        "monthly_minutes_used": 0.0,
+    }
+    if voice_quota_row is not None:
+        voice_quota_payload["trial_used"] = bool(
+            voice_quota_row.lifetime_trial_used
+        )
+        voice_quota_payload["monthly_minutes_used"] = float(
+            voice_quota_row.monthly_minutes_used or 0.0
+        )
+
     # ── Subscription status ──
     subscription_info: dict[str, Any] = {
         "status": "none",
@@ -470,6 +494,7 @@ async def get_my_plan(
             "web_searches_this_month": web_searches_this_month,
         },
         "subscription": subscription_info,
+        "voice_quota": voice_quota_payload,
     }
 
 

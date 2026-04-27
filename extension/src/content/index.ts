@@ -14,8 +14,50 @@
 //   3. popstate listener catches back/forward navigation.
 
 import { detectPlatform } from "../utils/video";
+import { YouTubeAudioController } from "./youtubeAudioController";
+import {
+  injectVoiceCallButton,
+  removeVoiceCallButton,
+} from "./voiceCallInjector";
+
+// Audio ducking pendant les voice calls — instance unique par tab.
+const audioController = new YouTubeAudioController();
+// Defensive : `chrome.runtime.onMessage` peut ne pas exister dans certains
+// contextes de test où le mock chrome est minimaliste.
+if (chrome?.runtime?.onMessage?.addListener) {
+  chrome.runtime.onMessage.addListener((msg: { type?: string }) => {
+    if (msg?.type === "DUCK_AUDIO") audioController.attach();
+    if (msg?.type === "RESTORE_AUDIO") audioController.detach();
+  });
+}
 
 let lastUrl = location.href;
+
+/**
+ * Vérifie si l'URL est une page YouTube watch (`/watch`). On exclut TikTok
+ * pour V1 — l'injection se fait uniquement sur YouTube.
+ */
+const isYouTubeWatchUrl = (url: string): boolean => {
+  try {
+    const u = new URL(url);
+    return /(?:^|\.)youtube\.com$/.test(u.hostname) && u.pathname === "/watch";
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Synchronise la présence du bouton Quick Voice Call avec l'URL courante :
+ * - sur /watch → injecte (idempotent côté injector)
+ * - ailleurs   → retire si présent
+ */
+const syncVoiceCallButton = (url: string): void => {
+  if (isYouTubeWatchUrl(url)) {
+    void injectVoiceCallButton();
+  } else {
+    removeVoiceCallButton();
+  }
+};
 
 const notifyUrlChange = (): void => {
   const url = location.href;
@@ -29,6 +71,7 @@ const notifyUrlChange = (): void => {
     .catch(() => {
       // Service worker may not be ready — silently ignored.
     });
+  syncVoiceCallButton(url);
 };
 
 let throttleTimer: number | null = null;
@@ -53,3 +96,6 @@ chrome.runtime
     payload: { url: lastUrl, platform: detectPlatform(lastUrl) },
   })
   .catch(() => {});
+
+// Initial injection if landing directly on a watch page.
+syncVoiceCallButton(lastUrl);

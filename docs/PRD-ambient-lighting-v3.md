@@ -37,13 +37,13 @@ L'éclairage ambient v2 améliorait nettement la v1 (48 keyframes vs 6 phases) m
 
 ## 4. User stories
 
-| Persona                 | Story                                                                                                            |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Étudiante du soir (22h) | "Quand j'ouvre DeepSight la nuit, le tournesol luit doucement et le rayon est bleu — l'app a une âme calme"      |
-| Pro qui bosse 12h-14h   | "Le rayon midi traverse précisément l'écran, le tournesol suit le soleil — c'est subtil mais ça vit"             |
-| Power user quotidien    | "Chaque jour la lumière a un angle légèrement différent — cumul d'angle + mood, je remarque l'app vit"           |
-| User sensible mouvement | "Je peux désactiver le rayon dans les préférences — pas besoin de toucher prefers-reduced-motion système"        |
-| Designer interne        | "Le sprite est rendu offline, je peux le re-générer en lançant le pipeline Three.js — pas de coût runtime"       |
+| Persona                 | Story                                                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Étudiante du soir (22h) | "Quand j'ouvre DeepSight la nuit, le tournesol luit doucement et le rayon est bleu — l'app a une âme calme" |
+| Pro qui bosse 12h-14h   | "Le rayon midi traverse précisément l'écran, le tournesol suit le soleil — c'est subtil mais ça vit"        |
+| Power user quotidien    | "Chaque jour la lumière a un angle légèrement différent — cumul d'angle + mood, je remarque l'app vit"      |
+| User sensible mouvement | "Je peux désactiver le rayon dans les préférences — pas besoin de toucher prefers-reduced-motion système"   |
+| Designer interne        | "Le sprite est rendu offline, je peux le re-générer en lançant le pipeline Three.js — pas de coût runtime"  |
 
 ## 5. Functional requirements
 
@@ -89,15 +89,15 @@ L'éclairage ambient v2 améliorait nettement la v1 (48 keyframes vs 6 phases) m
 
 ## 6. Non-functional requirements
 
-| Catégorie      | Requirement                                                       |
-| -------------- | ----------------------------------------------------------------- |
-| Performance    | < 1ms par appel `getAmbientPresetV3`                              |
-| Bundle size    | Engine < 5KB gzipped + sprites ~150KB total                       |
+| Catégorie      | Requirement                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------- |
+| Performance    | < 1ms par appel `getAmbientPresetV3`                                                        |
+| Bundle size    | Engine < 5KB gzipped + sprites ~150KB total                                                 |
 | Accessibility  | Respect prefers-reduced-motion (web/ext) + AccessibilityInfo (mobile) + toggle user opt-out |
-| Tests          | ≥ 50 tests unitaires sur engine v3, 100% green                    |
-| Cross-platform | Sortie identique sur web/mobile/extension pour même Date          |
-| Determinism    | Même date = même preset, dates différentes = angles différents    |
-| Lisibilité     | Texte blanc cassé sur toutes les palettes, contraste AA min       |
+| Tests          | ≥ 50 tests unitaires sur engine v3, 100% green                                              |
+| Cross-platform | Sortie identique sur web/mobile/extension pour même Date                                    |
+| Determinism    | Même date = même preset, dates différentes = angles différents                              |
+| Lisibilité     | Texte blanc cassé sur toutes les palettes, contraste AA min                                 |
 
 ## 7. Acceptance criteria
 
@@ -135,23 +135,23 @@ Principaux composants :
 
 ## 10. Timeline (livré)
 
-| Phase | PR    | Date        | Livrable                                                                  |
-| ----- | ----- | ----------- | ------------------------------------------------------------------------- |
-| 1     | #139  | 2026-04-26  | Foundation : engine v3 + sprite pipeline + design tokens                  |
-| 2     | #140  | 2026-04-26  | Web : AmbientLightLayer v3 + SunflowerLayer + critical CSS                |
-| 3     | #144  | 2026-04-26  | Extension : sidepanel + viewer + sprite pipeline                          |
-| 4     | #145  | 2026-04-26  | Mobile : Reanimated 4 + sprite mascot                                     |
-| 5     | #TBD  | 2026-04-26  | Cleanup : suppression v1/v2 legacy + PRD v3 + CHANGELOG                   |
+| Phase | PR   | Date       | Livrable                                                   |
+| ----- | ---- | ---------- | ---------------------------------------------------------- |
+| 1     | #139 | 2026-04-26 | Foundation : engine v3 + sprite pipeline + design tokens   |
+| 2     | #140 | 2026-04-26 | Web : AmbientLightLayer v3 + SunflowerLayer + critical CSS |
+| 3     | #144 | 2026-04-26 | Extension : sidepanel + viewer + sprite pipeline           |
+| 4     | #145 | 2026-04-26 | Mobile : Reanimated 4 + sprite mascot                      |
+| 5     | #TBD | 2026-04-26 | Cleanup : suppression v1/v2 legacy + PRD v3 + CHANGELOG    |
 
 ## 11. Risks & mitigations
 
-| Risk                            | Mitigation                                                            |
-| ------------------------------- | --------------------------------------------------------------------- |
-| Sprite WebP trop gros           | Cap budget total 150KB, recompression possible                        |
-| Reanimated 4 jank background    | AppState listener → pause animation hors foreground                   |
-| Bundle engine grandit           | Mesure post-build, tree-shaking préservé                              |
-| Critical CSS pas synchro        | Tests E2E vérifient l'absence de flash (Playwright)                   |
-| Toggle user oublié              | Persistance per-platform validée, restauré au reload                  |
+| Risk                         | Mitigation                                           |
+| ---------------------------- | ---------------------------------------------------- |
+| Sprite WebP trop gros        | Cap budget total 150KB, recompression possible       |
+| Reanimated 4 jank background | AppState listener → pause animation hors foreground  |
+| Bundle engine grandit        | Mesure post-build, tree-shaking préservé             |
+| Critical CSS pas synchro     | Tests E2E vérifient l'absence de flash (Playwright)  |
+| Toggle user oublié           | Persistance per-platform validée, restauré au reload |
 
 ## 12. Out of scope (volontaire)
 

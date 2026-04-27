@@ -24,6 +24,7 @@ import { LogoutIcon, ExternalLinkIcon } from "../shared/Icons";
 import { SynthesisView } from "../shared/SynthesisView";
 import { ChatView } from "./ChatView";
 import { PromoBanner } from "../components/PromoBanner";
+import { VoiceCallButton } from "../components/VoiceCallButton";
 import { SuggestionPills } from "../components/SuggestionPills";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { BeamCard } from "../shared/BeamCard";
@@ -170,6 +171,19 @@ export const MainView: React.FC<MainViewProps> = ({
 
   const userPlanId = planInfo?.plan_id || user?.plan || "free";
   const nextPlan = t.upsell[userPlanId as keyof typeof t.upsell] || null;
+
+  // Mapping plan backend → plan voice (widget n'accepte que free/pro/expert).
+  // Voice call est une feature Expert : tout le reste retombe sur "free"
+  // (badge essai gratuit ou disabled). Pro reste "pro" pour permettre le CTA
+  // upgrade futur — actuellement le widget ne distingue pas pro.
+  const voicePlan: "free" | "pro" | "expert" =
+    userPlanId === "expert" ? "expert" : userPlanId === "pro" ? "pro" : "free";
+  // [I4] voice_quota exposé par /api/billing/my-plan — si dispo, on s'en sert
+  // pour afficher des badges honnêtes ; sinon valeurs pessimistes par défaut.
+  // Le backend reste SoT au moment du POST /voice/session.
+  const voiceTrialUsed = planInfo?.voice_quota?.trial_used ?? false;
+  const voiceMonthlyMinutesUsed =
+    planInfo?.voice_quota?.monthly_minutes_used ?? 0;
 
   const startQuickChat = useCallback(async () => {
     if (!video) return;
@@ -464,6 +478,19 @@ export const MainView: React.FC<MainViewProps> = ({
               {"✕"}
             </button>
           </div>
+        )}
+
+        {/* Voice Call — visible dès qu'une video est détectée, toutes phases.
+            Killer feature Quick Voice Call : doit rester accessible même
+            pendant analyzing/error/complete (cf. finding I1 audit). */}
+        {video && (
+          <VoiceCallButton
+            plan={voicePlan}
+            trialUsed={voiceTrialUsed}
+            monthlyMinutesUsed={voiceMonthlyMinutesUsed}
+            videoId={video.videoId}
+            videoTitle={video.title}
+          />
         )}
 
         {/* ── Analysis flow (idle / quota / guest exhausted) ─────── */}

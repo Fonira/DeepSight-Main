@@ -73,6 +73,13 @@ class _DeepSightSettings(BaseSettings):
     # 4 workers × 2 req/s = ~8 req/s aggregate, safely under Resend's 10 req/s cap.
     RESEND_RATE_LIMIT_PER_SEC: int = 2
 
+    # -- Quick Voice Call V1 — global kill switch --
+    # Set to "true" to refuse all NEW Quick Voice Call streaming sessions (admin
+    # bypass still works). Used as an emergency lever if ElevenLabs costs spike
+    # or a backend regression slips into prod. Does NOT affect the legacy voice
+    # chat (non-streaming) sessions.
+    VOICE_CALL_DISABLED: str = "false"
+
     # -- Stripe --
     STRIPE_ENABLED: str = "true"
     STRIPE_TEST_MODE: str = "false"
@@ -292,6 +299,15 @@ EMAIL_CONFIG = {
 
 # Resend API rate limit (per-worker, intra-process). See email_rate_limiter.py.
 RESEND_RATE_LIMIT_PER_SEC: int = int(os.getenv("RESEND_RATE_LIMIT_PER_SEC", str(_settings.RESEND_RATE_LIMIT_PER_SEC)))
+
+# =============================================================================
+# VOICE — Quick Voice Call V1
+# =============================================================================
+
+# Emergency kill switch for Quick Voice Call streaming sessions. Admin users
+# bypass this flag (they can still test). Toggle without restart by editing
+# .env.production then `docker compose up -d` (or `docker exec ... reload`).
+VOICE_CALL_DISABLED: bool = _settings.VOICE_CALL_DISABLED.lower() == "true"
 
 # =============================================================================
 # STRIPE

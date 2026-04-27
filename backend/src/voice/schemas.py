@@ -20,10 +20,25 @@ class VoiceSessionRequest(BaseModel):
         default=None, description="ID de l'analyse vidéo (pour agents explorer/tutor/quiz)"
     )
     debate_id: Optional[int] = Field(default=None, description="ID du débat IA (pour agent debate_moderator)")
+    # ── Quick Voice Call (V1) — streaming session entry point ────────────
+    # When ``is_streaming=True``, ``video_id`` is the YouTube ID and the
+    # backend launches the streaming orchestrator (transcript + analysis
+    # pushed via SSE → side panel). The A+D voice quota check applies.
+    video_id: Optional[str] = Field(
+        default=None,
+        description="YouTube video ID for streaming sessions (Quick Voice Call V1)",
+    )
+    is_streaming: bool = Field(
+        default=False,
+        description="True for Quick Voice Call sessions (asynchronous progressive context)",
+    )
     language: str = Field(default="fr", description="Langue (fr, en)")
     agent_type: str = Field(
         default="explorer",
-        description="Type d'agent vocal (explorer, tutor, debate_moderator, quiz_coach, onboarding, companion)",
+        description=(
+            "Type d'agent vocal (explorer, tutor, debate_moderator, quiz_coach, "
+            "onboarding, companion, explorer_streaming)"
+        ),
     )
 
     @model_validator(mode="after")
@@ -85,6 +100,17 @@ class VoiceSessionResponse(BaseModel):
     input_mode: str = "ptt"
     ptt_key: str = " "  # Keyboard key for PTT
     playback_rate: float = 1.0  # Client-side playback rate multiplier
+    # ── Quick Voice Call (V1) — streaming session metadata ───────────────
+    is_streaming: bool = Field(
+        default=False, description="True when this session uses progressive context streaming"
+    )
+    is_trial: bool = Field(
+        default=False, description="True when this is the Free 1-shot lifetime trial (3 min)"
+    )
+    max_minutes: Optional[float] = Field(
+        default=None,
+        description="Hard cap (minutes) enforced by the side panel timer for streaming sessions",
+    )
 
 
 class VoiceQuotaResponse(BaseModel):

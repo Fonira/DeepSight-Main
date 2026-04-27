@@ -13,11 +13,13 @@ Endpoints:
 import asyncio
 import hashlib
 import hmac
+import json
 import logging
 from datetime import datetime
 
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -56,6 +58,13 @@ from voice.quota import (
     deduct_voice_usage,
 )
 from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
+from voice.streaming_orchestrator import (
+    create_default_orchestrator,
+    PUBSUB_CHANNEL_PREFIX,
+)
+from billing.voice_quota import (
+    check_voice_quota as check_voice_quota_streaming,
+)
 from voice.tools import search_in_transcript, get_analysis_section, get_sources, get_flashcards
 from voice.web_tools import web_search, deep_research, check_fact
 from voice.agent_types import get_agent_config, list_agent_types
@@ -135,6 +144,109 @@ async def _increment_user_web_search_count(user_id: int) -> int:
     current = _user_web_search_counts.get(user_id, 0) + 1
     _user_web_search_counts[user_id] = current
     return current
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Quick Voice Call (V1) — Streaming context SSE + Redis pubsub plumbing
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# `get_streaming_redis` returns the shared async Redis client used as pubsub
+# fan-out for `voice:ctx:{session_id}` events. Falls back to None when Redis
+# isn't configured (local dev) — the SSE endpoint surfaces a 503 in that
+# case so the side panel can decide how to degrade.
+
+
+async def get_streaming_redis() -> "object | None":
+    """Return the shared async Redis client (or None when unavailable).
+
+    Used by the Quick Voice Call streaming endpoints. Distinct from the
+    legacy `cache_service` accessor pattern so this dependency stays
+    overridable in tests via FastAPI dependency_overrides.
+    """
+    try:
+        from core.cache import cache_service
+
+        if cache_service._redis_available and cache_service.backend is not None:
+            return cache_service.backend.redis
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Quick Voice Call: Redis unavailable for SSE pubsub: %s", exc)
+    return None
+
+
+async def _get_voice_session(session_id: str, db: AsyncSession) -> VoiceSession | None:
+    """Fetch a voice session by ID (None if not found)."""
+    result = await db.execute(select(VoiceSession).where(VoiceSession.id == session_id))
+    return result.scalar_one_or_none()
+
+
+@router.get("/context/stream")
+async def stream_video_context(
+    session_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+    redis=Depends(get_streaming_redis),
+) -> StreamingResponse:
+    """Server-Sent Events stream of progressive video context for a Quick
+    Voice Call session.
+
+    Subscribes to Redis pubsub channel ``voice:ctx:{session_id}`` and
+    forwards every event as ``event: <type>\\ndata: <json>\\n\\n``. The
+    stream terminates after a ``ctx_complete`` event is forwarded.
+
+    Auth + IDOR :
+      * 401 if no JWT (handled by `get_current_user`)
+      * 404 if session does not exist
+      * 403 if session.user_id != user.id (no info leak via 404 vs 403)
+
+    Events emitted (per spec § c) :
+      * transcript_chunk : {chunk_index, text, total_chunks}
+      * analysis_partial : {section, content}
+      * error            : {phase, message}
+      * ctx_complete     : {final_digest_summary}
+    """
+    session = await _get_voice_session(session_id, db)
+    if session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voice session not found")
+    if session.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    if redis is None:
+        # Streaming context requires Redis pubsub; fail loud so the side
+        # panel can fall back to web_search-only mode (per spec risk table).
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Streaming context backend (Redis pubsub) is unavailable",
+        )
+
+    channel = f"{PUBSUB_CHANNEL_PREFIX}{session_id}"
+
+    async def event_generator():
+        pubsub = redis.pubsub()
+        await pubsub.subscribe(channel)
+        try:
+            async for message in pubsub.listen():
+                # Skip the subscribe ack and any non-message entries
+                if message.get("type") != "message":
+                    continue
+                raw = message.get("data")
+                if isinstance(raw, (bytes, bytearray)):
+                    raw = raw.decode("utf-8", errors="replace")
+                try:
+                    event = json.loads(raw)
+                except (TypeError, ValueError):
+                    logger.warning("Voice ctx stream: dropped malformed pubsub payload on %s", channel)
+                    continue
+                event_type = event.get("type", "message")
+                yield f"event: {event_type}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+                if event_type == "ctx_complete":
+                    break
+        finally:
+            try:
+                await pubsub.unsubscribe(channel)
+            except Exception as unsub_exc:  # noqa: BLE001 — unsub is best-effort
+                logger.debug("Voice ctx stream unsubscribe failed for %s: %s", channel, unsub_exc)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 # ── Spec #1, Task 7 — Rate limit for /transcripts/append ───────────────────
@@ -711,13 +823,23 @@ async def get_voice_catalog():
 @router.post("/session", response_model=VoiceSessionResponse)
 async def create_voice_session(
     request: VoiceSessionRequest,
+    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
+    redis=Depends(get_streaming_redis),
 ):
     """Create a new voice chat session linked to a video analysis.
 
     Supports multiple agent types: explorer, tutor, debate_moderator, quiz_coach, onboarding.
     Agent type determines the system prompt, tools, and voice style.
+
+    Quick Voice Call (V1) — when ``request.is_streaming=True``:
+      * ``video_id`` is required (the YouTube ID being explored).
+      * Voice quota uses the A+D strict matrix (Free 1-shot trial / Pro CTA
+        upgrade / Expert 30 min monthly) instead of the legacy seconds counter.
+      * The streaming orchestrator is launched as a background task to push
+        transcript + analysis events onto the Redis pubsub channel
+        ``voice:ctx:{session_id}``.
     """
     plan = current_user.plan or "free"
 
@@ -730,8 +852,52 @@ async def create_voice_session(
     # ── Resolve agent configuration ──────────────────────────────────────
     agent_config = get_agent_config(request.agent_type)
 
-    # Check plan minimum for this agent type
-    if not is_admin:
+    # ── Quick Voice Call (V1) — streaming session quota branch ──────────
+    streaming_quota = None
+    if request.is_streaming:
+        # Emergency kill switch — refuse new streaming sessions but keep admin
+        # access so the team can debug or finish the call in flight.
+        from core.config import VOICE_CALL_DISABLED
+
+        if VOICE_CALL_DISABLED and not is_admin:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "code": "voice_call_disabled",
+                    "message": "Quick Voice Call est temporairement indisponible. Réessaie dans quelques minutes.",
+                },
+            )
+
+        if not request.video_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "video_id_required",
+                    "message": "video_id required for streaming sessions",
+                },
+            )
+        if not is_admin:
+            streaming_quota = await check_voice_quota_streaming(current_user, db)
+            if not streaming_quota.allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail={
+                        "code": "voice_quota_blocked",
+                        "reason": streaming_quota.reason,
+                        "cta": streaming_quota.cta,
+                        "message": (
+                            "Voice call not available on your plan."
+                            if streaming_quota.reason == "pro_no_voice"
+                            else "Voice trial already used — upgrade to continue."
+                            if streaming_quota.reason == "trial_used"
+                            else "Monthly voice quota exhausted."
+                        ),
+                    },
+                )
+
+    # Check plan minimum for this agent type — skip for streaming because
+    # the A+D quota above already enforced plan gating with a structured 402.
+    if not is_admin and not request.is_streaming:
         plan_order = {
             "free": 0,
             "etudiant": 1,
@@ -756,9 +922,11 @@ async def create_voice_session(
                 },
             )
 
-    # Check plan has voice enabled
+    # Check plan has voice enabled — skip for streaming sessions which use
+    # the new A+D quota model (legacy VOICE_LIMITS doesn't know about the
+    # Free 1-shot trial).
     plan_limits = VOICE_LIMITS.get(plan, VOICE_LIMITS.get("free", {}))
-    if not is_admin:
+    if not is_admin and not request.is_streaming:
         if not plan_limits.get("enabled", False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -823,17 +991,28 @@ async def create_voice_session(
                 },
             )
 
-    # Check voice quota
-    quota_info = await check_voice_quota(current_user.id, plan, db)
-    if not quota_info["can_use"]:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
-                "code": "voice_quota_exceeded",
-                "message": "Voice chat quota exceeded for today.",
-                **quota_info,
-            },
-        )
+    # Check voice quota — legacy seconds counter for non-streaming sessions
+    # only; streaming sessions are gated above by check_voice_quota_streaming.
+    if request.is_streaming:
+        quota_info = {
+            "can_use": True,
+            "seconds_remaining": int((streaming_quota.max_minutes if streaming_quota else 30.0) * 60),
+            "seconds_used": 0,
+            "seconds_limit": int((streaming_quota.max_minutes if streaming_quota else 30.0) * 60),
+            "bonus_seconds": 0,
+            "warning_level": None,
+        }
+    else:
+        quota_info = await check_voice_quota(current_user.id, plan, db)
+        if not quota_info["can_use"]:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "code": "voice_quota_exceeded",
+                    "message": "Voice chat quota exceeded for today.",
+                    **quota_info,
+                },
+            )
 
     # Create voice session in DB
     voice_session = VoiceSession(
@@ -841,6 +1020,7 @@ async def create_voice_session(
         summary_id=request.summary_id,
         debate_id=request.debate_id,
         agent_type=agent_config.agent_type,
+        is_streaming_session=bool(request.is_streaming),
         status="pending",
         started_at=datetime.utcnow(),
     )
@@ -854,8 +1034,29 @@ async def create_voice_session(
             "user_id": current_user.id,
             "summary_id": request.summary_id,
             "session_id": voice_session.id,
+            "is_streaming": bool(request.is_streaming),
         },
     )
+
+    # ── Quick Voice Call (V1) — launch streaming orchestrator ────────────
+    # Background task fans out transcript + Mistral analysis events on
+    # voice:ctx:{session_id} for the SSE endpoint to forward.
+    if request.is_streaming and request.video_id and background_tasks is not None and redis is not None:
+        orchestrator = create_default_orchestrator(redis=redis)
+        background_tasks.add_task(
+            orchestrator.run,
+            session_id=voice_session.id,
+            video_id=request.video_id,
+            user_id=current_user.id,
+        )
+        logger.info(
+            "Quick Voice Call orchestrator scheduled",
+            extra={
+                "session_id": voice_session.id,
+                "video_id": request.video_id,
+                "user_id": current_user.id,
+            },
+        )
 
     # Generate signed URL via ElevenLabs Conversational AI API
     try:
@@ -1160,6 +1361,9 @@ async def create_voice_session(
         input_mode=user_prefs.input_mode,
         ptt_key=user_prefs.ptt_key,
         playback_rate=playback_rate,
+        is_streaming=bool(request.is_streaming),
+        is_trial=bool(streaming_quota.is_trial) if streaming_quota else False,
+        max_minutes=streaming_quota.max_minutes if streaming_quota else None,
     )
 
 

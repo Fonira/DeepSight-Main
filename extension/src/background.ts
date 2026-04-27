@@ -523,12 +523,127 @@ async function openVoicePanel(
   await sidePanel.open({ tabId });
 }
 
+// ── Multi-tab audio ducking (Quick Voice Call N6) ──
+/**
+ * Diffuse un message DUCK_AUDIO ou RESTORE_AUDIO à TOUS les onglets
+ * YouTube ouverts. Utilisé pendant les voice calls pour que le ducking
+ * (volume vidéo à 10%) s'applique à tous les onglets, pas seulement
+ * celui qui a déclenché l'appel.
+ *
+ * Si `senderTabId` est fourni, on l'inclut prioritairement (best-effort
+ * — il est probablement déjà dans la query result de toute façon).
+ */
+async function broadcastVoiceAudioMessage(
+  type: "DUCK_AUDIO" | "RESTORE_AUDIO",
+  senderTabId?: number,
+): Promise<void> {
+  const targetIds = new Set<number>();
+  try {
+    const tabs = await Browser.tabs.query({
+      url: ["https://www.youtube.com/*", "https://youtube.com/*"],
+    });
+    for (const t of tabs) {
+      if (typeof t.id === "number") targetIds.add(t.id);
+    }
+  } catch {
+    /* query failed (rare) — fallback sur le seul senderTabId */
+  }
+  if (senderTabId !== undefined) targetIds.add(senderTabId);
+
+  await Promise.all(
+    [...targetIds].map((tabId) =>
+      Browser.tabs.sendMessage(tabId, { type }).catch(() => {
+        /* tab may have closed */
+      }),
+    ),
+  );
+}
+
 // ── Message Handler ──
 
-async function handleMessage(
-  message: ExtensionMessage,
-  senderTabId?: number,
+/**
+ * Quick Voice Call dispatcher (Task 10) — handles `{ type: "OPEN_VOICE_CALL", … }`
+ * messages emitted from the YouTube widget. Stores the video context in
+ * `chrome.storage.session` (cleared on Chrome restart, secure for ephemeral
+ * intents) then opens the side panel on the originating window.
+ */
+interface VoiceCallMessage {
+  type: "OPEN_VOICE_CALL" | "VOICE_CALL_STARTED" | "VOICE_CALL_ENDED";
+  videoId?: string;
+  videoTitle?: string;
+  /** [N3] Plan utilisateur au moment du clic — propagé à VoiceView. */
+  plan?: "free" | "pro" | "expert";
+}
+
+export async function handleMessage(
+  message: ExtensionMessage | VoiceCallMessage,
+  sender?: chrome.runtime.MessageSender | number,
 ): Promise<MessageResponse> {
+  // Backwards compat: accept either a full sender object (preferred) or a
+  // bare tabId (legacy callers that don't propagate sender).
+  const senderTabId =
+    typeof sender === "number"
+      ? sender
+      : (sender as chrome.runtime.MessageSender | undefined)?.tab?.id;
+
+  // ── Quick Voice Call dispatch (type-based messages) ──
+  const typed = message as VoiceCallMessage;
+  if (typed?.type === "OPEN_VOICE_CALL") {
+    const fullSender = sender as chrome.runtime.MessageSender | undefined;
+    const windowId = fullSender?.tab?.windowId;
+    if (!windowId) return { success: false, error: "No source window" };
+    const sessionStore = (
+      chrome as unknown as {
+        storage: { session?: { set?: (data: unknown) => Promise<void> } };
+      }
+    ).storage.session;
+    const sidePanel = (
+      chrome as unknown as {
+        sidePanel?: {
+          open?: (opts: { windowId: number }) => Promise<void>;
+        };
+      }
+    ).sidePanel;
+    if (sessionStore?.set) {
+      await sessionStore.set({
+        pendingVoiceCall: {
+          videoId: typed.videoId,
+          videoTitle: typed.videoTitle,
+          plan: typed.plan, // [N3] PostHog voice_call_started property.
+        },
+      });
+    }
+    if (sidePanel?.open) {
+      await sidePanel.open({ windowId });
+    }
+    return { success: true };
+  }
+  if (typed?.type === "VOICE_CALL_STARTED") {
+    // [N6] Broadcast DUCK_AUDIO à TOUS les onglets YouTube ouverts (pas
+    // seulement le sender). Sinon, si user a 2 onglets YT, l'onglet B
+    // continue à cracher du son par-dessus l'agent. Best-effort par tab.
+    await broadcastVoiceAudioMessage("DUCK_AUDIO", senderTabId);
+    return { success: true };
+  }
+  if (typed?.type === "VOICE_CALL_ENDED") {
+    // [N6] Idem au RESTORE — restore tous les volumes.
+    await broadcastVoiceAudioMessage("RESTORE_AUDIO", senderTabId);
+    return { success: true };
+  }
+
+  // Narrow vers le shape ExtensionMessage classique pour la suite du switch
+  // (les `case` historiques utilisent `message.data`).
+  return handleExtensionMessage(message as ExtensionMessage, sender);
+}
+
+async function handleExtensionMessage(
+  message: ExtensionMessage,
+  sender?: chrome.runtime.MessageSender | number,
+): Promise<MessageResponse> {
+  const senderTabId =
+    typeof sender === "number"
+      ? sender
+      : (sender as chrome.runtime.MessageSender | undefined)?.tab?.id;
   switch (message.action) {
     case "CHECK_AUTH": {
       if (await isAuthenticated()) {
@@ -680,6 +795,47 @@ async function handleMessage(
       }
     }
 
+    case "GET_VOICE_BUTTON_STATE": {
+      // Donne au content-script ce dont il a besoin pour décider quel
+      // badge afficher sur le bouton 🎙️ Quick Voice Call.
+      //
+      // Si non authentifié → success:false → l'injector n'affiche rien.
+      // [I4] : on tente fetchPlan() pour récupérer voice_quota.{trial_used,
+      // monthly_minutes_used}. Best-effort : si l'appel échoue (réseau / 401),
+      // on retombe sur des valeurs pessimistes (0 / false) plutôt que
+      // bloquer l'injection. Backend reste SoT au POST /voice/session.
+      if (!(await isAuthenticated())) {
+        return { success: false };
+      }
+      const stored = await getStoredUser();
+      if (!stored) {
+        return { success: false };
+      }
+      const planId = stored.plan;
+      const voicePlan: "free" | "pro" | "expert" =
+        planId === "expert" ? "expert" : planId === "pro" ? "pro" : "free";
+      let trialUsed = false;
+      let monthlyMinutesUsed = 0;
+      try {
+        const plan = await fetchPlan();
+        if (plan.voice_quota) {
+          trialUsed = Boolean(plan.voice_quota.trial_used);
+          monthlyMinutesUsed =
+            Number(plan.voice_quota.monthly_minutes_used) || 0;
+        }
+      } catch {
+        // Best-effort : on garde les défauts.
+      }
+      return {
+        success: true,
+        state: {
+          plan: voicePlan,
+          trialUsed,
+          monthlyMinutesUsed,
+        },
+      };
+    }
+
     case "SHARE_ANALYSIS": {
       const { videoId } = message.data as { videoId: string };
       try {
@@ -796,8 +952,10 @@ Browser.runtime.onMessage.addListener(
     sender: Runtime.MessageSender,
     sendResponse: (response: MessageResponse) => void,
   ) => {
-    const senderTabId = sender.tab?.id;
-    handleMessage(message as ExtensionMessage, senderTabId)
+    handleMessage(
+      message as ExtensionMessage,
+      sender as unknown as chrome.runtime.MessageSender,
+    )
       .then(sendResponse)
       .catch((e) => sendResponse({ error: (e as Error).message }));
     return true;

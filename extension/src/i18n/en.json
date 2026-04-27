@@ -211,6 +211,58 @@
   "results": {
     "backToAnalysis": "New analysis"
   },
+  "voiceCall": {
+    "buttonLabel": "Quick call",
+    "buttonAriaLabel": "Start a voice call with an AI agent about this video",
+    "buttonLabelFloating": "🎙️ Call the video",
+    "trialBadge": "1 free trial",
+    "trialUsed": "Trial used",
+    "trialUsedTitle": "Trial used — upgrade to Expert",
+    "minutesRemaining": "{count} min left",
+    "upgradeBadge": "Upgrade to Expert",
+    "connecting": {
+      "title": "Connecting to the agent…",
+      "subtitle": "DeepSight is analyzing the video in parallel. The call starts in a second.",
+      "ariaStatus": "Voice call connecting"
+    },
+    "callActive": {
+      "live": "On call",
+      "mute": "🔇 Mute",
+      "hangup": "📞 Hang up",
+      "muteAriaLabel": "Mute microphone",
+      "hangupAriaLabel": "End call"
+    },
+    "ctxBar": {
+      "inProgress": "Analyzing · {percent}% of transcript received",
+      "complete": "Analysis complete",
+      "ariaInProgress": "Video analysis progress: {percent} percent",
+      "ariaComplete": "Video analysis complete"
+    },
+    "upgradeCta": {
+      "trialUsedHeadline": "Loved it?",
+      "monthlyQuotaHeadline": "You've used your quota",
+      "proNoVoiceHeadline": "Voice call is Expert-only",
+      "headlineSuffix": "Continue with 30 min/mo",
+      "trialUsedBody": "You just used your free trial. Upgrade to Expert to call any video, as much as you want.",
+      "monthlyQuotaBody": "You've used your 30 min of voice call this month. Wait for next month… or upgrade for more.",
+      "proNoVoiceBody": "Voice call is only included in the Expert plan (30 min/month).",
+      "planName": "Expert",
+      "planPrice": "$14.99",
+      "planPeriod": "/mo",
+      "feature1": "✓ 30 min voice call/month",
+      "feature2": "✓ Unlimited analyses",
+      "feature3": "✓ Mind maps, web search, exports",
+      "ctaPrimary": "Upgrade to Expert →",
+      "ctaDismiss": "Stay Free (no voice)"
+    },
+    "errors": {
+      "micPermission": "Microphone permission required.",
+      "callEnded": "Call ended.",
+      "genericPrefix": "Error:",
+      "close": "Close",
+      "connectingTimeout": "Connection timeout. Please check your connection."
+    }
+  },
   "promos": {
     "free": [
       {

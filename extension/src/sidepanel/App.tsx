@@ -4,7 +4,7 @@ import Browser from "../utils/browser-polyfill";
 import { LoginView } from "./views/LoginView";
 import { MainView } from "./views/MainView";
 import { VoiceView } from "./VoiceView";
-import type { VoicePanelContext } from "./types";
+import type { VoicePanelContext, PendingVoiceCall } from "./types";
 import { DeepSightSpinner } from "./shared/DeepSightSpinner";
 import MicroDoodleBackground from "./shared/MicroDoodleBackground";
 import { AmbientLightingProvider } from "./contexts/AmbientLightingContext";
@@ -15,9 +15,25 @@ const AMBIENT_PREF_KEY = "ambient_lighting_enabled";
 
 type ViewName = "loading" | "login" | "main";
 
-type SessionStorage = {
+interface SessionStorage {
   get: (key: string) => Promise<Record<string, unknown>>;
-};
+  remove?: (key: string) => Promise<void>;
+}
+
+interface StorageOnChanged {
+  addListener: (
+    cb: (
+      changes: Record<string, { newValue?: unknown; oldValue?: unknown }>,
+      area: string,
+    ) => void,
+  ) => void;
+  removeListener?: (
+    cb: (
+      changes: Record<string, { newValue?: unknown; oldValue?: unknown }>,
+      area: string,
+    ) => void,
+  ) => void;
+}
 
 function getSessionStorage(): SessionStorage | null {
   const storage = (Browser as unknown as { storage?: Record<string, unknown> })
@@ -28,12 +44,31 @@ function getSessionStorage(): SessionStorage | null {
   return session;
 }
 
+function getStorageOnChanged(): StorageOnChanged | null {
+  const storage = (Browser as unknown as { storage?: Record<string, unknown> })
+    .storage;
+  if (!storage) return null;
+  const onChanged = storage.onChanged as StorageOnChanged | undefined;
+  if (!onChanged?.addListener) return null;
+  return onChanged;
+}
+
 export const App: React.FC = () => {
-  // Voice flow integration (Spec #4): when SW set voicePanelContext in
-  // chrome.storage.session, render VoiceView instead of the regular router.
+  // Voice flow integration (Spec #4 + Quick Voice Call Task 16) :
+  // - `voicePanelContext` (legacy)         → ouvre VoiceView avec context
+  // - `pendingVoiceCall` (Quick Voice Call) → centralisé ici (B4) :
+  //     1. Lecture initiale au mount + suppression immédiate de la clé.
+  //     2. Listener chrome.storage.onChanged pour réagir si le SW set
+  //        la clé après le mount (cas user qui a déjà le sidepanel ouvert
+  //        et clique 🎙️ depuis YouTube — finding I6).
+  //     3. Le payload est passé en prop à VoiceView (qui ne lit plus
+  //        session storage lui-même → fini la race condition StrictMode
+  //        et le bug "double mount = clé déjà supprimée").
   const [voiceContext, setVoiceContext] = useState<VoicePanelContext | null>(
     null,
   );
+  const [pendingVoiceCall, setPendingVoiceCall] =
+    useState<PendingVoiceCall | null>(null);
   const [voiceChecked, setVoiceChecked] = useState(false);
 
   const [view, setView] = useState<ViewName>("loading");
@@ -72,29 +107,70 @@ export const App: React.FC = () => {
       });
   }, []);
 
+  // Initial read at mount + cleanup of the consumed key (B4 centralisation).
   useEffect(() => {
     const session = getSessionStorage();
     if (!session) {
       setVoiceChecked(true);
       return;
     }
-    session
-      .get("voicePanelContext")
-      .then((data) => {
-        const ctx = (data?.voicePanelContext as VoicePanelContext) ?? null;
+    Promise.all([
+      session
+        .get("voicePanelContext")
+        .then(
+          (data) =>
+            (data?.voicePanelContext as VoicePanelContext | null) ?? null,
+        )
+        .catch(() => null),
+      session
+        .get("pendingVoiceCall")
+        .then(
+          (data) =>
+            (data?.pendingVoiceCall as PendingVoiceCall | undefined) ?? null,
+        )
+        .catch(() => null),
+    ])
+      .then(([ctx, pending]) => {
         setVoiceContext(ctx);
-      })
-      .catch(() => {
-        // No stored context — fall through to regular router.
+        if (pending?.videoId) {
+          setPendingVoiceCall(pending);
+          // Suppression best-effort — l'idempotence repose sur la prop
+          // passée à VoiceView, pas sur la présence de la clé en storage.
+          void session.remove?.("pendingVoiceCall").catch(() => {});
+        }
       })
       .finally(() => setVoiceChecked(true));
   }, []);
 
+  // Listener live (I6) — réagit si le SW set pendingVoiceCall après mount.
   useEffect(() => {
-    if (voiceChecked && !voiceContext) {
+    const onChanged = getStorageOnChanged();
+    const session = getSessionStorage();
+    if (!onChanged || !session) return;
+    const listener = (
+      changes: Record<string, { newValue?: unknown; oldValue?: unknown }>,
+      area: string,
+    ) => {
+      if (area !== "session") return;
+      const change = changes["pendingVoiceCall"];
+      if (!change) return;
+      const pending = change.newValue as PendingVoiceCall | undefined;
+      if (pending?.videoId) {
+        setPendingVoiceCall(pending);
+        void session.remove?.("pendingVoiceCall").catch(() => {});
+      }
+    };
+    onChanged.addListener(listener);
+    return () => {
+      onChanged.removeListener?.(listener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (voiceChecked && !voiceContext && !pendingVoiceCall) {
       checkAuth();
     }
-  }, [voiceChecked, voiceContext]);
+  }, [voiceChecked, voiceContext, pendingVoiceCall]);
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -227,12 +303,12 @@ export const App: React.FC = () => {
       </AmbientLightingProvider>
     );
   }
-  if (voiceContext) {
+  if (voiceContext || pendingVoiceCall) {
     return (
       <AmbientLightingProvider enabled={ambientEnabled}>
         <AmbientLightLayer />
         <SunflowerLayer />
-        <VoiceView context={voiceContext} />
+        <VoiceView context={voiceContext} pendingCall={pendingVoiceCall} />
       </AmbientLightingProvider>
     );
   }

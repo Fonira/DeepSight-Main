@@ -17,6 +17,24 @@ export interface VoicePanelContext {
 }
 
 /**
+ * Quick Voice Call (B4) — payload `pendingVoiceCall` consommé par App.tsx.
+ *
+ * Mis en `chrome.storage.session` par le service worker quand l'utilisateur
+ * clique le bouton 🎙️ depuis YouTube. App.tsx lit + supprime + passe en
+ * prop à VoiceView (centralisation pour éviter race condition StrictMode
+ * et re-mount qui perdrait la clé déjà consommée).
+ *
+ * [N3] : `plan` ajouté pour PostHog `voice_call_started` properties (spec
+ * L382 demande de segmenter par plan dans les events analytics).
+ */
+export interface PendingVoiceCall {
+  videoId: string;
+  videoTitle?: string;
+  /** Plan utilisateur au moment du clic (free/pro/expert). */
+  plan?: "free" | "pro" | "expert";
+}
+
+/**
  * Décide du `agent_type` ElevenLabs selon le contexte vidéo :
  * - `explorer` : on a un summary → l'agent peut creuser le contenu analysé
  * - `companion` : pas de summary → l'agent fait du compagnonnage générique
@@ -48,3 +66,31 @@ export type VoiceSessionStatus =
   | "ending"
   | "ended"
   | "error";
+
+// ── Quick Voice Call (Task 16) — phase machine ──
+//
+// State machine de la VoiceView pour le flow Quick Voice Call (V1).
+// Toutes les transitions sont gérées dans `VoiceView.tsx`.
+export type VoiceCallState =
+  | { phase: "idle" }
+  | { phase: "connecting"; videoId: string; videoTitle: string }
+  | {
+      phase: "live_streaming";
+      videoId: string;
+      sessionId: string;
+      startedAt: number;
+    }
+  | {
+      phase: "live_complete";
+      videoId: string;
+      sessionId: string;
+      startedAt: number;
+    }
+  | { phase: "ended_free_cta"; reason: "trial_used" }
+  | { phase: "ended_expert" }
+  | {
+      phase: "error_quota";
+      reason: "trial_used" | "pro_no_voice" | "monthly_quota";
+    }
+  | { phase: "error_mic_permission" }
+  | { phase: "error_generic"; message: string };

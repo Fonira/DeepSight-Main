@@ -8,7 +8,9 @@ import * as path from "path";
 
 interface Manifest {
   manifest_version: number;
+  minimum_chrome_version?: string;
   permissions?: string[];
+  optional_permissions?: string[];
   host_permissions?: string[];
   side_panel?: { default_path?: string };
   content_security_policy?: { extension_pages?: string };
@@ -97,5 +99,25 @@ describe("manifest.json — Spec #4 patches", () => {
 
   it("keeps the popup as default action target", () => {
     expect(manifest.action?.default_popup).toBe("popup.html");
+  });
+
+  // ── Quick Voice Call (B1) — permission micro ──────────────────────────────
+  // Le SDK ElevenLabs appelle `getUserMedia({audio:true})` depuis le side
+  // panel. En MV3, getUserMedia depuis chrome-extension://… est autorisé
+  // par défaut (prompt natif), mais Chrome < 116 a des bugs sur les side
+  // panels. On bumpe minimum_chrome_version + on déclare audioCapture en
+  // optional_permissions pour signaler le besoin au Chrome Web Store.
+  describe("microphone capture (Quick Voice Call B1)", () => {
+    it("bumps minimum_chrome_version to 116+", () => {
+      const min = manifest.minimum_chrome_version;
+      expect(min).toBeDefined();
+      const major = parseInt((min ?? "0").split(".")[0], 10);
+      expect(major).toBeGreaterThanOrEqual(116);
+    });
+
+    it("declares audioCapture in optional_permissions", () => {
+      const opts = manifest.optional_permissions ?? [];
+      expect(opts).toEqual(expect.arrayContaining(["audioCapture"]));
+    });
   });
 });

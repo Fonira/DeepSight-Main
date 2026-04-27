@@ -119,6 +119,16 @@ jest.mock("../../src/i18n/useTranslation", () => ({
         low: "cr.",
       },
       mistral: { badge: "Propulsé par Mistral AI" },
+      voiceCall: {
+        buttonLabel: "Appel rapide",
+        buttonAriaLabel: "Voice call",
+        buttonLabelFloating: "🎙️",
+        trialBadge: "1 essai gratuit",
+        trialUsed: "Essai utilisé",
+        trialUsedTitle: "Essai utilisé — passer en Expert",
+        minutesRemaining: "{count} min restantes",
+        upgradeBadge: "Passer en Expert",
+      },
     },
     language: "fr",
     setLanguage: jest.fn(),
@@ -320,16 +330,21 @@ describe("App — authenticated state", () => {
         },
       }); // GET_PLAN
 
-    // Mock tabs.query for video detection
+    // Mock tabs.query — supporte Promise pattern (Browser polyfill MV3) ET
+    // legacy callback pattern. Sans la garde `if (cb)`, l'appel Browser
+    // polyfill (sans callback) crashait le process Node entier sur
+    // `cb is not a function` après le merge PR #147 SidePanel V3.
     (chrome.tabs.query as jest.Mock).mockImplementation(
-      (_q: unknown, cb: (tabs: unknown[]) => void) => {
-        cb([
+      (_q: unknown, cb?: (tabs: unknown[]) => void) => {
+        const tabs = [
           {
             id: 1,
             url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
             title: "Test Video",
           },
-        ]);
+        ];
+        if (typeof cb === "function") cb(tabs);
+        return Promise.resolve(tabs);
       },
     );
   });
@@ -355,16 +370,19 @@ describe("App — guest mode", () => {
       authenticated: false,
     });
 
-    // Mock tabs.query for video detection
+    // Mock tabs.query — supporte Promise pattern (Browser polyfill MV3) ET
+    // legacy callback. Garde `if (cb)` indispensable post-merge PR #147.
     (chrome.tabs.query as jest.Mock).mockImplementation(
-      (_q: unknown, cb: (tabs: unknown[]) => void) => {
-        cb([
+      (_q: unknown, cb?: (tabs: unknown[]) => void) => {
+        const tabs = [
           {
             id: 1,
             url: "https://www.youtube.com/watch?v=test123",
             title: "Test",
           },
-        ]);
+        ];
+        if (typeof cb === "function") cb(tabs);
+        return Promise.resolve(tabs);
       },
     );
 

@@ -139,11 +139,7 @@ describe("VoiceButton placement (Spec #3)", () => {
 
   it("bottomOffset explicite override le calcul par défaut", () => {
     const { getByLabelText } = render(
-      <VoiceButton
-        summaryId="42"
-        videoTitle="Analyse"
-        bottomOffset={42}
-      />,
+      <VoiceButton summaryId="42" videoTitle="Analyse" bottomOffset={42} />,
     );
 
     const button = getByLabelText(/chat vocal/i);

@@ -60,13 +60,10 @@ export function AmbientLightingProvider({
 
     start();
 
-    const sub = AppState.addEventListener(
-      "change",
-      (state: AppStateStatus) => {
-        if (state === "active") start();
-        else stop();
-      },
-    );
+    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state === "active") start();
+      else stop();
+    });
 
     return () => {
       stop();

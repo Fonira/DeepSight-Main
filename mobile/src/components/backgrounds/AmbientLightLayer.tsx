@@ -56,10 +56,7 @@ export function AmbientLightLayer() {
       style={StyleSheet.absoluteFill}
     >
       {/* Halo — soft top-left glow */}
-      <View
-        pointerEvents="none"
-        style={styles.halo}
-      >
+      <View pointerEvents="none" style={styles.halo}>
         <LinearGradient
           colors={[haloColor, "transparent"]}
           style={styles.haloFill}
@@ -69,10 +66,7 @@ export function AmbientLightLayer() {
       </View>
 
       {/* Beam — horizontal gradient, rotated via Reanimated */}
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.beam, beamStyle]}
-      >
+      <Animated.View pointerEvents="none" style={[styles.beam, beamStyle]}>
         <LinearGradient
           colors={["transparent", beamColor, "transparent"]}
           start={{ x: 0, y: 0.5 }}
