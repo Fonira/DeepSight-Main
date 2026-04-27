@@ -356,23 +356,29 @@ describe("useVoiceChat — apply_with_restart", () => {
     await act(async () => {
       await result.current.start();
     });
-    // Sanity: initial start did call mockStartSession exactly once and set up
-    // the conversation so the listener's `conversationRef.current` guard
-    // passes when apply_with_restart fires.
     const startCallsAfterStart = mockStartSession.mock.calls.length;
     expect(startCallsAfterStart).toBe(1);
     mockEndSession.mockClear();
 
     await act(async () => {
       emitVoicePrefsEvent({ type: "apply_with_restart" });
-      // restart() awaits stop() (calls endSession), then 400ms timer, then
-      // start() — flush all timers + microtasks.
-      await vi.runAllTimersAsync();
+      // restart() awaits stop() (calls endSession), then a 400ms setTimeout,
+      // then start(). Advance just past 400ms — runAllTimersAsync would loop
+      // forever on the 1s session-elapsed interval set up by start().
+      await vi.advanceTimersByTimeAsync(500);
+      // Flush the microtasks introduced by the awaited start() (mocked
+      // import/fetch/startSession all resolve as microtasks).
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
-    // Observable proof that restart() fired: the stop() phase of restart()
-    // calls endSession on the conversation it captured when it began.
+    // restart() must call BOTH endSession (stop phase) and a fresh
+    // startSession (start phase). The latter only fires if the closure trap
+    // in start() is fixed.
     expect(mockEndSession).toHaveBeenCalled();
+    expect(mockStartSession.mock.calls.length).toBeGreaterThan(
+      startCallsAfterStart,
+    );
   });
 
   it("is a no-op when there is no active conversation", async () => {
