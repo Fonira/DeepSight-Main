@@ -308,6 +308,7 @@ const AnalyticsPage = lazyWithRetry(() => import("./pages/AnalyticsPage"));
 const StudyPage = lazyWithRetry(() => import("./pages/StudyPage"));
 const StudyHubPage = lazyWithRetry(() => import("./pages/StudyHubPage"));
 const ChatPage = lazyWithRetry(() => import("./pages/ChatPage"));
+const VoiceCallPage = lazyWithRetry(() => import("./pages/VoiceCallPage"));
 const DebatePage = lazyWithRetry(() => import("./pages/DebatePage"));
 const NotFoundPage = lazyWithRetry(() => import("./pages/NotFoundPage"));
 const ExtensionWelcomePage = lazyWithRetry(
@@ -329,6 +330,7 @@ const PREFETCH_MAP: Record<string, string[]> = {
     "/debate",
     "/analytics",
     "/chat",
+    "/voice-call",
     "/study",
     "/about",
   ],
@@ -350,6 +352,7 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   "/payment/success": () => import("./pages/PaymentSuccess"),
   "/analytics": () => import("./pages/AnalyticsPage"),
   "/chat": () => import("./pages/ChatPage"),
+  "/voice-call": () => import("./pages/VoiceCallPage"),
   "/study": () => import("./pages/StudyHubPage"),
   "/about": () => import("./pages/AboutPage"),
 };
@@ -832,6 +835,22 @@ const AppRoutes = () => {
                               fallback={<PageSkeleton variant="full" />}
                             >
                               <ChatPage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/voice-call"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="VoiceCallPage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="dashboard" />}
+                            >
+                              <VoiceCallPage />
                             </Suspense>
                           </RouteErrorBoundary>
                         }

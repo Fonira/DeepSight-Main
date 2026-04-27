@@ -28,6 +28,7 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { Helmet } from "react-helmet-async";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mic,
@@ -328,177 +329,188 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
   const node = (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          key="voice-overlay"
-          role="dialog"
-          aria-modal="false"
-          aria-label={t.callTitle}
-          initial={{ opacity: 0, x: 32, y: 32 }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          exit={{ opacity: 0, x: 32, y: 32 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
-          data-testid="voice-overlay"
-          className="fixed bottom-6 right-6 w-[380px] max-w-[calc(100vw-32px)] h-[600px] max-h-[calc(100vh-48px)] flex flex-col rounded-2xl shadow-2xl bg-[#0c0c14]/95 backdrop-blur-xl border border-white/10 overflow-hidden"
-          style={{ zIndex: 1000 }}
-        >
-          {/* ── Header ── */}
-          <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06] flex-shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500/30 to-cyan-500/20 border border-white/[0.08] flex items-center justify-center flex-shrink-0">
-                <Mic className="w-4 h-4 text-violet-300" />
+        <>
+          {/* Override page <title> while the overlay is open so the browser
+              tab reflects "Appel vocal" instead of the underlying page. */}
+          <Helmet>
+            <title>
+              {language === "fr"
+                ? "Appel vocal | DeepSight"
+                : "Voice call | DeepSight"}
+            </title>
+          </Helmet>
+          <motion.div
+            key="voice-overlay"
+            role="dialog"
+            aria-modal="false"
+            aria-label={t.callTitle}
+            initial={{ opacity: 0, x: 32, y: 32 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, x: 32, y: 32 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            data-testid="voice-overlay"
+            className="fixed bottom-6 right-6 w-[380px] max-w-[calc(100vw-32px)] h-[600px] max-h-[calc(100vh-48px)] flex flex-col rounded-2xl shadow-2xl bg-[#0c0c14]/95 backdrop-blur-xl border border-white/10 overflow-hidden"
+            style={{ zIndex: 1000 }}
+          >
+            {/* ── Header ── */}
+            <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06] flex-shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500/30 to-cyan-500/20 border border-white/[0.08] flex items-center justify-center flex-shrink-0">
+                  <Mic className="w-4 h-4 text-violet-300" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white/85 truncate leading-tight">
+                    {title || t.callTitle}
+                  </p>
+                  <p className="text-[11px] text-white/40 truncate">
+                    {subtitle ||
+                      (resolvedAgent === "companion" ? t.companion : null)}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-white/85 truncate leading-tight">
-                  {title || t.callTitle}
-                </p>
-                <p className="text-[11px] text-white/40 truncate">
-                  {subtitle ||
-                    (resolvedAgent === "companion" ? t.companion : null)}
-                </p>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen((v) => !v)}
+                  aria-label={t.settings}
+                  aria-expanded={settingsOpen}
+                  aria-controls="voice-overlay-settings-panel"
+                  data-testid="voice-overlay-settings-toggle"
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    settingsOpen
+                      ? "bg-violet-500/20 text-violet-200"
+                      : "hover:bg-white/[0.06] text-white/40 hover:text-white/70"
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  aria-label={t.close}
+                  className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white/70 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
+            </header>
+
+            {/* ── Live settings panel (collapsible) ── */}
+            <AnimatePresence initial={false}>
+              {settingsOpen && (
+                <motion.div
+                  key="voice-overlay-settings"
+                  id="voice-overlay-settings-panel"
+                  data-testid="voice-overlay-settings-panel"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="flex-shrink-0 overflow-hidden"
+                >
+                  <VoiceLiveSettings language={language} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* ── Status + quota row ── */}
+            <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-white/[0.04] flex-shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                {voice.status === "connecting" && (
+                  <Loader2 className="w-3.5 h-3.5 text-cyan-300 animate-spin" />
+                )}
+                {voice.status === "speaking" && (
+                  <Volume2 className="w-3.5 h-3.5 text-violet-300 animate-pulse" />
+                )}
+                {voice.status === "error" && (
+                  <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                )}
+                <span
+                  className={`text-[11px] font-medium truncate ${
+                    voice.status === "error" ? "text-red-300" : "text-white/55"
+                  }`}
+                  data-testid="voice-status-label"
+                >
+                  {statusLabel || formatTimer(voice.elapsedSeconds)}
+                </span>
+              </div>
+              <VoiceQuotaBadge
+                minutesUsed={minutesUsed}
+                minutesTotal={minutesTotal || 1}
+              />
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
+
+            {/* ── Transcript area ── */}
+            <div
+              className="flex-1 overflow-y-auto px-4 py-3"
+              data-testid="voice-overlay-transcript"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "rgba(255,255,255,0.05) transparent",
+              }}
+            >
+              {voice.messages.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-center">
+                  <p className="text-xs text-white/30 leading-relaxed max-w-[260px]">
+                    {t.transcriptEmpty}
+                  </p>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {voice.messages.map((msg, idx) => (
+                    <li
+                      key={`${idx}-${msg.source}`}
+                      className={`flex ${msg.source === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[85%] px-3 py-2 rounded-xl text-[12px] leading-snug ${
+                          msg.source === "user"
+                            ? "bg-blue-600/70 text-white rounded-br-sm"
+                            : "bg-white/[0.05] text-white/75 rounded-bl-sm"
+                        }`}
+                      >
+                        {msg.text}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* ── Controls ── */}
+            <footer className="flex items-center justify-between gap-2 px-4 py-3 border-t border-white/[0.06] bg-[#0a0a0f]/80 flex-shrink-0">
               <button
                 type="button"
-                onClick={() => setSettingsOpen((v) => !v)}
-                aria-label={t.settings}
-                aria-expanded={settingsOpen}
-                aria-controls="voice-overlay-settings-panel"
-                data-testid="voice-overlay-settings-toggle"
-                className={`p-1.5 rounded-lg transition-colors ${
-                  settingsOpen
-                    ? "bg-violet-500/20 text-violet-200"
-                    : "hover:bg-white/[0.06] text-white/40 hover:text-white/70"
-                }`}
+                onClick={voice.toggleMute}
+                disabled={!isActive}
+                aria-label={voice.isMuted ? t.micMuted : "Mute microphone"}
+                className={`p-2 rounded-lg border transition-colors ${
+                  voice.isMuted
+                    ? "bg-red-500/15 border-red-500/30 text-red-300"
+                    : "bg-white/[0.04] border-white/[0.08] text-white/55 hover:text-white/85"
+                } disabled:opacity-30 disabled:cursor-not-allowed`}
+                data-testid="voice-overlay-mute"
               >
-                <Settings className="w-4 h-4" />
+                {voice.isMuted ? (
+                  <MicOff className="w-4 h-4" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
               </button>
+
               <button
                 type="button"
                 onClick={handleClose}
-                aria-label={t.close}
-                className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white/70 transition-colors"
+                aria-label={t.end}
+                data-testid="voice-overlay-end"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-200 text-xs font-semibold transition-colors"
               >
-                <X className="w-4 h-4" />
+                <PhoneOff className="w-3.5 h-3.5" />
+                {t.end}
               </button>
-            </div>
-          </header>
-
-          {/* ── Live settings panel (collapsible) ── */}
-          <AnimatePresence initial={false}>
-            {settingsOpen && (
-              <motion.div
-                key="voice-overlay-settings"
-                id="voice-overlay-settings-panel"
-                data-testid="voice-overlay-settings-panel"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="flex-shrink-0 overflow-hidden"
-              >
-                <VoiceLiveSettings language={language} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* ── Status + quota row ── */}
-          <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-white/[0.04] flex-shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              {voice.status === "connecting" && (
-                <Loader2 className="w-3.5 h-3.5 text-cyan-300 animate-spin" />
-              )}
-              {voice.status === "speaking" && (
-                <Volume2 className="w-3.5 h-3.5 text-violet-300 animate-pulse" />
-              )}
-              {voice.status === "error" && (
-                <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-              )}
-              <span
-                className={`text-[11px] font-medium truncate ${
-                  voice.status === "error" ? "text-red-300" : "text-white/55"
-                }`}
-                data-testid="voice-status-label"
-              >
-                {statusLabel || formatTimer(voice.elapsedSeconds)}
-              </span>
-            </div>
-            <VoiceQuotaBadge
-              minutesUsed={minutesUsed}
-              minutesTotal={minutesTotal || 1}
-            />
-          </div>
-
-          {/* ── Transcript area ── */}
-          <div
-            className="flex-1 overflow-y-auto px-4 py-3"
-            data-testid="voice-overlay-transcript"
-            style={{
-              scrollbarWidth: "thin",
-              scrollbarColor: "rgba(255,255,255,0.05) transparent",
-            }}
-          >
-            {voice.messages.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-center">
-                <p className="text-xs text-white/30 leading-relaxed max-w-[260px]">
-                  {t.transcriptEmpty}
-                </p>
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {voice.messages.map((msg, idx) => (
-                  <li
-                    key={`${idx}-${msg.source}`}
-                    className={`flex ${msg.source === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[85%] px-3 py-2 rounded-xl text-[12px] leading-snug ${
-                        msg.source === "user"
-                          ? "bg-blue-600/70 text-white rounded-br-sm"
-                          : "bg-white/[0.05] text-white/75 rounded-bl-sm"
-                      }`}
-                    >
-                      {msg.text}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* ── Controls ── */}
-          <footer className="flex items-center justify-between gap-2 px-4 py-3 border-t border-white/[0.06] bg-[#0a0a0f]/80 flex-shrink-0">
-            <button
-              type="button"
-              onClick={voice.toggleMute}
-              disabled={!isActive}
-              aria-label={voice.isMuted ? t.micMuted : "Mute microphone"}
-              className={`p-2 rounded-lg border transition-colors ${
-                voice.isMuted
-                  ? "bg-red-500/15 border-red-500/30 text-red-300"
-                  : "bg-white/[0.04] border-white/[0.08] text-white/55 hover:text-white/85"
-              } disabled:opacity-30 disabled:cursor-not-allowed`}
-              data-testid="voice-overlay-mute"
-            >
-              {voice.isMuted ? (
-                <MicOff className="w-4 h-4" />
-              ) : (
-                <Mic className="w-4 h-4" />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleClose}
-              aria-label={t.end}
-              data-testid="voice-overlay-end"
-              className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-200 text-xs font-semibold transition-colors"
-            >
-              <PhoneOff className="w-3.5 h-3.5" />
-              {t.end}
-            </button>
-          </footer>
-        </motion.div>
+            </footer>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
