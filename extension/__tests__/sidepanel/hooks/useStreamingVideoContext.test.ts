@@ -111,8 +111,13 @@ describe("useStreamingVideoContext", () => {
     });
   });
 
-  it("does nothing when sessionId or conversation is null", () => {
-    renderHook(() => useStreamingVideoContext(null, null));
+  it("does nothing when sessionId is null (even if conversation set)", () => {
+    // [I3] : on ouvre SSE dès sessionId, mais sessionId=null → no-op.
+    renderHook(() =>
+      useStreamingVideoContext(null, {
+        sendUserMessage: jest.fn(),
+      } as unknown as { sendUserMessage: (m: string) => void }),
+    );
     expect(MockEventSource.lastInstance).toBeNull();
   });
 
@@ -125,5 +130,101 @@ describe("useStreamingVideoContext", () => {
     const es = MockEventSource.lastInstance!;
     unmount();
     expect(es.closed).toBe(true);
+  });
+
+  // ─── [I3] Race condition SSE × conversation ────────────────────────
+  // Stratégie résolution : on ouvre le SSE dès que sessionId est dispo
+  // (PAS d'attente sur conversation). Tant que conversation est null,
+  // les chunks reçus sont bufferés dans pendingMessagesRef. Au moment où
+  // conversation devient set, le buffer est flushé en ordre FIFO.
+  // Bénéfice : les premiers chunks (les plus utiles, début vidéo) ne
+  // sont pas perdus pendant la fenêtre 100-500ms du SDK ElevenLabs
+  // connect().
+
+  it("[I3] opens SSE as soon as sessionId is available (even with conversation=null)", async () => {
+    renderHook(() => useStreamingVideoContext("s_race", null));
+    // SSE doit s'ouvrir immédiatement, sans attendre conversation.
+    await waitFor(() => expect(MockEventSource.lastInstance).toBeTruthy());
+  });
+
+  it("[I3] buffers chunks arrived BEFORE conversation is set, flushes when ready", async () => {
+    const { rerender } = renderHook(
+      ({ conv }: { conv: { sendUserMessage: jest.Mock } | null }) =>
+        useStreamingVideoContext(
+          "s_buf1",
+          conv as unknown as { sendUserMessage: (m: string) => void } | null,
+        ),
+      { initialProps: { conv: null } },
+    );
+
+    // SSE est ouvert (cf. test précédent).
+    await waitFor(() => expect(MockEventSource.lastInstance).toBeTruthy());
+
+    // Premier chunk arrive AVANT que conversation soit set → bufferisé.
+    MockEventSource.lastInstance!.fire("transcript_chunk", {
+      chunk_index: 0,
+      total_chunks: 5,
+      text: "early chunk content",
+    });
+
+    // Maintenant conversation arrive set → buffer doit être flushé.
+    const conv = { sendUserMessage: jest.fn() };
+    rerender({ conv });
+
+    await waitFor(() => {
+      expect(conv.sendUserMessage).toHaveBeenCalledWith(
+        expect.stringContaining("[CTX UPDATE: transcript chunk 0/5]"),
+      );
+    });
+  });
+
+  it("[I3] flushes multiple buffered messages in FIFO order", async () => {
+    const { rerender } = renderHook(
+      ({ conv }: { conv: { sendUserMessage: jest.Mock } | null }) =>
+        useStreamingVideoContext(
+          "s_buf2",
+          conv as unknown as { sendUserMessage: (m: string) => void } | null,
+        ),
+      { initialProps: { conv: null } },
+    );
+
+    await waitFor(() => expect(MockEventSource.lastInstance).toBeTruthy());
+
+    // 3 chunks arrivent avant que conversation soit set.
+    MockEventSource.lastInstance!.fire("transcript_chunk", {
+      chunk_index: 0,
+      total_chunks: 3,
+      text: "first",
+    });
+    MockEventSource.lastInstance!.fire("transcript_chunk", {
+      chunk_index: 1,
+      total_chunks: 3,
+      text: "second",
+    });
+    MockEventSource.lastInstance!.fire("analysis_partial", {
+      section: "summary",
+      content: "third",
+    });
+
+    // Conversation arrive → flush.
+    const conv = { sendUserMessage: jest.fn() };
+    rerender({ conv });
+
+    await waitFor(() => {
+      expect(conv.sendUserMessage).toHaveBeenCalledTimes(3);
+    });
+    // Ordre FIFO préservé.
+    expect(conv.sendUserMessage).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("first"),
+    );
+    expect(conv.sendUserMessage).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("second"),
+    );
+    expect(conv.sendUserMessage).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("third"),
+    );
   });
 });
