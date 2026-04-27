@@ -1,0 +1,531 @@
+/**
+ * DeepSight Extension — Viewer page styles
+ * Standalone fullscreen viewer for analysis details.
+ * Scoped tokens override design-tokens.css only on the viewer page
+ * because viewer.html is its own top-level tab.
+ */
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-surface: #12121a;
+  --border: rgba(255, 255, 255, 0.08);
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent-primary: #6366f1;
+  --accent-secondary: #8b5cf6;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Container ── */
+.viewer-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 32px 160px;
+  line-height: 1.6;
+}
+
+.viewer-loading,
+.viewer-error {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+  gap: 16px;
+}
+
+.viewer-loading p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.viewer-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(99, 102, 241, 0.15);
+  border-top-color: var(--accent-primary);
+  animation: v-spin 0.8s linear infinite;
+}
+
+@keyframes v-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.viewer-error h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.viewer-error p {
+  color: var(--text-secondary);
+  margin: 0 0 24px;
+  max-width: 420px;
+}
+
+/* ── Header ── */
+.v-header {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.v-header-thumb {
+  width: 240px;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-surface);
+  flex-shrink: 0;
+}
+
+.v-header-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.v-header-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.v-header-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+.v-header-channel {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0 0 16px;
+}
+
+.v-header-badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.v-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.v-badge-score {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.v-badge-score.warn {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.v-badge-score.low {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Reliability bar */
+.v-header-reliability {
+  margin-top: 4px;
+}
+
+.v-reliability-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.v-reliability-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.v-reliability-bar {
+  height: 4px;
+  background: var(--bg-surface);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.v-reliability-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Sections ── */
+.v-section {
+  margin-bottom: 40px;
+}
+
+.v-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  margin: 0 0 16px;
+}
+
+/* ── Verdict ── */
+.v-verdict {
+  font-size: 20px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  padding: 24px 28px;
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.06),
+    rgba(139, 92, 246, 0.06)
+  );
+  border-left: 3px solid var(--accent-primary);
+  border-radius: 0 12px 12px 0;
+}
+
+/* ── Key points ── */
+.v-kp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.v-kp {
+  display: flex;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.v-kp:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.v-kp-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.v-kp-text {
+  flex: 1;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.v-kp-solid {
+  border-left: 3px solid var(--success);
+}
+
+.v-kp-weak {
+  border-left: 3px solid var(--warning);
+}
+
+.v-kp-default {
+  border-left: 3px solid var(--accent-primary);
+}
+
+/* ── Detailed markdown ── */
+.v-markdown h1,
+.v-markdown h2,
+.v-markdown h3 {
+  color: var(--text-primary);
+  margin: 32px 0 16px;
+  font-weight: 600;
+}
+
+.v-markdown h1 {
+  font-size: 24px;
+}
+
+.v-markdown h2 {
+  font-size: 20px;
+}
+
+.v-markdown h3 {
+  font-size: 17px;
+}
+
+.v-markdown p {
+  margin: 12px 0;
+  color: var(--text-primary);
+}
+
+.v-markdown ul,
+.v-markdown ol {
+  padding-left: 24px;
+  margin: 12px 0;
+}
+
+.v-markdown li {
+  margin: 6px 0;
+  color: var(--text-primary);
+}
+
+.v-markdown a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border 0.15s;
+}
+
+.v-markdown a:hover {
+  border-bottom-color: var(--accent-primary);
+}
+
+.v-markdown code {
+  background: var(--bg-surface);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.v-markdown blockquote {
+  border-left: 3px solid var(--accent-primary);
+  padding: 8px 20px;
+  margin: 16px 0;
+  color: var(--text-secondary);
+  background: rgba(99, 102, 241, 0.04);
+  border-radius: 0 8px 8px 0;
+}
+
+.v-markdown hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 28px 0;
+}
+
+.v-timestamp {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 2px;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--accent-primary);
+  font-family: "JetBrains Mono", Menlo, monospace;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.v-timestamp:hover,
+.v-timestamp:focus-visible {
+  background: rgba(99, 102, 241, 0.22);
+  outline: none;
+}
+
+/* Inline epistemic markers inherited from sanitize.ts */
+.v-markdown .ds-marker {
+  display: inline-block;
+  padding: 1px 8px;
+  margin: 0 4px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.v-markdown .ds-marker-solid {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
+}
+
+.v-markdown .ds-marker-plausible {
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+}
+
+.v-markdown .ds-marker-uncertain {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warning);
+}
+
+.v-markdown .ds-marker-weak {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--error);
+}
+
+/* ── Facts ── */
+.v-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.v-fact {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.v-fact-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+/* ── Action bar (sticky bottom) ── */
+.v-actions {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(18, 18, 26, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  max-width: calc(100vw - 32px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.v-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  font-family: inherit;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.v-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.v-btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--accent-primary),
+    var(--accent-secondary)
+  );
+  color: white;
+}
+
+.v-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+}
+
+.v-btn-secondary {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.v-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .viewer-container {
+    padding: 32px 20px 160px;
+  }
+
+  .v-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .v-header-thumb {
+    width: 100%;
+  }
+
+  .v-header-title {
+    font-size: 20px;
+  }
+
+  .v-verdict {
+    font-size: 16px;
+    padding: 20px;
+  }
+
+  .v-actions {
+    bottom: 16px;
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .v-btn {
+    padding: 9px 12px;
+    font-size: 12px;
+  }
+}

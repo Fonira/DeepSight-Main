@@ -600,7 +600,20 @@ export async function handleMessage(
     return { success: true };
   }
 
-  switch ((message as ExtensionMessage).action) {
+  // Narrow vers le shape ExtensionMessage classique pour la suite du switch
+  // (les `case` historiques utilisent `message.data`).
+  return handleExtensionMessage(message as ExtensionMessage, sender);
+}
+
+async function handleExtensionMessage(
+  message: ExtensionMessage,
+  sender?: chrome.runtime.MessageSender | number,
+): Promise<MessageResponse> {
+  const senderTabId =
+    typeof sender === "number"
+      ? sender
+      : (sender as chrome.runtime.MessageSender | undefined)?.tab?.id;
+  switch (message.action) {
     case "CHECK_AUTH": {
       if (await isAuthenticated()) {
         try {
