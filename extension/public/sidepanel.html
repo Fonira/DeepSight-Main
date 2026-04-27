@@ -3,6 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Quick Voice Call (B1) — débloque getUserMedia depuis le side panel
+         pour le SDK ElevenLabs (Chrome MV3 ≥ 116). Sans cette policy, le
+         navigateur peut refuser l'accès micro silencieusement même si
+         optional_permissions["audioCapture"] est déclaré dans le manifest.
+         Le prompt système Chrome reste affiché à l'utilisateur. -->
+    <meta http-equiv="Permissions-Policy" content="microphone=*" />
     <title>DeepSight Voice</title>
     <!-- Pas de webfonts externes : la CSP MV3 default-src 'self' bloque
          fonts.googleapis.com / fonts.gstatic.com. On fallback sur les
