@@ -96,6 +96,7 @@ describe("VoiceCallButton", () => {
       type: "OPEN_VOICE_CALL",
       videoId: "abc123",
       videoTitle: "Test Title",
+      plan: "free", // [N3] propagation du plan pour PostHog.
     });
   });
 

@@ -23,10 +23,15 @@ export interface VoicePanelContext {
  * clique le bouton 🎙️ depuis YouTube. App.tsx lit + supprime + passe en
  * prop à VoiceView (centralisation pour éviter race condition StrictMode
  * et re-mount qui perdrait la clé déjà consommée).
+ *
+ * [N3] : `plan` ajouté pour PostHog `voice_call_started` properties (spec
+ * L382 demande de segmenter par plan dans les events analytics).
  */
 export interface PendingVoiceCall {
   videoId: string;
   videoTitle?: string;
+  /** Plan utilisateur au moment du clic (free/pro/expert). */
+  plan?: "free" | "pro" | "expert";
 }
 
 /**

@@ -124,6 +124,7 @@ export async function renderVoiceCallButton(
       type: "OPEN_VOICE_CALL",
       videoId: opts.videoId,
       videoTitle: opts.videoTitle,
+      plan: opts.plan, // [N3] propagation pour PostHog voice_call_started.
     });
   });
 

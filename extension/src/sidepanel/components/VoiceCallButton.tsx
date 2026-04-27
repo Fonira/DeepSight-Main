@@ -63,6 +63,7 @@ export const VoiceCallButton: React.FC<VoiceCallButtonProps> = ({
         type: "OPEN_VOICE_CALL",
         videoId,
         videoTitle,
+        plan, // [N3] propagation pour PostHog voice_call_started.
       })
       .catch(() => {
         // Service worker peut ne pas répondre — silencieux côté UI.

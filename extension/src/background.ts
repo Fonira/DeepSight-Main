@@ -523,6 +523,42 @@ async function openVoicePanel(
   await sidePanel.open({ tabId });
 }
 
+// ── Multi-tab audio ducking (Quick Voice Call N6) ──
+/**
+ * Diffuse un message DUCK_AUDIO ou RESTORE_AUDIO à TOUS les onglets
+ * YouTube ouverts. Utilisé pendant les voice calls pour que le ducking
+ * (volume vidéo à 10%) s'applique à tous les onglets, pas seulement
+ * celui qui a déclenché l'appel.
+ *
+ * Si `senderTabId` est fourni, on l'inclut prioritairement (best-effort
+ * — il est probablement déjà dans la query result de toute façon).
+ */
+async function broadcastVoiceAudioMessage(
+  type: "DUCK_AUDIO" | "RESTORE_AUDIO",
+  senderTabId?: number,
+): Promise<void> {
+  const targetIds = new Set<number>();
+  try {
+    const tabs = await Browser.tabs.query({
+      url: ["https://www.youtube.com/*", "https://youtube.com/*"],
+    });
+    for (const t of tabs) {
+      if (typeof t.id === "number") targetIds.add(t.id);
+    }
+  } catch {
+    /* query failed (rare) — fallback sur le seul senderTabId */
+  }
+  if (senderTabId !== undefined) targetIds.add(senderTabId);
+
+  await Promise.all(
+    [...targetIds].map((tabId) =>
+      Browser.tabs.sendMessage(tabId, { type }).catch(() => {
+        /* tab may have closed */
+      }),
+    ),
+  );
+}
+
 // ── Message Handler ──
 
 /**
@@ -535,6 +571,8 @@ interface VoiceCallMessage {
   type: "OPEN_VOICE_CALL" | "VOICE_CALL_STARTED" | "VOICE_CALL_ENDED";
   videoId?: string;
   videoTitle?: string;
+  /** [N3] Plan utilisateur au moment du clic — propagé à VoiceView. */
+  plan?: "free" | "pro" | "expert";
 }
 
 export async function handleMessage(
@@ -571,6 +609,7 @@ export async function handleMessage(
         pendingVoiceCall: {
           videoId: typed.videoId,
           videoTitle: typed.videoTitle,
+          plan: typed.plan, // [N3] PostHog voice_call_started property.
         },
       });
     }
@@ -580,23 +619,15 @@ export async function handleMessage(
     return { success: true };
   }
   if (typed?.type === "VOICE_CALL_STARTED") {
-    if (senderTabId !== undefined) {
-      try {
-        await Browser.tabs.sendMessage(senderTabId, { type: "DUCK_AUDIO" });
-      } catch {
-        /* tab may have closed */
-      }
-    }
+    // [N6] Broadcast DUCK_AUDIO à TOUS les onglets YouTube ouverts (pas
+    // seulement le sender). Sinon, si user a 2 onglets YT, l'onglet B
+    // continue à cracher du son par-dessus l'agent. Best-effort par tab.
+    await broadcastVoiceAudioMessage("DUCK_AUDIO", senderTabId);
     return { success: true };
   }
   if (typed?.type === "VOICE_CALL_ENDED") {
-    if (senderTabId !== undefined) {
-      try {
-        await Browser.tabs.sendMessage(senderTabId, { type: "RESTORE_AUDIO" });
-      } catch {
-        /* tab may have closed */
-      }
-    }
+    // [N6] Idem au RESTORE — restore tous les volumes.
+    await broadcastVoiceAudioMessage("RESTORE_AUDIO", senderTabId);
     return { success: true };
   }
 

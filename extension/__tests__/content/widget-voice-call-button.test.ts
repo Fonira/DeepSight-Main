@@ -56,6 +56,7 @@ describe("widget voice call button", () => {
       type: "OPEN_VOICE_CALL",
       videoId: "abc",
       videoTitle: "Test",
+      plan: "free", // [N3] propagation du plan pour PostHog.
     });
   });
 });

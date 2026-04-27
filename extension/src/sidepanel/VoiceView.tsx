@@ -34,7 +34,7 @@ import type {
   PendingVoiceCall,
 } from "./types";
 import { WEBAPP_URL } from "../utils/config";
-import { track } from "../utils/analytics";
+import { track, hashVideoId } from "../utils/analytics";
 import { useTranslation } from "../i18n/useTranslation";
 
 interface VoiceViewProps {
@@ -78,6 +78,8 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) =>
     });
 
     void (async () => {
+      // [N1] Hash videoId pour PostHog (privacy + groupage).
+      const videoIdHash = await hashVideoId(pending.videoId);
       try {
         const created = await voiceChat.startSession({
           videoId: pending.videoId,
@@ -88,7 +90,8 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) =>
         if (cancelled) return;
         chrome.runtime.sendMessage({ type: "VOICE_CALL_STARTED" });
         track("voice_call_started", {
-          videoId: pending.videoId,
+          videoIdHash,
+          plan: pending.plan ?? "unknown", // [N3]
           agent_type: "explorer_streaming",
           is_trial: Boolean(created.is_trial),
           max_minutes: created.max_minutes ?? null,
@@ -118,7 +121,8 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) =>
           setState({ phase: "error_quota", reason });
           track("voice_call_upgrade_cta_shown", {
             reason,
-            videoId: pending.videoId,
+            videoIdHash, // [N1]
+            plan: pending.plan ?? "unknown",
           });
         } else if (errAny.name === "NotAllowedError") {
           setState({ phase: "error_mic_permission" });
@@ -181,10 +185,15 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) =>
   useEffect(() => {
     if (contextComplete && state.phase === "live_streaming") {
       const ctxCompleteMs = Date.now() - state.startedAt;
-      track("voice_call_context_complete_at_ms", {
-        videoId: state.videoId,
-        ms: ctxCompleteMs,
-      });
+      const vid = state.videoId;
+      // [N1] hash async-fire pour PostHog.
+      void (async () => {
+        const videoIdHash = await hashVideoId(vid);
+        track("voice_call_context_complete_at_ms", {
+          videoIdHash,
+          ms: ctxCompleteMs,
+        });
+      })();
       setState((s) =>
         s.phase === "live_streaming"
           ? {
@@ -201,21 +210,35 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) =>
   const handleHangup = (): void => {
     void voiceChat.endSession();
     chrome.runtime.sendMessage({ type: "VOICE_CALL_ENDED" });
-    // Track durée totale d'appel (live_streaming/live_complete only).
-    if (state.phase === "live_streaming" || state.phase === "live_complete") {
-      const durationSec = Math.floor((Date.now() - state.startedAt) / 1000);
-      track("voice_call_duration_seconds", {
-        videoId: state.videoId,
-        durationSec,
-      });
-    }
-    const endedReason = voiceChat.lastSessionWasTrial
-      ? "trial_used"
-      : "user_hangup";
-    track("voice_call_ended_reason", { reason: endedReason });
+    // [N1] Hash en arrière-plan pour les events ; on déclenche en async-fire.
+    const videoIdRaw =
+      state.phase === "live_streaming" ||
+      state.phase === "live_complete"
+        ? state.videoId
+        : undefined;
+    void (async () => {
+      const videoIdHash = videoIdRaw ? await hashVideoId(videoIdRaw) : "";
+      // Track durée totale d'appel (live_streaming/live_complete only).
+      if (state.phase === "live_streaming" || state.phase === "live_complete") {
+        const durationSec = Math.floor((Date.now() - state.startedAt) / 1000);
+        track("voice_call_duration_seconds", {
+          videoIdHash,
+          durationSec,
+        });
+      }
+      const endedReason = voiceChat.lastSessionWasTrial
+        ? "trial_used"
+        : "user_hangup";
+      track("voice_call_ended_reason", { reason: endedReason, videoIdHash });
+      if (voiceChat.lastSessionWasTrial) {
+        track("voice_call_upgrade_cta_shown", {
+          reason: "trial_used",
+          videoIdHash,
+        });
+      }
+    })();
     if (voiceChat.lastSessionWasTrial) {
       setState({ phase: "ended_free_cta", reason: "trial_used" });
-      track("voice_call_upgrade_cta_shown", { reason: "trial_used" });
     } else {
       setState({ phase: "ended_expert" });
     }
