@@ -75,12 +75,14 @@ class UpdatePreferencesRequest(BaseModel):
     default_lang: Optional[str] = None
     default_mode: Optional[str] = None
     default_model: Optional[str] = None
-    # Ambient lighting v3 — toggle pour activer/désactiver l'effet lumineux
+    # Ambient Lighting v3 — toggle pour activer/désactiver l'effet lumineux
     # immersif derrière le sidepanel/widgets (web + mobile + extension).
-    # Persistance côté client (storage local) pour cette phase foundation —
-    # le champ est accepté ici pour ne pas rejeter la requête (422) et préparer
-    # la migration future vers un User.preferences JSON column.
+    # Persisté server-side dans la colonne User.preferences JSON (migration 008).
     ambient_lighting_enabled: Optional[bool] = None
+    # Bag arbitraire pour préférences UI futures (clé/valeur souple, JSON merge).
+    # Permet aux clients d'ajouter de nouvelles prefs sans migration de schema
+    # côté backend ; mergé non-destructivement dans User.preferences.
+    extra_preferences: Optional[dict] = None
 
 
 class GoogleCallbackRequest(BaseModel):

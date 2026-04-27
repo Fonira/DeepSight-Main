@@ -371,13 +371,22 @@ async def get_plan_limits(current_user=Depends(get_current_user), session: Async
 async def update_preferences(
     data: UpdatePreferencesRequest, current_user=Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
-    """Met à jour les préférences utilisateur"""
+    """Met à jour les préférences utilisateur.
+
+    - Champs scalaires (`default_lang`, `default_mode`, `default_model`) → colonnes dédiées.
+    - `ambient_lighting_enabled` (bool) → persisté dans `User.preferences` JSON.
+    - `extra_preferences` (dict arbitraire) → mergé non-destructivement dans
+      `User.preferences` JSON — permet aux clients d'ajouter des prefs UI
+      futures sans nouvelle migration.
+    """
     success = await update_user_preferences(
         session,
         current_user.id,
         default_lang=data.default_lang,
         default_mode=data.default_mode,
         default_model=data.default_model,
+        ambient_lighting_enabled=data.ambient_lighting_enabled,
+        extra_preferences=data.extra_preferences,
     )
 
     if not success:

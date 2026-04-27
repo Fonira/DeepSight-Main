@@ -1,18 +1,22 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  🧪 TEST USER PREFERENCES V3 — ambient_lighting_enabled (Task 1.11)               ║
+║  🧪 TEST USER PREFERENCES V3 — ambient_lighting_enabled (Task 1.11 + Task 15)    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 
-Vérifie que le backend accepte la nouvelle préférence `ambient_lighting_enabled`
-sans rejeter la requête (422). Pour la phase v3 foundation, la persistance se
-fait côté client (storage local web/mobile/extension) ; le backend doit
-simplement tolérer la clé pour ne pas casser le contrat avec les nouveaux
-clients qui l'envoient.
+Vérifie le contrat HTTP du PUT /api/auth/preferences avec ambient_lighting_enabled.
+
+Avec Task 15 : la persistance se fait maintenant server-side dans
+User.preferences (JSON column, migration 008). Ces tests-ci continuent
+de mocker le service pour vérifier le contrat router/schema (pas de DB) ;
+la persistance réelle est couverte par tests/test_user_preferences_ambient.py.
 
 Tests :
-  1. PUT /api/auth/preferences avec ambient_lighting_enabled=False → 200
-  2. PUT /api/auth/preferences avec ambient_lighting_enabled=True → 200
+  1. PUT /api/auth/preferences avec ambient_lighting_enabled=False → 200 +
+     service appelé avec ambient_lighting_enabled=False
+  2. PUT avec ambient_lighting_enabled=True → 200 + service appelé avec True
   3. GET /api/auth/me par défaut → pas d'erreur (default frontend = True)
+  4. PUT combinant ambient_lighting_enabled + champs scalaires → 200 + tous
+     les champs propagés au service
 
 Pattern fixtures repris de tests/test_auth_flow.py (AsyncClient + ASGITransport
 + dependency_overrides) car il n'existe pas de fixtures `client`/`auth_headers`
@@ -129,12 +133,10 @@ async def auth_client(app, api_user):
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_preferences_accepts_ambient_lighting_enabled(auth_client, api_user):
-    """PUT /preferences accepte ambient_lighting_enabled (False puis True) sans 422."""
+    """PUT /preferences accepte ambient_lighting_enabled (False puis True) sans 422
+    et le router le propage au service (Task 15: persistance server-side)."""
     from unittest.mock import patch
 
-    # Le service update_user_preferences est mocké (DB non touchée).
-    # On vérifie uniquement que le schéma Pydantic accepte le champ et que
-    # le router renvoie 200.
     with patch.object(_auth_router, "update_user_preferences", new_callable=AsyncMock) as m_update:
         m_update.return_value = True
 
@@ -145,6 +147,11 @@ async def test_user_preferences_accepts_ambient_lighting_enabled(auth_client, ap
         )
         assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
         assert resp.json()["success"] is True
+        # Task 15: vérifier que le router transmet bien ambient_lighting_enabled au service
+        assert m_update.call_args.kwargs.get("ambient_lighting_enabled") is False, (
+            "Router doit propager ambient_lighting_enabled=False au service "
+            "(sinon la persistance dans User.preferences ne se fera pas)"
+        )
 
         # Toggle ON
         resp = await auth_client.put(
@@ -153,6 +160,7 @@ async def test_user_preferences_accepts_ambient_lighting_enabled(auth_client, ap
         )
         assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
         assert resp.json()["success"] is True
+        assert m_update.call_args.kwargs.get("ambient_lighting_enabled") is True
 
 
 @pytest.mark.unit
@@ -174,7 +182,8 @@ async def test_user_preferences_default_ambient_lighting_enabled_true(auth_clien
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_preferences_combined_with_other_fields(auth_client, api_user):
-    """PUT /preferences accepte ambient_lighting_enabled combiné aux autres champs existants."""
+    """PUT /preferences accepte ambient_lighting_enabled combiné aux autres champs existants
+    et propage tous les champs au service (Task 15: pas de drop silencieux)."""
     from unittest.mock import patch
 
     with patch.object(_auth_router, "update_user_preferences", new_callable=AsyncMock) as m_update:
@@ -190,3 +199,8 @@ async def test_user_preferences_combined_with_other_fields(auth_client, api_user
         )
         assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
         assert resp.json()["success"] is True
+
+        kwargs = m_update.call_args.kwargs
+        assert kwargs.get("default_lang") == "en"
+        assert kwargs.get("default_mode") == "deep"
+        assert kwargs.get("ambient_lighting_enabled") is False

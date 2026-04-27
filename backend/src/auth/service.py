@@ -386,16 +386,53 @@ async def change_password(
 
 
 async def update_user_preferences(session: AsyncSession, user_id: int, **kwargs) -> bool:
-    """Met à jour les préférences utilisateur"""
+    """Met à jour les préférences utilisateur.
+
+    Champs scalaires whitelistés (`default_lang`, `default_mode`, etc.) → écrits
+    directement comme attributs de la table User.
+
+    Champs JSON-bag (`ambient_lighting_enabled`, `extra_preferences`) → mergés
+    non-destructivement dans la colonne `User.preferences` (JSON). On réassigne
+    explicitement `user.preferences = {...nouveau dict...}` car SQLAlchemy ne
+    détecte pas les mutations in-place sur les colonnes JSON (sauf usage de
+    MutableDict, non activé ici).
+    """
+    import logging
+
+    log = logging.getLogger(__name__)
+
     allowed_fields = ["default_lang", "default_mode", "default_model", "mistral_key", "supadata_key"]
 
     user = await get_user_by_id(session, user_id)
     if not user:
         return False
 
+    # 1. Champs scalaires (colonnes dédiées)
     for field, value in kwargs.items():
         if field in allowed_fields and value is not None:
             setattr(user, field, value)
+
+    # 2. Bag JSON `preferences` — merge des prefs souples
+    prefs_updates: dict = {}
+
+    ambient_value = kwargs.get("ambient_lighting_enabled")
+    if ambient_value is not None:
+        prefs_updates["ambient_lighting_enabled"] = bool(ambient_value)
+
+    extra = kwargs.get("extra_preferences")
+    if isinstance(extra, dict) and extra:
+        # Les clés explicites (ex: ambient_lighting_enabled) gagnent sur extra_preferences
+        # si fournies en doublon → on merge extra d'abord puis prefs_updates par-dessus.
+        merged_extras = {**extra, **prefs_updates}
+        prefs_updates = merged_extras
+
+    if prefs_updates:
+        current = dict(user.preferences or {})
+        current.update(prefs_updates)
+        # Réassignation explicite : SQLAlchemy ne détecte pas la mutation in-place
+        # sur une colonne JSON sans MutableDict.
+        user.preferences = current
+        log.debug(f"update_user_preferences user_id={user_id} prefs_updates={prefs_updates}")
 
     await session.commit()
     return True
