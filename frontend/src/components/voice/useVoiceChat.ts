@@ -11,7 +11,10 @@ import {
   type RefObject,
 } from "react";
 import { API_URL, getAccessToken } from "../../services/api";
-import { subscribeVoicePrefsEvents } from "./voicePrefsBus";
+import {
+  subscribeVoicePrefsEvents,
+  emitVoicePrefsEvent,
+} from "./voicePrefsBus";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -355,6 +358,7 @@ export function useVoiceChat({
       setVoiceSessionId(null);
       setSessionStartedAt(null);
     }
+    emitVoicePrefsEvent({ type: "call_status_changed", active: false });
   }, [
     stopTimer,
     releaseMediaStream,
@@ -515,6 +519,7 @@ export function useVoiceChat({
             // Spec #5 — timestamp précis du démarrage pour time_in_call_secs
             setSessionStartedAt(Date.now());
           }
+          emitVoicePrefsEvent({ type: "call_status_changed", active: true });
         },
         onDisconnect: () => {
           if (isMountedRef.current) {
@@ -662,6 +667,16 @@ export function useVoiceChat({
     });
     return unsubscribe;
   }, [applyPlaybackRate, cleanupPlaybackObserver, cleanupPlaybackPolling]);
+
+  // Live-restart when the staging provider applies a restart-required diff.
+  useEffect(() => {
+    const unsubscribe = subscribeVoicePrefsEvents((event) => {
+      if (event.type !== "apply_with_restart") return;
+      if (!conversationRef.current) return;
+      void restart();
+    });
+    return unsubscribe;
+  }, [restart]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Cleanup on unmount
