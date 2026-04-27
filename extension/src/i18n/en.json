@@ -256,7 +256,8 @@
       "ctaDismiss": "Stay Free (no voice)"
     },
     "errors": {
-      "micPermission": "Microphone permission required.",
+      "micPermission": "DeepSight needs your microphone for the voice call. Click Allow to start.",
+      "enableMic": "🎤 Allow microphone",
       "callEnded": "Call ended.",
       "genericPrefix": "Error:",
       "close": "Close",
