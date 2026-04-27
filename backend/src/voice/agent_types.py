@@ -12,6 +12,11 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+from voice.streaming_prompts import (
+    EXPLORER_STREAMING_PROMPT_FR,
+    EXPLORER_STREAMING_PROMPT_EN,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -615,11 +620,7 @@ def resolve_agent_voice_id(agent_config: AgentConfig) -> Optional[str]:
 # requires_summary=False because the entry point is a YouTube video_id and
 # the analysis is fed asynchronously via Redis pubsub → SSE → side panel
 # → conversation.sendUserMessage(). See voice/streaming_orchestrator.py.
-
-from voice.streaming_prompts import (
-    EXPLORER_STREAMING_PROMPT_FR,
-    EXPLORER_STREAMING_PROMPT_EN,
-)
+# Streaming prompts imports are at the top of the file (E402 ruff fix).
 
 EXPLORER_STREAMING = AgentConfig(
     agent_type="explorer_streaming",
