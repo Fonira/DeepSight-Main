@@ -8,6 +8,10 @@ import { KeyPointsSection } from "./components/KeyPointsSection";
 import { DetailedAnalysis } from "./components/DetailedAnalysis";
 import { FactCheckSection } from "./components/FactCheckSection";
 import { ActionBar } from "./components/ActionBar";
+import { AmbientLightingProvider } from "./contexts/AmbientLightingContext";
+import { SunflowerLayer } from "./components/SunflowerLayer";
+
+const AMBIENT_PREF_KEY = "ambient_lighting_enabled";
 
 interface Props {
   summaryId: number;
@@ -17,6 +21,28 @@ export const ViewerApp: React.FC<Props> = ({ summaryId }) => {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Ambient lighting v3 — pref `ambient_lighting_enabled` (default true).
+  const [ambientEnabled, setAmbientEnabled] = useState<boolean>(true);
+  useEffect(() => {
+    const localStore = (
+      Browser as unknown as {
+        storage?: { local?: { get?: (k: string) => Promise<unknown> } };
+      }
+    ).storage?.local;
+    if (!localStore?.get) return;
+    localStore
+      .get(AMBIENT_PREF_KEY)
+      .then((data) => {
+        const raw = (data as Record<string, unknown> | undefined)?.[
+          AMBIENT_PREF_KEY
+        ];
+        if (raw === false) setAmbientEnabled(false);
+      })
+      .catch(() => {
+        /* fall back to default ON */
+      });
+  }, []);
 
   useEffect(() => {
     if (!summaryId) {
@@ -57,39 +83,48 @@ export const ViewerApp: React.FC<Props> = ({ summaryId }) => {
 
   if (loading) {
     return (
-      <div className="viewer-loading">
-        <div className="viewer-spinner" aria-hidden="true" />
-        <p>Chargement de l'analyse…</p>
-      </div>
+      <AmbientLightingProvider enabled={ambientEnabled}>
+        <SunflowerLayer />
+        <div className="viewer-loading">
+          <div className="viewer-spinner" aria-hidden="true" />
+          <p>Chargement de l'analyse…</p>
+        </div>
+      </AmbientLightingProvider>
     );
   }
 
   if (error || !summary) {
     return (
-      <div className="viewer-error">
-        <h1>Analyse introuvable</h1>
-        <p>{error ?? "Aucune donnée retournée."}</p>
-        <button
-          type="button"
-          className="v-btn v-btn-primary"
-          onClick={() => window.close()}
-        >
-          Fermer
-        </button>
-      </div>
+      <AmbientLightingProvider enabled={ambientEnabled}>
+        <SunflowerLayer />
+        <div className="viewer-error">
+          <h1>Analyse introuvable</h1>
+          <p>{error ?? "Aucune donnée retournée."}</p>
+          <button
+            type="button"
+            className="v-btn v-btn-primary"
+            onClick={() => window.close()}
+          >
+            Fermer
+          </button>
+        </div>
+      </AmbientLightingProvider>
     );
   }
 
   const parsed = parseAnalysisToSummary(summary.summary_content);
 
   return (
-    <div className="viewer-container">
-      <ViewerHeader summary={summary} />
-      <VerdictSection verdict={parsed.verdict} />
-      <KeyPointsSection points={parsed.keyPoints} />
-      <FactCheckSection facts={summary.facts_to_verify ?? []} />
-      <DetailedAnalysis content={summary.summary_content} />
-      <ActionBar summary={summary} summaryId={summary.id} />
-    </div>
+    <AmbientLightingProvider enabled={ambientEnabled}>
+      <SunflowerLayer />
+      <div className="viewer-container">
+        <ViewerHeader summary={summary} />
+        <VerdictSection verdict={parsed.verdict} />
+        <KeyPointsSection points={parsed.keyPoints} />
+        <FactCheckSection facts={summary.facts_to_verify ?? []} />
+        <DetailedAnalysis content={summary.summary_content} />
+        <ActionBar summary={summary} summaryId={summary.id} />
+      </div>
+    </AmbientLightingProvider>
   );
 };

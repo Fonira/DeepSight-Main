@@ -325,10 +325,10 @@ async def reconcile_voice_transcript(
 
 
 # ── Spec #1, Task 6 — Chat history injection into voice system_prompt ──────
-# Limits kept tight to preserve token budget for the actual analysis context:
-#   max 10 messages, max 400 chars per message → ~4 KB block worst case.
-_CHAT_HISTORY_MAX_MESSAGES = 10
-_CHAT_HISTORY_MAX_CHARS_PER_MSG = 400
+# v4.0 : élargi pour donner plus de continuité conversationnelle au voice agent.
+#   max 20 messages, max 600 chars per message → ~12 KB block worst case.
+_CHAT_HISTORY_MAX_MESSAGES = 20
+_CHAT_HISTORY_MAX_CHARS_PER_MSG = 600
 
 
 def _build_chat_history_block_for_voice(history_msgs: list[dict], language: str = "fr") -> str:
@@ -420,6 +420,24 @@ async def record_web_search_usage(
             "query": query[:200],
         },
     )
+
+
+async def _check_monthly_web_quota(db: AsyncSession, user_id: int) -> tuple[bool, int, int]:
+    """Check the shared monthly web_search quota (chat + voice).
+
+    Returns (can_search, used, limit). On any DB error, fails open (True, 0, -1)
+    so a transient hiccup doesn't break a live voice session.
+    """
+    try:
+        from chat.service import check_web_search_quota
+
+        return await check_web_search_quota(db, user_id)
+    except Exception as exc:
+        logger.warning(
+            "monthly web_search quota check failed — failing open",
+            extra={"user_id": user_id, "error": str(exc)},
+        )
+        return True, 0, -1
 
 
 async def verify_tool_request(request: Request, db: AsyncSession) -> tuple[Summary, dict]:
@@ -1911,15 +1929,23 @@ async def tool_flashcards(request: Request, db: AsyncSession = Depends(get_sessi
 async def tool_web_search(request: Request, db: AsyncSession = Depends(get_session)):
     """ElevenLabs tool webhook: web search via Brave.
 
-    Rate-limited:
-      - 15 calls / hour / summary_id (anti spam at session level)
-      - 60 calls / hour / user_id    (global cap, anti fan-out)
-
-    Successful calls are tracked in WebSearchUsage (source='voice') so the
-    monthly quota and admin dashboards see them alongside chat searches.
+    Quotas (cumulés avec le chat texte — table WebSearchUsage partagée) :
+      - Mensuel par plan (web_search_monthly: 0 free / 20 plus / 60 pro)
+      - Rate-limit horaire 15 calls / summary_id (anti spam session)
+      - Rate-limit horaire 60 calls / user_id   (cap global anti fan-out)
     """
     summary, body = await verify_tool_request(request, db)
     query = body.get("query") or body.get("parameters", {}).get("query", "")
+
+    # Monthly quota (shared with text chat)
+    can_search, used, limit = await _check_monthly_web_quota(db, int(summary.user_id))
+    if not can_search:
+        return {
+            "result": (
+                f"Quota mensuel de recherches web atteint ({used}/{limit}). "
+                "Réponds avec les informations déjà disponibles dans le contexte vidéo."
+            )
+        }
 
     # Per-summary rate limit (Spec #0 — raised from 5 to 15)
     summary_count = await _increment_web_search_count(str(summary.id))
@@ -1950,19 +1976,95 @@ async def tool_web_search(request: Request, db: AsyncSession = Depends(get_sessi
 
 @router.post("/tools/deep-research")
 async def tool_deep_research(request: Request, db: AsyncSession = Depends(get_session)):
-    """ElevenLabs tool webhook: deep web research."""
+    """ElevenLabs tool webhook: deep web research (3 Brave queries fan-out).
+
+    Compté comme 1 appel dans le quota mensuel partagé (l'utilisateur a fait 1 demande),
+    mais consomme 1 slot du rate-limit horaire summary + user (anti spam).
+    """
     summary, body = await verify_tool_request(request, db)
     query = body.get("query") or body.get("parameters", {}).get("query", "")
+
+    # Monthly quota (shared with text chat)
+    can_search, used, limit = await _check_monthly_web_quota(db, int(summary.user_id))
+    if not can_search:
+        return {
+            "result": (
+                f"Quota mensuel de recherches web atteint ({used}/{limit}). "
+                "Réponds avec les informations déjà disponibles dans le contexte vidéo."
+            )
+        }
+
+    # Per-summary rate limit
+    summary_count = await _increment_web_search_count(str(summary.id))
+    if summary_count > _WEB_SEARCH_MAX:
+        return {
+            "result": "Limite de recherches web atteinte pour cette session. "
+            "Utilisez les informations déjà disponibles."
+        }
+
+    # Per-user global cap
+    user_count = await _increment_user_web_search_count(int(summary.user_id))
+    if user_count > _WEB_SEARCH_USER_MAX:
+        return {"result": "Limite horaire de recherches web atteinte pour ton compte. Réessaie dans quelques minutes."}
+
     result = await deep_research(summary.id, query, db)
+
+    await record_web_search_usage(
+        db,
+        user_id=int(summary.user_id),
+        summary_id=int(summary.id),
+        source="voice_deep",
+        query=query,
+    )
+
     return {"result": result}
 
 
 @router.post("/tools/check-fact")
 async def tool_check_fact(request: Request, db: AsyncSession = Depends(get_session)):
-    """ElevenLabs tool webhook: fact-check a claim."""
+    """ElevenLabs tool webhook: fact-check a claim (1 Brave query).
+
+    Compté dans le quota mensuel partagé chat+voice et dans les rate-limits horaires
+    pour préserver l'équité d'usage entre les deux surfaces.
+    """
     summary, body = await verify_tool_request(request, db)
     claim = body.get("claim") or body.get("parameters", {}).get("claim", "")
+
+    # Monthly quota (shared with text chat)
+    can_search, used, limit = await _check_monthly_web_quota(db, int(summary.user_id))
+    if not can_search:
+        return {
+            "result": (
+                f"Quota mensuel de vérification web atteint ({used}/{limit}). "
+                "Réponds avec les informations disponibles dans le contexte vidéo."
+            )
+        }
+
+    # Per-summary rate limit
+    summary_count = await _increment_web_search_count(str(summary.id))
+    if summary_count > _WEB_SEARCH_MAX:
+        return {
+            "result": "Limite de vérifications web atteinte pour cette session. "
+            "Utilisez les informations déjà disponibles."
+        }
+
+    # Per-user global cap
+    user_count = await _increment_user_web_search_count(int(summary.user_id))
+    if user_count > _WEB_SEARCH_USER_MAX:
+        return {
+            "result": "Limite horaire de vérifications web atteinte pour ton compte. Réessaie dans quelques minutes."
+        }
+
     result = await check_fact(summary.id, claim, db)
+
+    await record_web_search_usage(
+        db,
+        user_id=int(summary.user_id),
+        summary_id=int(summary.id),
+        source="voice_factcheck",
+        query=claim,
+    )
+
     return {"result": result}
 
 
@@ -2013,6 +2115,76 @@ async def tool_debate_fact_check(request: Request, db: AsyncSession = Depends(ge
     debate, _body = await verify_debate_tool_request(request, db)
     result = await get_debate_fact_check(debate.id, db)
     return {"result": result}
+
+
+@router.post("/tools/debate-web-search")
+async def tool_debate_web_search(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: web search for debate moderator agents.
+
+    Same multi-provider chain as /tools/web-search (Mistral Agent → Perplexity → Brave),
+    but authenticates against debate_id instead of summary_id since debate agents
+    are not bound to a single video summary.
+
+    Rate-limited:
+      - 15 calls / hour / debate_id (anti spam)
+      - 60 calls / hour / user_id   (global cap, anti fan-out)
+    """
+    debate, body = await verify_debate_tool_request(request, db)
+    query = body.get("query") or body.get("parameters", {}).get("query", "")
+
+    if not query or not query.strip():
+        return {"result": "Aucune requête de recherche fournie."}
+
+    # Per-debate rate limit (reuse summary counter pool with namespaced key)
+    debate_count = await _increment_web_search_count(f"debate:{debate.id}")
+    if debate_count > _WEB_SEARCH_MAX:
+        return {"result": "Limite de recherches web atteinte pour ce débat. Utilise les informations déjà disponibles."}
+
+    # Per-user global cap
+    user_count = await _increment_user_web_search_count(int(debate.user_id))
+    if user_count > _WEB_SEARCH_USER_MAX:
+        return {"result": "Limite horaire de recherches web atteinte pour ton compte. Réessaie dans quelques minutes."}
+
+    # Build context from the debate topic so Perplexity/Brave search is well-grounded
+    debate_topic = (debate.detected_topic or "").strip()
+    context_str = f"Débat sur : {debate_topic}" if debate_topic else ""
+
+    try:
+        from videos.web_search_provider import web_search_and_synthesize
+
+        result = await web_search_and_synthesize(
+            query=query.strip(),
+            context=context_str,
+            purpose="debate",
+            lang="fr",
+            max_sources=5,
+            max_tokens=1500,
+            timeout=20.0,
+        )
+        if result.success:
+            answer = result.content
+            # Include up to 3 source URLs in plain text for the agent to mention briefly
+            if result.sources:
+                src_lines = []
+                for src in result.sources[:3]:
+                    title = src.get("title", "")
+                    url = src.get("url", "")
+                    if title or url:
+                        src_lines.append(f"• {title} — {url}")
+                if src_lines:
+                    answer = answer + "\n\nSources :\n" + "\n".join(src_lines)
+            await record_web_search_usage(
+                db,
+                user_id=int(debate.user_id),
+                summary_id=0,  # debate context, no summary
+                source="voice_debate",
+                query=query.strip(),
+            )
+            return {"result": answer[:2000]}
+        return {"result": f"Aucun résultat trouvé pour la recherche : {query[:100]}"}
+    except Exception as e:
+        logger.error("debate-web-search error: %s", e, exc_info=True)
+        return {"result": "Une erreur est survenue lors de la recherche web."}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

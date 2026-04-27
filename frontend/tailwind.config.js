@@ -19,6 +19,8 @@ export default {
           secondary: "var(--text-secondary)",
           tertiary: "var(--text-tertiary)",
           muted: "var(--text-muted)",
+          disabled: "var(--text-disabled)",
+          meta: "var(--text-meta)",
           inverse: "var(--text-inverse)",
         },
         accent: {

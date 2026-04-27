@@ -172,6 +172,21 @@ export interface ThemeColors {
   info: string;
 }
 
+/**
+ * Ambient lighting v3 — semantic text tokens (white-cast on dark surfaces)
+ * Used by components reading `colors.text.*` directly (independent of Theme switching).
+ * Designed for max readability over animated ambient lighting backgrounds.
+ */
+export const colors = {
+  text: {
+    primary: "#ffffff",
+    secondary: "#f1f5f9",
+    muted: "#e2e8f0",
+    disabled: "rgba(255,255,255,0.45)",
+    meta: "#cbd5e1",
+  },
+} as const;
+
 /** Gradient presets */
 export const gradients = {
   primary: ["#C8903A", "#9B6B4A"] as const, // or → ambre

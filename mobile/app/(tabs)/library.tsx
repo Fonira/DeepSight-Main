@@ -24,7 +24,11 @@ import { sp, borderRadius } from "@/theme/spacing";
 import { palette } from "@/theme/colors";
 import { fontFamily, fontSize, textStyles } from "@/theme/typography";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
+import { VoiceButton } from "@/components/voice/VoiceButton";
 import type { AnalysisSummary, PaginatedResponse } from "@/types";
+
+const TAB_BAR_HEIGHT = 56;
+const FAB_GAP = 16;
 
 const QUERY_KEY_BASE = "library";
 
@@ -379,6 +383,12 @@ export default function LibraryScreen() {
           }
         />
       )}
+
+      <VoiceButton
+        agentType="companion"
+        videoTitle="Discussion libre"
+        bottomOffset={TAB_BAR_HEIGHT + insets.bottom + FAB_GAP}
+      />
     </View>
   );
 }

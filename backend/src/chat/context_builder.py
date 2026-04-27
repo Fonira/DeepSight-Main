@@ -54,16 +54,18 @@ MEDIUM_VIDEO_TRANSCRIPT_LIMIT = 80_000  # 30 min – 1h30 → digest + segments
 # Limites par consumer — chat
 MAX_CONTEXT_CHAT = 50_000  # Mistral (mode expert 25K tokens ≈ 50K chars)
 
-# Limites voice adaptatives par tier — v3.0
-# Plus la vidéo est longue, plus le full_digest est important et doit rentrer.
-MAX_CONTEXT_VOICE = 12_000  # Fallback par défaut
+# Limites voice adaptatives par tier — v4.0
+# Aligné sur chat texte (MAX_CONTEXT_CHAT = 50K) pour donner à l'agent vocal
+# le maximum de contexte disponible. Dégradation contrôlée sur les vidéos
+# courtes pour préserver le TTFB (latence vocale).
+MAX_CONTEXT_VOICE = 35_000  # Fallback par défaut
 MAX_CONTEXT_VOICE_BY_TIER = {
-    "micro": 8_000,  # Vidéo très courte, peu de contexte nécessaire
-    "short": 10_000,
-    "medium": 12_000,
-    "long": 16_000,  # Conférences : le digest aide beaucoup
-    "extended": 20_000,  # Podcasts 1h+ : full_digest (6-10K) + metadata
-    "marathon": 24_000,  # 2h+ : full_digest complet + summary key points
+    "micro": 20_000,  # Vidéo très courte
+    "short": 25_000,
+    "medium": 35_000,
+    "long": 45_000,  # Conférences : le digest aide beaucoup
+    "extended": 50_000,  # Podcasts 1h+ : full_digest + metadata + sources
+    "marathon": 50_000,  # 2h+ : full_digest complet + summary key points
 }
 
 # Taille des sections
