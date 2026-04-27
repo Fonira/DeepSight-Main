@@ -303,7 +303,15 @@ describe("VoiceOverlay", () => {
 
   it("toggle le panel de réglages au click", async () => {
     const user = userEvent.setup();
-    render(<VoiceOverlay isOpen={true} onClose={() => {}} />);
+    // The settings panel mounts VoiceLiveSettings, which now reads from
+    // VoicePrefsStagingProvider — wrap the render so that hook resolves.
+    const { VoicePrefsStagingProvider } =
+      await import("../staging/VoicePrefsStagingProvider");
+    render(
+      <VoicePrefsStagingProvider>
+        <VoiceOverlay isOpen={true} onClose={() => {}} />
+      </VoicePrefsStagingProvider>,
+    );
     const toggle = await screen.findByTestId("voice-overlay-settings-toggle");
     await user.click(toggle);
     await waitFor(() =>
