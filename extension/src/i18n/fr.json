@@ -211,6 +211,13 @@
   "results": {
     "backToAnalysis": "Nouvelle analyse"
   },
+  "voiceCall": {
+    "buttonLabel": "🎙️ Appeler la vidéo",
+    "trialBadge": "1 essai gratuit",
+    "trialUsed": "Essai utilisé",
+    "trialUsedTitle": "Essai utilisé — passer en Expert",
+    "minutesRemaining": "{count} min restantes"
+  },
   "promos": {
     "free": [
       {
