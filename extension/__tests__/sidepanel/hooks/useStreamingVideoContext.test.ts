@@ -7,7 +7,12 @@
 // avec un préfixe `[CTX UPDATE: …]` ou `[CTX COMPLETE]`.
 //
 // Pour tester sans réseau, on monkey-patch `globalThis.EventSource`.
-import { renderHook, waitFor } from "@testing-library/react";
+//
+// Note : `fire()` invoke les handlers SSE dans un `act()` synchrone pour
+// que les setState (contextProgress, contextComplete) + les push dans
+// pendingMessagesRef soient flushés sans warning React. Indispensable
+// post-I3 (buffer SSE chunks).
+import { renderHook, waitFor, act } from "@testing-library/react";
 import { useStreamingVideoContext } from "../../../src/sidepanel/hooks/useStreamingVideoContext";
 
 class MockEventSource {
@@ -21,9 +26,11 @@ class MockEventSource {
     (this.handlers[type] ??= []).push(h);
   }
   fire(type: string, data: unknown): void {
-    (this.handlers[type] ?? []).forEach((h) =>
-      h({ data: JSON.stringify(data) } as MessageEvent),
-    );
+    act(() => {
+      (this.handlers[type] ?? []).forEach((h) =>
+        h({ data: JSON.stringify(data) } as MessageEvent),
+      );
+    });
   }
   close(): void {
     this.closed = true;

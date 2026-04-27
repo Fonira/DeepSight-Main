@@ -147,6 +147,10 @@ const chromeTabs = {
     addListener: jest.fn(),
     removeListener: jest.fn(),
   },
+  onUpdated: {
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+  },
 };
 
 // Append onStartup support to runtime mock (Chrome API surface)
