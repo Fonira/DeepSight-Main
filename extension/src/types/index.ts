@@ -129,6 +129,13 @@ export interface PlanFeatures {
   exports: boolean;
 }
 
+export interface VoiceQuotaInfo {
+  /** Free : essai gratuit lifetime déjà consommé ? */
+  trial_used: boolean;
+  /** Expert : minutes de voice call utilisées dans le mois courant. */
+  monthly_minutes_used: number;
+}
+
 export interface PlanInfo {
   plan_name: string;
   plan_id: "free" | "starter" | "pro" | "expert" | "student" | "team";
@@ -137,6 +144,8 @@ export interface PlanInfo {
   credits: number;
   credits_monthly: number;
   features: PlanFeatures;
+  /** Quick Voice Call quota (I4) — exposé par /api/billing/my-plan. */
+  voice_quota?: VoiceQuotaInfo;
 }
 
 // ── Settings ──

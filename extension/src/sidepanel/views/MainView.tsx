@@ -140,11 +140,12 @@ export const MainView: React.FC<MainViewProps> = ({
   // upgrade futur — actuellement le widget ne distingue pas pro.
   const voicePlan: "free" | "pro" | "expert" =
     userPlanId === "expert" ? "expert" : userPlanId === "pro" ? "pro" : "free";
-  // trialUsed et monthlyMinutesUsed ne sont pas encore exposés dans PlanInfo
-  // (backend Task 7 à étendre). Default = false / 0 ; le backend reste la
-  // source de vérité au moment de l'appel POST /voice/session.
-  const voiceTrialUsed = false;
-  const voiceMonthlyMinutesUsed = 0;
+  // [I4] voice_quota exposé par /api/billing/my-plan — si dispo, on s'en sert
+  // pour afficher des badges honnêtes ; sinon valeurs pessimistes par défaut.
+  // Le backend reste SoT au moment du POST /voice/session.
+  const voiceTrialUsed = planInfo?.voice_quota?.trial_used ?? false;
+  const voiceMonthlyMinutesUsed =
+    planInfo?.voice_quota?.monthly_minutes_used ?? 0;
 
   const startQuickChat = useCallback(async () => {
     if (!video) return;

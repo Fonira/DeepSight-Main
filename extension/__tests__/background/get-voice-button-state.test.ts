@@ -114,4 +114,76 @@ describe("GET_VOICE_BUTTON_STATE handler", () => {
       expect(res.state?.plan).toBe("free");
     }
   });
+
+  // [I4] : Backend expose voice_quota dans /api/billing/my-plan.
+  // L'handler tente fetchPlan() best-effort pour le propager dans state.
+  it("[I4] propagates voice_quota.trial_used from /api/billing/my-plan", async () => {
+    seedLocalStorage({
+      accessToken: "tok",
+      user: {
+        id: 1,
+        email: "x@y.z",
+        username: "x",
+        plan: "free",
+        credits: 0,
+        credits_monthly: 0,
+      },
+    });
+    // Mock global fetch pour /api/billing/my-plan.
+    const origFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          plan: "free",
+          plan_name: "Gratuit",
+          plan_id: "free",
+          monthly_analyses: 5,
+          analyses_this_month: 0,
+          credits: 0,
+          credits_monthly: 0,
+          features: {},
+          voice_quota: { trial_used: true, monthly_minutes_used: 3 },
+        }),
+    }) as unknown as typeof global.fetch;
+
+    const res = await handleMessage({
+      action: "GET_VOICE_BUTTON_STATE",
+    });
+
+    expect(res.success).toBe(true);
+    expect(res.state?.trialUsed).toBe(true);
+    expect(res.state?.monthlyMinutesUsed).toBe(3);
+
+    global.fetch = origFetch;
+  });
+
+  it("[I4] falls back to (false, 0) if fetchPlan fails", async () => {
+    seedLocalStorage({
+      accessToken: "tok",
+      user: {
+        id: 1,
+        email: "x@y.z",
+        username: "x",
+        plan: "expert",
+        credits: 0,
+        credits_monthly: 0,
+      },
+    });
+    const origFetch = global.fetch;
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(new Error("network down")) as unknown as typeof global.fetch;
+
+    const res = await handleMessage({
+      action: "GET_VOICE_BUTTON_STATE",
+    });
+
+    expect(res.success).toBe(true);
+    expect(res.state?.trialUsed).toBe(false);
+    expect(res.state?.monthlyMinutesUsed).toBe(0);
+
+    global.fetch = origFetch;
+  });
 });
