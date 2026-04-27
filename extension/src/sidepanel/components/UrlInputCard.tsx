@@ -3,13 +3,14 @@ import { detectPlatform } from "../../utils/video";
 
 interface Props {
   onSubmit: (url: string) => void;
+  loading?: boolean;
 }
 
-export function UrlInputCard({ onSubmit }: Props): JSX.Element {
+export function UrlInputCard({ onSubmit, loading = false }: Props): JSX.Element {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
+  const submit = () => {
     setError(null);
     const trimmed = url.trim();
     if (!trimmed) return;
@@ -21,51 +22,54 @@ export function UrlInputCard({ onSubmit }: Props): JSX.Element {
     onSubmit(trimmed);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submit();
+    }
+  };
+
+  const isDisabled = loading || url.trim().length === 0;
+
   return (
-    <div
-      style={{
-        padding: 16,
-        margin: 16,
-        background: "rgba(255,255,255,0.03)",
-        borderRadius: 12,
-      }}
-    >
+    <div className="ds-analyze-card">
       <input
+        type="url"
         value={url}
         onChange={(e) => setUrl((e.target as HTMLInputElement).value)}
+        onKeyDown={handleKeyDown}
         placeholder="URL YouTube ou TikTok"
-        style={{
-          width: "100%",
-          padding: 10,
-          background: "rgba(0,0,0,0.3)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          borderRadius: 8,
-          color: "#fff",
-          fontSize: 13,
-          marginBottom: 8,
-          boxSizing: "border-box",
-        }}
+        className="ds-analyze-input"
+        disabled={loading}
+        aria-label="URL de la vidéo à analyser"
+        spellCheck={false}
+        autoComplete="off"
       />
       {error && (
-        <div style={{ color: "#ef4444", fontSize: 12, marginBottom: 8 }}>
+        <div className="ds-analyze-error" role="alert">
           {error}
         </div>
       )}
       <button
-        onClick={handleSubmit}
-        style={{
-          background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-          color: "#fff",
-          border: "none",
-          padding: "10px 16px",
-          borderRadius: 8,
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: "pointer",
-          width: "100%",
-        }}
+        type="button"
+        onClick={submit}
+        disabled={isDisabled}
+        className="ds-analyze-btn"
+        aria-busy={loading}
       >
-        Analyser
+        {loading ? (
+          <>
+            <span className="ds-analyze-spinner" aria-hidden="true" />
+            <span>Analyse en cours…</span>
+          </>
+        ) : (
+          <>
+            <span className="ds-analyze-btn-icon" aria-hidden="true">
+              ✨
+            </span>
+            <span>Analyser cette vidéo</span>
+          </>
+        )}
       </button>
     </div>
   );
