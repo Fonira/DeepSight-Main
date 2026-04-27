@@ -562,6 +562,88 @@ async function broadcastVoiceAudioMessage(
 // ── Message Handler ──
 
 /**
+ * [B8] Mic permission via offscreen document.
+ *
+ * Bug Chrome MV3 connu : `getUserMedia` appelé depuis un sidepanel/popup
+ * ne déclenche pas toujours le prompt natif Chrome (cf chromium issue
+ * #41497129). La solution officielle est de faire l'appel depuis un
+ * offscreen document (`reasons: ["USER_MEDIA"]`), où getUserMedia se
+ * comporte comme dans une page web normale. Une fois le user a accepté,
+ * Chrome cache la permission pour `chrome-extension://<id>` → tous les
+ * appels suivants (notamment depuis le SDK ElevenLabs côté sidepanel)
+ * réutilisent la permission sans re-prompt.
+ */
+const OFFSCREEN_MIC_PATH = "offscreen-mic.html";
+
+interface MicOffscreenResponse {
+  granted: boolean;
+  errorName?: string;
+  errorMessage?: string;
+}
+
+async function ensureMicOffscreenDocument(): Promise<void> {
+  const offscreenApi = (
+    chrome as unknown as {
+      offscreen?: {
+        createDocument?: (opts: {
+          url: string;
+          reasons: string[];
+          justification: string;
+        }) => Promise<void>;
+      };
+      runtime: {
+        getContexts?: (opts: {
+          contextTypes: string[];
+          documentUrls?: string[];
+        }) => Promise<unknown[]>;
+        getURL: (path: string) => string;
+      };
+    }
+  ).offscreen;
+  if (!offscreenApi?.createDocument) {
+    throw new Error("chrome.offscreen API unavailable (Chrome <116?)");
+  }
+  const url = chrome.runtime.getURL(OFFSCREEN_MIC_PATH);
+  const getContexts = (
+    chrome.runtime as unknown as {
+      getContexts?: (opts: {
+        contextTypes: string[];
+        documentUrls?: string[];
+      }) => Promise<unknown[]>;
+    }
+  ).getContexts;
+  if (getContexts) {
+    const existing = await getContexts({
+      contextTypes: ["OFFSCREEN_DOCUMENT"],
+      documentUrls: [url],
+    });
+    if (existing.length > 0) return;
+  }
+  try {
+    await offscreenApi.createDocument({
+      url: OFFSCREEN_MIC_PATH,
+      reasons: ["USER_MEDIA"],
+      justification: "Voice call requires microphone access for the AI agent",
+    });
+  } catch (err) {
+    // Race : un autre call à createDocument vient de réussir avant nous.
+    // Chrome throw "Only a single offscreen document may be created" → safe.
+    const msg = (err as Error).message ?? "";
+    if (!msg.includes("single offscreen")) throw err;
+  }
+}
+
+async function requestMicViaOffscreen(): Promise<MicOffscreenResponse> {
+  await ensureMicOffscreenDocument();
+  // sendMessage round-trip vers le offscreen-mic.ts qui appelle getUserMedia.
+  const response = (await chrome.runtime.sendMessage({
+    target: "offscreen-mic",
+    action: "REQUEST_MIC",
+  })) as MicOffscreenResponse | undefined;
+  return response ?? { granted: false, errorMessage: "no response" };
+}
+
+/**
  * Quick Voice Call dispatcher (Task 10) — handles `{ type: "OPEN_VOICE_CALL", … }`
  * messages emitted from the YouTube widget. Stores the video context in
  * `chrome.storage.session` (cleared on Chrome restart, secure for ephemeral
@@ -575,8 +657,13 @@ interface VoiceCallMessage {
   plan?: "free" | "pro" | "expert";
 }
 
+/** [B8] Sidepanel → background : "demande-moi le micro via offscreen". */
+interface MicPermissionMessage {
+  action: "REQUEST_MIC_PERMISSION";
+}
+
 export async function handleMessage(
-  message: ExtensionMessage | VoiceCallMessage,
+  message: ExtensionMessage | VoiceCallMessage | MicPermissionMessage,
   sender?: chrome.runtime.MessageSender | number,
 ): Promise<MessageResponse> {
   // Backwards compat: accept either a full sender object (preferred) or a
@@ -585,6 +672,29 @@ export async function handleMessage(
     typeof sender === "number"
       ? sender
       : (sender as chrome.runtime.MessageSender | undefined)?.tab?.id;
+
+  // [B8] Messages destinés au offscreen-mic : ignore côté background, le
+  // listener offscreen y répond. Sans ce guard, handleExtensionMessage
+  // tombe dans default avec action=undefined.
+  if ((message as { target?: string })?.target === "offscreen-mic") {
+    return { success: true };
+  }
+
+  // [B8] Sidepanel demande la permission micro via offscreen document.
+  if ((message as MicPermissionMessage)?.action === "REQUEST_MIC_PERMISSION") {
+    try {
+      const result = await requestMicViaOffscreen();
+      return {
+        success: true,
+        result,
+      } as unknown as MessageResponse;
+    } catch (e) {
+      return {
+        success: false,
+        error: (e as Error).message ?? "offscreen mic failed",
+      };
+    }
+  }
 
   // ── Quick Voice Call dispatch (type-based messages) ──
   const typed = message as VoiceCallMessage;

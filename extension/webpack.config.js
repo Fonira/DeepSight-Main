@@ -28,7 +28,7 @@ module.exports = (env, argv) => {
       authSyncMain: "./src/authSyncMain/index.ts",
       sidepanel: "./src/sidepanel/index.tsx",
       viewer: "./src/viewer.tsx",
-      sidepanel: "./src/sidepanel/index.tsx",
+      "offscreen-mic": "./src/offscreen-mic.ts",
     },
     output: {
       path: outputDir,
@@ -79,6 +79,7 @@ module.exports = (env, argv) => {
         patterns: [
           { from: `public/${manifestFile}`, to: "manifest.json" },
           { from: "public/viewer.html", to: "viewer.html" },
+          { from: "public/offscreen-mic.html", to: "offscreen-mic.html" },
           { from: "src/styles/design-tokens.css", to: "design-tokens.css" },
           { from: "src/styles/viewer.css", to: "viewer.css" },
           { from: "src/styles/tokens.css", to: "tokens.css" },

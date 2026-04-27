@@ -13,6 +13,7 @@ import React, {
   Suspense,
 } from "react";
 import { createPortal } from "react-dom";
+import { Helmet } from "react-helmet-async";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -641,6 +642,14 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
           className="fixed inset-0 z-[100] flex items-center justify-center"
           role="presentation"
         >
+          {/* Override page <title> while the call is active so the browser
+              tab reflects "Appel vocal" instead of the underlying page
+              (e.g. "Historique"). Reverts on close. */}
+          <Helmet>
+            <title>
+              {tr("Appel vocal | DeepSight", "Voice call | DeepSight")}
+            </title>
+          </Helmet>
           {/* Backdrop — DeepSight dark theme + doodle pattern + brand glow */}
           <motion.div
             className="absolute inset-0 bg-[#0a0a0f]/95 backdrop-blur-xl overflow-hidden"

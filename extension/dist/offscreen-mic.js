@@ -1,0 +1,1 @@
+(()=>{"use strict";chrome.runtime.onMessage.addListener((e,a,r)=>"offscreen-mic"===e?.target&&"REQUEST_MIC"===e?.action&&((async()=>{try{const e=await navigator.mediaDevices.getUserMedia({audio:!0});for(const a of e.getTracks())a.stop();r({granted:!0})}catch(e){const a=e;r({granted:!1,errorName:a.name,errorMessage:a.message})}})(),!0))})();

@@ -117,39 +117,49 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     });
 
     void (async () => {
-      // ── [B6] Preflight getUserMedia AVANT toute opération async ──
-      // Sans ça, le SDK ElevenLabs appelle getUserMedia trop tard (après
-      // POST /voice/session + load SDK chunk) et le user gesture est perdu :
-      // Chrome refuse silencieusement (NotAllowedError sans prompt natif).
-      // En appelant ici on déclenche le prompt natif "Autoriser/Bloquer".
-      // Le stream est libéré immédiatement — le SDK le re-demandera mais
-      // Chrome cache la permission, donc pas de double prompt.
+      // ── [B8] Preflight micro via OFFSCREEN DOCUMENT ──
+      // Bug Chrome MV3 connu : getUserMedia depuis un sidepanel ne
+      // déclenche pas le prompt natif de façon fiable (chromium #41497129).
+      // Solution officielle : passer par un offscreen document
+      // (reasons:["USER_MEDIA"]) où getUserMedia se comporte comme dans
+      // une page web normale. Le background gère la création du document
+      // et le round-trip — ici on envoie juste un message.
+      console.log("[VoiceView] requesting mic via offscreen…");
+      let micGranted = false;
       try {
-        console.log("[VoiceView] preflight getUserMedia({audio:true})…");
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-        for (const track of stream.getTracks()) track.stop();
-        console.log("[VoiceView] preflight micro OK");
-      } catch (micErr) {
-        if (cancelled) return;
-        const errName = (micErr as Error).name;
-        console.error(
-          "[VoiceView] preflight getUserMedia failed:",
-          errName,
-          micErr,
-        );
-        if (
-          errName === "NotAllowedError" ||
-          errName === "PermissionDeniedError"
-        ) {
-          setState({ phase: "error_mic_permission" });
+        const resp = (await chrome.runtime.sendMessage({
+          action: "REQUEST_MIC_PERMISSION",
+        })) as
+          | {
+              success?: boolean;
+              result?: { granted?: boolean; errorName?: string };
+              error?: string;
+            }
+          | undefined;
+        console.log("[VoiceView] offscreen mic response:", resp);
+        micGranted = Boolean(resp?.result?.granted);
+        if (!micGranted) {
+          if (cancelled) return;
+          const errName = resp?.result?.errorName;
+          if (
+            errName === "NotAllowedError" ||
+            errName === "PermissionDeniedError"
+          ) {
+            setState({ phase: "error_mic_permission" });
+          } else {
+            setState({
+              phase: "error_generic",
+              message: errName ?? resp?.error ?? "Mic unavailable",
+            });
+          }
           return;
         }
-        // NotFoundError (pas de micro), NotReadableError (busy), etc.
+      } catch (e) {
+        if (cancelled) return;
+        console.error("[VoiceView] offscreen mic request failed:", e);
         setState({
           phase: "error_generic",
-          message: String((micErr as Error).message ?? micErr),
+          message: String((e as Error).message ?? e),
         });
         return;
       }
@@ -367,26 +377,29 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
       const settingsUrl = `chrome://settings/content/siteDetails?site=chrome-extension://${extensionId}`;
       void chrome.tabs.create({ url: settingsUrl });
     };
-    // [B6] Click handler = user gesture frais → getUserMedia peut afficher le
-    // prompt natif Chrome. On lance la demande synchroneously dans le click
-    // handler (pas dans .then d'un await précédent) pour préserver le user
-    // gesture context.
+    // [B8] Click handler → demande mic via offscreen document (background).
+    // L'offscreen est un context où getUserMedia se comporte normalement
+    // (pas de bug sidepanel). Si granted, on relance le bootstrap.
     const handleEnableMic = (): void => {
-      navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then((stream) => {
-          for (const track of stream.getTracks()) track.stop();
-          startedRef.current = false;
-          setState({ phase: "idle" });
-          setRetryKey((k) => k + 1);
-        })
-        .catch((err) => {
-          // Loggé pour debug DevTools console (sidepanel inspector).
-          console.error("[VoiceView] getUserMedia rejected", err);
-          // Si Chrome bascule en denied après ce refus, le useEffect
-          // permissions onchange va re-render avec isDenied=true et
-          // l'UX changera automatiquement.
-        });
+      void (async () => {
+        try {
+          const resp = (await chrome.runtime.sendMessage({
+            action: "REQUEST_MIC_PERMISSION",
+          })) as
+            | { success?: boolean; result?: { granted?: boolean } }
+            | undefined;
+          console.log("[VoiceView] retry offscreen mic:", resp);
+          if (resp?.result?.granted) {
+            startedRef.current = false;
+            setState({ phase: "idle" });
+            setRetryKey((k) => k + 1);
+          }
+          // Si pas granted : le useEffect permissions onchange va re-render
+          // automatiquement avec isDenied=true et changer l'UX.
+        } catch (err) {
+          console.error("[VoiceView] retry offscreen failed:", err);
+        }
+      })();
     };
     return (
       <div className="ds-error" role="alert">

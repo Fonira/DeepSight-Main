@@ -25,6 +25,7 @@ interface UseVoiceChatOptions {
   /** Type d'agent vocal. Défaut : "explorer". */
   agentType?:
     | "explorer"
+    | "companion"
     | "tutor"
     | "debate_moderator"
     | "quiz_coach"
