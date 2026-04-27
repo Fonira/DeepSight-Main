@@ -3270,7 +3270,10 @@ async def _analyze_video_background_v6(
                 logger.info(f"   └─ Enrichment: {enrichment_level.value}, {len(enrichment_sources)} sources")
 
             # ⚡ Cache + quota fire-and-forget (perf v6.3) — le frontend voit "completed" 100-500ms plus tôt
-            asyncio.create_task(asyncio.gather(_cache_analysis(), _increment_quota()))
+            async def _post_completion_tasks():
+                await asyncio.gather(_cache_analysis(), _increment_quota())
+
+            asyncio.create_task(_post_completion_tasks())
 
             # 🔔 NOTIFICATION PUSH fire-and-forget — Alerter l'utilisateur que l'analyse est prête
             async def _send_complete_notification():
