@@ -4,7 +4,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from pydantic import BaseModel, EmailStr, Field, computed_field
+from pydantic import BaseModel, EmailStr, Field, computed_field, field_validator
 from typing import Optional, Literal
 from datetime import datetime
 
@@ -183,6 +183,17 @@ class UserResponse(BaseModel):
         default_factory=dict,
         description="User preferences JSON (ambient_lighting_enabled, future feature flags)",
     )
+
+    @field_validator("preferences", mode="before")
+    @classmethod
+    def _coerce_preferences(cls, v):
+        # Tolère None (legacy users avant migration 008) et tout ce qui n'est
+        # pas un dict (ex: MagicMock dans les fixtures de tests qui ne settent
+        # pas explicitement l'attribut). Le contrat externe reste : toujours
+        # un dict côté frontend.
+        if not isinstance(v, dict):
+            return {}
+        return v
 
     @computed_field
     @property

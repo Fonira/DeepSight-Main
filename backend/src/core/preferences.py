@@ -4,6 +4,7 @@ Used as feature gates throughout the backend (e.g. ambient lighting renderer
 choice, future feature flags). Centralizes the parsing logic and default
 values so they can't drift between callsites.
 """
+
 from typing import Any, Optional
 
 from db.database import User
