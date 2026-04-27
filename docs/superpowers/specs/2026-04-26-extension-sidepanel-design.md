@@ -376,6 +376,33 @@ Pas de slash commands dans `ChatView`. Pas de variantes de `Message` (synthesis/
 
 ---
 
+## 7ter. Addendum 2026-04-27 — Fix détection vidéo side panel
+
+### Bug observé en validation visuelle
+
+Au premier reload de l'extension après la livraison de SuggestionPills, le side panel ouvert sur une vraie vidéo YouTube affichait l'empty state « OUVRE UNE VIDÉO YOUTUBE OU TIKTOK POUR L'ANALYSER ». Conséquence en cascade : pas de BeamCard primary, pas de SuggestionPills (gated par `video !== null`), pas de Quick Chat.
+
+### Cause racine
+
+`Browser.tabs.query({ active: true, currentWindow: true })` dans `MainView.tsx` (et plus largement dans tout consumer side panel) ne fait pas ce que le pattern popup fait. Dans un Chrome side panel, `currentWindow` cible la fenêtre du panel (contexte d'exécution distinct), pas la fenêtre browser principale. Le tab[0] retourné est `undefined` ou un tab non-vidéo → `extractVideoId()` rend `null` → `video` reste `null`.
+
+### Fix v1 (commits `7192961a` + suivant)
+
+1. **Tous les `tabs.query` du side panel** passent à `lastFocusedWindow: true` (cible la dernière fenêtre browser focused, jamais le panel).
+2. **`MainView` re-detect live** : ajout de `chrome.tabs.onActivated` + `chrome.tabs.onUpdated` (filtré sur `changeInfo.url` pour éviter le flood) avec cleanup.
+3. **`setVideo(null)` quand l'URL n'est plus vidéo** (cohérent avec le critère « hors YT/TT → historique » §6).
+4. **Tests TDD** : 5 nouveaux tests dans `__tests__/sidepanel/views/MainView.video-detection.test.tsx` couvrant initial detection, switch tab, navigation in-tab, cleanup, et un trap mock prouvant que `currentWindow:true` n'est plus utilisé.
+
+### Divergence d'architecture vs §4
+
+§4.4 décrit un pattern à 3 niveaux : background SW relaie `chrome.tabs.onActivated` → message `TAB_CHANGED` → consumer s'abonne via `useCurrentTab` hook. Le fix v1 met les listeners `chrome.tabs.*` directement dans `MainView` (court-circuit du hook).
+
+**Justification** : à la date du fix, `useCurrentTab` n'est consommé que par `HomeView` (qui n'est pas rendu en V3 — `MainView` reste la vue principale). Routage via background SW + hook ajouterait du code dans 3 fichiers pour zéro bénéfice fonctionnel actuel. Si une migration vers le pattern §4 est entreprise plus tard, les listeners `MainView` doivent être supprimés et `useCurrentTab` consommé à la place.
+
+`useCurrentTab.ts` et `views/AnalysisView.tsx` (code non rendu en V3) sont aussi alignés sur `lastFocusedWindow:true` pour éviter qu'ils portent un bug latent en cas de réutilisation.
+
+---
+
 ## 8. Hors scope (roadmap v3.x+)
 
 - Voice chat ElevenLabs : branche séparée, intégrée après merge v3.0

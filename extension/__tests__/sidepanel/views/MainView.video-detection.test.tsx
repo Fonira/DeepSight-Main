@@ -166,7 +166,11 @@ function installTabsMock(initialTab: MockTab | null): MockTabsApi {
   };
 
   // Replace chrome.tabs (the polyfill mock redirects Browser to chrome)
-  (chrome as unknown as { tabs: MockTabsApi & { sendMessage: jest.Mock; create: jest.Mock } }).tabs = {
+  (
+    chrome as unknown as {
+      tabs: MockTabsApi & { sendMessage: jest.Mock; create: jest.Mock };
+    }
+  ).tabs = {
     ...tabsApi,
     sendMessage: jest.fn(() => Promise.resolve()),
     create: jest.fn(() => Promise.resolve({ id: 99 })),
@@ -312,7 +316,9 @@ describe("MainView — video detection in side panel context", () => {
 
     // Le tab "TRAP" ne doit jamais s'afficher — ce serait la preuve que le code
     // utilise encore currentWindow:true.
-    expect(screen.queryByText("TRAP — should NOT appear")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("TRAP — should NOT appear"),
+    ).not.toBeInTheDocument();
 
     // Aucun bouton "Analyser cette vidéo" ne doit être visible (pas de video card)
     const analyserButton = screen
