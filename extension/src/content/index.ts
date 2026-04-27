@@ -14,6 +14,14 @@
 //   3. popstate listener catches back/forward navigation.
 
 import { detectPlatform } from "../utils/video";
+import { YouTubeAudioController } from "./youtubeAudioController";
+
+// Audio ducking pendant les voice calls — instance unique par tab.
+const audioController = new YouTubeAudioController();
+chrome.runtime.onMessage.addListener((msg: { type?: string }) => {
+  if (msg?.type === "DUCK_AUDIO") audioController.attach();
+  if (msg?.type === "RESTORE_AUDIO") audioController.detach();
+});
 
 let lastUrl = location.href;
 
