@@ -87,3 +87,5 @@ extension/dist/*.map
 
 # Superpowers brainstorm sessions (mockups locaux, serveurs HTTP éphémères)
 .superpowers/
+
+.worktrees/
