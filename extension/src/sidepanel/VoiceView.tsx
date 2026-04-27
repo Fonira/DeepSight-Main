@@ -137,6 +137,25 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCall?.videoId]);
 
+  // ── Connecting timeout (I2) ──
+  // Si la phase reste `connecting` plus de 15 secondes, on bascule en
+  // `error_generic` avec un message explicite. Évite que l'UX freeze
+  // indéfiniment si le backend `/voice/session` est bloqué (réseau lent,
+  // 504, SDK ElevenLabs qui ne répond pas). Cleanup automatique sur
+  // transition vers une autre phase.
+  useEffect(() => {
+    if (state.phase !== "connecting") return;
+    const timeoutMessage = t.voiceCall.errors.connectingTimeout;
+    const timer = setTimeout(() => {
+      setState((s) =>
+        s.phase === "connecting"
+          ? { phase: "error_generic", message: timeoutMessage }
+          : s,
+      );
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [state.phase, t.voiceCall.errors.connectingTimeout]);
+
   // ── Elapsed timer ──
   useEffect(() => {
     if (state.phase !== "live_streaming" && state.phase !== "live_complete") {

@@ -127,4 +127,68 @@ describe("VoiceView streaming flow", () => {
       { timeout: 3000 },
     );
   });
+
+  it("[I2] transitions to error_generic after 15s connecting timeout", async () => {
+    jest.useFakeTimers();
+    // startSession qui ne résout JAMAIS — simule un backend bloqué.
+    startSessionMock.mockReturnValue(new Promise(() => {}));
+
+    let renderResult: ReturnType<typeof render>;
+    await act(async () => {
+      renderResult = render(<VoiceView pendingCall={PENDING_CALL} />);
+    });
+
+    // Avant timeout : on est en connecting.
+    await waitFor(() => {
+      expect(renderResult!.container.textContent ?? "").toMatch(
+        /Connexion à l'agent/,
+      );
+    });
+
+    // Avance le temps de 15 secondes.
+    await act(async () => {
+      jest.advanceTimersByTime(15000);
+    });
+
+    // Après timeout : message d'erreur "Délai de connexion dépassé".
+    await waitFor(() => {
+      expect(renderResult!.container.textContent ?? "").toMatch(
+        /Délai de connexion dépassé|Connection timeout/,
+      );
+    });
+
+    jest.useRealTimers();
+  });
+
+  it("[I2] does NOT trigger timeout if session resolves in time", async () => {
+    jest.useFakeTimers();
+    startSessionMock.mockResolvedValue({
+      session_id: "s_fast",
+      signed_url: "wss://x",
+      max_minutes: 3,
+      is_trial: true,
+    });
+
+    let renderResult: ReturnType<typeof render>;
+    await act(async () => {
+      renderResult = render(<VoiceView pendingCall={PENDING_CALL} />);
+    });
+
+    // Wait for live_streaming phase (En appel).
+    await waitFor(() => {
+      expect(renderResult!.container.textContent ?? "").toMatch(/En appel/);
+    });
+
+    // Avance 30s — on doit rester en live, PAS de timeout.
+    await act(async () => {
+      jest.advanceTimersByTime(30000);
+    });
+
+    expect(renderResult!.container.textContent ?? "").not.toMatch(
+      /Délai de connexion dépassé/,
+    );
+    expect(renderResult!.container.textContent ?? "").toMatch(/En appel/);
+
+    jest.useRealTimers();
+  });
 });
