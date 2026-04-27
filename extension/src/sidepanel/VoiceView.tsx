@@ -30,6 +30,7 @@ import {
 import { useStreamingVideoContext } from "./hooks/useStreamingVideoContext";
 import type { VoiceCallState, VoicePanelContext } from "./types";
 import { WEBAPP_URL } from "../utils/config";
+import { track } from "../utils/analytics";
 
 interface VoiceViewProps {
   context?: VoicePanelContext | null;
@@ -106,6 +107,12 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
           });
           if (cancelled) return;
           chrome.runtime.sendMessage({ type: "VOICE_CALL_STARTED" });
+          track("voice_call_started", {
+            videoId: pending.videoId,
+            agent_type: "explorer_streaming",
+            is_trial: Boolean(created.is_trial),
+            max_minutes: created.max_minutes ?? null,
+          });
           setState({
             phase: "live_streaming",
             videoId: pending.videoId,
@@ -127,9 +134,11 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
               | "pro_no_voice"
               | "monthly_quota"
               | undefined;
-            setState({
-              phase: "error_quota",
-              reason: detailReason ?? "trial_used",
+            const reason = detailReason ?? "trial_used";
+            setState({ phase: "error_quota", reason });
+            track("voice_call_upgrade_cta_shown", {
+              reason,
+              videoId: pending.videoId,
             });
           } else if (errAny.name === "NotAllowedError") {
             setState({ phase: "error_mic_permission" });
@@ -175,6 +184,11 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
   // Promote live_streaming → live_complete quand le SSE annonce ctx_complete.
   useEffect(() => {
     if (contextComplete && state.phase === "live_streaming") {
+      const ctxCompleteMs = Date.now() - state.startedAt;
+      track("voice_call_context_complete_at_ms", {
+        videoId: state.videoId,
+        ms: ctxCompleteMs,
+      });
       setState((s) =>
         s.phase === "live_streaming"
           ? {
@@ -191,14 +205,29 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
   const handleHangup = (): void => {
     void voiceChat.endSession();
     chrome.runtime.sendMessage({ type: "VOICE_CALL_ENDED" });
+    // Track durée totale d'appel (live_streaming/live_complete only).
+    if (state.phase === "live_streaming" || state.phase === "live_complete") {
+      const durationSec = Math.floor((Date.now() - state.startedAt) / 1000);
+      track("voice_call_duration_seconds", {
+        videoId: state.videoId,
+        durationSec,
+      });
+    }
+    const endedReason = voiceChat.lastSessionWasTrial
+      ? "trial_used"
+      : "user_hangup";
+    track("voice_call_ended_reason", { reason: endedReason });
     if (voiceChat.lastSessionWasTrial) {
       setState({ phase: "ended_free_cta", reason: "trial_used" });
+      track("voice_call_upgrade_cta_shown", { reason: "trial_used" });
     } else {
       setState({ phase: "ended_expert" });
     }
   };
 
   const handleUpgrade = (): void => {
+    const reason = state.phase === "error_quota" ? state.reason : "trial_used";
+    track("voice_call_upgrade_cta_clicked", { reason });
     const url = `${WEBAPP_URL}/billing/checkout?plan=expert&source=voice_call`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
