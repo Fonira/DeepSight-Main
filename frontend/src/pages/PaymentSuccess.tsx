@@ -297,7 +297,6 @@ export const PaymentSuccess: React.FC = () => {
           style={{ backgroundColor: planColor }}
         />
       )}
-
       <div className="max-w-lg w-full relative z-10">
         {/* Glass card */}
         <div className="backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden">
@@ -347,7 +346,7 @@ export const PaymentSuccess: React.FC = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="text-white/50 mt-2 mb-1"
+                  className="text-text-muted mt-2 mb-1"
                 >
                   Votre abonnement est maintenant actif
                 </motion.p>
@@ -389,7 +388,7 @@ export const PaymentSuccess: React.FC = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.5 + plan.features.length * 0.15 }}
-                  className="text-white/40 text-sm mb-8 italic"
+                  className="text-text-muted text-sm mb-8 italic"
                 >
                   Merci pour votre confiance !
                 </motion.p>
@@ -417,7 +416,7 @@ export const PaymentSuccess: React.FC = () => {
                   {/* Secondary CTA */}
                   <button
                     onClick={() => navigate("/account")}
-                    className="w-full py-3 px-6 rounded-xl font-medium text-white/60 border border-white/10 hover:border-white/20 hover:text-white/80 transition-all duration-200 flex items-center justify-center gap-2"
+                    className="w-full py-3 px-6 rounded-xl font-medium text-text-secondary border border-white/10 hover:border-white/20 hover:text-text-primary transition-all duration-200 flex items-center justify-center gap-2"
                   >
                     <User className="w-4 h-4" />
                     Voir mon compte
@@ -429,7 +428,7 @@ export const PaymentSuccess: React.FC = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 1.5 }}
-                  className="text-white/20 text-xs mt-6"
+                  className="text-text-tertiary text-xs mt-6"
                 >
                   Redirection automatique dans {countdown}s
                 </motion.p>
@@ -451,14 +450,14 @@ export const PaymentSuccess: React.FC = () => {
                 <h2 className="text-xl font-semibold text-white mb-3">
                   Paiement en cours de traitement
                 </h2>
-                <p className="text-white/50 text-sm mb-6 leading-relaxed">
+                <p className="text-text-muted text-sm mb-6 leading-relaxed">
                   Votre paiement est en cours de traitement.
                   <br />
                   Vos avantages seront activés sous quelques minutes.
                 </p>
                 <button
                   onClick={() => navigate("/")}
-                  className="w-full py-3 px-6 rounded-xl font-medium text-white/70 border border-white/10 hover:border-white/20 hover:text-white transition-all duration-200"
+                  className="w-full py-3 px-6 rounded-xl font-medium text-text-secondary border border-white/10 hover:border-white/20 hover:text-white transition-all duration-200"
                 >
                   Retour à l'accueil
                 </button>
@@ -480,7 +479,7 @@ export const PaymentSuccess: React.FC = () => {
                 <h2 className="text-xl font-semibold text-white mb-3">
                   Oups, un problème est survenu
                 </h2>
-                <p className="text-white/50 text-sm mb-6">
+                <p className="text-text-muted text-sm mb-6">
                   {errorMessage ||
                     "Impossible de confirmer votre paiement. Veuillez réessayer."}
                 </p>
@@ -494,12 +493,12 @@ export const PaymentSuccess: React.FC = () => {
                   </button>
                   <button
                     onClick={() => navigate("/")}
-                    className="w-full py-3 px-6 rounded-xl font-medium text-white/50 hover:text-white/70 transition-all duration-200"
+                    className="w-full py-3 px-6 rounded-xl font-medium text-text-muted hover:text-text-secondary transition-all duration-200"
                   >
                     Retour à l'accueil
                   </button>
                 </div>
-                <p className="text-xs text-white/20 mt-6">
+                <p className="text-xs text-text-tertiary mt-6">
                   Besoin d'aide ?{" "}
                   <a
                     href="mailto:contact@deepsightsynthesis.com"

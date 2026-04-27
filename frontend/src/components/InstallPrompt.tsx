@@ -224,7 +224,7 @@ export const InstallPrompt: React.FC<InstallPromptProps> = ({
         {/* Texte */}
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-white">Installer Deep Sight</p>
-          <p className="text-sm text-white/80 truncate">
+          <p className="text-sm text-text-primary truncate">
             {platform === "ios"
               ? "Ajoutez à l'écran d'accueil"
               : "Accès rapide depuis votre appareil"}

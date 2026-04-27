@@ -70,7 +70,6 @@ export const SessionResults: React.FC<SessionResultsProps> = ({
           Session terminée !
         </h2>
       </div>
-
       {/* Stat cards */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {stats.map((stat) => (
@@ -80,13 +79,12 @@ export const SessionResults: React.FC<SessionResultsProps> = ({
           >
             <span className={stat.color}>{stat.icon}</span>
             <span className="text-lg font-bold text-white">{stat.value}</span>
-            <span className="text-[10px] text-white/40 text-center leading-tight">
+            <span className="text-[10px] text-text-muted text-center leading-tight">
               {stat.label}
             </span>
           </div>
         ))}
       </div>
-
       {/* Badge unlocks */}
       <AnimatePresence>
         {newBadges.length > 0 && (
@@ -120,13 +118,12 @@ export const SessionResults: React.FC<SessionResultsProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Actions */}
       <div className="flex gap-3">
         <button
           type="button"
           onClick={onClose}
-          className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/70 transition-colors hover:bg-white/10"
+          className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-text-secondary transition-colors hover:bg-white/10"
         >
           Retour au hub
         </button>

@@ -123,11 +123,10 @@ export const DebateChat: React.FC<DebateChatProps> = ({
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-white">Chat du débat</h3>
           {debateTopic && (
-            <p className="text-xs text-white/40 truncate">{debateTopic}</p>
+            <p className="text-xs text-text-muted truncate">{debateTopic}</p>
           )}
         </div>
       </div>
-
       {/* Messages */}
       <div
         ref={scrollRef}
@@ -139,8 +138,8 @@ export const DebateChat: React.FC<DebateChatProps> = ({
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <MessageCircle className="w-8 h-8 text-white/10 mb-2" />
-            <p className="text-sm text-white/30">
+            <MessageCircle className="w-8 h-8 text-text-tertiary mb-2" />
+            <p className="text-sm text-text-tertiary">
               Posez une question sur ce débat...
             </p>
           </div>
@@ -196,7 +195,6 @@ export const DebateChat: React.FC<DebateChatProps> = ({
           </motion.div>
         )}
       </div>
-
       {/* Error */}
       {error && (
         <div className="px-4 pb-2">
@@ -208,7 +206,6 @@ export const DebateChat: React.FC<DebateChatProps> = ({
           </button>
         </div>
       )}
-
       {/* Input */}
       <div className="p-3 border-t border-white/5">
         <div className="flex items-center gap-2">

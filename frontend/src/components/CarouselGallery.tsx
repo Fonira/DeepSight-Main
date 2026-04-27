@@ -59,16 +59,15 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({
     <div className="w-full">
       {/* Header badge */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white/70">
+        <span className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-text-secondary">
           <span>📸</span>
           <span>Photo Mode</span>
-          <span className="text-white/40">({images.length})</span>
+          <span className="text-text-muted">({images.length})</span>
         </span>
         {title && (
-          <span className="text-sm text-white/50 truncate">{title}</span>
+          <span className="text-sm text-text-muted truncate">{title}</span>
         )}
       </div>
-
       {/* Image grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
         {images.map((src, index) => (
@@ -95,7 +94,6 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({
           </button>
         ))}
       </div>
-
       {/* Lightbox modal */}
       <AnimatePresence>
         {lightboxOpen && (
@@ -117,7 +115,7 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({
               {/* Close button */}
               <button
                 onClick={closeLightbox}
-                className="absolute top-4 right-4 p-2 rounded-full bg-white/10 border border-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors z-20"
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/10 border border-white/10 text-text-secondary hover:bg-white/20 hover:text-white transition-colors z-20"
                 aria-label="Fermer"
               >
                 <X className="w-5 h-5" />
@@ -127,7 +125,7 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({
               {images.length > 1 && (
                 <button
                   onClick={goPrev}
-                  className="absolute left-4 md:left-8 p-2 rounded-full bg-white/10 border border-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors z-20"
+                  className="absolute left-4 md:left-8 p-2 rounded-full bg-white/10 border border-white/10 text-text-secondary hover:bg-white/20 hover:text-white transition-colors z-20"
                   aria-label="Image précédente"
                 >
                   <ChevronLeft className="w-6 h-6" />
@@ -156,7 +154,7 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({
               {images.length > 1 && (
                 <button
                   onClick={goNext}
-                  className="absolute right-4 md:right-8 p-2 rounded-full bg-white/10 border border-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors z-20"
+                  className="absolute right-4 md:right-8 p-2 rounded-full bg-white/10 border border-white/10 text-text-secondary hover:bg-white/20 hover:text-white transition-colors z-20"
                   aria-label="Image suivante"
                 >
                   <ChevronRight className="w-6 h-6" />
@@ -165,7 +163,7 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({
 
               {/* Slide indicator */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20">
-                <span className="bg-black/60 backdrop-blur-sm border border-white/10 rounded-full px-4 py-1.5 text-sm text-white/80">
+                <span className="bg-black/60 backdrop-blur-sm border border-white/10 rounded-full px-4 py-1.5 text-sm text-text-primary">
                   {currentIndex + 1} / {images.length}
                 </span>
               </div>

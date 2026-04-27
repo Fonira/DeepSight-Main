@@ -140,7 +140,7 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
 
           {/* Title */}
           {title && (
-            <div className="text-xs text-white/50 truncate mb-2 flex items-center gap-2">
+            <div className="text-xs text-text-muted truncate mb-2 flex items-center gap-2">
               <span className="text-indigo-400">🎧</span>
               <span className="truncate">{title}</span>
             </div>
@@ -162,7 +162,7 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
           {/* Controls */}
           <div className="flex items-center justify-between">
             {/* Time */}
-            <span className="text-xs text-white/40 font-mono w-20">
+            <span className="text-xs text-text-muted font-mono w-20">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
 
@@ -173,7 +173,7 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
                 onClick={() => {
                   if (audioRef.current) audioRef.current.currentTime -= 15;
                 }}
-                className="text-white/50 hover:text-white transition-colors"
+                className="text-text-muted hover:text-white transition-colors"
                 title="-15s"
               >
                 <svg
@@ -224,7 +224,7 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
                 onClick={() => {
                   if (audioRef.current) audioRef.current.currentTime += 15;
                 }}
-                className="text-white/50 hover:text-white transition-colors"
+                className="text-text-muted hover:text-white transition-colors"
                 title="+15s"
               >
                 <svg
@@ -256,7 +256,7 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
               {/* Speed */}
               <button
                 onClick={cycleSpeed}
-                className="text-xs font-mono px-1.5 py-0.5 rounded bg-white/10 text-white/60 hover:text-white hover:bg-white/20 transition-colors"
+                className="text-xs font-mono px-1.5 py-0.5 rounded bg-white/10 text-text-secondary hover:text-white hover:bg-white/20 transition-colors"
               >
                 {speed}x
               </button>
@@ -264,7 +264,7 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
               {/* Download */}
               <button
                 onClick={handleDownload}
-                className="text-white/40 hover:text-white transition-colors"
+                className="text-text-muted hover:text-white transition-colors"
                 title="Télécharger"
               >
                 <svg
@@ -288,7 +288,7 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
                     audioRef.current?.pause();
                     onClose();
                   }}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="text-text-muted hover:text-white transition-colors"
                 >
                   <svg
                     width="16"

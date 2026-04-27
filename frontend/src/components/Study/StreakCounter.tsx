@@ -50,7 +50,7 @@ export const StreakCounter: React.FC<StreakCounterProps> = ({
           </span>
         </div>
         {longestStreak !== undefined && longestStreak > 0 && (
-          <span className="text-[10px] text-white/30">
+          <span className="text-[10px] text-text-tertiary">
             Record : {longestStreak}j
           </span>
         )}

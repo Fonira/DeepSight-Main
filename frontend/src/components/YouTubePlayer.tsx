@@ -226,7 +226,6 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
       <div className={`relative w-full h-full ${className}`}>
         {/* Player Container - Takes full space */}
         <div ref={containerRef} className="absolute inset-0 bg-black" />
-
         {/* Overlay Controls */}
         <div className="absolute inset-0 pointer-events-none">
           {/* Top bar with close button */}
@@ -239,7 +238,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
           >
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-xs font-medium text-white/80">
+              <span className="text-xs font-medium text-text-primary">
                 En lecture
               </span>
             </div>
@@ -249,7 +248,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
                 href={`https://youtube.com/watch?v=${videoId}&t=${Math.floor(currentTime)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-black/30 hover:bg-black/50 text-white/70 hover:text-white transition-all"
+                className="p-2 rounded-lg bg-black/30 hover:bg-black/50 text-text-secondary hover:text-white transition-all"
                 title="Ouvrir sur YouTube"
                 aria-label="Ouvrir sur YouTube"
               >
@@ -258,7 +257,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
 
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg bg-black/30 hover:bg-red-500/50 text-white/70 hover:text-white transition-all"
+                className="p-2 rounded-lg bg-black/30 hover:bg-red-500/50 text-text-secondary hover:text-white transition-all"
                 title="Fermer le player"
                 aria-label="Fermer le player"
               >
@@ -314,7 +313,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
                 {/* Restart */}
                 <button
                   onClick={restart}
-                  className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all"
+                  className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-text-secondary hover:text-white transition-all"
                   title="Recommencer"
                   aria-label="Recommencer la vidéo"
                 >
@@ -324,7 +323,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
                 {/* Mute */}
                 <button
                   onClick={toggleMute}
-                  className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all"
+                  className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-text-secondary hover:text-white transition-all"
                   aria-label={isMuted ? "Activer le son" : "Couper le son"}
                 >
                   {isMuted ? (
@@ -335,7 +334,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
                 </button>
 
                 {/* Time */}
-                <span className="text-xs font-mono text-white/80 ml-2">
+                <span className="text-xs font-mono text-text-primary ml-2">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
               </div>

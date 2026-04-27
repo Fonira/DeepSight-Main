@@ -50,12 +50,11 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({
           <h2 className="text-base font-semibold text-white">
             Nouveau débat IA
           </h2>
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-text-muted">
             Confrontez deux points de vue sur un même sujet
           </p>
         </div>
       </div>
-
       {/* Mode toggle */}
       <div className="flex gap-2 mb-5">
         <button
@@ -83,7 +82,6 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({
           Manuel
         </button>
       </div>
-
       {/* Mode description */}
       <AnimatePresence mode="wait">
         <motion.p
@@ -92,19 +90,18 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 4 }}
           transition={{ duration: 0.15 }}
-          className="text-xs text-white/40 mb-4"
+          className="text-xs text-text-muted mb-4"
         >
           {mode === "auto"
             ? "Collez une URL YouTube — DeepSight trouvera automatiquement une vidéo qui défend le point de vue opposé."
             : "Fournissez deux URL YouTube qui présentent des points de vue différents sur un même sujet."}
         </motion.p>
       </AnimatePresence>
-
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-3">
         {/* URL A */}
         <div>
-          <label className="text-xs font-medium text-white/50 mb-1 block">
+          <label className="text-xs font-medium text-text-muted mb-1 block">
             {mode === "auto"
               ? "URL de la vidéo"
               : "Vidéo A — Premier point de vue"}
@@ -129,7 +126,7 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <label className="text-xs font-medium text-white/50 mb-1 block">
+              <label className="text-xs font-medium text-text-muted mb-1 block">
                 Vidéo B — Point de vue opposé
               </label>
               <input
