@@ -175,9 +175,7 @@ async def get_streaming_redis() -> "object | None":
 
 async def _get_voice_session(session_id: str, db: AsyncSession) -> VoiceSession | None:
     """Fetch a voice session by ID (None if not found)."""
-    result = await db.execute(
-        select(VoiceSession).where(VoiceSession.id == session_id)
-    )
+    result = await db.execute(select(VoiceSession).where(VoiceSession.id == session_id))
     return result.scalar_one_or_none()
 
 
