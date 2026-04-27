@@ -125,6 +125,20 @@ html {
     --z-toast: 400;
   }
 
+  /* === ISOLATION — Refonte lisibilité ===
+     Ferme les contextes de blend pour les zones de contenu : bloque le
+     mix-blend-mode: screen de l'AmbientLightLayer sans toucher aux calques
+     cosmétiques eux-mêmes (les rayons restent dans les gutters).
+     Audit confirmant safety : .audit-portals.md (10 portals → document.body,
+     position:fixed not confined par isolation: isolate). */
+  main,
+  [role="main"],
+  .card,
+  .panel,
+  aside[data-sidebar] {
+    isolation: isolate;
+  }
+
   /* === TEXTURE NOISE (Anti-AI-Slop) === */
   .bg-noise {
     position: relative;
