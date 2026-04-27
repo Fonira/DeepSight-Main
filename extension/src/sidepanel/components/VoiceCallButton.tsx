@@ -1,34 +1,28 @@
 // extension/src/sidepanel/components/VoiceCallButton.tsx
 //
-// Wrapper React idempotent autour de `renderVoiceCallButton` (DOM pur).
-// Utilisé dans MainView (sidepanel) pour exposer le 🎙️ Quick Voice Call
-// directement à côté de Quick Chat.
+// Composant React natif "Appel rapide" — placement à côté du bouton
+// Analyser cette vidéo, même proéminence visuelle (taille / radius / font),
+// gradient violet/rose pour différencier visuellement.
 //
-// Le composant lui-même n'a pas de logique métier : il délègue à la fonction
-// DOM existante pour garder une seule source de vérité (style + texte +
-// envoi du message OPEN_VOICE_CALL).
+// Click → chrome.runtime.sendMessage({ type: "OPEN_VOICE_CALL", … }) au
+// service worker, qui ouvre le side panel et stocke le contexte vidéo.
 //
-// Re-render : à chaque changement de props, on vide le container et on
-// re-injecte. C'est OK car `renderVoiceCallButton` est pure.
-//
-// Affichage conditionnel : si pas de videoId, on n'affiche rien (le bouton
-// n'a pas de sens hors d'une page YouTube/TikTok).
-import React, { useEffect, useRef } from "react";
-import {
-  renderVoiceCallButton,
-  type VoiceCallButtonOpts,
-} from "../../content/widget";
+// Affichage conditionnel :
+//   - Pas de videoId → null (le bouton n'a pas de sens hors d'une page vidéo)
+//   - free + !trialUsed → badge "1 essai gratuit"
+//   - free + trialUsed  → bouton désactivé "Essai utilisé"
+//   - pro               → CTA upgrade (Pro n'a pas voice call dans le mix A+D)
+//   - expert            → "X min restantes" (sur 30 min/mois)
+import React from "react";
+import Browser from "../../utils/browser-polyfill";
+
+const EXPERT_MONTHLY_MIN = 30;
 
 export interface VoiceCallButtonProps {
-  /** Plan utilisateur — détermine le badge affiché. */
   plan: "free" | "pro" | "expert";
-  /** True si l'utilisateur free a déjà consommé son essai. */
   trialUsed?: boolean;
-  /** Minutes consommées ce mois-ci (utilisé pour le plan expert). */
   monthlyMinutesUsed?: number;
-  /** Video ID détecté sur l'onglet courant. Si absent → pas de rendu. */
   videoId?: string;
-  /** Titre de la vidéo (display dans la voice view). */
   videoTitle?: string;
 }
 
@@ -39,31 +33,47 @@ export const VoiceCallButton: React.FC<VoiceCallButtonProps> = ({
   videoId,
   videoTitle,
 }) => {
-  const rootRef = useRef<HTMLDivElement | null>(null);
+  if (!videoId) return null;
 
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    if (!videoId) {
-      // Pas de vidéo détectée → pas de bouton (cas non-watch page).
-      root.innerHTML = "";
-      return;
-    }
-    // Reset avant injection pour rester idempotent (chaque appel ajoute un
-    // bouton, donc on doit nettoyer le précédent à chaque re-render).
-    root.innerHTML = "";
-    const opts: VoiceCallButtonOpts = {
-      plan,
-      trialUsed,
-      monthlyMinutesUsed,
-      videoId,
-      videoTitle,
-    };
-    void renderVoiceCallButton(root, opts);
-    return () => {
-      root.innerHTML = "";
-    };
-  }, [plan, trialUsed, monthlyMinutesUsed, videoId, videoTitle]);
+  const isDisabled = plan === "free" && trialUsed === true;
 
-  return <div ref={rootRef} className="ds-voice-call-button-wrapper" />;
+  let badge: string | null = null;
+  if (plan === "free" && !trialUsed) badge = "1 essai gratuit";
+  else if (plan === "free" && trialUsed) badge = "Essai utilisé";
+  else if (plan === "expert") {
+    const remaining = EXPERT_MONTHLY_MIN - (monthlyMinutesUsed ?? 0);
+    badge = `${remaining} min restantes`;
+  } else if (plan === "pro") badge = "Passer en Expert";
+
+  const handleClick = (): void => {
+    if (isDisabled) return;
+    Browser.runtime
+      .sendMessage({
+        type: "OPEN_VOICE_CALL",
+        videoId,
+        videoTitle,
+      })
+      .catch(() => {
+        // Service worker peut ne pas répondre — silencieux côté UI.
+      });
+  };
+
+  return (
+    <button
+      type="button"
+      className={
+        isDisabled ? "voice-call-btn voice-call-btn-disabled" : "voice-call-btn"
+      }
+      disabled={isDisabled}
+      onClick={handleClick}
+      title={isDisabled ? "Essai utilisé — passer en Expert" : undefined}
+      data-testid="voice-call-btn"
+    >
+      <span className="voice-call-btn-label">
+        <span aria-hidden>🎙️</span>
+        <span>Appel rapide</span>
+      </span>
+      {badge && <span className="voice-call-btn-badge">{badge}</span>}
+    </button>
+  );
 };

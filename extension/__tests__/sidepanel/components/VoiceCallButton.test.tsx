@@ -1,12 +1,12 @@
 /** @jest-environment jsdom */
 //
-// Tests — VoiceCallButton (wrapper React du DOM widget renderVoiceCallButton)
+// Tests — VoiceCallButton (composant React natif "Appel rapide")
 //
 // Couvre :
-//  - rendu du bouton dans le wrapper si videoId fourni
-//  - badge dynamique selon plan (free / expert)
-//  - pas de rendu si videoId absent
-//  - re-render quand props changent (idempotence)
+//  - rendu du bouton avec class voice-call-btn quand videoId fourni
+//  - texte "🎙️ Appel rapide" et badge dynamique selon plan
+//  - bouton désactivé si free + trialUsed
+//  - rendu nul si videoId absent
 //  - click envoie OPEN_VOICE_CALL au background
 
 import React from "react";
@@ -15,10 +15,14 @@ import { VoiceCallButton } from "../../../src/sidepanel/components/VoiceCallButt
 
 describe("VoiceCallButton", () => {
   beforeEach(() => {
-    chrome.runtime.sendMessage = jest.fn();
+    chrome.runtime.sendMessage = jest
+      .fn()
+      .mockResolvedValue(
+        undefined,
+      ) as unknown as typeof chrome.runtime.sendMessage;
   });
 
-  it("renders the 🎙️ button when videoId is provided", () => {
+  it("renders the 🎙️ Appel rapide button when videoId is provided", () => {
     render(
       <VoiceCallButton
         plan="free"
@@ -27,9 +31,11 @@ describe("VoiceCallButton", () => {
         videoTitle="Hello"
       />,
     );
-    const btn = document.querySelector("button.ds-voice-call-btn");
+    const btn = document.querySelector(
+      "button.voice-call-btn",
+    ) as HTMLButtonElement | null;
     expect(btn).not.toBeNull();
-    expect(btn?.textContent).toMatch(/Appeler/);
+    expect(btn?.textContent).toMatch(/Appel rapide/);
   });
 
   it("shows '1 essai gratuit' badge for unused free user", () => {
@@ -40,7 +46,7 @@ describe("VoiceCallButton", () => {
   it("disables the button for free user who consumed trial", () => {
     render(<VoiceCallButton plan="free" trialUsed={true} videoId="abc" />);
     const btn = document.querySelector(
-      "button.ds-voice-call-btn",
+      "button.voice-call-btn",
     ) as HTMLButtonElement;
     expect(btn).not.toBeNull();
     expect(btn.disabled).toBe(true);
@@ -54,22 +60,24 @@ describe("VoiceCallButton", () => {
     expect(document.body.textContent).toMatch(/25 min restantes/);
   });
 
+  it("shows upgrade CTA badge for pro plan", () => {
+    render(<VoiceCallButton plan="pro" videoId="abc" />);
+    expect(document.body.textContent).toContain("Passer en Expert");
+  });
+
   it("renders nothing when videoId is missing", () => {
-    render(<VoiceCallButton plan="free" />);
-    expect(document.querySelector("button.ds-voice-call-btn")).toBeNull();
+    const { container } = render(<VoiceCallButton plan="free" />);
+    expect(container.querySelector("button.voice-call-btn")).toBeNull();
+    expect(container.firstChild).toBeNull();
   });
 
   it("re-renders idempotently when props change (no duplicate buttons)", () => {
     const { rerender } = render(
       <VoiceCallButton plan="free" trialUsed={false} videoId="abc" />,
     );
-    expect(document.querySelectorAll("button.ds-voice-call-btn")).toHaveLength(
-      1,
-    );
+    expect(document.querySelectorAll("button.voice-call-btn")).toHaveLength(1);
     rerender(<VoiceCallButton plan="free" trialUsed={true} videoId="abc" />);
-    expect(document.querySelectorAll("button.ds-voice-call-btn")).toHaveLength(
-      1,
-    );
+    expect(document.querySelectorAll("button.voice-call-btn")).toHaveLength(1);
     expect(document.body.textContent).toContain("Essai utilisé");
   });
 
@@ -82,9 +90,7 @@ describe("VoiceCallButton", () => {
         videoTitle="Test Title"
       />,
     );
-    const btn = document.querySelector(
-      "button.ds-voice-call-btn",
-    ) as HTMLButtonElement;
+    const btn = screen.getByRole("button") as HTMLButtonElement;
     btn.click();
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
       type: "OPEN_VOICE_CALL",
@@ -93,13 +99,10 @@ describe("VoiceCallButton", () => {
     });
   });
 
-  // Sanity: even when rendered, screen tooling should still see the wrapper
-  it("attaches a wrapper div with the conventional class", () => {
-    render(<VoiceCallButton plan="pro" videoId="abc" />);
-    expect(
-      document.querySelector(".ds-voice-call-button-wrapper"),
-    ).not.toBeNull();
-    // Pro has no specific badge in widget.ts current impl — just the base label
-    expect(screen.getByRole("button").textContent).toMatch(/Appeler/);
+  it("disabled button does not send message on click", () => {
+    render(<VoiceCallButton plan="free" trialUsed={true} videoId="abc" />);
+    const btn = screen.getByRole("button") as HTMLButtonElement;
+    btn.click();
+    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
   });
 });

@@ -479,6 +479,17 @@ export const MainView: React.FC<MainViewProps> = ({
           </div>
         )}
 
+        {/* Voice Call — visible dès qu'une video est détectée, à côté de Analyser */}
+        {video && (
+          <VoiceCallButton
+            plan={voicePlan}
+            trialUsed={voiceTrialUsed}
+            monthlyMinutesUsed={voiceMonthlyMinutesUsed}
+            videoId={video.videoId}
+            videoTitle={video.title}
+          />
+        )}
+
         {/* Analysis controls */}
         {video && analysis.phase === "idle" && (
           <>
@@ -503,13 +514,6 @@ export const MainView: React.FC<MainViewProps> = ({
                     ? t.analysis.quickChatPreparing
                     : t.analysis.quickChatButton}
                 </button>
-                <VoiceCallButton
-                  plan={voicePlan}
-                  trialUsed={voiceTrialUsed}
-                  monthlyMinutesUsed={voiceMonthlyMinutesUsed}
-                  videoId={video.videoId}
-                  videoTitle={video.title}
-                />
                 <a
                   href={`${WEBAPP_URL}/upgrade`}
                   target="_blank"
@@ -576,13 +580,6 @@ export const MainView: React.FC<MainViewProps> = ({
                     ? t.analysis.quickChatPreparing
                     : t.analysis.quickChatButton}
                 </button>
-                <VoiceCallButton
-                  plan={voicePlan}
-                  trialUsed={voiceTrialUsed}
-                  monthlyMinutesUsed={voiceMonthlyMinutesUsed}
-                  videoId={video.videoId}
-                  videoTitle={video.title}
-                />
                 <button
                   className="analyze-btn btn-shimmer"
                   onClick={startAnalysis}
