@@ -55,6 +55,10 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
   const { t } = useTranslation();
   const [state, setState] = useState<VoiceCallState>({ phase: "idle" });
   const [elapsedSec, setElapsedSec] = useState(0);
+  // [B6] retryKey re-déclenche le bootstrap useEffect sans toucher au pendingCall.
+  // Utilisé par le bouton "Autoriser le micro" — chaque clic = user gesture
+  // frais → getUserMedia peut afficher le prompt natif Chrome.
+  const [retryKey, setRetryKey] = useState(0);
   const startedRef = useRef(false);
 
   // Legacy compat : on passe un context au hook si fourni en prop. Le nouveau
@@ -81,6 +85,36 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     });
 
     void (async () => {
+      // ── [B6] Preflight getUserMedia AVANT toute opération async ──
+      // Sans ça, le SDK ElevenLabs appelle getUserMedia trop tard (après
+      // POST /voice/session + load SDK chunk) et le user gesture est perdu :
+      // Chrome refuse silencieusement (NotAllowedError sans prompt natif).
+      // En appelant ici on déclenche le prompt natif "Autoriser/Bloquer".
+      // Le stream est libéré immédiatement — le SDK le re-demandera mais
+      // Chrome cache la permission, donc pas de double prompt.
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        for (const track of stream.getTracks()) track.stop();
+      } catch (micErr) {
+        if (cancelled) return;
+        const errName = (micErr as Error).name;
+        if (
+          errName === "NotAllowedError" ||
+          errName === "PermissionDeniedError"
+        ) {
+          setState({ phase: "error_mic_permission" });
+          return;
+        }
+        // NotFoundError (pas de micro), NotReadableError (busy), etc.
+        setState({
+          phase: "error_generic",
+          message: String((micErr as Error).message ?? micErr),
+        });
+        return;
+      }
+
       // [N1] Hash videoId pour PostHog (privacy + groupage).
       const videoIdHash = await hashVideoId(pending.videoId);
       try {
@@ -142,7 +176,7 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingCall?.videoId]);
+  }, [pendingCall?.videoId, retryKey]);
 
   // ── Connecting timeout (I2) ──
   // Si la phase reste `connecting` plus de 15 secondes, on bascule en
@@ -284,11 +318,31 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     );
   }
   if (state.phase === "error_mic_permission") {
+    // [B6] Click handler = user gesture frais → getUserMedia peut afficher le
+    // prompt natif Chrome. On lance directement la demande ici (pas après
+    // un await intermédiaire) sinon le user gesture est perdu.
+    const handleEnableMic = (): void => {
+      // Ne pas attendre la promise — Chrome a besoin que getUserMedia soit
+      // appelé synchroneously dans le click handler. On relâche le stream et
+      // on relance le bootstrap dans le .then.
+      navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then((stream) => {
+          for (const track of stream.getTracks()) track.stop();
+          startedRef.current = false;
+          setState({ phase: "idle" });
+          setRetryKey((k) => k + 1);
+        })
+        .catch(() => {
+          // Toujours refusé — reste sur cet écran. L'utilisateur doit
+          // débloquer manuellement via l'icône cadenas Chrome.
+        });
+    };
     return (
       <div className="ds-error" role="alert">
         <p>{t.voiceCall.errors.micPermission}</p>
-        <button type="button" onClick={() => location.reload()}>
-          {t.common.retry}
+        <button type="button" onClick={handleEnableMic}>
+          {t.voiceCall.errors.enableMic}
         </button>
       </div>
     );
