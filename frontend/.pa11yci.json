@@ -1,0 +1,13 @@
+{
+  "defaults": {
+    "standard": "WCAG2AA",
+    "timeout": 30000,
+    "wait": 1500,
+    "ignore": ["WCAG2AA.Principle1.Guideline1_3.1_3_1.H42.2"]
+  },
+  "urls": [
+    "http://localhost:5173/",
+    "http://localhost:5173/login",
+    "http://localhost:5173/about"
+  ]
+}

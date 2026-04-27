@@ -13,6 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:a11y": "playwright test e2e/a11y-contrast.spec.ts",
+    "lint:pa11y": "pa11y-ci --config .pa11yci.json",
     "push": "node scripts/git-push.js",
     "push:wait": "node scripts/git-push.js --wait",
     "push:status": "node scripts/git-push-status.js",
@@ -48,6 +50,7 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.2",
     "@eslint/js": "^9.9.1",
     "@playwright/test": "^1.58.2",
     "@sentry/vite-plugin": "^5.1.1",
@@ -68,6 +71,7 @@
     "globals": "^15.9.0",
     "jscodeshift": "^17.3.0",
     "jsdom": "^25.0.0",
+    "pa11y-ci": "^4.1.0",
     "postcss": "^8.4.35",
     "rollup-plugin-visualizer": "^7.0.1",
     "tailwindcss": "^3.4.1",
