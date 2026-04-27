@@ -89,31 +89,35 @@ export const MainView: React.FC<MainViewProps> = ({
     Browser.storage.local.remove("showYouTubeRecommendation");
   };
 
-  // Détecte la vidéo dans le tab actif. Dans un Chrome side panel, on utilise
-  // `lastFocusedWindow:true` au lieu de `currentWindow:true` car le panel est
-  // sa propre fenêtre — `currentWindow` cible donc le panel lui-même, pas le
-  // navigateur. `lastFocusedWindow` cible la dernière fenêtre du browser
-  // ayant eu le focus, ce qui matche bien le tab consulté par l'user.
-  const detectActiveVideo = useCallback(async () => {
-    const tabs = await Browser.tabs.query({
-      active: true,
-      lastFocusedWindow: true,
-    });
-    const url = tabs[0]?.url || "";
-    const videoId = extractVideoId(url);
-    if (videoId) {
-      const platform = detectPlatform(url);
-      const fallbackTitle =
-        platform === "tiktok" ? "TikTok Video" : "YouTube Video";
-      setVideo({ url, videoId, title: tabs[0]?.title || fallbackTitle });
-    } else {
-      // Important : reset à null si l'user navigue d'une vidéo vers un site
-      // hors-vidéo (Google.com, etc.) — sinon la card vidéo resterait figée.
-      setVideo(null);
-    }
-  }, []);
-
   useEffect(() => {
+    let cancelled = false;
+
+    // Détecte la vidéo dans le tab actif. Dans un Chrome side panel, on utilise
+    // `lastFocusedWindow:true` au lieu de `currentWindow:true` car le panel est
+    // sa propre fenêtre — `currentWindow` cible donc le panel lui-même, pas le
+    // navigateur. `lastFocusedWindow` cible la dernière fenêtre du browser
+    // ayant eu le focus, ce qui matche bien le tab consulté par l'user.
+    const detectActiveVideo = async (): Promise<void> => {
+      const tabs = await Browser.tabs.query({
+        active: true,
+        lastFocusedWindow: true,
+      });
+      // Guard contre setState après unmount (race entre query async et cleanup).
+      if (cancelled) return;
+      const url = tabs[0]?.url || "";
+      const videoId = extractVideoId(url);
+      if (videoId) {
+        const platform = detectPlatform(url);
+        const fallbackTitle =
+          platform === "tiktok" ? "TikTok Video" : "YouTube Video";
+        setVideo({ url, videoId, title: tabs[0]?.title || fallbackTitle });
+      } else {
+        // Important : reset à null si l'user navigue d'une vidéo vers un site
+        // hors-vidéo (Google.com, etc.) — sinon la card vidéo resterait figée.
+        setVideo(null);
+      }
+    };
+
     void detectActiveVideo();
     if (!isGuest) loadRecentAnalyses();
 
@@ -134,11 +138,12 @@ export const MainView: React.FC<MainViewProps> = ({
     Browser.tabs.onUpdated.addListener(handleTabUpdated);
 
     return () => {
+      cancelled = true;
       Browser.tabs.onActivated.removeListener(handleTabActivated);
       Browser.tabs.onUpdated.removeListener(handleTabUpdated);
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [isGuest, detectActiveVideo]);
+  }, [isGuest]);
 
   async function loadRecentAnalyses(): Promise<void> {
     const items = await getRecentAnalyses();
