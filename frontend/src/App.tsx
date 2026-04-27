@@ -42,6 +42,8 @@ import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary"
 import { CrispChat } from "./components/CrispChat";
 import { CookieBanner } from "./components/CookieBanner";
 import { UpgradeModal } from "./components/UpgradeModal";
+import { VoicePrefsStagingProvider } from "./components/voice/staging/VoicePrefsStagingProvider";
+import { StagedPrefsToolbar } from "./components/voice/staging/StagedPrefsToolbar";
 import { analytics } from "./services/analytics";
 import { DeepSightSpinner } from "./components/ui/DeepSightSpinner";
 
@@ -440,6 +442,7 @@ const AppRoutes = () => {
       <LoadingWordProvider>
         <AuthProvider value={auth}>
           <TTSProvider>
+            <VoicePrefsStagingProvider>
             <Router>
               {/* ✨ Couche lumineuse cosmique globale (god rays + étoiles + ambient) */}
               <AmbientLightLayer intensity="normal" />
@@ -886,7 +889,13 @@ const AppRoutes = () => {
               <ErrorBoundary fallback={null}>
                 <CookieBanner />
               </ErrorBoundary>
+
+              {/* 🎙️ Floating "Apply staged voice prefs" toolbar */}
+              <ErrorBoundary fallback={null}>
+                <StagedPrefsToolbar />
+              </ErrorBoundary>
             </Router>
+            </VoicePrefsStagingProvider>
           </TTSProvider>
         </AuthProvider>
       </LoadingWordProvider>
