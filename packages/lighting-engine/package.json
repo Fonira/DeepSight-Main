@@ -1,6 +1,6 @@
 {
   "name": "@deepsight/lighting-engine",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Ambient lighting engine - 48 keyframes, sun/moon beam, daily seeded variation",
   "type": "module",
   "main": "./src/index.ts",
@@ -15,6 +15,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "typescript": "^5.4.0",
