@@ -9,15 +9,14 @@
          optional_permissions["audioCapture"] est déclaré dans le manifest.
          Le prompt système Chrome reste affiché à l'utilisateur. -->
     <meta http-equiv="Permissions-Policy" content="microphone=*" />
-    <title>DeepSight Voice</title>
+    <title>DeepSight</title>
     <!-- Pas de webfonts externes : la CSP MV3 default-src 'self' bloque
          fonts.googleapis.com / fonts.gstatic.com. On fallback sur les
          polices système (Inter, -apple-system, etc.) déclarées en CSS. -->
     <link rel="stylesheet" href="design-tokens.css" />
-    <link rel="stylesheet" href="sidepanel.css" />
+    <link rel="stylesheet" href="tokens.css" />
   </head>
-  <body>
+  <body style="width: 480px; min-width: 380px; margin: 0">
     <div id="root"></div>
-    <script src="sidepanel.js"></script>
   </body>
 </html>

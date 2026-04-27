@@ -9,6 +9,8 @@ module.exports = {
   ],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^@deepsight/lighting-engine$":
+      "<rootDir>/../packages/lighting-engine/src/index.ts",
   },
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",

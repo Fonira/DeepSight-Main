@@ -249,7 +249,9 @@ describe("VoiceButton (Mobile)", () => {
     // Remonte d'un parent (Pressable -> View container).
     const container = button.parent?.parent;
     const flatStyle = Array.isArray(container?.props?.style)
-      ? container?.props?.style.flat().reduce((a: any, s: any) => ({ ...a, ...s }), {})
+      ? container?.props?.style
+          .flat()
+          .reduce((a: any, s: any) => ({ ...a, ...s }), {})
       : container?.props?.style;
     expect(flatStyle?.bottom).toBe(customOffset);
   });

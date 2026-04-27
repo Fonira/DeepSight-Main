@@ -43,8 +43,11 @@ jest.mock("@react-native-community/netinfo", () => ({
 }));
 
 jest.mock("../RetryService", () => ({
-  withRetryPreset: (fn: () => Promise<unknown>, _preset: string, _endpoint: string) =>
-    fn(),
+  withRetryPreset: (
+    fn: () => Promise<unknown>,
+    _preset: string,
+    _endpoint: string,
+  ) => fn(),
 }));
 
 jest.mock("../TokenManager", () => ({
@@ -71,7 +74,8 @@ function mockOkJson(body: unknown) {
     json: async () => body,
     text: async () => JSON.stringify(body),
     headers: {
-      get: (k: string) => (k.toLowerCase() === "content-type" ? "application/json" : null),
+      get: (k: string) =>
+        k.toLowerCase() === "content-type" ? "application/json" : null,
     },
   } as any);
 }

@@ -34,9 +34,7 @@ describe("CallActiveView", () => {
     render(
       <CallActiveView elapsedSec={0} onMute={jest.fn()} onHangup={onHangup} />,
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: /Terminer l'appel/ }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /Terminer l'appel/ }));
     expect(onHangup).toHaveBeenCalled();
   });
 

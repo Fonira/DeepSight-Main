@@ -72,7 +72,7 @@ def test_format_chat_history_block_caps_messages_count():
     history = [{"role": "user" if i % 2 == 0 else "assistant", "content": f"msg-{i}"} for i in range(50)]
     block = _build_chat_history_block_for_voice(history, language="fr")
 
-    # We keep at most 10 messages (per spec), so msg-0..msg-39 should be dropped.
+    # We keep at most 20 messages (v4.0 — élargi pour continuité conversationnelle).
     assert "msg-0" not in block
     assert "msg-49" in block  # last message must be preserved
 

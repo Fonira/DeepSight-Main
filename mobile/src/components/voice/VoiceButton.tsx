@@ -94,7 +94,8 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
   const { enabled, requiresUpgrade } = useVoiceChatGate();
   const insets = useSafeAreaInsets();
   const computedBottom =
-    bottomOffset ?? TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + FAB_GAP + insets.bottom;
+    bottomOffset ??
+    TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + FAB_GAP + insets.bottom;
 
   const ringScale = useSharedValue(1);
   const ringOpacity = useSharedValue(0.5);

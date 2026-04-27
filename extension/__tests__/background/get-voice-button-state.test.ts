@@ -174,7 +174,9 @@ describe("GET_VOICE_BUTTON_STATE handler", () => {
     const origFetch = global.fetch;
     global.fetch = jest
       .fn()
-      .mockRejectedValue(new Error("network down")) as unknown as typeof global.fetch;
+      .mockRejectedValue(
+        new Error("network down"),
+      ) as unknown as typeof global.fetch;
 
     const res = await handleMessage({
       action: "GET_VOICE_BUTTON_STATE",

@@ -55,7 +55,9 @@ test.describe("Quick Voice Call — wiring side panel (I7)", () => {
     await expect(page.getByTestId("ds-connecting")).toBeVisible({
       timeout: 5_000,
     });
-    await expect(page.getByText(/Connexion à l'agent|Connecting to/i)).toBeVisible({
+    await expect(
+      page.getByText(/Connexion à l'agent|Connecting to/i),
+    ).toBeVisible({
       timeout: 5_000,
     });
   });
@@ -125,9 +127,7 @@ test.describe("Quick Voice Call — wiring side panel (I7)", () => {
 
     // Sidepanel devrait être en login (no auth) ou main (legacy).
     // On ne devrait PAS voir ds-connecting tant que la clé n'est pas set.
-    const connectingBefore = await page
-      .getByTestId("ds-connecting")
-      .count();
+    const connectingBefore = await page.getByTestId("ds-connecting").count();
     expect(connectingBefore).toBe(0);
 
     // Maintenant le SW set la clé (clic Quick Voice Call sur YouTube).

@@ -101,7 +101,7 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["icons/*", "assets/*", "tokens.css"],
+      "resources": ["icons/*", "assets/*", "tokens.css", "brand/*"],
       "matches": [
         "https://www.youtube.com/*",
         "https://youtube.com/*",

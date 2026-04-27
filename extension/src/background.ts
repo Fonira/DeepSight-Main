@@ -820,7 +820,8 @@ async function handleExtensionMessage(
         const plan = await fetchPlan();
         if (plan.voice_quota) {
           trialUsed = Boolean(plan.voice_quota.trial_used);
-          monthlyMinutesUsed = Number(plan.voice_quota.monthly_minutes_used) || 0;
+          monthlyMinutesUsed =
+            Number(plan.voice_quota.monthly_minutes_used) || 0;
         }
       } catch {
         // Best-effort : on garde les défauts.

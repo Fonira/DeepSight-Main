@@ -55,7 +55,12 @@ jest.mock("../../../src/i18n/useTranslation", () => ({
         languages: { fr: "FR", en: "EN", es: "ES", de: "DE" },
       },
       guest: { banner: "Découverte", exhaustedText: "Créez un compte" },
-      credits: { critical: "{count}", recharge: "x", remaining: "{count}", low: "x" },
+      credits: {
+        critical: "{count}",
+        recharge: "x",
+        remaining: "{count}",
+        low: "x",
+      },
       mistral: { badge: "Mistral" },
       ytRecommend: { title: "x", subtitle: "x", dismiss: "x" },
       voiceCall: {
@@ -108,10 +113,25 @@ const mockPlanInfo: PlanInfo = {
 function setupTabsQuery(url: string, title: string): void {
   // chrome.tabs.query est mocké pour retourner un tab YouTube : MainView
   // l'utilise au mount via Browser.tabs.query() et set le state video.
+  // PR #147 SidePanel V3 ajoute aussi onActivated/onUpdated listeners → mocker.
   const c = global as unknown as {
-    chrome: { tabs: { query: jest.Mock } };
+    chrome: {
+      tabs: {
+        query: jest.Mock;
+        onActivated?: { addListener: jest.Mock; removeListener: jest.Mock };
+        onUpdated?: { addListener: jest.Mock; removeListener: jest.Mock };
+      };
+    };
   };
   c.chrome.tabs.query = jest.fn().mockResolvedValue([{ id: 1, url, title }]);
+  c.chrome.tabs.onActivated = {
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+  };
+  c.chrome.tabs.onUpdated = {
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+  };
 }
 
 describe("MainView × VoiceCallButton (I1)", () => {
@@ -233,12 +253,16 @@ describe("MainView × VoiceCallButton (I1)", () => {
 
     await waitFor(() => {
       const voiceBtn = document.querySelector("button.voice-call-btn");
-      const analyseBtn = document.querySelector("button.analyze-btn");
+      // PR #147 SidePanel V3 a renommé .analyze-btn en .v3-button-primary.
+      // Le bouton Analyser est le 1er v3-button-primary après le voice btn.
+      const v3Primary = document.querySelectorAll("button.v3-button-primary");
       expect(voiceBtn).not.toBeNull();
-      expect(analyseBtn).not.toBeNull();
-      // Voice doit précéder Analyse dans l'ordre DOM (= visuel).
+      expect(v3Primary.length).toBeGreaterThan(0);
+      // Voice doit précéder le 1er v3-button-primary dans l'ordre DOM.
       const all = Array.from(document.querySelectorAll("button"));
-      expect(all.indexOf(voiceBtn!)).toBeLessThan(all.indexOf(analyseBtn!));
+      expect(all.indexOf(voiceBtn!)).toBeLessThan(
+        all.indexOf(v3Primary[0] as HTMLButtonElement),
+      );
     });
   });
 });

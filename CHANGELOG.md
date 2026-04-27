@@ -5,6 +5,28 @@ All notable changes to DeepSight will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Ambient Lighting v3** — refonte complète cross-platform (web/mobile/extension) :
+  - Beam de précision suivant l'arc solaire avec interpolation cubic-bezier
+  - Tournesol 3D photoréaliste héliotrope (luminescent la nuit)
+  - Pipeline pré-rendu Three.js → 2 sprite WebP (~150KB total)
+  - Critical CSS preload (rayon visible avant hydratation React)
+  - Toggle préférences user + respect prefers-reduced-motion
+  - Design tokens textuels shifted vers blanc cassé (lisibilité)
+  - Engine v3 avec API `getAmbientPresetV3` (vs `getAmbientPreset` v2)
+  - Dual contexts extension : sidepanel + viewer
+  - Mobile : Reanimated 4 UI thread + AppState listener (pause hors foreground)
+  - Livré via PRs #139 (foundation), #140 (web), #144 (extension), #145 (mobile)
+
+### Removed
+
+- `useTimeOfDay` legacy (web + mobile) — remplacé par les contexts ambient v3
+- `AmbientLightDevPanel` (dev panel obsolète — l'engine v3 ne nécessite plus de scrubber QA)
+- `useAmbientLightingFeatureFlag` (PostHog flag plus utilisé — rollout 100% v3)
+
 ## [3.2.0] - 2026-04-26
 
 ### Added — Ambient Lighting v2 (killer feature frontend cross-plateforme)

@@ -32,11 +32,7 @@ export function CallActiveView({
         <span className="ds-call-active__label">
           {t.voiceCall.callActive.live}
         </span>
-        <span
-          className="ds-call-active__elapsed"
-          role="timer"
-          aria-live="off"
-        >
+        <span className="ds-call-active__elapsed" role="timer" aria-live="off">
           · {mm}:{ss}
         </span>
       </header>

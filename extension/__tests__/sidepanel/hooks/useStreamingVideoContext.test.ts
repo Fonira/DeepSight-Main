@@ -43,7 +43,10 @@ describe("useStreamingVideoContext", () => {
   it("forwards transcript_chunk to conversation.sendUserMessage with [CTX UPDATE]", async () => {
     const conversation = { sendUserMessage: jest.fn() };
     renderHook(() =>
-      useStreamingVideoContext("sess1", conversation as unknown as { sendUserMessage: (m: string) => void }),
+      useStreamingVideoContext(
+        "sess1",
+        conversation as unknown as { sendUserMessage: (m: string) => void },
+      ),
     );
 
     await waitFor(() => expect(MockEventSource.lastInstance).toBeTruthy());
@@ -63,7 +66,10 @@ describe("useStreamingVideoContext", () => {
   it("updates contextProgress as chunks arrive", async () => {
     const conversation = { sendUserMessage: jest.fn() };
     const { result } = renderHook(() =>
-      useStreamingVideoContext("s2", conversation as unknown as { sendUserMessage: (m: string) => void }),
+      useStreamingVideoContext(
+        "s2",
+        conversation as unknown as { sendUserMessage: (m: string) => void },
+      ),
     );
     await waitFor(() => expect(MockEventSource.lastInstance).toBeTruthy());
     MockEventSource.lastInstance!.fire("transcript_chunk", {
@@ -79,7 +85,10 @@ describe("useStreamingVideoContext", () => {
   it("forwards analysis_partial events", async () => {
     const conversation = { sendUserMessage: jest.fn() };
     renderHook(() =>
-      useStreamingVideoContext("s_partial", conversation as unknown as { sendUserMessage: (m: string) => void }),
+      useStreamingVideoContext(
+        "s_partial",
+        conversation as unknown as { sendUserMessage: (m: string) => void },
+      ),
     );
     await waitFor(() => expect(MockEventSource.lastInstance).toBeTruthy());
     MockEventSource.lastInstance!.fire("analysis_partial", {
@@ -96,7 +105,10 @@ describe("useStreamingVideoContext", () => {
   it("sets contextComplete=true on ctx_complete event", async () => {
     const conversation = { sendUserMessage: jest.fn() };
     const { result } = renderHook(() =>
-      useStreamingVideoContext("s3", conversation as unknown as { sendUserMessage: (m: string) => void }),
+      useStreamingVideoContext(
+        "s3",
+        conversation as unknown as { sendUserMessage: (m: string) => void },
+      ),
     );
     await waitFor(() => expect(MockEventSource.lastInstance).toBeTruthy());
     MockEventSource.lastInstance!.fire("ctx_complete", {
@@ -124,7 +136,10 @@ describe("useStreamingVideoContext", () => {
   it("closes the SSE connection on unmount", async () => {
     const conversation = { sendUserMessage: jest.fn() };
     const { unmount } = renderHook(() =>
-      useStreamingVideoContext("s_close", conversation as unknown as { sendUserMessage: (m: string) => void }),
+      useStreamingVideoContext(
+        "s_close",
+        conversation as unknown as { sendUserMessage: (m: string) => void },
+      ),
     );
     await waitFor(() => expect(MockEventSource.lastInstance).toBeTruthy());
     const es = MockEventSource.lastInstance!;

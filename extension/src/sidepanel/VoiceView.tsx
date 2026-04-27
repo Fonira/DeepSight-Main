@@ -48,7 +48,10 @@ interface VoiceViewProps {
   pendingCall?: PendingVoiceCall | null;
 }
 
-export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) => {
+export const VoiceView: React.FC<VoiceViewProps> = ({
+  context,
+  pendingCall,
+}) => {
   const { t } = useTranslation();
   const [state, setState] = useState<VoiceCallState>({ phase: "idle" });
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -212,8 +215,7 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) =>
     chrome.runtime.sendMessage({ type: "VOICE_CALL_ENDED" });
     // [N1] Hash en arrière-plan pour les events ; on déclenche en async-fire.
     const videoIdRaw =
-      state.phase === "live_streaming" ||
-      state.phase === "live_complete"
+      state.phase === "live_streaming" || state.phase === "live_complete"
         ? state.videoId
         : undefined;
     void (async () => {

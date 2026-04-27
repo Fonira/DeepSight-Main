@@ -42,9 +42,13 @@ const STORAGE_KEY = "ds_language";
  */
 async function getLanguage(): Promise<Language> {
   try {
-    const storage = (chrome as unknown as {
-      storage?: { sync?: { get?: (key: string) => Promise<Record<string, unknown>> } };
-    }).storage;
+    const storage = (
+      chrome as unknown as {
+        storage?: {
+          sync?: { get?: (key: string) => Promise<Record<string, unknown>> };
+        };
+      }
+    ).storage;
     if (!storage?.sync?.get) return "fr";
     const data = await storage.sync.get(STORAGE_KEY);
     const lang = data[STORAGE_KEY];

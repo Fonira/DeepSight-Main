@@ -3210,10 +3210,21 @@ async def _analyze_video_background_v6(
                     logger.error(f"⚠️ [GLOBAL CACHE] Analysis cache set failed: {_vce}")
 
             async def _increment_quota():
+                # ⚠️ Fire-and-forget background task — must NOT reuse the
+                # caller's `session` because the surrounding `async with
+                # async_session_maker() as session` may exit (and close the
+                # session) before this task completes. That race triggers
+                # SQLAlchemy IllegalStateChangeError ("Method 'close()' can't
+                # be called here; method '_connection_for_bind()' is already
+                # in progress" — https://sqlalche.me/e/20/isce) which then
+                # bubbles up to the outer try/except and surfaces as an
+                # "Analysis error" in the client UI even though the analysis
+                # itself succeeded. Open a dedicated session for this BG op.
                 try:
                     from core.plan_limits import increment_daily_usage
 
-                    await increment_daily_usage(session, user_id)
+                    async with async_session_maker() as bg_session:
+                        await increment_daily_usage(bg_session, user_id)
                 except Exception as quota_err:
                     logger.error(f"⚠️ [QUOTA] Failed to increment daily usage: {quota_err}")
 
@@ -3259,7 +3270,10 @@ async def _analyze_video_background_v6(
                 logger.info(f"   └─ Enrichment: {enrichment_level.value}, {len(enrichment_sources)} sources")
 
             # ⚡ Cache + quota fire-and-forget (perf v6.3) — le frontend voit "completed" 100-500ms plus tôt
-            asyncio.create_task(asyncio.gather(_cache_analysis(), _increment_quota()))
+            async def _post_completion_tasks():
+                await asyncio.gather(_cache_analysis(), _increment_quota())
+
+            asyncio.create_task(_post_completion_tasks())
 
             # 🔔 NOTIFICATION PUSH fire-and-forget — Alerter l'utilisateur que l'analyse est prête
             async def _send_complete_notification():

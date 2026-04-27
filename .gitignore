@@ -87,3 +87,6 @@ frontend/vite.config.ts.timestamp-*.mjs
 id_hetzner_b64.txt
 .claude/settings.local.json
 extension/dist/*.map
+
+# Superpowers brainstorm sessions (mockups locaux, serveurs HTTP éphémères)
+.superpowers/

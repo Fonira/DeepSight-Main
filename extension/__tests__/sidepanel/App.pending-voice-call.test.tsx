@@ -133,7 +133,9 @@ interface SessionStorageMock {
   ) => void)[];
 }
 
-function setupSessionStorage(initialData: Record<string, unknown> = {}): SessionStorageMock {
+function setupSessionStorage(
+  initialData: Record<string, unknown> = {},
+): SessionStorageMock {
   const mock: SessionStorageMock = {
     data: { ...initialData },
     get: jest.fn(),
@@ -150,7 +152,8 @@ function setupSessionStorage(initialData: Record<string, unknown> = {}): Session
     const old: Record<string, unknown> = {};
     for (const k of Object.keys(kv)) old[k] = mock.data[k];
     mock.data = { ...mock.data, ...kv };
-    const changes: Record<string, { newValue: unknown; oldValue: unknown }> = {};
+    const changes: Record<string, { newValue: unknown; oldValue: unknown }> =
+      {};
     for (const k of Object.keys(kv)) {
       changes[k] = { newValue: kv[k], oldValue: old[k] };
     }
@@ -167,19 +170,36 @@ function setupSessionStorage(initialData: Record<string, unknown> = {}): Session
 
   const c = global as unknown as {
     chrome: {
-      storage: { session?: unknown; onChanged?: { addListener: jest.Mock; removeListener?: jest.Mock } };
+      storage: {
+        session?: unknown;
+        onChanged?: { addListener: jest.Mock; removeListener?: jest.Mock };
+      };
     };
   };
   c.chrome.storage.session = mock;
   // Some code uses chrome.storage.onChanged (top-level, all areas).
   const onChanged = {
-    addListener: jest.fn((cb: (changes: Record<string, { newValue?: unknown; oldValue?: unknown }>, area: string) => void) => {
-      mock.changeListeners.push(cb);
-    }),
-    removeListener: jest.fn((cb: (changes: Record<string, { newValue?: unknown; oldValue?: unknown }>, area: string) => void) => {
-      const idx = mock.changeListeners.indexOf(cb);
-      if (idx >= 0) mock.changeListeners.splice(idx, 1);
-    }),
+    addListener: jest.fn(
+      (
+        cb: (
+          changes: Record<string, { newValue?: unknown; oldValue?: unknown }>,
+          area: string,
+        ) => void,
+      ) => {
+        mock.changeListeners.push(cb);
+      },
+    ),
+    removeListener: jest.fn(
+      (
+        cb: (
+          changes: Record<string, { newValue?: unknown; oldValue?: unknown }>,
+          area: string,
+        ) => void,
+      ) => {
+        const idx = mock.changeListeners.indexOf(cb);
+        if (idx >= 0) mock.changeListeners.splice(idx, 1);
+      },
+    ),
   };
   c.chrome.storage.onChanged = onChanged;
   return mock;
