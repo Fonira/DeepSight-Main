@@ -764,6 +764,36 @@ async function handleExtensionMessage(
       }
     }
 
+    case "GET_VOICE_BUTTON_STATE": {
+      // Donne au content-script ce dont il a besoin pour décider quel
+      // badge afficher sur le bouton 🎙️ Quick Voice Call (sans appeler
+      // l'API à chaque page YouTube — on lit l'auth déjà stockée).
+      //
+      // Si non authentifié → success:false → l'injector n'affiche rien.
+      // trialUsed et monthlyMinutesUsed ne sont pas encore exposés dans
+      // PlanInfo (Task 7 backend à étendre) — on renvoie des valeurs
+      // pessimistes (0 / false). Le backend reste source de vérité au
+      // moment du POST /voice/session.
+      if (!(await isAuthenticated())) {
+        return { success: false };
+      }
+      const stored = await getStoredUser();
+      if (!stored) {
+        return { success: false };
+      }
+      const planId = stored.plan;
+      const voicePlan: "free" | "pro" | "expert" =
+        planId === "expert" ? "expert" : planId === "pro" ? "pro" : "free";
+      return {
+        success: true,
+        state: {
+          plan: voicePlan,
+          trialUsed: false,
+          monthlyMinutesUsed: 0,
+        },
+      };
+    }
+
     case "SHARE_ANALYSIS": {
       const { videoId } = message.data as { videoId: string };
       try {

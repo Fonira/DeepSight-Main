@@ -177,11 +177,18 @@ export type MessageAction =
   | "CANCEL_ANALYSIS"
   | "OPEN_VOICE_PANEL"
   | "VOICE_CREATE_SESSION"
-  | "VOICE_APPEND_TRANSCRIPT";
+  | "VOICE_APPEND_TRANSCRIPT"
+  | "GET_VOICE_BUTTON_STATE";
 
 export interface ExtensionMessage {
   action: MessageAction;
   data?: Record<string, unknown>;
+}
+
+export interface VoiceButtonState {
+  plan: "free" | "pro" | "expert";
+  trialUsed: boolean;
+  monthlyMinutesUsed: number;
 }
 
 export interface MessageResponse {
@@ -194,6 +201,7 @@ export interface MessageResponse {
   result?: unknown;
   error?: string;
   share_url?: string;
+  state?: VoiceButtonState;
 }
 
 // ── Category Icons ──
