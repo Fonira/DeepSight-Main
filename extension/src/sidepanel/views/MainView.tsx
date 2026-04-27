@@ -25,6 +25,7 @@ import { LogoutIcon, PlayIcon, ExternalLinkIcon } from "../shared/Icons";
 import { SynthesisView } from "../shared/SynthesisView";
 import { ChatView } from "./ChatView";
 import { PromoBanner } from "../components/PromoBanner";
+import { VoiceCallButton } from "../components/VoiceCallButton";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { DoodleIcon } from "../shared/doodles/DoodleIcon";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -132,6 +133,18 @@ export const MainView: React.FC<MainViewProps> = ({
 
   const userPlanId = planInfo?.plan_id || user?.plan || "free";
   const nextPlan = t.upsell[userPlanId as keyof typeof t.upsell] || null;
+
+  // Mapping plan backend → plan voice (widget n'accepte que free/pro/expert).
+  // Voice call est une feature Expert : tout le reste retombe sur "free"
+  // (badge essai gratuit ou disabled). Pro reste "pro" pour permettre le CTA
+  // upgrade futur — actuellement le widget ne distingue pas pro.
+  const voicePlan: "free" | "pro" | "expert" =
+    userPlanId === "expert" ? "expert" : userPlanId === "pro" ? "pro" : "free";
+  // trialUsed et monthlyMinutesUsed ne sont pas encore exposés dans PlanInfo
+  // (backend Task 7 à étendre). Default = false / 0 ; le backend reste la
+  // source de vérité au moment de l'appel POST /voice/session.
+  const voiceTrialUsed = false;
+  const voiceMonthlyMinutesUsed = 0;
 
   const startQuickChat = useCallback(async () => {
     if (!video) return;
@@ -490,6 +503,13 @@ export const MainView: React.FC<MainViewProps> = ({
                     ? t.analysis.quickChatPreparing
                     : t.analysis.quickChatButton}
                 </button>
+                <VoiceCallButton
+                  plan={voicePlan}
+                  trialUsed={voiceTrialUsed}
+                  monthlyMinutesUsed={voiceMonthlyMinutesUsed}
+                  videoId={video.videoId}
+                  videoTitle={video.title}
+                />
                 <a
                   href={`${WEBAPP_URL}/upgrade`}
                   target="_blank"
@@ -556,6 +576,13 @@ export const MainView: React.FC<MainViewProps> = ({
                     ? t.analysis.quickChatPreparing
                     : t.analysis.quickChatButton}
                 </button>
+                <VoiceCallButton
+                  plan={voicePlan}
+                  trialUsed={voiceTrialUsed}
+                  monthlyMinutesUsed={voiceMonthlyMinutesUsed}
+                  videoId={video.videoId}
+                  videoTitle={video.title}
+                />
                 <button
                   className="analyze-btn btn-shimmer"
                   onClick={startAnalysis}
