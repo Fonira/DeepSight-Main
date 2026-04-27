@@ -855,6 +855,19 @@ async def create_voice_session(
     # ── Quick Voice Call (V1) — streaming session quota branch ──────────
     streaming_quota = None
     if request.is_streaming:
+        # Emergency kill switch — refuse new streaming sessions but keep admin
+        # access so the team can debug or finish the call in flight.
+        from core.config import VOICE_CALL_DISABLED
+
+        if VOICE_CALL_DISABLED and not is_admin:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "code": "voice_call_disabled",
+                    "message": "Quick Voice Call est temporairement indisponible. Réessaie dans quelques minutes.",
+                },
+            )
+
         if not request.video_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
