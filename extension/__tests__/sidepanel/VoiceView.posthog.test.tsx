@@ -59,25 +59,16 @@ jest.mock("../../src/sidepanel/hooks/useStreamingVideoContext", () => ({
 
 import { VoiceView } from "../../src/sidepanel/VoiceView";
 
+// Quick Voice Call (B4) — VoiceView reçoit pendingCall en prop. App.tsx est
+// désormais responsable de la lecture/suppression session storage. Les tests
+// passent donc directement le payload en prop.
+const PENDING_CALL = { videoId: "abc", videoTitle: "Test" };
+
 describe("VoiceView PostHog instrumentation", () => {
   beforeEach(() => {
     resetTrackedEvents();
     startSessionMock.mockReset();
     endSessionMock.mockReset();
-    const c = global as unknown as {
-      chrome: {
-        storage: {
-          session?: { get: jest.Mock; remove: jest.Mock; set?: jest.Mock };
-        };
-      };
-    };
-    c.chrome.storage.session = {
-      get: jest.fn().mockResolvedValue({
-        pendingVoiceCall: { videoId: "abc", videoTitle: "Test" },
-      }),
-      remove: jest.fn().mockResolvedValue(undefined),
-      set: jest.fn().mockResolvedValue(undefined),
-    };
     chrome.runtime.sendMessage = jest.fn();
   });
 
@@ -90,7 +81,7 @@ describe("VoiceView PostHog instrumentation", () => {
     });
 
     await act(async () => {
-      render(<VoiceView />);
+      render(<VoiceView pendingCall={PENDING_CALL} />);
     });
 
     await waitFor(() => {
@@ -106,7 +97,7 @@ describe("VoiceView PostHog instrumentation", () => {
     startSessionMock.mockRejectedValue(err);
 
     await act(async () => {
-      render(<VoiceView />);
+      render(<VoiceView pendingCall={PENDING_CALL} />);
     });
 
     await waitFor(() => {

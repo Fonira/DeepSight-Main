@@ -28,35 +28,26 @@ import {
   VoiceQuotaError,
 } from "./useExtensionVoiceChat";
 import { useStreamingVideoContext } from "./hooks/useStreamingVideoContext";
-import type { VoiceCallState, VoicePanelContext } from "./types";
+import type {
+  VoiceCallState,
+  VoicePanelContext,
+  PendingVoiceCall,
+} from "./types";
 import { WEBAPP_URL } from "../utils/config";
 import { track } from "../utils/analytics";
 
 interface VoiceViewProps {
+  /** Legacy compat : ouverture du sidepanel via OPEN_VOICE_PANEL. */
   context?: VoicePanelContext | null;
+  /**
+   * Quick Voice Call (B4) — payload pré-extrait par App.tsx depuis
+   * `chrome.storage.session.pendingVoiceCall`. App.tsx supprime déjà
+   * la clé : VoiceView n'a plus besoin de toucher au session storage.
+   */
+  pendingCall?: PendingVoiceCall | null;
 }
 
-interface PendingVoiceCall {
-  videoId: string;
-  videoTitle: string;
-}
-
-interface SessionStorageShape {
-  get: (key: string) => Promise<Record<string, unknown>>;
-  remove?: (key: string) => Promise<void>;
-}
-
-function getSessionStorage(): SessionStorageShape | null {
-  const c = (
-    chrome as unknown as {
-      storage?: { session?: SessionStorageShape };
-    }
-  ).storage;
-  if (!c?.session?.get) return null;
-  return c.session;
-}
-
-export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
+export const VoiceView: React.FC<VoiceViewProps> = ({ context, pendingCall }) => {
   const [state, setState] = useState<VoiceCallState>({ phase: "idle" });
   const [elapsedSec, setElapsedSec] = useState(0);
   const startedRef = useRef(false);
@@ -65,100 +56,84 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
   // flow utilise startSession() directement avec videoId du pendingVoiceCall.
   const voiceChat = useExtensionVoiceChat({ context: context ?? null });
 
-  // ── Bootstrap : lit pendingVoiceCall + démarre la session ──
+  // ── Bootstrap : démarre la session quand pendingCall arrive ──
+  // Centralisation B4 : c'est App.tsx qui lit + supprime
+  // `pendingVoiceCall` du session storage et passe le payload en prop.
+  // Ici on réagit simplement à la prop (initial OU late update via
+  // chrome.storage.onChanged listener côté App.tsx — finding I6).
   useEffect(() => {
     if (startedRef.current) return;
+    if (!pendingCall?.videoId) return;
     startedRef.current = true;
 
-    const session = getSessionStorage();
-    if (!session) {
-      // Pas d'API session storage (Firefox/Safari) — reste en idle.
-      return;
-    }
-
     let cancelled = false;
-    void session
-      .get("pendingVoiceCall")
-      .then(async (data) => {
-        const pending = data?.pendingVoiceCall as PendingVoiceCall | undefined;
-        if (!pending?.videoId) {
-          // Aucun pending call — soit on a un context legacy, soit on stay idle.
-          return;
-        }
-        if (cancelled) return;
+    const pending = pendingCall;
 
-        setState({
-          phase: "connecting",
+    setState({
+      phase: "connecting",
+      videoId: pending.videoId,
+      videoTitle: pending.videoTitle ?? "",
+    });
+
+    void (async () => {
+      try {
+        const created = await voiceChat.startSession({
           videoId: pending.videoId,
           videoTitle: pending.videoTitle,
+          agentType: "explorer_streaming",
+          isStreaming: true,
         });
-        try {
-          await session.remove?.("pendingVoiceCall");
-        } catch {
-          /* best-effort */
-        }
-
-        try {
-          const created = await voiceChat.startSession({
+        if (cancelled) return;
+        chrome.runtime.sendMessage({ type: "VOICE_CALL_STARTED" });
+        track("voice_call_started", {
+          videoId: pending.videoId,
+          agent_type: "explorer_streaming",
+          is_trial: Boolean(created.is_trial),
+          max_minutes: created.max_minutes ?? null,
+        });
+        setState({
+          phase: "live_streaming",
+          videoId: pending.videoId,
+          sessionId: created.session_id,
+          startedAt: Date.now(),
+        });
+      } catch (e) {
+        if (cancelled) return;
+        // Detect quota errors via instanceof OR duck-typed `status: 402`
+        // (les tests injectent un `Error` augmenté avec `.status/.detail`).
+        const errAny = e as Error & {
+          status?: number;
+          detail?: { reason?: string };
+        };
+        const isQuota = e instanceof VoiceQuotaError || errAny.status === 402;
+        if (isQuota) {
+          const detailReason = errAny.detail?.reason as
+            | "trial_used"
+            | "pro_no_voice"
+            | "monthly_quota"
+            | undefined;
+          const reason = detailReason ?? "trial_used";
+          setState({ phase: "error_quota", reason });
+          track("voice_call_upgrade_cta_shown", {
+            reason,
             videoId: pending.videoId,
-            videoTitle: pending.videoTitle,
-            agentType: "explorer_streaming",
-            isStreaming: true,
           });
-          if (cancelled) return;
-          chrome.runtime.sendMessage({ type: "VOICE_CALL_STARTED" });
-          track("voice_call_started", {
-            videoId: pending.videoId,
-            agent_type: "explorer_streaming",
-            is_trial: Boolean(created.is_trial),
-            max_minutes: created.max_minutes ?? null,
-          });
+        } else if (errAny.name === "NotAllowedError") {
+          setState({ phase: "error_mic_permission" });
+        } else {
           setState({
-            phase: "live_streaming",
-            videoId: pending.videoId,
-            sessionId: created.session_id,
-            startedAt: Date.now(),
+            phase: "error_generic",
+            message: String(errAny?.message ?? e),
           });
-        } catch (e) {
-          if (cancelled) return;
-          // Detect quota errors via instanceof OR duck-typed `status: 402`
-          // (les tests injectent un `Error` augmenté avec `.status/.detail`).
-          const errAny = e as Error & {
-            status?: number;
-            detail?: { reason?: string };
-          };
-          const isQuota = e instanceof VoiceQuotaError || errAny.status === 402;
-          if (isQuota) {
-            const detailReason = errAny.detail?.reason as
-              | "trial_used"
-              | "pro_no_voice"
-              | "monthly_quota"
-              | undefined;
-            const reason = detailReason ?? "trial_used";
-            setState({ phase: "error_quota", reason });
-            track("voice_call_upgrade_cta_shown", {
-              reason,
-              videoId: pending.videoId,
-            });
-          } else if (errAny.name === "NotAllowedError") {
-            setState({ phase: "error_mic_permission" });
-          } else {
-            setState({
-              phase: "error_generic",
-              message: String(errAny?.message ?? e),
-            });
-          }
         }
-      })
-      .catch(() => {
-        // Lecture session storage échouée — reste en idle.
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pendingCall?.videoId]);
 
   // ── Elapsed timer ──
   useEffect(() => {

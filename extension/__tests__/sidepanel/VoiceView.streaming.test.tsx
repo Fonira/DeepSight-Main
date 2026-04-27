@@ -64,25 +64,15 @@ jest.mock("../../src/sidepanel/hooks/useStreamingVideoContext", () => ({
 
 import { VoiceView } from "../../src/sidepanel/VoiceView";
 
+// Quick Voice Call (B4) — VoiceView reçoit pendingCall en prop ; App.tsx
+// gère désormais la lecture/suppression de chrome.storage.session.
+const PENDING_CALL = { videoId: "abc", videoTitle: "Test Video" };
+
 describe("VoiceView streaming flow", () => {
   beforeEach(() => {
     startSessionMock.mockReset();
     endSessionMock.mockReset();
     toggleMuteMock.mockReset();
-    const c = global as unknown as {
-      chrome: {
-        storage: {
-          session?: { get: jest.Mock; remove: jest.Mock; set?: jest.Mock };
-        };
-      };
-    };
-    c.chrome.storage.session = {
-      get: jest.fn().mockResolvedValue({
-        pendingVoiceCall: { videoId: "abc", videoTitle: "Test Video" },
-      }),
-      remove: jest.fn().mockResolvedValue(undefined),
-      set: jest.fn().mockResolvedValue(undefined),
-    };
     chrome.runtime.sendMessage = jest.fn();
   });
 
@@ -96,7 +86,7 @@ describe("VoiceView streaming flow", () => {
     });
 
     await act(async () => {
-      render(<VoiceView />);
+      render(<VoiceView pendingCall={PENDING_CALL} />);
     });
 
     // After microtask flush we should be in CallActiveView ("En appel").
@@ -116,7 +106,7 @@ describe("VoiceView streaming flow", () => {
 
     let renderResult: ReturnType<typeof render>;
     await act(async () => {
-      renderResult = render(<VoiceView />);
+      renderResult = render(<VoiceView pendingCall={PENDING_CALL} />);
     });
 
     // Confirm startSession was actually called

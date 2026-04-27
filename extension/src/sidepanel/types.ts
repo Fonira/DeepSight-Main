@@ -17,6 +17,19 @@ export interface VoicePanelContext {
 }
 
 /**
+ * Quick Voice Call (B4) — payload `pendingVoiceCall` consommé par App.tsx.
+ *
+ * Mis en `chrome.storage.session` par le service worker quand l'utilisateur
+ * clique le bouton 🎙️ depuis YouTube. App.tsx lit + supprime + passe en
+ * prop à VoiceView (centralisation pour éviter race condition StrictMode
+ * et re-mount qui perdrait la clé déjà consommée).
+ */
+export interface PendingVoiceCall {
+  videoId: string;
+  videoTitle?: string;
+}
+
+/**
  * Décide du `agent_type` ElevenLabs selon le contexte vidéo :
  * - `explorer` : on a un summary → l'agent peut creuser le contenu analysé
  * - `companion` : pas de summary → l'agent fait du compagnonnage générique
