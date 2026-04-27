@@ -59,49 +59,49 @@ This isolates the killer launch from the in-flight `feat/voice-mobile-final` bra
 
 ### Backend (Agent C scope)
 
-| Action | Path | Responsibility |
-|--------|------|----------------|
-| Create | `backend/migrations/alembic/versions/008_voice_quota_a_d_strict.py` | Voice quota table + `is_streaming_session` column |
-| Create | `backend/src/voice/streaming_orchestrator.py` | Orchestrates parallel transcript fetch + Mistral analysis, publishes to Redis pubsub channel `voice:ctx:{session_id}` |
-| Create | `backend/src/voice/streaming_prompts.py` | `EXPLORER_STREAMING_PROMPT_FR` / `EN` constants |
-| Create | `backend/src/billing/voice_quota.py` | `check_voice_quota(user)` + `consume_voice_minutes(user, minutes)` enforcing A+D strict |
-| Modify | `backend/src/voice/agent_types.py` | Add `EXPLORER_STREAMING` AgentConfig |
-| Modify | `backend/src/voice/router.py` | Branch `check_voice_quota` in `POST /session`, add `GET /context/stream` SSE endpoint |
-| Modify | `backend/src/voice/schemas.py` | `VoiceSessionRequest.is_streaming: bool = False`, `VoiceQuotaResponse` |
-| Modify | `backend/src/db/database.py` | `VoiceQuota` SQLAlchemy model |
-| Modify | `backend/src/core/plan_features.py` (or SSOT) | Add `voice_call_quick` matrix entry |
-| Test | `backend/tests/voice/test_explorer_streaming_agent.py` | Agent config + prompt validation |
-| Test | `backend/tests/voice/test_streaming_orchestrator.py` | Pubsub publish order, transcript chunks, ctx_complete |
-| Test | `backend/tests/voice/test_context_stream_endpoint.py` | SSE endpoint auth, IDOR, event format |
-| Test | `backend/tests/billing/test_voice_quota.py` | A+D strict matrix per plan, lifetime trial uniqueness |
-| Test | `backend/tests/voice/test_quota_integration.py` | `POST /session` rejects/accepts per plan |
+| Action | Path                                                                | Responsibility                                                                                                        |
+| ------ | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Create | `backend/migrations/alembic/versions/008_voice_quota_a_d_strict.py` | Voice quota table + `is_streaming_session` column                                                                     |
+| Create | `backend/src/voice/streaming_orchestrator.py`                       | Orchestrates parallel transcript fetch + Mistral analysis, publishes to Redis pubsub channel `voice:ctx:{session_id}` |
+| Create | `backend/src/voice/streaming_prompts.py`                            | `EXPLORER_STREAMING_PROMPT_FR` / `EN` constants                                                                       |
+| Create | `backend/src/billing/voice_quota.py`                                | `check_voice_quota(user)` + `consume_voice_minutes(user, minutes)` enforcing A+D strict                               |
+| Modify | `backend/src/voice/agent_types.py`                                  | Add `EXPLORER_STREAMING` AgentConfig                                                                                  |
+| Modify | `backend/src/voice/router.py`                                       | Branch `check_voice_quota` in `POST /session`, add `GET /context/stream` SSE endpoint                                 |
+| Modify | `backend/src/voice/schemas.py`                                      | `VoiceSessionRequest.is_streaming: bool = False`, `VoiceQuotaResponse`                                                |
+| Modify | `backend/src/db/database.py`                                        | `VoiceQuota` SQLAlchemy model                                                                                         |
+| Modify | `backend/src/core/plan_features.py` (or SSOT)                       | Add `voice_call_quick` matrix entry                                                                                   |
+| Test   | `backend/tests/voice/test_explorer_streaming_agent.py`              | Agent config + prompt validation                                                                                      |
+| Test   | `backend/tests/voice/test_streaming_orchestrator.py`                | Pubsub publish order, transcript chunks, ctx_complete                                                                 |
+| Test   | `backend/tests/voice/test_context_stream_endpoint.py`               | SSE endpoint auth, IDOR, event format                                                                                 |
+| Test   | `backend/tests/billing/test_voice_quota.py`                         | A+D strict matrix per plan, lifetime trial uniqueness                                                                 |
+| Test   | `backend/tests/voice/test_quota_integration.py`                     | `POST /session` rejects/accepts per plan                                                                              |
 
 ### Extension (Agent D scope)
 
-| Action | Path | Responsibility |
-|--------|------|----------------|
-| Create | `extension/src/sidepanel/hooks/useStreamingVideoContext.ts` | EventSource SSE → `conversation.sendUserMessage`, returns `{contextProgress, contextComplete}` |
-| Create | `extension/src/content/youtubeAudioController.ts` | DOM `<video>` volume manipulation (10% during call, restore after) |
-| Create | `extension/src/sidepanel/components/UpgradeCTA.tsx` | Post-call upgrade card (Free trial used → Expert) |
-| Create | `extension/src/sidepanel/components/ContextProgressBar.tsx` | Bottom bar "Analyse en cours · X% du transcript reçu" |
-| Create | `extension/src/sidepanel/components/CallActiveView.tsx` | State 3 layout (header live indicator, waveform, mute/hangup) |
-| Create | `extension/src/sidepanel/components/ConnectingView.tsx` | State 2 transition view |
-| Modify | `extension/src/content/widget.ts` | Add 🎙️ button + dynamic plan badge |
-| Modify | `extension/src/sidepanel/VoiceView.tsx` | State machine: connecting → live_streaming → live_complete → ended_(free/expert) |
-| Modify | `extension/src/sidepanel/types.ts` | `VoiceCallState`, `StreamingContextEvent` types |
-| Modify | `extension/src/background.ts` | `OPEN_VOICE_CALL` message handler → opens side panel + stores videoId |
-| Modify | `extension/src/i18n/{fr,en}.json` | Strings for new states + CTAs |
-| Test | `extension/__tests__/content/widget-voice-call-button.test.ts` | Button render per plan, click triggers message |
-| Test | `extension/__tests__/sidepanel/hooks/useStreamingVideoContext.test.ts` | Mock SSE → verify sendUserMessage calls + progress |
-| Test | `extension/__tests__/content/youtubeAudioController.test.ts` | attach/detach with mocked video element |
-| Test | `extension/__tests__/sidepanel/components/UpgradeCTA.test.tsx` | Render + Stripe deeplink |
-| Test | `extension/__tests__/sidepanel/components/ContextProgressBar.test.tsx` | Progress states |
-| Test | `extension/__tests__/sidepanel/VoiceView.streaming.test.tsx` | State machine transitions |
+| Action | Path                                                                   | Responsibility                                                                                 |
+| ------ | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Create | `extension/src/sidepanel/hooks/useStreamingVideoContext.ts`            | EventSource SSE → `conversation.sendUserMessage`, returns `{contextProgress, contextComplete}` |
+| Create | `extension/src/content/youtubeAudioController.ts`                      | DOM `<video>` volume manipulation (10% during call, restore after)                             |
+| Create | `extension/src/sidepanel/components/UpgradeCTA.tsx`                    | Post-call upgrade card (Free trial used → Expert)                                              |
+| Create | `extension/src/sidepanel/components/ContextProgressBar.tsx`            | Bottom bar "Analyse en cours · X% du transcript reçu"                                          |
+| Create | `extension/src/sidepanel/components/CallActiveView.tsx`                | State 3 layout (header live indicator, waveform, mute/hangup)                                  |
+| Create | `extension/src/sidepanel/components/ConnectingView.tsx`                | State 2 transition view                                                                        |
+| Modify | `extension/src/content/widget.ts`                                      | Add 🎙️ button + dynamic plan badge                                                             |
+| Modify | `extension/src/sidepanel/VoiceView.tsx`                                | State machine: connecting → live*streaming → live_complete → ended*(free/expert)               |
+| Modify | `extension/src/sidepanel/types.ts`                                     | `VoiceCallState`, `StreamingContextEvent` types                                                |
+| Modify | `extension/src/background.ts`                                          | `OPEN_VOICE_CALL` message handler → opens side panel + stores videoId                          |
+| Modify | `extension/src/i18n/{fr,en}.json`                                      | Strings for new states + CTAs                                                                  |
+| Test   | `extension/__tests__/content/widget-voice-call-button.test.ts`         | Button render per plan, click triggers message                                                 |
+| Test   | `extension/__tests__/sidepanel/hooks/useStreamingVideoContext.test.ts` | Mock SSE → verify sendUserMessage calls + progress                                             |
+| Test   | `extension/__tests__/content/youtubeAudioController.test.ts`           | attach/detach with mocked video element                                                        |
+| Test   | `extension/__tests__/sidepanel/components/UpgradeCTA.test.tsx`         | Render + Stripe deeplink                                                                       |
+| Test   | `extension/__tests__/sidepanel/components/ContextProgressBar.test.tsx` | Progress states                                                                                |
+| Test   | `extension/__tests__/sidepanel/VoiceView.streaming.test.tsx`           | State machine transitions                                                                      |
 
 ### E2E (Agent E scope)
 
-| Action | Path | Responsibility |
-|--------|------|----------------|
+| Action | Path                                     | Responsibility                                                                                    |
+| ------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | Create | `extension/e2e/quick-voice-call.spec.ts` | Playwright: install ext → open YouTube → click 🎙️ → use 3-min trial → upgrade CTA → checkout flow |
 
 ---
@@ -195,6 +195,7 @@ Agents C and D run in parallel after Phase 0 completes. Agent E runs after both.
 ### Task 1: Voice quota database table (Agent C)
 
 **Files:**
+
 - Create: `backend/migrations/alembic/versions/008_voice_quota_a_d_strict.py`
 - Modify: `backend/src/db/database.py`
 - Test: `backend/tests/db/test_voice_quota_model.py`
@@ -231,6 +232,7 @@ async def test_voice_quota_defaults(test_db_session):
 ```bash
 cd backend && pytest tests/db/test_voice_quota_model.py -v
 ```
+
 Expected: FAIL with `ImportError: cannot import name 'VoiceQuota'`
 
 - [ ] **Step 3: Add VoiceQuota model**
@@ -295,6 +297,7 @@ def downgrade():
 cd backend && alembic upgrade head
 pytest tests/db/test_voice_quota_model.py -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -311,6 +314,7 @@ git commit -m "feat(voice): add voice_quota table + streaming session columns (m
 ### Task 2: Voice quota service — A+D strict logic (Agent C)
 
 **Files:**
+
 - Create: `backend/src/billing/voice_quota.py`
 - Test: `backend/tests/billing/test_voice_quota.py`
 
@@ -390,6 +394,7 @@ async def test_expert_quota_exhausted(test_db_session):
 ```bash
 cd backend && pytest tests/billing/test_voice_quota.py -v
 ```
+
 Expected: 5 FAIL with `ModuleNotFoundError`
 
 - [ ] **Step 3: Implement voice_quota.py**
@@ -462,6 +467,7 @@ async def consume_voice_minutes(user: User, minutes: float, db: AsyncSession) ->
 ```bash
 cd backend && pytest tests/billing/test_voice_quota.py -v
 ```
+
 Expected: 5 PASS
 
 - [ ] **Step 5: Commit**
@@ -476,6 +482,7 @@ git commit -m "feat(billing): add A+D strict voice quota enforcement (Free trial
 ### Task 3: explorer_streaming agent type + prompts (Agent C)
 
 **Files:**
+
 - Create: `backend/src/voice/streaming_prompts.py`
 - Modify: `backend/src/voice/agent_types.py`
 - Test: `backend/tests/voice/test_explorer_streaming_agent.py`
@@ -511,6 +518,7 @@ def test_explorer_streaming_prompt_instructs_transparency():
 ```bash
 cd backend && pytest tests/voice/test_explorer_streaming_agent.py -v
 ```
+
 Expected: 5 FAIL with `ImportError: cannot import name 'EXPLORER_STREAMING'`
 
 - [ ] **Step 3: Create streaming_prompts.py**
@@ -596,6 +604,7 @@ AGENT_CONFIGS["explorer_streaming"] = EXPLORER_STREAMING
 ```bash
 cd backend && pytest tests/voice/test_explorer_streaming_agent.py -v
 ```
+
 Expected: 5 PASS
 
 - [ ] **Step 6: Commit**
@@ -612,6 +621,7 @@ git commit -m "feat(voice): add explorer_streaming agent type with progressive c
 ### Task 4: Streaming orchestrator (Agent C)
 
 **Files:**
+
 - Create: `backend/src/voice/streaming_orchestrator.py`
 - Test: `backend/tests/voice/test_streaming_orchestrator.py`
 
@@ -672,6 +682,7 @@ async def test_publishes_to_correct_channel(mock_redis):
 ```bash
 cd backend && pytest tests/voice/test_streaming_orchestrator.py -v
 ```
+
 Expected: FAIL with `ModuleNotFoundError`
 
 - [ ] **Step 3: Implement orchestrator**
@@ -765,6 +776,7 @@ def async_iter(items):
 ```bash
 cd backend && pytest tests/voice/test_streaming_orchestrator.py -v
 ```
+
 Expected: 3 PASS
 
 - [ ] **Step 6: Commit**
@@ -781,6 +793,7 @@ git commit -m "feat(voice): add streaming orchestrator publishing context events
 ### Task 5: SSE endpoint `GET /api/voice/context/stream` (Agent C)
 
 **Files:**
+
 - Modify: `backend/src/voice/router.py`
 - Modify: `backend/src/voice/schemas.py`
 - Test: `backend/tests/voice/test_context_stream_endpoint.py`
@@ -830,6 +843,7 @@ async def test_event_format_sse(authenticated_client, voice_session_factory, moc
 ```bash
 cd backend && pytest tests/voice/test_context_stream_endpoint.py -v
 ```
+
 Expected: FAIL with 404 (endpoint not registered)
 
 - [ ] **Step 3: Implement the SSE endpoint**
@@ -883,6 +897,7 @@ async def stream_video_context(
 ```bash
 cd backend && pytest tests/voice/test_context_stream_endpoint.py -v
 ```
+
 Expected: 4 PASS
 
 - [ ] **Step 5: Commit**
@@ -897,6 +912,7 @@ git commit -m "feat(voice): add GET /api/voice/context/stream SSE endpoint with 
 ### Task 6: Branch quota check + orchestrator launch in `POST /session` (Agent C)
 
 **Files:**
+
 - Modify: `backend/src/voice/router.py`
 - Modify: `backend/src/voice/schemas.py`
 - Test: `backend/tests/voice/test_quota_integration.py`
@@ -1030,6 +1046,7 @@ async def create_voice_session(
 ```bash
 cd backend && pytest tests/voice/test_quota_integration.py -v
 ```
+
 Expected: 4 PASS
 
 - [ ] **Step 6: Commit**
@@ -1045,6 +1062,7 @@ git commit -m "feat(voice): enforce A+D voice quota in POST /session + launch st
 ### Task 7: Update plan_features matrix (Agent C)
 
 **Files:**
+
 - Modify: `backend/src/core/plan_features.py` (or whichever file holds `is_feature_available`)
 - Test: `backend/tests/core/test_plan_features.py`
 
@@ -1053,6 +1071,7 @@ git commit -m "feat(voice): enforce A+D voice quota in POST /session + launch st
 ```bash
 cd backend && grep -rn "is_feature_available" src/core/ src/auth/ src/billing/ | head
 ```
+
 Identify the canonical file.
 
 - [ ] **Step 2: Write failing test**
@@ -1100,6 +1119,7 @@ git commit -am "feat(plans): expose voice_call_quick capability matrix per plan"
 ```bash
 cd backend && pytest tests/voice/ tests/billing/ tests/db/ tests/core/ -v
 ```
+
 Expected: all green
 
 - [ ] **Step 2: Boot backend locally and curl the endpoints**
@@ -1125,6 +1145,7 @@ git tag voice-call-backend-v1-ready
 ### Task 9: Extension widget — add 🎙️ Appeler button (Agent D)
 
 **Files:**
+
 - Modify: `extension/src/content/widget.ts`
 - Modify: `extension/src/i18n/{fr,en}.json`
 - Test: `extension/__tests__/content/widget-voice-call-button.test.ts`
@@ -1167,7 +1188,9 @@ describe("widget voice call button", () => {
     const callBtn = getButtons()[1];
     callBtn.click();
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
-      type: "OPEN_VOICE_CALL", videoId: "abc", videoTitle: "Test",
+      type: "OPEN_VOICE_CALL",
+      videoId: "abc",
+      videoTitle: "Test",
     });
   });
 });
@@ -1200,6 +1223,7 @@ export function getButtons(): HTMLButtonElement[] {
 ```bash
 cd extension && npm test -- widget-voice-call-button
 ```
+
 Expected: FAIL
 
 - [ ] **Step 4: Add `renderVoiceCallButton` to widget.ts**
@@ -1217,7 +1241,10 @@ export interface VoiceCallButtonOpts {
 
 const EXPERT_MONTHLY_MIN = 30;
 
-export async function renderVoiceCallButton(root: HTMLElement, opts: VoiceCallButtonOpts) {
+export async function renderVoiceCallButton(
+  root: HTMLElement,
+  opts: VoiceCallButtonOpts,
+) {
   const btn = document.createElement("button");
   btn.className = "ds-voice-call-btn";
   btn.style.cssText = `width:100%;background:linear-gradient(135deg,#ec4899,#8b5cf6);
@@ -1257,6 +1284,7 @@ Locate the existing render function in `widget.ts` that adds the "Analyser" butt
 ```bash
 cd extension && npm test -- widget-voice-call-button
 ```
+
 Expected: 5 PASS
 
 - [ ] **Step 7: Commit**
@@ -1274,6 +1302,7 @@ git commit -m "feat(extension): add 🎙️ Appeler la vidéo button in widget w
 ### Task 10: Background `OPEN_VOICE_CALL` handler (Agent D)
 
 **Files:**
+
 - Modify: `extension/src/background.ts`
 - Test: `extension/__tests__/background/open-voice-call.test.ts`
 
@@ -1292,7 +1321,7 @@ describe("OPEN_VOICE_CALL handler", () => {
   it("opens side panel and stores videoId", async () => {
     await handleMessage(
       { type: "OPEN_VOICE_CALL", videoId: "abc", videoTitle: "Test" },
-      { tab: { id: 42, windowId: 7 } } as chrome.runtime.MessageSender
+      { tab: { id: 42, windowId: 7 } } as chrome.runtime.MessageSender,
     );
     expect(chrome.storage.session.set).toHaveBeenCalledWith({
       pendingVoiceCall: { videoId: "abc", videoTitle: "Test" },
@@ -1333,6 +1362,7 @@ git commit -am "feat(extension): wire OPEN_VOICE_CALL message → side panel + s
 ### Task 11: `useStreamingVideoContext` hook (Agent D)
 
 **Files:**
+
 - Create: `extension/src/sidepanel/hooks/useStreamingVideoContext.ts`
 - Test: `extension/__tests__/sidepanel/hooks/useStreamingVideoContext.test.ts`
 
@@ -1346,12 +1376,16 @@ import { useStreamingVideoContext } from "../../../src/sidepanel/hooks/useStream
 class MockEventSource {
   static lastInstance: MockEventSource;
   private handlers: Record<string, ((e: MessageEvent) => void)[]> = {};
-  constructor(public url: string) { MockEventSource.lastInstance = this; }
+  constructor(public url: string) {
+    MockEventSource.lastInstance = this;
+  }
   addEventListener(type: string, h: (e: MessageEvent) => void) {
     (this.handlers[type] ??= []).push(h);
   }
   fire(type: string, data: any) {
-    (this.handlers[type] ?? []).forEach(h => h({ data: JSON.stringify(data) } as MessageEvent));
+    (this.handlers[type] ?? []).forEach((h) =>
+      h({ data: JSON.stringify(data) } as MessageEvent),
+    );
   }
   close() {}
 }
@@ -1362,32 +1396,44 @@ describe("useStreamingVideoContext", () => {
     const conversation = { sendUserMessage: jest.fn() };
     renderHook(() => useStreamingVideoContext("sess1", conversation as any));
     MockEventSource.lastInstance.fire("transcript_chunk", {
-      chunk_index: 0, total_chunks: 3, text: "hello world",
+      chunk_index: 0,
+      total_chunks: 3,
+      text: "hello world",
     });
     await waitFor(() => {
       expect(conversation.sendUserMessage).toHaveBeenCalledWith(
-        expect.stringContaining("[CTX UPDATE: transcript chunk 0/3]")
+        expect.stringContaining("[CTX UPDATE: transcript chunk 0/3]"),
       );
     });
   });
 
   it("updates contextProgress as chunks arrive", async () => {
     const conversation = { sendUserMessage: jest.fn() };
-    const { result } = renderHook(() => useStreamingVideoContext("s2", conversation as any));
+    const { result } = renderHook(() =>
+      useStreamingVideoContext("s2", conversation as any),
+    );
     MockEventSource.lastInstance.fire("transcript_chunk", {
-      chunk_index: 2, total_chunks: 5, text: "x",
+      chunk_index: 2,
+      total_chunks: 5,
+      text: "x",
     });
-    await waitFor(() => expect(result.current.contextProgress).toBeCloseTo(40, 0));
+    await waitFor(() =>
+      expect(result.current.contextProgress).toBeCloseTo(40, 0),
+    );
   });
 
   it("sets contextComplete=true on ctx_complete event", async () => {
     const conversation = { sendUserMessage: jest.fn() };
-    const { result } = renderHook(() => useStreamingVideoContext("s3", conversation as any));
-    MockEventSource.lastInstance.fire("ctx_complete", { final_digest_summary: "done" });
+    const { result } = renderHook(() =>
+      useStreamingVideoContext("s3", conversation as any),
+    );
+    MockEventSource.lastInstance.fire("ctx_complete", {
+      final_digest_summary: "done",
+    });
     await waitFor(() => {
       expect(result.current.contextComplete).toBe(true);
       expect(conversation.sendUserMessage).toHaveBeenCalledWith(
-        expect.stringContaining("[CTX COMPLETE]")
+        expect.stringContaining("[CTX COMPLETE]"),
       );
     });
   });
@@ -1422,7 +1468,7 @@ export function useStreamingVideoContext(
     es.addEventListener("transcript_chunk", (e: MessageEvent) => {
       const data = JSON.parse(e.data);
       conversation.sendUserMessage(
-        `[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`
+        `[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`,
       );
       setContextProgress(((data.chunk_index + 1) / data.total_chunks) * 100);
     });
@@ -1430,13 +1476,15 @@ export function useStreamingVideoContext(
     es.addEventListener("analysis_partial", (e: MessageEvent) => {
       const data = JSON.parse(e.data);
       conversation.sendUserMessage(
-        `[CTX UPDATE: analysis ${data.section}]\n${data.content}`
+        `[CTX UPDATE: analysis ${data.section}]\n${data.content}`,
       );
     });
 
     es.addEventListener("ctx_complete", (e: MessageEvent) => {
       const data = JSON.parse(e.data);
-      conversation.sendUserMessage(`[CTX COMPLETE]\n${data.final_digest_summary}`);
+      conversation.sendUserMessage(
+        `[CTX COMPLETE]\n${data.final_digest_summary}`,
+      );
       setContextComplete(true);
       setContextProgress(100);
     });
@@ -1464,6 +1512,7 @@ git commit -am "feat(extension): add useStreamingVideoContext hook piping SSE to
 ### Task 12: YouTube audio controller (Agent D)
 
 **Files:**
+
 - Create: `extension/src/content/youtubeAudioController.ts`
 - Test: `extension/__tests__/content/youtubeAudioController.test.ts`
 
@@ -1570,6 +1619,7 @@ git commit -am "feat(extension): YouTube audio ducking to 10% during voice calls
 ### Task 13: ContextProgressBar component (Agent D)
 
 **Files:**
+
 - Create: `extension/src/sidepanel/components/ContextProgressBar.tsx`
 - Test: `extension/__tests__/sidepanel/components/ContextProgressBar.test.tsx`
 
@@ -1625,6 +1675,7 @@ git commit -am "feat(extension): ContextProgressBar showing streaming analysis p
 ### Task 14: UpgradeCTA component (Agent D)
 
 **Files:**
+
 - Create: `extension/src/sidepanel/components/UpgradeCTA.tsx`
 - Test: `extension/__tests__/sidepanel/components/UpgradeCTA.test.tsx`
 
@@ -1702,6 +1753,7 @@ git commit -am "feat(extension): UpgradeCTA component for post-call Free → Exp
 ### Task 15: ConnectingView and CallActiveView components (Agent D)
 
 **Files:**
+
 - Create: `extension/src/sidepanel/components/ConnectingView.tsx`
 - Create: `extension/src/sidepanel/components/CallActiveView.tsx`
 - Test: `extension/__tests__/sidepanel/components/ConnectingView.test.tsx`
@@ -1797,6 +1849,7 @@ git commit -am "feat(extension): ConnectingView + CallActiveView components for 
 ### Task 16: VoiceView state machine — wire everything together (Agent D)
 
 **Files:**
+
 - Modify: `extension/src/sidepanel/VoiceView.tsx`
 - Modify: `extension/src/sidepanel/types.ts`
 - Modify: `extension/src/sidepanel/useExtensionVoiceChat.ts`
@@ -1809,11 +1862,24 @@ git commit -am "feat(extension): ConnectingView + CallActiveView components for 
 export type VoiceCallState =
   | { phase: "idle" }
   | { phase: "connecting"; videoId: string; videoTitle: string }
-  | { phase: "live_streaming"; videoId: string; sessionId: string; startedAt: number }
-  | { phase: "live_complete"; videoId: string; sessionId: string; startedAt: number }
+  | {
+      phase: "live_streaming";
+      videoId: string;
+      sessionId: string;
+      startedAt: number;
+    }
+  | {
+      phase: "live_complete";
+      videoId: string;
+      sessionId: string;
+      startedAt: number;
+    }
   | { phase: "ended_free_cta"; reason: "trial_used" }
   | { phase: "ended_expert" }
-  | { phase: "error_quota"; reason: "trial_used" | "pro_no_voice" | "monthly_quota" }
+  | {
+      phase: "error_quota";
+      reason: "trial_used" | "pro_no_voice" | "monthly_quota";
+    }
   | { phase: "error_mic_permission" }
   | { phase: "error_generic"; message: string };
 ```
@@ -1965,6 +2031,7 @@ In `extension/src/sidepanel/useExtensionVoiceChat.ts`, add `startSession({ video
 ```bash
 cd extension && npm test -- VoiceView.streaming
 ```
+
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -1982,6 +2049,7 @@ git commit -am "feat(extension): VoiceView state machine wiring streaming contex
 ```bash
 cd extension && npm test
 ```
+
 Expected: all green
 
 - [ ] **Step 2: Build**
@@ -1989,6 +2057,7 @@ Expected: all green
 ```bash
 cd extension && npm run build
 ```
+
 Expected: dist/ updated, no warnings
 
 - [ ] **Step 3: Verify widget integrity preserved**
@@ -1996,6 +2065,7 @@ Expected: dist/ updated, no warnings
 ```bash
 grep -c "#0a0a0f" extension/dist/content.js
 ```
+
 Expected: ≥ 7
 
 - [ ] **Step 4: Manual smoke test**
@@ -2022,6 +2092,7 @@ git tag voice-call-extension-v1-ready
 ### Task 18: E2E Playwright "Free trial → upgrade" (Agent E)
 
 **Files:**
+
 - Create: `extension/e2e/quick-voice-call.spec.ts`
 
 - [ ] **Step 1: Write the E2E spec**
@@ -2043,27 +2114,35 @@ test("Free user 1-trial → upgrade CTA → Stripe checkout", async () => {
   await page.waitForSelector("#ds-widget-root", { timeout: 30000 });
 
   // Login as a fresh Free user via test helper
-  await page.evaluate(() => chrome.storage.local.set({ jwt: window.__E2E_FREE_JWT__ }));
+  await page.evaluate(() =>
+    chrome.storage.local.set({ jwt: window.__E2E_FREE_JWT__ }),
+  );
 
   await page.locator("button.ds-voice-call-btn").click();
   // Side panel opens (in another window context)
   const sidePanelPage = await browser.waitForEvent("page", { timeout: 5000 });
   await expect(sidePanelPage.locator("text=Connexion à l'agent")).toBeVisible();
-  await expect(sidePanelPage.locator("text=En appel")).toBeVisible({ timeout: 10000 });
+  await expect(sidePanelPage.locator("text=En appel")).toBeVisible({
+    timeout: 10000,
+  });
 
   // Hang up
   await sidePanelPage.locator("button.ds-hangup").click();
 
   // Try again — should hit upgrade CTA
   await page.locator("button.ds-voice-call-btn").click();
-  await expect(sidePanelPage.locator("text=Passer en Expert")).toBeVisible({ timeout: 5000 });
+  await expect(sidePanelPage.locator("text=Passer en Expert")).toBeVisible({
+    timeout: 5000,
+  });
 
   // Click upgrade → opens Stripe checkout in new tab
   const [stripeTab] = await Promise.all([
     browser.waitForEvent("page"),
     sidePanelPage.locator("text=Passer en Expert").click(),
   ]);
-  await expect(stripeTab.url()).toMatch(/checkout\.stripe\.com|billing\/checkout/);
+  await expect(stripeTab.url()).toMatch(
+    /checkout\.stripe\.com|billing\/checkout/,
+  );
 
   await browser.close();
 });
@@ -2074,6 +2153,7 @@ test("Free user 1-trial → upgrade CTA → Stripe checkout", async () => {
 ```bash
 cd extension && npx playwright test e2e/quick-voice-call.spec.ts
 ```
+
 Expected: PASS
 
 - [ ] **Step 3: Commit**
@@ -2087,6 +2167,7 @@ git commit -am "test(extension): E2E Playwright Free trial → upgrade flow"
 ### Task 19: PostHog instrumentation (Agent D)
 
 **Files:**
+
 - Modify: `extension/src/sidepanel/VoiceView.tsx`
 
 - [ ] Add `posthog.capture()` calls at each state transition with the events listed in the spec (`voice_call_started`, `voice_call_duration_seconds`, `voice_call_context_complete_at_ms`, `voice_call_ended_reason`, `voice_call_upgrade_cta_shown`, `voice_call_upgrade_cta_clicked`).

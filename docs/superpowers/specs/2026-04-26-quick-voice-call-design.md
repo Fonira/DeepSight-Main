@@ -24,17 +24,17 @@ Parallèlement, la promesse "appeler une vidéo YouTube directement depuis l'ext
 
 ## Décisions verrouillées
 
-| #   | Décision                  | Choix retenu                                                                                                  |
-| --- | ------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| 1   | Démarrage vs analyse      | **Asynchrone progressif** : appel instant, contexte vidéo arrive en streaming pendant l'appel                 |
-| 2   | Surface V1                | **Extension Chrome (YouTube)**                                                                                |
-| 3   | Roadmap surfaces          | V1 Extension Chrome → V2 Web (Chat IA hub) → V3 Mobile (Expo) — web avant mobile car PR #126 plus avancé      |
-| 4   | Monétisation              | **A+D strict** : Free = 1 essai lifetime 3 min · Pro = ❌ CTA upgrade vers Expert · Expert 14.99€ = 30 min/mois |
-| 5   | Mécanisme streaming ctx   | `sendUserMessage("[CTX UPDATE: ...]")` (mécanisme A) — supporté nativement par SDK ElevenLabs                  |
-| 6   | Mute YouTube              | Volume baissé à 10% (pas mute total — ambiance), restauré à la fermeture                                       |
-| 7   | Transparence agent        | Prompt : "d'après ce que j'écoute pour l'instant" tant que ctx < 80%, puis "maintenant que j'ai tout le contexte" |
-| 8   | Plateformes hors-scope V1 | TikTok (extension le détecte mais voice = YouTube only), Firefox/Safari (Chrome only), vidéos non-DeepSight    |
-| 9   | Sous-agents implémentation | **Opus 4.7 obligatoire** (`claude-opus-4-7[1m]`) — règle de mémoire perma                                     |
+| #   | Décision                   | Choix retenu                                                                                                      |
+| --- | -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 1   | Démarrage vs analyse       | **Asynchrone progressif** : appel instant, contexte vidéo arrive en streaming pendant l'appel                     |
+| 2   | Surface V1                 | **Extension Chrome (YouTube)**                                                                                    |
+| 3   | Roadmap surfaces           | V1 Extension Chrome → V2 Web (Chat IA hub) → V3 Mobile (Expo) — web avant mobile car PR #126 plus avancé          |
+| 4   | Monétisation               | **A+D strict** : Free = 1 essai lifetime 3 min · Pro = ❌ CTA upgrade vers Expert · Expert 14.99€ = 30 min/mois   |
+| 5   | Mécanisme streaming ctx    | `sendUserMessage("[CTX UPDATE: ...]")` (mécanisme A) — supporté nativement par SDK ElevenLabs                     |
+| 6   | Mute YouTube               | Volume baissé à 10% (pas mute total — ambiance), restauré à la fermeture                                          |
+| 7   | Transparence agent         | Prompt : "d'après ce que j'écoute pour l'instant" tant que ctx < 80%, puis "maintenant que j'ai tout le contexte" |
+| 8   | Plateformes hors-scope V1  | TikTok (extension le détecte mais voice = YouTube only), Firefox/Safari (Chrome only), vidéos non-DeepSight       |
+| 9   | Sous-agents implémentation | **Opus 4.7 obligatoire** (`claude-opus-4-7[1m]`) — règle de mémoire perma                                         |
 
 ## Architecture macro
 
@@ -77,13 +77,13 @@ Parallèlement, la promesse "appeler une vidéo YouTube directement depuis l'ext
 
 ### Composants — qui fait quoi
 
-| Acteur                            | Code                            | Statut actuel                                                                                                |
-| --------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **Content script** (widget YT)    | `extension/src/content/`        | Existe — ajouter bouton 🎙️                                                                                  |
-| **Side panel** (call actif)       | `extension/src/sidepanel/`      | Existe (PR #128) — étendre VoiceView pour gérer SSE context                                                   |
-| **Backend voice**                 | `backend/src/voice/`            | `/session` existe (PR #124) — **NEW** : `/context/stream` SSE + agent_type `explorer_streaming` + quota table |
-| **ElevenLabs Conversational AI**  | SDK browser                     | Adapter MV3 existe (PR #128)                                                                                 |
-| **Audio controller YT**           | `extension/src/content/`        | NEW — abaisse volume DOM video à 10% à l'ouverture, restaure à la fermeture                                   |
+| Acteur                           | Code                       | Statut actuel                                                                                                 |
+| -------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Content script** (widget YT)   | `extension/src/content/`   | Existe — ajouter bouton 🎙️                                                                                    |
+| **Side panel** (call actif)      | `extension/src/sidepanel/` | Existe (PR #128) — étendre VoiceView pour gérer SSE context                                                   |
+| **Backend voice**                | `backend/src/voice/`       | `/session` existe (PR #124) — **NEW** : `/context/stream` SSE + agent_type `explorer_streaming` + quota table |
+| **ElevenLabs Conversational AI** | SDK browser                | Adapter MV3 existe (PR #128)                                                                                  |
+| **Audio controller YT**          | `extension/src/content/`   | NEW — abaisse volume DOM video à 10% à l'ouverture, restaure à la fermeture                                   |
 
 ## Spec #1 — Backend
 
@@ -244,30 +244,39 @@ async def check_voice_quota(user: User, db: AsyncSession) -> QuotaCheck:
 `extension/src/sidepanel/hooks/useStreamingVideoContext.ts`
 
 ```typescript
-export function useStreamingVideoContext(sessionId: string, conversation: ElevenLabsConversation) {
+export function useStreamingVideoContext(
+  sessionId: string,
+  conversation: ElevenLabsConversation,
+) {
   const [contextProgress, setContextProgress] = useState(0);
   const [contextComplete, setContextComplete] = useState(false);
 
   useEffect(() => {
     const eventSource = new EventSource(
       `${API_URL}/api/voice/context/stream?session_id=${sessionId}`,
-      { withCredentials: true }
+      { withCredentials: true },
     );
 
     eventSource.addEventListener("transcript_chunk", (e) => {
       const data = JSON.parse(e.data);
-      conversation.sendUserMessage(`[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`);
+      conversation.sendUserMessage(
+        `[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`,
+      );
       setContextProgress((data.chunk_index / data.total_chunks) * 100);
     });
 
     eventSource.addEventListener("analysis_partial", (e) => {
       const data = JSON.parse(e.data);
-      conversation.sendUserMessage(`[CTX UPDATE: analysis - ${data.section}]\n${data.content}`);
+      conversation.sendUserMessage(
+        `[CTX UPDATE: analysis - ${data.section}]\n${data.content}`,
+      );
     });
 
     eventSource.addEventListener("ctx_complete", (e) => {
       const data = JSON.parse(e.data);
-      conversation.sendUserMessage(`[CTX COMPLETE]\nFinal digest: ${data.final_digest_summary}`);
+      conversation.sendUserMessage(
+        `[CTX COMPLETE]\nFinal digest: ${data.final_digest_summary}`,
+      );
       setContextComplete(true);
     });
 
@@ -309,6 +318,7 @@ Trigger via message du side panel (`chrome.runtime.sendMessage({type: "VOICE_CAL
 `extension/src/sidepanel/components/UpgradeCTA.tsx`
 
 Carte État 4 post-call avec :
+
 - Texte "Tu as adoré ?" + "Continue avec 30 min/mois"
 - Carte plan Expert (14.99€/mois) avec bullet features
 - Bouton "Passer en Expert →" → deeplink Stripe checkout via API key user
@@ -356,16 +366,16 @@ PHASE 3 — V3 Mobile (J+60)
 
 ## Risques et mitigations
 
-| Risque                                              | Mitigation                                                                             |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Latence SSE + ElevenLabs sur connexions slow         | Fallback agent companion + web_search si transcript pas dispo en 5s                    |
-| Abus quota Free (reset compte)                       | Tracking IP + device fingerprint sur lifetime_trial_used                                |
-| Coûts ElevenLabs explosent                           | Kill switch global env var `VOICE_CALL_DISABLED=true` + alertes Sentry sur dépassement budget mensuel |
-| Audio simultané vidéo YouTube + agent peut surprendre | Volume YT baissé à 10% par défaut, toggleable par user (Mute total dans State 3)        |
-| `[CTX UPDATE]` messages pourraient leak en dialogue  | Tests E2E sur 50+ conversations + éval qualitative ; fallback mécanisme B (tool custom) |
-| MV3 SDK ElevenLabs ne supporte pas SSE direct        | Le SSE est consommé par le side panel (process worker MV3 OK), pas par background script |
-| Session ElevenLabs crash en cours d'appel            | Reconnect automatique côté side panel (réutilise même `session_id` backend, nouvelle conn ElevenLabs avec context restauré depuis cache Redis pubsub) |
-| User ferme l'onglet YouTube pendant l'appel          | Side panel persiste (Chrome MV3) ; backend détecte fin via heartbeat 30s et clôt session + débite quota au prorata |
+| Risque                                                | Mitigation                                                                                                                                            |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Latence SSE + ElevenLabs sur connexions slow          | Fallback agent companion + web_search si transcript pas dispo en 5s                                                                                   |
+| Abus quota Free (reset compte)                        | Tracking IP + device fingerprint sur lifetime_trial_used                                                                                              |
+| Coûts ElevenLabs explosent                            | Kill switch global env var `VOICE_CALL_DISABLED=true` + alertes Sentry sur dépassement budget mensuel                                                 |
+| Audio simultané vidéo YouTube + agent peut surprendre | Volume YT baissé à 10% par défaut, toggleable par user (Mute total dans State 3)                                                                      |
+| `[CTX UPDATE]` messages pourraient leak en dialogue   | Tests E2E sur 50+ conversations + éval qualitative ; fallback mécanisme B (tool custom)                                                               |
+| MV3 SDK ElevenLabs ne supporte pas SSE direct         | Le SSE est consommé par le side panel (process worker MV3 OK), pas par background script                                                              |
+| Session ElevenLabs crash en cours d'appel             | Reconnect automatique côté side panel (réutilise même `session_id` backend, nouvelle conn ElevenLabs avec context restauré depuis cache Redis pubsub) |
+| User ferme l'onglet YouTube pendant l'appel           | Side panel persiste (Chrome MV3) ; backend détecte fin via heartbeat 30s et clôt session + débite quota au prorata                                    |
 
 ## Métriques de succès (PostHog)
 
@@ -386,13 +396,13 @@ PHASE 3 — V3 Mobile (J+60)
 
 ## Décisions ouvertes (à valider en review)
 
-| #   | Décision                                                | Défaut proposé                                            |
-| --- | ------------------------------------------------------- | --------------------------------------------------------- |
-| 1   | Voice ID streaming                                      | Statu quo Rachel (override via `ELEVENLABS_DEFAULT_VOICE_ID`) |
+| #   | Décision                                                   | Défaut proposé                                                                        |
+| --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 1   | Voice ID streaming                                         | Statu quo Rachel (override via `ELEVENLABS_DEFAULT_VOICE_ID`)                         |
 | 2   | Persistance transcripts du voice call dans `chat_messages` | Oui, `source='voice'` `voice_session_id=session_id` (réutilise migration 007 PR #124) |
-| 3   | Replay du call (audio enregistré)                       | NON en V1 (RGPD / coûts storage). Transcription écrite OUI en V2 |
-| 4   | Compteur Free visible avant utilisation                 | OUI ("1 essai gratuit" sur le bouton)                      |
-| 5   | Trial Free reset si user upgrade puis downgrade         | NON (lifetime = lifetime, anti-abus)                      |
+| 3   | Replay du call (audio enregistré)                          | NON en V1 (RGPD / coûts storage). Transcription écrite OUI en V2                      |
+| 4   | Compteur Free visible avant utilisation                    | OUI ("1 essai gratuit" sur le bouton)                                                 |
+| 5   | Trial Free reset si user upgrade puis downgrade            | NON (lifetime = lifetime, anti-abus)                                                  |
 
 ## Méga-plan d'implémentation
 
