@@ -1,11 +1,12 @@
 """Tests for the A+D strict Quick Voice Call quota service (Task 2).
 
-Cover the 5 paths of ``check_voice_quota`` plus ``consume_voice_minutes``:
+Cover the paths of ``check_voice_quota`` plus ``consume_voice_minutes``:
   * Free user with no prior quota row → trial allowed (3 min)
-  * Free user whose lifetime trial was used → blocked, cta=upgrade_expert
-  * Pro user → always blocked, cta=upgrade_expert
-  * Expert user with quota remaining → allowed, max_minutes = 30 - used
-  * Expert user with quota exhausted → blocked, reason=monthly_quota
+  * Free user whose lifetime trial was used → blocked, cta=upgrade_pro
+  * Pro user (top tier) → allowed, monthly counter applies
+  * Pro user with quota exhausted → blocked, reason=monthly_quota
+  * Expert user (legacy alias of Pro) → same monthly behaviour
+  * Starter / unknown plan → blocked with CTA upgrade_pro
 
 Mocks db.execute as in the existing voice quota tests (tests/test_voice.py)
 to stay consistent with the project's fixture style — no live DB.
@@ -60,7 +61,7 @@ async def test_free_first_use_allowed():
 
 @pytest.mark.asyncio
 async def test_free_after_trial_blocked():
-    """Free user whose lifetime trial flag is set → blocked, cta=upgrade_expert."""
+    """Free user whose lifetime trial flag is set → blocked, cta=upgrade_pro."""
     quota = MagicMock()
     quota.plan = "free"
     quota.monthly_period_start = datetime.now(timezone.utc)
@@ -73,19 +74,38 @@ async def test_free_after_trial_blocked():
     result = await check_voice_quota(user, db)
     assert result.allowed is False
     assert result.reason == "trial_used"
-    assert result.cta == "upgrade_expert"
+    assert result.cta == "upgrade_pro"
     assert result.max_minutes == 0.0
 
 
 @pytest.mark.asyncio
-async def test_pro_always_blocked_with_cta():
-    """Pro plan never gets voice access — always blocked with CTA upgrade."""
+async def test_pro_now_top_tier_grants_monthly_quota():
+    """Pro is now the top paid tier — gets the 30-min/month rolling quota."""
+    quota = MagicMock()
+    quota.plan = "pro"
+    quota.monthly_period_start = datetime.now(timezone.utc)
+    quota.monthly_minutes_used = 12.0
+    quota.lifetime_trial_used = False
+    quota.lifetime_trial_used_at = None
+
     user = _make_user("pro")
+    db = _make_db_session(quota_row=quota)
+    result = await check_voice_quota(user, db)
+    assert result.allowed is True
+    assert result.max_minutes == EXPERT_MONTHLY_MINUTES - 12.0
+    assert result.is_trial is False
+    assert result.cta is None
+
+
+@pytest.mark.asyncio
+async def test_starter_blocked_with_cta_upgrade_pro():
+    """Starter (low-tier paid) is blocked with CTA upgrade_pro."""
+    user = _make_user("starter")
     db = _make_db_session(quota_row=None)
     result = await check_voice_quota(user, db)
     assert result.allowed is False
     assert result.reason == "pro_no_voice"
-    assert result.cta == "upgrade_expert"
+    assert result.cta == "upgrade_pro"
 
 
 @pytest.mark.asyncio
@@ -179,18 +199,35 @@ async def test_consume_increments_expert_minutes():
 
 
 @pytest.mark.asyncio
-async def test_consume_pro_no_op():
-    """Pro user has no quota counter to update — but still no-op safely."""
+async def test_consume_starter_no_op():
+    """Starter (blocked tier) → consume is a safe no-op if accidentally called."""
     quota = MagicMock()
-    quota.plan = "pro"
+    quota.plan = "starter"
     quota.monthly_period_start = datetime.now(timezone.utc)
     quota.monthly_minutes_used = 0.0
     quota.lifetime_trial_used = False
     quota.lifetime_trial_used_at = None
 
-    user = _make_user("pro")
+    user = _make_user("starter")
     db = _make_db_session(quota_row=quota)
     await consume_voice_minutes(user, 5.0, db)
-    # Pro never accumulates against this counter
+    # Starter is upstream-blocked; counter stays at zero
     assert quota.monthly_minutes_used == 0.0
     assert quota.lifetime_trial_used is False
+
+
+@pytest.mark.asyncio
+async def test_consume_pro_increments_monthly_minutes():
+    """Pro is now top tier — consume should add to monthly_minutes_used."""
+    quota = MagicMock()
+    quota.plan = "pro"
+    quota.monthly_period_start = datetime.now(timezone.utc)
+    quota.monthly_minutes_used = 5.0
+    quota.lifetime_trial_used = False
+    quota.lifetime_trial_used_at = None
+
+    user = _make_user("pro")
+    db = _make_db_session(quota_row=quota)
+    await consume_voice_minutes(user, 4.5, db)
+    assert quota.monthly_minutes_used == 9.5
+    db.commit.assert_called_once()
