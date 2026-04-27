@@ -228,7 +228,10 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
   const handleUpgrade = (): void => {
     const reason = state.phase === "error_quota" ? state.reason : "trial_used";
     track("voice_call_upgrade_cta_clicked", { reason });
-    const url = `${WEBAPP_URL}/billing/checkout?plan=expert&source=voice_call`;
+    // ⚠️ URL doit pointer vers la route web /upgrade (pas /billing/checkout
+    // qui n'existe pas — cf. frontend/src/App.tsx lazy routes). Le param
+    // ?source=voice_call est lu par UpgradePage pour le tracking PostHog.
+    const url = `${WEBAPP_URL}/upgrade?plan=expert&source=voice_call`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
