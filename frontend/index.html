@@ -7,13 +7,13 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
     />
 
-    <!-- 🤿 Deep Sight - Meta de base -->
-    <title>Deep Sight - Analyse YouTube IA</title>
+    <!-- 🤿 DeepSight - Meta de base -->
+    <title>DeepSight - Analyse YouTube IA</title>
     <meta
       name="description"
       content="Analysez et synthétisez vos vidéos YouTube avec l'IA. Résumés intelligents, points clés, timestamps, et chat interactif."
     />
-    <meta name="author" content="Deep Sight" />
+    <meta name="author" content="DeepSight" />
     <meta
       name="keywords"
       content="youtube, analyse, résumé, IA, intelligence artificielle, synthèse, vidéo, transcription"
@@ -42,8 +42,8 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Deep Sight" />
-    <meta name="application-name" content="Deep Sight" />
+    <meta name="apple-mobile-web-app-title" content="DeepSight" />
+    <meta name="application-name" content="DeepSight" />
 
     <!-- 🖼️ Favicons & Icônes - Optimisés pour tous les appareils -->
     <link
@@ -79,7 +79,7 @@
     <!-- 🔗 Open Graph (Facebook, LinkedIn) -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://www.deepsightsynthesis.com/" />
-    <meta property="og:title" content="Deep Sight - Analyse YouTube IA" />
+    <meta property="og:title" content="DeepSight - Analyse YouTube IA" />
     <meta
       property="og:description"
       content="Analysez et synthétisez vos vidéos YouTube avec l'IA. Résumés intelligents, points clés, et chat interactif."
@@ -89,11 +89,11 @@
       content="https://www.deepsightsynthesis.com/og-image.png"
     />
     <meta property="og:locale" content="fr_FR" />
-    <meta property="og:site_name" content="Deep Sight" />
+    <meta property="og:site_name" content="DeepSight" />
 
     <!-- 🐦 Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Deep Sight - Analyse YouTube IA" />
+    <meta name="twitter:title" content="DeepSight - Analyse YouTube IA" />
     <meta
       name="twitter:description"
       content="Analysez et synthétisez vos vidéos YouTube avec l'IA."
@@ -143,46 +143,78 @@
         href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&subset=latin&display=optional"
     /></noscript>
 
-    <!-- 🧠 JSON-LD Structured Data -->
+    <!-- 🧠 JSON-LD Structured Data — WebApplication + Organization -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebApplication",
-        "name": "Deep Sight",
+        "name": "DeepSight",
+        "alternateName": "DeepSight Synthesis",
         "url": "https://www.deepsightsynthesis.com",
-        "description": "Analysez et synthétisez vos vidéos YouTube avec l'IA. Résumés intelligents, points clés, timestamps, et chat interactif.",
+        "description": "Analysez et synthétisez vos vidéos YouTube et TikTok avec l'IA. Synthèses sourcées, fact-checking nuancé, flashcards FSRS, chat contextuel, voice agent. 100% européen, propulsé par Mistral AI.",
         "applicationCategory": "EducationalApplication",
-        "operatingSystem": "Web",
+        "operatingSystem": "Web, iOS, Android, Chrome",
+        "inLanguage": ["fr", "en"],
         "offers": [
           {
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "EUR",
-            "name": "Free"
+            "name": "Free",
+            "description": "5 analyses/mois, vidéos jusqu'à 15 min, flashcards, quiz"
           },
           {
             "@type": "Offer",
-            "price": "2.99",
+            "price": "4.99",
             "priceCurrency": "EUR",
-            "name": "Student"
+            "name": "Plus",
+            "description": "25 analyses/mois, vidéos 60 min, mind maps, fact-check, web search, exports PDF",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "4.99",
+              "priceCurrency": "EUR",
+              "unitText": "monthly"
+            }
           },
           {
             "@type": "Offer",
-            "price": "5.99",
+            "price": "9.99",
             "priceCurrency": "EUR",
-            "name": "Starter"
-          },
-          {
-            "@type": "Offer",
-            "price": "12.99",
-            "priceCurrency": "EUR",
-            "name": "Pro"
+            "name": "Pro",
+            "description": "100 analyses/mois, vidéos 240 min, voice agent ElevenLabs 45 min/mois, playlists, deep research",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "9.99",
+              "priceCurrency": "EUR",
+              "unitText": "monthly"
+            }
           }
-        ],
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.8",
-          "ratingCount": "150"
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "DeepSight",
+        "alternateName": "DeepSight Synthesis",
+        "url": "https://www.deepsightsynthesis.com",
+        "logo": "https://www.deepsightsynthesis.com/icons/icon-512x512.png",
+        "founder": {
+          "@type": "Person",
+          "name": "Maxime Le Parc"
+        },
+        "foundingDate": "2025",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Lyon",
+          "addressCountry": "FR"
+        },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "url": "https://www.deepsightsynthesis.com/contact",
+          "availableLanguage": ["French", "English"]
         }
       }
     </script>
@@ -234,7 +266,7 @@
       >
         <h1>JavaScript requis</h1>
         <p>
-          Deep Sight nécessite JavaScript pour fonctionner. Veuillez l'activer
+          DeepSight nécessite JavaScript pour fonctionner. Veuillez l'activer
           dans votre navigateur.
         </p>
       </div>

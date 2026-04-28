@@ -48,9 +48,9 @@ export const SEO = ({
       {/* Indexation */}
       {noindex && <meta name="robots" content="noindex, nofollow" />}
 
-      {/* Hreflang — app bilingue FR/EN */}
+      {/* Hreflang — pas de variante /en/* publique pour l'instant.
+          La balise EN sera réintroduite quand les routes /en/* existeront. */}
       <link rel="alternate" hrefLang="fr" href={canonicalUrl} />
-      <link rel="alternate" hrefLang="en" href={canonicalUrl} />
       <link rel="alternate" hrefLang="x-default" href={canonicalUrl} />
 
       {/* Open Graph */}

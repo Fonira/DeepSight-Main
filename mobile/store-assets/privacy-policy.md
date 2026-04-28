@@ -86,14 +86,14 @@ AI-generated content is clearly labeled with certainty markers. We encourage use
 | ---------------- | ------------------- | -------------------------- | ----------------------- |
 | Stripe           | Payment processing  | Email, plan selection      | USA (PCI DSS compliant) |
 | Sentry           | Error monitoring    | Crash reports, device info | USA                     |
-| Railway          | Backend hosting     | All backend data           | EU (Germany)            |
+| Hetzner          | Backend hosting     | All backend data           | EU (Falkenstein, Germany) |
 | Vercel           | Frontend hosting    | Static assets only         | Global CDN              |
 | YouTube Data API | Video metadata      | YouTube URLs               | USA (Google)            |
 | Resend           | Transactional email | Email address              | USA                     |
 
 ## 7. Data Storage and Security
 
-- Backend data is stored on Railway servers located in the EU (Germany)
+- Backend data is stored on Hetzner servers located in Falkenstein, Germany (EU)
 - All data in transit is encrypted via TLS 1.2+
 - Passwords are hashed using bcrypt with salt
 - Authentication uses JWT tokens with short expiration (15 minutes)
@@ -105,7 +105,7 @@ AI-generated content is clearly labeled with certainty markers. We encourage use
 | Data Type        | Retention Period                                                             |
 | ---------------- | ---------------------------------------------------------------------------- |
 | Account data     | Until account deletion                                                       |
-| Analysis history | Based on plan (3 days Free, 30 days Student, 60 days Starter, unlimited Pro) |
+| Analysis history | Based on plan (60 days Free, unlimited Plus and Pro)                         |
 | Chat history     | Same as analysis history                                                     |
 | Crash reports    | 90 days                                                                      |
 | Server logs      | 30 days                                                                      |
