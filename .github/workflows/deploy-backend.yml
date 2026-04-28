@@ -100,6 +100,11 @@ jobs:
               backend
 
             # Recreate the backend container.
+            # RUN_MIGRATIONS=true makes entrypoint.sh run `alembic upgrade head`
+            # before launching uvicorn. Idempotent + safe-by-default. Without
+            # this, a PR shipping a new alembic revision would put the backend
+            # in unhealthy state until migrations were applied manually
+            # (cf. incident 2026-04-26, PR #152, see deploy/hetzner/RUNBOOK.md).
             docker stop repo-backend-1 || true
             docker rm repo-backend-1 || true
             docker run -d \
@@ -107,6 +112,7 @@ jobs:
               --network repo_deepsight \
               --network-alias backend \
               --env-file /opt/deepsight/repo/.env.production \
+              -e RUN_MIGRATIONS=true \
               --restart unless-stopped \
               -p 127.0.0.1:8080:8080 \
               deepsight-backend:latest
@@ -154,6 +160,12 @@ jobs:
             echo "Rolling back to deepsight-backend:previous"
             docker tag deepsight-backend:previous deepsight-backend:latest
 
+            # RUN_MIGRATIONS=false on rollback: the previous image may correspond
+            # to the previous schema, and the new code's migration has potentially
+            # already been applied to the live DB. Re-running `alembic upgrade head`
+            # against an old image whose migration files don't match the live state
+            # is risky. Schema-level rollback is a separate manual procedure
+            # (alembic downgrade) — cf. deploy/hetzner/RUNBOOK.md section 3.
             docker stop repo-backend-1 || true
             docker rm repo-backend-1 || true
             docker run -d \
@@ -161,6 +173,7 @@ jobs:
               --network repo_deepsight \
               --network-alias backend \
               --env-file /opt/deepsight/repo/.env.production \
+              -e RUN_MIGRATIONS=false \
               --restart unless-stopped \
               -p 127.0.0.1:8080:8080 \
               deepsight-backend:latest

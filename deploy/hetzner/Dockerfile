@@ -41,12 +41,19 @@ COPY static/ ./static/
 COPY alembic.ini ./alembic.ini
 COPY alembic/ ./alembic/
 
+# Entrypoint runs alembic upgrade head before uvicorn when RUN_MIGRATIONS=true.
+# Build context is `backend/` so this picks up backend/entrypoint.sh.
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 WORKDIR /app/src
 
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=30s \
     CMD curl -f http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]
 
 # 4 workers pour 8 vCPU (I/O bound async → 1 worker / 2 vCPU)
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", \
