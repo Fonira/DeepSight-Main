@@ -15,6 +15,7 @@ and the constants ``_POLL_INTERVAL_SECS`` / ``_POLL_TIMEOUT_SECS`` are kept
 at module level so unit tests can monkeypatch them without touching the real
 DB session machinery.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -44,9 +45,7 @@ _MAX_SOURCES_ITEMS = 5
 _MAX_DIGEST_CHARS = 1000
 
 
-async def _query_summary(
-    video_id: str, user_id: int, db: AsyncSession
-) -> Optional[Summary]:
+async def _query_summary(video_id: str, user_id: int, db: AsyncSession) -> Optional[Summary]:
     """One-shot query for the latest Summary matching ``(video_id, user_id)``.
 
     Returns the most recent row (highest ``id``) so retries / re-analyses pick
@@ -62,9 +61,7 @@ async def _query_summary(
     return result.scalar_one_or_none()
 
 
-async def _load_summary_with_full_digest(
-    video_id: str, user_id: int
-) -> Optional[Summary]:
+async def _load_summary_with_full_digest(video_id: str, user_id: int) -> Optional[Summary]:
     """Poll the DB until ``Summary.full_digest`` is populated, or timeout.
 
     Returns ``None`` if the Summary never appears or never gets a full_digest

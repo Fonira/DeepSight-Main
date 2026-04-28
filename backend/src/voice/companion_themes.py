@@ -1,4 +1,5 @@
 """Extraction top 3 thèmes user pour COMPANION agent."""
+
 import logging
 from collections import Counter
 from typing import Optional, Protocol

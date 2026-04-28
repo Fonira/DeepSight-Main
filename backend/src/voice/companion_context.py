@@ -1,4 +1,5 @@
 """Builder principal du contexte COMPANION agent — profil + recos + cache."""
+
 import json
 import logging
 from voice.schemas import CompanionContextResponse, ProfileBlock
@@ -50,7 +51,9 @@ async def build_companion_context(
     )
 
     resp = CompanionContextResponse(
-        profile=profile, initial_recos=initial_recos, cache_hit=False,
+        profile=profile,
+        initial_recos=initial_recos,
+        cache_hit=False,
     )
 
     # Write-through cache

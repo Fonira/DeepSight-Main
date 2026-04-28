@@ -4,6 +4,7 @@ These functions wrap raw SQLAlchemy `select()` calls so the higher-level
 companion_context / companion_themes modules can stay framework-free and
 testable with simple Protocol-based mocks.
 """
+
 from __future__ import annotations
 
 import logging
@@ -28,39 +29,28 @@ class StudyStats:
 
 async def fetch_user_summary_count(*, db: AsyncSession, user_id: int) -> int:
     """Total number of Summary rows owned by the user."""
-    result = await db.execute(
-        select(func.count(Summary.id)).where(Summary.user_id == user_id)
-    )
+    result = await db.execute(select(func.count(Summary.id)).where(Summary.user_id == user_id))
     return int(result.scalar() or 0)
 
 
-async def fetch_recent_summaries(
-    *, db: AsyncSession, user_id: int, limit: int = 5
-) -> list[Summary]:
+async def fetch_recent_summaries(*, db: AsyncSession, user_id: int, limit: int = 5) -> list[Summary]:
     """Most recently created Summary rows for the user (newest first)."""
     result = await db.execute(
-        select(Summary)
-        .where(Summary.user_id == user_id)
-        .order_by(Summary.created_at.desc())
-        .limit(limit)
+        select(Summary).where(Summary.user_id == user_id).order_by(Summary.created_at.desc()).limit(limit)
     )
     return list(result.scalars().all())
 
 
-async def fetch_user_analyzed_video_ids(
-    *, db: AsyncSession, user_id: int
-) -> set[str]:
+async def fetch_user_analyzed_video_ids(*, db: AsyncSession, user_id: int) -> set[str]:
     """Set of YouTube video_ids already analysed by the user — used to dedupe recos."""
-    result = await db.execute(
-        select(Summary.video_id).where(
-            Summary.user_id == user_id, Summary.video_id.is_not(None)
-        )
-    )
+    result = await db.execute(select(Summary.video_id).where(Summary.user_id == user_id, Summary.video_id.is_not(None)))
     return {v for (v,) in result.all() if v}
 
 
 async def fetch_user_study_stats(
-    *, db: AsyncSession, user_id: int  # noqa: ARG001 — db unused for now
+    *,
+    db: AsyncSession,
+    user_id: int,  # noqa: ARG001 — db unused for now
 ) -> StudyStats:
     """Lightweight study stats for COMPANION profile.
 
@@ -93,14 +83,10 @@ class CompanionDBAdapter:
         return await fetch_user_summary_count(db=self._session, user_id=user_id)
 
     async def fetch_recent_summaries(self, *, user_id: int, limit: int = 5):
-        return await fetch_recent_summaries(
-            db=self._session, user_id=user_id, limit=limit
-        )
+        return await fetch_recent_summaries(db=self._session, user_id=user_id, limit=limit)
 
     async def fetch_user_analyzed_video_ids(self, *, user_id: int) -> set[str]:
-        return await fetch_user_analyzed_video_ids(
-            db=self._session, user_id=user_id
-        )
+        return await fetch_user_analyzed_video_ids(db=self._session, user_id=user_id)
 
     async def fetch_user_study_stats(self, *, user_id: int) -> StudyStats:
         return await fetch_user_study_stats(db=self._session, user_id=user_id)

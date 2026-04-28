@@ -1,4 +1,5 @@
 """Orchestration des 4 sources de recos pour COMPANION agent."""
+
 import asyncio
 import logging
 from typing import Optional, Protocol
@@ -9,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 class _DBProto(Protocol):
     embedding_service: object
+
     async def fetch_user_analyzed_video_ids(self, user_id: int) -> set[str]: ...
 
 
@@ -136,6 +138,7 @@ async def build_initial_recos(
     timeout_seconds: float = 2.0,
 ) -> list[RecoItem]:
     """Run les 3 sources en parallèle avec timeout, drop les None."""
+
     async def _safe(fn):
         try:
             return await asyncio.wait_for(fn(), timeout=timeout_seconds)
@@ -144,7 +147,9 @@ async def build_initial_recos(
             return None
 
     results = await asyncio.gather(
-        _safe(history_fn), _safe(trending_fn), _safe(tournesol_fn),
+        _safe(history_fn),
+        _safe(trending_fn),
+        _safe(tournesol_fn),
         return_exceptions=False,
     )
     return [r for r in results if r is not None]

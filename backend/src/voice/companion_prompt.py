@@ -1,4 +1,5 @@
 """Template system prompt enrichi pour COMPANION agent."""
+
 from voice.schemas import CompanionContextResponse
 
 

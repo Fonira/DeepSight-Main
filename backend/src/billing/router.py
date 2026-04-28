@@ -449,9 +449,7 @@ async def get_my_plan(
     # vs "X min restantes") sans appeler un endpoint séparé. Backend reste
     # SoT au moment du POST /voice/session pour le quota check strict.
     voice_quota_q = await session.execute(
-        select(VoiceQuotaStreaming).where(
-            VoiceQuotaStreaming.user_id == current_user.id
-        )
+        select(VoiceQuotaStreaming).where(VoiceQuotaStreaming.user_id == current_user.id)
     )
     voice_quota_row = voice_quota_q.scalar_one_or_none()
     voice_quota_payload: dict[str, Any] = {
@@ -459,12 +457,8 @@ async def get_my_plan(
         "monthly_minutes_used": 0.0,
     }
     if voice_quota_row is not None:
-        voice_quota_payload["trial_used"] = bool(
-            voice_quota_row.lifetime_trial_used
-        )
-        voice_quota_payload["monthly_minutes_used"] = float(
-            voice_quota_row.monthly_minutes_used or 0.0
-        )
+        voice_quota_payload["trial_used"] = bool(voice_quota_row.lifetime_trial_used)
+        voice_quota_payload["monthly_minutes_used"] = float(voice_quota_row.monthly_minutes_used or 0.0)
 
     # ── Subscription status ──
     subscription_info: dict[str, Any] = {

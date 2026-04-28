@@ -70,13 +70,9 @@ class VoiceSessionRequest(BaseModel):
             ]
         )
         if sources > 1:
-            raise ValueError(
-                "Fournir summary_id OU debate_id OU video_url, un seul"
-            )
+            raise ValueError("Fournir summary_id OU debate_id OU video_url, un seul")
         if self.video_url is not None and self.agent_type != "explorer_streaming":
-            raise ValueError(
-                "video_url nécessite agent_type='explorer_streaming'"
-            )
+            raise ValueError("video_url nécessite agent_type='explorer_streaming'")
         return self
 
 
@@ -133,12 +129,8 @@ class VoiceSessionResponse(BaseModel):
     ptt_key: str = " "  # Keyboard key for PTT
     playback_rate: float = 1.0  # Client-side playback rate multiplier
     # ── Quick Voice Call (V1) — streaming session metadata ───────────────
-    is_streaming: bool = Field(
-        default=False, description="True when this session uses progressive context streaming"
-    )
-    is_trial: bool = Field(
-        default=False, description="True when this is the Free 1-shot lifetime trial (3 min)"
-    )
+    is_streaming: bool = Field(default=False, description="True when this session uses progressive context streaming")
+    is_trial: bool = Field(default=False, description="True when this is the Free 1-shot lifetime trial (3 min)")
     max_minutes: Optional[float] = Field(
         default=None,
         description="Hard cap (minutes) enforced by the side panel timer for streaming sessions",

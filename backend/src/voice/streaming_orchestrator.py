@@ -301,10 +301,7 @@ def _make_analysis_runner() -> AnalysisRunner:
 
             async for db in get_session():
                 result = await db.execute(
-                    select(Summary)
-                    .where(Summary.video_id == video_id)
-                    .order_by(Summary.created_at.desc())
-                    .limit(1)
+                    select(Summary).where(Summary.video_id == video_id).order_by(Summary.created_at.desc()).limit(1)
                 )
                 row = result.scalar_one_or_none()
                 if row and (row.summary_content or "").strip():

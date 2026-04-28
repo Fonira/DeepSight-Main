@@ -281,9 +281,7 @@ async def _redis_pubsub_to_sse(redis_client, session_id: str):
             try:
                 event = json.loads(raw)
             except (TypeError, ValueError):
-                logger.warning(
-                    "Voice ctx stream: dropped malformed pubsub payload on %s", channel
-                )
+                logger.warning("Voice ctx stream: dropped malformed pubsub payload on %s", channel)
                 continue
             event_type = event.get("type", "message")
             yield f"event: {event_type}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
@@ -295,9 +293,7 @@ async def _redis_pubsub_to_sse(redis_client, session_id: str):
         try:
             await pubsub.unsubscribe(channel)
         except Exception as unsub_exc:  # noqa: BLE001 — unsub is best-effort
-            logger.debug(
-                "Voice ctx stream unsubscribe failed for %s: %s", channel, unsub_exc
-            )
+            logger.debug("Voice ctx stream unsubscribe failed for %s: %s", channel, unsub_exc)
         try:
             # redis-py 5.x exposes async ``aclose``; 4.x exposes sync ``close``.
             close_fn = getattr(pubsub, "aclose", None) or getattr(pubsub, "close", None)
@@ -306,9 +302,7 @@ async def _redis_pubsub_to_sse(redis_client, session_id: str):
                 if asyncio.iscoroutine(result):
                     await result
         except Exception as close_exc:  # noqa: BLE001 — close is best-effort
-            logger.debug(
-                "Voice ctx stream close failed for %s: %s", channel, close_exc
-            )
+            logger.debug("Voice ctx stream close failed for %s: %s", channel, close_exc)
 
 
 @router.get("/context/stream")
@@ -761,9 +755,7 @@ async def verify_debate_tool_request(request: Request, db: AsyncSession) -> tupl
     return debate, body
 
 
-async def verify_companion_tool_request(
-    request: Request, db: AsyncSession
-) -> tuple[VoiceSession, dict]:
+async def verify_companion_tool_request(request: Request, db: AsyncSession) -> tuple[VoiceSession, dict]:
     """Verify an ElevenLabs tool webhook request for COMPANION agent (no summary_id).
 
     Bearer token = voice_session.id. Body must include voice_session_id matching.
@@ -782,9 +774,7 @@ async def verify_companion_tool_request(
         )
 
     body = await request.json()
-    voice_session_id = body.get("voice_session_id") or body.get("parameters", {}).get(
-        "voice_session_id"
-    )
+    voice_session_id = body.get("voice_session_id") or body.get("parameters", {}).get("voice_session_id")
     if not voice_session_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -1448,9 +1438,7 @@ async def create_voice_session(
             # connects.
             try:
                 redis_client = _resolve_redis_client()
-                services = _build_companion_services(
-                    db=db, redis=redis_client, user=current_user
-                )
+                services = _build_companion_services(db=db, redis=redis_client, user=current_user)
                 companion_ctx = await build_companion_context(
                     user=current_user,
                     db=CompanionDBAdapter(db),
@@ -1471,8 +1459,7 @@ async def create_voice_session(
                 )
             except Exception as companion_exc:
                 logger.warning(
-                    "Voice session: failed to enrich companion prompt — "
-                    "falling back to static prompt",
+                    "Voice session: failed to enrich companion prompt — falling back to static prompt",
                     extra={
                         "user_id": current_user.id,
                         "session_id": voice_session.id,
@@ -2730,9 +2717,7 @@ async def tool_companion_recos(request: Request, db: AsyncSession = Depends(get_
     voice_session, body = await verify_companion_tool_request(request, db)
     topic = body.get("topic") or body.get("parameters", {}).get("topic", "")
 
-    excluded_q = await db.execute(
-        select(Summary.video_id).where(Summary.user_id == voice_session.user_id)
-    )
+    excluded_q = await db.execute(select(Summary.video_id).where(Summary.user_id == voice_session.user_id))
     excluded: set[str] = {v for (v,) in excluded_q.all() if v}
 
     async def _none_fn():
@@ -2757,9 +2742,7 @@ _COMPANION_START_ANALYSIS_RATE_LIMIT = 3
 
 
 @router.post("/tools/start-analysis")
-async def tool_companion_start_analysis(
-    request: Request, db: AsyncSession = Depends(get_session)
-):
+async def tool_companion_start_analysis(request: Request, db: AsyncSession = Depends(get_session)):
     """ElevenLabs tool webhook: queue a video analysis from a COMPANION call.
 
     V1: validates URL + rate-limits per voice_session_id (max 3 analyses per
@@ -2819,9 +2802,7 @@ _COMPANION_TRANSFER_TTL_SECONDS = 60
 
 
 @router.post("/tools/transfer-to-video")
-async def tool_companion_transfer_to_video(
-    request: Request, db: AsyncSession = Depends(get_session)
-):
+async def tool_companion_transfer_to_video(request: Request, db: AsyncSession = Depends(get_session)):
     """ElevenLabs tool webhook: transfer the companion call to an EXPLORER
     session on a specific video from the user's history.
 
@@ -2901,9 +2882,7 @@ async def tool_companion_transfer_to_video(
         }
 
     # Pre-flight quota — explorer requires Pro plan
-    user_query = await db.execute(
-        select(User).where(User.id == voice_session.user_id)
-    )
+    user_query = await db.execute(select(User).where(User.id == voice_session.user_id))
     user = user_query.scalar_one_or_none()
     if user is None:
         return {
@@ -2938,9 +2917,7 @@ async def tool_companion_transfer_to_video(
     if redis_client is not None:
         try:
             await redis_client.set(
-                _COMPANION_TRANSFER_REDIS_KEY.format(
-                    voice_session_id=voice_session.id
-                ),
+                _COMPANION_TRANSFER_REDIS_KEY.format(voice_session_id=voice_session.id),
                 json.dumps(payload),
                 ex=_COMPANION_TRANSFER_TTL_SECONDS,
             )
@@ -2952,9 +2929,7 @@ async def tool_companion_transfer_to_video(
             "status": "ready",
             "summary_id": target.id,
             "video_title": target.video_title or "ta vidéo",
-            "message": (
-                f"Je te bascule sur « {target.video_title or 'cette vidéo'} »."
-            ),
+            "message": (f"Je te bascule sur « {target.video_title or 'cette vidéo'} »."),
         }
     }
 
@@ -2971,9 +2946,7 @@ async def companion_pending_transfer(
     Authorisation: the caller's JWT must own the voice session. Returns 404
     if no transfer is pending (no Redis entry, or entry expired after 60s).
     """
-    result = await db.execute(
-        select(VoiceSession).where(VoiceSession.id == voice_session_id)
-    )
+    result = await db.execute(select(VoiceSession).where(VoiceSession.id == voice_session_id))
     voice_session = result.scalar_one_or_none()
     if voice_session is None or voice_session.user_id != current_user.id:
         raise HTTPException(
@@ -2988,9 +2961,7 @@ async def companion_pending_transfer(
             detail="No pending transfer.",
         )
 
-    raw = await redis_client.get(
-        _COMPANION_TRANSFER_REDIS_KEY.format(voice_session_id=voice_session_id)
-    )
+    raw = await redis_client.get(_COMPANION_TRANSFER_REDIS_KEY.format(voice_session_id=voice_session_id))
     if not raw:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -3008,9 +2979,7 @@ async def companion_pending_transfer(
 
     # Consume once — clear the key after read
     try:
-        await redis_client.delete(
-            _COMPANION_TRANSFER_REDIS_KEY.format(voice_session_id=voice_session_id)
-        )
+        await redis_client.delete(_COMPANION_TRANSFER_REDIS_KEY.format(voice_session_id=voice_session_id))
     except Exception as exc:  # noqa: BLE001
         logger.warning("companion pending transfer cleanup failed: %s", exc)
 
@@ -3430,10 +3399,7 @@ async def companion_context_endpoint(
     if not is_admin and plan != "pro":
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=(
-                "Upgrade vers Pro requis pour Appel Vocal — "
-                "https://www.deepsightsynthesis.com/upgrade"
-            ),
+            detail=("Upgrade vers Pro requis pour Appel Vocal — https://www.deepsightsynthesis.com/upgrade"),
         )
 
     redis_client = _resolve_redis_client()
