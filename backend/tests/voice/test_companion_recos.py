@@ -124,3 +124,30 @@ async def test_tournesol_api_error_returns_none():
         theme="t", tournesol_service=tournesol_mock, excluded_video_ids=set()
     )
     assert reco is None
+
+
+@pytest.mark.asyncio
+async def test_youtube_search_returns_first_relevant():
+    yt_mock = AsyncMock()
+    yt_mock.search.return_value = [
+        {"video_id": "yt1", "title": "Hit", "channel": "C", "duration": 200, "thumbnail": "u"},
+    ]
+    from voice.companion_recos import fetch_youtube_search_reco
+    reco = await fetch_youtube_search_reco(
+        topic="quantum",
+        youtube_service=yt_mock,
+        excluded_video_ids=set(),
+    )
+    assert reco.video_id == "yt1"
+    assert reco.source == "youtube"
+
+
+@pytest.mark.asyncio
+async def test_youtube_search_no_results():
+    from voice.companion_recos import fetch_youtube_search_reco
+    yt_mock = AsyncMock()
+    yt_mock.search.return_value = []
+    reco = await fetch_youtube_search_reco(
+        topic="x", youtube_service=yt_mock, excluded_video_ids=set()
+    )
+    assert reco is None

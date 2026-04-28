@@ -99,3 +99,29 @@ async def fetch_tournesol_reco(
                 thumbnail_url=item.get("thumbnail"),
             )
     return None
+
+
+async def fetch_youtube_search_reco(
+    topic: str,
+    youtube_service,
+    excluded_video_ids: set[str],
+) -> Optional[RecoItem]:
+    """Reco YouTube Search API — fallback du tool, pas pré-fetch."""
+    try:
+        items = await youtube_service.search(query=topic, limit=5)
+    except Exception as exc:
+        logger.warning("youtube search failed (topic=%s): %s", topic, exc)
+        return None
+
+    for item in items or []:
+        if item["video_id"] not in excluded_video_ids:
+            return RecoItem(
+                video_id=item["video_id"],
+                title=item["title"],
+                channel=item["channel"],
+                duration_seconds=item.get("duration", 0),
+                source="youtube",
+                why=f"Trouvé sur YouTube pour « {topic} »",
+                thumbnail_url=item.get("thumbnail"),
+            )
+    return None
