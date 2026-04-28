@@ -611,4 +611,37 @@ describe("useVoiceChat", () => {
       }).not.toThrow();
     });
   });
+
+  describe("Quick Voice Call mobile V3 — sessionId + conversation exposés", () => {
+    it("sessionId est null avant start()", () => {
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+      expect(result.current.sessionId).toBeNull();
+    });
+
+    it("sessionId reflète session_id backend après start()", async () => {
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+      await act(async () => {
+        await result.current.start();
+      });
+      expect(result.current.sessionId).toBe("sess_123");
+    });
+
+    it("sessionId redevient null après stop()", async () => {
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+      await act(async () => {
+        await result.current.start();
+      });
+      expect(result.current.sessionId).toBe("sess_123");
+      await act(async () => {
+        await result.current.stop();
+      });
+      expect(result.current.sessionId).toBeNull();
+    });
+
+    it("conversation est exposé (instance ElevenLabs SDK)", () => {
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+      expect(result.current.conversation).toBeDefined();
+      expect(result.current.conversation).toBe(mockConversation);
+    });
+  });
 });

@@ -94,6 +94,18 @@ interface UseVoiceChatReturn {
   remainingMinutes: number;
   /** Erreur */
   error: string | null;
+  /**
+   * Quick Voice Call mobile V3 — session ID backend (null avant `start()`).
+   * Exposé pour `useStreamingVideoContext` qui ouvre le SSE
+   * `/api/voice/context/stream?session_id=...`.
+   */
+  sessionId: string | null;
+  /**
+   * Quick Voice Call mobile V3 — instance ElevenLabs SDK exposée pour permettre
+   * l'injection de `[CTX UPDATE]` via `conversation.sendUserMessage(...)`
+   * depuis `useStreamingVideoContext`.
+   */
+  conversation: ReturnType<typeof useConversation>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -130,6 +142,9 @@ export function useVoiceChat(
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [remainingMinutes, setRemainingMinutes] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Quick Voice Call mobile V3 — sessionId exposé en state (pas juste ref)
+  // pour permettre à `useStreamingVideoContext` de réagir à son changement.
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Refs pour le cleanup
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -263,6 +278,10 @@ export function useVoiceChat(
     // tardifs (post-stop) d'être attribués à la session précédente.
     sessionIdRef.current = null;
     sessionStartedAtRef.current = 0;
+    // Quick Voice Call mobile V3 — purge sessionId state pour fermer le SSE.
+    if (isMountedRef.current) {
+      setSessionId(null);
+    }
   }, [stopTimer, conversation]);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -331,6 +350,10 @@ export function useVoiceChat(
       // calculer time_in_call_secs lors de chaque appendTranscript.
       sessionIdRef.current = sessionData.session_id;
       sessionStartedAtRef.current = Date.now();
+      // Quick Voice Call mobile V3 — expose sessionId en state pour SSE.
+      if (isMountedRef.current) {
+        setSessionId(sessionData.session_id);
+      }
     } catch (err: unknown) {
       // Vérifier si c'est une erreur de quota (403/429)
       const apiError = err as { status?: number; message?: string };
@@ -510,5 +533,7 @@ export function useVoiceChat(
     elapsedSeconds,
     remainingMinutes,
     error,
+    sessionId,
+    conversation,
   };
 }
