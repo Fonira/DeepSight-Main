@@ -3,13 +3,12 @@
 import logging
 import time
 from collections import deque
-from typing import Any
 
 from mcp.server.fastmcp import FastMCP
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from vault_mcp.config import Settings, load_settings
 from vault_mcp.logging_setup import setup_logging
@@ -101,28 +100,56 @@ class _RateLimiter:
 _rate_limiter = _RateLimiter(per_minute=SETTINGS.rate_limit_per_minute)
 
 
-class AuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Any):
-        if request.url.path == "/health":
-            return await call_next(request)
+class AuthMiddleware:
+    """Pure ASGI middleware — compatible with SSE streaming responses."""
 
-        auth = request.headers.get("Authorization", "")
-        if not auth.startswith("Bearer "):
-            client = request.client.host if request.client else "?"
-            log.warning("Missing or malformed Authorization header from %s", client)
-            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
 
-        token = auth.removeprefix("Bearer ").strip()
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+        if path == "/health":
+            await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope.get("headers") or [])
+        auth_header = headers.get(b"authorization", b"").decode("utf-8", errors="replace")
+
+        if not auth_header.startswith("Bearer "):
+            await _send_json(send, 401, {"error": "Unauthorized"})
+            return
+
+        token = auth_header.removeprefix("Bearer ").strip()
         if token != SETTINGS.mcp_token:
-            client = request.client.host if request.client else "?"
-            log.warning("Invalid bearer token from %s", client)
-            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+            await _send_json(send, 401, {"error": "Unauthorized"})
+            return
 
         if not _rate_limiter.check():
-            log.warning("Rate limit hit")
-            return JSONResponse({"error": "Rate limit exceeded"}, status_code=429)
+            await _send_json(send, 429, {"error": "Rate limit exceeded"})
+            return
 
-        return await call_next(request)
+        await self.app(scope, receive, send)
+
+
+async def _send_json(send: Send, status: int, payload: dict) -> None:
+    import json
+
+    body = json.dumps(payload).encode("utf-8")
+    await send(
+        {
+            "type": "http.response.start",
+            "status": status,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(body)).encode()),
+            ],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
 
 
 async def health(request: Request) -> JSONResponse:
