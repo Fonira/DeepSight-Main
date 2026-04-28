@@ -1977,9 +1977,15 @@ export const voiceApi = {
       | number
       | {
           summary_id?: number;
-          agent_type?: "explorer" | "companion" | "debate_moderator";
+          agent_type?:
+            | "explorer"
+            | "companion"
+            | "debate_moderator"
+            | "explorer_streaming";
           language?: string;
           debate_id?: number;
+          /** URL YouTube/TikTok pour mode `explorer_streaming` (Quick Voice Call mobile V3). */
+          video_url?: string;
         },
     legacyLanguage?: string,
   ): Promise<{
@@ -1991,6 +1997,8 @@ export const voiceApi = {
     expires_at: string;
     quota_remaining_minutes: number;
     max_session_minutes: number;
+    /** ID du Summary placeholder créé quand `video_url` était fourni (mode explorer_streaming, mobile V3). Null sinon. */
+    summary_id?: number | null;
   }> {
     // Rétro-compat : appel positionnel `createSession(42, "fr")`.
     if (typeof arg1 === "number") {
@@ -2005,7 +2013,12 @@ export const voiceApi = {
     // Nouveau format objet.
     const body: Record<string, unknown> = {
       agent_type:
-        arg1.agent_type ?? (arg1.summary_id ? "explorer" : "companion"),
+        arg1.agent_type ??
+        (arg1.video_url
+          ? "explorer_streaming"
+          : arg1.summary_id
+            ? "explorer"
+            : "companion"),
       language: arg1.language ?? "fr",
     };
     if (arg1.summary_id !== undefined && arg1.summary_id !== null) {
@@ -2013,6 +2026,9 @@ export const voiceApi = {
     }
     if (arg1.debate_id !== undefined && arg1.debate_id !== null) {
       body.debate_id = arg1.debate_id;
+    }
+    if (arg1.video_url !== undefined && arg1.video_url !== null) {
+      body.video_url = arg1.video_url;
     }
     return request("/api/voice/session", { method: "POST", body });
   },
