@@ -9,6 +9,17 @@ jest.mock("expo-linking", () => ({
   addEventListener: jest.fn(),
 }));
 
+jest.mock("expo-share-intent/build/useShareIntent", () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue({
+    isReady: true,
+    hasShareIntent: false,
+    shareIntent: { text: null, webUrl: null, type: null, files: null, meta: null },
+    resetShareIntent: jest.fn(),
+    error: null,
+  }),
+}));
+
 describe("useDeepLinkURL", () => {
   let urlListener: ((evt: { url: string }) => void) | null = null;
 
