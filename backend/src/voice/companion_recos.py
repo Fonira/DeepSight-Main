@@ -1,4 +1,5 @@
 """Orchestration des 4 sources de recos pour COMPANION agent."""
+import asyncio
 import logging
 from typing import Optional, Protocol
 from voice.schemas import RecoItem
@@ -125,3 +126,25 @@ async def fetch_youtube_search_reco(
                 thumbnail_url=item.get("thumbnail"),
             )
     return None
+
+
+async def build_initial_recos(
+    primary_theme: str,
+    history_fn,
+    trending_fn,
+    tournesol_fn,
+    timeout_seconds: float = 2.0,
+) -> list[RecoItem]:
+    """Run les 3 sources en parallèle avec timeout, drop les None."""
+    async def _safe(fn):
+        try:
+            return await asyncio.wait_for(fn(), timeout=timeout_seconds)
+        except (asyncio.TimeoutError, Exception) as exc:
+            logger.warning("initial reco source timeout/error: %s", exc)
+            return None
+
+    results = await asyncio.gather(
+        _safe(history_fn), _safe(trending_fn), _safe(tournesol_fn),
+        return_exceptions=False,
+    )
+    return [r for r in results if r is not None]
