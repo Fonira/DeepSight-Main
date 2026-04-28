@@ -27,10 +27,9 @@ AUDIO SYNTHÈSE (TTS)
 Écoutez les résumés en audio grâce à la synthèse vocale intégrée. Idéal pour réviser en déplacement.
 
 PLANS DISPONIBLES
-• Gratuit : 3 analyses/mois, vidéos jusqu'à 10 min
-• Student : 40 analyses/mois, flashcards, concept maps
-• Starter : 60 analyses/mois, exports, historique 60 jours
-• Pro : 300 analyses/mois, playlists, chat illimité, TTS
+• Gratuit : 5 analyses/mois, vidéos jusqu'à 15 min, flashcards, quiz, chat
+• Plus (4,99€/mois) : 25 analyses, vidéos 60 min, fact-check, mind maps, web search, exports PDF
+• Pro (9,99€/mois) : 100 analyses, vidéos 4h, voice chat 45 min/mois (ElevenLabs), playlists, deep research, file prioritaire
 
 CONFIDENTIALITÉ
 Vos données sont protégées. Aucune vidéo n'est stockée — seules les métadonnées et les analyses sont conservées. Conforme au RGPD.

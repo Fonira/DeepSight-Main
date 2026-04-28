@@ -49,12 +49,11 @@ export const BadgeGrid: React.FC<BadgeGridProps> = ({ earned, locked }) => {
     <div className="space-y-6">
       {/* Counter */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-white/70">Badges</h3>
-        <span className="text-xs text-white/40">
+        <h3 className="text-sm font-medium text-text-secondary">Badges</h3>
+        <span className="text-xs text-text-muted">
           {earned?.length ?? 0}/{total} débloqués
         </span>
       </div>
-
       {/* Sections by rarity */}
       {RARITY_ORDER.map((rarity) => {
         const items = grouped[rarity];
@@ -74,7 +73,7 @@ export const BadgeGrid: React.FC<BadgeGridProps> = ({ earned, locked }) => {
               >
                 {RARITY_LABELS[rarity]}
               </span>
-              <span className="text-[10px] text-white/30">
+              <span className="text-[10px] text-text-tertiary">
                 ({items.length})
               </span>
             </div>

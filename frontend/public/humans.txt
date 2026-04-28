@@ -1,0 +1,32 @@
+/* DeepSight */
+
+# TEAM
+
+Founder: Maxime Le Parc
+Location: Lyon, France
+Contact: https://www.deepsightsynthesis.com/contact
+Site: https://www.deepsightsynthesis.com
+
+# THANKS
+
+Mistral AI — Paris, France (analyses, voice prompts)
+ElevenLabs — Voice ConvAI agents
+LiveKit — WebRTC infrastructure
+Hetzner — Hosting Falkenstein, Allemagne
+Vercel — Frontend hosting
+Supadata — YouTube transcripts API
+PostgreSQL — Database
+Redis — Cache
+React, TypeScript, Vite, Tailwind, Expo, Preact — Open-source frontend stack
+FastAPI, SQLAlchemy, Pydantic — Open-source backend stack
+
+# SITE
+
+Last update: 2026-04-28
+Standards: HTML5, CSS3, ES2020
+Frontend: React 18 + TypeScript + Vite + Tailwind CSS 3
+Backend: FastAPI + Python 3.11 + PostgreSQL 17 + Redis 7
+Mobile: Expo SDK 54 + React Native 0.81
+Extension: Chrome Manifest V3 + Preact
+Hosting: Hetzner (Allemagne) + Vercel
+Made in: France — Hosted in: Europe

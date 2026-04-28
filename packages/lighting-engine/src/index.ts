@@ -4,12 +4,12 @@ export {
   getAmbientPreset,
   findKeyframePair,
   getAmbientPresetV3,
-} from "./preset";
-export { KEYFRAMES } from "./keyframes";
-export { seedFromDate, mulberry32 } from "./seeded-random";
-export { computeAngleVariation, DAILY_VARIATION } from "./angle-variation";
-export { getMoonState } from "./moon-trajectory";
-export { getSunState } from "./sun-trajectory";
+} from "./preset.js";
+export { KEYFRAMES } from "./keyframes.js";
+export { seedFromDate, mulberry32 } from "./seeded-random.js";
+export { computeAngleVariation, DAILY_VARIATION } from "./angle-variation.js";
+export { getMoonState } from "./moon-trajectory.js";
+export { getSunState } from "./sun-trajectory.js";
 export {
   lerp,
   lerpColor,
@@ -17,15 +17,29 @@ export {
   rgbToCss,
   rgbToHex,
   clamp,
-} from "./interpolate";
+} from "./interpolate.js";
 export {
   detectReducedMotion,
   detectHighContrast,
   getReadingZoneCap,
-} from "./accessibility";
-export { getSpriteFrameIndex } from "./sprite-frame";
-export { KEYFRAMES_V3 } from "./keyframes.v3";
-export type { KeyframeV3 } from "./keyframes.v3";
+} from "./accessibility.js";
+export { getSpriteFrameIndex } from "./sprite-frame.js";
+export { KEYFRAMES_V3 } from "./keyframes.v3.js";
+export type { KeyframeV3 } from "./keyframes.v3.js";
+export {
+  SUNFLOWER_PALETTES,
+  SUNFLOWER_PETAL_SCALE,
+  SUNFLOWER_HALOS,
+  getSunflowerPhase,
+  getSunflowerRotation,
+  getSunflowerOpacity,
+} from "./sunflower-phase.js";
+export type {
+  SunflowerPhase,
+  SunflowerPalette,
+  SunflowerHalo,
+} from "./sunflower-phase.js";
+export { buildSunflowerSVG, SUNFLOWER_GEOMETRY } from "./sunflower-svg.js";
 
 export type {
   RGB,
@@ -42,4 +56,4 @@ export type {
   AmbientPresetV3,
   PresetOptions,
   PresetOptionsV3,
-} from "./types";
+} from "./types.js";

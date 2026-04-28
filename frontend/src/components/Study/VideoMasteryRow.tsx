@@ -38,27 +38,25 @@ export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
       <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-white/5 text-lg">
         🎬
       </div>
-
       {/* Info */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white truncate">{title}</p>
         <div className="flex items-center gap-2 mt-0.5">
           {channel && (
-            <span className="text-[11px] text-white/40 truncate">
+            <span className="text-[11px] text-text-muted truncate">
               {channel}
             </span>
           )}
           {channel && <span className="text-[10px] text-white/25">·</span>}
-          <span className="text-[11px] text-white/30">
+          <span className="text-[11px] text-text-tertiary">
             {video.total_cards ?? 0} cartes
           </span>
           <span className="text-[10px] text-white/25">·</span>
-          <span className="text-[11px] text-white/30">
+          <span className="text-[11px] text-text-tertiary">
             {formatDate(video.last_studied)}
           </span>
         </div>
       </div>
-
       {/* Mastery ring */}
       <div className="flex-shrink-0">
         <MasteryRing
@@ -67,14 +65,12 @@ export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
           strokeWidth={4}
         />
       </div>
-
       {/* Due badge */}
       {hasDue && (
         <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-indigo-500/15 text-[11px] font-medium text-indigo-300">
           {dueCards} dues
         </span>
       )}
-
       {/* Action button */}
       <button
         type="button"

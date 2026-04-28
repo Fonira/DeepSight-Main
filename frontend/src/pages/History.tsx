@@ -1210,7 +1210,6 @@ export const History: React.FC = () => {
         mobileOpen={mobileMenuOpen}
         onMobileClose={() => setMobileMenuOpen(false)}
       />
-
       <main
         className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? "ml-[60px]" : "ml-[240px]"}`}
       >
@@ -1423,13 +1422,13 @@ export const History: React.FC = () => {
               <div className="flex gap-2">
                 <button
                   onClick={() => setViewMode("grid")}
-                  className={`p-2 rounded-lg ${viewMode === "grid" ? "bg-accent-primary text-white" : "bg-bg-secondary text-text-tertiary"}`}
+                  className={`p-2 rounded-lg ${viewMode === "grid" ? "bg-accent-primary text-gray-900" : "bg-bg-secondary text-text-tertiary"}`}
                 >
                   <Grid className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
-                  className={`p-2 rounded-lg ${viewMode === "list" ? "bg-accent-primary text-white" : "bg-bg-secondary text-text-tertiary"}`}
+                  className={`p-2 rounded-lg ${viewMode === "list" ? "bg-accent-primary text-gray-900" : "bg-bg-secondary text-text-tertiary"}`}
                 >
                   <List className="w-4 h-4" />
                 </button>
@@ -1466,7 +1465,7 @@ export const History: React.FC = () => {
               </div>
             ) : activeTab === "videos" && selectedVideoDetail ? (
               /* ═══ VUE DÉTAILLÉE VIDÉO INLINE ═══ */
-              <section className="animate-fadeIn">
+              (<section className="animate-fadeIn">
                 {/* Bouton retour */}
                 <button
                   onClick={handleBackFromVideoDetail}
@@ -1479,7 +1478,6 @@ export const History: React.FC = () => {
                       : "Back to history"}
                   </span>
                 </button>
-
                 <div className="space-y-6">
                   {/* Video Info Card */}
                   <div className="card overflow-hidden">
@@ -1576,7 +1574,7 @@ export const History: React.FC = () => {
                   {selectedVideoDetail.mode === "quick_chat" &&
                   !selectedVideoDetail.summary_content ? (
                     /* Quick Chat Upgrade Panel */
-                    <div className="card p-6">
+                    (<div className="card p-6">
                       <div className="flex items-center gap-3 mb-5">
                         <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
                           <BookOpen className="w-5 h-5 text-emerald-400" />
@@ -1594,7 +1592,6 @@ export const History: React.FC = () => {
                           </p>
                         </div>
                       </div>
-
                       {/* Mode selector */}
                       <div className="mb-4">
                         <label className="text-sm font-medium text-text-secondary mb-2 block">
@@ -1608,14 +1605,13 @@ export const History: React.FC = () => {
                               key={m}
                               type="button"
                               onClick={() => setUpgradeMode(m)}
-                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${upgradeMode === m ? "bg-accent-primary text-white shadow-md" : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"}`}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${upgradeMode === m ? "bg-accent-primary text-gray-900 shadow-md" : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"}`}
                             >
                               {m.charAt(0).toUpperCase() + m.slice(1)}
                             </button>
                           ))}
                         </div>
                       </div>
-
                       {/* Deep Research toggle */}
                       <div className="mb-5 flex items-center justify-between p-3 rounded-lg bg-bg-secondary">
                         <div>
@@ -1642,7 +1638,6 @@ export const History: React.FC = () => {
                           />
                         </button>
                       </div>
-
                       {/* Generate button */}
                       <button
                         type="button"
@@ -1666,7 +1661,7 @@ export const History: React.FC = () => {
                           </>
                         )}
                       </button>
-                    </div>
+                    </div>)
                   ) : (
                     <>
                       {/* 🎙️ Hero CTA Agent Vocal */}
@@ -1748,7 +1743,6 @@ export const History: React.FC = () => {
                     </>
                   )}
                 </div>
-
                 {/* Chat FAB pour la vue detail */}
                 {!chatTarget && (
                   <button
@@ -1768,7 +1762,6 @@ export const History: React.FC = () => {
                     <span>Chat IA</span>
                   </button>
                 )}
-
                 {/* Modals pour la vue détail */}
                 {selectedVideoDetail && (
                   <>
@@ -1844,7 +1837,7 @@ export const History: React.FC = () => {
                     />
                   </>
                 )}
-              </section>
+              </section>)
             ) : activeTab === "videos" ? (
               <section>
                 {/* Section Header Vidéos */}
@@ -2075,7 +2068,6 @@ export const History: React.FC = () => {
           </div>
         </div>
       </main>
-
       {/* 🆕 Chat Popup Flottant - Draggable & Resizable */}
       {chatTarget && (
         <FloatingChatWindow
@@ -2101,7 +2093,6 @@ export const History: React.FC = () => {
           onUpgrade={() => navigate("/pricing")}
         />
       )}
-
       {/* 🗑️ Modal de suppression de l'historique */}
       {showClearModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -2484,7 +2475,7 @@ const PlaylistCard: React.FC<{
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Layers className="w-12 h-12 text-white/30" />
+            <Layers className="w-12 h-12 text-text-tertiary" />
           </div>
         )}
 
@@ -2536,7 +2527,6 @@ const PlaylistCard: React.FC<{
           </h3>
         </div>
       </div>
-
       {/* Contenu */}
       <div className="p-3">
         {/* Barre de progression */}
@@ -3175,7 +3165,6 @@ const PlaylistDetailView: React.FC<{
           </div>
         </div>
       </div>
-
       {/* ═══════════════════════════════════════════════════════════════════════════════
        * 🎬 SECTION 1 : VIDÉOS INDIVIDUELLES (EN HAUT)
        * Accordéon interactif pour afficher les résumés sans changer de page
@@ -3371,7 +3360,6 @@ const PlaylistDetailView: React.FC<{
           </div>
         )}
       </div>
-
       {/* ═══════════════════════════════════════════════════════════════════════════════
        * 📊 SECTION 2 : MÉTA-ANALYSE (EN BAS) - EXPANDABLE
        * Design distinctif pour mettre en valeur l'analyse globale du corpus
@@ -3407,7 +3395,7 @@ const PlaylistDetailView: React.FC<{
                 ? `Analyse croisée des ${playlist.num_processed} vidéos du corpus`
                 : `Cross-analysis of ${playlist.num_processed} videos in the corpus`}
               {" • "}
-              <span className="text-white/80">
+              <span className="text-text-primary">
                 {metaExpanded
                   ? language === "fr"
                     ? "Cliquez pour réduire"
@@ -3599,7 +3587,6 @@ const PlaylistDetailView: React.FC<{
           </div>
         </div>
       )}
-
       {/* Message si pas de méta-analyse */}
       {!playlist.meta_analysis && (
         <div className="card p-6 text-center border-dashed">
@@ -3618,7 +3605,6 @@ const PlaylistDetailView: React.FC<{
           </p>
         </div>
       )}
-
       {/* 🆕 Modals pour la méta-analyse */}
       {/* Citation Modal pour méta-analyse */}
       <CitationExport
@@ -3632,7 +3618,6 @@ const PlaylistDetailView: React.FC<{
         }}
         language={language as "fr" | "en"}
       />
-
       {/* Study Tools Modal pour méta-analyse - utilise le premier video ID */}
       {videos.length > 0 && videos[0].id && (
         <StudyToolsModal
@@ -3643,7 +3628,6 @@ const PlaylistDetailView: React.FC<{
           language={language as "fr" | "en"}
         />
       )}
-
       {/* Keywords Modal pour méta-analyse */}
       <KeywordsModal
         isOpen={metaShowKeywordsModal}

@@ -26,7 +26,11 @@ import { voiceApi } from "../../services/api";
 // Types
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type VoiceAgentType = "explorer" | "companion" | "debate_moderator";
+type VoiceAgentType =
+  | "explorer"
+  | "companion"
+  | "debate_moderator"
+  | "explorer_streaming";
 
 interface UseVoiceChatOptions {
   /**
@@ -36,6 +40,7 @@ interface UseVoiceChatOptions {
   summaryId?: string;
   /**
    * Type d'agent backend. Default :
+   *   - `explorer_streaming` si videoUrl fourni à start()
    *   - `explorer` si summaryId présent
    *   - `companion` sinon
    */
@@ -66,11 +71,18 @@ interface SessionResponse {
   expires_at: string;
   quota_remaining_minutes: number;
   max_session_minutes: number;
+  /** ID du Summary placeholder (mode explorer_streaming, mobile V3). */
+  summary_id?: number | null;
 }
 
 interface UseVoiceChatReturn {
-  /** Démarrer la conversation */
-  start: () => Promise<void>;
+  /**
+   * Démarrer la conversation.
+   * `videoUrl` (optionnel) déclenche le mode `explorer_streaming` Quick Voice
+   * Call mobile V3 — backend valide l'URL, crée un Summary placeholder, lance
+   * l'analyse en background et stream le contexte via SSE pendant l'appel.
+   */
+  start: (opts?: { videoUrl?: string }) => Promise<void>;
   /** Arrêter la conversation */
   stop: () => Promise<void>;
   /** Toggle mute micro */
@@ -94,6 +106,12 @@ interface UseVoiceChatReturn {
   remainingMinutes: number;
   /** Erreur */
   error: string | null;
+  /** Session ID backend (null avant start, set après ack). Utilisé par useStreamingVideoContext. */
+  sessionId: string | null;
+  /** ID Summary créé par backend en mode explorer_streaming (V3). Null sinon. */
+  summaryId: number | null;
+  /** Objet SDK ElevenLabs RN (`useConversation`) — exposé pour useStreamingVideoContext. */
+  conversation: ReturnType<typeof useConversation>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -130,6 +148,8 @@ export function useVoiceChat(
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [remainingMinutes, setRemainingMinutes] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [voiceSummaryId, setVoiceSummaryId] = useState<number | null>(null);
 
   // Refs pour le cleanup
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -263,13 +283,17 @@ export function useVoiceChat(
     // tardifs (post-stop) d'être attribués à la session précédente.
     sessionIdRef.current = null;
     sessionStartedAtRef.current = 0;
+    if (isMountedRef.current) {
+      setSessionId(null);
+      setVoiceSummaryId(null);
+    }
   }, [stopTimer, conversation]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // start()
   // ─────────────────────────────────────────────────────────────────────────
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (opts?: { videoUrl?: string }) => {
     // Empêcher les démarrages multiples
     if (
       status === "connecting" ||
@@ -282,6 +306,8 @@ export function useVoiceChat(
     setError(null);
     setMessages([]);
     setElapsedSeconds(0);
+    setSessionId(null);
+    setVoiceSummaryId(null);
     setStatus("connecting");
 
     // 1. Demander la permission micro via expo-av
@@ -317,12 +343,18 @@ export function useVoiceChat(
       }
 
       const resolvedAgentType: VoiceAgentType =
-        agentType ?? (numericId !== undefined ? "explorer" : "companion");
+        agentType ??
+        (opts?.videoUrl
+          ? "explorer_streaming"
+          : numericId !== undefined
+            ? "explorer"
+            : "companion");
 
       sessionData = (await voiceApi.createSession({
         summary_id: numericId,
         agent_type: resolvedAgentType,
         language: "fr",
+        ...(opts?.videoUrl ? { video_url: opts.videoUrl } : {}),
       })) as SessionResponse;
       setRemainingMinutes(sessionData.quota_remaining_minutes);
       maxSecondsRef.current = sessionData.max_session_minutes * 60;
@@ -331,6 +363,10 @@ export function useVoiceChat(
       // calculer time_in_call_secs lors de chaque appendTranscript.
       sessionIdRef.current = sessionData.session_id;
       sessionStartedAtRef.current = Date.now();
+      if (isMountedRef.current) {
+        setSessionId(sessionData.session_id);
+        setVoiceSummaryId(sessionData.summary_id ?? null);
+      }
     } catch (err: unknown) {
       // Vérifier si c'est une erreur de quota (403/429)
       const apiError = err as { status?: number; message?: string };
@@ -510,5 +546,8 @@ export function useVoiceChat(
     elapsedSeconds,
     remainingMinutes,
     error,
+    sessionId,
+    summaryId: voiceSummaryId,
+    conversation,
   };
 }

@@ -113,7 +113,7 @@ const TextPlaceholder: React.FC<{
       <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-2">
         {style.icon}
       </div>
-      <span className="text-white/80 text-xs font-medium uppercase tracking-wider">
+      <span className="text-text-primary text-xs font-medium uppercase tracking-wider">
         {category || "Texte"}
       </span>
     </div>
@@ -132,7 +132,7 @@ const TikTokPlaceholder: React.FC<{ className?: string }> = ({
     <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-1">
       <Music className="w-6 h-6 text-white" />
     </div>
-    <span className="text-white/60 text-xs font-medium">TikTok</span>
+    <span className="text-text-secondary text-xs font-medium">TikTok</span>
   </div>
 );
 

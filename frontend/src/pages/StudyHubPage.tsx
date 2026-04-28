@@ -210,7 +210,6 @@ const StudyHubPage: React.FC = () => {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-
       <main
         className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? "lg:ml-[60px]" : "lg:ml-[240px]"}`}
       >
@@ -231,7 +230,7 @@ const StudyHubPage: React.FC = () => {
                     <h1 className="text-xl sm:text-2xl font-bold text-white">
                       {fr ? "Révision" : "Study"}
                     </h1>
-                    <p className="text-xs sm:text-sm text-white/40">
+                    <p className="text-xs sm:text-sm text-text-muted">
                       {fr
                         ? "Révisez avec la répétition espacée"
                         : "Study with spaced repetition"}
@@ -332,7 +331,7 @@ const StudyHubPage: React.FC = () => {
                       <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                         <div className="flex items-center gap-2 mb-2">
                           <Brain className="w-4 h-4 text-violet-400" />
-                          <span className="text-xs text-white/40">
+                          <span className="text-xs text-text-muted">
                             {fr ? "Cartes maîtrisées" : "Cards mastered"}
                           </span>
                         </div>
@@ -344,7 +343,7 @@ const StudyHubPage: React.FC = () => {
                       <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                         <div className="flex items-center gap-2 mb-2">
                           <Target className="w-4 h-4 text-cyan-400" />
-                          <span className="text-xs text-white/40">
+                          <span className="text-xs text-text-muted">
                             {fr ? "Précision moyenne" : "Average accuracy"}
                           </span>
                         </div>
@@ -356,7 +355,7 @@ const StudyHubPage: React.FC = () => {
                       <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                         <div className="flex items-center gap-2 mb-2">
                           <Clock className="w-4 h-4 text-amber-400" />
-                          <span className="text-xs text-white/40">
+                          <span className="text-xs text-text-muted">
                             {fr ? "Temps de révision" : "Study time"}
                           </span>
                         </div>
@@ -370,7 +369,7 @@ const StudyHubPage: React.FC = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {/* HeatMap */}
                       <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                        <h3 className="text-sm font-medium text-white/50 mb-3">
+                        <h3 className="text-sm font-medium text-text-muted mb-3">
                           {fr ? "Activité" : "Activity"}
                         </h3>
                         <HeatMap
@@ -383,7 +382,7 @@ const StudyHubPage: React.FC = () => {
                       {/* Recent Badges */}
                       <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm font-medium text-white/50">
+                          <h3 className="text-sm font-medium text-text-muted">
                             {fr ? "Derniers badges" : "Recent badges"}
                           </h3>
                           {badgeCount > 4 && (
@@ -405,8 +404,8 @@ const StudyHubPage: React.FC = () => {
                           </div>
                         ) : (
                           <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <BookOpen className="w-8 h-8 text-white/10 mb-2" />
-                            <p className="text-xs text-white/30">
+                            <BookOpen className="w-8 h-8 text-text-tertiary mb-2" />
+                            <p className="text-xs text-text-tertiary">
                               {fr ? "Aucun badge encore" : "No badges yet"}
                             </p>
                           </div>
@@ -437,11 +436,11 @@ const StudyHubPage: React.FC = () => {
                       </div>
                     ) : (
                       <div className="text-center py-16">
-                        <BookOpen className="w-12 h-12 text-white/10 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-white/60 mb-2">
+                        <BookOpen className="w-12 h-12 text-text-tertiary mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-text-secondary mb-2">
                           {fr ? "Aucune vidéo révisée" : "No videos studied"}
                         </h3>
-                        <p className="text-sm text-white/30 mb-6">
+                        <p className="text-sm text-text-tertiary mb-6">
                           {fr
                             ? "Analysez une vidéo puis générez des flashcards pour commencer."
                             : "Analyze a video and generate flashcards to start."}
@@ -467,7 +466,7 @@ const StudyHubPage: React.FC = () => {
                     transition={{ duration: 0.2 }}
                   >
                     <div className="flex items-center gap-2 mb-4">
-                      <span className="text-sm text-white/50">
+                      <span className="text-sm text-text-muted">
                         {badgeCount}/{badgeTotal}{" "}
                         {fr ? "badges débloqués" : "badges unlocked"}
                       </span>

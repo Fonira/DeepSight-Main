@@ -412,12 +412,12 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
                   </div>
                   <div>
                     <h3 className="font-bold text-white">{recommended.name}</h3>
-                    <p className="text-xs text-white/70">
+                    <p className="text-xs text-text-secondary">
                       {recommended.price}/{t("mois", "mo")}
                     </p>
                   </div>
                 </div>
-                <ArrowRight className="w-5 h-5 text-white/70" />
+                <ArrowRight className="w-5 h-5 text-text-secondary" />
               </div>
 
               {/* Highlight feature */}
@@ -431,7 +431,7 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
                 {recommended.features.map((feature, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-1.5 text-xs text-white/90"
+                    className="flex items-center gap-1.5 text-xs text-text-primary"
                   >
                     <Check className="w-3 h-3 text-green-400 flex-shrink-0" />
                     <span>{feature}</span>

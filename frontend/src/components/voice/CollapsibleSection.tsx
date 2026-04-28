@@ -43,12 +43,11 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         <motion.span
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
-          className="text-white/40"
+          className="text-text-muted"
         >
           <ChevronDown className="w-5 h-5" />
         </motion.span>
       </button>
-
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div

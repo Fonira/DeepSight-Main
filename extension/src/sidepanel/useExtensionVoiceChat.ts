@@ -482,8 +482,19 @@ async function loadElevenLabsSdk(): Promise<ElevenLabsSdk | null> {
       let activeConv: ConversationInstance | null = null;
       cachedSdk = {
         connect: async (opts) => {
+          // [B10] workletPaths : self-host les worklets ElevenLabs depuis
+          // dist/ pour bypass la CSP MV3 stricte qui bloque les blob: URLs.
+          // Les fichiers sont copiés par webpack CopyPlugin depuis
+          // node_modules/@elevenlabs/client/worklets/.
+          const workletPaths = {
+            rawAudioProcessor: chrome.runtime.getURL("rawAudioProcessor.js"),
+            audioConcatProcessor: chrome.runtime.getURL(
+              "audioConcatProcessor.js",
+            ),
+          };
           activeConv = (await Conversation.startSession({
             signedUrl: opts.signedUrl,
+            workletPaths,
             onMessage: ({ message, source }) => {
               const speaker: TranscriptSpeaker =
                 source === "user" ? "user" : "agent";
@@ -547,6 +558,11 @@ interface ConversationStatic {
   startSession(opts: {
     signedUrl: string;
     onMessage?: (event: { message: string; source: "user" | "ai" }) => void;
+    /** [B10] self-host worklets pour bypass CSP MV3 */
+    workletPaths?: {
+      rawAudioProcessor?: string;
+      audioConcatProcessor?: string;
+    };
   }): Promise<ConversationInstance>;
 }
 

@@ -700,7 +700,7 @@ const CorpusChat: React.FC<{
                 <div
                   className={`group max-w-[80%] rounded-xl p-4 ${
                     msg.role === "user"
-                      ? "bg-accent-primary text-white"
+                      ? "bg-accent-primary text-gray-900"
                       : "bg-bg-secondary text-text-secondary"
                   }`}
                 >
@@ -1449,7 +1449,7 @@ export const PlaylistDetailPage: React.FC = () => {
                 }}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${
                   activeTab === tab.id
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-gray-900"
                     : "text-text-secondary hover:bg-bg-secondary"
                 }`}
               >

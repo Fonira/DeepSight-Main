@@ -1,7 +1,7 @@
 // Main API: getAmbientPreset(date, opts) — interpolate between keyframes
 
-import { KEYFRAMES } from "./keyframes";
-import { KEYFRAMES_V3 } from "./keyframes.v3";
+import { KEYFRAMES } from "./keyframes.js";
+import { KEYFRAMES_V3 } from "./keyframes.v3.js";
 import type {
   AmbientPreset,
   AmbientPresetV3,
@@ -10,18 +10,18 @@ import type {
   PresetOptionsV3,
   RGB,
   BeamType,
-} from "./types";
-import { lerp, lerpColor, lerpAngle, rgbToCss, clamp } from "./interpolate";
-import { seedFromDate } from "./seeded-random";
-import { computeAngleVariation } from "./angle-variation";
-import { getMoonState } from "./moon-trajectory";
-import { getSunState } from "./sun-trajectory";
-import { getSpriteFrameIndex } from "./sprite-frame";
+} from "./types.js";
+import { lerp, lerpColor, lerpAngle, rgbToCss, clamp } from "./interpolate.js";
+import { seedFromDate } from "./seeded-random.js";
+import { computeAngleVariation } from "./angle-variation.js";
+import { getMoonState } from "./moon-trajectory.js";
+import { getSunState } from "./sun-trajectory.js";
+import { getSpriteFrameIndex } from "./sprite-frame.js";
 import {
   detectReducedMotion,
   detectHighContrast,
   getReadingZoneCap,
-} from "./accessibility";
+} from "./accessibility.js";
 
 /**
  * Find the two keyframes surrounding a given hour, with wrap-around.

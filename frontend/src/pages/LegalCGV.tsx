@@ -84,7 +84,6 @@ const LegalCGV: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative">
       <DoodleBackground variant="academic" />
-
       {/* Header */}
       <header className="border-b border-white/10 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -114,7 +113,6 @@ const LegalCGV: React.FC = () => {
           </div>
         </div>
       </header>
-
       {/* Title banner */}
       <div className="border-b border-white/10 bg-slate-900/30">
         <div className="max-w-6xl mx-auto px-4 py-6">
@@ -126,14 +124,13 @@ const LegalCGV: React.FC = () => {
               <h1 className="text-2xl font-bold text-white">
                 Conditions Generales de Vente
               </h1>
-              <p className="text-white/60 text-sm">
+              <p className="text-text-secondary text-sm">
                 En vigueur au {LEGAL_INFO.lastUpdate}
               </p>
             </div>
           </div>
         </div>
       </div>
-
       {/* Content */}
       <main className="max-w-4xl mx-auto px-4 py-12 space-y-8 relative z-10">
         {/* Article 1 */}
@@ -141,7 +138,7 @@ const LegalCGV: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 1 -- Objet
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               Les presentes Conditions Generales de Vente (ci-apres "CGV") ont
               pour objet de definir les conditions dans lesquelles{" "}
@@ -177,7 +174,7 @@ const LegalCGV: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 2 -- Offres et tarifs
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               Le Service {LEGAL_INFO.website.name} propose les formules
               d'abonnement suivantes :
@@ -215,11 +212,11 @@ const LegalCGV: React.FC = () => {
                         <span className="text-amber-400 font-bold">
                           {plan.price}&euro;
                         </span>
-                        <span className="text-white/50">{plan.period}</span>
+                        <span className="text-text-muted">{plan.period}</span>
                       </td>
                       <td className="py-3 px-4">{plan.analyses}</td>
                       <td className="py-3 px-4">{plan.credits}</td>
-                      <td className="py-3 px-4 text-white/60 text-xs">
+                      <td className="py-3 px-4 text-text-secondary text-xs">
                         {plan.features}
                       </td>
                     </tr>
@@ -251,7 +248,7 @@ const LegalCGV: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 3 -- Commande et souscription
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>3.1 -- Processus de souscription.</strong> Pour souscrire
               a un abonnement payant, l'Utilisateur doit :
@@ -287,7 +284,7 @@ const LegalCGV: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 4 -- Modalites de paiement
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>4.1 -- Moyen de paiement.</strong> Le paiement s'effectue
               exclusivement par carte bancaire (Visa, Mastercard, American
@@ -334,7 +331,7 @@ const LegalCGV: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 5 -- Droit de retractation
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>5.1 -- Principe.</strong> Conformement a l'article
               L221-28, 13&deg; du Code de la consommation, le droit de
@@ -373,7 +370,7 @@ const LegalCGV: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 6 -- Duree et resiliation
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>6.1 -- Duree.</strong> Les abonnements sont souscrits pour
               une duree d'un mois, renouvelable automatiquement par tacite
@@ -424,7 +421,7 @@ const LegalCGV: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 7 -- Garanties et limites
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>7.1 -- Service en l'etat.</strong> Le Service est fourni
               "en l'etat" ("as is"). L'Editeur s'engage a mettre en oeuvre les
@@ -464,7 +461,7 @@ const LegalCGV: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 8 -- Reclamations et service apres-vente
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               Pour toute reclamation relative a un abonnement ou a un paiement,
               l'Utilisateur peut contacter le service client par les moyens
@@ -504,7 +501,7 @@ const LegalCGV: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 9 -- Donnees personnelles
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               Dans le cadre de la souscription et de la gestion des abonnements,
               l'Editeur collecte et traite des donnees personnelles (adresse
@@ -535,7 +532,7 @@ const LegalCGV: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 10 -- Droit applicable et litiges
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>10.1 -- Droit applicable.</strong> Les presentes CGV sont
               regies par le droit francais.
@@ -577,47 +574,47 @@ const LegalCGV: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Informations sur le vendeur
           </h2>
-          <div className="text-white/80 space-y-2">
+          <div className="text-text-primary space-y-2">
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <p>
-                  <span className="text-white/50">Nom commercial :</span>{" "}
+                  <span className="text-text-muted">Nom commercial :</span>{" "}
                   {LEGAL_INFO.company.tradeName}
                 </p>
                 <p>
-                  <span className="text-white/50">Exploitant :</span>{" "}
+                  <span className="text-text-muted">Exploitant :</span>{" "}
                   {LEGAL_INFO.company.name}
                 </p>
                 <p>
-                  <span className="text-white/50">Statut :</span>{" "}
+                  <span className="text-text-muted">Statut :</span>{" "}
                   {LEGAL_INFO.company.type}
                 </p>
                 <p>
-                  <span className="text-white/50">SIRET :</span>{" "}
+                  <span className="text-text-muted">SIRET :</span>{" "}
                   {LEGAL_INFO.company.siret}
                 </p>
                 <p>
-                  <span className="text-white/50">RCS :</span>{" "}
+                  <span className="text-text-muted">RCS :</span>{" "}
                   {LEGAL_INFO.company.rcs}
                 </p>
               </div>
               <div className="space-y-2">
                 <p>
-                  <span className="text-white/50">Activite :</span>{" "}
+                  <span className="text-text-muted">Activite :</span>{" "}
                   {LEGAL_INFO.company.activity} (
                   {LEGAL_INFO.company.activityCode})
                 </p>
                 <p>
-                  <span className="text-white/50">Adresse :</span>{" "}
+                  <span className="text-text-muted">Adresse :</span>{" "}
                   {LEGAL_INFO.company.address}, {LEGAL_INFO.company.postalCode}{" "}
                   {LEGAL_INFO.company.city}
                 </p>
                 <p>
-                  <span className="text-white/50">TVA :</span>{" "}
+                  <span className="text-text-muted">TVA :</span>{" "}
                   {LEGAL_INFO.vat.status}
                 </p>
                 <p>
-                  <span className="text-white/50">Email :</span>{" "}
+                  <span className="text-text-muted">Email :</span>{" "}
                   <a
                     href={`mailto:${LEGAL_INFO.contact.email}`}
                     className="text-amber-400 hover:underline"
@@ -626,7 +623,7 @@ const LegalCGV: React.FC = () => {
                   </a>
                 </p>
                 <p>
-                  <span className="text-white/50">Telephone :</span>{" "}
+                  <span className="text-text-muted">Telephone :</span>{" "}
                   <a
                     href={`tel:${LEGAL_INFO.contact.phone.replace(/\s/g, "")}`}
                     className="text-amber-400 hover:underline"
@@ -640,7 +637,7 @@ const LegalCGV: React.FC = () => {
         </section>
 
         {/* Footer */}
-        <footer className="mt-16 pt-8 border-t border-white/10 text-center text-white/40 text-sm">
+        <footer className="mt-16 pt-8 border-t border-white/10 text-center text-text-muted text-sm">
           <p>Derniere mise a jour : {LEGAL_INFO.lastUpdate}</p>
           <p className="mt-2">
             Pour toute question, contactez-nous a{" "}
@@ -651,21 +648,21 @@ const LegalCGV: React.FC = () => {
               {LEGAL_INFO.contact.email}
             </a>
           </p>
-          <div className="mt-4 flex items-center justify-center gap-4 text-white/40">
-            <Link to="/legal" className="hover:text-white/60 transition-colors">
+          <div className="mt-4 flex items-center justify-center gap-4 text-text-muted">
+            <Link to="/legal" className="hover:text-text-secondary transition-colors">
               Mentions legales
             </Link>
             <span>|</span>
             <Link
               to="/legal/cgu"
-              className="hover:text-white/60 transition-colors"
+              className="hover:text-text-secondary transition-colors"
             >
               CGU
             </Link>
             <span>|</span>
             <Link
               to="/legal#privacy"
-              className="hover:text-white/60 transition-colors"
+              className="hover:text-text-secondary transition-colors"
             >
               Confidentialite
             </Link>

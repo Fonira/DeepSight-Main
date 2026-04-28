@@ -38,6 +38,7 @@ export function AmbientLightLayer(_props: AmbientLightLayerProps = {}) {
 
   return (
     <div
+      data-ambient="layer"
       aria-hidden="true"
       className="ambient-light-layer"
       style={{

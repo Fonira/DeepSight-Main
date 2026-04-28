@@ -40,14 +40,19 @@
   },
   "upsell": {
     "free": {
+      "label": "Plus",
+      "feature": "25 analyses + Cartes mentales + Web Search + Fact-check",
+      "price": "4,99€"
+    },
+    "plus": {
       "label": "Pro",
-      "feature": "30 analyses + Cartes mentales + Web Search",
-      "price": "5,99€"
+      "feature": "100 analyses + Voice chat 45 min + Playlists + Mistral Large",
+      "price": "9,99€"
     },
     "pro": {
-      "label": "Expert",
-      "feature": "100 analyses + Mistral Large + Playlists 20 vidéos",
-      "price": "14,99€"
+      "label": "Pro",
+      "feature": "100 analyses + Voice chat 45 min + Playlists + Mistral Large",
+      "price": "9,99€"
     }
   },
   "analysis": {
@@ -258,7 +263,8 @@
       "ctaDismiss": "Continuer en Free (sans voice)"
     },
     "errors": {
-      "micPermission": "Permission micro requise.",
+      "micPermission": "DeepSight a besoin du micro pour l'appel vocal. Clique sur Autoriser pour démarrer.",
+      "enableMic": "🎤 Autoriser le micro",
       "callEnded": "Appel terminé.",
       "genericPrefix": "Erreur :",
       "close": "Fermer",

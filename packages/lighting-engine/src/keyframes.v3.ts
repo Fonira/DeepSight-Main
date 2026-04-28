@@ -1,4 +1,4 @@
-import type { NightMode, RGB } from "./types";
+import type { NightMode, RGB } from "./types.js";
 
 export interface KeyframeV3 {
   hour: number;

@@ -151,34 +151,33 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
           {accent.label}
         </span>
         {platform === "tiktok" && (
-          <span className="absolute top-3 right-3 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-black/50 text-white/70 border border-white/10 z-10">
+          <span className="absolute top-3 right-3 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-black/50 text-text-secondary border border-white/10 z-10">
             TikTok
           </span>
         )}
       </div>
-
       {/* Info */}
       <div className="p-4 space-y-3">
         <div>
           <h3 className="text-sm font-semibold text-white leading-snug line-clamp-2">
             {title}
           </h3>
-          {channel && <p className="text-xs text-white/50 mt-1">{channel}</p>}
+          {channel && <p className="text-xs text-text-muted mt-1">{channel}</p>}
         </div>
 
         {/* Thèse */}
         {thesis && (
           <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3">
-            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-1">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1">
               Thèse
             </p>
-            <p className="text-sm text-white/80 leading-relaxed">{thesis}</p>
+            <p className="text-sm text-text-primary leading-relaxed">{thesis}</p>
           </div>
         )}
 
         {/* Arguments */}
         <div className="space-y-2">
-          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">
+          <p className="text-xs font-medium text-text-muted uppercase tracking-wider">
             Arguments ({args.length})
           </p>
           {args.map((arg, i) => {
@@ -200,10 +199,10 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
                     {strength.label}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm text-white/90 font-medium leading-snug">
+                    <p className="text-sm text-text-primary font-medium leading-snug">
                       {arg.claim}
                     </p>
-                    <p className="text-xs text-white/50 mt-1 leading-relaxed">
+                    <p className="text-xs text-text-muted mt-1 leading-relaxed">
                       {arg.evidence}
                     </p>
                   </div>

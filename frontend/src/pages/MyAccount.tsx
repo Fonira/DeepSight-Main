@@ -1167,7 +1167,7 @@ export const MyAccount: React.FC = () => {
                           <button
                             onClick={handleGenerateKey}
                             disabled={apiKey.loading}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent-primary text-white font-medium hover:opacity-90 disabled:opacity-50"
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent-primary text-gray-900 font-medium hover:opacity-90 disabled:opacity-50"
                           >
                             {apiKey.loading ? (
                               <DeepSightSpinnerMicro onLight />

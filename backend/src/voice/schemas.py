@@ -42,6 +42,15 @@ class VoiceSessionRequest(BaseModel):
         default=False,
         description="True for Quick Voice Call sessions (asynchronous progressive context)",
     )
+    # ── Quick Voice Call Mobile V3 — direct URL entry point ──────────────
+    # When ``video_url`` is provided (mobile/web), the router resolves the
+    # platform + video_id, creates a Summary placeholder, then launches the
+    # streaming orchestrator. ``agent_type`` MUST be ``"explorer_streaming"``.
+    video_url: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description="URL YouTube ou TikTok (pour agent explorer_streaming) — Quick Voice Call mobile V3",
+    )
     language: str = Field(default="fr", description="Langue (fr, en)")
     agent_type: str = Field(
         default="explorer",
@@ -53,8 +62,21 @@ class VoiceSessionRequest(BaseModel):
 
     @model_validator(mode="after")
     def _xor_source(self) -> "VoiceSessionRequest":
-        if self.summary_id is not None and self.debate_id is not None:
-            raise ValueError("Fournir summary_id OU debate_id, pas les deux")
+        sources = sum(
+            [
+                self.summary_id is not None,
+                self.debate_id is not None,
+                self.video_url is not None,
+            ]
+        )
+        if sources > 1:
+            raise ValueError(
+                "Fournir summary_id OU debate_id OU video_url, un seul"
+            )
+        if self.video_url is not None and self.agent_type != "explorer_streaming":
+            raise ValueError(
+                "video_url nécessite agent_type='explorer_streaming'"
+            )
         return self
 
 
@@ -120,6 +142,13 @@ class VoiceSessionResponse(BaseModel):
     max_minutes: Optional[float] = Field(
         default=None,
         description="Hard cap (minutes) enforced by the side panel timer for streaming sessions",
+    )
+    # ── Quick Voice Call Mobile V3 — placeholder Summary id ──────────────
+    # Set by the router when ``video_url`` was provided so the mobile client
+    # can deep-link to ``/analysis/[id]`` after the call ends. Null otherwise.
+    summary_id: Optional[int] = Field(
+        default=None,
+        description="ID of the Summary placeholder created when video_url was provided (mobile V3)",
     )
 
 

@@ -433,7 +433,7 @@ const LanguageFilterPills: React.FC<{
         onClick={() => onSelect("all")}
         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
           selected === "all"
-            ? "bg-accent-primary text-white"
+            ? "bg-accent-primary text-gray-900"
             : "bg-bg-tertiary text-text-secondary hover:bg-bg-hover"
         }`}
       >
@@ -453,7 +453,7 @@ const LanguageFilterPills: React.FC<{
             onClick={() => onSelect(lang)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
               selected === lang
-                ? "bg-accent-primary text-white"
+                ? "bg-accent-primary text-gray-900"
                 : "bg-bg-tertiary text-text-secondary hover:bg-bg-hover"
             }`}
           >

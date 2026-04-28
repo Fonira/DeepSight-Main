@@ -16,24 +16,36 @@ const renderWithRoute = (path: string) =>
   );
 
 describe("SunflowerLayer", () => {
-  it("renders hero variant on /", () => {
+  it("renders mascot bottom-right on landing /", () => {
     const { container } = renderWithRoute("/");
-    const flower = container.querySelector(".sunflower-hero");
+    const flower = container.querySelector(".sunflower-mascot");
     expect(flower).toBeTruthy();
   });
 
-  it("renders mascot variant on /dashboard", () => {
+  it("renders mascot bottom-right on /dashboard", () => {
     const { container } = renderWithRoute("/dashboard");
     const flower = container.querySelector(".sunflower-mascot");
     expect(flower).toBeTruthy();
   });
 
-  it("uses sunflower sprite from /assets/ambient/", () => {
+  it("never renders a centered hero variant", () => {
     const { container } = renderWithRoute("/");
-    const flower = container.querySelector(".sunflower-hero") as HTMLElement;
-    expect(flower).toBeTruthy();
-    expect(flower.style.backgroundImage).toMatch(
-      /url\(.*\/assets\/ambient\/sunflower-(day|night)\.webp.*\)/,
+    expect(container.querySelector(".sunflower-hero")).toBeFalsy();
+  });
+
+  it("renders an inline SVG (vector, no sprite WebP)", () => {
+    const { container } = renderWithRoute("/");
+    const wrap = container.querySelector(".sunflower-mascot") as HTMLElement;
+    expect(wrap).toBeTruthy();
+    expect(wrap.querySelector("svg")).toBeTruthy();
+  });
+
+  it("exposes the current daily phase via data attribute", () => {
+    const { container } = renderWithRoute("/dashboard");
+    const wrap = container.querySelector(".sunflower-mascot") as HTMLElement;
+    expect(wrap).toBeTruthy();
+    expect(["dawn", "day", "dusk", "night"]).toContain(
+      wrap.getAttribute("data-sunflower-phase"),
     );
   });
 

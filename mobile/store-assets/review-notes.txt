@@ -21,7 +21,7 @@ Note: This account has a Pro plan activated for full feature access during revie
 IN-APP PURCHASES
 DeepSight uses Stripe for subscription management via the web platform. The mobile app does NOT process payments directly — users are redirected to the web app (https://www.deepsightsynthesis.com/upgrade) for subscription purchases. The app functions as a client to our existing web service.
 
-Plan tiers: Free, Student ($2.99/mo), Starter ($5.99/mo), Pro ($12.99/mo), Team ($29.99/mo)
+Plan tiers: Free, Plus (€4.99/mo), Pro (€9.99/mo)
 
 AI USAGE DISCLOSURE
 This app uses artificial intelligence in the following ways:
@@ -57,7 +57,7 @@ THIRD-PARTY SERVICES
 PRIVACY
 • We collect: email, analysis history, app preferences
 • We do NOT collect: location, contacts, health data, financial info
-• Data stored on Railway (EU servers)
+• Data stored on Hetzner (EU servers, Falkenstein, Germany)
 • Users can delete their account and all data at any time
 • Full privacy policy: https://www.deepsightsynthesis.com/privacy
 

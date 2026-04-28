@@ -24,7 +24,7 @@ import {
   User,
   MessageSquare,
   GraduationCap,
-  Brain,
+  Phone,
   Menu,
   Gamepad2,
 } from "lucide-react";
@@ -169,25 +169,6 @@ const NavItem: React.FC<NavItemProps> = ({
   );
 };
 
-// === Section Label ===
-const SectionLabel: React.FC<{
-  label: string;
-  icon?: React.ElementType;
-  collapsed?: boolean;
-}> = ({ label, icon: Icon, collapsed }) => {
-  if (collapsed) {
-    return <div className="h-px bg-border-subtle my-3 mx-1" />;
-  }
-  return (
-    <div className="flex items-center gap-1.5 px-2.5 pt-4 pb-1.5">
-      {Icon && <Icon className="w-3 h-3 text-text-muted" />}
-      <span className="text-[0.625rem] font-semibold uppercase tracking-wider text-text-muted">
-        {label}
-      </span>
-    </div>
-  );
-};
-
 // === User Card ===
 const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
   const { user, logout, refreshUser } = useAuth();
@@ -301,7 +282,7 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
           {currentPlan === "free" && (
             <button
               onClick={() => navigate("/upgrade")}
-              className="flex-1 px-2.5 py-1.5 rounded-md bg-accent-primary text-white text-[0.6875rem] font-medium hover:bg-accent-primary-hover transition-colors flex items-center justify-center gap-1"
+              className="flex-1 px-2.5 py-1.5 rounded-md bg-accent-primary text-gray-900 text-[0.6875rem] font-medium hover:bg-accent-primary-hover transition-colors flex items-center justify-center gap-1"
             >
               <Sparkles className="w-3 h-3" />
               {t.nav.upgrade}
@@ -464,6 +445,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const minPlanPlaylists = getMinPlanForFeature("playlistsEnabled");
   const minPlanStudy = getMinPlanForFeature("flashcardsEnabled");
   const minPlanChat: PlanId = "pro"; // Chat page bloque les free users
+  const minPlanVoice: PlanId = "pro"; // Voice call gated Pro
   const getBadge = (minPlan: PlanId) => {
     const userIdx = PLAN_HIERARCHY.indexOf(userPlan);
     const minIdx = PLAN_HIERARCHY.indexOf(minPlan);
@@ -515,6 +497,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </AnimatePresence>
 
       <aside
+        data-sidebar
         className={`fixed left-0 top-0 h-screen bg-bg-secondary border-r border-border-subtle flex flex-col z-40 transition-all duration-200 ease-out
           ${collapsed ? "w-[60px]" : "w-[240px]"}
           lg:translate-x-0
@@ -550,114 +533,111 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation — pill-grouped, no section labels or dividers */}
         <nav
-          className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5"
+          className="flex-1 overflow-y-auto py-3 px-2 space-y-2"
           onClick={handleNavClick}
         >
-          {/* ── Analyse ── */}
-          <NavItem
-            to="/dashboard"
-            icon={LayoutDashboard}
-            label={t.nav.analysis}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/history"
-            icon={History}
-            label={t.nav.history}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/debate"
-            icon={Swords}
-            label={language === "fr" ? "Débat IA" : "AI Debate"}
-            collapsed={collapsed}
-          />
+          {/* ── Pill group: usage features ── */}
+          <div
+            className={`space-y-0.5 ${collapsed ? "" : "rounded-xl bg-bg-tertiary/30 p-1.5"}`}
+          >
+            <NavItem
+              to="/dashboard"
+              icon={LayoutDashboard}
+              label={t.nav.analysis}
+              collapsed={collapsed}
+            />
+            <NavItem
+              to="/history"
+              icon={History}
+              label={t.nav.history}
+              collapsed={collapsed}
+            />
+            <NavItem
+              to="/debate"
+              icon={Swords}
+              label={language === "fr" ? "Débat IA" : "AI Debate"}
+              collapsed={collapsed}
+            />
+            <NavItem
+              to="/chat"
+              icon={MessageSquare}
+              label={t.nav.chat}
+              collapsed={collapsed}
+              {...getBadge(minPlanChat)}
+            />
+            <NavItem
+              to="/voice-call"
+              icon={Phone}
+              label={
+                t.nav.voiceCall ||
+                (language === "fr" ? "Appel vocal" : "Voice call")
+              }
+              collapsed={collapsed}
+              {...getBadge(minPlanVoice)}
+            />
+            <NavItem
+              to="/study"
+              icon={GraduationCap}
+              label={t.nav.study}
+              collapsed={collapsed}
+              {...getBadge(minPlanStudy)}
+            />
+          </div>
 
-          {/* ── Révision & IA ── */}
-          <SectionLabel
-            label={t.nav.studySection}
-            icon={Brain}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/chat"
-            icon={MessageSquare}
-            label={t.nav.chat}
-            collapsed={collapsed}
-            {...getBadge(minPlanChat)}
-          />
-          <NavItem
-            to="/study"
-            icon={GraduationCap}
-            label={t.nav.study}
-            collapsed={collapsed}
-            {...getBadge(minPlanStudy)}
-          />
-
-          {/* ── Compte ── */}
-          <SectionLabel
-            label={language === "fr" ? "Compte" : "Account"}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/settings"
-            icon={Settings}
-            label={t.nav.settings}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/account"
-            icon={User}
-            label={t.nav.myAccount}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/upgrade"
-            icon={CreditCard}
-            label={t.nav.subscription}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/usage"
-            icon={BarChart3}
-            label={t.nav.usage || (language === "fr" ? "Utilisation" : "Usage")}
-            collapsed={collapsed}
-          />
-
-          {isUserAdmin ? (
-            <>
-              <SectionLabel label="Admin" collapsed={collapsed} />
+          {/* ── Pill group: account & system ── */}
+          <div
+            className={`space-y-0.5 ${collapsed ? "" : "rounded-xl bg-bg-tertiary/30 p-1.5"}`}
+          >
+            <NavItem
+              to="/settings"
+              icon={Settings}
+              label={t.nav.settings}
+              collapsed={collapsed}
+            />
+            <NavItem
+              to="/account"
+              icon={User}
+              label={t.nav.myAccount}
+              collapsed={collapsed}
+            />
+            <NavItem
+              to="/upgrade"
+              icon={CreditCard}
+              label={t.nav.subscription}
+              collapsed={collapsed}
+            />
+            <NavItem
+              to="/usage"
+              icon={BarChart3}
+              label={
+                t.nav.usage || (language === "fr" ? "Utilisation" : "Usage")
+              }
+              collapsed={collapsed}
+            />
+            {isUserAdmin ? (
               <NavItem
                 to="/admin"
                 icon={Shield}
                 label={t.nav.admin}
                 collapsed={collapsed}
               />
-            </>
-          ) : (
-            <>
-              <SectionLabel
-                label={language === "fr" ? "Infos" : "Info"}
-                collapsed={collapsed}
-              />
+            ) : (
               <NavItem
                 to="/about"
                 icon={Info}
                 label={language === "fr" ? "À propos" : "About"}
                 collapsed={collapsed}
               />
-            </>
-          )}
-
-          <div className="h-px bg-border-subtle my-3 mx-1" />
-          <NavItem
-            to="/legal"
-            icon={Scale}
-            label={t.nav.legal}
-            collapsed={collapsed}
-          />
+            )}
+            <NavItem
+              to="/legal"
+              icon={Scale}
+              label={t.nav.legal}
+              collapsed={collapsed}
+            />
+          </div>
         </nav>
 
         {/* 💡 Le Saviez-Vous — Sidebar Pulse */}

@@ -118,23 +118,14 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
     >
       {/* Icon */}
       {isLocked ? (
-        <Lock className="w-5 h-5 md:w-6 md:h-6 text-white/40" />
+        <Lock className="w-5 h-5 md:w-6 md:h-6 text-text-muted" />
       ) : (
-        <Mic className="w-5 h-5 md:w-6 md:h-6 text-white/60" />
+        <Mic className="w-5 h-5 md:w-6 md:h-6 text-text-secondary" />
       )}
-
       {/* Locked tooltip */}
       {isLocked && (
         <div
-          className="
-            absolute bottom-full right-0 mb-3
-            px-3 py-2 rounded-lg
-            bg-[#1a1a2e] border border-white/10
-            text-xs text-white/70 whitespace-nowrap
-            opacity-0 group-hover:opacity-100
-            transition-opacity duration-200
-            pointer-events-none
-          "
+          className="\r\n            absolute bottom-full right-0 mb-3\r\n            px-3 py-2 rounded-lg\r\n            bg-[#1a1a2e] border border-white/10\r\n            text-xs text-text-secondary whitespace-nowrap\r\n            opacity-0 group-hover:opacity-100\r\n            transition-opacity duration-200\r\n            pointer-events-none\r\n          "
         >
           Disponible à partir du plan Étudiant
           <div className="absolute top-full right-4 w-2 h-2 bg-[#1a1a2e] border-r border-b border-white/10 transform rotate-45 -translate-y-1" />

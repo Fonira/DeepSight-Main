@@ -8,7 +8,7 @@
 
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Swords, Clock, User, GraduationCap } from "lucide-react";
+import { Home, Swords, Clock, User, GraduationCap, Phone } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { normalizePlanId } from "../../config/planPrivileges";
 
@@ -26,6 +26,12 @@ const navItems: NavItem[] = [
     path: "/history",
     icon: <Clock className="w-5 h-5" />,
     label: "Historique",
+  },
+  {
+    path: "/voice-call",
+    icon: <Phone className="w-5 h-5" />,
+    label: "Voix",
+    requiresPro: true,
   },
   {
     path: "/study",

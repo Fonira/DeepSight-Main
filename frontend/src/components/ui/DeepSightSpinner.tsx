@@ -145,17 +145,14 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
           }}
         />
       </div>
-
       {/* Label optionnel */}
       {showLabel && (
-        <span className="text-sm text-white/40 animate-pulse select-none">
+        <span className="text-sm text-text-muted animate-pulse select-none">
           {label}
         </span>
       )}
-
       {/* Accessibilité */}
       <span className="sr-only">{label}</span>
-
       {/* Keyframes */}
       <style>{`
         @keyframes deepsight-gouvernail-spin {

@@ -139,7 +139,7 @@ export const VoiceAddonModal: React.FC<VoiceAddonModalProps> = ({
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/40 hover:text-white z-10"
+              className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/10 transition-colors text-text-muted hover:text-white z-10"
               aria-label={tr("Fermer", "Close")}
             >
               <X className="w-4 h-4" />
@@ -155,7 +155,7 @@ export const VoiceAddonModal: React.FC<VoiceAddonModalProps> = ({
                 {tr("Acheter des minutes vocales", "Buy voice minutes")}
               </h2>
 
-              <p className="text-white/50 text-sm text-center mb-6">
+              <p className="text-text-muted text-sm text-center mb-6">
                 {tr(
                   `Il vous reste ${minutesRemaining} minute${minutesRemaining !== 1 ? "s" : ""} ce mois`,
                   `You have ${minutesRemaining} minute${minutesRemaining !== 1 ? "s" : ""} remaining this month`,
@@ -213,7 +213,6 @@ export const VoiceAddonModal: React.FC<VoiceAddonModalProps> = ({
                           )}
                         </span>
                       )}
-
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
                           <p className="text-white font-semibold text-sm">
@@ -221,11 +220,11 @@ export const VoiceAddonModal: React.FC<VoiceAddonModalProps> = ({
                           </p>
                           <p className="text-2xl font-bold text-indigo-400 mt-0.5">
                             {pack.minutes}{" "}
-                            <span className="text-sm font-normal text-white/40">
+                            <span className="text-sm font-normal text-text-muted">
                               min
                             </span>
                           </p>
-                          <p className="text-lg text-white/70 font-medium">
+                          <p className="text-lg text-text-secondary font-medium">
                             {pack.price.toFixed(2)}&euro;
                           </p>
                         </div>
@@ -262,7 +261,7 @@ export const VoiceAddonModal: React.FC<VoiceAddonModalProps> = ({
               {/* Upgrade link */}
               <button
                 onClick={handleUpgrade}
-                className="w-full mt-5 flex items-center justify-center gap-1.5 text-white/40 hover:text-indigo-400 text-xs transition-colors group"
+                className="w-full mt-5 flex items-center justify-center gap-1.5 text-text-muted hover:text-indigo-400 text-xs transition-colors group"
               >
                 <Sparkles className="w-3 h-3" />
                 <span>

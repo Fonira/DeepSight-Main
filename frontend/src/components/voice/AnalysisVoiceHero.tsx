@@ -133,7 +133,7 @@ export const AnalysisVoiceHero: React.FC<AnalysisVoiceHeroProps> = ({
                 className="w-full h-full object-cover"
                 fallback={
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500/20 via-violet-500/20 to-fuchsia-500/20">
-                    <Play className="w-10 h-10 text-white/70" />
+                    <Play className="w-10 h-10 text-text-secondary" />
                   </div>
                 }
               />
@@ -167,7 +167,7 @@ export const AnalysisVoiceHero: React.FC<AnalysisVoiceHeroProps> = ({
                 : "Agent vocal — Plan Étudiant+ requis"}
             </h3>
             {videoTitle && (
-              <p className="text-xs sm:text-sm text-white/50 mt-1 truncate">
+              <p className="text-xs sm:text-sm text-text-muted mt-1 truncate">
                 Vidéo : {videoTitle}
               </p>
             )}

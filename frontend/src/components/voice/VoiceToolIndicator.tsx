@@ -38,7 +38,7 @@ export function VoiceToolIndicator({
     <div className="mb-3 animate-fade-in">
       <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
         <Icon className="w-3.5 h-3.5 text-indigo-300 flex-shrink-0" />
-        <span className="text-xs text-white/70 animate-pulse">
+        <span className="text-xs text-text-secondary animate-pulse">
           {config.label}
         </span>
       </div>

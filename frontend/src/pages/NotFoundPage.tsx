@@ -104,7 +104,7 @@ const NotFoundPage = () => {
           </button>
           <button
             onClick={() => navigate("/dashboard")}
-            className="px-6 py-3 bg-accent-primary text-white rounded-xl hover:bg-accent-primary-hover shadow-lg shadow-accent-primary/20 transition-all duration-200 font-medium"
+            className="px-6 py-3 bg-accent-primary text-gray-900 rounded-xl hover:bg-accent-primary-hover shadow-lg shadow-accent-primary/20 transition-all duration-200 font-medium"
           >
             Aller au Dashboard
           </button>

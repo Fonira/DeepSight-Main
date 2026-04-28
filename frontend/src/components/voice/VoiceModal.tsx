@@ -13,6 +13,7 @@ import React, {
   Suspense,
 } from "react";
 import { createPortal } from "react-dom";
+import { Helmet } from "react-helmet-async";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -181,7 +182,6 @@ const VideoStage: React.FC<VideoStageProps> = ({
           ease: "easeInOut",
         }}
       />
-
       {/* Halo cyan secondaire */}
       <motion.div
         aria-hidden="true"
@@ -196,7 +196,6 @@ const VideoStage: React.FC<VideoStageProps> = ({
         animate={{ opacity: [0.4, 0.8, 0.4] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
       />
-
       {/* Thumbnail card */}
       <motion.div
         className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-indigo-500/20 bg-white/5 backdrop-blur-xl"
@@ -214,7 +213,7 @@ const VideoStage: React.FC<VideoStageProps> = ({
           className="w-full h-full object-cover"
           fallback={
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500/30 via-violet-500/25 to-cyan-500/25">
-              <Video className="w-14 h-14 text-white/70" strokeWidth={1.5} />
+              <Video className="w-14 h-14 text-text-secondary" strokeWidth={1.5} />
             </div>
           }
         />
@@ -519,7 +518,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
         return (
           <div className="flex flex-col items-center gap-4">
             <DeepSightSpinner size="lg" />
-            <p className="text-white/60 text-sm">
+            <p className="text-text-secondary text-sm">
               {tr("Connexion en cours...", "Connecting...")}
             </p>
           </div>
@@ -594,7 +593,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             </p>
             <button
               onClick={safeStart}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition-colors text-sm focus-visible:ring-2 focus-visible:ring-indigo-400"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-text-primary hover:bg-white/10 transition-colors text-sm focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
               <RotateCcw className="w-4 h-4" />
               {tr("Reessayer", "Retry")}
@@ -611,7 +610,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             <p className="text-amber-300 text-sm font-medium">
               {tr("Quota de minutes epuise", "Voice minutes quota exceeded")}
             </p>
-            <p className="text-white/40 text-xs">
+            <p className="text-text-muted text-xs">
               {tr(
                 "Passez au plan superieur pour continuer vos conversations vocales.",
                 "Upgrade your plan to continue voice conversations.",
@@ -641,6 +640,14 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
           className="fixed inset-0 z-[100] flex items-center justify-center"
           role="presentation"
         >
+          {/* Override page <title> while the call is active so the browser
+              tab reflects "Appel vocal" instead of the underlying page
+              (e.g. "Historique"). Reverts on close. */}
+          <Helmet>
+            <title>
+              {tr("Appel vocal | DeepSight", "Voice call | DeepSight")}
+            </title>
+          </Helmet>
           {/* Backdrop — DeepSight dark theme + doodle pattern + brand glow */}
           <motion.div
             className="absolute inset-0 bg-[#0a0a0f]/95 backdrop-blur-xl overflow-hidden"
@@ -702,7 +709,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white/80 rounded-full animate-spin" />
                       </div>
                     ) : (
-                      <span className="text-xs font-semibold text-white/70 uppercase">
+                      <span className="text-xs font-semibold text-text-secondary uppercase">
                         {(avatarFallback || "AI").slice(0, 2)}
                       </span>
                     )}
@@ -720,7 +727,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                     {videoTitle}
                   </h2>
                   {channelName && (
-                    <p className="text-xs text-white/40 mt-0.5 truncate">
+                    <p className="text-xs text-text-muted mt-0.5 truncate">
                       {channelName}
                     </p>
                   )}
@@ -751,7 +758,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowSettings(true)}
-                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-white/70 hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-text-tertiary hover:text-text-secondary hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
                   title={tr("Paramètres voix", "Voice settings")}
                   aria-label={tr(
                     "Ouvrir les paramètres voix",
@@ -762,7 +769,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 </button>
                 <button
                   onClick={onClose}
-                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-text-muted hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
                   aria-label={tr("Fermer", "Close")}
                 >
                   <X className="w-4 h-4" />
@@ -826,7 +833,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       <span className="text-white font-mono text-lg font-medium tabular-nums">
                         {formatTime(elapsedSeconds)}
                       </span>
-                      <span className="text-white/30 text-[10px] font-mono tabular-nums">
+                      <span className="text-text-tertiary text-[10px] font-mono tabular-nums">
                         / {remainingFormatted} {tr("restantes", "remaining")}
                       </span>
                     </div>
@@ -881,7 +888,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       <span className="text-white font-mono text-lg font-medium tabular-nums">
                         {formatTime(elapsedSeconds)}
                       </span>
-                      <span className="text-white/30 text-[10px] font-mono tabular-nums">
+                      <span className="text-text-tertiary text-[10px] font-mono tabular-nums">
                         / {remainingFormatted} {tr("restantes", "remaining")}
                       </span>
                     </div>
@@ -940,7 +947,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowSettings(false)}
-                        className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
+                        className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-text-muted hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
                         aria-label={tr(
                           "Fermer les paramètres",
                           "Close settings",

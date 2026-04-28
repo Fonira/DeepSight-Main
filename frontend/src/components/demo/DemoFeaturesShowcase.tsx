@@ -149,7 +149,7 @@ export default function DemoFeaturesShowcase({
                   ? "Conversez litteralement avec la video"
                   : "Literally talk to the video"}
               </h4>
-              <p className="text-white/40 text-xs leading-relaxed">
+              <p className="text-text-muted text-xs leading-relaxed">
                 {lang === "fr"
                   ? "Agent IA vocal — posez vos questions a voix haute et obtenez des reponses instantanees"
                   : "Voice AI agent — ask your questions out loud and get instant answers"}
@@ -178,7 +178,6 @@ export default function DemoFeaturesShowcase({
           </div>
         </div>
       </div>
-
       {/* Secondary features grid */}
       <div className="grid grid-cols-3 gap-2">
         {features
@@ -192,10 +191,10 @@ export default function DemoFeaturesShowcase({
               className="p-3 rounded-xl backdrop-blur-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/10 transition-all duration-200"
             >
               <div className="text-indigo-400/70 mb-2">{feature.icon}</div>
-              <h5 className="text-white/70 text-[11px] font-medium leading-tight mb-0.5">
+              <h5 className="text-text-secondary text-[11px] font-medium leading-tight mb-0.5">
                 {feature.title[lang]}
               </h5>
-              <p className="text-white/30 text-[10px] leading-relaxed line-clamp-2">
+              <p className="text-text-tertiary text-[10px] leading-relaxed line-clamp-2">
                 {feature.description[lang]}
               </p>
             </motion.div>

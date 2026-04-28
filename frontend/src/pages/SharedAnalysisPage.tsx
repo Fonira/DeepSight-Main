@@ -127,7 +127,7 @@ export default function SharedAnalysisPage() {
           </p>
           <Link
             to="/"
-            className="inline-block px-6 py-3 bg-accent-primary text-white font-semibold rounded-lg hover:bg-accent-primary-hover transition-colors"
+            className="inline-block px-6 py-3 bg-accent-primary text-gray-900 font-semibold rounded-lg hover:bg-accent-primary-hover transition-colors"
           >
             Découvrir DeepSight
           </Link>
@@ -169,6 +169,8 @@ export default function SharedAnalysisPage() {
       {/* SEO Meta Tags */}
       <Helmet>
         <title>{`Analyse DeepSight : ${data.video_title}`}</title>
+        <link rel="canonical" href={shareUrl} />
+        <meta name="description" content={description} />
         <meta property="og:type" content="article" />
         <meta
           property="og:title"
@@ -178,6 +180,13 @@ export default function SharedAnalysisPage() {
         <meta property="og:image" content={thumbnailUrl} />
         <meta property="og:url" content={shareUrl} />
         <meta property="og:site_name" content="DeepSight" />
+        <meta property="og:locale" content="fr_FR" />
+        {createdAt && (
+          <meta
+            property="article:published_time"
+            content={new Date(createdAt).toISOString()}
+          />
+        )}
         <meta name="twitter:card" content="summary_large_image" />
         <meta
           name="twitter:title"
@@ -185,6 +194,35 @@ export default function SharedAnalysisPage() {
         />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={thumbnailUrl} />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: `Analyse DeepSight : ${data.video_title}`,
+            description,
+            image: thumbnailUrl,
+            url: shareUrl,
+            ...(createdAt && {
+              datePublished: new Date(createdAt).toISOString(),
+            }),
+            author: {
+              "@type": "Organization",
+              name: "DeepSight",
+              url: "https://www.deepsightsynthesis.com",
+            },
+            publisher: {
+              "@type": "Organization",
+              name: "DeepSight",
+              logo: {
+                "@type": "ImageObject",
+                url: "https://www.deepsightsynthesis.com/icons/icon-512x512.png",
+              },
+            },
+            ...(channel && { about: channel }),
+            isAccessibleForFree: true,
+            inLanguage: "fr",
+          })}
+        </script>
       </Helmet>
 
       {/* Header */}

@@ -142,7 +142,7 @@ export const CookieBanner: React.FC = () => {
             <h3 className="text-white font-semibold text-base leading-tight">
               Nous respectons votre vie privée
             </h3>
-            <p className="text-white/50 text-sm mt-1 leading-relaxed">
+            <p className="text-text-muted text-sm mt-1 leading-relaxed">
               DeepSight utilise des cookies essentiels au fonctionnement du
               site. Avec votre accord, nous utilisons aussi des cookies
               d'analyse pour améliorer votre expérience.{" "}
@@ -168,10 +168,10 @@ export const CookieBanner: React.FC = () => {
                 className="w-4 h-4 rounded accent-blue-500"
               />
               <div>
-                <span className="text-white/80 text-sm font-medium">
+                <span className="text-text-primary text-sm font-medium">
                   Essentiels
                 </span>
-                <span className="text-white/40 text-xs ml-2">
+                <span className="text-text-muted text-xs ml-2">
                   — toujours actifs
                 </span>
               </div>
@@ -186,10 +186,10 @@ export const CookieBanner: React.FC = () => {
                 className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
               />
               <div>
-                <span className="text-white/80 text-sm font-medium">
+                <span className="text-text-primary text-sm font-medium">
                   Analyse d'usage
                 </span>
-                <span className="text-white/40 text-xs ml-2">
+                <span className="text-text-muted text-xs ml-2">
                   — comprendre comment vous utilisez DeepSight
                 </span>
               </div>
@@ -204,10 +204,10 @@ export const CookieBanner: React.FC = () => {
                 className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
               />
               <div>
-                <span className="text-white/80 text-sm font-medium">
+                <span className="text-text-primary text-sm font-medium">
                   Marketing
                 </span>
-                <span className="text-white/40 text-xs ml-2">
+                <span className="text-text-muted text-xs ml-2">
                   — publicités pertinentes (désactivé pour le moment)
                 </span>
               </div>
@@ -246,12 +246,7 @@ export const CookieBanner: React.FC = () => {
               </button>
               <button
                 onClick={() => setShowDetails(true)}
-                className="
-                  flex-1 sm:flex-none px-5 py-2.5 rounded-xl
-                  text-white/50 hover:text-white/70 text-sm
-                  transition-colors duration-200
-                  focus:outline-none focus:ring-2 focus:ring-white/20
-                "
+                className="\r\n                  flex-1 sm:flex-none px-5 py-2.5 rounded-xl\r\n                  text-text-muted hover:text-text-secondary text-sm\r\n                  transition-colors duration-200\r\n                  focus:outline-none focus:ring-2 focus:ring-white/20\r\n                "
               >
                 Personnaliser
               </button>
@@ -272,12 +267,7 @@ export const CookieBanner: React.FC = () => {
               </button>
               <button
                 onClick={() => setShowDetails(false)}
-                className="
-                  flex-1 sm:flex-none px-5 py-2.5 rounded-xl
-                  text-white/50 hover:text-white/70 text-sm
-                  transition-colors duration-200
-                  focus:outline-none focus:ring-2 focus:ring-white/20
-                "
+                className="\r\n                  flex-1 sm:flex-none px-5 py-2.5 rounded-xl\r\n                  text-text-muted hover:text-text-secondary text-sm\r\n                  transition-colors duration-200\r\n                  focus:outline-none focus:ring-2 focus:ring-white/20\r\n                "
               >
                 Retour
               </button>

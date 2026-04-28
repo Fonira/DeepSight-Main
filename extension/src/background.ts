@@ -579,6 +579,88 @@ async function broadcastVoiceAudioMessage(
 // ── Message Handler ──
 
 /**
+ * [B8] Mic permission via offscreen document.
+ *
+ * Bug Chrome MV3 connu : `getUserMedia` appelé depuis un sidepanel/popup
+ * ne déclenche pas toujours le prompt natif Chrome (cf chromium issue
+ * #41497129). La solution officielle est de faire l'appel depuis un
+ * offscreen document (`reasons: ["USER_MEDIA"]`), où getUserMedia se
+ * comporte comme dans une page web normale. Une fois le user a accepté,
+ * Chrome cache la permission pour `chrome-extension://<id>` → tous les
+ * appels suivants (notamment depuis le SDK ElevenLabs côté sidepanel)
+ * réutilisent la permission sans re-prompt.
+ */
+const OFFSCREEN_MIC_PATH = "offscreen-mic.html";
+
+interface MicOffscreenResponse {
+  granted: boolean;
+  errorName?: string;
+  errorMessage?: string;
+}
+
+async function ensureMicOffscreenDocument(): Promise<void> {
+  const offscreenApi = (
+    chrome as unknown as {
+      offscreen?: {
+        createDocument?: (opts: {
+          url: string;
+          reasons: string[];
+          justification: string;
+        }) => Promise<void>;
+      };
+      runtime: {
+        getContexts?: (opts: {
+          contextTypes: string[];
+          documentUrls?: string[];
+        }) => Promise<unknown[]>;
+        getURL: (path: string) => string;
+      };
+    }
+  ).offscreen;
+  if (!offscreenApi?.createDocument) {
+    throw new Error("chrome.offscreen API unavailable (Chrome <116?)");
+  }
+  const url = chrome.runtime.getURL(OFFSCREEN_MIC_PATH);
+  const getContexts = (
+    chrome.runtime as unknown as {
+      getContexts?: (opts: {
+        contextTypes: string[];
+        documentUrls?: string[];
+      }) => Promise<unknown[]>;
+    }
+  ).getContexts;
+  if (getContexts) {
+    const existing = await getContexts({
+      contextTypes: ["OFFSCREEN_DOCUMENT"],
+      documentUrls: [url],
+    });
+    if (existing.length > 0) return;
+  }
+  try {
+    await offscreenApi.createDocument({
+      url: OFFSCREEN_MIC_PATH,
+      reasons: ["USER_MEDIA"],
+      justification: "Voice call requires microphone access for the AI agent",
+    });
+  } catch (err) {
+    // Race : un autre call à createDocument vient de réussir avant nous.
+    // Chrome throw "Only a single offscreen document may be created" → safe.
+    const msg = (err as Error).message ?? "";
+    if (!msg.includes("single offscreen")) throw err;
+  }
+}
+
+async function requestMicViaOffscreen(): Promise<MicOffscreenResponse> {
+  await ensureMicOffscreenDocument();
+  // sendMessage round-trip vers le offscreen-mic.ts qui appelle getUserMedia.
+  const response = (await chrome.runtime.sendMessage({
+    target: "offscreen-mic",
+    action: "REQUEST_MIC",
+  })) as MicOffscreenResponse | undefined;
+  return response ?? { granted: false, errorMessage: "no response" };
+}
+
+/**
  * Quick Voice Call dispatcher (Task 10) — handles `{ type: "OPEN_VOICE_CALL", … }`
  * messages emitted from the YouTube widget. Stores the video context in
  * `chrome.storage.session` (cleared on Chrome restart, secure for ephemeral
@@ -592,8 +674,51 @@ interface VoiceCallMessage {
   plan?: "free" | "pro" | "expert";
 }
 
+/** [B8] Sidepanel → background : "demande-moi le micro via offscreen". */
+interface MicPermissionMessage {
+  action:
+    | "REQUEST_MIC_PERMISSION"
+    | "OPEN_MIC_PERMISSION_POPUP"
+    | "MIC_PERMISSION_GRANTED";
+}
+
+/**
+ * [B9] Open dedicated popup window for mic permission.
+ *
+ * Fallback fiable au offscreen document : Chrome ouvre une vraie fenêtre
+ * popup (chrome.windows.create avec type:"popup") dans laquelle
+ * getUserMedia se comporte comme dans un onglet web normal — le prompt
+ * natif Chrome s'affiche garanti, sans le bug du sidepanel.
+ *
+ * Une fois la permission accordée, la popup envoie MIC_PERMISSION_GRANTED
+ * → on relaie au sidepanel qui re-bootstrap.
+ */
+async function openMicPermissionPopup(): Promise<void> {
+  const windowsApi = (
+    chrome as unknown as {
+      windows?: {
+        create?: (opts: {
+          url: string;
+          type: "popup" | "normal";
+          width?: number;
+          height?: number;
+          focused?: boolean;
+        }) => Promise<unknown>;
+      };
+    }
+  ).windows;
+  if (!windowsApi?.create) return;
+  await windowsApi.create({
+    url: chrome.runtime.getURL("mic-permission.html"),
+    type: "popup",
+    width: 460,
+    height: 360,
+    focused: true,
+  });
+}
+
 export async function handleMessage(
-  message: ExtensionMessage | VoiceCallMessage,
+  message: ExtensionMessage | VoiceCallMessage | MicPermissionMessage,
   sender?: chrome.runtime.MessageSender | number,
 ): Promise<MessageResponse> {
   // Backwards compat: accept either a full sender object (preferred) or a
@@ -603,12 +728,80 @@ export async function handleMessage(
       ? sender
       : (sender as chrome.runtime.MessageSender | undefined)?.tab?.id;
 
+  // [B8] Messages destinés au offscreen-mic : ignore côté background, le
+  // listener offscreen y répond. Sans ce guard, handleExtensionMessage
+  // tombe dans default avec action=undefined.
+  if ((message as { target?: string })?.target === "offscreen-mic") {
+    return { success: true };
+  }
+
+  // [B8] Sidepanel demande la permission micro via offscreen document.
+  if ((message as MicPermissionMessage)?.action === "REQUEST_MIC_PERMISSION") {
+    try {
+      const result = await requestMicViaOffscreen();
+      return {
+        success: true,
+        result,
+      } as unknown as MessageResponse;
+    } catch (e) {
+      return {
+        success: false,
+        error: (e as Error).message ?? "offscreen mic failed",
+      };
+    }
+  }
+
+  // [B9] Sidepanel demande l'ouverture du popup window dédié (fallback fiable
+  // si offscreen échoue ou ne déclenche pas le prompt natif).
+  if (
+    (message as MicPermissionMessage)?.action === "OPEN_MIC_PERMISSION_POPUP"
+  ) {
+    try {
+      await openMicPermissionPopup();
+      return { success: true };
+    } catch (e) {
+      return {
+        success: false,
+        error: (e as Error).message ?? "popup open failed",
+      };
+    }
+  }
+
+  // [B9] Popup window notifie que le user a autorisé le micro.
+  // Relais broadcast → sidepanel listener re-bootstrap le call.
+  if ((message as MicPermissionMessage)?.action === "MIC_PERMISSION_GRANTED") {
+    chrome.runtime
+      .sendMessage({ action: "MIC_PERMISSION_GRANTED_BROADCAST" })
+      .catch(() => {
+        /* sidepanel may be closed */
+      });
+    return { success: true };
+  }
+
   // ── Quick Voice Call dispatch (type-based messages) ──
   const typed = message as VoiceCallMessage;
   if (typed?.type === "OPEN_VOICE_CALL") {
     const fullSender = sender as chrome.runtime.MessageSender | undefined;
-    const windowId = fullSender?.tab?.windowId;
-    if (!windowId) return { success: false, error: "No source window" };
+    // Two valid sources for OPEN_VOICE_CALL:
+    //   1. Content script in a YouTube tab → sender.tab.windowId is set
+    //   2. The side panel itself (VoiceCallButton.tsx) → sender.tab is
+    //      undefined; we fall back to chrome.windows.getCurrent() so the
+    //      message is not dropped on the floor.
+    let windowId = fullSender?.tab?.windowId;
+    if (!windowId) {
+      try {
+        const windows = (
+          chrome as unknown as {
+            windows?: { getCurrent?: () => Promise<{ id?: number }> };
+          }
+        ).windows;
+        const current = await windows?.getCurrent?.();
+        windowId = current?.id;
+      } catch {
+        // Ignore — we still set pendingVoiceCall below so an already-open
+        // side panel will pick it up via the storage.onChanged listener.
+      }
+    }
     const sessionStore = (
       chrome as unknown as {
         storage: { session?: { set?: (data: unknown) => Promise<void> } };
@@ -621,6 +814,9 @@ export async function handleMessage(
         };
       }
     ).sidePanel;
+    // Always store the pending call first — the side panel may already be
+    // open (storage.onChanged listener in App.tsx triggers VoiceView mount)
+    // even when sidePanel.open() is unavailable or has no windowId target.
     if (sessionStore?.set) {
       await sessionStore.set({
         pendingVoiceCall: {
@@ -630,7 +826,7 @@ export async function handleMessage(
         },
       });
     }
-    if (sidePanel?.open) {
+    if (sidePanel?.open && windowId) {
       await sidePanel.open({ windowId });
     }
     return { success: true };

@@ -45,7 +45,7 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-white/20">
+              <div className="w-full h-full flex items-center justify-center text-text-tertiary">
                 <svg
                   className="w-8 h-8"
                   fill="currentColor"
@@ -62,9 +62,9 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
             <h3 className="text-white font-semibold text-sm leading-tight line-clamp-2">
               {result.video_title}
             </h3>
-            <p className="text-white/50 text-xs mt-1">{result.video_channel}</p>
+            <p className="text-text-muted text-xs mt-1">{result.video_channel}</p>
             <div className="flex items-center gap-2 mt-2">
-              <span className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-white/60">
+              <span className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-text-secondary">
                 {formatDuration(result.video_duration)}
               </span>
               <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[10px] text-indigo-300">
@@ -100,7 +100,7 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
                     {index + 1}
                   </span>
                 </span>
-                <span className="text-white/80 text-sm leading-relaxed">
+                <span className="text-text-primary text-sm leading-relaxed">
                   {point}
                 </span>
               </motion.li>
@@ -117,7 +117,7 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
             className="px-5 pb-4"
           >
             <div className="p-3 rounded-lg bg-gradient-to-r from-violet-500/5 to-indigo-500/5 border border-white/5">
-              <p className="text-white/70 text-sm italic leading-relaxed">
+              <p className="text-text-secondary text-sm italic leading-relaxed">
                 {result.conclusion}
               </p>
             </div>
@@ -163,7 +163,7 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
                     <span className="text-indigo-400 text-xs font-semibold shrink-0">
                       #{activeKeyword}
                     </span>
-                    <p className="text-white/60 text-xs leading-relaxed">
+                    <p className="text-text-secondary text-xs leading-relaxed">
                       {result.keyword_definitions[activeKeyword]}
                     </p>
                   </div>
@@ -175,10 +175,10 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
 
         {/* DeepSight badge */}
         <div className="px-5 pb-4 flex items-center justify-between">
-          <span className="text-[10px] text-white/20">
+          <span className="text-[10px] text-text-tertiary">
             Analyse par DeepSight AI
           </span>
-          <span className="text-[10px] text-white/20">Version demo</span>
+          <span className="text-[10px] text-text-tertiary">Version demo</span>
         </div>
       </div>
     </motion.div>

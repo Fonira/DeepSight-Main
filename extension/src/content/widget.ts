@@ -107,7 +107,7 @@ export async function renderVoiceCallButton(
     btn.title = t.trialUsedTitle;
     btn.innerHTML += `<span style="font-size:10px;opacity:0.7">${t.trialUsed}</span>`;
   }
-  if (opts.plan === "expert") {
+  if (opts.plan === "expert" || opts.plan === "pro") {
     // [N5] Math.max protège contre overflow si backend renvoie used > quota.
     const remaining = Math.max(
       0,
@@ -118,9 +118,6 @@ export async function renderVoiceCallButton(
       String(remaining),
     );
     btn.innerHTML += `<span style="font-size:10px;opacity:0.7">${remainingLabel}</span>`;
-  }
-  if (opts.plan === "pro") {
-    btn.innerHTML += `<span style="font-size:10px;opacity:0.7">${t.upgradeBadge}</span>`;
   }
 
   btn.addEventListener("click", () => {

@@ -115,7 +115,7 @@ const MentionsLegales: React.FC = () => (
   <div className="space-y-8">
     <header>
       <h2 className="text-2xl font-bold text-white mb-2">Mentions Légales</h2>
-      <p className="text-white/60">
+      <p className="text-text-secondary">
         Conformément à la loi n°2004-575 du 21 juin 2004 pour la confiance dans
         l'économie numérique
       </p>
@@ -129,37 +129,37 @@ const MentionsLegales: React.FC = () => (
         </div>
         <h3 className="text-lg font-semibold text-white">Éditeur du site</h3>
       </div>
-      <div className="grid md:grid-cols-2 gap-4 text-white/80">
+      <div className="grid md:grid-cols-2 gap-4 text-text-primary">
         <div className="space-y-2">
           <p>
-            <span className="text-white/50">Nom commercial :</span>{" "}
+            <span className="text-text-muted">Nom commercial :</span>{" "}
             {LEGAL_INFO.company.tradeName}
           </p>
           <p>
-            <span className="text-white/50">Exploitant :</span>{" "}
+            <span className="text-text-muted">Exploitant :</span>{" "}
             {LEGAL_INFO.company.name}
           </p>
           <p>
-            <span className="text-white/50">Statut :</span>{" "}
+            <span className="text-text-muted">Statut :</span>{" "}
             {LEGAL_INFO.company.type}
           </p>
           <p>
-            <span className="text-white/50">SIRET :</span>{" "}
+            <span className="text-text-muted">SIRET :</span>{" "}
             {LEGAL_INFO.company.siret}
           </p>
         </div>
         <div className="space-y-2">
           <p>
-            <span className="text-white/50">Activité :</span>{" "}
+            <span className="text-text-muted">Activité :</span>{" "}
             {LEGAL_INFO.company.activity} ({LEGAL_INFO.company.activityCode})
           </p>
           <p>
-            <span className="text-white/50">Adresse :</span>{" "}
+            <span className="text-text-muted">Adresse :</span>{" "}
             {LEGAL_INFO.company.address}, {LEGAL_INFO.company.postalCode}{" "}
             {LEGAL_INFO.company.city}
           </p>
           <p>
-            <span className="text-white/50">TVA :</span> {LEGAL_INFO.vat.status}
+            <span className="text-text-muted">TVA :</span> {LEGAL_INFO.vat.status}
           </p>
         </div>
       </div>
@@ -173,7 +173,7 @@ const MentionsLegales: React.FC = () => (
         </div>
         <h3 className="text-lg font-semibold text-white">Contact</h3>
       </div>
-      <div className="flex flex-wrap gap-6 text-white/80">
+      <div className="flex flex-wrap gap-6 text-text-primary">
         <a
           href={`mailto:${LEGAL_INFO.contact.email}`}
           className="flex items-center gap-2 hover:text-amber-400 transition-colors"
@@ -201,7 +201,7 @@ const MentionsLegales: React.FC = () => (
           Directeur de la publication
         </h3>
       </div>
-      <p className="text-white/80">{LEGAL_INFO.publication.director}</p>
+      <p className="text-text-primary">{LEGAL_INFO.publication.director}</p>
     </section>
 
     {/* Hébergement */}
@@ -213,10 +213,10 @@ const MentionsLegales: React.FC = () => (
         <h3 className="text-lg font-semibold text-white">Hébergement</h3>
       </div>
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="space-y-2 text-white/80">
+        <div className="space-y-2 text-text-primary">
           <p className="text-white font-medium">Frontend (Site web)</p>
           <p>{LEGAL_INFO.hosting.frontend.name}</p>
-          <p className="text-sm text-white/60">
+          <p className="text-sm text-text-secondary">
             {LEGAL_INFO.hosting.frontend.address}
           </p>
           <a
@@ -228,10 +228,10 @@ const MentionsLegales: React.FC = () => (
             {LEGAL_INFO.hosting.frontend.website}
           </a>
         </div>
-        <div className="space-y-2 text-white/80">
+        <div className="space-y-2 text-text-primary">
           <p className="text-white font-medium">Backend (API & données)</p>
           <p>{LEGAL_INFO.hosting.backend.name}</p>
-          <p className="text-sm text-white/60">
+          <p className="text-sm text-text-secondary">
             {LEGAL_INFO.hosting.backend.address}
           </p>
           <a
@@ -264,7 +264,7 @@ const MentionsLegales: React.FC = () => (
           Propriété intellectuelle
         </h3>
       </div>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           L'ensemble du contenu du site {LEGAL_INFO.website.name} (textes,
           graphismes, logos, icônes, images, logiciels, base de données) est la
@@ -296,7 +296,7 @@ const CGU: React.FC = () => (
       <h2 className="text-2xl font-bold text-white mb-2">
         Conditions Générales d'Utilisation et de Vente
       </h2>
-      <p className="text-white/60">En vigueur au {LEGAL_INFO.lastUpdate}</p>
+      <p className="text-text-secondary">En vigueur au {LEGAL_INFO.lastUpdate}</p>
     </header>
 
     {/* Article 1 - Objet */}
@@ -304,7 +304,7 @@ const CGU: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Article 1 — Objet
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           Les présentes Conditions Générales d'Utilisation et de Vente (ci-après
           « CGU/CGV ») ont pour objet de définir les modalités d'accès et
@@ -332,7 +332,7 @@ const CGU: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Article 2 — Acceptation des conditions
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           L'utilisation du service implique l'acceptation pleine et entière des
           présentes CGU/CGV. L'utilisateur reconnaît avoir pris connaissance des
@@ -351,7 +351,7 @@ const CGU: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Article 3 — Description des services
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>Le service {LEGAL_INFO.website.name} propose :</p>
         <ul className="list-disc list-inside space-y-2 ml-4">
           <li>
@@ -382,7 +382,7 @@ const CGU: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Article 4 — Inscription et compte utilisateur
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           L'accès au service nécessite la création d'un compte utilisateur.
           L'utilisateur peut s'inscrire :
@@ -409,34 +409,34 @@ const CGU: React.FC = () => (
         <CreditCard className="w-5 h-5 text-amber-400" />
         Article 5 — Tarifs et paiement
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>Le service propose plusieurs formules d'abonnement :</p>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 my-4">
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
             <p className="font-bold text-white">Découverte</p>
             <p className="text-2xl font-bold text-amber-400">0€</p>
-            <p className="text-sm text-white/60">5 analyses/mois</p>
+            <p className="text-sm text-text-secondary">5 analyses/mois</p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
             <p className="font-bold text-white">Starter</p>
             <p className="text-2xl font-bold text-amber-400">
               4,99€<span className="text-sm">/mois</span>
             </p>
-            <p className="text-sm text-white/60">50 analyses/mois</p>
+            <p className="text-sm text-text-secondary">50 analyses/mois</p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
             <p className="font-bold text-white">Pro</p>
             <p className="text-2xl font-bold text-amber-400">
               9,99€<span className="text-sm">/mois</span>
             </p>
-            <p className="text-sm text-white/60">200 analyses/mois</p>
+            <p className="text-sm text-text-secondary">200 analyses/mois</p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
             <p className="font-bold text-white">Expert</p>
             <p className="text-2xl font-bold text-amber-400">
               14,99€<span className="text-sm">/mois</span>
             </p>
-            <p className="text-sm text-white/60">Analyses illimitées</p>
+            <p className="text-sm text-text-secondary">Analyses illimitées</p>
           </div>
         </div>
         <p>Les prix sont indiqués en euros TTC ({LEGAL_INFO.vat.status}).</p>
@@ -454,7 +454,7 @@ const CGU: React.FC = () => (
         <RefreshCw className="w-5 h-5 text-amber-400" />
         Article 6 — Droit de rétractation
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           Conformément à l'article L221-28 du Code de la consommation, le droit
           de rétractation ne s'applique pas aux contrats de fourniture de
@@ -479,7 +479,7 @@ const CGU: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Article 7 — Règles d'utilisation
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>L'utilisateur s'engage à :</p>
         <ul className="list-disc list-inside space-y-2 ml-4">
           <li>
@@ -510,7 +510,7 @@ const CGU: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Article 8 — Limitation de responsabilité
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           {LEGAL_INFO.website.name} est un outil d'assistance basé sur
           l'intelligence artificielle. Les analyses générées sont fournies à
@@ -538,7 +538,7 @@ const CGU: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Article 9 — Résiliation
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           L'utilisateur peut supprimer son compte à tout moment depuis les
           paramètres de son profil ou en contactant le support à l'adresse{" "}
@@ -561,7 +561,7 @@ const CGU: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Article 10 — Droit applicable et litiges
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>Les présentes CGU/CGV sont régies par le droit français.</p>
         <p>
           En cas de litige, les parties s'engagent à rechercher une solution
@@ -589,7 +589,7 @@ const PrivacyPolicy: React.FC = () => (
       <h2 className="text-2xl font-bold text-white mb-2">
         Politique de Confidentialité
       </h2>
-      <p className="text-white/60">
+      <p className="text-text-secondary">
         Conforme au Règlement Général sur la Protection des Données (RGPD) — En
         vigueur au {LEGAL_INFO.lastUpdate}
       </p>
@@ -598,7 +598,7 @@ const PrivacyPolicy: React.FC = () => (
     {/* Introduction */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
       <h3 className="text-lg font-semibold text-white mb-4">Introduction</h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           {LEGAL_INFO.company.name}, exploitant le service{" "}
           {LEGAL_INFO.website.name}, s'engage à protéger la vie privée des
@@ -627,7 +627,7 @@ const PrivacyPolicy: React.FC = () => (
         </div>
         <h3 className="text-lg font-semibold text-white">Données collectées</h3>
       </div>
-      <div className="text-white/80 space-y-4">
+      <div className="text-text-primary space-y-4">
         <div>
           <p className="font-medium text-white mb-2">Données d'inscription :</p>
           <ul className="list-disc list-inside space-y-1 ml-4">
@@ -669,7 +669,7 @@ const PrivacyPolicy: React.FC = () => (
         </h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-white/80 text-sm">
+        <table className="w-full text-text-primary text-sm">
           <thead>
             <tr className="border-b border-white/10">
               <th className="text-left py-3 px-4 text-white">Finalité</th>
@@ -718,35 +718,35 @@ const PrivacyPolicy: React.FC = () => (
           Partage des données
         </h3>
       </div>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           Vos données peuvent être partagées avec les prestataires suivants :
         </p>
         <div className="grid md:grid-cols-2 gap-4 mt-4">
           <div className="bg-white/5 p-4 rounded-lg">
             <p className="font-medium text-white">Stripe (Paiement)</p>
-            <p className="text-sm text-white/60">Données bancaires — USA</p>
+            <p className="text-sm text-text-secondary">Données bancaires — USA</p>
             <p className="text-xs text-amber-400">
               Clauses contractuelles types
             </p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg">
             <p className="font-medium text-white">Mistral AI (Analyse IA)</p>
-            <p className="text-sm text-white/60">Contenus analysés — France</p>
+            <p className="text-sm text-text-secondary">Contenus analysés — France</p>
             <p className="text-xs text-green-400">Hébergé en UE</p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg">
             <p className="font-medium text-white">
               Perplexity (Enrichissement)
             </p>
-            <p className="text-sm text-white/60">Requêtes de recherche — USA</p>
+            <p className="text-sm text-text-secondary">Requêtes de recherche — USA</p>
             <p className="text-xs text-amber-400">
               Clauses contractuelles types
             </p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg">
             <p className="font-medium text-white">Google (OAuth)</p>
-            <p className="text-sm text-white/60">Authentification — USA</p>
+            <p className="text-sm text-text-secondary">Authentification — USA</p>
             <p className="text-xs text-amber-400">
               Clauses contractuelles types
             </p>
@@ -766,7 +766,7 @@ const PrivacyPolicy: React.FC = () => (
         </div>
         <h3 className="text-lg font-semibold text-white">Vos droits</h3>
       </div>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>Conformément au RGPD, vous disposez des droits suivants :</p>
         <div className="grid md:grid-cols-2 gap-4 mt-4">
           <div className="flex items-start gap-3">
@@ -845,7 +845,7 @@ const PrivacyPolicy: React.FC = () => (
           Sécurité des données
         </h3>
       </div>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           Nous mettons en œuvre les mesures suivantes pour protéger vos données
           :
@@ -873,7 +873,7 @@ const CookiesPolicy: React.FC = () => (
       <h2 className="text-2xl font-bold text-white mb-2">
         Politique de Cookies
       </h2>
-      <p className="text-white/60">En vigueur au {LEGAL_INFO.lastUpdate}</p>
+      <p className="text-text-secondary">En vigueur au {LEGAL_INFO.lastUpdate}</p>
     </header>
 
     {/* Qu'est-ce qu'un cookie */}
@@ -881,7 +881,7 @@ const CookiesPolicy: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Qu'est-ce qu'un cookie ?
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           Un cookie est un petit fichier texte déposé sur votre appareil
           (ordinateur, tablette, smartphone) lors de votre visite sur un site
@@ -896,7 +896,7 @@ const CookiesPolicy: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Cookies utilisés par {LEGAL_INFO.website.name}
       </h3>
-      <div className="text-white/80 space-y-4">
+      <div className="text-text-primary space-y-4">
         <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20">
           <p className="font-medium text-green-400 mb-2">
             ✅ Cookies strictement nécessaires (toujours actifs)
@@ -947,7 +947,7 @@ const CookiesPolicy: React.FC = () => (
             Ces cookies nous aident à comprendre comment les visiteurs utilisent
             le site.
           </p>
-          <p className="text-sm text-white/60">
+          <p className="text-sm text-text-secondary">
             Actuellement, {LEGAL_INFO.website.name} n'utilise pas de cookies
             analytiques tiers (Google Analytics, etc.). Si cela change, cette
             politique sera mise à jour.
@@ -958,7 +958,7 @@ const CookiesPolicy: React.FC = () => (
           <p className="font-medium text-purple-400 mb-2">
             🎯 Cookies publicitaires
           </p>
-          <p className="text-sm text-white/60">
+          <p className="text-sm text-text-secondary">
             {LEGAL_INFO.website.name} n'utilise aucun cookie publicitaire ni de
             tracking marketing.
           </p>
@@ -971,7 +971,7 @@ const CookiesPolicy: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Gestion de vos préférences
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           Vous pouvez à tout moment gérer vos préférences en matière de cookies
           :
@@ -1003,7 +1003,7 @@ const CookiesPolicy: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">
         Stockage local (LocalStorage)
       </h3>
-      <div className="text-white/80 space-y-3">
+      <div className="text-text-primary space-y-3">
         <p>
           En plus des cookies, {LEGAL_INFO.website.name} utilise le stockage
           local de votre navigateur (LocalStorage) pour mémoriser :

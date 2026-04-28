@@ -1,0 +1,18 @@
+{
+  "extension_name": {
+    "message": "DeepSight - AI Video Analysis",
+    "description": "Extension display name shown in Chrome Web Store and the browser toolbar"
+  },
+  "extension_short_name": {
+    "message": "DeepSight",
+    "description": "Short name (max 12 chars) shown in app launcher and compact UI"
+  },
+  "extension_description": {
+    "message": "AI-powered YouTube & TikTok analysis: sourced summaries, fact-check, flashcards, voice chat. European AI by Mistral.",
+    "description": "Extension description shown in Chrome Web Store listing"
+  },
+  "extension_action_title": {
+    "message": "DeepSight",
+    "description": "Tooltip shown on hover over the extension toolbar icon"
+  }
+}

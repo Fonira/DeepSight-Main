@@ -246,13 +246,12 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
             "linear-gradient(90deg, transparent, rgba(99,102,241,0.4), rgba(6,182,212,0.4), transparent)",
         }}
       />
-
       <div className="p-5 sm:p-6 space-y-5">
         {/* ─── Header Row ─── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-indigo-400" />
-            <span className="text-sm font-semibold text-white/80">
+            <span className="text-sm font-semibold text-text-primary">
               {t("Paramètres", "Settings")}
             </span>
           </div>
@@ -260,7 +259,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
             type="button"
             onClick={resetToDefaults}
             disabled={disabled}
-            className="text-[11px] text-white/30 hover:text-white/60 flex items-center gap-1 transition-colors"
+            className="text-[11px] text-text-tertiary hover:text-text-secondary flex items-center gap-1 transition-colors"
             title={t("Réinitialiser", "Reset")}
           >
             <RotateCcw className="w-3 h-3" />
@@ -271,10 +270,10 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
         {/* ─── FOCUS ─── */}
         <div className="space-y-2.5">
           <div className="flex items-baseline gap-2">
-            <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
               {t("Focus", "Focus")}
             </span>
-            <span className="text-[11px] text-white/30">
+            <span className="text-[11px] text-text-tertiary">
               {t("— Quel résultat voulez-vous ?", "— What result do you want?")}
             </span>
           </div>
@@ -297,10 +296,10 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
         {/* ─── TON ─── */}
         <div className="space-y-2.5">
           <div className="flex items-baseline gap-2">
-            <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
               {t("Ton", "Tone")}
             </span>
-            <span className="text-[11px] text-white/30">
+            <span className="text-[11px] text-text-tertiary">
               {t("— Style de rédaction", "— Writing style")}
             </span>
           </div>
@@ -317,7 +316,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
           {/* Longueur */}
           <div className="flex-1 space-y-2.5">
-            <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
               {t("Longueur", "Length")}
             </span>
             <PillSelector
@@ -332,7 +331,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
 
           {/* Langue */}
           <div className="sm:w-48 space-y-2.5">
-            <span className="text-xs font-semibold text-white/60 uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
               <Globe className="w-3 h-3" />
               {t("Langue", "Language")}
             </span>
@@ -365,7 +364,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                   },
                 )}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-white/30 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 text-text-tertiary absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
         </div>
@@ -375,7 +374,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
           <button
             type="button"
             onClick={() => setShowMore(!showMore)}
-            className="flex items-center gap-2 text-xs text-white/30 hover:text-white/50 transition-colors py-1"
+            className="flex items-center gap-2 text-xs text-text-tertiary hover:text-text-muted transition-colors py-1"
             aria-expanded={showMore}
             aria-controls={`${baseId}-more`}
           >
@@ -405,10 +404,10 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                     )}
                   </div>
                   <div>
-                    <span className="text-sm font-medium text-white/70">
+                    <span className="text-sm font-medium text-text-secondary">
                       Anti-Détection IA
                     </span>
-                    <p className="text-[11px] text-white/30 max-w-[280px]">
+                    <p className="text-[11px] text-text-tertiary max-w-[280px]">
                       {t(
                         "Rédige de façon naturelle pour passer les détecteurs (GPTZero, Turnitin, Compilatio). Idéal pour réutiliser le texte dans vos travaux.",
                         "Writes naturally to bypass AI detectors (GPTZero, Turnitin, Compilatio). Ideal for reusing text in your assignments.",
@@ -443,7 +442,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
               <div className="space-y-2">
                 <label
                   htmlFor={`${baseId}-prompt`}
-                  className="flex items-center gap-2 text-xs font-semibold text-white/50 uppercase tracking-wider"
+                  className="flex items-center gap-2 text-xs font-semibold text-text-muted uppercase tracking-wider"
                 >
                   <MessageSquare className="w-3 h-3" />
                   {t("Instructions personnalisées", "Custom instructions")}
@@ -467,10 +466,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                     )}
                     rows={2}
                     maxLength={MAX_PROMPT_LENGTH}
-                    className="w-full px-4 py-3 rounded-xl text-sm
-                      bg-white/[0.03] border border-white/[0.06] text-white/80 placeholder-white/20
-                      focus:outline-none focus:ring-1 focus:ring-indigo-500/30 focus:border-indigo-500/20
-                      resize-none transition-all disabled:opacity-40"
+                    className="w-full px-4 py-3 rounded-xl text-sm\r\n                      bg-white/[0.03] border border-white/[0.06] text-text-primary placeholder-white/20\r\n                      focus:outline-none focus:ring-1 focus:ring-indigo-500/30 focus:border-indigo-500/20\r\n                      resize-none transition-all disabled:opacity-40"
                   />
                   {customization.userPrompt.length > 0 && (
                     <span

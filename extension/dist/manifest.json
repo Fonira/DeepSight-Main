@@ -14,7 +14,8 @@
     "alarms",
     "identity",
     "clipboardWrite",
-    "sidePanel"
+    "sidePanel",
+    "offscreen"
   ],
 
   "optional_permissions": ["audioCapture"],
