@@ -30,8 +30,10 @@ from vault_mcp.tools.list import (
 from vault_mcp.security import PathTraversalError
 from vault_mcp.tools.write import (
     create_note as _create_note_impl,
+    delete_note as _delete_note_impl,
     WriteForbiddenError,
     NoteAlreadyExistsError,
+    NoteNotFoundForDeleteError,
 )
 
 
@@ -126,6 +128,42 @@ async def create_note(path: str, content: str) -> str:
         WriteForbiddenError,
         NoteAlreadyExistsError,
         ValueError,
+    ) as e:
+        return f"ERROR: {e}"
+
+
+@mcp.tool()
+async def delete_note(path: str) -> str:
+    """
+    Delete a markdown note from the vault.
+
+    Allowed delete zones (same as create_note):
+    - 00-Inbox/
+    - 03-Archive/
+    - 01-Projects/<project>/Sessions/
+    - 01-Projects/<project>/Ideas/
+    - 01-Projects/<project>/Bugs/
+
+    Constraints:
+    - path must end with .md
+    - file must exist
+    - Specs/ and Decisions/ are NOT deletable via MCP
+
+    Args:
+        path: vault-relative path (e.g., '00-Inbox/test.md')
+
+    Returns:
+        Success message with the deleted path, or "ERROR: ..." string.
+    """
+    try:
+        result = _delete_note_impl(SETTINGS, path)
+        rel = result.relative_to(SETTINGS.vault_path.resolve()).as_posix()
+        log.info("delete_note: %s", rel)
+        return f"OK: deleted {rel}"
+    except (
+        PathTraversalError,
+        WriteForbiddenError,
+        NoteNotFoundForDeleteError,
     ) as e:
         return f"ERROR: {e}"
 
