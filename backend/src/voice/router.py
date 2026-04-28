@@ -3421,24 +3421,62 @@ class _CompanionServicesBundle:
     - themes_fn: extract_top3_themes via Summary.category fallback (no LLM
       in V1 wiring; LLM path is a follow-up once mistral-small client is
       threaded through).
-    - initial_recos_fn: V1 returns []. Real Tournesol / Trending /
-      history-similarity orchestration is a follow-up task. The agent stays
-      useful in V1 because the system prompt instructs it to call
-      get_more_recos(topic) directly when it has no pre-fetched recos.
+    - initial_recos_fn: orchestrates the parallel pre-fetch of up to 3 recos
+      (Tournesol + Trending). History-similarity stays disabled until the
+      embedding service is wired through — the orchestrator simply drops it.
     """
 
-    @staticmethod
-    async def themes_fn(*, user_id, db):
-        # db here is the CompanionDBAdapter passed by the builder.
+    def __init__(self, *, user: User, db_adapter):
+        self._user = user
+        self._db_adapter = db_adapter
+
+    async def themes_fn(self, *, user_id, db):
         from voice.companion_themes import extract_top3_themes
 
         return await extract_top3_themes(user_id=user_id, db=db, llm_client=None)
 
-    @staticmethod
-    async def initial_recos_fn(*, primary_theme):  # noqa: ARG004
-        return []
+    async def initial_recos_fn(self, *, primary_theme: str):
+        from voice.companion_external import TournesolService, TrendingService
+        from voice.companion_recos import (
+            build_initial_recos,
+            fetch_tournesol_reco,
+            fetch_trending_reco,
+        )
+
+        excluded = await self._db_adapter.fetch_user_analyzed_video_ids(user_id=self._user.id)
+
+        async def _history_fn():
+            # History-similarity requires an embedding service — disabled in
+            # this wiring. The orchestrator drops None and continues.
+            return None
+
+        async def _trending_fn():
+            return await fetch_trending_reco(
+                theme=primary_theme,
+                trending_service=TrendingService(),
+                excluded_video_ids=excluded,
+            )
+
+        async def _tournesol_fn():
+            return await fetch_tournesol_reco(
+                theme=primary_theme,
+                tournesol_service=TournesolService(),
+                excluded_video_ids=excluded,
+            )
+
+        return await build_initial_recos(
+            primary_theme=primary_theme,
+            history_fn=_history_fn,
+            trending_fn=_trending_fn,
+            tournesol_fn=_tournesol_fn,
+        )
 
 
 def _build_companion_services(*, db, redis, user):  # noqa: ARG001
-    """Return the services bundle consumed by build_companion_context."""
-    return _CompanionServicesBundle()
+    """Return the services bundle consumed by build_companion_context.
+
+    `db` is the raw AsyncSession; we wrap it in CompanionDBAdapter so the
+    bundle can call fetch_user_analyzed_video_ids() to compute the
+    excluded set for parallel reco pre-fetches.
+    """
+    return _CompanionServicesBundle(user=user, db_adapter=CompanionDBAdapter(db))
