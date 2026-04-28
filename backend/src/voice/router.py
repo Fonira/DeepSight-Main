@@ -185,6 +185,67 @@ async def _get_voice_session(session_id: str, db: AsyncSession) -> VoiceSession 
     return result.scalar_one_or_none()
 
 
+async def _redis_pubsub_to_sse(redis_client, session_id: str):
+    """Subscribe to ``voice:ctx:{session_id}`` and yield SSE-formatted events.
+
+    Module-level so it is testable in isolation (no FastAPI app, no HTTP
+    client). Yields :
+      1. an initial ``connected`` event so the client knows the SSE is live ;
+      2. one SSE record per pubsub ``message`` entry, formatted as
+         ``event: <type>\\ndata: <json>\\n\\n`` ;
+      3. terminates after ``ctx_complete`` with a 1-second grace period for
+         any trailing event already in flight.
+
+    Cleans up the pubsub on exit (unsubscribe + close), guarding both
+    redis-py 5.x (``aclose``) and 4.x (``close``).
+    """
+    pubsub = redis_client.pubsub()
+    channel = f"{PUBSUB_CHANNEL_PREFIX}{session_id}"
+    await pubsub.subscribe(channel)
+    try:
+        # Initial heartbeat so the client knows the SSE pipe is live.
+        yield f"event: connected\ndata: {json.dumps({'session_id': session_id})}\n\n"
+
+        async for message in pubsub.listen():
+            # Skip the subscribe ack and any non-message entries.
+            if message.get("type") != "message":
+                continue
+            raw = message.get("data")
+            if isinstance(raw, (bytes, bytearray)):
+                raw = raw.decode("utf-8", errors="replace")
+            try:
+                event = json.loads(raw)
+            except (TypeError, ValueError):
+                logger.warning(
+                    "Voice ctx stream: dropped malformed pubsub payload on %s", channel
+                )
+                continue
+            event_type = event.get("type", "message")
+            yield f"event: {event_type}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+            if event_type == "ctx_complete":
+                # Grace period for any trailing event already in flight.
+                await asyncio.sleep(1.0)
+                break
+    finally:
+        try:
+            await pubsub.unsubscribe(channel)
+        except Exception as unsub_exc:  # noqa: BLE001 — unsub is best-effort
+            logger.debug(
+                "Voice ctx stream unsubscribe failed for %s: %s", channel, unsub_exc
+            )
+        try:
+            # redis-py 5.x exposes async ``aclose``; 4.x exposes sync ``close``.
+            close_fn = getattr(pubsub, "aclose", None) or getattr(pubsub, "close", None)
+            if close_fn is not None:
+                result = close_fn()
+                if asyncio.iscoroutine(result):
+                    await result
+        except Exception as close_exc:  # noqa: BLE001 — close is best-effort
+            logger.debug(
+                "Voice ctx stream close failed for %s: %s", channel, close_exc
+            )
+
+
 @router.get("/context/stream")
 async def stream_video_context(
     session_id: str,
@@ -205,6 +266,7 @@ async def stream_video_context(
       * 403 if session.user_id != user.id (no info leak via 404 vs 403)
 
     Events emitted (per spec § c) :
+      * connected        : {session_id}    (initial heartbeat)
       * transcript_chunk : {chunk_index, text, total_chunks}
       * analysis_partial : {section, content}
       * error            : {phase, message}
@@ -224,35 +286,15 @@ async def stream_video_context(
             detail="Streaming context backend (Redis pubsub) is unavailable",
         )
 
-    channel = f"{PUBSUB_CHANNEL_PREFIX}{session_id}"
-
-    async def event_generator():
-        pubsub = redis.pubsub()
-        await pubsub.subscribe(channel)
-        try:
-            async for message in pubsub.listen():
-                # Skip the subscribe ack and any non-message entries
-                if message.get("type") != "message":
-                    continue
-                raw = message.get("data")
-                if isinstance(raw, (bytes, bytearray)):
-                    raw = raw.decode("utf-8", errors="replace")
-                try:
-                    event = json.loads(raw)
-                except (TypeError, ValueError):
-                    logger.warning("Voice ctx stream: dropped malformed pubsub payload on %s", channel)
-                    continue
-                event_type = event.get("type", "message")
-                yield f"event: {event_type}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
-                if event_type == "ctx_complete":
-                    break
-        finally:
-            try:
-                await pubsub.unsubscribe(channel)
-            except Exception as unsub_exc:  # noqa: BLE001 — unsub is best-effort
-                logger.debug("Voice ctx stream unsubscribe failed for %s: %s", channel, unsub_exc)
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        _redis_pubsub_to_sse(redis, session_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            # Disable nginx/caddy buffering — SSE must flush immediately.
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # ── Spec #1, Task 7 — Rate limit for /transcripts/append ───────────────────
