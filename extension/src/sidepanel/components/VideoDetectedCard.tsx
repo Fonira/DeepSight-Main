@@ -5,6 +5,7 @@ interface Props {
   thumbnail: string;
   platform: "youtube" | "tiktok";
   onAnalyze: () => void;
+  loading?: boolean;
 }
 
 export function VideoDetectedCard({
@@ -12,44 +13,35 @@ export function VideoDetectedCard({
   thumbnail,
   platform,
   onAnalyze,
+  loading = false,
 }: Props): JSX.Element {
   return (
-    <div
-      style={{
-        padding: 16,
-        background: "rgba(255,255,255,0.03)",
-        borderRadius: 12,
-        margin: 16,
-      }}
-    >
+    <div className="ds-analyze-card">
       {thumbnail && (
-        <img
-          src={thumbnail}
-          alt={title}
-          style={{ width: "100%", borderRadius: 8, marginBottom: 12 }}
-        />
+        <img src={thumbnail} alt={title} className="ds-analyze-thumbnail" />
       )}
-      <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
-        {title}
-      </div>
-      <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 12 }}>
-        {platform.toUpperCase()}
-      </div>
+      <div className="ds-analyze-title">{title}</div>
+      <div className="ds-analyze-platform">{platform.toUpperCase()}</div>
       <button
+        type="button"
         onClick={onAnalyze}
-        style={{
-          background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-          color: "#fff",
-          border: "none",
-          padding: "10px 16px",
-          borderRadius: 8,
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: "pointer",
-          width: "100%",
-        }}
+        disabled={loading}
+        className="ds-analyze-btn"
+        aria-busy={loading}
       >
-        Analyser cette vidéo
+        {loading ? (
+          <>
+            <span className="ds-analyze-spinner" aria-hidden="true" />
+            <span>Analyse en cours…</span>
+          </>
+        ) : (
+          <>
+            <span className="ds-analyze-btn-icon" aria-hidden="true">
+              ✨
+            </span>
+            <span>Analyser cette vidéo</span>
+          </>
+        )}
       </button>
     </div>
   );
