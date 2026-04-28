@@ -17,6 +17,7 @@ import json
 import logging
 from datetime import datetime
 
+import httpx
 import stripe
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
@@ -62,7 +63,7 @@ from voice.quota import (
 )
 from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from voice.streaming_orchestrator import (
-    create_default_orchestrator,
+    create_production_orchestrator,
     PUBSUB_CHANNEL_PREFIX,
 )
 from billing.voice_quota import (
@@ -1102,7 +1103,7 @@ async def create_voice_session(
     # Background task fans out transcript + Mistral analysis events on
     # voice:ctx:{session_id} for the SSE endpoint to forward.
     if request.is_streaming and request.video_id and background_tasks is not None and redis is not None:
-        orchestrator = create_default_orchestrator(redis=redis)
+        orchestrator = create_production_orchestrator(redis=redis)
         background_tasks.add_task(
             orchestrator.run,
             session_id=voice_session.id,
@@ -1180,6 +1181,66 @@ async def create_voice_session(
                 f"{channel_label} : {rich_ctx.channel_name}\n"
                 f"{duration_label} : {rich_ctx.duration_str}\n\n"
                 f"{context_block}"
+            )
+        elif request.is_streaming and request.video_id:
+            # Quick Voice Call V1.1 — inject minimal video meta from the start.
+            # On streaming sessions there is no Summary row yet (the analysis
+            # arrives progressively via SSE). Without this block the agent
+            # would say "I'm starting to listen to this video" without knowing
+            # WHICH video. We resolve title+channel via YouTube oEmbed
+            # (1 request, <100ms typical, no API key required) so the system
+            # prompt carries enough context from turn #1.
+            title = (request.video_title or "").strip()
+            channel = ""
+            try:
+                async with httpx.AsyncClient(timeout=2.0) as client:
+                    oembed_resp = await client.get(
+                        "https://www.youtube.com/oembed",
+                        params={
+                            "url": f"https://www.youtube.com/watch?v={request.video_id}",
+                            "format": "json",
+                        },
+                    )
+                    if oembed_resp.status_code == 200:
+                        oembed_data = oembed_resp.json()
+                        title = title or (oembed_data.get("title") or "")
+                        channel = oembed_data.get("author_name") or ""
+            except Exception as oembed_exc:  # noqa: BLE001 — best-effort
+                logger.warning(
+                    "Voice streaming session: YouTube oEmbed lookup failed (non-fatal)",
+                    extra={
+                        "video_id": request.video_id,
+                        "error": str(oembed_exc),
+                    },
+                )
+
+            ctx_label = "VIDÉO ÉCOUTÉE" if language == "fr" else "VIDEO BEING WATCHED"
+            title_label = "Titre" if language == "fr" else "Title"
+            channel_label = "Chaîne" if language == "fr" else "Channel"
+            id_label = "YouTube ID"
+            stream_note = (
+                "Le transcript et l'analyse complète arrivent en streaming via [CTX UPDATE: ...]."
+                if language == "fr"
+                else "The transcript and full analysis are streaming in via [CTX UPDATE: ...]."
+            )
+            meta_lines = [f"--- {ctx_label} ---"]
+            if title:
+                meta_lines.append(f"{title_label} : {title}")
+            if channel:
+                meta_lines.append(f"{channel_label} : {channel}")
+            meta_lines.append(f"{id_label} : {request.video_id}")
+            meta_lines.append(stream_note)
+            meta_block = "\n".join(meta_lines)
+            system_prompt = f"{agent_prompt}\n\n{meta_block}"
+
+            logger.info(
+                "Voice streaming session: injected video meta into system prompt",
+                extra={
+                    "session_id": voice_session.id,
+                    "video_id": request.video_id,
+                    "title_known": bool(title),
+                    "channel_known": bool(channel),
+                },
             )
         else:
             system_prompt = agent_prompt
