@@ -237,7 +237,11 @@
       "muteAriaLabel": "Couper le micro",
       "hangupAriaLabel": "Terminer l'appel",
       "settingsAriaLabel": "Réglages voix",
-      "applyingSettings": "Réapplication des réglages…"
+      "applyingSettings": "Réapplication des réglages…",
+      "backAriaLabel": "Retour",
+      "textInputPlaceholder": "Tape ou parle…",
+      "textInputAriaLabel": "Envoyer un message texte à l'agent",
+      "textInputSendAriaLabel": "Envoyer"
     },
     "ctxBar": {
       "inProgress": "Analyse en cours · {percent}% du transcript reçu",

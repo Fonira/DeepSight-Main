@@ -237,7 +237,11 @@
       "muteAriaLabel": "Mute microphone",
       "hangupAriaLabel": "End call",
       "settingsAriaLabel": "Voice settings",
-      "applyingSettings": "Applying settings…"
+      "applyingSettings": "Applying settings…",
+      "backAriaLabel": "Back",
+      "textInputPlaceholder": "Type or speak…",
+      "textInputAriaLabel": "Send a text message to the agent",
+      "textInputSendAriaLabel": "Send"
     },
     "ctxBar": {
       "inProgress": "Analyzing · {percent}% of transcript received",

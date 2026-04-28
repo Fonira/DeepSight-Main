@@ -1032,6 +1032,27 @@ a:hover {
   transition: all var(--transition-fast);
 }
 
+/* Rangée pré-call : CTA "Appel rapide" + bouton ⚙ Réglages voix.
+   Ajouté en v1.2 (2026-04-28) — voir VoiceCallButton.tsx. */
+.voice-call-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.voice-call-row > .voice-call-btn {
+  flex: 1 1 auto;
+  width: auto;
+  margin-bottom: 0;
+}
+
+.voice-call-row > .dsp-voice-settings-btn {
+  flex: 0 0 32px;
+  align-self: center;
+}
+
 .voice-call-btn {
   width: 100%;
   padding: 14px 16px;
@@ -2507,6 +2528,97 @@ a:hover {
   flex: 1;
   min-width: 0;
   white-space: pre-wrap;
+}
+
+/* ═══════════════════════════════════════════════════
+   VOICE TEXT INPUT — unified type/talk during call (V1.2)
+   ═══════════════════════════════════════════════════ */
+
+.ds-voice-text-input {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.ds-voice-text-input__field {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(6px);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-body);
+  line-height: 1.4;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.ds-voice-text-input__field::placeholder {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.ds-voice-text-input__field:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.ds-voice-text-input__field:focus-visible {
+  outline: none;
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.18);
+}
+
+.ds-voice-text-input__field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ds-voice-text-input__send {
+  appearance: none;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.18);
+  color: #fff;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.ds-voice-text-input__send:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.32);
+  border-color: rgba(99, 102, 241, 0.6);
+}
+
+.ds-voice-text-input__send:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.ds-voice-text-input__send:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 1px;
+}
+
+.ds-voice-text-input__send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .ds-voice-transcript-msg--user {

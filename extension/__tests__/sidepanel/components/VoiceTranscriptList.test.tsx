@@ -24,9 +24,7 @@ describe("VoiceTranscriptList", () => {
 
   it("affiche l'empty state quand transcripts est vide", () => {
     render(<VoiceTranscriptList transcripts={[]} />);
-    expect(
-      screen.getByText(/L'agent commence à écouter/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/L'agent commence à écouter/)).toBeInTheDocument();
     expect(
       screen.getByRole("log", { name: /Transcription de l'appel/ }),
     ).toBeInTheDocument();
