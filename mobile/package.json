@@ -4,6 +4,7 @@
   "description": "Deep Sight - AI-Powered Video Analysis Mobile App",
   "main": "expo-router/entry",
   "scripts": {
+    "postinstall": "tsc -p ../packages/lighting-engine/tsconfig.build.json",
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
     "android": "expo run:android",
