@@ -213,7 +213,7 @@ const DefaultFallback: React.FC<DefaultFallbackProps> = ({
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={resetError}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-accent-primary text-white font-medium rounded-xl hover:bg-accent-hover transition-colors"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-accent-primary text-gray-900 font-medium rounded-xl hover:bg-accent-hover transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             {t.retry}

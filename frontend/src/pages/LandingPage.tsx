@@ -636,7 +636,7 @@ const LandingPage: React.FC = () => {
             </button>
             <motion.button
               onClick={() => navigate("/login?tab=register")}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary text-gray-900 text-sm font-medium hover:bg-accent-primary-hover transition-colors"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -753,7 +753,7 @@ const LandingPage: React.FC = () => {
                   <motion.button
                     onClick={handleGuestAnalyze}
                     disabled={!guestUrl.trim()}
-                    className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-accent-primary text-gray-900 text-sm font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
                     animate={!guestUrl.trim() ? floatAnimation : {}}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -1413,7 +1413,7 @@ const LandingPage: React.FC = () => {
               </p>
               <motion.button
                 onClick={() => navigate("/login")}
-                className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-accent-primary text-white font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-accent-primary text-gray-900 font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >

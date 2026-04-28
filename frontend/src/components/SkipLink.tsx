@@ -41,7 +41,7 @@ export const SkipLink: React.FC<SkipLinkProps> = ({
         sr-only focus:not-sr-only
         fixed top-4 left-4 z-[9999]
         px-4 py-2 
-        bg-accent-primary text-white
+        bg-accent-primary text-gray-900
         rounded-lg shadow-lg
         focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2
         transition-all duration-200

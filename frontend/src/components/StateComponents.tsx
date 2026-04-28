@@ -352,7 +352,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           {action && (
             <button
               onClick={action.onClick}
-              className={`${classes.button} flex items-center gap-2 bg-accent-primary text-white font-medium rounded-xl hover:bg-accent-hover transition-colors`}
+              className={`${classes.button} flex items-center gap-2 bg-accent-primary text-gray-900 font-medium rounded-xl hover:bg-accent-hover transition-colors`}
             >
               {action.icon}
               {action.label}
@@ -609,7 +609,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="flex items-center gap-2 px-4 py-2 bg-accent-primary text-white font-medium rounded-xl hover:bg-accent-hover transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-accent-primary text-gray-900 font-medium rounded-xl hover:bg-accent-hover transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
           {retryLabel}

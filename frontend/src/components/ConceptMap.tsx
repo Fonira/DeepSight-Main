@@ -454,7 +454,7 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${
                       index === 0
-                        ? "bg-accent-primary text-white"
+                        ? "bg-accent-primary text-gray-900"
                         : index === safeData.learning_path.length - 1
                           ? "bg-green-500 text-white"
                           : "bg-purple-500 text-white"

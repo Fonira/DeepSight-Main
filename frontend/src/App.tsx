@@ -200,7 +200,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             <div className="flex gap-4 justify-center">
               <button
                 onClick={() => window.location.reload()}
-                className="px-6 py-3 bg-accent-primary text-white rounded-lg hover:bg-accent-hover transition-colors"
+                className="px-6 py-3 bg-accent-primary text-gray-900 rounded-lg hover:bg-accent-hover transition-colors"
               >
                 Rafraîchir
               </button>

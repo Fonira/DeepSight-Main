@@ -282,7 +282,7 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
           {currentPlan === "free" && (
             <button
               onClick={() => navigate("/upgrade")}
-              className="flex-1 px-2.5 py-1.5 rounded-md bg-accent-primary text-white text-[0.6875rem] font-medium hover:bg-accent-primary-hover transition-colors flex items-center justify-center gap-1"
+              className="flex-1 px-2.5 py-1.5 rounded-md bg-accent-primary text-gray-900 text-[0.6875rem] font-medium hover:bg-accent-primary-hover transition-colors flex items-center justify-center gap-1"
             >
               <Sparkles className="w-3 h-3" />
               {t.nav.upgrade}
