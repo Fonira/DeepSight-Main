@@ -8,6 +8,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation";
+import { SEO } from "../components/SEO";
+import { BreadcrumbJsonLd } from "../components/BreadcrumbJsonLd";
 import {
   Key,
   Copy,
@@ -554,6 +556,13 @@ export const ApiDocsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary">
+      <SEO
+        title="Documentation API"
+        description="Documentation de l'API publique DeepSight v1 : endpoints, authentification par clé API, exemples curl, schémas de réponse. Réservé au plan Pro."
+        path="/api-docs"
+        keywords="DeepSight, API, documentation, REST, clé API, endpoints"
+      />
+      <BreadcrumbJsonLd path="/api-docs" />
       <div className="max-w-4xl mx-auto px-6 py-12">
         {/* Back button */}
         <button

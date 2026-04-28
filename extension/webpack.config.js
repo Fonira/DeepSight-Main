@@ -79,6 +79,7 @@ module.exports = (env, argv) => {
       new CopyPlugin({
         patterns: [
           { from: `public/${manifestFile}`, to: "manifest.json" },
+          { from: "public/_locales", to: "_locales" },
           { from: "public/viewer.html", to: "viewer.html" },
           { from: "public/offscreen-mic.html", to: "offscreen-mic.html" },
           { from: "public/mic-permission.html", to: "mic-permission.html" },
