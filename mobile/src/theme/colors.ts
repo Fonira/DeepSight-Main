@@ -47,11 +47,13 @@ export const darkColors = {
   glassBorder: "rgba(200, 144, 58, 0.10)",
   glassHover: "rgba(200, 144, 58, 0.08)",
 
-  // Text - warm palette
-  textPrimary: "#F5F0E8", // ivoire blanc
-  textSecondary: "#D4CCC4",
-  textTertiary: "#B5A89B",
-  textMuted: "#7A7068",
+  // Text - ambient lighting v3 slate palette
+  textPrimary: "#ffffff",
+  textSecondary: "#f1f5f9", // slate-100 (was #D4CCC4)
+  textTertiary: "#cbd5e1", // slate-300 (was #B5A89B)
+  textMuted: "#e2e8f0", // slate-200 (was #7A7068)
+  textDisabled: "rgba(255, 255, 255, 0.45)",
+  textMeta: "#cbd5e1", // slate-300
 
   // Accents - warm palette
   accentPrimary: "#C8903A", // or gouvernail
@@ -98,11 +100,13 @@ export const lightColors = {
   glassBorder: "rgba(200, 144, 58, 0.10)",
   glassHover: "rgba(200, 144, 58, 0.06)",
 
-  // Text - warm palette
+  // Text - warm palette (light mode keeps warm tones for readability on light bg)
   textPrimary: "#2A2420",
   textSecondary: "#5A4F45",
   textTertiary: "#7A6F65",
   textMuted: "#9A8F85",
+  textDisabled: "rgba(0, 0, 0, 0.45)",
+  textMeta: "#71717a", // zinc-500
 
   // Accents - warm palette
   accentPrimary: "#A67828",
@@ -150,6 +154,8 @@ export interface ThemeColors {
   textSecondary: string;
   textTertiary: string;
   textMuted: string;
+  textDisabled: string;
+  textMeta: string;
   accentPrimary: string;
   accentPrimaryLight: string;
   accentSecondary: string;

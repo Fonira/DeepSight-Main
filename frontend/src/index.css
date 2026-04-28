@@ -168,6 +168,8 @@ html {
     --text-secondary: #52525b;
     --text-tertiary: #71717a;
     --text-muted: #a1a1aa;
+    --text-disabled: rgba(0, 0, 0, 0.40);
+    --text-meta: #71717a; /* zinc-500 — readable on light bg */
     --text-inverse: #f5f5f7;
 
     --accent-primary: #a67828;

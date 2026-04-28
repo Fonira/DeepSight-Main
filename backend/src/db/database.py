@@ -20,6 +20,7 @@ from sqlalchemy import (
     Index,
     UniqueConstraint,
     text,
+    JSON,
 )
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base, relationship
@@ -162,6 +163,10 @@ class User(Base):
     # Voice
     voice_bonus_seconds = Column(Integer, default=0)
     voice_preferences = Column(Text, default=None)  # JSON blob: voice_id, speed, stability, etc.
+
+    # Ambient Lighting v3 + futures préférences UI utilisateur (clé/valeur souple)
+    # Cross-DB: SQLAlchemy JSON type → JSONB sur PG, TEXT sérialisé sur SQLite.
+    preferences = Column(JSON, nullable=True, default=dict, server_default="{}")
 
     # Timestamps
     created_at = Column(DateTime, default=func.now())

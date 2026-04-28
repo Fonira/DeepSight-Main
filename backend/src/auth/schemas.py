@@ -4,7 +4,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from pydantic import BaseModel, EmailStr, Field, computed_field
+from pydantic import BaseModel, EmailStr, Field, computed_field, field_validator
 from typing import Optional, Literal
 from datetime import datetime
 
@@ -75,12 +75,14 @@ class UpdatePreferencesRequest(BaseModel):
     default_lang: Optional[str] = None
     default_mode: Optional[str] = None
     default_model: Optional[str] = None
-    # Ambient lighting v3 — toggle pour activer/désactiver l'effet lumineux
+    # Ambient Lighting v3 — toggle pour activer/désactiver l'effet lumineux
     # immersif derrière le sidepanel/widgets (web + mobile + extension).
-    # Persistance côté client (storage local) pour cette phase foundation —
-    # le champ est accepté ici pour ne pas rejeter la requête (422) et préparer
-    # la migration future vers un User.preferences JSON column.
+    # Persisté server-side dans la colonne User.preferences JSON (migration 008).
     ambient_lighting_enabled: Optional[bool] = None
+    # Bag arbitraire pour préférences UI futures (clé/valeur souple, JSON merge).
+    # Permet aux clients d'ajouter de nouvelles prefs sans migration de schema
+    # côté backend ; mergé non-destructivement dans User.preferences.
+    extra_preferences: Optional[dict] = None
 
 
 class GoogleCallbackRequest(BaseModel):
@@ -172,6 +174,26 @@ class UserResponse(BaseModel):
     total_words: int
     total_playlists: int
     created_at: datetime
+    # User preferences JSON (Ambient Lighting v3 + future feature flags).
+    # Persisté server-side dans User.preferences (migration 008) ; exposé ici
+    # pour que le frontend connaisse l'état actuel des prefs après login/refresh
+    # et puisse rendre la bonne UI dès le mount sans round-trip supplémentaire.
+    # Toujours un dict (jamais None) pour simplifier le frontend.
+    preferences: dict = Field(
+        default_factory=dict,
+        description="User preferences JSON (ambient_lighting_enabled, future feature flags)",
+    )
+
+    @field_validator("preferences", mode="before")
+    @classmethod
+    def _coerce_preferences(cls, v):
+        # Tolère None (legacy users avant migration 008) et tout ce qui n'est
+        # pas un dict (ex: MagicMock dans les fixtures de tests qui ne settent
+        # pas explicitement l'attribut). Le contrat externe reste : toujours
+        # un dict côté frontend.
+        if not isinstance(v, dict):
+            return {}
+        return v
 
     @computed_field
     @property
