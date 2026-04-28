@@ -3451,3 +3451,25 @@ a:hover {
     transition: none;
   }
 }
+
+/* === SUNFLOWER v3.1 — bioluminescent halo pulse (sidepanel + viewer) === */
+@keyframes ds-sunflower-biolum {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
+}
+.ds-sunflower-halo--pulse {
+  animation: ds-sunflower-biolum 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-sunflower-halo--pulse {
+    animation: none;
+    opacity: 0.6;
+  }
+}

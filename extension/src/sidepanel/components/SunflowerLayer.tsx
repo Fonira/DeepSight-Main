@@ -1,53 +1,75 @@
 /**
- * SunflowerLayer (extension sidepanel — v3)
+ * SunflowerLayer v3.1 — extension sidepanel mascot (56×56).
  *
- * Affiche le tournesol mascot bottom-right (56×56), animé par le sprite
- * v3 (24 frames, 1/h). Lit le frame index + nightMode via le Context.
- *
- * Sprite path : /assets/ambient/sunflower-{day,night}.webp
- *   - sunflower-day.webp   → mode jour & null
- *   - sunflower-night.webp → mode glowing (twilight) & asleep
- *
- * Le sprite est une grille 6×4 de frames 256×256, redimensionnée à 56×56
- * via background-size + background-position.
+ * Inline SVG faithful to the Tournesol official logo. 4 daily phases,
+ * heliotropic CSS rotation, bioluminescent halo at night.
  */
 
+import {
+  buildSunflowerSVG,
+  getSunflowerPhase,
+  getSunflowerRotation,
+  getSunflowerOpacity,
+  SUNFLOWER_HALOS,
+} from "@deepsight/lighting-engine";
 import { useAmbientLightingContext } from "../contexts/AmbientLightingContext";
 
-const GRID_COLS = 6;
-const DISPLAY_SIZE = 56;
+const FLOWER_SIZE = 56;
+const HALO_SIZE = Math.round(FLOWER_SIZE * 1.6);
+const TRANSITION =
+  "transform 1.5s cubic-bezier(0.4,0,0.2,1), opacity 1.5s cubic-bezier(0.4,0,0.2,1)";
 
 export function SunflowerLayer() {
   const { preset, enabled } = useAmbientLightingContext();
   if (!enabled) return null;
 
-  const sprite =
-    preset.nightMode === "glowing"
-      ? "sunflower-night.webp"
-      : "sunflower-day.webp";
-  const col = (preset.frameIndex ?? 0) % GRID_COLS;
-  const row = Math.floor((preset.frameIndex ?? 0) / GRID_COLS);
+  const phase = getSunflowerPhase(preset.frameIndex);
+  const rotation = getSunflowerRotation(preset.frameIndex);
+  const opacity = getSunflowerOpacity(preset.frameIndex);
+  const halo = SUNFLOWER_HALOS[phase];
 
   return (
     <div
       aria-hidden="true"
       className="sunflower-mascot"
+      data-sunflower-phase={phase}
       style={{
         position: "fixed",
-        bottom: 14,
-        right: 14,
-        width: DISPLAY_SIZE,
-        height: DISPLAY_SIZE,
-        backgroundImage: `url(/assets/ambient/${sprite})`,
-        backgroundSize: `${DISPLAY_SIZE * GRID_COLS}px auto`,
-        backgroundPosition: `-${col * DISPLAY_SIZE}px -${row * DISPLAY_SIZE}px`,
-        backgroundRepeat: "no-repeat",
-        zIndex: 2,
+        bottom: 14 - (HALO_SIZE - FLOWER_SIZE) / 2,
+        right: 14 - (HALO_SIZE - FLOWER_SIZE) / 2,
+        width: HALO_SIZE,
+        height: HALO_SIZE,
         pointerEvents: "none",
-        opacity: preset.beam.opacity,
-        transition:
-          "opacity 4s cubic-bezier(0.4,0,0.2,1), background-position 4s",
+        zIndex: 2,
       }}
-    />
+    >
+      <div
+        className={
+          halo.pulse
+            ? "ds-sunflower-halo ds-sunflower-halo--pulse"
+            : "ds-sunflower-halo"
+        }
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: "50%",
+          background: halo.gradient,
+          transition: "background 1.5s cubic-bezier(0.4,0,0.2,1)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+          opacity: opacity * preset.beam.opacity,
+          transition: TRANSITION,
+        }}
+        dangerouslySetInnerHTML={{
+          __html: buildSunflowerSVG({ size: FLOWER_SIZE, phase }),
+        }}
+      />
+    </div>
   );
 }

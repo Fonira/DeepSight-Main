@@ -11,6 +11,9 @@ module.exports = {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^@deepsight/lighting-engine$":
       "<rootDir>/../packages/lighting-engine/src/index.ts",
+    // ESM-style relative imports inside lighting-engine src use ".js" extensions
+    // (NodeNext / Bundler). Strip them so Jest resolves to the .ts sources in CJS mode.
+    "^(\\.{1,2}/.*)\\.js$": "$1",
   },
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",

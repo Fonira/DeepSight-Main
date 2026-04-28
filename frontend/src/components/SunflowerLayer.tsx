@@ -1,25 +1,26 @@
 /**
- * SunflowerLayer — Route-aware sunflower mascot that follows the sun trajectory.
+ * SunflowerLayer v3.1 — inline SVG faithful to the official Tournesol logo.
  *
- * Two variants based on the current route:
- *   - hero    (on landing/auth routes): centered, larger sprite (90×90)
- *   - mascot  (everywhere else):        bottom-right corner, smaller (76×76)
- *
- * Uses sprite sheet driven by AmbientPresetV3.frameIndex (0..23 → 24 frames
- * laid out 6×4 in a 1536×1024 webp). Day/night variant chosen by preset.
+ * Replaces the v3 sprite WebP pipeline. 4 daily phases (dawn/day/dusk/night),
+ * heliotropic CSS rotation that follows the sun, bioluminescent halo at night.
+ * Two route-aware variants: hero (centered) on landing/auth, mascot (bottom-
+ * right) elsewhere.
  */
 
 import { useLocation } from "react-router-dom";
+import {
+  buildSunflowerSVG,
+  getSunflowerPhase,
+  getSunflowerRotation,
+  getSunflowerOpacity,
+  SUNFLOWER_HALOS,
+} from "@deepsight/lighting-engine";
 import { useAmbientLightingContext } from "../contexts/AmbientLightingContext";
 
 const HERO_ROUTES = ["/", "/login", "/signup", "/forgot-password"];
-const GRID_COLS = 6;
 
-function getSpritePosition(frameIndex: number, displaySize: number): string {
-  const col = frameIndex % GRID_COLS;
-  const row = Math.floor(frameIndex / GRID_COLS);
-  return `-${col * displaySize}px -${row * displaySize}px`;
-}
+const TRANSITION =
+  "transform 1.5s cubic-bezier(0.4,0,0.2,1), opacity 1.5s cubic-bezier(0.4,0,0.2,1)";
 
 export function SunflowerLayer() {
   const location = useLocation();
@@ -27,62 +28,70 @@ export function SunflowerLayer() {
   if (!enabled) return null;
 
   const isHero = HERO_ROUTES.includes(location.pathname);
-  const sprite =
-    preset.nightMode === "glowing"
-      ? "sunflower-night.webp"
-      : "sunflower-day.webp";
-  const url = `/assets/ambient/${sprite}`;
-  const displaySize = isHero ? 90 : 76;
-  const position = getSpritePosition(preset.frameIndex, displaySize);
+  const flowerSize = isHero ? 90 : 76;
+  const haloSize = Math.round(flowerSize * 1.6);
 
-  if (isHero) {
-    return (
-      <div
-        aria-hidden="true"
-        className="sunflower-hero"
-        style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: displaySize,
-          height: displaySize,
-          backgroundImage: `url(${url})`,
-          backgroundSize: `${displaySize * GRID_COLS}px auto`,
-          backgroundPosition: position,
-          backgroundRepeat: "no-repeat",
-          backgroundClip: "border-box",
-          imageRendering: "crisp-edges",
-          pointerEvents: "none",
-          zIndex: 2,
-          opacity: preset.beam.opacity * 0.9,
-          transition: "opacity 4s cubic-bezier(0.4,0,0.2,1)",
-        }}
-      />
-    );
-  }
+  const phase = getSunflowerPhase(preset.frameIndex);
+  const rotation = getSunflowerRotation(preset.frameIndex);
+  const opacity = getSunflowerOpacity(preset.frameIndex);
+  const halo = SUNFLOWER_HALOS[phase];
+
+  const containerStyle: React.CSSProperties = isHero
+    ? {
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: haloSize,
+        height: haloSize,
+        pointerEvents: "none",
+        zIndex: 2,
+      }
+    : {
+        position: "fixed",
+        bottom: 22 - (haloSize - flowerSize) / 2,
+        right: 22 - (haloSize - flowerSize) / 2,
+        width: haloSize,
+        height: haloSize,
+        pointerEvents: "none",
+        zIndex: 2,
+      };
 
   return (
     <div
       aria-hidden="true"
-      className="sunflower-mascot"
-      style={{
-        position: "fixed",
-        bottom: 22,
-        right: 22,
-        width: displaySize,
-        height: displaySize,
-        backgroundImage: `url(${url})`,
-        backgroundSize: `${displaySize * GRID_COLS}px auto`,
-        backgroundPosition: position,
-        backgroundRepeat: "no-repeat",
-        pointerEvents: "none",
-        zIndex: 2,
-        opacity: preset.beam.opacity,
-        transition:
-          "opacity 4s cubic-bezier(0.4,0,0.2,1), background-position 4s",
-      }}
-    />
+      className={isHero ? "sunflower-hero" : "sunflower-mascot"}
+      data-sunflower-phase={phase}
+      style={containerStyle}
+    >
+      <div
+        className={
+          halo.pulse
+            ? "ds-sunflower-halo ds-sunflower-halo--pulse"
+            : "ds-sunflower-halo"
+        }
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: "50%",
+          background: halo.gradient,
+          transition: "background 1.5s cubic-bezier(0.4,0,0.2,1)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+          opacity: opacity * preset.beam.opacity,
+          transition: TRANSITION,
+        }}
+        dangerouslySetInnerHTML={{
+          __html: buildSunflowerSVG({ size: flowerSize, phase }),
+        }}
+      />
+    </div>
   );
 }
 
