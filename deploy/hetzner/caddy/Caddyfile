@@ -1,14 +1,29 @@
-# ═══════════════════════════════════════════════════════════════════════════════
-# DeepSight — Caddy Reverse Proxy
+# ────────────────────────────────────────────────────────────────────────────────
+# DeepSight - Caddy Reverse Proxy
 # HTTPS automatique via Let's Encrypt
-# ═══════════════════════════════════════════════════════════════════════════════
+# ────────────────────────────────────────────────────────────────────────────────
 
 api.deepsightsynthesis.com {
-	# Reverse proxy avec timeouts longs pour SSE streaming
-	reverse_proxy backend:8080 {
-		transport http {
-			read_timeout 300s
-			write_timeout 300s
+	# SSE endpoints : flush_interval -1 pour streamer events temps réel,
+	# read/write_timeout 0 pour ne jamais couper la connexion (client gère hangup).
+	@sse path /api/voice/context/stream /api/notifications/sse/*
+	handle @sse {
+		reverse_proxy backend:8080 {
+			flush_interval -1
+			transport http {
+				read_timeout 0s
+				write_timeout 0s
+			}
+		}
+	}
+
+	# Tous les autres endpoints : timeouts longs pour analyses lentes, pas de flush forcé.
+	handle {
+		reverse_proxy backend:8080 {
+			transport http {
+				read_timeout 300s
+				write_timeout 300s
+			}
 		}
 	}
 

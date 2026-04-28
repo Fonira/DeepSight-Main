@@ -15,7 +15,9 @@ import hashlib
 import hmac
 import json
 import logging
+import uuid
 from datetime import datetime
+from typing import Optional
 
 import stripe
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
@@ -61,7 +63,11 @@ from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from voice.streaming_orchestrator import (
     create_default_orchestrator,
     PUBSUB_CHANNEL_PREFIX,
+    StreamingOrchestrator,
 )
+from voice.url_validator import parse_video_url
+from voice.transcript_fetcher import fetch_for_video_url
+from voice.analysis_runner import run_for_video, final_digest_for_video
 from billing.voice_quota import (
     check_voice_quota as check_voice_quota_streaming,
 )
@@ -179,6 +185,67 @@ async def _get_voice_session(session_id: str, db: AsyncSession) -> VoiceSession 
     return result.scalar_one_or_none()
 
 
+async def _redis_pubsub_to_sse(redis_client, session_id: str):
+    """Subscribe to ``voice:ctx:{session_id}`` and yield SSE-formatted events.
+
+    Module-level so it is testable in isolation (no FastAPI app, no HTTP
+    client). Yields :
+      1. an initial ``connected`` event so the client knows the SSE is live ;
+      2. one SSE record per pubsub ``message`` entry, formatted as
+         ``event: <type>\\ndata: <json>\\n\\n`` ;
+      3. terminates after ``ctx_complete`` with a 1-second grace period for
+         any trailing event already in flight.
+
+    Cleans up the pubsub on exit (unsubscribe + close), guarding both
+    redis-py 5.x (``aclose``) and 4.x (``close``).
+    """
+    pubsub = redis_client.pubsub()
+    channel = f"{PUBSUB_CHANNEL_PREFIX}{session_id}"
+    await pubsub.subscribe(channel)
+    try:
+        # Initial heartbeat so the client knows the SSE pipe is live.
+        yield f"event: connected\ndata: {json.dumps({'session_id': session_id})}\n\n"
+
+        async for message in pubsub.listen():
+            # Skip the subscribe ack and any non-message entries.
+            if message.get("type") != "message":
+                continue
+            raw = message.get("data")
+            if isinstance(raw, (bytes, bytearray)):
+                raw = raw.decode("utf-8", errors="replace")
+            try:
+                event = json.loads(raw)
+            except (TypeError, ValueError):
+                logger.warning(
+                    "Voice ctx stream: dropped malformed pubsub payload on %s", channel
+                )
+                continue
+            event_type = event.get("type", "message")
+            yield f"event: {event_type}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+            if event_type == "ctx_complete":
+                # Grace period for any trailing event already in flight.
+                await asyncio.sleep(1.0)
+                break
+    finally:
+        try:
+            await pubsub.unsubscribe(channel)
+        except Exception as unsub_exc:  # noqa: BLE001 — unsub is best-effort
+            logger.debug(
+                "Voice ctx stream unsubscribe failed for %s: %s", channel, unsub_exc
+            )
+        try:
+            # redis-py 5.x exposes async ``aclose``; 4.x exposes sync ``close``.
+            close_fn = getattr(pubsub, "aclose", None) or getattr(pubsub, "close", None)
+            if close_fn is not None:
+                result = close_fn()
+                if asyncio.iscoroutine(result):
+                    await result
+        except Exception as close_exc:  # noqa: BLE001 — close is best-effort
+            logger.debug(
+                "Voice ctx stream close failed for %s: %s", channel, close_exc
+            )
+
+
 @router.get("/context/stream")
 async def stream_video_context(
     session_id: str,
@@ -199,6 +266,7 @@ async def stream_video_context(
       * 403 if session.user_id != user.id (no info leak via 404 vs 403)
 
     Events emitted (per spec § c) :
+      * connected        : {session_id}    (initial heartbeat)
       * transcript_chunk : {chunk_index, text, total_chunks}
       * analysis_partial : {section, content}
       * error            : {phase, message}
@@ -218,35 +286,15 @@ async def stream_video_context(
             detail="Streaming context backend (Redis pubsub) is unavailable",
         )
 
-    channel = f"{PUBSUB_CHANNEL_PREFIX}{session_id}"
-
-    async def event_generator():
-        pubsub = redis.pubsub()
-        await pubsub.subscribe(channel)
-        try:
-            async for message in pubsub.listen():
-                # Skip the subscribe ack and any non-message entries
-                if message.get("type") != "message":
-                    continue
-                raw = message.get("data")
-                if isinstance(raw, (bytes, bytearray)):
-                    raw = raw.decode("utf-8", errors="replace")
-                try:
-                    event = json.loads(raw)
-                except (TypeError, ValueError):
-                    logger.warning("Voice ctx stream: dropped malformed pubsub payload on %s", channel)
-                    continue
-                event_type = event.get("type", "message")
-                yield f"event: {event_type}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
-                if event_type == "ctx_complete":
-                    break
-        finally:
-            try:
-                await pubsub.unsubscribe(channel)
-            except Exception as unsub_exc:  # noqa: BLE001 — unsub is best-effort
-                logger.debug("Voice ctx stream unsubscribe failed for %s: %s", channel, unsub_exc)
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        _redis_pubsub_to_sse(redis, session_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            # Disable nginx/caddy buffering — SSE must flush immediately.
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # ── Spec #1, Task 7 — Rate limit for /transcripts/append ───────────────────
@@ -820,6 +868,59 @@ async def get_voice_catalog():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+async def _run_main_analysis_for_v3(
+    url: str,
+    video_id: str,
+    lang: str,
+    user_id: int,
+    user_plan: str,
+) -> None:
+    """Trigger the main analysis pipeline for the Quick Voice Call mobile V3 path.
+
+    Wraps ``videos/router._analyze_video_background_v6`` with sane defaults so
+    the placeholder Summary created for ``video_url`` eventually gets a sibling
+    row with ``full_digest`` populated. The orchestrator's ``run_for_video``
+    polls by ``(video_id, user_id) DESC`` and picks up the freshest row, so
+    whichever of the two ends up with content first wins.
+
+    Credit reservation is intentionally bypassed here: the v6 pipeline is
+    invoked without a prior reservation, which the function tolerates (it
+    only releases credits when ``SECURITY_AVAILABLE`` and a reservation
+    exists). PR2/PR3 may add explicit credit accounting for the V3 entry
+    point — out of scope for Task 7 (foundation only).
+    """
+    try:
+        from videos.router import _analyze_video_background_v6
+
+        # Use a v3-specific task_id prefix so logs are easy to correlate.
+        task_id = f"v3voice_{uuid.uuid4()}"
+        platform = "tiktok" if "tiktok.com" in url else "youtube"
+        await _analyze_video_background_v6(
+            task_id=task_id,
+            video_id=video_id,
+            url=url,
+            mode="standard",
+            category=None,
+            lang=lang,
+            model="mistral-small-2603",
+            user_id=user_id,
+            user_plan=user_plan,
+            credit_cost=0,  # No reservation made — pipeline tolerates this.
+            deep_research=False,
+            platform=platform,
+        )
+    except Exception as exc:  # noqa: BLE001 — best-effort, voice still works
+        logger.exception(
+            "Quick Voice Call mobile V3: main analysis pipeline failed (non-fatal)",
+            extra={
+                "url": url[:80],
+                "video_id": video_id,
+                "user_id": user_id,
+                "error": str(exc),
+            },
+        )
+
+
 @router.post("/session", response_model=VoiceSessionResponse)
 async def create_voice_session(
     request: VoiceSessionRequest,
@@ -851,6 +952,33 @@ async def create_voice_session(
 
     # ── Resolve agent configuration ──────────────────────────────────────
     agent_config = get_agent_config(request.agent_type)
+
+    # ── Quick Voice Call mobile V3 — video_url entry point ──────────────
+    # When the client posts ``video_url`` (mobile/web), we resolve it to
+    # ``(platform, video_id)``, persist a Summary placeholder, kick off the
+    # main analysis pipeline in background, and then fall through to the
+    # V1 streaming flow by promoting the request to ``is_streaming=True``
+    # with ``video_id`` populated. The ``summary_id`` returned in the
+    # response lets the mobile client deep-link to ``/analysis/[id]`` once
+    # the call ends.
+    v3_url_path = False
+    v3_summary: Optional[Summary] = None
+    if request.video_url is not None:
+        try:
+            v3_platform, v3_video_id = parse_video_url(request.video_url)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "invalid_video_url",
+                    "message": str(exc),
+                },
+            )
+
+        # Promote to streaming session for the rest of the handler.
+        request.is_streaming = True
+        request.video_id = v3_video_id
+        v3_url_path = True
 
     # ── Quick Voice Call (V1) — streaming session quota branch ──────────
     streaming_quota = None
@@ -1014,10 +1142,39 @@ async def create_voice_session(
                 },
             )
 
+    # ── Quick Voice Call mobile V3 — create Summary placeholder ─────────
+    # The placeholder lets the mobile client deep-link to ``/analysis/[id]``
+    # while the main analysis pipeline (videos/router._analyze_video_background_v6)
+    # populates ``full_digest`` on a fresh row. The orchestrator's
+    # ``run_for_video`` polls by (video_id, user_id) DESC, so it will pick up
+    # whichever row gets ``full_digest`` first — usually the v6 pipeline's row.
+    if v3_url_path:
+        v3_summary = Summary(
+            user_id=current_user.id,
+            video_id=v3_video_id,
+            video_title=f"[En cours] {v3_platform.upper()} {v3_video_id}",
+            video_url=request.video_url,
+            platform=v3_platform,
+            mode="standard",
+            lang=request.language or "fr",
+        )
+        db.add(v3_summary)
+        await db.commit()
+        await db.refresh(v3_summary)
+        logger.info(
+            "Quick Voice Call mobile V3: Summary placeholder created",
+            extra={
+                "user_id": current_user.id,
+                "summary_id": v3_summary.id,
+                "video_id": v3_video_id,
+                "platform": v3_platform,
+            },
+        )
+
     # Create voice session in DB
     voice_session = VoiceSession(
         user_id=current_user.id,
-        summary_id=request.summary_id,
+        summary_id=v3_summary.id if v3_summary is not None else request.summary_id,
         debate_id=request.debate_id,
         agent_type=agent_config.agent_type,
         is_streaming_session=bool(request.is_streaming),
@@ -1038,25 +1195,78 @@ async def create_voice_session(
         },
     )
 
-    # ── Quick Voice Call (V1) — launch streaming orchestrator ────────────
+    # ── Quick Voice Call (V1/V3) — launch streaming orchestrator ────────
     # Background task fans out transcript + Mistral analysis events on
-    # voice:ctx:{session_id} for the SSE endpoint to forward.
+    # voice:ctx:{session_id} for the SSE endpoint to forward. V3 (mobile
+    # video_url path) wires real V3 fetchers; V1 (extension video_id path)
+    # uses the default no-op orchestrator and lets the agent fall back to
+    # web_search.
     if request.is_streaming and request.video_id and background_tasks is not None and redis is not None:
-        orchestrator = create_default_orchestrator(redis=redis)
-        background_tasks.add_task(
-            orchestrator.run,
-            session_id=voice_session.id,
-            video_id=request.video_id,
-            user_id=current_user.id,
-        )
-        logger.info(
-            "Quick Voice Call orchestrator scheduled",
-            extra={
-                "session_id": voice_session.id,
-                "video_id": request.video_id,
-                "user_id": current_user.id,
-            },
-        )
+        if v3_url_path:
+            # V3 mobile path: orchestrator pulls real transcript + analysis.
+            # ``fetch_for_video_url`` accepts the full URL; the analysis
+            # fetchers query Summary by canonical video_id, so we wrap them
+            # to receive the URL and parse it back internally.
+            assert v3_video_id is not None  # set above when v3_url_path=True
+
+            _v3_video_id = v3_video_id  # capture in closure (request mutates)
+
+            async def _v3_run_analysis(_video_url_arg: str, user_id: int) -> dict:
+                return await run_for_video(_v3_video_id, user_id)
+
+            async def _v3_final_digest(_video_url_arg: str, user_id: int) -> str:
+                return await final_digest_for_video(_v3_video_id, user_id)
+
+            orchestrator = StreamingOrchestrator(
+                redis=redis,
+                fetch_transcript=fetch_for_video_url,
+                run_analysis=_v3_run_analysis,
+                final_digest=_v3_final_digest,
+            )
+            # Pass video_url so fetch_for_video_url can dispatch by platform.
+            background_tasks.add_task(
+                orchestrator.run,
+                session_id=voice_session.id,
+                video_id=request.video_url,
+                user_id=current_user.id,
+            )
+            # Trigger the main analysis pipeline so Summary.full_digest gets
+            # populated and the orchestrator's polling fetchers eventually
+            # see something to publish as ``analysis_partial`` events.
+            background_tasks.add_task(
+                _run_main_analysis_for_v3,
+                url=request.video_url,
+                video_id=v3_video_id,
+                lang=request.language or "fr",
+                user_id=current_user.id,
+                user_plan=plan,
+            )
+            logger.info(
+                "Quick Voice Call mobile V3 orchestrator scheduled",
+                extra={
+                    "session_id": voice_session.id,
+                    "video_url": request.video_url,
+                    "video_id": v3_video_id,
+                    "summary_id": v3_summary.id if v3_summary else None,
+                    "user_id": current_user.id,
+                },
+            )
+        else:
+            orchestrator = create_default_orchestrator(redis=redis)
+            background_tasks.add_task(
+                orchestrator.run,
+                session_id=voice_session.id,
+                video_id=request.video_id,
+                user_id=current_user.id,
+            )
+            logger.info(
+                "Quick Voice Call orchestrator scheduled",
+                extra={
+                    "session_id": voice_session.id,
+                    "video_id": request.video_id,
+                    "user_id": current_user.id,
+                },
+            )
 
     # Generate signed URL via ElevenLabs Conversational AI API
     try:
@@ -1364,6 +1574,7 @@ async def create_voice_session(
         is_streaming=bool(request.is_streaming),
         is_trial=bool(streaming_quota.is_trial) if streaming_quota else False,
         max_minutes=streaming_quota.max_minutes if streaming_quota else None,
+        summary_id=v3_summary.id if v3_summary is not None else None,
     )
 
 
