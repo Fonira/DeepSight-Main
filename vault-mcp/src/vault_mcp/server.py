@@ -158,7 +158,7 @@ async def health(request: Request) -> JSONResponse:
     )
 
 
-app = mcp.sse_app()
+app = mcp.streamable_http_app()
 app.routes.insert(0, Route("/health", health, methods=["GET"]))
 app.add_middleware(AuthMiddleware)
 
