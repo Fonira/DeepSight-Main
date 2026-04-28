@@ -1,4 +1,4 @@
-"""Write tools for the vault — create_note only (no update/delete by design)."""
+"""Write tools for the vault — create_note + delete_note (zone-restricted)."""
 
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +21,10 @@ class WriteForbiddenError(ValueError):
 
 class NoteAlreadyExistsError(FileExistsError):
     """Raised when create_note targets an existing file (no overwrite)."""
+
+
+class NoteNotFoundForDeleteError(FileNotFoundError):
+    """Raised when delete_note targets a non-existent file."""
 
 
 def _is_allowed_write_path(rel_path: str) -> bool:
@@ -90,5 +94,45 @@ def create_note(settings: Settings, rel_path: str, content: str) -> Path:
     safe_path.write_text(content, encoding="utf-8")
 
     _audit_log(settings, "create_note", rel_path, len(content_bytes))
+
+    return safe_path
+
+
+def delete_note(settings: Settings, rel_path: str) -> Path:
+    """
+    Delete a markdown note from the vault.
+
+    Constraints:
+        - rel_path must end with .md
+        - rel_path must be in an allowed write zone (same as create_note)
+        - File must exist and be a regular file
+
+    Raises:
+        PathTraversalError: rel_path escapes vault or hits forbidden dir
+        WriteForbiddenError: rel_path is outside allowed write zones, or not a regular file
+        NoteNotFoundForDeleteError: file does not exist at rel_path
+    """
+    if not rel_path.endswith(".md"):
+        raise WriteForbiddenError(f"Path must end with .md: {rel_path!r}")
+
+    safe_path = resolve_safe_path(settings.vault_path, rel_path)
+    rel_resolved = safe_path.relative_to(settings.vault_path.resolve()).as_posix()
+
+    if not _is_allowed_write_path(rel_resolved):
+        raise WriteForbiddenError(
+            f"Path not in allowed delete zones (00-Inbox/, 03-Archive/, "
+            f"01-Projects/<project>/Sessions|Ideas|Bugs/): resolved to {rel_resolved!r}"
+        )
+
+    if not safe_path.exists():
+        raise NoteNotFoundForDeleteError(f"File does not exist: {rel_path}")
+
+    if not safe_path.is_file():
+        raise WriteForbiddenError(f"Path is not a regular file: {rel_path}")
+
+    size = safe_path.stat().st_size
+    safe_path.unlink()
+
+    _audit_log(settings, "delete_note", rel_path, size)
 
     return safe_path
