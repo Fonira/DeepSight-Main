@@ -1,9 +1,12 @@
 // extension/src/sidepanel/components/CallActiveView.tsx
 //
 // Vue affichée pendant un voice call actif. Montre :
+//   - Chevron retour ‹ (header gauche) → onBack : raccroche + revient au pré-call
 //   - Indicateur live + temps écoulé MM:SS
-//   - Bouton ⚙ (header) → ouvre le drawer de réglages voix (live + hard staged)
+//   - Bouton ⚙ (header droit) → ouvre le drawer de réglages voix (live + hard staged)
 //   - Pseudo-waveform (cosmétique)
+//   - Liste des transcripts (chat-style)
+//   - Input texte unifié → sendUserMessage(text) à l'agent ElevenLabs (V1.2)
 //   - Bouton Mute (toggle micro côté navigateur)
 //   - Bouton Raccrocher (déclenche endSession + UpgradeCTA si trial)
 //
@@ -21,6 +24,23 @@ interface Props {
   elapsedSec: number;
   onMute: () => void;
   onHangup: () => void;
+  /**
+   * V1.2 — Chevron retour : raccroche la session et revient au pré-call.
+   * Le wiring (handleHangup + setState idle) se fait dans VoiceView.
+   */
+  onBack?: () => void;
+  /**
+   * V1.2 — Input texte unifié : appelé quand l'user soumet un message
+   * texte. Le caller (VoiceView) doit appeler conversation.sendUserMessage(text)
+   * + appendTranscript("user", text) pour que le message apparaisse dans
+   * la timeline comme s'il avait été dit oralement.
+   */
+  onSendTextMessage?: (text: string) => void;
+  /**
+   * V1.2 — True si une session ElevenLabs est active (`conversation` non null).
+   * L'input texte est désactivé sinon (pas de sendUserMessage possible).
+   */
+  canSendText?: boolean;
   /**
    * Optionnel : appelé après Apply quand un ou plusieurs HARD fields
    * (voix, modèle, stability…) ont changé. Le caller (VoiceView) doit
@@ -42,18 +62,44 @@ export function CallActiveView({
   elapsedSec,
   onMute,
   onHangup,
+  onBack,
+  onSendTextMessage,
+  canSendText = true,
   onApplyHardChanges,
   restarting = false,
   transcripts = [],
 }: Props): JSX.Element {
   const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [textInput, setTextInput] = useState("");
   const settings = useVoiceSettings();
   const mm = String(Math.floor(elapsedSec / 60)).padStart(2, "0");
   const ss = String(elapsedSec % 60).padStart(2, "0");
+
+  const handleSubmitText = (e?: React.FormEvent): void => {
+    e?.preventDefault();
+    const trimmed = textInput.trim();
+    if (!trimmed) return;
+    if (!canSendText) return;
+    onSendTextMessage?.(trimmed);
+    setTextInput("");
+  };
+
   return (
     <div className="ds-call-active" data-testid="ds-call-active">
       <header className="ds-call-active__header">
+        {onBack && (
+          <button
+            type="button"
+            className="dsp-voice-settings-btn ds-call-active__back"
+            onClick={onBack}
+            aria-label={t.voiceCall.callActive.backAriaLabel ?? "Retour"}
+            title={t.voiceCall.callActive.backAriaLabel ?? "Retour"}
+            data-testid="voice-back-btn"
+          >
+            ‹
+          </button>
+        )}
         <div className="ds-call-active__indicator" aria-hidden />
         <span className="ds-call-active__label">
           {t.voiceCall.callActive.live}
@@ -91,6 +137,40 @@ export function CallActiveView({
         ))}
       </div>
       <VoiceTranscriptList transcripts={transcripts} />
+      <form
+        className="ds-voice-text-input"
+        onSubmit={handleSubmitText}
+        data-testid="voice-text-input-form"
+      >
+        <input
+          type="text"
+          className="ds-voice-text-input__field"
+          value={textInput}
+          onChange={(e) => setTextInput(e.target.value)}
+          placeholder={
+            t.voiceCall.callActive.textInputPlaceholder ?? "Tape ou parle…"
+          }
+          aria-label={
+            t.voiceCall.callActive.textInputAriaLabel ??
+            "Envoyer un message texte à l'agent"
+          }
+          disabled={!canSendText}
+          data-testid="voice-text-input"
+          autoComplete="off"
+        />
+        <button
+          type="submit"
+          className="ds-voice-text-input__send"
+          disabled={!canSendText || textInput.trim().length === 0}
+          aria-label={
+            t.voiceCall.callActive.textInputSendAriaLabel ?? "Envoyer"
+          }
+          title={t.voiceCall.callActive.textInputSendAriaLabel ?? "Envoyer"}
+          data-testid="voice-text-input-send"
+        >
+          📤
+        </button>
+      </form>
       <footer className="ds-call-active__footer">
         <button
           type="button"

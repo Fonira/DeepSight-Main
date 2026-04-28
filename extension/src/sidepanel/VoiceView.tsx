@@ -366,6 +366,19 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
           elapsedSec={elapsedSec}
           onMute={voiceChat.toggleMute}
           onHangup={handleHangup}
+          onBack={() => {
+            handleHangup();
+            setState({ phase: "idle" });
+          }}
+          onSendTextMessage={(text) => {
+            // V1.2 — Input texte unifié : envoie le message à l'agent
+            // ElevenLabs (qui répondra en voix) ET l'append dans la
+            // timeline transcripts pour qu'il s'affiche comme un message
+            // user "dit". Pas de couplage backend chat (ElevenLabs SDK only).
+            voiceChat.conversation?.sendUserMessage(text);
+            void voiceChat.appendTranscript("user", text);
+          }}
+          canSendText={voiceChat.conversation !== null}
           onApplyHardChanges={() => {
             void voiceChat.restartSession();
           }}

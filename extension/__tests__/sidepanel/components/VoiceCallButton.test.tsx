@@ -8,10 +8,48 @@
 //  - bouton désactivé si free + trialUsed
 //  - rendu nul si videoId absent
 //  - click envoie OPEN_VOICE_CALL au background
+//  - v1.2 : bouton ⚙ pré-call, layout flex-row, ouverture VoiceSettingsDrawer
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { VoiceCallButton } from "../../../src/sidepanel/components/VoiceCallButton";
+
+// On mocke useVoiceSettings pour éviter tout fetch réseau parasite au mount
+// (le hook réel appelle chrome.runtime.sendMessage avec
+// VOICE_GET_PREFERENCES / VOICE_GET_CATALOG, ce qui pollue les assertions
+// "click sends OPEN_VOICE_CALL").
+jest.mock("../../../src/sidepanel/useVoiceSettings", () => ({
+  useVoiceSettings: jest.fn(() => ({
+    prefs: null,
+    effectivePrefs: null,
+    catalog: null,
+    loading: false,
+    error: null,
+    saving: false,
+    stagedFields: {},
+    stagedCount: 0,
+    setLive: jest.fn(),
+    setStaged: jest.fn(),
+    applyStaged: jest.fn(async () => ({})),
+    resetStaged: jest.fn(),
+    resetToDefaults: jest.fn(async () => undefined),
+    reload: jest.fn(async () => undefined),
+  })),
+  HARD_FIELDS: [
+    "voice_id",
+    "voice_name",
+    "tts_model",
+    "voice_chat_model",
+    "stability",
+    "similarity_boost",
+    "style",
+    "use_speaker_boost",
+    "gender",
+    "language",
+    "speed",
+    "voice_chat_speed_preset",
+  ],
+}));
 
 describe("VoiceCallButton", () => {
   beforeEach(() => {
@@ -60,9 +98,9 @@ describe("VoiceCallButton", () => {
     expect(document.body.textContent).toMatch(/25 min restantes/);
   });
 
-  it("shows upgrade CTA badge for pro plan", () => {
-    render(<VoiceCallButton plan="pro" videoId="abc" />);
-    expect(document.body.textContent).toContain("Passer en Expert");
+  it("shows minutes remaining for pro plan", () => {
+    render(<VoiceCallButton plan="pro" monthlyMinutesUsed={0} videoId="abc" />);
+    expect(document.body.textContent).toMatch(/30 min restantes/);
   });
 
   it("renders nothing when videoId is missing", () => {
@@ -90,7 +128,9 @@ describe("VoiceCallButton", () => {
         videoTitle="Test Title"
       />,
     );
-    const btn = screen.getByRole("button") as HTMLButtonElement;
+    const btn = document.querySelector(
+      "button.voice-call-btn",
+    ) as HTMLButtonElement;
     btn.click();
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
       type: "OPEN_VOICE_CALL",
@@ -102,8 +142,66 @@ describe("VoiceCallButton", () => {
 
   it("disabled button does not send message on click", () => {
     render(<VoiceCallButton plan="free" trialUsed={true} videoId="abc" />);
-    const btn = screen.getByRole("button") as HTMLButtonElement;
+    const btn = document.querySelector(
+      "button.voice-call-btn",
+    ) as HTMLButtonElement;
     btn.click();
+    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+  });
+
+  // ── v1.2 — bouton ⚙ pré-call ─────────────────────────────────────────
+
+  it("renders a ⚙ settings button next to the CTA when videoId is provided", () => {
+    render(<VoiceCallButton plan="free" trialUsed={false} videoId="abc" />);
+    const settingsBtn = screen.getByTestId("voice-settings-btn-precall");
+    expect(settingsBtn).not.toBeNull();
+    expect(settingsBtn.getAttribute("aria-label")).toBe("Réglages voix");
+    // Le bouton a la classe CSS attendue (32×32, fond translucide).
+    expect(settingsBtn.classList.contains("dsp-voice-settings-btn")).toBe(true);
+  });
+
+  it("does NOT render the ⚙ settings button when videoId is missing", () => {
+    render(<VoiceCallButton plan="free" />);
+    expect(
+      document.querySelector('[data-testid="voice-settings-btn-precall"]'),
+    ).toBeNull();
+  });
+
+  it("places the CTA and ⚙ in a flex row container (visual layout)", () => {
+    render(<VoiceCallButton plan="pro" videoId="abc" />);
+    const row = document.querySelector(".voice-call-row");
+    expect(row).not.toBeNull();
+    // Le CTA et le ⚙ sont enfants directs de la rangée.
+    expect(row?.querySelector("button.voice-call-btn")).not.toBeNull();
+    expect(
+      row?.querySelector('[data-testid="voice-settings-btn-precall"]'),
+    ).not.toBeNull();
+  });
+
+  it("clicking ⚙ opens the VoiceSettingsDrawer (aria-hidden=false)", () => {
+    render(<VoiceCallButton plan="pro" videoId="abc" />);
+    const drawer = document.querySelector(
+      '[role="dialog"][aria-label="Réglages voix"]',
+    ) as HTMLElement | null;
+    expect(drawer).not.toBeNull();
+    // Initialement fermé.
+    expect(drawer?.getAttribute("aria-hidden")).toBe("true");
+
+    const settingsBtn = screen.getByTestId("voice-settings-btn-precall");
+    act(() => {
+      settingsBtn.click();
+    });
+
+    expect(drawer?.getAttribute("aria-hidden")).toBe("false");
+    expect(drawer?.classList.contains("is-open")).toBe(true);
+  });
+
+  it("clicking ⚙ does NOT trigger OPEN_VOICE_CALL", () => {
+    render(<VoiceCallButton plan="pro" videoId="abc" />);
+    const settingsBtn = screen.getByTestId("voice-settings-btn-precall");
+    act(() => {
+      settingsBtn.click();
+    });
     expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
   });
 });
