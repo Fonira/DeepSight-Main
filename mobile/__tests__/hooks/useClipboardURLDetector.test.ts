@@ -3,7 +3,7 @@ import * as Clipboard from "expo-clipboard";
 import { useClipboardURLDetector } from "../../src/hooks/useClipboardURLDetector";
 
 jest.mock("expo-clipboard");
-jest.mock("@react-navigation/native", () => ({
+jest.mock("expo-router", () => ({
   useFocusEffect: (cb) => {
     cb();
   },

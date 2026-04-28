@@ -10,7 +10,7 @@
 
 import { useCallback, useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect } from "expo-router";
 import { validateVideoURL } from "../utils/validateVideoURL";
 
 export interface UseClipboardURLDetectorReturn {
