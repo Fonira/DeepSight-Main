@@ -1,8 +1,8 @@
 /**
  * SunflowerLayer v3.1 — extension viewer mascot.
  *
- * SVG inline avec tige + 2 feuilles + tête héliotrope. Identique au sidepanel
- * mais branché sur le Context viewer (entry webpack distincte).
+ * Mascot positionné au coin opposé au soleil. Identique au sidepanel mais
+ * branché sur le Context viewer (entry webpack distincte).
  */
 
 import {
@@ -14,11 +14,19 @@ import {
 } from "@deepsight/lighting-engine";
 import { useAmbientLightingContext } from "../contexts/AmbientLightingContext";
 
-const FLOWER_WIDTH = 60;
-const SVG_HEIGHT = Math.round((FLOWER_WIDTH * 280) / 200);
-const HALO_SIZE = Math.round(FLOWER_WIDTH * 1.6);
-const HEAD_Y_IN_SVG = (SVG_HEIGHT * 100) / 280;
-const SVG_TOP = HALO_SIZE / 2 - HEAD_Y_IN_SVG;
+const FLOWER_SIZE = 56;
+const HALO_SIZE = Math.round(FLOWER_SIZE * 1.6);
+const TRANSITION =
+  "transform 1.5s cubic-bezier(0.4,0,0.2,1), opacity 1.5s cubic-bezier(0.4,0,0.2,1)";
+
+function pickCorner(
+  sunX: number,
+  sunVisible: boolean,
+  moonX: number,
+): "left" | "right" {
+  const x = sunVisible ? sunX : moonX;
+  return x > 50 ? "left" : "right";
+}
 
 export function SunflowerLayer() {
   const { preset, enabled } = useAmbientLightingContext();
@@ -28,21 +36,25 @@ export function SunflowerLayer() {
   const rotation = getSunflowerRotation(preset.frameIndex);
   const opacity = getSunflowerOpacity(preset.frameIndex);
   const halo = SUNFLOWER_HALOS[phase];
+  const corner = pickCorner(preset.sun.x, preset.sun.visible, preset.moon.x);
+  const edgeOffset = 14 - (HALO_SIZE - FLOWER_SIZE) / 2;
 
   return (
     <div
       aria-hidden="true"
       className="sunflower-mascot"
       data-sunflower-phase={phase}
+      data-sunflower-corner={corner}
       style={{
         position: "fixed",
-        bottom: 14,
-        right: 14,
+        bottom: edgeOffset,
+        ...(corner === "left" ? { left: edgeOffset } : { right: edgeOffset }),
         width: HALO_SIZE,
         height: HALO_SIZE,
         pointerEvents: "none",
         zIndex: 2,
-        overflow: "visible",
+        transition:
+          "left 2s cubic-bezier(0.4,0,0.2,1), right 2s cubic-bezier(0.4,0,0.2,1)",
       }}
     >
       <div
@@ -62,20 +74,14 @@ export function SunflowerLayer() {
       <div
         style={{
           position: "absolute",
-          top: SVG_TOP,
+          top: "50%",
           left: "50%",
-          transform: "translateX(-50%)",
-          width: FLOWER_WIDTH,
-          height: SVG_HEIGHT,
+          transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
           opacity: opacity * preset.beam.opacity,
-          transition: "opacity 1.5s cubic-bezier(0.4,0,0.2,1)",
+          transition: TRANSITION,
         }}
         dangerouslySetInnerHTML={{
-          __html: buildSunflowerSVG({
-            size: FLOWER_WIDTH,
-            phase,
-            rotation,
-          }),
+          __html: buildSunflowerSVG({ size: FLOWER_SIZE, phase }),
         }}
       />
     </div>

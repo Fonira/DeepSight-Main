@@ -1,10 +1,10 @@
 /**
- * SunflowerLayer v3.1 — full sunflower (stem + leaves + heliotropic head).
+ * SunflowerLayer v3.1 — inline SVG faithful to the official Tournesol logo.
  *
- * Mascot bottom-right. Le SVG inline contient maintenant la tige verte
- * courbée + 2 feuilles + la tête qui pivote autour de son point d'attache
- * à la tige (vraie héliotropie : la tige reste plantée, la tête s'incline).
- * 4 phases (dawn/day/dusk/night) + halo bioluminescent pulsant la nuit.
+ * Mascot positionné au coin opposé au soleil (le rayon descend en diagonale
+ * et "tape" le coin opposé, c'est là qu'on place le tournesol pour qu'il
+ * regarde le rayon en arrivant). 4 phases (dawn/day/dusk/night), rotation
+ * héliotrope CSS ±85°, halo bioluminescent pulsant la nuit.
  */
 
 import {
@@ -16,12 +16,24 @@ import {
 } from "@deepsight/lighting-engine";
 import { useAmbientLightingContext } from "../contexts/AmbientLightingContext";
 
-const FLOWER_WIDTH = 88;
-const SVG_HEIGHT = Math.round((FLOWER_WIDTH * 280) / 200); // 123 — ratio viewBox
-const HALO_SIZE = Math.round(FLOWER_WIDTH * 1.6); // 141
-// Centre la tête au milieu du halo (la tête est à ~36% de la hauteur du SVG)
-const HEAD_Y_IN_SVG = (SVG_HEIGHT * 100) / 280;
-const SVG_TOP = HALO_SIZE / 2 - HEAD_Y_IN_SVG;
+const FLOWER_SIZE = 88;
+const HALO_SIZE = Math.round(FLOWER_SIZE * 1.6);
+const TRANSITION =
+  "transform 1.5s cubic-bezier(0.4,0,0.2,1), opacity 1.5s cubic-bezier(0.4,0,0.2,1)";
+
+/**
+ * Soleil dans la moitié droite (sun.x > 50) → rayon descend vers bas-gauche
+ * → place le tournesol bottom-left. Et inversement. La nuit (sun.visible = false)
+ * on suit la lune.
+ */
+function pickCorner(
+  sunX: number,
+  sunVisible: boolean,
+  moonX: number,
+): "left" | "right" {
+  const x = sunVisible ? sunX : moonX;
+  return x > 50 ? "left" : "right";
+}
 
 export function SunflowerLayer() {
   const { preset, enabled } = useAmbientLightingContext();
@@ -31,21 +43,25 @@ export function SunflowerLayer() {
   const rotation = getSunflowerRotation(preset.frameIndex);
   const opacity = getSunflowerOpacity(preset.frameIndex);
   const halo = SUNFLOWER_HALOS[phase];
+  const corner = pickCorner(preset.sun.x, preset.sun.visible, preset.moon.x);
+  const edgeOffset = 24 - (HALO_SIZE - FLOWER_SIZE) / 2;
 
   return (
     <div
       aria-hidden="true"
       className="sunflower-mascot"
       data-sunflower-phase={phase}
+      data-sunflower-corner={corner}
       style={{
         position: "fixed",
-        bottom: 24,
-        right: 24,
+        bottom: edgeOffset,
+        ...(corner === "left" ? { left: edgeOffset } : { right: edgeOffset }),
         width: HALO_SIZE,
         height: HALO_SIZE,
         pointerEvents: "none",
         zIndex: 2,
-        overflow: "visible",
+        transition:
+          "left 2s cubic-bezier(0.4,0,0.2,1), right 2s cubic-bezier(0.4,0,0.2,1)",
       }}
     >
       <div
@@ -65,20 +81,14 @@ export function SunflowerLayer() {
       <div
         style={{
           position: "absolute",
-          top: SVG_TOP,
+          top: "50%",
           left: "50%",
-          transform: "translateX(-50%)",
-          width: FLOWER_WIDTH,
-          height: SVG_HEIGHT,
+          transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
           opacity: opacity * preset.beam.opacity,
-          transition: "opacity 1.5s cubic-bezier(0.4,0,0.2,1)",
+          transition: TRANSITION,
         }}
         dangerouslySetInnerHTML={{
-          __html: buildSunflowerSVG({
-            size: FLOWER_WIDTH,
-            phase,
-            rotation,
-          }),
+          __html: buildSunflowerSVG({ size: FLOWER_SIZE, phase }),
         }}
       />
     </div>
