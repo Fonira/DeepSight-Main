@@ -11,6 +11,7 @@ import { Eye } from "lucide-react";
 import { shareApi, SharedAnalysisResponse } from "../services/api";
 import { sanitizeTitle } from "../utils/sanitize";
 import { DeepSightSpinner } from "../components/ui/DeepSightSpinner";
+import { BreadcrumbJsonLd } from "../components/BreadcrumbJsonLd";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -27,6 +28,18 @@ function formatDuration(seconds: number | undefined): string {
   const s = seconds % 60;
   if (h > 0) return `${h}h${m.toString().padStart(2, "0")}m`;
   return `${m}m${s.toString().padStart(2, "0")}s`;
+}
+
+function formatDurationISO(seconds: number | undefined): string {
+  if (!seconds || seconds <= 0) return "";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  let out = "PT";
+  if (h > 0) out += `${h}H`;
+  if (m > 0) out += `${m}M`;
+  if (s > 0) out += `${s}S`;
+  return out === "PT" ? "PT0S" : out;
 }
 
 function formatContent(content: string): string {
@@ -223,7 +236,43 @@ export default function SharedAnalysisPage() {
             inLanguage: "fr",
           })}
         </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "VideoObject",
+            name: data.video_title,
+            description,
+            ...(thumbnailUrl && { thumbnailUrl }),
+            ...(youtubeUrl && { contentUrl: youtubeUrl }),
+            ...(videoId &&
+              (analysis.video_url || "").includes("youtu") && {
+                embedUrl: `https://www.youtube.com/embed/${videoId}`,
+              }),
+            ...(duration && { duration: formatDurationISO(duration) }),
+            ...(createdAt && {
+              uploadDate: new Date(createdAt).toISOString(),
+            }),
+            ...(channel && {
+              creator: { "@type": "Person", name: channel },
+            }),
+            publisher: {
+              "@type": "Organization",
+              name: "DeepSight",
+              logo: {
+                "@type": "ImageObject",
+                url: "https://www.deepsightsynthesis.com/icons/icon-512x512.png",
+              },
+            },
+            isFamilyFriendly: true,
+            isAccessibleForFree: true,
+            inLanguage: "fr",
+          })}
+        </script>
       </Helmet>
+      <BreadcrumbJsonLd
+        path={`/s/${shareToken}`}
+        label={data.video_title}
+      />
 
       {/* Header */}
       <header className="border-b border-border-subtle bg-bg-primary/80 backdrop-blur-xl sticky top-0 z-50">
