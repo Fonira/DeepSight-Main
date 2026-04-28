@@ -18,14 +18,14 @@ Sur l'ensemble du frontend DeepSight Web, des textes affichés en gris transluci
 
 Audit complet (cf. brainstorm session 2026-04-27) :
 
-| Métrique | Valeur |
-|---|---|
-| Token cassé `--text-muted: #45455a` | contraste **1.6:1** sur fond sombre, **1.0:1** sur ambient warm — échec WCAG AA |
-| Occurrences `text-text-muted/secondary/tertiary` | **1 024+** dans 100+ fichiers |
-| Occurrences `text-white/[3-6]0` (translucide) | **340** dans 65 fichiers |
-| Occurrences legacy `text-gray/slate-X00` (hors design system) | **121** dans 25 fichiers |
-| Opacités `opacity-[3-7]0` sur du texte | **170** dans 76 fichiers |
-| Token fantôme `text-text-quaternary` (non défini) | 2 usages dans `Sidebar.tsx` |
+| Métrique                                                      | Valeur                                                                          |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Token cassé `--text-muted: #45455a`                           | contraste **1.6:1** sur fond sombre, **1.0:1** sur ambient warm — échec WCAG AA |
+| Occurrences `text-text-muted/secondary/tertiary`              | **1 024+** dans 100+ fichiers                                                   |
+| Occurrences `text-white/[3-6]0` (translucide)                 | **340** dans 65 fichiers                                                        |
+| Occurrences legacy `text-gray/slate-X00` (hors design system) | **121** dans 25 fichiers                                                        |
+| Opacités `opacity-[3-7]0` sur du texte                        | **170** dans 76 fichiers                                                        |
+| Token fantôme `text-text-quaternary` (non défini)             | 2 usages dans `Sidebar.tsx`                                                     |
 
 **Aggravant visuel** : `AmbientLightLayer` superpose 6 calques `position: fixed inset-0 z-1 mix-blend-mode: screen` (gradients ambient + beams + étoiles + sun/moon). Sans `isolation: isolate` sur le contenu, le `mix-blend-mode: screen` éclaircit chaque texte par-dessus de **30 à 60 %**, dégradant le contraste effectif. Le `body::after` ajoute en plus 3 gradients chauds (gold / sienna / terracotta).
 
@@ -51,23 +51,23 @@ Audit complet (cf. brainstorm session 2026-04-27) :
 ```css
 :root {
   /* Hiérarchie texte — sémantique, ratios validés WCAG sur fond sombre + ambient warm */
-  --text-strong:  #F5F5FA;  /* L1 — Titres, nav active, valeur métrique forte */
-  --text-default: #C9C9D4;  /* L2 — Body, descriptions, nav inactive */
-  --text-soft:    #8B8BA0;  /* L3 — Métadonnées, captions, helpers */
-  --text-faint:   #6E6E82;  /* L4 — Decorative, disabled — interdit pour body */
-  --text-inverse: #0a0a0f;  /* Sur backgrounds clairs */
+  --text-strong: #f5f5fa; /* L1 — Titres, nav active, valeur métrique forte */
+  --text-default: #c9c9d4; /* L2 — Body, descriptions, nav inactive */
+  --text-soft: #8b8ba0; /* L3 — Métadonnées, captions, helpers */
+  --text-faint: #6e6e82; /* L4 — Decorative, disabled — interdit pour body */
+  --text-inverse: #0a0a0f; /* Sur backgrounds clairs */
 }
 ```
 
 ### 3.2 Ratios de contraste
 
-| Token | HEX | Fond `#0a0a0f` | Fond ambient warm `#2a2520` | Cible | Usage |
-|---|---|---|---|---|---|
-| `--text-strong` | `#F5F5FA` | 18.17:1 ✓ AAA | 13.96:1 ✓ AAA | ≥ 12:1 | Titres, nav active, métriques fortes |
-| `--text-default` | `#C9C9D4` | 12.03:1 ✓ AAA | 9.24:1 ✓ AAA | ≥ 7:1 (AAA body) | Body, descriptions, nav inactive |
-| `--text-soft` | `#8B8BA0` | 5.92:1 ✓ AA | 4.55:1 ✓ AA | ≥ 4.5:1 (AA helpers) | Métadonnées, captions, helpers |
-| `--text-faint` | `#6E6E82` | 3.97:1 | 3.05:1 | ≥ 3:1 (AA large only) | Decorative, disabled |
-| ~~`--text-muted`~~ | ~~`#45455a`~~ | 2.12:1 ✗ | 1.63:1 ✗ | — | **Supprimé** |
+| Token              | HEX           | Fond `#0a0a0f` | Fond ambient warm `#2a2520` | Cible                 | Usage                                |
+| ------------------ | ------------- | -------------- | --------------------------- | --------------------- | ------------------------------------ |
+| `--text-strong`    | `#F5F5FA`     | 18.17:1 ✓ AAA  | 13.96:1 ✓ AAA               | ≥ 12:1                | Titres, nav active, métriques fortes |
+| `--text-default`   | `#C9C9D4`     | 12.03:1 ✓ AAA  | 9.24:1 ✓ AAA                | ≥ 7:1 (AAA body)      | Body, descriptions, nav inactive     |
+| `--text-soft`      | `#8B8BA0`     | 5.92:1 ✓ AA    | 4.55:1 ✓ AA                 | ≥ 4.5:1 (AA helpers)  | Métadonnées, captions, helpers       |
+| `--text-faint`     | `#6E6E82`     | 3.97:1         | 3.05:1                      | ≥ 3:1 (AA large only) | Decorative, disabled                 |
+| ~~`--text-muted`~~ | ~~`#45455a`~~ | 2.12:1 ✗       | 1.63:1 ✗                    | —                     | **Supprimé**                         |
 
 Sources palette : Radix Colors (gray/mauve dark step 11/12), GitHub Primer dark, IBM Carbon g100, Apple HIG dark, Material 3. Teinte légèrement violette (hue ~240) qui s'harmonise avec le fond `#0a0a0f` sans virer au gris pur sur les zones gold (évite contraste chromatique désagréable jaune × cyan).
 
@@ -94,13 +94,13 @@ Les anciennes utilities (`text-text-primary`, `-secondary`, `-tertiary`, `-muted
 
 Les couleurs sémantiques (vert fiabilité, bleu pédagogie, gold note Tournesol) sont **conservées** mais saturées correctement :
 
-| Avant | Après | Ratio |
-|---|---|---|
-| `text-emerald-400/60` (fiabilité ≥ 50) | `text-emerald-300` | 5.5:1 ✓ AA |
-| `text-blue-400/60` (pédagogie ≥ 50) | `text-sky-300` | 10.4:1 ✓ AAA |
-| `text-yellow-400` (badge gold Tournesol score) | inchangé — sur `bg-yellow-500/20` qui devient `bg-yellow-500/30` (solidifié) | OK |
-| `text-emerald-400` sur `bg-emerald-500/20` (badge note ≥ 50) | `text-emerald-200` sur `bg-emerald-500/30` | 9.1:1 ✓ AAA |
-| `text-orange-400` sur `bg-orange-500/20` (badge note < 50) | `text-orange-200` sur `bg-orange-500/30` | 7.5:1 ✓ AAA |
+| Avant                                                        | Après                                                                        | Ratio        |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------- | ------------ |
+| `text-emerald-400/60` (fiabilité ≥ 50)                       | `text-emerald-300`                                                           | 5.5:1 ✓ AA   |
+| `text-blue-400/60` (pédagogie ≥ 50)                          | `text-sky-300`                                                               | 10.4:1 ✓ AAA |
+| `text-yellow-400` (badge gold Tournesol score)               | inchangé — sur `bg-yellow-500/20` qui devient `bg-yellow-500/30` (solidifié) | OK           |
+| `text-emerald-400` sur `bg-emerald-500/20` (badge note ≥ 50) | `text-emerald-200` sur `bg-emerald-500/30`                                   | 9.1:1 ✓ AAA  |
+| `text-orange-400` sur `bg-orange-500/20` (badge note < 50)   | `text-orange-200` sur `bg-orange-500/30`                                     | 7.5:1 ✓ AAA  |
 
 Les `/60` opacités sont supprimées partout sur les variants colorés (un texte coloré à 60 % sur fond ambient warm = double dégradation). Les backgrounds des badges passent de `/20` à `/30` pour solidifier l'isolement de la couleur de texte vis-à-vis du fond ambient.
 
@@ -129,7 +129,7 @@ aside[data-sidebar] {
 
 ### 4.2 Mécanisme
 
-`isolation: isolate` crée un nouveau stacking context. Le `mix-blend-mode: screen` du parent (les 6 calques AmbientLight en `z-1`) ne mixe plus avec ce qu'il y a *dans* le conteneur isolé. Les rayons continuent d'exister visuellement entre/derrière les blocs (gutters, headers, transitions de section), donnant un effet plus *cinématographique* que l'effet « lumière sur le texte » actuel.
+`isolation: isolate` crée un nouveau stacking context. Le `mix-blend-mode: screen` du parent (les 6 calques AmbientLight en `z-1`) ne mixe plus avec ce qu'il y a _dans_ le conteneur isolé. Les rayons continuent d'exister visuellement entre/derrière les blocs (gutters, headers, transitions de section), donnant un effet plus _cinématographique_ que l'effet « lumière sur le texte » actuel.
 
 ### 4.3 Vérifications obligatoires
 
@@ -146,9 +146,18 @@ aside[data-sidebar] {
 Modifier `frontend/src/App.tsx` autour de la ligne 445 :
 
 ```tsx
-const AMBIENT_ROUTES = ['/', '/login', '/signup', '/pricing', '/about', '/legal'];
+const AMBIENT_ROUTES = [
+  "/",
+  "/login",
+  "/signup",
+  "/pricing",
+  "/about",
+  "/legal",
+];
 const { pathname } = useLocation();
-const showAmbient = AMBIENT_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
+const showAmbient = AMBIENT_ROUTES.some(
+  (r) => pathname === r || pathname.startsWith(r + "/"),
+);
 
 return (
   <>
@@ -177,20 +186,20 @@ Le flag PostHog `ambient_lighting_v2` reste **global on/off**. La granularité p
 
 ### 6.2 Mapping de remplacement
 
-| Pattern actuel | Cible | Occurrences estimées |
-|---|---|---|
-| `text-text-primary` | `text-text-strong` | ≈ 200 |
-| `text-text-secondary` | `text-text-default` | ≈ 280 |
-| `text-text-tertiary` | `text-text-soft` | ≈ 290 |
-| `text-text-muted` | `text-text-soft` (default) ou `text-text-faint` (decorative) | ≈ 254 |
-| `text-text-quaternary` (fantôme) | `text-text-faint` | 2 |
-| `text-white/30`, `text-white/40` | `text-text-soft` | ≈ 140 |
-| `text-white/50`, `text-white/60`, `text-white/70` | `text-text-default` | ≈ 120 |
-| `text-white/80`, `text-white/90` | `text-text-strong` | ≈ 80 |
-| `text-gray-400`, `text-slate-400`, `text-zinc-400`, `text-neutral-400` | `text-text-soft` | partie des 121 legacy |
-| `text-gray-500/600`, etc. | `text-text-faint` ou `text-text-default` selon scale | partie des 121 |
-| `text-emerald-400/60` | `text-emerald-300` | ≈ 30 |
-| `text-blue-400/60` | `text-sky-300` | ≈ 25 |
+| Pattern actuel                                                         | Cible                                                        | Occurrences estimées  |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------- |
+| `text-text-primary`                                                    | `text-text-strong`                                           | ≈ 200                 |
+| `text-text-secondary`                                                  | `text-text-default`                                          | ≈ 280                 |
+| `text-text-tertiary`                                                   | `text-text-soft`                                             | ≈ 290                 |
+| `text-text-muted`                                                      | `text-text-soft` (default) ou `text-text-faint` (decorative) | ≈ 254                 |
+| `text-text-quaternary` (fantôme)                                       | `text-text-faint`                                            | 2                     |
+| `text-white/30`, `text-white/40`                                       | `text-text-soft`                                             | ≈ 140                 |
+| `text-white/50`, `text-white/60`, `text-white/70`                      | `text-text-default`                                          | ≈ 120                 |
+| `text-white/80`, `text-white/90`                                       | `text-text-strong`                                           | ≈ 80                  |
+| `text-gray-400`, `text-slate-400`, `text-zinc-400`, `text-neutral-400` | `text-text-soft`                                             | partie des 121 legacy |
+| `text-gray-500/600`, etc.                                              | `text-text-faint` ou `text-text-default` selon scale         | partie des 121        |
+| `text-emerald-400/60`                                                  | `text-emerald-300`                                           | ≈ 30                  |
+| `text-blue-400/60`                                                     | `text-sky-300`                                               | ≈ 25                  |
 
 ### 6.3 Cas border (revue manuelle)
 
@@ -209,13 +218,13 @@ Le flag PostHog `ambient_lighting_v2` reste **global on/off**. La granularité p
 
 ## 7. Plan d'implémentation (5 PRs)
 
-| PR | Scope | Taille | Risque | Reviewer focus |
-|---|---|---|---|---|
-| **PR 1** — Tokens & config | `frontend/src/index.css` (nouveaux tokens, suppression `--text-muted`), `frontend/tailwind.config.js` (utilities `text-text-strong/default/soft/faint`). Anciennes utilities marquées `@deprecated`. | S | Faible | Vérifier qu'aucun code ne casse (les anciennes utilities restent fonctionnelles). |
-| **PR 2** — Isolation CSS | Règles `isolation: isolate` dans `index.css`. Audit portals + `position: fixed` enfants. | S | Moyen | Tester visuellement modals (`VoiceOverlay`, `FloatingChatWindow`), dropdowns (`NotificationBell`). |
-| **PR 3** — AmbientLight router-aware | `App.tsx` wrapper conditionnel + tests E2E sur 2 routes (Landing OK, Dashboard désactivé). | XS | Faible | Vérifier sur les 11 routes désactivées qu'aucun calque ambient n'apparaît. |
-| **PR 4** — Codemod | Script + exécution + revue manuelle des cas border + commit-by-pattern. | XL | Faible mécanique | Revue par diff scan : chercher les patterns suspects (`text-emerald-300` sur fond clair, `text-text-faint` dans un body, etc.). |
-| **PR 5** — CI a11y | `axe-core/playwright` sur les routes principales + `pa11y-ci` sur preview Vercel. Bloque PR si régression contraste. | M | Faible | Configurer le seuil (zero violations critical/serious) et la liste des routes auditées. |
+| PR                                   | Scope                                                                                                                                                                                                | Taille | Risque           | Reviewer focus                                                                                                                  |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **PR 1** — Tokens & config           | `frontend/src/index.css` (nouveaux tokens, suppression `--text-muted`), `frontend/tailwind.config.js` (utilities `text-text-strong/default/soft/faint`). Anciennes utilities marquées `@deprecated`. | S      | Faible           | Vérifier qu'aucun code ne casse (les anciennes utilities restent fonctionnelles).                                               |
+| **PR 2** — Isolation CSS             | Règles `isolation: isolate` dans `index.css`. Audit portals + `position: fixed` enfants.                                                                                                             | S      | Moyen            | Tester visuellement modals (`VoiceOverlay`, `FloatingChatWindow`), dropdowns (`NotificationBell`).                              |
+| **PR 3** — AmbientLight router-aware | `App.tsx` wrapper conditionnel + tests E2E sur 2 routes (Landing OK, Dashboard désactivé).                                                                                                           | XS     | Faible           | Vérifier sur les 11 routes désactivées qu'aucun calque ambient n'apparaît.                                                      |
+| **PR 4** — Codemod                   | Script + exécution + revue manuelle des cas border + commit-by-pattern.                                                                                                                              | XL     | Faible mécanique | Revue par diff scan : chercher les patterns suspects (`text-emerald-300` sur fond clair, `text-text-faint` dans un body, etc.). |
+| **PR 5** — CI a11y                   | `axe-core/playwright` sur les routes principales + `pa11y-ci` sur preview Vercel. Bloque PR si régression contraste.                                                                                 | M      | Faible           | Configurer le seuil (zero violations critical/serious) et la liste des routes auditées.                                         |
 
 PR 1 → 5 séquentielles. PR 1+2+3 peuvent être mergées dans la semaine 1, PR 4 en semaine 2 (gros mais mécanique), PR 5 en semaine 2-3.
 
@@ -231,7 +240,7 @@ PR 1 → 5 séquentielles. PR 1+2+3 peuvent être mergées dans la semaine 1, PR
 
 ### 8.2 Limite connue
 
-`axe-core` mesure le contraste sur le DOM **statique**. Il ne voit pas l'effet du `mix-blend-mode: screen` actif. Pour valider l'effet *réel* sur les routes ambient, ajouter une suite Playwright de **screenshot tests** (`pixelmatch`) sur Landing/Login/Pricing : capture before/after refactor + diff < 0.1 % sur les zones de texte critiques.
+`axe-core` mesure le contraste sur le DOM **statique**. Il ne voit pas l'effet du `mix-blend-mode: screen` actif. Pour valider l'effet _réel_ sur les routes ambient, ajouter une suite Playwright de **screenshot tests** (`pixelmatch`) sur Landing/Login/Pricing : capture before/after refactor + diff < 0.1 % sur les zones de texte critiques.
 
 ### 8.3 Critères d'acceptation
 
