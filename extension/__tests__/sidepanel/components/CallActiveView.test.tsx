@@ -2,8 +2,15 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { CallActiveView } from "../../../src/sidepanel/components/CallActiveView";
+import type { VoiceTranscript } from "../../../src/sidepanel/types";
 
 describe("CallActiveView", () => {
+  beforeAll(() => {
+    // jsdom ne fournit pas scrollIntoView par défaut → utilisé par
+    // VoiceTranscriptList rendu en sous-composant.
+    Element.prototype.scrollIntoView = jest.fn();
+  });
+
   it("shows live indicator and elapsed time", () => {
     render(
       <CallActiveView
@@ -56,5 +63,35 @@ describe("CallActiveView", () => {
       />,
     );
     expect(screen.getByText(/02:05/)).toBeInTheDocument();
+  });
+
+  it("rend VoiceTranscriptList vide par défaut (empty state)", () => {
+    render(
+      <CallActiveView elapsedSec={0} onMute={jest.fn()} onHangup={jest.fn()} />,
+    );
+    expect(
+      screen.getByText(/L'agent commence à écouter/),
+    ).toBeInTheDocument();
+  });
+
+  it("rend VoiceTranscriptList avec les transcripts fournis", () => {
+    const transcripts: VoiceTranscript[] = [
+      { speaker: "user", content: "Salut", ts: 1000 },
+      { speaker: "agent", content: "Bonjour !", ts: 2000 },
+    ];
+    render(
+      <CallActiveView
+        elapsedSec={0}
+        onMute={jest.fn()}
+        onHangup={jest.fn()}
+        transcripts={transcripts}
+      />,
+    );
+    expect(screen.getByTestId("voice-transcript-user")).toHaveTextContent(
+      "Salut",
+    );
+    expect(screen.getByTestId("voice-transcript-agent")).toHaveTextContent(
+      "Bonjour !",
+    );
   });
 });

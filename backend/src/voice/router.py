@@ -19,14 +19,18 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+import httpx
 import stripe
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from typing import Optional
 
 from db.database import get_session, VoiceSession, Summary, User, DebateAnalysis
-from auth.dependencies import get_current_user
+from auth.dependencies import get_current_user, http_bearer, oauth2_scheme
+from auth.service import verify_token, get_user_by_id
 from core.config import (
     VOICE_LIMITS,
     APP_URL,
@@ -61,7 +65,7 @@ from voice.quota import (
 )
 from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from voice.streaming_orchestrator import (
-    create_default_orchestrator,
+    create_production_orchestrator,
     PUBSUB_CHANNEL_PREFIX,
     StreamingOrchestrator,
 )
@@ -185,6 +189,63 @@ async def _get_voice_session(session_id: str, db: AsyncSession) -> VoiceSession 
     return result.scalar_one_or_none()
 
 
+async def _get_user_for_sse(
+    token: Optional[str] = Query(
+        None,
+        description=(
+            "JWT token via query param. EventSource (browser SSE) ne peut pas "
+            "envoyer de header Authorization, donc on accepte le token en URL "
+            "comme fallback. Le header Authorization reste prioritaire."
+        ),
+    ),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
+    bearer_token: Optional[str] = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_session),
+) -> User:
+    """SSE-friendly auth dependency.
+
+    Variant of `get_current_user` qui accepte le JWT via query param `?token=`
+    en plus du header Authorization. Skip session_token validation et rate
+    limiting (le SSE est read-only et déjà protégé par le check IDOR
+    session.user_id == user.id en aval).
+    """
+    actual_token = None
+    if credentials:
+        actual_token = credentials.credentials
+    elif bearer_token:
+        actual_token = bearer_token
+    elif token:
+        actual_token = token
+
+    if not actual_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "not_authenticated", "message": "Authentication required."},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = verify_token(actual_token, token_type="access")
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "token_invalid", "message": "Invalid or expired token."},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    sub = payload.get("sub")
+    if sub is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+    try:
+        user_id = int(sub)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return user
+
+
 async def _redis_pubsub_to_sse(redis_client, session_id: str):
     """Subscribe to ``voice:ctx:{session_id}`` and yield SSE-formatted events.
 
@@ -249,7 +310,7 @@ async def _redis_pubsub_to_sse(redis_client, session_id: str):
 @router.get("/context/stream")
 async def stream_video_context(
     session_id: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(_get_user_for_sse),
     db: AsyncSession = Depends(get_session),
     redis=Depends(get_streaming_redis),
 ) -> StreamingResponse:
@@ -1252,7 +1313,19 @@ async def create_voice_session(
                 },
             )
         else:
-            orchestrator = create_default_orchestrator(redis=redis)
+            # V1 extension path (Quick Voice Call V1.1 fix Agent A) :
+            # use the production orchestrator wrapping ultra_resilient transcript
+            # extraction + cached Summary analysis fetchers, instead of the no-op
+            # default factory that left the agent without context.
+            #
+            # Note for V3 mobile path: see the ``if v3_url_path`` branch above —
+            # it wires StreamingOrchestrator directly with ``fetch_for_video_url``
+            # (voice/transcript_fetcher.py) and ``run_for_video`` /
+            # ``final_digest_for_video`` (voice/analysis_runner.py) because V3
+            # already has a Summary placeholder row and a parallel main analysis
+            # pipeline running. V1 has no such placeholder yet, so the production
+            # orchestrator polls/falls back as needed.
+            orchestrator = create_production_orchestrator(redis=redis)
             background_tasks.add_task(
                 orchestrator.run,
                 session_id=voice_session.id,
@@ -1330,6 +1403,66 @@ async def create_voice_session(
                 f"{channel_label} : {rich_ctx.channel_name}\n"
                 f"{duration_label} : {rich_ctx.duration_str}\n\n"
                 f"{context_block}"
+            )
+        elif request.is_streaming and request.video_id:
+            # Quick Voice Call V1.1 — inject minimal video meta from the start.
+            # On streaming sessions there is no Summary row yet (the analysis
+            # arrives progressively via SSE). Without this block the agent
+            # would say "I'm starting to listen to this video" without knowing
+            # WHICH video. We resolve title+channel via YouTube oEmbed
+            # (1 request, <100ms typical, no API key required) so the system
+            # prompt carries enough context from turn #1.
+            title = (request.video_title or "").strip()
+            channel = ""
+            try:
+                async with httpx.AsyncClient(timeout=2.0) as client:
+                    oembed_resp = await client.get(
+                        "https://www.youtube.com/oembed",
+                        params={
+                            "url": f"https://www.youtube.com/watch?v={request.video_id}",
+                            "format": "json",
+                        },
+                    )
+                    if oembed_resp.status_code == 200:
+                        oembed_data = oembed_resp.json()
+                        title = title or (oembed_data.get("title") or "")
+                        channel = oembed_data.get("author_name") or ""
+            except Exception as oembed_exc:  # noqa: BLE001 — best-effort
+                logger.warning(
+                    "Voice streaming session: YouTube oEmbed lookup failed (non-fatal)",
+                    extra={
+                        "video_id": request.video_id,
+                        "error": str(oembed_exc),
+                    },
+                )
+
+            ctx_label = "VIDÉO ÉCOUTÉE" if language == "fr" else "VIDEO BEING WATCHED"
+            title_label = "Titre" if language == "fr" else "Title"
+            channel_label = "Chaîne" if language == "fr" else "Channel"
+            id_label = "YouTube ID"
+            stream_note = (
+                "Le transcript et l'analyse complète arrivent en streaming via [CTX UPDATE: ...]."
+                if language == "fr"
+                else "The transcript and full analysis are streaming in via [CTX UPDATE: ...]."
+            )
+            meta_lines = [f"--- {ctx_label} ---"]
+            if title:
+                meta_lines.append(f"{title_label} : {title}")
+            if channel:
+                meta_lines.append(f"{channel_label} : {channel}")
+            meta_lines.append(f"{id_label} : {request.video_id}")
+            meta_lines.append(stream_note)
+            meta_block = "\n".join(meta_lines)
+            system_prompt = f"{agent_prompt}\n\n{meta_block}"
+
+            logger.info(
+                "Voice streaming session: injected video meta into system prompt",
+                extra={
+                    "session_id": voice_session.id,
+                    "video_id": request.video_id,
+                    "title_known": bool(title),
+                    "channel_known": bool(channel),
+                },
             )
         else:
             system_prompt = agent_prompt

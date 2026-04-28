@@ -366,6 +366,11 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
           elapsedSec={elapsedSec}
           onMute={voiceChat.toggleMute}
           onHangup={handleHangup}
+          onApplyHardChanges={() => {
+            void voiceChat.restartSession();
+          }}
+          restarting={voiceChat.isRestarting}
+          transcripts={voiceChat.transcripts}
         />
         <ContextProgressBar
           progress={contextProgress}

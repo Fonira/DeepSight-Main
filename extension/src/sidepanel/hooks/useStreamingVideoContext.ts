@@ -27,6 +27,7 @@
 // fallback sur web_search côté ElevenLabs tools.
 
 import { useEffect, useRef, useState } from "react";
+import Browser from "../../utils/browser-polyfill";
 import { API_BASE_URL } from "../../utils/config";
 
 interface ConversationLike {
@@ -90,57 +91,88 @@ export function useStreamingVideoContext(
   useEffect(() => {
     if (!sessionId) return;
 
-    // API_BASE_URL inclut déjà `/api`, donc URL finale = `/api/voice/context/stream`
-    const url = `${API_BASE_URL}/voice/context/stream?session_id=${encodeURIComponent(sessionId)}`;
-    const es = new EventSource(url, { withCredentials: true });
+    let es: EventSource | null = null;
+    let cancelled = false;
 
-    es.addEventListener("transcript_chunk", (e: MessageEvent) => {
+    const attachListeners = (source: EventSource): void => {
+      source.addEventListener("transcript_chunk", (e: MessageEvent) => {
+        try {
+          const data = JSON.parse(e.data) as {
+            chunk_index: number;
+            total_chunks: number;
+            text: string;
+          };
+          pushOrBuffer(
+            `[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`,
+          );
+          setContextProgress(
+            ((data.chunk_index + 1) / data.total_chunks) * 100,
+          );
+        } catch {
+          /* malformed event — drop */
+        }
+      });
+
+      source.addEventListener("analysis_partial", (e: MessageEvent) => {
+        try {
+          const data = JSON.parse(e.data) as {
+            section: string;
+            content: string;
+          };
+          pushOrBuffer(
+            `[CTX UPDATE: analysis ${data.section}]\n${data.content}`,
+          );
+        } catch {
+          /* malformed event — drop */
+        }
+      });
+
+      source.addEventListener("ctx_complete", (e: MessageEvent) => {
+        try {
+          const data = JSON.parse(e.data) as {
+            final_digest_summary: string;
+          };
+          pushOrBuffer(`[CTX COMPLETE]\n${data.final_digest_summary}`);
+        } catch {
+          pushOrBuffer("[CTX COMPLETE]");
+        }
+        setContextComplete(true);
+        setContextProgress(100);
+      });
+
+      source.addEventListener("error", () => {
+        // SSE error — keep call going; ElevenLabs agent fallback to web_search.
+      });
+    };
+
+    const open = async (): Promise<void> => {
+      // EventSource ne peut PAS envoyer de header Authorization (limitation
+      // navigateur). Le backend `/voice/context/stream` accepte donc le JWT
+      // via le query param `?token=...` en plus du header. On récupère le
+      // access_token courant via le service worker.
+      let token = "";
       try {
-        const data = JSON.parse(e.data) as {
-          chunk_index: number;
-          total_chunks: number;
-          text: string;
-        };
-        pushOrBuffer(
-          `[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`,
-        );
-        setContextProgress(((data.chunk_index + 1) / data.total_chunks) * 100);
+        const res = (await Browser.runtime.sendMessage({
+          action: "GET_AUTH_TOKEN",
+        })) as { success?: boolean; result?: { token?: string } };
+        token = res?.success ? (res.result?.token ?? "") : "";
       } catch {
-        /* malformed event — drop */
+        // SW indispo (rare) — on tente sans token, le backend renverra 401.
       }
-    });
+      if (cancelled) return;
+      const url =
+        `${API_BASE_URL}/voice/context/stream` +
+        `?session_id=${encodeURIComponent(sessionId)}` +
+        (token ? `&token=${encodeURIComponent(token)}` : "");
+      es = new EventSource(url, { withCredentials: true });
+      attachListeners(es);
+    };
 
-    es.addEventListener("analysis_partial", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as {
-          section: string;
-          content: string;
-        };
-        pushOrBuffer(`[CTX UPDATE: analysis ${data.section}]\n${data.content}`);
-      } catch {
-        /* malformed event — drop */
-      }
-    });
-
-    es.addEventListener("ctx_complete", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as {
-          final_digest_summary: string;
-        };
-        pushOrBuffer(`[CTX COMPLETE]\n${data.final_digest_summary}`);
-      } catch {
-        pushOrBuffer("[CTX COMPLETE]");
-      }
-      setContextComplete(true);
-      setContextProgress(100);
-    });
-
-    es.addEventListener("error", () => {
-      // SSE error — keep call going; ElevenLabs agent fallback to web_search.
-    });
+    void open();
 
     return () => {
-      es.close();
+      cancelled = true;
+      es?.close();
       pendingMessagesRef.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

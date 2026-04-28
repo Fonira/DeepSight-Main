@@ -13,11 +13,15 @@ The transcript fetcher and analysis runner are passed as callables so the
 orchestrator stays decoupled from the legacy 7-method transcript chain
 (which has its own retry/circuit-breaker semantics) — production wires the
 real helpers, tests pass mocks.
+
+The V1.1 production wiring (``create_production_orchestrator``) plugs the
+real services onto the same callable contract, with tests below mocking
+``extract_transcript_for_analysis`` and the DB session.
 """
 
 import json
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from voice.streaming_orchestrator import StreamingOrchestrator
 
@@ -216,3 +220,137 @@ async def test_transcript_and_analysis_run_in_parallel():
     await orch.run(session_id="parallel", video_id="vid", user_id=1)
     assert analysis_started == [True]
     assert chunks_emitted == [0, 1]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Production wiring tests (Quick Voice Call V1.1)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_production_orchestrator_publishes_transcript_chunks():
+    """The production orchestrator splits the transcript and emits chunks.
+
+    Mocks ``extract_transcript_for_analysis`` to return a long fake transcript,
+    asserts more than one ``transcript_chunk`` event is published on the
+    Redis pubsub channel.
+    """
+    from voice.streaming_orchestrator import (
+        TRANSCRIPT_CHUNK_SIZE_CHARS,
+        create_production_orchestrator,
+    )
+
+    redis = AsyncMock()
+
+    # Three full chunks worth of transcript text — guarantees >=3 chunk events.
+    fake_transcript = "x" * (TRANSCRIPT_CHUNK_SIZE_CHARS * 3)
+
+    async def _fake_extract(video_id, user_language="fr"):
+        return {"success": True, "transcript": fake_transcript}
+
+    # No DB cache → analysis returns {} → no analysis_partial events.
+    async def _fake_get_session():
+        # Empty async generator: no yield → analysis path returns early.
+        if False:  # pragma: no cover
+            yield None
+
+    with patch(
+        "transcripts.ultra_resilient.extract_transcript_for_analysis",
+        new=AsyncMock(side_effect=_fake_extract),
+    ), patch(
+        "db.database.get_session",
+        new=_fake_get_session,
+    ):
+        orch = create_production_orchestrator(redis=redis)
+        await orch.run(session_id="prod-1", video_id="vidProd", user_id=1)
+
+    events = [c["event"] for c in _decode_calls(redis)]
+    transcript_events = [e for e in events if e["type"] == "transcript_chunk"]
+    assert len(transcript_events) >= 3, f"expected >=3 chunk events, got {len(transcript_events)}"
+    # Indices are 0-based and contiguous.
+    indices = [e["chunk_index"] for e in transcript_events]
+    assert indices == list(range(len(transcript_events)))
+    assert all(e["total_chunks"] == len(transcript_events) for e in transcript_events)
+
+
+@pytest.mark.asyncio
+async def test_production_orchestrator_publishes_ctx_complete():
+    """A non-empty ``final_digest_summary`` is published on ctx_complete.
+
+    With a cached Summary in the DB, the digest comes from the first 500
+    chars of ``summary_content``.
+    """
+    from voice.streaming_orchestrator import create_production_orchestrator, FINAL_DIGEST_MAX_CHARS
+
+    redis = AsyncMock()
+    fake_summary = "Cette vidéo parle de cosmologie et de matière noire. " * 30  # > 500 chars
+
+    # Build a fake DB session that returns one Summary row matching the user.
+    fake_row = MagicMock()
+    fake_row.summary_content = fake_summary
+    fake_row.video_title = "Test Video"
+    fake_row.video_channel = "Test Channel"
+
+    async def _fake_extract(video_id, user_language="fr"):
+        return {"success": True, "transcript": "short text"}
+
+    fake_db = AsyncMock()
+    fake_result = MagicMock()
+    fake_result.scalar_one_or_none = MagicMock(return_value=fake_row)
+    fake_db.execute = AsyncMock(return_value=fake_result)
+
+    async def _fake_get_session():
+        yield fake_db
+
+    with patch(
+        "transcripts.ultra_resilient.extract_transcript_for_analysis",
+        new=AsyncMock(side_effect=_fake_extract),
+    ), patch(
+        "db.database.get_session",
+        new=_fake_get_session,
+    ):
+        orch = create_production_orchestrator(redis=redis)
+        await orch.run(session_id="prod-2", video_id="vidProd2", user_id=42)
+
+    events = [c["event"] for c in _decode_calls(redis)]
+    assert events[-1]["type"] == "ctx_complete"
+    digest = events[-1]["final_digest_summary"]
+    assert digest, "final_digest_summary must not be empty when a Summary cache exists"
+    assert len(digest) <= FINAL_DIGEST_MAX_CHARS
+    # Digest is a prefix of the cached summary.
+    assert fake_summary.startswith(digest)
+
+
+@pytest.mark.asyncio
+async def test_production_orchestrator_handles_transcript_failure():
+    """When transcript extraction raises, an error event is emitted but
+    ``ctx_complete`` is still published at the end of the run."""
+    from voice.streaming_orchestrator import create_production_orchestrator
+
+    redis = AsyncMock()
+
+    async def _boom(video_id, user_language="fr"):
+        raise RuntimeError("supadata down")
+
+    async def _empty_session():
+        if False:  # pragma: no cover
+            yield None
+
+    with patch(
+        "transcripts.ultra_resilient.extract_transcript_for_analysis",
+        new=AsyncMock(side_effect=_boom),
+    ), patch(
+        "db.database.get_session",
+        new=_empty_session,
+    ):
+        orch = create_production_orchestrator(redis=redis)
+        await orch.run(session_id="prod-3", video_id="vidBoom", user_id=7)
+
+    events = [c["event"] for c in _decode_calls(redis)]
+    error_events = [e for e in events if e["type"] == "error"]
+    assert error_events, "expected an error event when transcript extraction raised"
+    assert any(e.get("phase") == "transcript" for e in error_events)
+    # ctx_complete is always emitted last so the SSE consumer can close cleanly.
+    assert events[-1]["type"] == "ctx_complete"
+    # When no analysis cache and no transcript, digest fallback string applies.
+    assert events[-1]["final_digest_summary"] == "Analyse non disponible"

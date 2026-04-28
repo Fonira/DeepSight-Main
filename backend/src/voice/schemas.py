@@ -28,6 +28,16 @@ class VoiceSessionRequest(BaseModel):
         default=None,
         description="YouTube video ID for streaming sessions (Quick Voice Call V1)",
     )
+    video_title: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description=(
+            "Optional video title hint pushed by the client (Quick Voice Call V1.1). "
+            "When ``is_streaming=True`` the backend uses it to build the initial "
+            "system prompt so the agent knows which video is being watched even "
+            "before the SSE transcript stream starts arriving."
+        ),
+    )
     is_streaming: bool = Field(
         default=False,
         description="True for Quick Voice Call sessions (asynchronous progressive context)",

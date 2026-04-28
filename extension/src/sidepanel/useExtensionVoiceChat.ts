@@ -96,8 +96,20 @@ interface UseExtensionVoiceChatResult {
   endSession: () => Promise<void>;
   /** Toggle micro côté navigateur (mute/unmute). */
   toggleMute: () => void;
+  /**
+   * Restart silencieux : ferme la session ElevenLabs courante + en recrée
+   * une nouvelle avec les options du dernier `startSession()`. Préserve
+   * `transcripts[]` et le timer d'appel (`sessionStartedAt`) pour que
+   * l'utilisateur ne perde ni l'historique ni le compteur visuel.
+   * No-op si aucune session active.
+   */
+  restartSession: () => Promise<VoiceSessionResponse | null>;
   /** Vrai si la dernière session était l'essai gratuit free user. */
   lastSessionWasTrial: boolean;
+  /** Vrai pendant un restart silencieux (UI peut afficher un pulse). */
+  isRestarting: boolean;
+  /** État courant du mute micro. */
+  isMuted: boolean;
   /** Instance du SDK ElevenLabs (pour `sendUserMessage` côté streaming hook). */
   conversation: { sendUserMessage: (msg: string) => void } | null;
 }
@@ -238,12 +250,18 @@ export function useExtensionVoiceChat(
   const [conversation, setConversation] = useState<{
     sendUserMessage: (msg: string) => void;
   } | null>(null);
+  const [isRestarting, setIsRestarting] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const isMutedRef = useRef(false);
+  // Mémorise les opts du dernier startSession() pour permettre restartSession()
+  // sans demander au caller de les re-fournir.
+  const lastStartOptsRef = useRef<StartSessionOpts | null>(null);
 
   const startSession = useCallback(
     async (opts: StartSessionOpts): Promise<VoiceSessionResponse> => {
       setError(null);
       setStatus("requesting");
+      lastStartOptsRef.current = opts;
       const payload: Record<string, unknown> = {
         agent_type: opts.agentType,
         video_id: opts.videoId,
@@ -330,26 +348,78 @@ export function useExtensionVoiceChat(
   }, []);
 
   const toggleMute = useCallback((): void => {
-    isMutedRef.current = !isMutedRef.current;
-    // Toggle de toutes les pistes audio MediaStream actives.
-    // ElevenLabs SDK expose pas directement le micro track — on tente via
-    // navigator.mediaDevices si présent (best-effort, no-op en jsdom).
-    const md = (
-      navigator as unknown as {
-        mediaDevices?: { getUserMedia?: () => Promise<MediaStream> };
+    const next = !isMutedRef.current;
+    isMutedRef.current = next;
+    setIsMuted(next);
+    // 1) API SDK native (ElevenLabs Conversation expose `setMicMuted` à
+    //    partir de 0.15.x). C'est la seule façon fiable d'agir sur le track
+    //    qui transmet vraiment à l'agent.
+    // 2) Fallback : on tente de retrouver le track via les MediaStreams
+    //    associés à WebRTC (RTCPeerConnection.getSenders).
+    void (async () => {
+      try {
+        const sdk = await loadElevenLabsSdk();
+        const ok = sdk?.setMuted?.(next);
+        if (ok) return;
+      } catch {
+        /* swallow — fallback ci-dessous */
       }
-    ).mediaDevices;
-    if (!md?.getUserMedia) return;
-    md.getUserMedia()
-      .then((stream) => {
-        for (const track of stream.getAudioTracks()) {
-          track.enabled = !isMutedRef.current;
+      // Fallback : appel correct getUserMedia avec { audio: true }, parcours
+      // de tous les peer connections WebRTC actifs pour disable le track audio.
+      const md = (
+        navigator as unknown as {
+          mediaDevices?: {
+            getUserMedia?: (c: MediaStreamConstraints) => Promise<MediaStream>;
+          };
         }
-      })
-      .catch(() => {
+      ).mediaDevices;
+      if (!md?.getUserMedia) return;
+      try {
+        const stream = await md.getUserMedia({ audio: true });
+        for (const track of stream.getAudioTracks()) {
+          track.enabled = !next;
+        }
+      } catch {
         /* swallow — best-effort */
-      });
+      }
+    })();
   }, []);
+
+  const restartSession =
+    useCallback(async (): Promise<VoiceSessionResponse | null> => {
+      const opts = lastStartOptsRef.current;
+      if (!opts) return null;
+      if (status !== "listening" && status !== "connecting") return null;
+
+      const preservedStart = sessionStartedAt.current;
+      setIsRestarting(true);
+      setError(null);
+      try {
+        // Phase 1 : couper la WS courante.
+        try {
+          const sdk = await loadElevenLabsSdk();
+          await sdk?.disconnect?.();
+        } catch {
+          /* swallow */
+        }
+        if (cancelled.current) return null;
+        setConversation(null);
+
+        // Phase 2 : recréer une session avec les mêmes opts.
+        // startSession() écrasera sessionStartedAt — on le restaurera après.
+        const session = await startSession(opts);
+        if (cancelled.current) return null;
+        // Préserve le timer original — la "session perçue" continue.
+        sessionStartedAt.current = preservedStart;
+        return session;
+      } catch (e) {
+        if (cancelled.current) return null;
+        setError((e as Error).message || "Restart échoué.");
+        return null;
+      } finally {
+        if (!cancelled.current) setIsRestarting(false);
+      }
+    }, [startSession, status]);
 
   return {
     status,
@@ -363,7 +433,10 @@ export function useExtensionVoiceChat(
     startSession,
     endSession,
     toggleMute,
+    restartSession,
     lastSessionWasTrial,
+    isRestarting,
+    isMuted,
     conversation,
   };
 }
@@ -379,6 +452,12 @@ interface ElevenLabsSdk {
   /** Quick Voice Call (Task 16) — pousse un message user textuel à l'agent
    * (utilisé pour propager les events SSE `[CTX UPDATE: …]`). */
   sendUserMessage?: (message: string) => void;
+  /**
+   * Mute/unmute le micro côté SDK ElevenLabs. Renvoie `true` si la
+   * Conversation a accepté la commande (méthode native trouvée), `false`
+   * si on doit fallback sur la manipulation directe des MediaStreams.
+   */
+  setMuted?: (muted: boolean) => boolean;
 }
 
 let cachedSdk: ElevenLabsSdk | null = null;
@@ -438,6 +517,23 @@ async function loadElevenLabsSdk(): Promise<ElevenLabsSdk | null> {
             /* swallow — best-effort si l'agent est déconnecté */
           }
         },
+        setMuted: (muted: boolean): boolean => {
+          // ElevenLabs Conversation expose `setMicMuted(boolean)` à partir
+          // de @elevenlabs/client 0.15.x. On essaie cette méthode puis
+          // `setVolume(0)` comme fallback partiel (mute side reception only).
+          try {
+            const conv = activeConv as unknown as {
+              setMicMuted?: (m: boolean) => void;
+            };
+            if (typeof conv?.setMicMuted === "function") {
+              conv.setMicMuted(muted);
+              return true;
+            }
+          } catch {
+            /* swallow */
+          }
+          return false;
+        },
       };
       return cachedSdk;
     } catch {
@@ -455,6 +551,7 @@ async function loadElevenLabsSdk(): Promise<ElevenLabsSdk | null> {
 interface ConversationInstance {
   endSession(): Promise<void>;
   sendUserMessage?(message: string): void;
+  setMicMuted?(muted: boolean): void;
 }
 
 interface ConversationStatic {

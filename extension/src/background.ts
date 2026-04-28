@@ -477,6 +477,23 @@ async function appendVoiceTranscript(
   });
 }
 
+async function getVoicePreferences(): Promise<unknown> {
+  return apiRequest<unknown>("/voice/preferences");
+}
+
+async function updateVoicePreferences(
+  payload: Record<string, unknown>,
+): Promise<unknown> {
+  return apiRequest<unknown>("/voice/preferences", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+async function getVoiceCatalog(): Promise<unknown> {
+  return apiRequest<unknown>("/voice/catalog");
+}
+
 // ── Side Panel — handler d'ouverture ──
 //
 // Le side panel API n'existe que sur Chrome (≥114) et certains forks
@@ -1093,6 +1110,51 @@ async function handleExtensionMessage(
       try {
         const result = await appendVoiceTranscript(payload);
         return { success: true, result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "VOICE_GET_PREFERENCES": {
+      try {
+        const result = await getVoicePreferences();
+        return { success: true, result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "VOICE_UPDATE_PREFERENCES": {
+      const payload = (message.data as Record<string, unknown>) ?? {};
+      try {
+        const result = await updateVoicePreferences(payload);
+        return { success: true, result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "VOICE_GET_CATALOG": {
+      try {
+        const result = await getVoiceCatalog();
+        return { success: true, result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "GET_AUTH_TOKEN": {
+      // Side panel/content scripts ne peuvent pas lire les tokens directement
+      // (storage.local n'est accessible qu'au SW pour des raisons de sécurité
+      // de notre architecture). On expose le access_token courant pour les
+      // cas où il faut l'attacher à une URL (ex: EventSource SSE qui ne peut
+      // pas envoyer de header Authorization).
+      try {
+        const { accessToken } = await getStoredTokens();
+        if (!accessToken) {
+          return { success: false, error: "Not authenticated" };
+        }
+        return { success: true, result: { token: accessToken } };
       } catch (e) {
         return { success: false, error: (e as Error).message };
       }
