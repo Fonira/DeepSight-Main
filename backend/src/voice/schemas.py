@@ -413,3 +413,73 @@ class VoiceThumbnailResponse(BaseModel):
         description="Gradient DeepSight (toujours fourni comme secours CSS).",
     )
     alt_text: str = Field(description="Texte alternatif pour accessibilité.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPANION (Coach Vocal de Découverte) — schemas Task 1
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+RecoSource = Literal["history_similarity", "trending", "tournesol", "youtube"]
+
+
+class RecoItem(BaseModel):
+    """Recommandation vidéo proposée par le Companion."""
+
+    video_id: str
+    title: str
+    channel: str
+    duration_seconds: int
+    source: RecoSource
+    why: str = Field(..., description="Accroche personnalisée 1 phrase")
+    thumbnail_url: Optional[str] = None
+
+
+class ProfileBlock(BaseModel):
+    """Profil utilisateur injecté dans le contexte du Companion."""
+
+    prenom: str
+    plan: str
+    langue: str
+    total_analyses: int
+    recent_titles: list[str] = Field(default_factory=list, description="5 derniers titres")
+    themes: list[str] = Field(default_factory=list, description="Top 3 thèmes")
+    streak_days: int = 0
+    flashcards_due_today: int = 0
+
+
+class CompanionContextResponse(BaseModel):
+    """Payload renvoyé au démarrage d'une session Companion."""
+
+    profile: ProfileBlock
+    initial_recos: list[RecoItem]
+    cache_hit: bool = False
+
+
+class GetMoreRecosRequest(BaseModel):
+    """Requête pour obtenir des recommandations supplémentaires sur un thème."""
+
+    topic: str
+    source: Optional[RecoSource] = None
+    exclude_video_ids: list[str] = Field(default_factory=list)
+
+
+class GetMoreRecosResponse(BaseModel):
+    """Liste de recommandations renvoyée au Companion."""
+
+    recos: list[RecoItem]
+
+
+class StartAnalysisRequest(BaseModel):
+    """Déclenchement d'une analyse via la voix du Companion."""
+
+    video_url: str
+
+
+class StartAnalysisResponse(BaseModel):
+    """Réponse au déclenchement d'analyse vocal (idempotent)."""
+
+    summary_id: int
+    status: Literal["started", "duplicate", "rejected"]
+    eta_seconds: int = 120
+    message: Optional[str] = None
