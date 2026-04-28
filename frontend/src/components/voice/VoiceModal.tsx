@@ -26,7 +26,6 @@ import {
   RotateCcw,
   Settings2,
   Video,
-  Info,
 } from "lucide-react";
 import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 import { VoiceToolIndicator } from "./VoiceToolIndicator";
@@ -37,7 +36,6 @@ import { VoicePTTButton } from "./VoicePTTButton";
 import DoodleBackground from "../DoodleBackground";
 import { voiceApi, type VoiceThumbnailResponse } from "../../services/api";
 import { ThumbnailImage } from "./utils/ThumbnailImage";
-import { subscribeVoicePrefsEvents } from "./voicePrefsBus";
 
 // Lazy-load VoiceSettings to avoid circular imports + reduce initial bundle
 const VoiceSettings = lazy(() => import("./VoiceSettings"));
@@ -100,8 +98,6 @@ interface VoiceModalProps {
   avatarFallback?: string;
   /** Niveau micro temps réel [0,1] — drive waveform + halo PTT. */
   micLevel?: number;
-  /** Redémarre la session (stop + start) pour appliquer de nouveaux paramètres. */
-  onRestart?: () => void | Promise<void>;
 }
 
 /** Format seconds to MM:SS */
@@ -274,7 +270,6 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   avatarStatus = "unavailable",
   avatarFallback,
   micLevel = 0,
-  onRestart,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -283,30 +278,6 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   const descId = useId();
   const { language } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
-  // Flag set when a pref change requires a fresh session (voice, concise mode,
-  // model). Banner then offers a one-click restart button.
-  const [restartRequired, setRestartRequired] = useState(false);
-  const [restarting, setRestarting] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = subscribeVoicePrefsEvents((event) => {
-      if (event.type === "restart_required") {
-        setRestartRequired(true);
-      }
-    });
-    return unsubscribe;
-  }, []);
-
-  const handleRestart = useCallback(async () => {
-    if (!onRestart) return;
-    setRestarting(true);
-    try {
-      await onRestart();
-      setRestartRequired(false);
-    } finally {
-      setRestarting(false);
-    }
-  }, [onRestart]);
 
   // 🖼️ Thumbnail HD backend (fetch asynchrone, fallback silencieux sur videoThumbnailUrl).
   // Le backend garantit l'URL HD YouTube (maxresdefault) ou une image générée
@@ -910,9 +881,9 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             )}
             {/* ── Settings panel overlay (in-modal) ───────────────────── */}
             {/* Non-destructive overlay: the active call keeps running behind.
-                The banner below tells the user changes apply to the NEXT call
-                so we never kill the ElevenLabs session to reconfigure — the
-                SDK must not be forced to tear down mid-call. */}
+                Staged changes are applied via the global StagedPrefsToolbar
+                which triggers the restart through the voice prefs bus — we
+                never kill the ElevenLabs session to reconfigure mid-call. */}
             <AnimatePresence>
               {showSettings && (
                 <motion.div
@@ -957,61 +928,6 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       </button>
                     </div>
                   </div>
-                  {/* Banner — ambers when a pending change needs a new
-                      session; offers one-click restart. */}
-                  {hasActiveSession && (
-                    <div
-                      className={`mx-3 sm:mx-5 mt-3 flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs flex-shrink-0 transition-colors ${
-                        restartRequired
-                          ? "bg-amber-500/10 border border-amber-400/30 text-amber-100"
-                          : "bg-indigo-500/10 border border-indigo-400/25 text-indigo-200/90"
-                      }`}
-                    >
-                      <Info
-                        className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
-                          restartRequired ? "text-amber-300" : "text-indigo-300"
-                        }`}
-                      />
-                      <div className="leading-relaxed flex-1">
-                        <span
-                          className={`font-semibold ${
-                            restartRequired
-                              ? "text-amber-200"
-                              : "text-indigo-200"
-                          }`}
-                        >
-                          {restartRequired
-                            ? tr("Redémarrage requis", "Restart required")
-                            : tr("Appel en cours", "Call in progress")}
-                          {" — "}
-                        </span>
-                        {restartRequired
-                          ? tr(
-                              "certains changements (voix, mode concis, modèle) demandent une nouvelle session pour s'appliquer.",
-                              "some changes (voice, concise mode, model) require a new session to take effect.",
-                            )
-                          : tr(
-                              "vitesse de lecture appliquée en direct. Les autres changements s'appliqueront au prochain appel.",
-                              "playback speed applies live. Other changes will apply on your next call.",
-                            )}
-                      </div>
-                      {restartRequired && onRestart && (
-                        <button
-                          type="button"
-                          onClick={handleRestart}
-                          disabled={restarting}
-                          className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-500 text-[#0a0a0f] font-semibold text-[11px] hover:bg-amber-400 transition-colors disabled:opacity-60 disabled:cursor-wait flex-shrink-0 focus-visible:ring-2 focus-visible:ring-amber-300"
-                        >
-                          <RotateCcw
-                            className={`w-3.5 h-3.5 ${restarting ? "animate-spin" : ""}`}
-                          />
-                          {restarting
-                            ? tr("Redémarrage…", "Restarting…")
-                            : tr("Redémarrer", "Restart")}
-                        </button>
-                      )}
-                    </div>
-                  )}
                   <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3">
                     <Suspense
                       fallback={

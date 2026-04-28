@@ -11,7 +11,10 @@ import {
   type RefObject,
 } from "react";
 import { API_URL, getAccessToken } from "../../services/api";
-import { subscribeVoicePrefsEvents } from "./voicePrefsBus";
+import {
+  subscribeVoicePrefsEvents,
+  emitVoicePrefsEvent,
+} from "./voicePrefsBus";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -373,6 +376,7 @@ export function useVoiceChat({
       voiceSessionIdRef.current = null;
       setSessionStartedAt(null);
     }
+    emitVoicePrefsEvent({ type: "call_status_changed", active: false });
   }, [
     stopTimer,
     releaseMediaStream,
@@ -405,6 +409,9 @@ export function useVoiceChat({
 
   // Prewarm: précharge le SDK ElevenLabs côté client pour économiser ~200-300ms au clic
   const prewarmedRef = useRef(false);
+  // Guard contre les démarrages concurrents — closure-safe (les refs ne sont
+  // jamais capturées de façon obsolète, contrairement à la valeur de `status`).
+  const isStartingRef = useRef(false);
   const prewarm = useCallback(() => {
     if (prewarmedRef.current) return;
     prewarmedRef.current = true;
@@ -415,15 +422,15 @@ export function useVoiceChat({
   }, []);
 
   const start = useCallback(async () => {
-    // Empêcher les démarrages multiples
-    if (
-      status === "connecting" ||
-      status === "listening" ||
-      status === "speaking"
-    ) {
+    // Empêcher les démarrages multiples (ref-based pour éviter le closure trap :
+    // une useCallback qui dépend de `status` capture une valeur obsolète quand
+    // restart() relance start() depuis le bus listener).
+    if (isStartingRef.current || conversationRef.current) {
       return;
     }
+    isStartingRef.current = true;
 
+    try {
     setError(null);
     setMessages([]);
     setElapsedSeconds(0);
@@ -534,6 +541,7 @@ export function useVoiceChat({
             // Spec #5 — timestamp précis du démarrage pour time_in_call_secs
             setSessionStartedAt(Date.now());
           }
+          emitVoicePrefsEvent({ type: "call_status_changed", active: true });
         },
         onDisconnect: () => {
           if (isMountedRef.current) {
@@ -657,8 +665,10 @@ export function useVoiceChat({
       releaseMediaStream();
       reportError(ERROR_MESSAGES.SDK_LOAD_FAILED);
     }
+    } finally {
+      isStartingRef.current = false;
+    }
   }, [
-    status,
     summaryId,
     debateId,
     agentType,
@@ -714,6 +724,16 @@ export function useVoiceChat({
     });
     return unsubscribe;
   }, [applyPlaybackRate, cleanupPlaybackObserver, cleanupPlaybackPolling]);
+
+  // Live-restart when the staging provider applies a restart-required diff.
+  useEffect(() => {
+    const unsubscribe = subscribeVoicePrefsEvents((event) => {
+      if (event.type !== "apply_with_restart") return;
+      if (!conversationRef.current) return;
+      void restart();
+    });
+    return unsubscribe;
+  }, [restart]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Cleanup on unmount
