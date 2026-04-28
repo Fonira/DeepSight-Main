@@ -1,7 +1,8 @@
 """List tools (projects, memory)."""
 
 from pathlib import Path
-from typing import TypedDict
+
+from typing_extensions import TypedDict
 
 from vault_mcp.config import Settings
 

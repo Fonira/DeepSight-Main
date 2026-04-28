@@ -1,7 +1,8 @@
 """Search across vault markdown files."""
 
 from pathlib import Path
-from typing import TypedDict
+
+from typing_extensions import TypedDict
 
 from vault_mcp.config import Settings
 from vault_mcp.security import FORBIDDEN_DIRS
