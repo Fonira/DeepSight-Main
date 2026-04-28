@@ -1,88 +1,97 @@
 /**
- * SunflowerLayer — Route-aware sunflower mascot that follows the sun trajectory.
+ * SunflowerLayer v3.1 — inline SVG faithful to the official Tournesol logo.
  *
- * Two variants based on the current route:
- *   - hero    (on landing/auth routes): centered, larger sprite (90×90)
- *   - mascot  (everywhere else):        bottom-right corner, smaller (76×76)
- *
- * Uses sprite sheet driven by AmbientPresetV3.frameIndex (0..23 → 24 frames
- * laid out 6×4 in a 1536×1024 webp). Day/night variant chosen by preset.
+ * Mascot positionné au coin opposé au soleil (le rayon descend en diagonale
+ * et "tape" le coin opposé, c'est là qu'on place le tournesol pour qu'il
+ * regarde le rayon en arrivant). 4 phases (dawn/day/dusk/night), rotation
+ * héliotrope CSS ±85°, halo bioluminescent pulsant la nuit.
  */
 
-import { useLocation } from "react-router-dom";
+import {
+  buildSunflowerSVG,
+  getSunflowerPhase,
+  getSunflowerRotation,
+  getSunflowerOpacity,
+  SUNFLOWER_HALOS,
+} from "@deepsight/lighting-engine";
 import { useAmbientLightingContext } from "../contexts/AmbientLightingContext";
 
-const HERO_ROUTES = ["/", "/login", "/signup", "/forgot-password"];
-const GRID_COLS = 6;
+const FLOWER_SIZE = 88;
+const HALO_SIZE = Math.round(FLOWER_SIZE * 1.6);
+const TRANSITION =
+  "transform 1.5s cubic-bezier(0.4,0,0.2,1), opacity 1.5s cubic-bezier(0.4,0,0.2,1)";
 
-function getSpritePosition(frameIndex: number, displaySize: number): string {
-  const col = frameIndex % GRID_COLS;
-  const row = Math.floor(frameIndex / GRID_COLS);
-  return `-${col * displaySize}px -${row * displaySize}px`;
+/**
+ * Soleil dans la moitié droite (sun.x > 50) → rayon descend vers bas-gauche
+ * → place le tournesol bottom-left. Et inversement. La nuit (sun.visible = false)
+ * on suit la lune.
+ */
+function pickCorner(
+  sunX: number,
+  sunVisible: boolean,
+  moonX: number,
+): "left" | "right" {
+  const x = sunVisible ? sunX : moonX;
+  return x > 50 ? "left" : "right";
 }
 
 export function SunflowerLayer() {
-  const location = useLocation();
   const { preset, enabled } = useAmbientLightingContext();
   if (!enabled) return null;
 
-  const isHero = HERO_ROUTES.includes(location.pathname);
-  const sprite =
-    preset.nightMode === "glowing"
-      ? "sunflower-night.webp"
-      : "sunflower-day.webp";
-  const url = `/assets/ambient/${sprite}`;
-  const displaySize = isHero ? 90 : 76;
-  const position = getSpritePosition(preset.frameIndex, displaySize);
-
-  if (isHero) {
-    return (
-      <div
-        aria-hidden="true"
-        className="sunflower-hero"
-        style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: displaySize,
-          height: displaySize,
-          backgroundImage: `url(${url})`,
-          backgroundSize: `${displaySize * GRID_COLS}px auto`,
-          backgroundPosition: position,
-          backgroundRepeat: "no-repeat",
-          backgroundClip: "border-box",
-          imageRendering: "crisp-edges",
-          pointerEvents: "none",
-          zIndex: 2,
-          opacity: preset.beam.opacity * 0.9,
-          transition: "opacity 4s cubic-bezier(0.4,0,0.2,1)",
-        }}
-      />
-    );
-  }
+  const phase = getSunflowerPhase(preset.frameIndex);
+  const rotation = getSunflowerRotation(preset.frameIndex);
+  const opacity = getSunflowerOpacity(preset.frameIndex);
+  const halo = SUNFLOWER_HALOS[phase];
+  const corner = pickCorner(preset.sun.x, preset.sun.visible, preset.moon.x);
+  const edgeOffset = 24 - (HALO_SIZE - FLOWER_SIZE) / 2;
 
   return (
     <div
       aria-hidden="true"
       className="sunflower-mascot"
+      data-sunflower-phase={phase}
+      data-sunflower-corner={corner}
       style={{
         position: "fixed",
-        bottom: 22,
-        right: 22,
-        width: displaySize,
-        height: displaySize,
-        backgroundImage: `url(${url})`,
-        backgroundSize: `${displaySize * GRID_COLS}px auto`,
-        backgroundPosition: position,
-        backgroundRepeat: "no-repeat",
+        bottom: edgeOffset,
+        ...(corner === "left" ? { left: edgeOffset } : { right: edgeOffset }),
+        width: HALO_SIZE,
+        height: HALO_SIZE,
         pointerEvents: "none",
         zIndex: 2,
-        opacity: preset.beam.opacity,
         transition:
-          "opacity 4s cubic-bezier(0.4,0,0.2,1), background-position 4s",
+          "left 2s cubic-bezier(0.4,0,0.2,1), right 2s cubic-bezier(0.4,0,0.2,1)",
       }}
-    />
+    >
+      <div
+        className={
+          halo.pulse
+            ? "ds-sunflower-halo ds-sunflower-halo--pulse"
+            : "ds-sunflower-halo"
+        }
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: "50%",
+          background: halo.gradient,
+          transition: "background 1.5s cubic-bezier(0.4,0,0.2,1)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+          opacity: opacity * preset.beam.opacity,
+          transition: TRANSITION,
+        }}
+        dangerouslySetInnerHTML={{
+          __html: buildSunflowerSVG({ size: FLOWER_SIZE, phase }),
+        }}
+      />
+    </div>
   );
 }
 
