@@ -12,6 +12,12 @@ export interface UseStreamingVideoContextReturn {
   contextComplete: boolean;
 }
 
+type CtxEvent =
+  | "transcript_chunk"
+  | "analysis_partial"
+  | "ctx_complete"
+  | "error";
+
 /**
  * Subscribe to backend SSE `/api/voice/context/stream?session_id=X` and forward
  * incoming `transcript_chunk` / `analysis_partial` / `ctx_complete` events into
@@ -31,32 +37,31 @@ export function useStreamingVideoContext(
     if (!sessionId) return;
 
     let cancelled = false;
-    let es: EventSource | null = null;
+    let es: EventSource<CtxEvent> | null = null;
 
     (async () => {
       const token = await tokenStorage.getAccessToken();
       if (cancelled || !token) return;
 
       const url = `${API_BASE_URL}/api/voice/context/stream?session_id=${encodeURIComponent(sessionId)}`;
-      es = new EventSource(url, {
+      es = new EventSource<CtxEvent>(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      es.addEventListener("transcript_chunk", (e: { data: string }) => {
+      const handleTranscript = (e: { data?: string | null }) => {
+        if (!e.data) return;
         try {
           const data = JSON.parse(e.data);
           conversation.sendUserMessage?.(
             `[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`,
           );
-          setContextProgress(
-            (data.chunk_index / data.total_chunks) * 80,
-          );
+          setContextProgress((data.chunk_index / data.total_chunks) * 80);
         } catch {
           /* ignore malformed event */
         }
-      });
-
-      es.addEventListener("analysis_partial", (e: { data: string }) => {
+      };
+      const handleAnalysis = (e: { data?: string | null }) => {
+        if (!e.data) return;
         try {
           const data = JSON.parse(e.data);
           conversation.sendUserMessage?.(
@@ -66,22 +71,31 @@ export function useStreamingVideoContext(
         } catch {
           /* ignore */
         }
-      });
-
-      es.addEventListener("ctx_complete", (e: { data: string }) => {
+      };
+      const handleComplete = (e: { data?: string | null }) => {
         try {
-          const data = JSON.parse(e.data);
+          const data = e.data ? JSON.parse(e.data) : {};
           conversation.sendUserMessage?.(
-            `[CTX COMPLETE]\nFinal digest: ${data.final_digest_summary}`,
+            `[CTX COMPLETE]\nFinal digest: ${data.final_digest_summary ?? ""}`,
           );
         } catch {
           conversation.sendUserMessage?.("[CTX COMPLETE]");
         }
         setContextProgress(100);
         setContextComplete(true);
-      });
+      };
 
-      es.addEventListener("error", () => {
+      // rn-sse types are strict — cast handlers to satisfy EventSourceListener.
+      const addListener = es.addEventListener.bind(
+        es,
+      ) as unknown as (
+        event: string,
+        cb: (e: { data?: string | null }) => void,
+      ) => void;
+      addListener("transcript_chunk", handleTranscript);
+      addListener("analysis_partial", handleAnalysis);
+      addListener("ctx_complete", handleComplete);
+      addListener("error", () => {
         /* tolerate transient errors — agent has web_search fallback */
       });
     })();

@@ -41,6 +41,15 @@ import { DoodleBackground } from "@/components/ui/DoodleBackground";
 import { TournesolRecommendations } from "@/components/tournesol/TournesolRecommendations";
 import { DeepSightSpinner } from "@/components/ui/DeepSightSpinner";
 
+// Quick Voice Call mobile V3 imports
+import { validateVideoURL } from "@/utils/validateVideoURL";
+import { useClipboardURLDetector } from "@/hooks/useClipboardURLDetector";
+import { useDeepLinkURL } from "@/hooks/useDeepLinkURL";
+import { useVoiceChat } from "@/components/voice/useVoiceChat";
+import { useStreamingVideoContext } from "@/components/voice/useStreamingVideoContext";
+import { VoiceScreen } from "@/components/voice/VoiceScreen";
+import { PostCallScreen } from "@/components/voice/PostCallScreen";
+
 // Platform logos HD
 const YOUTUBE_ICON = require("@/assets/platforms/youtube-icon-red.png");
 const TIKTOK_NOTE = require("@/assets/platforms/tiktok-note-white.png");
@@ -70,6 +79,73 @@ export default function HomeScreen() {
   const [tournesolRefreshKey, setTournesolRefreshKey] = useState(0);
   const [quickChatUrl, setQuickChatUrl] = useState("");
   const [quickChatLoading, setQuickChatLoading] = useState(false);
+
+  // ── Quick Voice Call mobile V3 ─────────────────────────────────────────
+  const [voiceCallUrl, setVoiceCallUrl] = useState("");
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [postCallOpen, setPostCallOpen] = useState(false);
+  const [activeVoiceUrl, setActiveVoiceUrl] = useState<string | null>(null);
+
+  const voice = useVoiceChat({ agentType: "explorer_streaming" });
+  const ctx = useStreamingVideoContext(voice.sessionId, voice.conversation);
+  const { clipboardURL, dismiss: dismissClipboard } = useClipboardURLDetector();
+
+  const handleVoiceCall = useCallback(
+    async (url: string) => {
+      const trimmed = url.trim();
+      if (!validateVideoURL(trimmed)) {
+        Alert.alert(
+          "Source non supportée",
+          "Colle un lien YouTube ou TikTok pour lancer un appel vocal.",
+        );
+        return;
+      }
+      setActiveVoiceUrl(trimmed);
+      setVoiceOpen(true);
+      try {
+        await voice.start({ videoUrl: trimmed });
+        dismissClipboard();
+      } catch {
+        // useVoiceChat reports errors via voice.error state
+      }
+    },
+    [voice, dismissClipboard],
+  );
+
+  const handleViewAnalysis = useCallback((summaryId: number) => {
+    setPostCallOpen(false);
+    router.push({ pathname: "/analysis/[id]", params: { id: String(summaryId) } });
+  }, []);
+
+  const handleCallAnother = useCallback(() => {
+    setPostCallOpen(false);
+    setActiveVoiceUrl(null);
+    setVoiceCallUrl("");
+  }, []);
+
+  // Deep link handler (deepsight://voice-call?url=...&autostart=true)
+  const handleDeepLink = useCallback(
+    (url: string, autostart: boolean) => {
+      setVoiceCallUrl(url);
+      if (autostart) {
+        handleVoiceCall(url);
+      }
+    },
+    [handleVoiceCall],
+  );
+  useDeepLinkURL(handleDeepLink);
+
+  // Auto-bascule vers PostCallScreen quand la session se termine avec messages
+  useEffect(() => {
+    if (
+      voice.status === "idle" &&
+      voice.messages.length > 0 &&
+      voiceOpen
+    ) {
+      setVoiceOpen(false);
+      setPostCallOpen(true);
+    }
+  }, [voice.status, voice.messages.length, voiceOpen]);
 
   // Quick Chat handler
   const handleQuickChat = useCallback(async () => {
@@ -463,6 +539,122 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* ── Voice Call Block (Quick Voice Call mobile V3) ── */}
+        <View
+          style={[
+            styles.voiceCallBox,
+            {
+              backgroundColor: colors.bgElevated,
+              borderColor: "rgba(200,144,58,0.25)",
+            },
+          ]}
+        >
+          <View style={styles.voiceCallHeader}>
+            <Ionicons name="mic" size={16} color={palette.gold} />
+            <Text
+              style={[styles.voiceCallTitle, { color: colors.textPrimary }]}
+            >
+              Voice Call
+            </Text>
+            <View
+              style={[
+                styles.voiceCallBadge,
+                { backgroundColor: "rgba(200,144,58,0.18)" },
+              ]}
+            >
+              <Text
+                style={[styles.voiceCallBadgeText, { color: palette.gold }]}
+              >
+                ⚡ Killer feature
+              </Text>
+            </View>
+          </View>
+          <Text
+            style={[styles.voiceCallDesc, { color: colors.textTertiary }]}
+          >
+            Colle un lien YouTube ou TikTok et appelle la vidéo — l'agent
+            apprend en direct pendant que tu parles.
+          </Text>
+
+          {/* Clipboard banner — affiché si URL valide détectée */}
+          {clipboardURL ? (
+            <Pressable
+              onPress={() => handleVoiceCall(clipboardURL)}
+              style={({ pressed }) => [
+                styles.clipboardBanner,
+                {
+                  backgroundColor: "rgba(200,144,58,0.10)",
+                  borderColor: "rgba(200,144,58,0.40)",
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Appeler le lien détecté dans le presse-papier"
+            >
+              <Text
+                style={[styles.clipboardLabel, { color: palette.gold }]}
+              >
+                📋 LIEN DÉTECTÉ
+              </Text>
+              <Text
+                style={[styles.clipboardURL, { color: colors.textPrimary }]}
+                numberOfLines={1}
+              >
+                {clipboardURL.replace(/^https?:\/\//, "")}
+              </Text>
+              <Text
+                style={[styles.clipboardHint, { color: palette.gold }]}
+              >
+                Tape pour appeler →
+              </Text>
+            </Pressable>
+          ) : null}
+
+          <View style={styles.voiceCallRow}>
+            <TextInput
+              style={[
+                styles.voiceCallInput,
+                {
+                  backgroundColor: colors.bgSecondary,
+                  color: colors.textPrimary,
+                  borderColor: colors.border,
+                },
+              ]}
+              placeholder="https://youtube.com/... ou tiktok.com/..."
+              placeholderTextColor={colors.textMuted}
+              value={voiceCallUrl}
+              onChangeText={setVoiceCallUrl}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              returnKeyType="go"
+              onSubmitEditing={() => handleVoiceCall(voiceCallUrl)}
+            />
+            <Pressable
+              style={[
+                styles.voiceCallBtn,
+                {
+                  backgroundColor: validateVideoURL(voiceCallUrl)
+                    ? palette.gold
+                    : colors.bgSecondary,
+                },
+              ]}
+              onPress={() => handleVoiceCall(voiceCallUrl)}
+              disabled={!validateVideoURL(voiceCallUrl)}
+              accessibilityRole="button"
+              accessibilityLabel="Lancer l'appel vocal"
+            >
+              <Ionicons
+                name="mic"
+                size={18}
+                color={
+                  validateVideoURL(voiceCallUrl) ? "#fff" : colors.textMuted
+                }
+              />
+            </Pressable>
+          </View>
+        </View>
+
         {/* Recents */}
         <View style={styles.sectionSpacing}>
           <RecentCarousel
@@ -492,6 +684,44 @@ export default function HomeScreen() {
 
       {/* Options Bottom Sheet */}
       <OptionsSheet ref={optionsRef} onClose={handleOptionsClose} />
+
+      {/* Quick Voice Call mobile V3 — Modals */}
+      <VoiceScreen
+        visible={voiceOpen}
+        onClose={() => {
+          voice.stop();
+          setVoiceOpen(false);
+        }}
+        videoTitle={activeVoiceUrl ?? "Voice Call"}
+        voiceStatus={voice.status}
+        isSpeaking={voice.isSpeaking}
+        messages={voice.messages}
+        elapsedSeconds={voice.elapsedSeconds}
+        remainingMinutes={voice.remainingMinutes}
+        onStart={() =>
+          activeVoiceUrl
+            ? voice.start({ videoUrl: activeVoiceUrl })
+            : voice.start()
+        }
+        onStop={voice.stop}
+        onMuteToggle={voice.toggleMute}
+        isMuted={voice.isMuted}
+        error={voice.error ?? undefined}
+        streaming
+        contextProgress={ctx.contextProgress}
+        contextComplete={ctx.contextComplete}
+      />
+      <PostCallScreen
+        visible={postCallOpen}
+        onClose={() => setPostCallOpen(false)}
+        videoTitle={activeVoiceUrl ?? ""}
+        summaryId={voice.summaryId}
+        durationSeconds={voice.elapsedSeconds}
+        messages={voice.messages}
+        quotaRemaining={voice.remainingMinutes}
+        onViewAnalysis={handleViewAnalysis}
+        onCallAnother={handleCallAnother}
+      />
     </View>
   );
 }
@@ -663,5 +893,82 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  // Voice Call block (Quick Voice Call mobile V3)
+  voiceCallBox: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: sp.md,
+    marginTop: sp.md,
+  },
+  voiceCallHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  voiceCallTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
+    flex: 1,
+  },
+  voiceCallBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  voiceCallBadgeText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 10,
+  },
+  voiceCallDesc: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
+    marginBottom: sp.sm,
+    lineHeight: fontSize.xs * 1.4,
+  },
+  voiceCallRow: {
+    flexDirection: "row",
+    gap: sp.sm,
+    alignItems: "center",
+  },
+  voiceCallInput: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: sp.md,
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.sm,
+  },
+  voiceCallBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  clipboardBanner: {
+    borderRadius: 10,
+    borderWidth: 1.5,
+    padding: sp.sm,
+    marginBottom: sp.sm,
+  },
+  clipboardLabel: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 10,
+    letterSpacing: 0.5,
+  },
+  clipboardURL: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.sm,
+    marginTop: 2,
+  },
+  clipboardHint: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 11,
+    marginTop: 4,
   },
 });

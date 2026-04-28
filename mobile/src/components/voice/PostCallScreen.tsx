@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     marginBottom: sp.sm,
   },
   title: {
-    fontFamily: fontFamily.headingBold,
+    fontFamily: fontFamily.bodyBold,
     fontSize: fontSize.xl,
     marginBottom: sp.xs,
   },
