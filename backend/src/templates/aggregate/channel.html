@@ -1,0 +1,102 @@
+{% extends "aggregate/_layout.html" %} {% block jsonld %}
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "{{ page_title }}",
+    "description": "{{ page_description }}",
+    "url": "{{ canonical_url }}",
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "DeepSight",
+      "url": "{{ frontend_url }}"
+    },
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {% for item in breadcrumb %}
+        {
+          "@type": "ListItem",
+          "position": {{ loop.index }},
+          "name": "{{ item.name }}",
+          "item": "{{ item.url }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+    },
+    "mainEntity": {
+      "@type": "ItemList",
+      "numberOfItems": {{ analyses_count }},
+      "itemListElement": [
+        {% for a in analyses %}
+        {
+          "@type": "ListItem",
+          "position": {{ loop.index }},
+          "url": "{{ frontend_url }}/s/{{ a.share_token }}",
+          "name": "{{ a.video_title | default('') | replace('"', '\\"') }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }
+  }
+</script>
+{% endblock %} {% block content %}
+<h1>Analyses IA de la chaîne {{ channel.name }}</h1>
+
+<p class="ds-meta-row">
+  <span class="ds-pill"
+    >{{ channel.analyses_count }} analyse{{ 's' if channel.analyses_count > 1
+    else '' }}</span
+  >
+  <span class="ds-pill">{{ channel.total_views }} vues cumulées</span>
+</p>
+
+<p>
+  Cette page agrège les analyses publiques de DeepSight portant sur des vidéos
+  de la chaîne <strong>{{ channel.name }}</strong>. Chaque analyse est une
+  synthèse sourcée et fact-checkée générée par IA (Mistral), avec marqueurs
+  épistémiques (SOLIDE / PLAUSIBLE / INCERTAIN) et chat contextuel disponible.
+  Les analyses sont partagées par leurs auteurs et accessibles sans compte.
+</p>
+
+<h2>Analyses publiques ({{ analyses_count }})</h2>
+
+<div class="ds-grid">
+  {% for a in analyses %}
+  <article class="ds-card">
+    <a href="{{ frontend_url }}/s/{{ a.share_token }}">
+      {% if a.video_thumbnail %}
+      <img
+        class="ds-thumb"
+        src="{{ a.video_thumbnail }}"
+        alt="{{ a.video_title }}"
+        loading="lazy"
+      />
+      {% else %}
+      <div class="ds-thumb"></div>
+      {% endif %}
+      <h3 class="ds-card-title">{{ a.video_title or '(Sans titre)' }}</h3>
+      <p class="ds-card-meta">
+        {% if a.platform %}{{ a.platform | capitalize }}{% endif %} {% if
+        a.category %} · {{ a.category }}{% endif %} · {{ a.view_count }} vue{{
+        's' if a.view_count > 1 else '' }}
+      </p>
+      {% if a.verdict %}
+      <p class="ds-card-verdict">{{ a.verdict }}</p>
+      {% endif %}
+    </a>
+  </article>
+  {% endfor %}
+</div>
+
+<h2>À propos de DeepSight</h2>
+<p>
+  DeepSight est un SaaS d'analyse vidéo IA 100% européen, propulsé par Mistral
+  AI (Paris) et hébergé chez Hetzner (Allemagne). Chaque vidéo YouTube ou TikTok
+  est transformée en analyse structurée avec fact-checking nuancé, flashcards
+  FSRS, quiz, mind maps et chat contextuel.
+  <a href="{{ frontend_url }}/upgrade"
+    >Découvrir les plans Free / Plus 4,99€ / Pro 9,99€</a
+  >.
+</p>
+{% endblock %}
