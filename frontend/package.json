@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "tsc -p ../packages/lighting-engine/tsconfig.build.json",
+    "postinstall": "tsc -p ../packages/lighting-engine/tsconfig.build.json",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
