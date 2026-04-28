@@ -29,9 +29,23 @@ interface UseVoiceChatOptions {
     | "tutor"
     | "debate_moderator"
     | "quiz_coach"
-    | "onboarding";
+    | "onboarding"
+    | "companion";
   language?: "fr" | "en";
   onError?: (error: string) => void;
+  /**
+   * COMPANION-only — fired when the agent invokes the `transfer_to_video`
+   * tool. Receives the resolved target so the caller can navigate / re-mount
+   * the overlay in EXPLORER mode on the new summary_id. The payload comes
+   * from `GET /api/voice/companion-pending-transfer/{voice_session_id}`,
+   * fetched by the hook right after the SDK signals the tool call.
+   */
+  onTransferRequest?: (payload: {
+    summary_id: number;
+    video_id: string | null;
+    video_title: string;
+    video_channel: string | null;
+  }) => void;
 }
 
 type VoiceChatStatus =
@@ -151,6 +165,7 @@ export function useVoiceChat({
   agentType,
   language = "fr",
   onError,
+  onTransferRequest,
 }: UseVoiceChatOptions): UseVoiceChatReturn {
   const [status, setStatus] = useState<VoiceChatStatus>("idle");
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -166,6 +181,7 @@ export function useVoiceChat({
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   // Spec #5 — exposition session info pour persistance Chat IA
   const [voiceSessionId, setVoiceSessionId] = useState<string | null>(null);
+  const voiceSessionIdRef = useRef<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
 
   // Refs pour le cleanup
@@ -354,6 +370,7 @@ export function useVoiceChat({
       setPlaybackRate(1.0);
       // Spec #5 — reset session info
       setVoiceSessionId(null);
+      voiceSessionIdRef.current = null;
       setSessionStartedAt(null);
     }
   }, [
@@ -483,6 +500,7 @@ export function useVoiceChat({
       maxSecondsRef.current = sessionData.max_session_minutes * 60;
       // Spec #5 — expose session_id pour la persistance des transcripts
       setVoiceSessionId(sessionData.session_id);
+      voiceSessionIdRef.current = sessionData.session_id;
       // Store input mode from session response
       const sessionInputMode = sessionData.input_mode || "ptt";
       inputModeRef.current = sessionInputMode;
@@ -537,6 +555,39 @@ export function useVoiceChat({
           // Detect tool calls for VoiceToolIndicator
           if (message.type === "tool_call" || message.tool_name) {
             setActiveTool(message.tool_name || "unknown");
+            // COMPANION transfer_to_video — fetch pending payload + bubble up
+            if (
+              message.tool_name === "transfer_to_video" &&
+              onTransferRequest &&
+              voiceSessionIdRef.current
+            ) {
+              const sessionId = voiceSessionIdRef.current;
+              const token = getAccessToken();
+              fetch(
+                `${API_URL}/api/voice/companion-pending-transfer/${sessionId}`,
+                {
+                  headers: token ? { Authorization: `Bearer ${token}` } : {},
+                },
+              )
+                .then((r) => (r.ok ? r.json() : null))
+                .then((payload) => {
+                  if (
+                    payload &&
+                    typeof payload.summary_id === "number" &&
+                    isMountedRef.current
+                  ) {
+                    onTransferRequest({
+                      summary_id: payload.summary_id,
+                      video_id: payload.video_id ?? null,
+                      video_title: payload.video_title ?? "ta vidéo",
+                      video_channel: payload.video_channel ?? null,
+                    });
+                  }
+                })
+                .catch(() => {
+                  /* silent — transfer is best-effort */
+                });
+            }
           }
           setMessages((prev) => [
             ...prev,

@@ -10,6 +10,7 @@ The module-level helpers ``_fetch_youtube`` and ``_fetch_tiktok`` are kept
 as plain ``async def`` (not closures) so unit tests can monkeypatch them
 without touching the heavy real implementations.
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,6 +35,7 @@ async def _fetch_youtube(video_id: str) -> str:
     """
     try:
         from transcripts.youtube import get_transcript_with_timestamps
+
         simple, _timestamped, _lang = await get_transcript_with_timestamps(video_id)
         return simple or ""
     except Exception as exc:  # noqa: BLE001 — best-effort fetcher
@@ -53,10 +55,9 @@ async def _fetch_tiktok(video_id: str) -> str:
     """
     try:
         from transcripts.tiktok import get_tiktok_transcript
+
         canonical_url = f"https://www.tiktok.com/v/{video_id}"
-        simple, _timestamped, _lang = await get_tiktok_transcript(
-            canonical_url, video_id=video_id
-        )
+        simple, _timestamped, _lang = await get_tiktok_transcript(canonical_url, video_id=video_id)
         return simple or ""
     except Exception as exc:  # noqa: BLE001 — best-effort fetcher
         logger.warning("TikTok transcript fetch failed for %s: %s", video_id, exc)

@@ -25,8 +25,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import Optional
+from sqlalchemy import func, or_, select
 
 from db.database import get_session, VoiceSession, Summary, User, DebateAnalysis
 from auth.dependencies import get_current_user, http_bearer, oauth2_scheme
@@ -90,6 +89,11 @@ from voice.avatar import (
     ensure_debate_avatar,
     generate_debate_avatar,
 )
+from voice.companion_context import build_companion_context
+from voice.companion_db import CompanionDBAdapter
+from voice.companion_recos import get_more_recos_chain
+from voice.companion_prompt import render_companion_prompt
+from voice.schemas import CompanionContextResponse
 
 logger = logging.getLogger(__name__)
 
@@ -277,9 +281,7 @@ async def _redis_pubsub_to_sse(redis_client, session_id: str):
             try:
                 event = json.loads(raw)
             except (TypeError, ValueError):
-                logger.warning(
-                    "Voice ctx stream: dropped malformed pubsub payload on %s", channel
-                )
+                logger.warning("Voice ctx stream: dropped malformed pubsub payload on %s", channel)
                 continue
             event_type = event.get("type", "message")
             yield f"event: {event_type}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
@@ -291,9 +293,7 @@ async def _redis_pubsub_to_sse(redis_client, session_id: str):
         try:
             await pubsub.unsubscribe(channel)
         except Exception as unsub_exc:  # noqa: BLE001 — unsub is best-effort
-            logger.debug(
-                "Voice ctx stream unsubscribe failed for %s: %s", channel, unsub_exc
-            )
+            logger.debug("Voice ctx stream unsubscribe failed for %s: %s", channel, unsub_exc)
         try:
             # redis-py 5.x exposes async ``aclose``; 4.x exposes sync ``close``.
             close_fn = getattr(pubsub, "aclose", None) or getattr(pubsub, "close", None)
@@ -302,9 +302,7 @@ async def _redis_pubsub_to_sse(redis_client, session_id: str):
                 if asyncio.iscoroutine(result):
                     await result
         except Exception as close_exc:  # noqa: BLE001 — close is best-effort
-            logger.debug(
-                "Voice ctx stream close failed for %s: %s", channel, close_exc
-            )
+            logger.debug("Voice ctx stream close failed for %s: %s", channel, close_exc)
 
 
 @router.get("/context/stream")
@@ -755,6 +753,49 @@ async def verify_debate_tool_request(request: Request, db: AsyncSession) -> tupl
         )
 
     return debate, body
+
+
+async def verify_companion_tool_request(request: Request, db: AsyncSession) -> tuple[VoiceSession, dict]:
+    """Verify an ElevenLabs tool webhook request for COMPANION agent (no summary_id).
+
+    Bearer token = voice_session.id. Body must include voice_session_id matching.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_auth", "message": "Missing or invalid Authorization header."},
+        )
+    token = auth_header.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_auth", "message": "Empty Bearer token."},
+        )
+
+    body = await request.json()
+    voice_session_id = body.get("voice_session_id") or body.get("parameters", {}).get("voice_session_id")
+    if not voice_session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_voice_session_id", "message": "No voice_session_id in body."},
+        )
+
+    if str(voice_session_id) != str(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "token_mismatch", "message": "Bearer token does not match voice_session_id."},
+        )
+
+    result = await db.execute(select(VoiceSession).where(VoiceSession.id == voice_session_id))
+    voice_session = result.scalar_one_or_none()
+    if not voice_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "voice_session_not_found", "message": "Voice session not found."},
+        )
+
+    return voice_session, body
 
 
 class AddonCheckoutRequest(BaseModel):
@@ -1388,7 +1429,45 @@ async def create_voice_session(
         # ── Build system prompt ──
         agent_prompt = agent_config.get_system_prompt(language)
 
-        if debate_ctx:
+        if agent_config.agent_type == "companion":
+            # ── Spec "Coach Vocal" Task 14 — enrich companion prompt ────────
+            # Replace the static companion system prompt with a render that
+            # injects the user's profile (prénom, plan, streak, themes, recent
+            # analyses) and pre-prepared recommendations. Falls back to the
+            # static agent prompt if anything goes wrong so the call still
+            # connects.
+            try:
+                redis_client = _resolve_redis_client()
+                services = _build_companion_services(db=db, redis=redis_client, user=current_user)
+                companion_ctx = await build_companion_context(
+                    user=current_user,
+                    db=CompanionDBAdapter(db),
+                    redis=redis_client,
+                    services=services,
+                )
+                system_prompt = render_companion_prompt(companion_ctx)
+                logger.info(
+                    "Voice session: companion prompt enriched",
+                    extra={
+                        "user_id": current_user.id,
+                        "session_id": voice_session.id,
+                        "cache_hit": getattr(companion_ctx, "cache_hit", False),
+                        "themes_count": len(companion_ctx.profile.themes),
+                        "recos_count": len(companion_ctx.initial_recos),
+                        "prompt_chars": len(system_prompt),
+                    },
+                )
+            except Exception as companion_exc:
+                logger.warning(
+                    "Voice session: failed to enrich companion prompt — falling back to static prompt",
+                    extra={
+                        "user_id": current_user.id,
+                        "session_id": voice_session.id,
+                        "error": str(companion_exc),
+                    },
+                )
+                system_prompt = agent_prompt
+        elif debate_ctx:
             ctx_label = "CONTEXTE DU DÉBAT" if language == "fr" else "DEBATE CONTEXT"
             system_prompt = f"{agent_prompt}\n\n--- {ctx_label} ---\n{context_block}"
         elif rich_ctx:
@@ -1509,6 +1588,13 @@ async def create_voice_session(
             tools_config = ElevenLabsClient.build_debate_tools_config(
                 webhook_base_url=webhook_base_url,
                 api_token=str(debate.id),
+            )
+        elif agent_config.agent_type == "companion":
+            from voice.elevenlabs import build_companion_tools_config
+
+            tools_config = build_companion_tools_config(
+                webhook_base_url=webhook_base_url,
+                voice_session_id=voice_session.id,
             )
         else:
             tools_config = ElevenLabsClient.build_tools_config(
@@ -2617,6 +2703,290 @@ async def tool_check_fact(request: Request, db: AsyncSession = Depends(get_sessi
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# POST /tools/companion-* — COMPANION agent tools (public, bearer=voice_session_id)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/tools/companion-recos")
+async def tool_companion_recos(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: get more recommendations on a topic.
+
+    Chains 4 sources with fallback: history+similarity → tournesol → youtube → trending.
+    Stops once max_count reached.
+    """
+    voice_session, body = await verify_companion_tool_request(request, db)
+    topic = body.get("topic") or body.get("parameters", {}).get("topic", "")
+
+    excluded_q = await db.execute(select(Summary.video_id).where(Summary.user_id == voice_session.user_id))
+    excluded: set[str] = {v for (v,) in excluded_q.all() if v}
+
+    async def _none_fn():
+        return None
+
+    recos = await get_more_recos_chain(
+        topic=topic,
+        excluded=excluded,
+        history_fn=_none_fn,
+        tournesol_fn=_none_fn,
+        youtube_fn=_none_fn,
+        trending_fn=_none_fn,
+        max_count=3,
+    )
+    return {"result": [r.model_dump() for r in recos]}
+
+
+_COMPANION_YOUTUBE_URL_RE = __import__("re").compile(
+    r"^https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([\w-]{11})"
+)
+_COMPANION_START_ANALYSIS_RATE_LIMIT = 3
+
+
+@router.post("/tools/start-analysis")
+async def tool_companion_start_analysis(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: queue a video analysis from a COMPANION call.
+
+    V1: validates URL + rate-limits per voice_session_id (max 3 analyses per
+    call). Returns a placeholder response — full wiring to /videos/analyze
+    background queue is follow-up work.
+    """
+    voice_session, body = await verify_companion_tool_request(request, db)
+    video_url = body.get("video_url") or body.get("parameters", {}).get("video_url", "")
+
+    match = _COMPANION_YOUTUBE_URL_RE.match(video_url)
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "invalid_youtube_url", "message": "Pas une URL YouTube valide."},
+        )
+    video_id = match.group(1)
+
+    # Rate limit per voice session via Redis (max 3)
+    redis_client = _resolve_redis_client()
+    rl_key = f"companion_start_analysis_rl:{voice_session.id}"
+    current = 0
+    if redis_client is not None:
+        try:
+            raw = await redis_client.get(rl_key)
+            current = int(raw) if raw else 0
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("companion start_analysis rl read failed: %s", exc)
+            current = 0
+
+    if current >= _COMPANION_START_ANALYSIS_RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "rate_limit_exceeded",
+                "message": f"Maximum {_COMPANION_START_ANALYSIS_RATE_LIMIT} analyses par appel.",
+            },
+        )
+
+    if redis_client is not None:
+        try:
+            await redis_client.set(rl_key, str(current + 1), ex=3600)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("companion start_analysis rl write failed: %s", exc)
+
+    return {
+        "result": {
+            "video_id": video_id,
+            "status": "queued",
+            "eta_seconds": 120,
+            "message": f"Analyse de {video_id} en file d'attente — ETA 2 min.",
+        }
+    }
+
+
+_COMPANION_TRANSFER_REDIS_KEY = "companion_transfer:{voice_session_id}"
+_COMPANION_TRANSFER_TTL_SECONDS = 60
+
+
+@router.post("/tools/transfer-to-video")
+async def tool_companion_transfer_to_video(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: transfer the companion call to an EXPLORER
+    session on a specific video from the user's history.
+
+    The tool resolves the target Summary, persists the target in Redis under
+    a per-session key (consumed by the frontend after detecting the
+    `transfer_to_video` tool call via the ElevenLabs SDK), and returns a
+    spoken-friendly status payload to the agent. The actual session swap
+    happens client-side: the page reads the pending transfer and re-mounts
+    the voice overlay in EXPLORER mode on the target summary_id.
+
+    Body (any of, priority order):
+        - summary_id: int   — direct lookup
+        - video_id:   str   — YouTube/TikTok ID
+        - query:      str   — fuzzy ILIKE match on Summary.video_title/channel
+    """
+    voice_session, body = await verify_companion_tool_request(request, db)
+    params = body.get("parameters") or {}
+    summary_id = body.get("summary_id") or params.get("summary_id")
+    video_id = body.get("video_id") or params.get("video_id")
+    query = body.get("query") or params.get("query")
+
+    target: Optional[Summary] = None
+
+    if summary_id:
+        try:
+            sid = int(summary_id)
+        except (TypeError, ValueError):
+            return {
+                "result": {
+                    "status": "not_found",
+                    "message": "summary_id invalide.",
+                }
+            }
+        result = await db.execute(
+            select(Summary).where(
+                Summary.id == sid,
+                Summary.user_id == voice_session.user_id,
+            )
+        )
+        target = result.scalar_one_or_none()
+
+    if target is None and video_id:
+        result = await db.execute(
+            select(Summary).where(
+                Summary.video_id == str(video_id),
+                Summary.user_id == voice_session.user_id,
+            )
+        )
+        target = result.scalar_one_or_none()
+
+    if target is None and query:
+        pattern = f"%{str(query).lower()}%"
+        result = await db.execute(
+            select(Summary)
+            .where(
+                Summary.user_id == voice_session.user_id,
+                or_(
+                    func.lower(Summary.video_title).like(pattern),
+                    func.lower(Summary.video_channel).like(pattern),
+                ),
+            )
+            .order_by(Summary.created_at.desc())
+            .limit(1)
+        )
+        target = result.scalar_one_or_none()
+
+    if target is None:
+        return {
+            "result": {
+                "status": "not_found",
+                "message": (
+                    "Je ne retrouve pas cette analyse dans ton historique. "
+                    "Tu peux m'en dire un peu plus, ou je peux la lancer "
+                    "via start_analysis si tu as l'URL ?"
+                ),
+            }
+        }
+
+    # Pre-flight quota — explorer requires Pro plan
+    user_query = await db.execute(select(User).where(User.id == voice_session.user_id))
+    user = user_query.scalar_one_or_none()
+    if user is None:
+        return {
+            "result": {
+                "status": "error",
+                "message": "Utilisateur introuvable.",
+            }
+        }
+
+    try:
+        await check_voice_quota(user_id=user.id, plan=user.plan, db=db)
+    except HTTPException as exc:
+        detail = exc.detail
+        if isinstance(detail, dict):
+            detail = detail.get("message", str(detail))
+        return {
+            "result": {
+                "status": "quota_exceeded",
+                "message": str(detail),
+            }
+        }
+
+    # Persist the pending transfer in Redis for the frontend to consume
+    redis_client = _resolve_redis_client()
+    payload = {
+        "summary_id": target.id,
+        "video_id": target.video_id,
+        "video_title": target.video_title or "ta vidéo",
+        "video_channel": target.video_channel,
+        "voice_session_id": voice_session.id,
+    }
+    if redis_client is not None:
+        try:
+            await redis_client.set(
+                _COMPANION_TRANSFER_REDIS_KEY.format(voice_session_id=voice_session.id),
+                json.dumps(payload),
+                ex=_COMPANION_TRANSFER_TTL_SECONDS,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("companion transfer redis write failed: %s", exc)
+
+    return {
+        "result": {
+            "status": "ready",
+            "summary_id": target.id,
+            "video_title": target.video_title or "ta vidéo",
+            "message": (f"Je te bascule sur « {target.video_title or 'cette vidéo'} »."),
+        }
+    }
+
+
+@router.get("/companion-pending-transfer/{voice_session_id}")
+async def companion_pending_transfer(
+    voice_session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Frontend-facing endpoint: read the pending transfer payload for the
+    given voice session, written by the `/tools/transfer-to-video` webhook.
+
+    Authorisation: the caller's JWT must own the voice session. Returns 404
+    if no transfer is pending (no Redis entry, or entry expired after 60s).
+    """
+    result = await db.execute(select(VoiceSession).where(VoiceSession.id == voice_session_id))
+    voice_session = result.scalar_one_or_none()
+    if voice_session is None or voice_session.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Voice session not found.",
+        )
+
+    redis_client = _resolve_redis_client()
+    if redis_client is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No pending transfer.",
+        )
+
+    raw = await redis_client.get(_COMPANION_TRANSFER_REDIS_KEY.format(voice_session_id=voice_session_id))
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No pending transfer.",
+        )
+
+    try:
+        payload = json.loads(raw)
+    except (TypeError, ValueError) as exc:
+        logger.warning("companion pending transfer decode failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No pending transfer.",
+        ) from exc
+
+    # Consume once — clear the key after read
+    try:
+        await redis_client.delete(_COMPANION_TRANSFER_REDIS_KEY.format(voice_session_id=voice_session_id))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("companion pending transfer cleanup failed: %s", exc)
+
+    return payload
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # POST /tools/debate-* — Debate moderator agent tools (public, bearer=debate_id)
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -2974,3 +3344,101 @@ async def get_voice_session_thumbnail(
         gradient=_VOICE_THUMB_GRADIENT,
         alt_text=alt_text,
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /companion-context — COMPANION agent bootstrap payload (Pro only)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _resolve_redis_client():
+    """Return a redis-asyncio client compatible with build_companion_context.
+
+    The companion_context builder expects ``get(key)``, ``set(key, value, ex=...)``
+    and ``delete(key)`` semantics (raw redis-asyncio API). When Redis is
+    unavailable we return a no-op stub so the cache layer simply degrades to
+    "always cache miss + best-effort write" without crashing the request.
+    """
+    try:
+        from core.cache import cache_service
+
+        if cache_service._redis_available:
+            return cache_service.backend.redis
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.warning("Failed to resolve Redis client for companion context: %s", exc)
+
+    class _NoopRedis:
+        async def get(self, _key):
+            return None
+
+        async def set(self, _key, _value, ex=None):  # noqa: ARG002
+            return True
+
+        async def delete(self, *_keys):
+            return 0
+
+    return _NoopRedis()
+
+
+@router.get("/companion-context", response_model=CompanionContextResponse)
+async def companion_context_endpoint(
+    refresh: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Return the COMPANION agent bootstrap payload (profile + initial recos).
+
+    Reserved to Pro users — Free/Plus get a 402 with an upgrade message. The
+    builder ``build_companion_context`` handles its own Redis cache (1h TTL);
+    pass ``?refresh=true`` to bypass the cache and recompute everything.
+    """
+    # ── Plan gate: Pro only (admin bypass for testing/support) ────────────
+    is_admin = bool(getattr(current_user, "is_admin", False))
+    plan = (current_user.plan or "free").lower()
+
+    if not is_admin and plan != "pro":
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=("Upgrade vers Pro requis pour Appel Vocal — https://www.deepsightsynthesis.com/upgrade"),
+        )
+
+    redis_client = _resolve_redis_client()
+    services = _build_companion_services(db=db, redis=redis_client, user=current_user)
+    db_adapter = CompanionDBAdapter(db)
+
+    return await build_companion_context(
+        user=current_user,
+        db=db_adapter,
+        redis=redis_client,
+        services=services,
+        force_refresh=refresh,
+    )
+
+
+class _CompanionServicesBundle:
+    """Services bundle consumed by build_companion_context.
+
+    - themes_fn: extract_top3_themes via Summary.category fallback (no LLM
+      in V1 wiring; LLM path is a follow-up once mistral-small client is
+      threaded through).
+    - initial_recos_fn: V1 returns []. Real Tournesol / Trending /
+      history-similarity orchestration is a follow-up task. The agent stays
+      useful in V1 because the system prompt instructs it to call
+      get_more_recos(topic) directly when it has no pre-fetched recos.
+    """
+
+    @staticmethod
+    async def themes_fn(*, user_id, db):
+        # db here is the CompanionDBAdapter passed by the builder.
+        from voice.companion_themes import extract_top3_themes
+
+        return await extract_top3_themes(user_id=user_id, db=db, llm_client=None)
+
+    @staticmethod
+    async def initial_recos_fn(*, primary_theme):  # noqa: ARG004
+        return []
+
+
+def _build_companion_services(*, db, redis, user):  # noqa: ARG001
+    """Return the services bundle consumed by build_companion_context."""
+    return _CompanionServicesBundle()

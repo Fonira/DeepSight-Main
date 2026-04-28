@@ -1,5 +1,13 @@
 import React from "react";
-import { Video, Swords, History, Gem, Settings, Crown } from "lucide-react";
+import {
+  Video,
+  Swords,
+  Phone,
+  History,
+  Gem,
+  Settings,
+  Crown,
+} from "lucide-react";
 import { SidebarNavItem } from "./SidebarNavItem";
 
 interface SidebarNavProps {
@@ -14,6 +22,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   const navItems = [
     { path: "/dashboard", icon: Video, label: "Vidéo" },
     { path: "/debate", icon: Swords, label: "Débat IA" },
+    { path: "/voice-call", icon: Phone, label: "Appel Vocal" },
     { path: "/history", icon: History, label: "Historique" },
     { path: "/upgrade", icon: Gem, label: "Upgrade" },
     { path: "/settings", icon: Settings, label: "Paramètres" },

@@ -80,6 +80,7 @@ from images.screenshot_detection import (
     _brave_search_video,
 )
 from .summary_extractor import extract_extension_summary
+from voice.companion_context import invalidate_companion_context_cache
 from .service import (
     check_can_analyze,
     deduct_credit,
@@ -831,6 +832,17 @@ async def analyze_video(
     """
     logger.info(f"📥 [v6.0] Analyze request: {request.url} by user {current_user.id} (plan: {current_user.plan})")
 
+    async def _invalidate_companion_cache() -> None:
+        """Invalidate the companion_context Redis cache for this user (best-effort)."""
+        try:
+            from core.cache import cache_service
+
+            redis = getattr(cache_service.backend, "redis", None)
+            if redis is not None:
+                await invalidate_companion_context_cache(redis=redis, user_id=current_user.id)
+        except Exception as exc:
+            logger.warning("companion cache invalidation skipped: %s", exc)
+
     # 🎵 Détecter la plateforme (YouTube ou TikTok)
     platform = detect_platform(request.url)
 
@@ -932,6 +944,7 @@ async def analyze_video(
                     logger.info(
                         f"💾 [GLOBAL CACHE HIT] {platform}/{video_id} → summary_id={_cache_summary_id} (0 credits)"
                     )
+                    await _invalidate_companion_cache()
                     return TaskStatusResponse(
                         task_id=f"cached_{_cache_summary_id}",
                         status="completed",
@@ -1037,6 +1050,8 @@ async def analyze_video(
         deep_research=deep_research,  # 🆕 v5.5
         platform=platform,  # 🎵 TikTok support
     )
+
+    await _invalidate_companion_cache()
 
     return TaskStatusResponse(
         task_id=task_id,
