@@ -1,6 +1,18 @@
 """Extraction top 3 thèmes user pour COMPANION agent."""
+import logging
 from collections import Counter
 from typing import Optional, Protocol
+
+logger = logging.getLogger(__name__)
+
+THEMES_PROMPT_TEMPLATE = """Voici les {count} derniers titres de vidéos analysées par cet utilisateur :
+
+{titles}
+
+Identifie ses 3 centres d'intérêt principaux. Réponds UNIQUEMENT en JSON valide :
+{{"themes": ["theme1", "theme2", "theme3"]}}
+
+Les thèmes doivent être courts (1-3 mots), en français, sans articles."""
 
 
 class _DBProto(Protocol):
@@ -32,4 +44,12 @@ async def extract_top3_themes(
 
 
 async def _extract_via_llm(summaries, llm_client) -> list[str]:
-    raise NotImplementedError("Implemented in Task 3")
+    titles = "\n".join(f"- {s.title}" for s in summaries[:30])
+    prompt = THEMES_PROMPT_TEMPLATE.format(count=len(summaries), titles=titles)
+    try:
+        result = await llm_client.complete_json(prompt=prompt, model="mistral-small-2603")
+        themes = result.get("themes", [])
+        return themes[:3] if isinstance(themes, list) else []
+    except (ValueError, KeyError, Exception) as exc:
+        logger.warning("companion_themes LLM failed: %s", exc)
+        return []
