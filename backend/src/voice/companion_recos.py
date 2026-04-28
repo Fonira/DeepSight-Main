@@ -47,3 +47,29 @@ async def fetch_history_similarity_reco(
                 thumbnail_url=c.get("thumbnail"),
             )
     return None
+
+
+async def fetch_trending_reco(
+    theme: str,
+    trending_service,
+    excluded_video_ids: set[str],
+) -> Optional[RecoItem]:
+    """Reco issue du trending pre-cache Redis sur thème user."""
+    try:
+        items = await trending_service.get_trending(theme=theme, limit=5)
+    except Exception as exc:
+        logger.warning("trending fetch failed (theme=%s): %s", theme, exc)
+        return None
+
+    for item in items or []:
+        if item["video_id"] not in excluded_video_ids:
+            return RecoItem(
+                video_id=item["video_id"],
+                title=item["title"],
+                channel=item["channel"],
+                duration_seconds=item.get("duration", 0),
+                source="trending",
+                why="En ce moment ça cartonne sur DeepSight",
+                thumbnail_url=item.get("thumbnail"),
+            )
+    return None
