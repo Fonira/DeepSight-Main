@@ -91,6 +91,7 @@ from voice.avatar import (
     generate_debate_avatar,
 )
 from voice.companion_context import build_companion_context
+from voice.companion_recos import get_more_recos_chain
 from voice.companion_prompt import render_companion_prompt
 from voice.schemas import CompanionContextResponse
 
@@ -758,6 +759,53 @@ async def verify_debate_tool_request(request: Request, db: AsyncSession) -> tupl
         )
 
     return debate, body
+
+
+async def verify_companion_tool_request(
+    request: Request, db: AsyncSession
+) -> tuple[VoiceSession, dict]:
+    """Verify an ElevenLabs tool webhook request for COMPANION agent (no summary_id).
+
+    Bearer token = voice_session.id. Body must include voice_session_id matching.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_auth", "message": "Missing or invalid Authorization header."},
+        )
+    token = auth_header.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_auth", "message": "Empty Bearer token."},
+        )
+
+    body = await request.json()
+    voice_session_id = body.get("voice_session_id") or body.get("parameters", {}).get(
+        "voice_session_id"
+    )
+    if not voice_session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_voice_session_id", "message": "No voice_session_id in body."},
+        )
+
+    if str(voice_session_id) != str(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "token_mismatch", "message": "Bearer token does not match voice_session_id."},
+        )
+
+    result = await db.execute(select(VoiceSession).where(VoiceSession.id == voice_session_id))
+    voice_session = result.scalar_one_or_none()
+    if not voice_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "voice_session_not_found", "message": "Voice session not found."},
+        )
+
+    return voice_session, body
 
 
 class AddonCheckoutRequest(BaseModel):
@@ -2658,6 +2706,41 @@ async def tool_check_fact(request: Request, db: AsyncSession = Depends(get_sessi
     )
 
     return {"result": result}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POST /tools/companion-* — COMPANION agent tools (public, bearer=voice_session_id)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/tools/companion-recos")
+async def tool_companion_recos(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: get more recommendations on a topic.
+
+    Chains 4 sources with fallback: history+similarity → tournesol → youtube → trending.
+    Stops once max_count reached.
+    """
+    voice_session, body = await verify_companion_tool_request(request, db)
+    topic = body.get("topic") or body.get("parameters", {}).get("topic", "")
+
+    excluded_q = await db.execute(
+        select(Summary.video_id).where(Summary.user_id == voice_session.user_id)
+    )
+    excluded: set[str] = {v for (v,) in excluded_q.all() if v}
+
+    async def _none_fn():
+        return None
+
+    recos = await get_more_recos_chain(
+        topic=topic,
+        excluded=excluded,
+        history_fn=_none_fn,
+        tournesol_fn=_none_fn,
+        youtube_fn=_none_fn,
+        trending_fn=_none_fn,
+        max_count=3,
+    )
+    return {"result": [r.model_dump() for r in recos]}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
