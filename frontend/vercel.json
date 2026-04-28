@@ -21,6 +21,50 @@
       ],
       "destination": "https://api.deepsightsynthesis.com/api/share/:token/og"
     },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i)(GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|CCBot|cohere-ai|Bytespider|Applebot-Extended|Diffbot|ImagesiftBot)"
+        }
+      ],
+      "destination": "/api/prerender?path=/"
+    },
+    {
+      "source": "/about",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i)(GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|CCBot|cohere-ai|Bytespider|Applebot-Extended|Diffbot|ImagesiftBot)"
+        }
+      ],
+      "destination": "/api/prerender?path=/about"
+    },
+    {
+      "source": "/upgrade",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i)(GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|CCBot|cohere-ai|Bytespider|Applebot-Extended|Diffbot|ImagesiftBot)"
+        }
+      ],
+      "destination": "/api/prerender?path=/upgrade"
+    },
+    {
+      "source": "/contact",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i)(GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|CCBot|cohere-ai|Bytespider|Applebot-Extended|Diffbot|ImagesiftBot)"
+        }
+      ],
+      "destination": "/api/prerender?path=/contact"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

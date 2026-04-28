@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "postinstall": "tsc -p ../packages/lighting-engine/tsconfig.build.json",
+    "prebuild": "node scripts/generate-sitemap.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",

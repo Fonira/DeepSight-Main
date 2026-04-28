@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { SEO } from "../components/SEO";
+import { BreadcrumbJsonLd } from "../components/BreadcrumbJsonLd";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION VARIANTS
@@ -216,6 +217,7 @@ const AboutPage = () => {
         path="/about"
         keywords="DeepSight, à propos, IA française, Mistral AI, analyse vidéo, YouTube, RGPD, Europe"
       />
+      <BreadcrumbJsonLd path="/about" />
       {/* Back navigation */}
       <div className="sticky top-0 z-10 bg-bg-primary/80 backdrop-blur-lg border-b border-border-subtle">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center">

@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "DeepSight - AI Video Analysis",
-  "short_name": "DeepSight",
+  "default_locale": "en",
+  "name": "__MSG_extension_name__",
+  "short_name": "__MSG_extension_short_name__",
   "version": "2.0.0",
-  "description": "AI-powered YouTube & TikTok analysis: sourced summaries, fact-check, flashcards, voice chat. European AI by Mistral.",
+  "description": "__MSG_extension_description__",
   "author": "DeepSight",
   "homepage_url": "https://www.deepsightsynthesis.com",
   "minimum_chrome_version": "116",
@@ -74,7 +75,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "DeepSight"
+    "default_title": "__MSG_extension_action_title__"
   },
 
   "side_panel": {
