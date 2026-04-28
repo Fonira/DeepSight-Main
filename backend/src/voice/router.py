@@ -91,6 +91,7 @@ from voice.avatar import (
     generate_debate_avatar,
 )
 from voice.companion_context import build_companion_context
+from voice.companion_db import CompanionDBAdapter
 from voice.companion_recos import get_more_recos_chain
 from voice.companion_prompt import render_companion_prompt
 from voice.schemas import CompanionContextResponse
@@ -1453,7 +1454,7 @@ async def create_voice_session(
                 )
                 companion_ctx = await build_companion_context(
                     user=current_user,
-                    db=db,
+                    db=CompanionDBAdapter(db),
                     redis=redis_client,
                     services=services,
                 )
@@ -3227,46 +3228,42 @@ async def companion_context_endpoint(
         )
 
     redis_client = _resolve_redis_client()
-
-    # NOTE: `services` wiring (themes_fn / initial_recos_fn) is intentionally
-    # kept minimal for this task — Task 11 only contractualises the endpoint
-    # surface. The full wiring will land alongside the integration test in a
-    # follow-up task. The default builder pipeline still runs against an
-    # in-process services bundle so a cache hit returns immediately.
     services = _build_companion_services(db=db, redis=redis_client, user=current_user)
+    db_adapter = CompanionDBAdapter(db)
 
     return await build_companion_context(
         user=current_user,
-        db=db,
+        db=db_adapter,
         redis=redis_client,
         services=services,
         force_refresh=refresh,
     )
 
 
-class _CompanionServicesPlaceholder:
-    """Placeholder services bundle for Task 11.
+class _CompanionServicesBundle:
+    """Services bundle consumed by build_companion_context.
 
-    The companion_context builder expects ``themes_fn`` and ``initial_recos_fn``
-    coroutines on the services object. The real wiring (Tournesol / Trending /
-    history-similarity / embeddings) will land in a follow-up task; until then
-    this stub returns empty lists so the pipeline can complete without
-    crashing on a cache miss.
+    - themes_fn: extract_top3_themes via Summary.category fallback (no LLM
+      in V1 wiring; LLM path is a follow-up once mistral-small client is
+      threaded through).
+    - initial_recos_fn: V1 returns []. Real Tournesol / Trending /
+      history-similarity orchestration is a follow-up task. The agent stays
+      useful in V1 because the system prompt instructs it to call
+      get_more_recos(topic) directly when it has no pre-fetched recos.
     """
 
     @staticmethod
-    async def themes_fn(*, user_id, db):  # noqa: ARG004 — placeholder signature
-        return []
+    async def themes_fn(*, user_id, db):
+        # db here is the CompanionDBAdapter passed by the builder.
+        from voice.companion_themes import extract_top3_themes
+
+        return await extract_top3_themes(user_id=user_id, db=db, llm_client=None)
 
     @staticmethod
     async def initial_recos_fn(*, primary_theme):  # noqa: ARG004
         return []
 
 
-def _build_companion_services(*, db, redis, user):  # noqa: ARG001 — placeholder wiring
-    """Return the services bundle consumed by build_companion_context.
-
-    Task 11 ships only the endpoint surface; the full wiring of theme
-    extraction and recommendation orchestrators arrives in a follow-up task.
-    """
-    return _CompanionServicesPlaceholder()
+def _build_companion_services(*, db, redis, user):  # noqa: ARG001
+    """Return the services bundle consumed by build_companion_context."""
+    return _CompanionServicesBundle()

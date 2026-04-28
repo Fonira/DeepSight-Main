@@ -179,7 +179,11 @@ async def test_voice_session_companion_injects_enriched_prompt(mock_db_session):
     assert mock_build.await_count == 1
     kwargs = mock_build.call_args.kwargs
     assert kwargs["user"] is mock_user
-    assert kwargs["db"] is mock_db_session
+    # db is wrapped in a CompanionDBAdapter that holds the original session.
+    from voice.companion_db import CompanionDBAdapter
+
+    assert isinstance(kwargs["db"], CompanionDBAdapter)
+    assert kwargs["db"]._session is mock_db_session
 
     # The enriched render (and not the static agent_config prompt) was forwarded.
     sent_prompt = captured["agent_kwargs"].get("system_prompt", "")
