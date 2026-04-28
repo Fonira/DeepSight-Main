@@ -82,6 +82,18 @@ module.exports = (env, argv) => {
           { from: "public/viewer.html", to: "viewer.html" },
           { from: "public/offscreen-mic.html", to: "offscreen-mic.html" },
           { from: "public/mic-permission.html", to: "mic-permission.html" },
+          // [B10] Self-host les worklets ElevenLabs — sinon le SDK essaie
+          // de créer un blob: URL bloqué par notre CSP MV3 stricte
+          // (script-src 'self'). Erreur user : "Failed to load the
+          // rawAudioProcessor worklet module".
+          {
+            from: "node_modules/@elevenlabs/client/worklets/rawAudioProcessor.js",
+            to: "rawAudioProcessor.js",
+          },
+          {
+            from: "node_modules/@elevenlabs/client/worklets/audioConcatProcessor.js",
+            to: "audioConcatProcessor.js",
+          },
           { from: "src/styles/design-tokens.css", to: "design-tokens.css" },
           { from: "src/styles/viewer.css", to: "viewer.css" },
           { from: "src/styles/tokens.css", to: "tokens.css" },
