@@ -1,9 +1,8 @@
 /**
- * SunflowerLayer v3.1 — extension viewer mascot (56×56).
+ * SunflowerLayer v3.1 — extension viewer mascot.
  *
- * Inline SVG fidèle au logo Tournesol officiel. 4 phases (dawn/day/dusk/
- * night), rotation héliotrope CSS, halo bioluminescent la nuit. Identique
- * au sidepanel mais branché sur le Context viewer (entry webpack distincte).
+ * SVG inline avec tige + 2 feuilles + tête héliotrope. Identique au sidepanel
+ * mais branché sur le Context viewer (entry webpack distincte).
  */
 
 import {
@@ -15,10 +14,11 @@ import {
 } from "@deepsight/lighting-engine";
 import { useAmbientLightingContext } from "../contexts/AmbientLightingContext";
 
-const FLOWER_SIZE = 56;
-const HALO_SIZE = Math.round(FLOWER_SIZE * 1.6);
-const TRANSITION =
-  "transform 1.5s cubic-bezier(0.4,0,0.2,1), opacity 1.5s cubic-bezier(0.4,0,0.2,1)";
+const FLOWER_WIDTH = 60;
+const SVG_HEIGHT = Math.round((FLOWER_WIDTH * 280) / 200);
+const HALO_SIZE = Math.round(FLOWER_WIDTH * 1.6);
+const HEAD_Y_IN_SVG = (SVG_HEIGHT * 100) / 280;
+const SVG_TOP = HALO_SIZE / 2 - HEAD_Y_IN_SVG;
 
 export function SunflowerLayer() {
   const { preset, enabled } = useAmbientLightingContext();
@@ -36,12 +36,13 @@ export function SunflowerLayer() {
       data-sunflower-phase={phase}
       style={{
         position: "fixed",
-        bottom: 14 - (HALO_SIZE - FLOWER_SIZE) / 2,
-        right: 14 - (HALO_SIZE - FLOWER_SIZE) / 2,
+        bottom: 14,
+        right: 14,
         width: HALO_SIZE,
         height: HALO_SIZE,
         pointerEvents: "none",
         zIndex: 2,
+        overflow: "visible",
       }}
     >
       <div
@@ -61,14 +62,20 @@ export function SunflowerLayer() {
       <div
         style={{
           position: "absolute",
-          top: "50%",
+          top: SVG_TOP,
           left: "50%",
-          transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+          transform: "translateX(-50%)",
+          width: FLOWER_WIDTH,
+          height: SVG_HEIGHT,
           opacity: opacity * preset.beam.opacity,
-          transition: TRANSITION,
+          transition: "opacity 1.5s cubic-bezier(0.4,0,0.2,1)",
         }}
         dangerouslySetInnerHTML={{
-          __html: buildSunflowerSVG({ size: FLOWER_SIZE, phase }),
+          __html: buildSunflowerSVG({
+            size: FLOWER_WIDTH,
+            phase,
+            rotation,
+          }),
         }}
       />
     </div>
