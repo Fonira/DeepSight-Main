@@ -1,6 +1,9 @@
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useExtensionVoiceChat } from "./useExtensionVoiceChat";
+import { useVoiceSettings } from "./useVoiceSettings";
+import { VoiceSettingsDrawer } from "./VoiceSettingsDrawer";
 import { pickAgentType, type VoicePanelContext } from "./types";
+import type { VoicePreferencesShape } from "./voiceMessages";
 
 interface VoiceViewProps {
   context: VoicePanelContext | null;
@@ -17,12 +20,15 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
-  const { status, error, transcripts, isActive, start, stop } =
+  const { status, error, transcripts, isActive, start, stop, restart } =
     useExtensionVoiceChat({ context });
+
+  const settings = useVoiceSettings();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [restarting, setRestarting] = useState(false);
 
   const transcriptsRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-scroll quand un nouveau transcript arrive — UX classique chat.
   useEffect(() => {
     const el = transcriptsRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -42,11 +48,40 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
     }
   };
 
+  // Apply hard changes pendant l'appel = restart silencieux ElevenLabs.
+  // Hors appel, le PUT est suffisant (la prochaine session prendra les nouveaux params).
+  const handleApplyHardChanges = useCallback(
+    async (changed: Partial<VoicePreferencesShape>): Promise<void> => {
+      if (!isActive) return;
+      setRestarting(true);
+      try {
+        await restart();
+      } finally {
+        // Petit délai visuel — la session se reconnecte généralement < 1s
+        setTimeout(() => setRestarting(false), 800);
+      }
+      // Référencé uniquement pour éviter unused param warning si linter strict
+      void changed;
+    },
+    [isActive, restart],
+  );
+
   return (
     <div className="dsp-app">
       <div className="dsp-header">
         <span className="dsp-title">DeepSight Voice</span>
         <span className="dsp-badge">ElevenLabs</span>
+        <button
+          type="button"
+          className="dsp-voice-settings-btn"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Réglages voix"
+          title="Réglages voix"
+          style={{ marginLeft: "auto" }}
+          data-testid="voice-settings-btn"
+        >
+          ⚙
+        </button>
       </div>
 
       <div className="dsp-card" data-testid="voice-context-card">
@@ -73,6 +108,14 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
         <p className="dsp-status" data-testid="voice-status">
           {STATUS_LABELS[status] ?? status}
         </p>
+        {restarting && (
+          <span
+            className="dsp-vs-restart-indicator"
+            data-testid="voice-restarting"
+          >
+            Réapplication des réglages…
+          </span>
+        )}
         {error && (
           <p className="dsp-error" role="alert" data-testid="voice-error">
             {error}
@@ -101,6 +144,13 @@ export const VoiceView: React.FC<VoiceViewProps> = ({ context }) => {
       <p className="dsp-footer">
         Conversation chiffrée · Tokens stockés dans le service worker.
       </p>
+
+      <VoiceSettingsDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onApplyHardChanges={handleApplyHardChanges}
+        settings={settings}
+      />
     </div>
   );
 };

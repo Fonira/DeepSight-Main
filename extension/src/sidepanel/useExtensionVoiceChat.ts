@@ -42,6 +42,14 @@ interface UseExtensionVoiceChatResult {
   start: () => Promise<void>;
   stop: () => Promise<void>;
   /**
+   * Restart silencieux : ferme la WebSocket ElevenLabs courante + en
+   * recrée une nouvelle qui prend les nouvelles préférences. Préserve
+   * `transcripts[]` et le timer d'appel (`sessionStartedAt`) pour que
+   * l'utilisateur ne perde ni l'historique ni le compteur visuel.
+   * No-op si aucun appel actif.
+   */
+  restart: () => Promise<void>;
+  /**
    * Append un message transcript localement + le forward au backend.
    * Exposé pour les tests + éventuels TTS clients custom.
    */
@@ -180,6 +188,74 @@ export function useExtensionVoiceChat(
     sessionStartedAt.current = 0;
   }, []);
 
+  const restart = useCallback(async (): Promise<void> => {
+    // No-op si pas d'appel actif — les nouvelles prefs s'appliqueront
+    // naturellement au prochain start() puisque le backend lit
+    // User.voice_preferences fraîchement persisté.
+    if (status !== "listening" && status !== "connecting") return;
+    const preservedStart = sessionStartedAt.current;
+
+    setStatus("connecting");
+    setError(null);
+
+    // ── Phase 1 : couper la WebSocket courante ──
+    try {
+      const sdk = await loadElevenLabsSdk();
+      await sdk?.disconnect?.();
+    } catch {
+      /* swallow — on enchaîne sur la création nouvelle session */
+    }
+    if (cancelled.current) return;
+
+    // ── Phase 2 : recréer une session backend ──
+    const agent_type = pickAgentType(context);
+    const payload: Record<string, unknown> = { agent_type };
+    if (context?.summaryId) payload.summary_id = context.summaryId;
+    if (context?.videoId) payload.video_id = context.videoId;
+    if (context?.videoTitle) payload.video_title = context.videoTitle;
+
+    let response: BackgroundResponse<CreateSessionResponse>;
+    try {
+      response = await sendMessage<CreateSessionResponse>({
+        action: "VOICE_CREATE_SESSION",
+        data: payload,
+      });
+    } catch (e) {
+      if (cancelled.current) return;
+      setStatus("error");
+      setError((e as Error).message || "Restart échoué.");
+      return;
+    }
+    if (cancelled.current) return;
+    if (!response.success || !response.result?.voice_session_id) {
+      setStatus("error");
+      setError(response.error || "Impossible de redémarrer la session.");
+      return;
+    }
+    setSessionId(response.result.voice_session_id);
+    // Préserver le timer original — la "session perçue" continue.
+    sessionStartedAt.current = preservedStart;
+
+    // ── Phase 3 : reconnecter le SDK ElevenLabs ──
+    try {
+      const sdk = await loadElevenLabsSdk();
+      if (cancelled.current) return;
+      if (sdk && response.result.signed_url) {
+        await sdk.connect({
+          signedUrl: response.result.signed_url,
+          onMessage: (msg: { source: TranscriptSpeaker; text: string }) => {
+            void appendTranscript(msg.source, msg.text);
+          },
+        });
+      }
+      if (!cancelled.current) setStatus("listening");
+    } catch (e) {
+      if (cancelled.current) return;
+      setStatus("error");
+      setError((e as Error).message || "ElevenLabs reconnection failed");
+    }
+  }, [appendTranscript, context, sendMessage, status]);
+
   return {
     status,
     error,
@@ -188,6 +264,7 @@ export function useExtensionVoiceChat(
     isActive: status === "listening" || status === "connecting",
     start,
     stop,
+    restart,
     appendTranscript,
   };
 }

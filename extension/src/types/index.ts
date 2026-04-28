@@ -177,7 +177,10 @@ export type MessageAction =
   | "CANCEL_ANALYSIS"
   | "OPEN_VOICE_PANEL"
   | "VOICE_CREATE_SESSION"
-  | "VOICE_APPEND_TRANSCRIPT";
+  | "VOICE_APPEND_TRANSCRIPT"
+  | "VOICE_GET_PREFERENCES"
+  | "VOICE_UPDATE_PREFERENCES"
+  | "VOICE_GET_CATALOG";
 
 export interface ExtensionMessage {
   action: MessageAction;

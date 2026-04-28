@@ -477,6 +477,23 @@ async function appendVoiceTranscript(
   });
 }
 
+async function getVoicePreferences(): Promise<unknown> {
+  return apiRequest<unknown>("/voice/preferences");
+}
+
+async function updateVoicePreferences(
+  payload: Record<string, unknown>,
+): Promise<unknown> {
+  return apiRequest<unknown>("/voice/preferences", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+async function getVoiceCatalog(): Promise<unknown> {
+  return apiRequest<unknown>("/voice/catalog");
+}
+
 // ── Side Panel — handler d'ouverture ──
 //
 // Le side panel API n'existe que sur Chrome (≥114) et certains forks
@@ -740,6 +757,34 @@ async function handleMessage(
       const payload = (message.data as Record<string, unknown>) ?? {};
       try {
         const result = await appendVoiceTranscript(payload);
+        return { success: true, result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "VOICE_GET_PREFERENCES": {
+      try {
+        const result = await getVoicePreferences();
+        return { success: true, result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "VOICE_UPDATE_PREFERENCES": {
+      const payload = (message.data as Record<string, unknown>) ?? {};
+      try {
+        const result = await updateVoicePreferences(payload);
+        return { success: true, result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "VOICE_GET_CATALOG": {
+      try {
+        const result = await getVoiceCatalog();
         return { success: true, result };
       } catch (e) {
         return { success: false, error: (e as Error).message };
