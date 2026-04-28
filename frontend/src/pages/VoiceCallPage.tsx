@@ -6,8 +6,8 @@
  * floating panel). Plan-gated to Pro tier — free users see an upgrade CTA.
  */
 
-import React, { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone,
@@ -40,6 +40,7 @@ const formatTime = (seconds: number): string => {
 const VoiceCallPage: React.FC = () => {
   const { language } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { voiceEnabled } = useVoiceEnabled();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -50,9 +51,35 @@ const VoiceCallPage: React.FC = () => {
     [language],
   );
 
+  // Dual-mode driven by URL: ?summary=<id>&autostart=1 switches the page from
+  // free-form COMPANION to a video-bound EXPLORER session. The companion
+  // agent's `transfer_to_video` tool produces this URL via onTransferRequest.
+  const targetSummaryId = useMemo(() => {
+    const raw = searchParams.get("summary");
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [searchParams]);
+
+  const shouldAutoStart = searchParams.get("autostart") === "1";
+
+  // Companion → Explorer transfer: navigate so the page re-mounts with the
+  // ?summary= URL, which tears down the companion session and provisions a
+  // fresh explorer session via the standard /api/voice/session flow.
+  const handleTransferRequest = useCallback(
+    (payload: { summary_id: number; video_title: string }) => {
+      navigate(`/voice-call?summary=${payload.summary_id}&autostart=1`, {
+        replace: false,
+      });
+    },
+    [navigate],
+  );
+
   const voice = useVoiceChat({
-    agentType: "companion",
+    agentType: targetSummaryId ? "explorer" : "companion",
+    summaryId: targetSummaryId ?? undefined,
     language,
+    onTransferRequest: targetSummaryId ? undefined : handleTransferRequest,
   });
 
   const isActive =
@@ -71,6 +98,17 @@ const VoiceCallPage: React.FC = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-start the explorer session when arriving via a transfer URL
+  // (?summary=<id>&autostart=1). We only auto-start once per mount and
+  // only when the call is idle to avoid double-starting after a reload.
+  useEffect(() => {
+    if (!voiceEnabled) return;
+    if (!targetSummaryId || !shouldAutoStart) return;
+    if (voice.status !== "idle") return;
+    Promise.resolve(voice.start()).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceEnabled, targetSummaryId, shouldAutoStart]);
 
   const safeStart = useCallback(() => {
     Promise.resolve(voice.start()).catch(() => {});
@@ -255,13 +293,20 @@ const VoiceCallPage: React.FC = () => {
                 </div>
                 <div>
                   <h1 className="text-xl sm:text-2xl font-semibold text-text-primary">
-                    {tr("Appel vocal", "Voice call")}
+                    {targetSummaryId
+                      ? tr("Appel sur ta vidéo", "Call on your video")
+                      : tr("Appel vocal", "Voice call")}
                   </h1>
                   <p className="text-sm text-text-secondary">
-                    {tr(
-                      "Compagnon de réflexion — discutez librement avec DeepSight",
-                      "Reflection companion — talk freely with DeepSight",
-                    )}
+                    {targetSummaryId
+                      ? tr(
+                          `Session vocale ciblée sur l'analyse #${targetSummaryId}`,
+                          `Voice session focused on analysis #${targetSummaryId}`,
+                        )
+                      : tr(
+                          "Compagnon de réflexion — discutez librement avec DeepSight",
+                          "Reflection companion — talk freely with DeepSight",
+                        )}
                   </p>
                 </div>
               </div>
