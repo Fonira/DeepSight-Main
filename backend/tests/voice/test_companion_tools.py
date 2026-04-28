@@ -193,3 +193,177 @@ async def test_companion_recos_tool_valid_token_returns_recos():
                 assert body["result"][0]["video_id"] == "v1"
     finally:
         app.dependency_overrides.pop(get_session, None)
+
+
+# ─── /tools/transfer-to-video ──────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_transfer_to_video_summary_id_resolves_target():
+    from main import app
+    from voice import router as voice_router
+    from db.database import get_session
+
+    fake_session = AsyncMock(id="vs1", user_id=42)
+
+    fake_summary = AsyncMock()
+    fake_summary.id = 99
+    fake_summary.video_id = "abc123"
+    fake_summary.video_title = "Vidéo IA"
+    fake_summary.video_channel = "Chan"
+    fake_summary.user_id = 42
+
+    fake_user = AsyncMock(id=42, plan="pro")
+
+    fake_db = AsyncMock()
+    summary_result = AsyncMock()
+    summary_result.scalar_one_or_none = lambda: fake_summary
+    user_result = AsyncMock()
+    user_result.scalar_one_or_none = lambda: fake_user
+    fake_db.execute = AsyncMock(side_effect=[summary_result, user_result])
+
+    fake_redis = AsyncMock()
+    fake_redis.set = AsyncMock(return_value=True)
+
+    async def _override_session():
+        yield fake_db
+
+    app.dependency_overrides[get_session] = _override_session
+
+    try:
+        with patch.object(
+            voice_router, "verify_companion_tool_request", new_callable=AsyncMock
+        ) as mock_verify, patch.object(
+            voice_router, "check_voice_quota", new_callable=AsyncMock
+        ) as mock_quota, patch.object(
+            voice_router, "_resolve_redis_client", return_value=fake_redis
+        ):
+            mock_verify.return_value = (fake_session, {"summary_id": 99})
+            mock_quota.return_value = {}
+
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                resp = await ac.post(
+                    "/api/voice/tools/transfer-to-video",
+                    headers={"Authorization": "Bearer vs1"},
+                    json={"summary_id": 99, "voice_session_id": "vs1"},
+                )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["result"]["status"] == "ready"
+            assert body["result"]["summary_id"] == 99
+            assert "Vidéo IA" in body["result"]["video_title"]
+            fake_redis.set.assert_called_once()
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+
+@pytest.mark.asyncio
+async def test_transfer_to_video_not_found_returns_status():
+    from main import app
+    from voice import router as voice_router
+    from db.database import get_session
+
+    fake_session = AsyncMock(id="vs2", user_id=42)
+
+    fake_db = AsyncMock()
+    empty_result = AsyncMock()
+    empty_result.scalar_one_or_none = lambda: None
+    fake_db.execute = AsyncMock(return_value=empty_result)
+
+    async def _override_session():
+        yield fake_db
+
+    app.dependency_overrides[get_session] = _override_session
+
+    try:
+        with patch.object(
+            voice_router, "verify_companion_tool_request", new_callable=AsyncMock
+        ) as mock_verify:
+            mock_verify.return_value = (
+                fake_session,
+                {"query": "vidéo qui n'existe pas"},
+            )
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                resp = await ac.post(
+                    "/api/voice/tools/transfer-to-video",
+                    headers={"Authorization": "Bearer vs2"},
+                    json={
+                        "query": "vidéo qui n'existe pas",
+                        "voice_session_id": "vs2",
+                    },
+                )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["result"]["status"] == "not_found"
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+
+@pytest.mark.asyncio
+async def test_transfer_to_video_quota_exceeded_returns_graceful():
+    from fastapi import HTTPException
+    from main import app
+    from voice import router as voice_router
+    from db.database import get_session
+
+    fake_session = AsyncMock(id="vs3", user_id=42)
+    fake_summary = AsyncMock()
+    fake_summary.id = 7
+    fake_summary.video_id = "v"
+    fake_summary.video_title = "T"
+    fake_summary.video_channel = "C"
+    fake_summary.user_id = 42
+
+    fake_user = AsyncMock(id=42, plan="pro")
+
+    fake_db = AsyncMock()
+    summary_result = AsyncMock()
+    summary_result.scalar_one_or_none = lambda: fake_summary
+    user_result = AsyncMock()
+    user_result.scalar_one_or_none = lambda: fake_user
+    fake_db.execute = AsyncMock(side_effect=[summary_result, user_result])
+
+    async def _override_session():
+        yield fake_db
+
+    app.dependency_overrides[get_session] = _override_session
+
+    try:
+        with patch.object(
+            voice_router, "verify_companion_tool_request", new_callable=AsyncMock
+        ) as mock_verify, patch.object(
+            voice_router, "check_voice_quota", new_callable=AsyncMock
+        ) as mock_quota:
+            mock_verify.return_value = (fake_session, {"summary_id": 7})
+            mock_quota.side_effect = HTTPException(
+                status_code=429, detail="Quota épuisé"
+            )
+
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                resp = await ac.post(
+                    "/api/voice/tools/transfer-to-video",
+                    headers={"Authorization": "Bearer vs3"},
+                    json={"summary_id": 7, "voice_session_id": "vs3"},
+                )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["result"]["status"] == "quota_exceeded"
+            assert "Quota" in body["result"]["message"]
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+
+# ─── GET /companion-pending-transfer/{voice_session_id} ────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_companion_pending_transfer_unauth_returns_401():
+    from main import app
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/api/voice/companion-pending-transfer/some-id")
+    assert resp.status_code == 401

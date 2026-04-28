@@ -551,7 +551,14 @@ TON STYLE :
 TOOLS DISPONIBLES :
 - web_search(query, num_results=5) : recherche web Brave Search.
 - deep_research(query, num_queries=3) : recherche multi-requêtes (synthèse).
-- check_fact(claim) : vérification d'affirmation factuelle.""",
+- check_fact(claim) : vérification d'affirmation factuelle.
+- get_more_recos(topic) : récupère 3 nouvelles recommandations de vidéos sur un thème.
+- start_analysis(video_url) : lance une analyse YouTube en arrière-plan (~2 min, l'utilisateur rappellera).
+- transfer_to_video(summary_id | video_id | query) : bascule l'appel vers une session EXPLORER \
+sur une vidéo précise de l'historique. Annonce « Je te bascule sur cette vidéo, deux secondes » \
+avant l'appel. Si la réponse est `status: ready`, ne dis plus rien — la transition se fait \
+côté client. Si `status: not_found` ou `quota_exceeded`, lis le `message` et propose \
+une alternative.""",
     system_prompt_en="""\
 You are the DeepSight reflection companion voice agent. You have an open \
 conversation with the user, without any preloaded video reference.
@@ -579,11 +586,21 @@ YOUR STYLE:
 AVAILABLE TOOLS:
 - web_search(query, num_results=5): Brave Search web search.
 - deep_research(query, num_queries=3): multi-query research synthesis.
-- check_fact(claim): factual claim verification.""",
+- check_fact(claim): factual claim verification.
+- get_more_recos(topic): fetch 3 fresh video recommendations on a topic.
+- start_analysis(video_url): queue a YouTube analysis (~2 min, user will call back).
+- transfer_to_video(summary_id | video_id | query): hand off the call to an EXPLORER \
+session on a specific video from the user's history. Announce 'I'm transferring you, \
+one moment' before the call. If response status is 'ready', stop talking — the client \
+handles the transition. If 'not_found' or 'quota_exceeded', read the message and propose \
+an alternative.""",
     tools=[
         "web_search",
         "deep_research",
         "check_fact",
+        "get_more_recos",
+        "start_analysis",
+        "transfer_to_video",
     ],
     voice_style="warm",
     temperature=0.7,

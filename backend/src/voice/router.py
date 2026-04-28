@@ -25,7 +25,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from typing import Optional
 
 from db.database import get_session, VoiceSession, Summary, User, DebateAnalysis
@@ -1603,6 +1603,13 @@ async def create_voice_session(
                 webhook_base_url=webhook_base_url,
                 api_token=str(debate.id),
             )
+        elif agent_config.agent_type == "companion":
+            from voice.elevenlabs import build_companion_tools_config
+
+            tools_config = build_companion_tools_config(
+                webhook_base_url=webhook_base_url,
+                voice_session_id=voice_session.id,
+            )
         else:
             tools_config = ElevenLabsClient.build_tools_config(
                 webhook_base_url=webhook_base_url,
@@ -2806,6 +2813,209 @@ async def tool_companion_start_analysis(
             "message": f"Analyse de {video_id} en file d'attente — ETA 2 min.",
         }
     }
+
+
+_COMPANION_TRANSFER_REDIS_KEY = "companion_transfer:{voice_session_id}"
+_COMPANION_TRANSFER_TTL_SECONDS = 60
+
+
+@router.post("/tools/transfer-to-video")
+async def tool_companion_transfer_to_video(
+    request: Request, db: AsyncSession = Depends(get_session)
+):
+    """ElevenLabs tool webhook: transfer the companion call to an EXPLORER
+    session on a specific video from the user's history.
+
+    The tool resolves the target Summary, persists the target in Redis under
+    a per-session key (consumed by the frontend after detecting the
+    `transfer_to_video` tool call via the ElevenLabs SDK), and returns a
+    spoken-friendly status payload to the agent. The actual session swap
+    happens client-side: the page reads the pending transfer and re-mounts
+    the voice overlay in EXPLORER mode on the target summary_id.
+
+    Body (any of, priority order):
+        - summary_id: int   — direct lookup
+        - video_id:   str   — YouTube/TikTok ID
+        - query:      str   — fuzzy ILIKE match on Summary.video_title/channel
+    """
+    voice_session, body = await verify_companion_tool_request(request, db)
+    params = body.get("parameters") or {}
+    summary_id = body.get("summary_id") or params.get("summary_id")
+    video_id = body.get("video_id") or params.get("video_id")
+    query = body.get("query") or params.get("query")
+
+    target: Optional[Summary] = None
+
+    if summary_id:
+        try:
+            sid = int(summary_id)
+        except (TypeError, ValueError):
+            return {
+                "result": {
+                    "status": "not_found",
+                    "message": "summary_id invalide.",
+                }
+            }
+        result = await db.execute(
+            select(Summary).where(
+                Summary.id == sid,
+                Summary.user_id == voice_session.user_id,
+            )
+        )
+        target = result.scalar_one_or_none()
+
+    if target is None and video_id:
+        result = await db.execute(
+            select(Summary).where(
+                Summary.video_id == str(video_id),
+                Summary.user_id == voice_session.user_id,
+            )
+        )
+        target = result.scalar_one_or_none()
+
+    if target is None and query:
+        pattern = f"%{str(query).lower()}%"
+        result = await db.execute(
+            select(Summary)
+            .where(
+                Summary.user_id == voice_session.user_id,
+                or_(
+                    func.lower(Summary.video_title).like(pattern),
+                    func.lower(Summary.video_channel).like(pattern),
+                ),
+            )
+            .order_by(Summary.created_at.desc())
+            .limit(1)
+        )
+        target = result.scalar_one_or_none()
+
+    if target is None:
+        return {
+            "result": {
+                "status": "not_found",
+                "message": (
+                    "Je ne retrouve pas cette analyse dans ton historique. "
+                    "Tu peux m'en dire un peu plus, ou je peux la lancer "
+                    "via start_analysis si tu as l'URL ?"
+                ),
+            }
+        }
+
+    # Pre-flight quota — explorer requires Pro plan
+    user_query = await db.execute(
+        select(User).where(User.id == voice_session.user_id)
+    )
+    user = user_query.scalar_one_or_none()
+    if user is None:
+        return {
+            "result": {
+                "status": "error",
+                "message": "Utilisateur introuvable.",
+            }
+        }
+
+    try:
+        await check_voice_quota(user_id=user.id, plan=user.plan, db=db)
+    except HTTPException as exc:
+        detail = exc.detail
+        if isinstance(detail, dict):
+            detail = detail.get("message", str(detail))
+        return {
+            "result": {
+                "status": "quota_exceeded",
+                "message": str(detail),
+            }
+        }
+
+    # Persist the pending transfer in Redis for the frontend to consume
+    redis_client = _resolve_redis_client()
+    payload = {
+        "summary_id": target.id,
+        "video_id": target.video_id,
+        "video_title": target.video_title or "ta vidéo",
+        "video_channel": target.video_channel,
+        "voice_session_id": voice_session.id,
+    }
+    if redis_client is not None:
+        try:
+            await redis_client.set(
+                _COMPANION_TRANSFER_REDIS_KEY.format(
+                    voice_session_id=voice_session.id
+                ),
+                json.dumps(payload),
+                ex=_COMPANION_TRANSFER_TTL_SECONDS,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("companion transfer redis write failed: %s", exc)
+
+    return {
+        "result": {
+            "status": "ready",
+            "summary_id": target.id,
+            "video_title": target.video_title or "ta vidéo",
+            "message": (
+                f"Je te bascule sur « {target.video_title or 'cette vidéo'} »."
+            ),
+        }
+    }
+
+
+@router.get("/companion-pending-transfer/{voice_session_id}")
+async def companion_pending_transfer(
+    voice_session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Frontend-facing endpoint: read the pending transfer payload for the
+    given voice session, written by the `/tools/transfer-to-video` webhook.
+
+    Authorisation: the caller's JWT must own the voice session. Returns 404
+    if no transfer is pending (no Redis entry, or entry expired after 60s).
+    """
+    result = await db.execute(
+        select(VoiceSession).where(VoiceSession.id == voice_session_id)
+    )
+    voice_session = result.scalar_one_or_none()
+    if voice_session is None or voice_session.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Voice session not found.",
+        )
+
+    redis_client = _resolve_redis_client()
+    if redis_client is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No pending transfer.",
+        )
+
+    raw = await redis_client.get(
+        _COMPANION_TRANSFER_REDIS_KEY.format(voice_session_id=voice_session_id)
+    )
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No pending transfer.",
+        )
+
+    try:
+        payload = json.loads(raw)
+    except (TypeError, ValueError) as exc:
+        logger.warning("companion pending transfer decode failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No pending transfer.",
+        ) from exc
+
+    # Consume once — clear the key after read
+    try:
+        await redis_client.delete(
+            _COMPANION_TRANSFER_REDIS_KEY.format(voice_session_id=voice_session_id)
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("companion pending transfer cleanup failed: %s", exc)
+
+    return payload
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
