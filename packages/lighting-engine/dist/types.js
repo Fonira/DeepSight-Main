@@ -1,0 +1,2 @@
+// Types partagés engine
+export {};
