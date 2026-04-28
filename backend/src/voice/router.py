@@ -26,7 +26,6 @@ from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, or_, select
-from typing import Optional
 
 from db.database import get_session, VoiceSession, Summary, User, DebateAnalysis
 from auth.dependencies import get_current_user, http_bearer, oauth2_scheme
