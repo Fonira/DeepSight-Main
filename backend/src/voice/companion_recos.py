@@ -148,3 +148,28 @@ async def build_initial_recos(
         return_exceptions=False,
     )
     return [r for r in results if r is not None]
+
+
+async def get_more_recos_chain(
+    topic: str,
+    excluded: set[str],
+    history_fn,
+    tournesol_fn,
+    youtube_fn,
+    trending_fn,
+    max_count: int = 3,
+) -> list[RecoItem]:
+    """Chaîne fallback : history → tournesol → youtube → trending. Stop quand max_count atteint."""
+    accumulator: list[RecoItem] = []
+    for fn in (history_fn, tournesol_fn, youtube_fn, trending_fn):
+        if len(accumulator) >= max_count:
+            break
+        try:
+            result = await fn()
+        except Exception as exc:
+            logger.warning("get_more_recos source failed: %s", exc)
+            continue
+        if result is not None and result.video_id not in excluded:
+            accumulator.append(result)
+            excluded = excluded | {result.video_id}
+    return accumulator[:max_count]
