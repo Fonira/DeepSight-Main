@@ -1,0 +1,86 @@
+name: Extension dist auto-rebuild
+
+# Auto-rebuild extension/dist/ on every push to main that touches the extension
+# source tree (or the @deepsight/lighting-engine package it depends on). Commits
+# the rebuilt artifacts back to main so users pulling main + reloading the
+# extension via chrome://extensions see the latest UI without a local build.
+#
+# Why : V1.2 (PR #173) shipped only sources .tsx ; the dist .js bundles on main
+# remained stale, so users saw the OLD UI after pull+reload. PR #180 patched it
+# manually. This workflow prevents the same drift in the future.
+#
+# Loop-safety :
+#   - The commit message contains [skip ci] so the workflow does not re-trigger
+#     itself or any other CI workflow.
+#   - Pushes made by the default GITHUB_TOKEN do NOT trigger a fresh `push`
+#     event by default (GitHub design), but the [skip ci] tag is a belt-and-
+#     suspenders safety net for hand-rerun/PAT cases.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "extension/src/**"
+      - "extension/public/**"
+      - "extension/webpack.config.js"
+      - "extension/package.json"
+      - "extension/package-lock.json"
+      - "packages/lighting-engine/src/**"
+      - "packages/lighting-engine/package.json"
+      - ".github/workflows/extension-dist-rebuild.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: extension-dist-rebuild-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    name: Rebuild & commit dist
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: extension/package-lock.json
+
+      - name: Install extension deps
+        working-directory: extension
+        run: npm ci
+
+      # Lighting-engine is a workspace dep linked into extension/node_modules
+      # via a symlink. The extension postinstall already runs tsc on it, but
+      # we double-check here so the dist is fresh before bundling.
+      - name: Build @deepsight/lighting-engine
+        working-directory: extension
+        run: ./node_modules/.bin/tsc -p ../packages/lighting-engine/tsconfig.build.json
+
+      - name: Build extension dist
+        working-directory: extension
+        run: npm run build
+
+      - name: Commit rebuilt dist if changed
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add extension/dist packages/lighting-engine/dist
+          if git diff --staged --quiet; then
+            echo "dist/ unchanged — no commit needed"
+            exit 0
+          fi
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          git commit -m "chore(ext/dist): auto-rebuild dist for ${SHORT_SHA} [skip ci]" \
+            -m "Triggered by push on main touching extension/src/** or packages/lighting-engine/src/**." \
+            -m "Source commit: ${GITHUB_SHA}"
+          git push origin HEAD:main
