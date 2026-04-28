@@ -72,16 +72,19 @@ jest.mock("@expo/vector-icons", () => ({ Ionicons: "Ionicons" }));
 
 import { VoiceButton } from "../VoiceButton";
 
-// Helpers pour extraire le `bottom` depuis les styles
+// Helpers pour extraire le `bottom` depuis les styles. Remonte les wrappers
+// du test renderer jusqu'à trouver le style avec un `bottom` défini.
 function getBottomOffset(node: any): number | undefined {
-  // Container = parent direct du Pressable
-  const container = node.parent?.parent;
-  const styles = container?.props?.style;
-  if (!styles) return undefined;
-  const flat = Array.isArray(styles)
-    ? styles.flat().reduce((a: any, s: any) => ({ ...a, ...s }), {})
-    : styles;
-  return flat.bottom;
+  let cur: any = node?.parent;
+  while (cur) {
+    const style = cur.props?.style;
+    const flat = Array.isArray(style)
+      ? style.flat().reduce((a: any, s: any) => ({ ...a, ...s }), {})
+      : style;
+    if (flat?.bottom !== undefined) return flat.bottom;
+    cur = cur.parent;
+  }
+  return undefined;
 }
 
 describe("VoiceButton placement (Spec #3)", () => {

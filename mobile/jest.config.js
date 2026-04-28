@@ -11,6 +11,9 @@ module.exports = {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^@deepsight/lighting-engine$":
       "<rootDir>/../packages/lighting-engine/src/index.ts",
+    // ESM-style .js imports in TS source (e.g. `from './preset.js'`) must
+    // resolve to .ts files when jest runs the source directly (lighting-engine).
+    "^(\\.{1,2}/.*)\\.js$": "$1",
   },
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",

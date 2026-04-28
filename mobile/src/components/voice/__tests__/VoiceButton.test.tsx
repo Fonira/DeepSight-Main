@@ -243,17 +243,24 @@ describe("VoiceButton (Mobile)", () => {
       />,
     );
 
-    // On lit l'arbre rendu — le container parent doit avoir bottom = 150
+    // On lit l'arbre rendu — le View container parent (du Pressable) doit
+    // avoir bottom = 150. Structure : <View container> > <Pressable>.
     const button = getByLabelText(/Démarrer le chat vocal/);
-    // Le Pressable est dans un View avec style { bottom: customOffset }.
-    // Remonte d'un parent (Pressable -> View container).
-    const container = button.parent?.parent;
-    const flatStyle = Array.isArray(container?.props?.style)
-      ? container?.props?.style
-          .flat()
-          .reduce((a: any, s: any) => ({ ...a, ...s }), {})
-      : container?.props?.style;
-    expect(flatStyle?.bottom).toBe(customOffset);
+    // Remonte les wrappers du test renderer jusqu'à trouver le style avec `bottom`.
+    let node: any = button.parent;
+    let bottomFound: number | undefined;
+    while (node && bottomFound === undefined) {
+      const style = node.props?.style;
+      const flat = Array.isArray(style)
+        ? style.flat().reduce((a: any, s: any) => ({ ...a, ...s }), {})
+        : style;
+      if (flat?.bottom !== undefined) {
+        bottomFound = flat.bottom;
+        break;
+      }
+      node = node.parent;
+    }
+    expect(bottomFound).toBe(customOffset);
   });
 
   it("rend sans summaryId quand agentType=companion (mode sans vidéo)", () => {
