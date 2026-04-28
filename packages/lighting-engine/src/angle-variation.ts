@@ -1,6 +1,6 @@
 // Daily seeded ± 15° angle variation, smoothed across hours
 
-import { mulberry32 } from "./seeded-random";
+import { mulberry32 } from "./seeded-random.js";
 
 export const DAILY_VARIATION = {
   angleDegRange: 15,

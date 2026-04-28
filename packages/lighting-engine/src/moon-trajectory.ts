@@ -1,6 +1,6 @@
 // Moon trajectory: visible from ~17h to ~07h, position % across viewport
 
-import { lerp } from "./interpolate";
+import { lerp } from "./interpolate.js";
 
 export interface MoonState {
   visible: boolean;

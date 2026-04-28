@@ -659,7 +659,45 @@ interface VoiceCallMessage {
 
 /** [B8] Sidepanel → background : "demande-moi le micro via offscreen". */
 interface MicPermissionMessage {
-  action: "REQUEST_MIC_PERMISSION";
+  action:
+    | "REQUEST_MIC_PERMISSION"
+    | "OPEN_MIC_PERMISSION_POPUP"
+    | "MIC_PERMISSION_GRANTED";
+}
+
+/**
+ * [B9] Open dedicated popup window for mic permission.
+ *
+ * Fallback fiable au offscreen document : Chrome ouvre une vraie fenêtre
+ * popup (chrome.windows.create avec type:"popup") dans laquelle
+ * getUserMedia se comporte comme dans un onglet web normal — le prompt
+ * natif Chrome s'affiche garanti, sans le bug du sidepanel.
+ *
+ * Une fois la permission accordée, la popup envoie MIC_PERMISSION_GRANTED
+ * → on relaie au sidepanel qui re-bootstrap.
+ */
+async function openMicPermissionPopup(): Promise<void> {
+  const windowsApi = (
+    chrome as unknown as {
+      windows?: {
+        create?: (opts: {
+          url: string;
+          type: "popup" | "normal";
+          width?: number;
+          height?: number;
+          focused?: boolean;
+        }) => Promise<unknown>;
+      };
+    }
+  ).windows;
+  if (!windowsApi?.create) return;
+  await windowsApi.create({
+    url: chrome.runtime.getURL("mic-permission.html"),
+    type: "popup",
+    width: 460,
+    height: 360,
+    focused: true,
+  });
 }
 
 export async function handleMessage(
@@ -694,6 +732,33 @@ export async function handleMessage(
         error: (e as Error).message ?? "offscreen mic failed",
       };
     }
+  }
+
+  // [B9] Sidepanel demande l'ouverture du popup window dédié (fallback fiable
+  // si offscreen échoue ou ne déclenche pas le prompt natif).
+  if (
+    (message as MicPermissionMessage)?.action === "OPEN_MIC_PERMISSION_POPUP"
+  ) {
+    try {
+      await openMicPermissionPopup();
+      return { success: true };
+    } catch (e) {
+      return {
+        success: false,
+        error: (e as Error).message ?? "popup open failed",
+      };
+    }
+  }
+
+  // [B9] Popup window notifie que le user a autorisé le micro.
+  // Relais broadcast → sidepanel listener re-bootstrap le call.
+  if ((message as MicPermissionMessage)?.action === "MIC_PERMISSION_GRANTED") {
+    chrome.runtime
+      .sendMessage({ action: "MIC_PERMISSION_GRANTED_BROADCAST" })
+      .catch(() => {
+        /* sidepanel may be closed */
+      });
+    return { success: true };
   }
 
   // ── Quick Voice Call dispatch (type-based messages) ──

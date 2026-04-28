@@ -93,6 +93,24 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     };
   }, []);
 
+  // ── [B9] Écoute le broadcast quand la popup mic-permission a granted ──
+  // Le popup window envoie MIC_PERMISSION_GRANTED → background broadcast
+  // MIC_PERMISSION_GRANTED_BROADCAST → on re-trigger le bootstrap.
+  useEffect(() => {
+    const listener = (msg: { action?: string }): void => {
+      if (msg?.action === "MIC_PERMISSION_GRANTED_BROADCAST") {
+        console.log("[VoiceView] mic permission granted via popup, restart");
+        startedRef.current = false;
+        setState({ phase: "idle" });
+        setRetryKey((k) => k + 1);
+      }
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => {
+      chrome.runtime.onMessage.removeListener(listener);
+    };
+  }, []);
+
   // Legacy compat : on passe un context au hook si fourni en prop. Le nouveau
   // flow utilise startSession() directement avec videoId du pendingVoiceCall.
   const voiceChat = useExtensionVoiceChat({ context: context ?? null });
@@ -377,27 +395,24 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
       const settingsUrl = `chrome://settings/content/siteDetails?site=chrome-extension://${extensionId}`;
       void chrome.tabs.create({ url: settingsUrl });
     };
-    // [B8] Click handler → demande mic via offscreen document (background).
-    // L'offscreen est un context où getUserMedia se comporte normalement
-    // (pas de bug sidepanel). Si granted, on relance le bootstrap.
+    // [B9] Click handler → ouvre un popup window dédié pour la demande mic.
+    // C'est la solution la plus fiable : le sidepanel a un bug Chrome connu
+    // qui empêche getUserMedia de déclencher le prompt natif. Une nouvelle
+    // window se comporte comme un onglet web normal.
+    // Le popup envoie MIC_PERMISSION_GRANTED → background broadcast →
+    // sidepanel listener (useEffect ci-dessous) re-bootstrap.
     const handleEnableMic = (): void => {
       void (async () => {
         try {
           const resp = (await chrome.runtime.sendMessage({
-            action: "REQUEST_MIC_PERMISSION",
-          })) as
-            | { success?: boolean; result?: { granted?: boolean } }
-            | undefined;
-          console.log("[VoiceView] retry offscreen mic:", resp);
-          if (resp?.result?.granted) {
-            startedRef.current = false;
-            setState({ phase: "idle" });
-            setRetryKey((k) => k + 1);
+            action: "OPEN_MIC_PERMISSION_POPUP",
+          })) as { success?: boolean; error?: string } | undefined;
+          console.log("[VoiceView] open popup:", resp);
+          if (!resp?.success) {
+            console.error("[VoiceView] popup open failed:", resp?.error);
           }
-          // Si pas granted : le useEffect permissions onchange va re-render
-          // automatiquement avec isDenied=true et changer l'UX.
         } catch (err) {
-          console.error("[VoiceView] retry offscreen failed:", err);
+          console.error("[VoiceView] open popup error:", err);
         }
       })();
     };

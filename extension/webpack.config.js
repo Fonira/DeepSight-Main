@@ -29,6 +29,7 @@ module.exports = (env, argv) => {
       sidepanel: "./src/sidepanel/index.tsx",
       viewer: "./src/viewer.tsx",
       "offscreen-mic": "./src/offscreen-mic.ts",
+      "mic-permission": "./src/mic-permission.ts",
     },
     output: {
       path: outputDir,
@@ -80,6 +81,7 @@ module.exports = (env, argv) => {
           { from: `public/${manifestFile}`, to: "manifest.json" },
           { from: "public/viewer.html", to: "viewer.html" },
           { from: "public/offscreen-mic.html", to: "offscreen-mic.html" },
+          { from: "public/mic-permission.html", to: "mic-permission.html" },
           { from: "src/styles/design-tokens.css", to: "design-tokens.css" },
           { from: "src/styles/viewer.css", to: "viewer.css" },
           { from: "src/styles/tokens.css", to: "tokens.css" },
