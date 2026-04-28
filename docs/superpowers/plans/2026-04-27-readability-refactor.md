@@ -16,30 +16,30 @@
 
 ### NEW files
 
-| Path | Responsibility |
-| ---- | -------------- |
-| `frontend/scripts/codemod-readability.ts` | Script `jscodeshift` qui remplace toutes les classes texte cassées vers les nouveaux tokens, avec règles de désambiguïsation AST |
-| `frontend/scripts/__tests__/codemod-readability.test.ts` | Tests unitaires du codemod sur fixtures TSX |
-| `frontend/scripts/codemod-fixtures/` | Fixtures TSX avant/après pour les tests du codemod |
-| `frontend/e2e/a11y-contrast.spec.ts` | Tests E2E `@axe-core/playwright` sur 8 routes principales |
-| `frontend/e2e/ambient-routes.spec.ts` | Tests E2E qui vérifient que `[data-ambient]` est absent du DOM sur les 11 routes désactivées |
-| `frontend/e2e/visual-regression.spec.ts` | Tests `pixelmatch` sur Landing/Login/Pricing pour détecter les régressions visuelles ambient |
-| `frontend/.pa11yci.json` | Configuration `pa11y-ci` (routes, seuils, standard WCAG2AAA) |
-| `frontend/eslint-rules/no-deprecated-text-tokens.js` | Custom ESLint rule qui interdit `text-text-muted/primary/secondary/tertiary/quaternary` après PR 4 |
-| `.github/workflows/a11y.yml` | GitHub Actions workflow qui lance axe-core + pa11y-ci sur preview Vercel |
+| Path                                                     | Responsibility                                                                                                                   |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/scripts/codemod-readability.ts`                | Script `jscodeshift` qui remplace toutes les classes texte cassées vers les nouveaux tokens, avec règles de désambiguïsation AST |
+| `frontend/scripts/__tests__/codemod-readability.test.ts` | Tests unitaires du codemod sur fixtures TSX                                                                                      |
+| `frontend/scripts/codemod-fixtures/`                     | Fixtures TSX avant/après pour les tests du codemod                                                                               |
+| `frontend/e2e/a11y-contrast.spec.ts`                     | Tests E2E `@axe-core/playwright` sur 8 routes principales                                                                        |
+| `frontend/e2e/ambient-routes.spec.ts`                    | Tests E2E qui vérifient que `[data-ambient]` est absent du DOM sur les 11 routes désactivées                                     |
+| `frontend/e2e/visual-regression.spec.ts`                 | Tests `pixelmatch` sur Landing/Login/Pricing pour détecter les régressions visuelles ambient                                     |
+| `frontend/.pa11yci.json`                                 | Configuration `pa11y-ci` (routes, seuils, standard WCAG2AAA)                                                                     |
+| `frontend/eslint-rules/no-deprecated-text-tokens.js`     | Custom ESLint rule qui interdit `text-text-muted/primary/secondary/tertiary/quaternary` après PR 4                               |
+| `.github/workflows/a11y.yml`                             | GitHub Actions workflow qui lance axe-core + pa11y-ci sur preview Vercel                                                         |
 
 ### MODIFIED files
 
-| Path | What changes |
-| ---- | ------------ |
-| `frontend/src/index.css` | Ajout des 4 nouveaux tokens (`--text-strong`, `--text-default`, `--text-soft`, `--text-faint`), suppression du `--text-muted` cassé en PR finale, ajout des règles `isolation: isolate` |
-| `frontend/tailwind.config.js` | Ajout des utilities `text-text-strong/default/soft/faint`, dépréciation des anciennes |
-| `frontend/src/App.tsx` | Wrapper `useLocation()` autour de `<AmbientLightLayer />` ligne ~445 |
-| `frontend/src/components/AmbientLightLayer.tsx` | Ajout d'un attribut `data-ambient="layer"` sur le root pour permettre les tests E2E |
-| `frontend/playwright.config.ts` | Ajout du projet `a11y` (axe-core) et `visual` (screenshot baseline) |
-| `frontend/package.json` | Ajout devDeps : `@axe-core/playwright`, `pa11y-ci`, `jscodeshift`, `@types/jscodeshift`, `pixelmatch`, `@types/pixelmatch` ; ajout scripts `codemod:readability`, `test:a11y`, `test:visual`, `lint:pa11y` |
-| `frontend/.eslintrc.js` (ou `eslint.config.js`) | Activer la custom rule `no-deprecated-text-tokens` (warn en PR 4, error en PR finale) |
-| `frontend/src/**/*.tsx` (~100 fichiers) | Codemod automatique : remplacement des classes `text-text-muted/secondary/tertiary/primary/quaternary` et `text-white/[1-9]0` vers les nouveaux tokens |
+| Path                                            | What changes                                                                                                                                                                                               |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/src/index.css`                        | Ajout des 4 nouveaux tokens (`--text-strong`, `--text-default`, `--text-soft`, `--text-faint`), suppression du `--text-muted` cassé en PR finale, ajout des règles `isolation: isolate`                    |
+| `frontend/tailwind.config.js`                   | Ajout des utilities `text-text-strong/default/soft/faint`, dépréciation des anciennes                                                                                                                      |
+| `frontend/src/App.tsx`                          | Wrapper `useLocation()` autour de `<AmbientLightLayer />` ligne ~445                                                                                                                                       |
+| `frontend/src/components/AmbientLightLayer.tsx` | Ajout d'un attribut `data-ambient="layer"` sur le root pour permettre les tests E2E                                                                                                                        |
+| `frontend/playwright.config.ts`                 | Ajout du projet `a11y` (axe-core) et `visual` (screenshot baseline)                                                                                                                                        |
+| `frontend/package.json`                         | Ajout devDeps : `@axe-core/playwright`, `pa11y-ci`, `jscodeshift`, `@types/jscodeshift`, `pixelmatch`, `@types/pixelmatch` ; ajout scripts `codemod:readability`, `test:a11y`, `test:visual`, `lint:pa11y` |
+| `frontend/.eslintrc.js` (ou `eslint.config.js`) | Activer la custom rule `no-deprecated-text-tokens` (warn en PR 4, error en PR finale)                                                                                                                      |
+| `frontend/src/**/*.tsx` (~100 fichiers)         | Codemod automatique : remplacement des classes `text-text-muted/secondary/tertiary/primary/quaternary` et `text-white/[1-9]0` vers les nouveaux tokens                                                     |
 
 ---
 
@@ -62,10 +62,10 @@ Editer le bloc `:root` autour des lignes 41-46. **Garder les anciens tokens** (c
 
 ```css
 /* Hiérarchie texte v2 — ratios validés WCAG sur fond sombre + ambient warm */
---text-strong: #f5f5fa;  /* L1 — Titres, nav active, valeur métrique forte */
+--text-strong: #f5f5fa; /* L1 — Titres, nav active, valeur métrique forte */
 --text-default: #c9c9d4; /* L2 — Body, descriptions, nav inactive */
---text-soft: #8b8ba0;    /* L3 — Métadonnées, captions, helpers */
---text-faint: #6e6e82;   /* L4 — Decorative, disabled — interdit pour body */
+--text-soft: #8b8ba0; /* L3 — Métadonnées, captions, helpers */
+--text-faint: #6e6e82; /* L4 — Decorative, disabled — interdit pour body */
 
 /* @deprecated — utilisés par codemod transitoire, supprimés en PR finale */
 --text-primary: #f5f0e8;
@@ -79,9 +79,11 @@ Editer le bloc `:root` autour des lignes 41-46. **Garder les anciens tokens** (c
 
 Run dans un terminal séparé : `cd frontend && npm run dev`
 Ouvrir `http://localhost:5173` dans un navigateur, ouvrir DevTools console. Coller :
+
 ```js
-getComputedStyle(document.documentElement).getPropertyValue('--text-strong')
+getComputedStyle(document.documentElement).getPropertyValue("--text-strong");
 ```
+
 Expected: `"#f5f5fa"` (chaîne)
 
 - [ ] **Step 4: Commit**
@@ -137,9 +139,11 @@ Expected: au moins 1 occurrence (la classe existe maintenant dans le bundle)
 - [ ] **Step 4: Test rapide via JSX éphémère**
 
 Modifier temporairement `frontend/src/App.tsx` ligne 1 (juste avant les imports), ajouter un commentaire test :
+
 ```tsx
 // TEST: <span className="text-text-strong">Visible test</span>
 ```
+
 Run: `cd frontend && npm run typecheck 2>&1 | tail -5`
 Expected: zéro erreur TS
 
@@ -170,16 +174,22 @@ Expected: lignes 390-393 (badges note) et 417, 424 (fiabilité, pédagogie)
 Créer `frontend/e2e/tournesol-card-contrast.spec.ts` (sera supprimé en PR 5 quand axe-core gère ça globalement) :
 
 ```ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('TournesolCard badges have sufficient contrast', async ({ page }) => {
-  await page.goto('/dashboard');
+test("TournesolCard badges have sufficient contrast", async ({ page }) => {
+  await page.goto("/dashboard");
   // Wait for cards to load (Tournesol fetch)
-  await page.waitForSelector('[data-testid="tournesol-card"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="tournesol-card"]', {
+    timeout: 10000,
+  });
 
-  const reliabilityBadge = page.locator('[data-testid="tournesol-card"]').first()
-    .locator('text=/Fiabilité:/');
-  const color = await reliabilityBadge.evaluate(el => window.getComputedStyle(el).color);
+  const reliabilityBadge = page
+    .locator('[data-testid="tournesol-card"]')
+    .first()
+    .locator("text=/Fiabilité:/");
+  const color = await reliabilityBadge.evaluate(
+    (el) => window.getComputedStyle(el).color,
+  );
   // Expect emerald-300 (#6ee7b7) ou white/55 = couleur claire suffisamment contrastée
   // emerald-300 in rgb = rgb(110, 231, 183)
   expect(color).toMatch(/rgb\((110, 231, 183|139, 139, 160)/);
@@ -194,6 +204,7 @@ Expected: FAIL (couleur actuelle ≠ emerald-300)
 - [ ] **Step 4: Modifier les badges fiabilité et pédagogie dans `TournesolTrendingSection.tsx`**
 
 Ligne 417 (fiabilité) :
+
 ```tsx
 // Avant
 className={`${reliability >= 50 ? "text-emerald-400/60" : "text-white/30"}`}
@@ -202,6 +213,7 @@ className={`${reliability >= 50 ? "text-emerald-300 font-medium" : "text-text-so
 ```
 
 Ligne 424 (pédagogie) :
+
 ```tsx
 // Avant
 className={`${pedagogy >= 50 ? "text-blue-400/60" : "text-white/30"}`}
@@ -210,11 +222,12 @@ className={`${pedagogy >= 50 ? "text-sky-300 font-medium" : "text-text-soft"}`}
 ```
 
 Ligne 390-393 (badges note) — solidifier les backgrounds :
+
 ```tsx
 // Avant
-className: "bg-emerald-500/20 text-emerald-400" // pour score ≥ 50
+className: "bg-emerald-500/20 text-emerald-400"; // pour score ≥ 50
 // Après
-className: "bg-emerald-500/30 text-emerald-200"
+className: "bg-emerald-500/30 text-emerald-200";
 ```
 
 (Idem pour `bg-orange-500/20 text-orange-400` → `bg-orange-500/30 text-orange-200`.)
@@ -222,6 +235,7 @@ className: "bg-emerald-500/30 text-emerald-200"
 - [ ] **Step 5: Ajouter `data-testid="tournesol-card"` sur le root de la card**
 
 Ligne 366 (root du composant) :
+
 ```tsx
 <button
   data-testid="tournesol-card"
@@ -305,6 +319,7 @@ Expected: liste de fichiers utilisant React Portal
 - [ ] **Step 2: Vérifier que chaque portal cible `document.body`**
 
 Pour chaque résultat du Step 1, lire le fichier et noter la cible du portal. Cas attendus :
+
 - Modals (VoiceOverlay, FloatingChatWindow, NotificationBell) → `document.body` ✅
 - Dropdowns custom → vérifier
 - Tooltips → vérifier
@@ -319,15 +334,18 @@ Expected: liste des éléments avec `fixed`. Vérifier qu'aucun n'est ancré DAN
 - [ ] **Step 4: Documenter les résultats dans un commentaire commit**
 
 Créer un fichier temporaire `frontend/.audit-portals.md` avec la synthèse (sera supprimé après PR 2 mergée). Format :
+
 ```md
 # Audit portals & fixed avant isolation
 
 Portals (`createPortal`) cibles :
+
 - VoiceOverlay.tsx:325 → document.body ✅
 - FloatingChatWindow.tsx:XXX → ...
 - ...
 
 Position: fixed enfants :
+
 - ... (rien de problématique trouvé)
 ```
 
@@ -351,19 +369,19 @@ git commit -m "docs: audit portals + fixed before isolation refactor"
 Créer `frontend/e2e/isolation.spec.ts` :
 
 ```ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('main element has isolation: isolate', async ({ page }) => {
-  await page.goto('/dashboard');
+test("main element has isolation: isolate", async ({ page }) => {
+  await page.goto("/dashboard");
   const mainEl = page.locator('main, [role="main"]').first();
-  await expect(mainEl).toHaveCSS('isolation', 'isolate');
+  await expect(mainEl).toHaveCSS("isolation", "isolate");
 });
 
-test('cards have isolation: isolate', async ({ page }) => {
-  await page.goto('/dashboard');
+test("cards have isolation: isolate", async ({ page }) => {
+  await page.goto("/dashboard");
   await page.waitForSelector('.card, [class*="rounded-xl"]', { timeout: 5000 });
   const card = page.locator('.card, [class*="rounded-xl"]').first();
-  await expect(card).toHaveCSS('isolation', 'isolate');
+  await expect(card).toHaveCSS("isolation", "isolate");
 });
 ```
 
@@ -400,6 +418,7 @@ Expected: PASS
 - [ ] **Step 5: Vérifier visuellement qu'aucun modal/dropdown ne casse**
 
 Run: `cd frontend && npm run dev` puis ouvrir manuellement :
+
 - Dashboard → ouvrir une analyse (modal détail)
 - Sidebar → ouvrir le menu utilisateur dropdown
 - VoiceOverlay → activer un appel voix
@@ -432,6 +451,7 @@ Expected: identifier le `return ( <aside>...` ou `<div>...` qui est le root.
 - [ ] **Step 2: Ajouter l'attribut `data-sidebar`**
 
 Dans `Sidebar.tsx`, sur le `<aside>` ou `<div>` root :
+
 ```tsx
 <aside
   data-sidebar
@@ -444,9 +464,11 @@ Si le root est un `<div>`, le changer en `<aside>` (sémantiquement plus correct
 - [ ] **Step 3: Vérifier que la règle CSS s'applique**
 
 Run: `cd frontend && npm run dev` puis dans la console DevTools du dashboard :
+
 ```js
-getComputedStyle(document.querySelector('aside[data-sidebar]')).isolation
+getComputedStyle(document.querySelector("aside[data-sidebar]")).isolation;
 ```
+
 Expected: `"isolate"`
 
 - [ ] **Step 4: Commit**
@@ -464,6 +486,7 @@ git commit -m "feat(sidebar): add data-sidebar attribute for isolation targeting
 
 Décider : garder `frontend/.audit-portals.md` (utile docs) ou supprimer.
 Si supprimer :
+
 ```bash
 git rm frontend/.audit-portals.md
 git commit -m "chore: remove temporary portal audit file"
@@ -542,10 +565,16 @@ git commit -m "feat(ambient): add data-ambient attribute for E2E testing"
 Créer `frontend/e2e/ambient-routes.spec.ts` :
 
 ```ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-const AMBIENT_ROUTES = ['/', '/login', '/pricing', '/about'];
-const NO_AMBIENT_ROUTES = ['/dashboard', '/history', '/account', '/admin', '/upgrade'];
+const AMBIENT_ROUTES = ["/", "/login", "/pricing", "/about"];
+const NO_AMBIENT_ROUTES = [
+  "/dashboard",
+  "/history",
+  "/account",
+  "/admin",
+  "/upgrade",
+];
 
 for (const route of AMBIENT_ROUTES) {
   test(`AmbientLight present on ${route}`, async ({ page }) => {
@@ -575,14 +604,21 @@ Expected: les tests `NO_AMBIENT_ROUTES` FAIL
 Localiser le `<AmbientLightLayer intensity="normal" />`. Le wrapper conditionnel :
 
 ```tsx
-import { useLocation } from 'react-router-dom';
+import { useLocation } from "react-router-dom";
 
-const AMBIENT_ROUTES = ['/', '/login', '/signup', '/pricing', '/about', '/legal'];
+const AMBIENT_ROUTES = [
+  "/",
+  "/login",
+  "/signup",
+  "/pricing",
+  "/about",
+  "/legal",
+];
 
 function AppContent() {
   const { pathname } = useLocation();
   const showAmbient = AMBIENT_ROUTES.some(
-    r => pathname === r || pathname.startsWith(r + '/')
+    (r) => pathname === r || pathname.startsWith(r + "/"),
   );
 
   return (
@@ -627,7 +663,14 @@ git commit -m "feat(ambient): disable AmbientLightLayer on dense routes (Dashboa
 // AmbientLight v3 est gardé sur les routes vitrines (acquisition) et désactivé
 // sur les routes de travail dense où la lisibilité prime sur l'esthétique.
 // Réf spec: docs/superpowers/specs/2026-04-27-readability-refactor-design.md §5
-const AMBIENT_ROUTES = ['/', '/login', '/signup', '/pricing', '/about', '/legal'];
+const AMBIENT_ROUTES = [
+  "/",
+  "/login",
+  "/signup",
+  "/pricing",
+  "/about",
+  "/legal",
+];
 ```
 
 - [ ] **Step 2: Commit**
@@ -681,6 +724,7 @@ Expected: ajout dans `devDependencies` de `package.json`
 - [ ] **Step 2: Ajouter le script npm**
 
 Editer `frontend/package.json`, dans `scripts` :
+
 ```json
 "codemod:readability": "jscodeshift -t scripts/codemod-readability.ts --extensions=tsx,ts --parser=tsx src/",
 "codemod:readability:dry": "jscodeshift -t scripts/codemod-readability.ts --extensions=tsx,ts --parser=tsx --dry src/"
@@ -706,7 +750,7 @@ git commit -m "chore(deps): add jscodeshift for readability codemod"
 - Create: `frontend/scripts/codemod-fixtures/input/03-button-vs-decorative.tsx`
 - Create: `frontend/scripts/codemod-fixtures/output/03-button-vs-decorative.tsx`
 
-- [ ] **Step 1: Fixture 01 — text-text-* tokens**
+- [ ] **Step 1: Fixture 01 — text-text-\* tokens**
 
 Créer `frontend/scripts/codemod-fixtures/input/01-text-text-tokens.tsx` :
 
@@ -826,28 +870,38 @@ git commit -m "test(codemod): add fixtures for readability transformer"
 Créer `frontend/scripts/__tests__/codemod-readability.test.ts` :
 
 ```ts
-import { describe, it, expect } from 'vitest';
-import { applyTransform } from 'jscodeshift/src/testUtils';
-import * as fs from 'fs';
-import * as path from 'path';
-import transform from '../codemod-readability';
+import { describe, it, expect } from "vitest";
+import { applyTransform } from "jscodeshift/src/testUtils";
+import * as fs from "fs";
+import * as path from "path";
+import transform from "../codemod-readability";
 
-const fixturesDir = path.join(__dirname, '..', 'codemod-fixtures');
+const fixturesDir = path.join(__dirname, "..", "codemod-fixtures");
 
 function loadFixture(name: string) {
-  const input = fs.readFileSync(path.join(fixturesDir, 'input', `${name}.tsx`), 'utf-8');
-  const output = fs.readFileSync(path.join(fixturesDir, 'output', `${name}.tsx`), 'utf-8');
+  const input = fs.readFileSync(
+    path.join(fixturesDir, "input", `${name}.tsx`),
+    "utf-8",
+  );
+  const output = fs.readFileSync(
+    path.join(fixturesDir, "output", `${name}.tsx`),
+    "utf-8",
+  );
   return { input, output };
 }
 
-describe('codemod-readability', () => {
+describe("codemod-readability", () => {
   it.each([
-    '01-text-text-tokens',
-    '02-text-white-opacity',
-    '03-button-vs-decorative',
-  ])('transforms %s correctly', (fixtureName) => {
+    "01-text-text-tokens",
+    "02-text-white-opacity",
+    "03-button-vs-decorative",
+  ])("transforms %s correctly", (fixtureName) => {
     const { input, output } = loadFixture(fixtureName);
-    const result = applyTransform(transform, {}, { source: input, path: `${fixtureName}.tsx` });
+    const result = applyTransform(
+      transform,
+      {},
+      { source: input, path: `${fixtureName}.tsx` },
+    );
     expect(result.trim()).toBe(output.trim());
   });
 });
@@ -878,46 +932,54 @@ git commit -m "test(codemod): add tests for readability transformer (failing)"
 Créer `frontend/scripts/codemod-readability.ts` :
 
 ```ts
-import { Transform, JSXAttribute, ASTPath } from 'jscodeshift';
+import { Transform, JSXAttribute, ASTPath } from "jscodeshift";
 
 const SIMPLE_REPLACEMENTS: Record<string, string> = {
-  'text-text-primary': 'text-text-strong',
-  'text-text-secondary': 'text-text-default',
-  'text-text-tertiary': 'text-text-soft',
-  'text-text-quaternary': 'text-text-faint',
+  "text-text-primary": "text-text-strong",
+  "text-text-secondary": "text-text-default",
+  "text-text-tertiary": "text-text-soft",
+  "text-text-quaternary": "text-text-faint",
 };
 
 const WHITE_OPACITY_REPLACEMENTS: Record<string, string> = {
-  'text-white/10': 'text-text-faint',
-  'text-white/20': 'text-text-faint',
-  'text-white/30': 'text-text-soft',
-  'text-white/40': 'text-text-soft',
-  'text-white/50': 'text-text-default',
-  'text-white/55': 'text-text-default',
-  'text-white/60': 'text-text-default',
-  'text-white/65': 'text-text-default',
-  'text-white/70': 'text-text-default',
-  'text-white/75': 'text-text-default',
-  'text-white/80': 'text-text-strong',
-  'text-white/85': 'text-text-strong',
-  'text-white/90': 'text-text-strong',
+  "text-white/10": "text-text-faint",
+  "text-white/20": "text-text-faint",
+  "text-white/30": "text-text-soft",
+  "text-white/40": "text-text-soft",
+  "text-white/50": "text-text-default",
+  "text-white/55": "text-text-default",
+  "text-white/60": "text-text-default",
+  "text-white/65": "text-text-default",
+  "text-white/70": "text-text-default",
+  "text-white/75": "text-text-default",
+  "text-white/80": "text-text-strong",
+  "text-white/85": "text-text-strong",
+  "text-white/90": "text-text-strong",
 };
 
 const CLICKABLE_PARENT_NAMES = new Set([
-  'button', 'a', 'input', 'textarea', 'select',
-  'Button', 'Link', 'NavLink', 'MenuItem', 'NavItem', 'IconButton', 'TabsTrigger',
+  "button",
+  "a",
+  "input",
+  "textarea",
+  "select",
+  "Button",
+  "Link",
+  "NavLink",
+  "MenuItem",
+  "NavItem",
+  "IconButton",
+  "TabsTrigger",
 ]);
 
-const DECORATIVE_PARENT_NAMES = new Set([
-  'hr', 'small', 'em', 'figcaption',
-]);
+const DECORATIVE_PARENT_NAMES = new Set(["hr", "small", "em", "figcaption"]);
 
 function getParentJSXElement(path: ASTPath<JSXAttribute>): string | null {
   let parent = path.parent;
   while (parent) {
-    if (parent.value && parent.value.type === 'JSXOpeningElement') {
+    if (parent.value && parent.value.type === "JSXOpeningElement") {
       const name = parent.value.name;
-      if (name.type === 'JSXIdentifier') return name.name;
+      if (name.type === "JSXIdentifier") return name.name;
     }
     parent = parent.parent;
   }
@@ -926,16 +988,18 @@ function getParentJSXElement(path: ASTPath<JSXAttribute>): string | null {
 
 function transformClassName(value: string, parentName: string | null): string {
   const classes = value.split(/\s+/);
-  const newClasses = classes.map(cls => {
+  const newClasses = classes.map((cls) => {
     // Replacements simples
     if (SIMPLE_REPLACEMENTS[cls]) return SIMPLE_REPLACEMENTS[cls];
 
     // text-text-muted : désambiguïsation par parent
-    if (cls === 'text-text-muted') {
-      if (parentName && CLICKABLE_PARENT_NAMES.has(parentName)) return 'text-text-soft';
-      if (parentName && DECORATIVE_PARENT_NAMES.has(parentName)) return 'text-text-faint';
+    if (cls === "text-text-muted") {
+      if (parentName && CLICKABLE_PARENT_NAMES.has(parentName))
+        return "text-text-soft";
+      if (parentName && DECORATIVE_PARENT_NAMES.has(parentName))
+        return "text-text-faint";
       // Default safe : soft (lisible) plutôt que faint (decorative)
-      return 'text-text-soft';
+      return "text-text-soft";
     }
 
     // text-white/X0 : remplacement direct
@@ -944,7 +1008,7 @@ function transformClassName(value: string, parentName: string | null): string {
     return cls;
   });
 
-  return newClasses.join(' ');
+  return newClasses.join(" ");
 }
 
 const transform: Transform = (file, api) => {
@@ -952,12 +1016,12 @@ const transform: Transform = (file, api) => {
   const root = j(file.source);
   let modified = false;
 
-  root.find(j.JSXAttribute, { name: { name: 'className' } }).forEach(path => {
+  root.find(j.JSXAttribute, { name: { name: "className" } }).forEach((path) => {
     const value = path.value.value;
     if (!value) return;
 
     // Cas string literal : className="..."
-    if (value.type === 'StringLiteral' || value.type === 'Literal') {
+    if (value.type === "StringLiteral" || value.type === "Literal") {
       const oldValue = String(value.value);
       const parentName = getParentJSXElement(path);
       const newValue = transformClassName(oldValue, parentName);
@@ -971,11 +1035,11 @@ const transform: Transform = (file, api) => {
     // (laissé au manuel pour MVP — flag dans rapport)
   });
 
-  return modified ? root.toSource({ quote: 'double' }) : null;
+  return modified ? root.toSource({ quote: "double" }) : null;
 };
 
 export default transform;
-export const parser = 'tsx';
+export const parser = "tsx";
 ```
 
 - [ ] **Step 2: Run test → expect pass**
@@ -986,11 +1050,13 @@ Expected: tous les fixtures passent
 - [ ] **Step 3: Si fail → ajuster le code et re-run**
 
 Investiguer la diff entre output attendu et actuel. Cas fréquents :
+
 - `text-text-quaternary` n'est pas dans `SIMPLE_REPLACEMENTS` — c'est volontaire car il faut peut-être désambiguïser. Pour la fixture 01, il est sur un `<em>` donc decorative → `text-text-faint`. Vérifier que la branche `text-text-muted` desambig couvre aussi `text-text-quaternary`. Si pas, ajouter cette logique.
 
 Modifier `transformClassName` pour gérer `text-text-quaternary` :
+
 ```ts
-if (cls === 'text-text-quaternary') return 'text-text-faint'; // Toujours faint
+if (cls === "text-text-quaternary") return "text-text-faint"; // Toujours faint
 ```
 
 Re-run et itérer jusqu'à PASS.
@@ -1039,9 +1105,11 @@ Expected: zéro erreur TS
 
 Run: `cd frontend && npm run test -- --run 2>&1 | tail -20`
 Expected: tous tests passent. Si snapshots cassent (probable avec changements de className), invalider :
+
 ```bash
 cd frontend && npm run test -- --run -u
 ```
+
 Puis re-run sans `-u` pour confirmer green.
 
 - [ ] **Step 7: Commit du résultat**
@@ -1073,12 +1141,13 @@ Touched files: see git stat. Tests adapted (snapshots invalidated where needed).
 Run: `grep -rn 'text-text-\(muted\|primary\|secondary\|tertiary\|quaternary\)' frontend/src --include="*.tsx" | head -30`
 Expected: ces patterns ne devraient plus exister dans les `className="..."` simples ; les occurrences restantes sont dans des template literals ou des computed strings.
 
-Run: `grep -rnE 'className=\{[\`"]' frontend/src --include="*.tsx" | grep -E 'text-text-(muted|primary|secondary|tertiary|quaternary)' | head -20`
+Run: `grep -rnE 'className=\{[\`"]' frontend/src --include="\*.tsx" | grep -E 'text-text-(muted|primary|secondary|tertiary|quaternary)' | head -20`
 Expected: liste des template literals qui ont survécu au codemod.
 
 - [ ] **Step 2: Pour chaque résultat, fix manuel**
 
 Pour chaque ligne identifiée, ouvrir le fichier et remplacer manuellement la classe. Exemple :
+
 ```tsx
 // Avant
 className={`text-text-muted ${isActive ? 'font-bold' : ''}`}
@@ -1118,35 +1187,36 @@ Créer `frontend/eslint-rules/no-deprecated-text-tokens.js` :
 
 ```js
 const DEPRECATED_TOKENS = [
-  'text-text-primary',
-  'text-text-secondary',
-  'text-text-tertiary',
-  'text-text-muted',
-  'text-text-quaternary',
+  "text-text-primary",
+  "text-text-secondary",
+  "text-text-tertiary",
+  "text-text-muted",
+  "text-text-quaternary",
 ];
 
-const TOKEN_REGEX = new RegExp(`\\b(${DEPRECATED_TOKENS.join('|')})\\b`);
+const TOKEN_REGEX = new RegExp(`\\b(${DEPRECATED_TOKENS.join("|")})\\b`);
 
 module.exports = {
   meta: {
-    type: 'problem',
+    type: "problem",
     docs: {
-      description: 'Disallow deprecated text tokens after readability refactor',
+      description: "Disallow deprecated text tokens after readability refactor",
     },
     schema: [],
     messages: {
-      deprecated: 'Token "{{token}}" is deprecated. Use text-text-strong/default/soft/faint instead. See docs/superpowers/specs/2026-04-27-readability-refactor-design.md',
+      deprecated:
+        'Token "{{token}}" is deprecated. Use text-text-strong/default/soft/faint instead. See docs/superpowers/specs/2026-04-27-readability-refactor-design.md',
     },
   },
   create(context) {
     return {
       Literal(node) {
-        if (typeof node.value !== 'string') return;
+        if (typeof node.value !== "string") return;
         const match = node.value.match(TOKEN_REGEX);
         if (match) {
           context.report({
             node,
-            messageId: 'deprecated',
+            messageId: "deprecated",
             data: { token: match[1] },
           });
         }
@@ -1157,7 +1227,7 @@ module.exports = {
         if (match) {
           context.report({
             node,
-            messageId: 'deprecated',
+            messageId: "deprecated",
             data: { token: match[1] },
           });
         }
@@ -1170,19 +1240,20 @@ module.exports = {
 - [ ] **Step 3: Activer la rule dans la config ESLint**
 
 Si `eslint.config.js` (flat config) :
+
 ```js
-import noDeprecatedTextTokens from './eslint-rules/no-deprecated-text-tokens.js';
+import noDeprecatedTextTokens from "./eslint-rules/no-deprecated-text-tokens.js";
 
 export default [
   // ... config existante ...
   {
     plugins: {
-      'deepsight-readability': {
-        rules: { 'no-deprecated-text-tokens': noDeprecatedTextTokens },
+      "deepsight-readability": {
+        rules: { "no-deprecated-text-tokens": noDeprecatedTextTokens },
       },
     },
     rules: {
-      'deepsight-readability/no-deprecated-text-tokens': 'error',
+      "deepsight-readability/no-deprecated-text-tokens": "error",
     },
   },
 ];
@@ -1222,6 +1293,7 @@ Expected: vérifier si certains fichiers utilisent les variables CSS directement
 - [ ] **Step 2: Supprimer les tokens CSS dépréciés dans `index.css`**
 
 Editer `frontend/src/index.css` :
+
 ```css
 /* AVANT
 --text-primary: #f5f0e8;
@@ -1238,12 +1310,14 @@ Editer `frontend/src/index.css` :
 - [ ] **Step 3: Supprimer les utilities Tailwind dépréciées**
 
 Editer `frontend/tailwind.config.js`, retirer :
+
 ```js
 'text-primary': 'var(--text-primary)',
 'text-secondary': 'var(--text-secondary)',
 'text-tertiary': 'var(--text-tertiary)',
 'text-muted': 'var(--text-muted)',
 ```
+
 Garder `text-inverse` qui est encore utilisé.
 
 - [ ] **Step 4: Vérifier build + typecheck + tests**
@@ -1273,6 +1347,7 @@ Run dans un terminal séparé : `cd frontend && npm run dev`
 - [ ] **Step 2: Tester les pages clés**
 
 Ouvrir dans un navigateur, vérifier visuellement :
+
 - `/` (Landing) — ambient OK + textes lisibles
 - `/login` — formulaires lisibles
 - `/dashboard` (après login) — sidebar lisible, cards Tournesol lisibles, pas d'ambient
@@ -1344,6 +1419,7 @@ Expected: ajout dans devDependencies
 - [ ] **Step 2: Ajouter le script npm**
 
 Editer `frontend/package.json`, scripts :
+
 ```json
 "test:a11y": "playwright test e2e/a11y-contrast.spec.ts"
 ```
@@ -1368,40 +1444,46 @@ git commit -m "chore(deps): add @axe-core/playwright for a11y CI"
 Créer `frontend/e2e/a11y-contrast.spec.ts` :
 
 ```ts
-import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 const ROUTES = [
-  { path: '/', name: 'Landing', auth: false },
-  { path: '/login', name: 'Login', auth: false },
-  { path: '/pricing', name: 'Pricing', auth: false },
-  { path: '/dashboard', name: 'Dashboard', auth: true },
-  { path: '/history', name: 'History', auth: true },
-  { path: '/account', name: 'MyAccount', auth: true },
-  { path: '/upgrade', name: 'Upgrade', auth: true },
+  { path: "/", name: "Landing", auth: false },
+  { path: "/login", name: "Login", auth: false },
+  { path: "/pricing", name: "Pricing", auth: false },
+  { path: "/dashboard", name: "Dashboard", auth: true },
+  { path: "/history", name: "History", auth: true },
+  { path: "/account", name: "MyAccount", auth: true },
+  { path: "/upgrade", name: "Upgrade", auth: true },
   // /admin nécessite admin role — skip pour CI public
 ];
 
 for (const route of ROUTES) {
-  test(`${route.name} (${route.path}) — no critical/serious color-contrast violations`, async ({ page }) => {
+  test(`${route.name} (${route.path}) — no critical/serious color-contrast violations`, async ({
+    page,
+  }) => {
     if (route.auth) {
       // TODO : utiliser le fixture loggedIn une fois disponible
-      test.skip(true, 'Requires auth fixture');
+      test.skip(true, "Requires auth fixture");
     }
 
     await page.goto(route.path);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     const results = await new AxeBuilder({ page })
-      .withTags(['wcag2aa', 'wcag2aaa'])
-      .include('body')
+      .withTags(["wcag2aa", "wcag2aaa"])
+      .include("body")
       .analyze();
 
     const colorViolations = results.violations.filter(
-      v => v.id === 'color-contrast' && (v.impact === 'critical' || v.impact === 'serious')
+      (v) =>
+        v.id === "color-contrast" &&
+        (v.impact === "critical" || v.impact === "serious"),
     );
 
-    expect(colorViolations, JSON.stringify(colorViolations, null, 2)).toEqual([]);
+    expect(colorViolations, JSON.stringify(colorViolations, null, 2)).toEqual(
+      [],
+    );
   });
 }
 ```
@@ -1445,9 +1527,7 @@ Créer `frontend/.pa11yci.json` :
     "standard": "WCAG2AA",
     "timeout": 30000,
     "wait": 1500,
-    "ignore": [
-      "WCAG2AA.Principle1.Guideline1_3.1_3_1.H42.2"
-    ]
+    "ignore": ["WCAG2AA.Principle1.Guideline1_3.1_3_1.H42.2"]
   },
   "urls": [
     "http://localhost:5173/",
@@ -1461,6 +1541,7 @@ Créer `frontend/.pa11yci.json` :
 - [ ] **Step 3: Ajouter le script**
 
 Dans `frontend/package.json`, scripts :
+
 ```json
 "lint:pa11y": "pa11y-ci --config .pa11yci.json"
 ```
@@ -1497,21 +1578,24 @@ Expected: voir la config existante
 Créer `frontend/e2e/visual-regression.spec.ts` :
 
 ```ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
 const VISUAL_ROUTES = [
-  { path: '/', name: 'landing' },
-  { path: '/login', name: 'login' },
-  { path: '/pricing', name: 'pricing' },
+  { path: "/", name: "landing" },
+  { path: "/login", name: "login" },
+  { path: "/pricing", name: "pricing" },
 ];
 
 for (const route of VISUAL_ROUTES) {
   test(`${route.name} visual baseline`, async ({ page }) => {
     await page.goto(route.path);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     // Désactiver les animations pour stabiliser
-    await page.addStyleTag({ content: '*,*::before,*::after { animation: none !important; transition: none !important; }' });
+    await page.addStyleTag({
+      content:
+        "*,*::before,*::after { animation: none !important; transition: none !important; }",
+    });
 
     // Stub time-of-day pour stabiliser l'ambient
     await page.evaluate(() => {
@@ -1521,7 +1605,7 @@ for (const route of VISUAL_ROUTES) {
 
     await expect(page).toHaveScreenshot(`${route.name}-baseline.png`, {
       maxDiffPixelRatio: 0.005, // 0.5%
-      animations: 'disabled',
+      animations: "disabled",
     });
   });
 }
@@ -1571,11 +1655,11 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'frontend/**'
+      - "frontend/**"
   push:
     branches: [main]
     paths:
-      - 'frontend/**'
+      - "frontend/**"
 
 jobs:
   a11y:
@@ -1589,8 +1673,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
@@ -1677,6 +1761,7 @@ Expected: workflow `A11y & Visual Regression` apparaît, attendre completion.
 
 Run: `gh run view --log-failed`
 Expected: détails de l'échec. Causes probables :
+
 - Auth fixtures manquants → ajouter
 - Visual baseline trop strict → augmenter `maxDiffPixelRatio` à 0.01 ou 0.02
 - Routes auth qui timeout → augmenter `wait` ou skip propre
@@ -1687,19 +1772,19 @@ Expected: détails de l'échec. Causes probables :
 
 Coverage check vs spec :
 
-| Spec § | Couvert par | OK ? |
-|---|---|---|
-| §3.1 Tokens CSS | Task 1 | ✅ |
-| §3.2 Ratios contraste | Task 24 (axe-core valide en runtime) | ✅ |
-| §3.3 Tailwind utilities | Task 2 | ✅ |
-| §3.4 Variants accent | Task 3 | ✅ |
-| §4 Isolation CSS | Tasks 5, 6, 7 | ✅ |
-| §5 AmbientLight router-aware | Tasks 9, 10, 11 | ✅ |
-| §6 Codemod | Tasks 13-22 | ✅ |
-| §7 Plan 5 PRs | Sections PR 1-5 | ✅ |
-| §8 Validation a11y CI | Tasks 23-28 | ✅ |
-| §9 Phase 2 écosystème | **Hors scope** (specs séparées) | N/A |
-| §10 Risques | Adressés via Tasks 5 (audit portals), 17 (typecheck/test après codemod), 21 (smoke test visuel) | ✅ |
+| Spec §                       | Couvert par                                                                                     | OK ? |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- | ---- |
+| §3.1 Tokens CSS              | Task 1                                                                                          | ✅   |
+| §3.2 Ratios contraste        | Task 24 (axe-core valide en runtime)                                                            | ✅   |
+| §3.3 Tailwind utilities      | Task 2                                                                                          | ✅   |
+| §3.4 Variants accent         | Task 3                                                                                          | ✅   |
+| §4 Isolation CSS             | Tasks 5, 6, 7                                                                                   | ✅   |
+| §5 AmbientLight router-aware | Tasks 9, 10, 11                                                                                 | ✅   |
+| §6 Codemod                   | Tasks 13-22                                                                                     | ✅   |
+| §7 Plan 5 PRs                | Sections PR 1-5                                                                                 | ✅   |
+| §8 Validation a11y CI        | Tasks 23-28                                                                                     | ✅   |
+| §9 Phase 2 écosystème        | **Hors scope** (specs séparées)                                                                 | N/A  |
+| §10 Risques                  | Adressés via Tasks 5 (audit portals), 17 (typecheck/test après codemod), 21 (smoke test visuel) | ✅   |
 
 Placeholder scan : aucun TBD/TODO restant. Toutes les commandes ont une expected output. Tous les snippets de code sont complets.
 
