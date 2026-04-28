@@ -2244,6 +2244,19 @@ export interface ReliabilityResult {
   full_factcheck_available?: boolean;
 }
 
+/**
+ * Quick Voice Call mobile V3 — exposés pour les hooks SSE qui ouvrent leur
+ * propre EventSource (react-native-sse) hors du flux `request()`.
+ */
+export { API_BASE_URL };
+
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token =
+    (await tokenManager.getValidToken()) ||
+    (await tokenStorage.getAccessToken());
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export const reliabilityApi = {
   async getReliability(summaryId: number): Promise<ReliabilityResult> {
     return request(`/api/videos/reliability/${summaryId}`);
