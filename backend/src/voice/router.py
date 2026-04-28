@@ -2743,6 +2743,70 @@ async def tool_companion_recos(request: Request, db: AsyncSession = Depends(get_
     return {"result": [r.model_dump() for r in recos]}
 
 
+_COMPANION_YOUTUBE_URL_RE = __import__("re").compile(
+    r"^https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([\w-]{11})"
+)
+_COMPANION_START_ANALYSIS_RATE_LIMIT = 3
+
+
+@router.post("/tools/start-analysis")
+async def tool_companion_start_analysis(
+    request: Request, db: AsyncSession = Depends(get_session)
+):
+    """ElevenLabs tool webhook: queue a video analysis from a COMPANION call.
+
+    V1: validates URL + rate-limits per voice_session_id (max 3 analyses per
+    call). Returns a placeholder response — full wiring to /videos/analyze
+    background queue is follow-up work.
+    """
+    voice_session, body = await verify_companion_tool_request(request, db)
+    video_url = body.get("video_url") or body.get("parameters", {}).get("video_url", "")
+
+    match = _COMPANION_YOUTUBE_URL_RE.match(video_url)
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "invalid_youtube_url", "message": "Pas une URL YouTube valide."},
+        )
+    video_id = match.group(1)
+
+    # Rate limit per voice session via Redis (max 3)
+    redis_client = _resolve_redis_client()
+    rl_key = f"companion_start_analysis_rl:{voice_session.id}"
+    current = 0
+    if redis_client is not None:
+        try:
+            raw = await redis_client.get(rl_key)
+            current = int(raw) if raw else 0
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("companion start_analysis rl read failed: %s", exc)
+            current = 0
+
+    if current >= _COMPANION_START_ANALYSIS_RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "rate_limit_exceeded",
+                "message": f"Maximum {_COMPANION_START_ANALYSIS_RATE_LIMIT} analyses par appel.",
+            },
+        )
+
+    if redis_client is not None:
+        try:
+            await redis_client.set(rl_key, str(current + 1), ex=3600)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("companion start_analysis rl write failed: %s", exc)
+
+    return {
+        "result": {
+            "video_id": video_id,
+            "status": "queued",
+            "eta_seconds": 120,
+            "message": f"Analyse de {video_id} en file d'attente — ETA 2 min.",
+        }
+    }
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /tools/debate-* — Debate moderator agent tools (public, bearer=debate_id)
 # ═══════════════════════════════════════════════════════════════════════════════

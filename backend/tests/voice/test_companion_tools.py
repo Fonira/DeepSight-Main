@@ -15,6 +15,98 @@ async def client():
 
 
 @pytest.mark.asyncio
+async def test_start_analysis_tool_invalid_url_returns_400():
+    from main import app
+    from voice import router as voice_router
+
+    fake_session = AsyncMock(id="s1", user_id=42)
+
+    with patch.object(
+        voice_router, "verify_companion_tool_request", new_callable=AsyncMock
+    ) as mock_verify:
+        mock_verify.return_value = (fake_session, {"video_url": "https://twitter.com/x"})
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.post(
+                "/api/voice/tools/start-analysis",
+                headers={"Authorization": "Bearer s1"},
+                json={"video_url": "https://twitter.com/x", "voice_session_id": "s1"},
+            )
+        assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_start_analysis_tool_valid_url_returns_queued():
+    from main import app
+    from voice import router as voice_router
+
+    fake_session = AsyncMock(id="s2", user_id=42)
+    fake_redis = AsyncMock()
+    fake_redis.get = AsyncMock(return_value=None)
+    fake_redis.set = AsyncMock(return_value=True)
+
+    with patch.object(
+        voice_router, "verify_companion_tool_request", new_callable=AsyncMock
+    ) as mock_verify:
+        mock_verify.return_value = (
+            fake_session,
+            {"video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
+        )
+
+        with patch.object(
+            voice_router, "_resolve_redis_client", return_value=fake_redis
+        ):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                resp = await ac.post(
+                    "/api/voice/tools/start-analysis",
+                    headers={"Authorization": "Bearer s2"},
+                    json={
+                        "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                        "voice_session_id": "s2",
+                    },
+                )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["result"]["video_id"] == "dQw4w9WgXcQ"
+            assert body["result"]["status"] == "queued"
+
+
+@pytest.mark.asyncio
+async def test_start_analysis_tool_rate_limit_returns_429():
+    from main import app
+    from voice import router as voice_router
+
+    fake_session = AsyncMock(id="s3", user_id=42)
+    fake_redis = AsyncMock()
+    fake_redis.get = AsyncMock(return_value="3")  # already at limit
+
+    with patch.object(
+        voice_router, "verify_companion_tool_request", new_callable=AsyncMock
+    ) as mock_verify:
+        mock_verify.return_value = (
+            fake_session,
+            {"video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
+        )
+
+        with patch.object(
+            voice_router, "_resolve_redis_client", return_value=fake_redis
+        ):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                resp = await ac.post(
+                    "/api/voice/tools/start-analysis",
+                    headers={"Authorization": "Bearer s3"},
+                    json={
+                        "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                        "voice_session_id": "s3",
+                    },
+                )
+            assert resp.status_code == 429
+
+
+@pytest.mark.asyncio
 async def test_companion_recos_tool_missing_auth_returns_401(client):
     resp = await client.post(
         "/api/voice/tools/companion-recos",
