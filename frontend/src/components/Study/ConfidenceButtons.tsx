@@ -73,7 +73,7 @@ export const ConfidenceButtons: React.FC<ConfidenceButtonsProps> = ({
           <span className={`text-sm font-semibold ${btn.color}`}>
             {btn.label}
           </span>
-          <span className="text-[10px] text-white/40">{btn.subtext}</span>
+          <span className="text-[10px] text-text-muted">{btn.subtext}</span>
         </motion.button>
       ))}
     </div>

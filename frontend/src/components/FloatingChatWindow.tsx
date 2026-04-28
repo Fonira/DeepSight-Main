@@ -601,7 +601,7 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (
                 /* ─── Empty State ─── */
-                <div className="text-center py-8">
+                (<div className="text-center py-8">
                   <MessageSquare className="w-12 h-12 mx-auto mb-4 text-text-muted opacity-50" />
                   <h3 className="font-semibold text-text-primary mb-2">
                     {t.emptyTitle}
@@ -622,10 +622,10 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                       </button>
                     ))}
                   </div>
-                </div>
+                </div>)
               ) : (
                 /* ─── Message List ─── */
-                messages.map((msg, msgIndex) => {
+                (messages.map((msg, msgIndex) => {
                   const contentStr =
                     typeof msg.content === "string"
                       ? msg.content
@@ -652,12 +652,11 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                           <Bot className="w-4 h-4 text-accent-primary" />
                         </div>
                       )}
-
                       {/* Message Bubble */}
                       <div
                         className={`max-w-[80%] rounded-xl p-4 relative group ${
                           isUser
-                            ? "bg-accent-primary text-white"
+                            ? "bg-accent-primary text-gray-900"
                             : "bg-bg-secondary text-text-secondary"
                         }`}
                       >
@@ -716,7 +715,7 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                               <CopyMessageButton
                                 text={contentStr}
                                 language={language}
-                                className="text-white/70 hover:text-white"
+                                className="text-text-secondary hover:text-white"
                               />
                             </div>
                           </>
@@ -809,7 +808,6 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                           </div>
                         )}
                       </div>
-
                       {/* User avatar */}
                       {isUser && (
                         <div className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center flex-shrink-0">
@@ -818,7 +816,7 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                       )}
                     </div>
                   );
-                })
+                }))
               )}
 
               {/* Loading indicator */}

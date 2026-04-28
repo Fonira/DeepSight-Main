@@ -79,15 +79,15 @@ const PttKeyPicker: React.FC<PttKeyPickerProps> = ({
     <div className="pt-1">
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <label className="text-white/70 text-sm font-medium block">
+          <label className="text-text-secondary text-sm font-medium block">
             Touche pour parler
           </label>
-          <span className="text-xs text-white/40 block mt-0.5">
+          <span className="text-xs text-text-muted block mt-0.5">
             Maintenez cette touche pour activer le micro
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <kbd className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white/90 text-sm font-mono min-w-[56px] text-center">
+          <kbd className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-text-primary text-sm font-mono min-w-[56px] text-center">
             {listening ? "..." : formatKeyLabel(currentKey)}
           </kbd>
           <button
@@ -135,13 +135,12 @@ export const InteractionModeSection: React.FC<InteractionModeSectionProps> = ({
             }`}
           >
             <span className="font-semibold text-sm block">{mode.label}</span>
-            <span className="text-xs text-white/40 mt-1 block">
+            <span className="text-xs text-text-muted mt-1 block">
               {mode.description}
             </span>
           </button>
         ))}
       </div>
-
       {/* PTT key picker — PTT only */}
       <AnimatePresence initial={false}>
         {preferences.input_mode === "ptt" && (
@@ -160,7 +159,6 @@ export const InteractionModeSection: React.FC<InteractionModeSectionProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Turn eagerness slider — VAD only */}
       <AnimatePresence initial={false}>
         {preferences.input_mode === "vad" && (
@@ -173,9 +171,9 @@ export const InteractionModeSection: React.FC<InteractionModeSectionProps> = ({
           >
             <div className="pt-1">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-white/70 text-sm font-medium">
+                <label className="text-text-secondary text-sm font-medium">
                   Réactivité
-                  <span className="ml-2 text-white/40 text-xs">
+                  <span className="ml-2 text-text-muted text-xs">
                     (patience ← → réactivité)
                   </span>
                 </label>
@@ -202,7 +200,7 @@ export const InteractionModeSection: React.FC<InteractionModeSectionProps> = ({
                   [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
                   [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
               />
-              <div className="flex justify-between text-[10px] text-white/30 mt-1">
+              <div className="flex justify-between text-[10px] text-text-tertiary mt-1">
                 <span>Patient — attend que vous finissiez</span>
                 <span>Réactif — répond vite</span>
               </div>
@@ -210,7 +208,6 @@ export const InteractionModeSection: React.FC<InteractionModeSectionProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Interruptions toggle */}
       <div className="pt-2 border-t border-white/10">
         <Toggle

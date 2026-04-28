@@ -1,0 +1,65 @@
+{% extends "aggregate/_layout.html" %} {% block jsonld %}
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "{{ page_title }}",
+    "description": "{{ page_description }}",
+    "url": "{{ canonical_url }}",
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "DeepSight",
+      "url": "{{ frontend_url }}"
+    },
+    "mainEntity": {
+      "@type": "ItemList",
+      "numberOfItems": {{ channels | length }},
+      "itemListElement": [
+        {% for c in channels %}
+        {
+          "@type": "ListItem",
+          "position": {{ loop.index }},
+          "url": "{{ frontend_url }}/chaine/{{ c.slug }}",
+          "name": "{{ c.name | replace('"', '\\"') }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }
+  }
+</script>
+{% endblock %} {% block content %}
+<h1>Toutes les chaînes analysées sur DeepSight</h1>
+<p class="ds-meta-row">
+  <span class="ds-pill"
+    >{{ channels | length }} chaîne{{ 's' if (channels | length) > 1 else ''
+    }}</span
+  >
+</p>
+
+<p>
+  Index des chaînes YouTube et TikTok dont au moins une vidéo a été analysée
+  publiquement sur DeepSight. Chaque chaîne agrège les analyses partagées par
+  les utilisateurs (synthèses sourcées, fact-checking, flashcards). Cliquez sur
+  une chaîne pour voir ses analyses.
+</p>
+
+<ul class="ds-list-channels">
+  {% for c in channels %}
+  <li>
+    <a href="{{ frontend_url }}/chaine/{{ c.slug }}">{{ c.name }}</a>
+    <small
+      >{{ c.analyses_count }} analyse{{ 's' if c.analyses_count > 1 else '' }} ·
+      {{ c.total_views }} vues</small
+    >
+  </li>
+  {% endfor %}
+</ul>
+
+<h2>Et après ?</h2>
+<p>
+  Vous voulez analyser une vidéo qui n'apparait pas ici ?
+  <a href="{{ frontend_url }}/">DeepSight est gratuit pour commencer</a> : 5
+  analyses par mois, vidéos jusqu'à 15 min, flashcards et chat inclus. Sans
+  carte bancaire.
+</p>
+{% endblock %}

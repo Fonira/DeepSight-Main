@@ -128,7 +128,7 @@ export const DebateVoiceHero: React.FC<DebateVoiceHeroProps> = ({
                   <div className="w-7 h-7 border-2 border-white/30 border-t-indigo-400 rounded-full animate-spin" />
                 </div>
               ) : (
-                <span className="text-2xl font-bold text-white/80 uppercase">
+                <span className="text-2xl font-bold text-text-primary uppercase">
                   {avatarFallback.slice(0, 2)}
                 </span>
               )}
@@ -162,7 +162,7 @@ export const DebateVoiceHero: React.FC<DebateVoiceHeroProps> = ({
                 : "Agent vocal — Plan Étudiant+ requis"}
             </h3>
             {debateTopic && (
-              <p className="text-xs sm:text-sm text-white/50 mt-1 truncate">
+              <p className="text-xs sm:text-sm text-text-muted mt-1 truncate">
                 Sujet : {debateTopic}
               </p>
             )}

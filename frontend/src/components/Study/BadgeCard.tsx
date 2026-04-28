@@ -40,12 +40,10 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({ badge, isEarned }) => {
           aria-hidden="true"
         />
       )}
-
       {/* Icon */}
       <span className="text-2xl" role="img" aria-hidden="true">
         {badge.icon}
       </span>
-
       {/* Name */}
       <span
         className="text-xs font-semibold text-center leading-tight"
@@ -53,15 +51,13 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({ badge, isEarned }) => {
       >
         {badge.name}
       </span>
-
       {/* Description */}
-      <span className="text-[10px] text-white/40 text-center leading-snug line-clamp-2">
+      <span className="text-[10px] text-text-muted text-center leading-snug line-clamp-2">
         {badge.description}
       </span>
-
       {/* Earned date or progress */}
       {earned && badge.earned_at ? (
-        <span className="text-[10px] text-white/30">
+        <span className="text-[10px] text-text-tertiary">
           {new Date(badge.earned_at).toLocaleDateString("fr-FR", {
             day: "numeric",
             month: "short",

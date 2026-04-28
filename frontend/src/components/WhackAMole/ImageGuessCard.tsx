@@ -185,7 +185,7 @@ export const ImageGuessCard: React.FC<ImageGuessCardProps> = ({
           {/* AI badge */}
           <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm border border-white/10">
             <Sparkles className="w-2.5 h-2.5 text-[#C8903A]" />
-            <span className="text-[9px] text-white/50 font-medium">
+            <span className="text-[9px] text-text-muted font-medium">
               Image IA
             </span>
           </div>
@@ -202,7 +202,7 @@ export const ImageGuessCard: React.FC<ImageGuessCardProps> = ({
           {/* Dismiss button */}
           <button
             onClick={onDismiss}
-            className="absolute top-3 right-12 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/50 hover:text-white transition-all"
+            className="absolute top-3 right-12 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-text-muted hover:text-white transition-all"
             aria-label={language === "fr" ? "Fermer" : "Close"}
           >
             <X className="w-3.5 h-3.5" />
@@ -273,7 +273,6 @@ export const ImageGuessCard: React.FC<ImageGuessCardProps> = ({
         {/* Gold accent line */}
         <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent" />
       </div>
-
       {/* Shimmer keyframe */}
       <style>{`
         @keyframes guess-shimmer {

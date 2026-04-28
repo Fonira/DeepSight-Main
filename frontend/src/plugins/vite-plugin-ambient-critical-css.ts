@@ -24,10 +24,6 @@ export function ambientCriticalCssPlugin(): Plugin {
         preset.colors.primary,
         preset.beam.opacity * 0.5,
       );
-      const sprite =
-        preset.nightMode === "glowing"
-          ? "sunflower-night.webp"
-          : "sunflower-day.webp";
 
       const inlineCss = `
 :root {
@@ -54,10 +50,8 @@ body { background-color: #0a0a0f; }
 .ambient-disabled .ambient-halo-initial { display: none; }
       `.trim();
 
-      const injection = `
-<style id="ambient-critical">${inlineCss}</style>
-<link rel="preload" as="image" href="/assets/ambient/${sprite}">
-      `.trim();
+      // Sunflower v3.1 — pure inline SVG (lighting-engine), no sprite preload needed.
+      const injection = `<style id="ambient-critical">${inlineCss}</style>`;
 
       return html.replace("</head>", `${injection}\n</head>`);
     },

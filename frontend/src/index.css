@@ -125,6 +125,20 @@ html {
     --z-toast: 400;
   }
 
+  /* === ISOLATION — Refonte lisibilité ===
+     Ferme les contextes de blend pour les zones de contenu : bloque le
+     mix-blend-mode: screen de l'AmbientLightLayer sans toucher aux calques
+     cosmétiques eux-mêmes (les rayons restent dans les gutters).
+     Audit confirmant safety : .audit-portals.md (10 portals → document.body,
+     position:fixed not confined par isolation: isolate). */
+  main,
+  [role="main"],
+  .card,
+  .panel,
+  aside[data-sidebar] {
+    isolation: isolate;
+  }
+
   /* === TEXTURE NOISE (Anti-AI-Slop) === */
   .bg-noise {
     position: relative;
@@ -295,7 +309,7 @@ html {
 
   ::selection {
     background: var(--accent-primary);
-    color: white;
+    color: #111827;
   }
 
   *:focus-visible {
@@ -469,7 +483,7 @@ html {
 
   .btn-primary {
     background: var(--accent-primary);
-    color: white;
+    color: #111827;
     box-shadow:
       var(--shadow-sm),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -657,5 +671,27 @@ html {
     left: 0;
     top: 0;
     z-index: 40;
+  }
+
+  /* === SUNFLOWER v3.1 — bioluminescent halo pulse === */
+  @keyframes ds-sunflower-biolum {
+    0%,
+    100% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.08);
+    }
+  }
+  .ds-sunflower-halo--pulse {
+    animation: ds-sunflower-biolum 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ds-sunflower-halo--pulse {
+      animation: none;
+      opacity: 0.6;
+    }
   }
 }

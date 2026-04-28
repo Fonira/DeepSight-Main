@@ -167,13 +167,11 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ planInfo }) => {
         </a>
       </div>
       <button
+        type="button"
         className="promo-close"
         onClick={handleDismiss}
         title={t.common.hide}
-        style={{
-          background: "var(--accent-primary-muted)",
-          color: "var(--accent-primary)",
-        }}
+        aria-label={t.common.hide}
       >
         &times;
       </button>

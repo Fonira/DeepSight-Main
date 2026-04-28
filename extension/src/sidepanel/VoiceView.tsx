@@ -55,7 +55,61 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
   const { t } = useTranslation();
   const [state, setState] = useState<VoiceCallState>({ phase: "idle" });
   const [elapsedSec, setElapsedSec] = useState(0);
+  // [B6] retryKey re-déclenche le bootstrap useEffect sans toucher au pendingCall.
+  // Utilisé par le bouton "Autoriser le micro" — chaque clic = user gesture
+  // frais → getUserMedia peut afficher le prompt natif Chrome.
+  const [retryKey, setRetryKey] = useState(0);
+  // [B7] Track Chrome microphone permission state. Si "denied", getUserMedia
+  // rejette IMMÉDIATEMENT sans afficher de prompt — le user doit débloquer
+  // manuellement via chrome://settings. On détecte ça pour lui afficher
+  // des instructions claires + un bouton qui ouvre la bonne page.
+  const [micPermState, setMicPermState] = useState<
+    "unknown" | "prompt" | "granted" | "denied"
+  >("unknown");
   const startedRef = useRef(false);
+
+  // ── [B7] Surveille la permission micro Chrome ──
+  // navigator.permissions.query est dispo dans extension pages (Chrome 64+).
+  // L'event onchange permet de reagir si le user débloque manuellement.
+  useEffect(() => {
+    if (!navigator.permissions?.query) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const status = await navigator.permissions.query({
+          name: "microphone" as PermissionName,
+        });
+        if (cancelled) return;
+        setMicPermState(status.state as "prompt" | "granted" | "denied");
+        status.onchange = () => {
+          setMicPermState(status.state as "prompt" | "granted" | "denied");
+        };
+      } catch {
+        // Browser sans support → on laisse "unknown", le code fallback gère.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ── [B9] Écoute le broadcast quand la popup mic-permission a granted ──
+  // Le popup window envoie MIC_PERMISSION_GRANTED → background broadcast
+  // MIC_PERMISSION_GRANTED_BROADCAST → on re-trigger le bootstrap.
+  useEffect(() => {
+    const listener = (msg: { action?: string }): void => {
+      if (msg?.action === "MIC_PERMISSION_GRANTED_BROADCAST") {
+        console.log("[VoiceView] mic permission granted via popup, restart");
+        startedRef.current = false;
+        setState({ phase: "idle" });
+        setRetryKey((k) => k + 1);
+      }
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => {
+      chrome.runtime.onMessage.removeListener(listener);
+    };
+  }, []);
 
   // Legacy compat : on passe un context au hook si fourni en prop. Le nouveau
   // flow utilise startSession() directement avec videoId du pendingVoiceCall.
@@ -81,6 +135,53 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     });
 
     void (async () => {
+      // ── [B8] Preflight micro via OFFSCREEN DOCUMENT ──
+      // Bug Chrome MV3 connu : getUserMedia depuis un sidepanel ne
+      // déclenche pas le prompt natif de façon fiable (chromium #41497129).
+      // Solution officielle : passer par un offscreen document
+      // (reasons:["USER_MEDIA"]) où getUserMedia se comporte comme dans
+      // une page web normale. Le background gère la création du document
+      // et le round-trip — ici on envoie juste un message.
+      console.log("[VoiceView] requesting mic via offscreen…");
+      let micGranted = false;
+      try {
+        const resp = (await chrome.runtime.sendMessage({
+          action: "REQUEST_MIC_PERMISSION",
+        })) as
+          | {
+              success?: boolean;
+              result?: { granted?: boolean; errorName?: string };
+              error?: string;
+            }
+          | undefined;
+        console.log("[VoiceView] offscreen mic response:", resp);
+        micGranted = Boolean(resp?.result?.granted);
+        if (!micGranted) {
+          if (cancelled) return;
+          const errName = resp?.result?.errorName;
+          if (
+            errName === "NotAllowedError" ||
+            errName === "PermissionDeniedError"
+          ) {
+            setState({ phase: "error_mic_permission" });
+          } else {
+            setState({
+              phase: "error_generic",
+              message: errName ?? resp?.error ?? "Mic unavailable",
+            });
+          }
+          return;
+        }
+      } catch (e) {
+        if (cancelled) return;
+        console.error("[VoiceView] offscreen mic request failed:", e);
+        setState({
+          phase: "error_generic",
+          message: String((e as Error).message ?? e),
+        });
+        return;
+      }
+
       // [N1] Hash videoId pour PostHog (privacy + groupage).
       const videoIdHash = await hashVideoId(pending.videoId);
       try {
@@ -142,7 +243,7 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingCall?.videoId]);
+  }, [pendingCall?.videoId, retryKey]);
 
   // ── Connecting timeout (I2) ──
   // Si la phase reste `connecting` plus de 15 secondes, on bascule en
@@ -252,7 +353,7 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     // ⚠️ URL doit pointer vers la route web /upgrade (pas /billing/checkout
     // qui n'existe pas — cf. frontend/src/App.tsx lazy routes). Le param
     // ?source=voice_call est lu par UpgradePage pour le tracking PostHog.
-    const url = `${WEBAPP_URL}/upgrade?plan=expert&source=voice_call`;
+    const url = `${WEBAPP_URL}/upgrade?plan=pro&source=voice_call`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
@@ -265,6 +366,24 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
           elapsedSec={elapsedSec}
           onMute={voiceChat.toggleMute}
           onHangup={handleHangup}
+          onBack={() => {
+            handleHangup();
+            setState({ phase: "idle" });
+          }}
+          onSendTextMessage={(text) => {
+            // V1.2 — Input texte unifié : envoie le message à l'agent
+            // ElevenLabs (qui répondra en voix) ET l'append dans la
+            // timeline transcripts pour qu'il s'affiche comme un message
+            // user "dit". Pas de couplage backend chat (ElevenLabs SDK only).
+            voiceChat.conversation?.sendUserMessage(text);
+            void voiceChat.appendTranscript("user", text);
+          }}
+          canSendText={voiceChat.conversation !== null}
+          onApplyHardChanges={() => {
+            void voiceChat.restartSession();
+          }}
+          restarting={voiceChat.isRestarting}
+          transcripts={voiceChat.transcripts}
         />
         <ContextProgressBar
           progress={contextProgress}
@@ -284,12 +403,58 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     );
   }
   if (state.phase === "error_mic_permission") {
+    // [B7] Si Chrome a mémorisé "Bloquer", getUserMedia rejette
+    // IMMÉDIATEMENT sans aucun prompt — impossible à débloquer en JS.
+    // La seule issue : ouvrir chrome://settings/content/siteDetails pour
+    // l'extension, le user clique "Autoriser" pour Microphone, puis revient.
+    const isDenied = micPermState === "denied";
+    const handleOpenChromeSettings = (): void => {
+      const extensionId = chrome.runtime.id;
+      const settingsUrl = `chrome://settings/content/siteDetails?site=chrome-extension://${extensionId}`;
+      void chrome.tabs.create({ url: settingsUrl });
+    };
+    // [B9] Click handler → ouvre un popup window dédié pour la demande mic.
+    // C'est la solution la plus fiable : le sidepanel a un bug Chrome connu
+    // qui empêche getUserMedia de déclencher le prompt natif. Une nouvelle
+    // window se comporte comme un onglet web normal.
+    // Le popup envoie MIC_PERMISSION_GRANTED → background broadcast →
+    // sidepanel listener (useEffect ci-dessous) re-bootstrap.
+    const handleEnableMic = (): void => {
+      void (async () => {
+        try {
+          const resp = (await chrome.runtime.sendMessage({
+            action: "OPEN_MIC_PERMISSION_POPUP",
+          })) as { success?: boolean; error?: string } | undefined;
+          console.log("[VoiceView] open popup:", resp);
+          if (!resp?.success) {
+            console.error("[VoiceView] popup open failed:", resp?.error);
+          }
+        } catch (err) {
+          console.error("[VoiceView] open popup error:", err);
+        }
+      })();
+    };
     return (
       <div className="ds-error" role="alert">
-        <p>{t.voiceCall.errors.micPermission}</p>
-        <button type="button" onClick={() => location.reload()}>
-          {t.common.retry}
-        </button>
+        {isDenied ? (
+          <>
+            <p>
+              Le micro est bloqué dans Chrome pour cette extension. Ouvre les
+              paramètres Chrome, choisis « Autoriser » pour Microphone, puis
+              recharge le side panel.
+            </p>
+            <button type="button" onClick={handleOpenChromeSettings}>
+              ⚙️ Ouvrir les paramètres Chrome
+            </button>
+          </>
+        ) : (
+          <>
+            <p>{t.voiceCall.errors.micPermission}</p>
+            <button type="button" onClick={handleEnableMic}>
+              {t.voiceCall.errors.enableMic}
+            </button>
+          </>
+        )}
       </div>
     );
   }

@@ -1000,7 +1000,7 @@ export const AdminPage: React.FC = () => {
               <button
                 onClick={handleUpdatePlan}
                 disabled={actionLoading}
-                className="flex-1 px-4 py-2 rounded-lg bg-accent-primary text-white hover:bg-accent-primary-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 rounded-lg bg-accent-primary text-gray-900 hover:bg-accent-primary-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {actionLoading && <DeepSightSpinnerMicro />}
                 {language === "fr" ? "Enregistrer" : "Save"}

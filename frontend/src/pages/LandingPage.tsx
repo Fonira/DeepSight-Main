@@ -622,7 +622,6 @@ const LandingPage: React.FC = () => {
         <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-violet-500/[0.05] rounded-full blur-[100px]" />
         <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-cyan-500/[0.04] rounded-full blur-[100px]" />
       </div>
-
       {/* ─── HEADER ─── */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-bg-primary/70 border-b border-border-subtle/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -637,7 +636,7 @@ const LandingPage: React.FC = () => {
             </button>
             <motion.button
               onClick={() => navigate("/login?tab=register")}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary text-gray-900 text-sm font-medium hover:bg-accent-primary-hover transition-colors"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -646,7 +645,6 @@ const LandingPage: React.FC = () => {
           </div>
         </div>
       </header>
-
       {/* ─── HERO ─── */}
       <section className="relative py-20 sm:py-32 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto text-center">
@@ -755,7 +753,7 @@ const LandingPage: React.FC = () => {
                   <motion.button
                     onClick={handleGuestAnalyze}
                     disabled={!guestUrl.trim()}
-                    className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-accent-primary text-gray-900 text-sm font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
                     animate={!guestUrl.trim() ? floatAnimation : {}}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -944,7 +942,6 @@ const LandingPage: React.FC = () => {
           </motion.div>
         </div>
       </section>
-
       {/* ─── PROPULSÉ PAR MISTRAL AI + TOURNESOL ─── */}
       <section className="py-10 sm:py-16 px-4 sm:px-6">
         <ScrollReveal className="max-w-3xl mx-auto text-center">
@@ -1015,7 +1012,6 @@ const LandingPage: React.FC = () => {
           </p>
         </ScrollReveal>
       </section>
-
       {/* ─── PROBLEM / SOLUTION ─── */}
       <section className="py-12 sm:py-20 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
@@ -1072,7 +1068,6 @@ const LandingPage: React.FC = () => {
           </ScrollReveal>
         </div>
       </section>
-
       {/* ─── DEMO INTERACTIVE ─── */}
       <section className="py-12 sm:py-20 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
@@ -1080,7 +1075,6 @@ const LandingPage: React.FC = () => {
           <DemoChatStatic language={language} />
         </div>
       </section>
-
       {/* ─── FEATURES ─── */}
       <section id="features" className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
@@ -1116,7 +1110,6 @@ const LandingPage: React.FC = () => {
           </StaggerReveal>
         </div>
       </section>
-
       {/* ─── AUDIENCES ─── */}
       <section className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
@@ -1150,7 +1143,6 @@ const LandingPage: React.FC = () => {
           </StaggerReveal>
         </div>
       </section>
-
       {/* ─── DÉBAT IA ─── */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 relative">
         <div className="max-w-5xl mx-auto">
@@ -1214,10 +1206,10 @@ const LandingPage: React.FC = () => {
                   </div>
                   <div className="w-full aspect-video rounded-lg bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 border border-white/5 flex items-center justify-center">
                     <div className="text-center px-4">
-                      <p className="text-xs text-white/40 mb-1">
+                      <p className="text-xs text-text-muted mb-1">
                         TechVision — 24 min
                       </p>
-                      <p className="text-sm font-medium text-white/80">
+                      <p className="text-sm font-medium text-text-primary">
                         {language === "fr"
                           ? "L'IA va augmenter les développeurs"
                           : "AI will augment developers"}
@@ -1228,7 +1220,7 @@ const LandingPage: React.FC = () => {
                     <p className="text-[10px] uppercase tracking-wider text-indigo-400/70 mb-1">
                       {language === "fr" ? "Thèse" : "Thesis"}
                     </p>
-                    <p className="text-xs text-white/70 leading-relaxed">
+                    <p className="text-xs text-text-secondary leading-relaxed">
                       {language === "fr"
                         ? "« L'IA est un outil de productivité qui augmente les capacités des développeurs sans les remplacer. »"
                         : '"AI is a productivity tool that augments developer capabilities without replacing them."'}
@@ -1287,10 +1279,10 @@ const LandingPage: React.FC = () => {
                   </div>
                   <div className="w-full aspect-video rounded-lg bg-gradient-to-br from-violet-500/10 to-violet-500/5 border border-white/5 flex items-center justify-center">
                     <div className="text-center px-4">
-                      <p className="text-xs text-white/40 mb-1">
+                      <p className="text-xs text-text-muted mb-1">
                         FutureTech — 18 min
                       </p>
-                      <p className="text-sm font-medium text-white/80">
+                      <p className="text-sm font-medium text-text-primary">
                         {language === "fr"
                           ? "L'IA va remplacer les développeurs"
                           : "AI will replace developers"}
@@ -1301,7 +1293,7 @@ const LandingPage: React.FC = () => {
                     <p className="text-[10px] uppercase tracking-wider text-violet-400/70 mb-1">
                       {language === "fr" ? "Thèse" : "Thesis"}
                     </p>
-                    <p className="text-xs text-white/70 leading-relaxed">
+                    <p className="text-xs text-text-secondary leading-relaxed">
                       {language === "fr"
                         ? "« Les agents IA autonomes rendront la majorité des postes de développeurs obsolètes d'ici 5 ans. »"
                         : '"Autonomous AI agents will make most developer jobs obsolete within 5 years."'}
@@ -1370,10 +1362,8 @@ const LandingPage: React.FC = () => {
           </ScrollReveal>
         </div>
       </section>
-
       {/* ─── PRICING ─── */}
       <PricingSection language={language} onNavigate={navigate} />
-
       {/* ─── FAQ ─── */}
       <section className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto">
@@ -1403,7 +1393,6 @@ const LandingPage: React.FC = () => {
           </ScrollReveal>
         </div>
       </section>
-
       {/* ─── CTA FINAL ─── */}
       <section className="py-16 sm:py-24 px-4 sm:px-6">
         <ScrollReveal className="max-w-3xl mx-auto">
@@ -1424,7 +1413,7 @@ const LandingPage: React.FC = () => {
               </p>
               <motion.button
                 onClick={() => navigate("/login")}
-                className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-accent-primary text-white font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-accent-primary text-gray-900 font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -1437,7 +1426,6 @@ const LandingPage: React.FC = () => {
           </div>
         </ScrollReveal>
       </section>
-
       {/* ─── FOOTER ─── */}
       <footer className="py-10 px-4 sm:px-6 border-t border-border-subtle/50">
         <div className="max-w-6xl mx-auto">

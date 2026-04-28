@@ -1,3 +1,7 @@
+# DeepSight — robots.txt
+# https://www.deepsightsynthesis.com
+
+# === Default policy ===
 User-agent: *
 Allow: /
 Disallow: /admin
@@ -5,5 +9,107 @@ Disallow: /auth/callback
 Disallow: /payment/success
 Disallow: /payment/cancel
 Disallow: /api/
+Disallow: /dashboard
+Disallow: /history
+Disallow: /settings
+Disallow: /my-account
 
+# === Generative AI bots — explicit allow ===
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: Claude-Web
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: Perplexity-User
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: CCBot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: cohere-ai
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: Bytespider
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: Diffbot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: ImagesiftBot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+User-agent: Meta-ExternalAgent
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+# === Sitemap ===
 Sitemap: https://www.deepsightsynthesis.com/sitemap.xml

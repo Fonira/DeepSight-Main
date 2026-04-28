@@ -121,12 +121,12 @@ export const DebateSummaryCard: React.FC<DebateSummaryCardProps> = ({
               />
               {badge.label}
             </span>
-            <span className="text-[10px] text-white/30">{formattedDate}</span>
+            <span className="text-[10px] text-text-tertiary">{formattedDate}</span>
           </div>
           <p className="text-sm font-semibold text-white truncate group-hover:text-indigo-300 transition-colors">
             {debate.detected_topic}
           </p>
-          <p className="text-xs text-white/40 mt-0.5 truncate">
+          <p className="text-xs text-text-muted mt-0.5 truncate">
             {debate.video_a_title} vs {debate.video_b_title}
           </p>
         </div>

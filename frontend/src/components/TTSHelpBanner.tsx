@@ -62,16 +62,14 @@ export const TTSHelpBanner: React.FC<TTSHelpBannerProps> = ({
     >
       <button
         onClick={dismiss}
-        className="absolute top-2 right-2 text-white/30 hover:text-white/60 transition-colors"
+        className="absolute top-2 right-2 text-text-tertiary hover:text-text-secondary transition-colors"
       >
         <X className="w-4 h-4" />
       </button>
-
-      <p className="text-sm text-white/70 leading-relaxed pr-6">
+      <p className="text-sm text-text-secondary leading-relaxed pr-6">
         <span className="text-indigo-400 font-medium">🎙️ </span>
         {content.text}
       </p>
-
       <button
         onClick={dismiss}
         className="mt-2 px-3 py-1 rounded-lg text-xs font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 transition-colors"

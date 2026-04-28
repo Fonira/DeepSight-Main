@@ -21,7 +21,7 @@ export const VoiceTranscript: React.FC<VoiceTranscriptProps> = React.memo(
     if (messages.length === 0) {
       return (
         <div className="flex items-center justify-center h-full min-h-[120px] p-4">
-          <p className="text-sm text-white/30 select-none">
+          <p className="text-sm text-text-tertiary select-none">
             La conversation apparaitra ici...
           </p>
         </div>

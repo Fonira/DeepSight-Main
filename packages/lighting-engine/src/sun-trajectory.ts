@@ -1,6 +1,6 @@
 // Sun trajectory: visible from ~05h30 to ~19h, position % across viewport
 
-import { lerp } from "./interpolate";
+import { lerp } from "./interpolate.js";
 
 export interface SunState {
   visible: boolean;

@@ -26,6 +26,22 @@ vi.mock("@elevenlabs/client", () => ({
   },
 }));
 
+// Polyfill MediaStream for jsdom (production code uses `instanceof MediaStream`)
+class MediaStreamPolyfill {
+  getTracks() {
+    return [{ stop: vi.fn(), enabled: true }];
+  }
+  getAudioTracks() {
+    return [{ stop: vi.fn(), enabled: true }];
+  }
+}
+{
+  const g = globalThis as unknown as { MediaStream?: unknown };
+  if (typeof g.MediaStream === "undefined") {
+    g.MediaStream = MediaStreamPolyfill;
+  }
+}
+
 // Mock navigator.mediaDevices
 const mockGetUserMedia = vi.fn();
 Object.defineProperty(global.navigator, "mediaDevices", {
@@ -38,14 +54,15 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 import { useVoiceChat } from "../useVoiceChat";
+import {
+  emitVoicePrefsEvent,
+  subscribeVoicePrefsEvents,
+} from "../voicePrefsBus";
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 describe("useVoiceChat", () => {
-  const mockMediaStream = {
-    getTracks: () => [{ stop: vi.fn(), enabled: true }],
-    getAudioTracks: () => [{ stop: vi.fn(), enabled: true }],
-  };
+  const mockMediaStream = new MediaStreamPolyfill();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -104,7 +121,7 @@ describe("useVoiceChat", () => {
           "Content-Type": "application/json",
           Authorization: "Bearer test-token-123",
         }),
-        body: JSON.stringify({ summary_id: 42 }),
+        body: expect.stringContaining('"summary_id":42'),
       }),
     );
   });
@@ -236,5 +253,150 @@ describe("useVoiceChat", () => {
 
     // Should remain false (no session to mute)
     expect(result.current.isMuted).toBe(false);
+  });
+});
+
+describe("useVoiceChat — call_status_changed events", () => {
+  const mockMediaStream = new MediaStreamPolyfill();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    mockGetUserMedia.mockResolvedValue(mockMediaStream);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          session_id: "sess-123",
+          signed_url: "wss://test/signed",
+          quota_remaining_minutes: 10,
+          max_session_minutes: 30,
+          input_mode: "ptt",
+          ptt_key: " ",
+          playback_rate: 1.0,
+        }),
+    });
+    mockStartSession.mockImplementation(
+      async (opts: { onConnect?: () => void }) => {
+        opts.onConnect?.();
+        return { endSession: mockEndSession, setVolume: vi.fn() };
+      },
+    );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("emits call_status_changed { active: true } onConnect", async () => {
+    const events: boolean[] = [];
+    const unsub = subscribeVoicePrefsEvents((e) => {
+      if (e.type === "call_status_changed") events.push(e.active);
+    });
+
+    const { result } = renderHook(() => useVoiceChat({ summaryId: 1 }));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(events).toContain(true);
+    unsub();
+  });
+
+  it("emits call_status_changed { active: false } on stop", async () => {
+    const events: boolean[] = [];
+    const unsub = subscribeVoicePrefsEvents((e) => {
+      if (e.type === "call_status_changed") events.push(e.active);
+    });
+
+    const { result } = renderHook(() => useVoiceChat({ summaryId: 1 }));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(events.filter((v) => v === false)).toHaveLength(1);
+    unsub();
+  });
+});
+
+describe("useVoiceChat — apply_with_restart", () => {
+  const mockMediaStream = new MediaStreamPolyfill();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    mockGetUserMedia.mockResolvedValue(mockMediaStream);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          session_id: "sess-123",
+          signed_url: "wss://test/signed",
+          quota_remaining_minutes: 10,
+          max_session_minutes: 30,
+          input_mode: "ptt",
+          ptt_key: " ",
+          playback_rate: 1.0,
+        }),
+    });
+    mockStartSession.mockImplementation(
+      async (opts: { onConnect?: () => void }) => {
+        opts.onConnect?.();
+        return { endSession: mockEndSession, setVolume: vi.fn() };
+      },
+    );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("calls restart (start invoked again) when active session receives apply_with_restart", async () => {
+    const { result } = renderHook(() => useVoiceChat({ summaryId: 1 }));
+    await act(async () => {
+      await result.current.start();
+    });
+    const startCallsAfterStart = mockStartSession.mock.calls.length;
+    expect(startCallsAfterStart).toBe(1);
+    mockEndSession.mockClear();
+
+    await act(async () => {
+      emitVoicePrefsEvent({ type: "apply_with_restart" });
+      // restart() awaits stop() (calls endSession), then a 400ms setTimeout,
+      // then start(). Advance just past 400ms — runAllTimersAsync would loop
+      // forever on the 1s session-elapsed interval set up by start().
+      await vi.advanceTimersByTimeAsync(500);
+      // Flush the microtasks introduced by the awaited start() (mocked
+      // import/fetch/startSession all resolve as microtasks).
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // restart() must call BOTH endSession (stop phase) and a fresh
+    // startSession (start phase). The latter only fires if the closure trap
+    // in start() is fixed.
+    expect(mockEndSession).toHaveBeenCalled();
+    expect(mockStartSession.mock.calls.length).toBeGreaterThan(
+      startCallsAfterStart,
+    );
+  });
+
+  it("is a no-op when there is no active conversation", async () => {
+    renderHook(() => useVoiceChat({ summaryId: 1 }));
+
+    await act(async () => {
+      emitVoicePrefsEvent({ type: "apply_with_restart" });
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+    });
+
+    expect(mockStartSession).not.toHaveBeenCalled();
   });
 });

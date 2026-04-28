@@ -130,7 +130,7 @@ const ExtensionWelcomePage = () => {
                 transition={{ delay: 0.6 + i * 0.1 }}
                 className="relative p-6 rounded-2xl bg-bg-secondary/80 border border-border-default backdrop-blur-sm hover:border-border-strong transition-colors"
               >
-                <div className="absolute -top-3 -left-1 w-7 h-7 rounded-full bg-accent-primary text-white text-xs font-bold flex items-center justify-center shadow-lg shadow-accent-primary/30">
+                <div className="absolute -top-3 -left-1 w-7 h-7 rounded-full bg-accent-primary text-gray-900 text-xs font-bold flex items-center justify-center shadow-lg shadow-accent-primary/30">
                   {i + 1}
                 </div>
                 <span className="text-3xl block mb-3">{step.icon}</span>
@@ -191,7 +191,7 @@ const ExtensionWelcomePage = () => {
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <button
                     onClick={() => navigate("/dashboard")}
-                    className="px-8 py-3.5 bg-accent-primary text-white rounded-xl font-semibold shadow-lg shadow-accent-primary/25 hover:shadow-accent-primary/40 hover:-translate-y-0.5 transition-all duration-200"
+                    className="px-8 py-3.5 bg-accent-primary text-gray-900 rounded-xl font-semibold shadow-lg shadow-accent-primary/25 hover:shadow-accent-primary/40 hover:-translate-y-0.5 transition-all duration-200"
                   >
                     Aller au Dashboard
                   </button>
@@ -213,7 +213,7 @@ const ExtensionWelcomePage = () => {
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link
                     to="/login"
-                    className="px-8 py-3.5 bg-accent-primary text-white rounded-xl font-semibold shadow-lg shadow-accent-primary/25 hover:shadow-accent-primary/40 hover:-translate-y-0.5 transition-all duration-200 text-center"
+                    className="px-8 py-3.5 bg-accent-primary text-gray-900 rounded-xl font-semibold shadow-lg shadow-accent-primary/25 hover:shadow-accent-primary/40 hover:-translate-y-0.5 transition-all duration-200 text-center"
                   >
                     Créer un compte gratuit
                   </Link>

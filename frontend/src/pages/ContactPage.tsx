@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import DoodleBackground from "../components/DoodleBackground";
 import { contactApi } from "../services/api";
 import { SEO } from "../components/SEO";
+import { BreadcrumbJsonLd } from "../components/BreadcrumbJsonLd";
 import { DeepSightSpinnerMicro } from "../components/ui/DeepSightSpinner";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -161,9 +162,10 @@ const ContactPage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative">
       <SEO
         title="Contact"
-        description="Contactez l'équipe Deep Sight. Questions, suggestions, support technique — nous vous répondons rapidement."
+        description="Contactez l'équipe DeepSight. Questions, suggestions, support technique — nous vous répondons rapidement."
         path="/contact"
       />
+      <BreadcrumbJsonLd path="/contact" />
       <DoodleBackground />
 
       {/* Header */}

@@ -3,27 +3,54 @@
  * panel embedded inside VoiceOverlay.
  *
  * Behaviour covered:
- *  - Loading state while fetching preferences
  *  - Renders all 5 fields (volume, playback rate, input mode, PTT key, language)
- *  - Save handler called when user changes a field
+ *  - stage() called when user changes a stage-routed field
  *  - voicePrefsBus.emitVoicePrefsEvent fires for live-applicable changes
  *    (playback_rate)
  */
 
+import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
-const getPreferencesMock = vi.fn();
-const updatePreferencesMock = vi.fn();
-
-vi.mock("../../../services/api", () => ({
-  voiceApi: {
-    getPreferences: () => getPreferencesMock(),
-    updatePreferences: (updates: Record<string, unknown>) =>
-      updatePreferencesMock(updates),
-  },
+const stageMock = vi.fn();
+vi.mock("../staging/VoicePrefsStagingProvider", () => ({
+  useVoicePrefsStaging: () => ({
+    applied: {
+      voice_id: "v1",
+      voice_name: "Sophie",
+      speed: 1,
+      stability: 0.5,
+      similarity_boost: 0.75,
+      style: 0.3,
+      use_speaker_boost: true,
+      tts_model: "eleven_multilingual_v2",
+      voice_chat_model: "eleven_flash_v2_5",
+      language: "fr",
+      gender: "female",
+      input_mode: "ptt",
+      ptt_key: " ",
+      interruptions_enabled: true,
+      turn_eagerness: 0.5,
+      voice_chat_speed_preset: "1x",
+      turn_timeout: 15,
+      soft_timeout_seconds: 300,
+    },
+    catalog: null,
+    staged: {},
+    hasChanges: false,
+    hasRestartRequired: false,
+    callActive: false,
+    applying: false,
+    applyError: null,
+    stage: stageMock,
+    cancel: vi.fn(),
+    apply: vi.fn(),
+  }),
+  VoicePrefsStagingProvider: ({ children }: { children: React.ReactNode }) =>
+    children,
 }));
 
 const emitVoicePrefsEventMock = vi.fn();
@@ -39,47 +66,13 @@ vi.mock("../voicePrefsBus", async () => {
 
 import { VoiceLiveSettings } from "../VoiceLiveSettings";
 
-const baselinePrefs = {
-  voice_id: "v1",
-  voice_name: "Aria",
-  speed: 1.0,
-  stability: 0.5,
-  similarity_boost: 0.75,
-  style: 0.3,
-  use_speaker_boost: true,
-  tts_model: "eleven_multilingual_v2",
-  voice_chat_model: "eleven_flash_v2_5",
-  language: "fr",
-  gender: "female",
-  input_mode: "ptt" as const,
-  ptt_key: " ",
-  interruptions_enabled: true,
-  turn_eagerness: 0.5,
-  voice_chat_speed_preset: "1x",
-  turn_timeout: 15,
-  soft_timeout_seconds: 300,
-};
+beforeEach(() => {
+  stageMock.mockReset();
+  emitVoicePrefsEventMock.mockReset();
+});
 
 describe("VoiceLiveSettings (in-call collapsible panel)", () => {
-  beforeEach(() => {
-    getPreferencesMock.mockReset();
-    updatePreferencesMock.mockReset();
-    emitVoicePrefsEventMock.mockReset();
-    getPreferencesMock.mockResolvedValue({ ...baselinePrefs });
-    updatePreferencesMock.mockImplementation(
-      async (updates: Record<string, unknown>) => ({
-        ...baselinePrefs,
-        ...updates,
-      }),
-    );
-  });
-
-  it("loads preferences from voiceApi on mount", async () => {
-    render(<VoiceLiveSettings language="fr" />);
-    await waitFor(() => expect(getPreferencesMock).toHaveBeenCalled());
-  });
-
-  it("renders the 5 expected sections after preferences load", async () => {
+  it("renders the 5 expected sections from staging context", async () => {
     render(<VoiceLiveSettings language="fr" />);
     await waitFor(() => {
       // Volume slider
@@ -97,7 +90,7 @@ describe("VoiceLiveSettings (in-call collapsible panel)", () => {
     });
   });
 
-  it("emits playback_rate_changed on bus when user picks a new rate", async () => {
+  it("emits playback_rate_changed on bus and stages voice_chat_speed_preset when user picks a new rate", async () => {
     render(<VoiceLiveSettings language="fr" />);
     const rate15 = await screen.findByTestId("voice-live-rate-1.5x");
     fireEvent.click(rate15);
@@ -109,35 +102,26 @@ describe("VoiceLiveSettings (in-call collapsible panel)", () => {
         }),
       ),
     );
+    expect(stageMock).toHaveBeenCalledWith({
+      voice_chat_speed_preset: "1.5x",
+    });
   });
 
-  it("calls voiceApi.updatePreferences when input_mode changes", async () => {
+  it("calls stage() when input_mode changes", async () => {
     render(<VoiceLiveSettings language="fr" />);
     const vad = await screen.findByTestId("voice-live-mode-vad");
     fireEvent.click(vad);
     await waitFor(() =>
-      expect(updatePreferencesMock).toHaveBeenCalledWith(
-        expect.objectContaining({ input_mode: "vad" }),
-      ),
+      expect(stageMock).toHaveBeenCalledWith({ input_mode: "vad" }),
     );
   });
 
-  it("calls voiceApi.updatePreferences when language changes", async () => {
+  it("calls stage() when language changes", async () => {
     render(<VoiceLiveSettings language="fr" />);
     const en = await screen.findByTestId("voice-live-lang-en");
     fireEvent.click(en);
     await waitFor(() =>
-      expect(updatePreferencesMock).toHaveBeenCalledWith(
-        expect.objectContaining({ language: "en" }),
-      ),
+      expect(stageMock).toHaveBeenCalledWith({ language: "en" }),
     );
-  });
-
-  it("displays an error message if preferences fail to load", async () => {
-    getPreferencesMock.mockRejectedValueOnce(new Error("network"));
-    render(<VoiceLiveSettings language="fr" />);
-    await waitFor(() => {
-      expect(screen.getByTestId("voice-live-error")).toBeDefined();
-    });
   });
 });

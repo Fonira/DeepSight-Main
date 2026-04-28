@@ -1,14 +1,29 @@
-# ═══════════════════════════════════════════════════════════════════════════════
-# DeepSight — Caddy Reverse Proxy
+# ────────────────────────────────────────────────────────────────────────────────
+# DeepSight - Caddy Reverse Proxy
 # HTTPS automatique via Let's Encrypt
-# ═══════════════════════════════════════════════════════════════════════════════
+# ────────────────────────────────────────────────────────────────────────────────
 
 api.deepsightsynthesis.com {
-	# Reverse proxy avec timeouts longs pour SSE streaming
-	reverse_proxy backend:8080 {
-		transport http {
-			read_timeout 300s
-			write_timeout 300s
+	# SSE endpoints : flush_interval -1 pour streamer events temps réel,
+	# read/write_timeout 0 pour ne jamais couper la connexion (client gère hangup).
+	@sse path /api/voice/context/stream /api/notifications/sse/*
+	handle @sse {
+		reverse_proxy backend:8080 {
+			flush_interval -1
+			transport http {
+				read_timeout 0s
+				write_timeout 0s
+			}
+		}
+	}
+
+	# Tous les autres endpoints : timeouts longs pour analyses lentes, pas de flush forcé.
+	handle {
+		reverse_proxy backend:8080 {
+			transport http {
+				read_timeout 300s
+				write_timeout 300s
+			}
 		}
 	}
 
@@ -27,6 +42,38 @@ api.deepsightsynthesis.com {
 		output file /data/logs/access.log {
 			roll_size 100mb
 			roll_keep 5
+		}
+	}
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# vault-mcp — MCP server exposing Obsidian vault read-only to Claude clients
+# ═══════════════════════════════════════════════════════════════════════════════
+
+vault-mcp.deepsightsynthesis.com {
+	reverse_proxy repo-vault-mcp-1:8081 {
+		flush_interval -1
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+		}
+	}
+
+	header {
+		Cache-Control "no-cache"
+		X-Accel-Buffering "no"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	encode gzip
+
+	log {
+		output file /data/logs/vault-mcp.log {
+			roll_size 50mb
+			roll_keep 3
 		}
 	}
 }

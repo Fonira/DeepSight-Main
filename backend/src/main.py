@@ -262,6 +262,15 @@ except ImportError as e:
     SHARE_ROUTER_AVAILABLE = False
     logger.warning(f"⚠️ Share router not available: {e}")
 
+# 🌐 Aggregate router (channel/category landing pages for SEO/GEO)
+try:
+    from aggregate.router import router as aggregate_router
+
+    AGGREGATE_ROUTER_AVAILABLE = True
+except ImportError as e:
+    AGGREGATE_ROUTER_AVAILABLE = False
+    logger.warning(f"⚠️ Aggregate router not available: {e}")
+
 # 📊 Analytics router (event tracking)
 try:
     from analytics.router import router as analytics_router
@@ -1109,6 +1118,11 @@ if CONTACT_AVAILABLE:
 if SHARE_ROUTER_AVAILABLE:
     app.include_router(share_router, prefix="/api/share", tags=["Share"])
     logger.info("🔗 Share router loaded (POST /api/share, GET /api/share/{token})")
+
+# 🌐 Aggregate router (channel/category landing pages for SEO/GEO)
+if AGGREGATE_ROUTER_AVAILABLE:
+    app.include_router(aggregate_router, prefix="/api/aggregate", tags=["Aggregate"])
+    logger.info("🌐 Aggregate router loaded (GET /api/aggregate/channels, /channels-render, /channel-render/{slug}, …)")
 
 # 📊 Analytics router
 if ANALYTICS_ROUTER_AVAILABLE:

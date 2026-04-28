@@ -381,7 +381,7 @@ export const KeywordsModal: React.FC<KeywordsModalProps> = memo(
                       onClick={() => setSelectedCategory(cat)}
                       className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-all flex items-center gap-1 ${
                         selectedCategory === cat
-                          ? "bg-accent-primary text-white"
+                          ? "bg-accent-primary text-gray-900"
                           : "bg-bg-tertiary text-text-secondary hover:bg-bg-hover"
                       }`}
                     >

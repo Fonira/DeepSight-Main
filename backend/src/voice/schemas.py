@@ -28,9 +28,28 @@ class VoiceSessionRequest(BaseModel):
         default=None,
         description="YouTube video ID for streaming sessions (Quick Voice Call V1)",
     )
+    video_title: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description=(
+            "Optional video title hint pushed by the client (Quick Voice Call V1.1). "
+            "When ``is_streaming=True`` the backend uses it to build the initial "
+            "system prompt so the agent knows which video is being watched even "
+            "before the SSE transcript stream starts arriving."
+        ),
+    )
     is_streaming: bool = Field(
         default=False,
         description="True for Quick Voice Call sessions (asynchronous progressive context)",
+    )
+    # ── Quick Voice Call Mobile V3 — direct URL entry point ──────────────
+    # When ``video_url`` is provided (mobile/web), the router resolves the
+    # platform + video_id, creates a Summary placeholder, then launches the
+    # streaming orchestrator. ``agent_type`` MUST be ``"explorer_streaming"``.
+    video_url: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description="URL YouTube ou TikTok (pour agent explorer_streaming) — Quick Voice Call mobile V3",
     )
     language: str = Field(default="fr", description="Langue (fr, en)")
     agent_type: str = Field(
@@ -43,8 +62,17 @@ class VoiceSessionRequest(BaseModel):
 
     @model_validator(mode="after")
     def _xor_source(self) -> "VoiceSessionRequest":
-        if self.summary_id is not None and self.debate_id is not None:
-            raise ValueError("Fournir summary_id OU debate_id, pas les deux")
+        sources = sum(
+            [
+                self.summary_id is not None,
+                self.debate_id is not None,
+                self.video_url is not None,
+            ]
+        )
+        if sources > 1:
+            raise ValueError("Fournir summary_id OU debate_id OU video_url, un seul")
+        if self.video_url is not None and self.agent_type != "explorer_streaming":
+            raise ValueError("video_url nécessite agent_type='explorer_streaming'")
         return self
 
 
@@ -101,15 +129,18 @@ class VoiceSessionResponse(BaseModel):
     ptt_key: str = " "  # Keyboard key for PTT
     playback_rate: float = 1.0  # Client-side playback rate multiplier
     # ── Quick Voice Call (V1) — streaming session metadata ───────────────
-    is_streaming: bool = Field(
-        default=False, description="True when this session uses progressive context streaming"
-    )
-    is_trial: bool = Field(
-        default=False, description="True when this is the Free 1-shot lifetime trial (3 min)"
-    )
+    is_streaming: bool = Field(default=False, description="True when this session uses progressive context streaming")
+    is_trial: bool = Field(default=False, description="True when this is the Free 1-shot lifetime trial (3 min)")
     max_minutes: Optional[float] = Field(
         default=None,
         description="Hard cap (minutes) enforced by the side panel timer for streaming sessions",
+    )
+    # ── Quick Voice Call Mobile V3 — placeholder Summary id ──────────────
+    # Set by the router when ``video_url`` was provided so the mobile client
+    # can deep-link to ``/analysis/[id]`` after the call ends. Null otherwise.
+    summary_id: Optional[int] = Field(
+        default=None,
+        description="ID of the Summary placeholder created when video_url was provided (mobile V3)",
     )
 
 
@@ -374,3 +405,73 @@ class VoiceThumbnailResponse(BaseModel):
         description="Gradient DeepSight (toujours fourni comme secours CSS).",
     )
     alt_text: str = Field(description="Texte alternatif pour accessibilité.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPANION (Coach Vocal de Découverte) — schemas Task 1
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+RecoSource = Literal["history_similarity", "trending", "tournesol", "youtube"]
+
+
+class RecoItem(BaseModel):
+    """Recommandation vidéo proposée par le Companion."""
+
+    video_id: str
+    title: str
+    channel: str
+    duration_seconds: int
+    source: RecoSource
+    why: str = Field(..., description="Accroche personnalisée 1 phrase")
+    thumbnail_url: Optional[str] = None
+
+
+class ProfileBlock(BaseModel):
+    """Profil utilisateur injecté dans le contexte du Companion."""
+
+    prenom: str
+    plan: str
+    langue: str
+    total_analyses: int
+    recent_titles: list[str] = Field(default_factory=list, description="5 derniers titres")
+    themes: list[str] = Field(default_factory=list, description="Top 3 thèmes")
+    streak_days: int = 0
+    flashcards_due_today: int = 0
+
+
+class CompanionContextResponse(BaseModel):
+    """Payload renvoyé au démarrage d'une session Companion."""
+
+    profile: ProfileBlock
+    initial_recos: list[RecoItem]
+    cache_hit: bool = False
+
+
+class GetMoreRecosRequest(BaseModel):
+    """Requête pour obtenir des recommandations supplémentaires sur un thème."""
+
+    topic: str
+    source: Optional[RecoSource] = None
+    exclude_video_ids: list[str] = Field(default_factory=list)
+
+
+class GetMoreRecosResponse(BaseModel):
+    """Liste de recommandations renvoyée au Companion."""
+
+    recos: list[RecoItem]
+
+
+class StartAnalysisRequest(BaseModel):
+    """Déclenchement d'une analyse via la voix du Companion."""
+
+    video_url: str
+
+
+class StartAnalysisResponse(BaseModel):
+    """Réponse au déclenchement d'analyse vocal (idempotent)."""
+
+    summary_id: int
+    status: Literal["started", "duplicate", "rejected"]
+    eta_seconds: int = 120
+    message: Optional[str] = None

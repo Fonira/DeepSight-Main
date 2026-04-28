@@ -47,8 +47,8 @@ FREE TO START:
 PLANS:
 
 - Free: 5 analyses/month, chat, flashcards
-- Pro (5.99 EUR/month): 30 analyses, fact-checking, mind maps, voice chat, PDF export
-- Expert (14.99 EUR/month): 100 analyses, deep research, unlimited chat, priority queue
+- Plus (4.99 EUR/month): 25 analyses, 60 min videos, fact-checking, mind maps, web search, PDF export
+- Pro (9.99 EUR/month): 100 analyses, 4h videos, voice chat 45min/month (ElevenLabs), playlists, deep research, priority queue
 
 Built by an independent European developer. Made in France.
 
@@ -93,8 +93,8 @@ GRATUIT POUR COMMENCER :
 PLANS :
 
 - Gratuit : 5 analyses/mois, chat, flashcards
-- Pro (5,99 EUR/mois) : 30 analyses, fact-checking, cartes mentales, chat vocal, export PDF
-- Expert (14,99 EUR/mois) : 100 analyses, recherche approfondie, chat illimite, file prioritaire
+- Plus (4,99 EUR/mois) : 25 analyses, videos 60 min, fact-checking, cartes mentales, web search, export PDF
+- Pro (9,99 EUR/mois) : 100 analyses, videos 4h, chat vocal 45 min/mois (ElevenLabs), playlists, recherche approfondie, file prioritaire
 
 Developpe par un developpeur independant europeen. Made in France.
 
@@ -123,3 +123,80 @@ https://www.deepsightsynthesis.com/privacy
 3. Quick Chat (0 credits, chat rapide)
 4. Popup avec analyse en cours (progression)
 5. Analyse TikTok (sidebar sur TikTok)
+
+## Permissions justifications (Chrome Web Store form)
+
+These justifications are pasted as-is into the CWS submission form, one per
+permission. Keep them short, factual, and tied to a user-facing feature.
+
+### Standard permissions
+
+- **storage** — Persist authentication tokens (access + refresh), user
+  preferences (UI language, voice settings), and a small cache of recent
+  analyses for offline access. No tracking, no third-party sharing.
+
+- **activeTab** — Read the URL of the YouTube or TikTok video currently
+  active in the user's tab so the user can trigger an AI analysis with one
+  click. Only the video ID is sent to our backend; no DOM scraping is
+  performed.
+
+- **tabs** — Detect URL changes (e.g. user navigates to a new YouTube
+  video) to refresh the Side Panel context (video detected card, analysis
+  state). Used solely on YouTube and TikTok.
+
+- **alarms** — Periodic background refresh of the OAuth access token
+  (15-minute lifespan) using the refresh token, so the user does not need
+  to re-login every 15 minutes.
+
+- **identity** — Used by chrome.identity.launchWebAuthFlow() to perform
+  Google OAuth login. The flow opens the standard Google consent screen
+  in a popup and returns an OAuth code we exchange server-side for a JWT.
+
+- **clipboardWrite** — Allow the user to copy generated content
+  (summaries, fact-check results, flashcards) to the system clipboard with
+  one click, from the Side Panel "Copy" buttons.
+
+- **sidePanel** — Display the DeepSight interface in Chrome's native Side
+  Panel (Chrome 114+), persistent across tab switches. Toggle via
+  Alt+Shift+D or the toolbar icon.
+
+- **offscreen** — Required by the ElevenLabs voice SDK on Chrome MV3 to
+  host an offscreen document for audio capture and playback (service
+  workers cannot access getUserMedia directly).
+
+### Optional permissions
+
+- **audioCapture** (optional, requested only when the user starts a voice
+  chat session) — Capture microphone input for the ElevenLabs ConvAI
+  voice agent. Audio is streamed directly to ElevenLabs over a secure
+  WebSocket; no audio is persisted on our servers.
+
+### Host permissions
+
+- **https://www.youtube.com/*, https://youtube.com/*** — Detect the
+  currently watched video and inject the optional content-script overlay
+  showing the analyze button. No analytics, no DOM modification beyond
+  the overlay.
+
+- **https://www.tiktok.com/*, https://tiktok.com/*, https://vm.tiktok.com/*,
+  https://m.tiktok.com/*** — Same as YouTube, for TikTok video detection.
+
+- **https://www.deepsightsynthesis.com/*** — Cross-domain authentication
+  sync between the extension and the web app, so a user logged in on the
+  web is automatically logged in on the extension (and vice versa).
+
+- **https://api.deepsightsynthesis.com/*** — Backend API endpoints for
+  analyses, chat, billing, voice sessions, etc.
+
+- **https://api.elevenlabs.io/*, wss://api.elevenlabs.io/*,
+  https://*.elevenlabs.io/*, wss://*.elevenlabs.io/*** — ElevenLabs
+  ConvAI voice chat over WebSocket. Required by the @elevenlabs/client
+  SDK; CSP whitelist already restricts connect-src to these domains.
+
+## Single purpose statement (Chrome Web Store form)
+
+DeepSight is an AI-powered analysis tool for YouTube and TikTok videos.
+Its single purpose is to help users understand, fact-check, and study
+video content via AI-generated summaries, contextual chat, flashcards,
+and an optional voice agent — all from a persistent Side Panel inside
+Chrome.

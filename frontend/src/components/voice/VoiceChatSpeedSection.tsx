@@ -26,10 +26,9 @@ export const VoiceChatSpeedSection: React.FC<VoiceChatSpeedSectionProps> = ({
 }) => {
   return (
     <div className="space-y-4">
-      <p className="text-white/50 text-sm">
+      <p className="text-text-muted text-sm">
         Vitesse de réponse de l'agent en conversation vocale
       </p>
-
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {presets.map((preset) => {
           const isActive = preferences.voice_chat_speed_preset === preset.id;
@@ -66,7 +65,7 @@ export const VoiceChatSpeedSection: React.FC<VoiceChatSpeedSectionProps> = ({
               `}
             >
               <span className="text-sm font-semibold">{preset.id}</span>
-              <span className="text-[10px] text-white/40">
+              <span className="text-[10px] text-text-muted">
                 {preset.label_fr}
               </span>
               {preset.concise && (
@@ -78,7 +77,6 @@ export const VoiceChatSpeedSection: React.FC<VoiceChatSpeedSectionProps> = ({
           );
         })}
       </div>
-
       {/* Concise mode indicator */}
       {presets.find((p) => p.id === preferences.voice_chat_speed_preset)
         ?.concise && (

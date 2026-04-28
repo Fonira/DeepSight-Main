@@ -8,6 +8,7 @@ client-side for humans via /s/{token}.
 
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -38,6 +39,22 @@ def _format_duration(seconds: Optional[int]) -> str:
     if m > 0:
         return f"{m}m {s}s" if s else f"{m}m"
     return f"{s}s"
+
+
+def _format_duration_iso(seconds: Optional[int]) -> str:
+    """Format seconds to ISO 8601 PT#H#M#S for Schema.org VideoObject duration."""
+    if not seconds or seconds <= 0:
+        return ""
+    h, rem = divmod(int(seconds), 3600)
+    m, s = divmod(rem, 60)
+    out = "PT"
+    if h > 0:
+        out += f"{h}H"
+    if m > 0:
+        out += f"{m}M"
+    if s > 0:
+        out += f"{s}S"
+    return out if out != "PT" else "PT0S"
 
 
 def _format_created_at(iso: str) -> str:
@@ -119,6 +136,44 @@ def render_analysis_page(
         "sources": snapshot.get("sources") or [],
         "analyze_cta_url": analyze_cta_url,
     }
+
+    # Schema.org VideoObject JSON-LD — built Python-side and HTML-escaped for inline <script>
+    video_object: Dict[str, Any] = {
+        "@context": "https://schema.org",
+        "@type": "VideoObject",
+        "name": video_title,
+        "description": context["page_description"],
+        "uploadDate": created_at_iso,
+        "publisher": {
+            "@type": "Organization",
+            "name": "DeepSight",
+            "logo": {
+                "@type": "ImageObject",
+                "url": f"{web_base}/icons/icon-512x512.png",
+            },
+        },
+        "isAccessibleForFree": True,
+        "isFamilyFriendly": True,
+        "inLanguage": lang,
+    }
+    if snapshot.get("video_thumbnail"):
+        video_object["thumbnailUrl"] = snapshot["video_thumbnail"]
+    if context["video_url"]:
+        video_object["contentUrl"] = context["video_url"]
+    if platform == "youtube" and video_id:
+        video_object["embedUrl"] = f"https://www.youtube.com/embed/{video_id}"
+    duration_iso = _format_duration_iso(snapshot.get("duration_seconds"))
+    if duration_iso:
+        video_object["duration"] = duration_iso
+    if snapshot.get("channel"):
+        video_object["creator"] = {"@type": "Person", "name": snapshot["channel"]}
+
+    context["video_object_jsonld"] = (
+        json.dumps(video_object, ensure_ascii=False)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+    )
 
     template = _env.get_template("share/analysis.html")
     html = template.render(**context)

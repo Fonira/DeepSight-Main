@@ -83,7 +83,7 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
           </div>
           <div>
             <h2 className="text-lg font-semibold text-white">{t.title}</h2>
-            <p className="text-sm text-white/50">{t.subtitle}</p>
+            <p className="text-sm text-text-muted">{t.subtitle}</p>
           </div>
         </div>
 
@@ -104,7 +104,6 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
           ))}
         </div>
       </div>
-
       {/* Content */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -122,9 +121,9 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
           ))}
         </div>
       ) : error ? (
-        <div className="text-center py-12 text-white/40">{error}</div>
+        <div className="text-center py-12 text-text-muted">{error}</div>
       ) : !data?.videos?.length ? (
-        <div className="text-center py-12 text-white/40">{t.noData}</div>
+        <div className="text-center py-12 text-text-muted">{t.noData}</div>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -141,7 +140,7 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
 
           {/* Footer stats */}
           {data.total_cached_videos > 0 && (
-            <div className="mt-4 text-center text-xs text-white/30">
+            <div className="mt-4 text-center text-xs text-text-tertiary">
               {data.total_cached_videos} {t.cached}
             </div>
           )}
@@ -179,7 +178,7 @@ const TrendingCard: React.FC<TrendingCardProps> = ({
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
         {video.duration && (
-          <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 bg-black/80 rounded text-[10px] text-white/80 font-mono">
+          <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 bg-black/80 rounded text-[10px] text-text-primary font-mono">
             {formatDuration(video.duration)}
           </span>
         )}
@@ -189,15 +188,14 @@ const TrendingCard: React.FC<TrendingCardProps> = ({
           {video.analysis_count}
         </span>
       </div>
-
       {/* Info */}
       <div className="p-3 space-y-1.5">
-        <h3 className="text-sm font-medium text-white/90 line-clamp-2 leading-tight">
+        <h3 className="text-sm font-medium text-text-primary line-clamp-2 leading-tight">
           {video.title}
         </h3>
-        <p className="text-xs text-white/40 truncate">{video.channel}</p>
+        <p className="text-xs text-text-muted truncate">{video.channel}</p>
 
-        <div className="flex items-center gap-3 text-[10px] text-white/30 pt-1">
+        <div className="flex items-center gap-3 text-[10px] text-text-tertiary pt-1">
           <span className="flex items-center gap-1">
             <Users className="w-3 h-3" />
             {video.unique_users} {labels.users}

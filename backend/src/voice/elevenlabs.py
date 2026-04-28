@@ -558,6 +558,112 @@ class ElevenLabsClient:
 # =========================================================================
 
 
+def build_companion_tools_config(webhook_base_url: str, voice_session_id: str) -> list[dict]:
+    """Webhook-tool definitions for the COMPANION agent (free voice call).
+
+    Bearer token = voice_session.id (verified server-side by
+    verify_companion_tool_request). Body always includes voice_session_id
+    so the backend can match the Bearer.
+    """
+    auth_headers = {"Authorization": f"Bearer {voice_session_id}"}
+    base = webhook_base_url.rstrip("/")
+
+    def _tool(name: str, description: str, path: str, body_schema: dict) -> dict:
+        return {
+            "type": "webhook",
+            "name": name,
+            "description": description,
+            "api_schema": {
+                "url": f"{base}{path}",
+                "method": "POST",
+                "request_headers": auth_headers,
+                "request_body_schema": body_schema,
+            },
+        }
+
+    voice_session_field = {
+        "type": "string",
+        "description": "The voice_session_id (same value as the Bearer token).",
+    }
+
+    return [
+        _tool(
+            name="get_more_recos",
+            description=(
+                "Fetch up to 3 fresh video recommendations on a given topic when the "
+                "user asks for more, refines their interest, or rejects the initial "
+                "recommendations. Chains 4 sources with fallback (history+similarity, "
+                "tournesol, youtube, trending)."
+            ),
+            path="/api/voice/tools/companion-recos",
+            body_schema={
+                "type": "object",
+                "properties": {
+                    "voice_session_id": voice_session_field,
+                    "topic": {
+                        "type": "string",
+                        "description": "Topic / theme to find recommendations for.",
+                    },
+                },
+                "required": ["voice_session_id", "topic"],
+            },
+        ),
+        _tool(
+            name="start_analysis",
+            description=(
+                "Queue a YouTube video analysis from the call. Use when the user shares "
+                "a URL they want analysed. The actual analysis runs in the background — "
+                "tell the user it will be ready in ~2 min and they can call back then."
+            ),
+            path="/api/voice/tools/start-analysis",
+            body_schema={
+                "type": "object",
+                "properties": {
+                    "voice_session_id": voice_session_field,
+                    "video_url": {
+                        "type": "string",
+                        "description": "Full YouTube URL (https://www.youtube.com/watch?v=... or youtu.be/...).",
+                    },
+                },
+                "required": ["voice_session_id", "video_url"],
+            },
+        ),
+        _tool(
+            name="transfer_to_video",
+            description=(
+                "Transfer the current call to an EXPLORER session on a specific video "
+                "from the user's history. Use when the user wants to discuss a precise "
+                "video in detail (e.g. 'parlons de ma vidéo sur l'IA'). Provide either "
+                "summary_id (preferred), video_id, or query (free-text title). Tell the "
+                "user 'Je te bascule sur cette vidéo, deux secondes' before invoking. "
+                "If the response status is 'ready', stop talking — the client handles "
+                "the transition. If 'not_found' or 'quota_exceeded', read the message "
+                "field aloud and propose an alternative."
+            ),
+            path="/api/voice/tools/transfer-to-video",
+            body_schema={
+                "type": "object",
+                "properties": {
+                    "voice_session_id": voice_session_field,
+                    "summary_id": {
+                        "type": "integer",
+                        "description": "Direct lookup by summary_id (preferred when known).",
+                    },
+                    "video_id": {
+                        "type": "string",
+                        "description": "YouTube/TikTok video ID.",
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "Free-text fuzzy match on video_title or video_channel.",
+                    },
+                },
+                "required": ["voice_session_id"],
+            },
+        ),
+    ]
+
+
 def get_elevenlabs_client() -> ElevenLabsClient:
     """Instantiate an ElevenLabsClient using the project-wide settings."""
     from core.config import get_elevenlabs_key

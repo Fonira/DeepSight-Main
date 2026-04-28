@@ -306,7 +306,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             {/* Play/Pause */}
             <button
               onClick={hasError ? handleRetry : togglePlay}
-              className="p-2 rounded-full bg-accent-primary text-white hover:bg-accent-primary-hover transition-colors"
+              className="p-2 rounded-full bg-accent-primary text-gray-900 hover:bg-accent-primary-hover transition-colors"
               disabled={isLoading}
             >
               {isLoading || isBuffering ? (

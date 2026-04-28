@@ -40,14 +40,19 @@
   },
   "upsell": {
     "free": {
+      "label": "Plus",
+      "feature": "25 analyses + Mind maps + Web Search + Fact-check",
+      "price": "€4.99"
+    },
+    "plus": {
       "label": "Pro",
-      "feature": "30 analyses + Mind maps + Web Search",
-      "price": "€5.99"
+      "feature": "100 analyses + Voice chat 45min + Playlists + Mistral Large",
+      "price": "€9.99"
     },
     "pro": {
-      "label": "Expert",
-      "feature": "100 analyses + Mistral Large + 20-video playlists",
-      "price": "€14.99"
+      "label": "Pro",
+      "feature": "100 analyses + Voice chat 45min + Playlists + Mistral Large",
+      "price": "€9.99"
     }
   },
   "analysis": {
@@ -230,7 +235,13 @@
       "mute": "🔇 Mute",
       "hangup": "📞 Hang up",
       "muteAriaLabel": "Mute microphone",
-      "hangupAriaLabel": "End call"
+      "hangupAriaLabel": "End call",
+      "settingsAriaLabel": "Voice settings",
+      "applyingSettings": "Applying settings…",
+      "backAriaLabel": "Back",
+      "textInputPlaceholder": "Type or speak…",
+      "textInputAriaLabel": "Send a text message to the agent",
+      "textInputSendAriaLabel": "Send"
     },
     "ctxBar": {
       "inProgress": "Analyzing · {percent}% of transcript received",
@@ -256,7 +267,8 @@
       "ctaDismiss": "Stay Free (no voice)"
     },
     "errors": {
-      "micPermission": "Microphone permission required.",
+      "micPermission": "DeepSight needs your microphone for the voice call. Click Allow to start.",
+      "enableMic": "🎤 Allow microphone",
       "callEnded": "Call ended.",
       "genericPrefix": "Error:",
       "close": "Close",

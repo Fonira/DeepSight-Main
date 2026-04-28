@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
 const NotFoundPage = () => {
@@ -104,11 +104,50 @@ const NotFoundPage = () => {
           </button>
           <button
             onClick={() => navigate("/dashboard")}
-            className="px-6 py-3 bg-accent-primary text-white rounded-xl hover:bg-accent-primary-hover shadow-lg shadow-accent-primary/20 transition-all duration-200 font-medium"
+            className="px-6 py-3 bg-accent-primary text-gray-900 rounded-xl hover:bg-accent-primary-hover shadow-lg shadow-accent-primary/20 transition-all duration-200 font-medium"
           >
             Aller au Dashboard
           </button>
         </motion.div>
+
+        {/* Internal links — SEO crawlability + UX */}
+        <motion.nav
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="mt-10 pt-6 border-t border-border-subtle"
+          aria-label="Pages utiles"
+        >
+          <p className="text-text-tertiary text-xs uppercase tracking-wider mb-3">
+            Pages utiles
+          </p>
+          <div className="flex flex-wrap gap-2 justify-center text-sm">
+            <Link
+              to="/"
+              className="px-3 py-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+            >
+              Accueil
+            </Link>
+            <Link
+              to="/upgrade"
+              className="px-3 py-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+            >
+              Tarifs
+            </Link>
+            <Link
+              to="/about"
+              className="px-3 py-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+            >
+              À propos
+            </Link>
+            <Link
+              to="/chaines"
+              className="px-3 py-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+            >
+              Toutes les chaînes
+            </Link>
+          </div>
+        </motion.nav>
       </motion.div>
     </div>
   );

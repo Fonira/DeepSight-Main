@@ -65,13 +65,12 @@ export const DebateFactCheck: React.FC<DebateFactCheckProps> = ({
           <h3 className="text-sm font-semibold text-white">
             Vérification factuelle
           </h3>
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-text-muted">
             {results.length} affirmation{results.length > 1 ? "s" : ""} vérifiée
             {results.length > 1 ? "s" : ""}
           </p>
         </div>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {results.map((item, i) => {
           const verdict =
@@ -95,17 +94,14 @@ export const DebateFactCheck: React.FC<DebateFactCheckProps> = ({
                   {verdict.label}
                 </span>
               </div>
-
               {/* Claim */}
-              <p className="text-sm text-white/90 font-medium leading-snug">
+              <p className="text-sm text-text-primary font-medium leading-snug">
                 &laquo; {item.claim} &raquo;
               </p>
-
               {/* Explanation */}
-              <p className="text-xs text-white/55 leading-relaxed">
+              <p className="text-xs text-text-muted leading-relaxed">
                 {item.explanation}
               </p>
-
               {/* Source */}
               {item.source && (
                 <div className="flex flex-wrap gap-1.5 pt-1">

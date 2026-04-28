@@ -154,14 +154,14 @@ export default function DemoChatStatic({ language }: DemoChatStaticProps) {
     return parts.map((part, i) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
-          <strong key={i} className="text-white/90 font-semibold">
+          <strong key={i} className="text-text-primary font-semibold">
             {part.slice(2, -2)}
           </strong>
         );
       }
       if (part.startsWith("*") && part.endsWith("*")) {
         return (
-          <em key={i} className="text-white/60 italic">
+          <em key={i} className="text-text-secondary italic">
             {part.slice(1, -1)}
           </em>
         );
@@ -200,7 +200,6 @@ export default function DemoChatStatic({ language }: DemoChatStaticProps) {
             : "Test the contextual chat — AI answers based on the video transcript."}
         </p>
       </div>
-
       {/* Chat container */}
       <div className="relative rounded-2xl border border-border-subtle bg-white/[0.03] backdrop-blur-xl overflow-hidden">
         {/* Glow */}
@@ -210,13 +209,13 @@ export default function DemoChatStatic({ language }: DemoChatStaticProps) {
         <div className="relative flex items-center justify-between px-5 py-3 border-b border-white/5">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-white/70 text-xs font-medium">
+            <span className="text-text-secondary text-xs font-medium">
               {lang === "fr"
                 ? "Chat DeepSight — Demo"
                 : "DeepSight Chat — Demo"}
             </span>
           </div>
-          <span className="text-white/30 text-[10px]">Mistral AI</span>
+          <span className="text-text-tertiary text-[10px]">Mistral AI</span>
         </div>
 
         {/* Messages */}
@@ -227,12 +226,12 @@ export default function DemoChatStatic({ language }: DemoChatStaticProps) {
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/10 to-indigo-500/10 border border-white/5 flex items-center justify-center mb-3">
                 <Bot className="w-6 h-6 text-cyan-400/60" />
               </div>
-              <p className="text-white/40 text-sm mb-1">
+              <p className="text-text-muted text-sm mb-1">
                 {lang === "fr"
                   ? "Interrogez la video analysee"
                   : "Ask about the analyzed video"}
               </p>
-              <p className="text-white/20 text-xs mb-5 max-w-xs">
+              <p className="text-text-tertiary text-xs mb-5 max-w-xs">
                 {lang === "fr"
                   ? "L'IA repond avec des timecodes et des references precises."
                   : "AI responds with timecodes and precise references."}
@@ -248,9 +247,7 @@ export default function DemoChatStatic({ language }: DemoChatStaticProps) {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.3 + index * 0.1 }}
                       onClick={() => sendMessage(suggestion)}
-                      className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10
-                                 hover:border-cyan-500/30 rounded-full text-xs text-white/60 hover:text-white/80
-                                 transition-all duration-200 cursor-pointer"
+                      className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10\r\n                                 hover:border-cyan-500/30 rounded-full text-xs text-text-secondary hover:text-text-primary\r\n                                 transition-all duration-200 cursor-pointer"
                     >
                       {suggestion}
                     </motion.button>
@@ -349,9 +346,7 @@ export default function DemoChatStatic({ language }: DemoChatStaticProps) {
                   : "Ask your question..."
               }
               disabled={isTyping}
-              className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2.5 text-sm text-white/90
-                         placeholder-white/20 outline-none focus:border-cyan-500/30 focus:bg-white/[0.05]
-                         transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2.5 text-sm text-text-primary\r\n                         placeholder-white/20 outline-none focus:border-cyan-500/30 focus:bg-white/[0.05]\r\n                         transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
             />
             <button
               type="submit"

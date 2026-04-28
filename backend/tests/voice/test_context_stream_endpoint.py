@@ -228,7 +228,12 @@ async def test_stream_emits_event_data_in_sse_format():
     body = "".join(body_parts)
     # Each SSE record ends with double newline (separator)
     assert body.endswith("\n\n")
-    # Event type line precedes data line
-    lines = body.strip().split("\n")
-    assert lines[0].startswith("event: ctx_complete")
-    assert lines[1].startswith("data: {")
+    # The stream now opens with an initial ``connected`` heartbeat (Task 8),
+    # followed by the actual event records. Verify both records are well-formed.
+    records = [r for r in body.split("\n\n") if r]
+    # First record = connected heartbeat
+    assert records[0].splitlines()[0] == "event: connected"
+    assert records[0].splitlines()[1].startswith("data: {")
+    # Last record = ctx_complete (terminator)
+    assert records[-1].splitlines()[0] == "event: ctx_complete"
+    assert records[-1].splitlines()[1].startswith("data: {")

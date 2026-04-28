@@ -35,12 +35,11 @@ export const DailySessionCard: React.FC<DailySessionCardProps> = ({
         </div>
         <h3 className="text-base font-semibold text-white">Session du jour</h3>
       </div>
-
       {/* Stats */}
       <div className="flex items-center gap-4 mb-4">
         <div className="flex items-center gap-1.5">
-          <Layers className="w-3.5 h-3.5 text-white/40" aria-hidden="true" />
-          <span className="text-sm text-white/70">
+          <Layers className="w-3.5 h-3.5 text-text-muted" aria-hidden="true" />
+          <span className="text-sm text-text-secondary">
             <span className="font-medium text-white">{totalDue}</span> cartes
             dues
             {totalNew > 0 && (
@@ -49,11 +48,10 @@ export const DailySessionCard: React.FC<DailySessionCardProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-white/40" aria-hidden="true" />
-          <span className="text-sm text-white/50">~{estimatedMinutes} min</span>
+          <Clock className="w-3.5 h-3.5 text-text-muted" aria-hidden="true" />
+          <span className="text-sm text-text-muted">~{estimatedMinutes} min</span>
         </div>
       </div>
-
       {/* CTA */}
       <button
         type="button"

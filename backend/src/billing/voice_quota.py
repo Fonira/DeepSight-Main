@@ -3,10 +3,12 @@
 Spec source: ``docs/superpowers/specs/2026-04-26-quick-voice-call-design.md``
 section "e. Voice quota A+D strict".
 
-Plan-to-policy matrix (literal as per spec):
-  * Free   : 1 lifetime trial of 3 minutes (``lifetime_trial_used`` boolean)
-  * Pro    : never granted, returns CTA upgrade_expert (HTTP 402 path)
-  * Expert : 30 minutes per rolling 30-day window
+Plan-to-policy matrix (UPDATED 2026-04-27 — "Expert" tier was retired before
+the spec landed, top paid tier is now Pro €12.99/month):
+  * Free                    : 1 lifetime trial of 3 minutes
+  * Pro / Expert (alias)    : 30 minutes per rolling 30-day window
+  * Starter / Student       : refused, CTA upgrade Pro
+  * Anything else (legacy)  : refused, CTA upgrade Pro
 
 The Quick Voice Call session router branches on ``check_voice_quota`` to
 either let the call start (returning the remaining ``max_minutes``) or raise
@@ -32,13 +34,18 @@ logger = logging.getLogger(__name__)
 
 
 # ─── Spec constants (locked decision #4 — A+D strict) ────────────────────
-EXPERT_MONTHLY_MINUTES: float = 30.0
+TOP_TIER_MONTHLY_MINUTES: float = 30.0
+EXPERT_MONTHLY_MINUTES: float = TOP_TIER_MONTHLY_MINUTES  # Backwards-compat alias
 FREE_TRIAL_MINUTES: float = 3.0
 MONTHLY_PERIOD_DAYS: int = 30
 
+# Plans that grant the rolling monthly minutes quota. "expert" is kept as an
+# alias for legacy/test callers — production currently only uses "pro".
+TOP_TIER_PLANS: frozenset[str] = frozenset({"pro", "expert"})
+
 
 QuotaReason = Literal["trial_used", "pro_no_voice", "monthly_quota"]
-QuotaCta = Literal["upgrade_expert"]
+QuotaCta = Literal["upgrade_pro", "upgrade_expert"]
 
 
 @dataclass
@@ -60,18 +67,14 @@ class QuotaCheck:
     cta: Optional[QuotaCta] = None
 
 
-async def _get_or_create_quota(
-    user_id: int, plan: str, db: AsyncSession
-) -> VoiceQuotaStreaming:
+async def _get_or_create_quota(user_id: int, plan: str, db: AsyncSession) -> VoiceQuotaStreaming:
     """Fetch or insert the ``voice_quota`` row for the user.
 
     Side effect: when the existing row's ``monthly_period_start`` is older
     than ``MONTHLY_PERIOD_DAYS`` days, the rolling counter is reset
     in-memory (the caller commits if it mutates other fields).
     """
-    result = await db.execute(
-        select(VoiceQuotaStreaming).where(VoiceQuotaStreaming.user_id == user_id)
-    )
+    result = await db.execute(select(VoiceQuotaStreaming).where(VoiceQuotaStreaming.user_id == user_id))
     quota = result.scalar_one_or_none()
 
     now = datetime.now(timezone.utc)
@@ -119,7 +122,7 @@ async def check_voice_quota(user: User, db: AsyncSession) -> QuotaCheck:
             return QuotaCheck(
                 allowed=False,
                 reason="trial_used",
-                cta="upgrade_expert",
+                cta="upgrade_pro",
             )
         return QuotaCheck(
             allowed=True,
@@ -127,41 +130,36 @@ async def check_voice_quota(user: User, db: AsyncSession) -> QuotaCheck:
             is_trial=True,
         )
 
-    if plan == "pro":
-        return QuotaCheck(
-            allowed=False,
-            reason="pro_no_voice",
-            cta="upgrade_expert",
-        )
-
-    if plan == "expert":
-        remaining = EXPERT_MONTHLY_MINUTES - quota.monthly_minutes_used
+    if plan in TOP_TIER_PLANS:
+        remaining = TOP_TIER_MONTHLY_MINUTES - quota.monthly_minutes_used
         if remaining <= 0:
             return QuotaCheck(allowed=False, reason="monthly_quota")
         return QuotaCheck(allowed=True, max_minutes=remaining)
 
-    # Unknown / legacy plan label → treat as Pro (blocked, CTA upgrade)
-    logger.warning(
-        "Unknown plan '%s' in check_voice_quota for user_id=%d — falling back to pro_no_voice",
+    # Starter / Student / unknown legacy plan → blocked, CTA upgrade Pro.
+    # We reuse the historical "pro_no_voice" reason code so the existing
+    # extension UI (UpgradeCTA / VoiceView) keeps rendering its upgrade card
+    # without a release-coupling change.
+    logger.info(
+        "Plan '%s' is not a top-tier voice plan for user_id=%d — returning upgrade CTA",
         plan,
         user.id,
     )
     return QuotaCheck(
         allowed=False,
         reason="pro_no_voice",
-        cta="upgrade_expert",
+        cta="upgrade_pro",
     )
 
 
-async def consume_voice_minutes(
-    user: User, minutes: float, db: AsyncSession
-) -> None:
+async def consume_voice_minutes(user: User, minutes: float, db: AsyncSession) -> None:
     """Record ``minutes`` of voice usage against ``user``'s quota.
 
     For Free users, flips the lifetime trial flag (single-shot).
-    For Expert users, increments the monthly rolling counter.
-    For Pro users, no-op (they are blocked upstream — but stays safe if
-    called).
+    For top-tier users (Pro / Expert legacy), increments the monthly rolling
+    counter.
+    For other plans (Starter / Student), no-op — they are blocked upstream by
+    ``check_voice_quota``, this stays safe if called by mistake.
 
     Always commits.
     """
@@ -171,7 +169,7 @@ async def consume_voice_minutes(
     if plan == "free":
         quota.lifetime_trial_used = True
         quota.lifetime_trial_used_at = datetime.now(timezone.utc)
-    elif plan == "expert":
+    elif plan in TOP_TIER_PLANS:
         quota.monthly_minutes_used = float(quota.monthly_minutes_used or 0.0) + float(minutes)
 
     await db.commit()

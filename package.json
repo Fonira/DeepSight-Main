@@ -2,15 +2,9 @@
   "name": "deepsight-monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "DeepSight monorepo root — build scripts (sprite generation, etc.). Each platform (frontend/, mobile/, extension/, backend/) has its own package.json.",
-  "scripts": {
-    "build:sunflower-frames": "node scripts/sunflower-frames/generate.mjs"
-  },
+  "description": "DeepSight monorepo root. Each platform (frontend/, mobile/, extension/, backend/) has its own package.json.",
+  "scripts": {},
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "puppeteer": "^24.42.0",
-    "sharp": "^0.34.5"
-  }
+  "license": "ISC"
 }

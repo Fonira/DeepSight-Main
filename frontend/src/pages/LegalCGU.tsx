@@ -41,7 +41,6 @@ const LegalCGU: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative">
       <DoodleBackground variant="academic" />
-
       {/* Header */}
       <header className="border-b border-white/10 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -71,7 +70,6 @@ const LegalCGU: React.FC = () => {
           </div>
         </div>
       </header>
-
       {/* Title banner */}
       <div className="border-b border-white/10 bg-slate-900/30">
         <div className="max-w-6xl mx-auto px-4 py-6">
@@ -83,14 +81,13 @@ const LegalCGU: React.FC = () => {
               <h1 className="text-2xl font-bold text-white">
                 Conditions Generales d'Utilisation
               </h1>
-              <p className="text-white/60 text-sm">
+              <p className="text-text-secondary text-sm">
                 En vigueur au {LEGAL_INFO.lastUpdate}
               </p>
             </div>
           </div>
         </div>
       </div>
-
       {/* Content */}
       <main className="max-w-4xl mx-auto px-4 py-12 space-y-8 relative z-10">
         {/* Article 1 */}
@@ -98,7 +95,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 1 -- Objet et acceptation
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               Les presentes Conditions Generales d'Utilisation (ci-apres "CGU")
               ont pour objet de definir les conditions dans lesquelles les
@@ -139,7 +136,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 2 -- Description du Service
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               {LEGAL_INFO.website.name} est une plateforme SaaS (Software as a
               Service) d'analyse de videos YouTube utilisant l'intelligence
@@ -190,7 +187,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 3 -- Inscription et compte utilisateur
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>3.1 -- Creation de compte.</strong> L'acces au Service
               necessite la creation d'un compte utilisateur. L'Utilisateur peut
@@ -245,7 +242,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 4 -- Conditions d'acces et disponibilite
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>4.1 -- Acces au Service.</strong> Le Service est
               accessible 24 heures sur 24, 7 jours sur 7, sous reserve des
@@ -280,7 +277,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 5 -- Propriete intellectuelle
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>5.1 -- Droits de l'Editeur.</strong> L'ensemble des
               elements composant le Service (textes, graphismes, logos, icones,
@@ -320,7 +317,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 6 -- Responsabilite de l'Utilisateur
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>L'Utilisateur s'engage a :</p>
             <ul className="list-disc list-inside space-y-2 ml-4">
               <li>
@@ -369,7 +366,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 7 -- Limitation de responsabilite
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>7.1 -- Nature informationnelle.</strong>{" "}
               {LEGAL_INFO.website.name} est un outil d'assistance base sur
@@ -433,7 +430,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 8 -- Donnees personnelles
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               L'Editeur collecte et traite des donnees personnelles dans le
               cadre de la fourniture du Service, conformement au Reglement
@@ -472,7 +469,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 9 -- Modification des CGU
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               L'Editeur se reserve le droit de modifier les presentes CGU a tout
               moment, notamment pour les adapter aux evolutions legislatives,
@@ -499,7 +496,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 10 -- Resiliation du compte
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>10.1 -- Resiliation par l'Utilisateur.</strong>{" "}
               L'Utilisateur peut supprimer son compte a tout moment depuis les
@@ -532,7 +529,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 11 -- Droit applicable et juridiction competente
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               Les presentes CGU sont regies par le droit francais. Tout litige
               relatif a l'interpretation ou a l'execution des presentes CGU sera
@@ -554,7 +551,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 12 -- Mediation de la consommation
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               Conformement aux articles L611-1 et suivants et R612-1 et suivants
               du Code de la consommation, en cas de litige non resolu par voie
@@ -602,7 +599,7 @@ const LegalCGU: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">
             Article 13 -- Dispositions generales
           </h2>
-          <div className="text-white/80 space-y-3">
+          <div className="text-text-primary space-y-3">
             <p>
               <strong>13.1 -- Divisibilite.</strong> Si l'une quelconque des
               dispositions des presentes CGU etait declaree nulle ou
@@ -636,7 +633,7 @@ const LegalCGU: React.FC = () => {
         </section>
 
         {/* Footer */}
-        <footer className="mt-16 pt-8 border-t border-white/10 text-center text-white/40 text-sm">
+        <footer className="mt-16 pt-8 border-t border-white/10 text-center text-text-muted text-sm">
           <p>Derniere mise a jour : {LEGAL_INFO.lastUpdate}</p>
           <p className="mt-2">
             Pour toute question, contactez-nous a{" "}
@@ -647,21 +644,21 @@ const LegalCGU: React.FC = () => {
               {LEGAL_INFO.contact.email}
             </a>
           </p>
-          <div className="mt-4 flex items-center justify-center gap-4 text-white/40">
-            <Link to="/legal" className="hover:text-white/60 transition-colors">
+          <div className="mt-4 flex items-center justify-center gap-4 text-text-muted">
+            <Link to="/legal" className="hover:text-text-secondary transition-colors">
               Mentions legales
             </Link>
             <span>|</span>
             <Link
               to="/legal/cgv"
-              className="hover:text-white/60 transition-colors"
+              className="hover:text-text-secondary transition-colors"
             >
               CGV
             </Link>
             <span>|</span>
             <Link
               to="/legal#privacy"
-              className="hover:text-white/60 transition-colors"
+              className="hover:text-text-secondary transition-colors"
             >
               Confidentialite
             </Link>

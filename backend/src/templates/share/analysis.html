@@ -1,4 +1,7 @@
 {% extends "share/base.html" %} {% block content %}
+<script type="application/ld+json">
+  {{ video_object_jsonld | safe }}
+</script>
 <article class="ds-article">
   <section class="ds-hero">
     <a

@@ -183,9 +183,9 @@ export default function StatusPage() {
             className="mx-auto mb-4"
             style={{ color: "#ef4444" }}
           />
-          <h1 className="text-2xl font-bold text-[var(--text-primary,#f5f5f7)] mb-2">
+          <h2 className="text-2xl font-bold text-[var(--text-primary,#f5f5f7)] mb-2">
             {error}
-          </h1>
+          </h2>
           <p className="text-[var(--text-secondary,#a1a1b5)] mb-6">
             L'API DeepSight ne r&eacute;pond pas.
           </p>

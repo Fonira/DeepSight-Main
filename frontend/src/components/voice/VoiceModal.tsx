@@ -13,6 +13,7 @@ import React, {
   Suspense,
 } from "react";
 import { createPortal } from "react-dom";
+import { Helmet } from "react-helmet-async";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -25,7 +26,6 @@ import {
   RotateCcw,
   Settings2,
   Video,
-  Info,
 } from "lucide-react";
 import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 import { VoiceToolIndicator } from "./VoiceToolIndicator";
@@ -36,7 +36,6 @@ import { VoicePTTButton } from "./VoicePTTButton";
 import DoodleBackground from "../DoodleBackground";
 import { voiceApi, type VoiceThumbnailResponse } from "../../services/api";
 import { ThumbnailImage } from "./utils/ThumbnailImage";
-import { subscribeVoicePrefsEvents } from "./voicePrefsBus";
 
 // Lazy-load VoiceSettings to avoid circular imports + reduce initial bundle
 const VoiceSettings = lazy(() => import("./VoiceSettings"));
@@ -99,8 +98,6 @@ interface VoiceModalProps {
   avatarFallback?: string;
   /** Niveau micro temps réel [0,1] — drive waveform + halo PTT. */
   micLevel?: number;
-  /** Redémarre la session (stop + start) pour appliquer de nouveaux paramètres. */
-  onRestart?: () => void | Promise<void>;
 }
 
 /** Format seconds to MM:SS */
@@ -181,7 +178,6 @@ const VideoStage: React.FC<VideoStageProps> = ({
           ease: "easeInOut",
         }}
       />
-
       {/* Halo cyan secondaire */}
       <motion.div
         aria-hidden="true"
@@ -196,7 +192,6 @@ const VideoStage: React.FC<VideoStageProps> = ({
         animate={{ opacity: [0.4, 0.8, 0.4] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
       />
-
       {/* Thumbnail card */}
       <motion.div
         className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-indigo-500/20 bg-white/5 backdrop-blur-xl"
@@ -214,7 +209,7 @@ const VideoStage: React.FC<VideoStageProps> = ({
           className="w-full h-full object-cover"
           fallback={
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500/30 via-violet-500/25 to-cyan-500/25">
-              <Video className="w-14 h-14 text-white/70" strokeWidth={1.5} />
+              <Video className="w-14 h-14 text-text-secondary" strokeWidth={1.5} />
             </div>
           }
         />
@@ -275,7 +270,6 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   avatarStatus = "unavailable",
   avatarFallback,
   micLevel = 0,
-  onRestart,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -284,30 +278,6 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   const descId = useId();
   const { language } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
-  // Flag set when a pref change requires a fresh session (voice, concise mode,
-  // model). Banner then offers a one-click restart button.
-  const [restartRequired, setRestartRequired] = useState(false);
-  const [restarting, setRestarting] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = subscribeVoicePrefsEvents((event) => {
-      if (event.type === "restart_required") {
-        setRestartRequired(true);
-      }
-    });
-    return unsubscribe;
-  }, []);
-
-  const handleRestart = useCallback(async () => {
-    if (!onRestart) return;
-    setRestarting(true);
-    try {
-      await onRestart();
-      setRestartRequired(false);
-    } finally {
-      setRestarting(false);
-    }
-  }, [onRestart]);
 
   // 🖼️ Thumbnail HD backend (fetch asynchrone, fallback silencieux sur videoThumbnailUrl).
   // Le backend garantit l'URL HD YouTube (maxresdefault) ou une image générée
@@ -519,7 +489,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
         return (
           <div className="flex flex-col items-center gap-4">
             <DeepSightSpinner size="lg" />
-            <p className="text-white/60 text-sm">
+            <p className="text-text-secondary text-sm">
               {tr("Connexion en cours...", "Connecting...")}
             </p>
           </div>
@@ -594,7 +564,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             </p>
             <button
               onClick={safeStart}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition-colors text-sm focus-visible:ring-2 focus-visible:ring-indigo-400"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-text-primary hover:bg-white/10 transition-colors text-sm focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
               <RotateCcw className="w-4 h-4" />
               {tr("Reessayer", "Retry")}
@@ -611,7 +581,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             <p className="text-amber-300 text-sm font-medium">
               {tr("Quota de minutes epuise", "Voice minutes quota exceeded")}
             </p>
-            <p className="text-white/40 text-xs">
+            <p className="text-text-muted text-xs">
               {tr(
                 "Passez au plan superieur pour continuer vos conversations vocales.",
                 "Upgrade your plan to continue voice conversations.",
@@ -641,6 +611,14 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
           className="fixed inset-0 z-[100] flex items-center justify-center"
           role="presentation"
         >
+          {/* Override page <title> while the call is active so the browser
+              tab reflects "Appel vocal" instead of the underlying page
+              (e.g. "Historique"). Reverts on close. */}
+          <Helmet>
+            <title>
+              {tr("Appel vocal | DeepSight", "Voice call | DeepSight")}
+            </title>
+          </Helmet>
           {/* Backdrop — DeepSight dark theme + doodle pattern + brand glow */}
           <motion.div
             className="absolute inset-0 bg-[#0a0a0f]/95 backdrop-blur-xl overflow-hidden"
@@ -702,7 +680,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white/80 rounded-full animate-spin" />
                       </div>
                     ) : (
-                      <span className="text-xs font-semibold text-white/70 uppercase">
+                      <span className="text-xs font-semibold text-text-secondary uppercase">
                         {(avatarFallback || "AI").slice(0, 2)}
                       </span>
                     )}
@@ -720,7 +698,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                     {videoTitle}
                   </h2>
                   {channelName && (
-                    <p className="text-xs text-white/40 mt-0.5 truncate">
+                    <p className="text-xs text-text-muted mt-0.5 truncate">
                       {channelName}
                     </p>
                   )}
@@ -751,7 +729,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowSettings(true)}
-                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-white/70 hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-text-tertiary hover:text-text-secondary hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
                   title={tr("Paramètres voix", "Voice settings")}
                   aria-label={tr(
                     "Ouvrir les paramètres voix",
@@ -762,7 +740,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 </button>
                 <button
                   onClick={onClose}
-                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-text-muted hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
                   aria-label={tr("Fermer", "Close")}
                 >
                   <X className="w-4 h-4" />
@@ -826,7 +804,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       <span className="text-white font-mono text-lg font-medium tabular-nums">
                         {formatTime(elapsedSeconds)}
                       </span>
-                      <span className="text-white/30 text-[10px] font-mono tabular-nums">
+                      <span className="text-text-tertiary text-[10px] font-mono tabular-nums">
                         / {remainingFormatted} {tr("restantes", "remaining")}
                       </span>
                     </div>
@@ -881,7 +859,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       <span className="text-white font-mono text-lg font-medium tabular-nums">
                         {formatTime(elapsedSeconds)}
                       </span>
-                      <span className="text-white/30 text-[10px] font-mono tabular-nums">
+                      <span className="text-text-tertiary text-[10px] font-mono tabular-nums">
                         / {remainingFormatted} {tr("restantes", "remaining")}
                       </span>
                     </div>
@@ -903,9 +881,9 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             )}
             {/* ── Settings panel overlay (in-modal) ───────────────────── */}
             {/* Non-destructive overlay: the active call keeps running behind.
-                The banner below tells the user changes apply to the NEXT call
-                so we never kill the ElevenLabs session to reconfigure — the
-                SDK must not be forced to tear down mid-call. */}
+                Staged changes are applied via the global StagedPrefsToolbar
+                which triggers the restart through the voice prefs bus — we
+                never kill the ElevenLabs session to reconfigure mid-call. */}
             <AnimatePresence>
               {showSettings && (
                 <motion.div
@@ -940,7 +918,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowSettings(false)}
-                        className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
+                        className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-text-muted hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
                         aria-label={tr(
                           "Fermer les paramètres",
                           "Close settings",
@@ -950,61 +928,6 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       </button>
                     </div>
                   </div>
-                  {/* Banner — ambers when a pending change needs a new
-                      session; offers one-click restart. */}
-                  {hasActiveSession && (
-                    <div
-                      className={`mx-3 sm:mx-5 mt-3 flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs flex-shrink-0 transition-colors ${
-                        restartRequired
-                          ? "bg-amber-500/10 border border-amber-400/30 text-amber-100"
-                          : "bg-indigo-500/10 border border-indigo-400/25 text-indigo-200/90"
-                      }`}
-                    >
-                      <Info
-                        className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
-                          restartRequired ? "text-amber-300" : "text-indigo-300"
-                        }`}
-                      />
-                      <div className="leading-relaxed flex-1">
-                        <span
-                          className={`font-semibold ${
-                            restartRequired
-                              ? "text-amber-200"
-                              : "text-indigo-200"
-                          }`}
-                        >
-                          {restartRequired
-                            ? tr("Redémarrage requis", "Restart required")
-                            : tr("Appel en cours", "Call in progress")}
-                          {" — "}
-                        </span>
-                        {restartRequired
-                          ? tr(
-                              "certains changements (voix, mode concis, modèle) demandent une nouvelle session pour s'appliquer.",
-                              "some changes (voice, concise mode, model) require a new session to take effect.",
-                            )
-                          : tr(
-                              "vitesse de lecture appliquée en direct. Les autres changements s'appliqueront au prochain appel.",
-                              "playback speed applies live. Other changes will apply on your next call.",
-                            )}
-                      </div>
-                      {restartRequired && onRestart && (
-                        <button
-                          type="button"
-                          onClick={handleRestart}
-                          disabled={restarting}
-                          className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-500 text-[#0a0a0f] font-semibold text-[11px] hover:bg-amber-400 transition-colors disabled:opacity-60 disabled:cursor-wait flex-shrink-0 focus-visible:ring-2 focus-visible:ring-amber-300"
-                        >
-                          <RotateCcw
-                            className={`w-3.5 h-3.5 ${restarting ? "animate-spin" : ""}`}
-                          />
-                          {restarting
-                            ? tr("Redémarrage…", "Restarting…")
-                            : tr("Redémarrer", "Restart")}
-                        </button>
-                      )}
-                    </div>
-                  )}
                   <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-3">
                     <Suspense
                       fallback={

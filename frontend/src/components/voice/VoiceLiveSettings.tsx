@@ -21,9 +21,9 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { Volume2, Mic, Keyboard, Globe, Gauge } from "lucide-react";
-import { voiceApi } from "../../services/api";
 import type { VoicePreferences } from "../../services/api";
 import { emitVoicePrefsEvent } from "./voicePrefsBus";
+import { useVoicePrefsStaging } from "./staging/VoicePrefsStagingProvider";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // I18N
@@ -95,57 +95,26 @@ export const VoiceLiveSettings: React.FC<VoiceLiveSettingsProps> = ({
 }) => {
   const t = I18N[language];
 
-  const [prefs, setPrefs] = useState<VoicePreferences | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { applied, staged, stage } = useVoicePrefsStaging();
+  const prefs = applied
+    ? ({ ...applied, ...staged } as VoicePreferences)
+    : null;
+  const loading = applied === null;
+  const error = null; // surfaced by the toolbar if any
+  const saving = false;
+
   // Local volume slider (0-100). Independent from prefs since volume is
   // applied client-side to <audio> elements, not persisted to the backend.
   const [volume, setVolume] = useState<number>(100);
   const [pttListening, setPttListening] = useState(false);
 
-  // ── Initial load ────────────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        setLoading(true);
-        const next = await voiceApi.getPreferences();
-        if (!cancelled) {
-          setPrefs(next);
-          setError(null);
-        }
-      } catch {
-        if (!cancelled) setError(t.error);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [t.error]);
-
-  // ── Save helper (optimistic) ────────────────────────────────────────────
+  // ── Save helper — routes updates through staging ────────────────────────
   const save = useCallback(
     async (updates: Partial<VoicePreferences>) => {
-      if (!prefs) return;
-      const snapshot = prefs;
-      setPrefs({ ...prefs, ...updates });
-      setSaving(true);
-      try {
-        const next = await voiceApi.updatePreferences(updates);
-        setPrefs(next);
-        onChange?.(updates);
-      } catch {
-        // Rollback on failure.
-        setPrefs(snapshot);
-      } finally {
-        setSaving(false);
-      }
+      stage(updates);
+      onChange?.(updates);
     },
-    [prefs, onChange],
+    [stage, onChange],
   );
 
   // ── Volume change → live-apply via bus + local state ────────────────────
@@ -199,7 +168,7 @@ export const VoiceLiveSettings: React.FC<VoiceLiveSettingsProps> = ({
     return (
       <div
         data-testid="voice-live-loading"
-        className="px-4 py-3 text-[11px] text-white/40"
+        className="px-4 py-3 text-[11px] text-text-muted"
       >
         {t.loading}
       </div>
@@ -226,11 +195,11 @@ export const VoiceLiveSettings: React.FC<VoiceLiveSettingsProps> = ({
       <div>
         <label
           htmlFor="voice-live-volume"
-          className="flex items-center gap-1.5 text-[11px] font-medium text-white/55 mb-1.5"
+          className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted mb-1.5"
         >
           <Volume2 className="w-3 h-3" aria-hidden="true" />
           {t.volume}
-          <span className="ml-auto text-white/40 font-mono">{volume}</span>
+          <span className="ml-auto text-text-muted font-mono">{volume}</span>
         </label>
         <input
           id="voice-live-volume"
@@ -245,10 +214,9 @@ export const VoiceLiveSettings: React.FC<VoiceLiveSettingsProps> = ({
           className="w-full accent-violet-500 h-1.5 bg-white/10 rounded-full"
         />
       </div>
-
       {/* ─── Playback rate presets ─── */}
       <div>
-        <p className="flex items-center gap-1.5 text-[11px] font-medium text-white/55 mb-1.5">
+        <p className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted mb-1.5">
           <Gauge className="w-3 h-3" aria-hidden="true" />
           {t.rate}
         </p>
@@ -274,10 +242,9 @@ export const VoiceLiveSettings: React.FC<VoiceLiveSettingsProps> = ({
           })}
         </div>
       </div>
-
       {/* ─── Input mode ─── */}
       <div>
-        <p className="flex items-center gap-1.5 text-[11px] font-medium text-white/55 mb-1.5">
+        <p className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted mb-1.5">
           <Mic className="w-3 h-3" aria-hidden="true" />
           {t.mode}
         </p>
@@ -303,12 +270,11 @@ export const VoiceLiveSettings: React.FC<VoiceLiveSettingsProps> = ({
           })}
         </div>
       </div>
-
       {/* ─── PTT key ─── */}
       <div>
         <label
           htmlFor="voice-live-ptt-key"
-          className="flex items-center gap-1.5 text-[11px] font-medium text-white/55 mb-1.5"
+          className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted mb-1.5"
         >
           <Keyboard className="w-3 h-3" aria-hidden="true" />
           {t.pttKey}
@@ -319,16 +285,15 @@ export const VoiceLiveSettings: React.FC<VoiceLiveSettingsProps> = ({
           data-testid="voice-live-ptt-key"
           disabled={saving || prefs.input_mode !== "ptt"}
           onClick={() => setPttListening(true)}
-          className="w-full inline-flex items-center justify-between px-2 py-1.5 rounded text-[11px] bg-white/[0.04] border border-white/[0.06] text-white/85 hover:border-white/[0.12] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full inline-flex items-center justify-between px-2 py-1.5 rounded text-[11px] bg-white/[0.04] border border-white/[0.06] text-text-primary hover:border-white/[0.12] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span>{pttListening ? "…" : formatPttKey(prefs.ptt_key)}</span>
           <span className="text-[10px] text-white/35">{t.pttHelp}</span>
         </button>
       </div>
-
       {/* ─── Language ─── */}
       <div>
-        <p className="flex items-center gap-1.5 text-[11px] font-medium text-white/55 mb-1.5">
+        <p className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted mb-1.5">
           <Globe className="w-3 h-3" aria-hidden="true" />
           {t.language}
         </p>

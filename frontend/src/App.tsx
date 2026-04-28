@@ -38,12 +38,15 @@ import { AmbientLightLayer } from "./components/AmbientLightLayer";
 import { SunflowerLayer } from "./components/SunflowerLayer";
 import { AmbientLightingProvider } from "./contexts/AmbientLightingContext";
 import { SkipLink } from "./components/SkipLink";
+import { SEO } from "./components/SEO";
 
 // "Le Saviez-Vous" widgets remplacés par placements organiques dans chaque page
 import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary";
 import { CrispChat } from "./components/CrispChat";
 import { CookieBanner } from "./components/CookieBanner";
 import { UpgradeModal } from "./components/UpgradeModal";
+import { VoicePrefsStagingProvider } from "./components/voice/staging/VoicePrefsStagingProvider";
+import { StagedPrefsToolbar } from "./components/voice/staging/StagedPrefsToolbar";
 import { analytics } from "./services/analytics";
 import { DeepSightSpinner } from "./components/ui/DeepSightSpinner";
 
@@ -200,7 +203,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             <div className="flex gap-4 justify-center">
               <button
                 onClick={() => window.location.reload()}
-                className="px-6 py-3 bg-accent-primary text-white rounded-lg hover:bg-accent-hover transition-colors"
+                className="px-6 py-3 bg-accent-primary text-gray-900 rounded-lg hover:bg-accent-hover transition-colors"
               >
                 Rafraîchir
               </button>
@@ -308,6 +311,7 @@ const AnalyticsPage = lazyWithRetry(() => import("./pages/AnalyticsPage"));
 const StudyPage = lazyWithRetry(() => import("./pages/StudyPage"));
 const StudyHubPage = lazyWithRetry(() => import("./pages/StudyHubPage"));
 const ChatPage = lazyWithRetry(() => import("./pages/ChatPage"));
+const VoiceCallPage = lazyWithRetry(() => import("./pages/VoiceCallPage"));
 const DebatePage = lazyWithRetry(() => import("./pages/DebatePage"));
 const NotFoundPage = lazyWithRetry(() => import("./pages/NotFoundPage"));
 const ExtensionWelcomePage = lazyWithRetry(
@@ -329,6 +333,7 @@ const PREFETCH_MAP: Record<string, string[]> = {
     "/debate",
     "/analytics",
     "/chat",
+    "/voice-call",
     "/study",
     "/about",
   ],
@@ -350,6 +355,7 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   "/payment/success": () => import("./pages/PaymentSuccess"),
   "/analytics": () => import("./pages/AnalyticsPage"),
   "/chat": () => import("./pages/ChatPage"),
+  "/voice-call": () => import("./pages/VoiceCallPage"),
   "/study": () => import("./pages/StudyHubPage"),
   "/about": () => import("./pages/AboutPage"),
 };
@@ -427,7 +433,13 @@ const HomeRoute = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const ProtectedLayout = () => {
-  return <Outlet />;
+  // noindex sur toutes les routes protégées (dashboard, history, settings, etc.)
+  return (
+    <>
+      <SEO noindex />
+      <Outlet />
+    </>
+  );
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -450,6 +462,17 @@ function getAmbientLightingEnabled(): boolean {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 🌅 ROUTER-AWARE AMBIENT LIGHT — gated to showcase routes only
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// AmbientLight v3 affiché sur TOUTES les routes (signature visuelle DeepSight,
+// le rayon de soleil + tournesol héliotrope sont une marque de fabrique
+// présente partout, plus juste sur les routes vitrines).
+const RouterAwareAmbientLight = () => {
+  return <AmbientLightLayer intensity="normal" />;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // 🛣️ APP ROUTES
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -461,10 +484,11 @@ const AppRoutes = () => {
       <LoadingWordProvider>
         <AuthProvider value={auth}>
           <TTSProvider>
+            <VoicePrefsStagingProvider>
             <Router>
               <AmbientLightingProvider enabled={getAmbientLightingEnabled()}>
-                {/* ✨ Couche lumineuse cosmique globale (engine v3 — beam + halo) */}
-                <AmbientLightLayer />
+                {/* ✨ Couche lumineuse cosmique (engine v3 — beam + halo) — restreinte aux routes vitrines */}
+                <RouterAwareAmbientLight />
                 {/* 🌻 Tournesol mascot suivant la course du soleil */}
                 <SunflowerLayer />
 
@@ -657,6 +681,21 @@ const AppRoutes = () => {
                       }
                     />
 
+                    {/* /upgrade — public pricing page (indexable) */}
+                    <Route
+                      path="/upgrade"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="UpgradePage"
+                        >
+                          <Suspense fallback={<PageSkeleton variant="form" />}>
+                            <UpgradePage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
                     <Route
                       path="/s/:shareToken"
                       element={
@@ -725,22 +764,6 @@ const AppRoutes = () => {
                               fallback={<PageSkeleton variant="full" />}
                             >
                               <History />
-                            </Suspense>
-                          </RouteErrorBoundary>
-                        }
-                      />
-
-                      <Route
-                        path="/upgrade"
-                        element={
-                          <RouteErrorBoundary
-                            variant="full"
-                            componentName="UpgradePage"
-                          >
-                            <Suspense
-                              fallback={<PageSkeleton variant="form" />}
-                            >
-                              <UpgradePage />
                             </Suspense>
                           </RouteErrorBoundary>
                         }
@@ -832,6 +855,22 @@ const AppRoutes = () => {
                               fallback={<PageSkeleton variant="full" />}
                             >
                               <ChatPage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/voice-call"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="VoiceCallPage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="dashboard" />}
+                            >
+                              <VoiceCallPage />
                             </Suspense>
                           </RouteErrorBoundary>
                         }
@@ -937,8 +976,14 @@ const AppRoutes = () => {
                 <ErrorBoundary fallback={null}>
                   <CookieBanner />
                 </ErrorBoundary>
+
+                {/* 🎙️ Floating "Apply staged voice prefs" toolbar */}
+                <ErrorBoundary fallback={null}>
+                  <StagedPrefsToolbar />
+                </ErrorBoundary>
               </AmbientLightingProvider>
             </Router>
+            </VoicePrefsStagingProvider>
           </TTSProvider>
         </AuthProvider>
       </LoadingWordProvider>

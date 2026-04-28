@@ -102,14 +102,13 @@ export const TTSToolbar: React.FC<TTSToolbarProps> = ({ className = "" }) => {
           </div>
         )}
       </div>
-
       {/* Only show controls when premium */}
       {isPremium && (
         <>
           {/* Language toggle */}
           <button
             onClick={() => setLanguage(language === "fr" ? "en" : "fr")}
-            className="px-1.5 py-1 rounded text-[11px] text-white/40 hover:text-white/60 transition-colors"
+            className="px-1.5 py-1 rounded text-[11px] text-text-muted hover:text-text-secondary transition-colors"
             title={`Langue TTS : ${language === "fr" ? "Français" : "English"}`}
           >
             {language === "fr" ? "🇫🇷" : "🇬🇧"}
@@ -118,7 +117,7 @@ export const TTSToolbar: React.FC<TTSToolbarProps> = ({ className = "" }) => {
           {/* Gender toggle */}
           <button
             onClick={() => setGender(gender === "female" ? "male" : "female")}
-            className="px-1.5 py-1 rounded text-[11px] text-white/40 hover:text-white/60 transition-colors"
+            className="px-1.5 py-1 rounded text-[11px] text-text-muted hover:text-text-secondary transition-colors"
             title={`Voix : ${gender === "female" ? "Féminine" : "Masculine"}`}
           >
             {gender === "female" ? "♀" : "♂"}
@@ -127,7 +126,7 @@ export const TTSToolbar: React.FC<TTSToolbarProps> = ({ className = "" }) => {
           {/* Speed */}
           <button
             onClick={handleSpeedCycle}
-            className="px-1.5 py-0.5 rounded text-[10px] font-mono text-white/40 hover:text-white/60 bg-white/[0.04] hover:bg-white/[0.08] transition-colors"
+            className="px-1.5 py-0.5 rounded text-[10px] font-mono text-text-muted hover:text-text-secondary bg-white/[0.04] hover:bg-white/[0.08] transition-colors"
             title="Vitesse de lecture"
           >
             {speed}x

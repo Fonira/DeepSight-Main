@@ -11,7 +11,10 @@ import {
   type RefObject,
 } from "react";
 import { API_URL, getAccessToken } from "../../services/api";
-import { subscribeVoicePrefsEvents } from "./voicePrefsBus";
+import {
+  subscribeVoicePrefsEvents,
+  emitVoicePrefsEvent,
+} from "./voicePrefsBus";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -25,12 +28,27 @@ interface UseVoiceChatOptions {
   /** Type d'agent vocal. Défaut : "explorer". */
   agentType?:
     | "explorer"
+    | "companion"
     | "tutor"
     | "debate_moderator"
     | "quiz_coach"
-    | "onboarding";
+    | "onboarding"
+    | "companion";
   language?: "fr" | "en";
   onError?: (error: string) => void;
+  /**
+   * COMPANION-only — fired when the agent invokes the `transfer_to_video`
+   * tool. Receives the resolved target so the caller can navigate / re-mount
+   * the overlay in EXPLORER mode on the new summary_id. The payload comes
+   * from `GET /api/voice/companion-pending-transfer/{voice_session_id}`,
+   * fetched by the hook right after the SDK signals the tool call.
+   */
+  onTransferRequest?: (payload: {
+    summary_id: number;
+    video_id: string | null;
+    video_title: string;
+    video_channel: string | null;
+  }) => void;
 }
 
 type VoiceChatStatus =
@@ -150,6 +168,7 @@ export function useVoiceChat({
   agentType,
   language = "fr",
   onError,
+  onTransferRequest,
 }: UseVoiceChatOptions): UseVoiceChatReturn {
   const [status, setStatus] = useState<VoiceChatStatus>("idle");
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -165,6 +184,7 @@ export function useVoiceChat({
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   // Spec #5 — exposition session info pour persistance Chat IA
   const [voiceSessionId, setVoiceSessionId] = useState<string | null>(null);
+  const voiceSessionIdRef = useRef<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
 
   // Refs pour le cleanup
@@ -353,8 +373,10 @@ export function useVoiceChat({
       setPlaybackRate(1.0);
       // Spec #5 — reset session info
       setVoiceSessionId(null);
+      voiceSessionIdRef.current = null;
       setSessionStartedAt(null);
     }
+    emitVoicePrefsEvent({ type: "call_status_changed", active: false });
   }, [
     stopTimer,
     releaseMediaStream,
@@ -387,6 +409,9 @@ export function useVoiceChat({
 
   // Prewarm: précharge le SDK ElevenLabs côté client pour économiser ~200-300ms au clic
   const prewarmedRef = useRef(false);
+  // Guard contre les démarrages concurrents — closure-safe (les refs ne sont
+  // jamais capturées de façon obsolète, contrairement à la valeur de `status`).
+  const isStartingRef = useRef(false);
   const prewarm = useCallback(() => {
     if (prewarmedRef.current) return;
     prewarmedRef.current = true;
@@ -397,15 +422,15 @@ export function useVoiceChat({
   }, []);
 
   const start = useCallback(async () => {
-    // Empêcher les démarrages multiples
-    if (
-      status === "connecting" ||
-      status === "listening" ||
-      status === "speaking"
-    ) {
+    // Empêcher les démarrages multiples (ref-based pour éviter le closure trap :
+    // une useCallback qui dépend de `status` capture une valeur obsolète quand
+    // restart() relance start() depuis le bus listener).
+    if (isStartingRef.current || conversationRef.current) {
       return;
     }
+    isStartingRef.current = true;
 
+    try {
     setError(null);
     setMessages([]);
     setElapsedSeconds(0);
@@ -482,6 +507,7 @@ export function useVoiceChat({
       maxSecondsRef.current = sessionData.max_session_minutes * 60;
       // Spec #5 — expose session_id pour la persistance des transcripts
       setVoiceSessionId(sessionData.session_id);
+      voiceSessionIdRef.current = sessionData.session_id;
       // Store input mode from session response
       const sessionInputMode = sessionData.input_mode || "ptt";
       inputModeRef.current = sessionInputMode;
@@ -515,6 +541,7 @@ export function useVoiceChat({
             // Spec #5 — timestamp précis du démarrage pour time_in_call_secs
             setSessionStartedAt(Date.now());
           }
+          emitVoicePrefsEvent({ type: "call_status_changed", active: true });
         },
         onDisconnect: () => {
           if (isMountedRef.current) {
@@ -536,6 +563,39 @@ export function useVoiceChat({
           // Detect tool calls for VoiceToolIndicator
           if (message.type === "tool_call" || message.tool_name) {
             setActiveTool(message.tool_name || "unknown");
+            // COMPANION transfer_to_video — fetch pending payload + bubble up
+            if (
+              message.tool_name === "transfer_to_video" &&
+              onTransferRequest &&
+              voiceSessionIdRef.current
+            ) {
+              const sessionId = voiceSessionIdRef.current;
+              const token = getAccessToken();
+              fetch(
+                `${API_URL}/api/voice/companion-pending-transfer/${sessionId}`,
+                {
+                  headers: token ? { Authorization: `Bearer ${token}` } : {},
+                },
+              )
+                .then((r) => (r.ok ? r.json() : null))
+                .then((payload) => {
+                  if (
+                    payload &&
+                    typeof payload.summary_id === "number" &&
+                    isMountedRef.current
+                  ) {
+                    onTransferRequest({
+                      summary_id: payload.summary_id,
+                      video_id: payload.video_id ?? null,
+                      video_title: payload.video_title ?? "ta vidéo",
+                      video_channel: payload.video_channel ?? null,
+                    });
+                  }
+                })
+                .catch(() => {
+                  /* silent — transfer is best-effort */
+                });
+            }
           }
           setMessages((prev) => [
             ...prev,
@@ -605,8 +665,10 @@ export function useVoiceChat({
       releaseMediaStream();
       reportError(ERROR_MESSAGES.SDK_LOAD_FAILED);
     }
+    } finally {
+      isStartingRef.current = false;
+    }
   }, [
-    status,
     summaryId,
     debateId,
     agentType,
@@ -662,6 +724,16 @@ export function useVoiceChat({
     });
     return unsubscribe;
   }, [applyPlaybackRate, cleanupPlaybackObserver, cleanupPlaybackPolling]);
+
+  // Live-restart when the staging provider applies a restart-required diff.
+  useEffect(() => {
+    const unsubscribe = subscribeVoicePrefsEvents((event) => {
+      if (event.type !== "apply_with_restart") return;
+      if (!conversationRef.current) return;
+      void restart();
+    });
+    return unsubscribe;
+  }, [restart]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Cleanup on unmount
