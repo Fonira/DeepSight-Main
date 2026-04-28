@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from voice.companion_recos import fetch_history_similarity_reco
+from voice.schemas import RecoItem
 
 
 @pytest.mark.asyncio
@@ -151,3 +152,51 @@ async def test_youtube_search_no_results():
         topic="x", youtube_service=yt_mock, excluded_video_ids=set()
     )
     assert reco is None
+
+
+@pytest.mark.asyncio
+async def test_build_initial_recos_three_sources_parallel():
+    """3 recos = 1 history_similarity + 1 trending + 1 tournesol."""
+    services = MagicMock()
+    services.history = AsyncMock(return_value=RecoItem(
+        video_id="h1", title="H", channel="HC", duration_seconds=1,
+        source="history_similarity", why="w",
+    ))
+    services.trending = AsyncMock(return_value=RecoItem(
+        video_id="t1", title="T", channel="TC", duration_seconds=1,
+        source="trending", why="w",
+    ))
+    services.tournesol = AsyncMock(return_value=RecoItem(
+        video_id="o1", title="O", channel="OC", duration_seconds=1,
+        source="tournesol", why="w",
+    ))
+
+    from voice.companion_recos import build_initial_recos
+    recos = await build_initial_recos(
+        primary_theme="ia",
+        history_fn=services.history,
+        trending_fn=services.trending,
+        tournesol_fn=services.tournesol,
+    )
+
+    assert len(recos) == 3
+    assert {r.source for r in recos} == {"history_similarity", "trending", "tournesol"}
+
+
+@pytest.mark.asyncio
+async def test_build_initial_recos_skips_failed_sources():
+    """Si une source retourne None, le résultat ne contient que les autres."""
+    from voice.companion_recos import build_initial_recos
+    history_fn = AsyncMock(return_value=None)
+    trending_fn = AsyncMock(return_value=RecoItem(
+        video_id="t1", title="T", channel="TC", duration_seconds=1,
+        source="trending", why="w",
+    ))
+    tournesol_fn = AsyncMock(return_value=None)
+
+    recos = await build_initial_recos(
+        primary_theme="x",
+        history_fn=history_fn, trending_fn=trending_fn, tournesol_fn=tournesol_fn,
+    )
+    assert len(recos) == 1
+    assert recos[0].source == "trending"
