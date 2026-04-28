@@ -54,7 +54,8 @@
         "image": "latest"
       },
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "EAS_NO_EAGER_BUNDLE": "1"
       }
     }
   },
