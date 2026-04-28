@@ -6,15 +6,41 @@ export type VideoPlatform = "youtube" | "tiktok";
 
 // ── YouTube ──
 
-const YOUTUBE_ID_PATTERNS = [
-  /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?\s]+)/,
-  /youtube\.com\/shorts\/([^&?\s]+)/,
-];
-
+/**
+ * Extrait l'ID vidéo YouTube depuis une URL — supporte tous les formats :
+ *  - https://www.youtube.com/watch?v=ID
+ *  - https://www.youtube.com/watch?app=desktop&v=ID  ← ordre params variable
+ *  - https://www.youtube.com/watch?v=ID&t=42s
+ *  - https://youtu.be/ID
+ *  - https://www.youtube.com/embed/ID
+ *  - https://www.youtube.com/shorts/ID
+ *
+ * Bug history : l'ancien regex `youtube\.com\/watch\?v=` cassait dès qu'un
+ * param précédait `v=` (ex: `?app=desktop&v=ID`). On parse maintenant via
+ * URL + searchParams pour être robuste à l'ordre des params.
+ */
 export function extractYouTubeVideoId(url: string): string | null {
-  for (const pattern of YOUTUBE_ID_PATTERNS) {
-    const match = url.match(pattern);
-    if (match) return match[1];
+  try {
+    const u = new URL(url);
+    // Hostname youtube.com (avec ou sans sous-domaine www., m., music.)
+    if (/(?:^|\.)youtube\.com$/.test(u.hostname)) {
+      // Standard /watch?…&v=ID&… — parse via URLSearchParams
+      const v = u.searchParams.get("v");
+      if (v) return v;
+      // /embed/ID
+      const embedMatch = u.pathname.match(/^\/embed\/([^/?#]+)/);
+      if (embedMatch) return embedMatch[1];
+      // /shorts/ID
+      const shortsMatch = u.pathname.match(/^\/shorts\/([^/?#]+)/);
+      if (shortsMatch) return shortsMatch[1];
+    }
+    // Short URL youtu.be/ID
+    if (u.hostname === "youtu.be") {
+      const id = u.pathname.slice(1).split("/")[0];
+      return id || null;
+    }
+  } catch {
+    return null;
   }
   return null;
 }
@@ -46,7 +72,7 @@ export function isTikTokUrl(url: string): boolean {
 }
 
 export function isYouTubeUrl(url: string): boolean {
-  return YOUTUBE_ID_PATTERNS.some((p) => p.test(url));
+  return extractYouTubeVideoId(url) !== null;
 }
 
 // ── Multi-platform ──
