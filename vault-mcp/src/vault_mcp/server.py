@@ -5,6 +5,7 @@ import time
 from collections import deque
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -33,7 +34,12 @@ setup_logging()
 log = logging.getLogger("vault_mcp")
 SETTINGS: Settings = load_settings()
 
-mcp = FastMCP("vault-mcp")
+mcp = FastMCP(
+    "vault-mcp",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=False,
+    ),
+)
 
 
 @mcp.tool()
