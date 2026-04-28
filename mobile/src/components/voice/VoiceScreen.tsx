@@ -72,6 +72,15 @@ interface VoiceScreenProps {
   onMuteToggle: () => void;
   isMuted: boolean;
   error?: string;
+  /**
+   * Quick Voice Call mobile V3 — active la variante streaming (analyse vidéo
+   * progressive). Affiche la `ContextProgressBar` au-dessus du transcript.
+   */
+  streaming?: boolean;
+  /** 0–100, progression du contexte vidéo (chunks + analyses partielles). */
+  contextProgress?: number;
+  /** True quand `[CTX COMPLETE]` reçu — passe la barre à 100% + label "complet". */
+  contextComplete?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -253,6 +262,9 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
   onMuteToggle,
   isMuted,
   error,
+  streaming = false,
+  contextProgress = 0,
+  contextComplete = false,
 }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -550,6 +562,35 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
             </Pressable>
           </View>
 
+          {/* ---- Context Progress (Quick Voice Call mobile V3 streaming) ---- */}
+          {streaming && (
+            <View
+              testID="context-progress-bar"
+              style={styles.contextProgressContainer}
+            >
+              {!contextComplete ? (
+                <>
+                  <Text style={styles.contextProgressLabel}>
+                    🎙️ J&apos;écoute la vidéo en même temps que toi · Analyse en
+                    cours: {Math.floor(contextProgress)}%
+                  </Text>
+                  <View style={styles.contextProgressTrack}>
+                    <View
+                      style={[
+                        styles.contextProgressFill,
+                        { width: `${Math.min(Math.max(contextProgress, 0), 100)}%` },
+                      ]}
+                    />
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.contextProgressLabel}>
+                  ✓ Contexte vidéo complet
+                </Text>
+              )}
+            </View>
+          )}
+
           {/* ---- Centre ---- */}
           <View style={styles.center}>{renderCenter()}</View>
 
@@ -660,6 +701,34 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  // Context progress (Quick Voice Call mobile V3 streaming)
+  contextProgressContainer: {
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.sm,
+    marginTop: sp.xs,
+    backgroundColor: "rgba(245,180,0,0.08)",
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: "rgba(245,180,0,0.25)",
+  },
+  contextProgressLabel: {
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.bodyMedium,
+    color: palette.gold,
+    marginBottom: sp.xs,
+  },
+  contextProgressTrack: {
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  contextProgressFill: {
+    height: "100%",
+    backgroundColor: palette.gold,
+    borderRadius: 2,
   },
 
   // Centre
