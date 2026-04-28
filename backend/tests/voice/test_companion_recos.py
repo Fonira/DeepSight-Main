@@ -200,3 +200,55 @@ async def test_build_initial_recos_skips_failed_sources():
     )
     assert len(recos) == 1
     assert recos[0].source == "trending"
+
+
+@pytest.mark.asyncio
+async def test_get_more_recos_fallback_chain_uses_first_non_empty():
+    """Order: history → tournesol → youtube → trending."""
+    history = AsyncMock(return_value=None)
+    tournesol = AsyncMock(return_value=RecoItem(
+        video_id="t1", title="T", channel="C", duration_seconds=1,
+        source="tournesol", why="w",
+    ))
+    youtube = AsyncMock(return_value=None)
+    trending = AsyncMock(return_value=None)
+
+    from voice.companion_recos import get_more_recos_chain
+    recos = await get_more_recos_chain(
+        topic="x",
+        excluded={"a"},
+        history_fn=history, tournesol_fn=tournesol,
+        youtube_fn=youtube, trending_fn=trending,
+        max_count=3,
+    )
+    assert len(recos) == 1
+    assert recos[0].source == "tournesol"
+    history.assert_awaited_once()
+    tournesol.assert_awaited_once()
+    # Spec implementation chains all sources to fill max_count;
+    # since tournesol is the only non-None hit and max_count=3 isn't
+    # reached, youtube/trending are still attempted (return None).
+    youtube.assert_awaited_once()
+    trending.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_get_more_recos_returns_max_count():
+    """Si plusieurs sources retournent, accumule jusqu'à max_count."""
+    history = AsyncMock(return_value=RecoItem(video_id="h", title="H", channel="C",
+        duration_seconds=1, source="history_similarity", why="w"))
+    tournesol = AsyncMock(return_value=RecoItem(video_id="t", title="T", channel="C",
+        duration_seconds=1, source="tournesol", why="w"))
+    youtube = AsyncMock(return_value=RecoItem(video_id="y", title="Y", channel="C",
+        duration_seconds=1, source="youtube", why="w"))
+    trending = AsyncMock(return_value=None)
+
+    from voice.companion_recos import get_more_recos_chain
+    recos = await get_more_recos_chain(
+        topic="x", excluded=set(),
+        history_fn=history, tournesol_fn=tournesol,
+        youtube_fn=youtube, trending_fn=trending,
+        max_count=3,
+    )
+    assert len(recos) == 3
+    assert [r.source for r in recos] == ["history_similarity", "tournesol", "youtube"]
