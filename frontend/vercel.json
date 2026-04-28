@@ -1,5 +1,6 @@
 {
   "framework": "vite",
+  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/s/:token/og-image.png",
