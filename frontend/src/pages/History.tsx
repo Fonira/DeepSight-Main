@@ -1422,13 +1422,13 @@ export const History: React.FC = () => {
               <div className="flex gap-2">
                 <button
                   onClick={() => setViewMode("grid")}
-                  className={`p-2 rounded-lg ${viewMode === "grid" ? "bg-accent-primary text-white" : "bg-bg-secondary text-text-tertiary"}`}
+                  className={`p-2 rounded-lg ${viewMode === "grid" ? "bg-accent-primary text-gray-900" : "bg-bg-secondary text-text-tertiary"}`}
                 >
                   <Grid className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
-                  className={`p-2 rounded-lg ${viewMode === "list" ? "bg-accent-primary text-white" : "bg-bg-secondary text-text-tertiary"}`}
+                  className={`p-2 rounded-lg ${viewMode === "list" ? "bg-accent-primary text-gray-900" : "bg-bg-secondary text-text-tertiary"}`}
                 >
                   <List className="w-4 h-4" />
                 </button>
@@ -1605,7 +1605,7 @@ export const History: React.FC = () => {
                               key={m}
                               type="button"
                               onClick={() => setUpgradeMode(m)}
-                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${upgradeMode === m ? "bg-accent-primary text-white shadow-md" : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"}`}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${upgradeMode === m ? "bg-accent-primary text-gray-900 shadow-md" : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"}`}
                             >
                               {m.charAt(0).toUpperCase() + m.slice(1)}
                             </button>

@@ -656,7 +656,7 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                       <div
                         className={`max-w-[80%] rounded-xl p-4 relative group ${
                           isUser
-                            ? "bg-accent-primary text-white"
+                            ? "bg-accent-primary text-gray-900"
                             : "bg-bg-secondary text-text-secondary"
                         }`}
                       >

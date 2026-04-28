@@ -705,7 +705,7 @@ export const PlaylistPage: React.FC = () => {
                         onClick={() => setMode(m.id)}
                         className={`px-3 py-1 rounded text-sm transition-colors ${
                           mode === m.id
-                            ? "bg-accent-primary text-white"
+                            ? "bg-accent-primary text-gray-900"
                             : "bg-bg-tertiary text-text-secondary hover:bg-bg-secondary"
                         }`}
                       >

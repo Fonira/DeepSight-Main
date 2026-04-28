@@ -127,7 +127,7 @@ export default function SharedAnalysisPage() {
           </p>
           <Link
             to="/"
-            className="inline-block px-6 py-3 bg-accent-primary text-white font-semibold rounded-lg hover:bg-accent-primary-hover transition-colors"
+            className="inline-block px-6 py-3 bg-accent-primary text-gray-900 font-semibold rounded-lg hover:bg-accent-primary-hover transition-colors"
           >
             Découvrir DeepSight
           </Link>

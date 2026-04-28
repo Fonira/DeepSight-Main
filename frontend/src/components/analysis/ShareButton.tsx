@@ -217,7 +217,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
                               ${
                                 copied
                                   ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                  : "bg-accent-primary text-white hover:bg-accent-primary-hover"
+                                  : "bg-accent-primary text-gray-900 hover:bg-accent-primary-hover"
                               }
                             `}
                           >

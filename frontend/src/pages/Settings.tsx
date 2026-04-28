@@ -306,7 +306,7 @@ export const Settings: React.FC = () => {
                       onClick={() => setLanguage("fr")}
                       className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                         language === "fr"
-                          ? "bg-accent-primary text-white shadow-sm"
+                          ? "bg-accent-primary text-gray-900 shadow-sm"
                           : "text-text-secondary hover:text-text-primary"
                       }`}
                     >
@@ -316,7 +316,7 @@ export const Settings: React.FC = () => {
                       onClick={() => setLanguage("en")}
                       className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                         language === "en"
-                          ? "bg-accent-primary text-white shadow-sm"
+                          ? "bg-accent-primary text-gray-900 shadow-sm"
                           : "text-text-secondary hover:text-text-primary"
                       }`}
                     >
