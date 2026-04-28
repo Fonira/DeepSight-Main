@@ -453,6 +453,31 @@ function getAmbientLightingEnabled(): boolean {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 🌅 ROUTER-AWARE AMBIENT LIGHT — gated to showcase routes only
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// AmbientLight v3 est gardé sur les routes vitrines (acquisition) et désactivé
+// sur les routes de travail dense où la lisibilité prime sur l'esthétique.
+// Réf spec: docs/superpowers/specs/2026-04-27-readability-refactor-design.md §5
+const AMBIENT_ROUTES = [
+  "/",
+  "/login",
+  "/signup",
+  "/pricing",
+  "/about",
+  "/legal",
+];
+
+const RouterAwareAmbientLight = () => {
+  const { pathname } = useLocation();
+  const showAmbient = AMBIENT_ROUTES.some(
+    (r) => pathname === r || pathname.startsWith(r + "/"),
+  );
+  if (!showAmbient) return null;
+  return <AmbientLightLayer intensity="normal" />;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // 🛣️ APP ROUTES
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -466,8 +491,8 @@ const AppRoutes = () => {
           <TTSProvider>
             <Router>
               <AmbientLightingProvider enabled={getAmbientLightingEnabled()}>
-                {/* ✨ Couche lumineuse cosmique globale (engine v3 — beam + halo) */}
-                <AmbientLightLayer />
+                {/* ✨ Couche lumineuse cosmique (engine v3 — beam + halo) — restreinte aux routes vitrines */}
+                <RouterAwareAmbientLight />
                 {/* 🌻 Tournesol mascot suivant la course du soleil */}
                 <SunflowerLayer />
 

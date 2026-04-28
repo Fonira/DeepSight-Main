@@ -51,11 +51,11 @@ export default function DemoCTA({ type }: DemoCTAProps) {
               </svg>
             </div>
 
-            <p className="text-white/50 text-sm mb-1">{getMessage()}</p>
+            <p className="text-text-muted text-sm mb-1">{getMessage()}</p>
             <h3 className="text-white font-semibold text-lg mb-2">
               Passez a l'experience complete
             </h3>
-            <p className="text-white/40 text-xs mb-5 max-w-sm mx-auto">
+            <p className="text-text-muted text-xs mb-5 max-w-sm mx-auto">
               Analyses completes, chat IA illimite, flashcards, mind maps et
               plus encore. Gratuit pour commencer.
             </p>
@@ -84,14 +84,14 @@ export default function DemoCTA({ type }: DemoCTAProps) {
               </a>
               <a
                 href="/login"
-                className="text-white/40 hover:text-white/60 text-sm transition-colors duration-200"
+                className="text-text-muted hover:text-text-secondary text-sm transition-colors duration-200"
               >
                 Deja un compte ? Se connecter
               </a>
             </div>
 
             {/* Features list */}
-            <div className="mt-5 pt-4 border-t border-white/5 flex flex-wrap justify-center gap-4 text-[11px] text-white/30">
+            <div className="mt-5 pt-4 border-t border-white/5 flex flex-wrap justify-center gap-4 text-[11px] text-text-tertiary">
               <span className="flex items-center gap-1">
                 <svg
                   className="w-3 h-3 text-green-400/60"

@@ -26,14 +26,13 @@ export const XPBar: React.FC<XPBarProps> = ({ currentXP, maxXP, level }) => {
       <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 shadow-lg shadow-indigo-500/25">
         <span className="text-sm font-bold text-white">{level}</span>
       </div>
-
       {/* Bar + labels */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-medium text-white/70">
+          <span className="text-xs font-medium text-text-secondary">
             Niveau {level}
           </span>
-          <span className="text-xs font-medium text-white/50">
+          <span className="text-xs font-medium text-text-muted">
             {currentXP.toLocaleString()}/{maxXP.toLocaleString()} XP
           </span>
         </div>

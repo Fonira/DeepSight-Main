@@ -221,7 +221,6 @@ export default function DemoAnalysisStatic({
           </p>
         </motion.div>
       </div>
-
       {/* Carte d'analyse */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -241,14 +240,14 @@ export default function DemoAnalysisStatic({
               <div className="text-center">
                 <div className="w-8 h-8 mx-auto rounded-full bg-white/10 flex items-center justify-center mb-1">
                   <svg
-                    className="w-4 h-4 text-white/60"
+                    className="w-4 h-4 text-text-secondary"
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >
                     <path d="M8 5v14l11-7z" />
                   </svg>
                 </div>
-                <span className="text-[9px] text-white/30">
+                <span className="text-[9px] text-text-tertiary">
                   {DEMO_VIDEO.duration}
                 </span>
               </div>
@@ -259,9 +258,9 @@ export default function DemoAnalysisStatic({
               <h3 className="text-white font-semibold text-sm leading-tight line-clamp-2">
                 {DEMO_VIDEO.title}
               </h3>
-              <p className="text-white/50 text-xs mt-1">{DEMO_VIDEO.channel}</p>
+              <p className="text-text-muted text-xs mt-1">{DEMO_VIDEO.channel}</p>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-white/60">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-text-secondary">
                   <Clock className="w-2.5 h-2.5" />
                   {DEMO_VIDEO.duration}
                 </span>
@@ -325,12 +324,12 @@ export default function DemoAnalysisStatic({
                   </defs>
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xs font-bold text-white/80">
+                  <span className="text-xs font-bold text-text-primary">
                     {showContent ? DEMO_VIDEO.reliability : "--"}
                   </span>
                 </div>
               </div>
-              <span className="text-[9px] text-white/30 mt-1">
+              <span className="text-[9px] text-text-tertiary mt-1">
                 {lang === "fr" ? "Fiabilite" : "Reliability"}
               </span>
             </div>
@@ -349,13 +348,13 @@ export default function DemoAnalysisStatic({
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-                    <span className="text-xs text-white/60">
+                    <span className="text-xs text-text-secondary">
                       {lang === "fr"
                         ? currentStep.labelFr
                         : currentStep.labelEn}
                     </span>
                   </div>
-                  <span className="text-xs text-white/40 font-mono">
+                  <span className="text-xs text-text-muted font-mono">
                     {progress}%
                   </span>
                 </div>
@@ -420,7 +419,7 @@ export default function DemoAnalysisStatic({
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.15, duration: 0.4 }}
-                            className="text-white/70 text-sm leading-relaxed"
+                            className="text-text-secondary text-sm leading-relaxed"
                           >
                             {paragraph}
                           </motion.p>
@@ -436,7 +435,7 @@ export default function DemoAnalysisStatic({
                           {DEMO_TAGS.map((tag, i) => (
                             <span
                               key={i}
-                              className="px-2.5 py-1 rounded-full text-[11px] bg-white/[0.03] border border-white/[0.06] text-white/40"
+                              className="px-2.5 py-1 rounded-full text-[11px] bg-white/[0.03] border border-white/[0.06] text-text-muted"
                             >
                               #{tag}
                             </span>
@@ -513,12 +512,12 @@ export default function DemoAnalysisStatic({
                                         {config.label}
                                       </span>
                                       {point.source && (
-                                        <span className="text-[9px] text-white/30">
+                                        <span className="text-[9px] text-text-tertiary">
                                           — {point.source}
                                         </span>
                                       )}
                                     </div>
-                                    <p className="text-white/75 text-sm leading-relaxed">
+                                    <p className="text-text-secondary text-sm leading-relaxed">
                                       {point.text}
                                     </p>
                                   </div>
@@ -527,7 +526,6 @@ export default function DemoAnalysisStatic({
                                   />
                                 </div>
                               </button>
-
                               <AnimatePresence>
                                 {isExpanded && (
                                   <motion.div
@@ -537,7 +535,7 @@ export default function DemoAnalysisStatic({
                                     transition={{ duration: 0.2 }}
                                     className="overflow-hidden"
                                   >
-                                    <div className="px-4 py-3 ml-9 text-xs text-white/40 leading-relaxed">
+                                    <div className="px-4 py-3 ml-9 text-xs text-text-muted leading-relaxed">
                                       {point.certainty === "solid" &&
                                         (lang === "fr"
                                           ? "Cette affirmation est etayee par des publications scientifiques recentes et des donnees verifiables."
@@ -583,7 +581,7 @@ export default function DemoAnalysisStatic({
                                 : "Automated Verification"}
                             </span>
                           </div>
-                          <p className="text-white/60 text-xs leading-relaxed">
+                          <p className="text-text-secondary text-xs leading-relaxed">
                             {lang === "fr"
                               ? "4 affirmations analysees — 1 confirmee, 1 plausible, 1 incertaine, 1 a verifier. Sources croisees avec Nature, The Lancet et les rapports de l'UE."
                               : "4 claims analyzed — 1 confirmed, 1 plausible, 1 uncertain, 1 needs verification. Cross-referenced with Nature, The Lancet and EU reports."}
@@ -659,10 +657,10 @@ export default function DemoAnalysisStatic({
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1">
-                                  <p className="text-white/75 text-sm mb-1">
+                                  <p className="text-text-secondary text-sm mb-1">
                                     "{fact.claim}"
                                   </p>
-                                  <p className="text-white/30 text-[11px]">
+                                  <p className="text-text-tertiary text-[11px]">
                                     {fact.source}
                                   </p>
                                 </div>
@@ -687,13 +685,13 @@ export default function DemoAnalysisStatic({
           <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-[10px] text-white/30">
+              <span className="text-[10px] text-text-tertiary">
                 {lang === "fr"
                   ? "Analyse par Mistral AI"
                   : "Analysis by Mistral AI"}
               </span>
             </div>
-            <span className="text-[10px] text-white/20 font-mono">
+            <span className="text-[10px] text-text-tertiary font-mono">
               {lang === "fr" ? "Donnees de demonstration" : "Demo data"}
             </span>
           </div>

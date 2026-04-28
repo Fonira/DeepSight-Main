@@ -528,7 +528,7 @@ export const DebatePage: React.FC = () => {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
       <button
         onClick={handleBack}
-        className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-6"
+        className="flex items-center gap-1.5 text-sm text-text-muted hover:text-text-secondary transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
         Retour aux débats
@@ -564,12 +564,11 @@ export const DebatePage: React.FC = () => {
           onClick={handleBack}
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-6 group"
+          className="flex items-center gap-1.5 text-sm text-text-muted hover:text-text-secondary transition-colors mb-6 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           Retour aux débats
         </motion.button>
-
         {/* Topic header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -578,13 +577,12 @@ export const DebatePage: React.FC = () => {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-white/10 mb-3">
             <Swords className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="text-xs font-medium text-white/60">Débat IA</span>
+            <span className="text-xs font-medium text-text-secondary">Débat IA</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight max-w-3xl mx-auto">
             {selectedDebate.detected_topic}
           </h1>
         </motion.div>
-
         {/* 🎙️ Hero CTA Agent Vocal */}
         {selectedDebate.status === "completed" && (
           <DebateVoiceHero
@@ -597,7 +595,6 @@ export const DebatePage: React.FC = () => {
             onPrewarm={voiceChat.prewarm}
           />
         )}
-
         {/* Status tracker (if in progress) */}
         {isInProgress && (
           <motion.div
@@ -608,7 +605,6 @@ export const DebatePage: React.FC = () => {
             <DebateStatusTracker status={selectedDebate.status} />
           </motion.div>
         )}
-
         {/* Failed state */}
         {selectedDebate.status === "failed" && (
           <motion.div
@@ -629,12 +625,10 @@ export const DebatePage: React.FC = () => {
             )}
           </motion.div>
         )}
-
         {/* VS Layout */}
         <div className="mb-4">
           <DebateVSLayout debate={selectedDebate} />
         </div>
-
         {/* Completed sections with doodle dividers */}
         {selectedDebate.status === "completed" && (
           <>
@@ -690,7 +684,7 @@ export const DebatePage: React.FC = () => {
                   Synthèse du débat
                 </h3>
               </div>
-              <p className="text-sm text-white/70 leading-relaxed">
+              <p className="text-sm text-text-secondary leading-relaxed">
                 {selectedDebate.debate_summary}
               </p>
             </motion.div>
@@ -720,12 +714,12 @@ export const DebatePage: React.FC = () => {
       >
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-white/10 mb-3">
           <Swords className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="text-xs font-medium text-white/60">Débat IA</span>
+          <span className="text-xs font-medium text-text-secondary">Débat IA</span>
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">
           Confrontez les points de vue
         </h1>
-        <p className="text-sm text-white/40 max-w-md mx-auto">
+        <p className="text-sm text-text-muted max-w-md mx-auto">
           Analysez deux vidéos qui défendent des positions opposées. DeepSight
           compare les arguments, identifie les convergences et vérifie les
           faits.
@@ -763,8 +757,8 @@ export const DebatePage: React.FC = () => {
         transition={{ delay: 0.2 }}
       >
         <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="w-3.5 h-3.5 text-white/30" />
-          <h2 className="text-sm font-semibold text-white/60">
+          <Sparkles className="w-3.5 h-3.5 text-text-tertiary" />
+          <h2 className="text-sm font-semibold text-text-secondary">
             Débats récents
           </h2>
         </div>
@@ -784,10 +778,10 @@ export const DebatePage: React.FC = () => {
           </div>
         ) : (
           <DoodleEmptyState type="no-analyses">
-            <p className="text-sm font-medium text-white/50 mb-1">
+            <p className="text-sm font-medium text-text-muted mb-1">
               Aucun débat pour le moment
             </p>
-            <p className="text-xs text-white/30">
+            <p className="text-xs text-text-tertiary">
               Lancez votre premier débat IA ci-dessus !
             </p>
           </DoodleEmptyState>

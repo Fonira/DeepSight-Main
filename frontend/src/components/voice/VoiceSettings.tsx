@@ -154,7 +154,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
     return (
       <div className="flex items-center justify-center p-12">
         <DeepSightSpinner size="md" />
-        <span className="ml-3 text-white/60">
+        <span className="ml-3 text-text-secondary">
           Chargement des paramètres vocaux...
         </span>
       </div>
@@ -185,20 +185,19 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             <span className="text-3xl">🎙️</span>
             Paramètres vocaux
           </h2>
-          <p className="text-white/50 mt-1">
+          <p className="text-text-muted mt-1">
             Personnalisez la voix, la vitesse et les réglages audio
           </p>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white"
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-text-secondary hover:text-white"
           >
             ✕
           </button>
         )}
       </div>
-
       {/* ── Messages ──────────────────────────────────────────────── */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm">
@@ -210,7 +209,6 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           <span>✓</span> {successMsg}
         </div>
       )}
-
       {/* ══════════════════════════════════════════════════════════════
           Section 1 : Mode d'interaction (PTT / VAD)
           ══════════════════════════════════════════════════════════════ */}
@@ -229,7 +227,6 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           }
         />
       </CollapsibleSection>
-
       {/* ══════════════════════════════════════════════════════════════
           Section 2 : Vitesse du chat vocal
           ══════════════════════════════════════════════════════════════ */}
@@ -246,7 +243,6 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           onSave={savePreferences}
         />
       </CollapsibleSection>
-
       {/* ══════════════════════════════════════════════════════════════
           Section 3 : Sélection de voix
           ══════════════════════════════════════════════════════════════ */}
@@ -312,7 +308,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                       <span className="font-semibold text-white">
                         {voice.name}
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/40">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-text-muted">
                         {voice.gender === "male"
                           ? "♂"
                           : voice.gender === "female"
@@ -325,15 +321,15 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                         </span>
                       )}
                     </div>
-                    <p className="text-white/50 text-xs mt-1">
+                    <p className="text-text-muted text-xs mt-1">
                       {voice.description_fr}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] text-white/30">
+                      <span className="text-[10px] text-text-tertiary">
                         {voice.accent}
                       </span>
-                      <span className="text-white/20">·</span>
-                      <span className="text-[10px] text-white/30">
+                      <span className="text-text-tertiary">·</span>
+                      <span className="text-[10px] text-text-tertiary">
                         {voice.use_case}
                       </span>
                     </div>
@@ -366,7 +362,6 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           })}
         </div>
       </CollapsibleSection>
-
       {/* ══════════════════════════════════════════════════════════════
           Section 4 : Vitesse de lecture (résumés)
           ══════════════════════════════════════════════════════════════ */}
@@ -382,7 +377,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             {preferences.speed}x
           </span>
         </div>
-        <p className="text-white/50 text-sm mb-5">
+        <p className="text-text-muted text-sm mb-5">
           Ajustez la vitesse de parole — du très lent (0.25x) au maximum (4.0x)
         </p>
 
@@ -404,7 +399,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             >
               <span className="text-xl">{preset.icon}</span>
               <span className="text-xs font-medium">{preset.value}x</span>
-              <span className="text-[10px] text-white/40">
+              <span className="text-[10px] text-text-muted">
                 {preset.label_fr}
               </span>
             </button>
@@ -414,7 +409,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
         {/* Custom speed slider */}
         <div className="mt-4">
           <div className="flex items-center gap-4">
-            <span className="text-white/40 text-xs w-12">0.25x</span>
+            <span className="text-text-muted text-xs w-12">0.25x</span>
             <input
               type="range"
               min="0.25"
@@ -433,11 +428,10 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
                 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg"
             />
-            <span className="text-white/40 text-xs w-12 text-right">4.0x</span>
+            <span className="text-text-muted text-xs w-12 text-right">4.0x</span>
           </div>
         </div>
       </CollapsibleSection>
-
       {/* ══════════════════════════════════════════════════════════════
           Section 5 : Modèles
           ══════════════════════════════════════════════════════════════ */}
@@ -450,7 +444,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* TTS Model */}
           <div>
-            <p className="text-white/50 text-sm mb-2">
+            <p className="text-text-muted text-sm mb-2">
               Lecture TTS (résumés, synthèse)
             </p>
             <div className="space-y-2">
@@ -488,7 +482,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                           : "Haute qualité"}
                     </span>
                   </div>
-                  <p className="text-white/40 text-xs mt-1">
+                  <p className="text-text-muted text-xs mt-1">
                     {model.description_fr}
                   </p>
                 </button>
@@ -498,7 +492,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
 
           {/* Voice Chat Model */}
           <div>
-            <p className="text-white/50 text-sm mb-2">
+            <p className="text-text-muted text-sm mb-2">
               Chat vocal (temps réel)
             </p>
             <div className="space-y-2">
@@ -538,7 +532,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                           : "Haute qualité"}
                     </span>
                   </div>
-                  <p className="text-white/40 text-xs mt-1">
+                  <p className="text-text-muted text-xs mt-1">
                     {model.description_fr}
                   </p>
                 </button>
@@ -547,7 +541,6 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           </div>
         </div>
       </CollapsibleSection>
-
       {/* ══════════════════════════════════════════════════════════════
           Section 6 : Paramètres avancés
           ══════════════════════════════════════════════════════════════ */}
@@ -561,9 +554,9 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           {/* Stability */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-white/70 text-sm font-medium">
+              <label className="text-text-secondary text-sm font-medium">
                 Stabilité
-                <span className="ml-2 text-white/40 text-xs">
+                <span className="ml-2 text-text-muted text-xs">
                   (variable ← → stable)
                 </span>
               </label>
@@ -593,7 +586,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
                 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
             />
-            <div className="flex justify-between text-[10px] text-white/30 mt-1">
+            <div className="flex justify-between text-[10px] text-text-tertiary mt-1">
               <span>Plus expressif</span>
               <span>Plus constant</span>
             </div>
@@ -602,9 +595,9 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           {/* Similarity Boost */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-white/70 text-sm font-medium">
+              <label className="text-text-secondary text-sm font-medium">
                 Fidélité de la voix
-                <span className="ml-2 text-white/40 text-xs">
+                <span className="ml-2 text-text-muted text-xs">
                   (diversifié ← → fidèle)
                 </span>
               </label>
@@ -638,7 +631,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
                 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
             />
-            <div className="flex justify-between text-[10px] text-white/30 mt-1">
+            <div className="flex justify-between text-[10px] text-text-tertiary mt-1">
               <span>Plus varié</span>
               <span>Plus fidèle à l'original</span>
             </div>
@@ -647,9 +640,9 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           {/* Style */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-white/70 text-sm font-medium">
+              <label className="text-text-secondary text-sm font-medium">
                 Style
-                <span className="ml-2 text-white/40 text-xs">
+                <span className="ml-2 text-text-muted text-xs">
                   (neutre ← → expressif)
                 </span>
               </label>
@@ -675,7 +668,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
                 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
             />
-            <div className="flex justify-between text-[10px] text-white/30 mt-1">
+            <div className="flex justify-between text-[10px] text-text-tertiary mt-1">
               <span>Neutre</span>
               <span>Très expressif</span>
             </div>
@@ -684,10 +677,10 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           {/* Speaker Boost */}
           <div className="flex items-center justify-between">
             <div>
-              <label className="text-white/70 text-sm font-medium">
+              <label className="text-text-secondary text-sm font-medium">
                 Speaker Boost
               </label>
-              <p className="text-white/40 text-xs mt-0.5">
+              <p className="text-text-muted text-xs mt-0.5">
                 Améliore la clarté et la qualité de la voix (consomme plus de
                 crédits)
               </p>
@@ -716,9 +709,9 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           {/* Turn timeout */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-white/70 text-sm font-medium">
+              <label className="text-text-secondary text-sm font-medium">
                 Délai de relance
-                <span className="ml-2 text-white/40 text-xs">
+                <span className="ml-2 text-text-muted text-xs">
                   (silence avant relance)
                 </span>
               </label>
@@ -748,11 +741,11 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
                 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
             />
-            <div className="flex justify-between text-[10px] text-white/30 mt-1">
+            <div className="flex justify-between text-[10px] text-text-tertiary mt-1">
               <span>5s</span>
               <span>60s</span>
             </div>
-            <p className="text-white/40 text-xs mt-1">
+            <p className="text-text-muted text-xs mt-1">
               Durée de silence avant que l'agent relance la conversation
             </p>
           </div>
@@ -760,9 +753,9 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           {/* Soft timeout (session) */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-white/70 text-sm font-medium">
+              <label className="text-text-secondary text-sm font-medium">
                 Alerte de session
-                <span className="ml-2 text-white/40 text-xs">
+                <span className="ml-2 text-text-muted text-xs">
                   (avant déconnexion)
                 </span>
               </label>
@@ -796,11 +789,11 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
                 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
             />
-            <div className="flex justify-between text-[10px] text-white/30 mt-1">
+            <div className="flex justify-between text-[10px] text-text-tertiary mt-1">
               <span>1 min</span>
               <span>10 min</span>
             </div>
-            <p className="text-white/40 text-xs mt-1">
+            <p className="text-text-muted text-xs mt-1">
               Alerte avant la fin automatique de session
             </p>
           </div>
@@ -808,7 +801,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           {/* Language + Gender defaults */}
           <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
             <div>
-              <label className="text-white/70 text-sm font-medium block mb-2">
+              <label className="text-text-secondary text-sm font-medium block mb-2">
                 Langue par défaut
               </label>
               <div className="flex gap-2">
@@ -832,7 +825,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
               </div>
             </div>
             <div>
-              <label className="text-white/70 text-sm font-medium block mb-2">
+              <label className="text-text-secondary text-sm font-medium block mb-2">
                 Genre par défaut
               </label>
               <div className="flex gap-2">
@@ -880,14 +873,13 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                 })
               }
               disabled={saving}
-              className="text-white/40 text-sm hover:text-white/70 transition-colors"
+              className="text-text-muted text-sm hover:text-text-secondary transition-colors"
             >
               ↺ Réinitialiser les valeurs par défaut
             </button>
           </div>
         </div>
       </CollapsibleSection>
-
       {/* Saving indicator */}
       {saving && (
         <div className="fixed bottom-6 right-6 bg-indigo-500/90 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm">

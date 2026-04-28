@@ -974,7 +974,6 @@ export const DashboardPage: React.FC = () => {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-
       {/* Main content - responsive margin */}
       <main
         className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? "ml-[60px]" : "ml-[240px]"}`}
@@ -1568,19 +1567,19 @@ export const DashboardPage: React.FC = () => {
                         <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
                       </div>
                       <div className="flex-1 text-left min-w-0">
-                        <span className="text-sm font-semibold text-white/90 group-hover:text-white transition-colors">
+                        <span className="text-sm font-semibold text-text-primary group-hover:text-white transition-colors">
                           {language === "fr"
                             ? "Poser une question à l'IA"
                             : "Ask the AI a question"}
                         </span>
-                        <p className="text-xs text-white/40 mt-0.5 leading-relaxed">
+                        <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
                           {language === "fr"
                             ? "L'IA a analysé cette vidéo et peut approfondir n'importe quel sujet abordé"
                             : "The AI analyzed this video and can dig deeper into any topic covered"}
                         </p>
                       </div>
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center group-hover:bg-white/[0.1] transition-all">
-                        <ChevronDown className="w-4 h-4 text-white/40 -rotate-90 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
+                        <ChevronDown className="w-4 h-4 text-text-muted -rotate-90 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
                       </div>
                     </div>
                   </button>
@@ -1660,9 +1659,7 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       </main>
-
       {/* FAB Chat IA supprimé — remplacé par bandeau sous la miniature */}
-
       {/* 💬 Chat Panel — Interface épurée latérale */}
       <ChatPanel
         isOpen={chatOpen && !!selectedSummary}
@@ -1680,7 +1677,6 @@ export const DashboardPage: React.FC = () => {
         webSearchQuota={wsQuota}
         onUpgrade={() => navigate("/pricing")}
       />
-
       {/* 🔍 Modal Découverte Intelligente */}
       <VideoDiscoveryModal
         isOpen={showDiscoveryModal}
@@ -1691,7 +1687,6 @@ export const DashboardPage: React.FC = () => {
         userCredits={user?.credits || 0}
         language={language as "fr" | "en"}
       />
-
       {/* 💰 Credit Alert - Shows when credits are low */}
       <CreditAlert
         warningThreshold={50}
@@ -1699,14 +1694,12 @@ export const DashboardPage: React.FC = () => {
         position="top"
         compact={false}
       />
-
       {/* 💰 Upgrade Prompt Modal */}
       <UpgradePromptModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         limitType={upgradeLimitType}
       />
-
       {/* 💰 Free Trial Limit Modal - Shows after free analyses */}
       <FreeTrialLimitModal
         isOpen={showFreeTrialModal}
@@ -1714,7 +1707,6 @@ export const DashboardPage: React.FC = () => {
         analysisCount={analysisCountThisMonth}
         videoDurationSeconds={lastAnalysisTimeSaved}
       />
-
       {/* 🔊 Audio Player (fixed bottom bar) */}
       {audioPlayerUrl && (
         <AudioPlayer
@@ -1723,7 +1715,6 @@ export const DashboardPage: React.FC = () => {
           onClose={() => setAudioPlayerUrl(null)}
         />
       )}
-
       {/* CSS pour animations (shimmer) */}
       <style>{`
         @keyframes shimmer {
@@ -1731,7 +1722,6 @@ export const DashboardPage: React.FC = () => {
           100% { transform: translateX(100%); }
         }
       `}</style>
-
       {/* 🎙️ Voice Chat (VoiceButton supprimé — intégré dans AnalysisActionBar) */}
       {selectedSummary && (
         <>

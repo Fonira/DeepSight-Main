@@ -234,7 +234,7 @@ export const TournesolTrendingSection: React.FC<
           <div>
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
               {t.title}
-              <span className="text-[10px] font-normal text-white/30">
+              <span className="text-[10px] font-normal text-text-tertiary">
                 {t.poweredBy}{" "}
                 <a
                   href={TOURNESOL_SITE}
@@ -247,7 +247,7 @@ export const TournesolTrendingSection: React.FC<
                 </a>
               </span>
             </h2>
-            <p className="text-sm text-white/50">{t.subtitle}</p>
+            <p className="text-sm text-text-muted">{t.subtitle}</p>
           </div>
         </div>
 
@@ -256,7 +256,7 @@ export const TournesolTrendingSection: React.FC<
           <button
             onClick={fetchRecommendations}
             disabled={loading}
-            className="p-2 rounded-lg text-white/30 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all disabled:opacity-30"
+            className="p-2 rounded-lg text-text-tertiary hover:text-yellow-400 hover:bg-yellow-500/10 transition-all disabled:opacity-30"
             title={
               language === "fr" ? "Nouvelles suggestions" : "New suggestions"
             }
@@ -282,7 +282,6 @@ export const TournesolTrendingSection: React.FC<
           </div>
         </div>
       </div>
-
       {/* Content */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -301,7 +300,7 @@ export const TournesolTrendingSection: React.FC<
         </div>
       ) : error ? (
         <div className="text-center py-12">
-          <p className="text-white/40 mb-3">{error}</p>
+          <p className="text-text-muted mb-3">{error}</p>
           <button
             onClick={fetchRecommendations}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm text-yellow-400 bg-yellow-500/10 rounded-lg hover:bg-yellow-500/20 transition-colors"
@@ -311,7 +310,7 @@ export const TournesolTrendingSection: React.FC<
           </button>
         </div>
       ) : results.length === 0 ? (
-        <div className="text-center py-12 text-white/40">{t.noData}</div>
+        <div className="text-center py-12 text-text-muted">{t.noData}</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {results.map((item) => (
@@ -380,7 +379,7 @@ const TournesolCard: React.FC<TournesolCardProps> = ({
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
         {metadata.duration && (
-          <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 bg-black/80 rounded text-[10px] text-white/80 font-mono">
+          <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 bg-black/80 rounded text-[10px] text-text-primary font-mono">
             <Clock className="w-2.5 h-2.5 inline mr-0.5 -mt-0.5" />
             {formatDuration(metadata.duration)}
           </span>
@@ -393,21 +392,20 @@ const TournesolCard: React.FC<TournesolCardProps> = ({
         </span>
         {/* Publication date */}
         {metadata.publication_date && (
-          <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white/50">
+          <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-text-muted">
             {formatPublicationDate(metadata.publication_date)}
           </span>
         )}
       </div>
-
       {/* Info */}
       <div className="p-3 space-y-1.5">
-        <h3 className="text-sm font-medium text-white/90 line-clamp-2 leading-tight">
+        <h3 className="text-sm font-medium text-text-primary line-clamp-2 leading-tight">
           {metadata.name}
         </h3>
-        <p className="text-xs text-white/40 truncate">{metadata.uploader}</p>
+        <p className="text-xs text-text-muted truncate">{metadata.uploader}</p>
 
         {/* Criteria mini-scores */}
-        <div className="flex items-center gap-2 text-[10px] text-white/30 pt-1 flex-wrap">
+        <div className="flex items-center gap-2 text-[10px] text-text-tertiary pt-1 flex-wrap">
           <span className="flex items-center gap-1">
             <ThumbsUp className="w-3 h-3" />
             {collective_rating.n_contributors} {labels.contributors}

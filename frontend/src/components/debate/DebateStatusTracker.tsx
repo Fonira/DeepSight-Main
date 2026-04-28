@@ -68,7 +68,6 @@ export const DebateStatusTracker: React.FC<DebateStatusTrackerProps> = ({
       <h3 className="text-sm font-semibold text-white mb-4">
         Progression du débat
       </h3>
-
       <div className="flex items-center gap-2">
         {STEPS.map((step, i) => {
           const state = getStepState(step.key, status);
@@ -108,7 +107,7 @@ export const DebateStatusTracker: React.FC<DebateStatusTrackerProps> = ({
                       <DeepSightSpinnerMicro />
                     </>
                   ) : (
-                    <StepIcon className="w-4 h-4 text-white/30" />
+                    <StepIcon className="w-4 h-4 text-text-tertiary" />
                   )}
                 </motion.div>
                 <span
@@ -125,7 +124,6 @@ export const DebateStatusTracker: React.FC<DebateStatusTrackerProps> = ({
                   {step.label}
                 </span>
               </div>
-
               {/* Connector line */}
               {i < STEPS.length - 1 && (
                 <div className="flex-shrink-0 h-px w-6 lg:w-10 mt-[-18px]">

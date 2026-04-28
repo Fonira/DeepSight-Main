@@ -359,10 +359,10 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
                   <Mic className="w-4 h-4 text-violet-300" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white/85 truncate leading-tight">
+                  <p className="text-sm font-semibold text-text-primary truncate leading-tight">
                     {title || t.callTitle}
                   </p>
-                  <p className="text-[11px] text-white/40 truncate">
+                  <p className="text-[11px] text-text-muted truncate">
                     {subtitle ||
                       (resolvedAgent === "companion" ? t.companion : null)}
                   </p>
@@ -388,7 +388,7 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
                   type="button"
                   onClick={handleClose}
                   aria-label={t.close}
-                  className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white/70 transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-white/[0.06] text-text-muted hover:text-text-secondary transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -451,7 +451,7 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
             >
               {voice.messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-center">
-                  <p className="text-xs text-white/30 leading-relaxed max-w-[260px]">
+                  <p className="text-xs text-text-tertiary leading-relaxed max-w-[260px]">
                     {t.transcriptEmpty}
                   </p>
                 </div>

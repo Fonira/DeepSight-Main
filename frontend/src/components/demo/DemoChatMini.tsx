@@ -135,12 +135,12 @@ export default function DemoChatMini({
         <div className="relative flex items-center justify-between px-5 py-3 border-b border-white/5">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-white/70 text-xs font-medium">
+            <span className="text-text-secondary text-xs font-medium">
               Chat IA Demo
             </span>
           </div>
           {!exhausted && (
-            <span className="text-white/30 text-[10px]">
+            <span className="text-text-tertiary text-[10px]">
               {remaining} question{remaining > 1 ? "s" : ""} restante
               {remaining > 1 ? "s" : ""}
             </span>
@@ -152,7 +152,7 @@ export default function DemoChatMini({
           {/* Welcome message */}
           {messages.length === 0 && !loading && (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <p className="text-white/30 text-sm mb-4">
+              <p className="text-text-tertiary text-sm mb-4">
                 Posez vos questions sur cette video
               </p>
 
@@ -175,9 +175,7 @@ export default function DemoChatMini({
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.1 }}
                       onClick={() => handleSuggestionClick(suggestion)}
-                      className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10
-                                 hover:border-indigo-500/30 rounded-full text-xs text-white/60 hover:text-white/80
-                                 transition-all duration-200 cursor-pointer"
+                      className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10\r\n                                 hover:border-indigo-500/30 rounded-full text-xs text-text-secondary hover:text-text-primary\r\n                                 transition-all duration-200 cursor-pointer"
                     >
                       {suggestion}
                     </motion.button>
@@ -263,10 +261,10 @@ export default function DemoChatMini({
                     />
                   </svg>
                 </div>
-                <p className="text-white/80 text-sm font-medium mb-1">
+                <p className="text-text-primary text-sm font-medium mb-1">
                   Demo terminee
                 </p>
-                <p className="text-white/40 text-xs mb-4">
+                <p className="text-text-muted text-xs mb-4">
                   Creez un compte gratuit pour un chat illimite
                 </p>
                 <a
@@ -307,9 +305,7 @@ export default function DemoChatMini({
                 exhausted ? "Demo terminee" : "Posez votre question..."
               }
               disabled={loading || exhausted}
-              className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2.5 text-sm text-white/90
-                         placeholder-white/20 outline-none focus:border-indigo-500/30 focus:bg-white/[0.05]
-                         transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2.5 text-sm text-text-primary\r\n                         placeholder-white/20 outline-none focus:border-indigo-500/30 focus:bg-white/[0.05]\r\n                         transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
             />
             <button
               type="submit"

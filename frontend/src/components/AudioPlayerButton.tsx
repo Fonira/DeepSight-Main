@@ -328,7 +328,6 @@ const AudioPlayerButtonInner: React.FC<AudioPlayerButtonProps> = ({
           <Play className="w-4 h-4" />
         )}
       </button>
-
       {/* Progress bar */}
       <div
         ref={progressRef}
@@ -342,21 +341,18 @@ const AudioPlayerButtonInner: React.FC<AudioPlayerButtonProps> = ({
           <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-cyan-300 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
       </div>
-
       {/* Time */}
-      <span className="text-[10px] text-white/40 font-mono whitespace-nowrap">
+      <span className="text-[10px] text-text-muted font-mono whitespace-nowrap">
         {formatTime(currentTime)}/{formatTime(duration)}
       </span>
-
       {/* Stop */}
       <button
         onClick={handleStop}
-        className="w-6 h-6 rounded flex items-center justify-center text-white/30 hover:text-red-400 transition-colors"
+        className="w-6 h-6 rounded flex items-center justify-center text-text-tertiary hover:text-red-400 transition-colors"
         title="Stop"
       >
         <Square className="w-3 h-3" />
       </button>
-
       {/* Speed */}
       <button
         onClick={handleSpeedCycle}

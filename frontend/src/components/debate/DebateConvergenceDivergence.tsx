@@ -40,7 +40,7 @@ export const DebateConvergenceDivergence: React.FC<
             <h3 className="text-sm font-semibold text-white">
               Points de convergence
             </h3>
-            <p className="text-xs text-white/40">
+            <p className="text-xs text-text-muted">
               Ce sur quoi les deux vidéos s'accordent
             </p>
           </div>
@@ -63,12 +63,11 @@ export const DebateConvergenceDivergence: React.FC<
                   {i + 1}
                 </span>
               </div>
-              <p className="text-sm text-white/80 leading-relaxed">{point}</p>
+              <p className="text-sm text-text-primary leading-relaxed">{point}</p>
             </motion.div>
           ))}
         </motion.div>
       </div>
-
       {/* Divergences */}
       <div className="rounded-xl bg-white/5 border border-orange-500/20 backdrop-blur-xl p-5">
         <div className="flex items-center gap-2 mb-4">
@@ -79,7 +78,7 @@ export const DebateConvergenceDivergence: React.FC<
             <h3 className="text-sm font-semibold text-white">
               Points de divergence
             </h3>
-            <p className="text-xs text-white/40">
+            <p className="text-xs text-text-muted">
               Là où les positions s'opposent
             </p>
           </div>
@@ -105,7 +104,7 @@ export const DebateConvergenceDivergence: React.FC<
                   <span className="text-[10px] font-semibold text-indigo-400 uppercase">
                     Vidéo A
                   </span>
-                  <p className="text-xs text-white/70 mt-1 leading-relaxed">
+                  <p className="text-xs text-text-secondary mt-1 leading-relaxed">
                     {point.position_a}
                   </p>
                 </div>
@@ -113,13 +112,13 @@ export const DebateConvergenceDivergence: React.FC<
                   <span className="text-[10px] font-semibold text-violet-400 uppercase">
                     Vidéo B
                   </span>
-                  <p className="text-xs text-white/70 mt-1 leading-relaxed">
+                  <p className="text-xs text-text-secondary mt-1 leading-relaxed">
                     {point.position_b}
                   </p>
                 </div>
               </div>
               {point.fact_check_verdict && (
-                <p className="text-[11px] text-white/40 italic">
+                <p className="text-[11px] text-text-muted italic">
                   Verdict : {point.fact_check_verdict}
                 </p>
               )}

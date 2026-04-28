@@ -259,7 +259,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998] md:hidden"
         onClick={onClose}
       />
-
       {/* Panel */}
       <div
         className={`
@@ -293,10 +292,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
           {/* Titre */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-white/90 truncate leading-tight">
+            <h3 className="text-sm font-medium text-text-primary truncate leading-tight">
               {videoTitle}
             </h3>
-            <p className="text-[11px] text-white/30 mt-0.5">
+            <p className="text-[11px] text-text-tertiary mt-0.5">
               {language === "fr" ? "Chat IA" : "AI Chat"}
             </p>
           </div>
@@ -304,7 +303,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           {/* Fermer */}
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors text-white/40 hover:text-white/70 flex-shrink-0"
+            className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors text-text-muted hover:text-text-secondary flex-shrink-0"
             aria-label="Fermer"
           >
             <X className="w-5 h-5" />
@@ -324,11 +323,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         >
           {messages.length === 0 ? (
             /* ─── Empty State ─── */
-            <div className="flex flex-col items-center justify-center h-full text-center px-6">
+            (<div className="flex flex-col items-center justify-center h-full text-center px-6">
               <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-5">
                 <Bot className="w-7 h-7 text-cyan-400/70" />
               </div>
-              <h3 className="text-base font-semibold text-white/80 mb-2">
+              <h3 className="text-base font-semibold text-text-primary mb-2">
                 {t.emptyTitle}
               </h3>
               <p className="text-sm text-white/35 mb-8 max-w-[280px] leading-relaxed">
@@ -340,16 +339,16 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                     key={i}
                     onClick={() => !isLoading && onSendMessage(q)}
                     disabled={isLoading}
-                    className="px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.06] hover:border-white/[0.1] text-white/60 hover:text-white/80 text-sm rounded-xl transition-all duration-200 text-left disabled:opacity-40"
+                    className="px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.06] hover:border-white/[0.1] text-text-secondary hover:text-text-primary text-sm rounded-xl transition-all duration-200 text-left disabled:opacity-40"
                   >
                     {q}
                   </button>
                 ))}
               </div>
-            </div>
+            </div>)
           ) : (
             /* ─── Message List ─── */
-            messages.map((msg, msgIndex) => {
+            (messages.map((msg, msgIndex) => {
               const contentStr =
                 typeof msg.content === "string"
                   ? msg.content
@@ -374,7 +373,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                       <Bot className="w-3.5 h-3.5 text-cyan-400" />
                     </div>
                   )}
-
                   {/* Bubble */}
                   <div
                     className={`max-w-[82%] rounded-2xl px-4 py-3 relative group ${
@@ -403,7 +401,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                           <CopyMessageButton
                             text={contentStr}
                             language={language}
-                            className="text-white/55 hover:text-white"
+                            className="text-text-muted hover:text-white"
                           />
                         </div>
                       </>
@@ -450,7 +448,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                                   )
                                 }
                                 disabled={isLoading}
-                                className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white/70 text-xs rounded-lg transition-all disabled:opacity-40"
+                                className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-text-muted hover:text-text-secondary text-xs rounded-lg transition-all disabled:opacity-40"
                               >
                                 {q.replace(
                                   /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
@@ -466,7 +464,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                     {/* Sources */}
                     {msg.sources && msg.sources.length > 0 && (
                       <div className="mt-3 pt-2.5 border-t border-white/[0.06]">
-                        <p className="text-[10px] font-medium text-white/30 mb-1.5 uppercase tracking-wider">
+                        <p className="text-[10px] font-medium text-text-tertiary mb-1.5 uppercase tracking-wider">
                           {t.sources}
                         </p>
                         <div className="flex flex-wrap gap-1">
@@ -476,7 +474,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                               href={src.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[11px] px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] rounded-full transition-colors flex items-center gap-1 text-white/40 hover:text-white/60"
+                              className="text-[11px] px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] rounded-full transition-colors flex items-center gap-1 text-text-muted hover:text-text-secondary"
                             >
                               <ExternalLink className="w-2.5 h-2.5" />
                               {src.title || "Source"}
@@ -491,7 +489,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                       <div className="mt-2 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <button
                           onClick={() => copyToClipboard(contentStr, msg.id)}
-                          className="text-[11px] text-white/25 hover:text-white/60 flex items-center gap-1 transition-colors"
+                          className="text-[11px] text-white/25 hover:text-text-secondary flex items-center gap-1 transition-colors"
                         >
                           {copiedId === msg.id ? (
                             <>
@@ -536,7 +534,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                       </div>
                     )}
                   </div>
-
                   {/* User avatar */}
                   {isUser && (
                     <div className="w-7 h-7 rounded-lg bg-blue-600/20 flex items-center justify-center flex-shrink-0 mt-1">
@@ -545,7 +542,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                   )}
                 </div>
               );
-            })
+            }))
           )}
 
           {/* Loading / Streaming indicator */}
@@ -561,7 +558,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 animate-[bounce_1.2s_ease-in-out_0.2s_infinite]" />
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 animate-[bounce_1.2s_ease-in-out_0.4s_infinite]" />
                   </div>
-                  <span className="text-xs text-white/30">{t.analyzing}</span>
+                  <span className="text-xs text-text-tertiary">{t.analyzing}</span>
                 </div>
               </div>
             </div>
@@ -575,7 +572,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-10">
             <button
               onClick={scrollToBottom}
-              className="p-2 rounded-full bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-white/50 hover:text-white/80 transition-all shadow-lg backdrop-blur-sm"
+              className="p-2 rounded-full bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-text-muted hover:text-text-primary transition-all shadow-lg backdrop-blur-sm"
             >
               <ArrowDown className="w-4 h-4" />
             </button>
@@ -622,7 +619,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             {onClearHistory && messages.length > 0 && (
               <button
                 onClick={onClearHistory}
-                className="text-[11px] text-white/20 hover:text-red-400/70 transition-colors"
+                className="text-[11px] text-text-tertiary hover:text-red-400/70 transition-colors"
               >
                 {language === "fr" ? "Effacer" : "Clear"}
               </button>
@@ -638,7 +635,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
               onKeyDown={handleKeyDown}
               placeholder={t.placeholder}
               rows={1}
-              className="flex-1 resize-none bg-white/[0.04] text-white/90 placeholder:text-white/20 rounded-xl px-4 py-2.5 border border-white/[0.06] focus:border-cyan-500/30 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all text-sm leading-relaxed"
+              className="flex-1 resize-none bg-white/[0.04] text-text-primary placeholder:text-text-tertiary rounded-xl px-4 py-2.5 border border-white/[0.06] focus:border-cyan-500/30 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all text-sm leading-relaxed"
               style={{ maxHeight: "120px" }}
             />
             <button
@@ -651,7 +648,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           </form>
         </div>
       </div>
-
       {/* Keyframe animation (injected via style tag) */}
       <style>{`
         @keyframes fadeSlideIn {

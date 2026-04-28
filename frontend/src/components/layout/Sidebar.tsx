@@ -497,6 +497,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </AnimatePresence>
 
       <aside
+        data-sidebar
         className={`fixed left-0 top-0 h-screen bg-bg-secondary border-r border-border-subtle flex flex-col z-40 transition-all duration-200 ease-out
           ${collapsed ? "w-[60px]" : "w-[240px]"}
           lg:translate-x-0

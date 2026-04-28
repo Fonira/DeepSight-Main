@@ -185,8 +185,8 @@ const ExportOption: React.FC<ExportOptionProps> = ({
       {loading ? <DeepSightSpinnerSmall /> : icon}
     </span>
     <div className="min-w-0">
-      <p className="text-sm font-medium text-white/90">{label}</p>
-      <p className="text-xs text-white/40">{description}</p>
+      <p className="text-sm font-medium text-text-primary">{label}</p>
+      <p className="text-xs text-text-muted">{description}</p>
     </div>
   </button>
 );
@@ -344,7 +344,6 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
   return (
     <>
       {ToastComponent}
-
       <div
         className={`w-full rounded-2xl relative overflow-hidden ${sticky ? "sticky top-4 z-30" : ""}`}
         style={{
@@ -409,7 +408,7 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
               `}
               >
                 {isVoiceLocked ? (
-                  <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-white/30" />
+                  <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-text-tertiary" />
                 ) : (
                   <VoiceAgentIcon className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-300 group-hover:text-indigo-200 transition-colors" />
                 )}
@@ -556,7 +555,6 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
           </div>
         </div>
       </div>
-
       {/* Export dropdown (portal) */}
       {showExportMenu &&
         createPortal(

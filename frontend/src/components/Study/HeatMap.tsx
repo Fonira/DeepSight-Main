@@ -92,16 +92,14 @@ export const HeatMap: React.FC<HeatMapProps> = ({ activities }) => {
           />
         ))}
       </div>
-
       {/* Legend */}
       <div className="flex items-center justify-end gap-1.5 mt-2">
-        <span className="text-[10px] text-white/40">Moins</span>
+        <span className="text-[10px] text-text-muted">Moins</span>
         {INTENSITY_CLASSES.map((cls, i) => (
           <div key={i} className={`w-3 h-3 rounded-sm ${cls}`} />
         ))}
-        <span className="text-[10px] text-white/40">Plus</span>
+        <span className="text-[10px] text-text-muted">Plus</span>
       </div>
-
       {/* Tooltip */}
       <AnimatePresence>
         {tooltip !== null && (
@@ -119,7 +117,7 @@ export const HeatMap: React.FC<HeatMapProps> = ({ activities }) => {
             <span className="font-medium">
               {formatDate(grid[tooltip.idx].dateStr)}
             </span>
-            <span className="text-white/50"> — </span>
+            <span className="text-text-muted"> — </span>
             <span>{grid[tooltip.idx].cards_reviewed} cartes</span>
           </motion.div>
         )}
