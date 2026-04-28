@@ -35,6 +35,12 @@ COPY src/ ./src/
 # Without this COPY, isdir() checks in main.py fail silently and mounts never activate.
 COPY static/ ./static/
 
+# Alembic migrations — required to run `alembic upgrade head` inside the container
+# before/after backend rebuild. Without these files we had to `docker cp` them in
+# manually (cf. deployment 2026-04-28 migration 009).
+COPY alembic.ini ./alembic.ini
+COPY alembic/ ./alembic/
+
 WORKDIR /app/src
 
 EXPOSE 8080
