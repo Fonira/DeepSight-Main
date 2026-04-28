@@ -1121,12 +1121,8 @@ if SHARE_ROUTER_AVAILABLE:
 
 # 🌐 Aggregate router (channel/category landing pages for SEO/GEO)
 if AGGREGATE_ROUTER_AVAILABLE:
-    app.include_router(
-        aggregate_router, prefix="/api/aggregate", tags=["Aggregate"]
-    )
-    logger.info(
-        "🌐 Aggregate router loaded (GET /api/aggregate/channels, /channels-render, /channel-render/{slug}, …)"
-    )
+    app.include_router(aggregate_router, prefix="/api/aggregate", tags=["Aggregate"])
+    logger.info("🌐 Aggregate router loaded (GET /api/aggregate/channels, /channels-render, /channel-render/{slug}, …)")
 
 # 📊 Analytics router
 if ANALYTICS_ROUTER_AVAILABLE:

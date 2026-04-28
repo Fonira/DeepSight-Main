@@ -26,9 +26,7 @@ class ChannelInfo:
 
     __slots__ = ("name", "slug", "analyses_count", "total_views")
 
-    def __init__(
-        self, name: str, slug: str, analyses_count: int, total_views: int
-    ) -> None:
+    def __init__(self, name: str, slug: str, analyses_count: int, total_views: int) -> None:
         self.name = name
         self.slug = slug
         self.analyses_count = analyses_count
@@ -77,9 +75,7 @@ class AnalysisRef:
 # ─── Channels ────────────────────────────────────────────────────────────────
 
 
-async def list_channels(
-    db: AsyncSession, *, min_analyses: int = 1, limit: int = 200
-) -> list[ChannelInfo]:
+async def list_channels(db: AsyncSession, *, min_analyses: int = 1, limit: int = 200) -> list[ChannelInfo]:
     """List public channels ranked by number of public analyses, then views.
 
     Only channels with `is_active=true` SharedAnalysis are returned.
@@ -120,9 +116,7 @@ async def list_channels(
     ]
 
 
-async def find_channel_by_slug(
-    db: AsyncSession, slug: str
-) -> Optional[ChannelInfo]:
+async def find_channel_by_slug(db: AsyncSession, slug: str) -> Optional[ChannelInfo]:
     """Resolve a slug to a channel (slug is computed on the fly, not stored)."""
     if not slug:
         return None
@@ -133,9 +127,7 @@ async def find_channel_by_slug(
     return None
 
 
-async def list_analyses_for_channel(
-    db: AsyncSession, channel_name: str, *, limit: int = 50
-) -> list[AnalysisRef]:
+async def list_analyses_for_channel(db: AsyncSession, channel_name: str, *, limit: int = 50) -> list[AnalysisRef]:
     """List public analyses for a given channel, sorted by view_count desc."""
     stmt = (
         select(
@@ -187,18 +179,14 @@ async def list_analyses_for_channel(
 class CategoryInfo:
     __slots__ = ("name", "slug", "analyses_count", "total_views")
 
-    def __init__(
-        self, name: str, slug: str, analyses_count: int, total_views: int
-    ) -> None:
+    def __init__(self, name: str, slug: str, analyses_count: int, total_views: int) -> None:
         self.name = name
         self.slug = slug
         self.analyses_count = analyses_count
         self.total_views = total_views
 
 
-async def list_categories(
-    db: AsyncSession, *, min_analyses: int = 1, limit: int = 100
-) -> list[CategoryInfo]:
+async def list_categories(db: AsyncSession, *, min_analyses: int = 1, limit: int = 100) -> list[CategoryInfo]:
     stmt = (
         select(
             Summary.category.label("category"),
@@ -233,9 +221,7 @@ async def list_categories(
     ]
 
 
-async def find_category_by_slug(
-    db: AsyncSession, slug: str
-) -> Optional[CategoryInfo]:
+async def find_category_by_slug(db: AsyncSession, slug: str) -> Optional[CategoryInfo]:
     if not slug:
         return None
     categories = await list_categories(db, min_analyses=1, limit=1000)
@@ -245,9 +231,7 @@ async def find_category_by_slug(
     return None
 
 
-async def list_analyses_for_category(
-    db: AsyncSession, category_name: str, *, limit: int = 50
-) -> list[AnalysisRef]:
+async def list_analyses_for_category(db: AsyncSession, category_name: str, *, limit: int = 50) -> list[AnalysisRef]:
     stmt = (
         select(
             SharedAnalysis.share_token,
