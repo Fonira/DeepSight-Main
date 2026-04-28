@@ -16,21 +16,26 @@ const renderWithRoute = (path: string) =>
   );
 
 describe("SunflowerLayer", () => {
-  it("renders hero variant on /", () => {
+  it("renders mascot bottom-right on landing /", () => {
     const { container } = renderWithRoute("/");
-    const flower = container.querySelector(".sunflower-hero");
+    const flower = container.querySelector(".sunflower-mascot");
     expect(flower).toBeTruthy();
   });
 
-  it("renders mascot variant on /dashboard", () => {
+  it("renders mascot bottom-right on /dashboard", () => {
     const { container } = renderWithRoute("/dashboard");
     const flower = container.querySelector(".sunflower-mascot");
     expect(flower).toBeTruthy();
   });
 
+  it("never renders a centered hero variant", () => {
+    const { container } = renderWithRoute("/");
+    expect(container.querySelector(".sunflower-hero")).toBeFalsy();
+  });
+
   it("renders an inline SVG (vector, no sprite WebP)", () => {
     const { container } = renderWithRoute("/");
-    const wrap = container.querySelector(".sunflower-hero") as HTMLElement;
+    const wrap = container.querySelector(".sunflower-mascot") as HTMLElement;
     expect(wrap).toBeTruthy();
     expect(wrap.querySelector("svg")).toBeTruthy();
   });

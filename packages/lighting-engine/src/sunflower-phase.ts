@@ -106,23 +106,27 @@ export function getSunflowerPhase(frameIndex: number): SunflowerPhase {
  * Heliotropic rotation in degrees for the SVG `transform: rotate(...)`.
  *
  *   midi (12h) → 0° (vertical, head up)
- *   matin (7h) → -75° (leans east / right)
- *   soir (17h) → +75° (leans west / left)
+ *   matin (7h) → -85° (leans east / right, head almost horizontal)
+ *   soir (17h) → +85° (leans west / left, head almost horizontal)
  *   nuit/extrême → 175° (head down, sleeping)
  *   aube/crépuscule → smooth lift / fall between sleep and active angles
+ *
+ * Amplitude ±85° = courbure héliotropique très visible, le tournesol penche
+ * franchement de gauche à droite au fil de la journée (au lieu de juste
+ * frémir comme avec ±75°).
  */
 export function getSunflowerRotation(frameIndex: number): number {
   const h = ((frameIndex % 24) + 24) % 24;
   if (h < 5 || h >= 20) return 175;
   if (h < 7) {
     const t = (h - 5) / 2;
-    return 175 - t * 250;
+    return 175 - t * 260;
   }
   if (h >= 17) {
     const t = (h - 17) / 3;
-    return 75 + t * 100;
+    return 85 + t * 90;
   }
-  return ((h - 12) / 5) * 75;
+  return ((h - 12) / 5) * 85;
 }
 
 /** Global opacity multiplier driven by the daily curve. */
