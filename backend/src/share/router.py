@@ -312,17 +312,17 @@ async def get_shared_og(
     """
     Returns minimal HTML with OG meta tags for social bot crawlers.
     Used by Vercel rewrite to serve OG tags for /s/:token URLs.
+
+    Returns 404 if the token never existed, 410 Gone if it existed but has
+    been revoked — letting Google deindex revoked pages faster.
     """
-    result = await session.execute(
-        select(SharedAnalysis).where(
-            SharedAnalysis.share_token == share_token,
-            SharedAnalysis.is_active,
-        )
-    )
+    result = await session.execute(select(SharedAnalysis).where(SharedAnalysis.share_token == share_token))
     shared = result.scalar_one_or_none()
 
     if not shared:
         raise HTTPException(status_code=404, detail="Shared analysis not found")
+    if not shared.is_active:
+        raise HTTPException(status_code=410, detail="Shared analysis revoked")
 
     html = _build_og_html(shared, share_token)
     return HTMLResponse(content=html)
@@ -336,17 +336,15 @@ async def get_share_og_image(
     """Dynamic 1200×630 OG image for social previews.
 
     Cached 1h client-side + 24h on CDN edge to avoid re-rendering for each
-    bot fetch. Falls back to 404 if share doesn't exist or has been revoked.
+    bot fetch. Returns 404 if the token never existed, 410 Gone if it
+    existed but has been revoked — letting Google deindex revoked pages.
     """
-    result = await session.execute(
-        select(SharedAnalysis).where(
-            SharedAnalysis.share_token == token,
-            SharedAnalysis.is_active.is_(True),
-        )
-    )
+    result = await session.execute(select(SharedAnalysis).where(SharedAnalysis.share_token == token))
     share: Optional[SharedAnalysis] = result.scalar_one_or_none()
     if not share:
         raise HTTPException(status_code=404, detail="Share not found")
+    if not share.is_active:
+        raise HTTPException(status_code=410, detail="Share revoked")
 
     try:
         snapshot = json.loads(share.analysis_snapshot or "{}")
@@ -383,18 +381,16 @@ async def get_share_page(
     - Fallback for users whose frontend SPA fails to load.
     - Direct links from email/SMS/QR where rich preview matters.
 
-    Returns 404 if token is unknown or share has been revoked.
+    Returns 404 if the token never existed, 410 Gone if it existed but has
+    been revoked — letting Google deindex revoked pages faster.
     Increments view_count on each call (best-effort, non-blocking).
     """
-    result = await session.execute(
-        select(SharedAnalysis).where(
-            SharedAnalysis.share_token == token,
-            SharedAnalysis.is_active.is_(True),
-        )
-    )
+    result = await session.execute(select(SharedAnalysis).where(SharedAnalysis.share_token == token))
     share: Optional[SharedAnalysis] = result.scalar_one_or_none()
     if not share:
-        raise HTTPException(status_code=404, detail="Share not found or revoked")
+        raise HTTPException(status_code=404, detail="Share not found")
+    if not share.is_active:
+        raise HTTPException(status_code=410, detail="Share revoked")
 
     try:
         snapshot = json.loads(share.analysis_snapshot or "{}")
