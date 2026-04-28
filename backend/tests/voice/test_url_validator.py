@@ -40,6 +40,13 @@ class TestParseVideoURL:
             "not a url",
             "",
             "ftp://youtube.com/watch?v=dQw4w9WgXcQ",  # mauvais scheme
+            # TikTok non-video pages
+            "https://www.tiktok.com/discover",
+            "https://www.tiktok.com/explore",
+            "https://www.tiktok.com/@user",  # profile without /video/
+            "https://www.tiktok.com/foo/bar",  # random 2-segment
+            # YouTube hostname must be lowercase
+            "https://YouTube.com/watch?v=dQw4w9WgXcQ",
         ],
     )
     def test_parse_invalid_urls_raises(self, url):
