@@ -95,3 +95,32 @@ async def test_trending_skips_excluded():
         theme="t", trending_service=trending_mock, excluded_video_ids={"ex"}
     )
     assert reco.video_id == "ok"
+
+
+@pytest.mark.asyncio
+async def test_tournesol_returns_top_score():
+    tournesol_mock = AsyncMock()
+    tournesol_mock.recommend.return_value = [
+        {"video_id": "to1", "title": "Top Tournesol", "channel": "C",
+         "duration": 600, "score": 89.4, "thumbnail": "https://t.jpg"},
+    ]
+    from voice.companion_recos import fetch_tournesol_reco
+    reco = await fetch_tournesol_reco(
+        theme="philosophie",
+        tournesol_service=tournesol_mock,
+        excluded_video_ids=set(),
+    )
+    assert reco.video_id == "to1"
+    assert reco.source == "tournesol"
+    assert "tournesol" in reco.why.lower() or "top" in reco.why.lower()
+
+
+@pytest.mark.asyncio
+async def test_tournesol_api_error_returns_none():
+    from voice.companion_recos import fetch_tournesol_reco
+    tournesol_mock = AsyncMock()
+    tournesol_mock.recommend.side_effect = Exception("API down")
+    reco = await fetch_tournesol_reco(
+        theme="t", tournesol_service=tournesol_mock, excluded_video_ids=set()
+    )
+    assert reco is None
