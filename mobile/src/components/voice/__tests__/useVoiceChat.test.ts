@@ -644,4 +644,85 @@ describe("useVoiceChat", () => {
       expect(result.current.conversation).toBe(mockConversation);
     });
   });
+
+  describe("Quick Voice Call mobile V3 — start({ videoUrl }) streaming mode", () => {
+    it("transmet video_url + agent_type=explorer_streaming au backend", async () => {
+      const { result } = renderHook(() => useVoiceChat({}));
+
+      await act(async () => {
+        await result.current.start({ videoUrl: "https://youtu.be/abc12345678" });
+      });
+
+      expect(mockCreateSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          video_url: "https://youtu.be/abc12345678",
+          agent_type: "explorer_streaming",
+          language: "fr",
+        }),
+      );
+    });
+
+    it("force agent_type=explorer_streaming même si agentType=companion fourni", async () => {
+      const { result } = renderHook(() =>
+        useVoiceChat({ agentType: "companion" }),
+      );
+
+      await act(async () => {
+        await result.current.start({
+          videoUrl: "https://youtu.be/abc12345678",
+        });
+      });
+
+      expect(mockCreateSession).toHaveBeenCalledWith(
+        expect.objectContaining({ agent_type: "explorer_streaming" }),
+      );
+    });
+
+    it("expose summaryId quand backend retourne summary_id", async () => {
+      mockCreateSession.mockResolvedValueOnce({
+        ...defaultSessionResponse,
+        summary_id: 123,
+      });
+      const { result } = renderHook(() => useVoiceChat({}));
+
+      await act(async () => {
+        await result.current.start({
+          videoUrl: "https://youtu.be/abc12345678",
+        });
+      });
+
+      expect(result.current.summaryId).toBe(123);
+    });
+
+    it("summaryId reste null quand backend ne retourne pas summary_id", async () => {
+      const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+      await act(async () => {
+        await result.current.start();
+      });
+
+      expect(result.current.summaryId).toBeNull();
+    });
+
+    it("summaryId persiste après stop() (pour PostCallScreen)", async () => {
+      mockCreateSession.mockResolvedValueOnce({
+        ...defaultSessionResponse,
+        summary_id: 456,
+      });
+      const { result } = renderHook(() => useVoiceChat({}));
+
+      await act(async () => {
+        await result.current.start({
+          videoUrl: "https://youtu.be/abc12345678",
+        });
+      });
+      expect(result.current.summaryId).toBe(456);
+
+      await act(async () => {
+        await result.current.stop();
+      });
+
+      expect(result.current.summaryId).toBe(456);
+    });
+  });
 });

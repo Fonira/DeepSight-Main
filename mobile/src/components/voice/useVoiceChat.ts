@@ -26,7 +26,11 @@ import { voiceApi } from "../../services/api";
 // Types
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type VoiceAgentType = "explorer" | "companion" | "debate_moderator";
+type VoiceAgentType =
+  | "explorer"
+  | "companion"
+  | "debate_moderator"
+  | "explorer_streaming";
 
 interface UseVoiceChatOptions {
   /**
@@ -38,9 +42,19 @@ interface UseVoiceChatOptions {
    * Type d'agent backend. Default :
    *   - `explorer` si summaryId présent
    *   - `companion` sinon
+   *   - `explorer_streaming` si `start({ videoUrl })` est appelé
    */
   agentType?: VoiceAgentType;
   onError?: (error: string) => void;
+}
+
+/**
+ * Quick Voice Call mobile V3 — options de `start()`.
+ * Si `videoUrl` est fourni, le backend crée un Summary placeholder et passe
+ * en mode `explorer_streaming` (sections progressives via SSE).
+ */
+interface StartOptions {
+  videoUrl?: string;
 }
 
 type VoiceChatStatus =
@@ -66,11 +80,19 @@ interface SessionResponse {
   expires_at: string;
   quota_remaining_minutes: number;
   max_session_minutes: number;
+  /** Quick Voice Call mobile V3 — id du Summary créé quand `video_url` fourni. */
+  summary_id?: number;
 }
 
 interface UseVoiceChatReturn {
-  /** Démarrer la conversation */
-  start: () => Promise<void>;
+  /**
+   * Démarrer la conversation.
+   *
+   * Quick Voice Call mobile V3 : si `opts.videoUrl` est fourni, le backend
+   * crée un Summary placeholder et passe en mode `explorer_streaming`. Le
+   * `summaryId` retourné est exposé via `summaryId` après l'appel.
+   */
+  start: (opts?: StartOptions) => Promise<void>;
   /** Arrêter la conversation */
   stop: () => Promise<void>;
   /** Toggle mute micro */
@@ -106,6 +128,12 @@ interface UseVoiceChatReturn {
    * depuis `useStreamingVideoContext`.
    */
   conversation: ReturnType<typeof useConversation>;
+  /**
+   * Quick Voice Call mobile V3 — id du Summary créé par le backend quand
+   * `start({ videoUrl })` est appelé. `null` sinon. Utilisé par PostCallScreen
+   * pour rediriger vers l'analyse complète.
+   */
+  summaryId: number | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -135,7 +163,7 @@ const ERROR_MESSAGES = {
 export function useVoiceChat(
   options: UseVoiceChatOptions = {},
 ): UseVoiceChatReturn {
-  const { summaryId, agentType, onError } = options;
+  const { summaryId: optSummaryId, agentType, onError } = options;
   const [status, setStatus] = useState<VoiceChatStatus>("idle");
   const [isMuted, setIsMuted] = useState(false);
   const [messages, setMessages] = useState<VoiceChatMessage[]>([]);
@@ -145,6 +173,10 @@ export function useVoiceChat(
   // Quick Voice Call mobile V3 — sessionId exposé en state (pas juste ref)
   // pour permettre à `useStreamingVideoContext` de réagir à son changement.
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // Quick Voice Call mobile V3 — summary_id renvoyé par le backend quand
+  // `start({ videoUrl })` est appelé. Utilisé par PostCallScreen pour
+  // rediriger vers l'analyse complète.
+  const [summaryId, setSummaryId] = useState<number | null>(null);
 
   // Refs pour le cleanup
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -279,6 +311,8 @@ export function useVoiceChat(
     sessionIdRef.current = null;
     sessionStartedAtRef.current = 0;
     // Quick Voice Call mobile V3 — purge sessionId state pour fermer le SSE.
+    // Note : on garde `summaryId` pour permettre à PostCallScreen de
+    // rediriger vers l'analyse complète après le hangup.
     if (isMountedRef.current) {
       setSessionId(null);
     }
@@ -288,7 +322,7 @@ export function useVoiceChat(
   // start()
   // ─────────────────────────────────────────────────────────────────────────
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (opts?: StartOptions) => {
     // Empêcher les démarrages multiples
     if (
       status === "connecting" ||
@@ -327,19 +361,28 @@ export function useVoiceChat(
     try {
       // summaryId optionnel : présent → mode explorer, absent → mode companion
       let numericId: number | undefined;
-      if (summaryId !== undefined && summaryId !== null && summaryId !== "") {
-        numericId = parseInt(summaryId, 10);
+      if (
+        optSummaryId !== undefined &&
+        optSummaryId !== null &&
+        optSummaryId !== ""
+      ) {
+        numericId = parseInt(optSummaryId, 10);
         if (isNaN(numericId)) {
           reportError(ERROR_MESSAGES.SESSION_FAILED);
           return;
         }
       }
 
-      const resolvedAgentType: VoiceAgentType =
-        agentType ?? (numericId !== undefined ? "explorer" : "companion");
+      // Quick Voice Call mobile V3 : si videoUrl fourni → mode streaming
+      // (le backend crée un Summary placeholder et lance l'analyse en background).
+      const videoUrl = opts?.videoUrl;
+      const resolvedAgentType: VoiceAgentType = videoUrl
+        ? "explorer_streaming"
+        : (agentType ?? (numericId !== undefined ? "explorer" : "companion"));
 
       sessionData = (await voiceApi.createSession({
         summary_id: numericId,
+        video_url: videoUrl,
         agent_type: resolvedAgentType,
         language: "fr",
       })) as SessionResponse;
@@ -350,9 +393,12 @@ export function useVoiceChat(
       // calculer time_in_call_secs lors de chaque appendTranscript.
       sessionIdRef.current = sessionData.session_id;
       sessionStartedAtRef.current = Date.now();
-      // Quick Voice Call mobile V3 — expose sessionId en state pour SSE.
+      // Quick Voice Call mobile V3 — expose sessionId + summaryId en state.
       if (isMountedRef.current) {
         setSessionId(sessionData.session_id);
+        if (sessionData.summary_id !== undefined) {
+          setSummaryId(sessionData.summary_id);
+        }
       }
     } catch (err: unknown) {
       // Vérifier si c'est une erreur de quota (403/429)
@@ -421,7 +467,15 @@ export function useVoiceChat(
     } catch {
       reportError(ERROR_MESSAGES.SDK_INIT_FAILED);
     }
-  }, [status, summaryId, agentType, onError, reportError, stop, conversation]);
+  }, [
+    status,
+    optSummaryId,
+    agentType,
+    onError,
+    reportError,
+    stop,
+    conversation,
+  ]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // sendUserMessage() — Spec #3 (sync chat texte → voix)
@@ -535,5 +589,6 @@ export function useVoiceChat(
     error,
     sessionId,
     conversation,
+    summaryId,
   };
 }
