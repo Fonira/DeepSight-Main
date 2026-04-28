@@ -2608,6 +2608,33 @@ export interface VoiceThumbnailResponse {
   alt_text: string;
 }
 
+export interface CompanionRecoItem {
+  video_id: string;
+  title: string;
+  channel: string;
+  duration_seconds: number;
+  source: "history_similarity" | "trending" | "tournesol" | "youtube";
+  why: string;
+  thumbnail_url?: string | null;
+}
+
+export interface CompanionProfile {
+  prenom: string;
+  plan: string;
+  langue: string;
+  total_analyses: number;
+  recent_titles: string[];
+  themes: string[];
+  streak_days: number;
+  flashcards_due_today: number;
+}
+
+export interface CompanionContext {
+  profile: CompanionProfile;
+  initial_recos: CompanionRecoItem[];
+  cache_hit: boolean;
+}
+
 export const voiceApi = {
   /**
    * 🎙️ Récupère le quota vocal de l'utilisateur
@@ -2615,6 +2642,18 @@ export const voiceApi = {
    */
   async getQuota(): Promise<VoiceQuota> {
     return request("/api/voice/quota");
+  },
+
+  /**
+   * 🎙️ Récupère le contexte enrichi pour l'agent COMPANION (page Appel Vocal)
+   * Profile compact + 3 recos pré-fetchées. Cache Redis 1h côté backend.
+   * Endpoint: GET /api/voice/companion-context
+   */
+  async getCompanionContext(
+    opts: { refresh?: boolean } = {},
+  ): Promise<CompanionContext> {
+    const qs = opts.refresh ? "?refresh=true" : "";
+    return request(`/api/voice/companion-context${qs}`);
   },
 
   /**
