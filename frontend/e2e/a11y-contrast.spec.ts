@@ -31,6 +31,10 @@ for (const route of PUBLIC_ROUTES) {
   }) => {
     await page.goto(route.path);
     await page.waitForLoadState("networkidle");
+    // Wait for Framer Motion entrance animations to complete — otherwise
+    // axe-core reads the "computed" color of elements still at opacity:0
+    // and reports false-positive contrast violations.
+    await page.waitForTimeout(1500);
 
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2aa", "wcag2aaa"])
