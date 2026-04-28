@@ -73,3 +73,29 @@ async def fetch_trending_reco(
                 thumbnail_url=item.get("thumbnail"),
             )
     return None
+
+
+async def fetch_tournesol_reco(
+    theme: str,
+    tournesol_service,
+    excluded_video_ids: set[str],
+) -> Optional[RecoItem]:
+    """Reco issue de l'API Tournesol sur thème user."""
+    try:
+        items = await tournesol_service.recommend(theme=theme, limit=5)
+    except Exception as exc:
+        logger.warning("tournesol fetch failed (theme=%s): %s", theme, exc)
+        return None
+
+    for item in items or []:
+        if item["video_id"] not in excluded_video_ids:
+            return RecoItem(
+                video_id=item["video_id"],
+                title=item["title"],
+                channel=item["channel"],
+                duration_seconds=item.get("duration", 0),
+                source="tournesol",
+                why=f"Top score Tournesol sur {theme}",
+                thumbnail_url=item.get("thumbnail"),
+            )
+    return None
