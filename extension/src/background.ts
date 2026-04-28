@@ -947,6 +947,23 @@ async function handleExtensionMessage(
       }
     }
 
+    case "GET_AUTH_TOKEN": {
+      // Side panel/content scripts ne peuvent pas lire les tokens directement
+      // (storage.local n'est accessible qu'au SW pour des raisons de sécurité
+      // de notre architecture). On expose le access_token courant pour les
+      // cas où il faut l'attacher à une URL (ex: EventSource SSE qui ne peut
+      // pas envoyer de header Authorization).
+      try {
+        const { accessToken } = await getStoredTokens();
+        if (!accessToken) {
+          return { success: false, error: "Not authenticated" };
+        }
+        return { success: true, result: { token: accessToken } };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
     case "OPEN_POPUP": {
       Browser.action.setBadgeText({ text: "!" });
       Browser.action.setBadgeBackgroundColor({ color: "#6366f1" });

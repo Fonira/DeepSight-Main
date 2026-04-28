@@ -18,13 +18,16 @@ import logging
 from datetime import datetime
 
 import stripe
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from typing import Optional
 
 from db.database import get_session, VoiceSession, Summary, User, DebateAnalysis
-from auth.dependencies import get_current_user
+from auth.dependencies import get_current_user, http_bearer, oauth2_scheme
+from auth.service import verify_token, get_user_by_id
 from core.config import (
     VOICE_LIMITS,
     APP_URL,
@@ -179,10 +182,67 @@ async def _get_voice_session(session_id: str, db: AsyncSession) -> VoiceSession 
     return result.scalar_one_or_none()
 
 
+async def _get_user_for_sse(
+    token: Optional[str] = Query(
+        None,
+        description=(
+            "JWT token via query param. EventSource (browser SSE) ne peut pas "
+            "envoyer de header Authorization, donc on accepte le token en URL "
+            "comme fallback. Le header Authorization reste prioritaire."
+        ),
+    ),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
+    bearer_token: Optional[str] = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_session),
+) -> User:
+    """SSE-friendly auth dependency.
+
+    Variant of `get_current_user` qui accepte le JWT via query param `?token=`
+    en plus du header Authorization. Skip session_token validation et rate
+    limiting (le SSE est read-only et déjà protégé par le check IDOR
+    session.user_id == user.id en aval).
+    """
+    actual_token = None
+    if credentials:
+        actual_token = credentials.credentials
+    elif bearer_token:
+        actual_token = bearer_token
+    elif token:
+        actual_token = token
+
+    if not actual_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "not_authenticated", "message": "Authentication required."},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = verify_token(actual_token, token_type="access")
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "token_invalid", "message": "Invalid or expired token."},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    sub = payload.get("sub")
+    if sub is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+    try:
+        user_id = int(sub)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return user
+
+
 @router.get("/context/stream")
 async def stream_video_context(
     session_id: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(_get_user_for_sse),
     db: AsyncSession = Depends(get_session),
     redis=Depends(get_streaming_redis),
 ) -> StreamingResponse:

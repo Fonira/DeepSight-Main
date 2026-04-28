@@ -190,7 +190,8 @@ export type MessageAction =
   | "VOICE_GET_PREFERENCES"
   | "VOICE_UPDATE_PREFERENCES"
   | "VOICE_GET_CATALOG"
-  | "GET_VOICE_BUTTON_STATE";
+  | "GET_VOICE_BUTTON_STATE"
+  | "GET_AUTH_TOKEN";
 
 export interface ExtensionMessage {
   action: MessageAction;

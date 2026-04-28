@@ -230,7 +230,9 @@
       "mute": "🔇 Mute",
       "hangup": "📞 Hang up",
       "muteAriaLabel": "Mute microphone",
-      "hangupAriaLabel": "End call"
+      "hangupAriaLabel": "End call",
+      "settingsAriaLabel": "Voice settings",
+      "applyingSettings": "Applying settings…"
     },
     "ctxBar": {
       "inProgress": "Analyzing · {percent}% of transcript received",

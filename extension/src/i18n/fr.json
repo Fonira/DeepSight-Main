@@ -230,7 +230,9 @@
       "mute": "🔇 Mute",
       "hangup": "📞 Raccrocher",
       "muteAriaLabel": "Couper le micro",
-      "hangupAriaLabel": "Terminer l'appel"
+      "hangupAriaLabel": "Terminer l'appel",
+      "settingsAriaLabel": "Réglages voix",
+      "applyingSettings": "Réapplication des réglages…"
     },
     "ctxBar": {
       "inProgress": "Analyse en cours · {percent}% du transcript reçu",
