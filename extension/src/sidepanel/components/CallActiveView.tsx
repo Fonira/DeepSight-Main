@@ -14,6 +14,8 @@ import { useTranslation } from "../../i18n/useTranslation";
 import { VoiceSettingsDrawer } from "../VoiceSettingsDrawer";
 import { useVoiceSettings } from "../useVoiceSettings";
 import type { VoicePreferencesShape } from "../voiceMessages";
+import type { VoiceTranscript } from "../types";
+import { VoiceTranscriptList } from "./VoiceTranscriptList";
 
 interface Props {
   elapsedSec: number;
@@ -28,6 +30,12 @@ interface Props {
   onApplyHardChanges?: (changed: Partial<VoicePreferencesShape>) => void;
   /** True si un restart est en cours (affiche un indicateur pulse). */
   restarting?: boolean;
+  /**
+   * Transcripts collectés via le callback `onMessage` du SDK ElevenLabs.
+   * Affichés en chat-style (bulles user/agent) entre la waveform et le
+   * footer Mute/Raccrocher. Optionnel — défaut [] pour rétrocompat tests.
+   */
+  transcripts?: VoiceTranscript[];
 }
 
 export function CallActiveView({
@@ -36,6 +44,7 @@ export function CallActiveView({
   onHangup,
   onApplyHardChanges,
   restarting = false,
+  transcripts = [],
 }: Props): JSX.Element {
   const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -81,6 +90,7 @@ export function CallActiveView({
           <span key={i} style={{ height: `${h}%` }} />
         ))}
       </div>
+      <VoiceTranscriptList transcripts={transcripts} />
       <footer className="ds-call-active__footer">
         <button
           type="button"

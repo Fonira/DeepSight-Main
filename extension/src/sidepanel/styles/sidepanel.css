@@ -2266,8 +2266,92 @@ a:hover {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 56px;
+  height: 32px;
   padding: 0 8px;
+}
+
+/* ═══════════════════════════════════════════════════
+   VOICE TRANSCRIPT LIST — chat-style during call (V1.1)
+   ═══════════════════════════════════════════════════ */
+
+.ds-voice-transcript-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 8px 4px;
+  margin: 4px 0 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.ds-voice-transcript-list::-webkit-scrollbar {
+  width: 6px;
+}
+.ds-voice-transcript-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ds-voice-transcript-list::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+.ds-voice-transcript-list--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  max-height: 80px;
+}
+
+.ds-voice-transcript-empty {
+  color: var(--text-tertiary);
+  font-style: italic;
+  font-size: 13px;
+  text-align: center;
+  margin: 0;
+  padding: 0 16px;
+  line-height: 1.4;
+}
+
+.ds-voice-transcript-msg {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.ds-voice-transcript-msg__icon {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.ds-voice-transcript-msg__content {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+}
+
+.ds-voice-transcript-msg--user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.ds-voice-transcript-msg--agent {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .ds-call-active__waveform > span {

@@ -269,6 +269,7 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
             void voiceChat.restartSession();
           }}
           restarting={voiceChat.isRestarting}
+          transcripts={voiceChat.transcripts}
         />
         <ContextProgressBar
           progress={contextProgress}
