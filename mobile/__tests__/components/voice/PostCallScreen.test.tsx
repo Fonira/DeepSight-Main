@@ -8,6 +8,16 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 
+jest.mock("../../../src/contexts/ThemeContext", () => ({
+  useTheme: () => ({
+    colors: {
+      bgPrimary: "#0a0a0f",
+      textPrimary: "#ffffff",
+      textMuted: "#888888",
+    },
+  }),
+}));
+
 jest.mock("@expo/vector-icons", () => ({
   Ionicons: "Ionicons",
 }));

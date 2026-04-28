@@ -40,6 +40,14 @@ import { palette } from "@/theme/colors";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
 import { TournesolRecommendations } from "@/components/tournesol/TournesolRecommendations";
 import { DeepSightSpinner } from "@/components/ui/DeepSightSpinner";
+// Quick Voice Call mobile V3
+import { useClipboardURLDetector } from "@/hooks/useClipboardURLDetector";
+import { useDeepLinkURL } from "@/hooks/useDeepLinkURL";
+import { validateVideoURL } from "@/utils/validateVideoURL";
+import { useVoiceChat } from "@/components/voice/useVoiceChat";
+import { useStreamingVideoContext } from "@/components/voice/useStreamingVideoContext";
+import { VoiceScreen } from "@/components/voice/VoiceScreen";
+import { PostCallScreen } from "@/components/voice/PostCallScreen";
 
 // Platform logos HD
 const YOUTUBE_ICON = require("@/assets/platforms/youtube-icon-red.png");
@@ -70,6 +78,58 @@ export default function HomeScreen() {
   const [tournesolRefreshKey, setTournesolRefreshKey] = useState(0);
   const [quickChatUrl, setQuickChatUrl] = useState("");
   const [quickChatLoading, setQuickChatLoading] = useState(false);
+
+  // ─── Quick Voice Call mobile V3 ────────────────────────────────────────────
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [postCallOpen, setPostCallOpen] = useState(false);
+  const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+  const { clipboardURL, dismiss: dismissClipboard } = useClipboardURLDetector();
+  const voice = useVoiceChat({});
+  const ctx = useStreamingVideoContext(voice.sessionId, voice.conversation);
+
+  const handleVoiceCall = useCallback(
+    async (videoUrl: string) => {
+      if (!validateVideoURL(videoUrl)) {
+        Alert.alert(
+          "Source non supportée",
+          "Le Voice Call accepte uniquement YouTube et TikTok.",
+        );
+        return;
+      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      Keyboard.dismiss();
+      setActiveVideoUrl(videoUrl);
+      setVoiceOpen(true);
+      dismissClipboard();
+      try {
+        await voice.start({ videoUrl });
+      } catch {
+        // useVoiceChat reporte déjà l'erreur via `voice.error`.
+      }
+    },
+    [voice, dismissClipboard],
+  );
+
+  // Deep link `deepsight://voice-call?url=...&autostart=true` → autostart
+  useDeepLinkURL(
+    useCallback(
+      (deepUrl: string, autostart: boolean) => {
+        setQuickChatUrl(deepUrl);
+        if (autostart) {
+          handleVoiceCall(deepUrl);
+        }
+      },
+      [handleVoiceCall],
+    ),
+  );
+
+  // Auto-show PostCallScreen quand voice idle après une session active
+  useEffect(() => {
+    if (voice.status === "idle" && voice.messages.length > 0 && voiceOpen) {
+      setVoiceOpen(false);
+      setPostCallOpen(true);
+    }
+  }, [voice.status, voice.messages.length, voiceOpen]);
 
   // Quick Chat handler
   const handleQuickChat = useCallback(async () => {
@@ -386,6 +446,27 @@ export default function HomeScreen() {
         {/* Credit Bar */}
         <CreditBar />
 
+        {/* Clipboard Banner (Quick Voice Call mobile V3) */}
+        {clipboardURL && (
+          <Pressable
+            onPress={() => handleVoiceCall(clipboardURL)}
+            style={styles.clipboardBanner}
+            accessibilityLabel="Lien détecté dans le presse-papier — appuie pour appeler"
+            accessibilityRole="button"
+          >
+            <Text style={styles.clipboardLabel}>
+              📋 LIEN DÉTECTÉ DANS LE PRESSE-PAPIER
+            </Text>
+            <Text
+              style={[styles.clipboardURL, { color: colors.textPrimary }]}
+              numberOfLines={1}
+            >
+              {clipboardURL.replace(/^https?:\/\//, "")}
+            </Text>
+            <Text style={styles.clipboardHint}>Tape pour appeler →</Text>
+          </Pressable>
+        )}
+
         {/* Quick Chat Block */}
         <View
           style={[
@@ -460,6 +541,32 @@ export default function HomeScreen() {
                 />
               )}
             </Pressable>
+            {/* Voice Call CTA — Quick Voice Call mobile V3 */}
+            <Pressable
+              style={[
+                styles.quickChatBtn,
+                {
+                  backgroundColor: validateVideoURL(quickChatUrl.trim())
+                    ? palette.gold
+                    : colors.bgSecondary,
+                  marginLeft: sp.xs,
+                },
+              ]}
+              onPress={() => handleVoiceCall(quickChatUrl.trim())}
+              disabled={!validateVideoURL(quickChatUrl.trim())}
+              accessibilityLabel="Appeler la vidéo en vocal"
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="mic"
+                size={18}
+                color={
+                  validateVideoURL(quickChatUrl.trim())
+                    ? "#fff"
+                    : colors.textMuted
+                }
+              />
+            </Pressable>
           </View>
         </View>
 
@@ -492,6 +599,56 @@ export default function HomeScreen() {
 
       {/* Options Bottom Sheet */}
       <OptionsSheet ref={optionsRef} onClose={handleOptionsClose} />
+
+      {/* Quick Voice Call mobile V3 — VoiceScreen streaming */}
+      <VoiceScreen
+        visible={voiceOpen}
+        onClose={() => {
+          voice.stop();
+          setVoiceOpen(false);
+        }}
+        videoTitle={activeVideoUrl ?? ""}
+        voiceStatus={voice.status}
+        isSpeaking={voice.isSpeaking}
+        messages={voice.messages}
+        elapsedSeconds={voice.elapsedSeconds}
+        remainingMinutes={voice.remainingMinutes}
+        onStart={() => {
+          if (activeVideoUrl) voice.start({ videoUrl: activeVideoUrl });
+        }}
+        onStop={() => {
+          voice.stop();
+        }}
+        onMuteToggle={voice.toggleMute}
+        isMuted={voice.isMuted}
+        error={voice.error ?? undefined}
+        streaming={true}
+        contextProgress={ctx.contextProgress}
+        contextComplete={ctx.contextComplete}
+      />
+
+      {/* Quick Voice Call mobile V3 — PostCallScreen */}
+      <PostCallScreen
+        visible={postCallOpen}
+        onClose={() => setPostCallOpen(false)}
+        videoTitle={activeVideoUrl ?? ""}
+        summaryId={voice.summaryId ?? undefined}
+        durationSeconds={voice.elapsedSeconds}
+        messages={voice.messages}
+        quotaRemaining={voice.remainingMinutes}
+        onViewAnalysis={(id) => {
+          setPostCallOpen(false);
+          router.push({
+            pathname: "/(tabs)/analysis/[id]",
+            params: { id: String(id), backTo: "home" },
+          } as never);
+        }}
+        onCallAnother={() => {
+          setPostCallOpen(false);
+          setQuickChatUrl("");
+          setActiveVideoUrl(null);
+        }}
+      />
     </View>
   );
 }
@@ -615,6 +772,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: sp.md,
     marginTop: sp.lg,
+  },
+  // Quick Voice Call mobile V3 — clipboard banner
+  clipboardBanner: {
+    backgroundColor: "rgba(200, 144, 58, 0.08)",
+    borderColor: "rgba(200, 144, 58, 0.4)",
+    borderWidth: 1.5,
+    borderRadius: borderRadius.md,
+    padding: sp.md,
+    marginTop: sp.lg,
+  },
+  clipboardLabel: {
+    fontSize: 10,
+    color: palette.gold,
+    fontFamily: fontFamily.bodyBold,
+    letterSpacing: 1,
+  },
+  clipboardURL: {
+    fontSize: fontSize.base,
+    marginTop: sp.xs,
+  },
+  clipboardHint: {
+    fontSize: fontSize.xs,
+    color: palette.gold,
+    marginTop: sp.sm,
   },
   quickChatHeader: {
     flexDirection: "row",

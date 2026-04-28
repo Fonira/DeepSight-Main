@@ -16,8 +16,10 @@
  */
 
 import { useEffect, useState } from "react";
-import EventSource from "react-native-sse";
+import EventSource, { type CustomEvent } from "react-native-sse";
 import { API_BASE_URL, getAuthHeaders } from "../../services/api";
+
+type SSEEvent = "transcript_chunk" | "analysis_partial" | "ctx_complete";
 
 interface ConversationLike {
   sendUserMessage?: (text: string) => void;
@@ -41,7 +43,7 @@ export function useStreamingVideoContext(
     if (!sessionId) return;
 
     let cancelled = false;
-    let es: ReturnType<typeof EventSource> | null = null;
+    let es: EventSource<SSEEvent> | null = null;
 
     (async () => {
       const headers = await getAuthHeaders();
@@ -50,11 +52,13 @@ export function useStreamingVideoContext(
       const url = `${API_BASE_URL}/api/voice/context/stream?session_id=${encodeURIComponent(
         sessionId,
       )}`;
-      es = new EventSource(url, { headers });
+      es = new EventSource<SSEEvent>(url, { headers });
 
-      es.addEventListener("transcript_chunk", (e: { data: string }) => {
+      const dataOf = (e: CustomEvent<SSEEvent>): string => e.data ?? "";
+
+      es.addEventListener("transcript_chunk", (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const data = JSON.parse(dataOf(e as CustomEvent<SSEEvent>));
           conversation.sendUserMessage?.(
             `[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`,
           );
@@ -64,9 +68,9 @@ export function useStreamingVideoContext(
         }
       });
 
-      es.addEventListener("analysis_partial", (e: { data: string }) => {
+      es.addEventListener("analysis_partial", (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const data = JSON.parse(dataOf(e as CustomEvent<SSEEvent>));
           conversation.sendUserMessage?.(
             `[CTX UPDATE: analysis - ${data.section}]\n${data.content}`,
           );
@@ -76,9 +80,9 @@ export function useStreamingVideoContext(
         }
       });
 
-      es.addEventListener("ctx_complete", (e: { data: string }) => {
+      es.addEventListener("ctx_complete", (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const data = JSON.parse(dataOf(e as CustomEvent<SSEEvent>));
           conversation.sendUserMessage?.(
             `[CTX COMPLETE]\nFinal digest: ${data.final_digest_summary}`,
           );

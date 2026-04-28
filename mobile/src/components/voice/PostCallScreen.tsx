@@ -24,6 +24,7 @@ import { palette } from "../../theme/colors";
 import { sp, borderRadius } from "../../theme/spacing";
 import { fontFamily, fontSize } from "../../theme/typography";
 import { shadows } from "../../theme/shadows";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface VoiceMessage {
   text: string;
@@ -61,22 +62,26 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
   quotaRemaining,
   onViewAnalysis,
   onCallAnother,
-}) => (
+}) => {
+  const { colors } = useTheme();
+  return (
   <Modal
     visible={visible}
     animationType="slide"
     presentationStyle="formSheet"
     onRequestClose={onClose}
   >
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
       <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={12}>
-        <Ionicons name="close" size={28} color={palette.textPrimary} />
+        <Ionicons name="close" size={28} color={colors.textPrimary} />
       </Pressable>
 
       <View style={styles.header}>
         <Text style={styles.headerLabel}>✓ Appel terminé</Text>
-        <Text style={styles.title}>{videoTitle}</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          {videoTitle}
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>
           {channelName ? `${channelName} · ` : ""}
           {formatTime(durationSeconds)}
         </Text>
@@ -91,7 +96,9 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
       )}
 
       <View style={styles.transcriptSection}>
-        <Text style={styles.sectionLabel}>TRANSCRIPT</Text>
+        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+          TRANSCRIPT
+        </Text>
         <FlashList
           data={messages}
           keyExtractor={(_, i) => String(i)}
@@ -102,10 +109,12 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
                 item.source === "user" ? styles.userBubble : styles.aiBubble,
               ]}
             >
-              <Text style={styles.bubbleAuthor}>
+              <Text style={[styles.bubbleAuthor, { color: colors.textMuted }]}>
                 {item.source === "user" ? "Toi" : "Agent"}
               </Text>
-              <Text style={styles.bubbleText}>{item.text}</Text>
+              <Text style={[styles.bubbleText, { color: colors.textPrimary }]}>
+                {item.text}
+              </Text>
             </View>
           )}
         />
@@ -136,17 +145,19 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
           ]}
           onPress={onCallAnother}
         >
-          <Text style={styles.secondaryCtaText}>Appeler une autre vidéo</Text>
+          <Text style={[styles.secondaryCtaText, { color: colors.textPrimary }]}>
+            Appeler une autre vidéo
+          </Text>
         </Pressable>
       </View>
     </View>
   </Modal>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: palette.bgPrimary,
     padding: sp.lg,
     paddingTop: Platform.OS === "ios" ? sp["3xl"] : sp.lg,
   },
@@ -166,13 +177,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xl,
-    color: palette.textPrimary,
     fontFamily: fontFamily.bodyBold,
     marginBottom: sp.xs,
   },
   subtitle: {
     fontSize: fontSize.sm,
-    color: palette.textMuted,
   },
   upgradeBanner: {
     backgroundColor: "rgba(239,68,68,0.1)",
@@ -193,7 +202,6 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: fontSize.xs,
-    color: palette.textMuted,
     fontFamily: fontFamily.bodySemiBold,
     letterSpacing: 1,
     marginBottom: sp.sm,
@@ -215,12 +223,10 @@ const styles = StyleSheet.create({
   },
   bubbleAuthor: {
     fontSize: fontSize.xs,
-    color: palette.textMuted,
     marginBottom: sp.xs,
   },
   bubbleText: {
     fontSize: fontSize.base,
-    color: palette.textPrimary,
     lineHeight: 22,
   },
   ctaSection: {
@@ -248,7 +254,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.04)",
   },
   secondaryCtaText: {
-    color: palette.textPrimary,
     fontSize: fontSize.base,
     fontFamily: fontFamily.bodyMedium,
   },
