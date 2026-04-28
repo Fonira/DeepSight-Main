@@ -187,6 +187,9 @@ export type MessageAction =
   | "OPEN_VOICE_PANEL"
   | "VOICE_CREATE_SESSION"
   | "VOICE_APPEND_TRANSCRIPT"
+  | "VOICE_GET_PREFERENCES"
+  | "VOICE_UPDATE_PREFERENCES"
+  | "VOICE_GET_CATALOG"
   | "GET_VOICE_BUTTON_STATE";
 
 export interface ExtensionMessage {
