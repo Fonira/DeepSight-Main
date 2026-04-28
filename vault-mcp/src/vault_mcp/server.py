@@ -28,6 +28,11 @@ from vault_mcp.tools.list import (
     MemoryInfo,
 )
 from vault_mcp.security import PathTraversalError
+from vault_mcp.tools.write import (
+    create_note as _create_note_impl,
+    WriteForbiddenError,
+    NoteAlreadyExistsError,
+)
 
 
 setup_logging()
@@ -85,6 +90,44 @@ async def get_memory(name: str) -> str:
 async def list_memory() -> list[MemoryInfo]:
     """List all memory files with their type and description from frontmatter."""
     return _list_memory_impl(SETTINGS)
+
+
+@mcp.tool()
+async def create_note(path: str, content: str) -> str:
+    """
+    Create a new markdown note in the vault.
+
+    Allowed write zones (path prefix):
+    - 00-Inbox/                          → quick captures, ideas
+    - 03-Archive/                        → archived content
+    - 01-Projects/<project>/Sessions/    → session notes
+    - 01-Projects/<project>/Ideas/       → project-scoped ideas
+    - 01-Projects/<project>/Bugs/        → bug reports
+
+    Constraints:
+    - path must end with .md
+    - file must not already exist (no overwrite — use a different filename)
+    - Specs/ and Decisions/ are NOT writable (use slash commands /new-spec, /new-decision in Claude Code instead)
+
+    Args:
+        path: vault-relative path (e.g., '01-Projects/DeepSight/Sessions/2026-04-28-test.md')
+        content: full markdown content (frontmatter + body)
+
+    Returns:
+        Success message with the created path, or "ERROR: ..." string.
+    """
+    try:
+        result = _create_note_impl(SETTINGS, path, content)
+        rel = result.relative_to(SETTINGS.vault_path.resolve()).as_posix()
+        log.info("create_note: %s (%d bytes)", rel, len(content.encode("utf-8")))
+        return f"OK: created {rel}"
+    except (
+        PathTraversalError,
+        WriteForbiddenError,
+        NoteAlreadyExistsError,
+        ValueError,
+    ) as e:
+        return f"ERROR: {e}"
 
 
 class _RateLimiter:
