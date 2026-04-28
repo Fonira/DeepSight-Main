@@ -105,5 +105,11 @@ Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
+User-agent: Meta-ExternalAgent
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
 # === Sitemap ===
 Sitemap: https://www.deepsightsynthesis.com/sitemap.xml
