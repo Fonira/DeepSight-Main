@@ -6,7 +6,6 @@ import Animated, {
   useAnimatedProps,
   withRepeat,
   withTiming,
-  withSequence,
   runOnJS,
   Easing,
 } from "react-native-reanimated";
@@ -21,8 +20,7 @@ import { useAnalysisStore } from "../../stores/analysisStore";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-// DeepSight spinner assets
-const SPINNER_COSMIC = require("../../../assets/images/spinner-cosmic.jpg");
+// DeepSight spinner assets — wheel only (cosmic background removed to avoid double-logo overlay)
 const SPINNER_WHEEL = require("../../../assets/images/spinner-wheel.jpg");
 
 interface StreamingOverlayProps {
@@ -64,7 +62,7 @@ const RING_STROKE = 3;
 const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-// Fake progress curve — fast at start, slows down, never reaches 95% until real completion
+// Fake progress curve — fast at start, slows down, climbs to 98% before real completion lands
 const FAKE_PROGRESS_TIMELINE = [
   { time: 0, progress: 2 },
   { time: 1500, progress: 8 },
@@ -78,8 +76,11 @@ const FAKE_PROGRESS_TIMELINE = [
   { time: 50000, progress: 80 },
   { time: 70000, progress: 85 },
   { time: 90000, progress: 88 },
-  { time: 120000, progress: 90 },
-  { time: 180000, progress: 92 },
+  { time: 110000, progress: 91 },
+  { time: 130000, progress: 93 },
+  { time: 160000, progress: 95 },
+  { time: 200000, progress: 97 },
+  { time: 260000, progress: 98 },
 ];
 
 function getFakeProgress(elapsedMs: number): number {
@@ -125,7 +126,6 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
   const fadeAnim = useSharedValue(1);
   const scaleAnim = useSharedValue(1);
   const wheelRotation = useSharedValue(0);
-  const cosmicPulse = useSharedValue(1);
 
   const [displayProgress, setDisplayProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
@@ -147,15 +147,7 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
       -1,
       false,
     );
-    cosmicPulse.value = withRepeat(
-      withSequence(
-        withTiming(1.03, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.97, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      true,
-    );
-  }, [wheelRotation, cosmicPulse]);
+  }, [wheelRotation]);
 
   // Rotate motivational messages
   useEffect(() => {
@@ -178,6 +170,11 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
   );
 
   // Handle completion animation
+  // ⚠️ Ne PAS appeler store.completeAnalysis() ici : ça mettrait status="completed",
+  // ce qui ferait disparaître l'overlay immédiatement (showStreamingOverlay devient false)
+  // et démontrerait ce composant avant que le setTimeout/onComplete s'exécute.
+  // Résultat : onComplete jamais appelé, summary_id jamais transmis à l'écran parent.
+  // C'est handleStreamingComplete (parent) qui fera resetAnalysis() après réception du summaryId.
   const handleComplete = useCallback(() => {
     if (completedRef.current) return;
     completedRef.current = true;
@@ -185,9 +182,8 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
 
     // Animate to 100%
     updateProgress(100);
-    store.completeAnalysis();
 
-    // Fade out after celebration
+    // Fade out after celebration, then propagate summary_id to parent
     const timer = setTimeout(() => {
       fadeAnim.value = withTiming(0, { duration: 400 });
       scaleAnim.value = withTiming(0.9, { duration: 400 }, () => {
@@ -196,7 +192,7 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
     }, 1200);
 
     return () => clearTimeout(timer);
-  }, [updateProgress, store, fadeAnim, scaleAnim, onComplete]);
+  }, [updateProgress, fadeAnim, scaleAnim, onComplete]);
 
   // Poll backend for real status
   useEffect(() => {
@@ -317,8 +313,8 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
       // Use whichever is higher: fake or real
       const effectiveProgress = Math.max(fakeProgress, realProgress);
 
-      // Cap at 94% until real completion
-      const cappedProgress = Math.min(effectiveProgress, 94);
+      // Cap at 98% until real completion (backend posts progress=100 only at the very end)
+      const cappedProgress = Math.min(effectiveProgress, 98);
       updateProgress(cappedProgress);
     }, 500);
 
@@ -340,10 +336,6 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
 
   const wheelStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${wheelRotation.value}deg` }],
-  }));
-
-  const cosmicStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: cosmicPulse.value }],
   }));
 
   // ── Écran d'erreur définitif (après 3 sondages 'failed') ──────────────────
@@ -414,16 +406,7 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
           />
         </Svg>
 
-        {/* Cosmic background (fixed, pulsing) */}
-        <Animated.View style={[styles.spinnerImageWrapper, cosmicStyle]}>
-          <Image
-            source={SPINNER_COSMIC}
-            style={styles.spinnerCosmic}
-            resizeMode="cover"
-          />
-        </Animated.View>
-
-        {/* Wheel overlay (rotating) */}
+        {/* Wheel (rotating) — single layer, no static background overlay */}
         <Animated.View style={[styles.spinnerImageWrapper, wheelStyle]}>
           <Image
             source={SPINNER_WHEEL}
@@ -535,16 +518,11 @@ const styles = StyleSheet.create({
     borderRadius: SPINNER_SIZE / 2,
     overflow: "hidden",
   },
-  spinnerCosmic: {
-    width: SPINNER_SIZE,
-    height: SPINNER_SIZE,
-    borderRadius: SPINNER_SIZE / 2,
-  },
   spinnerWheel: {
     width: SPINNER_SIZE,
     height: SPINNER_SIZE,
     borderRadius: SPINNER_SIZE / 2,
-    opacity: 0.7,
+    opacity: 1,
   },
   percentageContainer: {
     position: "absolute",
