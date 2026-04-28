@@ -65,6 +65,22 @@
       ],
       "destination": "/api/prerender?path=/contact"
     },
+    {
+      "source": "/chaines",
+      "destination": "https://api.deepsightsynthesis.com/api/aggregate/channels-render"
+    },
+    {
+      "source": "/chaine/:slug",
+      "destination": "https://api.deepsightsynthesis.com/api/aggregate/channel-render/:slug"
+    },
+    {
+      "source": "/categories",
+      "destination": "https://api.deepsightsynthesis.com/api/aggregate/categories-render"
+    },
+    {
+      "source": "/categorie/:slug",
+      "destination": "https://api.deepsightsynthesis.com/api/aggregate/category-render/:slug"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
