@@ -38,6 +38,7 @@ import { AmbientLightLayer } from "./components/AmbientLightLayer";
 import { SunflowerLayer } from "./components/SunflowerLayer";
 import { AmbientLightingProvider } from "./contexts/AmbientLightingContext";
 import { SkipLink } from "./components/SkipLink";
+import { SEO } from "./components/SEO";
 
 // "Le Saviez-Vous" widgets remplacés par placements organiques dans chaque page
 import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary";
@@ -430,7 +431,13 @@ const HomeRoute = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const ProtectedLayout = () => {
-  return <Outlet />;
+  // noindex sur toutes les routes protégées (dashboard, history, settings, etc.)
+  return (
+    <>
+      <SEO noindex />
+      <Outlet />
+    </>
+  );
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -685,6 +692,21 @@ const AppRoutes = () => {
                       }
                     />
 
+                    {/* /upgrade — public pricing page (indexable) */}
+                    <Route
+                      path="/upgrade"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="UpgradePage"
+                        >
+                          <Suspense fallback={<PageSkeleton variant="form" />}>
+                            <UpgradePage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
                     <Route
                       path="/s/:shareToken"
                       element={
@@ -753,22 +775,6 @@ const AppRoutes = () => {
                               fallback={<PageSkeleton variant="full" />}
                             >
                               <History />
-                            </Suspense>
-                          </RouteErrorBoundary>
-                        }
-                      />
-
-                      <Route
-                        path="/upgrade"
-                        element={
-                          <RouteErrorBoundary
-                            variant="full"
-                            componentName="UpgradePage"
-                          >
-                            <Suspense
-                              fallback={<PageSkeleton variant="form" />}
-                            >
-                              <UpgradePage />
                             </Suspense>
                           </RouteErrorBoundary>
                         }

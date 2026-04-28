@@ -27,10 +27,9 @@ AUDIO SYNTHESIS (TTS)
 Listen to summaries with built-in text-to-speech. Perfect for reviewing on the go.
 
 AVAILABLE PLANS
-• Free: 3 analyses/month, videos up to 10 min
-• Student: 40 analyses/month, flashcards, concept maps
-• Starter: 60 analyses/month, exports, 60-day history
-• Pro: 300 analyses/month, playlists, unlimited chat, TTS
+• Free: 5 analyses/month, videos up to 15 min, flashcards, quiz, chat
+• Plus (€4.99/month): 25 analyses, 60 min videos, fact-check, mind maps, web search, PDF exports
+• Pro (€9.99/month): 100 analyses, 4h videos, voice chat 45 min/month (ElevenLabs), playlists, deep research, priority queue
 
 PRIVACY
 Your data is protected. No videos are stored — only metadata and analyses are kept. GDPR compliant.
