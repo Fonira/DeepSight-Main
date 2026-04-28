@@ -90,6 +90,8 @@ from voice.avatar import (
     ensure_debate_avatar,
     generate_debate_avatar,
 )
+from voice.companion_context import build_companion_context
+from voice.schemas import CompanionContextResponse
 
 logger = logging.getLogger(__name__)
 
@@ -2974,3 +2976,108 @@ async def get_voice_session_thumbnail(
         gradient=_VOICE_THUMB_GRADIENT,
         alt_text=alt_text,
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /companion-context — COMPANION agent bootstrap payload (Pro only)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _resolve_redis_client():
+    """Return a redis-asyncio client compatible with build_companion_context.
+
+    The companion_context builder expects ``get(key)``, ``set(key, value, ex=...)``
+    and ``delete(key)`` semantics (raw redis-asyncio API). When Redis is
+    unavailable we return a no-op stub so the cache layer simply degrades to
+    "always cache miss + best-effort write" without crashing the request.
+    """
+    try:
+        from core.cache import cache_service
+
+        if cache_service._redis_available:
+            return cache_service.backend.redis
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.warning("Failed to resolve Redis client for companion context: %s", exc)
+
+    class _NoopRedis:
+        async def get(self, _key):
+            return None
+
+        async def set(self, _key, _value, ex=None):  # noqa: ARG002
+            return True
+
+        async def delete(self, *_keys):
+            return 0
+
+    return _NoopRedis()
+
+
+@router.get("/companion-context", response_model=CompanionContextResponse)
+async def companion_context_endpoint(
+    refresh: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Return the COMPANION agent bootstrap payload (profile + initial recos).
+
+    Reserved to Pro users — Free/Plus get a 402 with an upgrade message. The
+    builder ``build_companion_context`` handles its own Redis cache (1h TTL);
+    pass ``?refresh=true`` to bypass the cache and recompute everything.
+    """
+    # ── Plan gate: Pro only (admin bypass for testing/support) ────────────
+    is_admin = bool(getattr(current_user, "is_admin", False))
+    plan = (current_user.plan or "free").lower()
+
+    if not is_admin and plan != "pro":
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=(
+                "Upgrade vers Pro requis pour Appel Vocal — "
+                "https://www.deepsightsynthesis.com/upgrade"
+            ),
+        )
+
+    redis_client = _resolve_redis_client()
+
+    # NOTE: `services` wiring (themes_fn / initial_recos_fn) is intentionally
+    # kept minimal for this task — Task 11 only contractualises the endpoint
+    # surface. The full wiring will land alongside the integration test in a
+    # follow-up task. The default builder pipeline still runs against an
+    # in-process services bundle so a cache hit returns immediately.
+    services = _build_companion_services(db=db, redis=redis_client, user=current_user)
+
+    return await build_companion_context(
+        user=current_user,
+        db=db,
+        redis=redis_client,
+        services=services,
+        force_refresh=refresh,
+    )
+
+
+class _CompanionServicesPlaceholder:
+    """Placeholder services bundle for Task 11.
+
+    The companion_context builder expects ``themes_fn`` and ``initial_recos_fn``
+    coroutines on the services object. The real wiring (Tournesol / Trending /
+    history-similarity / embeddings) will land in a follow-up task; until then
+    this stub returns empty lists so the pipeline can complete without
+    crashing on a cache miss.
+    """
+
+    @staticmethod
+    async def themes_fn(*, user_id, db):  # noqa: ARG004 — placeholder signature
+        return []
+
+    @staticmethod
+    async def initial_recos_fn(*, primary_theme):  # noqa: ARG004
+        return []
+
+
+def _build_companion_services(*, db, redis, user):  # noqa: ARG001 — placeholder wiring
+    """Return the services bundle consumed by build_companion_context.
+
+    Task 11 ships only the endpoint surface; the full wiring of theme
+    extraction and recommendation orchestrators arrives in a follow-up task.
+    """
+    return _CompanionServicesPlaceholder()
