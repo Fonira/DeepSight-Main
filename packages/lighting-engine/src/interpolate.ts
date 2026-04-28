@@ -1,6 +1,6 @@
 // Generic interpolation utilities
 
-import type { RGB } from "./types";
+import type { RGB } from "./types.js";
 
 export function clamp(t: number, min = 0, max = 1): number {
   return Math.max(min, Math.min(max, t));

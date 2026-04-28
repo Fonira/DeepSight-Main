@@ -1,7 +1,7 @@
 // 48 ambient lighting keyframes — every 30 minutes from 00:00 to 23:30
 // Index N = hour N * 0.5
 
-import type { Keyframe } from "./types";
+import type { Keyframe } from "./types.js";
 
 const kf = (
   hour: number,
