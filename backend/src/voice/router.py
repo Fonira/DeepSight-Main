@@ -72,6 +72,7 @@ from voice.avatar import (
     generate_debate_avatar,
 )
 from voice.companion_context import build_companion_context
+from voice.companion_prompt import render_companion_prompt
 from voice.schemas import CompanionContextResponse
 
 logger = logging.getLogger(__name__)
@@ -888,7 +889,48 @@ async def create_voice_session(
         # ── Build system prompt ──
         agent_prompt = agent_config.get_system_prompt(language)
 
-        if debate_ctx:
+        if agent_config.agent_type == "companion":
+            # ── Spec "Coach Vocal" Task 14 — enrich companion prompt ────────
+            # Replace the static companion system prompt with a render that
+            # injects the user's profile (prénom, plan, streak, themes, recent
+            # analyses) and pre-prepared recommendations. Falls back to the
+            # static agent prompt if anything goes wrong so the call still
+            # connects.
+            try:
+                redis_client = _resolve_redis_client()
+                services = _build_companion_services(
+                    db=db, redis=redis_client, user=current_user
+                )
+                companion_ctx = await build_companion_context(
+                    user=current_user,
+                    db=db,
+                    redis=redis_client,
+                    services=services,
+                )
+                system_prompt = render_companion_prompt(companion_ctx)
+                logger.info(
+                    "Voice session: companion prompt enriched",
+                    extra={
+                        "user_id": current_user.id,
+                        "session_id": voice_session.id,
+                        "cache_hit": getattr(companion_ctx, "cache_hit", False),
+                        "themes_count": len(companion_ctx.profile.themes),
+                        "recos_count": len(companion_ctx.initial_recos),
+                        "prompt_chars": len(system_prompt),
+                    },
+                )
+            except Exception as companion_exc:
+                logger.warning(
+                    "Voice session: failed to enrich companion prompt — "
+                    "falling back to static prompt",
+                    extra={
+                        "user_id": current_user.id,
+                        "session_id": voice_session.id,
+                        "error": str(companion_exc),
+                    },
+                )
+                system_prompt = agent_prompt
+        elif debate_ctx:
             ctx_label = "CONTEXTE DU DÉBAT" if language == "fr" else "DEBATE CONTEXT"
             system_prompt = f"{agent_prompt}\n\n--- {ctx_label} ---\n{context_block}"
         elif rich_ctx:
