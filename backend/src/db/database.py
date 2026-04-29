@@ -94,6 +94,9 @@ engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
 # Session factory avec autoflush désactivé pour meilleures performances
 async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
+# 🆕 Alias publié pour les hooks background (chat bucket digest, voice digest…)
+# qui ouvrent leur propre session indépendante de la requête HTTP.
+async_session_factory = async_session_maker
 
 # Base pour les modèles
 Base = declarative_base()
