@@ -550,6 +550,12 @@ _CHAT_HISTORY_MAX_MESSAGES = 20
 _CHAT_HISTORY_MAX_CHARS_PER_MSG = 600
 
 
+# DEPRECATED — replaced by voice.context_builder.build_unified_context_block
+# (cf. spec 2026-04-29-merge-voice-chat-context-design, Task 6).
+# Kept here for the moment so that any remaining caller — and the existing
+# test in tests/voice/test_voice_session_streaming.py that asserts the block
+# format — keeps working until the follow-up cleanup PR removes it. The live
+# call site in create_voice_session now goes through the unified builder.
 def _build_chat_history_block_for_voice(history_msgs: list[dict], language: str = "fr") -> str:
     """Format the recent text-chat history as a block injectable into the
     voice agent's system prompt.
@@ -1658,36 +1664,40 @@ async def create_voice_session(
         else:
             system_prompt = agent_prompt
 
-        # ── Spec #1, Task 6 — Inject recent text-chat history when relevant ──
-        # The voice agent picks up where the text chat left off (cross-surface
-        # continuity). Skipped for debate (uses its own context block) and when
-        # there is no summary_id (companion mode without active video).
+        # ── Spec merge voice ↔ chat (2026-04-29), Task 6 ────────────────────
+        # Inject the unified context block (voice digests + chat digests + last
+        # verbatim messages) so the voice agent picks up where the previous
+        # voice/text exchanges left off. Skipped for debate (uses its own
+        # context block) and when there is no summary_id (companion mode
+        # without active video). The newly-created voice_session is excluded
+        # from the SELECT so its own (still empty) rows aren't re-injected.
         if request.summary_id and not debate_ctx:
             try:
-                from chat.service import get_chat_history as _get_chat_history
+                from voice.context_builder import build_unified_context_block
 
-                _chat_history = await _get_chat_history(
+                _history_block = await build_unified_context_block(
                     db,
                     summary_id=request.summary_id,
                     user_id=current_user.id,
-                    limit=_CHAT_HISTORY_MAX_MESSAGES,
+                    lang=language,
+                    target="voice",
+                    exclude_voice_session_id=voice_session.id,
                 )
-                _history_block = _build_chat_history_block_for_voice(_chat_history, language=language)
                 if _history_block:
                     system_prompt = f"{system_prompt}\n\n{_history_block}"
                     logger.info(
-                        "Voice session: chat history injected",
+                        "Voice session: unified context block injected",
                         extra={
                             "summary_id": request.summary_id,
                             "user_id": current_user.id,
-                            "messages_kept": min(_CHAT_HISTORY_MAX_MESSAGES, len(_chat_history)),
+                            "session_id": voice_session.id,
                             "block_chars": len(_history_block),
                         },
                     )
             except Exception as _hist_exc:
-                # Non-fatal: voice session still works without chat continuity.
+                # Non-fatal: voice session still works without context recall.
                 logger.warning(
-                    "Voice session: failed to inject chat history (non-fatal)",
+                    "Voice session: failed to inject unified context (non-fatal)",
                     extra={
                         "summary_id": request.summary_id,
                         "error": str(_hist_exc),
@@ -2229,6 +2239,44 @@ async def voice_webhook(
             extra={
                 "session_id": voice_session.id,
                 "error": str(reconcile_exc),
+            },
+        )
+
+    # ── Spec merge voice ↔ chat (2026-04-29), Task 6 ────────────────────
+    # End-of-session hook : enqueue the digest generator on a fresh DB
+    # session (the request-scoped one above is about to be closed once the
+    # response is returned). Mistral-small-2603 latency is ~500ms, so we
+    # intentionally fire-and-forget instead of awaiting in-line — the
+    # webhook ACK to ElevenLabs must stay snappy or it will be retried.
+    try:
+        import asyncio
+        from voice.context_digest import generate_voice_session_digest
+        from db.database import async_session_maker
+
+        _digest_session_id = voice_session.id
+
+        async def _digest_task() -> None:
+            """Run with an independent DB session (the request-scoped one is closed by then)."""
+            try:
+                async with async_session_maker() as bg_db:
+                    await generate_voice_session_digest(bg_db, _digest_session_id)
+            except Exception as digest_exc:
+                logger.exception(
+                    "voice end-of-session digest failed",
+                    extra={"voice_session_id": _digest_session_id, "error": str(digest_exc)},
+                )
+
+        asyncio.create_task(_digest_task())
+        logger.info(
+            "Voice end-of-session digest task scheduled",
+            extra={"voice_session_id": _digest_session_id},
+        )
+    except Exception as schedule_exc:
+        logger.warning(
+            "Voice webhook: failed to schedule end-of-session digest (non-fatal)",
+            extra={
+                "session_id": voice_session.id,
+                "error": str(schedule_exc),
             },
         )
 
