@@ -3107,8 +3107,10 @@ a:hover {
 
 .ds-call-ended {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 16px;
   padding: 48px 24px;
   text-align: center;
 }
@@ -3117,6 +3119,42 @@ a:hover {
   font-size: 14px;
   color: var(--text-secondary);
   margin: 0;
+}
+
+.ds-call-ended-hint {
+  font-size: 12px;
+  color: var(--text-tertiary, var(--text-secondary));
+  opacity: 0.7;
+  margin: 0;
+}
+
+/* Bouton "Retour à DeepSight" — post-call navigation */
+.ds-return-button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-accent, var(--border-strong));
+  background: var(--bg-elevated, var(--bg-hover));
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ds-return-button:hover {
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+  border-color: var(--accent-primary, #6366f1);
+  transform: translateY(-1px);
+}
+
+.ds-return-button:focus-visible {
+  outline: 2px solid var(--accent-primary, #6366f1);
+  outline-offset: 2px;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -4076,10 +4114,11 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(18, 18, 26, 0.6);
   backdrop-filter: blur(16px);
+  flex-shrink: 0;
 }
 .dsp-vs-drawer-title {
   font-size: 15px;
@@ -4110,23 +4149,30 @@ a:hover {
 }
 
 .dsp-vs-drawer-body {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
-  padding: 14px 14px 80px;
+  /* padding-bottom 24px : le footer est maintenant dans le flow (flex sibling
+     + flex-shrink:0), il n'écrase plus le contenu. On garde une petite marge
+     d'aération sous le bouton Reset. */
+  padding: 12px 12px 24px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  min-height: 0;
 }
 
+/* Footer sticky : suit le scroll mais reste visible quand on est en bas
+   de page. Évite le chevauchement classique de position:absolute en
+   sidepanel étroit. */
 .dsp-vs-drawer-footer {
-  position: absolute;
+  position: sticky;
   bottom: 0;
   left: 0;
   right: 0;
   display: flex;
   gap: 10px;
   align-items: center;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   background: linear-gradient(
     180deg,
@@ -4135,6 +4181,8 @@ a:hover {
   );
   backdrop-filter: blur(18px);
   z-index: 2;
+  flex-shrink: 0;
+  margin-top: auto;
   transition:
     background 0.25s ease,
     border-top-color 0.25s ease;
@@ -4180,7 +4228,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   cursor: pointer;
   font-family: inherit;
   text-align: left;
@@ -4219,15 +4267,15 @@ a:hover {
   transform: rotate(90deg);
 }
 .dsp-vs-section-body {
-  padding: 4px 14px 14px;
+  padding: 4px 12px 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-/* Stack utility */
+/* Stack utility — gap réduit (sidepanel étroit, on entasse les sections) */
 .dsp-vs-stack {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
 }
 
 /* Field + slider */
@@ -4674,16 +4722,16 @@ a:hover {
   text-align: center;
 }
 
-/* Volume header */
+/* Volume header (LIVE — toujours en haut, pas dans une section collapsable) */
 .dsp-vs-volume {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 /* Reset link + confirmation */

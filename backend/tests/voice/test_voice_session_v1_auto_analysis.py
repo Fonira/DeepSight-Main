@@ -65,12 +65,21 @@ class _FakeOembedClient:
         return resp
 
 
-def _configure_db_for_cache(mock_db_session, *, cache_hit: bool):
+def _configure_db_for_cache(mock_db_session, *, cache_hit: bool, captured: list | None = None):
     """Configure mock_db_session.execute to return cache-hit/miss Summary lookups.
 
-    The V1 path performs ONE Summary cache lookup (full_digest is_not None).
-    No request.summary_id is provided in these tests, so no other db.execute
-    calls precede the cache lookup.
+    The V1 path performs TWO Summary lookups :
+
+      1. Existing-summary check by ``(user_id, video_id)`` — used to decide
+         whether to create a Summary placeholder for the history sync.
+      2. Cached-analysis check by ``(video_id, full_digest is_not None)`` —
+         used to decide whether to schedule auto-analysis (Mistral).
+
+    Both lookups use the same ``scalar_one_or_none`` shape, so we return the
+    same fake Summary on every call: it has ``full_digest`` populated only
+    when ``cache_hit=True``, which matches the production semantics for both
+    branches simultaneously (cache hit ⇒ existing summary present + already
+    analyzed; cache miss ⇒ no summary at all → placeholder created).
     """
     fake_summary = MagicMock()
     fake_summary.id = 42
@@ -81,7 +90,14 @@ def _configure_db_for_cache(mock_db_session, *, cache_hit: bool):
         return_value=(fake_summary if cache_hit else None)
     )
     mock_db_session.execute = AsyncMock(return_value=scalar_result)
-    mock_db_session.add = MagicMock()
+
+    if captured is not None:
+        def _fake_add(obj):
+            captured.append(obj)
+        mock_db_session.add = MagicMock(side_effect=_fake_add)
+    else:
+        mock_db_session.add = MagicMock()
+
     mock_db_session.commit = AsyncMock()
 
     async def _refresh(obj):
@@ -275,3 +291,65 @@ async def test_v1_cache_hit_plan_pro_does_not_schedule_auto_analysis(mock_db_ses
 
     # Production orchestrator scheduled (cache fetcher will read the summary).
     assert len(bg_tasks.tasks) == 1
+
+
+@pytest.mark.asyncio
+async def test_v1_cache_miss_plan_pro_creates_summary_placeholder(mock_db_session):
+    """V1 + plan pro + cache miss → Summary placeholder row persisted for history sync.
+
+    Regression guard for the cross-platform history sync feature
+    (feat/voice-v1-summary-placeholder): when the extension launches a
+    Quick Voice Call on YouTube and no Summary exists yet for
+    ``(video_id, user_id)``, the router must persist a placeholder row
+    with ``mode="standard"`` and the canonical YouTube ``video_id`` so
+    the video shows up immediately in web/mobile/extension history.
+    """
+    from voice.router import create_voice_session
+    from db.database import Summary, VoiceSession
+
+    captured: list = []
+    _configure_db_for_cache(mock_db_session, cache_hit=False, captured=captured)
+
+    user = _make_v1_user("pro")
+    request = _make_v1_request()
+    bg_tasks = BackgroundTasks()
+
+    patches = _patch_common()
+    for p in patches:
+        p.start()
+    try:
+        with patch(
+            "voice.router._run_main_analysis_for_video",
+            new=AsyncMock(),
+        ):
+            response = await create_voice_session(
+                request,
+                background_tasks=bg_tasks,
+                current_user=user,
+                db=mock_db_session,
+                redis=AsyncMock(),
+            )
+    finally:
+        for p in patches:
+            p.stop()
+
+    assert response is not None
+
+    # Exactly one Summary row was added (the V1 placeholder).
+    summaries = [c for c in captured if isinstance(c, Summary)]
+    assert len(summaries) == 1, (
+        f"Expected 1 Summary placeholder for V1 cache miss, got {len(summaries)}"
+    )
+
+    placeholder = summaries[0]
+    assert placeholder.user_id == user.id
+    assert placeholder.video_id == "dQw4w9WgXcQ"
+    assert placeholder.mode == "standard"
+    assert placeholder.platform == "youtube"
+    assert placeholder.video_url == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    assert placeholder.lang == "fr"
+
+    # The VoiceSession links to the placeholder so the client deep-link works.
+    sessions = [c for c in captured if isinstance(c, VoiceSession)]
+    assert len(sessions) == 1
+    assert sessions[0].summary_id == placeholder.id

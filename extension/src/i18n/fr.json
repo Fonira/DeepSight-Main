@@ -275,6 +275,10 @@
       "genericPrefix": "Erreur :",
       "close": "Fermer",
       "connectingTimeout": "Délai de connexion dépassé. Vérifie ta connexion."
+    },
+    "postCall": {
+      "returnButton": "← Retour à DeepSight",
+      "autoRedirectHint": "Retour automatique dans {seconds}s…"
     }
   },
   "promos": {
