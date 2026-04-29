@@ -732,200 +732,225 @@ export const VoiceSettingsDrawer: React.FC<VoiceSettingsDrawerProps> = ({
     }
   }, [s, onApplyHardChanges]);
 
+  // Close on ESC — must work whenever the drawer is open, regardless of
+  // which inner control has focus.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   return (
-    <div
-      className={`dsp-vs-drawer ${open ? "is-open" : ""}`}
-      role="dialog"
-      aria-label="Réglages voix"
-      aria-hidden={!open}
-    >
-      <header className="dsp-vs-drawer-header">
-        <span className="dsp-vs-drawer-title">Réglages voix</span>
-        <button
-          type="button"
-          className="dsp-vs-icon-btn"
+    <>
+      {open && (
+        <div
+          className="dsp-vs-drawer-backdrop"
           onClick={onClose}
-          aria-label="Fermer"
-        >
-          ✕
-        </button>
-      </header>
+          aria-hidden="true"
+          data-testid="voice-settings-backdrop"
+        />
+      )}
+      <div
+        className={`dsp-vs-drawer ${open ? "is-open" : ""}`}
+        role="dialog"
+        aria-label="Réglages voix"
+        aria-hidden={!open}
+      >
+        <header className="dsp-vs-drawer-header">
+          <span className="dsp-vs-drawer-title">Réglages voix</span>
+          <button
+            type="button"
+            className="dsp-vs-icon-btn"
+            onClick={onClose}
+            aria-label="Fermer"
+            data-testid="voice-settings-close"
+          >
+            ✕
+          </button>
+        </header>
 
-      <div className="dsp-vs-drawer-body">
-        {s.loading && <p className="dsp-vs-hint">Chargement…</p>}
-        {s.error && !s.loading && (
-          <p className="dsp-vs-error" role="alert">
-            {s.error}
-          </p>
-        )}
-        {!s.loading && !s.error && s.effectivePrefs && s.catalog && (
-          <>
-            <div className="dsp-vs-volume">
-              <div className="dsp-vs-field-row">
-                <label className="dsp-vs-label">🔊 Volume agent</label>
-                <span className="dsp-vs-value">{volume}</span>
-              </div>
-              <input
-                className="dsp-vs-slider"
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={volume}
-                onChange={(e) => {
-                  const v = parseInt(e.currentTarget.value, 10);
-                  setVolume(v);
-                  applyVolumeToAudio(v);
-                }}
-              />
-              <p className="dsp-vs-hint">
-                Appliqué instantanément aux audio en cours
-              </p>
-            </div>
-
-            <Section
-              icon="🎙"
-              title="Voix"
-              badge="Hard"
-              isOpen={openSections.voices}
-              onToggle={() => toggle("voices")}
-            >
-              <VoiceCardsSection s={s} />
-            </Section>
-
-            <Section
-              icon="⚡"
-              title="Vitesse chat vocal"
-              badge="Hard"
-              isOpen={openSections.chatSpeed}
-              onToggle={() => toggle("chatSpeed")}
-            >
-              <ChatSpeedSection s={s} />
-            </Section>
-
-            <Section
-              icon="📖"
-              title="Vitesse de lecture résumés"
-              badge="Hard"
-              isOpen={openSections.readingSpeed}
-              onToggle={() => toggle("readingSpeed")}
-            >
-              <ReadingSpeedSection s={s} />
-            </Section>
-
-            <Section
-              icon="🤖"
-              title="Modèles"
-              badge="Hard"
-              isOpen={openSections.models}
-              onToggle={() => toggle("models")}
-            >
-              <ModelsSection s={s} />
-            </Section>
-
-            <Section
-              icon="🎚"
-              title="Avancé"
-              badge="Hard"
-              isOpen={openSections.advanced}
-              onToggle={() => toggle("advanced")}
-            >
-              <AdvancedSlidersSection s={s} />
-            </Section>
-
-            <Section
-              icon="🎮"
-              title="Mode interaction"
-              badge="Live"
-              isOpen={openSections.interaction}
-              onToggle={() => toggle("interaction")}
-            >
-              <InteractionSection s={s} />
-            </Section>
-
-            <Section
-              icon="⏱"
-              title="Timeouts"
-              badge="Live"
-              isOpen={openSections.timeouts}
-              onToggle={() => toggle("timeouts")}
-            >
-              <TimeoutsSection s={s} />
-            </Section>
-
-            <Section
-              icon="🌍"
-              title="Préférences par défaut"
-              badge="Hard"
-              isOpen={openSections.defaults}
-              onToggle={() => toggle("defaults")}
-            >
-              <DefaultsSection s={s} />
-            </Section>
-
-            <div className="dsp-vs-reset">
-              {!confirmingReset ? (
-                <button
-                  type="button"
-                  className="dsp-vs-link-btn"
-                  onClick={() => setConfirmingReset(true)}
-                >
-                  ↺ Réinitialiser les valeurs par défaut
-                </button>
-              ) : (
-                <div className="dsp-vs-confirm">
-                  <span className="dsp-vs-hint">Confirmer le reset ?</span>
-                  <button
-                    type="button"
-                    className="dsp-vs-btn-secondary"
-                    onClick={() => setConfirmingReset(false)}
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="button"
-                    className="dsp-vs-btn-danger"
-                    onClick={async () => {
-                      await s.resetToDefaults();
-                      setConfirmingReset(false);
-                    }}
-                  >
-                    Reset
-                  </button>
+        <div className="dsp-vs-drawer-body">
+          {s.loading && <p className="dsp-vs-hint">Chargement…</p>}
+          {s.error && !s.loading && (
+            <p className="dsp-vs-error" role="alert">
+              {s.error}
+            </p>
+          )}
+          {!s.loading && !s.error && s.effectivePrefs && s.catalog && (
+            <>
+              <div className="dsp-vs-volume">
+                <div className="dsp-vs-field-row">
+                  <label className="dsp-vs-label">🔊 Volume agent</label>
+                  <span className="dsp-vs-value">{volume}</span>
                 </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
+                <input
+                  className="dsp-vs-slider"
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={volume}
+                  onChange={(e) => {
+                    const v = parseInt(e.currentTarget.value, 10);
+                    setVolume(v);
+                    applyVolumeToAudio(v);
+                  }}
+                />
+                <p className="dsp-vs-hint">
+                  Appliqué instantanément aux audio en cours
+                </p>
+              </div>
 
-      <footer className="dsp-vs-drawer-footer">
-        {dirtyHard > 0 ? (
-          <>
-            <button
-              type="button"
-              className="dsp-vs-btn-secondary"
-              onClick={() => s.resetStaged()}
-              disabled={s.saving}
-            >
-              Annuler
-            </button>
-            <button
-              type="button"
-              className="dsp-vs-btn-primary"
-              onClick={() => void handleApply()}
-              disabled={s.saving}
-            >
-              {s.saving ? "Application…" : `Appliquer (${dirtyHard})`}
-            </button>
-          </>
-        ) : (
-          <span className="dsp-vs-footer-hint">
-            Les réglages live sont sauvegardés automatiquement.
-          </span>
-        )}
-      </footer>
-    </div>
+              <Section
+                icon="🎙"
+                title="Voix"
+                badge="Hard"
+                isOpen={openSections.voices}
+                onToggle={() => toggle("voices")}
+              >
+                <VoiceCardsSection s={s} />
+              </Section>
+
+              <Section
+                icon="⚡"
+                title="Vitesse chat vocal"
+                badge="Hard"
+                isOpen={openSections.chatSpeed}
+                onToggle={() => toggle("chatSpeed")}
+              >
+                <ChatSpeedSection s={s} />
+              </Section>
+
+              <Section
+                icon="📖"
+                title="Vitesse de lecture résumés"
+                badge="Hard"
+                isOpen={openSections.readingSpeed}
+                onToggle={() => toggle("readingSpeed")}
+              >
+                <ReadingSpeedSection s={s} />
+              </Section>
+
+              <Section
+                icon="🤖"
+                title="Modèles"
+                badge="Hard"
+                isOpen={openSections.models}
+                onToggle={() => toggle("models")}
+              >
+                <ModelsSection s={s} />
+              </Section>
+
+              <Section
+                icon="🎚"
+                title="Avancé"
+                badge="Hard"
+                isOpen={openSections.advanced}
+                onToggle={() => toggle("advanced")}
+              >
+                <AdvancedSlidersSection s={s} />
+              </Section>
+
+              <Section
+                icon="🎮"
+                title="Mode interaction"
+                badge="Live"
+                isOpen={openSections.interaction}
+                onToggle={() => toggle("interaction")}
+              >
+                <InteractionSection s={s} />
+              </Section>
+
+              <Section
+                icon="⏱"
+                title="Timeouts"
+                badge="Live"
+                isOpen={openSections.timeouts}
+                onToggle={() => toggle("timeouts")}
+              >
+                <TimeoutsSection s={s} />
+              </Section>
+
+              <Section
+                icon="🌍"
+                title="Préférences par défaut"
+                badge="Hard"
+                isOpen={openSections.defaults}
+                onToggle={() => toggle("defaults")}
+              >
+                <DefaultsSection s={s} />
+              </Section>
+
+              <div className="dsp-vs-reset">
+                {!confirmingReset ? (
+                  <button
+                    type="button"
+                    className="dsp-vs-link-btn"
+                    onClick={() => setConfirmingReset(true)}
+                  >
+                    ↺ Réinitialiser les valeurs par défaut
+                  </button>
+                ) : (
+                  <div className="dsp-vs-confirm">
+                    <span className="dsp-vs-hint">Confirmer le reset ?</span>
+                    <button
+                      type="button"
+                      className="dsp-vs-btn-secondary"
+                      onClick={() => setConfirmingReset(false)}
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      className="dsp-vs-btn-danger"
+                      onClick={async () => {
+                        await s.resetToDefaults();
+                        setConfirmingReset(false);
+                      }}
+                    >
+                      Reset
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        <footer className="dsp-vs-drawer-footer">
+          {dirtyHard > 0 ? (
+            <>
+              <button
+                type="button"
+                className="dsp-vs-btn-secondary"
+                onClick={() => s.resetStaged()}
+                disabled={s.saving}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="dsp-vs-btn-primary"
+                onClick={() => void handleApply()}
+                disabled={s.saving}
+              >
+                {s.saving ? "Application…" : `Appliquer (${dirtyHard})`}
+              </button>
+            </>
+          ) : (
+            <span className="dsp-vs-footer-hint">
+              Les réglages live sont sauvegardés automatiquement.
+            </span>
+          )}
+        </footer>
+      </div>
+    </>
   );
 };
 

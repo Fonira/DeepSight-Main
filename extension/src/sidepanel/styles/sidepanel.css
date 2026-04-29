@@ -2413,7 +2413,9 @@ a:hover {
   margin: 10px;
   border: 1px solid rgba(139, 92, 246, 0.22);
   backdrop-filter: blur(10px);
-  transition: border-color 0.25s ease, background 0.25s ease;
+  transition:
+    border-color 0.25s ease,
+    background 0.25s ease;
 }
 
 /* État global "muté" — teinte légèrement orange pour rappel visuel */
@@ -2503,7 +2505,10 @@ a:hover {
   );
   opacity: 0;
   transform: scale(0.85);
-  transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
   pointer-events: none;
 }
 
@@ -2553,7 +2558,9 @@ a:hover {
   box-shadow:
     0 4px 12px rgba(99, 102, 241, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .ds-agent-avatar.is-agent .ds-agent-avatar__circle {
@@ -4018,6 +4025,26 @@ a:hover {
   outline-offset: 1px;
 }
 
+/* Backdrop overlay — clic = fermer le drawer. Pointer-events seulement
+   quand visible (rendu conditionnel React) pour ne jamais bloquer le clic
+   sur la sidepanel quand le drawer est fermé. */
+.dsp-vs-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 49;
+  cursor: pointer;
+  animation: dsp-vs-backdrop-fade 0.18s ease-out;
+}
+@keyframes dsp-vs-backdrop-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .dsp-vs-drawer {
   position: fixed;
   top: 0;
@@ -4033,6 +4060,13 @@ a:hover {
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 50;
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.4);
+  /* Quand fermé, ne pas intercepter de clic même si le transform laisse
+     le drawer techniquement présent dans le layout. */
+  pointer-events: none;
+}
+.dsp-vs-drawer.is-open {
+  transform: translateX(0);
+  pointer-events: auto;
 }
 .dsp-vs-drawer.is-open {
   transform: translateX(0);
@@ -4101,7 +4135,9 @@ a:hover {
   );
   backdrop-filter: blur(18px);
   z-index: 2;
-  transition: background 0.25s ease, border-top-color 0.25s ease;
+  transition:
+    background 0.25s ease,
+    border-top-color 0.25s ease;
 }
 
 /* État "dirty" — un ou plusieurs HARD fields stagés ⇒ gradient violet
