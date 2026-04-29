@@ -98,6 +98,7 @@ from auth.router import router as auth_router
 from videos.router import router as videos_router
 from chat.router import router as chat_router
 from billing.router import router as billing_router
+from billing.voice_packs_router import router as voice_packs_router
 from admin.router import router as admin_router
 from admin.finetuning_router import router as finetuning_router
 from exports.router import router as exports_router
@@ -1042,7 +1043,9 @@ app.include_router(videos_router, prefix="/api/videos", tags=["Videos"])
 app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
 app.include_router(billing_router, prefix="/api/billing", tags=["Billing"])
 app.include_router(billing_router, prefix="/api/stripe", tags=["Stripe"], include_in_schema=False)
+app.include_router(voice_packs_router, tags=["Voice Packs"])
 logger.info("Billing router loaded (available at /api/billing and /api/stripe)")
+logger.info("Voice packs router loaded (available at /api/billing/voice-packs)")
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(finetuning_router, prefix="/api/admin/finetune", tags=["Fine-tuning"])
 app.include_router(exports_router, prefix="/api/exports", tags=["Exports"])
