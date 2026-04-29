@@ -426,6 +426,12 @@
     "webSearchDisabled": "Web search disabled",
     "newConversation": "New conversation",
     "clearHistory": "Clear history",
+    "clear": {
+      "confirmTitle": "Clear this conversation?",
+      "confirmBody": "This deletes both text chat and voice call transcripts for this video. Irreversible.",
+      "confirmYes": "Clear all",
+      "confirmCancel": "Cancel"
+    },
     "copyResponse": "Copy response",
     "regenerate": "Regenerate",
     "stopGenerating": "Stop",
