@@ -232,9 +232,11 @@
     },
     "callActive": {
       "live": "En appel",
-      "mute": "🔇 Mute",
-      "hangup": "📞 Raccrocher",
+      "mute": "Couper",
+      "unmute": "Activer",
+      "hangup": "Raccrocher",
       "muteAriaLabel": "Couper le micro",
+      "unmuteAriaLabel": "Réactiver le micro",
       "hangupAriaLabel": "Terminer l'appel",
       "settingsAriaLabel": "Réglages voix",
       "applyingSettings": "Réapplication des réglages…",

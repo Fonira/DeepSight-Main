@@ -366,6 +366,8 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
           elapsedSec={elapsedSec}
           onMute={voiceChat.toggleMute}
           onHangup={handleHangup}
+          isMuted={voiceChat.isMuted}
+          conversation={voiceChat.conversation}
           onBack={() => {
             handleHangup();
             setState({ phase: "idle" });
