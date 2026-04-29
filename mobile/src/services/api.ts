@@ -1316,8 +1316,19 @@ export const chatApi = {
     };
   },
 
-  async clearHistory(summaryId: string): Promise<{ success: boolean }> {
-    return request(`/api/chat/history/${summaryId}`, { method: "DELETE" });
+  /**
+   * Clear chat history for a video. By default also wipes voice transcripts
+   * (mirrors backend `include_voice=true` default — Task 7+10 unified clear).
+   */
+  async clearHistory(
+    summaryId: string,
+    options: { includeVoice?: boolean } = {},
+  ): Promise<{ success: boolean; deleted?: number }> {
+    const includeVoice = options.includeVoice ?? true;
+    return request(
+      `/api/chat/history/${summaryId}?include_voice=${includeVoice}`,
+      { method: "DELETE" },
+    );
   },
 
   /**

@@ -527,6 +527,12 @@
       "noCredits": "Insufficient credits",
       "failed": "Message not sent — try again in a moment",
       "limitReached": "Question limit reached"
+    },
+    "clear": {
+      "confirmTitle": "Clear this conversation?",
+      "confirmBody": "This deletes both text chat and voice call transcripts for this video. Irreversible.",
+      "confirmYes": "Clear all",
+      "confirmCancel": "Cancel"
     }
   },
   "export": {
