@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select, update
 
-from db.database import ChatMessage, VoiceSession
+from db.database import ChatMessage, ChatTextDigest, VoiceSession
 
 logger = logging.getLogger(__name__)
 
@@ -69,11 +69,11 @@ async def generate_voice_session_digest(db, voice_session_id: str) -> None:
     ).scalar_one_or_none()
 
     if vs is None:
-        logger.warning("generate_voice_digest: voice_session not found", extra={"id": voice_session_id})
+        logger.warning("generate_voice_digest: voice_session not found", extra={"voice_session_id": voice_session_id})
         return
 
     if vs.digest_generated_at is not None:
-        logger.debug("generate_voice_digest: idempotent skip", extra={"id": voice_session_id})
+        logger.debug("generate_voice_digest: idempotent skip", extra={"voice_session_id": voice_session_id})
         return
 
     # Fetch all voice rows for this session, ordered chronologically
