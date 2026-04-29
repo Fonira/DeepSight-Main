@@ -700,9 +700,12 @@ export const VoiceSettingsDrawer: React.FC<VoiceSettingsDrawerProps> = ({
 }) => {
   const fallback = useVoiceSettings({ autoLoad: !settings });
   const s = settings ?? fallback;
+  // Sidepanel étroit (~360-420px) → toutes sections fermées par défaut SAUF
+  // "Mode interaction" (Push-to-talk / Détection vocale), le live setting le
+  // plus utilisé. L'utilisateur ouvre les autres au besoin.
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     interaction: true,
-    chatSpeed: true,
+    chatSpeed: false,
     voices: false,
     readingSpeed: false,
     models: false,
