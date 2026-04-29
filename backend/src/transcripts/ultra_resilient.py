@@ -1195,6 +1195,16 @@ class UltraResilientTranscriptExtractor:
                 logger.info(f"Trying {method_name} for video {video_id}")
                 result = await method_func(video_id, languages)
 
+                # Treat empty transcript as failure so the chain descends to
+                # the next method (including Whisper STT fallback). Some sources
+                # — e.g. invidious_api on YouTube Shorts — return success=True
+                # with an empty body when no captions exist; without this guard
+                # the loop returns early and the caller gets nothing.
+                if result is None or not (result.text or "").strip():
+                    raise Exception(
+                        f"{method_name} returned empty transcript (no captions for this video)"
+                    )
+
                 # Success!
                 self.circuit_breaker.record_success(method_name)
 

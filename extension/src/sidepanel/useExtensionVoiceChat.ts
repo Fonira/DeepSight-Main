@@ -110,8 +110,17 @@ interface UseExtensionVoiceChatResult {
   isRestarting: boolean;
   /** État courant du mute micro. */
   isMuted: boolean;
-  /** Instance du SDK ElevenLabs (pour `sendUserMessage` côté streaming hook). */
-  conversation: { sendUserMessage: (msg: string) => void } | null;
+  /**
+   * Instance du SDK ElevenLabs. V1.3 — expose aussi les freq data getters
+   * pour la VoiceWaveform LIVE et les indicateurs speaking de l'AgentAvatar.
+   */
+  conversation: {
+    sendUserMessage: (msg: string) => void;
+    getInputByteFrequencyData?: () => Uint8Array | null;
+    getOutputByteFrequencyData?: () => Uint8Array | null;
+    getInputVolume?: () => number;
+    getOutputVolume?: () => number;
+  } | null;
 }
 
 interface UseExtensionVoiceChatOptions {
@@ -247,8 +256,15 @@ export function useExtensionVoiceChat(
   // POST /api/voice/session via le SW. Retourne la response, throws
   // VoiceQuotaError pour les 402 quota.
   const [lastSessionWasTrial, setLastSessionWasTrial] = useState(false);
+  // V1.3 — On expose au composant les freq getters pour la VoiceWaveform LIVE
+  // et l'AgentAvatar avec halo pulsant quand l'agent parle. Ces méthodes
+  // tapent dans l'instance VoiceConversation côté SDK.
   const [conversation, setConversation] = useState<{
     sendUserMessage: (msg: string) => void;
+    getInputByteFrequencyData?: () => Uint8Array | null;
+    getOutputByteFrequencyData?: () => Uint8Array | null;
+    getInputVolume?: () => number;
+    getOutputVolume?: () => number;
   } | null>(null);
   const [isRestarting, setIsRestarting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -313,11 +329,18 @@ export function useExtensionVoiceChat(
               void appendTranscript(msg.source, msg.text);
             },
           });
-          // Expose un objet conversation-like pour le hook SSE streaming.
+          // Expose un objet conversation-like pour le hook SSE streaming
+          // ET pour la VoiceWaveform LIVE / AgentAvatar (V1.3).
           setConversation({
             sendUserMessage: (txt: string) => {
               if (sdk.sendUserMessage) sdk.sendUserMessage(txt);
             },
+            getInputByteFrequencyData: () =>
+              sdk.getInputByteFrequencyData?.() ?? null,
+            getOutputByteFrequencyData: () =>
+              sdk.getOutputByteFrequencyData?.() ?? null,
+            getInputVolume: () => sdk.getInputVolume?.() ?? 0,
+            getOutputVolume: () => sdk.getOutputVolume?.() ?? 0,
           });
         }
         if (!cancelled.current) setStatus("listening");
@@ -458,6 +481,17 @@ interface ElevenLabsSdk {
    * si on doit fallback sur la manipulation directe des MediaStreams.
    */
   setMuted?: (muted: boolean) => boolean;
+  /**
+   * V1.3 — Frequency data getters pour la VoiceWaveform LIVE et les
+   * indicateurs speaking. Renvoient `null` ou `0` si l'SDK n'expose pas
+   * encore ces méthodes (versions < 0.15.2 pour les freq, ou si la
+   * conversation n'est pas active). Le composant fallback alors sur une
+   * waveform statique.
+   */
+  getInputByteFrequencyData?: () => Uint8Array | null;
+  getOutputByteFrequencyData?: () => Uint8Array | null;
+  getInputVolume?: () => number;
+  getOutputVolume?: () => number;
 }
 
 let cachedSdk: ElevenLabsSdk | null = null;
@@ -534,6 +568,37 @@ async function loadElevenLabsSdk(): Promise<ElevenLabsSdk | null> {
           }
           return false;
         },
+        // V1.3 — Frequency data accessors. Délègue à l'instance VoiceConversation
+        // qui maintient un AnalyserNode interne. Renvoie null si la conversation
+        // n'est pas démarrée ou si la version du SDK n'expose pas cette API.
+        getInputByteFrequencyData: () => {
+          try {
+            return activeConv?.getInputByteFrequencyData?.() ?? null;
+          } catch {
+            return null;
+          }
+        },
+        getOutputByteFrequencyData: () => {
+          try {
+            return activeConv?.getOutputByteFrequencyData?.() ?? null;
+          } catch {
+            return null;
+          }
+        },
+        getInputVolume: () => {
+          try {
+            return activeConv?.getInputVolume?.() ?? 0;
+          } catch {
+            return 0;
+          }
+        },
+        getOutputVolume: () => {
+          try {
+            return activeConv?.getOutputVolume?.() ?? 0;
+          } catch {
+            return 0;
+          }
+        },
       };
       return cachedSdk;
     } catch {
@@ -548,10 +613,19 @@ async function loadElevenLabsSdk(): Promise<ElevenLabsSdk | null> {
 // ── Types narrow pour le SDK ElevenLabs ──
 // On évite d'importer Conversation au top-level (lazy chunk Webpack) ;
 // on déclare seulement les pièces utilisées.
-interface ConversationInstance {
+//
+// V1.3 — On expose aussi les getters frequency data pour la VoiceWaveform
+// LIVE et getInput/OutputVolume pour le AgentAvatar (halo pulsant si
+// l'agent parle). Optionnels : si une version de @elevenlabs/client ne les
+// expose pas, le composant fallback sur la waveform statique.
+export interface ConversationInstance {
   endSession(): Promise<void>;
   sendUserMessage?(message: string): void;
   setMicMuted?(muted: boolean): void;
+  getInputByteFrequencyData?(): Uint8Array | null;
+  getOutputByteFrequencyData?(): Uint8Array | null;
+  getInputVolume?(): number;
+  getOutputVolume?(): number;
 }
 
 interface ConversationStatic {
