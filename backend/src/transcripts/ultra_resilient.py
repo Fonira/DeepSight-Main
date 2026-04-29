@@ -36,6 +36,10 @@ from core.config import (
     TRANSCRIPT_CONFIG,
 )
 
+# Helper partagé YouTube + TikTok — défini dans audio_utils pour ré-utilisation.
+# Re-export pour compat avec d'éventuels imports existants.
+from transcripts.audio_utils import _yt_dlp_extra_args  # noqa: F401
+
 
 def _yt_dlp_extra_args() -> list:
     """Common yt-dlp flags for IP-banned environments: proxy + cookies.
