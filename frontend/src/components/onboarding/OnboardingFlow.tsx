@@ -55,7 +55,6 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     } catch (err) {
       // Best-effort : on ferme quand même pour ne pas bloquer l'utilisateur
       // sur un échec réseau. Le flag sera retenté à la prochaine session.
-      // eslint-disable-next-line no-console
       console.warn("[onboarding] persist failed", err);
     } finally {
       setSubmitting(false);
