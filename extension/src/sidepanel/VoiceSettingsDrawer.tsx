@@ -746,6 +746,11 @@ export const VoiceSettingsDrawer: React.FC<VoiceSettingsDrawerProps> = ({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Hard-gate: if not open, render nothing at all. Prevents stuck-visible
+  // drawer in environments where transform/pointer-events fail to hide it
+  // (Chrome side panel quirks reported in prod).
+  if (!open) return null;
+
   return (
     <>
       {open && (
