@@ -725,6 +725,10 @@ def get_youtube_proxy() -> str:
     return YOUTUBE_PROXY
 
 
+def get_ytdlp_cookies_path() -> str:
+    return _settings.YTDLP_COOKIES_PATH
+
+
 def get_perplexity_key() -> str:
     return PERPLEXITY_API_KEY
 
