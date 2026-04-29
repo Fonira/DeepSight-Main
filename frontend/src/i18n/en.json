@@ -597,6 +597,26 @@
       "title": "Ready to start?",
       "subtitle": "Join the researchers and professionals who use Deep Sight to analyze their videos.",
       "button": "Create free account"
+    },
+    "testimonials": {
+      "heading": "What our users say",
+      "subheading": "Researchers, journalists and students saving precious time.",
+      "demoBadge": "⚠ Demo — fictional testimonials (dev/staging)",
+      "stars": "5 stars out of 5"
+    },
+    "trust_badges": {
+      "heading": "Trust badges",
+      "frenchAi": "100 % French & European AI (Mistral)",
+      "lifetimeArchive": "Analyses archived for lifetime",
+      "gdpr": "GDPR-compliant",
+      "refund14d": "14-day money-back guarantee",
+      "stripeSecure": "Secure Stripe payment"
+    },
+    "social_proof": {
+      "heading": "DeepSight statistics",
+      "videos": "videos analyzed",
+      "words": "words synthesized",
+      "users": "active users (30 d)"
     }
   },
   "payment": {
