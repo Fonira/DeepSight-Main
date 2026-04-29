@@ -935,6 +935,28 @@ export const demoApi = {
   },
 };
 
+// 🌐 Landing public — stats homepage (cache Redis 1h, no auth)
+export interface LandingStatsResponse {
+  total_videos_analyzed: number;
+  total_words_synthesized: number;
+  active_users_30d: number;
+}
+
+export const landingApi = {
+  /**
+   * 🌐 Get aggregated public stats for the homepage social proof counter.
+   * Cached on the backend for 1 hour (Redis).
+   */
+  async getStats(): Promise<LandingStatsResponse> {
+    return request<LandingStatsResponse>("/api/public/landing-stats", {
+      method: "GET",
+      skipAuth: true,
+      skipCredentials: true,
+      timeout: 10000,
+    });
+  },
+};
+
 // 🆓 Guest demo analysis result (legacy)
 interface GuestAnalysisResult {
   video_title: string;
