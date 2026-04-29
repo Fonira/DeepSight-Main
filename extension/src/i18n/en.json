@@ -249,7 +249,15 @@
       "inProgress": "Analyzing · {percent}% of transcript received",
       "complete": "Analysis complete",
       "ariaInProgress": "Video analysis progress: {percent} percent",
-      "ariaComplete": "Video analysis complete"
+      "ariaComplete": "Video analysis complete",
+      "phaseSearching": "🔍 Looking up transcript…",
+      "phaseTranscriptReceived": "📝 Transcript received · {n}/{total} segments",
+      "phaseMistralAnalyzing": "🤖 Mistral is analyzing…",
+      "phaseComplete": "✨ Synthesis complete",
+      "ariaPhaseSearching": "Looking up transcript",
+      "ariaPhaseTranscriptReceived": "Transcript received, {n} of {total} segments",
+      "ariaPhaseMistralAnalyzing": "Mistral is analyzing the video",
+      "ariaPhaseComplete": "Synthesis complete"
     },
     "upgradeCta": {
       "trialUsedHeadline": "Loved it?",

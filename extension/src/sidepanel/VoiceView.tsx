@@ -333,10 +333,13 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     state.phase === "live_streaming" || state.phase === "live_complete"
       ? state.sessionId
       : null;
-  const { contextProgress, contextComplete } = useStreamingVideoContext(
-    sessionId,
-    voiceChat.conversation,
-  );
+  const {
+    contextProgress,
+    contextComplete,
+    contextPhase,
+    transcriptChunksReceived,
+    transcriptChunksTotal,
+  } = useStreamingVideoContext(sessionId, voiceChat.conversation);
 
   // Promote live_streaming → live_complete quand le SSE annonce ctx_complete.
   useEffect(() => {
@@ -443,6 +446,9 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
         <ContextProgressBar
           progress={contextProgress}
           complete={contextComplete}
+          phase={contextPhase}
+          transcriptChunksReceived={transcriptChunksReceived}
+          transcriptChunksTotal={transcriptChunksTotal}
         />
       </>
     );
