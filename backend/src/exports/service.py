@@ -18,6 +18,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
 
 from core.http_client import shared_http_client
+from .watermark import add_watermark
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📦 IMPORTS LAZY — Chargés uniquement quand nécessaire (économie ~80MB RAM)
@@ -209,6 +210,8 @@ def export_to_txt(
     video_url: str = "",
     duration: int = 0,
     created_at: datetime = None,
+    user_plan: Optional[str] = None,
+    user_language: str = "fr",
 ) -> str:
     """Exporte l'analyse en format texte brut"""
 
@@ -238,7 +241,8 @@ Analysé  : {date_str}
                     Généré par Deep Sight — deepsightsynthesis.com
 ═══════════════════════════════════════════════════════════════════════════
 """
-    return content
+    # Watermark plan-aware (Free seulement)
+    return add_watermark(content, "txt", user_plan, user_language)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -259,6 +263,8 @@ def export_to_markdown(
     reliability_score: float = None,
     created_at: datetime = None,
     flashcards: List[Dict] = None,
+    user_plan: Optional[str] = None,
+    user_language: str = "fr",
 ) -> str:
     """Exporte l'analyse en format Markdown"""
 
@@ -331,7 +337,8 @@ def export_to_markdown(
 *Généré par [Deep Sight](https://deepsightsynthesis.com) — Analyse intelligente de vidéos YouTube*
 """
 
-    return content
+    # Watermark plan-aware (Free seulement) -- ajoute la mention "Analyse avec DeepSight" sous Free
+    return add_watermark(content, "md", user_plan, user_language)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -351,6 +358,8 @@ def export_to_docx(
     reliability_score: float = None,
     created_at: datetime = None,
     flashcards: List[Dict] = None,
+    user_plan: Optional[str] = None,
+    user_language: str = "fr",
 ) -> Optional[bytes]:
     """Exporte l'analyse en format DOCX"""
 
@@ -456,11 +465,19 @@ def export_to_docx(
             p.add_run("Réponse: ").bold = True
             p.add_run(card.get("back", card.get("answer", "")))
 
-    # Footer
+    # Footer (mention brand origin — toujours présente)
     doc.add_paragraph()
     footer = doc.add_paragraph()
     footer.add_run("Généré par Deep Sight — deepsightsynthesis.com").italic = True
     footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # Watermark gating (Free seulement)
+    marker = add_watermark("placeholder", "docx", user_plan, user_language)
+    if isinstance(marker, dict) and marker.get("needs_watermark"):
+        wm = doc.add_paragraph()
+        run = wm.add_run(f"{marker['text']} — {marker['url']}")
+        run.italic = True
+        wm.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     # Sauvegarder en bytes
     buffer = io.BytesIO()
@@ -485,6 +502,8 @@ def export_to_pdf_reportlab(
     entities: Dict = None,
     reliability_score: float = None,
     created_at: datetime = None,
+    user_plan: Optional[str] = None,
+    user_language: str = "fr",
 ) -> Optional[bytes]:
     """Export PDF de fallback avec ReportLab (moins stylé)"""
 
@@ -575,12 +594,26 @@ def export_to_pdf_reportlab(
         emoji = "✅" if reliability_score >= 70 else "⚖️" if reliability_score >= 50 else "⚠️"
         story.append(Paragraph(f"<b>{emoji} {reliability_score}/100</b>", body_style))
 
-    # Footer
+    # Footer (mention brand origin — toujours présente)
     story.append(Spacer(1, 30))
     footer_style = ParagraphStyle(
         "Footer", parent=styles["Normal"], fontSize=8, textColor=HexColor("#999999"), alignment=1
     )
     story.append(Paragraph("Généré par Deep Sight — deepsightsynthesis.com", footer_style))
+
+    # Watermark gating (Free seulement)
+    marker = add_watermark("placeholder", "pdf", user_plan, user_language)
+    if isinstance(marker, dict) and marker.get("needs_watermark"):
+        watermark_style = ParagraphStyle(
+            "Watermark",
+            parent=styles["Normal"],
+            fontSize=8,
+            textColor=HexColor("#94a3b8"),
+            alignment=1,
+            fontName="Helvetica-Oblique",
+        )
+        story.append(Spacer(1, 0.3 * cm))
+        story.append(Paragraph(f"{marker['text']} — {marker['url']}", watermark_style))
 
     # Build PDF
     doc.build(story)
@@ -608,6 +641,8 @@ def export_to_pdf(
     flashcards: List[Dict] = None,
     sources: List[Dict] = None,
     export_type: str = "full",
+    user_plan: Optional[str] = None,
+    user_language: str = "fr",
 ) -> Optional[bytes]:
     """
     Exporte l'analyse en format PDF.
@@ -615,6 +650,8 @@ def export_to_pdf(
 
     Args:
         export_type: "full" | "summary" | "flashcards" | "study"
+        user_plan: plan id (free/plus/pro/expert/...) — controle l'affichage du watermark
+        user_language: "fr" | "en" — langue du watermark
     """
 
     # Try WeasyPrint first (beautiful HTML→PDF)
@@ -634,6 +671,8 @@ def export_to_pdf(
             flashcards=flashcards,
             sources=sources,
             export_type=export_type,
+            user_plan=user_plan,
+            user_language=user_language,
         )
         if pdf:
             return pdf
@@ -652,6 +691,8 @@ def export_to_pdf(
             entities=entities,
             reliability_score=reliability_score,
             created_at=created_at,
+            user_plan=user_plan,
+            user_language=user_language,
         )
 
     return None
@@ -673,6 +714,8 @@ def export_to_csv(
     entities: Dict = None,
     reliability_score: float = None,
     created_at: datetime = None,
+    user_plan: Optional[str] = None,
+    user_language: str = "fr",
 ) -> str:
     """Exporte l'analyse en format CSV (structured data)"""
 
@@ -738,7 +781,9 @@ def export_to_csv(
     writer.writerow([])
     writer.writerow(["Généré par Deep Sight - deepsightsynthesis.com"])
 
-    return buffer.getvalue()
+    csv_content = buffer.getvalue()
+    # Watermark plan-aware (Free seulement) -- ajoute une ligne commentaire '#'
+    return add_watermark(csv_content, "csv", user_plan, user_language)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -757,6 +802,8 @@ def export_to_excel(
     entities: Dict = None,
     reliability_score: float = None,
     created_at: datetime = None,
+    user_plan: Optional[str] = None,
+    user_language: str = "fr",
 ) -> Optional[bytes]:
     """Exporte l'analyse en format Excel (.xlsx)"""
 
@@ -893,12 +940,22 @@ def export_to_excel(
 
         row += 17
 
-    # Footer
+    # Footer (mention brand origin — toujours présente)
     ws.merge_cells(f"A{row}:D{row}")
     cell = ws[f"A{row}"]
     cell.value = "Généré par Deep Sight — deepsightsynthesis.com"
     cell.font = Font(name="Arial", size=8, italic=True, color="999999")
     cell.alignment = Alignment(horizontal="center")
+
+    # Watermark gating (Free seulement) -- cellule supplémentaire en dessous
+    marker = add_watermark("placeholder", "xlsx", user_plan, user_language)
+    if isinstance(marker, dict) and marker.get("needs_watermark"):
+        row += 1
+        ws.merge_cells(f"A{row}:D{row}")
+        wm_cell = ws[f"A{row}"]
+        wm_cell.value = f"{marker['text']} — {marker['url']}"
+        wm_cell.font = Font(name="Arial", size=8, italic=True, color="94A3B8")
+        wm_cell.alignment = Alignment(horizontal="center")
 
     # Ajuster largeur des colonnes
     ws.column_dimensions["A"].width = 20
@@ -934,13 +991,17 @@ def export_summary(
     flashcards: List[Dict] = None,
     sources: List[Dict] = None,
     pdf_export_type: str = "full",
+    user_plan: Optional[str] = None,
+    user_language: str = "fr",
 ) -> Tuple[Optional[bytes | str], str, str]:
     """
     Exporte un résumé dans le format demandé.
 
     Args:
-        format: txt, md, docx, pdf
+        format: txt, md, docx, pdf, csv, xlsx
         pdf_export_type: full, summary, flashcards, study (pour PDF uniquement)
+        user_plan: plan id (free/plus/pro/expert/...) — controle l'affichage du watermark
+        user_language: "fr" | "en" — langue du watermark
 
     Returns:
         Tuple (content, filename, mimetype)
@@ -951,7 +1012,11 @@ def export_summary(
     base_filename = clean_filename(title, timestamp)
 
     if format == "txt":
-        content = export_to_txt(title, channel, category, mode, summary, video_url, duration, created_at)
+        content = export_to_txt(
+            title, channel, category, mode, summary, video_url, duration, created_at,
+            user_plan=user_plan,
+            user_language=user_language,
+        )
         return content, f"{base_filename}.txt", "text/plain"
 
     elif format == "md":
@@ -968,6 +1033,8 @@ def export_summary(
             reliability_score,
             created_at,
             flashcards,
+            user_plan=user_plan,
+            user_language=user_language,
         )
         return content, f"{base_filename}.md", "text/markdown"
 
@@ -986,6 +1053,8 @@ def export_summary(
             reliability_score,
             created_at,
             flashcards,
+            user_plan=user_plan,
+            user_language=user_language,
         )
         return (
             content,
@@ -1009,6 +1078,8 @@ def export_summary(
             flashcards=flashcards,
             sources=sources,
             export_type=pdf_export_type,
+            user_plan=user_plan,
+            user_language=user_language,
         )
         if content is None:
             return None, "", ""
@@ -1016,23 +1087,26 @@ def export_summary(
         # Ajouter le type dans le nom de fichier
         type_suffix = "" if pdf_export_type == "full" else f"_{pdf_export_type}"
         return content, f"{base_filename}{type_suffix}.pdf", "application/pdf"
-        return content, f"deepsight_{safe_title}_{timestamp}.pdf", "application/pdf"
 
     elif format == "csv":
         content = export_to_csv(
-            title, channel, category, mode, summary, video_url, duration, entities, reliability_score, created_at
+            title, channel, category, mode, summary, video_url, duration, entities, reliability_score, created_at,
+            user_plan=user_plan,
+            user_language=user_language,
         )
-        return content, f"deepsight_{safe_title}_{timestamp}.csv", "text/csv"
+        return content, f"{base_filename}.csv", "text/csv"
 
     elif format == "xlsx":
         if not EXCEL_AVAILABLE:
             return None, "", ""
         content = export_to_excel(
-            title, channel, category, mode, summary, video_url, duration, entities, reliability_score, created_at
+            title, channel, category, mode, summary, video_url, duration, entities, reliability_score, created_at,
+            user_plan=user_plan,
+            user_language=user_language,
         )
         return (
             content,
-            f"deepsight_{safe_title}_{timestamp}.xlsx",
+            f"{base_filename}.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     else:
