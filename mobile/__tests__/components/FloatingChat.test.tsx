@@ -58,6 +58,13 @@ jest.mock("../../src/contexts/LanguageContext", () => ({
           explain: "Explique ce concept",
         },
         minimizeChat: "Reduire",
+        clear: {
+          confirmTitle: "Effacer cette conversation ?",
+          confirmBody:
+            "Cela efface le chat texte ET les transcripts d'appels vocaux pour cette video.",
+          confirmYes: "Effacer tout",
+          confirmCancel: "Annuler",
+        },
       },
     },
   }),

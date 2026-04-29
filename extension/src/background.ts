@@ -410,6 +410,25 @@ async function getChatHistory(summaryId: number): Promise<ChatMessage[]> {
   }
 }
 
+/**
+ * Clear chat history (unified text + voice — Task 9).
+ *
+ * Backend `DELETE /api/chat/history/{summary_id}` accepts `?include_voice=`
+ * query param (default true). When `includeVoice=true`, the backend deletes
+ * both text chat messages AND voice transcripts (+ digests) for that video.
+ * The UI must warn the user before calling this — see ChatView confirm dialog.
+ */
+async function clearChatHistory(
+  summaryId: number,
+  options: { includeVoice?: boolean } = {},
+): Promise<{ success: boolean; deleted: number }> {
+  const includeVoice = options.includeVoice ?? true;
+  return apiRequest<{ success: boolean; deleted: number }>(
+    `/chat/history/${summaryId}?include_voice=${includeVoice}`,
+    { method: "DELETE" },
+  );
+}
+
 // ── Helpers ──
 
 async function isAuthenticated(): Promise<boolean> {
@@ -994,6 +1013,19 @@ async function handleExtensionMessage(
       try {
         const messages = await getChatHistory(summaryId);
         return { success: true, result: messages };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "CLEAR_CHAT_HISTORY": {
+      const { summaryId, includeVoice } = message.data as {
+        summaryId: number;
+        includeVoice?: boolean;
+      };
+      try {
+        const result = await clearChatHistory(summaryId, { includeVoice });
+        return { success: true, result };
       } catch (e) {
         return { success: false, error: (e as Error).message };
       }
