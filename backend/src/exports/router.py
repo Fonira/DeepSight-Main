@@ -154,7 +154,7 @@ async def export_analysis(
         except (json.JSONDecodeError, TypeError) as e:
             logger.warning(f"Failed to parse fact_check_result for summary {request.summary_id}: {e}")
 
-    # Générer l'export
+    # Générer l'export — propager user.plan + user.default_lang pour le watermark
     content, filename, mimetype = export_summary(
         format=request.format,
         title=summary.video_title,
@@ -171,6 +171,8 @@ async def export_analysis(
         flashcards=flashcards,
         sources=sources,
         pdf_export_type=request.pdf_type or "full",
+        user_plan=current_user.plan,
+        user_language=current_user.default_lang or "fr",
     )
 
     if content is None:
