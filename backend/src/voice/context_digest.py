@@ -86,7 +86,22 @@ async def generate_voice_session_digest(db, voice_session_id: str) -> None:
     ).scalars().all()
 
     if not msgs:
-        logger.info("generate_voice_digest: empty session", extra={"id": voice_session_id})
+        logger.info(
+            "generate_voice_digest: empty session, stamping with empty digest",
+            extra={"voice_session_id": voice_session_id},
+        )
+        await db.execute(
+            update(VoiceSession)
+            .where(
+                VoiceSession.id == voice_session_id,
+                VoiceSession.digest_generated_at.is_(None),
+            )
+            .values(
+                digest_text="",
+                digest_generated_at=datetime.now(timezone.utc),
+            )
+        )
+        await db.commit()
         return
 
     transcript = "\n".join(
@@ -100,7 +115,7 @@ async def generate_voice_session_digest(db, voice_session_id: str) -> None:
     except Exception as exc:
         logger.warning(
             "generate_voice_digest: Mistral failed (non-fatal)",
-            extra={"id": voice_session_id, "error": str(exc)},
+            extra={"voice_session_id": voice_session_id, "error": str(exc)},
         )
         return
 
@@ -116,4 +131,66 @@ async def generate_voice_session_digest(db, voice_session_id: str) -> None:
             digest_generated_at=datetime.now(timezone.utc),
         )
     )
+    await db.commit()
+
+
+async def maybe_generate_chat_text_digest(
+    db,
+    summary_id: int,
+    user_id: int,
+) -> None:
+    """If 20+ text messages on this video are ungested, create one digest row.
+
+    'Ungested' = chat_messages where source='text' and id > MAX(last_message_id)
+    of any existing chat_text_digests for (summary_id, user_id).
+    """
+    # 1. Find the highest last_message_id already digested
+    q_max = select(ChatTextDigest.last_message_id).where(
+        ChatTextDigest.summary_id == summary_id,
+        ChatTextDigest.user_id == user_id,
+        ChatTextDigest.last_message_id.isnot(None),
+    ).order_by(ChatTextDigest.last_message_id.desc()).limit(1)
+    last_digested_id = (await db.execute(q_max)).scalar_one_or_none() or 0
+
+    # 2. Fetch the next bucket of CHAT_TEXT_BUCKET_SIZE ungested text messages
+    q_bucket = (
+        select(ChatMessage)
+        .where(
+            ChatMessage.summary_id == summary_id,
+            ChatMessage.user_id == user_id,
+            ChatMessage.source == "text",
+            ChatMessage.id > last_digested_id,
+        )
+        .order_by(ChatMessage.id.asc())
+        .limit(CHAT_TEXT_BUCKET_SIZE)
+    )
+    bucket = (await db.execute(q_bucket)).scalars().all()
+
+    if len(bucket) < CHAT_TEXT_BUCKET_SIZE:
+        return  # not yet a full bucket
+
+    transcript = "\n".join(
+        f"{'user' if m.role == 'user' else 'assistant'}: {m.content}"
+        for m in bucket
+        if m.content
+    )
+
+    try:
+        digest_text = await _call_mistral_for_digest(transcript)
+    except Exception as exc:
+        logger.warning(
+            "maybe_chat_text_digest: Mistral failed (non-fatal)",
+            extra={"summary_id": summary_id, "user_id": user_id, "error": str(exc)},
+        )
+        return
+
+    digest = ChatTextDigest(
+        summary_id=summary_id,
+        user_id=user_id,
+        first_message_id=bucket[0].id,
+        last_message_id=bucket[-1].id,
+        digest_text=digest_text,
+        msg_count=len(bucket),
+    )
+    db.add(digest)
     await db.commit()
