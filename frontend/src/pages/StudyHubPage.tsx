@@ -27,6 +27,7 @@ import { normalizePlanId, CONVERSION_TRIGGERS } from "../config/planPrivileges";
 import { Sidebar } from "../components/layout/Sidebar";
 import DoodleBackground from "../components/DoodleBackground";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { EmptyState } from "../components/EmptyState";
 import {
   XPBar,
   HeatMap,
@@ -64,7 +65,7 @@ const formatTime = (seconds: number): string => {
 
 const StudyHubPage: React.FC = () => {
   const navigate = useNavigate();
-  const { language } = useTranslation();
+  const { language, t } = useTranslation();
   const { user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -403,12 +404,14 @@ const StudyHubPage: React.FC = () => {
                             ))}
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <BookOpen className="w-8 h-8 text-text-tertiary mb-2" />
-                            <p className="text-xs text-text-tertiary">
-                              {fr ? "Aucun badge encore" : "No badges yet"}
-                            </p>
-                          </div>
+                          <EmptyState
+                            icon={BookOpen}
+                            title={t.empty_states.study_no_badges.title}
+                            description={
+                              t.empty_states.study_no_badges.description
+                            }
+                            className="py-8"
+                          />
                         )}
                       </div>
                     </div>
