@@ -970,32 +970,32 @@ async def get_voice_catalog():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def _run_main_analysis_for_v3(
+async def _run_main_analysis_for_video(
     url: str,
     video_id: str,
     lang: str,
     user_id: int,
     user_plan: str,
 ) -> None:
-    """Trigger the main analysis pipeline for the Quick Voice Call mobile V3 path.
+    """Trigger the main analysis pipeline for a Quick Voice Call session.
+
+    Used by both the mobile V3 path (``video_url`` entry point) and the V1
+    extension path when no Summary is cached for the YouTube ``video_id``.
 
     Wraps ``videos/router._analyze_video_background_v6`` with sane defaults so
-    the placeholder Summary created for ``video_url`` eventually gets a sibling
-    row with ``full_digest`` populated. The orchestrator's ``run_for_video``
-    polls by ``(video_id, user_id) DESC`` and picks up the freshest row, so
-    whichever of the two ends up with content first wins.
+    a Summary row eventually gets ``full_digest`` populated. The orchestrator's
+    ``run_for_video`` polls by ``(video_id, user_id) DESC`` and picks up the
+    freshest row.
 
     Credit reservation is intentionally bypassed here: the v6 pipeline is
     invoked without a prior reservation, which the function tolerates (it
     only releases credits when ``SECURITY_AVAILABLE`` and a reservation
-    exists). PR2/PR3 may add explicit credit accounting for the V3 entry
-    point — out of scope for Task 7 (foundation only).
+    exists).
     """
     try:
         from videos.router import _analyze_video_background_v6
 
-        # Use a v3-specific task_id prefix so logs are easy to correlate.
-        task_id = f"v3voice_{uuid.uuid4()}"
+        task_id = f"voice_{uuid.uuid4()}"
         platform = "tiktok" if "tiktok.com" in url else "youtube"
         await _analyze_video_background_v6(
             task_id=task_id,
@@ -1013,7 +1013,7 @@ async def _run_main_analysis_for_v3(
         )
     except Exception as exc:  # noqa: BLE001 — best-effort, voice still works
         logger.exception(
-            "Quick Voice Call mobile V3: main analysis pipeline failed (non-fatal)",
+            "Quick Voice Call: main analysis pipeline failed (non-fatal)",
             extra={
                 "url": url[:80],
                 "video_id": video_id,
@@ -1336,7 +1336,7 @@ async def create_voice_session(
             # populated and the orchestrator's polling fetchers eventually
             # see something to publish as ``analysis_partial`` events.
             background_tasks.add_task(
-                _run_main_analysis_for_v3,
+                _run_main_analysis_for_video,
                 url=request.video_url,
                 video_id=v3_video_id,
                 lang=request.language or "fr",
@@ -1354,33 +1354,92 @@ async def create_voice_session(
                 },
             )
         else:
-            # V1 extension path (Quick Voice Call V1.1 fix Agent A) :
-            # use the production orchestrator wrapping ultra_resilient transcript
-            # extraction + cached Summary analysis fetchers, instead of the no-op
-            # default factory that left the agent without context.
-            #
-            # Note for V3 mobile path: see the ``if v3_url_path`` branch above —
-            # it wires StreamingOrchestrator directly with ``fetch_for_video_url``
-            # (voice/transcript_fetcher.py) and ``run_for_video`` /
-            # ``final_digest_for_video`` (voice/analysis_runner.py) because V3
-            # already has a Summary placeholder row and a parallel main analysis
-            # pipeline running. V1 has no such placeholder yet, so the production
-            # orchestrator polls/falls back as needed.
-            orchestrator = create_production_orchestrator(redis=redis)
-            background_tasks.add_task(
-                orchestrator.run,
-                session_id=voice_session.id,
-                video_id=request.video_id,
-                user_id=current_user.id,
+            # V1 extension path. Two sub-branches:
+            #   (a) Cache hit OR free plan → ``create_production_orchestrator``
+            #       reads the cached Summary (no Mistral spend, no auto-analysis).
+            #   (b) Cache miss AND plan != free → fire the main analysis pipeline
+            #       in background and use the V3-style polling fetchers
+            #       (``run_for_video`` / ``final_digest_for_video``) so the
+            #       agent gets a real ``analysis_partial`` stream as the Mistral
+            #       sections land in the DB. Free is excluded to avoid burning
+            #       Mistral tokens outside the explicit "Analyser" funnel.
+            cached_analysis_result = await db.execute(
+                select(Summary)
+                .where(Summary.video_id == request.video_id)
+                .where(Summary.full_digest.is_not(None))
+                .order_by(Summary.id.desc())
+                .limit(1)
             )
-            logger.info(
-                "Quick Voice Call orchestrator scheduled",
-                extra={
-                    "session_id": voice_session.id,
-                    "video_id": request.video_id,
-                    "user_id": current_user.id,
-                },
-            )
+            has_cached_analysis = cached_analysis_result.scalar_one_or_none() is not None
+
+            should_auto_analyze = (not has_cached_analysis) and plan != "free"
+
+            if should_auto_analyze:
+                # Reconstruct YouTube URL — V1 extension only sees YouTube IDs.
+                youtube_url = f"https://www.youtube.com/watch?v={request.video_id}"
+                background_tasks.add_task(
+                    _run_main_analysis_for_video,
+                    url=youtube_url,
+                    video_id=request.video_id,
+                    lang=request.language or "fr",
+                    user_id=current_user.id,
+                    user_plan=plan,
+                )
+
+                # Capture video_id for closures so the orchestrator's run() can
+                # pass any string as the first arg (it's the same video_id here,
+                # but the closure keeps the signature compatible with V3's URL).
+                _v1_video_id = request.video_id
+
+                async def _v1_run_analysis(_video_arg: str, user_id: int) -> dict:
+                    return await run_for_video(_v1_video_id, user_id)
+
+                async def _v1_final_digest(_video_arg: str, user_id: int) -> str:
+                    return await final_digest_for_video(_v1_video_id, user_id)
+
+                # Reuse the V1 transcript fetcher (video_id-based, ultra_resilient
+                # chain) — it already works with the bare YouTube ID.
+                from voice.streaming_orchestrator import _make_transcript_fetcher
+
+                orchestrator = StreamingOrchestrator(
+                    redis=redis,
+                    fetch_transcript=_make_transcript_fetcher(),
+                    run_analysis=_v1_run_analysis,
+                    final_digest=_v1_final_digest,
+                )
+                background_tasks.add_task(
+                    orchestrator.run,
+                    session_id=voice_session.id,
+                    video_id=request.video_id,
+                    user_id=current_user.id,
+                )
+                logger.info(
+                    "Quick Voice Call V1 orchestrator scheduled (auto-analysis)",
+                    extra={
+                        "session_id": voice_session.id,
+                        "video_id": request.video_id,
+                        "user_id": current_user.id,
+                        "plan": plan,
+                    },
+                )
+            else:
+                orchestrator = create_production_orchestrator(redis=redis)
+                background_tasks.add_task(
+                    orchestrator.run,
+                    session_id=voice_session.id,
+                    video_id=request.video_id,
+                    user_id=current_user.id,
+                )
+                logger.info(
+                    "Quick Voice Call V1 orchestrator scheduled",
+                    extra={
+                        "session_id": voice_session.id,
+                        "video_id": request.video_id,
+                        "user_id": current_user.id,
+                        "plan": plan,
+                        "has_cached_analysis": has_cached_analysis,
+                    },
+                )
 
     # Generate signed URL via ElevenLabs Conversational AI API
     try:
