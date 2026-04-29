@@ -58,6 +58,7 @@ import { createTimecodeMarkdownComponents } from "../components/TimecodeRenderer
 import { FloatingChatWindow } from "../components/FloatingChatWindow";
 import DoodleBackground from "../components/DoodleBackground";
 import { SEO } from "../components/SEO";
+import { EmptyState } from "../components/EmptyState";
 import { ThumbnailImage } from "../components/ThumbnailImage";
 import { IntellectualProfileBanner } from "../components/IntellectualProfileBanner";
 import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
@@ -1574,24 +1575,21 @@ export const History: React.FC = () => {
                   {selectedVideoDetail.mode === "quick_chat" &&
                   !selectedVideoDetail.summary_content ? (
                     /* Quick Chat Upgrade Panel */
-                    <div className="card p-6">
-                      <div className="flex items-center gap-3 mb-5">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-                          <BookOpen className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-text-primary">
-                            {language === "fr"
-                              ? "Quick Chat — Pas encore d'analyse"
-                              : "Quick Chat — No analysis yet"}
-                          </h3>
-                          <p className="text-sm text-text-tertiary">
-                            {language === "fr"
-                              ? "Vous pouvez generer une analyse complete pour cette video"
-                              : "You can generate a full analysis for this video"}
-                          </p>
-                        </div>
-                      </div>
+                    (<div className="card p-6">
+                      <EmptyState
+                        icon={BookOpen}
+                        title={
+                          language === "fr"
+                            ? "Quick Chat — Pas encore d'analyse"
+                            : "Quick Chat — No analysis yet"
+                        }
+                        description={
+                          language === "fr"
+                            ? "Vous pouvez générer une analyse complète pour cette vidéo."
+                            : "You can generate a full analysis for this video."
+                        }
+                        className="py-6"
+                      />
                       {/* Mode selector */}
                       <div className="mb-4">
                         <label className="text-sm font-medium text-text-secondary mb-2 block">
