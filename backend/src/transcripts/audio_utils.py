@@ -6,6 +6,7 @@
 """
 
 import asyncio
+import os
 import subprocess
 import tempfile
 import time
@@ -15,7 +16,28 @@ from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 
-from core.config import get_groq_key
+from core.config import get_groq_key, get_youtube_proxy, get_ytdlp_cookies_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🌐 YT-DLP EXTRA ARGS — proxy + cookies (partagé YouTube + TikTok)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _yt_dlp_extra_args() -> list:
+    """Common yt-dlp flags for IP-banned environments: proxy + cookies.
+
+    Both are no-ops when their env vars are unset, so this is safe to call
+    from every yt-dlp wrapper unconditionally (YouTube ET TikTok).
+    """
+    extra = []
+    proxy = get_youtube_proxy()
+    if proxy:
+        extra.extend(["--proxy", proxy])
+    cookies = get_ytdlp_cookies_path()
+    if cookies and os.path.exists(cookies):
+        extra.extend(["--cookies", cookies])
+    return extra
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION
@@ -314,6 +336,7 @@ async def download_audio_ytdlp(
 
                 cmd = [
                     "yt-dlp",
+                    *_yt_dlp_extra_args(),
                     "-x",
                     "--audio-format",
                     "mp3",

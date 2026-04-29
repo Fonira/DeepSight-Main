@@ -29,6 +29,7 @@ from transcripts.audio_utils import (
     transcribe_audio_voxtral,
     compress_audio,
     executor as audio_executor,
+    _yt_dlp_extra_args,
 )
 from core.config import get_supadata_key, get_mistral_key
 
@@ -296,6 +297,7 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
             def _get_info():
                 cmd = [
                     "yt-dlp",
+                    *_yt_dlp_extra_args(),
                     "--dump-json",
                     "--no-warnings",
                     "--skip-download",
@@ -903,6 +905,7 @@ async def _download_video_bytes(url: str, video_id: str) -> Optional[bytes]:
                 video_path = f"{tmpdir}/video.mp4"
                 cmd = [
                     "yt-dlp",
+                    *_yt_dlp_extra_args(),
                     "-f",
                     "best[ext=mp4]/best",
                     "-o",

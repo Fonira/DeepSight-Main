@@ -36,21 +36,9 @@ from core.config import (
     TRANSCRIPT_CONFIG,
 )
 
-
-def _yt_dlp_extra_args() -> list:
-    """Common yt-dlp flags for IP-banned environments: proxy + cookies.
-
-    Both are no-ops when their env vars are unset, so this is safe to call
-    from every yt-dlp wrapper unconditionally.
-    """
-    extra = []
-    proxy = get_youtube_proxy()
-    if proxy:
-        extra.extend(["--proxy", proxy])
-    cookies = get_ytdlp_cookies_path()
-    if cookies and os.path.exists(cookies):
-        extra.extend(["--cookies", cookies])
-    return extra
+# Helper partagé YouTube + TikTok — défini dans audio_utils pour ré-utilisation.
+# Re-export pour compat avec d'éventuels imports existants.
+from transcripts.audio_utils import _yt_dlp_extra_args  # noqa: F401
 
 
 class ExtractionMethod(Enum):
