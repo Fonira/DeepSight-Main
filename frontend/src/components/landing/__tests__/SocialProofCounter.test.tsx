@@ -41,7 +41,7 @@ describe("SocialProofCounter", () => {
     await waitFor(
       () => {
         expect(screen.getByTestId("counter-videos")).toHaveTextContent(
-          /12[\s  ]?345/,
+          /12[\s\u00A0\u202F]?345/,
         );
       },
       { timeout: 3000 },
