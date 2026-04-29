@@ -847,6 +847,10 @@ class VoiceSession(Base):
     # NULL while session is still active, [0.0, 100.0] once orchestrator settles.
     context_completion_pct = Column(Float, nullable=True)
 
+    # 🆕 v6.1 (Spec merge voice ↔ chat 2026-04-29): digest end-of-session
+    digest_text = Column(Text, nullable=True)
+    digest_generated_at = Column(DateTime(timezone=True), nullable=True)
+
     # Relations
     user = relationship("User")
     summary = relationship("Summary")
@@ -1029,6 +1033,37 @@ class StudyDailyActivity(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "date", name="uq_daily_activity"),
         Index("idx_daily_user_date", "user_id", "date"),
+    )
+
+
+class ChatTextDigest(Base):
+    """Digest 2-3 bullets d'un bucket de 20 messages chat texte sur une vidéo.
+
+    Permet de réinjecter un résumé condensé des échanges anciens dans le contexte
+    voice/chat sans dépasser les limites tokens (cf. Spec merge 2026-04-29).
+    """
+
+    __tablename__ = "chat_text_digests"
+
+    id = Column(Integer, primary_key=True)
+    summary_id = Column(
+        Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    first_message_id = Column(
+        Integer, ForeignKey("chat_messages.id", ondelete="SET NULL"), nullable=True
+    )
+    last_message_id = Column(
+        Integer, ForeignKey("chat_messages.id", ondelete="SET NULL"), nullable=True
+    )
+    digest_text = Column(Text, nullable=False)
+    msg_count = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ix_chat_text_digests_summary_user", "summary_id", "user_id"),
     )
 
 
