@@ -16,23 +16,24 @@
 
 ## File Structure
 
-| Fichier | Type | Responsabilité |
-|---|---|---|
-| `backend/src/voice/url_validator.py` | NEW | Regex YouTube + TikTok, extraction `(platform, video_id)` |
-| `backend/src/voice/agent_types.py` | MODIFY | Ajouter `EXPLORER_STREAMING` AgentConfig + prompts FR/EN |
-| `backend/src/voice/schemas.py` | MODIFY | Étendre `VoiceSessionRequest` avec `video_url` + validator XOR. Étendre `VoiceSessionResponse` avec `summary_id` |
-| `backend/src/voice/streaming_orchestrator.py` | NEW | Pipeline transcript → analyse → Redis pubsub `voice:ctx:{session_id}` |
-| `backend/src/voice/router.py` | MODIFY | Étendre `POST /session` (branche `video_url`). Nouveau `GET /context/stream` SSE |
-| `backend/tests/voice/test_url_validator.py` | NEW | Tests regex YT + TikTok + invalid |
-| `backend/tests/voice/test_voice_session_video_url.py` | NEW | Tests POST /voice/session avec video_url |
-| `backend/tests/voice/test_streaming_orchestrator.py` | NEW | Tests pipeline + Redis pubsub |
-| `backend/tests/voice/test_voice_context_sse.py` | NEW | Tests SSE roundtrip + IDOR |
+| Fichier                                               | Type   | Responsabilité                                                                                                   |
+| ----------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------- |
+| `backend/src/voice/url_validator.py`                  | NEW    | Regex YouTube + TikTok, extraction `(platform, video_id)`                                                        |
+| `backend/src/voice/agent_types.py`                    | MODIFY | Ajouter `EXPLORER_STREAMING` AgentConfig + prompts FR/EN                                                         |
+| `backend/src/voice/schemas.py`                        | MODIFY | Étendre `VoiceSessionRequest` avec `video_url` + validator XOR. Étendre `VoiceSessionResponse` avec `summary_id` |
+| `backend/src/voice/streaming_orchestrator.py`         | NEW    | Pipeline transcript → analyse → Redis pubsub `voice:ctx:{session_id}`                                            |
+| `backend/src/voice/router.py`                         | MODIFY | Étendre `POST /session` (branche `video_url`). Nouveau `GET /context/stream` SSE                                 |
+| `backend/tests/voice/test_url_validator.py`           | NEW    | Tests regex YT + TikTok + invalid                                                                                |
+| `backend/tests/voice/test_voice_session_video_url.py` | NEW    | Tests POST /voice/session avec video_url                                                                         |
+| `backend/tests/voice/test_streaming_orchestrator.py`  | NEW    | Tests pipeline + Redis pubsub                                                                                    |
+| `backend/tests/voice/test_voice_context_sse.py`       | NEW    | Tests SSE roundtrip + IDOR                                                                                       |
 
 ---
 
 ## Task 1: URL Validator
 
 **Files:**
+
 - Create: `backend/src/voice/url_validator.py`
 - Test: `backend/tests/voice/test_url_validator.py`
 
@@ -155,6 +156,7 @@ git commit -m "feat(voice): add URL validator for YouTube + TikTok (Quick Voice 
 ## Task 2: Agent type explorer_streaming
 
 **Files:**
+
 - Modify: `backend/src/voice/agent_types.py`
 - Test: `backend/tests/voice/test_agent_types.py` (existing — extend)
 
@@ -187,7 +189,7 @@ def test_explorer_streaming_listed():
 Run: `cd backend && python -m pytest tests/voice/test_agent_types.py::test_explorer_streaming_agent_exists -v`
 Expected: FAIL with `KeyError: 'explorer_streaming'` or `AttributeError`.
 
-- [ ] **Step 2.3: Add EXPLORER_STREAMING_PROMPT_FR and _EN constants**
+- [ ] **Step 2.3: Add EXPLORER_STREAMING_PROMPT_FR and \_EN constants**
 
 Modify `backend/src/voice/agent_types.py`. Add BEFORE the existing `EXPLORER` config:
 
@@ -294,6 +296,7 @@ git commit -m "feat(voice): add explorer_streaming agent type with progressive c
 ## Task 3: Schema VoiceSessionRequest étendu
 
 **Files:**
+
 - Modify: `backend/src/voice/schemas.py`
 - Test: `backend/tests/voice/test_schemas.py` (create or extend)
 
@@ -438,6 +441,7 @@ git commit -m "feat(voice): extend VoiceSessionRequest with video_url + XOR vali
 ## Task 4: Streaming Orchestrator (skeleton + transcript pipeline)
 
 **Files:**
+
 - Create: `backend/src/voice/streaming_orchestrator.py`
 - Test: `backend/tests/voice/test_streaming_orchestrator.py`
 
@@ -695,6 +699,7 @@ git commit -m "feat(voice): add StreamingOrchestrator skeleton with Redis pubsub
 ## Task 5: Wire stream_transcript_chunks to Supadata + fallbacks
 
 **Files:**
+
 - Modify: `backend/src/voice/streaming_orchestrator.py`
 - Modify: `backend/tests/voice/test_streaming_orchestrator.py` (add integration-style test)
 
@@ -839,6 +844,7 @@ git commit -m "feat(voice): wire stream_transcript_chunks to Supadata fallback c
 ## Task 6: Wire stream_mistral_analysis + get_final_digest
 
 **Files:**
+
 - Modify: `backend/src/voice/streaming_orchestrator.py`
 - Modify: `backend/tests/voice/test_streaming_orchestrator.py`
 
@@ -993,6 +999,7 @@ git commit -m "feat(voice): wire stream_mistral_analysis + get_final_digest to S
 ## Task 7: Endpoint POST /voice/session étendu (branche video_url)
 
 **Files:**
+
 - Modify: `backend/src/voice/router.py`
 - Test: `backend/tests/voice/test_voice_session_video_url.py`
 
@@ -1088,6 +1095,7 @@ async def test_post_session_quota_exceeded_returns_403(
 Run: `grep -n "@router.post.*session\|async def.*session" backend/src/voice/router.py | head -5`
 
 Then read 80 lines around the handler to understand:
+
 - The current request shape (`VoiceSessionRequest`)
 - Quota check (`check_voice_quota`)
 - Agent ephemeral creation (ElevenLabs)
@@ -1218,6 +1226,7 @@ git commit -m "feat(voice): POST /voice/session accepts video_url + creates Summ
 ## Task 8: Endpoint SSE GET /voice/context/stream
 
 **Files:**
+
 - Modify: `backend/src/voice/router.py`
 - Test: `backend/tests/voice/test_voice_context_sse.py`
 
@@ -1418,6 +1427,7 @@ git commit -m "feat(voice): add SSE endpoint GET /voice/context/stream + IDOR ch
 ## Task 9: Caddy SSE timeout config (production)
 
 **Files:**
+
 - Modify: `deploy/hetzner/caddy/Caddyfile`
 
 - [ ] **Step 9.1: Verify current SSE config**
@@ -1450,9 +1460,11 @@ handle @sse {
 - [ ] **Step 9.3: Validate Caddyfile syntax**
 
 If Docker is available locally:
+
 ```bash
 docker run --rm -v $(pwd)/deploy/hetzner/caddy:/etc/caddy caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 ```
+
 Expected: `Valid configuration`.
 
 - [ ] **Step 9.4: Commit**
@@ -1478,6 +1490,7 @@ cd src && uvicorn main:app --reload --port 8000
 ```
 
 In another terminal, start Redis:
+
 ```bash
 docker run --rm -p 6379:6379 redis:7-alpine
 ```
@@ -1511,6 +1524,7 @@ Expected: a stream of `event: transcript_chunk\ndata: {...}` followed by `event:
 ```bash
 cd backend && python -m pytest -v --tb=short
 ```
+
 Expected: all existing tests still pass + new tests pass. Note any pre-existing failures (not introduced by PR1).
 
 - [ ] **Step 10.6: Open the PR**

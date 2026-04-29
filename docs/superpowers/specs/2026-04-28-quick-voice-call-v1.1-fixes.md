@@ -61,15 +61,15 @@ Après reload de l'extension dans `chrome://extensions` (mode développeur → "
 - [ ] Cliquer sur le bouton 🎙️ injecté par le content script DeepSight → le side panel s'ouvre sur `ConnectingView`
 - [ ] L'agent ElevenLabs commence à parler dans les ~2 s (premier message agent doit citer le titre de la vidéo)
 - [ ] Pendant l'appel :
-    - [ ] La zone chat (`role="log"`) affiche les bulles user (👤, à droite) et agent (🤖, à gauche) au fur et à mesure
-    - [ ] La barre de progression `role="progressbar"` bouge à > 0 % dans les 5 premières secondes (= au moins un `transcript_chunk` reçu)
-    - [ ] Le bouton ⚙ en haut à droite ouvre le drawer `VoiceSettingsDrawer` quand on clique dessus, et le ferme quand on clique sur la croix
-    - [ ] Le bouton Mute mute effectivement le micro (pas juste l'UI — vérifier qu'on n'entend plus côté agent)
+  - [ ] La zone chat (`role="log"`) affiche les bulles user (👤, à droite) et agent (🤖, à gauche) au fur et à mesure
+  - [ ] La barre de progression `role="progressbar"` bouge à > 0 % dans les 5 premières secondes (= au moins un `transcript_chunk` reçu)
+  - [ ] Le bouton ⚙ en haut à droite ouvre le drawer `VoiceSettingsDrawer` quand on clique dessus, et le ferme quand on clique sur la croix
+  - [ ] Le bouton Mute mute effectivement le micro (pas juste l'UI — vérifier qu'on n'entend plus côté agent)
 - [ ] Cliquer Raccrocher avant les 3 minutes :
-    - [ ] L'`UpgradeCTA` apparaît avec `reason="trial_used"` (texte "essai gratuit", CTA Expert 14.99 €/mois)
-    - [ ] La page `/upgrade?plan=expert&source=voice_call` s'ouvre dans un nouvel onglet quand on clique le CTA
+  - [ ] L'`UpgradeCTA` apparaît avec `reason="trial_used"` (texte "essai gratuit", CTA Expert 14.99 €/mois)
+  - [ ] La page `/upgrade?plan=expert&source=voice_call` s'ouvre dans un nouvel onglet quand on clique le CTA
 - [ ] Relancer un appel sur la même vidéo :
-    - [ ] Le backend renvoie `402` avec `reason: "trial_used"` → l'`UpgradeCTA` s'affiche directement (pas de `ConnectingView`)
+  - [ ] Le backend renvoie `402` avec `reason: "trial_used"` → l'`UpgradeCTA` s'affiche directement (pas de `ConnectingView`)
 
 ## Tests automatisés
 

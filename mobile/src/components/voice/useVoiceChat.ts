@@ -293,148 +293,151 @@ export function useVoiceChat(
   // start()
   // ─────────────────────────────────────────────────────────────────────────
 
-  const start = useCallback(async (opts?: { videoUrl?: string }) => {
-    // Empêcher les démarrages multiples
-    if (
-      status === "connecting" ||
-      status === "listening" ||
-      status === "speaking"
-    ) {
-      return;
-    }
-
-    setError(null);
-    setMessages([]);
-    setElapsedSeconds(0);
-    setSessionId(null);
-    setVoiceSummaryId(null);
-    setStatus("connecting");
-
-    // 1. Demander la permission micro via expo-av
-    try {
-      const { granted } = await Audio.requestPermissionsAsync();
-      if (!granted) {
-        reportError(ERROR_MESSAGES.MICROPHONE_DENIED);
+  const start = useCallback(
+    async (opts?: { videoUrl?: string }) => {
+      // Empêcher les démarrages multiples
+      if (
+        status === "connecting" ||
+        status === "listening" ||
+        status === "speaking"
+      ) {
         return;
       }
 
-      // Configurer le mode audio pour l'enregistrement + lecture simultanée
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-      });
-    } catch {
-      reportError(ERROR_MESSAGES.MICROPHONE_GENERIC);
-      return;
-    }
+      setError(null);
+      setMessages([]);
+      setElapsedSeconds(0);
+      setSessionId(null);
+      setVoiceSummaryId(null);
+      setStatus("connecting");
 
-    // 2. Créer la session via notre API backend
-    let sessionData: SessionResponse;
-    try {
-      // summaryId optionnel : présent → mode explorer, absent → mode companion
-      let numericId: number | undefined;
-      if (summaryId !== undefined && summaryId !== null && summaryId !== "") {
-        numericId = parseInt(summaryId, 10);
-        if (isNaN(numericId)) {
-          reportError(ERROR_MESSAGES.SESSION_FAILED);
+      // 1. Demander la permission micro via expo-av
+      try {
+        const { granted } = await Audio.requestPermissionsAsync();
+        if (!granted) {
+          reportError(ERROR_MESSAGES.MICROPHONE_DENIED);
           return;
         }
-      }
 
-      const resolvedAgentType: VoiceAgentType =
-        agentType ??
-        (opts?.videoUrl
-          ? "explorer_streaming"
-          : numericId !== undefined
-            ? "explorer"
-            : "companion");
-
-      sessionData = (await voiceApi.createSession({
-        summary_id: numericId,
-        agent_type: resolvedAgentType,
-        language: "fr",
-        ...(opts?.videoUrl ? { video_url: opts.videoUrl } : {}),
-      })) as SessionResponse;
-      setRemainingMinutes(sessionData.quota_remaining_minutes);
-      maxSecondsRef.current = sessionData.max_session_minutes * 60;
-
-      // Spec #3 — mémorise session_id et timestamp de démarrage pour
-      // calculer time_in_call_secs lors de chaque appendTranscript.
-      sessionIdRef.current = sessionData.session_id;
-      sessionStartedAtRef.current = Date.now();
-      if (isMountedRef.current) {
-        setSessionId(sessionData.session_id);
-        setVoiceSummaryId(sessionData.summary_id ?? null);
-      }
-    } catch (err: unknown) {
-      // Vérifier si c'est une erreur de quota (403/429)
-      const apiError = err as { status?: number; message?: string };
-      if (apiError.status === 403 || apiError.status === 429) {
-        setStatus("quota_exceeded");
-        setError(ERROR_MESSAGES.QUOTA_EXCEEDED);
-        onError?.(ERROR_MESSAGES.QUOTA_EXCEEDED);
+        // Configurer le mode audio pour l'enregistrement + lecture simultanée
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+      } catch {
+        reportError(ERROR_MESSAGES.MICROPHONE_GENERIC);
         return;
       }
 
-      // Erreur réseau vs autre
-      if (
-        err instanceof TypeError ||
-        (apiError.message && apiError.message.includes("network"))
-      ) {
-        reportError(ERROR_MESSAGES.NETWORK);
-      } else {
-        reportError(ERROR_MESSAGES.SESSION_FAILED);
-      }
-      return;
-    }
-
-    // 3. Démarrer la session ElevenLabs via le SDK React Native
-    // Le SDK WebRTC (@elevenlabs/react-native) attend un conversationToken
-    // LiveKit JWT. Le backend l'expose désormais dans la réponse /session ;
-    // on retombe sur agentId seulement si le backend n'a pas pu le fournir.
-    try {
-      const conversationToken = sessionData.conversation_token || undefined;
-
-      await conversation.startSession({
-        ...(conversationToken
-          ? { conversationToken }
-          : { agentId: sessionData.agent_id }),
-        overrides: {
-          agent: {
-            language: "fr",
-          },
-        },
-      });
-
-      isActiveRef.current = true;
-
-      // Haptic feedback au start
+      // 2. Créer la session via notre API backend
+      let sessionData: SessionResponse;
       try {
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
-      } catch {
-        // Haptics non disponibles (simulateur)
+        // summaryId optionnel : présent → mode explorer, absent → mode companion
+        let numericId: number | undefined;
+        if (summaryId !== undefined && summaryId !== null && summaryId !== "") {
+          numericId = parseInt(summaryId, 10);
+          if (isNaN(numericId)) {
+            reportError(ERROR_MESSAGES.SESSION_FAILED);
+            return;
+          }
+        }
+
+        const resolvedAgentType: VoiceAgentType =
+          agentType ??
+          (opts?.videoUrl
+            ? "explorer_streaming"
+            : numericId !== undefined
+              ? "explorer"
+              : "companion");
+
+        sessionData = (await voiceApi.createSession({
+          summary_id: numericId,
+          agent_type: resolvedAgentType,
+          language: "fr",
+          ...(opts?.videoUrl ? { video_url: opts.videoUrl } : {}),
+        })) as SessionResponse;
+        setRemainingMinutes(sessionData.quota_remaining_minutes);
+        maxSecondsRef.current = sessionData.max_session_minutes * 60;
+
+        // Spec #3 — mémorise session_id et timestamp de démarrage pour
+        // calculer time_in_call_secs lors de chaque appendTranscript.
+        sessionIdRef.current = sessionData.session_id;
+        sessionStartedAtRef.current = Date.now();
+        if (isMountedRef.current) {
+          setSessionId(sessionData.session_id);
+          setVoiceSummaryId(sessionData.summary_id ?? null);
+        }
+      } catch (err: unknown) {
+        // Vérifier si c'est une erreur de quota (403/429)
+        const apiError = err as { status?: number; message?: string };
+        if (apiError.status === 403 || apiError.status === 429) {
+          setStatus("quota_exceeded");
+          setError(ERROR_MESSAGES.QUOTA_EXCEEDED);
+          onError?.(ERROR_MESSAGES.QUOTA_EXCEEDED);
+          return;
+        }
+
+        // Erreur réseau vs autre
+        if (
+          err instanceof TypeError ||
+          (apiError.message && apiError.message.includes("network"))
+        ) {
+          reportError(ERROR_MESSAGES.NETWORK);
+        } else {
+          reportError(ERROR_MESSAGES.SESSION_FAILED);
+        }
+        return;
       }
 
-      // 4. Démarrer le timer
-      timerRef.current = setInterval(() => {
-        if (!isMountedRef.current) return;
-        setElapsedSeconds((prev) => {
-          const next = prev + 1;
-          // Auto-stop si durée max atteinte
-          if (maxSecondsRef.current > 0 && next >= maxSecondsRef.current) {
-            stop();
-            setError(ERROR_MESSAGES.SESSION_TIMEOUT);
-          }
-          return next;
+      // 3. Démarrer la session ElevenLabs via le SDK React Native
+      // Le SDK WebRTC (@elevenlabs/react-native) attend un conversationToken
+      // LiveKit JWT. Le backend l'expose désormais dans la réponse /session ;
+      // on retombe sur agentId seulement si le backend n'a pas pu le fournir.
+      try {
+        const conversationToken = sessionData.conversation_token || undefined;
+
+        await conversation.startSession({
+          ...(conversationToken
+            ? { conversationToken }
+            : { agentId: sessionData.agent_id }),
+          overrides: {
+            agent: {
+              language: "fr",
+            },
+          },
         });
-      }, 1000);
-    } catch {
-      reportError(ERROR_MESSAGES.SDK_INIT_FAILED);
-    }
-  }, [status, summaryId, agentType, onError, reportError, stop, conversation]);
+
+        isActiveRef.current = true;
+
+        // Haptic feedback au start
+        try {
+          await Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Success,
+          );
+        } catch {
+          // Haptics non disponibles (simulateur)
+        }
+
+        // 4. Démarrer le timer
+        timerRef.current = setInterval(() => {
+          if (!isMountedRef.current) return;
+          setElapsedSeconds((prev) => {
+            const next = prev + 1;
+            // Auto-stop si durée max atteinte
+            if (maxSecondsRef.current > 0 && next >= maxSecondsRef.current) {
+              stop();
+              setError(ERROR_MESSAGES.SESSION_TIMEOUT);
+            }
+            return next;
+          });
+        }, 1000);
+      } catch {
+        reportError(ERROR_MESSAGES.SDK_INIT_FAILED);
+      }
+    },
+    [status, summaryId, agentType, onError, reportError, stop, conversation],
+  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // sendUserMessage() — Spec #3 (sync chat texte → voix)

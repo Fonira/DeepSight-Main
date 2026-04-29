@@ -645,7 +645,10 @@ const LegalCGU: React.FC = () => {
             </a>
           </p>
           <div className="mt-4 flex items-center justify-center gap-4 text-text-muted">
-            <Link to="/legal" className="hover:text-text-secondary transition-colors">
+            <Link
+              to="/legal"
+              className="hover:text-text-secondary transition-colors"
+            >
               Mentions legales
             </Link>
             <span>|</span>

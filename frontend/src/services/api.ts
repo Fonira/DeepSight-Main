@@ -1373,7 +1373,29 @@ export const chatApi = {
   },
 
   async clearHistory(summaryId: number): Promise<{ success: boolean }> {
-    return request(`/api/chat/history/${summaryId}`, { method: "DELETE" });
+    // Conservé pour compatibilité — délègue à clearChatHistory(includeVoice=true).
+    return chatApi.clearChatHistory(summaryId, { includeVoice: true });
+  },
+
+  /**
+   * 🗑️ Efface l'historique chat unifié (texte + voice) d'une vidéo.
+   * Endpoint: DELETE /api/chat/history/{summary_id}?include_voice={bool}
+   *
+   * Par défaut `includeVoice = true` : supprime chat texte + voice transcripts
+   * + chat_text_digests + reset des champs digest sur voice_sessions.
+   *
+   * `includeVoice = false` : ne supprime que le chat texte (préserve les
+   * transcripts voice et leurs digests).
+   */
+  async clearChatHistory(
+    summaryId: number,
+    options: { includeVoice?: boolean } = {},
+  ): Promise<{ success: boolean; deleted: number }> {
+    const includeVoice = options.includeVoice ?? true;
+    return request(
+      `/api/chat/history/${summaryId}?include_voice=${includeVoice}`,
+      { method: "DELETE" },
+    );
   },
 };
 

@@ -184,10 +184,7 @@ async function setPendingVoiceCall(
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe("Quick Voice Call — full flow (V1.1)", () => {
-  test("displays_transcripts_during_call", async ({
-    context,
-    extensionId,
-  }) => {
+  test("displays_transcripts_during_call", async ({ context, extensionId }) => {
     // ── Why skipped : this scenario depends on the production bundle
     // shipping a ``window.__deepsightTestHooks__`` side door so the spec
     // can simulate the ElevenLabs SDK ``onMessage`` callback (the lazy

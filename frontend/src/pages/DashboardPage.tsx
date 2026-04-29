@@ -154,7 +154,7 @@ const isPlaylistUrl = (url: string): boolean => {
 
 export const DashboardPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const { language } = useTranslation();
+  const { t, language } = useTranslation();
   const navigate = useNavigate();
 
   // États principaux
@@ -960,6 +960,23 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
+  // 🗑️ Clear chat history (texte + voice transcripts) — Task 8
+  const handleClearChatHistory = async () => {
+    if (!selectedSummary?.id) return;
+    const confirmed = window.confirm(
+      `${t.chat.clear.confirmTitle}\n\n${t.chat.clear.confirmBody}`,
+    );
+    if (!confirmed) return;
+    try {
+      await chatApi.clearChatHistory(selectedSummary.id, {
+        includeVoice: true,
+      });
+      setChatMessages([]);
+    } catch (err) {
+      console.error("❌ Clear chat history error:", err);
+    }
+  };
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
@@ -1672,6 +1689,7 @@ export const DashboardPage: React.FC = () => {
         webSearchEnabled={webSearchEnabled}
         onToggleWebSearch={setWebSearchEnabled}
         onSendMessage={handleSendChat}
+        onClearHistory={handleClearChatHistory}
         language={language as "fr" | "en"}
         userPlan={normalizedPlan}
         webSearchQuota={wsQuota}

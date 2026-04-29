@@ -37,9 +37,7 @@ describe("useStreamingVideoContext", () => {
   });
 
   test("does nothing when sessionId is null", () => {
-    renderHook(() =>
-      useStreamingVideoContext(null, fakeConversation as never),
-    );
+    renderHook(() => useStreamingVideoContext(null, fakeConversation as never));
     expect(mockListeners).toEqual({});
   });
 
@@ -47,9 +45,7 @@ describe("useStreamingVideoContext", () => {
     const { result } = renderHook(() =>
       useStreamingVideoContext("sess_1", fakeConversation as never),
     );
-    await waitFor(() =>
-      expect(mockListeners.transcript_chunk).toBeDefined(),
-    );
+    await waitFor(() => expect(mockListeners.transcript_chunk).toBeDefined());
 
     act(() => {
       mockListeners.transcript_chunk[0]({
@@ -74,9 +70,7 @@ describe("useStreamingVideoContext", () => {
     renderHook(() =>
       useStreamingVideoContext("sess_2", fakeConversation as never),
     );
-    await waitFor(() =>
-      expect(mockListeners.analysis_partial).toBeDefined(),
-    );
+    await waitFor(() => expect(mockListeners.analysis_partial).toBeDefined());
 
     act(() => {
       mockListeners.analysis_partial[0]({
@@ -93,9 +87,7 @@ describe("useStreamingVideoContext", () => {
     const { result } = renderHook(() =>
       useStreamingVideoContext("sess_3", fakeConversation as never),
     );
-    await waitFor(() =>
-      expect(mockListeners.ctx_complete).toBeDefined(),
-    );
+    await waitFor(() => expect(mockListeners.ctx_complete).toBeDefined());
 
     act(() => {
       mockListeners.ctx_complete[0]({
@@ -114,9 +106,7 @@ describe("useStreamingVideoContext", () => {
     const { unmount } = renderHook(() =>
       useStreamingVideoContext("sess_4", fakeConversation as never),
     );
-    await waitFor(() =>
-      expect(mockListeners.transcript_chunk).toBeDefined(),
-    );
+    await waitFor(() => expect(mockListeners.transcript_chunk).toBeDefined());
     unmount();
     expect(mockClose).toHaveBeenCalled();
   });
@@ -125,9 +115,7 @@ describe("useStreamingVideoContext", () => {
     renderHook(() =>
       useStreamingVideoContext("sess_5", fakeConversation as never),
     );
-    await waitFor(() =>
-      expect(mockListeners.transcript_chunk).toBeDefined(),
-    );
+    await waitFor(() => expect(mockListeners.transcript_chunk).toBeDefined());
 
     expect(() => {
       act(() => {

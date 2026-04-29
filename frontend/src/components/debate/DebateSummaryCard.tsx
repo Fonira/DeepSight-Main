@@ -121,7 +121,9 @@ export const DebateSummaryCard: React.FC<DebateSummaryCardProps> = ({
               />
               {badge.label}
             </span>
-            <span className="text-[10px] text-text-tertiary">{formattedDate}</span>
+            <span className="text-[10px] text-text-tertiary">
+              {formattedDate}
+            </span>
           </div>
           <p className="text-sm font-semibold text-white truncate group-hover:text-indigo-300 transition-colors">
             {debate.detected_topic}

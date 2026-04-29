@@ -60,8 +60,8 @@ export function AgentAvatar({ voiceName, conversation }: Props): JSX.Element {
         return;
       }
       lastFrameRef.current = ts;
-      const inputVol = hasInput ? conversation.getInputVolume?.() ?? 0 : 0;
-      const outputVol = hasOutput ? conversation.getOutputVolume?.() ?? 0 : 0;
+      const inputVol = hasInput ? (conversation.getInputVolume?.() ?? 0) : 0;
+      const outputVol = hasOutput ? (conversation.getOutputVolume?.() ?? 0) : 0;
 
       // L'agent prime sur l'utilisateur : si les deux parlent, c'est le plus
       // "fort" qui gagne (généralement l'output agent puisque le user parle

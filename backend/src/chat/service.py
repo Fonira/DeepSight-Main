@@ -10,7 +10,9 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import asyncio
 import json
+import logging
 import httpx
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any, Tuple, AsyncGenerator
@@ -20,6 +22,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.database import ChatMessage, ChatQuota, Summary, User, WebSearchUsage
 from core.config import get_mistral_key, get_openai_key, is_openai_available, PLAN_LIMITS
 from videos.web_search_provider import web_search_and_synthesize, WebSearchResult
+
+logger = logging.getLogger(__name__)
+
+
+def _history_text_from_chat_history(chat_history: Optional[List[Dict]]) -> str:
+    """Legacy fallback: build history_text from a List[Dict] chat_history.
+
+    Used for callers (legacy path / streaming) that haven't been migrated to
+    pass a pre-built ``history_text`` from ``build_unified_context_block``.
+    """
+    if not chat_history:
+        return ""
+    parts: List[str] = []
+    for msg in chat_history[-6:]:
+        role = "Utilisateur" if msg.get("role") == "user" else "Assistant"
+        content = msg.get("content", "")
+        parts.append(f"\n{role}: {content}")
+    return "".join(parts)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -354,6 +374,7 @@ async def save_chat_message(
     import json
     from sqlalchemy import text
 
+    saved_id = 0
     try:
         # 🆕 Essayer d'abord avec toutes les colonnes (v5.0+)
         message = ChatMessage(
@@ -369,7 +390,7 @@ async def save_chat_message(
         session.add(message)
         await session.commit()
         await session.refresh(message)
-        return message.id
+        saved_id = message.id
 
     except Exception as e:
         # ⚠️ Fallback: Les nouvelles colonnes n'existent pas encore
@@ -388,11 +409,43 @@ async def save_chat_message(
             )
             await session.commit()
             row = result.fetchone()
-            return row[0] if row else 0
+            saved_id = row[0] if row else 0
         except Exception as e2:
             print(f"❌ [save_chat_message] Error: {e2}", flush=True)
             await session.rollback()
             return 0
+
+    # 🆕 v6.1 (Task 7) : hook bucket digest — si on dépasse les 20 messages
+    # texte ungested sur cette vidéo, on génère un digest condensé en
+    # background avec sa propre session DB (sinon on bloquerait la requête
+    # courante en attente Mistral).
+    try:
+        from voice.context_digest import maybe_generate_chat_text_digest
+        from db.database import async_session_factory
+
+        async def _bucket_task():
+            async with async_session_factory() as bg_db:
+                try:
+                    await maybe_generate_chat_text_digest(bg_db, summary_id, user_id)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "chat bucket digest failed (non-fatal)",
+                        extra={
+                            "summary_id": summary_id,
+                            "user_id": user_id,
+                            "error": str(exc),
+                        },
+                    )
+
+        asyncio.create_task(_bucket_task())
+    except Exception as exc:  # noqa: BLE001
+        # Si même la création de la task échoue (ex: pas de loop), on log et continue.
+        logger.warning(
+            "chat bucket digest task scheduling failed",
+            extra={"summary_id": summary_id, "user_id": user_id, "error": str(exc)},
+        )
+
+    return saved_id
 
 
 async def get_chat_history(
@@ -504,6 +557,58 @@ async def clear_chat_history(session: AsyncSession, summary_id: int, user_id: in
     return result.rowcount
 
 
+async def clear_chat_history_unified(
+    session: AsyncSession,
+    summary_id: int,
+    user_id: int,
+    *,
+    include_voice: bool = True,
+) -> int:
+    """🆕 v6.1 (Task 7) : efface conversationnellement une vidéo.
+
+    include_voice=True (default) :
+      - chat_messages WHERE summary_id=… AND user_id=… (toutes sources)
+      - chat_text_digests WHERE summary_id=… AND user_id=…
+      - voice_sessions : digest_text=NULL, digest_generated_at=NULL
+        (la row reste pour audit billing, seul le digest est effacé)
+
+    include_voice=False :
+      - chat_messages WHERE source='text' AND summary_id=… AND user_id=…
+      - chat_text_digests WHERE summary_id=… AND user_id=…
+    """
+    from sqlalchemy import delete, update
+
+    from db.database import ChatTextDigest, VoiceSession
+
+    deleted_msgs_q = delete(ChatMessage).where(
+        ChatMessage.summary_id == summary_id,
+        ChatMessage.user_id == user_id,
+    )
+    if not include_voice:
+        deleted_msgs_q = deleted_msgs_q.where(ChatMessage.source == "text")
+    deleted_msgs = (await session.execute(deleted_msgs_q)).rowcount or 0
+
+    await session.execute(
+        delete(ChatTextDigest).where(
+            ChatTextDigest.summary_id == summary_id,
+            ChatTextDigest.user_id == user_id,
+        )
+    )
+
+    if include_voice:
+        await session.execute(
+            update(VoiceSession)
+            .where(
+                VoiceSession.summary_id == summary_id,
+                VoiceSession.user_id == user_id,
+            )
+            .values(digest_text=None, digest_generated_at=None)
+        )
+
+    await session.commit()
+    return deleted_msgs
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🤖 GÉNÉRATION RÉPONSE CHAT v4.0
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -514,13 +619,26 @@ def build_chat_prompt(
     video_title: str,
     transcript: str,
     summary: str,
-    chat_history: List[Dict],
-    mode: str,
-    lang: str,
+    chat_history: Optional[List[Dict]] = None,
+    mode: str = "standard",
+    lang: str = "fr",
     video_upload_date: str = "",
+    *,
+    history_text: Optional[str] = None,
 ) -> Tuple[str, str]:
     """
     Construit le prompt pour le chat.
+
+    🆕 v6.1 (Spec merge voice ↔ chat 2026-04-29, Task 7):
+    Accepte désormais ``history_text`` (str) déjà formaté par
+    ``voice.context_builder.build_unified_context_block`` (target='chat',
+    cap 30 KB) — bloc unifié contenant voice digests + chat digests +
+    derniers échanges verbatim.
+
+    Pour compat ascendante, si ``history_text`` est None mais
+    ``chat_history`` (List[Dict]) est fourni, on retombe sur l'ancienne
+    logique ``chat_history[-6:]``.
+
     Retourne: (system_prompt, user_prompt)
     """
     MODE_CONFIG = {
@@ -545,12 +663,10 @@ def build_chat_prompt(
     config["style_fr"] if lang == "fr" else config["style_en"]
     max_context = config["max_context"]
 
-    # Construire l'historique
-    history_text = ""
-    if chat_history:
-        for msg in chat_history[-6:]:
-            role = "Utilisateur" if msg["role"] == "user" else "Assistant"
-            history_text += f"\n{role}: {msg['content']}"
+    # Choix de l'historique : history_text pré-formaté (Task 7) prioritaire,
+    # sinon retombe sur l'ancien format chat_history[-6:].
+    if history_text is None:
+        history_text = _history_text_from_chat_history(chat_history)
 
     # Tronquer le transcript si nécessaire
     transcript_truncated = transcript[:max_context] if transcript else ""
@@ -820,20 +936,35 @@ async def generate_chat_response(
     video_title: str,
     transcript: str,
     summary: str,
-    chat_history: List[Dict],
+    chat_history: Optional[List[Dict]] = None,
     mode: str = "standard",
     lang: str = "fr",
     model: str = "mistral-small-2603",
     api_key: str = None,
     video_upload_date: str = "",
+    *,
+    history_text: Optional[str] = None,
 ) -> Optional[str]:
-    """Génère une réponse de chat intelligente et adaptée avec Mistral"""
+    """Génère une réponse de chat intelligente et adaptée avec Mistral.
+
+    🆕 v6.1 (Task 7) : préfère ``history_text`` (bloc unifié pré-rendu via
+    ``build_unified_context_block``) si fourni. Sinon, retombe sur
+    ``chat_history[-6:]`` pour compat ascendante.
+    """
     api_key = api_key or get_mistral_key()
     if not api_key:
         return None
 
     system_prompt, user_prompt = build_chat_prompt(
-        question, video_title, transcript, summary, chat_history, mode, lang, video_upload_date=video_upload_date
+        question,
+        video_title,
+        transcript,
+        summary,
+        chat_history,
+        mode,
+        lang,
+        video_upload_date=video_upload_date,
+        history_text=history_text,
     )
 
     # ═══════════════════════════════════════════════════════════════════════════════
@@ -936,21 +1067,35 @@ async def generate_chat_response_stream(
     video_title: str,
     transcript: str,
     summary: str,
-    chat_history: List[Dict],
+    chat_history: Optional[List[Dict]] = None,
     mode: str = "standard",
     lang: str = "fr",
     model: str = "mistral-small-2603",
     api_key: str = None,
     video_upload_date: str = "",
+    *,
+    history_text: Optional[str] = None,
 ) -> AsyncGenerator[str, None]:
-    """Génère une réponse de chat en streaming"""
+    """Génère une réponse de chat en streaming.
+
+    🆕 v6.1 (Task 7) : accepte ``history_text`` pré-rendu (Mode bloc
+    unifié) en plus de l'ancien ``chat_history``.
+    """
     api_key = api_key or get_mistral_key()
     if not api_key:
         yield "Error: API key not configured"
         return
 
     system_prompt, user_prompt = build_chat_prompt(
-        question, video_title, transcript, summary, chat_history, mode, lang, video_upload_date=video_upload_date
+        question,
+        video_title,
+        transcript,
+        summary,
+        chat_history,
+        mode,
+        lang,
+        video_upload_date=video_upload_date,
+        history_text=history_text,
     )
 
     max_tokens = {"accessible": 800, "standard": 1200, "expert": 2000}.get(mode, 1200)
@@ -994,13 +1139,15 @@ async def generate_chat_response_v4(
     video_title: str,
     transcript: str,
     summary: str,
-    chat_history: List[Dict],
-    user_plan: str,
+    chat_history: Optional[List[Dict]] = None,
+    user_plan: str = "free",
     mode: str = "standard",
     lang: str = "fr",
     model: str = "mistral-small-2603",
     web_search_requested: bool = False,
     video_upload_date: str = "",
+    *,
+    history_text: Optional[str] = None,
 ) -> Tuple[str, List[Dict[str, str]], bool]:
     """
     🆕 v5.0: Génère une réponse chat avec FACT-CHECKING INTELLIGENT.
@@ -1043,6 +1190,7 @@ async def generate_chat_response_v4(
         lang=lang,
         model=model,
         video_upload_date=video_upload_date,
+        history_text=history_text,
     )
 
     if not base_response:
@@ -1466,7 +1614,29 @@ async def process_chat_message_v4(
     user = user_result.scalar_one_or_none()
     user_plan = user.plan if user else "free"
 
-    # 4. Récupérer l'historique
+    # 4. 🆕 v6.1 (Task 7): bloc unifié voice digests + chat digests + verbatim
+    #    via voice.context_builder.build_unified_context_block (target='chat',
+    #    cap 30 KB). Remplace la limite arbitraire chat_history[-6:].
+    try:
+        from voice.context_builder import build_unified_context_block
+
+        history_text = await build_unified_context_block(
+            session,
+            summary_id=summary_id,
+            user_id=user_id,
+            lang=summary.lang or "fr",
+            target="chat",
+            exclude_voice_session_id=None,
+        )
+    except Exception as exc:
+        logger.warning(
+            "build_unified_context_block failed, falling back to chat_history",
+            extra={"summary_id": summary_id, "user_id": user_id, "error": str(exc)},
+        )
+        history_text = ""
+
+    # Backward-compat: also fetch chat_history list (still used downstream
+    # for some fallback paths) but the prompt itself uses history_text.
     chat_history = await get_chat_history(session, summary_id, user_id, limit=10)
 
     # 5. Déterminer le modèle selon le plan
@@ -1501,7 +1671,7 @@ async def process_chat_message_v4(
         enriched_transcript = summary.transcript_context or ""
         enriched_summary = summary.summary_content or ""
 
-    # 6. Générer la réponse avec enrichissement v4.0
+    # 6. Générer la réponse avec enrichissement v4.0 (bloc unifié → history_text)
     response, sources, web_search_used = await generate_chat_response_v4(
         question=question,
         video_title=summary.video_title,
@@ -1514,6 +1684,7 @@ async def process_chat_message_v4(
         model=model,
         web_search_requested=web_search,
         video_upload_date=summary.video_upload_date or "",
+        history_text=history_text,
     )
 
     # 7. Déterminer le niveau d'enrichissement AVANT de sauvegarder

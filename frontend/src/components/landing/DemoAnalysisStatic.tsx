@@ -258,7 +258,9 @@ export default function DemoAnalysisStatic({
               <h3 className="text-white font-semibold text-sm leading-tight line-clamp-2">
                 {DEMO_VIDEO.title}
               </h3>
-              <p className="text-text-muted text-xs mt-1">{DEMO_VIDEO.channel}</p>
+              <p className="text-text-muted text-xs mt-1">
+                {DEMO_VIDEO.channel}
+              </p>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-text-secondary">
                   <Clock className="w-2.5 h-2.5" />

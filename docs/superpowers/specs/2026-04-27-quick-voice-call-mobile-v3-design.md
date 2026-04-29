@@ -15,7 +15,7 @@ La V1 du Quick Voice Call (Extension Chrome, PR #149) est validée et prête à 
 Sur extension, le flow est "ouvre YouTube → clique 🎙️". Sur mobile, on n'a pas l'avantage du contexte (l'utilisateur n'est pas déjà sur une vidéo dans l'app). Il faut donc ramener l'URL dans l'app de la manière la plus indolore possible :
 
 - **Clipboard auto-detect** : si l'utilisateur a copié un lien YouTube/TikTok juste avant d'ouvrir l'app, on le détecte et on lui propose 1 tap pour appeler.
-- **Share Extension OS** : depuis l'app YouTube ou TikTok, "Partager → DeepSight Voice Call" ouvre l'app *et* lance l'appel directement.
+- **Share Extension OS** : depuis l'app YouTube ou TikTok, "Partager → DeepSight Voice Call" ouvre l'app _et_ lance l'appel directement.
 - **Paste manuel** : fallback standard si le clipboard est vide et que l'utilisateur arrive depuis le launcher.
 
 L'agent ElevenLabs est le même mécanisme asynchrone progressif que la V1 extension : appel instantané, contexte vidéo qui arrive en streaming pendant la conversation via SSE backend + `sendUserMessage("[CTX UPDATE: …]")` côté SDK.
@@ -30,17 +30,17 @@ L'agent ElevenLabs est le même mécanisme asynchrone progressif que la V1 exten
 
 ## 3. Décisions verrouillées (brainstorm 2026-04-27)
 
-| #  | Décision                            | Choix retenu                                                                                                                                                                              |
-| -- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1  | Niveau de friction                  | **B + C + fallback A** : clipboard auto-detect (B) + share extension OS (C) + paste manuel (A) en fallback                                                                                |
-| 2  | Mécanisme contexte                  | **Asynchrone progressif** (mécanisme A de la spec V1) : SSE backend → `sendUserMessage("[CTX UPDATE: ...]")` côté SDK ElevenLabs RN                                                       |
-| 3  | Quotas                              | **Réutiliser le quota voice existant** (45 min/mois selon CLAUDE.md v4.0) — pas de migration alembic supplémentaire, `useVoiceChatGate` actuel non modifié                                |
-| 4  | Plateformes V3                      | **iOS + Android dès le sprint** + sources URL = **YouTube + TikTok only**                                                                                                                 |
-| 5  | UI pendant l'appel                  | **Réutiliser `VoiceScreen.tsx`** existant + variante `streaming` (props additionnels `streaming`, `contextProgress`, `contextComplete`)                                                   |
-| 6  | Post-call UX                        | **Écran Résumé** (transcript + 2 CTA : "Voir l'analyse complète" → AnalysisScreen, "Appeler une autre vidéo" → reset). Banner upgrade si `quota_remaining === 0`.                         |
-| 7  | Architecture backend                | **Endpoint unifié** `POST /api/voice/session` accepte `video_url` (NEW) en plus de `summary_id`. Backend orchestre la création du Summary placeholder + streaming via Redis pubsub.       |
-| 8  | Sous-agents implémentation          | **Opus 4.7 obligatoire** (`claude-opus-4-7[1m]`)                                                                                                                                          |
-| 9  | Branche                             | `feat/quick-voice-call-mobile-v3` depuis `origin/main` (worktree `C:\Users\33667\DeepSight-quick-voice-mobile`)                                                                           |
+| #   | Décision                   | Choix retenu                                                                                                                                                                        |
+| --- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Niveau de friction         | **B + C + fallback A** : clipboard auto-detect (B) + share extension OS (C) + paste manuel (A) en fallback                                                                          |
+| 2   | Mécanisme contexte         | **Asynchrone progressif** (mécanisme A de la spec V1) : SSE backend → `sendUserMessage("[CTX UPDATE: ...]")` côté SDK ElevenLabs RN                                                 |
+| 3   | Quotas                     | **Réutiliser le quota voice existant** (45 min/mois selon CLAUDE.md v4.0) — pas de migration alembic supplémentaire, `useVoiceChatGate` actuel non modifié                          |
+| 4   | Plateformes V3             | **iOS + Android dès le sprint** + sources URL = **YouTube + TikTok only**                                                                                                           |
+| 5   | UI pendant l'appel         | **Réutiliser `VoiceScreen.tsx`** existant + variante `streaming` (props additionnels `streaming`, `contextProgress`, `contextComplete`)                                             |
+| 6   | Post-call UX               | **Écran Résumé** (transcript + 2 CTA : "Voir l'analyse complète" → AnalysisScreen, "Appeler une autre vidéo" → reset). Banner upgrade si `quota_remaining === 0`.                   |
+| 7   | Architecture backend       | **Endpoint unifié** `POST /api/voice/session` accepte `video_url` (NEW) en plus de `summary_id`. Backend orchestre la création du Summary placeholder + streaming via Redis pubsub. |
+| 8   | Sous-agents implémentation | **Opus 4.7 obligatoire** (`claude-opus-4-7[1m]`)                                                                                                                                    |
+| 9   | Branche                    | `feat/quick-voice-call-mobile-v3` depuis `origin/main` (worktree `C:\Users\33667\DeepSight-quick-voice-mobile`)                                                                     |
 
 ### Décisions tacites (par défaut)
 
@@ -299,17 +299,21 @@ import { validateVideoURL } from "../utils/validateVideoURL";
 
 export function useClipboardURLDetector() {
   const [clipboardURL, setClipboardURL] = useState<string | null>(null);
-  useFocusEffect(useCallback(() => {
-    let cancelled = false;
-    (async () => {
-      const text = await Clipboard.getStringAsync();
-      if (cancelled) return;
-      if (text && validateVideoURL(text)) {
-        setClipboardURL(text);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []));
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        const text = await Clipboard.getStringAsync();
+        if (cancelled) return;
+        if (text && validateVideoURL(text)) {
+          setClipboardURL(text);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
   return { clipboardURL, dismiss: () => setClipboardURL(null) };
 }
 ```
@@ -323,7 +327,9 @@ iOS : `expo-clipboard.getStringAsync()` triggers le banner transient natif "Deep
 ```typescript
 import * as Linking from "expo-linking";
 
-export function useDeepLinkURL(onURL: (url: string, autostart: boolean) => void) {
+export function useDeepLinkURL(
+  onURL: (url: string, autostart: boolean) => void,
+) {
   useEffect(() => {
     const handler = ({ url }: { url: string }) => {
       const parsed = Linking.parse(url);
@@ -347,8 +353,10 @@ export function useDeepLinkURL(onURL: (url: string, autostart: boolean) => void)
 **Fichier** : `mobile/src/utils/validateVideoURL.ts` (mirror du backend regex)
 
 ```typescript
-const YOUTUBE_RE = /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}/;
-const TIKTOK_RE = /^https?:\/\/(?:www\.|vm\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/|t\/|v\/)?(\d+|[A-Za-z0-9]+)/;
+const YOUTUBE_RE =
+  /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}/;
+const TIKTOK_RE =
+  /^https?:\/\/(?:www\.|vm\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/|t\/|v\/)?(\d+|[A-Za-z0-9]+)/;
 
 export function validateVideoURL(url: string): boolean {
   return YOUTUBE_RE.test(url) || TIKTOK_RE.test(url);
@@ -364,9 +372,9 @@ export function validateVideoURL(url: string): boolean {
 ```typescript
 interface VoiceScreenProps {
   // ... existing props
-  streaming?: boolean;            // NEW — active la variante streaming
-  contextProgress?: number;       // NEW — 0-100
-  contextComplete?: boolean;      // NEW
+  streaming?: boolean; // NEW — active la variante streaming
+  contextProgress?: number; // NEW — 0-100
+  contextComplete?: boolean; // NEW
 }
 ```
 
@@ -410,21 +418,21 @@ export function useStreamingVideoContext(
     es.addEventListener("transcript_chunk", (e) => {
       const data = JSON.parse(e.data);
       conversation.sendUserMessage?.(
-        `[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`
+        `[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`,
       );
       setContextProgress((data.chunk_index / data.total_chunks) * 80); // 80% pour transcript
     });
     es.addEventListener("analysis_partial", (e) => {
       const data = JSON.parse(e.data);
       conversation.sendUserMessage?.(
-        `[CTX UPDATE: analysis - ${data.section}]\n${data.content}`
+        `[CTX UPDATE: analysis - ${data.section}]\n${data.content}`,
       );
       setContextProgress((p) => Math.min(p + 5, 95));
     });
     es.addEventListener("ctx_complete", (e) => {
       const data = JSON.parse(e.data);
       conversation.sendUserMessage?.(
-        `[CTX COMPLETE]\nFinal digest: ${data.final_digest_summary}`
+        `[CTX COMPLETE]\nFinal digest: ${data.final_digest_summary}`,
       );
       setContextProgress(100);
       setContextComplete(true);
@@ -442,6 +450,7 @@ export function useStreamingVideoContext(
 ### 7.4 Wiring `useStreamingVideoContext` (parent Home, pas dans `useVoiceChat`)
 
 `useVoiceChat.ts` est **étendu** pour exposer dans son retour :
+
 - `sessionId: string | null` (NEW — null avant `start()`, set après backend ack)
 - `conversation: ReturnType<typeof useConversation>` (NEW — l'objet SDK ElevenLabs RN)
 
@@ -497,7 +506,7 @@ interface PostCallScreenProps {
   onClose: () => void;
   videoTitle: string;
   channelName?: string;
-  summaryId?: number;        // pour deep link vers /analysis
+  summaryId?: number; // pour deep link vers /analysis
   durationSeconds: number;
   messages: VoiceMessage[];
   quotaRemaining: number;
@@ -556,6 +565,7 @@ return (
 **Approche** : utiliser `expo-share-intent` (community plugin) si compatible Expo SDK 54, sinon implémenter via Expo config plugin custom + target Xcode `DeepSightShareExtension`.
 
 **Fichiers** (config plugin custom) :
+
 - `mobile/plugins/withShareExtension.ts` — config plugin Expo qui injecte le target Xcode
 - `mobile/ios/DeepSightShareExtension/ShareViewController.swift` — Swift handler
 - `mobile/ios/DeepSightShareExtension/Info.plist` — déclaration `NSExtensionActivationRule` (URL YouTube + TikTok)
@@ -576,9 +586,7 @@ return (
         {
           "action": "SEND",
           "category": ["DEFAULT"],
-          "data": [
-            { "mimeType": "text/plain" }
-          ]
+          "data": [{ "mimeType": "text/plain" }]
         }
       ]
     }
@@ -596,11 +604,11 @@ return (
 
 ## 10. Phasage — 3 PRs cumulatives
 
-| PR  | Scope                                                                                                               | Effort   | Bloque   |
-| --- | ------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
-| PR1 | Backend `explorer_streaming` + `/voice/session` extended + SSE `/voice/context/stream` + `streaming_orchestrator` + URL validator + tests pytest | 2-3 j    | PR2      |
-| PR2 | Mobile Home (paste + clipboard auto-detect + UI 2 CTA) + VoiceScreen variante streaming + `useStreamingVideoContext` + PostCallScreen + tests Jest | 2-3 j    | PR3      |
-| PR3 | Native Share Extensions iOS + Android Intent Filter + deep link routing + EAS Build natif config + smoke E2E manuel | 3-4 j    | —        |
+| PR  | Scope                                                                                                                                              | Effort | Bloque |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ |
+| PR1 | Backend `explorer_streaming` + `/voice/session` extended + SSE `/voice/context/stream` + `streaming_orchestrator` + URL validator + tests pytest   | 2-3 j  | PR2    |
+| PR2 | Mobile Home (paste + clipboard auto-detect + UI 2 CTA) + VoiceScreen variante streaming + `useStreamingVideoContext` + PostCallScreen + tests Jest | 2-3 j  | PR3    |
+| PR3 | Native Share Extensions iOS + Android Intent Filter + deep link routing + EAS Build natif config + smoke E2E manuel                                | 3-4 j  | —      |
 
 **Total : 7-10 jours** sur Opus 4.7 sous-agents.
 
@@ -608,16 +616,16 @@ Les 3 PRs sont mergées indépendamment dans cet ordre. Après PR1+PR2, l'utilis
 
 ## 11. Risques et mitigations
 
-| Risque                                                       | Mitigation                                                                                                              |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `expo-clipboard` permission iOS bouge entre versions         | Tester sur iOS 17+ + Android 13+ (clipboard API stable). Documenter le banner transient iOS dans le release notes.       |
-| Share Extension iOS = effort dev élevé (Swift + Xcode)        | Si `expo-share-intent` plugin compat SDK 54 : utiliser direct (-2 j). Sinon config plugin custom (~3 j incluant tests).  |
-| Deep link autostart=true peut spammer le backend si le user re-share en boucle | Throttle au niveau Mobile : 1 session voice / 30s max. AppState + clipboard reset à chaque ouverture. |
-| Latence SSE + ElevenLabs sur connexions slow mobiles          | Fallback agent companion + web_search si transcript pas dispo en 5s. UI message "Je commence sans contexte, je l'absorbe au fur et à mesure". |
-| TikTok URL extraction transcript peut échouer (DRM, deleted) | `transcripts/tiktok.py` existe déjà avec ses fallbacks. Si tout échoue → `[CTX UPDATE: erreur transcript]` + agent informe le user honnêtement. |
-| Coûts ElevenLabs explosent avec viral mobile                  | Kill switch global env var `VOICE_CALL_DISABLED=true` + alertes Sentry sur dépassement budget mensuel.                  |
-| `[CTX UPDATE]` messages leaks en dialogue (agent les répète)  | Tests E2E sur 50+ conversations + éval qualitative ; fallback mécanisme B (tool custom) si récurrent.                   |
-| Race condition deep link autostart vs clipboard auto-detect   | Deep link a priorité absolue. Clear `clipboardURL` state si deep link reçu < 2s après focus.                            |
+| Risque                                                                         | Mitigation                                                                                                                                      |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `expo-clipboard` permission iOS bouge entre versions                           | Tester sur iOS 17+ + Android 13+ (clipboard API stable). Documenter le banner transient iOS dans le release notes.                              |
+| Share Extension iOS = effort dev élevé (Swift + Xcode)                         | Si `expo-share-intent` plugin compat SDK 54 : utiliser direct (-2 j). Sinon config plugin custom (~3 j incluant tests).                         |
+| Deep link autostart=true peut spammer le backend si le user re-share en boucle | Throttle au niveau Mobile : 1 session voice / 30s max. AppState + clipboard reset à chaque ouverture.                                           |
+| Latence SSE + ElevenLabs sur connexions slow mobiles                           | Fallback agent companion + web_search si transcript pas dispo en 5s. UI message "Je commence sans contexte, je l'absorbe au fur et à mesure".   |
+| TikTok URL extraction transcript peut échouer (DRM, deleted)                   | `transcripts/tiktok.py` existe déjà avec ses fallbacks. Si tout échoue → `[CTX UPDATE: erreur transcript]` + agent informe le user honnêtement. |
+| Coûts ElevenLabs explosent avec viral mobile                                   | Kill switch global env var `VOICE_CALL_DISABLED=true` + alertes Sentry sur dépassement budget mensuel.                                          |
+| `[CTX UPDATE]` messages leaks en dialogue (agent les répète)                   | Tests E2E sur 50+ conversations + éval qualitative ; fallback mécanisme B (tool custom) si récurrent.                                           |
+| Race condition deep link autostart vs clipboard auto-detect                    | Deep link a priorité absolue. Clear `clipboardURL` state si deep link reçu < 2s après focus.                                                    |
 
 ## 12. Métriques de succès (PostHog)
 
@@ -657,14 +665,14 @@ Les 3 PRs sont mergées indépendamment dans cet ordre. Après PR1+PR2, l'utilis
 
 ## 14. Décisions ouvertes (à valider en review)
 
-| #  | Décision                                                                  | Défaut proposé                                                              |
-| -- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| 1  | Plugin Expo Share Extension : `expo-share-intent` ou config plugin custom | À tester pendant PR3. Si `expo-share-intent` compat SDK 54 → préférer.       |
-| 2  | Mode companion libre depuis Quick Voice Call (sans URL)                   | NON en V3 (fallback hint "colle un lien"). Reconsidérer en V3.1.            |
-| 3  | Persistance des transcripts post-call dans `chat_messages`                | OUI (déjà géré par `voiceApi.appendTranscript` Spec #3 mobile)              |
-| 4  | Deep link scheme                                                          | `deepsight://voice-call?url=...&autostart=true` (à confirmer dans `app.json` Expo) |
-| 5  | App Group iOS                                                             | `group.com.deepsight.shared` (à provisionner sur Apple Dev portal)          |
-| 6  | Cache transcript chunks dans Redis pour reconnect SSE                     | OUI, TTL = 30 min (durée max session voice)                                  |
+| #   | Décision                                                                  | Défaut proposé                                                                     |
+| --- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 1   | Plugin Expo Share Extension : `expo-share-intent` ou config plugin custom | À tester pendant PR3. Si `expo-share-intent` compat SDK 54 → préférer.             |
+| 2   | Mode companion libre depuis Quick Voice Call (sans URL)                   | NON en V3 (fallback hint "colle un lien"). Reconsidérer en V3.1.                   |
+| 3   | Persistance des transcripts post-call dans `chat_messages`                | OUI (déjà géré par `voiceApi.appendTranscript` Spec #3 mobile)                     |
+| 4   | Deep link scheme                                                          | `deepsight://voice-call?url=...&autostart=true` (à confirmer dans `app.json` Expo) |
+| 5   | App Group iOS                                                             | `group.com.deepsight.shared` (à provisionner sur Apple Dev portal)                 |
+| 6   | Cache transcript chunks dans Redis pour reconnect SSE                     | OUI, TTL = 30 min (durée max session voice)                                        |
 
 ## 15. Méga-plan d'implémentation
 

@@ -6,7 +6,10 @@ interface Props {
   loading?: boolean;
 }
 
-export function UrlInputCard({ onSubmit, loading = false }: Props): JSX.Element {
+export function UrlInputCard({
+  onSubmit,
+  loading = false,
+}: Props): JSX.Element {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
 

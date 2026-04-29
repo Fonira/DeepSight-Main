@@ -391,13 +391,25 @@ class UltraResilientTranscriptExtractor:
             raise NoTranscriptFound(video_id, languages, transcript_list)
 
         loop = asyncio.get_event_loop()
-        segments, lang, is_auto = await loop.run_in_executor(None, _fetch_sync)
+        raw_segments, lang, is_auto = await loop.run_in_executor(None, _fetch_sync)
 
-        # Snippet shape changed in 1.x: dict → FetchedTranscriptSnippet object
-        # with .text attribute. Support both.
-        text = " ".join(
-            [s.text if hasattr(s, "text") else s["text"] for s in segments]
-        )
+        # youtube-transcript-api 1.x changed snippet shape: dict →
+        # FetchedTranscriptSnippet object (.text/.start/.duration). Normalise
+        # to dict so the rest of the codebase (TranscriptResult timestamping
+        # at line ~82, downstream consumers) keeps using .get() safely.
+        # Without this we hit
+        # 'FetchedTranscriptSnippet' object has no attribute 'get'.
+        def _seg_to_dict(s):
+            if isinstance(s, dict):
+                return s
+            return {
+                "text": getattr(s, "text", "") or "",
+                "start": float(getattr(s, "start", 0.0) or 0.0),
+                "duration": float(getattr(s, "duration", 0.0) or 0.0),
+            }
+
+        segments = [_seg_to_dict(s) for s in raw_segments]
+        text = " ".join(s["text"] for s in segments)
 
         return TranscriptResult(
             text=text,

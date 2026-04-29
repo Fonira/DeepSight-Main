@@ -426,6 +426,12 @@
     "webSearchDisabled": "Recherche web désactivée",
     "newConversation": "Nouvelle conversation",
     "clearHistory": "Effacer l'historique",
+    "clear": {
+      "confirmTitle": "Effacer cette conversation ?",
+      "confirmBody": "Cela efface le chat texte ET les transcripts d'appels vocaux pour cette vidéo. Action irréversible.",
+      "confirmYes": "Effacer tout",
+      "confirmCancel": "Annuler"
+    },
     "copyResponse": "Copier la réponse",
     "regenerate": "Régénérer",
     "stopGenerating": "Arrêter",

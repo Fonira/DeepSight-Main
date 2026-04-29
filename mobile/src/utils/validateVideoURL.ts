@@ -5,9 +5,11 @@
  * Hostname case-sensitive.
  */
 
-const YOUTUBE_RE = /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+const YOUTUBE_RE =
+  /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 const TIKTOK_VM_RE = /^https?:\/\/vm\.tiktok\.com\/([A-Za-z0-9]+)\/?/;
-const TIKTOK_RE = /^https?:\/\/(?:www\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/(\d+)|t\/([A-Za-z0-9]+)|v\/(\d+))/;
+const TIKTOK_RE =
+  /^https?:\/\/(?:www\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/(\d+)|t\/([A-Za-z0-9]+)|v\/(\d+))/;
 
 export type VideoPlatform = "youtube" | "tiktok";
 

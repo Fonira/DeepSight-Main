@@ -173,13 +173,13 @@ permission. Keep them short, factual, and tied to a user-facing feature.
 
 ### Host permissions
 
-- **https://www.youtube.com/*, https://youtube.com/*** — Detect the
+- **https://www.youtube.com/_, https://youtube.com/_** — Detect the
   currently watched video and inject the optional content-script overlay
   showing the analyze button. No analytics, no DOM modification beyond
   the overlay.
 
-- **https://www.tiktok.com/*, https://tiktok.com/*, https://vm.tiktok.com/*,
-  https://m.tiktok.com/*** — Same as YouTube, for TikTok video detection.
+- **https://www.tiktok.com/_, https://tiktok.com/_, https://vm.tiktok.com/_,
+  https://m.tiktok.com/_** — Same as YouTube, for TikTok video detection.
 
 - **https://www.deepsightsynthesis.com/*** — Cross-domain authentication
   sync between the extension and the web app, so a user logged in on the
@@ -188,8 +188,8 @@ permission. Keep them short, factual, and tied to a user-facing feature.
 - **https://api.deepsightsynthesis.com/*** — Backend API endpoints for
   analyses, chat, billing, voice sessions, etc.
 
-- **https://api.elevenlabs.io/*, wss://api.elevenlabs.io/*,
-  https://*.elevenlabs.io/*, wss://*.elevenlabs.io/*** — ElevenLabs
+- **https://api.elevenlabs.io/_, wss://api.elevenlabs.io/_,
+  https://_.elevenlabs.io/_, wss://_.elevenlabs.io/\_** — ElevenLabs
   ConvAI voice chat over WebSocket. Required by the @elevenlabs/client
   SDK; CSP whitelist already restricts connect-src to these domains.
 

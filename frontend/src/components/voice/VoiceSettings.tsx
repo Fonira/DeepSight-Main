@@ -372,14 +372,14 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
               max="4.0"
               step="0.05"
               value={preferences.speed}
-              onChange={(e) =>
-                stage({ speed: parseFloat(e.target.value) })
-              }
+              onChange={(e) => stage({ speed: parseFloat(e.target.value) })}
               className="flex-1 accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
                 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg"
             />
-            <span className="text-text-muted text-xs w-12 text-right">4.0x</span>
+            <span className="text-text-muted text-xs w-12 text-right">
+              4.0x
+            </span>
           </div>
         </div>
       </CollapsibleSection>
@@ -521,9 +521,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
               max="1"
               step="0.05"
               value={preferences.stability}
-              onChange={(e) =>
-                stage({ stability: parseFloat(e.target.value) })
-              }
+              onChange={(e) => stage({ stability: parseFloat(e.target.value) })}
               className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
                 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
@@ -585,9 +583,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
               max="1"
               step="0.05"
               value={preferences.style}
-              onChange={(e) =>
-                stage({ style: parseFloat(e.target.value) })
-              }
+              onChange={(e) => stage({ style: parseFloat(e.target.value) })}
               className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
                 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"

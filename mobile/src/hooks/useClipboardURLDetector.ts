@@ -50,7 +50,7 @@ export function useClipboardURLDetector(): UseClipboardURLDetectorReturn {
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, []),
   );
 
   const dismiss = useCallback(() => setClipboardURL(null), []);
