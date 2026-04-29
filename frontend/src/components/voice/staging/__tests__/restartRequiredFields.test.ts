@@ -6,9 +6,30 @@ import {
 import type { VoiceChatSpeedPreset } from "../../../../services/api";
 
 const PRESETS: VoiceChatSpeedPreset[] = [
-  { id: "1x", label_fr: "Normal", label_en: "Normal", api_speed: 1, playback_rate: 1, concise: false },
-  { id: "1.5x", label_fr: "Rapide", label_en: "Fast", api_speed: 1, playback_rate: 1.5, concise: false },
-  { id: "3x", label_fr: "Concis", label_en: "Concise", api_speed: 1, playback_rate: 1, concise: true },
+  {
+    id: "1x",
+    label_fr: "Normal",
+    label_en: "Normal",
+    api_speed: 1,
+    playback_rate: 1,
+    concise: false,
+  },
+  {
+    id: "1.5x",
+    label_fr: "Rapide",
+    label_en: "Fast",
+    api_speed: 1,
+    playback_rate: 1.5,
+    concise: false,
+  },
+  {
+    id: "3x",
+    label_fr: "Concis",
+    label_en: "Concise",
+    api_speed: 1,
+    playback_rate: 1,
+    concise: true,
+  },
 ];
 
 describe("RESTART_REQUIRED_FIELDS", () => {
@@ -62,9 +83,9 @@ describe("isRestartRequired", () => {
   });
 
   it("returns true when staged voice_chat_speed_preset is a concise variant", () => {
-    expect(
-      isRestartRequired({ voice_chat_speed_preset: "3x" }, PRESETS),
-    ).toBe(true);
+    expect(isRestartRequired({ voice_chat_speed_preset: "3x" }, PRESETS)).toBe(
+      true,
+    );
   });
 
   it("returns false when staged voice_chat_speed_preset is a non-concise variant", () => {
@@ -74,6 +95,8 @@ describe("isRestartRequired", () => {
   });
 
   it("returns false if catalog is empty (presets unknown → assume non-restart)", () => {
-    expect(isRestartRequired({ voice_chat_speed_preset: "3x" }, [])).toBe(false);
+    expect(isRestartRequired({ voice_chat_speed_preset: "3x" }, [])).toBe(
+      false,
+    );
   });
 });

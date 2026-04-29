@@ -6,5 +6,5 @@
  * (e.g. 12:00..12:59:59 → 12). At HH:00 sharp, snaps to the next hour.
  */
 export function getSpriteFrameIndex(date) {
-    return date.getHours();
+  return date.getHours();
 }

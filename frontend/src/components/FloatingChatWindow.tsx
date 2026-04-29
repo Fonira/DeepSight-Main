@@ -601,7 +601,7 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (
                 /* ─── Empty State ─── */
-                (<div className="text-center py-8">
+                <div className="text-center py-8">
                   <MessageSquare className="w-12 h-12 mx-auto mb-4 text-text-muted opacity-50" />
                   <h3 className="font-semibold text-text-primary mb-2">
                     {t.emptyTitle}
@@ -622,10 +622,10 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                       </button>
                     ))}
                   </div>
-                </div>)
+                </div>
               ) : (
                 /* ─── Message List ─── */
-                (messages.map((msg, msgIndex) => {
+                messages.map((msg, msgIndex) => {
                   const contentStr =
                     typeof msg.content === "string"
                       ? msg.content
@@ -816,7 +816,7 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                       )}
                     </div>
                   );
-                }))
+                })
               )}
 
               {/* Loading indicator */}

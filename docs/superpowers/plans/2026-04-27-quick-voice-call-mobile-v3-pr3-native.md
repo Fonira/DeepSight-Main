@@ -17,6 +17,7 @@
 ## Stratégie d'approche
 
 Deux options évaluées dans la spec :
+
 1. **Plugin community `expo-share-intent`** — si compat SDK 54, gain ~2 jours
 2. **Config plugin custom + target Xcode + Intent Filter** — si l'option 1 ne marche pas
 
@@ -26,15 +27,15 @@ Task 1 teste l'option 1. Si elle fonctionne, on saute à Task 7 (build + smoke t
 
 ## File Structure
 
-| Fichier | Type | Responsabilité |
-|---|---|---|
-| `mobile/package.json` | MODIFY | Ajouter `expo-share-intent` ou supprimer si custom |
-| `mobile/app.json` | MODIFY | Plugin config + intentFilters Android + URL scheme `deepsight` |
-| `mobile/plugins/withShareExtension.ts` | NEW (option 2) | Config plugin Expo qui injecte le target Xcode iOS |
-| `mobile/ios/DeepSightShareExtension/Info.plist` | NEW (option 2) | Déclaration NSExtensionActivationRule (URL types YT + TikTok) |
-| `mobile/ios/DeepSightShareExtension/ShareViewController.swift` | NEW (option 2) | Handler Swift → openURL(deepsight://voice-call) |
-| `mobile/eas.json` | MODIFY | Confirm `developmentClient: true` |
-| `mobile/__tests__/native/sharedURL.smoke.md` | NEW | Checklist E2E manuel |
+| Fichier                                                        | Type           | Responsabilité                                                 |
+| -------------------------------------------------------------- | -------------- | -------------------------------------------------------------- |
+| `mobile/package.json`                                          | MODIFY         | Ajouter `expo-share-intent` ou supprimer si custom             |
+| `mobile/app.json`                                              | MODIFY         | Plugin config + intentFilters Android + URL scheme `deepsight` |
+| `mobile/plugins/withShareExtension.ts`                         | NEW (option 2) | Config plugin Expo qui injecte le target Xcode iOS             |
+| `mobile/ios/DeepSightShareExtension/Info.plist`                | NEW (option 2) | Déclaration NSExtensionActivationRule (URL types YT + TikTok)  |
+| `mobile/ios/DeepSightShareExtension/ShareViewController.swift` | NEW (option 2) | Handler Swift → openURL(deepsight://voice-call)                |
+| `mobile/eas.json`                                              | MODIFY         | Confirm `developmentClient: true`                              |
+| `mobile/__tests__/native/sharedURL.smoke.md`                   | NEW            | Checklist E2E manuel                                           |
 
 ---
 
@@ -84,6 +85,7 @@ git branch -D chore/test-expo-share-intent
 - [ ] **Step 1.4: Documenter le verdict dans le plan**
 
 Append au top de ce plan :
+
 ```markdown
 > **Décision Task 1 (date)** : option 1 expo-share-intent [PASSED/FAILED]. Suite : [Task 7 / Tasks 2-6].
 ```
@@ -105,7 +107,12 @@ git commit -m "chore(mobile): evaluate expo-share-intent — verdict [PASSED|FAI
 
 ```typescript
 // mobile/plugins/withShareExtension.ts
-import { ConfigPlugin, withInfoPlist, withXcodeProject, withAppDelegate } from "@expo/config-plugins";
+import {
+  ConfigPlugin,
+  withInfoPlist,
+  withXcodeProject,
+  withAppDelegate,
+} from "@expo/config-plugins";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -115,9 +122,10 @@ const SHARE_EXT_BUNDLE_ID_SUFFIX = "ShareExtension";
 const withShareExtension: ConfigPlugin = (config) => {
   config = withInfoPlist(config, (config) => {
     // Add CFBundleURLTypes for deep link scheme
-    if (!config.modResults.CFBundleURLTypes) config.modResults.CFBundleURLTypes = [];
-    const existing = config.modResults.CFBundleURLTypes.find(
-      (e: any) => e.CFBundleURLSchemes?.includes("deepsight")
+    if (!config.modResults.CFBundleURLTypes)
+      config.modResults.CFBundleURLTypes = [];
+    const existing = config.modResults.CFBundleURLTypes.find((e: any) =>
+      e.CFBundleURLSchemes?.includes("deepsight"),
     );
     if (!existing) {
       config.modResults.CFBundleURLTypes.push({
@@ -136,7 +144,11 @@ const withShareExtension: ConfigPlugin = (config) => {
     // Copy Swift + Info.plist + Base.lproj from plugin assets to ios/
     const assetsDir = path.join(__dirname, "share-extension-assets");
     if (!fs.existsSync(sourceDir)) fs.mkdirSync(sourceDir, { recursive: true });
-    for (const file of ["ShareViewController.swift", "Info.plist", "MainInterface.storyboard"]) {
+    for (const file of [
+      "ShareViewController.swift",
+      "Info.plist",
+      "MainInterface.storyboard",
+    ]) {
       const src = path.join(assetsDir, file);
       const dst = path.join(sourceDir, file);
       if (fs.existsSync(src) && !fs.existsSync(dst)) {
@@ -151,8 +163,16 @@ const withShareExtension: ConfigPlugin = (config) => {
       proj.addTarget(targetName, "app_extension", targetName);
       // Add files to the target
       const group = proj.pbxCreateGroup(targetName, targetName);
-      proj.addSourceFile(path.join(SHARE_EXT_NAME, "ShareViewController.swift"), { target: targetName }, group);
-      proj.addResourceFile(path.join(SHARE_EXT_NAME, "MainInterface.storyboard"), { target: targetName }, group);
+      proj.addSourceFile(
+        path.join(SHARE_EXT_NAME, "ShareViewController.swift"),
+        { target: targetName },
+        group,
+      );
+      proj.addResourceFile(
+        path.join(SHARE_EXT_NAME, "MainInterface.storyboard"),
+        { target: targetName },
+        group,
+      );
     }
     return config;
   });
@@ -348,21 +368,17 @@ Modifier `mobile/app.json` section `android`:
 {
   "expo": {
     "android": {
-      "package": "com.deepsight.app",  // existing — confirm
+      "package": "com.deepsight.app", // existing — confirm
       "intentFilters": [
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [
-            { "scheme": "deepsight", "host": "voice-call" }
-          ],
+          "data": [{ "scheme": "deepsight", "host": "voice-call" }],
           "category": ["BROWSABLE", "DEFAULT"]
         },
         {
           "action": "SEND",
-          "data": [
-            { "mimeType": "text/plain" }
-          ],
+          "data": [{ "mimeType": "text/plain" }],
           "category": ["DEFAULT"]
         }
       ]
@@ -500,6 +516,7 @@ Ajouter dans `mobile/CLAUDE.md` (section build) :
 À partir de `feat/quick-voice-call-mobile-v3`, l'app utilise des Share Extensions natives (iOS Swift + Android Intent Filter). Expo Go ne fonctionne PLUS pour ce flow.
 
 Pour développer :
+
 - `npx expo run:ios` ou `npx expo run:android` (build natif local, lent au 1er run)
 - OU `eas build --profile development --platform all` (build cloud, ~10-15 min)
 - Installer le dev build sur device/simulator → utiliser `npx expo start --dev-client`
@@ -535,6 +552,7 @@ Expected: succès, `android/app/src/main/AndroidManifest.xml` contient les `<int
 - [ ] **Step 5.2: Si prebuild iOS échoue**
 
 Erreurs courantes :
+
 - `target already exists` → custom plugin a un bug d'idempotence. Fix : check si target existe avant `addTarget`.
 - `MainInterface.storyboard not found` → asset path mal copié. Fix : vérifier `mobile/plugins/share-extension-assets/`.
 - `Bundle ID mismatch` → set `PRODUCT_BUNDLE_IDENTIFIER` correctly dans le plugin.
@@ -595,11 +613,13 @@ Attendre ~10-15 min. Récupérer le `.apk` ou installer via QR code.
 - [ ] **Step 6.4: Smoke test rapide**
 
 Sur iOS device :
+
 1. Installer le dev build
 2. `npx expo start --dev-client` sur le Mac
 3. Vérifier que l'app se lance et que Home s'affiche
 
 Sur Android device :
+
 1. Installer le dev build
 2. Idem
 
@@ -652,6 +672,7 @@ Reproduire steps 1-16 avec TikTok app. **Vérifier** que l'extraction transcript
 ## Android — Share depuis YouTube app
 
 Reproduire la procédure iOS sur device Android. L'expérience peut différer :
+
 - "DeepSight Voice Call" apparaît dans la liste de partage Android
 - Tap → l'app s'ouvre avec autostart
 - Reste du flow identique
@@ -682,7 +703,7 @@ Idem.
 - [ ] URL non supportée filtered : PASS / FAIL
 - [ ] Deep link manuel : PASS / FAIL
 
-Tester par : __________ Date : __________
+Tester par : \***\*\_\_\*\*** Date : \***\*\_\_\*\***
 ```
 
 - [ ] **Step 7.2: Exécuter la checklist sur device réel**
@@ -786,9 +807,9 @@ eas submit --platform android --profile production
 
 ## Décisions ouvertes — confirmées en cours d'exécution
 
-| #   | Décision                                          | Action            |
-| --- | ------------------------------------------------- | ----------------- |
-| 1   | expo-share-intent compat SDK 54                   | Tester en Task 1  |
-| 2   | App Group iOS pour partage data extension ↔ app   | Pas nécessaire — deep link suffit (V3.1 si on veut persister state) |
-| 3   | Android SEND brut sans expo-share-intent           | Refusé — trop d'effort native module Java. expo-share-intent par défaut. |
-| 4   | Toast erreur "Source non supportée"                | Différé V3.1 (TODO documenté dans Home Step 9.2) |
+| #   | Décision                                        | Action                                                                   |
+| --- | ----------------------------------------------- | ------------------------------------------------------------------------ |
+| 1   | expo-share-intent compat SDK 54                 | Tester en Task 1                                                         |
+| 2   | App Group iOS pour partage data extension ↔ app | Pas nécessaire — deep link suffit (V3.1 si on veut persister state)      |
+| 3   | Android SEND brut sans expo-share-intent        | Refusé — trop d'effort native module Java. expo-share-intent par défaut. |
+| 4   | Toast erreur "Source non supportée"             | Différé V3.1 (TODO documenté dans Home Step 9.2)                         |

@@ -82,14 +82,14 @@ AI-generated content is clearly labeled with certainty markers. We encourage use
 
 ## 6. Third-Party Services
 
-| Service          | Purpose             | Data Shared                | Location                |
-| ---------------- | ------------------- | -------------------------- | ----------------------- |
-| Stripe           | Payment processing  | Email, plan selection      | USA (PCI DSS compliant) |
-| Sentry           | Error monitoring    | Crash reports, device info | USA                     |
+| Service          | Purpose             | Data Shared                | Location                  |
+| ---------------- | ------------------- | -------------------------- | ------------------------- |
+| Stripe           | Payment processing  | Email, plan selection      | USA (PCI DSS compliant)   |
+| Sentry           | Error monitoring    | Crash reports, device info | USA                       |
 | Hetzner          | Backend hosting     | All backend data           | EU (Falkenstein, Germany) |
-| Vercel           | Frontend hosting    | Static assets only         | Global CDN              |
-| YouTube Data API | Video metadata      | YouTube URLs               | USA (Google)            |
-| Resend           | Transactional email | Email address              | USA                     |
+| Vercel           | Frontend hosting    | Static assets only         | Global CDN                |
+| YouTube Data API | Video metadata      | YouTube URLs               | USA (Google)              |
+| Resend           | Transactional email | Email address              | USA                       |
 
 ## 7. Data Storage and Security
 
@@ -102,13 +102,13 @@ AI-generated content is clearly labeled with certainty markers. We encourage use
 
 ## 8. Data Retention
 
-| Data Type        | Retention Period                                                             |
-| ---------------- | ---------------------------------------------------------------------------- |
-| Account data     | Until account deletion                                                       |
-| Analysis history | Based on plan (60 days Free, unlimited Plus and Pro)                         |
-| Chat history     | Same as analysis history                                                     |
-| Crash reports    | 90 days                                                                      |
-| Server logs      | 30 days                                                                      |
+| Data Type        | Retention Period                                     |
+| ---------------- | ---------------------------------------------------- |
+| Account data     | Until account deletion                               |
+| Analysis history | Based on plan (60 days Free, unlimited Plus and Pro) |
+| Chat history     | Same as analysis history                             |
+| Crash reports    | 90 days                                              |
+| Server logs      | 30 days                                              |
 
 ## 9. Your Rights (GDPR)
 

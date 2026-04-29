@@ -11,9 +11,9 @@ import type {
 } from "../../../../services/api";
 
 vi.mock("../../../../services/api", async () => {
-  const actual = await vi.importActual<typeof import("../../../../services/api")>(
-    "../../../../services/api",
-  );
+  const actual = await vi.importActual<
+    typeof import("../../../../services/api")
+  >("../../../../services/api");
   return {
     ...actual,
     voiceApi: {
@@ -48,8 +48,22 @@ const APPLIED: VoicePreferences = {
 };
 
 const PRESETS: VoiceChatSpeedPreset[] = [
-  { id: "1x", label_fr: "Normal", label_en: "Normal", api_speed: 1, playback_rate: 1, concise: false },
-  { id: "3x", label_fr: "Concis", label_en: "Concise", api_speed: 1, playback_rate: 1, concise: true },
+  {
+    id: "1x",
+    label_fr: "Normal",
+    label_en: "Normal",
+    api_speed: 1,
+    playback_rate: 1,
+    concise: false,
+  },
+  {
+    id: "3x",
+    label_fr: "Concis",
+    label_en: "Concise",
+    api_speed: 1,
+    playback_rate: 1,
+    concise: true,
+  },
 ];
 
 const CATALOG: VoiceCatalog = {
@@ -142,9 +156,8 @@ describe("VoicePrefsStagingProvider", () => {
   });
 
   it("apply() does NOT emit apply_with_restart when callActive but only soft fields staged", async () => {
-    const { subscribeVoicePrefsEvents: sub } = await import(
-      "../../voicePrefsBus"
-    );
+    const { subscribeVoicePrefsEvents: sub } =
+      await import("../../voicePrefsBus");
     const listener = vi.fn();
     const unsub = sub(listener);
     vi.mocked(voiceApi.updatePreferences).mockResolvedValue(APPLIED);

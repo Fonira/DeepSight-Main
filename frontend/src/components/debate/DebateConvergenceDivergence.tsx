@@ -63,7 +63,9 @@ export const DebateConvergenceDivergence: React.FC<
                   {i + 1}
                 </span>
               </div>
-              <p className="text-sm text-text-primary leading-relaxed">{point}</p>
+              <p className="text-sm text-text-primary leading-relaxed">
+                {point}
+              </p>
             </motion.div>
           ))}
         </motion.div>

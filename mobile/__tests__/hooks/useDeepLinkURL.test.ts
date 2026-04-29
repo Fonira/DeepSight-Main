@@ -14,7 +14,13 @@ jest.mock("expo-share-intent/build/useShareIntent", () => ({
   default: jest.fn().mockReturnValue({
     isReady: true,
     hasShareIntent: false,
-    shareIntent: { text: null, webUrl: null, type: null, files: null, meta: null },
+    shareIntent: {
+      text: null,
+      webUrl: null,
+      type: null,
+      files: null,
+      meta: null,
+    },
     resetShareIntent: jest.fn(),
     error: null,
   }),
@@ -33,7 +39,7 @@ describe("useDeepLinkURL", () => {
     (Linking.getInitialURL as jest.Mock).mockResolvedValue(null);
     (Linking.parse as jest.Mock).mockImplementation((url: string) => {
       const m = url.match(
-        /deepsight:\/\/voice-call\?url=([^&]+)(?:&autostart=(\w+))?/
+        /deepsight:\/\/voice-call\?url=([^&]+)(?:&autostart=(\w+))?/,
       );
       if (m) {
         return {
@@ -60,7 +66,7 @@ describe("useDeepLinkURL", () => {
     act(() => {
       urlListener!({
         url: `deepsight://voice-call?url=${encodeURIComponent(
-          "https://youtu.be/dQw4w9WgXcQ"
+          "https://youtu.be/dQw4w9WgXcQ",
         )}&autostart=true`,
       });
     });
@@ -76,7 +82,7 @@ describe("useDeepLinkURL", () => {
     act(() => {
       urlListener!({
         url: `deepsight://voice-call?url=${encodeURIComponent(
-          "https://youtu.be/dQw4w9WgXcQ"
+          "https://youtu.be/dQw4w9WgXcQ",
         )}`,
       });
     });
@@ -101,7 +107,7 @@ describe("useDeepLinkURL", () => {
     act(() => {
       urlListener!({
         url: `deepsight://voice-call?url=${encodeURIComponent(
-          "https://vimeo.com/1"
+          "https://vimeo.com/1",
         )}&autostart=true`,
       });
     });
@@ -111,8 +117,8 @@ describe("useDeepLinkURL", () => {
   test("processes initial URL on mount", async () => {
     (Linking.getInitialURL as jest.Mock).mockResolvedValue(
       `deepsight://voice-call?url=${encodeURIComponent(
-        "https://youtu.be/dQw4w9WgXcQ"
-      )}&autostart=true`
+        "https://youtu.be/dQw4w9WgXcQ",
+      )}&autostart=true`,
     );
     const onURL = jest.fn();
     renderHook(() => useDeepLinkURL(onURL));
@@ -127,13 +133,13 @@ describe("useDeepLinkURL", () => {
     act(() => {
       urlListener!({
         url: `deepsight://voice-call?url=${encodeURIComponent(
-          "https://www.tiktok.com/@u/video/7123456789012345678"
+          "https://www.tiktok.com/@u/video/7123456789012345678",
         )}&autostart=true`,
       });
     });
     expect(onURL).toHaveBeenCalledWith(
       "https://www.tiktok.com/@u/video/7123456789012345678",
-      true
+      true,
     );
   });
 });

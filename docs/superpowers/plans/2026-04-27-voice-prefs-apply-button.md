@@ -16,30 +16,30 @@
 
 ### NEW files
 
-| Path | Responsibility |
-|---|---|
-| `frontend/src/components/voice/staging/restartRequiredFields.ts` | Static set of fields that need a session restart + `isRestartRequired(staged, catalog)` helper |
-| `frontend/src/components/voice/staging/VoicePrefsStagingProvider.tsx` | React Context Provider holding `applied`, `staged`, `callActive`, exposing `stage` / `cancel` / `apply` |
-| `frontend/src/components/voice/staging/StagedPrefsToolbar.tsx` | Floating toolbar UI rendered globally when `hasChanges` |
-| `frontend/src/components/voice/staging/__tests__/restartRequiredFields.test.ts` | Unit tests for the helper |
-| `frontend/src/components/voice/staging/__tests__/VoicePrefsStagingProvider.test.tsx` | Unit tests for the provider |
-| `frontend/src/components/voice/staging/__tests__/StagedPrefsToolbar.test.tsx` | Unit tests for the toolbar |
-| `frontend/e2e/voice-apply-flow.spec.ts` | E2E happy path |
+| Path                                                                                 | Responsibility                                                                                          |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `frontend/src/components/voice/staging/restartRequiredFields.ts`                     | Static set of fields that need a session restart + `isRestartRequired(staged, catalog)` helper          |
+| `frontend/src/components/voice/staging/VoicePrefsStagingProvider.tsx`                | React Context Provider holding `applied`, `staged`, `callActive`, exposing `stage` / `cancel` / `apply` |
+| `frontend/src/components/voice/staging/StagedPrefsToolbar.tsx`                       | Floating toolbar UI rendered globally when `hasChanges`                                                 |
+| `frontend/src/components/voice/staging/__tests__/restartRequiredFields.test.ts`      | Unit tests for the helper                                                                               |
+| `frontend/src/components/voice/staging/__tests__/VoicePrefsStagingProvider.test.tsx` | Unit tests for the provider                                                                             |
+| `frontend/src/components/voice/staging/__tests__/StagedPrefsToolbar.test.tsx`        | Unit tests for the toolbar                                                                              |
+| `frontend/e2e/voice-apply-flow.spec.ts`                                              | E2E happy path                                                                                          |
 
 ### MODIFIED files
 
-| Path | What changes |
-|---|---|
-| `frontend/src/components/voice/voicePrefsBus.ts` | Extend `VoicePrefsEvent` with 2 new event types |
-| `frontend/src/components/voice/__tests__/voicePrefsBus.test.ts` (create if missing) | Cover new event types |
-| `frontend/src/components/voice/useVoiceChat.ts` | Publish `call_status_changed`; subscribe to `apply_with_restart` |
-| `frontend/src/components/voice/__tests__/useVoiceChat.test.ts` | New test cases for bus events |
-| `frontend/src/components/voice/VoiceLiveSettings.tsx` | Replace direct `voiceApi.updatePreferences` calls with `stage()` for non-live fields |
-| `frontend/src/components/voice/VoiceSettings.tsx` | Replace `savePreferences` with `stage()` everywhere; reset-defaults stages |
-| `frontend/src/components/voice/__tests__/VoiceLiveSettings.test.tsx` | Adapt to staging-based behavior |
-| `frontend/src/components/voice/__tests__/VoiceSettings.test.tsx` (or equivalent if exists) | Idem |
-| `frontend/src/components/voice/VoiceModal.tsx` | Remove `restartRequired` state + amber banner + `restart_required` subscription |
-| `frontend/src/App.tsx` | Wrap tree with `<VoicePrefsStagingProvider>` and render `<StagedPrefsToolbar />` |
+| Path                                                                                       | What changes                                                                         |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `frontend/src/components/voice/voicePrefsBus.ts`                                           | Extend `VoicePrefsEvent` with 2 new event types                                      |
+| `frontend/src/components/voice/__tests__/voicePrefsBus.test.ts` (create if missing)        | Cover new event types                                                                |
+| `frontend/src/components/voice/useVoiceChat.ts`                                            | Publish `call_status_changed`; subscribe to `apply_with_restart`                     |
+| `frontend/src/components/voice/__tests__/useVoiceChat.test.ts`                             | New test cases for bus events                                                        |
+| `frontend/src/components/voice/VoiceLiveSettings.tsx`                                      | Replace direct `voiceApi.updatePreferences` calls with `stage()` for non-live fields |
+| `frontend/src/components/voice/VoiceSettings.tsx`                                          | Replace `savePreferences` with `stage()` everywhere; reset-defaults stages           |
+| `frontend/src/components/voice/__tests__/VoiceLiveSettings.test.tsx`                       | Adapt to staging-based behavior                                                      |
+| `frontend/src/components/voice/__tests__/VoiceSettings.test.tsx` (or equivalent if exists) | Idem                                                                                 |
+| `frontend/src/components/voice/VoiceModal.tsx`                                             | Remove `restartRequired` state + amber banner + `restart_required` subscription      |
+| `frontend/src/App.tsx`                                                                     | Wrap tree with `<VoicePrefsStagingProvider>` and render `<StagedPrefsToolbar />`     |
 
 ---
 
@@ -64,9 +64,30 @@ import {
 import type { VoiceChatSpeedPreset } from "../../../../services/api";
 
 const PRESETS: VoiceChatSpeedPreset[] = [
-  { id: "1x", label_fr: "Normal", label_en: "Normal", api_speed: 1, playback_rate: 1, concise: false },
-  { id: "1.5x", label_fr: "Rapide", label_en: "Fast", api_speed: 1, playback_rate: 1.5, concise: false },
-  { id: "3x", label_fr: "Concis", label_en: "Concise", api_speed: 1, playback_rate: 1, concise: true },
+  {
+    id: "1x",
+    label_fr: "Normal",
+    label_en: "Normal",
+    api_speed: 1,
+    playback_rate: 1,
+    concise: false,
+  },
+  {
+    id: "1.5x",
+    label_fr: "Rapide",
+    label_en: "Fast",
+    api_speed: 1,
+    playback_rate: 1.5,
+    concise: false,
+  },
+  {
+    id: "3x",
+    label_fr: "Concis",
+    label_en: "Concise",
+    api_speed: 1,
+    playback_rate: 1,
+    concise: true,
+  },
 ];
 
 describe("RESTART_REQUIRED_FIELDS", () => {
@@ -120,9 +141,9 @@ describe("isRestartRequired", () => {
   });
 
   it("returns true when staged voice_chat_speed_preset is a concise variant", () => {
-    expect(
-      isRestartRequired({ voice_chat_speed_preset: "3x" }, PRESETS),
-    ).toBe(true);
+    expect(isRestartRequired({ voice_chat_speed_preset: "3x" }, PRESETS)).toBe(
+      true,
+    );
   });
 
   it("returns false when staged voice_chat_speed_preset is a non-concise variant", () => {
@@ -132,7 +153,9 @@ describe("isRestartRequired", () => {
   });
 
   it("returns false if catalog is empty (presets unknown → assume non-restart)", () => {
-    expect(isRestartRequired({ voice_chat_speed_preset: "3x" }, [])).toBe(false);
+    expect(isRestartRequired({ voice_chat_speed_preset: "3x" }, [])).toBe(
+      false,
+    );
   });
 });
 ```
@@ -333,9 +356,9 @@ import type {
 } from "../../../../services/api";
 
 vi.mock("../../../../services/api", async () => {
-  const actual = await vi.importActual<typeof import("../../../../services/api")>(
-    "../../../../services/api",
-  );
+  const actual = await vi.importActual<
+    typeof import("../../../../services/api")
+  >("../../../../services/api");
   return {
     ...actual,
     voiceApi: {
@@ -370,8 +393,22 @@ const APPLIED: VoicePreferences = {
 };
 
 const PRESETS: VoiceChatSpeedPreset[] = [
-  { id: "1x", label_fr: "Normal", label_en: "Normal", api_speed: 1, playback_rate: 1, concise: false },
-  { id: "3x", label_fr: "Concis", label_en: "Concise", api_speed: 1, playback_rate: 1, concise: true },
+  {
+    id: "1x",
+    label_fr: "Normal",
+    label_en: "Normal",
+    api_speed: 1,
+    playback_rate: 1,
+    concise: false,
+  },
+  {
+    id: "3x",
+    label_fr: "Concis",
+    label_en: "Concise",
+    api_speed: 1,
+    playback_rate: 1,
+    concise: true,
+  },
 ];
 
 const CATALOG: VoiceCatalog = {
@@ -648,91 +685,90 @@ git commit -m "feat(voice): add VoicePrefsStagingProvider with stage/cancel/appl
 Append to the existing `describe("VoicePrefsStagingProvider", ...)` block in `frontend/src/components/voice/staging/__tests__/VoicePrefsStagingProvider.test.tsx`:
 
 ```tsx
-  it("apply() sends a single batched updatePreferences call and resets staged", async () => {
-    vi.mocked(voiceApi.updatePreferences).mockResolvedValue({
-      ...APPLIED,
-      voice_id: "v2",
-      language: "en",
-    });
-    const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
-    await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
-    act(() => result.current.stage({ voice_id: "v2", language: "en" }));
-    await act(async () => {
-      await result.current.apply();
-    });
-    expect(voiceApi.updatePreferences).toHaveBeenCalledTimes(1);
-    expect(voiceApi.updatePreferences).toHaveBeenCalledWith({
-      voice_id: "v2",
-      language: "en",
-    });
-    expect(result.current.staged).toEqual({});
-    expect(result.current.applied?.voice_id).toBe("v2");
+it("apply() sends a single batched updatePreferences call and resets staged", async () => {
+  vi.mocked(voiceApi.updatePreferences).mockResolvedValue({
+    ...APPLIED,
+    voice_id: "v2",
+    language: "en",
   });
+  const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
+  await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
+  act(() => result.current.stage({ voice_id: "v2", language: "en" }));
+  await act(async () => {
+    await result.current.apply();
+  });
+  expect(voiceApi.updatePreferences).toHaveBeenCalledTimes(1);
+  expect(voiceApi.updatePreferences).toHaveBeenCalledWith({
+    voice_id: "v2",
+    language: "en",
+  });
+  expect(result.current.staged).toEqual({});
+  expect(result.current.applied?.voice_id).toBe("v2");
+});
 
-  it("apply() emits apply_with_restart when callActive and hard field staged", async () => {
-    const { emitVoicePrefsEvent: emit, subscribeVoicePrefsEvents: sub } =
-      await import("../../voicePrefsBus");
-    const listener = vi.fn();
-    const unsub = sub(listener);
-    vi.mocked(voiceApi.updatePreferences).mockResolvedValue(APPLIED);
-    const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
-    await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
-    act(() => emit({ type: "call_status_changed", active: true }));
-    await waitFor(() => expect(result.current.callActive).toBe(true));
-    act(() => result.current.stage({ voice_id: "v2" }));
-    await act(async () => {
-      await result.current.apply();
-    });
-    expect(listener).toHaveBeenCalledWith({ type: "apply_with_restart" });
-    unsub();
+it("apply() emits apply_with_restart when callActive and hard field staged", async () => {
+  const { emitVoicePrefsEvent: emit, subscribeVoicePrefsEvents: sub } =
+    await import("../../voicePrefsBus");
+  const listener = vi.fn();
+  const unsub = sub(listener);
+  vi.mocked(voiceApi.updatePreferences).mockResolvedValue(APPLIED);
+  const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
+  await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
+  act(() => emit({ type: "call_status_changed", active: true }));
+  await waitFor(() => expect(result.current.callActive).toBe(true));
+  act(() => result.current.stage({ voice_id: "v2" }));
+  await act(async () => {
+    await result.current.apply();
   });
+  expect(listener).toHaveBeenCalledWith({ type: "apply_with_restart" });
+  unsub();
+});
 
-  it("apply() does NOT emit apply_with_restart when callActive but only soft fields staged", async () => {
-    const { subscribeVoicePrefsEvents: sub } = await import(
-      "../../voicePrefsBus"
-    );
-    const listener = vi.fn();
-    const unsub = sub(listener);
-    vi.mocked(voiceApi.updatePreferences).mockResolvedValue(APPLIED);
-    const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
-    await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
-    const { emitVoicePrefsEvent: emit } = await import("../../voicePrefsBus");
-    act(() => emit({ type: "call_status_changed", active: true }));
-    await waitFor(() => expect(result.current.callActive).toBe(true));
-    act(() => result.current.stage({ ptt_key: "Shift" }));
-    await act(async () => {
-      await result.current.apply();
-    });
-    const apply = listener.mock.calls.find(
-      ([e]) => e.type === "apply_with_restart",
-    );
-    expect(apply).toBeUndefined();
-    unsub();
+it("apply() does NOT emit apply_with_restart when callActive but only soft fields staged", async () => {
+  const { subscribeVoicePrefsEvents: sub } =
+    await import("../../voicePrefsBus");
+  const listener = vi.fn();
+  const unsub = sub(listener);
+  vi.mocked(voiceApi.updatePreferences).mockResolvedValue(APPLIED);
+  const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
+  await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
+  const { emitVoicePrefsEvent: emit } = await import("../../voicePrefsBus");
+  act(() => emit({ type: "call_status_changed", active: true }));
+  await waitFor(() => expect(result.current.callActive).toBe(true));
+  act(() => result.current.stage({ ptt_key: "Shift" }));
+  await act(async () => {
+    await result.current.apply();
   });
+  const apply = listener.mock.calls.find(
+    ([e]) => e.type === "apply_with_restart",
+  );
+  expect(apply).toBeUndefined();
+  unsub();
+});
 
-  it("apply() preserves staged on error and sets applyError", async () => {
-    vi.mocked(voiceApi.updatePreferences).mockRejectedValue(
-      new Error("network down"),
-    );
-    const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
-    await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
-    act(() => result.current.stage({ voice_id: "v2" }));
-    await act(async () => {
-      await result.current.apply();
-    });
-    expect(result.current.staged).toEqual({ voice_id: "v2" });
-    expect(result.current.applyError).toBe("network down");
+it("apply() preserves staged on error and sets applyError", async () => {
+  vi.mocked(voiceApi.updatePreferences).mockRejectedValue(
+    new Error("network down"),
+  );
+  const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
+  await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
+  act(() => result.current.stage({ voice_id: "v2" }));
+  await act(async () => {
+    await result.current.apply();
   });
+  expect(result.current.staged).toEqual({ voice_id: "v2" });
+  expect(result.current.applyError).toBe("network down");
+});
 
-  it("apply() is a no-op when staged is empty", async () => {
-    vi.mocked(voiceApi.updatePreferences).mockResolvedValue(APPLIED);
-    const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
-    await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
-    await act(async () => {
-      await result.current.apply();
-    });
-    expect(voiceApi.updatePreferences).not.toHaveBeenCalled();
+it("apply() is a no-op when staged is empty", async () => {
+  vi.mocked(voiceApi.updatePreferences).mockResolvedValue(APPLIED);
+  const { result } = renderHook(() => useVoicePrefsStaging(), { wrapper });
+  await waitFor(() => expect(result.current.applied).toEqual(APPLIED));
+  await act(async () => {
+    await result.current.apply();
   });
+  expect(voiceApi.updatePreferences).not.toHaveBeenCalled();
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they pass**
@@ -769,9 +805,7 @@ import { VoicePrefsStagingProvider } from "../VoicePrefsStagingProvider";
 import type { VoicePrefsStagingContextValue } from "../VoicePrefsStagingProvider";
 import * as ProviderModule from "../VoicePrefsStagingProvider";
 
-function renderWithStaging(
-  override: Partial<VoicePrefsStagingContextValue>,
-) {
+function renderWithStaging(override: Partial<VoicePrefsStagingContextValue>) {
   const value: VoicePrefsStagingContextValue = {
     applied: null,
     catalog: null,
@@ -827,7 +861,9 @@ describe("StagedPrefsToolbar", () => {
       callActive: false,
       staged: { ptt_key: "Shift" },
     });
-    expect(screen.getByTestId("staged-apply").textContent).toMatch(/appliquer/i);
+    expect(screen.getByTestId("staged-apply").textContent).toMatch(
+      /appliquer/i,
+    );
     expect(screen.getByTestId("staged-apply").textContent).not.toMatch(
       /redémarrer/i,
     );
@@ -1048,9 +1084,7 @@ Concretely, find the JSX block that looks roughly like this (existing code):
   <LanguageProvider>
     {/* ... other providers ... */}
     <Router>
-      <Routes>
-        {/* existing routes */}
-      </Routes>
+      <Routes>{/* existing routes */}</Routes>
     </Router>
   </LanguageProvider>
 </AuthProvider>
@@ -1064,9 +1098,7 @@ Insert `<VoicePrefsStagingProvider>` as a child of the outermost auth-aware prov
     {/* ... other providers ... */}
     <VoicePrefsStagingProvider>
       <Router>
-        <Routes>
-          {/* existing routes — UNCHANGED */}
-        </Routes>
+        <Routes>{/* existing routes — UNCHANGED */}</Routes>
       </Router>
       <StagedPrefsToolbar />
     </VoicePrefsStagingProvider>
@@ -1472,9 +1504,7 @@ with:
 
 ```ts
 const { applied, staged, stage } = useVoicePrefsStaging();
-const prefs = applied
-  ? ({ ...applied, ...staged } as VoicePreferences)
-  : null;
+const prefs = applied ? ({ ...applied, ...staged } as VoicePreferences) : null;
 const loading = applied === null;
 const error = null; // surfaced by the toolbar if any
 const saving = false;
@@ -2009,25 +2039,25 @@ git push origin feat/voice-mobile-final
 
 ## Spec Coverage Audit (post-write self-check)
 
-| Spec section | Tasks |
-|---|---|
-| 5. Architecture (provider + bus + toolbar) | T3, T4, T5, T6 |
-| 6. Categorization (live / soft / hard) | T1 |
-| 7. Provider API (stage / cancel / apply) | T3, T4 |
-| 8.1 Provider component | T3 |
-| 8.2 Toolbar | T5 |
-| 8.3 restartRequiredFields | T1 |
-| 8.4 voicePrefsBus extension | T2 |
-| 8.5 useVoiceChat publish + subscribe | T7, T8 |
-| 8.6 VoiceLiveSettings refactor | T9 |
-| 8.7 VoiceSettings refactor | T10 |
-| 8.8 VoiceModal banner removal | T11 |
-| 8.9 App.tsx wrap | T6 |
-| 9. Data flow scenarios A/B/C | Covered by E2E (T12) + manual QA (T13) |
-| 10. Edge cases | T4 (no-op detect, error path), T11 (idempotent stop) |
-| 11. Tests (unit) | T1, T2, T3, T4, T5, T7, T8, T9, T10 |
-| 11. Tests (E2E) | T12 |
-| 12. Critères d'acceptation | T13 |
-| 13. Plan de migration phases 1-8 | T1 → T11 |
+| Spec section                               | Tasks                                                |
+| ------------------------------------------ | ---------------------------------------------------- |
+| 5. Architecture (provider + bus + toolbar) | T3, T4, T5, T6                                       |
+| 6. Categorization (live / soft / hard)     | T1                                                   |
+| 7. Provider API (stage / cancel / apply)   | T3, T4                                               |
+| 8.1 Provider component                     | T3                                                   |
+| 8.2 Toolbar                                | T5                                                   |
+| 8.3 restartRequiredFields                  | T1                                                   |
+| 8.4 voicePrefsBus extension                | T2                                                   |
+| 8.5 useVoiceChat publish + subscribe       | T7, T8                                               |
+| 8.6 VoiceLiveSettings refactor             | T9                                                   |
+| 8.7 VoiceSettings refactor                 | T10                                                  |
+| 8.8 VoiceModal banner removal              | T11                                                  |
+| 8.9 App.tsx wrap                           | T6                                                   |
+| 9. Data flow scenarios A/B/C               | Covered by E2E (T12) + manual QA (T13)               |
+| 10. Edge cases                             | T4 (no-op detect, error path), T11 (idempotent stop) |
+| 11. Tests (unit)                           | T1, T2, T3, T4, T5, T7, T8, T9, T10                  |
+| 11. Tests (E2E)                            | T12                                                  |
+| 12. Critères d'acceptation                 | T13                                                  |
+| 13. Plan de migration phases 1-8           | T1 → T11                                             |
 
 No gaps detected.

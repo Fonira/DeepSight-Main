@@ -577,7 +577,9 @@ export const DebatePage: React.FC = () => {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-white/10 mb-3">
             <Swords className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="text-xs font-medium text-text-secondary">Débat IA</span>
+            <span className="text-xs font-medium text-text-secondary">
+              Débat IA
+            </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight max-w-3xl mx-auto">
             {selectedDebate.detected_topic}
@@ -714,7 +716,9 @@ export const DebatePage: React.FC = () => {
       >
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-white/10 mb-3">
           <Swords className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="text-xs font-medium text-text-secondary">Débat IA</span>
+          <span className="text-xs font-medium text-text-secondary">
+            Débat IA
+          </span>
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">
           Confrontez les points de vue

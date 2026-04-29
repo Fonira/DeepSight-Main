@@ -209,7 +209,10 @@ const VideoStage: React.FC<VideoStageProps> = ({
           className="w-full h-full object-cover"
           fallback={
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500/30 via-violet-500/25 to-cyan-500/25">
-              <Video className="w-14 h-14 text-text-secondary" strokeWidth={1.5} />
+              <Video
+                className="w-14 h-14 text-text-secondary"
+                strokeWidth={1.5}
+              />
             </div>
           }
         />
