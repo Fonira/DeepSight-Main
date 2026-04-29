@@ -32,8 +32,25 @@ from core.config import (
     get_openai_key,
     get_assemblyai_key,
     get_youtube_proxy,
+    get_ytdlp_cookies_path,
     TRANSCRIPT_CONFIG,
 )
+
+
+def _yt_dlp_extra_args() -> list:
+    """Common yt-dlp flags for IP-banned environments: proxy + cookies.
+
+    Both are no-ops when their env vars are unset, so this is safe to call
+    from every yt-dlp wrapper unconditionally.
+    """
+    extra = []
+    proxy = get_youtube_proxy()
+    if proxy:
+        extra.extend(["--proxy", proxy])
+    cookies = get_ytdlp_cookies_path()
+    if cookies and os.path.exists(cookies):
+        extra.extend(["--cookies", cookies])
+    return extra
 
 
 class ExtractionMethod(Enum):
@@ -323,13 +340,28 @@ class UltraResilientTranscriptExtractor:
 
         def _fetch_sync():
             # youtube-transcript-api 1.x changed list_transcripts (classmethod)
-            # → list (instance method). Try new API first, fall back to legacy
-            # so the same code works across versions.
+            # → list (instance method). Wire YOUTUBE_PROXY when set so the
+            # call doesn't hit the (banned) Hetzner IP directly.
+            proxy = get_youtube_proxy()
             try:
-                ytt_api = YouTubeTranscriptApi()
+                kwargs = {}
+                if proxy:
+                    try:
+                        from youtube_transcript_api.proxies import GenericProxyConfig
+                        kwargs["proxy_config"] = GenericProxyConfig(
+                            http_url=proxy, https_url=proxy
+                        )
+                    except ImportError:
+                        # ytt 0.x — proxies passed differently below
+                        pass
+                ytt_api = YouTubeTranscriptApi(**kwargs)
                 transcript_list = ytt_api.list(video_id)
             except AttributeError:
-                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                # Legacy 0.x classmethod path. Pass proxies dict if available.
+                proxies = {"http": proxy, "https": proxy} if proxy else None
+                transcript_list = YouTubeTranscriptApi.list_transcripts(
+                    video_id, proxies=proxies
+                ) if proxies else YouTubeTranscriptApi.list_transcripts(video_id)
 
             # Try manual transcripts first
             for lang in languages:
@@ -410,6 +442,7 @@ class UltraResilientTranscriptExtractor:
                 self._get_random_user_agent(),
                 "--extractor-args",
                 "youtube:player_client=android",
+                *_yt_dlp_extra_args(),
                 "-o",
                 output_template,
                 f"https://www.youtube.com/watch?v={video_id}",
@@ -467,6 +500,7 @@ class UltraResilientTranscriptExtractor:
                 "youtube:player_client=mweb",
                 "--sleep-requests",
                 "1",
+                *_yt_dlp_extra_args(),
                 "-o",
                 output_template,
                 f"https://www.youtube.com/watch?v={video_id}",
@@ -1037,15 +1071,11 @@ class UltraResilientTranscriptExtractor:
                 "5",
                 "--user-agent",
                 self._get_random_user_agent(),
+                *_yt_dlp_extra_args(),
                 "-o",
                 audio_path,
+                f"https://www.youtube.com/watch?v={video_id}",
             ]
-            # Route through YOUTUBE_PROXY when available — Hetzner IP is banned
-            # by YouTube so the direct download from the audio host fails too.
-            proxy = get_youtube_proxy()
-            if proxy:
-                cmd.extend(["--proxy", proxy])
-            cmd.append(f"https://www.youtube.com/watch?v={video_id}")
 
             process = await asyncio.create_subprocess_exec(
                 *cmd,
