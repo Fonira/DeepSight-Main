@@ -303,6 +303,7 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
 
 // === WhackAMole Toggle ===
 const WhackAMoleToggle: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
+  const { t } = useTranslation();
   const [enabled, setEnabled] = useState(() => {
     try {
       return localStorage.getItem("ds-whack-a-mole-enabled") !== "false";
@@ -360,13 +361,15 @@ const WhackAMoleToggle: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
             ? "text-accent-primary hover:bg-white/5"
             : "text-text-tertiary hover:text-text-secondary hover:bg-white/3"
         }`}
-        title={enabled ? "Mode Jeu : activé" : "Mode Jeu : désactivé"}
+        title={enabled ? t.dashboard.modes.toggle_on : t.dashboard.modes.toggle_off}
       >
         <Gamepad2
           className={`w-4 h-4 flex-shrink-0 ${enabled ? "text-accent-primary" : "text-text-quaternary"}`}
         />
         {!collapsed && (
-          <span className="text-xs font-medium truncate">Mode Jeu</span>
+          <span className="text-xs font-medium truncate">
+            {t.dashboard.modes.quiz.label}
+          </span>
         )}
         {!collapsed && (
           <span
@@ -391,7 +394,7 @@ const WhackAMoleToggle: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
                 : "text-text-muted hover:text-text-secondary hover:bg-white/5 border border-transparent"
             }`}
           >
-            Classique
+            {t.dashboard.modes.classic.label}
           </button>
           <button
             onClick={() => switchMode("reverse")}
@@ -401,7 +404,7 @@ const WhackAMoleToggle: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
                 : "text-text-muted hover:text-text-secondary hover:bg-white/5 border border-transparent"
             }`}
           >
-            Prompt Inverse
+            {t.dashboard.modes.expert.label}
           </button>
         </div>
       )}
