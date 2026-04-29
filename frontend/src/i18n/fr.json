@@ -563,7 +563,11 @@
       "includeMetadata": "Inclure les métadonnées"
     },
     "proFeature": "Fonctionnalité Pro",
-    "upgradeToExport": "Passez au plan supérieur pour exporter"
+    "upgradeToExport": "Passez au plan supérieur pour exporter",
+    "watermark": {
+      "noticeFree": "Watermark sur exports gratuits — Pro retire la mention",
+      "upgradeLink": "Passer Pro"
+    }
   },
   "errors": {
     "generic": "Une erreur est survenue",

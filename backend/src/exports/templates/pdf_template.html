@@ -738,6 +738,27 @@
         margin-top: 0.1cm;
       }
 
+      /* ═══════════════════ WATERMARK (Free plan only) ═══════════════════ */
+
+      .cover-watermark {
+        margin-top: 1cm;
+        text-align: center;
+        font-size: 8pt;
+        color: rgba(255, 255, 255, 0.45);
+        font-style: italic;
+        letter-spacing: 0.3px;
+      }
+
+      .last-page-watermark {
+        margin-top: 0.6cm;
+        text-align: center;
+        font-size: 8pt;
+        color: #94a3b8;
+        font-style: italic;
+        letter-spacing: 0.3px;
+        page-break-before: avoid;
+      }
+
       /* ═══════════════════ UTILITIES ═══════════════════ */
 
       .page-break {
@@ -807,6 +828,11 @@
           {% endif %}
           <div class="cover-footer-date">Exporté le {{ date }}</div>
         </div>
+        {% if show_watermark %}
+        <div class="cover-watermark">
+          <em>{{ watermark_text }} — {{ watermark_url }}</em>
+        </div>
+        {% endif %}
       </div>
     </div>
 
@@ -1038,6 +1064,13 @@
           {% endfor %}
         </ul>
       </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════ WATERMARK (Free plan only) ═══════════════════ -->
+    {% if show_watermark %}
+    <div class="last-page-watermark">
+      <em>{{ watermark_text }} — {{ watermark_url }}</em>
     </div>
     {% endif %}
 
