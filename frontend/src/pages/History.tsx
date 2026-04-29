@@ -1465,7 +1465,7 @@ export const History: React.FC = () => {
               </div>
             ) : activeTab === "videos" && selectedVideoDetail ? (
               /* ═══ VUE DÉTAILLÉE VIDÉO INLINE ═══ */
-              (<section className="animate-fadeIn">
+              <section className="animate-fadeIn">
                 {/* Bouton retour */}
                 <button
                   onClick={handleBackFromVideoDetail}
@@ -1574,7 +1574,7 @@ export const History: React.FC = () => {
                   {selectedVideoDetail.mode === "quick_chat" &&
                   !selectedVideoDetail.summary_content ? (
                     /* Quick Chat Upgrade Panel */
-                    (<div className="card p-6">
+                    <div className="card p-6">
                       <div className="flex items-center gap-3 mb-5">
                         <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
                           <BookOpen className="w-5 h-5 text-emerald-400" />
@@ -1661,7 +1661,7 @@ export const History: React.FC = () => {
                           </>
                         )}
                       </button>
-                    </div>)
+                    </div>
                   ) : (
                     <>
                       {/* 🎙️ Hero CTA Agent Vocal */}
@@ -1836,7 +1836,7 @@ export const History: React.FC = () => {
                     />
                   </>
                 )}
-              </section>)
+              </section>
             ) : activeTab === "videos" ? (
               <section>
                 {/* Section Header Vidéos */}

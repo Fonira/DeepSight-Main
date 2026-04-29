@@ -15,4 +15,7 @@ export declare function detectHighContrast(): boolean;
  *
  * If the base intensity is already below the cap, it is returned unchanged.
  */
-export declare function getReadingZoneCap(baseIntensity: number, highContrast?: boolean): number;
+export declare function getReadingZoneCap(
+  baseIntensity: number,
+  highContrast?: boolean,
+): number;

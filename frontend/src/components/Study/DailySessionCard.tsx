@@ -49,7 +49,9 @@ export const DailySessionCard: React.FC<DailySessionCardProps> = ({
         </div>
         <div className="flex items-center gap-1.5">
           <Clock className="w-3.5 h-3.5 text-text-muted" aria-hidden="true" />
-          <span className="text-sm text-text-muted">~{estimatedMinutes} min</span>
+          <span className="text-sm text-text-muted">
+            ~{estimatedMinutes} min
+          </span>
         </div>
       </div>
       {/* CTA */}

@@ -137,13 +137,20 @@ export function CallActiveView({
             ‹
           </button>
         )}
-        <AgentAvatar voiceName={effectiveVoiceName} conversation={conversation} />
+        <AgentAvatar
+          voiceName={effectiveVoiceName}
+          conversation={conversation}
+        />
         <div className="ds-call-active__meta">
           <span className="ds-call-active__label">
             <span className="ds-call-active__indicator" aria-hidden />
             {t.voiceCall.callActive.live}
           </span>
-          <span className="ds-call-active__elapsed" role="timer" aria-live="off">
+          <span
+            className="ds-call-active__elapsed"
+            role="timer"
+            aria-live="off"
+          >
             {mm}:{ss}
           </span>
         </div>
@@ -215,8 +222,8 @@ export function CallActiveView({
           aria-pressed={isMuted}
           aria-label={
             isMuted
-              ? t.voiceCall.callActive.unmuteAriaLabel ?? "Activer le micro"
-              : t.voiceCall.callActive.muteAriaLabel ?? "Couper le micro"
+              ? (t.voiceCall.callActive.unmuteAriaLabel ?? "Activer le micro")
+              : (t.voiceCall.callActive.muteAriaLabel ?? "Couper le micro")
           }
           data-testid="voice-mute-btn"
         >
@@ -225,8 +232,8 @@ export function CallActiveView({
           </span>
           <span className="ds-call-active__mute-label">
             {isMuted
-              ? t.voiceCall.callActive.unmute ?? "Activer"
-              : t.voiceCall.callActive.mute ?? "Couper"}
+              ? (t.voiceCall.callActive.unmute ?? "Activer")
+              : (t.voiceCall.callActive.mute ?? "Couper")}
           </span>
         </button>
         <button

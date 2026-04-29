@@ -159,7 +159,8 @@ const MentionsLegales: React.FC = () => (
             {LEGAL_INFO.company.city}
           </p>
           <p>
-            <span className="text-text-muted">TVA :</span> {LEGAL_INFO.vat.status}
+            <span className="text-text-muted">TVA :</span>{" "}
+            {LEGAL_INFO.vat.status}
           </p>
         </div>
       </div>
@@ -296,7 +297,9 @@ const CGU: React.FC = () => (
       <h2 className="text-2xl font-bold text-white mb-2">
         Conditions Générales d'Utilisation et de Vente
       </h2>
-      <p className="text-text-secondary">En vigueur au {LEGAL_INFO.lastUpdate}</p>
+      <p className="text-text-secondary">
+        En vigueur au {LEGAL_INFO.lastUpdate}
+      </p>
     </header>
 
     {/* Article 1 - Objet */}
@@ -725,28 +728,36 @@ const PrivacyPolicy: React.FC = () => (
         <div className="grid md:grid-cols-2 gap-4 mt-4">
           <div className="bg-white/5 p-4 rounded-lg">
             <p className="font-medium text-white">Stripe (Paiement)</p>
-            <p className="text-sm text-text-secondary">Données bancaires — USA</p>
+            <p className="text-sm text-text-secondary">
+              Données bancaires — USA
+            </p>
             <p className="text-xs text-amber-400">
               Clauses contractuelles types
             </p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg">
             <p className="font-medium text-white">Mistral AI (Analyse IA)</p>
-            <p className="text-sm text-text-secondary">Contenus analysés — France</p>
+            <p className="text-sm text-text-secondary">
+              Contenus analysés — France
+            </p>
             <p className="text-xs text-green-400">Hébergé en UE</p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg">
             <p className="font-medium text-white">
               Perplexity (Enrichissement)
             </p>
-            <p className="text-sm text-text-secondary">Requêtes de recherche — USA</p>
+            <p className="text-sm text-text-secondary">
+              Requêtes de recherche — USA
+            </p>
             <p className="text-xs text-amber-400">
               Clauses contractuelles types
             </p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg">
             <p className="font-medium text-white">Google (OAuth)</p>
-            <p className="text-sm text-text-secondary">Authentification — USA</p>
+            <p className="text-sm text-text-secondary">
+              Authentification — USA
+            </p>
             <p className="text-xs text-amber-400">
               Clauses contractuelles types
             </p>
@@ -873,7 +884,9 @@ const CookiesPolicy: React.FC = () => (
       <h2 className="text-2xl font-bold text-white mb-2">
         Politique de Cookies
       </h2>
-      <p className="text-text-secondary">En vigueur au {LEGAL_INFO.lastUpdate}</p>
+      <p className="text-text-secondary">
+        En vigueur au {LEGAL_INFO.lastUpdate}
+      </p>
     </header>
 
     {/* Qu'est-ce qu'un cookie */}

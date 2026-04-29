@@ -269,10 +269,7 @@ export default function SharedAnalysisPage() {
           })}
         </script>
       </Helmet>
-      <BreadcrumbJsonLd
-        path={`/s/${shareToken}`}
-        label={data.video_title}
-      />
+      <BreadcrumbJsonLd path={`/s/${shareToken}`} label={data.video_title} />
 
       {/* Header */}
       <header className="border-b border-border-subtle bg-bg-primary/80 backdrop-blur-xl sticky top-0 z-50">

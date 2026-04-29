@@ -133,10 +133,10 @@ export function VoiceWaveform({
       lastFrameRef.current = ts;
 
       const inputData = hasInputApi
-        ? conversation.getInputByteFrequencyData?.() ?? null
+        ? (conversation.getInputByteFrequencyData?.() ?? null)
         : null;
       const outputData = hasOutputApi
-        ? conversation.getOutputByteFrequencyData?.() ?? null
+        ? (conversation.getOutputByteFrequencyData?.() ?? null)
         : null;
 
       const inputBars = downsampleToBars(inputData, BAR_COUNT);

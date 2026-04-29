@@ -32,6 +32,7 @@ from .service import (
     save_chat_message,
     get_chat_history,
     clear_chat_history,
+    clear_chat_history_unified,
     generate_chat_response,
     generate_chat_response_stream,
     check_web_search_quota,
@@ -195,7 +196,23 @@ async def _ask_question_legacy(request: ChatRequest, current_user: User, session
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
 
-    # Récupérer l'historique
+    # 🆕 v6.1 (Task 7): bloc unifié pour le prompt (voice + chat digests + verbatim)
+    try:
+        from voice.context_builder import build_unified_context_block
+
+        history_text = await build_unified_context_block(
+            session,
+            summary_id=request.summary_id,
+            user_id=current_user.id,
+            lang=summary.lang or "fr",
+            target="chat",
+            exclude_voice_session_id=None,
+        )
+    except Exception as exc:
+        logger.warning(f"build_unified_context_block failed (legacy path): {exc}")
+        history_text = ""
+
+    # Garde aussi le history list pour compat ascendante (non utilisé pour prompt)
     history = await get_chat_history(session, request.summary_id, current_user.id)
 
     # ═══════════════════════════════════════════════════════════════════════════════
@@ -270,6 +287,7 @@ async def _ask_question_legacy(request: ChatRequest, current_user: User, session
         mode=request.mode,
         lang=summary.lang or "fr",
         model=model,
+        history_text=history_text,
     )
 
     if not response:
@@ -325,7 +343,23 @@ async def ask_question_stream(
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
 
-    # Récupérer l'historique
+    # 🆕 v6.1 (Task 7): bloc unifié pour le prompt streaming
+    try:
+        from voice.context_builder import build_unified_context_block
+
+        history_text = await build_unified_context_block(
+            session,
+            summary_id=request.summary_id,
+            user_id=current_user.id,
+            lang=summary.lang or "fr",
+            target="chat",
+            exclude_voice_session_id=None,
+        )
+    except Exception as exc:
+        logger.warning(f"build_unified_context_block failed (stream path): {exc}")
+        history_text = ""
+
+    # Garde aussi le history list (non utilisé directement par le prompt)
     history = await get_chat_history(session, request.summary_id, current_user.id)
 
     async def generate():
@@ -338,6 +372,7 @@ async def ask_question_stream(
             chat_history=history,
             mode=request.mode,
             lang=summary.lang or "fr",
+            history_text=history_text,
         ):
             full_response += chunk
             yield f"data: {chunk}\n\n"
@@ -376,15 +411,31 @@ async def get_history(
 
 @router.delete("/history/{summary_id}")
 async def clear_history(
-    summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
+    summary_id: int,
+    include_voice: bool = Query(default=True),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
-    """Efface l'historique de chat pour une vidéo"""
+    """Efface l'historique conversationnel d'une vidéo.
+
+    🆕 v6.1 (Task 7) : effacement unifié texte + voice.
+
+    Default ``include_voice=True`` :
+      - chat_messages (toutes sources : texte + voice)
+      - chat_text_digests
+      - voice_sessions : reset des champs digest (la row reste pour audit)
+
+    ``include_voice=False`` : ne touche que ``source='text'`` + chat_text_digests
+    (préserve les transcripts voice et leurs digests).
+    """
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
 
-    count = await clear_chat_history(session, summary_id, current_user.id)
-    return {"success": True, "deleted": count}
+    deleted = await clear_chat_history_unified(
+        session, summary_id, current_user.id, include_voice=include_voice
+    )
+    return {"success": True, "deleted": deleted}
 
 
 @router.get("/{summary_id}/quota", response_model=QuotaInfoResponse)

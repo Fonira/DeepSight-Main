@@ -574,10 +574,7 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
               {!contextComplete ? (
                 <>
                   <Text
-                    style={[
-                      styles.contextProgressLabel,
-                      { color: "#f5b400" },
-                    ]}
+                    style={[styles.contextProgressLabel, { color: "#f5b400" }]}
                   >
                     🎙️ J'écoute la vidéo en même temps que toi · Analyse en
                     cours: {Math.floor(contextProgress)}%
@@ -601,10 +598,7 @@ export const VoiceScreen: React.FC<VoiceScreenProps> = ({
                 </>
               ) : (
                 <Text
-                  style={[
-                    styles.contextProgressLabel,
-                    { color: "#f5b400" },
-                  ]}
+                  style={[styles.contextProgressLabel, { color: "#f5b400" }]}
                 >
                   ✓ Contexte vidéo complet
                 </Text>

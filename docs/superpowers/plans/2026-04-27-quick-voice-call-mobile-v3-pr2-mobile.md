@@ -16,29 +16,30 @@
 
 ## File Structure
 
-| Fichier | Type | Responsabilité |
-|---|---|---|
-| `mobile/src/utils/validateVideoURL.ts` | NEW | Regex YT + TikTok mirror du backend |
-| `mobile/src/hooks/useClipboardURLDetector.ts` | NEW | Scan clipboard sur focus Home, return URL si valide |
-| `mobile/src/hooks/useDeepLinkURL.ts` | NEW | Listener Linking pour `deepsight://voice-call?url=...&autostart=true` |
-| `mobile/src/components/voice/useStreamingVideoContext.ts` | NEW | EventSource SSE → `conversation.sendUserMessage([CTX UPDATE])` + state progress |
-| `mobile/src/components/voice/useVoiceChat.ts` | MODIFY | Exposer `sessionId` et `conversation` dans le retour |
-| `mobile/src/services/api.ts` | MODIFY | `voiceApi.createSession({video_url, agent_type:'explorer_streaming'})` accepté + `summary_id` dans la réponse |
-| `mobile/src/components/voice/VoiceScreen.tsx` | MODIFY | Props `streaming`, `contextProgress`, `contextComplete` + ContextProgressBar |
-| `mobile/src/components/voice/PostCallScreen.tsx` | NEW | Modal post-hangup : transcript + 2 CTA + banner upgrade |
-| `mobile/app/(tabs)/index.tsx` (Home) | MODIFY | Layout 2 CTA + bandeau clipboard + wiring useVoiceChat + useStreamingVideoContext + PostCallScreen |
-| `mobile/__tests__/utils/validateVideoURL.test.ts` | NEW | Tests regex client |
-| `mobile/__tests__/hooks/useClipboardURLDetector.test.ts` | NEW | Mock expo-clipboard, test focus → detect |
-| `mobile/__tests__/hooks/useDeepLinkURL.test.ts` | NEW | Mock Linking, test deep link routing |
-| `mobile/__tests__/components/voice/useStreamingVideoContext.test.ts` | NEW | Mock EventSource, test events → sendUserMessage |
-| `mobile/__tests__/components/voice/VoiceScreen.streaming.test.tsx` | NEW | Test progress bar conditional render |
-| `mobile/__tests__/components/voice/PostCallScreen.test.tsx` | NEW | Test CTAs + banner |
+| Fichier                                                              | Type   | Responsabilité                                                                                                |
+| -------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------- |
+| `mobile/src/utils/validateVideoURL.ts`                               | NEW    | Regex YT + TikTok mirror du backend                                                                           |
+| `mobile/src/hooks/useClipboardURLDetector.ts`                        | NEW    | Scan clipboard sur focus Home, return URL si valide                                                           |
+| `mobile/src/hooks/useDeepLinkURL.ts`                                 | NEW    | Listener Linking pour `deepsight://voice-call?url=...&autostart=true`                                         |
+| `mobile/src/components/voice/useStreamingVideoContext.ts`            | NEW    | EventSource SSE → `conversation.sendUserMessage([CTX UPDATE])` + state progress                               |
+| `mobile/src/components/voice/useVoiceChat.ts`                        | MODIFY | Exposer `sessionId` et `conversation` dans le retour                                                          |
+| `mobile/src/services/api.ts`                                         | MODIFY | `voiceApi.createSession({video_url, agent_type:'explorer_streaming'})` accepté + `summary_id` dans la réponse |
+| `mobile/src/components/voice/VoiceScreen.tsx`                        | MODIFY | Props `streaming`, `contextProgress`, `contextComplete` + ContextProgressBar                                  |
+| `mobile/src/components/voice/PostCallScreen.tsx`                     | NEW    | Modal post-hangup : transcript + 2 CTA + banner upgrade                                                       |
+| `mobile/app/(tabs)/index.tsx` (Home)                                 | MODIFY | Layout 2 CTA + bandeau clipboard + wiring useVoiceChat + useStreamingVideoContext + PostCallScreen            |
+| `mobile/__tests__/utils/validateVideoURL.test.ts`                    | NEW    | Tests regex client                                                                                            |
+| `mobile/__tests__/hooks/useClipboardURLDetector.test.ts`             | NEW    | Mock expo-clipboard, test focus → detect                                                                      |
+| `mobile/__tests__/hooks/useDeepLinkURL.test.ts`                      | NEW    | Mock Linking, test deep link routing                                                                          |
+| `mobile/__tests__/components/voice/useStreamingVideoContext.test.ts` | NEW    | Mock EventSource, test events → sendUserMessage                                                               |
+| `mobile/__tests__/components/voice/VoiceScreen.streaming.test.tsx`   | NEW    | Test progress bar conditional render                                                                          |
+| `mobile/__tests__/components/voice/PostCallScreen.test.tsx`          | NEW    | Test CTAs + banner                                                                                            |
 
 ---
 
 ## Task 1: Util validateVideoURL (TDD)
 
 **Files:**
+
 - Create: `mobile/src/utils/validateVideoURL.ts`
 - Test: `mobile/__tests__/utils/validateVideoURL.test.ts`
 
@@ -46,7 +47,10 @@
 
 ```typescript
 // mobile/__tests__/utils/validateVideoURL.test.ts
-import { validateVideoURL, parseVideoURL } from "../../src/utils/validateVideoURL";
+import {
+  validateVideoURL,
+  parseVideoURL,
+} from "../../src/utils/validateVideoURL";
 
 describe("validateVideoURL", () => {
   test.each([
@@ -75,7 +79,9 @@ describe("parseVideoURL", () => {
     });
   });
   test("returns tiktok + id", () => {
-    expect(parseVideoURL("https://www.tiktok.com/@u/video/7123456789012345678")).toEqual({
+    expect(
+      parseVideoURL("https://www.tiktok.com/@u/video/7123456789012345678"),
+    ).toEqual({
       platform: "tiktok",
       videoId: "7123456789012345678",
     });
@@ -94,8 +100,10 @@ describe("parseVideoURL", () => {
 
 ```typescript
 // mobile/src/utils/validateVideoURL.ts
-const YOUTUBE_RE = /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-const TIKTOK_RE = /^https?:\/\/(?:www\.|vm\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/(\d+)|t\/([A-Za-z0-9]+)|v\/(\d+)|([A-Za-z0-9]+)\/?)/;
+const YOUTUBE_RE =
+  /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+const TIKTOK_RE =
+  /^https?:\/\/(?:www\.|vm\.|m\.)?tiktok\.com\/(?:@[\w.-]+\/video\/(\d+)|t\/([A-Za-z0-9]+)|v\/(\d+)|([A-Za-z0-9]+)\/?)/;
 
 export function validateVideoURL(url: string): boolean {
   return YOUTUBE_RE.test(url) || TIKTOK_RE.test(url);
@@ -131,12 +139,14 @@ git commit -m "feat(mobile): add validateVideoURL util (YT + TikTok regex mirror
 ## Task 2: Hook useClipboardURLDetector (TDD)
 
 **Files:**
+
 - Create: `mobile/src/hooks/useClipboardURLDetector.ts`
 - Test: `mobile/__tests__/hooks/useClipboardURLDetector.test.ts`
 
 - [ ] **Step 2.1: Add expo-clipboard if not in deps**
 
 Run: `grep '"expo-clipboard"' mobile/package.json`. If absent:
+
 ```bash
 cd mobile && npx expo install expo-clipboard
 ```
@@ -161,7 +171,7 @@ describe("useClipboardURLDetector", () => {
 
   test("detects YouTube URL in clipboard on focus", async () => {
     (Clipboard.getStringAsync as jest.Mock).mockResolvedValue(
-      "https://youtu.be/dQw4w9WgXcQ"
+      "https://youtu.be/dQw4w9WgXcQ",
     );
     const { result } = renderHook(() => useClipboardURLDetector());
     await waitFor(() => {
@@ -170,7 +180,9 @@ describe("useClipboardURLDetector", () => {
   });
 
   test("ignores non-video URLs", async () => {
-    (Clipboard.getStringAsync as jest.Mock).mockResolvedValue("https://example.com");
+    (Clipboard.getStringAsync as jest.Mock).mockResolvedValue(
+      "https://example.com",
+    );
     const { result } = renderHook(() => useClipboardURLDetector());
     await waitFor(() => {
       expect(result.current.clipboardURL).toBeNull();
@@ -187,7 +199,7 @@ describe("useClipboardURLDetector", () => {
 
   test("dismiss clears the state", async () => {
     (Clipboard.getStringAsync as jest.Mock).mockResolvedValue(
-      "https://www.tiktok.com/@u/video/7123456789012345678"
+      "https://www.tiktok.com/@u/video/7123456789012345678",
     );
     const { result } = renderHook(() => useClipboardURLDetector());
     await waitFor(() => expect(result.current.clipboardURL).toBeTruthy());
@@ -249,7 +261,7 @@ export function useClipboardURLDetector(): UseClipboardURLDetectorReturn {
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, []),
   );
 
   const dismiss = useCallback(() => setClipboardURL(null), []);
@@ -270,6 +282,7 @@ git commit -m "feat(mobile): add useClipboardURLDetector hook (auto-detect YT/Ti
 ## Task 3: Hook useDeepLinkURL (TDD)
 
 **Files:**
+
 - Create: `mobile/src/hooks/useDeepLinkURL.ts`
 - Test: `mobile/__tests__/hooks/useDeepLinkURL.test.ts`
 
@@ -295,7 +308,9 @@ describe("useDeepLinkURL", () => {
     });
     (Linking.getInitialURL as jest.Mock).mockResolvedValue(null);
     (Linking.parse as jest.Mock).mockImplementation((url: string) => {
-      const m = url.match(/deepsight:\/\/voice-call\?url=([^&]+)(?:&autostart=(\w+))?/);
+      const m = url.match(
+        /deepsight:\/\/voice-call\?url=([^&]+)(?:&autostart=(\w+))?/,
+      );
       if (m)
         return {
           path: "voice-call",
@@ -316,7 +331,7 @@ describe("useDeepLinkURL", () => {
     act(() => {
       urlListener!({
         url: `deepsight://voice-call?url=${encodeURIComponent(
-          "https://youtu.be/dQw4w9WgXcQ"
+          "https://youtu.be/dQw4w9WgXcQ",
         )}&autostart=true`,
       });
     });
@@ -348,7 +363,7 @@ describe("useDeepLinkURL", () => {
 
   test("processes initial URL on mount", async () => {
     (Linking.getInitialURL as jest.Mock).mockResolvedValue(
-      `deepsight://voice-call?url=${encodeURIComponent("https://youtu.be/dQw4w9WgXcQ")}&autostart=true`
+      `deepsight://voice-call?url=${encodeURIComponent("https://youtu.be/dQw4w9WgXcQ")}&autostart=true`,
     );
     const onURL = jest.fn();
     renderHook(() => useDeepLinkURL(onURL));
@@ -408,6 +423,7 @@ git commit -m "feat(mobile): add useDeepLinkURL hook for deepsight://voice-call?
 ## Task 4: Extend voiceApi.createSession to accept video_url
 
 **Files:**
+
 - Modify: `mobile/src/services/api.ts`
 - Test: `mobile/__tests__/services/voiceApi.test.ts` (existing — extend)
 
@@ -443,8 +459,10 @@ describe("voiceApi.createSession with video_url", () => {
       expect.stringContaining("/api/voice/session"),
       expect.objectContaining({
         method: "POST",
-        body: expect.stringContaining('"video_url":"https://youtu.be/dQw4w9WgXcQ"'),
-      })
+        body: expect.stringContaining(
+          '"video_url":"https://youtu.be/dQw4w9WgXcQ"',
+        ),
+      }),
     );
     expect(result.summary_id).toBe(99);
   });
@@ -515,6 +533,7 @@ git commit -m "feat(mobile): voiceApi.createSession accepts video_url + returns 
 ## Task 5: Extend useVoiceChat to expose sessionId + conversation
 
 **Files:**
+
 - Modify: `mobile/src/components/voice/useVoiceChat.ts`
 - Test: `mobile/src/components/voice/__tests__/useVoiceChat.test.ts` (existing — extend)
 
@@ -552,9 +571,9 @@ Add to the return interface:
 interface UseVoiceChatReturn {
   // ... existing fields
   /** Session ID backend (null avant start()) — exposé pour useStreamingVideoContext */
-  sessionId: string | null;  // NEW
+  sessionId: string | null; // NEW
   /** Object SDK ElevenLabs RN — exposé pour useStreamingVideoContext */
-  conversation: ReturnType<typeof useConversation>;  // NEW
+  conversation: ReturnType<typeof useConversation>; // NEW
 }
 ```
 
@@ -565,22 +584,30 @@ const [sessionId, setSessionId] = useState<string | null>(null);
 
 // Inside start(), after sessionData is fetched:
 sessionIdRef.current = sessionData.session_id;
-setSessionId(sessionData.session_id);  // NEW
+setSessionId(sessionData.session_id); // NEW
 
 // Inside stop(), at the end:
 sessionIdRef.current = null;
-setSessionId(null);  // NEW
+setSessionId(null); // NEW
 ```
 
 In the return:
 
 ```typescript
 return {
-  start, stop, toggleMute, sendUserMessage,
-  status, isSpeaking: conversation.isSpeaking, isMuted, messages,
-  elapsedSeconds, remainingMinutes, error,
-  sessionId,            // NEW
-  conversation,         // NEW
+  start,
+  stop,
+  toggleMute,
+  sendUserMessage,
+  status,
+  isSpeaking: conversation.isSpeaking,
+  isMuted,
+  messages,
+  elapsedSeconds,
+  remainingMinutes,
+  error,
+  sessionId, // NEW
+  conversation, // NEW
 };
 ```
 
@@ -597,6 +624,7 @@ git commit -m "feat(mobile): expose sessionId + conversation from useVoiceChat (
 ## Task 6: Hook useStreamingVideoContext (TDD)
 
 **Files:**
+
 - Create: `mobile/src/components/voice/useStreamingVideoContext.ts`
 - Test: `mobile/__tests__/components/voice/useStreamingVideoContext.test.ts`
 
@@ -624,7 +652,7 @@ jest.mock("react-native-sse", () =>
     },
     removeAllEventListeners: jest.fn(),
     close: mockClose,
-  }))
+  })),
 );
 
 // Mock auth headers
@@ -652,26 +680,32 @@ describe("useStreamingVideoContext", () => {
 
   test("dispatches transcript_chunk to sendUserMessage with [CTX UPDATE] prefix", async () => {
     const { result } = renderHook(() =>
-      useStreamingVideoContext("sess_1", fakeConversation as any)
+      useStreamingVideoContext("sess_1", fakeConversation as any),
     );
     await waitFor(() => expect(mockListeners.transcript_chunk).toBeDefined());
 
     act(() => {
       mockListeners.transcript_chunk[0]({
-        data: JSON.stringify({ chunk_index: 1, total_chunks: 4, text: "Hello" }),
+        data: JSON.stringify({
+          chunk_index: 1,
+          total_chunks: 4,
+          text: "Hello",
+        }),
       });
     });
 
     expect(fakeConversation.sendUserMessage).toHaveBeenCalledWith(
-      expect.stringContaining("[CTX UPDATE: transcript chunk 1/4]")
+      expect.stringContaining("[CTX UPDATE: transcript chunk 1/4]"),
     );
-    expect(fakeConversation.sendUserMessage.mock.calls[0][0]).toContain("Hello");
+    expect(fakeConversation.sendUserMessage.mock.calls[0][0]).toContain(
+      "Hello",
+    );
     expect(result.current.contextProgress).toBeCloseTo((1 / 4) * 80, 1);
   });
 
   test("ctx_complete sets contextComplete=true and progress=100", async () => {
     const { result } = renderHook(() =>
-      useStreamingVideoContext("sess_2", fakeConversation as any)
+      useStreamingVideoContext("sess_2", fakeConversation as any),
     );
     await waitFor(() => expect(mockListeners.ctx_complete).toBeDefined());
 
@@ -684,13 +718,13 @@ describe("useStreamingVideoContext", () => {
     expect(result.current.contextProgress).toBe(100);
     expect(result.current.contextComplete).toBe(true);
     expect(fakeConversation.sendUserMessage).toHaveBeenCalledWith(
-      expect.stringContaining("[CTX COMPLETE]")
+      expect.stringContaining("[CTX COMPLETE]"),
     );
   });
 
   test("closes EventSource on unmount", async () => {
     const { unmount } = renderHook(() =>
-      useStreamingVideoContext("sess_3", fakeConversation as any)
+      useStreamingVideoContext("sess_3", fakeConversation as any),
     );
     await waitFor(() => expect(mockListeners.transcript_chunk).toBeDefined());
     unmount();
@@ -722,7 +756,7 @@ export interface UseStreamingVideoContextReturn {
 
 export function useStreamingVideoContext(
   sessionId: string | null,
-  conversation: ConversationLike
+  conversation: ConversationLike,
 ): UseStreamingVideoContextReturn {
   const [contextProgress, setContextProgress] = useState(0);
   const [contextComplete, setContextComplete] = useState(false);
@@ -738,7 +772,7 @@ export function useStreamingVideoContext(
       try {
         const data = JSON.parse(e.data);
         conversation.sendUserMessage?.(
-          `[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`
+          `[CTX UPDATE: transcript chunk ${data.chunk_index}/${data.total_chunks}]\n${data.text}`,
         );
         setContextProgress((data.chunk_index / data.total_chunks) * 80);
       } catch {
@@ -750,7 +784,7 @@ export function useStreamingVideoContext(
       try {
         const data = JSON.parse(e.data);
         conversation.sendUserMessage?.(
-          `[CTX UPDATE: analysis - ${data.section}]\n${data.content}`
+          `[CTX UPDATE: analysis - ${data.section}]\n${data.content}`,
         );
         setContextProgress((p) => Math.min(p + 5, 95));
       } catch {
@@ -762,7 +796,7 @@ export function useStreamingVideoContext(
       try {
         const data = JSON.parse(e.data);
         conversation.sendUserMessage?.(
-          `[CTX COMPLETE]\nFinal digest: ${data.final_digest_summary}`
+          `[CTX COMPLETE]\nFinal digest: ${data.final_digest_summary}`,
         );
       } catch {
         conversation.sendUserMessage?.("[CTX COMPLETE]");
@@ -811,6 +845,7 @@ git commit -m "feat(mobile): add useStreamingVideoContext hook (SSE → sendUser
 ## Task 7: VoiceScreen variante streaming + ContextProgressBar (TDD)
 
 **Files:**
+
 - Modify: `mobile/src/components/voice/VoiceScreen.tsx`
 - Test: `mobile/__tests__/components/voice/VoiceScreen.streaming.test.tsx`
 
@@ -883,27 +918,32 @@ interface VoiceScreenProps {
 Inside the component, after the title block, render the progress bar conditionally:
 
 ```tsx
-{streaming && (
-  <View testID="context-progress-bar" style={styles.contextProgressContainer}>
-    {!contextComplete ? (
-      <>
+{
+  streaming && (
+    <View testID="context-progress-bar" style={styles.contextProgressContainer}>
+      {!contextComplete ? (
+        <>
+          <Text style={styles.contextProgressLabel}>
+            🎙️ J'écoute la vidéo en même temps que toi · Analyse en cours:{" "}
+            {Math.floor(contextProgress ?? 0)}%
+          </Text>
+          <View style={styles.contextProgressTrack}>
+            <Animated.View
+              style={[
+                styles.contextProgressFill,
+                { width: `${contextProgress ?? 0}%` },
+              ]}
+            />
+          </View>
+        </>
+      ) : (
         <Text style={styles.contextProgressLabel}>
-          🎙️ J'écoute la vidéo en même temps que toi · Analyse en cours: {Math.floor(contextProgress ?? 0)}%
+          ✓ Contexte vidéo complet
         </Text>
-        <View style={styles.contextProgressTrack}>
-          <Animated.View
-            style={[
-              styles.contextProgressFill,
-              { width: `${contextProgress ?? 0}%` },
-            ]}
-          />
-        </View>
-      </>
-    ) : (
-      <Text style={styles.contextProgressLabel}>✓ Contexte vidéo complet</Text>
-    )}
-  </View>
-)}
+      )}
+    </View>
+  );
+}
 ```
 
 Add styles:
@@ -950,6 +990,7 @@ git commit -m "feat(mobile): VoiceScreen streaming variant with context progress
 ## Task 8: PostCallScreen Modal (TDD)
 
 **Files:**
+
 - Create: `mobile/src/components/voice/PostCallScreen.tsx`
 - Test: `mobile/__tests__/components/voice/PostCallScreen.test.tsx`
 
@@ -1020,7 +1061,14 @@ describe("PostCallScreen", () => {
 ```tsx
 // mobile/src/components/voice/PostCallScreen.tsx
 import React from "react";
-import { View, Text, Pressable, Modal, StyleSheet, Platform } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  Modal,
+  StyleSheet,
+  Platform,
+} from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -1065,7 +1113,12 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
   onViewAnalysis,
   onCallAnother,
 }) => (
-  <Modal visible={visible} animationType="slide" presentationStyle="formSheet" onRequestClose={onClose}>
+  <Modal
+    visible={visible}
+    animationType="slide"
+    presentationStyle="formSheet"
+    onRequestClose={onClose}
+  >
     <View style={styles.container}>
       <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={12}>
         <Ionicons name="close" size={28} color={palette.textPrimary} />
@@ -1075,13 +1128,16 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
         <Text style={styles.headerLabel}>✓ Appel terminé</Text>
         <Text style={styles.title}>{videoTitle}</Text>
         <Text style={styles.subtitle}>
-          {channelName ? `${channelName} · ` : ""}{formatTime(durationSeconds)}
+          {channelName ? `${channelName} · ` : ""}
+          {formatTime(durationSeconds)}
         </Text>
       </View>
 
       {quotaRemaining === 0 && (
         <View style={styles.upgradeBanner}>
-          <Text style={styles.upgradeText}>⚠ Quota voice épuisé · Passe en Pro pour continuer</Text>
+          <Text style={styles.upgradeText}>
+            ⚠ Quota voice épuisé · Passe en Pro pour continuer
+          </Text>
         </View>
       )}
 
@@ -1092,8 +1148,15 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
           estimatedItemSize={48}
           keyExtractor={(_, i) => String(i)}
           renderItem={({ item }) => (
-            <View style={[styles.bubble, item.source === "user" ? styles.userBubble : styles.aiBubble]}>
-              <Text style={styles.bubbleAuthor}>{item.source === "user" ? "Toi" : "Agent"}</Text>
+            <View
+              style={[
+                styles.bubble,
+                item.source === "user" ? styles.userBubble : styles.aiBubble,
+              ]}
+            >
+              <Text style={styles.bubbleAuthor}>
+                {item.source === "user" ? "Toi" : "Agent"}
+              </Text>
               <Text style={styles.bubbleText}>{item.text}</Text>
             </View>
           )}
@@ -1102,7 +1165,10 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
 
       <View style={styles.ctaSection}>
         <Pressable
-          style={({ pressed }) => [styles.primaryCta, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [
+            styles.primaryCta,
+            pressed && { opacity: 0.85 },
+          ]}
           onPress={() => summaryId && onViewAnalysis(summaryId)}
           disabled={!summaryId}
         >
@@ -1115,7 +1181,10 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
           <Text style={styles.primaryCtaText}>Voir l'analyse complète →</Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [styles.secondaryCta, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [
+            styles.secondaryCta,
+            pressed && { opacity: 0.85 },
+          ]}
           onPress={onCallAnother}
         >
           <Text style={styles.secondaryCtaText}>Appeler une autre vidéo</Text>
@@ -1126,26 +1195,96 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
 );
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.bgPrimary, padding: sp(4), paddingTop: Platform.OS === "ios" ? sp(8) : sp(4) },
+  container: {
+    flex: 1,
+    backgroundColor: palette.bgPrimary,
+    padding: sp(4),
+    paddingTop: Platform.OS === "ios" ? sp(8) : sp(4),
+  },
   closeBtn: { alignSelf: "flex-end", padding: sp(2) },
   header: { marginTop: sp(4), marginBottom: sp(6) },
-  headerLabel: { fontSize: fontSize.sm, color: palette.gold, fontFamily: fontFamily.semibold, marginBottom: sp(2) },
-  title: { fontSize: fontSize.xl, color: palette.textPrimary, fontFamily: fontFamily.bold, marginBottom: sp(1) },
+  headerLabel: {
+    fontSize: fontSize.sm,
+    color: palette.gold,
+    fontFamily: fontFamily.semibold,
+    marginBottom: sp(2),
+  },
+  title: {
+    fontSize: fontSize.xl,
+    color: palette.textPrimary,
+    fontFamily: fontFamily.bold,
+    marginBottom: sp(1),
+  },
   subtitle: { fontSize: fontSize.sm, color: palette.textMuted },
-  upgradeBanner: { backgroundColor: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.3)", borderWidth: 1, padding: sp(3), borderRadius: borderRadius.md, marginBottom: sp(4) },
+  upgradeBanner: {
+    backgroundColor: "rgba(239,68,68,0.1)",
+    borderColor: "rgba(239,68,68,0.3)",
+    borderWidth: 1,
+    padding: sp(3),
+    borderRadius: borderRadius.md,
+    marginBottom: sp(4),
+  },
   upgradeText: { color: "#fca5a5", fontSize: fontSize.sm, textAlign: "center" },
   transcriptSection: { flex: 1, marginBottom: sp(4) },
-  sectionLabel: { fontSize: fontSize.xs, color: palette.textMuted, fontFamily: fontFamily.semibold, letterSpacing: 1, marginBottom: sp(2) },
-  bubble: { padding: sp(3), borderRadius: borderRadius.md, marginBottom: sp(2) },
-  userBubble: { backgroundColor: "rgba(99,102,241,0.12)", alignSelf: "flex-end", maxWidth: "85%" },
-  aiBubble: { backgroundColor: "rgba(255,255,255,0.04)", alignSelf: "flex-start", maxWidth: "85%" },
-  bubbleAuthor: { fontSize: fontSize.xs, color: palette.textMuted, marginBottom: sp(1) },
-  bubbleText: { fontSize: fontSize.md, color: palette.textPrimary, lineHeight: 22 },
+  sectionLabel: {
+    fontSize: fontSize.xs,
+    color: palette.textMuted,
+    fontFamily: fontFamily.semibold,
+    letterSpacing: 1,
+    marginBottom: sp(2),
+  },
+  bubble: {
+    padding: sp(3),
+    borderRadius: borderRadius.md,
+    marginBottom: sp(2),
+  },
+  userBubble: {
+    backgroundColor: "rgba(99,102,241,0.12)",
+    alignSelf: "flex-end",
+    maxWidth: "85%",
+  },
+  aiBubble: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    alignSelf: "flex-start",
+    maxWidth: "85%",
+  },
+  bubbleAuthor: {
+    fontSize: fontSize.xs,
+    color: palette.textMuted,
+    marginBottom: sp(1),
+  },
+  bubbleText: {
+    fontSize: fontSize.md,
+    color: palette.textPrimary,
+    lineHeight: 22,
+  },
   ctaSection: { gap: sp(3) },
-  primaryCta: { paddingVertical: sp(4), borderRadius: borderRadius.md, alignItems: "center", justifyContent: "center", overflow: "hidden", ...shadows.glow(palette.gold) },
-  primaryCtaText: { color: palette.white, fontSize: fontSize.md, fontFamily: fontFamily.bold },
-  secondaryCta: { paddingVertical: sp(4), borderRadius: borderRadius.md, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", backgroundColor: "rgba(255,255,255,0.04)" },
-  secondaryCtaText: { color: palette.textPrimary, fontSize: fontSize.md, fontFamily: fontFamily.medium },
+  primaryCta: {
+    paddingVertical: sp(4),
+    borderRadius: borderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    ...shadows.glow(palette.gold),
+  },
+  primaryCtaText: {
+    color: palette.white,
+    fontSize: fontSize.md,
+    fontFamily: fontFamily.bold,
+  },
+  secondaryCta: {
+    paddingVertical: sp(4),
+    borderRadius: borderRadius.md,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  secondaryCtaText: {
+    color: palette.textPrimary,
+    fontSize: fontSize.md,
+    fontFamily: fontFamily.medium,
+  },
 });
 ```
 
@@ -1162,6 +1301,7 @@ git commit -m "feat(mobile): add PostCallScreen Modal (transcript + 2 CTAs + upg
 ## Task 9: Wire Home screen — input + 2 CTA + clipboard banner + voice flow
 
 **Files:**
+
 - Modify: `mobile/app/(tabs)/index.tsx` (Home)
 
 - [ ] **Step 9.1: Read current Home structure**
@@ -1202,17 +1342,20 @@ const voice = useVoiceChat({
 });
 const ctx = useStreamingVideoContext(voice.sessionId, voice.conversation);
 
-const handleVoiceCall = useCallback(async (videoUrl: string) => {
-  if (!validateVideoURL(videoUrl)) {
-    // TODO: show toast "Source non supportée"
-    return;
-  }
-  setActiveVideoUrl(videoUrl);
-  setVoiceOpen(true);
-  // useVoiceChat.start() needs to know videoUrl — adapt useVoiceChat to accept videoUrl in start()
-  await voice.start({ videoUrl });
-  dismissClipboard();
-}, [voice, dismissClipboard]);
+const handleVoiceCall = useCallback(
+  async (videoUrl: string) => {
+    if (!validateVideoURL(videoUrl)) {
+      // TODO: show toast "Source non supportée"
+      return;
+    }
+    setActiveVideoUrl(videoUrl);
+    setVoiceOpen(true);
+    // useVoiceChat.start() needs to know videoUrl — adapt useVoiceChat to accept videoUrl in start()
+    await voice.start({ videoUrl });
+    dismissClipboard();
+  },
+  [voice, dismissClipboard],
+);
 
 const handleAnalyze = useCallback((videoUrl: string) => {
   if (!validateVideoURL(videoUrl)) return;
@@ -1244,7 +1387,9 @@ useEffect(() => {
       onPress={() => handleVoiceCall(clipboardURL)}
       style={styles.clipboardBanner}
     >
-      <Text style={styles.clipboardLabel}>📋 LIEN DÉTECTÉ DANS LE PRESSE-PAPIER</Text>
+      <Text style={styles.clipboardLabel}>
+        📋 LIEN DÉTECTÉ DANS LE PRESSE-PAPIER
+      </Text>
       <Text style={styles.clipboardURL} numberOfLines={1}>
         {clipboardURL.replace(/^https?:\/\//, "")}
       </Text>
@@ -1267,28 +1412,51 @@ useEffect(() => {
   {/* 2 CTA */}
   <View style={styles.ctaRow}>
     <Pressable
-      style={[styles.cta, styles.ctaAnalyse, !validateVideoURL(url) && styles.ctaDisabled]}
+      style={[
+        styles.cta,
+        styles.ctaAnalyse,
+        !validateVideoURL(url) && styles.ctaDisabled,
+      ]}
       disabled={!validateVideoURL(url)}
       onPress={() => handleAnalyze(url)}
     >
-      <LinearGradient colors={["#6366f1", "#8b5cf6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <LinearGradient
+        colors={["#6366f1", "#8b5cf6"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <Text style={styles.ctaText}>📊 Analyser</Text>
     </Pressable>
     <Pressable
-      style={[styles.cta, styles.ctaVoice, !validateVideoURL(url) && styles.ctaDisabled]}
+      style={[
+        styles.cta,
+        styles.ctaVoice,
+        !validateVideoURL(url) && styles.ctaDisabled,
+      ]}
       disabled={!validateVideoURL(url)}
       onPress={() => handleVoiceCall(url)}
     >
-      <LinearGradient colors={[palette.gold, "#d97706"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <LinearGradient
+        colors={[palette.gold, "#d97706"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <Text style={styles.ctaText}>🎙️ Voice Call</Text>
     </Pressable>
   </View>
-</View>
+</View>;
 
-{/* Voice modal */}
+{
+  /* Voice modal */
+}
 <VoiceScreen
   visible={voiceOpen}
-  onClose={() => { voice.stop(); setVoiceOpen(false); }}
+  onClose={() => {
+    voice.stop();
+    setVoiceOpen(false);
+  }}
   videoTitle={activeVideoUrl ?? ""}
   voiceStatus={voice.status}
   isSpeaking={voice.isSpeaking}
@@ -1296,21 +1464,25 @@ useEffect(() => {
   elapsedSeconds={voice.elapsedSeconds}
   remainingMinutes={voice.remainingMinutes}
   onStart={() => activeVideoUrl && voice.start({ videoUrl: activeVideoUrl })}
-  onStop={() => { voice.stop(); }}
+  onStop={() => {
+    voice.stop();
+  }}
   onMuteToggle={voice.toggleMute}
   isMuted={voice.isMuted}
   error={voice.error ?? undefined}
   streaming={true}
   contextProgress={ctx.contextProgress}
   contextComplete={ctx.contextComplete}
-/>
+/>;
 
-{/* Post-call modal */}
+{
+  /* Post-call modal */
+}
 <PostCallScreen
   visible={postCallOpen}
   onClose={() => setPostCallOpen(false)}
   videoTitle={activeVideoUrl ?? ""}
-  summaryId={voice.summaryId}  // exposed by extending useVoiceChat — see Step 9.3
+  summaryId={voice.summaryId} // exposed by extending useVoiceChat — see Step 9.3
   durationSeconds={voice.elapsedSeconds}
   messages={voice.messages}
   quotaRemaining={voice.remainingMinutes}
@@ -1323,7 +1495,7 @@ useEffect(() => {
     setUrl("");
     setActiveVideoUrl(null);
   }}
-/>
+/>;
 ```
 
 4. Add styles in the same file:
@@ -1491,5 +1663,6 @@ EOF
 ## Dependencies for PR3
 
 PR3 (Native Share Extensions) requires PR2 merged. Verify post-deploy via TestFlight/Play Internal:
+
 - Open the dev build of the app
 - Verify deep link `deepsight://voice-call?url=https://youtu.be/dQw4w9WgXcQ&autostart=true` triggers Voice Call (paste manual into Notes app, tap link)

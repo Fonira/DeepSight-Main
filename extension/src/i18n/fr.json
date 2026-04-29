@@ -140,6 +140,14 @@
     "expiredPlaceholder": "Session expirée...",
     "webEnriched": "Enrichi par le web",
     "unavailable": "Réponse indisponible",
+    "clear": {
+      "buttonAriaLabel": "Effacer la conversation",
+      "confirmTitle": "Effacer cette conversation ?",
+      "confirmBody": "Cela efface le chat texte ET les transcripts d'appels vocaux pour cette vidéo. Action irréversible.",
+      "confirmYes": "Effacer tout",
+      "confirmCancel": "Annuler",
+      "errorPrefix": "Impossible d'effacer la conversation"
+    },
     "suggestions": [
       "Quels sont les points clés ?",
       "Résume en 3 phrases",

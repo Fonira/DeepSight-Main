@@ -431,240 +431,240 @@ export function useVoiceChat({
     isStartingRef.current = true;
 
     try {
-    setError(null);
-    setMessages([]);
-    setElapsedSeconds(0);
-    setStatus("connecting");
+      setError(null);
+      setMessages([]);
+      setElapsedSeconds(0);
+      setStatus("connecting");
 
-    // 1. Lancer en PARALLÈLE : accès micro + preload SDK ElevenLabs
-    //    (sans attendre la session, économie de ~200-500ms vs exécution séquentielle)
-    const sdkPromise = import("@elevenlabs/client").catch((e) => {
-      console.warn("SDK preload failed:", e);
-      return null;
-    });
-    const micPromise = navigator.mediaDevices
-      .getUserMedia({ audio: true })
-      .catch((err: unknown) => err as DOMException);
-
-    let stream: MediaStream;
-    const micResult = await micPromise;
-    if (micResult instanceof MediaStream) {
-      stream = micResult;
-      mediaStreamRef.current = stream;
-    } else {
-      const mediaError = micResult as DOMException;
-      if (
-        mediaError.name === "NotAllowedError" ||
-        mediaError.name === "PermissionDeniedError"
-      ) {
-        reportError(ERROR_MESSAGES.MICROPHONE_DENIED);
-      } else if (
-        mediaError.name === "NotFoundError" ||
-        mediaError.name === "DevicesNotFoundError"
-      ) {
-        reportError(ERROR_MESSAGES.MICROPHONE_NOT_FOUND);
-      } else {
-        reportError(ERROR_MESSAGES.MICROPHONE_GENERIC);
-      }
-      return;
-    }
-
-    // 2. Créer la session via notre API
-    let sessionData: SessionResponse;
-    try {
-      const token = getAccessToken();
-      const response = await fetch(`${API_URL}/api/voice/session`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          ...(debateId != null
-            ? { debate_id: debateId }
-            : { summary_id: summaryId }),
-          language,
-          agent_type:
-            agentType ?? (debateId != null ? "debate_moderator" : "explorer"),
-        }),
-        credentials: "include",
+      // 1. Lancer en PARALLÈLE : accès micro + preload SDK ElevenLabs
+      //    (sans attendre la session, économie de ~200-500ms vs exécution séquentielle)
+      const sdkPromise = import("@elevenlabs/client").catch((e) => {
+        console.warn("SDK preload failed:", e);
+        return null;
       });
+      const micPromise = navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .catch((err: unknown) => err as DOMException);
 
-      if (response.status === 403 || response.status === 429) {
-        releaseMediaStream();
-        setStatus("quota_exceeded");
-        setError(ERROR_MESSAGES.QUOTA_EXCEEDED);
-        onError?.(ERROR_MESSAGES.QUOTA_EXCEEDED);
+      let stream: MediaStream;
+      const micResult = await micPromise;
+      if (micResult instanceof MediaStream) {
+        stream = micResult;
+        mediaStreamRef.current = stream;
+      } else {
+        const mediaError = micResult as DOMException;
+        if (
+          mediaError.name === "NotAllowedError" ||
+          mediaError.name === "PermissionDeniedError"
+        ) {
+          reportError(ERROR_MESSAGES.MICROPHONE_DENIED);
+        } else if (
+          mediaError.name === "NotFoundError" ||
+          mediaError.name === "DevicesNotFoundError"
+        ) {
+          reportError(ERROR_MESSAGES.MICROPHONE_NOT_FOUND);
+        } else {
+          reportError(ERROR_MESSAGES.MICROPHONE_GENERIC);
+        }
         return;
       }
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      sessionData = await response.json();
-      setRemainingMinutes(sessionData.quota_remaining_minutes);
-      maxSecondsRef.current = sessionData.max_session_minutes * 60;
-      // Spec #5 — expose session_id pour la persistance des transcripts
-      setVoiceSessionId(sessionData.session_id);
-      voiceSessionIdRef.current = sessionData.session_id;
-      // Store input mode from session response
-      const sessionInputMode = sessionData.input_mode || "ptt";
-      inputModeRef.current = sessionInputMode;
-      setInputMode(sessionInputMode);
-      const sessionPttKey = sessionData.ptt_key || " ";
-      pttKeyRef.current = sessionPttKey;
-      setPttKey(sessionPttKey);
-    } catch (err) {
-      releaseMediaStream();
-      if (err instanceof TypeError) {
-        // TypeError = network failure (fetch)
-        reportError(ERROR_MESSAGES.NETWORK);
-      } else {
-        reportError(ERROR_MESSAGES.SESSION_FAILED);
-      }
-      return;
-    }
-
-    // 3. Charger le SDK ElevenLabs (déjà preloadé en parallèle) et démarrer la session
-    try {
-      const sdkModule = await sdkPromise;
-      const { Conversation } =
-        sdkModule ?? (await import("@elevenlabs/client"));
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const conversation = await (Conversation as any).startSession({
-        signedUrl: sessionData.signed_url,
-        onConnect: () => {
-          if (isMountedRef.current) {
-            setStatus("listening");
-            // Spec #5 — timestamp précis du démarrage pour time_in_call_secs
-            setSessionStartedAt(Date.now());
-          }
-          emitVoicePrefsEvent({ type: "call_status_changed", active: true });
-        },
-        onDisconnect: () => {
-          if (isMountedRef.current) {
-            stopTimer();
-            setStatus("idle");
-            setIsSpeaking(false);
-          }
-        },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onMessage: (
-          message: {
-            message: string;
-            source: "user" | "ai";
-            type?: string;
-            tool_name?: string;
-          } & Record<string, any>,
-        ) => {
-          if (!isMountedRef.current) return;
-          // Detect tool calls for VoiceToolIndicator
-          if (message.type === "tool_call" || message.tool_name) {
-            setActiveTool(message.tool_name || "unknown");
-            // COMPANION transfer_to_video — fetch pending payload + bubble up
-            if (
-              message.tool_name === "transfer_to_video" &&
-              onTransferRequest &&
-              voiceSessionIdRef.current
-            ) {
-              const sessionId = voiceSessionIdRef.current;
-              const token = getAccessToken();
-              fetch(
-                `${API_URL}/api/voice/companion-pending-transfer/${sessionId}`,
-                {
-                  headers: token ? { Authorization: `Bearer ${token}` } : {},
-                },
-              )
-                .then((r) => (r.ok ? r.json() : null))
-                .then((payload) => {
-                  if (
-                    payload &&
-                    typeof payload.summary_id === "number" &&
-                    isMountedRef.current
-                  ) {
-                    onTransferRequest({
-                      summary_id: payload.summary_id,
-                      video_id: payload.video_id ?? null,
-                      video_title: payload.video_title ?? "ta vidéo",
-                      video_channel: payload.video_channel ?? null,
-                    });
-                  }
-                })
-                .catch(() => {
-                  /* silent — transfer is best-effort */
-                });
-            }
-          }
-          setMessages((prev) => [
-            ...prev,
-            { text: message.message, source: message.source },
-          ]);
-        },
-        onError: (err: Error | string) => {
-          if (isMountedRef.current) {
-            const msg =
-              typeof err === "string"
-                ? err
-                : err.message || ERROR_MESSAGES.UNKNOWN;
-            reportError(msg);
-          }
-        },
-        onStatusChange: (statusInfo: { status: string }) => {
-          if (!isMountedRef.current) return;
-          switch (statusInfo.status) {
-            case "speaking":
-              setActiveTool(null); // Tool call finished, agent responding
-              setIsSpeaking(true);
-              setStatus("speaking");
-              break;
-            case "listening":
-              setActiveTool(null);
-              setIsSpeaking(false);
-              setStatus("listening");
-              break;
-            case "thinking":
-            case "processing":
-              setIsSpeaking(false);
-              setStatus("thinking");
-              break;
-          }
-        },
-      });
-
-      conversationRef.current = conversation;
-
-      // 4. PTT mode: start with mic muted (user must hold button to talk)
-      if (inputModeRef.current === "ptt") {
-        setMicMuted(true);
-      }
-
-      // 5. Apply client-side playback rate if needed (Phase 2: speed control)
-      if (sessionData.playback_rate) {
-        setPlaybackRate(sessionData.playback_rate);
-        if (sessionData.playback_rate > 1.0) {
-          applyPlaybackRate(sessionData.playback_rate);
-        }
-      }
-
-      // 6. Démarrer le timer
-      timerRef.current = setInterval(() => {
-        if (!isMountedRef.current) return;
-        setElapsedSeconds((prev) => {
-          const next = prev + 1;
-          // Auto-stop si durée max atteinte
-          if (maxSecondsRef.current > 0 && next >= maxSecondsRef.current) {
-            stop();
-            setError(ERROR_MESSAGES.SESSION_TIMEOUT);
-          }
-          return next;
+      // 2. Créer la session via notre API
+      let sessionData: SessionResponse;
+      try {
+        const token = getAccessToken();
+        const response = await fetch(`${API_URL}/api/voice/session`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            ...(debateId != null
+              ? { debate_id: debateId }
+              : { summary_id: summaryId }),
+            language,
+            agent_type:
+              agentType ?? (debateId != null ? "debate_moderator" : "explorer"),
+          }),
+          credentials: "include",
         });
-      }, 1000);
-    } catch {
-      releaseMediaStream();
-      reportError(ERROR_MESSAGES.SDK_LOAD_FAILED);
-    }
+
+        if (response.status === 403 || response.status === 429) {
+          releaseMediaStream();
+          setStatus("quota_exceeded");
+          setError(ERROR_MESSAGES.QUOTA_EXCEEDED);
+          onError?.(ERROR_MESSAGES.QUOTA_EXCEEDED);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        sessionData = await response.json();
+        setRemainingMinutes(sessionData.quota_remaining_minutes);
+        maxSecondsRef.current = sessionData.max_session_minutes * 60;
+        // Spec #5 — expose session_id pour la persistance des transcripts
+        setVoiceSessionId(sessionData.session_id);
+        voiceSessionIdRef.current = sessionData.session_id;
+        // Store input mode from session response
+        const sessionInputMode = sessionData.input_mode || "ptt";
+        inputModeRef.current = sessionInputMode;
+        setInputMode(sessionInputMode);
+        const sessionPttKey = sessionData.ptt_key || " ";
+        pttKeyRef.current = sessionPttKey;
+        setPttKey(sessionPttKey);
+      } catch (err) {
+        releaseMediaStream();
+        if (err instanceof TypeError) {
+          // TypeError = network failure (fetch)
+          reportError(ERROR_MESSAGES.NETWORK);
+        } else {
+          reportError(ERROR_MESSAGES.SESSION_FAILED);
+        }
+        return;
+      }
+
+      // 3. Charger le SDK ElevenLabs (déjà preloadé en parallèle) et démarrer la session
+      try {
+        const sdkModule = await sdkPromise;
+        const { Conversation } =
+          sdkModule ?? (await import("@elevenlabs/client"));
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const conversation = await (Conversation as any).startSession({
+          signedUrl: sessionData.signed_url,
+          onConnect: () => {
+            if (isMountedRef.current) {
+              setStatus("listening");
+              // Spec #5 — timestamp précis du démarrage pour time_in_call_secs
+              setSessionStartedAt(Date.now());
+            }
+            emitVoicePrefsEvent({ type: "call_status_changed", active: true });
+          },
+          onDisconnect: () => {
+            if (isMountedRef.current) {
+              stopTimer();
+              setStatus("idle");
+              setIsSpeaking(false);
+            }
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onMessage: (
+            message: {
+              message: string;
+              source: "user" | "ai";
+              type?: string;
+              tool_name?: string;
+            } & Record<string, any>,
+          ) => {
+            if (!isMountedRef.current) return;
+            // Detect tool calls for VoiceToolIndicator
+            if (message.type === "tool_call" || message.tool_name) {
+              setActiveTool(message.tool_name || "unknown");
+              // COMPANION transfer_to_video — fetch pending payload + bubble up
+              if (
+                message.tool_name === "transfer_to_video" &&
+                onTransferRequest &&
+                voiceSessionIdRef.current
+              ) {
+                const sessionId = voiceSessionIdRef.current;
+                const token = getAccessToken();
+                fetch(
+                  `${API_URL}/api/voice/companion-pending-transfer/${sessionId}`,
+                  {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                  },
+                )
+                  .then((r) => (r.ok ? r.json() : null))
+                  .then((payload) => {
+                    if (
+                      payload &&
+                      typeof payload.summary_id === "number" &&
+                      isMountedRef.current
+                    ) {
+                      onTransferRequest({
+                        summary_id: payload.summary_id,
+                        video_id: payload.video_id ?? null,
+                        video_title: payload.video_title ?? "ta vidéo",
+                        video_channel: payload.video_channel ?? null,
+                      });
+                    }
+                  })
+                  .catch(() => {
+                    /* silent — transfer is best-effort */
+                  });
+              }
+            }
+            setMessages((prev) => [
+              ...prev,
+              { text: message.message, source: message.source },
+            ]);
+          },
+          onError: (err: Error | string) => {
+            if (isMountedRef.current) {
+              const msg =
+                typeof err === "string"
+                  ? err
+                  : err.message || ERROR_MESSAGES.UNKNOWN;
+              reportError(msg);
+            }
+          },
+          onStatusChange: (statusInfo: { status: string }) => {
+            if (!isMountedRef.current) return;
+            switch (statusInfo.status) {
+              case "speaking":
+                setActiveTool(null); // Tool call finished, agent responding
+                setIsSpeaking(true);
+                setStatus("speaking");
+                break;
+              case "listening":
+                setActiveTool(null);
+                setIsSpeaking(false);
+                setStatus("listening");
+                break;
+              case "thinking":
+              case "processing":
+                setIsSpeaking(false);
+                setStatus("thinking");
+                break;
+            }
+          },
+        });
+
+        conversationRef.current = conversation;
+
+        // 4. PTT mode: start with mic muted (user must hold button to talk)
+        if (inputModeRef.current === "ptt") {
+          setMicMuted(true);
+        }
+
+        // 5. Apply client-side playback rate if needed (Phase 2: speed control)
+        if (sessionData.playback_rate) {
+          setPlaybackRate(sessionData.playback_rate);
+          if (sessionData.playback_rate > 1.0) {
+            applyPlaybackRate(sessionData.playback_rate);
+          }
+        }
+
+        // 6. Démarrer le timer
+        timerRef.current = setInterval(() => {
+          if (!isMountedRef.current) return;
+          setElapsedSeconds((prev) => {
+            const next = prev + 1;
+            // Auto-stop si durée max atteinte
+            if (maxSecondsRef.current > 0 && next >= maxSecondsRef.current) {
+              stop();
+              setError(ERROR_MESSAGES.SESSION_TIMEOUT);
+            }
+            return next;
+          });
+        }, 1000);
+      } catch {
+        releaseMediaStream();
+        reportError(ERROR_MESSAGES.SDK_LOAD_FAILED);
+      }
     } finally {
       isStartingRef.current = false;
     }

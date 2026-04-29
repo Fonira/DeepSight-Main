@@ -1,4 +1,7 @@
-import { validateVideoURL, parseVideoURL } from "../../src/utils/validateVideoURL";
+import {
+  validateVideoURL,
+  parseVideoURL,
+} from "../../src/utils/validateVideoURL";
 
 describe("validateVideoURL", () => {
   describe("accepts valid URLs", () => {
@@ -47,7 +50,9 @@ describe("parseVideoURL", () => {
     });
   });
   test("returns tiktok + id for @user/video/", () => {
-    expect(parseVideoURL("https://www.tiktok.com/@u/video/7123456789012345678")).toEqual({
+    expect(
+      parseVideoURL("https://www.tiktok.com/@u/video/7123456789012345678"),
+    ).toEqual({
       platform: "tiktok",
       videoId: "7123456789012345678",
     });

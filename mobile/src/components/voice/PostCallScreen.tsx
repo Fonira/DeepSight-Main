@@ -89,19 +89,11 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
         style={[
           styles.bubble,
           item.source === "user"
-            ? [
-                styles.userBubble,
-                { backgroundColor: "rgba(200,144,58,0.12)" },
-              ]
-            : [
-                styles.aiBubble,
-                { backgroundColor: colors.bgTertiary },
-              ],
+            ? [styles.userBubble, { backgroundColor: "rgba(200,144,58,0.12)" }]
+            : [styles.aiBubble, { backgroundColor: colors.bgTertiary }],
         ]}
       >
-        <Text
-          style={[styles.bubbleAuthor, { color: colors.textTertiary }]}
-        >
+        <Text style={[styles.bubbleAuthor, { color: colors.textTertiary }]}>
           {item.source === "user" ? "Toi" : "Agent"}
         </Text>
         <Text style={[styles.bubbleText, { color: colors.textPrimary }]}>
@@ -179,9 +171,7 @@ export const PostCallScreen: React.FC<PostCallScreenProps> = ({
 
         {/* Transcript */}
         <View style={styles.transcriptSection}>
-          <Text
-            style={[styles.sectionLabel, { color: colors.textTertiary }]}
-          >
+          <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>
             TRANSCRIPT
           </Text>
           <FlatList

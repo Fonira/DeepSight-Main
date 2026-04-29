@@ -38,6 +38,7 @@ Reproduire steps 1-17 avec TikTok app. **Vérifier** que l'extraction transcript
 ## Android — Share depuis YouTube app
 
 Reproduire la procédure iOS sur device Android. L'expérience peut différer :
+
 - "DeepSight" apparaît dans la liste de partage Android
 - Tap → l'app s'ouvre avec autostart
 - Reste du flow identique
@@ -76,4 +77,4 @@ Idem.
 - [ ] Deep link manuel : PASS / FAIL
 - [ ] Clipboard auto-detect : PASS / FAIL
 
-Tester par : __________ Date : __________
+Tester par : \***\*\_\_\*\*** Date : \***\*\_\_\*\***

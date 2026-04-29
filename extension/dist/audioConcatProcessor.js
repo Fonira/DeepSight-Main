@@ -1,1 +1,83 @@
-const decodeTable=[0,132,396,924,1980,4092,8316,16764];function decodeSample(e){let r,t,s,i;return r=128&(e=~e),t=e>>4&7,s=15&e,i=decodeTable[t]+(s<<t+3),0!==r&&(i=-i),i}class AudioConcatProcessor extends AudioWorkletProcessor{constructor(){super(),this.buffers=[],this.cursor=0,this.currentBuffer=null,this.wasInterrupted=!1,this.finished=!1,this.port.onmessage=({data:e})=>{switch(e.type){case"setFormat":this.format=e.format,globalThis.LibSampleRate&&sampleRate!==e.sampleRate&&globalThis.LibSampleRate.create(1,e.sampleRate,sampleRate).then(e=>{this.resampler=e});break;case"buffer":this.wasInterrupted=!1,this.buffers.push("ulaw"===this.format?new Uint8Array(e.buffer):new Int16Array(e.buffer));break;case"interrupt":this.wasInterrupted=!0;break;case"clearInterrupted":this.wasInterrupted&&(this.wasInterrupted=!1,this.buffers=[],this.currentBuffer=null)}}}process(e,r){let t=!1;const s=r[0][0];for(let e=0;e<s.length;e++){if(!this.currentBuffer){if(0===this.buffers.length){t=!0;break}this.currentBuffer=this.buffers.shift(),this.resampler&&(this.currentBuffer=this.resampler.full(this.currentBuffer)),this.cursor=0}let r=this.currentBuffer[this.cursor];"ulaw"===this.format&&(r=decodeSample(r)),s[e]=r/32768,this.cursor++,this.cursor>=this.currentBuffer.length&&(this.currentBuffer=null)}return this.finished!==t&&(this.finished=t,this.port.postMessage({type:"process",finished:t})),!0}}registerProcessor("audioConcatProcessor",AudioConcatProcessor);
+const decodeTable = [0, 132, 396, 924, 1980, 4092, 8316, 16764];
+function decodeSample(e) {
+  let r, t, s, i;
+  return (
+    (r = 128 & (e = ~e)),
+    (t = (e >> 4) & 7),
+    (s = 15 & e),
+    (i = decodeTable[t] + (s << (t + 3))),
+    0 !== r && (i = -i),
+    i
+  );
+}
+class AudioConcatProcessor extends AudioWorkletProcessor {
+  constructor() {
+    (super(),
+      (this.buffers = []),
+      (this.cursor = 0),
+      (this.currentBuffer = null),
+      (this.wasInterrupted = !1),
+      (this.finished = !1),
+      (this.port.onmessage = ({ data: e }) => {
+        switch (e.type) {
+          case "setFormat":
+            ((this.format = e.format),
+              globalThis.LibSampleRate &&
+                sampleRate !== e.sampleRate &&
+                globalThis.LibSampleRate.create(
+                  1,
+                  e.sampleRate,
+                  sampleRate,
+                ).then((e) => {
+                  this.resampler = e;
+                }));
+            break;
+          case "buffer":
+            ((this.wasInterrupted = !1),
+              this.buffers.push(
+                "ulaw" === this.format
+                  ? new Uint8Array(e.buffer)
+                  : new Int16Array(e.buffer),
+              ));
+            break;
+          case "interrupt":
+            this.wasInterrupted = !0;
+            break;
+          case "clearInterrupted":
+            this.wasInterrupted &&
+              ((this.wasInterrupted = !1),
+              (this.buffers = []),
+              (this.currentBuffer = null));
+        }
+      }));
+  }
+  process(e, r) {
+    let t = !1;
+    const s = r[0][0];
+    for (let e = 0; e < s.length; e++) {
+      if (!this.currentBuffer) {
+        if (0 === this.buffers.length) {
+          t = !0;
+          break;
+        }
+        ((this.currentBuffer = this.buffers.shift()),
+          this.resampler &&
+            (this.currentBuffer = this.resampler.full(this.currentBuffer)),
+          (this.cursor = 0));
+      }
+      let r = this.currentBuffer[this.cursor];
+      ("ulaw" === this.format && (r = decodeSample(r)),
+        (s[e] = r / 32768),
+        this.cursor++,
+        this.cursor >= this.currentBuffer.length &&
+          (this.currentBuffer = null));
+    }
+    return (
+      this.finished !== t &&
+        ((this.finished = t),
+        this.port.postMessage({ type: "process", finished: t })),
+      !0
+    );
+  }
+}
+registerProcessor("audioConcatProcessor", AudioConcatProcessor);

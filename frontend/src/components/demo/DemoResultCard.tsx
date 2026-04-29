@@ -62,7 +62,9 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
             <h3 className="text-white font-semibold text-sm leading-tight line-clamp-2">
               {result.video_title}
             </h3>
-            <p className="text-text-muted text-xs mt-1">{result.video_channel}</p>
+            <p className="text-text-muted text-xs mt-1">
+              {result.video_channel}
+            </p>
             <div className="flex items-center gap-2 mt-2">
               <span className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[10px] text-text-secondary">
                 {formatDuration(result.video_duration)}

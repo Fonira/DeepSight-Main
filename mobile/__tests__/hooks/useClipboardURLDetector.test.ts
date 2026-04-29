@@ -14,7 +14,7 @@ describe("useClipboardURLDetector", () => {
 
   test("detects YouTube URL in clipboard on focus", async () => {
     (Clipboard.getStringAsync as jest.Mock).mockResolvedValue(
-      "https://youtu.be/dQw4w9WgXcQ"
+      "https://youtu.be/dQw4w9WgXcQ",
     );
     const { result } = renderHook(() => useClipboardURLDetector());
     await waitFor(() => {
@@ -24,18 +24,20 @@ describe("useClipboardURLDetector", () => {
 
   test("detects TikTok URL in clipboard on focus", async () => {
     (Clipboard.getStringAsync as jest.Mock).mockResolvedValue(
-      "https://www.tiktok.com/@u/video/7123456789012345678"
+      "https://www.tiktok.com/@u/video/7123456789012345678",
     );
     const { result } = renderHook(() => useClipboardURLDetector());
     await waitFor(() => {
       expect(result.current.clipboardURL).toBe(
-        "https://www.tiktok.com/@u/video/7123456789012345678"
+        "https://www.tiktok.com/@u/video/7123456789012345678",
       );
     });
   });
 
   test("ignores non-video URLs", async () => {
-    (Clipboard.getStringAsync as jest.Mock).mockResolvedValue("https://example.com");
+    (Clipboard.getStringAsync as jest.Mock).mockResolvedValue(
+      "https://example.com",
+    );
     const { result } = renderHook(() => useClipboardURLDetector());
     await waitFor(() => {
       expect(result.current.clipboardURL).toBeNull();
@@ -52,7 +54,7 @@ describe("useClipboardURLDetector", () => {
 
   test("dismiss clears the state", async () => {
     (Clipboard.getStringAsync as jest.Mock).mockResolvedValue(
-      "https://youtu.be/dQw4w9WgXcQ"
+      "https://youtu.be/dQw4w9WgXcQ",
     );
     const { result } = renderHook(() => useClipboardURLDetector());
     await waitFor(() => expect(result.current.clipboardURL).toBeTruthy());
@@ -66,7 +68,7 @@ describe("useClipboardURLDetector", () => {
     await waitFor(() => expect(result.current.clipboardURL).toBeNull());
 
     (Clipboard.getStringAsync as jest.Mock).mockResolvedValueOnce(
-      "https://youtu.be/dQw4w9WgXcQ"
+      "https://youtu.be/dQw4w9WgXcQ",
     );
     await act(async () => {
       await result.current.refresh();
@@ -75,7 +77,9 @@ describe("useClipboardURLDetector", () => {
   });
 
   test("clipboard read error gracefully returns null", async () => {
-    (Clipboard.getStringAsync as jest.Mock).mockRejectedValue(new Error("denied"));
+    (Clipboard.getStringAsync as jest.Mock).mockRejectedValue(
+      new Error("denied"),
+    );
     const { result } = renderHook(() => useClipboardURLDetector());
     await waitFor(() => {
       expect(result.current.clipboardURL).toBeNull();

@@ -171,7 +171,9 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
             <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1">
               Thèse
             </p>
-            <p className="text-sm text-text-primary leading-relaxed">{thesis}</p>
+            <p className="text-sm text-text-primary leading-relaxed">
+              {thesis}
+            </p>
           </div>
         )}
 

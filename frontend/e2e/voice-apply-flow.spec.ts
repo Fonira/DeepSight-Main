@@ -223,9 +223,7 @@ test.describe("Voice prefs apply flow", () => {
     // ── Open "Sélection de voix" and pick Mathieu ────────────────────────
     // (voiceSelection is closed by default; chatSpeed is open by default —
     // do NOT toggle it again, that would close it.)
-    await page
-      .getByRole("button", { name: "Sélection de voix" })
-      .click();
+    await page.getByRole("button", { name: "Sélection de voix" }).click();
     await page.getByText("Mathieu", { exact: true }).click();
 
     // ── Pick the concise speed preset (3x + Rapide concis) ──────────────

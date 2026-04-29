@@ -41,6 +41,22 @@ from core.config import (
 from transcripts.audio_utils import _yt_dlp_extra_args  # noqa: F401
 
 
+def _yt_dlp_extra_args() -> list:
+    """Common yt-dlp flags for IP-banned environments: proxy + cookies.
+
+    Both are no-ops when their env vars are unset, so this is safe to call
+    from every yt-dlp wrapper unconditionally.
+    """
+    extra = []
+    proxy = get_youtube_proxy()
+    if proxy:
+        extra.extend(["--proxy", proxy])
+    cookies = get_ytdlp_cookies_path()
+    if cookies and os.path.exists(cookies):
+        extra.extend(["--cookies", cookies])
+    return extra
+
+
 class ExtractionMethod(Enum):
     """Methodes d'extraction par ordre de priorite"""
 

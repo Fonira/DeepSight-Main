@@ -1,8 +1,8 @@
 export interface SunState {
-    visible: boolean;
-    opacity: number;
-    x: number;
-    y: number;
+  visible: boolean;
+  opacity: number;
+  x: number;
+  y: number;
 }
 /**
  * Get sun state at a given hour [0, 24).

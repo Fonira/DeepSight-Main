@@ -777,7 +777,7 @@ const ChatPage: React.FC = () => {
         <div className="flex-1 overflow-hidden flex flex-col relative">
           {!selectedAnalysis ? (
             /* ═══ Empty state — no video selected ═══ */
-            (<div className="flex-1 flex items-center justify-center p-6 relative">
+            <div className="flex-1 flex items-center justify-center p-6 relative">
               {/* Logo watermark */}
               <img
                 src="/deepsight-logo-cosmic.png"
@@ -802,7 +802,7 @@ const ChatPage: React.FC = () => {
                   onPrefillChat={(text) => setInputValue(text)}
                 />
               </div>
-            </div>)
+            </div>
           ) : (
             <>
               {/* ═══ Messages area ═══ */}

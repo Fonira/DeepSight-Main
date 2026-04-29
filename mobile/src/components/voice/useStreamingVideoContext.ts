@@ -86,9 +86,7 @@ export function useStreamingVideoContext(
       };
 
       // rn-sse types are strict — cast handlers to satisfy EventSourceListener.
-      const addListener = es.addEventListener.bind(
-        es,
-      ) as unknown as (
+      const addListener = es.addEventListener.bind(es) as unknown as (
         event: string,
         cb: (e: { data?: string | null }) => void,
       ) => void;

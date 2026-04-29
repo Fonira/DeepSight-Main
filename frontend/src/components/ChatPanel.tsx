@@ -323,7 +323,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         >
           {messages.length === 0 ? (
             /* ─── Empty State ─── */
-            (<div className="flex flex-col items-center justify-center h-full text-center px-6">
+            <div className="flex flex-col items-center justify-center h-full text-center px-6">
               <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-5">
                 <Bot className="w-7 h-7 text-cyan-400/70" />
               </div>
@@ -345,10 +345,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                   </button>
                 ))}
               </div>
-            </div>)
+            </div>
           ) : (
             /* ─── Message List ─── */
-            (messages.map((msg, msgIndex) => {
+            messages.map((msg, msgIndex) => {
               const contentStr =
                 typeof msg.content === "string"
                   ? msg.content
@@ -542,7 +542,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                   )}
                 </div>
               );
-            }))
+            })
           )}
 
           {/* Loading / Streaming indicator */}
@@ -558,7 +558,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 animate-[bounce_1.2s_ease-in-out_0.2s_infinite]" />
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 animate-[bounce_1.2s_ease-in-out_0.4s_infinite]" />
                   </div>
-                  <span className="text-xs text-text-tertiary">{t.analyzing}</span>
+                  <span className="text-xs text-text-tertiary">
+                    {t.analyzing}
+                  </span>
                 </div>
               </div>
             </div>

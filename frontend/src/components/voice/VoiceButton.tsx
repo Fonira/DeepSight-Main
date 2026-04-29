@@ -124,9 +124,7 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
       )}
       {/* Locked tooltip */}
       {isLocked && (
-        <div
-          className="\r\n            absolute bottom-full right-0 mb-3\r\n            px-3 py-2 rounded-lg\r\n            bg-[#1a1a2e] border border-white/10\r\n            text-xs text-text-secondary whitespace-nowrap\r\n            opacity-0 group-hover:opacity-100\r\n            transition-opacity duration-200\r\n            pointer-events-none\r\n          "
-        >
+        <div className="\r\n            absolute bottom-full right-0 mb-3\r\n            px-3 py-2 rounded-lg\r\n            bg-[#1a1a2e] border border-white/10\r\n            text-xs text-text-secondary whitespace-nowrap\r\n            opacity-0 group-hover:opacity-100\r\n            transition-opacity duration-200\r\n            pointer-events-none\r\n          ">
           Disponible à partir du plan Étudiant
           <div className="absolute top-full right-4 w-2 h-2 bg-[#1a1a2e] border-r border-b border-white/10 transform rotate-45 -translate-y-1" />
         </div>
