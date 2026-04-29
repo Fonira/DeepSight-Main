@@ -17,6 +17,7 @@ import { DeepSightSpinnerMicro } from "../ui/DeepSightSpinner";
 import { useToast } from "../Toast";
 import { videoApi, API_URL } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface ExportMenuProps {
   summaryId: number;
@@ -32,11 +33,14 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
   onAudioReady,
 }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { showToast, ToastComponent } = useToast();
   const [loadingFormat, setLoadingFormat] = useState<ExportFormat | null>(null);
 
   const userPlan = user?.plan || "free";
   const canExportAudio = userPlan !== "free";
+  // Free users get a watermark on all exports — show notice + upgrade link
+  const isFreePlan = userPlan === "free";
 
   const handleExport = useCallback(
     async (format: ExportFormat) => {
@@ -137,6 +141,19 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
         ),
       disabled: loadingFormat !== null,
     },
+    // Watermark notice for free users (clickable -> /upgrade)
+    ...(isFreePlan
+      ? ([
+          { id: "divider-watermark", label: "", divider: true },
+          {
+            id: "watermark-notice",
+            label: t("export.watermark.noticeFree"),
+            description: t("export.watermark.upgradeLink"),
+            icon: <Lock className="w-4 h-4" />,
+            disabled: false,
+          },
+        ] as DropdownItem[])
+      : []),
     { id: "divider-audio", label: "", divider: true },
     {
       id: "audio",
@@ -183,7 +200,13 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
       <Dropdown
         trigger={trigger}
         items={items}
-        onSelect={(id) => handleExport(id as ExportFormat)}
+        onSelect={(id) => {
+          if (id === "watermark-notice") {
+            window.location.href = "/upgrade";
+            return;
+          }
+          handleExport(id as ExportFormat);
+        }}
         align="right"
         width="w-64"
       />

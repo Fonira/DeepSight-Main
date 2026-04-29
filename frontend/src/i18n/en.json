@@ -490,7 +490,11 @@
       "includeMetadata": "Include metadata"
     },
     "proFeature": "Pro Feature",
-    "upgradeToExport": "Upgrade to export"
+    "upgradeToExport": "Upgrade to export",
+    "watermark": {
+      "noticeFree": "Watermark on free exports — upgrade to Pro to remove",
+      "upgradeLink": "Upgrade to Pro"
+    }
   },
   "errors": {
     "generic": "An error occurred",
