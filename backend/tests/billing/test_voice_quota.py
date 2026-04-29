@@ -22,7 +22,10 @@ from billing.voice_quota import (
     QuotaCheck,
     EXPERT_MONTHLY_MINUTES,
     FREE_TRIAL_MINUTES,
+    MONTHLY_MINUTES_BY_PLAN,
 )
+
+PRO_MONTHLY_MINUTES = MONTHLY_MINUTES_BY_PLAN["pro"]
 
 
 def _make_user(plan: str, user_id: int = 1):
@@ -80,11 +83,12 @@ async def test_free_after_trial_blocked():
 
 @pytest.mark.asyncio
 async def test_pro_now_top_tier_grants_monthly_quota():
-    """Pro is now the top paid tier — gets the 30-min/month rolling quota."""
+    """Pro top tier — 30-min/month rolling quota (VC-1: Pro=30, Expert=120)."""
     quota = MagicMock()
     quota.plan = "pro"
     quota.monthly_period_start = datetime.now(timezone.utc)
     quota.monthly_minutes_used = 12.0
+    quota.purchased_minutes = 0.0
     quota.lifetime_trial_used = False
     quota.lifetime_trial_used_at = None
 
@@ -92,7 +96,7 @@ async def test_pro_now_top_tier_grants_monthly_quota():
     db = _make_db_session(quota_row=quota)
     result = await check_voice_quota(user, db)
     assert result.allowed is True
-    assert result.max_minutes == EXPERT_MONTHLY_MINUTES - 12.0
+    assert result.max_minutes == PRO_MONTHLY_MINUTES - 12.0
     assert result.is_trial is False
     assert result.cta is None
 
@@ -110,11 +114,12 @@ async def test_starter_blocked_with_cta_upgrade_pro():
 
 @pytest.mark.asyncio
 async def test_expert_with_remaining_minutes():
-    """Expert user with 10/30 used → allowed, max = 20."""
+    """Expert user with 10/120 used → allowed, max = 110 (VC-1: Expert=120)."""
     quota = MagicMock()
     quota.plan = "expert"
     quota.monthly_period_start = datetime.now(timezone.utc)
     quota.monthly_minutes_used = 10.0
+    quota.purchased_minutes = 0.0
     quota.lifetime_trial_used = False
     quota.lifetime_trial_used_at = None
 
@@ -128,11 +133,12 @@ async def test_expert_with_remaining_minutes():
 
 @pytest.mark.asyncio
 async def test_expert_quota_exhausted():
-    """Expert user at 30/30 → blocked, reason=monthly_quota, no CTA."""
+    """Expert user at 120/120 with no purchased → blocked, reason=monthly_quota."""
     quota = MagicMock()
     quota.plan = "expert"
     quota.monthly_period_start = datetime.now(timezone.utc)
-    quota.monthly_minutes_used = 30.0
+    quota.monthly_minutes_used = 120.0
+    quota.purchased_minutes = 0.0
     quota.lifetime_trial_used = False
     quota.lifetime_trial_used_at = None
 
@@ -150,14 +156,15 @@ async def test_expert_period_resets_after_30_days():
     quota = MagicMock()
     quota.plan = "expert"
     quota.monthly_period_start = datetime.now(timezone.utc) - timedelta(days=31)
-    quota.monthly_minutes_used = 30.0
+    quota.monthly_minutes_used = 120.0
+    quota.purchased_minutes = 0.0
     quota.lifetime_trial_used = False
     quota.lifetime_trial_used_at = None
 
     user = _make_user("expert")
     db = _make_db_session(quota_row=quota)
     result = await check_voice_quota(user, db)
-    # After reset: 0 used → 30 remaining
+    # After reset: 0 used → 120 remaining (Expert allowance)
     assert result.allowed is True
     assert result.max_minutes == EXPERT_MONTHLY_MINUTES
     assert quota.monthly_minutes_used == 0.0
