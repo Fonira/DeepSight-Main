@@ -140,6 +140,14 @@
     "expiredPlaceholder": "Session expired...",
     "webEnriched": "Enriched by the web",
     "unavailable": "Response unavailable",
+    "clear": {
+      "buttonAriaLabel": "Clear conversation",
+      "confirmTitle": "Clear this conversation?",
+      "confirmBody": "This deletes the text chat AND the voice call transcripts for this video. This action cannot be undone.",
+      "confirmYes": "Clear everything",
+      "confirmCancel": "Cancel",
+      "errorPrefix": "Could not clear the conversation"
+    },
     "suggestions": [
       "What are the key points?",
       "Summarize in 3 sentences",

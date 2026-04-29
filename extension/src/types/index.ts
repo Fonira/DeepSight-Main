@@ -176,6 +176,7 @@ export type MessageAction =
   | "GET_SUMMARY"
   | "ASK_QUESTION"
   | "GET_CHAT_HISTORY"
+  | "CLEAR_CHAT_HISTORY"
   | "OPEN_POPUP"
   | "SYNC_AUTH_FROM_WEBSITE"
   | "ANALYSIS_PROGRESS"

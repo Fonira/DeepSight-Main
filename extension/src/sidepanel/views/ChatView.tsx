@@ -7,6 +7,29 @@ import { DoodleIcon } from "../shared/doodles/DoodleIcon";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
 
+// ── Inline trash icon ──────────────────────────────────────────────
+// Local inline SVG (the shared Icons module does not export a trash icon
+// and we don't want to bloat it just for this single use case).
+const TrashIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+    <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+  </svg>
+);
+
 // ── [ask:] parser ──────────────────────────────────────────────────
 interface ParsedContent {
   text: string;
@@ -68,6 +91,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
 
   const canWs = canUseWebSearch(userPlan);
@@ -172,6 +196,59 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   }
 
+  async function handleClearClick(): Promise<void> {
+    if (clearing) return;
+    // window.confirm is available in the side panel context (it's a browser
+    // window). Mirrors web (Task 8) behaviour: warn that the unified clear
+    // also drops voice transcripts, since the backend default is
+    // include_voice=true.
+    const confirmed = window.confirm(
+      `${t.chat.clear.confirmTitle}\n\n${t.chat.clear.confirmBody}`,
+    );
+    if (!confirmed) return;
+    setClearing(true);
+    try {
+      const response = await Browser.runtime.sendMessage<
+        unknown,
+        MessageResponse
+      >({
+        action: "CLEAR_CHAT_HISTORY",
+        data: { summaryId, includeVoice: true },
+      });
+      if (response.success) {
+        setMessages([]);
+      } else {
+        const errorMsg = response.error || "";
+        if (errorMsg.includes("SESSION_EXPIRED")) {
+          setSessionExpired(true);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `${t.chat.clear.errorPrefix} : ${errorMsg || t.chat.unavailable}`,
+            },
+          ]);
+        }
+      }
+    } catch (e) {
+      const errorMsg = (e as Error).message || "";
+      if (errorMsg.includes("SESSION_EXPIRED")) {
+        setSessionExpired(true);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `${t.chat.clear.errorPrefix} : ${errorMsg}`,
+          },
+        ]);
+      }
+    } finally {
+      setClearing(false);
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent): void {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -200,6 +277,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
         <span className="chat-header-title">
           {t.synthesis.chat}&nbsp;: &laquo;&nbsp;{truncatedTitle}&nbsp;&raquo;
         </span>
+        <button
+          className="icon-btn chat-clear-btn"
+          onClick={() => {
+            void handleClearClick();
+          }}
+          disabled={clearing || loadingHistory || messages.length === 0}
+          title={t.chat.clear.buttonAriaLabel}
+          aria-label={t.chat.clear.buttonAriaLabel}
+        >
+          <TrashIcon size={16} />
+        </button>
       </div>
 
       {/* Messages */}
