@@ -199,6 +199,15 @@ except ImportError as e:
     API_PUBLIC_ROUTER_AVAILABLE = False
     logger.warning(f"⚠️ Public API router not available: {e}")
 
+# 🌐 NOUVEAU: Landing public router (stats homepage sans auth)
+try:
+    from landing.router import router as landing_router
+
+    LANDING_ROUTER_AVAILABLE = True
+except ImportError as e:
+    LANDING_ROUTER_AVAILABLE = False
+    logger.warning(f"⚠️ Landing router not available: {e}")
+
 # 🧠 NOUVEAU: Import du Words router ("Le Saviez-Vous")
 try:
     from words.router import router as words_router
@@ -1081,6 +1090,11 @@ if NOTIFICATIONS_ROUTER_AVAILABLE:
 if API_PUBLIC_ROUTER_AVAILABLE:
     app.include_router(api_public_router, tags=["Public API v1"])
     logger.info("🔑 Public API router loaded (Expert plan)")
+
+# 🌐 NOUVEAU: Landing public router (stats homepage sans auth)
+if LANDING_ROUTER_AVAILABLE:
+    app.include_router(landing_router, tags=["Landing Public"])
+    logger.info("🌐 Landing router loaded (public stats homepage)")
 
 # 🧠 NOUVEAU: Words router ("Le Saviez-Vous")
 if WORDS_ROUTER_AVAILABLE:

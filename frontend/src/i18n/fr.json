@@ -670,6 +670,26 @@
       "title": "Prêt à commencer ?",
       "subtitle": "Rejoignez les chercheurs et professionnels qui utilisent Deep Sight pour analyser leurs vidéos.",
       "button": "Créer un compte gratuit"
+    },
+    "testimonials": {
+      "heading": "Ce que nos utilisateurs en disent",
+      "subheading": "Des chercheurs, journalistes et étudiants qui gagnent un temps précieux.",
+      "demoBadge": "⚠ Démo — témoignages fictifs (dev/staging)",
+      "stars": "5 étoiles sur 5"
+    },
+    "trust_badges": {
+      "heading": "Garanties de confiance",
+      "frenchAi": "IA 100 % Française & Européenne (Mistral)",
+      "lifetimeArchive": "Analyses archivées à vie",
+      "gdpr": "Conforme RGPD",
+      "refund14d": "Garantie 14 jours satisfait ou remboursé",
+      "stripeSecure": "Paiement sécurisé Stripe"
+    },
+    "social_proof": {
+      "heading": "Statistiques DeepSight",
+      "videos": "vidéos analysées",
+      "words": "mots synthétisés",
+      "users": "utilisateurs actifs (30 j)"
     }
   },
   "payment": {
