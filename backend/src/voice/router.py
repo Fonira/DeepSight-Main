@@ -1273,10 +1273,63 @@ async def create_voice_session(
             },
         )
 
+    # ── Quick Voice Call (V1) — create Summary placeholder ───────────────
+    # When the extension launches a Quick Voice Call on YouTube, the V1
+    # path (``video_id`` set, ``video_url`` absent) must surface the video
+    # in the user's history right away — exactly like the V3 mobile path
+    # does for Summary deep-linking. Without this, the auto-analysis
+    # pipeline (Mistral) creates the row asynchronously and the video is
+    # invisible from web/mobile/extension history until ``full_digest``
+    # lands. We pre-create a placeholder if (and only if) no Summary
+    # already exists for ``(video_id, user_id)`` so we don't shadow a
+    # cached analysis the orchestrator could re-use.
+    v1_summary: Optional[Summary] = None
+    if request.is_streaming and request.video_id and not v3_url_path:
+        existing_summary_result = await db.execute(
+            select(Summary)
+            .where(Summary.user_id == current_user.id)
+            .where(Summary.video_id == request.video_id)
+            .order_by(Summary.id.desc())
+            .limit(1)
+        )
+        existing_summary = existing_summary_result.scalar_one_or_none()
+        if existing_summary is None:
+            v1_video_title = (
+                request.video_title
+                if request.video_title
+                else f"[En cours] YT {request.video_id}"
+            )
+            v1_summary = Summary(
+                user_id=current_user.id,
+                video_id=request.video_id,
+                video_title=v1_video_title,
+                video_url=f"https://www.youtube.com/watch?v={request.video_id}",
+                platform="youtube",
+                mode="standard",
+                lang=request.language or "fr",
+            )
+            db.add(v1_summary)
+            await db.commit()
+            await db.refresh(v1_summary)
+            logger.info(
+                "Quick Voice Call V1: Summary placeholder created",
+                extra={
+                    "user_id": current_user.id,
+                    "summary_id": v1_summary.id,
+                    "video_id": request.video_id,
+                },
+            )
+
     # Create voice session in DB
     voice_session = VoiceSession(
         user_id=current_user.id,
-        summary_id=v3_summary.id if v3_summary is not None else request.summary_id,
+        summary_id=(
+            v3_summary.id
+            if v3_summary is not None
+            else v1_summary.id
+            if v1_summary is not None
+            else request.summary_id
+        ),
         debate_id=request.debate_id,
         agent_type=agent_config.agent_type,
         is_streaming_session=bool(request.is_streaming),
