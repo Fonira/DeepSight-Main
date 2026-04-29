@@ -275,6 +275,10 @@
       "genericPrefix": "Error:",
       "close": "Close",
       "connectingTimeout": "Connection timeout. Please check your connection."
+    },
+    "postCall": {
+      "returnButton": "← Back to DeepSight",
+      "autoRedirectHint": "Auto-returning in {seconds}s…"
     }
   },
   "promos": {

@@ -3107,8 +3107,10 @@ a:hover {
 
 .ds-call-ended {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 16px;
   padding: 48px 24px;
   text-align: center;
 }
@@ -3117,6 +3119,42 @@ a:hover {
   font-size: 14px;
   color: var(--text-secondary);
   margin: 0;
+}
+
+.ds-call-ended-hint {
+  font-size: 12px;
+  color: var(--text-tertiary, var(--text-secondary));
+  opacity: 0.7;
+  margin: 0;
+}
+
+/* Bouton "Retour à DeepSight" — post-call navigation */
+.ds-return-button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-accent, var(--border-strong));
+  background: var(--bg-elevated, var(--bg-hover));
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ds-return-button:hover {
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+  border-color: var(--accent-primary, #6366f1);
+  transform: translateY(-1px);
+}
+
+.ds-return-button:focus-visible {
+  outline: 2px solid var(--accent-primary, #6366f1);
+  outline-offset: 2px;
 }
 
 /* ═══════════════════════════════════════════════════
