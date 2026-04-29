@@ -46,11 +46,20 @@ interface VoiceViewProps {
    * la clé : VoiceView n'a plus besoin de toucher au session storage.
    */
   pendingCall?: PendingVoiceCall | null;
+  /**
+   * Post-call navigation — appelé quand l'user clique le bouton "Retour
+   * à DeepSight" OU automatiquement 3s après la fin de l'appel. App.tsx
+   * doit clear `voicePanelContext` + `pendingVoiceCall` pour que la
+   * condition de short-circuit `(voiceContext || pendingVoiceCall)`
+   * passe à false et que la main view (re)devienne visible.
+   */
+  onReturnToMain?: () => void;
 }
 
 export const VoiceView: React.FC<VoiceViewProps> = ({
   context,
   pendingCall,
+  onReturnToMain,
 }) => {
   const { t } = useTranslation();
   const [state, setState] = useState<VoiceCallState>({ phase: "idle" });
@@ -245,6 +254,50 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCall?.videoId, retryKey]);
 
+  // ── Post-call auto-redirect (UX bug fix) ──
+  // Quand le user raccroche, on bascule en `ended_expert` ou `ended_free_cta`.
+  // Sans ce useEffect, l'écran "Appel terminé" reste figé indéfiniment et le
+  // user n'a aucun moyen de revenir à la main view de l'extension. On expose
+  // un bouton "Retour à DeepSight" cliquable immédiatement (cf. handleReturn
+  // ci-dessous) ET un auto-redirect 3s.
+  //
+  // Note : on n'auto-redirect PAS pour `ended_free_cta` (UpgradeCTA) ni
+  // `error_quota` — l'user doit pouvoir lire/dismiss le CTA upgrade. Pour
+  // ces phases le UpgradeCTA fournit déjà son propre `onDismiss` qu'on
+  // wire vers handleReturn ci-dessous.
+  const [postCallCountdown, setPostCallCountdown] = useState<number | null>(
+    null,
+  );
+  useEffect(() => {
+    if (state.phase !== "ended_expert" && state.phase !== "error_generic") {
+      setPostCallCountdown(null);
+      return;
+    }
+    if (!onReturnToMain) return;
+    setPostCallCountdown(3);
+    const tickTimer = setInterval(() => {
+      setPostCallCountdown((c) => (c !== null && c > 0 ? c - 1 : c));
+    }, 1000);
+    const redirectTimer = setTimeout(() => {
+      onReturnToMain();
+    }, 3000);
+    return () => {
+      clearInterval(tickTimer);
+      clearTimeout(redirectTimer);
+    };
+  }, [state.phase, onReturnToMain]);
+
+  const handleReturnToMain = (): void => {
+    setPostCallCountdown(null);
+    if (onReturnToMain) {
+      onReturnToMain();
+    } else {
+      // Fallback : si la prop n'est pas câblée (test legacy), on retombe
+      // sur idle pour éviter un écran totalement bloquant.
+      setState({ phase: "idle" });
+    }
+  };
+
   // ── Connecting timeout (I2) ──
   // Si la phase reste `connecting` plus de 15 secondes, on bascule en
   // `error_generic` avec un message explicite. Évite que l'UX freeze
@@ -400,7 +453,7 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
       <UpgradeCTA
         reason={reason}
         onUpgrade={handleUpgrade}
-        onDismiss={() => setState({ phase: "idle" })}
+        onDismiss={handleReturnToMain}
       />
     );
   }
@@ -466,9 +519,17 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
         <p>
           {t.voiceCall.errors.genericPrefix} {state.message}
         </p>
-        <button type="button" onClick={() => setState({ phase: "idle" })}>
-          {t.voiceCall.errors.close}
+        <button type="button" onClick={handleReturnToMain} autoFocus>
+          {t.voiceCall.postCall.returnButton}
         </button>
+        {postCallCountdown !== null && postCallCountdown > 0 && (
+          <p className="ds-call-ended-hint" aria-live="polite">
+            {t.voiceCall.postCall.autoRedirectHint.replace(
+              "{seconds}",
+              String(postCallCountdown),
+            )}
+          </p>
+        )}
       </div>
     );
   }
@@ -476,6 +537,23 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
     return (
       <div className="ds-call-ended">
         <p>{t.voiceCall.errors.callEnded}</p>
+        <button
+          type="button"
+          className="ds-return-button"
+          onClick={handleReturnToMain}
+          aria-label={t.voiceCall.postCall.returnButton}
+          autoFocus
+        >
+          {t.voiceCall.postCall.returnButton}
+        </button>
+        {postCallCountdown !== null && postCallCountdown > 0 && (
+          <p className="ds-call-ended-hint" aria-live="polite">
+            {t.voiceCall.postCall.autoRedirectHint.replace(
+              "{seconds}",
+              String(postCallCountdown),
+            )}
+          </p>
+        )}
       </div>
     );
   }

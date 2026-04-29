@@ -112,6 +112,11 @@ jest.mock("../../src/i18n/useTranslation", () => ({
           genericPrefix: "Erreur :",
           close: "Fermer",
           connectingTimeout: "x",
+          enableMic: "🎤 Autoriser le micro",
+        },
+        postCall: {
+          returnButton: "← Retour à DeepSight",
+          autoRedirectHint: "Retour automatique dans {seconds}s…",
         },
       },
     },

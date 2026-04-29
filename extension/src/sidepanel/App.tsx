@@ -278,6 +278,28 @@ export const App: React.FC = () => {
     setView("login");
   }, []);
 
+  // Voice flow — retour à la main view après hangup.
+  // Clear les deux states qui font court-circuiter App.tsx vers VoiceView,
+  // puis force un re-check auth (le useEffect [voiceChecked, voiceContext,
+  // pendingVoiceCall] ne re-déclenche checkAuth() que si voiceChecked est
+  // déjà true et que les deux states deviennent falsy — c'est notre cas).
+  const handleReturnFromVoice = useCallback(() => {
+    setVoiceContext(null);
+    setPendingVoiceCall(null);
+    // Best-effort cleanup du legacy `voicePanelContext` en session storage
+    // pour éviter qu'un re-mount du sidepanel rebascule en VoiceView.
+    const session = getSessionStorage();
+    void session?.remove?.("voicePanelContext").catch(() => {});
+    void session?.remove?.("pendingVoiceCall").catch(() => {});
+    // Si user est déjà authentifié on peut directement aller en main,
+    // sinon le useEffect ci-dessus rebasculera vers login via checkAuth().
+    if (user) {
+      setView("main");
+    } else {
+      void checkAuth();
+    }
+  }, [user]);
+
   const showError = useCallback((msg: string) => {
     setToast({ message: msg, type: "error" });
   }, []);
@@ -308,7 +330,11 @@ export const App: React.FC = () => {
       <AmbientLightingProvider enabled={ambientEnabled}>
         <AmbientLightLayer />
         <SunflowerLayer />
-        <VoiceView context={voiceContext} pendingCall={pendingVoiceCall} />
+        <VoiceView
+          context={voiceContext}
+          pendingCall={pendingVoiceCall}
+          onReturnToMain={handleReturnFromVoice}
+        />
       </AmbientLightingProvider>
     );
   }
