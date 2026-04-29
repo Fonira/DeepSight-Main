@@ -158,3 +158,105 @@ def test_render_block_excludes_active_voice_session():
     assert "msg from active session" not in out
     assert "msg from old session" in out
     assert "msg text" in out
+
+
+# ── Cap enforcement ──────────────────────────────────────────────────────────
+
+
+def test_truncate_to_cap_keeps_recent_drops_old_digests():
+    """When over cap, drop oldest digests first, keep recent verbatim."""
+    from voice.context_builder import _truncate_to_cap
+
+    big_digests_section = "### Résumé sessions antérieures\n" + "- old digest line\n" * 1000
+    recent_section = "### Derniers échanges (2)\n[VOCAL] hi\n[TEXTE] hello"
+    block = f"## Contexte conversation précédente\n\n{big_digests_section}\n{recent_section}\n\nContinue."
+
+    out = _truncate_to_cap(block, cap=2_000, lang="fr")
+
+    assert len(out.encode("utf-8")) <= 2_000
+    assert "[VOCAL] hi" in out  # recent preserved
+    assert "[TEXTE] hello" in out
+    assert "[contexte tronqué]" in out  # truncation marker
+
+
+# ── build_unified_context_block (DB integration) ─────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_build_unified_block_db_integration_voice_target(async_db_session, sample_user, sample_summary):
+    """End-to-end with DB: voice_session digest + recent chat_messages."""
+    from datetime import datetime, timedelta, timezone
+
+    from db.database import ChatMessage, VoiceSession
+    from voice.context_builder import build_unified_context_block
+
+    now = datetime.now(timezone.utc)
+
+    # Voice session terminée il y a 2 jours, avec digest
+    vs = VoiceSession(
+        id="sess-old",
+        user_id=sample_user.id,
+        summary_id=sample_summary.id,
+        started_at=now - timedelta(days=2),
+        duration_seconds=480,
+        digest_text="- user demanded X\n- you answered via web_search",
+        digest_generated_at=now - timedelta(days=2),
+    )
+    async_db_session.add(vs)
+
+    # Recent verbatim text msg
+    cm = ChatMessage(
+        user_id=sample_user.id,
+        summary_id=sample_summary.id,
+        role="user",
+        content="Résume-moi en 1 phrase",
+        source="text",
+        created_at=now - timedelta(hours=1),
+    )
+    async_db_session.add(cm)
+    await async_db_session.commit()
+
+    out = await build_unified_context_block(
+        async_db_session,
+        summary_id=sample_summary.id,
+        user_id=sample_user.id,
+        lang="fr",
+        target="voice",
+    )
+
+    assert "(voice 8 min)" in out
+    assert "user demanded X" in out
+    assert "[TEXTE • il y a 1h • user] Résume-moi en 1 phrase" in out
+
+
+@pytest.mark.asyncio
+async def test_build_unified_block_voice_cap_enforced(async_db_session, sample_user, sample_summary, monkeypatch):
+    """When the rendered block exceeds 12 KB, truncate to 12 KB."""
+    from datetime import datetime, timedelta, timezone
+    from db.database import VoiceSession
+    from voice.context_builder import build_unified_context_block, VOICE_SYSTEM_PROMPT_CAP_BYTES
+
+    now = datetime.now(timezone.utc)
+    big_text = "X" * 5000
+    for i in range(5):
+        vs = VoiceSession(
+            id=f"sess-{i}",
+            user_id=sample_user.id,
+            summary_id=sample_summary.id,
+            started_at=now - timedelta(days=10 - i),
+            duration_seconds=300,
+            digest_text=big_text,
+            digest_generated_at=now - timedelta(days=10 - i),
+        )
+        async_db_session.add(vs)
+    await async_db_session.commit()
+
+    out = await build_unified_context_block(
+        async_db_session,
+        summary_id=sample_summary.id,
+        user_id=sample_user.id,
+        lang="fr",
+        target="voice",
+    )
+
+    assert len(out.encode("utf-8")) <= VOICE_SYSTEM_PROMPT_CAP_BYTES

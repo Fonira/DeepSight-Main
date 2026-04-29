@@ -146,3 +146,161 @@ def _render_block(
 
     lines.append(footer)
     return "\n".join(lines)
+
+
+# ── Cap enforcement ──────────────────────────────────────────────────────────
+
+
+def _truncate_to_cap(block: str, cap: int, *, lang: str) -> str:
+    """Truncate the rendered block to fit within `cap` bytes.
+
+    Strategy:
+      1. Try block as-is. If under cap → return.
+      2. Otherwise, drop digest section bullets one by one (oldest first)
+         until under cap.
+      3. If still over cap, drop oldest verbatim rows one by one.
+      4. Append a footer marker '[contexte tronqué]' (or '[context truncated]').
+    """
+    if len(block.encode("utf-8")) <= cap:
+        return block
+
+    marker = "\n\n[contexte tronqué]" if lang == "fr" else "\n\n[context truncated]"
+    marker_bytes = len(marker.encode("utf-8"))
+    effective_cap = cap - marker_bytes
+
+    lines = block.split("\n")
+
+    def join_size(items: list[str]) -> int:
+        return len("\n".join(items).encode("utf-8"))
+
+    # Identify the recent section start so we never drop from there first
+    try:
+        recent_idx = next(
+            i for i, line in enumerate(lines)
+            if line.startswith("### Derniers échanges") or line.startswith("### Recent exchanges")
+        )
+    except StopIteration:
+        recent_idx = None
+
+    # 1. Drop oldest digest bullets (lines starting with "- " before recent section)
+    digest_bullet_indices = [
+        i for i, line in enumerate(lines)
+        if line.startswith("- ") and (recent_idx is None or i < recent_idx)
+    ]
+    while join_size(lines) > effective_cap and digest_bullet_indices:
+        idx = digest_bullet_indices.pop(0)
+        lines[idx] = ""
+        # also drop the indented continuation line that follows (digest body)
+        if idx + 1 < len(lines) and lines[idx + 1].startswith("  "):
+            lines[idx + 1] = ""
+
+    # 2. Drop oldest verbatim rows (start at recent_idx + 2 to skip header + blank line)
+    if join_size(lines) > effective_cap and recent_idx is not None:
+        verbatim_start = recent_idx + 1
+        while join_size(lines) > effective_cap and verbatim_start < len(lines):
+            if lines[verbatim_start].startswith("["):
+                lines[verbatim_start] = ""
+                verbatim_start += 1
+            else:
+                verbatim_start += 1
+
+    # Re-join, collapse multiple blank lines, append marker
+    truncated = "\n".join(line for line in lines if line is not None)
+    truncated = "\n".join(
+        ln for i, ln in enumerate(truncated.split("\n"))
+        if not (ln == "" and i > 0 and truncated.split("\n")[i - 1] == "")
+    )
+    return truncated.rstrip() + marker
+
+
+# ── Public async builder ─────────────────────────────────────────────────────
+
+
+async def build_unified_context_block(
+    db,  # AsyncSession (typed weakly to avoid circular import in test fixtures)
+    *,
+    summary_id: int,
+    user_id: int,
+    lang: str = "fr",
+    target: Literal["voice", "chat"],
+    exclude_voice_session_id: Optional[str] = None,
+) -> str:
+    """Build the unified context block for a chat or voice agent.
+
+    Args:
+        db: AsyncSession
+        summary_id: video summary id (per-video memory boundary)
+        user_id: owner of the conversation
+        lang: 'fr' or 'en'
+        target: 'voice' (12 KB hard cap) or 'chat' (30 KB soft cap)
+        exclude_voice_session_id: when called from a *new* voice session,
+            pass its own id so its already-active rows are not re-injected
+
+    Returns "" when nothing to inject.
+    """
+    from sqlalchemy import select
+
+    from db.database import ChatMessage, ChatTextDigest, VoiceSession
+
+    cap = (
+        VOICE_SYSTEM_PROMPT_CAP_BYTES if target == "voice"
+        else CHAT_HISTORY_CAP_BYTES
+    )
+
+    # 1. Voice digests (sessions previously ended on this video)
+    #    Note: VoiceSession uses started_at (not created_at) — see db/database.py:827
+    vd_q = (
+        select(
+            VoiceSession.id,
+            VoiceSession.started_at,
+            VoiceSession.duration_seconds,
+            VoiceSession.digest_text,
+        )
+        .where(
+            VoiceSession.summary_id == summary_id,
+            VoiceSession.user_id == user_id,
+            VoiceSession.digest_text.isnot(None),
+        )
+        .order_by(VoiceSession.started_at.asc())
+    )
+    if exclude_voice_session_id:
+        vd_q = vd_q.where(VoiceSession.id != exclude_voice_session_id)
+    voice_digests = (await db.execute(vd_q)).all()
+
+    # 2. Chat text digests
+    cd_q = (
+        select(ChatTextDigest)
+        .where(
+            ChatTextDigest.summary_id == summary_id,
+            ChatTextDigest.user_id == user_id,
+        )
+        .order_by(ChatTextDigest.created_at.asc())
+    )
+    chat_digests = (await db.execute(cd_q)).scalars().all()
+
+    # 3. Last RECENT_VERBATIM_LIMIT chat_messages (all sources, ASC chronological)
+    rec_q = (
+        select(ChatMessage)
+        .where(
+            ChatMessage.summary_id == summary_id,
+            ChatMessage.user_id == user_id,
+        )
+        .order_by(ChatMessage.created_at.desc())
+        .limit(RECENT_VERBATIM_LIMIT)
+    )
+    recent = list(reversed((await db.execute(rec_q)).scalars().all()))
+
+    # 4. Render
+    block = _render_block(
+        lang=lang,
+        voice_digests=voice_digests,
+        chat_digests=chat_digests,
+        recent=recent,
+        exclude_voice_session_id=exclude_voice_session_id,
+    )
+
+    # 5. Cap enforcement
+    if block and len(block.encode("utf-8")) > cap:
+        block = _truncate_to_cap(block, cap, lang=lang)
+
+    return block
