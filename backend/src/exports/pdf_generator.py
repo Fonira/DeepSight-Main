@@ -188,6 +188,8 @@ class PDFGenerator:
         quiz: Optional[List[Dict]] = None,
         sources: Optional[List[Dict]] = None,
         export_type: PDFExportType = PDFExportType.FULL,
+        user_plan: Optional[str] = None,
+        user_language: str = "fr",
     ) -> Optional[bytes]:
         """
         Génère un PDF professionnel.
@@ -238,6 +240,8 @@ class PDFGenerator:
                 quiz=quiz,
                 sources=sources,
                 export_type=export_type,
+                user_plan=user_plan,
+                user_language=user_language,
             )
 
             # Charger et rendre le template
@@ -277,8 +281,24 @@ class PDFGenerator:
         quiz: Optional[List[Dict]],
         sources: Optional[List[Dict]],
         export_type: PDFExportType,
+        user_plan: Optional[str] = None,
+        user_language: str = "fr",
     ) -> Dict[str, Any]:
         """Prépare toutes les données pour le template"""
+
+        # Watermark gating (Free vs payant) — utilise add_watermark helper
+        from .watermark import add_watermark
+
+        watermark_marker = add_watermark(
+            content="placeholder",
+            format="pdf",
+            user_plan=user_plan,
+            user_language=user_language,
+        )
+        # add_watermark pour 'pdf' retourne toujours un dict marqueur
+        show_watermark = watermark_marker["needs_watermark"]
+        watermark_text = watermark_marker["text"]
+        watermark_url = watermark_marker["url"]
 
         # Date formatting
         date_str = (created_at or datetime.now()).strftime("%d %B %Y à %H:%M")
@@ -338,6 +358,10 @@ class PDFGenerator:
             "show_timestamps": show_timestamps,
             "show_flashcards": show_flashcards,
             "show_quiz": show_quiz,
+            # Watermark gating (Free uniquement)
+            "show_watermark": show_watermark,
+            "watermark_text": watermark_text,
+            "watermark_url": watermark_url,
             # Theme
             "theme": DEEP_SIGHT_THEME,
         }
@@ -360,7 +384,15 @@ def get_pdf_generator() -> PDFGenerator:
 
 
 def generate_pdf(
-    title: str, channel: str, category: str, mode: str, summary: str, export_type: str = "full", **kwargs
+    title: str,
+    channel: str,
+    category: str,
+    mode: str,
+    summary: str,
+    export_type: str = "full",
+    user_plan: Optional[str] = None,
+    user_language: str = "fr",
+    **kwargs,
 ) -> Optional[bytes]:
     """
     Fonction de convenance pour générer un PDF.
@@ -368,6 +400,8 @@ def generate_pdf(
     Args:
         title, channel, category, mode, summary: Données de base
         export_type: "full" | "summary" | "flashcards" | "study"
+        user_plan: plan id (free, plus, pro, expert, ...) — controle l'affichage du watermark
+        user_language: "fr" | "en" — langue du watermark
         **kwargs: Données additionnelles (entities, flashcards, etc.)
 
     Returns:
@@ -385,7 +419,15 @@ def generate_pdf(
     pdf_type = type_map.get(export_type, PDFExportType.FULL)
 
     return generator.generate(
-        title=title, channel=channel, category=category, mode=mode, summary=summary, export_type=pdf_type, **kwargs
+        title=title,
+        channel=channel,
+        category=category,
+        mode=mode,
+        summary=summary,
+        export_type=pdf_type,
+        user_plan=user_plan,
+        user_language=user_language,
+        **kwargs,
     )
 
 
