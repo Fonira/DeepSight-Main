@@ -31,6 +31,7 @@ from core.config import (
     get_deepgram_key,
     get_openai_key,
     get_assemblyai_key,
+    get_youtube_proxy,
     TRANSCRIPT_CONFIG,
 )
 
@@ -321,7 +322,14 @@ class UltraResilientTranscriptExtractor:
             raise Exception("youtube-transcript-api not installed")
 
         def _fetch_sync():
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            # youtube-transcript-api 1.x changed list_transcripts (classmethod)
+            # → list (instance method). Try new API first, fall back to legacy
+            # so the same code works across versions.
+            try:
+                ytt_api = YouTubeTranscriptApi()
+                transcript_list = ytt_api.list(video_id)
+            except AttributeError:
+                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
 
             # Try manual transcripts first
             for lang in languages:
@@ -353,7 +361,11 @@ class UltraResilientTranscriptExtractor:
         loop = asyncio.get_event_loop()
         segments, lang, is_auto = await loop.run_in_executor(None, _fetch_sync)
 
-        text = " ".join([s["text"] for s in segments])
+        # Snippet shape changed in 1.x: dict → FetchedTranscriptSnippet object
+        # with .text attribute. Support both.
+        text = " ".join(
+            [s.text if hasattr(s, "text") else s["text"] for s in segments]
+        )
 
         return TranscriptResult(
             text=text,
@@ -1015,8 +1027,13 @@ class UltraResilientTranscriptExtractor:
                 self._get_random_user_agent(),
                 "-o",
                 audio_path,
-                f"https://www.youtube.com/watch?v={video_id}",
             ]
+            # Route through YOUTUBE_PROXY when available — Hetzner IP is banned
+            # by YouTube so the direct download from the audio host fails too.
+            proxy = get_youtube_proxy()
+            if proxy:
+                cmd.extend(["--proxy", proxy])
+            cmd.append(f"https://www.youtube.com/watch?v={video_id}")
 
             process = await asyncio.create_subprocess_exec(
                 *cmd,
