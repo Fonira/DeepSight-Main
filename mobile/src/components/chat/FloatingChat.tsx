@@ -13,6 +13,7 @@ import {
   Dimensions,
   Easing,
   Keyboard,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -192,6 +193,40 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
 
   const handleMinimize = () => {
     setIsMinimized(!isMinimized);
+  };
+
+  /**
+   * Unified clear (Task 10) — wipes text chat + voice transcripts for this
+   * video. Mirrors web/extension: confirm modal → DELETE with
+   * `include_voice=true` → reset local state.
+   */
+  const handleClearPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      t.chat.clear.confirmTitle,
+      t.chat.clear.confirmBody,
+      [
+        { text: t.chat.clear.confirmCancel, style: "cancel" },
+        {
+          text: t.chat.clear.confirmYes,
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await chatApi.clearHistory(summaryId, { includeVoice: true });
+              setMessages([]);
+              setLastSources([]);
+              onMessagesUpdate?.([]);
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Success,
+              );
+            } catch {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
   };
 
   const handleSend = async () => {
@@ -406,6 +441,15 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                   {videoTitle || t.chat.title}
                 </Text>
               </View>
+
+              <TouchableOpacity
+                onPress={handleClearPress}
+                style={styles.headerButton}
+                accessibilityLabel={t.chat.clear.confirmTitle}
+                accessibilityRole="button"
+              >
+                <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+              </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleClose}
