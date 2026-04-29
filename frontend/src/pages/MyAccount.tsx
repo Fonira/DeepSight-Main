@@ -17,6 +17,7 @@ import {
   type PlanId,
 } from "../config/planPrivileges";
 import { useToast } from "../components/Toast";
+import { VoicePacksWidget } from "../components/voice/VoicePacksWidget";
 import {
   User,
   Shield,
@@ -535,6 +536,11 @@ export const MyAccount: React.FC = () => {
                 )}
               </div>
             </section>
+
+            {/* ═══════════════════════════════════════════════════════════════════════════
+                🎙️ VOICE PACKS — Top-up minutes ElevenLabs (audit Kimi P0 quick win)
+            ═══════════════════════════════════════════════════════════════════════════ */}
+            <VoicePacksWidget />
 
             {/* ═══════════════════════════════════════════════════════════════════════════
                 🎯 PRIVILÈGES DU PLAN — Dynamic v5.0 (API-driven)

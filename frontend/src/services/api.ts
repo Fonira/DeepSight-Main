@@ -2657,6 +2657,48 @@ export interface CompanionContext {
   cache_hit: boolean;
 }
 
+// ─── Voice Top-up Packs (ElevenLabs minutes) ─────────────────────────────
+
+export interface ApiVoicePack {
+  slug: string;
+  name: string;
+  minutes: number;
+  price_cents: number;
+  description: string | null;
+  display_order: number;
+}
+
+export interface ApiVoiceCreditStatus {
+  plan: string;
+  allowance_total: number;
+  allowance_used: number;
+  allowance_remaining: number;
+  purchased_minutes: number;
+  total_minutes_available: number;
+  is_trial: boolean;
+}
+
+export const voicePacksApi = {
+  /** GET /api/billing/voice-packs/list — catalogue public actif */
+  async list(): Promise<ApiVoicePack[]> {
+    return request("/api/billing/voice-packs/list", { method: "GET" });
+  },
+
+  /** GET /api/billing/voice-packs/my-credits — snapshot user (auth) */
+  async myCredits(): Promise<ApiVoiceCreditStatus> {
+    return request("/api/billing/voice-packs/my-credits", { method: "GET" });
+  },
+
+  /** POST /api/billing/voice-packs/checkout/{slug} — Stripe redirect URL */
+  async createCheckout(
+    slug: string,
+  ): Promise<{ checkout_url: string; session_id: string }> {
+    return request(`/api/billing/voice-packs/checkout/${slug}`, {
+      method: "POST",
+    });
+  },
+};
+
 export const voiceApi = {
   /**
    * 🎙️ Récupère le quota vocal de l'utilisateur
@@ -3089,6 +3131,7 @@ export default {
   search: searchApi,
   videoCache: videoCacheApi,
   voice: voiceApi,
+  voicePacks: voicePacksApi,
   debate: debateApi,
   gamification: gamificationApi,
   keywordImage: keywordImageApi,

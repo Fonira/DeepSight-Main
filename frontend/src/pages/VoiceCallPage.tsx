@@ -203,14 +203,24 @@ const VoiceCallPage: React.FC = () => {
             <p className="text-sm font-medium text-amber-300">
               {tr("Quota de minutes épuisé", "Voice minutes quota exceeded")}
             </p>
-            <button
-              type="button"
-              onClick={() => navigate("/upgrade?source=voice_call")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-medium text-sm hover:shadow-lg hover:shadow-indigo-500/25 transition-shadow"
-            >
-              <ArrowUpCircle className="w-4 h-4" />
-              {tr("Passer au plan supérieur", "Upgrade plan")}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => navigate("/account#voice-packs")}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-500 text-white font-medium text-sm hover:bg-indigo-600 transition-colors"
+              >
+                <Mic className="w-4 h-4" />
+                {tr("Acheter un pack", "Buy a pack")}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/upgrade?source=voice_call")}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-text-secondary hover:bg-white/10 transition-colors text-sm"
+              >
+                <ArrowUpCircle className="w-4 h-4" />
+                {tr("Passer au plan supérieur", "Upgrade plan")}
+              </button>
+            </div>
           </div>
         );
       default:
