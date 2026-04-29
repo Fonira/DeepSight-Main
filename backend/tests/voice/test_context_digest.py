@@ -78,21 +78,38 @@ async def test_generate_voice_digest_writes_text(async_db_session, sample_user, 
 
 @pytest.mark.asyncio
 async def test_generate_voice_digest_fallback_on_mistral_fail(async_db_session, sample_user, sample_summary):
-    """If Mistral raises, log + skip (digest_generated_at stays NULL for retry)."""
-    from db.database import VoiceSession
+    """If Mistral raises, log + skip (digest_generated_at stays NULL for retry).
 
+    Must seed at least one ChatMessage so the function reaches the Mistral call
+    (otherwise it short-circuits on the empty-session guard, masking the real
+    branch we want to verify).
+    """
+    from db.database import ChatMessage, VoiceSession
+
+    now = datetime.now(timezone.utc)
     vs = VoiceSession(
-        id="sess-fail", user_id=sample_user.id, summary_id=sample_summary.id,
-        duration_seconds=300, digest_text=None, digest_generated_at=None,
+        id="sess-fail",
+        user_id=sample_user.id,
+        summary_id=sample_summary.id,
+        started_at=now,
+        duration_seconds=300,
+        digest_text=None,
+        digest_generated_at=None,
     )
     async_db_session.add(vs)
+    async_db_session.add(ChatMessage(
+        user_id=sample_user.id, summary_id=sample_summary.id,
+        role="user", content="seed message so Mistral path is reached",
+        source="voice", voice_session_id="sess-fail", voice_speaker="user",
+    ))
     await async_db_session.commit()
 
     with patch(
         "voice.context_digest._call_mistral_for_digest",
         new=AsyncMock(side_effect=RuntimeError("mistral down")),
-    ):
+    ) as mock_mistral:
         await generate_voice_session_digest(async_db_session, "sess-fail")
+        mock_mistral.assert_called_once()  # proves we exercised the Mistral path
 
     await async_db_session.refresh(vs)
     assert vs.digest_text is None
