@@ -34,11 +34,24 @@ interface ConversationLike {
   sendUserMessage: (message: string) => void;
 }
 
+/** Phase courante du pipeline backend (déduite des events SSE accumulés). */
+export type ContextPhase =
+  | "searching"
+  | "transcriptReceived"
+  | "mistralAnalyzing"
+  | "complete";
+
 interface StreamingContextResult {
   /** 0–100, % de transcript chunks reçus. */
   contextProgress: number;
   /** True quand `ctx_complete` a été reçu. */
   contextComplete: boolean;
+  /** Phase courante du pipeline backend (heuristique sur events SSE). */
+  contextPhase: ContextPhase;
+  /** Nombre de transcript chunks reçus (0 si aucun). */
+  transcriptChunksReceived: number;
+  /** Total de transcript chunks attendus (0 tant qu'aucun chunk n'est arrivé). */
+  transcriptChunksTotal: number;
 }
 
 export function useStreamingVideoContext(
@@ -47,6 +60,9 @@ export function useStreamingVideoContext(
 ): StreamingContextResult {
   const [contextProgress, setContextProgress] = useState(0);
   const [contextComplete, setContextComplete] = useState(false);
+  const [transcriptChunksReceived, setTranscriptChunksReceived] = useState(0);
+  const [transcriptChunksTotal, setTranscriptChunksTotal] = useState(0);
+  const [analysisPartialReceived, setAnalysisPartialReceived] = useState(false);
 
   // Buffer FIFO des messages en attente que conversation soit set (I3).
   // Ref pour éviter de re-créer l'EventSource à chaque push (le hook
@@ -108,6 +124,8 @@ export function useStreamingVideoContext(
           setContextProgress(
             ((data.chunk_index + 1) / data.total_chunks) * 100,
           );
+          setTranscriptChunksReceived(data.chunk_index + 1);
+          setTranscriptChunksTotal(data.total_chunks);
         } catch {
           /* malformed event — drop */
         }
@@ -122,6 +140,7 @@ export function useStreamingVideoContext(
           pushOrBuffer(
             `[CTX UPDATE: analysis ${data.section}]\n${data.content}`,
           );
+          setAnalysisPartialReceived(true);
         } catch {
           /* malformed event — drop */
         }
@@ -178,5 +197,29 @@ export function useStreamingVideoContext(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
-  return { contextProgress, contextComplete };
+  // Phase déduite de l'état SSE accumulé. Heuristique :
+  //  - complete reçu                           → "complete"
+  //  - chunks > 0 + analysis_partial reçu      → "mistralAnalyzing"
+  //  - chunks > 0 (pas encore d'analysis)      → "transcriptReceived"
+  //  - aucun chunk encore + pas complete       → "searching"
+  // Note : le backend ne distingue pas explicitement Whisper STT vs
+  // Supadata dans les events SSE → pas de phase whisperFallback dédiée.
+  let contextPhase: ContextPhase;
+  if (contextComplete) {
+    contextPhase = "complete";
+  } else if (transcriptChunksReceived > 0 && analysisPartialReceived) {
+    contextPhase = "mistralAnalyzing";
+  } else if (transcriptChunksReceived > 0) {
+    contextPhase = "transcriptReceived";
+  } else {
+    contextPhase = "searching";
+  }
+
+  return {
+    contextProgress,
+    contextComplete,
+    contextPhase,
+    transcriptChunksReceived,
+    transcriptChunksTotal,
+  };
 }
