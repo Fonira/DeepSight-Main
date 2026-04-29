@@ -2,16 +2,19 @@
 //
 // Vue affichée pendant un voice call actif. Montre :
 //   - Chevron retour ‹ (header gauche) → onBack : raccroche + revient au pré-call
+//   - Avatar agent (cercle initial + halo pulsant si agent speaking)
 //   - Indicateur live + temps écoulé MM:SS
 //   - Bouton ⚙ (header droit) → ouvre le drawer de réglages voix (live + hard staged)
-//   - Pseudo-waveform (cosmétique)
+//   - Waveform LIVE (32 bars animées via SDK getInputByteFrequencyData) avec
+//     fallback statique si SDK pas dispo
 //   - Liste des transcripts (chat-style)
 //   - Input texte unifié → sendUserMessage(text) à l'agent ElevenLabs (V1.2)
-//   - Bouton Mute (toggle micro côté navigateur)
+//   - Bouton Mute (toggle micro côté navigateur) avec ICÔNE + COULEUR + ÉTAT
 //   - Bouton Raccrocher (déclenche endSession + UpgradeCTA si trial)
 //
 // A11y (N2) : aria-label sur les boutons d'action + role="timer" sur
 // elapsed pour que les lecteurs d'écran annoncent le temps écoulé.
+// aria-pressed sur Mute pour annoncer l'état muté/actif.
 import React, { useState } from "react";
 import { useTranslation } from "../../i18n/useTranslation";
 import { VoiceSettingsDrawer } from "../VoiceSettingsDrawer";
@@ -19,11 +22,34 @@ import { useVoiceSettings } from "../useVoiceSettings";
 import type { VoicePreferencesShape } from "../voiceMessages";
 import type { VoiceTranscript } from "../types";
 import { VoiceTranscriptList } from "./VoiceTranscriptList";
+import { VoiceWaveform } from "./VoiceWaveform";
+import { AgentAvatar } from "./AgentAvatar";
 
 interface Props {
   elapsedSec: number;
   onMute: () => void;
   onHangup: () => void;
+  /**
+   * V1.3 — État muté affiché dans le bouton micro. Sans cette prop le bouton
+   * reste figé visuellement même quand le SDK setMicMuted() a accepté.
+   */
+  isMuted?: boolean;
+  /**
+   * V1.3 — Conversation active du SDK ElevenLabs. Permet à VoiceWaveform
+   * d'appeler getInputByteFrequencyData() / getOutputByteFrequencyData() en RAF.
+   * Permet aussi à AgentAvatar de détecter l'état "agent speaking" via le volume.
+   */
+  conversation?: {
+    getInputByteFrequencyData?: () => Uint8Array | null;
+    getOutputByteFrequencyData?: () => Uint8Array | null;
+    getInputVolume?: () => number;
+    getOutputVolume?: () => number;
+  } | null;
+  /**
+   * V1.3 — Nom de la voix actuelle (pour l'avatar — affiche l'initiale).
+   * Si vide, fallback sur emoji micro.
+   */
+  voiceName?: string;
   /**
    * V1.2 — Chevron retour : raccroche la session et revient au pré-call.
    * Le wiring (handleHangup + setState idle) se fait dans VoiceView.
@@ -62,6 +88,9 @@ export function CallActiveView({
   elapsedSec,
   onMute,
   onHangup,
+  isMuted = false,
+  conversation = null,
+  voiceName,
   onBack,
   onSendTextMessage,
   canSendText = true,
@@ -76,6 +105,11 @@ export function CallActiveView({
   const mm = String(Math.floor(elapsedSec / 60)).padStart(2, "0");
   const ss = String(elapsedSec % 60).padStart(2, "0");
 
+  // Avatar prend le voice_name depuis settings si pas fourni en prop.
+  // Why : conversation tab passe voiceName explicite ; tests le laissent vide.
+  const effectiveVoiceName =
+    voiceName ?? settings.effectivePrefs?.voice_name ?? undefined;
+
   const handleSubmitText = (e?: React.FormEvent): void => {
     e?.preventDefault();
     const trimmed = textInput.trim();
@@ -86,7 +120,10 @@ export function CallActiveView({
   };
 
   return (
-    <div className="ds-call-active" data-testid="ds-call-active">
+    <div
+      className={`ds-call-active${isMuted ? " is-muted" : ""}`}
+      data-testid="ds-call-active"
+    >
       <header className="ds-call-active__header">
         {onBack && (
           <button
@@ -100,13 +137,16 @@ export function CallActiveView({
             ‹
           </button>
         )}
-        <div className="ds-call-active__indicator" aria-hidden />
-        <span className="ds-call-active__label">
-          {t.voiceCall.callActive.live}
-        </span>
-        <span className="ds-call-active__elapsed" role="timer" aria-live="off">
-          · {mm}:{ss}
-        </span>
+        <AgentAvatar voiceName={effectiveVoiceName} conversation={conversation} />
+        <div className="ds-call-active__meta">
+          <span className="ds-call-active__label">
+            <span className="ds-call-active__indicator" aria-hidden />
+            {t.voiceCall.callActive.live}
+          </span>
+          <span className="ds-call-active__elapsed" role="timer" aria-live="off">
+            {mm}:{ss}
+          </span>
+        </div>
         {restarting && (
           <span
             className="dsp-vs-restart-indicator"
@@ -131,11 +171,7 @@ export function CallActiveView({
           ⚙
         </button>
       </header>
-      <div className="ds-call-active__waveform" aria-hidden>
-        {[30, 80, 50, 90, 40, 70, 55].map((h, i) => (
-          <span key={i} style={{ height: `${h}%` }} />
-        ))}
-      </div>
+      <VoiceWaveform conversation={conversation} isMuted={isMuted} />
       <VoiceTranscriptList transcripts={transcripts} />
       <form
         className="ds-voice-text-input"
@@ -168,25 +204,44 @@ export function CallActiveView({
           title={t.voiceCall.callActive.textInputSendAriaLabel ?? "Envoyer"}
           data-testid="voice-text-input-send"
         >
-          📤
+          ➤
         </button>
       </form>
       <footer className="ds-call-active__footer">
         <button
           type="button"
-          className="ds-call-active__mute"
+          className={`ds-call-active__mute${isMuted ? " is-muted" : ""}`}
           onClick={onMute}
-          aria-label={t.voiceCall.callActive.muteAriaLabel}
+          aria-pressed={isMuted}
+          aria-label={
+            isMuted
+              ? t.voiceCall.callActive.unmuteAriaLabel ?? "Activer le micro"
+              : t.voiceCall.callActive.muteAriaLabel ?? "Couper le micro"
+          }
+          data-testid="voice-mute-btn"
         >
-          {t.voiceCall.callActive.mute}
+          <span className="ds-call-active__mute-icon" aria-hidden>
+            {isMuted ? "🚫" : "🎙️"}
+          </span>
+          <span className="ds-call-active__mute-label">
+            {isMuted
+              ? t.voiceCall.callActive.unmute ?? "Activer"
+              : t.voiceCall.callActive.mute ?? "Couper"}
+          </span>
         </button>
         <button
           type="button"
           onClick={onHangup}
           className="ds-call-active__hangup ds-hangup"
           aria-label={t.voiceCall.callActive.hangupAriaLabel}
+          data-testid="voice-hangup-btn"
         >
-          {t.voiceCall.callActive.hangup}
+          <span className="ds-call-active__hangup-icon" aria-hidden>
+            ☎
+          </span>
+          <span className="ds-call-active__hangup-label">
+            {t.voiceCall.callActive.hangup}
+          </span>
         </button>
       </footer>
 
