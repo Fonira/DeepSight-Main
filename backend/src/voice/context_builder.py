@@ -18,6 +18,12 @@ CHAT_HISTORY_CAP_BYTES = 30_000          # Mistral-large 262K, room to spare
 RECENT_VERBATIM_LIMIT = 30
 PER_MESSAGE_MAX_CHARS = 600
 
+# Section header constants (shared between renderer and truncator)
+RECENT_HEADER_FR = "### Derniers échanges"
+RECENT_HEADER_EN = "### Recent exchanges"
+DIGESTS_HEADER_FR = "### Résumé sessions antérieures"
+DIGESTS_HEADER_EN = "### Summary of previous sessions"
+
 
 # ── Time humanizer ───────────────────────────────────────────────────────────
 
@@ -72,10 +78,24 @@ def _format_message_label(
 # ── Block renderer ───────────────────────────────────────────────────────────
 
 
+def _indent_body(text: str, indent: str = "  ") -> str:
+    """Prefix every non-blank line of `text` with `indent` so multi-bullet
+    digest bodies stay visually nested under their parent date-bullet.
+
+    Without this, a digest_text like:
+        - user demanded X
+        - you answered Y
+    would only get the first line indented after `f"...:\n  {digest_text}"`,
+    leaving the second `- you answered Y` at top level — and after truncation
+    drops the parent bullet, the orphan line looks like a separate digest entry.
+    """
+    return "\n".join(indent + ln if ln.strip() else "" for ln in text.split("\n"))
+
+
 def _render_block(
     *,
     lang: str,
-    voice_digests: Iterable[Any],   # tuple (session_id, created_at, duration_s, digest_text)
+    voice_digests: Iterable[Any],   # tuple (session_id, started_at, duration_s, digest_text)
     chat_digests: Iterable[Any],    # ChatTextDigest-like (created_at, msg_count, digest_text)
     recent: Iterable[Any],          # ChatMessage-like (role, source, content, created_at, voice_session_id)
     exclude_voice_session_id: Optional[str],
@@ -92,13 +112,13 @@ def _render_block(
 
     if lang == "en":
         title = "## Previous conversation context"
-        digests_header = "### Summary of previous sessions"
-        recent_header = f"### Recent exchanges ({len(recent_list)})"
+        digests_header = DIGESTS_HEADER_EN
+        recent_header = f"{RECENT_HEADER_EN} ({len(recent_list)})"
         footer = "Continue this conversation in the same vein."
     else:
         title = "## Contexte conversation précédente"
-        digests_header = "### Résumé sessions antérieures"
-        recent_header = f"### Derniers échanges ({len(recent_list)})"
+        digests_header = DIGESTS_HEADER_FR
+        recent_header = f"{RECENT_HEADER_FR} ({len(recent_list)})"
         footer = "Continue dans la lignée de cette conversation."
 
     lines: list[str] = [title, ""]
@@ -106,18 +126,18 @@ def _render_block(
     # Digests section (chronological merge of voice + chat digests)
     digest_rows: list[tuple[datetime, str]] = []
     for vd in voice_list:
-        session_id, created_at, duration_s, digest_text = vd
-        date_str = created_at.strftime("%Y-%m-%d")
+        session_id, started_at, duration_s, digest_text = vd
+        date_str = started_at.strftime("%Y-%m-%d")
         duration_min = max(1, int(duration_s or 0) // 60)
         kind = f"(voice {duration_min} min)" if lang == "fr" else f"(voice {duration_min} min)"
-        digest_rows.append((created_at, f"- {date_str} {kind} :\n  {digest_text}"))
+        digest_rows.append((started_at, f"- {date_str} {kind} :\n{_indent_body(digest_text)}"))
     for cd in chat_list:
         date_str = cd.created_at.strftime("%Y-%m-%d")
         kind = (
             f"(chat texte {cd.msg_count} msgs)" if lang == "fr"
             else f"(text chat {cd.msg_count} msgs)"
         )
-        digest_rows.append((cd.created_at, f"- {date_str} {kind} :\n  {cd.digest_text}"))
+        digest_rows.append((cd.created_at, f"- {date_str} {kind} :\n{_indent_body(cd.digest_text)}"))
 
     if digest_rows:
         digest_rows.sort(key=lambda r: r[0])
@@ -174,13 +194,11 @@ def _truncate_to_cap(block: str, cap: int, *, lang: str) -> str:
         return len("\n".join(items).encode("utf-8"))
 
     # Identify the recent section start so we never drop from there first
-    try:
-        recent_idx = next(
-            i for i, line in enumerate(lines)
-            if line.startswith("### Derniers échanges") or line.startswith("### Recent exchanges")
-        )
-    except StopIteration:
-        recent_idx = None
+    recent_idx = next(
+        (i for i, line in enumerate(lines)
+         if line.startswith(RECENT_HEADER_FR) or line.startswith(RECENT_HEADER_EN)),
+        None,
+    )
 
     # 1. Drop oldest digest bullets (lines starting with "- " before recent section)
     digest_bullet_indices = [
@@ -190,9 +208,11 @@ def _truncate_to_cap(block: str, cap: int, *, lang: str) -> str:
     while join_size(lines) > effective_cap and digest_bullet_indices:
         idx = digest_bullet_indices.pop(0)
         lines[idx] = ""
-        # also drop the indented continuation line that follows (digest body)
-        if idx + 1 < len(lines) and lines[idx + 1].startswith("  "):
-            lines[idx + 1] = ""
+        # Drop ALL consecutive indented continuation lines (digest body can span multiple lines)
+        j = idx + 1
+        while j < len(lines) and lines[j].startswith("  "):
+            lines[j] = ""
+            j += 1
 
     # 2. Drop oldest verbatim rows (start at recent_idx + 2 to skip header + blank line)
     if join_size(lines) > effective_cap and recent_idx is not None:
@@ -206,9 +226,9 @@ def _truncate_to_cap(block: str, cap: int, *, lang: str) -> str:
 
     # Re-join, collapse multiple blank lines, append marker
     truncated = "\n".join(line for line in lines if line is not None)
+    parts = truncated.split("\n")
     truncated = "\n".join(
-        ln for i, ln in enumerate(truncated.split("\n"))
-        if not (ln == "" and i > 0 and truncated.split("\n")[i - 1] == "")
+        ln for i, ln in enumerate(parts) if not (ln == "" and i > 0 and parts[i - 1] == "")
     )
     return truncated.rstrip() + marker
 

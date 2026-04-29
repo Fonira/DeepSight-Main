@@ -179,6 +179,34 @@ def test_truncate_to_cap_keeps_recent_drops_old_digests():
     assert "[contexte tronqué]" in out  # truncation marker
 
 
+def test_truncate_to_cap_no_orphan_top_level_bullets():
+    """Multi-bullet digest_text must not leave orphan '- ...' lines at top level after truncation."""
+    from voice.context_builder import _truncate_to_cap, _render_block
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    voice_digests = [
+        (f"sess-{i}", now - timedelta(days=10 - i), 300,
+         "- user a demandé X\n- tu as répondu Y\n- conclusion Z")
+        for i in range(20)
+    ]
+    block = _render_block(
+        lang="fr",
+        voice_digests=voice_digests,
+        chat_digests=[],
+        recent=[],
+        exclude_voice_session_id=None,
+    )
+    # Force truncation with a tight cap
+    out = _truncate_to_cap(block, cap=500, lang="fr")
+    # All remaining "- " lines must be parent date-bullets like "- 2026-XX-XX (voice N min) :"
+    # NOT orphan "- user a demandé X" lines
+    for line in out.split("\n"):
+        if line.startswith("- "):
+            assert "(voice" in line or "(chat" in line, \
+                f"Orphan top-level bullet found: {line!r}"
+
+
 # ── build_unified_context_block (DB integration) ─────────────────────────────
 
 
@@ -230,7 +258,7 @@ async def test_build_unified_block_db_integration_voice_target(async_db_session,
 
 
 @pytest.mark.asyncio
-async def test_build_unified_block_voice_cap_enforced(async_db_session, sample_user, sample_summary, monkeypatch):
+async def test_build_unified_block_voice_cap_enforced(async_db_session, sample_user, sample_summary):
     """When the rendered block exceeds 12 KB, truncate to 12 KB."""
     from datetime import datetime, timedelta, timezone
     from db.database import VoiceSession
@@ -260,3 +288,34 @@ async def test_build_unified_block_voice_cap_enforced(async_db_session, sample_u
     )
 
     assert len(out.encode("utf-8")) <= VOICE_SYSTEM_PROMPT_CAP_BYTES
+    assert "[contexte tronqué]" in out
+
+
+@pytest.mark.asyncio
+async def test_build_unified_block_chat_target_uses_30kb_cap(async_db_session, sample_user, sample_summary):
+    """target='chat' uses CHAT_HISTORY_CAP_BYTES, allows larger blocks than 'voice'."""
+    from datetime import datetime, timedelta, timezone
+    from db.database import ChatMessage
+    from voice.context_builder import build_unified_context_block, CHAT_HISTORY_CAP_BYTES
+
+    now = datetime.now(timezone.utc)
+    # 35 messages is over the 30 verbatim limit but well under 30 KB
+    for i in range(35):
+        async_db_session.add(ChatMessage(
+            user_id=sample_user.id, summary_id=sample_summary.id,
+            role="user" if i % 2 == 0 else "assistant",
+            content=f"message number {i} with some content",
+            source="text",
+            created_at=now - timedelta(hours=35 - i),
+        ))
+    await async_db_session.commit()
+
+    out = await build_unified_context_block(
+        async_db_session,
+        summary_id=sample_summary.id,
+        user_id=sample_user.id,
+        lang="fr",
+        target="chat",
+    )
+    assert len(out.encode("utf-8")) <= CHAT_HISTORY_CAP_BYTES
+    assert "### Derniers échanges (30)" in out  # capped at RECENT_VERBATIM_LIMIT=30
