@@ -1575,7 +1575,7 @@ export const History: React.FC = () => {
                   {selectedVideoDetail.mode === "quick_chat" &&
                   !selectedVideoDetail.summary_content ? (
                     /* Quick Chat Upgrade Panel */
-                    (<div className="card p-6">
+                    <div className="card p-6">
                       <EmptyState
                         icon={BookOpen}
                         title={
