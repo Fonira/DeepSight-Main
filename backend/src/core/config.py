@@ -88,10 +88,21 @@ class _DeepSightSettings(BaseSettings):
     STRIPE_PUBLISHABLE_KEY_TEST: str = ""
     STRIPE_PUBLISHABLE_KEY_LIVE: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
+    # Pricing v0 LEGACY — conservees pour grandfathering / mapping webhooks
     STRIPE_PRICE_PLUS_TEST: str = ""
     STRIPE_PRICE_PLUS_LIVE: str = ""
-    STRIPE_PRICE_PRO_TEST: str = ""
+    STRIPE_PRICE_PRO_TEST: str = ""    # ⚠ ancien Pro 9.99 € (legacy), pas le nouveau Pro 8.99 €
     STRIPE_PRICE_PRO_LIVE: str = ""
+
+    # Pricing v2 — 4 plans actifs (Pro 8.99 / Expert 19.99) × 2 cycles (8 vars)
+    STRIPE_PRICE_PRO_MONTHLY_TEST: str = ""
+    STRIPE_PRICE_PRO_MONTHLY_LIVE: str = ""
+    STRIPE_PRICE_PRO_YEARLY_TEST: str = ""
+    STRIPE_PRICE_PRO_YEARLY_LIVE: str = ""
+    STRIPE_PRICE_EXPERT_MONTHLY_TEST: str = ""
+    STRIPE_PRICE_EXPERT_MONTHLY_LIVE: str = ""
+    STRIPE_PRICE_EXPERT_YEARLY_TEST: str = ""
+    STRIPE_PRICE_EXPERT_YEARLY_LIVE: str = ""
 
     # -- Google OAuth --
     GOOGLE_OAUTH_ENABLED: str = "false"
@@ -322,17 +333,42 @@ STRIPE_CONFIG = {
     "PUBLISHABLE_KEY_LIVE": _settings.STRIPE_PUBLISHABLE_KEY_LIVE,
     "WEBHOOK_SECRET": _settings.STRIPE_WEBHOOK_SECRET,
     "PRICES": {
+        # v0 legacy (grandfathering — ne plus utiliser pour nouveaux checkouts)
         "plus": {
             "test": _settings.STRIPE_PRICE_PLUS_TEST,
             "live": _settings.STRIPE_PRICE_PLUS_LIVE,
             "amount": 499,
-            "name": "Plus",
+            "name": "Plus (legacy)",
         },
+        # v2 — actif
         "pro": {
+            "monthly": {
+                "test": _settings.STRIPE_PRICE_PRO_MONTHLY_TEST,
+                "live": _settings.STRIPE_PRICE_PRO_MONTHLY_LIVE,
+                "amount": 899,
+            },
+            "yearly": {
+                "test": _settings.STRIPE_PRICE_PRO_YEARLY_TEST,
+                "live": _settings.STRIPE_PRICE_PRO_YEARLY_LIVE,
+                "amount": 8990,
+            },
+            "name": "Pro",
+            # legacy fields pour rétro-compat code v0 — pointent sur l'ancien Pro 9.99
             "test": _settings.STRIPE_PRICE_PRO_TEST,
             "live": _settings.STRIPE_PRICE_PRO_LIVE,
-            "amount": 999,
-            "name": "Pro",
+        },
+        "expert": {
+            "monthly": {
+                "test": _settings.STRIPE_PRICE_EXPERT_MONTHLY_TEST,
+                "live": _settings.STRIPE_PRICE_EXPERT_MONTHLY_LIVE,
+                "amount": 1999,
+            },
+            "yearly": {
+                "test": _settings.STRIPE_PRICE_EXPERT_YEARLY_TEST,
+                "live": _settings.STRIPE_PRICE_EXPERT_YEARLY_LIVE,
+                "amount": 19990,
+            },
+            "name": "Expert",
         },
     },
 }
