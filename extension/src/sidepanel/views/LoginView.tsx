@@ -214,6 +214,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
         </a>
         <span>&middot;</span>
         <a
+          href="https://www.deepsightsynthesis.com/forgot-password"
+          target="_blank"
+          rel="noreferrer"
+        >
+          {t.login.forgotPassword}
+        </a>
+        <span>&middot;</span>
+        <a
           href="https://www.deepsightsynthesis.com"
           target="_blank"
           rel="noreferrer"
