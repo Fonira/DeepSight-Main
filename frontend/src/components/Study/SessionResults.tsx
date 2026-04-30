@@ -12,7 +12,7 @@ interface SessionResultsProps {
   accuracy: number;
   newBadges: string[];
   onClose: () => void;
-  onContinue: () => void;
+  onContinue?: () => void;
 }
 
 interface StatItem {
@@ -127,13 +127,15 @@ export const SessionResults: React.FC<SessionResultsProps> = ({
         >
           Retour au hub
         </button>
-        <button
-          type="button"
-          onClick={onContinue}
-          className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-transform hover:scale-[1.02] active:scale-[0.98]"
-        >
-          Continuer (+10 XP)
-        </button>
+        {onContinue && (
+          <button
+            type="button"
+            onClick={onContinue}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Continuer (+10 XP)
+          </button>
+        )}
       </div>
     </motion.div>
   );

@@ -538,8 +538,8 @@ export const StudyPage: React.FC = () => {
 
   const currentProgress =
     activeTab === "flashcards" ? flashcardProgress : quizProgress;
-  const hasFlashcards = studyData.flashcards.length > 0;
-  const hasQuiz = studyData.quiz.length > 0;
+  const hasFlashcards = (studyData?.flashcards.length ?? 0) > 0;
+  const hasQuiz = (studyData?.quiz.length ?? 0) > 0;
 
   // ═════════════════════════════════════════════════════════════════════════════
   // RENDER — Main
@@ -588,14 +588,14 @@ export const StudyPage: React.FC = () => {
 
         {/* Video title */}
         <h2 className="text-xl font-bold text-white text-center mb-6 line-clamp-2">
-          {studyData.videoTitle}
+          {studyData?.videoTitle ?? ""}
         </h2>
 
         {/* 💡 Warm-Up Card — avant le début de l'étude */}
         {showWarmUp && !isSessionMode && !showResults && (
           <AnimatePresence>
             <StudyWarmUp
-              category={studyData.flashcards[0]?.tags?.[0]}
+              category={studyData?.flashcards[0]?.tags?.[0]}
               onStart={() => setShowWarmUp(false)}
             />
           </AnimatePresence>
@@ -800,7 +800,7 @@ export const StudyPage: React.FC = () => {
                 {texts.flashcards}
                 {hasFlashcards && (
                   <span className="ml-1 px-2 py-0.5 rounded-full bg-gray-700 text-xs">
-                    {studyData.flashcards.length}
+                    {studyData?.flashcards.length ?? 0}
                   </span>
                 )}
               </button>
@@ -822,7 +822,7 @@ export const StudyPage: React.FC = () => {
                 {texts.quiz}
                 {hasQuiz && (
                   <span className="ml-1 px-2 py-0.5 rounded-full bg-gray-700 text-xs">
-                    {studyData.quiz.length}
+                    {studyData?.quiz.length ?? 0}
                   </span>
                 )}
               </button>
@@ -857,8 +857,8 @@ export const StudyPage: React.FC = () => {
                   score={finalScore.correct}
                   total={
                     activeTab === "flashcards"
-                      ? studyData.flashcards.length
-                      : studyData.quiz.length
+                      ? (studyData?.flashcards.length ?? 0)
+                      : (studyData?.quiz.length ?? 0)
                   }
                   correct={finalScore.correct}
                   incorrect={finalScore.incorrect}
@@ -869,7 +869,7 @@ export const StudyPage: React.FC = () => {
               ) : activeTab === "flashcards" ? (
                 hasFlashcards ? (
                   <FlashcardDeck
-                    flashcards={studyData.flashcards}
+                    flashcards={studyData?.flashcards ?? []}
                     onProgress={handleFlashcardProgress}
                     onComplete={handleFlashcardComplete}
                     language={language}
@@ -879,7 +879,7 @@ export const StudyPage: React.FC = () => {
                 )
               ) : hasQuiz ? (
                 <QuizQuestion
-                  questions={studyData.quiz}
+                  questions={studyData?.quiz ?? []}
                   onProgress={handleQuizProgress}
                   onComplete={handleQuizComplete}
                   language={language}

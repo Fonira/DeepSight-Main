@@ -31,6 +31,7 @@ export interface Flashcard {
   front: string;
   back: string;
   id?: string | number;
+  tags?: string[];
 }
 
 interface FlashcardDeckProps {
