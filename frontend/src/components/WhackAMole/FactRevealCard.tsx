@@ -45,7 +45,7 @@ export const FactRevealCard: React.FC<FactRevealCardProps> = ({
 
   const handleTermClick = () => {
     if (isClickable) {
-      navigate(`/dashboard?id=${fact.summaryId}`);
+      navigate(`/hub?summary=${fact.summaryId}&open_summary=1`);
       onDismiss();
     }
   };

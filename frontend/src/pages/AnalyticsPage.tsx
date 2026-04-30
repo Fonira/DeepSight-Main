@@ -522,7 +522,9 @@ export const AnalyticsPage: React.FC = () => {
                 return (
                   <div
                     key={analysis.id}
-                    onClick={() => navigate(`/dashboard?id=${analysis.id}`)}
+                    onClick={() =>
+                      navigate(`/hub?summary=${analysis.id}&open_summary=1`)
+                    }
                     className="flex items-center gap-4 p-3 rounded-xl bg-bg-tertiary/50 hover:bg-bg-tertiary transition-all cursor-pointer group"
                   >
                     {/* Thumbnail */}

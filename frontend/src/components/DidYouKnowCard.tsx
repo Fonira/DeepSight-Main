@@ -84,7 +84,7 @@ export const DidYouKnowCard: React.FC = () => {
 
   const handleTermClick = useCallback(() => {
     if (displayedWord?.source === "history" && displayedWord?.summaryId) {
-      navigate(`/dashboard?id=${displayedWord.summaryId}`);
+      navigate(`/hub?summary=${displayedWord.summaryId}&open_summary=1`);
     }
   }, [displayedWord, navigate]);
 

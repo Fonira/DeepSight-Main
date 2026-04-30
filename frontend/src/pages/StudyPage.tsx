@@ -403,7 +403,10 @@ export const StudyPage: React.FC = () => {
   }, []);
 
   const handleBack = () => {
-    navigate(`/dashboard?id=${summaryId}`);
+    // Hub-first : retour vers la conv hub (pas le panel Dashboard).
+    // Pas de open_summary=1 — l'utilisateur connaît déjà l'analyse après
+    // une session de révision, on n'a pas besoin de dérouler le résumé.
+    navigate(`/hub?summary=${summaryId}`);
   };
 
   // ═════════════════════════════════════════════════════════════════════════════

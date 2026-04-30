@@ -92,7 +92,7 @@ export function NotificationBell({
     if (notification.data?.action_url) {
       navigate(notification.data.action_url);
     } else if (notification.data?.summary_id) {
-      navigate(`/dashboard?id=${notification.data.summary_id}`);
+      navigate(`/hub?summary=${notification.data.summary_id}&open_summary=1`);
     }
     markAsRead(index);
     setIsOpen(false);
