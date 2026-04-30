@@ -1,16 +1,23 @@
-"""Tests for the ``voice_call_quick`` plan capability matrix (Task 7).
+"""Tests for the ``voice_call_quick`` plan capability matrix.
 
-Spec § f exposes a per-plan policy tuple :
-  free   → ("trial_only",      3)
-  pro    → ("upgrade_cta",     None)
-  expert → ("monthly_minutes", 30)
+Pricing v2 (April 2026) — see ``backend/src/billing/plan_config.py`` and
+``CLAUDE.md`` § "Pricing Plans". The capability tuple matrix is now:
+
+  free       → ("trial_only",      3)    # 1-shot 3-min lifetime trial
+  pro    v2  → ("monthly_minutes", 30)   # 30 min/mo  (intermediate paid tier)
+  expert v2  → ("monthly_minutes", 120)  # 120 min/mo (premium tier)
+
+Pricing v2 reshaped the tier names: the legacy v0 tier ``plus`` is now an
+alias for ``pro`` v2 (same 30 min quota), and the legacy v0 ``pro`` is now
+an alias for ``expert`` v2 — see ``PLAN_ALIASES`` and the
+``VOICE_CALL_QUICK_CAPABILITY`` dict. There is no longer an ``upgrade_cta``
+policy: every paid tier in v2 has voice access (only the ``free`` trial
+is gated by lifetime usage). Pre-v2 spec § f had ``pro → upgrade_cta`` —
+that branch was dropped when the pricing got reshuffled.
 
 The existing ``is_feature_available(plan, feature, platform)`` returns a
 boolean and is used by 70+ call sites — keeping its signature unchanged.
-A NEW helper ``get_voice_call_quick_capability(plan)`` exposes the spec
-tuple. The boolean accessor still returns True for plans where the call
-type is reachable (Free trial, Expert monthly) and False otherwise (Pro
-gets the CTA upgrade-only path, treated as "not available").
+The helper ``get_voice_call_quick_capability(plan)`` exposes the v2 tuple.
 """
 
 import pytest
@@ -21,29 +28,26 @@ from billing.plan_config import (
 )
 
 
-# ── Spec tuple matrix (the canonical source of truth) ────────────────────
+# ── Spec tuple matrix (Pricing v2, the canonical source of truth) ────────
 
 
 def test_voice_call_quick_free_returns_trial_only_3():
     assert get_voice_call_quick_capability("free") == ("trial_only", 3)
 
 
-def test_voice_call_quick_pro_returns_upgrade_cta_none():
-    """In the spec, 'pro' is the intermediate paid tier blocked from voice
-    (always sees CTA upgrade to expert). Here it maps to the actual `plus`
-    tier for compatibility — `pro` (Spec) ≡ `plus` (current SSOT) since
-    the code's `pro` IS the premium tier."""
-    assert get_voice_call_quick_capability("plus") == ("upgrade_cta", None)
-
-
-def test_voice_call_quick_expert_returns_monthly_minutes_30():
-    """`expert` (Spec) ≡ `pro` (current SSOT premium tier)."""
+def test_voice_call_quick_pro_v2_returns_monthly_minutes_30():
+    """Pro v2 (intermediate paid tier, 8.99 €/mo) — 30 min/mo voice quota."""
     assert get_voice_call_quick_capability("pro") == ("monthly_minutes", 30)
 
 
-def test_voice_call_quick_capability_with_legacy_expert_alias():
-    """The literal `expert` alias still resolves to the premium policy."""
-    assert get_voice_call_quick_capability("expert") == ("monthly_minutes", 30)
+def test_voice_call_quick_expert_v2_returns_monthly_minutes_120():
+    """Expert v2 (premium tier, 19.99 €/mo) — 120 min/mo voice quota."""
+    assert get_voice_call_quick_capability("expert") == ("monthly_minutes", 120)
+
+
+def test_voice_call_quick_legacy_plus_alias_resolves_to_pro_30():
+    """v0 ``plus`` is grandfathered as an alias of v2 ``pro`` (30 min/mo)."""
+    assert get_voice_call_quick_capability("plus") == ("monthly_minutes", 30)
 
 
 def test_voice_call_quick_unknown_plan_defaults_to_free():
@@ -60,12 +64,12 @@ def test_voice_call_quick_is_available_for_free_on_all_platforms(platform):
 
 
 @pytest.mark.parametrize("platform", ["web", "mobile", "extension"])
-def test_voice_call_quick_is_available_for_expert_on_all_platforms(platform):
-    """Expert (== `pro` SSOT premium) gets 30 min monthly — True."""
+def test_voice_call_quick_is_available_for_pro_on_all_platforms(platform):
+    """Pro v2 has voice access (30 min/mo) — boolean accessor returns True."""
     assert is_feature_available("pro", "voice_call_quick", platform) is True
 
 
 @pytest.mark.parametrize("platform", ["web", "mobile", "extension"])
-def test_voice_call_quick_is_blocked_for_pro_intermediate(platform):
-    """Spec's `pro` (== `plus` SSOT intermediate) sees CTA only — False."""
-    assert is_feature_available("plus", "voice_call_quick", platform) is False
+def test_voice_call_quick_is_available_for_expert_on_all_platforms(platform):
+    """Expert v2 has voice access (120 min/mo) — boolean accessor returns True."""
+    assert is_feature_available("expert", "voice_call_quick", platform) is True

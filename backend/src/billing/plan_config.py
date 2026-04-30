@@ -283,7 +283,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
-                "voice_call_quick": False,  # Quick Voice Call: CTA-only — upgrade to Pro
+                "voice_call_quick": True,   # Quick Voice Call V1 — 30 min/mois (Pro v2)
                 "debate": True,
                 "deep_research": False,
                 "geo": True,
@@ -301,7 +301,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
-                "voice_call_quick": False,  # Quick Voice Call: CTA-only — upgrade to Pro
+                "voice_call_quick": True,   # Quick Voice Call V1 — 30 min/mois (Pro v2)
                 "debate": False,
                 "deep_research": False,
                 "geo": True,
@@ -319,7 +319,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
-                "voice_call_quick": False,  # Quick Voice Call: CTA-only — upgrade to Pro
+                "voice_call_quick": True,   # Quick Voice Call V1 — 30 min/mois (Pro v2)
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
