@@ -10,6 +10,7 @@ import MicroDoodleBackground from "./shared/MicroDoodleBackground";
 import { AmbientLightingProvider } from "./contexts/AmbientLightingContext";
 import { AmbientLightLayer } from "./components/AmbientLightLayer";
 import { SunflowerLayer } from "./components/SunflowerLayer";
+import DoodleBackground from "./components/DoodleBackground";
 
 const AMBIENT_PREF_KEY = "ambient_lighting_enabled";
 
@@ -315,11 +316,14 @@ export const App: React.FC = () => {
   if (!voiceChecked) {
     return (
       <AmbientLightingProvider enabled={ambientEnabled}>
-        <AmbientLightLayer />
-        <SunflowerLayer />
-        <div className="app-container">
-          <div className="loading-view">
-            <DeepSightSpinner size="md" speed="normal" />
+        <div className="ds-app-root">
+          <DoodleBackground />
+          <AmbientLightLayer />
+          <SunflowerLayer />
+          <div className="app-container">
+            <div className="loading-view">
+              <DeepSightSpinner size="md" speed="normal" />
+            </div>
           </div>
         </div>
       </AmbientLightingProvider>
@@ -328,67 +332,73 @@ export const App: React.FC = () => {
   if (voiceContext || pendingVoiceCall) {
     return (
       <AmbientLightingProvider enabled={ambientEnabled}>
-        <AmbientLightLayer />
-        <SunflowerLayer />
-        <VoiceView
-          context={voiceContext}
-          pendingCall={pendingVoiceCall}
-          onReturnToMain={handleReturnFromVoice}
-        />
+        <div className="ds-app-root">
+          <DoodleBackground />
+          <AmbientLightLayer />
+          <SunflowerLayer />
+          <VoiceView
+            context={voiceContext}
+            pendingCall={pendingVoiceCall}
+            onReturnToMain={handleReturnFromVoice}
+          />
+        </div>
       </AmbientLightingProvider>
     );
   }
 
   return (
     <AmbientLightingProvider enabled={ambientEnabled}>
-      <AmbientLightLayer />
-      <SunflowerLayer />
-      <div
-        className="app-container noise-overlay ambient-glow"
-        style={{ position: "relative" }}
-      >
-        <MicroDoodleBackground variant={getCurrentVariant()} />
-        <div style={{ position: "relative", zIndex: 1 }}>
-          {/* Toast notification */}
-          {toast && (
-            <div
-              className={`ds-toast ds-toast-${toast.type}`}
-              onClick={() => setToast(null)}
-            >
-              {toast.message}
-            </div>
-          )}
+      <div className="ds-app-root">
+        <DoodleBackground />
+        <AmbientLightLayer />
+        <SunflowerLayer />
+        <div
+          className="app-container noise-overlay ambient-glow"
+          style={{ position: "relative" }}
+        >
+          <MicroDoodleBackground variant={getCurrentVariant()} />
+          <div style={{ position: "relative", zIndex: 1 }}>
+            {/* Toast notification */}
+            {toast && (
+              <div
+                className={`ds-toast ds-toast-${toast.type}`}
+                onClick={() => setToast(null)}
+              >
+                {toast.message}
+              </div>
+            )}
 
-          {view === "loading" && (
-            <div className="loading-view">
-              <DeepSightSpinner
-                size="md"
-                speed="normal"
-                showLabel
-                label="DeepSight"
+            {view === "loading" && (
+              <div className="loading-view">
+                <DeepSightSpinner
+                  size="md"
+                  speed="normal"
+                  showLabel
+                  label="DeepSight"
+                />
+              </div>
+            )}
+
+            {view === "login" && (
+              <LoginView
+                onLogin={handleLogin}
+                onGoogleLogin={handleGoogleLogin}
+                onGuestMode={handleGuestMode}
+                error={error}
               />
-            </div>
-          )}
+            )}
 
-          {view === "login" && (
-            <LoginView
-              onLogin={handleLogin}
-              onGoogleLogin={handleGoogleLogin}
-              onGuestMode={handleGuestMode}
-              error={error}
-            />
-          )}
-
-          {view === "main" && (
-            <MainView
-              user={user}
-              planInfo={planInfo}
-              isGuest={isGuest}
-              onLogout={handleLogout}
-              onLoginRedirect={handleLoginRedirect}
-              onError={showError}
-            />
-          )}
+            {view === "main" && (
+              <MainView
+                user={user}
+                planInfo={planInfo}
+                isGuest={isGuest}
+                onLogout={handleLogout}
+                onLoginRedirect={handleLoginRedirect}
+                onError={showError}
+              />
+            )}
+          </div>
         </div>
       </div>
     </AmbientLightingProvider>
