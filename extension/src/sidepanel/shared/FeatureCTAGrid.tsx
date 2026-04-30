@@ -32,7 +32,7 @@ const FEATURES: FeatureItem[] = [
     labelKey: "flashcards",
     descKey: "flashcardsDesc",
     hash: "#flashcards",
-    price: "5,99\u20AC",
+    price: "8,99\u20AC",
   },
   {
     key: "mind_maps",
@@ -40,7 +40,7 @@ const FEATURES: FeatureItem[] = [
     labelKey: "mindMaps",
     descKey: "mindMapsDesc",
     hash: "#mindmap",
-    price: "5,99\u20AC",
+    price: "8,99\u20AC",
   },
   {
     key: "web_search",
@@ -48,7 +48,7 @@ const FEATURES: FeatureItem[] = [
     labelKey: "webSearch",
     descKey: "webSearchDesc",
     hash: "#websearch",
-    price: "5,99\u20AC",
+    price: "8,99\u20AC",
   },
   {
     key: "exports",
@@ -56,7 +56,7 @@ const FEATURES: FeatureItem[] = [
     labelKey: "exports",
     descKey: "exportsDesc",
     hash: "#export",
-    price: "5,99\u20AC",
+    price: "8,99\u20AC",
   },
   {
     key: "playlists",
@@ -64,7 +64,7 @@ const FEATURES: FeatureItem[] = [
     labelKey: "playlists",
     descKey: "playlistsDesc",
     hash: "#playlists",
-    price: "5,99\u20AC",
+    price: "8,99\u20AC",
   },
 ];
 
