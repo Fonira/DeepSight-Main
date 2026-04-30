@@ -1544,6 +1544,57 @@ async def create_voice_session(
                 },
             )
 
+        # ── Build identity + session prefix (shared by all agent types) ─────
+        # See backend/src/voice/prompt_identity.py and prompt_session.py.
+        # The DeepSight brand identity goes BEFORE every agent prompt so the
+        # LLM has a stable, branded sense of self regardless of agent_type.
+        # The session block (user profile + plan + recent analyses) is appended
+        # for every agent EXCEPT companion — companion already injects its own
+        # user profile via render_companion_prompt, so we only prepend identity.
+        from voice.prompt_identity import get_identity_block
+        from voice.prompt_session import build_session_block as _build_session_block
+
+        _identity_block = get_identity_block(language)
+
+        # Infer platform from request shape (no explicit field on VoiceSessionRequest):
+        #   - video_url set → mobile V3 path
+        #   - is_streaming + video_id → extension V1 (Chrome MV3)
+        #   - else → web
+        if getattr(request, "video_url", None):
+            _inferred_platform = "mobile"
+        elif request.is_streaming and request.video_id:
+            _inferred_platform = "extension"
+        else:
+            _inferred_platform = "web"
+
+        try:
+            _session_block = await _build_session_block(
+                user=current_user,
+                db=db,
+                platform=_inferred_platform,
+                agent_type=agent_config.agent_type,
+                surface="quick_voice_call" if request.is_streaming else "voice_call",
+                language=language,
+                voice_quota_remaining_min=(
+                    streaming_quota.max_minutes
+                    if (request.is_streaming and streaming_quota and streaming_quota.allowed)
+                    else None
+                ),
+            )
+        except Exception as _session_exc:  # noqa: BLE001 — non-fatal
+            logger.warning(
+                "Voice session: build_session_block failed (non-fatal)",
+                extra={
+                    "user_id": current_user.id,
+                    "session_id": voice_session.id,
+                    "error": str(_session_exc),
+                },
+            )
+            _session_block = ""
+
+        _common_prefix = f"{_identity_block}\n\n"
+        _full_prefix = f"{_common_prefix}{_session_block}\n\n" if _session_block else _common_prefix
+
         # ── Build system prompt ──
         agent_prompt = agent_config.get_system_prompt(language)
 
@@ -1553,7 +1604,8 @@ async def create_voice_session(
             # injects the user's profile (prénom, plan, streak, themes, recent
             # analyses) and pre-prepared recommendations. Falls back to the
             # static agent prompt if anything goes wrong so the call still
-            # connects.
+            # connects. Companion already includes user profile + language
+            # enforcement → we only prepend brand identity.
             try:
                 redis_client = _resolve_redis_client()
                 services = _build_companion_services(db=db, redis=redis_client, user=current_user)
@@ -1563,7 +1615,8 @@ async def create_voice_session(
                     redis=redis_client,
                     services=services,
                 )
-                system_prompt = render_companion_prompt(companion_ctx)
+                _companion_body = render_companion_prompt(companion_ctx, language=language)
+                system_prompt = f"{_common_prefix}{_companion_body}"
                 logger.info(
                     "Voice session: companion prompt enriched",
                     extra={
@@ -1584,16 +1637,17 @@ async def create_voice_session(
                         "error": str(companion_exc),
                     },
                 )
-                system_prompt = agent_prompt
+                system_prompt = f"{_common_prefix}{agent_prompt}"
         elif debate_ctx:
             ctx_label = "CONTEXTE DU DÉBAT" if language == "fr" else "DEBATE CONTEXT"
-            system_prompt = f"{agent_prompt}\n\n--- {ctx_label} ---\n{context_block}"
+            system_prompt = f"{_full_prefix}{agent_prompt}\n\n--- {ctx_label} ---\n{context_block}"
         elif rich_ctx:
             ctx_label = "CONTEXTE VIDÉO" if language == "fr" else "VIDEO CONTEXT"
             title_label = "Titre" if language == "fr" else "Title"
             channel_label = "Chaîne" if language == "fr" else "Channel"
             duration_label = "Durée" if language == "fr" else "Duration"
             system_prompt = (
+                f"{_full_prefix}"
                 f"{agent_prompt}\n\n"
                 f"--- {ctx_label} ---\n"
                 f"{title_label} : {rich_ctx.video_title}\n"
@@ -1650,7 +1704,7 @@ async def create_voice_session(
             meta_lines.append(f"{id_label} : {request.video_id}")
             meta_lines.append(stream_note)
             meta_block = "\n".join(meta_lines)
-            system_prompt = f"{agent_prompt}\n\n{meta_block}"
+            system_prompt = f"{_full_prefix}{agent_prompt}\n\n{meta_block}"
 
             logger.info(
                 "Voice streaming session: injected video meta into system prompt",
@@ -1662,22 +1716,28 @@ async def create_voice_session(
                 },
             )
         else:
-            system_prompt = agent_prompt
+            system_prompt = f"{_full_prefix}{agent_prompt}"
 
         # ── Spec merge voice ↔ chat (2026-04-29), Task 6 ────────────────────
         # Inject the unified context block (voice digests + chat digests + last
         # verbatim messages) so the voice agent picks up where the previous
         # voice/text exchanges left off. Skipped for debate (uses its own
-        # context block) and when there is no summary_id (companion mode
-        # without active video). The newly-created voice_session is excluded
-        # from the SELECT so its own (still empty) rows aren't re-injected.
-        if request.summary_id and not debate_ctx:
+        # context block) and when no summary_id is available.
+        #
+        # Streaming sessions auto-create a placeholder Summary (cf v1_summary /
+        # v3_summary above), so ``voice_session.summary_id`` is set even when
+        # ``request.summary_id`` was None. We use that to fetch unified context,
+        # giving the streaming agent memory of past sessions on the same video.
+        # The newly-created voice_session is excluded from the SELECT so its
+        # own (still empty) rows aren't re-injected.
+        effective_summary_id = request.summary_id or voice_session.summary_id
+        if effective_summary_id and not debate_ctx:
             try:
                 from voice.context_builder import build_unified_context_block
 
                 _history_block = await build_unified_context_block(
                     db,
-                    summary_id=request.summary_id,
+                    summary_id=effective_summary_id,
                     user_id=current_user.id,
                     lang=language,
                     target="voice",
@@ -1688,10 +1748,11 @@ async def create_voice_session(
                     logger.info(
                         "Voice session: unified context block injected",
                         extra={
-                            "summary_id": request.summary_id,
+                            "summary_id": effective_summary_id,
                             "user_id": current_user.id,
                             "session_id": voice_session.id,
                             "block_chars": len(_history_block),
+                            "streaming": bool(request.is_streaming),
                         },
                     )
             except Exception as _hist_exc:
@@ -1699,7 +1760,7 @@ async def create_voice_session(
                 logger.warning(
                     "Voice session: failed to inject unified context (non-fatal)",
                     extra={
-                        "summary_id": request.summary_id,
+                        "summary_id": effective_summary_id,
                         "error": str(_hist_exc),
                     },
                 )
@@ -1779,6 +1840,14 @@ async def create_voice_session(
                     if language == "fr"
                     else (f'Hi! I\'m ready to discuss the video "{rich_ctx.video_title}". What would you like to know?')
                 )
+
+        # Streaming agent: interpolate {video_title} placeholder (front-provided title,
+        # already resolved via YouTube oEmbed in the system_prompt meta-block above when missing)
+        if agent_config.agent_type == "explorer_streaming" and "{video_title}" in first_message:
+            streaming_title = (request.video_title or "").strip()
+            if not streaming_title:
+                streaming_title = "cette vidéo" if language == "fr" else "this video"
+            first_message = first_message.replace("{video_title}", streaming_title)
 
         # Build voice settings from user preferences
         voice_settings = user_prefs.to_voice_settings()

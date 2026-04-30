@@ -33,6 +33,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from typing import (
     Any,
     AsyncIterator,
@@ -46,6 +47,12 @@ logger = logging.getLogger(__name__)
 
 # Channel format used by the SSE endpoint to subscribe.
 PUBSUB_CHANNEL_PREFIX = "voice:ctx:"
+
+# Heartbeat cadence — published every N seconds while the orchestrator runs
+# so the side panel SSE consumer can detect a dead pipeline (e.g. the
+# transcript fetcher hung silently). Kept as a module constant to keep tests
+# deterministic — tests can monkeypatch this to a tiny value.
+HEARTBEAT_INTERVAL_SECONDS = 10
 
 
 # Pluggable async function signatures (kept as type aliases for clarity)
@@ -93,6 +100,14 @@ class StreamingOrchestrator:
         self._fetch_transcript = fetch_transcript or _default_fetch_transcript
         self._run_analysis = run_analysis or _default_run_analysis
         self._final_digest = final_digest or _default_final_digest
+        # Phase tracking — used by both the heartbeat coroutine and the
+        # idempotent ``startup → streaming`` transition.
+        self._phase: str = "startup"
+        self._streaming_transition_emitted: bool = False
+        self._complete_transition_emitted: bool = False
+        # Heartbeat instrumentation
+        self._chunks_received: int = 0
+        self._last_event_published_at: Optional[float] = None
 
     # ── Public API ───────────────────────────────────────────────────────
 
@@ -101,22 +116,47 @@ class StreamingOrchestrator:
 
         Always emits a final ``ctx_complete`` event, even when transcript or
         analysis fail (an extra ``error`` event is emitted in that case).
+
+        A background heartbeat coroutine publishes ``ctx_heartbeat`` events
+        every :data:`HEARTBEAT_INTERVAL_SECONDS` so the SSE consumer can tell
+        a stalled pipeline apart from a slow one. The heartbeat is stopped
+        right before ``ctx_complete`` is published.
         """
         channel = f"{PUBSUB_CHANNEL_PREFIX}{session_id}"
 
-        # asyncio.gather with return_exceptions=True so a single failure on
-        # one phase does not cancel the other.
-        await asyncio.gather(
-            self._stream_transcript(channel, video_id),
-            self._stream_analysis(channel, video_id, user_id),
-            return_exceptions=False,
+        stop_heartbeat = asyncio.Event()
+        heartbeat_task = asyncio.create_task(
+            self._heartbeat_loop(channel, stop_heartbeat)
         )
 
         try:
-            digest = await self._final_digest(video_id, user_id)
-        except Exception as exc:  # noqa: BLE001 — best-effort
-            logger.exception("final digest failed for %s", video_id)
-            digest = f"(no digest available: {exc.__class__.__name__})"
+            # asyncio.gather with return_exceptions=True so a single failure on
+            # one phase does not cancel the other.
+            await asyncio.gather(
+                self._stream_transcript(channel, video_id),
+                self._stream_analysis(channel, video_id, user_id),
+                return_exceptions=False,
+            )
+
+            try:
+                digest = await self._final_digest(video_id, user_id)
+            except Exception as exc:  # noqa: BLE001 — best-effort
+                logger.exception("final digest failed for %s", video_id)
+                digest = f"(no digest available: {exc.__class__.__name__})"
+
+            # Emit phase_transition streaming → complete BEFORE signalling the
+            # heartbeat to stop, so the heartbeat loop sees the flag set on
+            # its next iteration and exits cleanly without racing the
+            # subsequent ctx_complete publish.
+            await self._emit_phase_transition(channel, "streaming", "complete")
+        finally:
+            stop_heartbeat.set()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:  # pragma: no cover — defensive
+                pass
+            except Exception:  # noqa: BLE001 — heartbeat is best-effort
+                logger.exception("heartbeat loop crashed")
 
         await self._publish(
             channel,
@@ -128,6 +168,8 @@ class StreamingOrchestrator:
     async def _stream_transcript(self, channel: str, video_id: str) -> None:
         try:
             async for chunk in self._fetch_transcript(video_id):
+                # First payload of either phase flips startup → streaming.
+                await self._emit_phase_transition(channel, "startup", "streaming")
                 await self._publish(
                     channel,
                     {
@@ -137,6 +179,7 @@ class StreamingOrchestrator:
                         "total_chunks": chunk.get("total"),
                     },
                 )
+                self._chunks_received += 1
         except Exception as exc:  # noqa: BLE001 — surface as error event
             logger.exception("transcript stream failed for %s", video_id)
             await self._publish(
@@ -148,6 +191,8 @@ class StreamingOrchestrator:
         try:
             analysis = await self._run_analysis(video_id, user_id)
             for section, content in (analysis or {}).items():
+                # First payload of either phase flips startup → streaming.
+                await self._emit_phase_transition(channel, "startup", "streaming")
                 await self._publish(
                     channel,
                     {
@@ -167,6 +212,80 @@ class StreamingOrchestrator:
 
     async def _publish(self, channel: str, event: dict[str, Any]) -> None:
         await self.redis.publish(channel, json.dumps(event, ensure_ascii=False))
+        # Track wallclock of the most recent publish so the heartbeat loop
+        # can compute ``last_event_age_seconds``. Using ``time.monotonic``
+        # avoids surprises if the system clock jumps mid-session.
+        self._last_event_published_at = time.monotonic()
+
+    async def _emit_phase_transition(
+        self, channel: str, from_phase: str, to_phase: str
+    ) -> None:
+        """Idempotently publish a ``phase_transition`` event.
+
+        Each (from → to) edge is emitted at most once per orchestrator
+        instance. Any subsequent caller is a silent no-op so the helper can
+        be invoked from every transcript/analysis chunk without flooding
+        the channel with duplicates.
+        """
+        if from_phase == "startup" and to_phase == "streaming":
+            if self._streaming_transition_emitted:
+                return
+            self._streaming_transition_emitted = True
+        elif from_phase == "streaming" and to_phase == "complete":
+            if self._complete_transition_emitted:
+                return
+            self._complete_transition_emitted = True
+        else:  # pragma: no cover — guard for future edges
+            logger.warning(
+                "unknown phase transition %s → %s — emitting anyway",
+                from_phase,
+                to_phase,
+            )
+
+        self._phase = to_phase
+        await self._publish(
+            channel,
+            {"type": "phase_transition", "from": from_phase, "to": to_phase},
+        )
+
+    async def _heartbeat_loop(
+        self, channel: str, stop_event: asyncio.Event
+    ) -> None:
+        """Publish a ``ctx_heartbeat`` event on a fixed cadence.
+
+        Stops as soon as ``stop_event`` is set or the
+        ``streaming → complete`` phase transition has been emitted.
+        Wakeups are coalesced via ``asyncio.wait_for`` on the stop event so
+        the loop exits promptly even when the cadence is large (10 s).
+        """
+        # Anchor "age" to coroutine start so the first heartbeat reports a
+        # meaningful number even before any event has been published.
+        start_monotonic = time.monotonic()
+        while not stop_event.is_set() and not self._complete_transition_emitted:
+            try:
+                await asyncio.wait_for(
+                    stop_event.wait(), timeout=HEARTBEAT_INTERVAL_SECONDS
+                )
+                # stop_event was set during the wait → exit cleanly.
+                return
+            except asyncio.TimeoutError:
+                pass
+
+            if stop_event.is_set() or self._complete_transition_emitted:
+                return
+
+            now_monotonic = time.monotonic()
+            anchor = self._last_event_published_at or start_monotonic
+            age_seconds = max(0.0, now_monotonic - anchor)
+            await self._publish(
+                channel,
+                {
+                    "type": "ctx_heartbeat",
+                    "phase": self._phase,
+                    "chunks_received": self._chunks_received,
+                    "last_event_age_seconds": age_seconds,
+                },
+            )
 
 
 def create_default_orchestrator(redis: Any) -> StreamingOrchestrator:
@@ -201,7 +320,10 @@ def create_default_orchestrator(redis: Any) -> StreamingOrchestrator:
 # Tunables — extracted as module constants to keep tests deterministic.
 TRANSCRIPT_CHUNK_SIZE_CHARS = 1500
 TRANSCRIPT_MAX_CHUNKS = 8
-FINAL_DIGEST_MAX_CHARS = 500
+# Phase 3 promises "tout le contexte" to the agent: a 1h video produced a
+# multi-thousand-char digest; capping at 500 was 1/200th of it. Bumped to
+# 2000 so the agent receives the full final summary.
+FINAL_DIGEST_MAX_CHARS = 2000
 
 
 def _split_transcript_into_chunks(
