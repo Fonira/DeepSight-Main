@@ -49,6 +49,13 @@ export default function TabsLayout() {
           title: "Analyse",
         }}
       />
+      <Tabs.Screen
+        name="hub"
+        options={{
+          href: null,
+          title: "Hub",
+        }}
+      />
     </Tabs>
   );
 }

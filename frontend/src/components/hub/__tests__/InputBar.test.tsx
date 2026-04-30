@@ -6,7 +6,11 @@ describe("InputBar", () => {
   it("calls onSend with the trimmed text", () => {
     const onSend = vi.fn();
     render(
-      <InputBar onSend={onSend} onCallToggle={() => {}} onPttHoldComplete={() => {}} />,
+      <InputBar
+        onSend={onSend}
+        onCallToggle={() => {}}
+        onPttHoldComplete={() => {}}
+      />,
     );
     const input = screen.getByPlaceholderText(/posez votre question/i);
     fireEvent.change(input, { target: { value: "Hello world" } });
@@ -23,14 +27,22 @@ describe("InputBar", () => {
         onPttHoldComplete={() => {}}
       />,
     );
-    expect(screen.getByRole("button", { name: /full call/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /maintenir/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /full call/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /maintenir/i }),
+    ).toBeInTheDocument();
   });
 
   it("calls onCallToggle when phone button pressed", () => {
     const onCallToggle = vi.fn();
     render(
-      <InputBar onSend={() => {}} onCallToggle={onCallToggle} onPttHoldComplete={() => {}} />,
+      <InputBar
+        onSend={() => {}}
+        onCallToggle={onCallToggle}
+        onPttHoldComplete={() => {}}
+      />,
     );
     fireEvent.click(screen.getByRole("button", { name: /full call/i }));
     expect(onCallToggle).toHaveBeenCalled();

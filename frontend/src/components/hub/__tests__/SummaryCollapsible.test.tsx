@@ -33,7 +33,9 @@ describe("SummaryCollapsible", () => {
 
   it("calls onCitationClick with the citation timestamp", () => {
     const onCitationClick = vi.fn();
-    render(<SummaryCollapsible context={ctx} onCitationClick={onCitationClick} />);
+    render(
+      <SummaryCollapsible context={ctx} onCitationClick={onCitationClick} />,
+    );
     fireEvent.click(screen.getByRole("button", { name: /résumé/i }));
     fireEvent.click(screen.getByText("02:14"));
     expect(onCitationClick).toHaveBeenCalledWith(134);

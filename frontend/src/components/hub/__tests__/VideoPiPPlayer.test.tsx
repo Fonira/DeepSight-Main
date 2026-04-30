@@ -15,7 +15,9 @@ describe("VideoPiPPlayer", () => {
         onShrink={() => {}}
       />,
     );
-    expect(container.querySelector("[data-testid='hub-pip']")).toBeInTheDocument();
+    expect(
+      container.querySelector("[data-testid='hub-pip']"),
+    ).toBeInTheDocument();
   });
 
   it("calls onExpand when expand button clicked", () => {

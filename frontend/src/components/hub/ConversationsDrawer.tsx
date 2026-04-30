@@ -12,6 +12,14 @@ interface Props {
   onNewConv: () => void;
 }
 
+const PLATFORM_ICON: Record<
+  "youtube" | "tiktok",
+  { src: string; alt: string }
+> = {
+  youtube: { src: "/platforms/youtube-icon-red.svg", alt: "YouTube" },
+  tiktok: { src: "/platforms/tiktok-note-color.svg", alt: "TikTok" },
+};
+
 const groupBy = (convs: HubConversation[]) => {
   const today: HubConversation[] = [];
   const yesterday: HubConversation[] = [];
@@ -70,15 +78,27 @@ export const ConversationsDrawer: React.FC<Props> = ({
                 : "border border-transparent hover:bg-white/[0.04]")
             }
           >
-            <div className="w-10 h-6 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
-              {c.video_thumbnail_url ? (
+            {c.video_thumbnail_url ? (
+              <div className="w-10 h-6 rounded overflow-hidden bg-white/[0.04] flex-shrink-0 mt-0.5">
                 <img
                   src={c.video_thumbnail_url}
                   alt=""
                   className="w-full h-full object-cover"
                 />
-              ) : null}
-            </div>
+              </div>
+            ) : c.video_source && PLATFORM_ICON[c.video_source] ? (
+              <div className="w-4 h-4 flex-shrink-0 mt-0.5 grid place-items-center">
+                <img
+                  src={PLATFORM_ICON[c.video_source].src}
+                  alt={PLATFORM_ICON[c.video_source].alt}
+                  width={16}
+                  height={16}
+                  className="opacity-90"
+                />
+              </div>
+            ) : (
+              <div className="w-4 h-4 flex-shrink-0 mt-0.5 rounded bg-white/[0.04]" />
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-[13px] text-white/85 truncate">{c.title}</p>
               <p className="text-[11px] text-white/45 truncate mt-0.5">
@@ -94,6 +114,7 @@ export const ConversationsDrawer: React.FC<Props> = ({
   return (
     <AnimatePresence>
       <motion.div
+        key="drawer-backdrop"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -101,6 +122,7 @@ export const ConversationsDrawer: React.FC<Props> = ({
         onClick={onClose}
       />
       <motion.aside
+        key="drawer-panel"
         initial={{ x: "-100%" }}
         animate={{ x: 0 }}
         exit={{ x: "-100%" }}
@@ -116,7 +138,9 @@ export const ConversationsDrawer: React.FC<Props> = ({
           >
             <X className="w-4 h-4" />
           </button>
-          <span className="flex-1 text-sm font-medium text-white">Conversations</span>
+          <span className="flex-1 text-sm font-medium text-white">
+            Conversations
+          </span>
           <button
             type="button"
             onClick={onNewConv}

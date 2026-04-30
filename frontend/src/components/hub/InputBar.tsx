@@ -128,9 +128,9 @@ export const InputBar: React.FC<Props> = ({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            className="absolute right-4 -top-9 px-3 py-1.5 bg-red-500 rounded-xl text-white font-mono text-[11px] shadow-[0_8px_24px_rgba(239,68,68,.4)]"
+            className="absolute right-4 -top-10 px-3.5 py-2 bg-red-500 rounded-xl text-white font-mono text-[12px] shadow-[0_8px_24px_rgba(239,68,68,.4)] whitespace-nowrap"
           >
-            ● {duration.toFixed(1)}s
+            ● ENREGISTREMENT · {duration.toFixed(1)}s
           </motion.div>
         )}
       </AnimatePresence>
