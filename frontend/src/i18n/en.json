@@ -70,6 +70,57 @@
     "loginWithEmail": "Sign in with email",
     "email": "Email address",
     "password": "Password",
+    "passwordFlow": {
+      "forgotLinkLabel": "Forgot password?",
+      "strength": {
+        "weak": "Weak",
+        "medium": "Medium",
+        "strong": "Strong"
+      },
+      "forgot": {
+        "seoTitle": "Forgot password",
+        "seoDescription": "Reset your Deep Sight account password.",
+        "title": "Forgot password?",
+        "subtitle": "Enter your email to receive a reset link",
+        "heroTitle": "Reset your password",
+        "heroSubtitle": "Enter the email of your account. If we recognize it, we'll send you a link to choose a new password.",
+        "submitButton": "Send link",
+        "successTitle": "Check your inbox.",
+        "successDescription": "If this email exists in our system, you'll receive a reset link in a few minutes. Don't forget to check your spam folder.",
+        "backToLogin": "Back to sign in"
+      },
+      "reset": {
+        "seoTitle": "New password",
+        "seoDescription": "Choose a new password for your Deep Sight account.",
+        "title": "New password",
+        "subtitle": "Choose a password with at least 6 characters",
+        "heroTitle": "Choose a new password",
+        "heroSubtitle": "Once confirmed, you'll be redirected to the sign-in page.",
+        "newPasswordLabel": "New password",
+        "confirmPasswordLabel": "Confirm password",
+        "submitButton": "Reset password",
+        "missingParams": "Invalid or incomplete reset link. Please request a new one.",
+        "errorMinLength": "Password must contain at least 6 characters.",
+        "errorMismatch": "Passwords do not match.",
+        "errorInvalid": "Reset link expired or invalid. Please request a new one.",
+        "successToast": "Password reset!",
+        "successDescription": "Password reset successfully. Redirecting to sign in...",
+        "requestNewLink": "Request a new link"
+      },
+      "change": {
+        "seoTitle": "Change password",
+        "seoDescription": "Update your Deep Sight account password.",
+        "title": "Change password",
+        "subtitle": "Enter your current password to choose a new one",
+        "currentPasswordLabel": "Current password",
+        "submitButton": "Update password",
+        "successToast": "Password updated!",
+        "errorCurrentRequired": "Current password is required.",
+        "errorSameAsCurrent": "New password must be different from the current one.",
+        "errorGeneric": "Could not update password.",
+        "backToAccount": "Back to account"
+      }
+    },
     "noAccount": "Don't have an account?",
     "hasAccount": "Already have an account?",
     "createAccount": "Create account",

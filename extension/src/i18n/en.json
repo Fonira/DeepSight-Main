@@ -26,7 +26,8 @@
     "loginLoading": "Logging in...",
     "guestButton": "Try without an account (3 free analyses)",
     "privacy": "Privacy",
-    "terms": "Terms"
+    "terms": "Terms",
+    "forgotPassword": "Forgot password?"
   },
   "plans": {
     "free": "Free",

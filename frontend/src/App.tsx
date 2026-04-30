@@ -282,6 +282,9 @@ function lazyWithRetry(importFn: () => Promise<any>) {
 // Pages publiques
 const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
 const Login = lazyWithRetry(() => import("./pages/Login"));
+const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
+const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 const LegalPage = lazyWithRetry(() => import("./pages/LegalPage"));
 const LegalCGU = lazyWithRetry(() => import("./pages/LegalCGU"));
@@ -530,6 +533,38 @@ const AppRoutes = () => {
                               fallback={<PageSkeleton variant="simple" />}
                             >
                               <AuthCallback />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/forgot-password"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="ForgotPassword"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="simple" />}
+                            >
+                              <ForgotPassword />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/reset-password"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="ResetPassword"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="simple" />}
+                            >
+                              <ResetPassword />
                             </Suspense>
                           </RouteErrorBoundary>
                         }
@@ -839,6 +874,22 @@ const AppRoutes = () => {
                                 fallback={<PageSkeleton variant="form" />}
                               >
                                 <MyAccount />
+                              </Suspense>
+                            </RouteErrorBoundary>
+                          }
+                        />
+
+                        <Route
+                          path="/change-password"
+                          element={
+                            <RouteErrorBoundary
+                              variant="full"
+                              componentName="ChangePassword"
+                            >
+                              <Suspense
+                                fallback={<PageSkeleton variant="form" />}
+                              >
+                                <ChangePassword />
                               </Suspense>
                             </RouteErrorBoundary>
                           }

@@ -26,7 +26,8 @@
     "loginLoading": "Connexion...",
     "guestButton": "Essayer sans compte (3 analyses gratuites)",
     "privacy": "Confidentialité",
-    "terms": "CGU"
+    "terms": "CGU",
+    "forgotPassword": "Mot de passe oublié ?"
   },
   "plans": {
     "free": "Gratuit",

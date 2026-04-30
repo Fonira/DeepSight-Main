@@ -4,7 +4,12 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
@@ -635,6 +640,18 @@ export const Login: React.FC = () => {
                     )}
                   </motion.button>
                 </form>
+
+                {/* Forgot password link (sign-in only) */}
+                {!isRegister && (
+                  <div className="text-center mt-3">
+                    <Link
+                      to="/forgot-password"
+                      className="text-xs text-text-tertiary hover:text-accent-primary transition-colors"
+                    >
+                      {t.auth.passwordFlow.forgotLinkLabel}
+                    </Link>
+                  </div>
+                )}
 
                 {/* Toggle auth mode */}
                 <p className="text-center text-xs text-text-tertiary mt-5">

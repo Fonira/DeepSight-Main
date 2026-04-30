@@ -70,6 +70,57 @@
     "loginWithEmail": "Se connecter par email",
     "email": "Adresse email",
     "password": "Mot de passe",
+    "passwordFlow": {
+      "forgotLinkLabel": "Mot de passe oublié ?",
+      "strength": {
+        "weak": "Faible",
+        "medium": "Moyen",
+        "strong": "Fort"
+      },
+      "forgot": {
+        "seoTitle": "Mot de passe oublié",
+        "seoDescription": "Réinitialisez votre mot de passe Deep Sight.",
+        "title": "Mot de passe oublié ?",
+        "subtitle": "Entrez votre email pour recevoir un lien de réinitialisation",
+        "heroTitle": "Réinitialisez votre mot de passe",
+        "heroSubtitle": "Indiquez l'email de votre compte. Si nous le reconnaissons, nous vous enverrons un lien pour choisir un nouveau mot de passe.",
+        "submitButton": "Envoyer le lien",
+        "successTitle": "C'est envoyé.",
+        "successDescription": "Si cet email existe dans notre base, vous recevrez un lien de réinitialisation dans quelques minutes. Pensez à vérifier vos spams.",
+        "backToLogin": "Retour à la connexion"
+      },
+      "reset": {
+        "seoTitle": "Nouveau mot de passe",
+        "seoDescription": "Choisissez un nouveau mot de passe pour votre compte Deep Sight.",
+        "title": "Nouveau mot de passe",
+        "subtitle": "Choisissez un mot de passe d'au moins 6 caractères",
+        "heroTitle": "Choisissez un nouveau mot de passe",
+        "heroSubtitle": "Une fois confirmé, vous serez redirigé vers la page de connexion.",
+        "newPasswordLabel": "Nouveau mot de passe",
+        "confirmPasswordLabel": "Confirmer le mot de passe",
+        "submitButton": "Réinitialiser",
+        "missingParams": "Lien invalide ou incomplet. Demandez un nouveau lien de réinitialisation.",
+        "errorMinLength": "Le mot de passe doit contenir au moins 6 caractères.",
+        "errorMismatch": "Les mots de passe ne correspondent pas.",
+        "errorInvalid": "Lien expiré ou invalide. Demandez un nouveau lien.",
+        "successToast": "Mot de passe réinitialisé !",
+        "successDescription": "Mot de passe réinitialisé. Redirection vers la page de connexion...",
+        "requestNewLink": "Demander un nouveau lien"
+      },
+      "change": {
+        "seoTitle": "Changer mon mot de passe",
+        "seoDescription": "Modifiez le mot de passe de votre compte Deep Sight.",
+        "title": "Changer mon mot de passe",
+        "subtitle": "Entrez votre mot de passe actuel pour en choisir un nouveau",
+        "currentPasswordLabel": "Mot de passe actuel",
+        "submitButton": "Mettre à jour",
+        "successToast": "Mot de passe mis à jour !",
+        "errorCurrentRequired": "Mot de passe actuel requis.",
+        "errorSameAsCurrent": "Le nouveau mot de passe doit être différent de l'actuel.",
+        "errorGeneric": "Impossible de mettre à jour le mot de passe.",
+        "backToAccount": "Retour au compte"
+      }
+    },
     "noAccount": "Pas encore de compte ?",
     "hasAccount": "Déjà un compte ?",
     "createAccount": "Créer un compte",
