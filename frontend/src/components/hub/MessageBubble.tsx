@@ -3,11 +3,17 @@ import React from "react";
 import { Mic } from "lucide-react";
 import type { HubMessage } from "./types";
 import { VoiceBubble } from "./VoiceBubble";
+import {
+  parseAskQuestions,
+  ClickableQuestionsBlock,
+} from "../ClickableQuestions";
 
 interface Props {
   msg: HubMessage;
   /** Optional sampled bars override; otherwise use a deterministic default. */
   bars?: number[];
+  /** Click handler for inline `[ask:...]` followups (assistant messages only). */
+  onQuestionClick?: (question: string) => void;
 }
 
 const DEFAULT_BARS = [
@@ -15,12 +21,26 @@ const DEFAULT_BARS = [
   21, 9, 12, 15, 8, 17, 10,
 ];
 
-export const MessageBubble: React.FC<Props> = ({ msg, bars }) => {
+export const MessageBubble: React.FC<Props> = ({
+  msg,
+  bars,
+  onQuestionClick,
+}) => {
   const isUser = msg.role === "user";
   const isVoiceBubble =
     (msg.source === "voice_user" || msg.source === "voice_agent") &&
     typeof msg.audio_duration_secs === "number" &&
     msg.audio_duration_secs > 0;
+
+  // Parse `[ask:...]` followups out of assistant text messages.
+  const isAssistantText =
+    !isUser &&
+    !isVoiceBubble &&
+    msg.source !== "voice_agent" &&
+    typeof msg.content === "string";
+  const { beforeQuestions, questions } = isAssistantText
+    ? parseAskQuestions(msg.content)
+    : { beforeQuestions: msg.content, questions: [] as string[] };
 
   if (isVoiceBubble) {
     return (
@@ -50,16 +70,16 @@ export const MessageBubble: React.FC<Props> = ({ msg, bars }) => {
           "max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-2xl border text-sm leading-relaxed " +
           (isUser
             ? "bg-indigo-500/10 border-indigo-500/20 text-white rounded-br-md"
-            : "bg-white/5 border-white/10 text-white/85 rounded-bl-md")
+            : "bg-white/5 border-white/10 text-white/95 rounded-bl-md")
         }
         data-testid={`hub-msg-${msg.source}`}
       >
         {isVoiceText && (
-          <div className="inline-flex items-center gap-1 mb-1.5 text-[10px] font-medium text-violet-300/80 uppercase tracking-wider">
+          <div className="inline-flex items-center gap-1 mb-1.5 text-[10px] font-medium text-violet-300/95 uppercase tracking-wider">
             <Mic className="w-2.5 h-2.5" />
             <span>Vocal</span>
             {typeof msg.time_in_call_secs === "number" && (
-              <span className="text-violet-300/50 normal-case">
+              <span className="text-violet-300/70 normal-case">
                 · {Math.floor(msg.time_in_call_secs / 60)}:
                 {Math.floor(msg.time_in_call_secs % 60)
                   .toString()
@@ -68,7 +88,14 @@ export const MessageBubble: React.FC<Props> = ({ msg, bars }) => {
             )}
           </div>
         )}
-        <p className="whitespace-pre-wrap">{msg.content}</p>
+        <p className="whitespace-pre-wrap">{beforeQuestions}</p>
+        {isAssistantText && questions.length > 0 && onQuestionClick && (
+          <ClickableQuestionsBlock
+            questions={questions}
+            onQuestionClick={onQuestionClick}
+            variant="video"
+          />
+        )}
       </div>
     </div>
   );

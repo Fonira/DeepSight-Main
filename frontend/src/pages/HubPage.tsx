@@ -348,7 +348,7 @@ const HubPage: React.FC = () => {
 
   return (
     <div className="relative h-screen flex flex-col overflow-hidden bg-[#0a0a0f]">
-      <DoodleBackground variant="default" className="!opacity-[0.18]" />
+      <DoodleBackground variant="default" className="!opacity-[0.32]" />
       <SEO title="Hub" path="/hub" />
 
       <HubHeader
@@ -385,7 +385,11 @@ const HubPage: React.FC = () => {
             defaultOpen={openSummaryFromUrl}
           />
         )}
-        <Timeline messages={messages} isThinking={isThinking} />
+        <Timeline
+          messages={messages}
+          isThinking={isThinking}
+          onQuestionClick={handleSend}
+        />
         <InputBar
           onSend={handleSend}
           onCallToggle={() => setVoiceCallOpen(!voiceCallOpen)}
