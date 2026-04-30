@@ -1,6 +1,6 @@
 // mobile/src/components/hub/VoiceBubble.tsx
 //
-// Voice bubble gold avec play/pause, waveform et transcript karaoke collapsible.
+// Voice bubble indigo avec play/pause, waveform et transcript karaoke collapsible.
 // La progression utilise un setInterval (pas requestAnimationFrame en JS thread sur RN).
 // Reanimated 4 utilise pour le chevron du bouton transcript et le collapse.
 
@@ -32,7 +32,7 @@ const formatTime = (s: number) => {
 };
 
 const TICK_MS = 60; // ~16fps - assez fluide pour une waveform de 8-15s
-const PLAYED_COLOR = "#c8903a";
+const PLAYED_COLOR = "#6366f1";
 
 export const VoiceBubble: React.FC<Props> = ({
   durationSecs,
@@ -199,8 +199,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pillUser: {
-    backgroundColor: "rgba(200,144,58,0.10)",
-    borderColor: "rgba(200,144,58,0.20)",
+    backgroundColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(99,102,241,0.20)",
     borderTopLeftRadius: 14,
     borderTopRightRadius: 14,
     borderBottomRightRadius: 4,
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#c8903a",
+    backgroundColor: "#6366f1",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 11,
-    color: "#c8903a",
+    color: "#6366f1",
   },
   transcriptWrap: {
     overflow: "hidden",

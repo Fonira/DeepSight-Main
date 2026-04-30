@@ -16,7 +16,7 @@ interface Props {
   playing: boolean;
 }
 
-const PLAYED_COLOR = "#c8903a";
+const PLAYED_COLOR = "#6366f1";
 const UNPLAYED_COLOR = "rgba(168,168,184,0.5)";
 
 const VoiceWaveformBarsInner: React.FC<Props> = ({
