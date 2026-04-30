@@ -134,7 +134,9 @@ export const SummaryCollapsible: React.FC<Props> = ({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   const duration = formatDuration(context.video_duration_secs);
-  const metaLine = [context.video_channel, duration].filter(Boolean).join(" · ");
+  const metaLine = [context.video_channel, duration]
+    .filter(Boolean)
+    .join(" · ");
 
   /** Segments parsés à partir de `short_summary` : timecodes inline → pills. */
   const segments = useMemo(
@@ -353,7 +355,9 @@ export const SummaryCollapsible: React.FC<Props> = ({
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
           >
-            <div className="pt-3">{renderExpandedBody()}</div>
+            <div className="pt-3 max-h-[55vh] overflow-y-auto pr-2 -mr-2">
+              {renderExpandedBody()}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

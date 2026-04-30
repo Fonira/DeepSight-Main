@@ -32,6 +32,7 @@ import { VideoPiPPlayer } from "../components/hub/VideoPiPPlayer";
 import { CallModeFullBleed } from "../components/hub/CallModeFullBleed";
 import { SourcesShelf } from "../components/hub/SourcesShelf";
 import { NewConversationModal } from "../components/hub/NewConversationModal";
+import { HubToolbox } from "../components/hub/HubToolbox";
 import type { HubConversation, HubMessage } from "../components/hub/types";
 
 const newId = () =>
@@ -383,6 +384,12 @@ const HubPage: React.FC = () => {
           <SummaryCollapsible
             context={summaryContext}
             defaultOpen={openSummaryFromUrl}
+          />
+        )}
+        {summaryContext && (
+          <HubToolbox
+            summaryId={summaryContext.summary_id}
+            videoTitle={summaryContext.video_title}
           />
         )}
         <Timeline
