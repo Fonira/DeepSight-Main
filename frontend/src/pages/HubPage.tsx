@@ -33,6 +33,8 @@ import { CallModeFullBleed } from "../components/hub/CallModeFullBleed";
 import { SourcesShelf } from "../components/hub/SourcesShelf";
 import { NewConversationModal } from "../components/hub/NewConversationModal";
 import { HubToolbox } from "../components/hub/HubToolbox";
+import { useAnalyzeAndOpenHub } from "../hooks/useAnalyzeAndOpenHub";
+import { Loader2 } from "lucide-react";
 import type { HubConversation, HubMessage } from "../components/hub/types";
 
 const newId = () =>
@@ -123,6 +125,91 @@ const HubPage: React.FC = () => {
 
   const [isThinking, setIsThinking] = React.useState(false);
   const voiceControllerRef = useRef<VoiceOverlayController | null>(null);
+
+  // ── Analyzing state — polling sur ?analyzing=<taskId> ──
+  // Quand l'utilisateur lance une analyse depuis la home (DashboardPageMinimal)
+  // ou la barre input du drawer, on navigue ici avec ?analyzing=<taskId>. On
+  // poll videoApi.getTaskStatus jusqu'à `completed` puis on bascule sur
+  // ?conv=<summary_id> (qui déclenche le fetch de la conversation).
+  const analyzingTaskId = searchParams.get("analyzing");
+  const [analyzingProgress, setAnalyzingProgress] = React.useState(5);
+  const [analyzingMessage, setAnalyzingMessage] = React.useState("");
+  const [analyzingError, setAnalyzingError] = React.useState<string | null>(
+    null,
+  );
+
+  const { analyze: triggerAnalyze, error: hookError } = useAnalyzeAndOpenHub();
+  // Affiche les erreurs du hook (URL invalide, fetch failed) dans le placeholder.
+  useEffect(() => {
+    if (hookError) setAnalyzingError(hookError);
+  }, [hookError]);
+
+  useEffect(() => {
+    if (!analyzingTaskId) {
+      setAnalyzingProgress(5);
+      setAnalyzingMessage("");
+      setAnalyzingError(null);
+      return;
+    }
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    const start = Date.now();
+    const POLL_INTERVAL_MS = 2000;
+    const POLL_MAX_DURATION_MS = 5 * 60 * 1000;
+
+    setAnalyzingError(null);
+    setAnalyzingProgress(5);
+    setAnalyzingMessage("Démarrage de l'analyse…");
+
+    const tick = async () => {
+      if (cancelled) return;
+      if (Date.now() - start > POLL_MAX_DURATION_MS) {
+        if (intervalId) clearInterval(intervalId);
+        setAnalyzingError(
+          "L'analyse prend trop de temps. Réessayez plus tard.",
+        );
+        return;
+      }
+      try {
+        const status = await videoApi.getTaskStatus(analyzingTaskId);
+        if (cancelled) return;
+        if (typeof status.progress === "number") {
+          setAnalyzingProgress((p) => Math.max(p, status.progress as number));
+        }
+        if (status.message) setAnalyzingMessage(status.message);
+
+        if (status.status === "completed" && status.result?.summary_id) {
+          if (intervalId) clearInterval(intervalId);
+          // Bascule sur la conversation finale ; le useEffect existant fait
+          // le fetch des messages + summary context.
+          setSearchParams({ conv: String(status.result.summary_id) });
+        } else if (
+          status.status === "failed" ||
+          status.status === "cancelled"
+        ) {
+          if (intervalId) clearInterval(intervalId);
+          setAnalyzingError(
+            status.error || "L'analyse a échoué. Veuillez réessayer.",
+          );
+        }
+      } catch (err) {
+        if (cancelled) return;
+        if (intervalId) clearInterval(intervalId);
+        setAnalyzingError(
+          err instanceof Error ? err.message : "Erreur lors du polling.",
+        );
+      }
+    };
+
+    // Lance immédiatement puis toutes les 2s.
+    tick();
+    intervalId = setInterval(tick, POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [analyzingTaskId, setSearchParams]);
 
   // ── Fetch conversations (mapped from videoApi.getHistory) ──
   useEffect(() => {
@@ -380,32 +467,67 @@ const HubPage: React.FC = () => {
       />
 
       <div className="relative flex-1 flex flex-col overflow-hidden">
-        {summaryContext && (
-          <SummaryCollapsible
-            context={summaryContext}
-            defaultOpen={openSummaryFromUrl}
-          />
+        {analyzingTaskId && !activeConvId ? (
+          <div className="flex-1 flex items-center justify-center px-6">
+            <div className="max-w-md w-full text-center">
+              <div className="relative mx-auto mb-5 w-16 h-16">
+                <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl animate-pulse" />
+                <Loader2 className="relative w-16 h-16 text-indigo-400 mx-auto animate-spin" />
+              </div>
+              <p className="text-base text-white font-medium mb-1.5">
+                Analyse en cours
+              </p>
+              <p className="text-sm text-white/65 mb-4 leading-relaxed">
+                {analyzingMessage ||
+                  "Démarrage… extraction du transcript et synthèse en route."}
+              </p>
+              <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden mb-2">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500 ease-out"
+                  style={{ width: `${Math.min(analyzingProgress, 95)}%` }}
+                />
+              </div>
+              <p className="text-[11px] font-mono text-white/40">
+                {Math.min(analyzingProgress, 95)}% · L'analyse continue même si
+                vous fermez l'onglet.
+              </p>
+              {analyzingError && (
+                <div className="mt-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+                  {analyzingError}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            {summaryContext && (
+              <SummaryCollapsible
+                context={summaryContext}
+                defaultOpen={openSummaryFromUrl}
+              />
+            )}
+            {summaryContext && (
+              <HubToolbox
+                summaryId={summaryContext.summary_id}
+                videoTitle={summaryContext.video_title}
+              />
+            )}
+            <Timeline
+              messages={messages}
+              isThinking={isThinking}
+              onQuestionClick={handleSend}
+            />
+            <InputBar
+              onSend={handleSend}
+              onCallToggle={() => setVoiceCallOpen(!voiceCallOpen)}
+              onPttHoldComplete={handlePttHoldComplete}
+              disabled={!activeConvId}
+            />
+            <div className="flex justify-center px-3 pb-3 pt-1">
+              <SourcesShelf />
+            </div>
+          </>
         )}
-        {summaryContext && (
-          <HubToolbox
-            summaryId={summaryContext.summary_id}
-            videoTitle={summaryContext.video_title}
-          />
-        )}
-        <Timeline
-          messages={messages}
-          isThinking={isThinking}
-          onQuestionClick={handleSend}
-        />
-        <InputBar
-          onSend={handleSend}
-          onCallToggle={() => setVoiceCallOpen(!voiceCallOpen)}
-          onPttHoldComplete={handlePttHoldComplete}
-          disabled={!activeConvId}
-        />
-        <div className="flex justify-center px-3 pb-3 pt-1">
-          <SourcesShelf />
-        </div>
 
         <ConversationsDrawer
           open={drawerOpen}
@@ -416,7 +538,7 @@ const HubPage: React.FC = () => {
             setActiveConv(id);
             setSearchParams({ conv: String(id) });
           }}
-          onNewConv={() => setNewConvModalOpen(true)}
+          onAnalyze={triggerAnalyze}
         />
 
         <NewConversationModal
