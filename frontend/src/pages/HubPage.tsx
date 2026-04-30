@@ -10,7 +10,7 @@
  */
 import React, { useCallback, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { videoApi, chatApi } from "../services/api";
+import { videoApi, chatApi, reliabilityApi } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
 import { useTTSContext } from "../contexts/TTSContext";
@@ -32,7 +32,7 @@ import { VideoPiPPlayer } from "../components/hub/VideoPiPPlayer";
 import { CallModeFullBleed } from "../components/hub/CallModeFullBleed";
 import { SourcesShelf } from "../components/hub/SourcesShelf";
 import { NewConversationModal } from "../components/hub/NewConversationModal";
-import { HubToolbox } from "../components/hub/HubToolbox";
+import { HubAnalysisPanel } from "../components/hub/HubAnalysisPanel";
 import { useAnalyzeAndOpenHub } from "../hooks/useAnalyzeAndOpenHub";
 import { Loader2 } from "lucide-react";
 import type { HubConversation, HubMessage } from "../components/hub/types";
@@ -100,7 +100,7 @@ const HubPage: React.FC = () => {
   const openSummaryFromUrl = searchParams.get("open_summary") === "1";
 
   const { language } = useTranslation();
-  const { user: _user } = useAuth();
+  const { user } = useAuth();
   const { autoPlayEnabled, playText, stopPlaying } = useTTSContext();
   const { voiceEnabled } = useVoiceEnabled();
 
@@ -109,6 +109,10 @@ const HubPage: React.FC = () => {
     activeConvId,
     messages,
     summaryContext,
+    fullSummary,
+    concepts,
+    reliability,
+    reliabilityLoading,
     drawerOpen,
     voiceCallOpen,
     pipExpanded,
@@ -118,6 +122,10 @@ const HubPage: React.FC = () => {
     setMessages,
     appendMessage,
     setSummaryContext,
+    setFullSummary,
+    setConcepts,
+    setReliability,
+    setReliabilityLoading,
     toggleDrawer,
     setPipExpanded,
     setVoiceCallOpen,
@@ -259,6 +267,10 @@ const HubPage: React.FC = () => {
   useEffect(() => {
     if (activeConvId === null) {
       setSummaryContext(null);
+      setFullSummary(null);
+      setConcepts([]);
+      setReliability(null);
+      setReliabilityLoading(false);
       return;
     }
     let cancelled = false;
@@ -303,11 +315,14 @@ const HubPage: React.FC = () => {
             short_summary: conv.last_snippet ?? "",
             citations: [],
           });
-          // Hydrate with real summary content (async, fire-and-forget)
+          // Hydrate with real summary content + concepts + reliability in
+          // parallel. Used by the AnalysisHub embed below the SummaryCollapsible
+          // (fact-check / mots-clés / quiz / flashcards / GEO).
           videoApi
             .getSummary(conv.summary_id)
             .then((s) => {
               if (cancelled) return;
+              setFullSummary(s);
               setSummaryContext({
                 summary_id: s.id,
                 video_title: s.video_title,
@@ -321,6 +336,35 @@ const HubPage: React.FC = () => {
             })
             .catch((err) => {
               console.warn("[HubPage] fetch full summary failed:", err);
+              if (!cancelled) setFullSummary(null);
+            });
+
+          videoApi
+            .getEnrichedConcepts(conv.summary_id)
+            .then((resp) => {
+              if (cancelled) return;
+              setConcepts(resp.concepts ?? []);
+            })
+            .catch((err) => {
+              // Concepts endpoint may be unavailable / 404 / plan-gated — fail
+              // silent and show an empty array so the page still renders.
+              console.warn("[HubPage] fetch concepts failed:", err);
+              if (!cancelled) setConcepts([]);
+            });
+
+          setReliabilityLoading(true);
+          reliabilityApi
+            .getReliability(conv.summary_id)
+            .then((r) => {
+              if (cancelled) return;
+              setReliability(r);
+            })
+            .catch((err) => {
+              console.warn("[HubPage] fetch reliability failed:", err);
+              if (!cancelled) setReliability(null);
+            })
+            .finally(() => {
+              if (!cancelled) setReliabilityLoading(false);
             });
         }
       } catch (err) {
@@ -330,7 +374,15 @@ const HubPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [activeConvId, setMessages, setSummaryContext]);
+  }, [
+    activeConvId,
+    setMessages,
+    setSummaryContext,
+    setFullSummary,
+    setConcepts,
+    setReliability,
+    setReliabilityLoading,
+  ]);
 
   // ── Auto-play TTS on assistant text messages ──
   const prevCountRef = useRef(messages.length);
@@ -509,9 +561,13 @@ const HubPage: React.FC = () => {
               />
             )}
             {summaryContext && (
-              <HubToolbox
-                summaryId={summaryContext.summary_id}
-                videoTitle={summaryContext.video_title}
+              <HubAnalysisPanel
+                selectedSummary={fullSummary}
+                concepts={concepts}
+                reliability={reliability}
+                reliabilityLoading={reliabilityLoading}
+                user={user}
+                language={language as "fr" | "en"}
               />
             )}
             <Timeline

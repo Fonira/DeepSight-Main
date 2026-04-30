@@ -6,12 +6,29 @@ import type {
   HubSummaryContext,
   HubVoiceState,
 } from "../components/hub/types";
+import type {
+  Summary,
+  EnrichedConcept,
+  ReliabilityResult,
+} from "../services/api";
 
 interface HubState {
   conversations: HubConversation[];
   activeConvId: number | null;
   messages: HubMessage[];
   summaryContext: HubSummaryContext | null;
+  /**
+   * Full Summary object hydrated from videoApi.getSummary (used by AnalysisHub
+   * embed below the SummaryCollapsible). Distinct from `summaryContext` which
+   * is a lighter projection used by the SummaryCollapsible header.
+   */
+  fullSummary: Summary | null;
+  /** Concepts enrichis fetchés depuis videoApi.getEnrichedConcepts. */
+  concepts: EnrichedConcept[];
+  /** Résultat fiabilité fetché depuis reliabilityApi.getReliability. */
+  reliability: ReliabilityResult | null;
+  /** True pendant le fetch de la fiabilité. */
+  reliabilityLoading: boolean;
   drawerOpen: boolean;
   summaryExpanded: boolean;
   pipExpanded: boolean;
@@ -27,6 +44,10 @@ interface HubState {
   setMessages: (msgs: HubMessage[]) => void;
   appendMessage: (msg: HubMessage) => void;
   setSummaryContext: (ctx: HubSummaryContext | null) => void;
+  setFullSummary: (s: Summary | null) => void;
+  setConcepts: (concepts: EnrichedConcept[]) => void;
+  setReliability: (r: ReliabilityResult | null) => void;
+  setReliabilityLoading: (v: boolean) => void;
   toggleDrawer: () => void;
   toggleSummary: () => void;
   setPipExpanded: (v: boolean) => void;
@@ -43,6 +64,10 @@ const INITIAL: Pick<
   | "activeConvId"
   | "messages"
   | "summaryContext"
+  | "fullSummary"
+  | "concepts"
+  | "reliability"
+  | "reliabilityLoading"
   | "drawerOpen"
   | "summaryExpanded"
   | "pipExpanded"
@@ -55,6 +80,10 @@ const INITIAL: Pick<
   activeConvId: null,
   messages: [],
   summaryContext: null,
+  fullSummary: null,
+  concepts: [],
+  reliability: null,
+  reliabilityLoading: false,
   drawerOpen: false,
   summaryExpanded: false,
   pipExpanded: false,
@@ -87,6 +116,22 @@ export const useHubStore = create<HubState>()(
     setSummaryContext: (ctx) =>
       set((s) => {
         s.summaryContext = ctx;
+      }),
+    setFullSummary: (full) =>
+      set((s) => {
+        s.fullSummary = full;
+      }),
+    setConcepts: (concepts) =>
+      set((s) => {
+        s.concepts = concepts;
+      }),
+    setReliability: (r) =>
+      set((s) => {
+        s.reliability = r;
+      }),
+    setReliabilityLoading: (v) =>
+      set((s) => {
+        s.reliabilityLoading = v;
       }),
     toggleDrawer: () =>
       set((s) => {
