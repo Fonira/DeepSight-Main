@@ -49,17 +49,17 @@ export const MessageBubble: React.FC<Props> = ({ msg, bars }) => {
         className={
           "max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-2xl border text-sm leading-relaxed " +
           (isUser
-            ? "bg-accent-primary/10 border-accent-primary/20 text-white rounded-br-md"
+            ? "bg-indigo-500/10 border-indigo-500/20 text-white rounded-br-md"
             : "bg-white/5 border-white/10 text-white/85 rounded-bl-md")
         }
         data-testid={`hub-msg-${msg.source}`}
       >
         {isVoiceText && (
-          <div className="inline-flex items-center gap-1 mb-1.5 text-[10px] font-medium text-accent-violet/80 uppercase tracking-wider">
+          <div className="inline-flex items-center gap-1 mb-1.5 text-[10px] font-medium text-violet-300/80 uppercase tracking-wider">
             <Mic className="w-2.5 h-2.5" />
             <span>Vocal</span>
             {typeof msg.time_in_call_secs === "number" && (
-              <span className="text-accent-violet/50 normal-case">
+              <span className="text-violet-300/50 normal-case">
                 · {Math.floor(msg.time_in_call_secs / 60)}:
                 {Math.floor(msg.time_in_call_secs % 60)
                   .toString()

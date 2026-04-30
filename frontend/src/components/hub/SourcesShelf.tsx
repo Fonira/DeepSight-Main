@@ -35,7 +35,7 @@ export const SourcesShelf: React.FC<Props> = ({
   return (
     <div
       className={
-        "inline-flex items-center rounded-full bg-accent-primary/[0.04] border border-accent-primary/15 " +
+        "inline-flex items-center rounded-full bg-white/[0.03] border border-white/10 " +
         gap +
         " " +
         pad +
@@ -44,7 +44,7 @@ export const SourcesShelf: React.FC<Props> = ({
       }
     >
       <span
-        className="font-mono uppercase tracking-[.14em] text-accent-violet"
+        className="font-mono uppercase tracking-[.14em] text-white/45"
         style={{ fontSize: 9 }}
       >
         {label}

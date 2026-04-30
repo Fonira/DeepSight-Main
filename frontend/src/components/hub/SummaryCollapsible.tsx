@@ -81,7 +81,7 @@ export const SummaryCollapsible: React.FC<Props> = ({
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center gap-3 text-left"
       >
-        <span className="font-mono text-[10px] tracking-[.12em] px-2 py-[3px] rounded bg-accent-primary/15 text-accent-primary">
+        <span className="font-mono text-[10px] tracking-[.12em] px-2 py-[3px] rounded bg-indigo-500/15 text-indigo-400">
           RÉSUMÉ
         </span>
         <span className="flex-1 text-sm font-medium text-white/85 truncate">
@@ -114,7 +114,7 @@ export const SummaryCollapsible: React.FC<Props> = ({
                           key={`cit-${i}`}
                           type="button"
                           onClick={() => onCitationClick?.(seg.secs as number)}
-                          className="inline-flex font-mono text-[10px] px-1.5 py-[1px] mx-0.5 rounded-[3px] bg-accent-cyan/10 text-accent-cyan hover:bg-accent-cyan/20 transition-colors align-baseline"
+                          className="inline-flex font-mono text-[10px] px-1.5 py-[1px] mx-0.5 rounded-[3px] bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-colors align-baseline"
                         >
                           {seg.value}
                         </button>
@@ -133,7 +133,7 @@ export const SummaryCollapsible: React.FC<Props> = ({
                       key={i}
                       type="button"
                       onClick={() => onCitationClick?.(c.ts)}
-                      className="font-mono text-[10px] px-1.5 py-[1px] rounded-[3px] bg-accent-cyan/10 text-accent-cyan hover:bg-accent-cyan/20 transition-colors"
+                      className="font-mono text-[10px] px-1.5 py-[1px] rounded-[3px] bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-colors"
                     >
                       {formatTs(c.ts)}
                       <span className="ml-1 text-white/55 normal-case">

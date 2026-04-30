@@ -31,7 +31,7 @@ export const VoiceWaveformBars: React.FC<Props> = ({
             data-played={played ? "true" : "false"}
             className={
               "block w-[2px] rounded-[1px] transition-[transform,background] duration-150 " +
-              (played ? "bg-accent-primary" : "bg-white/30") +
+              (played ? "bg-indigo-500" : "bg-white/30") +
               (isHead ? " scale-y-125" : "")
             }
             style={{ height: h }}

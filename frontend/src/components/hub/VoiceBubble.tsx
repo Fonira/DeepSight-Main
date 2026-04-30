@@ -70,7 +70,7 @@ export const VoiceBubble: React.FC<Props> = ({
         className={
           "flex items-center gap-2.5 px-3 py-2.5 min-w-[220px] border " +
           (isUser
-            ? "bg-accent-primary/10 border-accent-primary/20 rounded-[14px_14px_4px_14px]"
+            ? "bg-indigo-500/10 border-indigo-500/20 rounded-[14px_14px_4px_14px]"
             : "bg-white/5 border-white/10 rounded-[14px_14px_14px_4px]")
         }
       >
@@ -78,7 +78,7 @@ export const VoiceBubble: React.FC<Props> = ({
           type="button"
           aria-label={playing ? "pause" : "play"}
           onClick={() => setPlaying((p) => !p)}
-          className="w-8 h-8 grid place-items-center rounded-full bg-accent-primary text-white"
+          className="w-8 h-8 grid place-items-center rounded-full bg-indigo-500 text-white"
         >
           {playing ? (
             <Pause className="w-3 h-3" />
@@ -96,7 +96,7 @@ export const VoiceBubble: React.FC<Props> = ({
         <button
           type="button"
           onClick={() => setShowTranscript((s) => !s)}
-          className="mt-1 px-2 text-[11px] text-accent-primary hover:text-accent-primary-hover transition-colors"
+          className="mt-1 px-2 text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
         >
           {showTranscript
             ? "↑ masquer le transcript"
@@ -136,7 +136,7 @@ export const VoiceBubble: React.FC<Props> = ({
                       active
                         ? "text-white font-semibold transition-colors"
                         : past
-                          ? "text-accent-primary transition-colors"
+                          ? "text-indigo-400 transition-colors"
                           : "text-white/55"
                     }
                   >

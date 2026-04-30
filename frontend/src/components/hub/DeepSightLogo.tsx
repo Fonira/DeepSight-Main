@@ -23,9 +23,9 @@ export const DeepSightLogo: React.FC<Props> = ({
         className="absolute -inset-[3px] rounded-full"
         style={{
           background:
-            "conic-gradient(from 0deg, #c48b7c, #c8903a, #d4a054, #f59e0b, #ef4444, #9b6b4a, #c48b7c)",
+            "conic-gradient(from 0deg, #06b6d4, #6366f1, #8b5cf6, #ef4444, #f59e0b, #10b981, #06b6d4)",
           filter: "blur(6px)",
-          opacity: 0.65,
+          opacity: 0.55,
           zIndex: 0,
         }}
       />
@@ -39,7 +39,7 @@ export const DeepSightLogo: React.FC<Props> = ({
           width: size,
           height: size,
           boxShadow:
-            "0 4px 16px rgba(0,0,0,.5), inset 0 0 0 1px rgba(212,160,84,.15)",
+            "0 4px 16px rgba(0,0,0,.5), inset 0 0 0 1px rgba(99,102,241,.15)",
         }}
       />
     </div>
