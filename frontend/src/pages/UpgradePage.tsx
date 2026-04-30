@@ -292,7 +292,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-500" />
       )}
       {/* Bandeau essai gratuit 7 jours — Plus uniquement */}
-      {plan.id === "plus" && !isCurrent && trialEligible && (
+      {plan.id === "pro" && !isCurrent && trialEligible && (
         <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] font-bold text-center py-1">
           {lang === "fr" ? "🎁 Essai gratuit 7 jours" : "🎁 7-day free trial"}
         </div>
@@ -377,7 +377,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
 
         {/* CTA */}
         <div className="mt-auto">
-          {trialEligible && plan.id === "plus" && plan.is_upgrade ? (
+          {trialEligible && plan.id === "pro" && plan.is_upgrade ? (
             <button
               onClick={onStartTrial}
               disabled={trialLoading}
