@@ -9,7 +9,7 @@
  * mappé depuis ChatMessage côté API (source/voice_session_id/time_in_call_secs).
  */
 import React, { useCallback, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { videoApi, chatApi } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
@@ -90,6 +90,7 @@ const buildHubSubtitle = (
 };
 
 const HubPage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlConvId = searchParams.get("conv");
   const urlSummaryId = searchParams.get("summary");
@@ -441,6 +442,7 @@ const HubPage: React.FC = () => {
 
       <HubHeader
         onMenuClick={toggleDrawer}
+        onHomeClick={() => navigate("/")}
         title={activeConv?.title ?? "Hub"}
         subtitle={
           activeConv
