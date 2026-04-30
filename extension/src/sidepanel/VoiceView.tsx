@@ -36,6 +36,8 @@ import type {
 import { WEBAPP_URL } from "../utils/config";
 import { track, hashVideoId } from "../utils/analytics";
 import { useTranslation } from "../i18n/useTranslation";
+import { BeamCard } from "./shared/BeamCard";
+import Browser from "../utils/browser-polyfill";
 
 interface VoiceViewProps {
   /** Legacy compat : ouverture du sidepanel via OPEN_VOICE_PANEL. */
@@ -417,40 +419,73 @@ export const VoiceView: React.FC<VoiceViewProps> = ({
   if (state.phase === "connecting") return <ConnectingView />;
   if (state.phase === "live_streaming" || state.phase === "live_complete") {
     return (
-      <>
-        <CallActiveView
-          elapsedSec={elapsedSec}
-          onMute={voiceChat.toggleMute}
-          onHangup={handleHangup}
-          isMuted={voiceChat.isMuted}
-          conversation={voiceChat.conversation}
-          onBack={() => {
-            handleHangup();
-            setState({ phase: "idle" });
-          }}
-          onSendTextMessage={(text) => {
-            // V1.2 — Input texte unifié : envoie le message à l'agent
-            // ElevenLabs (qui répondra en voix) ET l'append dans la
-            // timeline transcripts pour qu'il s'affiche comme un message
-            // user "dit". Pas de couplage backend chat (ElevenLabs SDK only).
-            voiceChat.conversation?.sendUserMessage(text);
-            void voiceChat.appendTranscript("user", text);
-          }}
-          canSendText={voiceChat.conversation !== null}
-          onApplyHardChanges={() => {
-            void voiceChat.restartSession();
-          }}
-          restarting={voiceChat.isRestarting}
-          transcripts={voiceChat.transcripts}
-        />
-        <ContextProgressBar
-          progress={contextProgress}
-          complete={contextComplete}
-          phase={contextPhase}
-          transcriptChunksReceived={transcriptChunksReceived}
-          transcriptChunksTotal={transcriptChunksTotal}
-        />
-      </>
+      <div className="v3-app">
+        <div className="v3-app-scroll v3-stagger">
+          {/* ── Hero header DeepSight ─────────────────────────────────
+              Identité visuelle cohérente avec MainView — l'utilisateur
+              doit savoir qu'il est dans DeepSight pendant l'appel. */}
+          <div className="v3-hero">
+            <img
+              src={Browser.runtime.getURL("assets/deepsight-logo-cosmic.png")}
+              alt="DeepSight"
+              width={28}
+              height={28}
+              className="v3-brand-logo"
+              style={{ borderRadius: "50%", objectFit: "cover" }}
+            />
+            <span className="v3-brand">DeepSight</span>
+            <span
+              className="v3-plan-chip"
+              style={{
+                background: "rgba(236, 72, 153, 0.18)",
+                color: "#f9a8d4",
+              }}
+            >
+              {t.voiceCall.callActive.live}
+            </span>
+          </div>
+
+          {/* ── Call card + progress bar dans un BeamCard pour le halo
+              signature DeepSight ─────────────────────────────────── */}
+          <BeamCard>
+            <CallActiveView
+              elapsedSec={elapsedSec}
+              onMute={voiceChat.toggleMute}
+              onHangup={handleHangup}
+              isMuted={voiceChat.isMuted}
+              conversation={voiceChat.conversation}
+              onBack={() => {
+                handleHangup();
+                setState({ phase: "idle" });
+              }}
+              onSendTextMessage={(text) => {
+                // V1.2 — Input texte unifié : envoie le message à l'agent
+                // ElevenLabs (qui répondra en voix) ET l'append dans la
+                // timeline transcripts pour qu'il s'affiche comme un message
+                // user "dit". Pas de couplage backend chat (ElevenLabs SDK only).
+                voiceChat.conversation?.sendUserMessage(text);
+                void voiceChat.appendTranscript("user", text);
+              }}
+              canSendText={voiceChat.conversation !== null}
+              onApplyHardChanges={() => {
+                void voiceChat.restartSession();
+              }}
+              restarting={voiceChat.isRestarting}
+              transcripts={voiceChat.transcripts}
+              analysisPhase={contextPhase}
+              transcriptChunksReceived={transcriptChunksReceived}
+              transcriptChunksTotal={transcriptChunksTotal}
+            />
+            <ContextProgressBar
+              progress={contextProgress}
+              complete={contextComplete}
+              phase={contextPhase}
+              transcriptChunksReceived={transcriptChunksReceived}
+              transcriptChunksTotal={transcriptChunksTotal}
+            />
+          </BeamCard>
+        </div>
+      </div>
     );
   }
   if (state.phase === "ended_free_cta" || state.phase === "error_quota") {

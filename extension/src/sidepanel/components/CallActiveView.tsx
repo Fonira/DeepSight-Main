@@ -24,6 +24,8 @@ import type { VoiceTranscript } from "../types";
 import { VoiceTranscriptList } from "./VoiceTranscriptList";
 import { VoiceWaveform } from "./VoiceWaveform";
 import { AgentAvatar } from "./AgentAvatar";
+import { DeepSightSpinner } from "../shared/DeepSightSpinner";
+import type { ContextPhase } from "../hooks/useStreamingVideoContext";
 
 interface Props {
   elapsedSec: number;
@@ -82,6 +84,18 @@ interface Props {
    * footer Mute/Raccrocher. Optionnel — défaut [] pour rétrocompat tests.
    */
   transcripts?: VoiceTranscript[];
+  /**
+   * Phase du pipeline d'analyse côté backend (SSE). Tant que la phase n'est
+   * pas "complete", un panneau central avec DeepSightSpinner XL + label
+   * adaptatif est rendu sous le header. Le petit spinner du header reste
+   * visible uniquement pendant la phase initiale "searching" pour redondance
+   * — sans ça l'écran paraît figé pendant 5-30s.
+   */
+  analysisPhase?: ContextPhase;
+  /** Chunks transcript reçus (pour le label "transcriptReceived"). */
+  transcriptChunksReceived?: number;
+  /** Total chunks transcript attendus (pour le label "transcriptReceived"). */
+  transcriptChunksTotal?: number;
 }
 
 export function CallActiveView({
@@ -97,6 +111,9 @@ export function CallActiveView({
   onApplyHardChanges,
   restarting = false,
   transcripts = [],
+  analysisPhase,
+  transcriptChunksReceived = 0,
+  transcriptChunksTotal = 0,
 }: Props): JSX.Element {
   const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -153,6 +170,21 @@ export function CallActiveView({
           >
             {mm}:{ss}
           </span>
+          {analysisPhase === "searching" && (
+            <span
+              className="ds-call-active__searching"
+              data-testid="voice-searching-spinner"
+            >
+              <DeepSightSpinner
+                size="xs"
+                speed="fast"
+                label={
+                  t.voiceCall.ctxBar.phaseSearching ??
+                  "Recherche du transcript…"
+                }
+              />
+            </span>
+          )}
         </div>
         {restarting && (
           <span
@@ -178,6 +210,35 @@ export function CallActiveView({
           ⚙
         </button>
       </header>
+      {analysisPhase && analysisPhase !== "complete" && (
+        <div
+          className="ds-call-active__loading-panel"
+          data-testid="voice-loading-panel"
+          role="status"
+          aria-live="polite"
+        >
+          <DeepSightSpinner
+            size="md"
+            speed="fast"
+            showLabel
+            showLogos
+            label={(() => {
+              switch (analysisPhase) {
+                case "searching":
+                  return t.voiceCall.ctxBar.phaseSearching;
+                case "transcriptReceived":
+                  return t.voiceCall.ctxBar.phaseTranscriptReceived
+                    .replace("{n}", String(transcriptChunksReceived))
+                    .replace("{total}", String(transcriptChunksTotal));
+                case "mistralAnalyzing":
+                  return t.voiceCall.ctxBar.phaseMistralAnalyzing;
+                default:
+                  return t.voiceCall.ctxBar.phaseSearching;
+              }
+            })()}
+          />
+        </div>
+      )}
       <VoiceWaveform conversation={conversation} isMuted={isMuted} />
       <VoiceTranscriptList transcripts={transcripts} />
       <form

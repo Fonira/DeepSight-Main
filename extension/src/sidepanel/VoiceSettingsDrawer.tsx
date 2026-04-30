@@ -818,7 +818,7 @@ export const VoiceSettingsDrawer: React.FC<VoiceSettingsDrawerProps> = ({
               <Section
                 icon="🎙"
                 title="Voix"
-                badge="Hard"
+                badge="💾"
                 isOpen={openSections.voices}
                 onToggle={() => toggle("voices")}
               >
@@ -828,7 +828,7 @@ export const VoiceSettingsDrawer: React.FC<VoiceSettingsDrawerProps> = ({
               <Section
                 icon="⚡"
                 title="Vitesse chat vocal"
-                badge="Hard"
+                badge="💾"
                 isOpen={openSections.chatSpeed}
                 onToggle={() => toggle("chatSpeed")}
               >
@@ -838,7 +838,7 @@ export const VoiceSettingsDrawer: React.FC<VoiceSettingsDrawerProps> = ({
               <Section
                 icon="📖"
                 title="Vitesse de lecture résumés"
-                badge="Hard"
+                badge="💾"
                 isOpen={openSections.readingSpeed}
                 onToggle={() => toggle("readingSpeed")}
               >
@@ -848,7 +848,7 @@ export const VoiceSettingsDrawer: React.FC<VoiceSettingsDrawerProps> = ({
               <Section
                 icon="🤖"
                 title="Modèles"
-                badge="Hard"
+                badge="💾"
                 isOpen={openSections.models}
                 onToggle={() => toggle("models")}
               >
@@ -858,7 +858,7 @@ export const VoiceSettingsDrawer: React.FC<VoiceSettingsDrawerProps> = ({
               <Section
                 icon="🎚"
                 title="Avancé"
-                badge="Hard"
+                badge="💾"
                 isOpen={openSections.advanced}
                 onToggle={() => toggle("advanced")}
               >
@@ -868,7 +868,7 @@ export const VoiceSettingsDrawer: React.FC<VoiceSettingsDrawerProps> = ({
               <Section
                 icon="🎮"
                 title="Mode interaction"
-                badge="Live"
+                badge="⚡"
                 isOpen={openSections.interaction}
                 onToggle={() => toggle("interaction")}
               >
@@ -878,7 +878,7 @@ export const VoiceSettingsDrawer: React.FC<VoiceSettingsDrawerProps> = ({
               <Section
                 icon="⏱"
                 title="Timeouts"
-                badge="Live"
+                badge="⚡"
                 isOpen={openSections.timeouts}
                 onToggle={() => toggle("timeouts")}
               >
@@ -888,7 +888,7 @@ export const VoiceSettingsDrawer: React.FC<VoiceSettingsDrawerProps> = ({
               <Section
                 icon="🌍"
                 title="Préférences par défaut"
-                badge="Hard"
+                badge="💾"
                 isOpen={openSections.defaults}
                 onToggle={() => toggle("defaults")}
               >
