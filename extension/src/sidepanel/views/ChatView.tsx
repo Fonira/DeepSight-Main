@@ -53,6 +53,9 @@ function cleanQuestion(q: string): string {
 }
 
 // ── Plan helpers ──────────────────────────────────────────────────
+// Pricing v2 plans canonical : "free" | "pro" | "expert".
+// Legacy ids ("plus", "starter", "student", "etudiant", "team", "equipe")
+// retained for grandfathering of users still on v0/v1 subscriptions.
 const PAID_PLANS = [
   "plus",
   "pro",

@@ -98,7 +98,7 @@ jest.mock("../../src/i18n/useTranslation", () => ({
           monthlyQuotaBody: "x",
           proNoVoiceBody: "x",
           planName: "Expert",
-          planPrice: "14.99€",
+          planPrice: "19,99€",
           planPeriod: "/mois",
           feature1: "x",
           feature2: "x",

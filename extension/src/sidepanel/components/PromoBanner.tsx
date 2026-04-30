@@ -59,11 +59,14 @@ const PROMOS_PRO: Promo[] = [
 
 type PromoTier = "free" | "pro";
 
+// Pricing v2 plans canonical : "free" | "pro" | "expert".
+// Legacy ids ("plus", "etudiant", "student", "starter") fall through to "pro"
+// tier for grandfathered users so they still see relevant upsell promos.
 function getPromoTier(planId?: string): PromoTier {
   switch (planId) {
-    case "plus":
     case "pro":
     case "expert":
+    case "plus":
     case "etudiant":
     case "student":
     case "starter":
