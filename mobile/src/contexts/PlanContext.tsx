@@ -81,17 +81,21 @@ function buildPlanFeatures(planId: PlanId): PlanFeatures {
   };
 }
 
-// Plan configurations — synced from planPrivileges.ts (2 plans)
+// Plan configurations — synced from planPrivileges.ts (3 plans v2 : Free / Pro / Expert)
 const PLAN_FEATURES_MAP: Record<string, PlanFeatures> = {
   free: buildPlanFeatures("free"),
   pro: buildPlanFeatures("pro"),
-  // Legacy aliases → redirigés par normalizePlanId
+  expert: buildPlanFeatures("expert"),
+  // Legacy aliases v0/v1 → redirigés vers leur équivalent v2 (cohérent avec
+  // backend `normalize_plan_id` : plus → pro, starter/student/etudiant → pro,
+  // team/equipe/unlimited → expert).
+  plus: buildPlanFeatures("pro"),
   student: buildPlanFeatures("pro"),
+  etudiant: buildPlanFeatures("pro"),
   starter: buildPlanFeatures("pro"),
-  expert: buildPlanFeatures("pro"),
-  team: buildPlanFeatures("pro"),
-  equipe: buildPlanFeatures("pro"),
-  unlimited: buildPlanFeatures("pro"),
+  team: buildPlanFeatures("expert"),
+  equipe: buildPlanFeatures("expert"),
+  unlimited: buildPlanFeatures("expert"),
 };
 
 // Usage stats interface
