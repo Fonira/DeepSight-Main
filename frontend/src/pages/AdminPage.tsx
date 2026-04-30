@@ -81,9 +81,8 @@ const PLAN_CONFIG: Record<
 > = (() => {
   const colorMap: Record<string, { color: string; bg: string }> = {
     free: { color: "text-gray-500", bg: "bg-gray-100" },
-    etudiant: { color: "text-blue-600", bg: "bg-blue-100" },
-    starter: { color: "text-emerald-600", bg: "bg-emerald-100" },
-    pro: { color: "text-violet-600", bg: "bg-violet-100" },
+    pro: { color: "text-blue-600", bg: "bg-blue-100" },
+    expert: { color: "text-violet-600", bg: "bg-violet-100" },
   };
   const config: Record<string, { color: string; bg: string; label: string }> =
     {};
@@ -625,10 +624,9 @@ export const AdminPage: React.FC = () => {
                           <option value="">
                             {language === "fr" ? "Tous les plans" : "All plans"}
                           </option>
-                          <option value="free">Free</option>
-                          <option value="etudiant">Starter (€2.99)</option>
-                          <option value="starter">Student (€5.99)</option>
-                          <option value="pro">Pro (€12.99)</option>
+                          <option value="free">Free (€0)</option>
+                          <option value="pro">Pro (€8.99)</option>
+                          <option value="expert">Expert (€19.99)</option>
                         </select>
                         <span className="text-text-secondary self-center">
                           {usersTotal}{" "}
@@ -984,9 +982,8 @@ export const AdminPage: React.FC = () => {
                 className="w-full px-4 py-2 rounded-lg border border-border-subtle bg-bg-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
               >
                 <option value="free">Free (€0)</option>
-                <option value="etudiant">Starter (€2.99/mois)</option>
-                <option value="starter">Student (€5.99/mois)</option>
-                <option value="pro">Pro (€12.99/mois)</option>
+                <option value="pro">Pro (€8.99/mois)</option>
+                <option value="expert">Expert (€19.99/mois)</option>
               </select>
             </div>
 
