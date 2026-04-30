@@ -4167,6 +4167,22 @@ a:hover {
 /* Backdrop overlay — clic = fermer le drawer. Pointer-events seulement
    quand visible (rendu conditionnel React) pour ne jamais bloquer le clic
    sur la sidepanel quand le drawer est fermé. */
+/* AnalysisView root container — without these rules the analysis content
+   overflows the sidepanel viewport and the user can't scroll to see
+   sections at the bottom (rapporté 2026-04-30). The sidepanel itself has
+   a fixed height (popup window), so the inner view must own the scroll. */
+.analysis-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+.analysis-view > .main-header {
+  flex-shrink: 0;
+}
+
 .dsp-vs-drawer-backdrop {
   position: fixed;
   inset: 0;
