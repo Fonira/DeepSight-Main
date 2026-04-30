@@ -88,10 +88,12 @@ docker ps --format '{{.Names}} {{.Status}}'
 | AI          | Mistral (analyses) + Brave Search (fact-check)         | —                  |
 | Transcripts | Supadata → youtube-transcript-api → yt-dlp → Audio STT | —                  |
 
-### Plans d'abonnement (5 tiers)
+### Plans d'abonnement (3 tiers — Pricing v2, avril 2026)
 
-Découverte (gratuit) → Étudiant (2.99€) → Starter (5.99€) → Pro (12.99€) → Équipe (29.99€)
-SSOT : `is_feature_available(plan, feature, platform)` dans le backend.
+Free (0 €) → **Pro 8,99 €/mois** (89,90 €/an −17 %) → **Expert 19,99 €/mois** (199,90 €/an −17 %)
+Trial 7 jours sans CB sur Pro et Expert (un par user, à vie).
+Grandfathering legacy via colonne `users.is_legacy_pricing` (Alembic 012, mergée prod 2026-04-30).
+SSOT : `is_feature_available(plan, feature, platform)` dans le backend (`backend/src/billing/plan_config.py`) + `frontend/src/config/planPrivileges.ts` côté frontend (mirror) + `mobile/src/config/planPrivileges.ts` côté mobile (mirror).
 
 ---
 

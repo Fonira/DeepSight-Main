@@ -416,13 +416,17 @@ POST   /api/search/semantic         # Semantic search
 
 ---
 
-## Pricing Plans (3 tiers — Mars 2026)
+## Pricing Plans (3 tiers — Pricing v2, avril 2026)
 
-| Plan    | ID interne | Prix   | Analyses/mois | Max durée | Chat/vidéo | Features clés                                                          |
-| ------- | ---------- | ------ | ------------- | --------- | ---------- | ---------------------------------------------------------------------- |
-| Gratuit | free       | 0€     | 5             | 15min     | 5          | Flashcards, historique 60j                                             |
-| Pro     | pro        | 5.99€  | 30            | 2h        | 25         | Mind maps, web search (20/mois), playlists (3), export PDF             |
-| Expert  | expert     | 14.99€ | 100           | 4h        | illimité   | Web search (60/mois), playlists (10), priority queue, voice chat 20min |
+| Plan    | ID interne | Prix mensuel | Prix annuel (-17%) | Analyses/mois | Max durée | Chat/vidéo | Features clés                                                                                        |
+| ------- | ---------- | ------------ | ------------------ | ------------- | --------- | ---------- | ---------------------------------------------------------------------------------------------------- |
+| Gratuit | free       | 0 €          | 0 €                | 5             | 15 min    | 5          | Flashcards, historique 60 j                                                                          |
+| Pro     | pro        | **8,99 €**   | **89,90 €**        | 30            | 2 h       | 25         | Mind maps, web search (20/mois), playlists (3), export PDF, voice 30 min/mois, **trial 7 j sans CB** |
+| Expert  | expert     | **19,99 €**  | **199,90 €**       | 100           | 4 h       | illimité   | Web search (60/mois), playlists (10), priority queue, voice 120 min/mois, **trial 7 j sans CB**      |
+
+### Grandfathering legacy
+
+Migration v0/v1 → v2 (Alembic 012, mergée prod 2026-04-30) : `plus → pro`, `pro → expert`. Colonne `users.is_legacy_pricing BOOLEAN` flaggue les abonnements créés avant la migration → conservent leur ancien tarif via Stripe (`STRIPE_PRICE_PLUS_*` legacy conservés). Les nouveaux users souscrivent aux 4 nouveaux Stripe Prices : `STRIPE_PRICE_{PRO,EXPERT}_{MONTHLY,YEARLY}`.
 
 ### Modèles Mistral par plan
 
@@ -462,11 +466,11 @@ POST   /api/search/semantic         # Semantic search
 
 ## Chat v4.0 (Perplexity Enrichissement)
 
-| Plan     | Daily | Per-video | Web Search | Model |
-| -------- | ----- | --------- | ---------- | ----- |
-| Free     | 10    | 5         | ✗          | small |
-| Étudiant | 40    | 15        | ✗          | small |
-| Pro      | 100   | illimité  | ✓          | large |
+| Plan   | Daily    | Per-video | Web Search | Model  |
+| ------ | -------- | --------- | ---------- | ------ |
+| Free   | 10       | 5         | ✗          | small  |
+| Pro    | 50       | 25        | ✓ (20/mo)  | medium |
+| Expert | illimité | illimité  | ✓ (60/mo)  | large  |
 
 - Auto-enrichissement selon plan (none/light/full/deep)
 - Détection intelligente quand web search est pertinent
