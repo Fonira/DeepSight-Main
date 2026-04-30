@@ -1,0 +1,98 @@
+{# Bulletproof CTA button — works in Outlook, Gmail mobile, Apple Mail. The
+outer table fixes Gmail mobile + Outlook 2007/2010/2013 stripping inline-block
+padding. VML rectangle gives Outlook a real clickable area. #} {% macro
+cta_button(url, label, color1='#6366f1', color2='#8b5cf6') -%}
+<table
+  role="presentation"
+  cellspacing="0"
+  cellpadding="0"
+  border="0"
+  align="center"
+  style="margin: 28px auto"
+>
+  <tr>
+    <td align="center" bgcolor="{{ color1 }}" style="border-radius: 10px">
+      <!--[if mso]>
+        <v:roundrect
+          xmlns:v="urn:schemas-microsoft-com:vml"
+          xmlns:w="urn:schemas-microsoft-com:office:word"
+          href="{{ url }}"
+          style="height: 48px; v-text-anchor: middle; width: 280px"
+          arcsize="20%"
+          stroke="f"
+          fillcolor="{{ color1 }}"
+        >
+          <w:anchorlock />
+          <center
+            style="
+              color: #ffffff;
+              font-family: Arial, sans-serif;
+              font-size: 15px;
+              font-weight: 600;
+            "
+          >
+            {{ label }}
+          </center>
+        </v:roundrect>
+      <![endif]-->
+      <!--[if !mso]><!-->
+      <a
+        href="{{ url }}"
+        target="_blank"
+        rel="noopener"
+        style="
+          display: inline-block;
+          padding: 14px 32px;
+          background: linear-gradient(135deg, {{ color1 }} 0%, {{ color2 }} 100%);
+          color: #ffffff;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 15px;
+          border-radius: 10px;
+          letter-spacing: 0.2px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        "
+        >{{ label }}</a
+      >
+      <!--<![endif]-->
+    </td>
+  </tr>
+</table>
+{%- endmacro %} {# Plain-text fallback link block — MUST be
+<a
+  >, not
+  <div>
+    . Gmail mobile does not auto-linkify URLs inside non-anchor elements. #} {%
+    macro fallback_link(url) -%}
+    <p class="text" style="font-size: 13px; margin-bottom: 8px; color: #64748b">
+      Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :
+    </p>
+    <a class="link-fallback" href="{{ url }}" target="_blank" rel="noopener"
+      >{{ url }}</a
+    >
+    {%- endmacro %} {# Boxed alert helpers — use any of: info | warning |
+    success | error #} {% macro info_box(text) -%}
+    <div class="info-box">
+      <p>{{ text|safe }}</p>
+    </div>
+    {%- endmacro %} {% macro warning_box(text) -%}
+    <div class="warning-box">
+      <p>{{ text|safe }}</p>
+    </div>
+    {%- endmacro %} {% macro success_box(text) -%}
+    <div class="success-box">
+      <p>{{ text|safe }}</p>
+    </div>
+    {%- endmacro %} {% macro error_box(text) -%}
+    <div class="error-box">
+      <p>{{ text|safe }}</p>
+    </div>
+    {%- endmacro %} {# 6-digit code display (verification email, etc.) #} {%
+    macro code_box(code, label='Code de vérification') -%}
+    <div class="code-box">
+      <div class="code-label">{{ label }}</div>
+      <div class="code-value">{{ code }}</div>
+    </div>
+    {%- endmacro %}
+  </div></a
+>

@@ -1,0 +1,19 @@
+{% extends "_base.html" %} {% from "_macros.html" import code_box, info_box %}
+{% block title %}Vérifiez votre email — {{ app_name }}{% endblock %} {% block
+preheader %}Bienvenue {{ username }} ! Voici votre code de vérification (expire
+dans 10 min).{% endblock %} {% block header_icon %}✉️{% endblock %} {% block
+header_title %}Vérification email{% endblock %} {% block content %}
+<p class="greeting">Bonjour {{ username }},</p>
+<p class="text">
+  Bienvenue sur {{ app_name }} ! Pour activer votre compte, entrez le code de
+  vérification ci-dessous dans l'application.
+</p>
+
+{{ code_box(code, 'Code de vérification') }} {{ info_box('⏱️ Ce code expire dans
+<strong>10 minutes</strong>.') }}
+
+<p class="text" style="font-size: 13px; color: #64748b">
+  Si vous n'avez pas créé de compte sur {{ app_name }}, vous pouvez ignorer cet
+  email en toute sécurité.
+</p>
+{% endblock %}

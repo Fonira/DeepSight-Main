@@ -82,6 +82,21 @@ class EmailService:
             ),
         )
 
+    async def send_verification(self, to: str, username: str, code: str) -> bool:
+        html = self._render("verification.html", username=username, code=code)
+        return await self.send_email(
+            to=to,
+            subject=f"Vérifiez votre email — {APP_NAME}",
+            html_content=html,
+            text_content=(
+                f"Bonjour {username},\n\n"
+                f"Votre code de vérification : {code}\n\n"
+                f"Ce code expire dans 10 minutes.\n\n"
+                f"— {APP_NAME}"
+            ),
+            priority=True,
+        )
+
     async def send_reset_password(self, to: str, reset_url: str) -> bool:
         html = self._render("reset_password.html", reset_url=reset_url)
         return await self.send_email(
@@ -97,8 +112,9 @@ class EmailService:
         )
 
     async def send_payment_success(self, to: str, username: str, plan: str, credits: int) -> bool:
-        plan_display = {"starter": "Starter", "pro": "Pro", "expert": "Expert"}.get(plan, plan.capitalize())
-        price_display = {"starter": "4,99", "pro": "9,99", "expert": "14,99"}.get(plan, "—")
+        plan_display = {"pro": "Pro", "expert": "Expert"}.get(plan, plan.capitalize())
+        # Pricing v2 (Alembic 012, mergée 2026-04-30)
+        price_display = {"pro": "8,99", "expert": "19,99"}.get(plan, "—")
         html = self._render(
             "payment_success.html",
             username=username,
