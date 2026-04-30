@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Search, Plus } from "lucide-react";
+import { X, Search, Send, Sparkles } from "lucide-react";
 import type { HubConversation } from "./types";
 
 interface Props {
@@ -9,7 +9,12 @@ interface Props {
   conversations: HubConversation[];
   activeConvId: number | null;
   onSelect: (id: number) => void;
-  onNewConv: () => void;
+  /**
+   * Lance une analyse depuis la barre input du header. Le caller (HubPage)
+   * navigue vers `/hub?analyzing=<taskId>` et le drawer se ferme. Si non
+   * fourni, la barre input n'est pas rendue.
+   */
+  onAnalyze?: (url: string) => void | Promise<void>;
 }
 
 const PLATFORM_ICON: Record<
@@ -43,9 +48,22 @@ export const ConversationsDrawer: React.FC<Props> = ({
   conversations,
   activeConvId,
   onSelect,
-  onNewConv,
+  onAnalyze,
 }) => {
   const [query, setQuery] = useState("");
+  const [newUrl, setNewUrl] = useState("");
+
+  const handleAnalyzeSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      const trimmed = newUrl.trim();
+      if (!trimmed || !onAnalyze) return;
+      void onAnalyze(trimmed);
+      setNewUrl("");
+      onClose();
+    },
+    [newUrl, onAnalyze, onClose],
+  );
 
   if (!open) return null;
 
@@ -142,17 +160,36 @@ export const ConversationsDrawer: React.FC<Props> = ({
           <span className="flex-1 text-sm font-medium text-white">
             Conversations
           </span>
-          <button
-            type="button"
-            onClick={onNewConv}
-            aria-label="nouvelle conversation"
-            className="px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 text-xs flex items-center gap-1"
-          >
-            <Plus className="w-3 h-3" />
-            <span>Nouvelle</span>
-          </button>
         </div>
-        <div className="px-3 py-2 relative">
+
+        {onAnalyze && (
+          <div className="px-3 pt-3 pb-1">
+            <form onSubmit={handleAnalyzeSubmit} className="relative">
+              <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-indigo-400 pointer-events-none" />
+              <input
+                type="url"
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+                placeholder="Coller un lien YouTube/TikTok…"
+                aria-label="Nouvelle analyse — coller une URL"
+                className="w-full pl-8 pr-9 py-2 rounded-lg bg-indigo-500/[0.08] border border-indigo-500/30 text-[13px] text-white placeholder-white/35 outline-none focus:border-indigo-400/60 focus:bg-indigo-500/[0.12]"
+              />
+              <button
+                type="submit"
+                aria-label="Analyser"
+                disabled={!newUrl.trim()}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center rounded-md bg-indigo-500 text-white hover:bg-indigo-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </form>
+            <p className="px-1 mt-1 text-[10px] text-white/40">
+              Lance une nouvelle analyse — vous serez redirigé vers le Hub.
+            </p>
+          </div>
+        )}
+
+        <div className="px-3 pt-2 pb-2 relative">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
           <input
             type="text"
