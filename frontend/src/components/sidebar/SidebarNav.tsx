@@ -2,7 +2,7 @@ import React from "react";
 import {
   Video,
   Swords,
-  Phone,
+  MessageCircle,
   History,
   Gem,
   Settings,
@@ -19,10 +19,12 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   isAdmin = false,
   onNavigate,
 }) => {
+  // Note PR #214 : /chat et /voice-call ont fusionné dans /hub.
+  // Une seule entrée "Hub" remplace l'ancien "Appel Vocal".
   const navItems = [
     { path: "/dashboard", icon: Video, label: "Vidéo" },
     { path: "/debate", icon: Swords, label: "Débat IA" },
-    { path: "/voice-call", icon: Phone, label: "Appel Vocal" },
+    { path: "/hub", icon: MessageCircle, label: "Hub" },
     { path: "/history", icon: History, label: "Historique" },
     { path: "/upgrade", icon: Gem, label: "Upgrade" },
     { path: "/settings", icon: Settings, label: "Paramètres" },

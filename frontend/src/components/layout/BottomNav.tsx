@@ -8,7 +8,14 @@
 
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Swords, Clock, User, GraduationCap, Phone } from "lucide-react";
+import {
+  Home,
+  Swords,
+  Clock,
+  User,
+  GraduationCap,
+  MessageCircle,
+} from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { normalizePlanId } from "../../config/planPrivileges";
 
@@ -20,6 +27,8 @@ interface NavItem {
   requiresPro?: boolean;
 }
 
+// Note PR #214 : /chat et /voice-call ont fusionné dans /hub.
+// L'entrée "Voix" devient "Hub" (chat + voix unifiés).
 const navItems: NavItem[] = [
   { path: "/dashboard", icon: <Home className="w-5 h-5" />, label: "Accueil" },
   {
@@ -28,9 +37,9 @@ const navItems: NavItem[] = [
     label: "Historique",
   },
   {
-    path: "/voice-call",
-    icon: <Phone className="w-5 h-5" />,
-    label: "Voix",
+    path: "/hub",
+    icon: <MessageCircle className="w-5 h-5" />,
+    label: "Hub",
     requiresPro: true,
   },
   {
