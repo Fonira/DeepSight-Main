@@ -74,4 +74,85 @@ describe("SummaryCollapsible", () => {
     render(<SummaryCollapsible context={ctx} />);
     expect(scrollSpy).not.toHaveBeenCalled();
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // v2 visual additions: thumbnail + meta + markdown content
+  // ─────────────────────────────────────────────────────────────────────────
+
+  it("renders thumbnail image when video_thumbnail_url is provided", () => {
+    const ctxWithThumb = {
+      ...ctx,
+      video_thumbnail_url: "https://example.com/thumb.jpg",
+    };
+    render(<SummaryCollapsible context={ctxWithThumb} />);
+    const img = screen.getByRole("img");
+    expect(img).toHaveAttribute("src", "https://example.com/thumb.jpg");
+    expect(img).toHaveAttribute("alt", expect.stringMatching(/lex fridman/i));
+  });
+
+  it("renders fallback gradient when video_thumbnail_url is null", () => {
+    render(<SummaryCollapsible context={ctx} />);
+    // No <img> in the collapsed header, just the gradient placeholder div.
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+
+  it("renders channel and formatted duration in collapsed meta", () => {
+    // 1112 secs = 18:32
+    render(<SummaryCollapsible context={ctx} />);
+    expect(
+      screen.getByText((content) => /lex.*18:32/i.test(content)),
+    ).toBeInTheDocument();
+  });
+
+  it("formats duration over 1 hour as HH:MM:SS", () => {
+    const longCtx = { ...ctx, video_duration_secs: 8580 }; // 2:23:00
+    render(<SummaryCollapsible context={longCtx} />);
+    expect(
+      screen.getByText((content) => /2:23:00/.test(content)),
+    ).toBeInTheDocument();
+  });
+
+  it("renders markdown content when expanded with markdown short_summary", () => {
+    const mdCtx = {
+      ...ctx,
+      short_summary:
+        "## Section\n\nContenu **important** ici. [02:14](#) suivi.",
+      citations: [],
+    };
+    render(<SummaryCollapsible context={mdCtx} />);
+    fireEvent.click(screen.getByRole("button", { name: /résumé/i }));
+    expect(
+      screen.getByRole("heading", { level: 2, name: /section/i }),
+    ).toBeInTheDocument();
+    // "important" apparaît à la fois dans le texte normal et dans le bold ;
+    // on cible précisément l'élément STRONG via une fonction de matcher.
+    const strong = screen.getByText(
+      (_, el) => el?.tagName === "STRONG" && /important/i.test(el.textContent ?? ""),
+    );
+    expect(strong.tagName).toBe("STRONG");
+  });
+
+  it("renders timestamp markdown links as clickable citation pills", () => {
+    const onCitationClick = vi.fn();
+    const mdCtx = {
+      ...ctx,
+      short_summary: "Voir [02:14](#) pour le détail.",
+      citations: [],
+    };
+    render(
+      <SummaryCollapsible context={mdCtx} onCitationClick={onCitationClick} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /résumé/i }));
+    const pill = screen.getByRole("button", { name: /02:14/ });
+    fireEvent.click(pill);
+    expect(onCitationClick).toHaveBeenCalledWith(134);
+  });
+
+  it("shows a loading placeholder when short_summary is empty", () => {
+    const emptyCtx = { ...ctx, short_summary: "", citations: [] };
+    render(<SummaryCollapsible context={emptyCtx} defaultOpen />);
+    expect(
+      screen.getByText(/résumé en cours de chargement/i),
+    ).toBeInTheDocument();
+  });
 });
