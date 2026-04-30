@@ -488,7 +488,16 @@ function getAmbientLightingEnabled(): boolean {
 // AmbientLight v3 affiché sur TOUTES les routes (signature visuelle DeepSight,
 // le rayon de soleil + tournesol héliotrope sont une marque de fabrique
 // présente partout, plus juste sur les routes vitrines).
+// Routes où l'ambient lighting (beam + halo) est masqué pour ne pas alourdir
+// l'interface — les vues conversationnelles (Hub) ont déjà leur propre ambiance.
+const AMBIENT_LIGHT_HIDDEN_ROUTES = ["/hub"];
+
 const RouterAwareAmbientLight = () => {
+  const location = useLocation();
+  const hidden = AMBIENT_LIGHT_HIDDEN_ROUTES.some((path) =>
+    location.pathname === path || location.pathname.startsWith(path + "/"),
+  );
+  if (hidden) return null;
   return <AmbientLightLayer intensity="normal" />;
 };
 
