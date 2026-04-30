@@ -119,7 +119,86 @@
     "noResultsFound": "Aucun résultat trouvé",
     "tryAnother": "Essayez une autre recherche",
     "selectToAnalyze": "Sélectionnez pour analyser",
-    "loadingResults": "Recherche en cours..."
+    "loadingResults": "Recherche en cours...",
+    "modes": {
+      "toggle_on": "Mode Quiz : activé",
+      "toggle_off": "Mode Quiz : désactivé",
+      "focus": {
+        "label": "Mode Focus",
+        "description": "Interface minimaliste sans distraction"
+      },
+      "quiz": {
+        "label": "Mode Quiz",
+        "description": "Apprenez en jouant avec des questions interactives"
+      },
+      "classic": {
+        "label": "Mode Classique",
+        "description": "Interface standard avec toutes les options"
+      },
+      "expert": {
+        "label": "Mode Expert",
+        "description": "Contrôle total sur les prompts et paramètres"
+      }
+    }
+  },
+  "onboarding": {
+    "skip": "Passer",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "step_indicator": "Étape {{current}} / {{total}}",
+    "welcome": {
+      "title": "Bienvenue sur DeepSight !",
+      "description": "Vous avez 5 analyses gratuites ce mois-ci pour découvrir nos résumés vidéo intelligents.",
+      "cta": "Commencer"
+    },
+    "persona": {
+      "title": "Que faites-vous principalement ?",
+      "description": "Cela nous aide à personnaliser vos recommandations.",
+      "researcher": {
+        "label": "Chercheur",
+        "description": "Veille scientifique, papers, conférences"
+      },
+      "journalist": {
+        "label": "Journaliste",
+        "description": "Fact-checking, enquêtes, sources"
+      },
+      "student": {
+        "label": "Étudiant",
+        "description": "Cours, révisions, flashcards"
+      },
+      "professional": {
+        "label": "Professionnel",
+        "description": "Veille marché, formation continue"
+      }
+    },
+    "first_analysis": {
+      "title": "Lançons votre première analyse",
+      "description": "Collez l'URL d'une vidéo YouTube ou TikTok.",
+      "placeholder": "https://www.youtube.com/watch?v=...",
+      "tip": "Conseil : commencez par une vidéo de 10 min max pour un premier résultat rapide.",
+      "cta": "Analyser",
+      "skip": "Passer — Aller au tableau de bord"
+    }
+  },
+  "empty_states": {
+    "history": {
+      "title": "Aucune analyse pour l'instant",
+      "description": "Lancez votre première analyse vidéo pour commencer.",
+      "cta": "Lancer une analyse"
+    },
+    "chat_no_selection": {
+      "title": "Sélectionnez une vidéo",
+      "description": "Choisissez une vidéo dans la sidebar pour discuter avec l'IA.",
+      "cta": "Voir mon historique"
+    },
+    "chat_empty_thread": {
+      "title": "Posez votre première question",
+      "description": "L'IA répondra en se basant sur le contenu de la vidéo."
+    },
+    "study_no_badges": {
+      "title": "Aucun badge encore",
+      "description": "Continuez vos révisions pour débloquer vos premiers badges."
+    }
   },
   "analysis": {
     "title": "Analyse",

@@ -47,6 +47,7 @@ import { videoApi, chatApi, Summary } from "../services/api";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../hooks/useAuth";
 import { SEO } from "../components/SEO";
+import { EmptyState } from "../components/EmptyState";
 import { normalizePlanId, CONVERSION_TRIGGERS } from "../config/planPrivileges";
 import {
   EnrichedMarkdown,
@@ -103,7 +104,7 @@ interface ChatMessage {
 const ChatPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { language } = useTranslation();
+  const { language, t: tr } = useTranslation();
   const { user } = useAuth();
 
   const plan = normalizePlanId(user?.plan);
@@ -784,19 +785,14 @@ const ChatPage: React.FC = () => {
                 alt=""
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 opacity-[0.025] pointer-events-none select-none"
               />
-              <div className="text-center max-w-sm relative z-10">
-                <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
-                  <MessageSquare className="w-7 h-7 text-cyan-400/30" />
-                </div>
-                <h2 className="text-lg font-semibold text-text-secondary mb-2">
-                  {t.selectVideo}
-                </h2>
-                <p className="text-sm text-text-tertiary mb-1">
-                  {language === "fr"
-                    ? "Sélectionnez une vidéo dans la sidebar pour discuter."
-                    : "Select a video from the sidebar to start chatting."}
-                </p>
-
+              <div className="relative z-10 max-w-sm">
+                <EmptyState
+                  icon={MessageSquare}
+                  title={tr.empty_states.chat_no_selection.title}
+                  description={tr.empty_states.chat_no_selection.description}
+                  ctaLabel={tr.empty_states.chat_no_selection.cta}
+                  onCta={() => navigate("/history")}
+                />
                 {/* 💡 Chat Welcome Oracle — Ghost bubble */}
                 <ChatWelcomeInsight
                   onPrefillChat={(text) => setInputValue(text)}
@@ -834,17 +830,16 @@ const ChatPage: React.FC = () => {
 
                   {/* Empty state with suggestions */}
                   {!isLoadingMessages && messages.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center mb-5">
-                        <Sparkles className="w-6 h-6 text-cyan-400/35" />
-                      </div>
-                      <h3 className="text-base font-semibold text-text-secondary mb-1.5">
-                        {t.emptyTitle}
-                      </h3>
-                      <p className="text-sm text-white/28 mb-8 max-w-[300px]">
-                        {t.emptySubtitle}
-                      </p>
-                      <div className="flex flex-wrap justify-center gap-2">
+                    <div className="flex flex-col items-center">
+                      <EmptyState
+                        icon={Sparkles}
+                        title={tr.empty_states.chat_empty_thread.title}
+                        description={
+                          tr.empty_states.chat_empty_thread.description
+                        }
+                        className="py-12"
+                      />
+                      <div className="flex flex-wrap justify-center gap-2 -mt-4 mb-8">
                         {t.suggestions.map((s, i) => (
                           <button
                             key={i}

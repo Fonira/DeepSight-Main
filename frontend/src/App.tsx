@@ -15,6 +15,7 @@ import {
   lazy,
   useEffect,
   useRef,
+  useState,
   ReactNode,
   Component,
   ErrorInfo,
@@ -47,6 +48,7 @@ import { CookieBanner } from "./components/CookieBanner";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { VoicePrefsStagingProvider } from "./components/voice/staging/VoicePrefsStagingProvider";
 import { StagedPrefsToolbar } from "./components/voice/staging/StagedPrefsToolbar";
+import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
 import { analytics } from "./services/analytics";
 import { DeepSightSpinner } from "./components/ui/DeepSightSpinner";
 
@@ -433,11 +435,25 @@ const HomeRoute = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const ProtectedLayout = () => {
+  const { user } = useAuth();
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+
+  // Décision DB-3 (RELEASE-ORCHESTRATION L.562) : show pour anciens users sans flag
+  // → tous les users dont preferences.has_completed_onboarding !== true voient le flow.
+  const shouldShowOnboarding =
+    user !== null &&
+    user !== undefined &&
+    user.preferences?.has_completed_onboarding !== true &&
+    !onboardingDismissed;
+
   // noindex sur toutes les routes protégées (dashboard, history, settings, etc.)
   return (
     <>
       <SEO noindex />
       <Outlet />
+      {shouldShowOnboarding && (
+        <OnboardingFlow onComplete={() => setOnboardingDismissed(true)} />
+      )}
     </>
   );
 };
