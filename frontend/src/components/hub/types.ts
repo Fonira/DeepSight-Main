@@ -1,10 +1,24 @@
 // frontend/src/components/hub/types.ts
+//
+// SSOT du hub conversationnel unifié (chat + voice). Volontairement
+// parallèle à ChatPage.ChatMessage et analysisStore.ChatMessage : les
+// pages legacy `/chat` et `/voice-call` seront supprimées J+30 (cf. plan
+// docs/superpowers/plans/2026-04-30-unified-hub-chat-voice.md). Pendant
+// cette fenêtre de cohabitation, NE PAS importer ces types depuis les
+// pages legacy — ils restent confinés à `components/hub/*` et `pages/HubPage`.
 
 /**
- * Schema unifié frontend pour le hub conversationnel.
- * Reflète backend ChatMessage (PR #203) — source distingue text/voice/voice_user/voice_agent.
+ * Mapping aplati frontend du couple backend (`source`, `voice_speaker`).
+ * Backend Pydantic (PR #203) modélise voice avec deux champs séparés :
+ *   { source: "text" | "voice", voice_speaker: "user" | "agent" | null }
+ * Frontend aplatit en un seul champ pour faciliter switch/JSX :
+ *   "voice_user"  ↔ backend { source: "voice", voice_speaker: "user" }
+ *   "voice_agent" ↔ backend { source: "voice", voice_speaker: "agent" }
+ *   "text"        ↔ backend { source: "text",  voice_speaker: null }
+ * Le mapping est appliqué au fetch dans HubPage (cf. Task 13).
  */
 export interface HubMessage {
+  /** crypto.randomUUID() côté client pour éviter les collisions de clés React. */
   id: string;
   role: "user" | "assistant";
   content: string;
