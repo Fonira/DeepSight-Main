@@ -1,6 +1,6 @@
 // extension/src/sidepanel/components/UpgradeCTA.tsx
 //
-// CTA d'upgrade post-call ou bloquant — pousse vers Expert (14.99€/mois)
+// CTA d'upgrade post-call ou bloquant — pousse vers Expert (19,99€/mois)
 // avec 30 min de voice call inclus.
 //
 // 3 reasons supportées :
