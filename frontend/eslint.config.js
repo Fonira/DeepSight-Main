@@ -23,6 +23,20 @@ export default tseslint.config(
         "warn",
         { allowConstantExport: true },
       ],
+      // Unused vars/params : pattern `_foo` rend la variable silencieuse.
+      // Couvre les cas légitimes : destructuring partiel, useState dont
+      // seul le setter est utilisé, params API qu'on doit garder pour la
+      // signature mais pas utiliser. Délégué ici depuis tsconfig (TS natif
+      // ne supporte pas le pattern pour les variables locales).
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+        },
+      ],
     },
   },
 );

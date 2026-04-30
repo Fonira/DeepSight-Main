@@ -16,8 +16,13 @@
 
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    /* Unused vars/params délégués à ESLint (`@typescript-eslint/no-unused-vars`)
+     * pour bénéficier du pattern `^_` qui rend silencieux les variables
+     * intentionnellement non-utilisées (ex: destructuring partiel, hooks
+     * où seul le setter est utilisé). TypeScript natif ne supporte pas ce
+     * pattern pour les variables locales. Voir eslint.config.js. */
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"]
