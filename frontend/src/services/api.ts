@@ -8,6 +8,16 @@
  */
 
 import { translateApiError } from "../utils/errorMessages";
+import type {
+  StudyStats,
+  HeatMapData,
+  BadgesData,
+  VideoMasteryData,
+  DueCardsData,
+  ReviewResult,
+  StudySessionData,
+  SessionEndResult,
+} from "../types/gamification";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ⚙️ CONFIGURATION
