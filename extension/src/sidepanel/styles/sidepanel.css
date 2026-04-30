@@ -2934,29 +2934,69 @@ a:hover {
   box-shadow: 0 0 8px rgba(139, 92, 246, 0.35);
 }
 
-/* ── Upgrade CTA (post-call ou bloquant) ──────────── */
+/* ── Upgrade CTA (post-call ou bloquant) — Editorial Premium ──────────── */
 .ds-upgrade-cta {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 32px 24px;
+  gap: 14px;
+  padding: 28px 20px 24px;
   text-align: center;
   animation: fadeIn 0.4s ease-out;
+  position: relative;
+}
+
+.ds-upgrade-cta::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 220px;
+  background: radial-gradient(
+    ellipse at top,
+    rgba(200, 144, 58, 0.18),
+    rgba(155, 107, 74, 0.08) 40%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ds-upgrade-cta__ribbon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #c8903a, #9b6b4a);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(200, 144, 58, 0.35);
 }
 
 .ds-upgrade-cta__emoji {
-  font-size: 40px;
-  filter: drop-shadow(0 0 18px rgba(236, 72, 153, 0.4));
+  position: relative;
+  z-index: 1;
+  font-size: 36px;
+  filter: drop-shadow(0 0 18px rgba(200, 144, 58, 0.45));
 }
 
 .ds-upgrade-cta h2 {
+  position: relative;
+  z-index: 1;
   font-size: 19px;
   font-weight: 600;
   line-height: 1.3;
   color: var(--text-primary);
   margin: 0;
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  background: linear-gradient(135deg, #d4a054, #c8903a 50%, #9b6b4a);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -2964,6 +3004,8 @@ a:hover {
 }
 
 .ds-upgrade-cta p {
+  position: relative;
+  z-index: 1;
   font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.55;
@@ -2972,17 +3014,19 @@ a:hover {
 }
 
 .ds-upgrade-cta__plan {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 320px;
   padding: 16px;
   border-radius: var(--radius-lg);
   background: linear-gradient(
-    135deg,
-    rgba(139, 92, 246, 0.08),
-    rgba(236, 72, 153, 0.06)
+    180deg,
+    rgba(200, 144, 58, 0.08),
+    rgba(255, 255, 255, 0.02)
   );
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  backdrop-filter: blur(10px);
+  border: 1px solid rgba(200, 144, 58, 0.3);
+  box-shadow: 0 8px 24px rgba(200, 144, 58, 0.12);
 }
 
 .ds-upgrade-cta__plan-header {
@@ -2993,10 +3037,10 @@ a:hover {
 }
 
 .ds-upgrade-cta__plan-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  letter-spacing: 0.04em;
+  font-size: 12px;
+  font-weight: 700;
+  color: #d4a054;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -3004,6 +3048,7 @@ a:hover {
   font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .ds-upgrade-cta__plan-price > span {
@@ -3011,6 +3056,7 @@ a:hover {
   font-weight: 400;
   color: var(--text-tertiary);
   margin-left: 2px;
+  letter-spacing: 0;
 }
 
 .ds-upgrade-cta__plan ul {
@@ -3027,33 +3073,46 @@ a:hover {
   font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.4;
+  position: relative;
+  padding-left: 18px;
+}
+
+.ds-upgrade-cta__plan li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #c8903a;
+  font-weight: 700;
 }
 
 .ds-upgrade-cta__primary {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 320px;
-  padding: 12px 16px;
+  padding: 13px 16px;
   border-radius: var(--radius-md);
   border: none;
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
-  background-size: 200% 200%;
+  background: linear-gradient(135deg, #c8903a, #9b6b4a);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
   font-family: var(--font-body);
   cursor: pointer;
   transition: all var(--transition-base);
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.32);
-  animation: gradient-shift 8s ease infinite;
+  box-shadow: 0 4px 16px rgba(200, 144, 58, 0.35);
   min-height: 44px;
 }
 
 .ds-upgrade-cta__primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 22px rgba(236, 72, 153, 0.4);
+  box-shadow: 0 6px 22px rgba(200, 144, 58, 0.5);
 }
 
 .ds-upgrade-cta__dismiss {
+  position: relative;
+  z-index: 1;
   background: transparent;
   border: none;
   color: var(--text-tertiary);

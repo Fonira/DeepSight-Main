@@ -1,17 +1,27 @@
 import React from "react";
 
 interface Props {
-  plan: "free" | "etudiant" | "starter" | "pro" | "equipe";
+  plan: "free" | "etudiant" | "starter" | "pro" | "expert" | "equipe";
   creditsLeft: number;
   onUpgrade: () => void;
 }
 
 const PLAN_LABELS: Record<Props["plan"], string> = {
-  free: "Découverte",
-  etudiant: "Étudiant",
-  starter: "Starter",
+  free: "Gratuit",
+  etudiant: "Pro",
+  starter: "Pro",
   pro: "Pro",
-  equipe: "Équipe",
+  expert: "Expert",
+  equipe: "Expert",
+};
+
+const PLAN_COLORS: Record<Props["plan"], { bg: string; fg: string }> = {
+  free: { bg: "rgba(255,255,255,0.08)", fg: "rgba(255,255,255,0.7)" },
+  etudiant: { bg: "rgba(59,130,246,0.18)", fg: "#60a5fa" },
+  starter: { bg: "rgba(59,130,246,0.18)", fg: "#60a5fa" },
+  pro: { bg: "rgba(59,130,246,0.18)", fg: "#60a5fa" },
+  expert: { bg: "rgba(200,144,58,0.20)", fg: "#D4A054" },
+  equipe: { bg: "rgba(200,144,58,0.20)", fg: "#D4A054" },
 };
 
 export function PlanBadge({
@@ -19,7 +29,10 @@ export function PlanBadge({
   creditsLeft,
   onUpgrade,
 }: Props): JSX.Element {
-  const showUpgrade = plan === "free" || plan === "etudiant";
+  const showUpgrade =
+    plan === "free" || plan === "etudiant" || plan === "starter";
+  const { bg, fg } = PLAN_COLORS[plan];
+
   return (
     <div
       style={{
@@ -32,10 +45,12 @@ export function PlanBadge({
     >
       <span
         style={{
-          background: "rgba(99,102,241,0.2)",
-          color: "#818cf8",
-          padding: "2px 8px",
-          borderRadius: 12,
+          background: bg,
+          color: fg,
+          padding: "2px 10px",
+          borderRadius: 999,
+          fontWeight: 600,
+          letterSpacing: "0.02em",
         }}
       >
         {PLAN_LABELS[plan]}
@@ -47,10 +62,11 @@ export function PlanBadge({
           style={{
             background: "transparent",
             border: "none",
-            color: "#818cf8",
+            color: "#D4A054",
             cursor: "pointer",
             marginLeft: "auto",
             fontSize: 12,
+            fontWeight: 600,
           }}
         >
           Upgrade →
