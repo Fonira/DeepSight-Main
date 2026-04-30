@@ -103,7 +103,11 @@ export const GeoTab: React.FC<GeoTabProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isGeoEnabled = user.plan === "plus" || user.plan === "pro";
+  // Pricing v2 : gating GEO ouvert sur plans payants (Pro 8,99 € / Expert 19,99 €).
+  // L'alias "plus" v0/v1 est conserve pour grandfathering (mappe vers pro via
+  // normalizePlanId backend ; ici on accepte les deux libelles a la lecture).
+  const isGeoEnabled =
+    user.plan === "pro" || user.plan === "expert" || user.plan === "plus";
   const t = (fr: string, en: string) => (language === "fr" ? fr : en);
 
   useEffect(() => {
