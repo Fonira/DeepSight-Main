@@ -93,6 +93,8 @@ export interface VoiceOverlayProps {
    * Pass false to require an explicit user click first.
    */
   autoStart?: boolean;
+  /** "floating" (default — bottom-right 380×600) or "fullbleed" (occupies parent container). */
+  presentationMode?: "floating" | "fullbleed";
 }
 
 export interface VoiceOverlayController {
@@ -162,10 +164,12 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
   onVoiceMessage,
   controllerRef,
   autoStart = true,
+  presentationMode = "floating",
 }) => {
   const t = I18N[language];
   const resolvedAgent: VoiceOverlayProps["agentType"] =
     agentType ?? (summaryId ? "explorer" : "companion");
+  const isFullbleed = presentationMode === "fullbleed";
 
   // ── Settings panel collapsible state ──
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -349,8 +353,12 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
             exit={{ opacity: 0, x: 32, y: 32 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
             data-testid="voice-overlay"
-            className="fixed bottom-6 right-6 w-[380px] max-w-[calc(100vw-32px)] h-[600px] max-h-[calc(100vh-48px)] flex flex-col rounded-2xl shadow-2xl bg-[#0c0c14]/95 backdrop-blur-xl border border-white/10 overflow-hidden"
-            style={{ zIndex: 1000 }}
+            className={
+              isFullbleed
+                ? "absolute inset-0 flex flex-col bg-[#0c0c14]/95 backdrop-blur-xl border border-white/10 overflow-hidden"
+                : "fixed bottom-6 right-6 w-[380px] max-w-[calc(100vw-32px)] h-[600px] max-h-[calc(100vh-48px)] flex flex-col rounded-2xl shadow-2xl bg-[#0c0c14]/95 backdrop-blur-xl border border-white/10 overflow-hidden"
+            }
+            style={isFullbleed ? undefined : { zIndex: 1000 }}
           >
             {/* ── Header ── */}
             <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06] flex-shrink-0">
