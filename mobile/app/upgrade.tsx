@@ -1,4 +1,15 @@
-import React, { useRef, useState, useCallback } from "react";
+/**
+ * UpgradeScreen — Pricing v2 (Avril 2026)
+ *
+ * Affiche les plans payants v2 (Pro + Expert) avec :
+ *   - Toggle mensuel/annuel (-17 %)
+ *   - CTA principal : "Choisir ce plan" → Stripe Checkout (createCheckout v2)
+ *   - CTA secondaire : "Essayer 7 jours gratuit" (trial sans CB) si user free + éligible
+ *
+ * Note : la page (tabs)/subscription.tsx est l'écran principal de gestion d'abo.
+ * upgrade.tsx est appelé via deeplink ou depuis les modals d'upgrade contextuels.
+ */
+import React, { useRef, useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -15,75 +26,71 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { billingApi, ApiError } from "@/services/api";
+import { billingApi, ApiError, type BillingCycle } from "@/services/api";
 import { PlanCard } from "@/components/upgrade/PlanCard";
-import { sp } from "@/theme/spacing";
+import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize, textStyles } from "@/theme/typography";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
+import {
+  PLANS_INFO,
+  CONVERSION_TRIGGERS,
+  normalizePlanId,
+  type PlanId,
+} from "@/config/planPrivileges";
 
+// Affichage du plan courant en haut de page
 const PLAN_LABELS: Record<string, string> = {
   free: "Gratuit",
-  student: "Student",
-  starter: "Starter",
   pro: "Pro",
-  team: "Team",
+  expert: "Expert",
 };
 
-const UPGRADE_PLANS = [
-  {
-    id: "student",
-    name: "Student",
-    price: "2,99€",
-    period: "/mois",
-    features: [
-      "40 analyses/mois",
-      "2000 crédits",
-      "Flashcards & Quiz",
-      "Exports PDF",
-    ],
-  },
-  {
-    id: "starter",
-    name: "Starter",
-    price: "5,99€",
-    period: "/mois",
-    features: [
-      "60 analyses/mois",
-      "3000 crédits",
-      "Vidéos 2h max",
-      "Exports tous formats",
-      "60 jours historique",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "12,99€",
-    period: "/mois",
-    popular: true,
-    features: [
-      "300 analyses/mois",
-      "15000 crédits",
-      "Playlists complètes",
-      "Chat illimité",
-      "TTS audio",
-      "Support prioritaire",
-    ],
-  },
-  {
-    id: "team",
-    name: "Team",
-    price: "29,99€",
-    period: "/mois",
-    features: [
-      "1000 analyses/mois",
-      "50000 crédits",
-      "Accès API",
-      "5 utilisateurs",
-      "Dashboard analytics",
-    ],
-  },
-];
+interface UpgradePlanView {
+  id: PlanId;
+  name: string;
+  price: string;
+  period: string;
+  features: string[];
+  popular?: boolean;
+}
+
+/**
+ * Construit les vues plan pour PagerView depuis PLANS_INFO + cycle.
+ * On exclut "free" (cet écran sert à upgrade vers payant).
+ */
+function buildPlanViews(cycle: BillingCycle): UpgradePlanView[] {
+  return PLANS_INFO.filter((p) => p.id !== "free").map((p) => {
+    const monthly = p.priceDisplay.fr.replace("/mois", "").trim();
+    const yearly = p.priceYearlyDisplay.fr.replace("/an", "").trim();
+    return {
+      id: p.id,
+      name: p.name.fr,
+      price: cycle === "yearly" ? yearly : monthly,
+      period: cycle === "yearly" ? "/an" : "/mois",
+      popular: p.popular,
+      features:
+        p.id === "pro"
+          ? [
+              "25 analyses/mois",
+              "Vidéos jusqu'à 1 h",
+              "Mind Maps + Flashcards",
+              "Export PDF + Markdown",
+              "Voice Chat 30 min/mois",
+              "Recherche web (20/mois)",
+              "Fact-checking",
+            ]
+          : [
+              "100 analyses/mois",
+              "Vidéos jusqu'à 4 h",
+              "Playlists (10×20 vidéos)",
+              "Voice Chat 120 min/mois",
+              "Recherche web (60/mois)",
+              "Deep Research + TTS",
+              "Support prioritaire",
+            ],
+    };
+  });
+}
 
 export default function UpgradeScreen() {
   const insets = useSafeAreaInsets();
@@ -94,22 +101,67 @@ export default function UpgradeScreen() {
 
   const pagerRef = useRef<PagerView>(null);
   const [activePage, setActivePage] = useState(0);
+  const [cycle, setCycle] = useState<BillingCycle>("monthly");
+  const [trialLoading, setTrialLoading] = useState<PlanId | null>(null);
 
-  const currentPlan = user?.plan ?? "free";
+  const currentPlanRaw = user?.plan ?? "free";
+  const currentPlan = normalizePlanId(currentPlanRaw);
 
-  const handleSelectPlan = useCallback(async (planId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    try {
-      const { url } = await billingApi.createCheckout(planId);
-      await WebBrowser.openBrowserAsync(url);
-    } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : "Impossible de créer la session de paiement";
-      Alert.alert("Erreur", message);
-    }
-  }, []);
+  const planViews = useMemo(() => buildPlanViews(cycle), [cycle]);
+
+  // Trial dispo seulement pour user free, sur Pro et Expert (Sprint B H5)
+  const trialAvailable =
+    CONVERSION_TRIGGERS.trialEnabled && currentPlan === "free";
+
+  const handleSelectPlan = useCallback(
+    async (planId: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      try {
+        // 🆕 Pricing v2 : envoie {plan, cycle}
+        const { url } = await billingApi.createCheckout(planId, cycle);
+        await WebBrowser.openBrowserAsync(url);
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : "Impossible de créer la session de paiement";
+        Alert.alert("Erreur", message);
+      }
+    },
+    [cycle],
+  );
+
+  const handleStartTrial = useCallback(
+    async (planId: PlanId) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setTrialLoading(planId);
+      try {
+        // Vérifier l'éligibilité (defensive — backend re-vérifie aussi)
+        const eligibility = await billingApi.checkTrialEligibility(planId);
+        if (!eligibility.eligible) {
+          Alert.alert(
+            "Essai indisponible",
+            eligibility.reason ||
+              "Vous avez déjà bénéficié d'un essai ou d'un abonnement.",
+          );
+          return;
+        }
+        const { checkout_url } = await billingApi.startTrial(planId, cycle);
+        await WebBrowser.openBrowserAsync(checkout_url);
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : "Impossible de démarrer l'essai";
+        Alert.alert("Erreur", message);
+      } finally {
+        setTrialLoading(null);
+      }
+    },
+    [cycle],
+  );
+
+  const activePlan = planViews[activePage];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
@@ -131,6 +183,65 @@ export default function UpgradeScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
+      {/* Toggle mensuel/annuel */}
+      <View style={styles.toggleContainer}>
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            setCycle("monthly");
+          }}
+          style={[
+            styles.toggleButton,
+            cycle === "monthly" && {
+              backgroundColor: colors.accentPrimary,
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityState={{ selected: cycle === "monthly" }}
+        >
+          <Text
+            style={[
+              styles.toggleText,
+              {
+                color:
+                  cycle === "monthly" ? "#ffffff" : colors.textSecondary,
+              },
+            ]}
+          >
+            Mensuel
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            setCycle("yearly");
+          }}
+          style={[
+            styles.toggleButton,
+            cycle === "yearly" && {
+              backgroundColor: colors.accentPrimary,
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityState={{ selected: cycle === "yearly" }}
+        >
+          <Text
+            style={[
+              styles.toggleText,
+              {
+                color:
+                  cycle === "yearly" ? "#ffffff" : colors.textSecondary,
+              },
+            ]}
+          >
+            Annuel
+          </Text>
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountText}>-17%</Text>
+          </View>
+        </Pressable>
+      </View>
+
       {/* Pager */}
       <PagerView
         ref={pagerRef}
@@ -138,7 +249,7 @@ export default function UpgradeScreen() {
         initialPage={0}
         onPageSelected={(e) => setActivePage(e.nativeEvent.position)}
       >
-        {UPGRADE_PLANS.map((plan) => (
+        {planViews.map((plan) => (
           <View key={plan.id} style={styles.pageContainer}>
             <View
               style={[
@@ -158,7 +269,7 @@ export default function UpgradeScreen() {
 
       {/* Dots indicator */}
       <View style={styles.dotsContainer}>
-        {UPGRADE_PLANS.map((_, index) => (
+        {planViews.map((_, index) => (
           <View
             key={index}
             style={[
@@ -174,6 +285,35 @@ export default function UpgradeScreen() {
           />
         ))}
       </View>
+
+      {/* CTA Trial 7 j sans CB (Sprint B H5) */}
+      {trialAvailable && activePlan && (
+        <View style={styles.trialContainer}>
+          <Pressable
+            onPress={() => handleStartTrial(activePlan.id)}
+            disabled={trialLoading === activePlan.id}
+            style={({ pressed }) => [
+              styles.trialButton,
+              { borderColor: colors.accentPrimary },
+              pressed && { opacity: 0.85 },
+              trialLoading === activePlan.id && { opacity: 0.6 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Essayer ${activePlan.name} gratuitement 7 jours`}
+          >
+            <Ionicons
+              name="gift-outline"
+              size={18}
+              color={colors.accentPrimary}
+            />
+            <Text
+              style={[styles.trialText, { color: colors.accentPrimary }]}
+            >
+              Essai 7 jours gratuit ({activePlan.name}) — sans CB
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* Current plan */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + sp.lg }]}>
@@ -206,6 +346,39 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40, // même largeur que le bouton retour pour centrer le titre
   },
+  // Toggle annuel/mensuel
+  toggleContainer: {
+    flexDirection: "row",
+    alignSelf: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: borderRadius.full,
+    padding: 4,
+    marginVertical: sp.md,
+    gap: 4,
+  },
+  toggleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: sp.xs,
+    paddingVertical: sp.xs,
+    paddingHorizontal: sp.lg,
+    borderRadius: borderRadius.full,
+  },
+  toggleText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
+  },
+  discountBadge: {
+    backgroundColor: "#10b981",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  discountText: {
+    fontFamily: fontFamily.bodyBold,
+    fontSize: fontSize["2xs"],
+    color: "#ffffff",
+  },
   pager: {
     flex: 1,
   },
@@ -225,11 +398,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: sp.sm,
-    paddingVertical: sp.lg,
+    paddingVertical: sp.md,
   },
   dot: {
     height: 8,
     borderRadius: 4,
+  },
+  // Trial CTA
+  trialContainer: {
+    paddingHorizontal: sp.lg,
+    paddingTop: sp.sm,
+    paddingBottom: sp.md,
+  },
+  trialButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: sp.sm,
+    paddingVertical: sp.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1.5,
+    backgroundColor: "rgba(99,102,241,0.08)",
+  },
+  trialText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
   },
   footer: {
     alignItems: "center",

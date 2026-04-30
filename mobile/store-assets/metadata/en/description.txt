@@ -28,8 +28,9 @@ Listen to summaries with built-in text-to-speech. Perfect for reviewing on the g
 
 AVAILABLE PLANS
 • Free: 5 analyses/month, videos up to 15 min, flashcards, quiz, chat
-• Plus (€4.99/month): 25 analyses, 60 min videos, fact-check, mind maps, web search, PDF exports
-• Pro (€9.99/month): 100 analyses, 4h videos, voice chat 45 min/month (ElevenLabs), playlists, deep research, priority queue
+• Pro (€8.99/month or €89.90/year −17%): 25 analyses, 60 min videos, fact-check, mind maps, web search, PDF exports, voice chat 30 min/month (ElevenLabs)
+• Expert (€19.99/month or €199.90/year −17%): 100 analyses, 4h videos, voice chat 120 min/month, playlists, deep research, priority queue
+7-day free trial without credit card on Pro and Expert.
 
 PRIVACY
 Your data is protected. No videos are stored — only metadata and analyses are kept. GDPR compliant.

@@ -1528,32 +1528,109 @@ export const playlistApi = {
 // ============================================
 // Billing API
 // ============================================
+
+// Pricing v2 types (mirror frontend/src/services/api.ts)
+export type BillingCycle = "monthly" | "yearly";
+export type ApiPlanIdV2 = "free" | "pro" | "expert";
+
+export interface TrialEligibility {
+  eligible: boolean;
+  reason?: string;
+  trial_days: number;
+  trial_plan: string;
+}
+
 export const billingApi = {
   async getPlans(): Promise<{ plans: BillingPlan[] }> {
     return request("/api/billing/plans", { requiresAuth: false });
   },
 
+  /**
+   * 🆕 Pricing v2 — Crée une session Stripe Checkout pour Pro / Expert + cycle.
+   *
+   * Le backend POST /api/billing/create-checkout accepte v2 `{plan, cycle}` ET
+   * legacy `{plan_id}` (compat rétro). On envoie les 3 champs pour maximiser la
+   * compatibilité (mobile peut être en avance/retard sur le backend déployé).
+   *
+   * @param plan "pro" | "expert"
+   * @param cycle "monthly" | "yearly" (default monthly)
+   */
   async createCheckout(
-    planId: string,
+    plan: ApiPlanIdV2 | string,
+    cycle: BillingCycle = "monthly",
   ): Promise<{ url: string; session_id: string }> {
     const response = await request<{
       checkout_url: string;
       session_id: string;
     }>("/api/billing/create-checkout", {
       method: "POST",
-      body: { plan_id: planId },
+      body: { plan, cycle, plan_id: plan },
     });
     return { url: response.checkout_url, session_id: response.session_id };
   },
 
-  async getTrialEligibility(): Promise<{ eligible: boolean; reason?: string }> {
-    return request("/api/billing/trial-eligibility");
+  /**
+   * 🆓 Pricing v2 — Vérifie l'éligibilité au trial 7 j (Pro ou Expert).
+   *
+   * Backend : GET /api/billing/trial-eligibility?plan={pro|expert}
+   *
+   * @param plan "pro" | "expert" (default pro)
+   */
+  async checkTrialEligibility(
+    plan: ApiPlanIdV2 | string = "pro",
+  ): Promise<TrialEligibility> {
+    return request(
+      `/api/billing/trial-eligibility?plan=${encodeURIComponent(plan)}`,
+    );
   },
 
-  async startProTrial(): Promise<{ success: boolean }> {
-    return request("/api/billing/start-pro-trial", {
-      method: "POST",
-    });
+  /**
+   * @deprecated v0 — utiliser checkTrialEligibility("pro") à la place.
+   * Conservé pour compat tests / clients legacy mobile.
+   */
+  async getTrialEligibility(): Promise<TrialEligibility> {
+    return this.checkTrialEligibility("pro");
+  },
+
+  /**
+   * 🆓 Pricing v2 — Démarre un essai gratuit 7 j sans CB sur Pro ou Expert.
+   *
+   * Crée une session Stripe Checkout avec :
+   *   - trial_period_days = 7
+   *   - payment_method_collection = "if_required"  (pas de CB demandée pendant le trial)
+   *
+   * Backend : POST /api/billing/start-trial?plan={pro|expert}&cycle={monthly|yearly}
+   */
+  async startTrial(
+    plan: ApiPlanIdV2 | string = "pro",
+    cycle: BillingCycle = "monthly",
+  ): Promise<{
+    checkout_url: string;
+    session_id: string;
+    trial_days: number;
+    plan: string;
+    cycle: string;
+  }> {
+    return request(
+      `/api/billing/start-trial?plan=${encodeURIComponent(plan)}&cycle=${encodeURIComponent(cycle)}`,
+      {
+        method: "POST",
+      },
+    );
+  },
+
+  /**
+   * @deprecated v0 — utiliser startTrial("pro") à la place.
+   * Conservé pour compat clients legacy / tests.
+   */
+  async startProTrial(): Promise<{
+    checkout_url: string;
+    session_id: string;
+    trial_days: number;
+    plan: string;
+    cycle: string;
+  }> {
+    return this.startTrial("pro", "monthly");
   },
 
   async getPortalUrl(): Promise<{ url: string }> {
