@@ -22,9 +22,8 @@ import {
   Scale,
   BarChart3,
   User,
-  MessageSquare,
+  MessageCircle,
   GraduationCap,
-  Phone,
   Menu,
   Gamepad2,
 } from "lucide-react";
@@ -450,8 +449,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
   const minPlanPlaylists = getMinPlanForFeature("playlistsEnabled");
   const minPlanStudy = getMinPlanForFeature("flashcardsEnabled");
-  const minPlanChat: PlanId = "pro"; // Chat page bloque les free users
-  const minPlanVoice: PlanId = "pro"; // Voice call gated Pro
+  const minPlanHub: PlanId = "pro"; // Hub (chat + voix) bloque les free users
   const getBadge = (minPlan: PlanId) => {
     const userIdx = PLAN_HIERARCHY.indexOf(userPlan);
     const minIdx = PLAN_HIERARCHY.indexOf(minPlan);
@@ -567,21 +565,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               collapsed={collapsed}
             />
             <NavItem
-              to="/chat"
-              icon={MessageSquare}
-              label={t.nav.chat}
+              to="/hub"
+              icon={MessageCircle}
+              label="Hub"
               collapsed={collapsed}
-              {...getBadge(minPlanChat)}
-            />
-            <NavItem
-              to="/voice-call"
-              icon={Phone}
-              label={
-                t.nav.voiceCall ||
-                (language === "fr" ? "Appel vocal" : "Voice call")
-              }
-              collapsed={collapsed}
-              {...getBadge(minPlanVoice)}
+              {...getBadge(minPlanHub)}
             />
             <NavItem
               to="/study"
