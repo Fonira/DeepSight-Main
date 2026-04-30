@@ -76,9 +76,10 @@ _processed_events = _EventIdCache()
 
 
 class CreateCheckoutRequest(BaseModel):
-    """Requête pour créer une session de paiement"""
+    """Requête pour créer une session de paiement v2."""
 
-    plan: str  # pro
+    plan: str  # "pro" | "expert"
+    cycle: str = "monthly"  # "monthly" | "yearly"
     success_url: Optional[str] = None
     cancel_url: Optional[str] = None
 
@@ -439,10 +440,13 @@ async def get_plans(
     platform: str = Query("web", pattern="^(web|mobile|extension)$"),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """Retourne la liste des 5 plans avec limites filtrées par plateforme.
+    """🆕 Pricing v2 — Grille publique (Free / Pro 8.99 € / Expert 19.99 €).
 
-    Public (enrichi avec is_current / is_upgrade / is_downgrade si user connecté).
+    Enrichi par plateforme + (si user connecté) is_current / is_upgrade / is_downgrade.
+    Inclut prices monthly + yearly + voice_minutes + yearly_discount_pct.
     """
+    from .plan_config import PLAN_PRICES_V2, PLAN_VOICE_MINUTES_V2
+
     user_plan = (current_user.plan if current_user else "free") or "free"
     user_index = get_plan_index(user_plan)
 
@@ -455,6 +459,8 @@ async def get_plans(
         # Filtrage des limites par plateforme
         platform_features = get_platform_features(plan_id.value, platform)
 
+        # v2 : prices cycle-aware
+        prices = PLAN_PRICES_V2.get(plan_id.value, {})
         result.append(
             {
                 "id": plan_id.value,
@@ -462,7 +468,9 @@ async def get_plans(
                 "name_en": plan["name_en"],
                 "description": plan["description"],
                 "description_en": plan["description_en"],
-                "price_monthly_cents": plan["price_monthly_cents"],
+                "price_monthly_cents": plan.get("price_monthly_cents", 0),
+                "price_yearly_cents": plan.get("price_yearly_cents", prices.get("yearly", 0)),
+                "voice_minutes": PLAN_VOICE_MINUTES_V2.get(plan_id.value, 0),
                 "color": plan["color"],
                 "icon": plan["icon"],
                 "badge": plan["badge"],
@@ -477,7 +485,11 @@ async def get_plans(
             }
         )
 
-    return {"plans": result}
+    return {
+        "plans": result,
+        "currency": "EUR",
+        "yearly_discount_pct": 17,
+    }
 
 
 @router.get("/my-plan")
@@ -693,11 +705,14 @@ async def create_checkout_session(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# 🆕 Alias pour compatibilité avec le frontend
+# 🆕 Pricing v2 — endpoint /create-checkout accepte {plan, cycle}
+# Compat rétro : aussi accepte {plan_id} pour clients legacy non updatés.
 class CreateCheckoutByPlanId(BaseModel):
-    """Requête avec plan_id (format frontend)"""
+    """Requête v2 avec plan + cycle (compat rétro avec plan_id)."""
 
-    plan_id: str  # pro
+    plan: Optional[str] = None    # "pro" | "expert"
+    cycle: str = "monthly"         # "monthly" | "yearly"
+    plan_id: Optional[str] = None  # legacy alias of plan
 
 
 @router.post("/create-checkout")
@@ -706,9 +721,10 @@ async def create_checkout_by_plan_id(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    """
-    🆕 Endpoint compatible avec le frontend.
-    Accepte plan_id au lieu de plan.
+    """🆕 Pricing v2 — Crée une session Stripe Checkout pour Pro / Expert + cycle.
+
+    Body : {"plan": "pro"|"expert", "cycle": "monthly"|"yearly"}
+    Compat rétro : accepte aussi {"plan_id": "..."} (legacy frontend).
     """
     if not STRIPE_CONFIG.get("ENABLED"):
         raise HTTPException(status_code=400, detail="Stripe not enabled")
@@ -716,9 +732,34 @@ async def create_checkout_by_plan_id(
     if not init_stripe():
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
-    price_id = get_price_id(request.plan_id)
+    # Resolve plan : prefer 'plan', fallback to legacy 'plan_id'
+    plan = request.plan or request.plan_id
+    if not plan:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "missing_plan", "message": "plan is required"},
+        )
+
+    if plan not in ("pro", "expert"):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "invalid_plan",
+                "message": "plan must be 'pro' or 'expert'",
+            },
+        )
+    if request.cycle not in ("monthly", "yearly"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "invalid_cycle", "message": "cycle must be 'monthly' or 'yearly'"},
+        )
+
+    price_id = get_price_id(plan, request.cycle)
     if not price_id:
-        raise HTTPException(status_code=400, detail=f"Invalid plan: {request.plan_id}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Plan {plan} ({request.cycle}) price not configured",
+        )
 
     # Créer ou récupérer le client Stripe
     if current_user.stripe_customer_id:
@@ -733,8 +774,13 @@ async def create_checkout_by_plan_id(
         current_user.stripe_customer_id = customer_id
         await session.commit()
 
-    # URLs de retour (avec plan pour affichage immédiat)
-    success_url = f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={request.plan_id}"
+    # URLs de retour (avec plan + cycle pour affichage immédiat)
+    success_url = (
+        request.plan_id  # noqa: SIM222 — preserved for legacy compat
+        and f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={plan}"
+    ) or (
+        f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={plan}&cycle={request.cycle}"
+    )
     cancel_url = f"{FRONTEND_URL}/payment/cancel"
 
     try:
@@ -745,12 +791,18 @@ async def create_checkout_by_plan_id(
             mode="subscription",
             success_url=success_url,
             cancel_url=cancel_url,
-            allow_promotion_codes=True,  # Permet les codes promo
+            allow_promotion_codes=True,
             billing_address_collection="auto",
-            metadata={"user_id": str(current_user.id), "plan": request.plan_id},
+            metadata={
+                "user_id": str(current_user.id),
+                "plan": plan,
+                "cycle": request.cycle,
+            },
         )
 
-        logger.info(f"Checkout session created for user {current_user.id}, plan {request.plan_id}")
+        logger.info(
+            f"Checkout v2 session: user={current_user.id} plan={plan} cycle={request.cycle}"
+        )
 
         return {"checkout_url": checkout_session.url, "session_id": checkout_session.id}
 
