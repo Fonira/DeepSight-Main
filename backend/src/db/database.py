@@ -135,6 +135,8 @@ class User(Base):
     # Stripe
     stripe_customer_id = Column(String(100))
     stripe_subscription_id = Column(String(100))
+    # Pricing v2 — grandfathering: True = sub cree sous prix legacy (Plus 4.99 / Pro 9.99)
+    is_legacy_pricing = Column(Boolean, default=False, nullable=False, server_default="false")
 
     # Google OAuth
     google_id = Column(String(100))
