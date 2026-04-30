@@ -675,6 +675,42 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     history_days: -1,
     models: ["mistral-large-2512"],
   },
+  /** @deprecated Alias legacy → pro v2 */
+  etudiant: {
+    id: "etudiant",
+    name_fr: "Pro",
+    name_en: "Pro",
+    icon: "⭐",
+    color: "#3B82F6",
+    price: 899,
+    monthly_credits: 25,
+    chat_daily_limit: -1,
+    chat_per_video_limit: 25,
+    web_search_monthly: 20,
+    web_search_enabled: true,
+    can_use_playlists: false,
+    max_playlist_videos: 0,
+    history_days: -1,
+    models: ["mistral-medium-2508"],
+  },
+  /** @deprecated Alias legacy → expert v2 */
+  team: {
+    id: "team",
+    name_fr: "Expert",
+    name_en: "Expert",
+    icon: "👑",
+    color: "#8B5CF6",
+    price: 1999,
+    monthly_credits: 100,
+    chat_daily_limit: -1,
+    chat_per_video_limit: -1,
+    web_search_monthly: 60,
+    web_search_enabled: true,
+    can_use_playlists: true,
+    max_playlist_videos: 20,
+    history_days: -1,
+    models: ["mistral-large-2512"],
+  },
 };
 
 /** @deprecated Use getPlanInfo() from config/planPrivileges.ts */
