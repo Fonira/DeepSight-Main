@@ -1007,9 +1007,10 @@ export const History: React.FC = () => {
     navigate(`/playlist/${playlist.playlist_id}?tab=chat`);
   };
 
-  const handleViewPlaylist = (playlist: PlaylistSummary) => {
+  const _handleViewPlaylist = (playlist: PlaylistSummary) => {
     loadPlaylistDetail(playlist.playlist_id);
   };
+  void _handleViewPlaylist;
 
   const handleViewPlaylistVideo = (video: PlaylistVideo) => {
     if (selectedPlaylist) {
@@ -1061,7 +1062,7 @@ export const History: React.FC = () => {
     }
   };
 
-  const handleDeletePlaylist = async (playlist: PlaylistSummary) => {
+  const _handleDeletePlaylist = async (playlist: PlaylistSummary) => {
     if (
       !confirm(
         language === "fr"
@@ -1083,6 +1084,7 @@ export const History: React.FC = () => {
       console.error("Delete error:", err);
     }
   };
+  void _handleDeletePlaylist;
 
   // 🗑️ Clear All History Handler
   const handleClearHistory = async () => {
@@ -2443,7 +2445,7 @@ const VideoCard: React.FC<{
   );
 };
 
-const PlaylistCard: React.FC<{
+const _PlaylistCard: React.FC<{
   playlist: PlaylistSummary;
   language: string;
   onView: () => void;
@@ -2613,6 +2615,7 @@ const PlaylistCard: React.FC<{
     </div>
   );
 };
+void _PlaylistCard;
 
 const PlaylistDetailView: React.FC<{
   playlist: PlaylistDetail;

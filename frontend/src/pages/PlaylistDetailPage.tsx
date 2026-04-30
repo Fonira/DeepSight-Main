@@ -30,7 +30,6 @@ import {
   type PlaylistVideoItem,
   type PlaylistDetailsResponse,
   type CorpusChatMessage,
-  type CorpusChatResponse,
 } from "../services/api";
 import {
   ListVideo,
@@ -40,12 +39,10 @@ import {
   ChevronRight,
   ChevronLeft,
   CheckCircle,
-  XCircle,
   RefreshCw,
   Sparkles,
   BarChart3,
   PieChart,
-  TrendingUp,
   FileText,
   Video,
   Tag,
@@ -330,7 +327,13 @@ const VideoDetailPanel: React.FC<{
   onClose: () => void;
   onOpenInDashboard: () => void;
   language: string;
-}> = ({ video, playlistId, onClose, onOpenInDashboard, language }) => {
+}> = ({
+  video,
+  playlistId: _playlistId,
+  onClose,
+  onOpenInDashboard,
+  language,
+}) => {
   return (
     <div className="card border-l-4 border-l-accent-primary animate-in slide-in-from-top-2">
       {/* Header */}
