@@ -28,7 +28,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { billingApi, ApiError } from "@/services/api";
+import { billingApi, ApiError, type BillingCycle } from "@/services/api";
 import { OfflineCache, CachePriority } from "@/services/OfflineCache";
 import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
@@ -38,14 +38,21 @@ import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
 import { palette } from "@/theme/colors";
 import type { PlanType } from "@/constants/config";
+import {
+  CONVERSION_TRIGGERS,
+  normalizePlanId,
+  type PlanId,
+} from "@/config/planPrivileges";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PlanConfig {
-  id: string; // ID backend
+  id: PlanId; // ID backend v2 (free | pro | expert)
   label: string; // Nom affiché
-  price: string; // Ex: "2,99 €/mois"
-  priceRaw: number; // Pour tri
+  priceMonthly: string; // Ex: "8,99 €/mois"
+  priceYearly: string; // Ex: "89,90 €/an"
+  priceRawMonthly: number; // Pour tri / downgrade detection
+  priceRawYearly: number;
   highlight: boolean; // Mise en avant (plan recommandé)
   badge?: string; // Ex: "Populaire"
   color: string[]; // Gradient
@@ -53,87 +60,90 @@ interface PlanConfig {
   cta: string; // Texte du bouton
 }
 
-// Plans statiques — toujours disponibles même sans réseau
+// Plans statiques v2 — toujours disponibles même sans réseau.
+// Aligné avec mobile/src/config/planPrivileges.ts (PLANS_INFO)
+// et backend/src/billing/plan_config.py (SSOT).
 const PLANS_CONFIG: PlanConfig[] = [
   {
     id: "free",
     label: "Gratuit",
-    price: "0 €",
-    priceRaw: 0,
+    priceMonthly: "0 €",
+    priceYearly: "0 €",
+    priceRawMonthly: 0,
+    priceRawYearly: 0,
     highlight: false,
     color: ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.02)"],
     features: [
       "5 analyses / mois",
       "Vidéos jusqu'à 15 min",
       "Historique 60 jours",
-      "Chat limité",
+      "Chat limité (10/jour)",
     ],
     cta: "Plan actuel",
   },
   {
-    id: "etudiant", // ID backend pour "Starter"
-    label: "Starter",
-    price: "2,99 €/mois",
-    priceRaw: 2.99,
-    highlight: false,
-    color: ["rgba(59,130,246,0.15)", "rgba(59,130,246,0.05)"],
-    features: [
-      "20 analyses / mois",
-      "Flashcards automatiques",
-      "Cartes mentales",
-      "Historique complet",
-    ],
-    cta: "Commencer",
-  },
-  {
-    id: "starter", // ID backend pour "Standard"
-    label: "Standard",
-    price: "5,99 €/mois",
-    priceRaw: 5.99,
-    highlight: true,
-    badge: "Populaire",
-    color: ["rgba(139,92,246,0.25)", "rgba(139,92,246,0.08)"],
-    features: [
-      "50 analyses / mois",
-      "Vidéos jusqu'à 2 heures",
-      "Recherche web IA",
-      "Flashcards + Cartes mentales",
-      "Export Markdown",
-    ],
-    cta: "Commencer",
-  },
-  {
+    // Anciennement "plus" v0 (4,99 €) — voir mémoire pricing v2
     id: "pro",
     label: "Pro",
-    price: "12,99 €/mois",
-    priceRaw: 12.99,
-    highlight: false,
-    badge: "Tout inclus",
-    color: ["rgba(6,182,212,0.15)", "rgba(139,92,246,0.08)"],
+    priceMonthly: "8,99 €/mois",
+    priceYearly: "89,90 €/an",
+    priceRawMonthly: 8.99,
+    priceRawYearly: 89.9,
+    highlight: true,
+    badge: "Populaire",
+    color: ["rgba(59,130,246,0.20)", "rgba(59,130,246,0.05)"],
     features: [
-      "200 analyses / mois",
-      "Playlists entières",
-      "Chat illimité",
-      "Export PDF + DOCX",
-      "Recherche web avancée",
+      "25 analyses / mois",
+      "Vidéos jusqu'à 1 h",
+      "Mind Maps + Flashcards",
+      "Export PDF + Markdown",
+      "Voice Chat 30 min/mois",
+      "Recherche web (20/mois)",
+      "Fact-checking",
+    ],
+    cta: "Commencer",
+  },
+  {
+    // Anciennement "pro" v0 (9,99 €)
+    id: "expert",
+    label: "Expert",
+    priceMonthly: "19,99 €/mois",
+    priceYearly: "199,90 €/an",
+    priceRawMonthly: 19.99,
+    priceRawYearly: 199.9,
+    highlight: false,
+    badge: "Le + puissant",
+    color: ["rgba(139,92,246,0.25)", "rgba(139,92,246,0.08)"],
+    features: [
+      "100 analyses / mois",
+      "Vidéos jusqu'à 4 h",
+      "Playlists (10×20 vidéos)",
+      "Voice Chat 120 min/mois",
+      "Recherche web (60/mois)",
+      "Deep Research + TTS",
       "Support prioritaire",
     ],
-    cta: "Passer Pro",
+    cta: "Passer Expert",
   },
 ];
 
-// Correspondance ID backend → label
+// Correspondance ID backend → label affiché
 const PLAN_DISPLAY: Record<string, string> = {
   free: "Gratuit",
-  etudiant: "Starter",
-  starter: "Standard",
   pro: "Pro",
+  expert: "Expert",
+  // Legacy aliases (utilisateurs grandfathered) — affichage fallback
+  plus: "Pro",
+  starter: "Pro",
+  etudiant: "Pro",
+  team: "Expert",
 };
 
 // ─── Composant PlanCard ────────────────────────────────────────────────────────
 
 interface PlanCardProps {
   plan: PlanConfig;
+  cycle: BillingCycle;
   isCurrentPlan: boolean;
   userPlanPrice: number;
   onPress: (planId: string) => void;
@@ -143,14 +153,20 @@ interface PlanCardProps {
 
 const PlanCard: React.FC<PlanCardProps> = ({
   plan,
+  cycle,
   isCurrentPlan,
   userPlanPrice,
   onPress,
   loading,
   colors,
 }) => {
+  const displayedPrice =
+    cycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
+  const displayedPriceRaw =
+    cycle === "yearly" ? plan.priceRawYearly : plan.priceRawMonthly;
+
   const isDowngrade =
-    !isCurrentPlan && plan.priceRaw < userPlanPrice && userPlanPrice > 0;
+    !isCurrentPlan && displayedPriceRaw < userPlanPrice && userPlanPrice > 0;
   const isFree = plan.id === "free";
 
   const ctaLabel = isCurrentPlan
@@ -201,7 +217,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
               { color: isFree ? colors.textSecondary : colors.textPrimary },
             ]}
           >
-            {plan.price}
+            {displayedPrice}
           </Text>
         </View>
 
@@ -268,11 +284,23 @@ export default function SubscriptionScreen() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [creditPacksVisible, setCreditPacksVisible] = useState(false);
   const [voiceAddonVisible, setVoiceAddonVisible] = useState(false);
+  // Pricing v2 — toggle mensuel/annuel (default monthly, -17 % sur annuel)
+  const [cycle, setCycle] = useState<BillingCycle>("monthly");
+  const [trialLoading, setTrialLoading] = useState<PlanId | null>(null);
 
-  const userPlan = (user?.plan ?? "free") as PlanType;
-  const userPlanConfig = PLANS_CONFIG.find((p) => p.id === userPlan);
-  const userPlanPrice = userPlanConfig?.priceRaw ?? 0;
-  const isPaidUser = userPlan !== "free";
+  const userPlanRaw = (user?.plan ?? "free") as PlanType;
+  // Normalize legacy aliases (plus → pro, etc.) pour matcher PLANS_CONFIG v2
+  const userPlanNormalized = normalizePlanId(userPlanRaw) as PlanId;
+  const userPlanConfig = PLANS_CONFIG.find(
+    (p) => p.id === userPlanNormalized,
+  );
+  const userPlanPrice =
+    cycle === "yearly"
+      ? (userPlanConfig?.priceRawYearly ?? 0)
+      : (userPlanConfig?.priceRawMonthly ?? 0);
+  const isPaidUser = userPlanNormalized !== "free";
+  const trialAvailable =
+    CONVERSION_TRIGGERS.trialEnabled && userPlanNormalized === "free";
 
   // Statut abonnement depuis le backend (avec cache offline)
   const { data: subStatus } = useQuery({
@@ -312,29 +340,66 @@ export default function SubscriptionScreen() {
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  const handleSubscribe = useCallback(async (planId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setCheckoutLoading(planId);
-    try {
-      const { url } = await billingApi.createCheckout(planId);
-      // Stripe Checkout sur iOS gère Apple Pay nativement dans le WebBrowser
-      const result = await WebBrowser.openBrowserAsync(url, {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-        controlsColor: "#8b5cf6",
-      });
-      // Si l'utilisateur a complété le paiement, on invalide le cache plan
-      if (result.type === "dismiss") {
-        // Le plan se mettra à jour via le prochain refresh de l'AuthContext
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  const handleSubscribe = useCallback(
+    async (planId: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setCheckoutLoading(planId);
+      try {
+        // 🆕 Pricing v2 : envoie {plan, cycle} au backend
+        const { url } = await billingApi.createCheckout(planId, cycle);
+        // Stripe Checkout sur iOS gère Apple Pay nativement dans le WebBrowser
+        const result = await WebBrowser.openBrowserAsync(url, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+          controlsColor: "#8b5cf6",
+        });
+        // Si l'utilisateur a complété le paiement, on invalide le cache plan
+        if (result.type === "dismiss") {
+          // Le plan se mettra à jour via le prochain refresh de l'AuthContext
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      } catch (err) {
+        const message =
+          err instanceof ApiError ? err.message : "Erreur lors du paiement";
+        Alert.alert("Paiement impossible", message, [{ text: "OK" }]);
+      } finally {
+        setCheckoutLoading(null);
       }
-    } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Erreur lors du paiement";
-      Alert.alert("Paiement impossible", message, [{ text: "OK" }]);
-    } finally {
-      setCheckoutLoading(null);
-    }
-  }, []);
+    },
+    [cycle],
+  );
+
+  const handleStartTrial = useCallback(
+    async (planId: PlanId) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setTrialLoading(planId);
+      try {
+        // Vérifier l'éligibilité (defensive — backend re-vérifie aussi)
+        const eligibility = await billingApi.checkTrialEligibility(planId);
+        if (!eligibility.eligible) {
+          Alert.alert(
+            "Essai indisponible",
+            eligibility.reason ||
+              "Vous avez déjà bénéficié d'un essai ou d'un abonnement.",
+          );
+          return;
+        }
+        const { checkout_url } = await billingApi.startTrial(planId, cycle);
+        await WebBrowser.openBrowserAsync(checkout_url, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+          controlsColor: "#8b5cf6",
+        });
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : "Impossible de démarrer l'essai";
+        Alert.alert("Erreur", message, [{ text: "OK" }]);
+      } finally {
+        setTrialLoading(null);
+      }
+    },
+    [cycle],
+  );
 
   const handleManageSubscription = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -412,7 +477,9 @@ export default function SubscriptionScreen() {
                 { color: isPaidUser ? palette.violet : colors.textSecondary },
               ]}
             >
-              {PLAN_DISPLAY[userPlan] ?? "Gratuit"}
+              {PLAN_DISPLAY[userPlanRaw] ??
+                PLAN_DISPLAY[userPlanNormalized] ??
+                "Gratuit"}
             </Text>
           </View>
         </View>
@@ -446,13 +513,69 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
+        {/* ── Toggle mensuel/annuel (Pricing v2) ── */}
+        <View style={styles.toggleContainer}>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setCycle("monthly");
+            }}
+            style={[
+              styles.toggleButton,
+              cycle === "monthly" && { backgroundColor: palette.violet },
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: cycle === "monthly" }}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                {
+                  color:
+                    cycle === "monthly" ? "#ffffff" : colors.textSecondary,
+                },
+              ]}
+            >
+              Mensuel
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setCycle("yearly");
+            }}
+            style={[
+              styles.toggleButton,
+              cycle === "yearly" && { backgroundColor: palette.violet },
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: cycle === "yearly" }}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                {
+                  color:
+                    cycle === "yearly" ? "#ffffff" : colors.textSecondary,
+                },
+              ]}
+            >
+              Annuel
+            </Text>
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountText}>-17%</Text>
+            </View>
+          </Pressable>
+        </View>
+
         {/* ── Cards plans ── */}
         <View style={styles.cardsContainer}>
           {PLANS_CONFIG.map((plan) => (
             <PlanCard
               key={plan.id}
               plan={plan}
-              isCurrentPlan={plan.id === userPlan}
+              cycle={cycle}
+              isCurrentPlan={plan.id === userPlanNormalized}
               userPlanPrice={userPlanPrice}
               onPress={handleSubscribe}
               loading={checkoutLoading === plan.id}
@@ -460,6 +583,80 @@ export default function SubscriptionScreen() {
             />
           ))}
         </View>
+
+        {/* ── CTA Trial 7j sans CB (Sprint B H5 — user free seulement) ── */}
+        {trialAvailable && (
+          <View style={styles.trialSection}>
+            <Text
+              style={[styles.trialTitle, { color: colors.textPrimary }]}
+            >
+              Essayez 7 jours gratuit, sans carte bancaire
+            </Text>
+            <View style={styles.trialButtonsRow}>
+              <Pressable
+                onPress={() => handleStartTrial("pro")}
+                disabled={trialLoading !== null}
+                style={({ pressed }) => [
+                  styles.trialButton,
+                  { borderColor: palette.blue },
+                  pressed && { opacity: 0.85 },
+                  trialLoading === "pro" && { opacity: 0.6 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Essayer Pro 7 jours gratuit"
+              >
+                {trialLoading === "pro" ? (
+                  <ActivityIndicator size="small" color={palette.blue} />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="gift-outline"
+                      size={16}
+                      color={palette.blue}
+                    />
+                    <Text
+                      style={[styles.trialButtonText, { color: palette.blue }]}
+                    >
+                      Essai Pro
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => handleStartTrial("expert")}
+                disabled={trialLoading !== null}
+                style={({ pressed }) => [
+                  styles.trialButton,
+                  { borderColor: palette.violet },
+                  pressed && { opacity: 0.85 },
+                  trialLoading === "expert" && { opacity: 0.6 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Essayer Expert 7 jours gratuit"
+              >
+                {trialLoading === "expert" ? (
+                  <ActivityIndicator size="small" color={palette.violet} />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="gift-outline"
+                      size={16}
+                      color={palette.violet}
+                    />
+                    <Text
+                      style={[
+                        styles.trialButtonText,
+                        { color: palette.violet },
+                      ]}
+                    >
+                      Essai Expert
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* ── Gérer l'abonnement (utilisateurs payants) ── */}
         {isPaidUser && (
@@ -655,6 +852,72 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
     flex: 1,
+  },
+
+  // Toggle mensuel/annuel (Pricing v2)
+  toggleContainer: {
+    flexDirection: "row",
+    alignSelf: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: borderRadius.full,
+    padding: 4,
+    marginBottom: sp.md,
+    gap: 4,
+  },
+  toggleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: sp.xs,
+    paddingVertical: sp.xs,
+    paddingHorizontal: sp.lg,
+    borderRadius: borderRadius.full,
+  },
+  toggleText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
+  },
+  discountBadge: {
+    backgroundColor: "#10b981",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  discountText: {
+    fontFamily: fontFamily.bodyBold,
+    fontSize: fontSize["2xs"],
+    color: "#ffffff",
+  },
+
+  // Trial section (Sprint B H5)
+  trialSection: {
+    alignItems: "center",
+    marginBottom: sp.xl,
+    gap: sp.md,
+  },
+  trialTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
+    textAlign: "center",
+  },
+  trialButtonsRow: {
+    flexDirection: "row",
+    gap: sp.md,
+    width: "100%",
+  },
+  trialButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: sp.xs,
+    paddingVertical: sp.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1.5,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  trialButtonText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
   },
 
   // Cards
