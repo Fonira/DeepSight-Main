@@ -4,7 +4,11 @@ import { CallModeFullBleed } from "../CallModeFullBleed";
 
 vi.mock("../../voice/VoiceOverlay", () => ({
   VoiceOverlay: ({ isOpen, presentationMode }: any) => (
-    <div data-testid="voice-overlay-mock" data-open={isOpen} data-mode={presentationMode} />
+    <div
+      data-testid="voice-overlay-mock"
+      data-open={isOpen}
+      data-mode={presentationMode}
+    />
   ),
 }));
 

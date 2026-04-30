@@ -19,22 +19,19 @@ export const VoiceWaveformBars: React.FC<Props> = ({
   return (
     <div
       className={
-        "flex-1 flex items-center gap-[2px] " +
-        (className ?? "") +
-        " h-7"
+        "flex-1 flex items-center gap-[2px] " + (className ?? "") + " h-7"
       }
     >
       {bars.map((h, i) => {
         const played = i / bars.length <= progress;
-        const isHead =
-          playing && Math.abs(i / bars.length - progress) < 0.04;
+        const isHead = playing && Math.abs(i / bars.length - progress) < 0.04;
         return (
           <i
             key={i}
             data-played={played ? "true" : "false"}
             className={
               "block w-[2px] rounded-[1px] transition-[transform,background] duration-150 " +
-              (played ? "bg-indigo-500" : "bg-white/30") +
+              (played ? "bg-accent-primary" : "bg-white/30") +
               (isHead ? " scale-y-125" : "")
             }
             style={{ height: h }}

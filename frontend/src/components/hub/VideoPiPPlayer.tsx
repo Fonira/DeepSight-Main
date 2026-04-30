@@ -63,7 +63,7 @@ export const VideoPiPPlayer: React.FC<Props> = ({
       <motion.div
         layoutId="hub-pip"
         data-testid="hub-pip"
-        className="absolute inset-4 z-30 rounded-2xl overflow-hidden bg-gradient-to-br from-[#1a1a2e] to-[#2a1a3e] border border-white/15 shadow-2xl"
+        className="absolute inset-4 z-30 rounded-2xl overflow-hidden bg-gradient-to-br from-[#1a1410] to-[#2a1c14] border border-white/15 shadow-2xl"
       >
         {thumbnailUrl ? (
           <img
@@ -107,7 +107,7 @@ export const VideoPiPPlayer: React.FC<Props> = ({
           : "transform .25s cubic-bezier(.4,0,.2,1)",
       }}
       className={
-        "relative w-[112px] h-[64px] rounded-lg overflow-hidden bg-gradient-to-br from-[#1a1a2e] to-[#2a1a3e] border border-white/15 flex-shrink-0 " +
+        "relative w-[112px] h-[64px] rounded-lg overflow-hidden bg-gradient-to-br from-[#1a1410] to-[#2a1c14] border border-white/15 flex-shrink-0 " +
         (dragging ? "cursor-grabbing shadow-2xl" : "cursor-grab shadow-md")
       }
     >

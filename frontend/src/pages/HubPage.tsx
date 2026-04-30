@@ -30,12 +30,60 @@ import { InputBar } from "../components/hub/InputBar";
 import { ConversationsDrawer } from "../components/hub/ConversationsDrawer";
 import { VideoPiPPlayer } from "../components/hub/VideoPiPPlayer";
 import { CallModeFullBleed } from "../components/hub/CallModeFullBleed";
+import { SourcesShelf } from "../components/hub/SourcesShelf";
 import type { HubConversation, HubMessage } from "../components/hub/types";
 
 const newId = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : `m-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+/** Formate la durée vidéo en MM:SS ou HH:MM:SS si > 1h. */
+const formatVideoDuration = (totalSecs: number): string => {
+  if (!Number.isFinite(totalSecs) || totalSecs <= 0) return "";
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = Math.floor(totalSecs % 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+};
+
+/** "analysée il y a X min" / "il y a X h" / "hier" / "la semaine dernière" / etc. */
+const formatAnalyzedAgo = (iso: string | undefined): string => {
+  if (!iso) return "analysée récemment";
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "analysée récemment";
+  const diffSecs = Math.max(0, (Date.now() - t) / 1000);
+  if (diffSecs < 60) return "analysée à l'instant";
+  const diffMins = Math.floor(diffSecs / 60);
+  if (diffMins < 60) return `analysée il y a ${diffMins} min`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `analysée il y a ${diffHours} h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "analysée hier";
+  if (diffDays < 7) return `analysée il y a ${diffDays} j`;
+  if (diffDays < 14) return "analysée la semaine dernière";
+  if (diffDays < 30) return `analysée il y a ${Math.floor(diffDays / 7)} sem.`;
+  if (diffDays < 365)
+    return `analysée il y a ${Math.floor(diffDays / 30)} mois`;
+  return `analysée il y a ${Math.floor(diffDays / 365)} an${Math.floor(diffDays / 365) > 1 ? "s" : ""}`;
+};
+
+/** Construit le subtitle 3 parties: "YouTube · 18:32 · analysée il y a 12 min". */
+const buildHubSubtitle = (
+  source: "youtube" | "tiktok" | undefined,
+  durationSecs: number | undefined,
+  updatedAt: string | undefined,
+): string => {
+  if (!source) return "";
+  const platform = source === "tiktok" ? "TikTok" : "YouTube";
+  const duration = formatVideoDuration(durationSecs ?? 0);
+  const ago = formatAnalyzedAgo(updatedAt);
+  const parts = [platform];
+  if (duration) parts.push(duration);
+  if (ago) parts.push(ago);
+  return parts.join(" · ");
+};
 
 const HubPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -109,6 +157,9 @@ const HubPage: React.FC = () => {
   }, [setConversations, setActiveConv, urlConvId, urlSummaryId]);
 
   // ── Fetch messages + summary context when activeConv changes ──
+  // Note: conversations is intentionally read via getState() to avoid re-running
+  // this effect every time the conversations list changes (e.g. on polling). The
+  // cascade was causing React #300 ("setState during another component's render").
   useEffect(() => {
     if (activeConvId === null) {
       setSummaryContext(null);
@@ -142,8 +193,8 @@ const HubPage: React.FC = () => {
         );
         setMessages(mapped);
 
-        // Build a minimal summary context from conversation + first available data
-        const conv = conversations.find((c) => c.id === activeConvId);
+        const convs = useHubStore.getState().conversations;
+        const conv = convs.find((c) => c.id === activeConvId);
         if (conv && conv.summary_id !== null) {
           setSummaryContext({
             summary_id: conv.summary_id,
@@ -163,7 +214,7 @@ const HubPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [activeConvId, conversations, setMessages, setSummaryContext]);
+  }, [activeConvId, setMessages, setSummaryContext]);
 
   // ── Auto-play TTS on assistant text messages ──
   const prevCountRef = useRef(messages.length);
@@ -277,10 +328,15 @@ const HubPage: React.FC = () => {
         onMenuClick={toggleDrawer}
         title={activeConv?.title ?? "Hub"}
         subtitle={
-          activeConv?.video_source
-            ? `${activeConv.video_source.toUpperCase()}`
+          activeConv
+            ? buildHubSubtitle(
+                activeConv.video_source,
+                summaryContext?.video_duration_secs,
+                activeConv.updated_at,
+              ) || undefined
             : undefined
         }
+        videoSource={activeConv?.video_source ?? null}
         pipSlot={
           activeConv?.summary_id ? (
             <VideoPiPPlayer
@@ -304,6 +360,9 @@ const HubPage: React.FC = () => {
           onPttHoldComplete={handlePttHoldComplete}
           disabled={!activeConvId}
         />
+        <div className="flex justify-center px-3 pb-3 pt-1">
+          <SourcesShelf />
+        </div>
 
         <ConversationsDrawer
           open={drawerOpen}

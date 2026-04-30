@@ -80,7 +80,7 @@ export const InputBar: React.FC<Props> = ({
         }}
         placeholder="Posez votre question — ou maintenez le micro…"
         disabled={disabled}
-        className="flex-1 bg-white/[0.04] border border-white/10 rounded-full px-4 py-2 text-sm text-white outline-none focus:border-indigo-500/40"
+        className="flex-1 bg-white/[0.04] border border-white/10 rounded-full px-4 py-2 text-sm text-white outline-none focus:border-accent-primary/40"
       />
       {val.trim() ? (
         <button
@@ -88,7 +88,7 @@ export const InputBar: React.FC<Props> = ({
           aria-label="Envoyer"
           onClick={send}
           disabled={disabled}
-          className="w-9 h-9 rounded-full bg-indigo-500 text-white grid place-items-center hover:bg-indigo-400 transition-colors disabled:opacity-40"
+          className="w-9 h-9 rounded-full bg-accent-primary text-white grid place-items-center hover:bg-accent-primary-hover transition-colors disabled:opacity-40"
         >
           <Send className="w-4 h-4 -ml-px" />
         </button>
@@ -98,7 +98,7 @@ export const InputBar: React.FC<Props> = ({
             type="button"
             aria-label="Full Call mode"
             onClick={onCallToggle}
-            className="w-9 h-9 rounded-full text-white/55 hover:text-violet-400 transition-colors grid place-items-center"
+            className="w-9 h-9 rounded-full text-white/55 hover:text-accent-violet transition-colors grid place-items-center"
           >
             <Phone className="w-4 h-4" />
           </button>
@@ -114,7 +114,7 @@ export const InputBar: React.FC<Props> = ({
               "w-9 h-9 grid place-items-center rounded-full transition-all " +
               (holding
                 ? "bg-red-500 text-white scale-110 shadow-[0_8px_24px_rgba(239,68,68,.4)]"
-                : "bg-indigo-500/15 text-indigo-400")
+                : "bg-accent-primary/15 text-accent-primary")
             }
           >
             <Mic className="w-4 h-4" />
@@ -128,9 +128,9 @@ export const InputBar: React.FC<Props> = ({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            className="absolute right-4 -top-9 px-3 py-1.5 bg-red-500 rounded-xl text-white font-mono text-[11px] shadow-[0_8px_24px_rgba(239,68,68,.4)]"
+            className="absolute right-4 -top-10 px-3.5 py-2 bg-red-500 rounded-xl text-white font-mono text-[12px] shadow-[0_8px_24px_rgba(239,68,68,.4)] whitespace-nowrap"
           >
-            ● {duration.toFixed(1)}s
+            ● ENREGISTREMENT · {duration.toFixed(1)}s
           </motion.div>
         )}
       </AnimatePresence>
