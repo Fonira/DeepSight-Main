@@ -276,27 +276,71 @@ export function CallActiveView({
         </button>
       </form>
       <footer className="ds-call-active__footer">
-        <button
-          type="button"
-          className={`ds-call-active__mute${isMuted ? " is-muted" : ""}`}
-          onClick={onMute}
-          aria-pressed={isMuted}
-          aria-label={
-            isMuted
-              ? (t.voiceCall.callActive.unmuteAriaLabel ?? "Activer le micro")
-              : (t.voiceCall.callActive.muteAriaLabel ?? "Couper le micro")
+        {(() => {
+          // En mode "ptt" (push-to-talk), le bouton est hold-to-speak :
+          // pointerdown → unmute, pointerup → mute (= envoie le turn à l'agent
+          // automatiquement via le mode "turn" du SDK ElevenLabs).
+          // En mode "vad" (détection vocale auto), conserve le toggle classique.
+          const inputMode = settings.effectivePrefs?.input_mode ?? "ptt";
+          const isPtt = inputMode === "ptt";
+
+          const togglePtt = (shouldMute: boolean): void => {
+            // onMute est un toggle — on l'invoque uniquement si l'état attendu
+            // diverge de l'état réel (pour éviter les double-toggles).
+            if (shouldMute && !isMuted) onMute();
+            else if (!shouldMute && isMuted) onMute();
+          };
+
+          if (isPtt) {
+            return (
+              <button
+                type="button"
+                className={`ds-call-active__mute ds-call-active__ptt${isMuted ? " is-muted" : " is-speaking"}`}
+                onPointerDown={() => togglePtt(false)}
+                onPointerUp={() => togglePtt(true)}
+                onPointerLeave={() => togglePtt(true)}
+                onPointerCancel={() => togglePtt(true)}
+                aria-pressed={!isMuted}
+                aria-label={
+                  isMuted ? "Maintenir pour parler" : "Relâche pour envoyer"
+                }
+                data-testid="voice-ptt-btn"
+              >
+                <span className="ds-call-active__mute-icon" aria-hidden>
+                  {isMuted ? "🎙️" : "🔴"}
+                </span>
+                <span className="ds-call-active__mute-label">
+                  {isMuted ? "Maintenir" : "Relâche pour envoyer"}
+                </span>
+              </button>
+            );
           }
-          data-testid="voice-mute-btn"
-        >
-          <span className="ds-call-active__mute-icon" aria-hidden>
-            {isMuted ? "🚫" : "🎙️"}
-          </span>
-          <span className="ds-call-active__mute-label">
-            {isMuted
-              ? (t.voiceCall.callActive.unmute ?? "Activer")
-              : (t.voiceCall.callActive.mute ?? "Couper")}
-          </span>
-        </button>
+
+          return (
+            <button
+              type="button"
+              className={`ds-call-active__mute${isMuted ? " is-muted" : ""}`}
+              onClick={onMute}
+              aria-pressed={isMuted}
+              aria-label={
+                isMuted
+                  ? (t.voiceCall.callActive.unmuteAriaLabel ??
+                    "Activer le micro")
+                  : (t.voiceCall.callActive.muteAriaLabel ?? "Couper le micro")
+              }
+              data-testid="voice-mute-btn"
+            >
+              <span className="ds-call-active__mute-icon" aria-hidden>
+                {isMuted ? "🚫" : "🎙️"}
+              </span>
+              <span className="ds-call-active__mute-label">
+                {isMuted
+                  ? (t.voiceCall.callActive.unmute ?? "Activer")
+                  : (t.voiceCall.callActive.mute ?? "Couper")}
+              </span>
+            </button>
+          );
+        })()}
         <button
           type="button"
           onClick={onHangup}
