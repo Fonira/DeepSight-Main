@@ -150,11 +150,51 @@ export function useStreamingVideoContext(
         try {
           const data = JSON.parse(e.data) as {
             final_digest_summary: string;
+            transcript_total_chars?: number;
+            analysis_sections?: string[];
           };
-          pushOrBuffer(`[CTX COMPLETE]\n${data.final_digest_summary}`);
+          // Forward the structured envelope so the agent prompt's PHASE
+          // complete check (transcript_total_chars > 0 && analysis_sections
+          // non-empty) actually has the data to verify.
+          const sections = data.analysis_sections ?? [];
+          const totalChars = data.transcript_total_chars ?? 0;
+          pushOrBuffer(
+            `[CTX COMPLETE]\n` +
+              `final_digest: ${data.final_digest_summary}\n` +
+              `transcript_total_chars: ${totalChars}\n` +
+              `analysis_sections: [${sections.join(", ")}]`,
+          );
         } catch {
           pushOrBuffer("[CTX COMPLETE]");
         }
+        setContextComplete(true);
+        setContextProgress(100);
+      });
+
+      source.addEventListener("ctx_failed", (e: MessageEvent) => {
+        // Pipeline produced zero usable context (transcript fail + no
+        // cached analysis). Forward the failure marker so the agent
+        // switches to PHASE failed (cf streaming_prompts.py) instead of
+        // falsely claiming "I have the full context".
+        try {
+          const data = JSON.parse(e.data) as {
+            reason?: string;
+            fallback_strategy?: string;
+          };
+          pushOrBuffer(
+            `[CTX FAILED]\n` +
+              `reason: ${data.reason ?? "transcript_unavailable"}\n` +
+              `fallback_strategy: ${data.fallback_strategy ?? "use_pretrained_and_web_search"}`,
+          );
+        } catch {
+          pushOrBuffer(
+            "[CTX FAILED]\nreason: transcript_unavailable\nfallback_strategy: use_pretrained_and_web_search",
+          );
+        }
+        // Mark the streaming as terminated — the loading panel must
+        // disappear so the user is not stuck on a permanent "Recherche
+        // du transcript…" placeholder. The agent prompt handles the
+        // graceful degradation.
         setContextComplete(true);
         setContextProgress(100);
       });

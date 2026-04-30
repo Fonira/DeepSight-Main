@@ -4170,10 +4170,17 @@ a:hover {
 .dsp-vs-drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.65);
   z-index: 49;
   cursor: pointer;
   animation: dsp-vs-backdrop-fade 0.18s ease-out;
+  /* isolation: isolate crée une nouvelle stacking context — sans ça, le
+     mix-blend-mode: screen de l'AmbientLightLayer percole à travers le
+     drawer et fait apparaître des beams orangés sur les labels des
+     sections (bug visuel rapporté 2026-04-30). */
+  isolation: isolate;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 @keyframes dsp-vs-backdrop-fade {
   from {
@@ -4191,6 +4198,8 @@ a:hover {
   bottom: 0;
   width: 100%;
   max-width: 100%;
+  /* Background plus opaque + couche solide pour bloquer les beams ambient
+     qui percolent via mix-blend-mode: screen (cf .dsp-vs-drawer-backdrop). */
   background: #0a0a0f;
   border-left: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
@@ -4199,6 +4208,10 @@ a:hover {
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 50;
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.4);
+  /* isolation: isolate — bloque le mix-blend-mode de AmbientLightLayer
+     qui sinon traverse le drawer et fait apparaître des bandes orangées
+     sur les labels (bug rapporté 2026-04-30). */
+  isolation: isolate;
   /* Quand fermé, ne pas intercepter de clic même si le transform laisse
      le drawer techniquement présent dans le layout. */
   pointer-events: none;
