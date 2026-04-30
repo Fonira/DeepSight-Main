@@ -320,3 +320,34 @@ def test_pro_monthly_minutes_constant_is_30():
 
     assert MONTHLY_MINUTES_BY_PLAN["pro"] == 30
     assert MONTHLY_MINUTES_BY_PLAN["expert"] == 120
+
+
+@pytest.mark.asyncio
+async def test_voice_quota_legacy_plus_resolves_to_pro_30():
+    """User encore tagué 'plus' (avant migration 012) -> résolu via alias en pro 30 min."""
+    from datetime import datetime, timezone
+    from unittest.mock import AsyncMock, MagicMock
+    from billing.voice_quota import check_voice_quota
+
+    quota = MagicMock()
+    quota.plan = "pro"  # quota row stored after normalisation
+    quota.monthly_period_start = datetime.now(timezone.utc)
+    quota.monthly_minutes_used = 0.0
+    quota.lifetime_trial_used = False
+    quota.purchased_minutes = 0.0
+
+    user = MagicMock()
+    user.id = 99
+    user.plan = "plus"  # ⚠ legacy v0 — not yet migrated
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none = MagicMock(return_value=quota)
+    db = AsyncMock()
+    db.execute = AsyncMock(return_value=mock_result)
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+
+    check = await check_voice_quota(user, db)
+    # plus -> normalize -> pro -> 30 min
+    assert check.allowed is True
+    assert check.max_minutes == 30

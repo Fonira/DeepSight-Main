@@ -102,14 +102,21 @@ async def test_pro_now_top_tier_grants_monthly_quota():
 
 
 @pytest.mark.asyncio
-async def test_starter_blocked_with_cta_upgrade_pro():
-    """Starter (low-tier paid) is blocked with CTA upgrade_pro."""
+async def test_starter_alias_to_pro_v2_grants_30_min():
+    """Pricing v2 : "starter" est un alias de "pro" v2 -> grants 30 min/mo.
+
+    Le plan v2 (Avril 2026) supprime "starter" comme tier distinct ;
+    PLAN_ALIASES["starter"] = "pro" (cf plan_config). Ce test acte le nouveau
+    comportement (anciennement bloqué).
+    """
     user = _make_user("starter")
     db = _make_db_session(quota_row=None)
     result = await check_voice_quota(user, db)
-    assert result.allowed is False
-    assert result.reason == "pro_no_voice"
-    assert result.cta == "upgrade_pro"
+    # v2 : starter alias -> pro -> 30 min top-tier voice allowance
+    assert result.allowed is True
+    assert result.max_minutes == PRO_MONTHLY_MINUTES
+    assert result.cta is None
+    assert result.reason is None
 
 
 @pytest.mark.asyncio
@@ -206,20 +213,23 @@ async def test_consume_increments_expert_minutes():
 
 
 @pytest.mark.asyncio
-async def test_consume_starter_no_op():
-    """Starter (blocked tier) → consume is a safe no-op if accidentally called."""
+async def test_consume_starter_alias_to_pro_increments_minutes():
+    """Pricing v2 : "starter" alias de "pro" -> consume increments comme Pro.
+
+    Anciennement starter était un tier distinct bloqué — désormais alias de Pro.
+    """
     quota = MagicMock()
-    quota.plan = "starter"
+    quota.plan = "pro"  # quota row stored after normalisation
     quota.monthly_period_start = datetime.now(timezone.utc)
     quota.monthly_minutes_used = 0.0
     quota.lifetime_trial_used = False
     quota.lifetime_trial_used_at = None
 
-    user = _make_user("starter")
+    user = _make_user("starter")  # legacy plan label
     db = _make_db_session(quota_row=quota)
     await consume_voice_minutes(user, 5.0, db)
-    # Starter is upstream-blocked; counter stays at zero
-    assert quota.monthly_minutes_used == 0.0
+    # v2 : starter -> pro -> increments monthly counter
+    assert quota.monthly_minutes_used == 5.0
     assert quota.lifetime_trial_used is False
 
 

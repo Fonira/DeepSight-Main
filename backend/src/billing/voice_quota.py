@@ -127,8 +127,13 @@ async def check_voice_quota(user: User, db: AsyncSession) -> QuotaCheck:
     Returns a structured ``QuotaCheck``. Caller is responsible for raising
     HTTPException(402, ...) and forwarding ``reason`` / ``cta`` to the
     client.
+
+    Normalisation Pricing v2 : legacy "plus" -> "pro" via plan_config aliases.
     """
-    plan = (user.plan or "free").lower()
+    from billing.plan_config import normalize_plan_id
+
+    raw_plan = (user.plan or "free").lower()
+    plan = normalize_plan_id(raw_plan)  # résout legacy "plus" -> "pro" automatiquement
     quota = await _get_or_create_quota(user.id, plan, db)
 
     if plan == "free":
@@ -184,7 +189,10 @@ async def consume_voice_minutes(user: User, minutes: float, db: AsyncSession) ->
 
     Always commits.
     """
-    plan = (user.plan or "free").lower()
+    from billing.plan_config import normalize_plan_id
+
+    raw_plan = (user.plan or "free").lower()
+    plan = normalize_plan_id(raw_plan)
     quota = await _get_or_create_quota(user.id, plan, db)
 
     if plan == "free":
