@@ -31,6 +31,7 @@ import { ConversationsDrawer } from "../components/hub/ConversationsDrawer";
 import { VideoPiPPlayer } from "../components/hub/VideoPiPPlayer";
 import { CallModeFullBleed } from "../components/hub/CallModeFullBleed";
 import { SourcesShelf } from "../components/hub/SourcesShelf";
+import { NewConversationModal } from "../components/hub/NewConversationModal";
 import type { HubConversation, HubMessage } from "../components/hub/types";
 
 const newId = () =>
@@ -107,6 +108,7 @@ const HubPage: React.FC = () => {
     drawerOpen,
     voiceCallOpen,
     pipExpanded,
+    newConvModalOpen,
     setConversations,
     setActiveConv,
     setMessages,
@@ -115,6 +117,7 @@ const HubPage: React.FC = () => {
     toggleDrawer,
     setPipExpanded,
     setVoiceCallOpen,
+    setNewConvModalOpen,
   } = useHubStore();
 
   const [isThinking, setIsThinking] = React.useState(false);
@@ -402,10 +405,43 @@ const HubPage: React.FC = () => {
             setActiveConv(id);
             setSearchParams({ conv: String(id) });
           }}
-          onNewConv={() => {
-            setActiveConv(null);
-            setSearchParams({});
+          onNewConv={() => setNewConvModalOpen(true)}
+        />
+
+        <NewConversationModal
+          open={newConvModalOpen}
+          onClose={() => setNewConvModalOpen(false)}
+          onSuccess={async (summaryId) => {
+            // Re-fetch conversations to surface the freshly analyzed entry,
+            // then activate it so the user lands directly on the new session.
+            try {
+              const resp = await videoApi.getHistory({ limit: 50, page: 1 });
+              const convs: HubConversation[] = (resp.items || []).map(
+                (item: any) => ({
+                  id: item.id,
+                  summary_id: item.id,
+                  title: sanitizeTitle(item.video_title) || "Sans titre",
+                  video_source: (item.platform === "tiktok"
+                    ? "tiktok"
+                    : "youtube") as "youtube" | "tiktok",
+                  video_thumbnail_url: item.thumbnail_url ?? null,
+                  last_snippet: undefined,
+                  updated_at: item.created_at,
+                }),
+              );
+              setConversations(convs);
+              setActiveConv(summaryId);
+              setSearchParams({ conv: String(summaryId) });
+              if (drawerOpen) toggleDrawer();
+            } catch (err) {
+              console.error("[HubPage] re-fetch after analyze failed:", err);
+              // Best-effort: surface at least the new active conv even if
+              // the history fetch fails (the user can still chat with it).
+              setActiveConv(summaryId);
+              setSearchParams({ conv: String(summaryId) });
+            }
           }}
+          language={language as "fr" | "en"}
         />
 
         {voiceEnabled && (

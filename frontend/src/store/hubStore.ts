@@ -17,6 +17,10 @@ interface HubState {
   pipExpanded: boolean;
   voiceCallOpen: boolean;
   voiceState: HubVoiceState;
+  /** Modal "Nouvelle conversation" (paste URL → analyze) ouverte ou non. */
+  newConvModalOpen: boolean;
+  /** task_id de l'analyse en cours déclenchée depuis la modal (pour debug/cleanup). */
+  analyzingTaskId: string | null;
 
   setConversations: (convs: HubConversation[]) => void;
   setActiveConv: (id: number | null) => void;
@@ -28,6 +32,8 @@ interface HubState {
   setPipExpanded: (v: boolean) => void;
   setVoiceCallOpen: (v: boolean) => void;
   setVoiceState: (s: HubVoiceState) => void;
+  setNewConvModalOpen: (open: boolean) => void;
+  setAnalyzingTaskId: (taskId: string | null) => void;
   reset: () => void;
 }
 
@@ -42,6 +48,8 @@ const INITIAL: Pick<
   | "pipExpanded"
   | "voiceCallOpen"
   | "voiceState"
+  | "newConvModalOpen"
+  | "analyzingTaskId"
 > = {
   conversations: [],
   activeConvId: null,
@@ -52,6 +60,8 @@ const INITIAL: Pick<
   pipExpanded: false,
   voiceCallOpen: false,
   voiceState: "idle",
+  newConvModalOpen: false,
+  analyzingTaskId: null,
 };
 
 export const useHubStore = create<HubState>()(
@@ -97,6 +107,14 @@ export const useHubStore = create<HubState>()(
     setVoiceState: (st) =>
       set((s) => {
         s.voiceState = st;
+      }),
+    setNewConvModalOpen: (open) =>
+      set((s) => {
+        s.newConvModalOpen = open;
+      }),
+    setAnalyzingTaskId: (taskId) =>
+      set((s) => {
+        s.analyzingTaskId = taskId;
       }),
     reset: () =>
       set((s) => {
