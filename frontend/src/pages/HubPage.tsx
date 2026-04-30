@@ -196,6 +196,7 @@ const HubPage: React.FC = () => {
         const convs = useHubStore.getState().conversations;
         const conv = convs.find((c) => c.id === activeConvId);
         if (conv && conv.summary_id !== null) {
+          // Set minimal context immediately for fast UI
           setSummaryContext({
             summary_id: conv.summary_id,
             video_title: conv.title,
@@ -206,6 +207,25 @@ const HubPage: React.FC = () => {
             short_summary: conv.last_snippet ?? "",
             citations: [],
           });
+          // Hydrate with real summary content (async, fire-and-forget)
+          videoApi
+            .getSummary(conv.summary_id)
+            .then((s) => {
+              if (cancelled) return;
+              setSummaryContext({
+                summary_id: s.id,
+                video_title: s.video_title,
+                video_channel: s.video_channel ?? "",
+                video_duration_secs: s.video_duration ?? 0,
+                video_source: s.platform === "tiktok" ? "tiktok" : "youtube",
+                video_thumbnail_url: s.thumbnail_url ?? null,
+                short_summary: s.summary_content ?? "",
+                citations: [],
+              });
+            })
+            .catch((err) => {
+              console.warn("[HubPage] fetch full summary failed:", err);
+            });
         }
       } catch (err) {
         console.error("[HubPage] fetch messages failed:", err);
