@@ -1,11 +1,19 @@
 /**
  * NewConversationModal — modal d'entrée pour démarrer une nouvelle conversation
- * dans le Hub. L'utilisateur colle un lien YouTube ou TikTok, déclenche
- * l'analyse via `videoApi.analyze` puis polling `videoApi.getTaskStatus` jusqu'à
- * obtenir un `summary_id`. Le parent (HubPage) reçoit l'id via `onSuccess` et
- * gère le re-fetch des conversations + ouverture de la session.
+ * dans le Hub. L'utilisateur colle un lien YouTube ou TikTok et clique
+ * "Analyser".
  *
- * Pipeline aligné sur DashboardPage (analyse classique). Timeout 5 min.
+ * Refactor 2026-04-30 (Task 4) : la logique analyze + polling a été extraite
+ * dans le hook réutilisable `useAnalyzeAndOpenHub` (frontend/src/hooks/), mais
+ * la modal continue à utiliser son propre pipeline avec `onSuccess(summaryId)`
+ * au lieu de naviguer directement, parce que `HubPage` veut re-fetch ses
+ * conversations + setActiveConv (le hook par défaut navigue, ce qui force un
+ * remount complet de HubPage et un fetch — comportement OK pour la home, mais
+ * inutilement coûteux quand on est déjà dans le Hub).
+ *
+ * Donc cette modal garde sa propre boucle, alignée sur le hook (mêmes
+ * statuses, même timeout 5min). Si dans le futur on veut tout uniformiser,
+ * extraire un sous-hook `useAnalyzeWithCustomCompletion` (TODO).
  */
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";

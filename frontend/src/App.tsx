@@ -301,7 +301,12 @@ const SharedAnalysisPage = lazyWithRetry(
 );
 
 // Pages protégées
-const DashboardPage = lazyWithRetry(() => import("./pages/DashboardPage"));
+const DashboardPageLegacy = lazyWithRetry(
+  () => import("./pages/DashboardPageLegacy"),
+);
+const DashboardPageMinimal = lazyWithRetry(
+  () => import("./pages/DashboardPageMinimal"),
+);
 const PlaylistPage = lazyWithRetry(() => import("./pages/PlaylistPage"));
 const PlaylistDetailPage = lazyWithRetry(
   () => import("./pages/PlaylistDetailPage"),
@@ -350,7 +355,7 @@ const PREFETCH_MAP: Record<string, string[]> = {
 };
 
 const PAGE_LOADERS: Record<string, () => Promise<any>> = {
-  "/dashboard": () => import("./pages/DashboardPage"),
+  "/dashboard": () => import("./pages/DashboardPageMinimal"),
   "/history": () => import("./pages/History"),
   "/settings": () => import("./pages/Settings"),
   "/debate": () => import("./pages/DebatePage"),
@@ -404,6 +409,26 @@ const RoutePrefetcher = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🏠 HOME ROUTE
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 📊 DASHBOARD ROUTE — minimal landing par défaut, legacy via opt-out
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Bascule entre `DashboardPageMinimal` (default depuis 2026-04-30) et
+ * `DashboardPageLegacy` (1781 lignes : analyse + chat + voice + AnalysisHub).
+ * Opt-out légacy via :
+ *   - URL : `?legacy=1`
+ *   - localStorage : `ds_hub_legacy_home=1`
+ */
+const DashboardRoute: React.FC = () => {
+  const params = new URLSearchParams(window.location.search);
+  const useLegacy =
+    params.get("legacy") === "1" ||
+    (typeof window !== "undefined" &&
+      window.localStorage.getItem("ds_hub_legacy_home") === "1");
+  return useLegacy ? <DashboardPageLegacy /> : <DashboardPageMinimal />;
+};
 
 const HomeRoute = () => {
   const { user, loading } = useAuth();
@@ -799,7 +824,7 @@ const AppRoutes = () => {
                               <Suspense
                                 fallback={<PageSkeleton variant="dashboard" />}
                               >
-                                <DashboardPage />
+                                <DashboardRoute />
                               </Suspense>
                             </RouteErrorBoundary>
                           }
