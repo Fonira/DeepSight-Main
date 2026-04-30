@@ -47,8 +47,8 @@ FREE TO START:
 PLANS:
 
 - Free: 5 analyses/month, chat, flashcards
-- Plus (4.99 EUR/month): 25 analyses, 60 min videos, fact-checking, mind maps, web search, PDF export
-- Pro (9.99 EUR/month): 100 analyses, 4h videos, voice chat 45min/month (ElevenLabs), playlists, deep research, priority queue
+- Pro (8.99 EUR/month): 30 analyses, 2h videos, fact-checking, mind maps, web search, PDF export, playlists
+- Expert (19.99 EUR/month): 100 analyses, 4h videos, voice chat 30min/month (ElevenLabs), Mistral Large, deep research, priority queue
 
 Built by an independent European developer. Made in France.
 
@@ -93,8 +93,8 @@ GRATUIT POUR COMMENCER :
 PLANS :
 
 - Gratuit : 5 analyses/mois, chat, flashcards
-- Plus (4,99 EUR/mois) : 25 analyses, videos 60 min, fact-checking, cartes mentales, web search, export PDF
-- Pro (9,99 EUR/mois) : 100 analyses, videos 4h, chat vocal 45 min/mois (ElevenLabs), playlists, recherche approfondie, file prioritaire
+- Pro (8,99 EUR/mois) : 30 analyses, videos 2h, fact-checking, cartes mentales, web search, export PDF, playlists
+- Expert (19,99 EUR/mois) : 100 analyses, videos 4h, chat vocal 30 min/mois (ElevenLabs), Mistral Large, recherche approfondie, file prioritaire
 
 Developpe par un developpeur independant europeen. Made in France.
 
