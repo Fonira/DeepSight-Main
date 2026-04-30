@@ -107,6 +107,7 @@ class StreamingOrchestrator:
         self._complete_transition_emitted: bool = False
         # Heartbeat instrumentation
         self._chunks_received: int = 0
+        self._analysis_sections_emitted: list[str] = []
         self._last_event_published_at: Optional[float] = None
 
     # ── Public API ───────────────────────────────────────────────────────
@@ -129,6 +130,12 @@ class StreamingOrchestrator:
             self._heartbeat_loop(channel, stop_heartbeat)
         )
 
+        # Initialised here so they are defined even if the try block raises
+        # before the assignment further down — the post-finally block uses
+        # both, and we'd rather emit ctx_failed than crash the orchestrator.
+        is_degraded: bool = True
+        digest: str = "Analyse non disponible"
+
         try:
             # asyncio.gather with return_exceptions=True so a single failure on
             # one phase does not cancel the other.
@@ -144,10 +151,21 @@ class StreamingOrchestrator:
                 logger.exception("final digest failed for %s", video_id)
                 digest = f"(no digest available: {exc.__class__.__name__})"
 
+            # Determine whether the pipeline produced any usable context. If
+            # neither transcript nor analysis emitted anything, the agent has
+            # nothing to ground its answers on — emitting ctx_complete in that
+            # case fools the agent into claiming "I have the full context"
+            # while having absolutely nothing. We emit ctx_failed instead so
+            # the agent can fall back to pre-trained knowledge + web_search
+            # transparently. See streaming_prompts.py for PHASE failed.
+            has_transcript = self._chunks_received > 0
+            has_analysis = bool(self._analysis_sections_emitted)
+            is_degraded = not has_transcript and not has_analysis
+
             # Emit phase_transition streaming → complete BEFORE signalling the
             # heartbeat to stop, so the heartbeat loop sees the flag set on
             # its next iteration and exits cleanly without racing the
-            # subsequent ctx_complete publish.
+            # subsequent ctx_complete / ctx_failed publish.
             await self._emit_phase_transition(channel, "streaming", "complete")
         finally:
             stop_heartbeat.set()
@@ -158,10 +176,37 @@ class StreamingOrchestrator:
             except Exception:  # noqa: BLE001 — heartbeat is best-effort
                 logger.exception("heartbeat loop crashed")
 
-        await self._publish(
-            channel,
-            {"type": "ctx_complete", "final_digest_summary": digest},
-        )
+        if is_degraded:
+            logger.warning(
+                "voice ctx degraded — emitting ctx_failed instead of ctx_complete",
+                extra={
+                    "session_id": session_id,
+                    "video_id": video_id,
+                    "chunks_received": self._chunks_received,
+                    "analysis_sections": self._analysis_sections_emitted,
+                },
+            )
+            await self._publish(
+                channel,
+                {
+                    "type": "ctx_failed",
+                    "reason": "transcript_unavailable",
+                    "fallback_strategy": "use_pretrained_and_web_search",
+                    "transcript_total_chars": 0,
+                    "analysis_sections": [],
+                },
+            )
+        else:
+            await self._publish(
+                channel,
+                {
+                    "type": "ctx_complete",
+                    "final_digest_summary": digest,
+                    "transcript_total_chars": self._chunks_received
+                    * TRANSCRIPT_CHUNK_SIZE_CHARS,
+                    "analysis_sections": list(self._analysis_sections_emitted),
+                },
+            )
 
     # ── Phase implementations ────────────────────────────────────────────
 
@@ -201,6 +246,7 @@ class StreamingOrchestrator:
                         "content": content,
                     },
                 )
+                self._analysis_sections_emitted.append(section)
         except Exception as exc:  # noqa: BLE001 — surface as error event
             logger.exception("analysis failed for %s", video_id)
             await self._publish(
