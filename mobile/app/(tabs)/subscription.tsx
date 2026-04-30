@@ -1,12 +1,11 @@
 /**
- * SubscriptionScreen — Abonnement DeepSight
+ * SubscriptionScreen — Editorial Premium (avril 2026)
  *
- * Affiche les plans disponibles, le plan actuel de l'utilisateur,
- * et permet de souscrire via Stripe Checkout (+ Apple Pay natif sur iOS)
- * ou de gérer son abonnement via le portail Stripe.
+ * Refonte design : hero éditorial, hiérarchie Free/Pro/Expert, ribbons trial,
+ * glow or sur Expert, section "Pourquoi DeepSight", trust signals.
  *
- * Apple Pay fonctionne automatiquement via le Stripe Checkout Web
- * lorsqu'on ouvre l'URL dans expo-web-browser sur iOS.
+ * Logique métier conservée : Stripe checkout (+Apple Pay), trial 7j Pro+Expert,
+ * grandfathering legacy, portail Stripe, packs crédits + voice addon.
  */
 import React, { useCallback, useState } from "react";
 import {
@@ -46,100 +45,125 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type Tier = "subdued" | "default" | "highlight";
+
 interface PlanConfig {
-  id: PlanId; // ID backend v2 (free | pro | expert)
-  label: string; // Nom affiché
-  priceMonthly: string; // Ex: "8,99 €/mois"
-  priceYearly: string; // Ex: "89,90 €/an"
-  priceRawMonthly: number; // Pour tri / downgrade detection
+  id: PlanId;
+  label: string;
+  taglineFr: string;
+  priceMonthly: string;
+  priceYearly: string;
+  priceRawMonthly: number;
   priceRawYearly: number;
-  highlight: boolean; // Mise en avant (plan recommandé)
-  badge?: string; // Ex: "Populaire"
-  color: string[]; // Gradient
+  yearlySavings: string;
+  tier: Tier;
+  badgeText?: string;
   features: string[];
-  cta: string; // Texte du bouton
+  highlightFeatures: string[];
+  cta: string;
 }
 
-// Plans statiques v2 — toujours disponibles même sans réseau.
-// Aligné avec mobile/src/config/planPrivileges.ts (PLANS_INFO)
-// et backend/src/billing/plan_config.py (SSOT).
 const PLANS_CONFIG: PlanConfig[] = [
   {
     id: "free",
     label: "Gratuit",
+    taglineFr: "Pour découvrir",
     priceMonthly: "0 €",
     priceYearly: "0 €",
     priceRawMonthly: 0,
     priceRawYearly: 0,
-    highlight: false,
-    color: ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.02)"],
+    yearlySavings: "",
+    tier: "subdued",
     features: [
       "5 analyses / mois",
       "Vidéos jusqu'à 15 min",
-      "Historique 60 jours",
-      "Chat limité (10/jour)",
+      "Chat IA basique (10/jour)",
+      "Flashcards & Quiz",
     ],
+    highlightFeatures: [],
     cta: "Plan actuel",
   },
   {
-    // Anciennement "plus" v0 (4,99 €) — voir mémoire pricing v2
     id: "pro",
     label: "Pro",
+    taglineFr: "Pour apprendre sérieusement",
     priceMonthly: "8,99 €/mois",
     priceYearly: "89,90 €/an",
     priceRawMonthly: 8.99,
     priceRawYearly: 89.9,
-    highlight: true,
-    badge: "Populaire",
-    color: ["rgba(59,130,246,0.20)", "rgba(59,130,246,0.05)"],
+    yearlySavings: "−17,98 €",
+    tier: "default",
+    badgeText: "POPULAIRE",
     features: [
       "25 analyses / mois",
       "Vidéos jusqu'à 1 h",
-      "Mind Maps + Flashcards",
-      "Export PDF + Markdown",
-      "Voice Chat 30 min/mois",
+      "Chat IA (25 q/vidéo)",
       "Recherche web (20/mois)",
-      "Fact-checking",
+      "Export PDF + Markdown",
     ],
-    cta: "Commencer",
+    highlightFeatures: [
+      "Cartes mentales interactives",
+      "Fact-check automatique",
+      "Voice chat (30 min/mois)",
+    ],
+    cta: "Choisir Pro",
   },
   {
-    // Anciennement "pro" v0 (9,99 €)
     id: "expert",
     label: "Expert",
+    taglineFr: "Pour les créateurs et chercheurs",
     priceMonthly: "19,99 €/mois",
     priceYearly: "199,90 €/an",
     priceRawMonthly: 19.99,
     priceRawYearly: 199.9,
-    highlight: false,
-    badge: "Le + puissant",
-    color: ["rgba(139,92,246,0.25)", "rgba(139,92,246,0.08)"],
+    yearlySavings: "−39,98 €",
+    tier: "highlight",
+    badgeText: "RECOMMANDÉ CRÉATEURS",
     features: [
       "100 analyses / mois",
       "Vidéos jusqu'à 4 h",
-      "Playlists (10×20 vidéos)",
-      "Voice Chat 120 min/mois",
       "Recherche web (60/mois)",
+      "File d'attente prioritaire",
+    ],
+    highlightFeatures: [
+      "Chat IA illimité",
+      "Playlists (10 × 20 vidéos)",
+      "Voice chat (120 min/mois)",
       "Deep Research + TTS",
-      "Support prioritaire",
     ],
     cta: "Passer Expert",
   },
 ];
 
-// Correspondance ID backend → label affiché
+const DIFFERENTIATORS_MOBILE = [
+  {
+    icon: "shield-checkmark-outline",
+    title: "IA 100 % française",
+    desc: "Mistral AI · données en Europe · RGPD",
+  },
+  {
+    icon: "search-outline",
+    title: "Fact-check automatique",
+    desc: "Chaque affirmation vérifiée par sources",
+  },
+  {
+    icon: "school-outline",
+    title: "Sources académiques",
+    desc: "arXiv, Semantic Scholar, CrossRef",
+  },
+] as const;
+
 const PLAN_DISPLAY: Record<string, string> = {
   free: "Gratuit",
   pro: "Pro",
   expert: "Expert",
-  // Legacy aliases (utilisateurs grandfathered) — affichage fallback
   plus: "Pro",
   starter: "Pro",
   etudiant: "Pro",
   team: "Expert",
 };
 
-// ─── Composant PlanCard ────────────────────────────────────────────────────────
+// ─── Sous-composant : PlanCard ─────────────────────────────────────────────────
 
 interface PlanCardProps {
   plan: PlanConfig;
@@ -164,10 +188,16 @@ const PlanCard: React.FC<PlanCardProps> = ({
     cycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
   const displayedPriceRaw =
     cycle === "yearly" ? plan.priceRawYearly : plan.priceRawMonthly;
+  const monthlyEquivalent =
+    cycle === "yearly" && plan.priceRawYearly > 0
+      ? `${(plan.priceRawYearly / 12).toFixed(2).replace(".", ",")} €/mois`
+      : null;
 
   const isDowngrade =
     !isCurrentPlan && displayedPriceRaw < userPlanPrice && userPlanPrice > 0;
   const isFree = plan.id === "free";
+  const isExpert = plan.tier === "highlight";
+  const showsTrial = plan.id === "pro" || plan.id === "expert";
 
   const ctaLabel = isCurrentPlan
     ? "✓ Plan actuel"
@@ -176,60 +206,217 @@ const PlanCard: React.FC<PlanCardProps> = ({
       : plan.cta;
 
   return (
-    <Pressable
-      onPress={() => !isCurrentPlan && !isFree && onPress(plan.id)}
-      disabled={isCurrentPlan || isFree || loading}
-      style={({ pressed }) => [
-        styles.card,
-        plan.highlight && styles.cardHighlight,
-        { borderColor: plan.highlight ? palette.violet : colors.border },
-        pressed && !isCurrentPlan && !isFree && { opacity: 0.85 },
-      ]}
-    >
-      <LinearGradient
-        colors={plan.color as [string, string]}
-        style={styles.cardGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+    <View style={styles.cardWrapper}>
+      {/* Glow externe (Expert) */}
+      {isExpert && !isCurrentPlan && (
+        <LinearGradient
+          colors={
+            [
+              "rgba(200,144,58,0.28)",
+              "rgba(155,107,74,0.18)",
+              "transparent",
+            ] as [string, string, string]
+          }
+          style={styles.cardGlow}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          pointerEvents="none"
+        />
+      )}
+
+      <Pressable
+        onPress={() => !isCurrentPlan && !isFree && onPress(plan.id)}
+        disabled={isCurrentPlan || isFree || loading}
+        style={({ pressed }) => [
+          styles.card,
+          {
+            backgroundColor: colors.bgCard,
+            borderColor: isCurrentPlan
+              ? palette.green
+              : isExpert
+                ? palette.gold
+                : plan.tier === "default"
+                  ? palette.blue
+                  : colors.border,
+            borderWidth: isExpert ? 2 : 1,
+          },
+          isExpert && styles.cardElevatedExpert,
+          pressed && !isCurrentPlan && !isFree && { opacity: 0.92 },
+        ]}
       >
-        {/* Badge */}
-        {plan.badge && (
+        {/* Top ribbon */}
+        {showsTrial && !isCurrentPlan ? (
+          <LinearGradient
+            colors={
+              isExpert
+                ? ([palette.gold, palette.warmAmber] as [string, string])
+                : ([palette.blue, palette.indigo] as [string, string])
+            }
+            style={styles.ribbon}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Ionicons name="gift" size={12} color="#fff" />
+            <Text style={styles.ribbonText}>ESSAI 7 JOURS · SANS CB</Text>
+          </LinearGradient>
+        ) : isCurrentPlan ? (
           <View
             style={[
-              styles.badge,
+              styles.ribbonStatic,
               {
-                backgroundColor: plan.highlight ? palette.violet : palette.blue,
+                backgroundColor: `${palette.green}20`,
+                borderBottomColor: `${palette.green}40`,
               },
             ]}
           >
-            <Text style={styles.badgeText}>{plan.badge}</Text>
+            <Ionicons name="checkmark-circle" size={12} color={palette.green} />
+            <Text style={[styles.ribbonText, { color: palette.green }]}>
+              VOTRE PLAN ACTUEL
+            </Text>
           </View>
-        )}
-
-        {/* Header plan */}
-        <View style={styles.cardHeader}>
-          <Text style={[styles.planLabel, { color: colors.textPrimary }]}>
-            {plan.label}
-          </Text>
-          <Text
+        ) : plan.badgeText ? (
+          <View
             style={[
-              styles.planPrice,
-              { color: isFree ? colors.textSecondary : colors.textPrimary },
+              styles.ribbonStatic,
+              {
+                backgroundColor: isExpert
+                  ? `${palette.gold}1A`
+                  : `${palette.blue}1A`,
+                borderBottomColor: isExpert
+                  ? `${palette.gold}33`
+                  : `${palette.blue}33`,
+              },
             ]}
           >
-            {displayedPrice}
-          </Text>
-        </View>
+            <Ionicons
+              name={isExpert ? "star" : "sparkles"}
+              size={12}
+              color={isExpert ? palette.gold : palette.blue}
+            />
+            <Text
+              style={[
+                styles.ribbonText,
+                { color: isExpert ? palette.gold : palette.blue },
+              ]}
+            >
+              {plan.badgeText}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.ribbonSpacer} />
+        )}
 
-        {/* Features */}
-        <View style={styles.featuresList}>
+        <View style={styles.cardBody}>
+          {/* Icon + label + tagline */}
+          <View style={styles.cardHeaderRow}>
+            <LinearGradient
+              colors={
+                isExpert
+                  ? ([palette.gold, palette.warmAmber] as [string, string])
+                  : plan.tier === "default"
+                    ? ([palette.blue, palette.indigo] as [string, string])
+                    : (["rgba(255,255,255,0.10)", "rgba(255,255,255,0.04)"] as [
+                        string,
+                        string,
+                      ])
+              }
+              style={styles.iconBubble}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons
+                name={
+                  isExpert
+                    ? "diamond"
+                    : plan.tier === "default"
+                      ? "star"
+                      : "flash"
+                }
+                size={18}
+                color="#fff"
+              />
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.planLabel, { color: colors.textPrimary }]}>
+                {plan.label}
+              </Text>
+              <Text
+                style={[styles.planTagline, { color: colors.textTertiary }]}
+              >
+                {plan.taglineFr}
+              </Text>
+            </View>
+          </View>
+
+          {/* Prix */}
+          <View style={styles.priceBlock}>
+            <Text style={[styles.priceText, { color: colors.textPrimary }]}>
+              {displayedPrice}
+            </Text>
+            {monthlyEquivalent && (
+              <View style={styles.priceMetaRow}>
+                <Text
+                  style={[styles.priceSubtext, { color: colors.textTertiary }]}
+                >
+                  soit {monthlyEquivalent}
+                </Text>
+                {plan.yearlySavings ? (
+                  <View style={styles.savingsBadge}>
+                    <Text style={styles.savingsText}>{plan.yearlySavings}</Text>
+                  </View>
+                ) : null}
+              </View>
+            )}
+            {isFree && (
+              <Text
+                style={[styles.priceSubtext, { color: colors.textTertiary }]}
+              >
+                Sans CB · à vie
+              </Text>
+            )}
+          </View>
+
+          {/* Features highlightées */}
+          {plan.highlightFeatures.map((f) => (
+            <View key={f} style={styles.featureRow}>
+              <View
+                style={[
+                  styles.featureIconBg,
+                  {
+                    backgroundColor: isExpert
+                      ? `${palette.gold}33`
+                      : `${palette.blue}33`,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="checkmark"
+                  size={11}
+                  color={isExpert ? palette.gold : palette.blue}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.featureText,
+                  styles.featureTextHighlight,
+                  { color: colors.textPrimary },
+                ]}
+              >
+                {f}
+              </Text>
+            </View>
+          ))}
+          {/* Features standards */}
           {plan.features.map((f) => (
             <View key={f} style={styles.featureRow}>
-              <Ionicons
-                name="checkmark-circle"
-                size={15}
-                color={plan.highlight ? palette.violet : palette.blue}
-              />
+              <View
+                style={[
+                  styles.featureIconBg,
+                  { backgroundColor: `${palette.green}26` },
+                ]}
+              >
+                <Ionicons name="checkmark" size={11} color={palette.green} />
+              </View>
               <Text
                 style={[styles.featureText, { color: colors.textSecondary }]}
               >
@@ -237,38 +424,48 @@ const PlanCard: React.FC<PlanCardProps> = ({
               </Text>
             </View>
           ))}
-        </View>
 
-        {/* CTA */}
-        {!isFree && (
-          <View
-            style={[
-              styles.ctaButton,
-              {
-                backgroundColor: isCurrentPlan
-                  ? "rgba(255,255,255,0.08)"
-                  : plan.highlight
-                    ? palette.violet
-                    : palette.blue,
-              },
-            ]}
-          >
-            {loading && !isCurrentPlan ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text
-                style={[
-                  styles.ctaText,
-                  isCurrentPlan && { color: colors.textMuted },
-                ]}
-              >
-                {ctaLabel}
-              </Text>
-            )}
-          </View>
-        )}
-      </LinearGradient>
-    </Pressable>
+          {/* CTA */}
+          {!isFree && (
+            <View style={{ marginTop: sp.md }}>
+              {isCurrentPlan ? (
+                <View
+                  style={[
+                    styles.ctaButton,
+                    {
+                      backgroundColor: `${palette.green}1A`,
+                      borderColor: `${palette.green}40`,
+                      borderWidth: 1,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.ctaText, { color: palette.green }]}>
+                    {ctaLabel}
+                  </Text>
+                </View>
+              ) : (
+                <LinearGradient
+                  colors={
+                    isExpert
+                      ? ([palette.gold, palette.warmAmber] as [string, string])
+                      : ([palette.blue, palette.indigo] as [string, string])
+                  }
+                  style={styles.ctaButton}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.ctaText}>{ctaLabel}</Text>
+                  )}
+                </LinearGradient>
+              )}
+            </View>
+          )}
+        </View>
+      </Pressable>
+    </View>
   );
 };
 
@@ -284,16 +481,12 @@ export default function SubscriptionScreen() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [creditPacksVisible, setCreditPacksVisible] = useState(false);
   const [voiceAddonVisible, setVoiceAddonVisible] = useState(false);
-  // Pricing v2 — toggle mensuel/annuel (default monthly, -17 % sur annuel)
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
   const [trialLoading, setTrialLoading] = useState<PlanId | null>(null);
 
   const userPlanRaw = (user?.plan ?? "free") as PlanType;
-  // Normalize legacy aliases (plus → pro, etc.) pour matcher PLANS_CONFIG v2
   const userPlanNormalized = normalizePlanId(userPlanRaw) as PlanId;
-  const userPlanConfig = PLANS_CONFIG.find(
-    (p) => p.id === userPlanNormalized,
-  );
+  const userPlanConfig = PLANS_CONFIG.find((p) => p.id === userPlanNormalized);
   const userPlanPrice =
     cycle === "yearly"
       ? (userPlanConfig?.priceRawYearly ?? 0)
@@ -302,12 +495,10 @@ export default function SubscriptionScreen() {
   const trialAvailable =
     CONVERSION_TRIGGERS.trialEnabled && userPlanNormalized === "free";
 
-  // Statut abonnement depuis le backend (avec cache offline)
   const { data: subStatus } = useQuery({
     queryKey: ["subscription-status"],
     queryFn: async () => {
       const cacheKey = "subscription_status";
-
       if (isOffline) {
         const cached =
           await OfflineCache.get<
@@ -315,10 +506,8 @@ export default function SubscriptionScreen() {
           >(cacheKey);
         return cached ?? null;
       }
-
       try {
         const result = await billingApi.getSubscriptionStatus();
-        // Cache billing status for read-only offline display (NORMAL priority, 1-day TTL)
         await OfflineCache.set(cacheKey, result, {
           priority: CachePriority.NORMAL,
           ttlMinutes: 24 * 60,
@@ -338,23 +527,17 @@ export default function SubscriptionScreen() {
     retry: isOffline ? 0 : 1,
   });
 
-  // ── Actions ────────────────────────────────────────────────────────────────
-
   const handleSubscribe = useCallback(
     async (planId: string) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setCheckoutLoading(planId);
       try {
-        // 🆕 Pricing v2 : envoie {plan, cycle} au backend
         const { url } = await billingApi.createCheckout(planId, cycle);
-        // Stripe Checkout sur iOS gère Apple Pay nativement dans le WebBrowser
         const result = await WebBrowser.openBrowserAsync(url, {
           presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-          controlsColor: "#8b5cf6",
+          controlsColor: palette.gold,
         });
-        // Si l'utilisateur a complété le paiement, on invalide le cache plan
         if (result.type === "dismiss") {
-          // Le plan se mettra à jour via le prochain refresh de l'AuthContext
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       } catch (err) {
@@ -373,7 +556,6 @@ export default function SubscriptionScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setTrialLoading(planId);
       try {
-        // Vérifier l'éligibilité (defensive — backend re-vérifie aussi)
         const eligibility = await billingApi.checkTrialEligibility(planId);
         if (!eligibility.eligible) {
           Alert.alert(
@@ -386,7 +568,7 @@ export default function SubscriptionScreen() {
         const { checkout_url } = await billingApi.startTrial(planId, cycle);
         await WebBrowser.openBrowserAsync(checkout_url, {
           presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-          controlsColor: "#8b5cf6",
+          controlsColor: palette.gold,
         });
       } catch (err) {
         const message =
@@ -408,7 +590,7 @@ export default function SubscriptionScreen() {
       const { url } = await billingApi.getPortalUrl();
       await WebBrowser.openBrowserAsync(url, {
         presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-        controlsColor: "#8b5cf6",
+        controlsColor: palette.gold,
       });
     } catch (err) {
       const message =
@@ -420,8 +602,6 @@ export default function SubscriptionScreen() {
       setPortalLoading(false);
     }
   }, []);
-
-  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
@@ -438,12 +618,16 @@ export default function SubscriptionScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Header ── */}
+        {/* ── Hero ── */}
+        <View style={styles.eyebrow}>
+          <Ionicons name="sparkles" size={11} color={palette.gold} />
+          <Text style={styles.eyebrowText}>TARIFS DEEPSIGHT 2026</Text>
+        </View>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
-          Abonnement
+          Choisissez votre plan
         </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          🇫🇷 IA 100% Française — Propulsé par Mistral AI
+          🇫🇷 IA française · Données en Europe · Annulation à tout moment
         </Text>
 
         {/* ── Plan actuel ── */}
@@ -454,7 +638,11 @@ export default function SubscriptionScreen() {
           ]}
         >
           <View style={styles.currentPlanLeft}>
-            <Ionicons name="diamond-outline" size={20} color={palette.violet} />
+            <Ionicons
+              name={isPaidUser ? "diamond" : "person-circle-outline"}
+              size={20}
+              color={isPaidUser ? palette.gold : colors.textSecondary}
+            />
             <Text
               style={[styles.currentPlanLabel, { color: colors.textPrimary }]}
             >
@@ -466,7 +654,7 @@ export default function SubscriptionScreen() {
               styles.currentPlanBadge,
               {
                 backgroundColor: isPaidUser
-                  ? `${palette.violet}22`
+                  ? `${palette.gold}22`
                   : colors.bgElevated,
               },
             ]}
@@ -474,7 +662,7 @@ export default function SubscriptionScreen() {
             <Text
               style={[
                 styles.currentPlanName,
-                { color: isPaidUser ? palette.violet : colors.textSecondary },
+                { color: isPaidUser ? palette.gold : colors.textSecondary },
               ]}
             >
               {PLAN_DISPLAY[userPlanRaw] ??
@@ -484,7 +672,6 @@ export default function SubscriptionScreen() {
           </View>
         </View>
 
-        {/* ── Statut renouvellement ── */}
         {subStatus?.currentPeriodEnd && (
           <Text style={[styles.renewalText, { color: colors.textTertiary }]}>
             Prochain renouvellement :{" "}
@@ -492,7 +679,6 @@ export default function SubscriptionScreen() {
           </Text>
         )}
 
-        {/* ── Apple Pay info (iOS only) ── */}
         {Platform.OS === "ios" && (
           <View
             style={[
@@ -502,7 +688,7 @@ export default function SubscriptionScreen() {
           >
             <Ionicons
               name="logo-apple"
-              size={18}
+              size={16}
               color={colors.textSecondary}
             />
             <Text
@@ -513,7 +699,7 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
-        {/* ── Toggle mensuel/annuel (Pricing v2) ── */}
+        {/* ── Toggle mensuel/annuel ── */}
         <View style={styles.toggleContainer}>
           <Pressable
             onPress={() => {
@@ -522,17 +708,17 @@ export default function SubscriptionScreen() {
             }}
             style={[
               styles.toggleButton,
-              cycle === "monthly" && { backgroundColor: palette.violet },
+              cycle === "monthly" && styles.toggleButtonActive,
             ]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: cycle === "monthly" }}
           >
             <Text
               style={[
                 styles.toggleText,
                 {
                   color:
-                    cycle === "monthly" ? "#ffffff" : colors.textSecondary,
+                    cycle === "monthly"
+                      ? colors.textPrimary
+                      : colors.textTertiary,
                 },
               ]}
             >
@@ -546,26 +732,26 @@ export default function SubscriptionScreen() {
             }}
             style={[
               styles.toggleButton,
-              cycle === "yearly" && { backgroundColor: palette.violet },
+              cycle === "yearly" && styles.toggleButtonActive,
             ]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: cycle === "yearly" }}
           >
             <Text
               style={[
                 styles.toggleText,
                 {
                   color:
-                    cycle === "yearly" ? "#ffffff" : colors.textSecondary,
+                    cycle === "yearly"
+                      ? colors.textPrimary
+                      : colors.textTertiary,
                 },
               ]}
             >
               Annuel
             </Text>
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>-17%</Text>
-            </View>
           </Pressable>
+          <View style={styles.savingsRibbon}>
+            <Text style={styles.savingsRibbonText}>−17 % · 2 mois offerts</Text>
+          </View>
         </View>
 
         {/* ── Cards plans ── */}
@@ -584,13 +770,18 @@ export default function SubscriptionScreen() {
           ))}
         </View>
 
-        {/* ── CTA Trial 7j sans CB (Sprint B H5 — user free seulement) ── */}
+        {/* ── Trial 7 jours sans CB ── */}
         {trialAvailable && (
           <View style={styles.trialSection}>
-            <Text
-              style={[styles.trialTitle, { color: colors.textPrimary }]}
-            >
-              Essayez 7 jours gratuit, sans carte bancaire
+            <View style={styles.trialBadge}>
+              <Ionicons name="gift" size={12} color={palette.gold} />
+              <Text style={styles.trialBadgeText}>SANS CARTE BANCAIRE</Text>
+            </View>
+            <Text style={[styles.trialTitle, { color: colors.textPrimary }]}>
+              Essayez 7 jours gratuit
+            </Text>
+            <Text style={[styles.trialSub, { color: colors.textTertiary }]}>
+              Un seul essai, à vie. Annulable à tout moment.
             </Text>
             <View style={styles.trialButtonsRow}>
               <Pressable
@@ -598,22 +789,19 @@ export default function SubscriptionScreen() {
                 disabled={trialLoading !== null}
                 style={({ pressed }) => [
                   styles.trialButton,
-                  { borderColor: palette.blue },
+                  {
+                    borderColor: palette.blue,
+                    backgroundColor: `${palette.blue}10`,
+                  },
                   pressed && { opacity: 0.85 },
                   trialLoading === "pro" && { opacity: 0.6 },
                 ]}
-                accessibilityRole="button"
-                accessibilityLabel="Essayer Pro 7 jours gratuit"
               >
                 {trialLoading === "pro" ? (
                   <ActivityIndicator size="small" color={palette.blue} />
                 ) : (
                   <>
-                    <Ionicons
-                      name="gift-outline"
-                      size={16}
-                      color={palette.blue}
-                    />
+                    <Ionicons name="star" size={14} color={palette.blue} />
                     <Text
                       style={[styles.trialButtonText, { color: palette.blue }]}
                     >
@@ -627,27 +815,21 @@ export default function SubscriptionScreen() {
                 disabled={trialLoading !== null}
                 style={({ pressed }) => [
                   styles.trialButton,
-                  { borderColor: palette.violet },
+                  {
+                    borderColor: palette.gold,
+                    backgroundColor: `${palette.gold}10`,
+                  },
                   pressed && { opacity: 0.85 },
                   trialLoading === "expert" && { opacity: 0.6 },
                 ]}
-                accessibilityRole="button"
-                accessibilityLabel="Essayer Expert 7 jours gratuit"
               >
                 {trialLoading === "expert" ? (
-                  <ActivityIndicator size="small" color={palette.violet} />
+                  <ActivityIndicator size="small" color={palette.gold} />
                 ) : (
                   <>
-                    <Ionicons
-                      name="gift-outline"
-                      size={16}
-                      color={palette.violet}
-                    />
+                    <Ionicons name="diamond" size={14} color={palette.gold} />
                     <Text
-                      style={[
-                        styles.trialButtonText,
-                        { color: palette.violet },
-                      ]}
+                      style={[styles.trialButtonText, { color: palette.gold }]}
                     >
                       Essai Expert
                     </Text>
@@ -658,7 +840,7 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
-        {/* ── Gérer l'abonnement (utilisateurs payants) ── */}
+        {/* ── Manage subscription (paid users) ── */}
         {isPaidUser && (
           <Pressable
             onPress={handleManageSubscription}
@@ -695,6 +877,70 @@ export default function SubscriptionScreen() {
           </Pressable>
         )}
 
+        {/* ── Pourquoi DeepSight ── */}
+        <View style={styles.whySection}>
+          <Text style={styles.whyEyebrow}>POURQUOI DEEPSIGHT</Text>
+          <Text style={[styles.whyTitle, { color: colors.textPrimary }]}>
+            Plus qu'un résumeur. Une plateforme d'analyse.
+          </Text>
+          <View style={styles.whyGrid}>
+            {DIFFERENTIATORS_MOBILE.map((d) => (
+              <View
+                key={d.title}
+                style={[
+                  styles.whyCard,
+                  {
+                    backgroundColor: colors.bgCard,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.whyIconWrap}>
+                  <Ionicons
+                    name={d.icon as keyof typeof Ionicons.glyphMap}
+                    size={20}
+                    color={palette.gold}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[styles.whyCardTitle, { color: colors.textPrimary }]}
+                  >
+                    {d.title}
+                  </Text>
+                  <Text
+                    style={[styles.whyCardDesc, { color: colors.textTertiary }]}
+                  >
+                    {d.desc}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* ── Trust signals row ── */}
+        <View style={styles.trustRow}>
+          <View style={styles.trustItem}>
+            <Ionicons name="shield-checkmark" size={14} color={palette.green} />
+            <Text style={[styles.trustText, { color: colors.textTertiary }]}>
+              Annulation à tout moment
+            </Text>
+          </View>
+          <View style={styles.trustItem}>
+            <Ionicons name="refresh" size={14} color={palette.blue} />
+            <Text style={[styles.trustText, { color: colors.textTertiary }]}>
+              Remboursement 14 jours
+            </Text>
+          </View>
+          <View style={styles.trustItem}>
+            <Ionicons name="lock-closed" size={14} color={palette.gold} />
+            <Text style={[styles.trustText, { color: colors.textTertiary }]}>
+              Paiements Stripe sécurisés
+            </Text>
+          </View>
+        </View>
+
         {/* ── Packs supplémentaires ── */}
         <View style={[styles.packsSection, { borderTopColor: colors.border }]}>
           <Text
@@ -712,8 +958,6 @@ export default function SubscriptionScreen() {
                   opacity: pressed ? 0.85 : 1,
                 },
               ]}
-              accessibilityRole="button"
-              accessibilityLabel="Acheter des crédits supplémentaires"
             >
               <Ionicons
                 name="sparkles-outline"
@@ -740,8 +984,6 @@ export default function SubscriptionScreen() {
                   opacity: pressed ? 0.85 : 1,
                 },
               ]}
-              accessibilityRole="button"
-              accessibilityLabel="Acheter des minutes vocales"
             >
               <Ionicons name="mic-outline" size={24} color={palette.indigo} />
               <Text
@@ -769,7 +1011,6 @@ export default function SubscriptionScreen() {
         </Text>
       </ScrollView>
 
-      {/* Purchase modals */}
       <CreditPacksModal
         visible={creditPacksVisible}
         onClose={() => setCreditPacksVisible(false)}
@@ -789,11 +1030,31 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: sp.lg },
 
-  // Header
+  // Hero
+  eyebrow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: `${palette.gold}1A`,
+    borderColor: `${palette.gold}33`,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    marginBottom: sp.sm,
+  },
+  eyebrowText: {
+    fontFamily: fontFamily.bodyBold,
+    fontSize: fontSize["2xs"],
+    color: palette.gold,
+    letterSpacing: 1.2,
+  },
   title: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize["3xl"],
     marginBottom: sp.xs,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontFamily: fontFamily.body,
@@ -801,7 +1062,7 @@ const styles = StyleSheet.create({
     marginBottom: sp.xl,
   },
 
-  // Current plan banner
+  // Current plan
   currentPlanBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -829,8 +1090,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.sm,
   },
-
-  // Renewal
   renewalText: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
@@ -843,61 +1102,237 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: sp.sm,
-    padding: sp.md,
+    padding: sp.sm,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     marginBottom: sp.lg,
   },
   applePayText: {
     fontFamily: fontFamily.body,
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     flex: 1,
   },
 
-  // Toggle mensuel/annuel (Pricing v2)
+  // Toggle
   toggleContainer: {
     flexDirection: "row",
     alignSelf: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.04)",
     borderRadius: borderRadius.full,
     padding: 4,
     marginBottom: sp.md,
-    gap: 4,
   },
   toggleButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: sp.xs,
-    paddingVertical: sp.xs,
+    paddingVertical: sp.xs + 2,
     paddingHorizontal: sp.lg,
     borderRadius: borderRadius.full,
+  },
+  toggleButtonActive: {
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderColor: "rgba(255,255,255,0.18)",
+    borderWidth: 1,
   },
   toggleText: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.sm,
   },
-  discountBadge: {
-    backgroundColor: "#10b981",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
+  savingsRibbon: {
+    backgroundColor: `${palette.green}22`,
+    borderColor: `${palette.green}40`,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+    marginLeft: 4,
   },
-  discountText: {
+  savingsRibbonText: {
     fontFamily: fontFamily.bodyBold,
     fontSize: fontSize["2xs"],
-    color: "#ffffff",
+    color: palette.green,
+    letterSpacing: 0.4,
   },
 
-  // Trial section (Sprint B H5)
+  // Cards
+  cardsContainer: { gap: sp.md, marginBottom: sp.xl },
+  cardWrapper: { position: "relative" },
+  cardGlow: {
+    position: "absolute",
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: borderRadius.xl + 8,
+    opacity: 0.6,
+  },
+  card: {
+    borderRadius: borderRadius.xl,
+    overflow: "hidden",
+  },
+  cardElevatedExpert: {
+    shadowColor: palette.gold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+
+  // Ribbon
+  ribbon: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 8,
+  },
+  ribbonStatic: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  ribbonText: {
+    fontFamily: fontFamily.bodyBold,
+    fontSize: fontSize["2xs"],
+    color: "#fff",
+    letterSpacing: 1,
+  },
+  ribbonSpacer: { height: 0 },
+
+  // Card body
+  cardBody: { padding: sp.lg, gap: sp.sm },
+  cardHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: sp.sm,
+    marginBottom: sp.xs,
+  },
+  iconBubble: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  planLabel: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.lg,
+    letterSpacing: -0.3,
+  },
+  planTagline: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize["2xs"],
+    marginTop: 1,
+  },
+
+  priceBlock: { marginBottom: sp.xs },
+  priceText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize["2xl"],
+    letterSpacing: -0.5,
+  },
+  priceMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: sp.xs,
+    marginTop: 2,
+  },
+  priceSubtext: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
+  },
+  savingsBadge: {
+    backgroundColor: `${palette.green}22`,
+    borderColor: `${palette.green}40`,
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: borderRadius.sm,
+  },
+  savingsText: {
+    fontFamily: fontFamily.bodyBold,
+    fontSize: fontSize["2xs"],
+    color: palette.green,
+  },
+
+  // Features
+  featureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 3,
+  },
+  featureIconBg: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  featureText: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.sm,
+    flex: 1,
+  },
+  featureTextHighlight: {
+    fontFamily: fontFamily.bodyMedium,
+  },
+
+  // CTA
+  ctaButton: {
+    paddingVertical: sp.md,
+    borderRadius: borderRadius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
+    color: "#fff",
+  },
+
+  // Trial
   trialSection: {
     alignItems: "center",
     marginBottom: sp.xl,
-    gap: sp.md,
+    gap: 6,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.lg,
+    backgroundColor: "rgba(200,144,58,0.04)",
+    borderColor: "rgba(200,144,58,0.20)",
+    borderWidth: 1,
+    borderRadius: borderRadius.xl,
+  },
+  trialBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: `${palette.gold}1A`,
+    borderColor: `${palette.gold}33`,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+  },
+  trialBadgeText: {
+    fontFamily: fontFamily.bodyBold,
+    fontSize: fontSize["2xs"],
+    color: palette.gold,
+    letterSpacing: 1,
   },
   trialTitle: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize.sm,
+    fontSize: fontSize.lg,
     textAlign: "center",
+  },
+  trialSub: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
+    textAlign: "center",
+    marginBottom: sp.sm,
   },
   trialButtonsRow: {
     flexDirection: "row",
@@ -909,83 +1344,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: sp.xs,
+    gap: 6,
     paddingVertical: sp.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1.5,
-    backgroundColor: "rgba(255,255,255,0.04)",
   },
   trialButtonText: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.sm,
-  },
-
-  // Cards
-  cardsContainer: { gap: sp.md, marginBottom: sp.xl },
-  card: {
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  cardHighlight: {
-    borderWidth: 1.5,
-  },
-  cardGradient: {
-    padding: sp.lg,
-    gap: sp.md,
-    position: "relative",
-  },
-
-  // Badge
-  badge: {
-    position: "absolute",
-    top: sp.md,
-    right: sp.md,
-    paddingVertical: 3,
-    paddingHorizontal: sp.sm,
-    borderRadius: borderRadius.full,
-  },
-  badgeText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize["2xs"],
-    color: "#ffffff",
-  },
-
-  // Plan header
-  cardHeader: { gap: 2 },
-  planLabel: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize.lg,
-  },
-  planPrice: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize["2xl"],
-  },
-
-  // Features
-  featuresList: { gap: sp.xs },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: sp.sm,
-  },
-  featureText: {
-    fontFamily: fontFamily.body,
-    fontSize: fontSize.sm,
-    flex: 1,
-  },
-
-  // CTA
-  ctaButton: {
-    paddingVertical: sp.md,
-    borderRadius: borderRadius.lg,
-    alignItems: "center",
-    marginTop: sp.xs,
-  },
-  ctaText: {
-    fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize.sm,
-    color: "#ffffff",
   },
 
   // Manage
@@ -1006,12 +1372,69 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  // Legal
-  legalText: {
+  // Why section
+  whySection: {
+    marginTop: sp.lg,
+    marginBottom: sp.xl,
+  },
+  whyEyebrow: {
+    fontFamily: fontFamily.bodyBold,
+    fontSize: fontSize["2xs"],
+    color: palette.gold,
+    letterSpacing: 1.2,
+    marginBottom: sp.xs,
+    textAlign: "center",
+  },
+  whyTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.xl,
+    textAlign: "center",
+    marginBottom: sp.lg,
+    letterSpacing: -0.4,
+  },
+  whyGrid: { gap: sp.sm },
+  whyCard: {
+    padding: sp.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: sp.md,
+  },
+  whyIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: borderRadius.md,
+    backgroundColor: `${palette.gold}1A`,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  whyCardTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
+    marginBottom: 2,
+  },
+  whyCardDesc: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
-    textAlign: "center",
-    lineHeight: 18,
+  },
+
+  // Trust row
+  trustRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: sp.md,
+    marginBottom: sp.xl,
+  },
+  trustItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  trustText: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
   },
 
   // Packs section
@@ -1046,5 +1469,13 @@ const styles = StyleSheet.create({
   packCardSub: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
+  },
+
+  // Legal
+  legalText: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
+    textAlign: "center",
+    lineHeight: 18,
   },
 });

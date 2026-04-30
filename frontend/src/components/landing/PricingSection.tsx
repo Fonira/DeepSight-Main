@@ -1,166 +1,136 @@
 /**
- * PricingSection — Grille tarifaire 3 plans alignee sur planPrivileges.ts.
- * Plans v2 : Free (0) / Pro (8,99) / Expert (19,99) — trial 7j sans CB sur Pro/Expert.
+ * PricingSection — Editorial Premium (avril 2026)
+ *
+ * Section pricing landing publique. 3 plans v2 avec hierarchie visuelle,
+ * trial 7j visible sur Pro/Expert, lien vers /upgrade pour comparaison
+ * detaillee. Aligne sur UpgradePage.tsx.
  */
 
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { Zap, Star, Crown, Check, X, ArrowRight, Shield } from "lucide-react";
+import {
+  Zap,
+  Star,
+  Crown,
+  Check,
+  ArrowRight,
+  Gift,
+  Shield,
+} from "lucide-react";
 import {
   PLAN_LIMITS,
   PLANS_INFO,
   type PlanId,
 } from "../../config/planPrivileges";
 
-const ease = [0.4, 0, 0.2, 1] as const;
+const ease = [0.22, 1, 0.36, 1] as const;
 
-interface PlanCard {
+interface PlanCardData {
   id: PlanId;
   icon: typeof Zap;
   gradient: string;
-  borderColor: string;
-  glowColor: string;
-  features: Array<{
-    textFr: string;
-    textEn: string;
-    included: boolean;
-    highlight?: boolean;
-  }>;
+  ringClass: string;
+  taglineFr: string;
+  taglineEn: string;
+  features: { textFr: string; textEn: string; highlight?: boolean }[];
 }
 
-const PLAN_CARDS: PlanCard[] = [
+const PLAN_CARDS: PlanCardData[] = [
   {
     id: "free",
     icon: Zap,
-    gradient: "from-gray-500 to-gray-600",
-    borderColor: "border-border-subtle",
-    glowColor: "",
+    gradient: "from-slate-500 to-slate-600",
+    ringClass: "ring-1 ring-white/[0.06]",
+    taglineFr: "Pour decouvrir",
+    taglineEn: "To discover",
     features: [
       {
-        textFr: `${PLAN_LIMITS.free.monthlyAnalyses} analyses/mois`,
-        textEn: `${PLAN_LIMITS.free.monthlyAnalyses} analyses/month`,
-        included: true,
+        textFr: `${PLAN_LIMITS.free.monthlyAnalyses} analyses / mois`,
+        textEn: `${PLAN_LIMITS.free.monthlyAnalyses} analyses / month`,
       },
       {
         textFr: `Videos jusqu'a ${PLAN_LIMITS.free.maxVideoLengthMin} min`,
         textEn: `Videos up to ${PLAN_LIMITS.free.maxVideoLengthMin} min`,
-        included: true,
       },
-      {
-        textFr: "Chat IA basique (5/video)",
-        textEn: "Basic AI Chat (5/video)",
-        included: true,
-      },
-      {
-        textFr: "Flashcards & Quiz",
-        textEn: "Flashcards & Quiz",
-        included: true,
-      },
-      { textFr: "Export texte", textEn: "Text export", included: true },
-      { textFr: "Mindmap", textEn: "Mindmap", included: false },
-      { textFr: "Fact-check", textEn: "Fact-check", included: false },
-      { textFr: "Export PDF", textEn: "PDF export", included: false },
+      { textFr: "Chat IA basique", textEn: "Basic AI Chat" },
+      { textFr: "Flashcards & Quiz", textEn: "Flashcards & Quiz" },
+      { textFr: "Export texte", textEn: "Text export" },
     ],
   },
   {
     id: "pro",
     icon: Star,
     gradient: "from-blue-500 to-indigo-600",
-    borderColor: "border-blue-500/50",
-    glowColor: "shadow-xl shadow-blue-500/15",
+    ringClass: "ring-1 ring-blue-500/40",
+    taglineFr: "Pour apprendre serieusement",
+    taglineEn: "For serious learners",
     features: [
       {
-        textFr: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/mois`,
-        textEn: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/month`,
-        included: true,
+        textFr: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses / mois`,
+        textEn: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses / month`,
       },
       {
-        textFr: `Videos jusqu'a ${PLAN_LIMITS.pro.maxVideoLengthMin} min`,
-        textEn: `Videos up to ${PLAN_LIMITS.pro.maxVideoLengthMin} min`,
-        included: true,
+        textFr: "Videos jusqu'a 1 h",
+        textEn: "Videos up to 1 h",
       },
+      { textFr: "Chat IA (25 q/video)", textEn: "AI Chat (25 q/video)" },
       {
-        textFr: "Chat IA (25/video)",
-        textEn: "AI Chat (25/video)",
-        included: true,
-      },
-      {
-        textFr: "Mindmap interactif",
-        textEn: "Interactive Mindmap",
-        included: true,
+        textFr: "Cartes mentales interactives",
+        textEn: "Interactive mind maps",
         highlight: true,
       },
       {
         textFr: "Fact-check automatique",
-        textEn: "Automated Fact-check",
-        included: true,
+        textEn: "Auto fact-check",
         highlight: true,
       },
       {
-        textFr: "Web Search IA (20/mois)",
-        textEn: "AI Web Search (20/mo)",
-        included: true,
+        textFr: "Voice chat (30 min/mois)",
+        textEn: "Voice chat (30 min/mo)",
         highlight: true,
       },
-      {
-        textFr: "Export PDF & Markdown",
-        textEn: "PDF & Markdown export",
-        included: true,
-      },
-      {
-        textFr: "Debat IA (3/mois)",
-        textEn: "AI Debate (3/mo)",
-        included: true,
-      },
+      { textFr: "Recherche web (20/mois)", textEn: "Web search (20/mo)" },
+      { textFr: "Export PDF + Markdown", textEn: "PDF + Markdown export" },
     ],
   },
   {
     id: "expert",
     icon: Crown,
-    gradient: "from-violet-500 to-purple-600",
-    borderColor: "border-violet-500/40",
-    glowColor: "",
+    gradient: "from-violet-500 via-fuchsia-500 to-purple-600",
+    ringClass: "ring-2 ring-violet-500/60",
+    taglineFr: "Pour les createurs et chercheurs",
+    taglineEn: "For creators & researchers",
     features: [
       {
-        textFr: `${PLAN_LIMITS.expert.monthlyAnalyses} analyses/mois`,
-        textEn: `${PLAN_LIMITS.expert.monthlyAnalyses} analyses/month`,
-        included: true,
+        textFr: `${PLAN_LIMITS.expert.monthlyAnalyses} analyses / mois`,
+        textEn: `${PLAN_LIMITS.expert.monthlyAnalyses} analyses / month`,
       },
       {
-        textFr: `Videos jusqu'a ${Math.round(PLAN_LIMITS.expert.maxVideoLengthMin / 60)}h`,
-        textEn: `Videos up to ${Math.round(PLAN_LIMITS.expert.maxVideoLengthMin / 60)}h`,
-        included: true,
+        textFr: `Videos jusqu'a ${Math.round(PLAN_LIMITS.expert.maxVideoLengthMin / 60)} h`,
+        textEn: `Videos up to ${Math.round(PLAN_LIMITS.expert.maxVideoLengthMin / 60)} h`,
       },
       {
         textFr: "Chat IA illimite",
         textEn: "Unlimited AI Chat",
-        included: true,
         highlight: true,
       },
       {
-        textFr: "Playlists (10 max)",
-        textEn: "Playlists (10 max)",
-        included: true,
+        textFr: "Playlists (10 × 20 videos)",
+        textEn: "Playlists (10 × 20 videos)",
         highlight: true,
       },
       {
-        textFr: "Chat vocal (45 min/mois)",
-        textEn: "Voice chat (45 min/mo)",
-        included: true,
+        textFr: "Voice chat (120 min/mois)",
+        textEn: "Voice chat (120 min/mo)",
         highlight: true,
       },
       {
-        textFr: "Deep Research",
-        textEn: "Deep Research",
-        included: true,
+        textFr: "Deep Research + TTS",
+        textEn: "Deep Research + TTS",
         highlight: true,
       },
-      {
-        textFr: "Web Search IA (60/mois)",
-        textEn: "AI Web Search (60/mo)",
-        included: true,
-      },
-      { textFr: "File prioritaire", textEn: "Priority queue", included: true },
+      { textFr: "Recherche web (60/mois)", textEn: "Web search (60/mo)" },
+      { textFr: "File d'attente prioritaire", textEn: "Priority queue" },
     ],
   },
 ];
@@ -179,39 +149,44 @@ export default function PricingSection({
   const isInView = useInView(ref, { once: true, margin: "-60px" });
 
   return (
-    <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6" ref={ref}>
+    <section id="pricing" className="py-20 sm:py-28 px-4 sm:px-6" ref={ref}>
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
+        {/* HEADER */}
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 16 }}
+          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
           transition={{ duration: 0.5, ease }}
           className="text-center mb-12 sm:mb-16"
         >
-          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-text-primary mb-3">
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-widest text-violet-200 bg-violet-500/10 border border-violet-500/20 mb-5">
             {lang === "fr"
-              ? "Investissez dans votre comprehension"
-              : "Invest in your understanding"}
+              ? "Tarifs simples · sans engagement"
+              : "Simple pricing · no commitment"}
+          </span>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-text-primary mb-4">
+            {lang === "fr" ? "Investissez dans votre " : "Invest in your "}
+            <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+              {lang === "fr" ? "comprehension" : "understanding"}
+            </span>
           </h2>
-          <p className="text-text-secondary text-sm sm:text-base max-w-xl mx-auto mb-4">
+          <p className="text-text-secondary text-sm sm:text-base max-w-2xl mx-auto">
             {lang === "fr"
-              ? "Commencez gratuitement. Evoluez quand vos besoins grandissent. Sans engagement."
-              : "Start for free. Scale when your needs grow. No commitment."}
-          </p>
-          <p className="text-text-tertiary text-xs sm:text-sm max-w-lg mx-auto">
-            {lang === "fr"
-              ? "Pourquoi payer ? Parce qu'une heure de video analysee en 5 minutes, des affirmations verifiees par des sources, et des syntheses exportables transforment votre productivite intellectuelle."
-              : "Why pay? Because an hour of video analyzed in 5 minutes, claims verified against sources, and exportable summaries transform your intellectual productivity."}
+              ? "Commencez gratuitement. Essayez Pro ou Expert 7 jours sans CB. Annulez quand vous voulez."
+              : "Start for free. Try Pro or Expert 7 days without a card. Cancel anytime."}
           </p>
         </motion.div>
 
-        {/* Cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-4xl mx-auto">
+        {/* CARDS GRID */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:items-end max-w-5xl mx-auto">
           {PLAN_CARDS.map((plan, cardIndex) => {
             const info = PLANS_INFO[plan.id];
             const Icon = plan.icon;
-            const isPopular = info.popular;
-            const price = info.priceMonthly / 100;
+            const monthly = info.priceMonthly / 100;
+            const isExpert = plan.id === "expert";
+            const isPro = plan.id === "pro";
+            const isFree = plan.id === "free";
+            const showsTrial = isPro || isExpert;
+            const tagline = lang === "fr" ? plan.taglineFr : plan.taglineEn;
 
             return (
               <motion.div
@@ -221,150 +196,218 @@ export default function PricingSection({
                   isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }
                 }
                 transition={{
-                  duration: 0.4,
+                  duration: 0.45,
                   ease,
-                  delay: 0.1 + cardIndex * 0.08,
+                  delay: 0.08 + cardIndex * 0.06,
                 }}
+                className={`relative ${
+                  isExpert
+                    ? "lg:scale-[1.04] lg:-mt-4"
+                    : isFree
+                      ? "lg:opacity-95"
+                      : ""
+                }`}
               >
+                {/* Glow Expert */}
+                {isExpert && (
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -inset-1 rounded-3xl bg-gradient-to-br from-violet-500/30 via-fuchsia-500/20 to-purple-500/30 blur-2xl opacity-60"
+                    style={{
+                      animation: "ds-pricing-glow 4s ease-in-out infinite",
+                    }}
+                  />
+                )}
+
                 <div
-                  className={`relative p-6 rounded-xl border transition-all h-full flex flex-col overflow-hidden ${
-                    isPopular
-                      ? `${plan.borderColor} bg-blue-500/[0.06] ${plan.glowColor} scale-[1.03] ring-1 ring-blue-500/25 z-10`
-                      : `${plan.borderColor} bg-bg-secondary/40 hover:border-border-default`
-                  }`}
+                  className={`relative h-full flex flex-col overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.01] backdrop-blur-xl ${plan.ringClass}`}
                 >
-                  {/* Badge populaire */}
-                  {info.badge && (
-                    <div className="absolute -top-0 -right-0">
-                      <div
-                        className="text-white text-[0.625rem] font-bold px-2 py-1 rounded-bl-xl"
-                        style={{ backgroundColor: info.badge.color }}
-                      >
-                        {info.badge.text}
-                      </div>
+                  {/* Top ribbon */}
+                  {showsTrial ? (
+                    <div
+                      className={`text-center text-[11px] font-bold tracking-wide py-2 text-white ${
+                        isExpert
+                          ? "bg-gradient-to-r from-violet-500 via-fuchsia-500 to-purple-500"
+                          : "bg-gradient-to-r from-blue-500 to-cyan-500"
+                      }`}
+                    >
+                      <Gift className="inline-block w-3.5 h-3.5 mr-1.5 -mt-0.5" />
+                      {lang === "fr"
+                        ? "ESSAI 7 JOURS · SANS CB"
+                        : "7-DAY TRIAL · NO CARD"}
                     </div>
+                  ) : (
+                    <div className="h-[34px]" aria-hidden />
                   )}
 
-                  {/* Icon */}
-                  <div
-                    className={`w-10 h-10 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-4 shadow-lg`}
-                  >
-                    <Icon className="w-5 h-5 text-white" />
-                  </div>
+                  <div className="p-6 sm:p-7 flex flex-col flex-1">
+                    {/* Icon + name + tagline */}
+                    <div className="flex items-start gap-3 mb-4">
+                      <div
+                        className={`flex-shrink-0 w-11 h-11 rounded-2xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center shadow-lg`}
+                      >
+                        <Icon className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-semibold text-text-primary leading-tight">
+                          {lang === "fr" ? info.name : info.nameEn}
+                        </h3>
+                        <p className="text-[11px] text-text-tertiary leading-tight mt-0.5">
+                          {tagline}
+                        </p>
+                      </div>
+                    </div>
 
-                  {/* Header */}
-                  <div className="mb-3">
-                    <h3 className="font-semibold text-text-primary text-sm">
-                      {lang === "fr" ? info.name : info.nameEn}
-                    </h3>
-                    <p className="text-[0.6875rem] text-text-tertiary">
+                    {/* Prix */}
+                    <div className="mb-2">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-4xl font-semibold text-text-primary tabular-nums tracking-tight">
+                          {monthly === 0
+                            ? "0"
+                            : monthly.toFixed(2).replace(".", ",")}
+                        </span>
+                        <span className="text-text-tertiary text-sm">
+                          €/{lang === "fr" ? "mois" : "mo"}
+                        </span>
+                      </div>
+                      {monthly === 0 ? (
+                        <p className="text-xs text-text-tertiary mt-1">
+                          {lang === "fr"
+                            ? "Sans CB · a vie"
+                            : "No card · forever"}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-text-tertiary mt-1">
+                          {lang === "fr"
+                            ? `ou ${(info.priceYearly / 100).toFixed(0)} € / an (−17 %)`
+                            : `or €${(info.priceYearly / 100).toFixed(0)} / yr (−17%)`}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-xs text-text-secondary mb-5 leading-relaxed">
                       {lang === "fr" ? info.description : info.descriptionEn}
                     </p>
-                  </div>
 
-                  {/* Prix */}
-                  <div className="mb-5">
-                    <span className="text-2xl font-semibold text-text-primary tabular-nums">
-                      {price === 0 ? "0" : price.toFixed(2).replace(".", ",")}
-                    </span>
-                    <span className="text-text-tertiary text-xs ml-1">
-                      /{lang === "fr" ? "mois" : "month"}
-                    </span>
-                  </div>
-
-                  {/* Features */}
-                  <div className="space-y-2 mb-6 flex-1">
-                    {plan.features.map((feature, i) => (
-                      <div
-                        key={i}
-                        className={`flex items-start gap-2 text-xs ${
-                          feature.included
-                            ? feature.highlight
-                              ? "text-accent-primary"
+                    {/* Features */}
+                    <ul className="space-y-2.5 mb-6 flex-1">
+                      {plan.features.map((feat, i) => (
+                        <li
+                          key={i}
+                          className={`flex items-start gap-2.5 text-[13px] leading-snug ${
+                            feat.highlight
+                              ? "text-text-primary"
                               : "text-text-secondary"
-                            : "text-text-muted line-through"
-                        }`}
-                      >
-                        {feature.included ? (
-                          <div
-                            className={`w-4 h-4 rounded-full ${
-                              feature.highlight
-                                ? "bg-amber-500/20"
-                                : "bg-green-500/20"
-                            } flex items-center justify-center flex-shrink-0 mt-0.5`}
+                          }`}
+                        >
+                          <span
+                            className={`flex-shrink-0 mt-0.5 w-4 h-4 rounded-full flex items-center justify-center ${
+                              feat.highlight
+                                ? isExpert
+                                  ? "bg-violet-500/20"
+                                  : "bg-blue-500/20"
+                                : "bg-emerald-500/15"
+                            }`}
                           >
                             <Check
                               className={`w-2.5 h-2.5 ${
-                                feature.highlight
-                                  ? "text-amber-400"
-                                  : "text-green-400"
+                                feat.highlight
+                                  ? isExpert
+                                    ? "text-violet-300"
+                                    : "text-blue-300"
+                                  : "text-emerald-400"
                               }`}
+                              strokeWidth={3}
                             />
-                          </div>
-                        ) : (
-                          <div className="w-4 h-4 rounded-full bg-gray-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <X className="w-2.5 h-2.5 text-gray-500" />
-                          </div>
-                        )}
-                        <span
-                          className={feature.highlight ? "font-medium" : ""}
-                        >
-                          {lang === "fr" ? feature.textFr : feature.textEn}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                          </span>
+                          <span className={feat.highlight ? "font-medium" : ""}>
+                            {lang === "fr" ? feat.textFr : feat.textEn}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
 
-                  {/* CTA */}
-                  <motion.button
-                    onClick={() => onNavigate("/login?tab=register")}
-                    className={`w-full py-2.5 rounded-lg font-medium text-sm transition-all ${
-                      isPopular
-                        ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-90 shadow-lg"
-                        : "bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border-subtle"
-                    }`}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    {plan.id === "free"
-                      ? lang === "fr"
-                        ? "Commencer gratuitement"
-                        : "Start for free"
-                      : plan.id === "pro"
-                        ? lang === "fr"
-                          ? "Essayer 7 jours gratuitement"
-                          : "Try 7 days free"
-                        : lang === "fr"
-                          ? "Commencer"
-                          : "Get started"}
-                  </motion.button>
+                    {/* CTAs */}
+                    <div className="space-y-2">
+                      {showsTrial ? (
+                        <>
+                          <button
+                            onClick={() =>
+                              onNavigate(`/login?tab=register&trial=${plan.id}`)
+                            }
+                            className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-[0.98] ${
+                              isExpert
+                                ? "bg-gradient-to-r from-violet-500 via-fuchsia-500 to-purple-600 text-white shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:opacity-95"
+                                : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:opacity-95"
+                            }`}
+                          >
+                            <Gift className="w-4 h-4" />
+                            {lang === "fr"
+                              ? "Essayer 7 jours gratuits"
+                              : "Try 7 days free"}
+                          </button>
+                          <button
+                            onClick={() => onNavigate("/upgrade")}
+                            className="w-full py-2 text-xs text-text-tertiary hover:text-text-secondary transition-colors flex items-center justify-center gap-1"
+                          >
+                            {lang === "fr" ? (
+                              <>
+                                voir comparaison detaillee{" "}
+                                <span aria-hidden>→</span>
+                              </>
+                            ) : (
+                              <>
+                                see detailed comparison{" "}
+                                <span aria-hidden>→</span>
+                              </>
+                            )}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => onNavigate("/login?tab=register")}
+                          className="w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-[0.98] bg-white/[0.04] text-text-secondary border border-white/[0.08] hover:bg-white/[0.07]"
+                        >
+                          {lang === "fr"
+                            ? "Commencer gratuitement"
+                            : "Start for free"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             );
           })}
         </div>
 
-        {/* Garanties */}
+        {/* TRUST SIGNALS */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
-          transition={{ duration: 0.5, ease, delay: 0.5 }}
-          className="text-center mt-10"
+          transition={{ duration: 0.5, ease, delay: 0.4 }}
+          className="text-center mt-12"
         >
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-text-secondary">
-            <span className="flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-emerald-400" />
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-text-tertiary">
+            <span className="inline-flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
               {lang === "fr" ? "Annulation a tout moment" : "Cancel anytime"}
             </span>
-            <span className="flex items-center gap-1.5">
-              <Shield className="w-4 h-4 text-blue-400" />
+            <span className="opacity-30">·</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-blue-400" />
               {lang === "fr" ? "Remboursement 14 jours" : "14-day refund"}
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="opacity-30">·</span>
+            <span className="inline-flex items-center gap-1.5">
               <span>🇪🇺</span>
-              {lang === "fr"
-                ? "Donnees hebergees en Europe"
-                : "Data hosted in Europe"}
+              {lang === "fr" ? "Donnees en Europe" : "Data in Europe"}
+            </span>
+            <span className="opacity-30">·</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span>🇫🇷</span>
+              {lang === "fr" ? "IA Mistral" : "Mistral AI"}
             </span>
           </div>
         </motion.div>
@@ -373,19 +416,19 @@ export default function PricingSection({
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
-          transition={{ duration: 0.5, ease, delay: 0.6 }}
+          transition={{ duration: 0.5, ease, delay: 0.5 }}
           className="text-center mt-10"
         >
-          <div className="inline-flex flex-col items-center gap-2 p-5 rounded-xl border border-border-subtle bg-bg-secondary/40 backdrop-blur-sm">
+          <div className="inline-flex flex-col items-center gap-2 p-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm max-w-md mx-auto">
             <p className="text-sm text-text-primary font-medium">
               {lang === "fr"
                 ? "Besoin d'une offre sur-mesure ?"
                 : "Need a custom plan?"}
             </p>
-            <p className="text-xs text-text-secondary max-w-md">
+            <p className="text-xs text-text-secondary text-center">
               {lang === "fr"
-                ? "Equipes, universites, entreprises — contactez-nous pour un plan adapte."
-                : "Teams, universities, enterprises — contact us for a tailored plan."}
+                ? "Equipes, universites, entreprises — un plan adapte a vos volumes."
+                : "Teams, universities, companies — a plan tailored to your volumes."}
             </p>
             <a
               href="mailto:contact@deepsightsynthesis.com?subject=Offre%20sur-mesure%20DeepSight"
@@ -397,6 +440,13 @@ export default function PricingSection({
           </div>
         </motion.div>
       </div>
+
+      <style>{`
+        @keyframes ds-pricing-glow {
+          0%, 100% { opacity: 0.45; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.02); }
+        }
+      `}</style>
     </section>
   );
 }

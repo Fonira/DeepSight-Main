@@ -1,19 +1,16 @@
 /**
- * UpgradePage v9.0 — Pricing v2 (Free / Pro 8.99 € / Expert 19.99 €).
+ * UpgradePage v10.0 — Editorial Premium (avril 2026)
  *
- * Différences vs v8 :
- *  - Toggle BillingToggle mensuel / annuel (-17 %)
- *  - Composant ComparisonTable (matrice features × plans v2)
- *  - 2 CTAs trial : "Essai 7 j gratuit Pro" + "Essai 7 j gratuit Expert"
- *  - api.startTrial(plan, cycle) + api.createCheckout(plan, cycle)
- *  - Banner amber legacy si user.is_legacy_pricing (grandfathering)
+ * Refonte design : hierarchie visuelle Free 95% / Pro 100% / Expert 108%,
+ * glow violet anime sur Expert, trust signals inline, section ROI,
+ * temoignages, FAQ accordeon, B2B contact.
  *
- * Fetch GET /api/billing/plans?platform=web au mount.
- * Fallback sur planPrivileges.ts si API échoue (snake_case mapping).
+ * Logique metier conservee : Stripe checkout, trial 7j, grandfathering legacy,
+ * downgrade modal, cancel subscription, refresh user, analytics PostHog.
  */
 
-import React, { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
   Check,
   X,
@@ -24,14 +21,13 @@ import {
   ArrowDown,
   AlertCircle,
   RefreshCw,
-  BookOpen,
   ChevronDown,
-  ChevronUp,
   Lock,
-  Infinity as InfinityIcon,
   Star,
   Gift,
-  Clock,
+  Shield,
+  ShieldCheck,
+  Lock as LockIcon,
 } from "lucide-react";
 
 import { useAuth } from "../hooks/useAuth";
@@ -55,40 +51,75 @@ import {
   PLAN_LIMITS as FALLBACK_PLAN_LIMITS,
   PLAN_HIERARCHY,
   DIFFERENTIATORS,
+  TESTIMONIALS,
   type PlanId,
 } from "../config/planPrivileges";
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════
+// CONSTANTES VISUELLES
+// ═════════════════════════════════════════════════════════════════════════════
 
-const PLAN_ICON_MAP: Record<string, React.ElementType> = {
+const PLAN_ICONS: Record<string, React.ElementType> = {
   free: Zap,
-  pro: Star, // v2 Pro (anciennement Plus)
-  expert: Crown, // v2 Expert (anciennement Pro)
+  pro: Star,
+  expert: Crown,
 };
 
-const PLAN_GRADIENT_MAP: Record<string, string> = {
-  free: "from-gray-500 to-gray-600",
+const PLAN_GRADIENTS: Record<string, string> = {
+  free: "from-slate-500 to-slate-600",
   pro: "from-blue-500 to-indigo-600",
-  expert: "from-violet-500 to-purple-600",
+  expert: "from-violet-500 via-fuchsia-500 to-purple-600",
 };
 
-function formatPriceFr(cents: number): string {
+const PLAN_RING: Record<string, string> = {
+  free: "ring-1 ring-white/[0.06]",
+  pro: "ring-1 ring-blue-500/40",
+  expert: "ring-2 ring-violet-500/60",
+};
+
+const PLAN_TAGLINES_FR: Record<string, string> = {
+  free: "Pour decouvrir",
+  pro: "Pour apprendre serieusement",
+  expert: "Pour les createurs et chercheurs",
+};
+
+const PLAN_TAGLINES_EN: Record<string, string> = {
+  free: "To discover",
+  pro: "For serious learners",
+  expert: "For creators & researchers",
+};
+
+const ease = [0.22, 1, 0.36, 1] as const;
+
+// ═════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═════════════════════════════════════════════════════════════════════════════
+
+function formatEuro(cents: number): string {
   if (cents === 0) return "0";
   const euros = cents / 100;
   return euros.toFixed(2).replace(".", ",");
 }
 
-function getPlanIcon(planId: string): React.ElementType {
-  return PLAN_ICON_MAP[planId] || Zap;
+function getCyclePrice(plan: ApiBillingPlan, cycle: BillingCycle): number {
+  return cycle === "yearly"
+    ? plan.price_yearly_cents
+    : plan.price_monthly_cents;
 }
 
-function getPlanGradient(planId: string): string {
-  return PLAN_GRADIENT_MAP[planId] || "from-gray-500 to-gray-600";
+function getMonthlyEquivalent(
+  plan: ApiBillingPlan,
+  cycle: BillingCycle,
+): number {
+  if (cycle === "yearly") return plan.price_yearly_cents / 12;
+  return plan.price_monthly_cents;
 }
 
-/** Convert camelCase PlanLimits to snake_case Record matching API format */
+function getYearlySavings(plan: ApiBillingPlan): number {
+  const monthlyTotal = plan.price_monthly_cents * 12;
+  return Math.max(0, monthlyTotal - plan.price_yearly_cents);
+}
+
 function limitsToSnakeCase(
   limits: (typeof FALLBACK_PLAN_LIMITS)[PlanId],
 ): Record<string, unknown> {
@@ -115,10 +146,16 @@ function limitsToSnakeCase(
     academic_search: limits.academicSearch,
     academic_papers_per_analysis: limits.academicPapersPerAnalysis,
     bibliography_export: limits.bibliographyExport,
+    voice_chat_enabled: limits.voiceChatEnabled,
+    voice_monthly_minutes: limits.voiceChatMonthlyMinutes,
+    debate_enabled: limits.debateEnabled,
+    debate_monthly: limits.debateMonthly,
+    deep_research_enabled: limits.deepResearchEnabled,
+    factcheck_enabled: limits.factcheckEnabled,
+    tts_enabled: limits.ttsEnabled,
   };
 }
 
-/** Build fallback plans from planPrivileges.ts when API is unavailable */
 function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
   return PLAN_HIERARCHY.map((pid) => {
     const info = FALLBACK_PLANS_INFO[pid];
@@ -132,44 +169,63 @@ function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
       highlight?: boolean;
     }[] = [];
     featuresDisplay.push({
-      text: `${limits.monthlyAnalyses === -1 ? "∞" : limits.monthlyAnalyses} analyses/mois`,
+      text: `${limits.monthlyAnalyses === -1 ? "∞" : limits.monthlyAnalyses} analyses / mois`,
       icon: "📊",
     });
     featuresDisplay.push({
-      text: `Vidéos ${limits.maxVideoLengthMin === -1 ? "illimitées" : `≤ ${limits.maxVideoLengthMin} min`}`,
+      text:
+        limits.maxVideoLengthMin === -1
+          ? "Vidéos illimitées"
+          : `Vidéos jusqu'à ${limits.maxVideoLengthMin >= 60 ? `${Math.round(limits.maxVideoLengthMin / 60)} h` : `${limits.maxVideoLengthMin} min`}`,
       icon: "⏱️",
     });
     featuresDisplay.push({
       text:
         limits.chatQuestionsPerVideo === -1
-          ? "Chat illimité"
-          : `Chat (${limits.chatQuestionsPerVideo} q/vidéo)`,
+          ? "Chat IA illimité"
+          : `Chat IA (${limits.chatQuestionsPerVideo} q/vidéo)`,
       icon: "💬",
+      highlight: pid === "expert",
     });
-    if (limits.flashcardsEnabled)
+    if (limits.mindmapEnabled)
+      featuresDisplay.push({ text: "Cartes mentales", icon: "🧠" });
+    if (limits.factcheckEnabled)
       featuresDisplay.push({
-        text: "Flashcards & Cartes mentales",
-        icon: "🧠",
-        highlight: pid === "expert",
-      });
-    if (limits.playlistsEnabled)
-      featuresDisplay.push({
-        text: `Playlists (${limits.maxPlaylistVideos} vidéos)`,
-        icon: "📚",
-        highlight: true,
+        text: "Fact-check automatique",
+        icon: "🔍",
+        highlight: pid === "pro",
       });
     if (limits.webSearchMonthly > 0 || limits.webSearchMonthly === -1) {
       featuresDisplay.push({
         text:
           limits.webSearchMonthly === -1
-            ? "Recherche web ∞"
+            ? "Recherche web illimitée"
             : `Recherche web (${limits.webSearchMonthly}/mois)`,
-        icon: "🔍",
-        highlight: limits.webSearchMonthly >= 100,
+        icon: "🌐",
       });
     }
+    if (limits.playlistsEnabled)
+      featuresDisplay.push({
+        text: `Playlists (${limits.maxPlaylists}×${limits.maxPlaylistVideos})`,
+        icon: "📚",
+        highlight: true,
+      });
+    if (limits.voiceChatEnabled)
+      featuresDisplay.push({
+        text: `Chat vocal (${limits.voiceChatMonthlyMinutes} min/mois)`,
+        icon: "🎙️",
+        highlight: true,
+      });
+    if (limits.deepResearchEnabled)
+      featuresDisplay.push({
+        text: "Deep Research + TTS",
+        icon: "🔬",
+        highlight: true,
+      });
     if (limits.exportPdf)
-      featuresDisplay.push({ text: "Export PDF", icon: "📄" });
+      featuresDisplay.push({ text: "Export PDF + Markdown", icon: "📄" });
+    if (limits.priorityQueue)
+      featuresDisplay.push({ text: "File d'attente prioritaire", icon: "⚡" });
 
     return {
       id: pid,
@@ -197,66 +253,77 @@ function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SKELETON
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════
+// SOUS-COMPOSANTS
+// ═════════════════════════════════════════════════════════════════════════════
 
-const SkeletonCard: React.FC = () => (
-  <div className="card p-4 animate-pulse">
-    <div className="w-12 h-12 rounded-xl bg-white/5 mb-4" />
-    <div className="h-5 w-24 bg-white/5 rounded mb-2" />
-    <div className="h-3 w-36 bg-white/5 rounded mb-4" />
-    <div className="h-8 w-20 bg-white/5 rounded mb-4" />
-    <div className="space-y-2 mb-4">
-      {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-white/5" />
-          <div className="h-3 flex-1 bg-white/5 rounded" />
-        </div>
-      ))}
-    </div>
-    <div className="h-11 w-full bg-white/5 rounded-xl" />
+const TrustSignals: React.FC<{ lang: "fr" | "en" }> = ({ lang }) => (
+  <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-text-tertiary">
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-base">🇫🇷</span>
+      {lang === "fr" ? "IA française · Mistral" : "French AI · Mistral"}
+    </span>
+    <span className="opacity-30">·</span>
+    <span className="inline-flex items-center gap-1.5">
+      <Shield className="w-3.5 h-3.5 text-emerald-400" />
+      {lang === "fr" ? "Données en Europe" : "Data in Europe"}
+    </span>
+    <span className="opacity-30">·</span>
+    <span className="inline-flex items-center gap-1.5">
+      <LockIcon className="w-3.5 h-3.5 text-blue-400" />
+      {lang === "fr" ? "Paiements Stripe" : "Stripe payments"}
+    </span>
+    <span className="opacity-30">·</span>
+    <span className="inline-flex items-center gap-1.5">
+      <ShieldCheck className="w-3.5 h-3.5 text-violet-400" />
+      {lang === "fr" ? "Remboursement 14 jours" : "14-day refund"}
+    </span>
   </div>
 );
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PLAN CARD
-// ═══════════════════════════════════════════════════════════════════════════════
-
 interface PlanCardProps {
   plan: ApiBillingPlan;
+  cycle: BillingCycle;
   lang: "fr" | "en";
   loading: string | null;
-  onSelect: (plan: ApiBillingPlan) => void;
   trialEligible: boolean;
   trialLoading: boolean;
-  onStartTrial: () => void;
+  emphasis: "subdued" | "default" | "highlight";
+  onSelect: (plan: ApiBillingPlan) => void;
+  onStartTrial: (planId: "pro" | "expert") => void;
   allPlans: ApiBillingPlan[];
 }
 
 const PlanCard: React.FC<PlanCardProps> = ({
   plan,
+  cycle,
   lang,
   loading,
-  onSelect,
   trialEligible,
   trialLoading,
+  emphasis,
+  onSelect,
   onStartTrial,
   allPlans,
 }) => {
-  const Icon = getPlanIcon(plan.id);
-  const gradient = getPlanGradient(plan.id);
+  const Icon = PLAN_ICONS[plan.id] ?? Zap;
+  const gradient = PLAN_GRADIENTS[plan.id] ?? "from-slate-500 to-slate-600";
+  const ring = PLAN_RING[plan.id] ?? "ring-1 ring-white/[0.06]";
+  const isFree = plan.id === "free";
+  const isExpert = plan.id === "expert";
+  const isPro = plan.id === "pro";
   const isCurrent = plan.is_current;
-  const isUpgrade = plan.is_upgrade;
-  const isDowngrade = plan.is_downgrade;
-  const isFree = plan.price_monthly_cents === 0;
+  const cyclePrice = getCyclePrice(plan, cycle);
+  const monthlyEquivalent = getMonthlyEquivalent(plan, cycle);
+  const yearlySavings = getYearlySavings(plan);
+  const tagline =
+    lang === "fr" ? PLAN_TAGLINES_FR[plan.id] : PLAN_TAGLINES_EN[plan.id];
   const nameDisplay = lang === "fr" ? plan.name : plan.name_en;
 
-  const monthlyPrice = plan.price_monthly_cents;
-  const displayPrice = monthlyPrice;
-  const priceDisplay = formatPriceFr(displayPrice);
+  const showTrialPrimaryCTA =
+    trialEligible && (isPro || isExpert) && plan.is_upgrade;
+  const isLoadingThis = loading === plan.id;
 
-  // Find unlock plan names for features_locked
   const getUnlockPlanName = (unlockPlanId: string) => {
     const p = allPlans.find((pl) => pl.id === unlockPlanId);
     if (!p) return unlockPlanId;
@@ -265,597 +332,266 @@ const PlanCard: React.FC<PlanCardProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className={`card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex flex-col ${
-        isCurrent ? "ring-2 ring-green-500/50" : ""
-      } ${plan.popular ? "ring-2 ring-blue-500/50 shadow-xl shadow-blue-500/10" : ""}`}
-      style={
-        plan.popular
-          ? { animation: "glow-pulse 3s ease-in-out infinite" }
-          : undefined
-      }
+      transition={{ duration: 0.5, ease }}
+      className={`relative ${
+        emphasis === "highlight" ? "lg:scale-[1.04] lg:-mt-4" : ""
+      } ${emphasis === "subdued" ? "lg:opacity-95" : ""}`}
     >
-      {/* Badge */}
-      {plan.badge && !isCurrent && (
-        <div className="absolute -top-0 -right-0 z-10">
-          <div
-            className="text-white text-[10px] font-bold px-2.5 py-1 rounded-bl-xl"
-            style={{ backgroundColor: plan.badge.color }}
-          >
-            {plan.badge.text}
-          </div>
-        </div>
-      )}
-      {plan.popular && !isCurrent && (
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-500" />
-      )}
-      {/* Bandeau essai gratuit 7 jours — Plus uniquement */}
-      {plan.id === "pro" && !isCurrent && trialEligible && (
-        <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] font-bold text-center py-1">
-          {lang === "fr" ? "🎁 Essai gratuit 7 jours" : "🎁 7-day free trial"}
-        </div>
-      )}
-      {isCurrent && (
-        <div className="absolute top-2 left-2 z-10">
-          <div className="bg-green-500/20 text-green-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
-            <Check className="w-2.5 h-2.5" />
-            {lang === "fr" ? "Actuel" : "Current"}
-          </div>
-        </div>
-      )}
-
-      <div className="p-3 sm:p-4 pt-7 sm:pt-8 flex flex-col flex-1">
-        {/* Icon & Name */}
+      {/* Glow background pour Expert */}
+      {isExpert && (
         <div
-          className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-3 sm:mb-4 shadow-lg`}
-        >
-          <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-        </div>
+          aria-hidden
+          className="pointer-events-none absolute -inset-1 rounded-3xl bg-gradient-to-br from-violet-500/30 via-fuchsia-500/20 to-purple-500/30 blur-2xl opacity-60"
+          style={{ animation: "expert-glow 4s ease-in-out infinite" }}
+        />
+      )}
 
-        <h3 className="text-lg sm:text-xl font-bold text-text-primary mb-0.5">
-          {nameDisplay}
-        </h3>
-        <p className="text-xs text-text-tertiary mb-2 sm:mb-3">
-          {lang === "fr" ? plan.description : plan.description_en}
-        </p>
+      <div
+        className={`relative h-full flex flex-col overflow-hidden rounded-3xl border bg-gradient-to-b from-white/[0.04] to-white/[0.01] backdrop-blur-xl ${
+          isCurrent ? "border-emerald-500/40" : "border-white/[0.08]"
+        } ${ring} transition-all duration-300`}
+      >
+        {/* Top ribbon : badge ou trial banner */}
+        {showTrialPrimaryCTA ? (
+          <div
+            className={`text-center text-[11px] font-bold tracking-wide py-2 text-white ${
+              isExpert
+                ? "bg-gradient-to-r from-violet-500 via-fuchsia-500 to-purple-500"
+                : "bg-gradient-to-r from-blue-500 to-cyan-500"
+            }`}
+          >
+            <Gift className="inline-block w-3.5 h-3.5 mr-1.5 -mt-0.5" />
+            {lang === "fr"
+              ? "ESSAI 7 JOURS GRATUIT · SANS CB"
+              : "7-DAY FREE TRIAL · NO CARD"}
+          </div>
+        ) : isCurrent ? (
+          <div className="text-center text-[11px] font-bold tracking-wide py-2 bg-emerald-500/15 text-emerald-300 border-b border-emerald-500/20">
+            <Check className="inline-block w-3.5 h-3.5 mr-1.5 -mt-0.5" />
+            {lang === "fr" ? "VOTRE PLAN ACTUEL" : "YOUR CURRENT PLAN"}
+          </div>
+        ) : plan.popular ? (
+          <div className="text-center text-[11px] font-bold tracking-wide py-2 bg-blue-500/15 text-blue-300 border-b border-blue-500/20">
+            <Sparkles className="inline-block w-3.5 h-3.5 mr-1.5 -mt-0.5" />
+            {lang === "fr" ? "LE PLUS POPULAIRE" : "MOST POPULAR"}
+          </div>
+        ) : isExpert ? (
+          <div className="text-center text-[11px] font-bold tracking-wide py-2 bg-violet-500/15 text-violet-300 border-b border-violet-500/20">
+            <Crown className="inline-block w-3.5 h-3.5 mr-1.5 -mt-0.5" />
+            {lang === "fr"
+              ? "RECOMMANDÉ CRÉATEURS"
+              : "RECOMMENDED FOR CREATORS"}
+          </div>
+        ) : (
+          <div className="h-[34px]" aria-hidden />
+        )}
 
-        {/* Price */}
-        <div className="mb-3 sm:mb-4">
-          <span className="text-2xl sm:text-3xl font-bold text-text-primary">
-            {priceDisplay}
-          </span>
-          <span className="text-text-tertiary text-xs sm:text-sm ml-1">
-            €/{lang === "fr" ? "mois" : "mo"}
-          </span>
-        </div>
-
-        {/* Features Display */}
-        <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 flex-1">
-          {plan.features_display.map((feat, idx) => (
+        <div className="p-6 sm:p-7 flex flex-col flex-1">
+          {/* Icon + nom + tagline */}
+          <div className="flex items-start gap-3 mb-4">
             <div
-              key={idx}
-              className="flex items-center gap-2 text-[11px] sm:text-xs"
+              className={`flex-shrink-0 w-11 h-11 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}
             >
-              <div
-                className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  feat.highlight ? "bg-amber-500/20" : "bg-green-500/20"
+              <Icon className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-lg font-semibold text-text-primary leading-tight">
+                {nameDisplay}
+              </h3>
+              <p className="text-[11px] text-text-tertiary leading-tight mt-0.5">
+                {tagline}
+              </p>
+            </div>
+          </div>
+
+          {/* Prix */}
+          <div className="mb-2">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-4xl font-semibold text-text-primary tabular-nums tracking-tight">
+                {cyclePrice === 0 ? "0" : formatEuro(monthlyEquivalent)}
+              </span>
+              <span className="text-text-tertiary text-sm">
+                €/{lang === "fr" ? "mois" : "mo"}
+              </span>
+            </div>
+            {cycle === "yearly" && cyclePrice > 0 && (
+              <div className="mt-1 flex items-center gap-2 text-xs">
+                <span className="text-text-tertiary">
+                  {formatEuro(cyclePrice)} €/{lang === "fr" ? "an" : "yr"}
+                </span>
+                {yearlySavings > 0 && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    {lang === "fr" ? "−" : "Save "}
+                    {formatEuro(yearlySavings)} €
+                  </span>
+                )}
+              </div>
+            )}
+            {cyclePrice === 0 && (
+              <p className="text-xs text-text-tertiary mt-1">
+                {lang === "fr" ? "Sans CB · à vie" : "No card · forever"}
+              </p>
+            )}
+          </div>
+
+          {/* Description */}
+          <p className="text-xs text-text-secondary mb-5 leading-relaxed">
+            {lang === "fr" ? plan.description : plan.description_en}
+          </p>
+
+          {/* Features */}
+          <ul className="space-y-2.5 mb-6 flex-1">
+            {plan.features_display.map((feat, idx) => (
+              <li
+                key={idx}
+                className={`flex items-start gap-2.5 text-[13px] leading-snug ${
+                  feat.highlight ? "text-text-primary" : "text-text-secondary"
                 }`}
               >
-                <Check
-                  className={`w-2.5 h-2.5 ${feat.highlight ? "text-amber-400" : "text-green-400"}`}
-                />
-              </div>
-              <span
-                className={`${feat.highlight ? "font-medium text-amber-300" : "text-text-secondary"}`}
-              >
-                {feat.text}
-              </span>
-            </div>
-          ))}
-
-          {/* Features Locked */}
-          {plan.features_locked.map((feat, idx) => (
-            <div
-              key={`locked-${idx}`}
-              className="flex items-center gap-2 text-[11px] sm:text-xs"
-            >
-              <div className="w-4 h-4 rounded-full bg-gray-500/20 flex items-center justify-center flex-shrink-0">
-                <Lock className="w-2.5 h-2.5 text-gray-500" />
-              </div>
-              <span className="text-text-muted">
-                {feat.text}
-                <span className="text-text-tertiary ml-1 text-[10px]">
-                  — {lang === "fr" ? "Dès" : "From"}{" "}
-                  {getUnlockPlanName(feat.unlock_plan)}
+                <span
+                  className={`flex-shrink-0 mt-0.5 w-4 h-4 rounded-full flex items-center justify-center ${
+                    feat.highlight
+                      ? isExpert
+                        ? "bg-violet-500/20"
+                        : "bg-blue-500/20"
+                      : "bg-emerald-500/15"
+                  }`}
+                >
+                  <Check
+                    className={`w-2.5 h-2.5 ${
+                      feat.highlight
+                        ? isExpert
+                          ? "text-violet-300"
+                          : "text-blue-300"
+                        : "text-emerald-400"
+                    }`}
+                    strokeWidth={3}
+                  />
                 </span>
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* CTA */}
-        <div className="mt-auto">
-          {trialEligible && plan.id === "pro" && plan.is_upgrade ? (
-            <button
-              onClick={onStartTrial}
-              disabled={trialLoading}
-              className="w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:opacity-90 shadow-lg min-h-[44px] active:scale-95"
-            >
-              {trialLoading ? (
-                <DeepSightSpinnerMicro onLight />
-              ) : (
-                <>
-                  <Gift className="w-4 h-4" />
-                  {lang === "fr" ? "7 jours gratuits" : "7-day free trial"}
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              onClick={() => onSelect(plan)}
-              disabled={
-                isCurrent || loading === plan.id || (isFree && isCurrent)
-              }
-              className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-95 ${
-                isCurrent
-                  ? "bg-green-500/20 text-green-400 cursor-default"
-                  : isUpgrade
-                    ? `bg-gradient-to-r ${gradient} text-white hover:opacity-90 shadow-lg`
-                    : isDowngrade
-                      ? "bg-transparent text-gray-400 hover:text-gray-300 border border-white/10"
-                      : "bg-bg-tertiary text-text-muted cursor-not-allowed"
-              }`}
-            >
-              {loading === plan.id ? (
-                <DeepSightSpinnerMicro onLight={isUpgrade || isCurrent} />
-              ) : isCurrent ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  {lang === "fr" ? "Plan actuel ✓" : "Current plan ✓"}
-                </>
-              ) : isUpgrade ? (
-                <>
-                  <ArrowUp className="w-4 h-4" />
-                  {lang === "fr"
-                    ? `Choisir ${nameDisplay}`
-                    : `Choose ${nameDisplay}`}
-                </>
-              ) : isDowngrade ? (
-                <>
-                  <ArrowDown className="w-4 h-4" />
-                  Downgrade
-                </>
-              ) : lang === "fr" ? (
-                "Gratuit"
-              ) : (
-                "Free"
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPARISON TABLE
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface ComparisonTableProps {
-  plans: ApiBillingPlan[];
-  lang: "fr" | "en";
-  loading: string | null;
-  onSelect: (plan: ApiBillingPlan) => void;
-}
-
-/** Build comparison rows from API plan limits */
-interface ComparisonCategory {
-  name: string;
-  rows: { label: string; values: (string | boolean)[] }[];
-}
-
-/** Safely read a limit value, supporting both snake_case (API) and camelCase (fallback) */
-function lim(limits: Record<string, unknown>, snakeKey: string): unknown {
-  if (snakeKey in limits && limits[snakeKey] !== undefined)
-    return limits[snakeKey];
-  // Convert snake_case → camelCase as fallback
-  const camelKey = snakeKey.replace(/_([a-z])/g, (_, c: string) =>
-    c.toUpperCase(),
-  );
-  if (camelKey in limits && limits[camelKey] !== undefined)
-    return limits[camelKey];
-  return undefined;
-}
-
-function buildComparisonData(
-  plans: ApiBillingPlan[],
-  lang: "fr" | "en",
-): ComparisonCategory[] {
-  const fmt = (v: unknown): string | boolean => {
-    if (v === true) return true;
-    if (v === false) return false;
-    if (v === -1) return "∞";
-    if (typeof v === "number") return String(v);
-    if (Array.isArray(v)) return v.join(", ");
-    if (v === undefined || v === null) return "-";
-    return String(v);
-  };
-
-  const fmtMin = (v: unknown): string | boolean => {
-    if (v === -1) return "∞";
-    if (typeof v === "number") {
-      if (v >= 60) return `${Math.floor(v / 60)}h`;
-      return `${v} min`;
-    }
-    return "-";
-  };
-
-  const L = (p: ApiBillingPlan, key: string) => lim(p.limits, key);
-
-  const categories: ComparisonCategory[] = [
-    {
-      name: lang === "fr" ? "📊 Analyses" : "📊 Analyses",
-      rows: [
-        {
-          label: lang === "fr" ? "Analyses/mois" : "Analyses/month",
-          values: plans.map((p) => fmt(L(p, "monthly_analyses"))),
-        },
-        {
-          label: lang === "fr" ? "Durée max vidéo" : "Max video length",
-          values: plans.map((p) => fmtMin(L(p, "max_video_length_min"))),
-        },
-        {
-          label: lang === "fr" ? "Analyses simultanées" : "Concurrent analyses",
-          values: plans.map((p) => fmt(L(p, "concurrent_analyses"))),
-        },
-        {
-          label: lang === "fr" ? "File prioritaire" : "Priority queue",
-          values: plans.map((p) => fmt(L(p, "priority_queue"))),
-        },
-      ],
-    },
-    {
-      name: lang === "fr" ? "💬 Chat IA" : "💬 AI Chat",
-      rows: [
-        {
-          label: lang === "fr" ? "Questions/vidéo" : "Questions/video",
-          values: plans.map((p) => fmt(L(p, "chat_questions_per_video"))),
-        },
-        {
-          label: lang === "fr" ? "Messages/jour" : "Messages/day",
-          values: plans.map((p) => fmt(L(p, "chat_daily_limit"))),
-        },
-      ],
-    },
-    {
-      name: lang === "fr" ? "🎓 Outils d'étude" : "🎓 Study tools",
-      rows: [
-        {
-          label: "Flashcards",
-          values: plans.map((p) => fmt(L(p, "flashcards_enabled"))),
-        },
-        {
-          label: lang === "fr" ? "Cartes mentales" : "Mind maps",
-          values: plans.map((p) => fmt(L(p, "mindmap_enabled"))),
-        },
-      ],
-    },
-    {
-      name: lang === "fr" ? "🔍 Recherche web" : "🔍 Web search",
-      rows: [
-        {
-          label: lang === "fr" ? "Recherches/mois" : "Searches/month",
-          values: plans.map((p) => fmt(L(p, "web_search_monthly"))),
-        },
-      ],
-    },
-    {
-      name: lang === "fr" ? "📚 Playlists" : "📚 Playlists",
-      rows: [
-        {
-          label: lang === "fr" ? "Playlists" : "Playlists",
-          values: plans.map((p) => fmt(L(p, "playlists_enabled"))),
-        },
-        {
-          label: lang === "fr" ? "Vidéos/playlist" : "Videos/playlist",
-          values: plans.map((p) =>
-            L(p, "playlists_enabled")
-              ? fmt(L(p, "max_playlist_videos"))
-              : false,
-          ),
-        },
-      ],
-    },
-    {
-      name: lang === "fr" ? "📄 Export" : "📄 Export",
-      rows: [
-        {
-          label: "Markdown",
-          values: plans.map((p) => fmt(L(p, "export_markdown"))),
-        },
-        { label: "PDF", values: plans.map((p) => fmt(L(p, "export_pdf"))) },
-      ],
-    },
-    {
-      name: lang === "fr" ? "🔬 Deep Research" : "🔬 Deep Research",
-      rows: [
-        {
-          label: "Deep Research",
-          values: plans.map((p) => fmt(L(p, "deep_research_enabled"))),
-        },
-        {
-          label: "Fact-check",
-          values: plans.map((p) => fmt(L(p, "factcheck_enabled"))),
-        },
-      ],
-    },
-    {
-      name: lang === "fr" ? "📚 Académique" : "📚 Academic",
-      rows: [
-        {
-          label: lang === "fr" ? "Papers/analyse" : "Papers/analysis",
-          values: plans.map((p) => fmt(L(p, "academic_papers_per_analysis"))),
-        },
-        {
-          label: lang === "fr" ? "Export biblio" : "Biblio export",
-          values: plans.map((p) => fmt(L(p, "bibliography_export"))),
-        },
-        {
-          label: lang === "fr" ? "Texte intégral" : "Full text",
-          values: plans.map((p) => fmt(L(p, "academic_full_text"))),
-        },
-      ],
-    },
-    {
-      name: lang === "fr" ? "🎙️ Audio & Vocal" : "🎙️ Audio & Voice",
-      rows: [
-        {
-          label: lang === "fr" ? "Chat vocal" : "Voice chat",
-          values: plans.map((p) => fmt(L(p, "voice_chat_enabled"))),
-        },
-        {
-          label: lang === "fr" ? "Minutes/mois" : "Minutes/month",
-          values: plans.map((p) =>
-            L(p, "voice_chat_enabled")
-              ? fmt(L(p, "voice_monthly_minutes"))
-              : false,
-          ),
-        },
-        {
-          label: "TTS Audio",
-          values: plans.map((p) => fmt(L(p, "tts_enabled"))),
-        },
-      ],
-    },
-    {
-      name: lang === "fr" ? "⚔️ Débat IA" : "⚔️ AI Debate",
-      rows: [
-        {
-          label: lang === "fr" ? "Débats/mois" : "Debates/month",
-          values: plans.map((p) => fmt(L(p, "debate_monthly"))),
-        },
-      ],
-    },
-    {
-      name: lang === "fr" ? "🗂️ Historique" : "🗂️ History",
-      rows: [
-        {
-          label: lang === "fr" ? "Rétention" : "Retention",
-          values: plans.map((p) => {
-            const d = L(p, "history_retention_days");
-            if (d === -1) return "∞";
-            if (typeof d === "number")
-              return `${d} ${lang === "fr" ? "jours" : "days"}`;
-            return "-";
-          }),
-        },
-      ],
-    },
-  ];
-
-  return categories;
-}
-
-const ComparisonTable: React.FC<ComparisonTableProps> = ({
-  plans,
-  lang,
-  loading,
-  onSelect,
-}) => {
-  const [expanded, setExpanded] = useState<string[]>([]);
-  const categories = useMemo(
-    () => buildComparisonData(plans, lang),
-    [plans, lang],
-  );
-
-  // Expand all categories by default
-  useEffect(() => {
-    setExpanded(categories.map((c) => c.name));
-  }, [categories]);
-
-  const toggleCategory = (name: string) => {
-    setExpanded((prev) =>
-      prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name],
-    );
-  };
-
-  const renderCellValue = (value: string | boolean) => {
-    if (value === true) return <Check className="w-5 h-5 text-green-400" />;
-    if (value === false) return <X className="w-5 h-5 text-gray-500" />;
-    if (value === "∞")
-      return <InfinityIcon className="w-5 h-5 text-violet-400" />;
-    if (value === "0") return <X className="w-5 h-5 text-gray-500" />;
-    return <span className="text-sm text-text-secondary">{value}</span>;
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="card overflow-hidden mb-12 overflow-x-auto"
-    >
-      {/* Header */}
-      <div
-        className="grid gap-2 p-4 bg-bg-secondary border-b border-border-primary"
-        style={{ gridTemplateColumns: `1.5fr repeat(${plans.length}, 1fr)` }}
-      >
-        <div className="font-semibold text-text-secondary text-sm">
-          {lang === "fr" ? "Fonctionnalités" : "Features"}
-        </div>
-        {plans.map((plan) => {
-          const Icon = getPlanIcon(plan.id);
-          const gradient = getPlanGradient(plan.id);
-          return (
-            <div
-              key={plan.id}
-              className={`text-center ${plan.is_current ? "bg-green-500/5 -mx-1 px-1 py-2 rounded-lg" : ""} ${plan.popular ? "bg-blue-500/5 -mx-1 px-1 py-2 rounded-lg" : ""}`}
-            >
-              <div
-                className={`inline-flex w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} items-center justify-center mb-1 shadow-lg`}
+                <span className={feat.highlight ? "font-medium" : ""}>
+                  {feat.text}
+                </span>
+              </li>
+            ))}
+            {plan.features_locked.map((feat, idx) => (
+              <li
+                key={`locked-${idx}`}
+                className="flex items-start gap-2.5 text-[13px] leading-snug text-text-muted"
               >
-                <Icon className="w-4 h-4 text-white" />
-              </div>
-              <div className="font-bold text-text-primary text-xs">
-                {lang === "fr" ? plan.name : plan.name_en}
-              </div>
-              <div className="text-[10px] text-text-tertiary">
-                {plan.price_monthly_cents === 0
-                  ? "0€"
-                  : `${formatPriceFr(plan.price_monthly_cents)}€/${lang === "fr" ? "mois" : "mo"}`}
-              </div>
-              {plan.is_current && (
-                <div className="text-[10px] text-green-400 mt-1 flex items-center justify-center gap-1">
-                  <Check className="w-2.5 h-2.5" />{" "}
-                  {lang === "fr" ? "Actuel" : "Current"}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                <span className="flex-shrink-0 mt-0.5 w-4 h-4 rounded-full bg-white/[0.04] flex items-center justify-center">
+                  <Lock className="w-2.5 h-2.5 text-text-muted" />
+                </span>
+                <span>
+                  {feat.text}
+                  <span className="text-text-tertiary text-[11px] ml-1">
+                    — {lang === "fr" ? "Dès" : "From"}{" "}
+                    {getUnlockPlanName(feat.unlock_plan)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
 
-      {/* Categories */}
-      {categories.map((cat) => (
-        <div
-          key={cat.name}
-          className="border-b border-border-primary last:border-b-0"
-        >
-          <button
-            onClick={() => toggleCategory(cat.name)}
-            className="w-full p-3 bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors flex items-center gap-2"
-          >
-            <span className="font-semibold text-text-primary text-sm">
-              {cat.name}
-            </span>
-            {expanded.includes(cat.name) ? (
-              <ChevronUp className="w-4 h-4 text-text-tertiary" />
+          {/* CTAs */}
+          <div className="space-y-2">
+            {showTrialPrimaryCTA ? (
+              <>
+                <button
+                  onClick={() => onStartTrial(plan.id as "pro" | "expert")}
+                  disabled={trialLoading || isLoadingThis}
+                  className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-[0.98] ${
+                    isExpert
+                      ? "bg-gradient-to-r from-violet-500 via-fuchsia-500 to-purple-600 text-white shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:opacity-95"
+                      : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:opacity-95"
+                  }`}
+                >
+                  {trialLoading ? (
+                    <DeepSightSpinnerMicro onLight />
+                  ) : (
+                    <>
+                      <Gift className="w-4 h-4" />
+                      {lang === "fr"
+                        ? "Commencer 7 jours gratuits"
+                        : "Start 7-day free trial"}
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => onSelect(plan)}
+                  disabled={isLoadingThis}
+                  className="w-full py-2 text-xs text-text-tertiary hover:text-text-secondary transition-colors flex items-center justify-center gap-1"
+                >
+                  {isLoadingThis ? (
+                    <DeepSightSpinnerMicro />
+                  ) : lang === "fr" ? (
+                    <>
+                      ou souscrire directement <span aria-hidden>→</span>
+                    </>
+                  ) : (
+                    <>
+                      or subscribe directly <span aria-hidden>→</span>
+                    </>
+                  )}
+                </button>
+              </>
             ) : (
-              <ChevronDown className="w-4 h-4 text-text-tertiary" />
-            )}
-          </button>
-
-          <AnimatePresence>
-            {expanded.includes(cat.name) && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
-              >
-                <div className="divide-y divide-border-primary/30">
-                  {cat.rows.map((row, idx) => (
-                    <div
-                      key={idx}
-                      className="grid gap-2 p-3 hover:bg-bg-tertiary/30 transition-colors"
-                      style={{
-                        gridTemplateColumns: `1.5fr repeat(${plans.length}, 1fr)`,
-                      }}
-                    >
-                      <div className="text-xs text-text-secondary flex items-center">
-                        {row.label}
-                      </div>
-                      {row.values.map((val, vi) => (
-                        <div
-                          key={vi}
-                          className={`flex justify-center items-center ${plans[vi]?.is_current ? "bg-green-500/5 -mx-1 px-1 rounded" : ""}`}
-                        >
-                          {renderCellValue(val)}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      ))}
-
-      {/* CTA Row */}
-      <div
-        className="grid gap-2 p-4 bg-bg-secondary"
-        style={{ gridTemplateColumns: `1.5fr repeat(${plans.length}, 1fr)` }}
-      >
-        <div />
-        {plans.map((plan) => {
-          const gradient = getPlanGradient(plan.id);
-          return (
-            <div key={plan.id} className="flex justify-center">
               <button
                 onClick={() => onSelect(plan)}
-                disabled={
-                  plan.is_current ||
-                  loading === plan.id ||
-                  (plan.price_monthly_cents === 0 && plan.is_current)
-                }
-                className={`px-3 py-1.5 rounded-lg font-medium text-[10px] transition-all ${
-                  plan.is_current
-                    ? "bg-green-500/20 text-green-400"
+                disabled={isCurrent || isLoadingThis || (isFree && isCurrent)}
+                className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-[0.98] ${
+                  isCurrent
+                    ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 cursor-default"
                     : plan.is_upgrade
-                      ? `bg-gradient-to-r ${gradient} text-white hover:opacity-90 shadow-lg`
+                      ? `bg-gradient-to-r ${gradient} text-white shadow-lg hover:opacity-95`
                       : plan.is_downgrade
-                        ? "bg-bg-tertiary text-text-muted"
-                        : "bg-bg-tertiary text-text-muted"
+                        ? "bg-white/[0.03] text-text-tertiary border border-white/[0.08] hover:bg-white/[0.06]"
+                        : "bg-white/[0.04] text-text-secondary border border-white/[0.08] hover:bg-white/[0.07]"
                 }`}
               >
-                {loading === plan.id ? (
+                {isLoadingThis ? (
                   <DeepSightSpinnerMicro
-                    onLight={plan.is_upgrade || plan.is_current}
+                    onLight={plan.is_upgrade || isCurrent}
                   />
-                ) : plan.is_current ? (
-                  lang === "fr" ? (
-                    "Actuel"
-                  ) : (
-                    "Current"
-                  )
+                ) : isCurrent ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    {lang === "fr" ? "Plan actif" : "Active plan"}
+                  </>
                 ) : plan.is_upgrade ? (
-                  lang === "fr" ? (
-                    "Choisir"
-                  ) : (
-                    "Select"
-                  )
+                  <>
+                    <ArrowUp className="w-4 h-4" />
+                    {lang === "fr"
+                      ? `Choisir ${nameDisplay}`
+                      : `Choose ${nameDisplay}`}
+                  </>
                 ) : plan.is_downgrade ? (
-                  "Downgrade"
+                  <>
+                    <ArrowDown className="w-4 h-4" />
+                    {lang === "fr"
+                      ? `Repasser ${nameDisplay}`
+                      : `Switch to ${nameDisplay}`}
+                  </>
+                ) : isFree ? (
+                  lang === "fr" ? (
+                    "Commencer gratuitement"
+                  ) : (
+                    "Start for free"
+                  )
+                ) : lang === "fr" ? (
+                  "Choisir"
                 ) : (
-                  "-"
+                  "Choose"
                 )}
               </button>
-            </div>
-          );
-        })}
+            )}
+          </div>
+        </div>
       </div>
     </motion.div>
   );
 };
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// DOWNGRADE MODAL
-// ═══════════════════════════════════════════════════════════════════════════════
 
 interface DowngradeModalProps {
   plan: ApiBillingPlan;
@@ -872,7 +608,6 @@ const DowngradeModal: React.FC<DowngradeModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
-  // Show features lost: features in current plan's display that are NOT in the target plan
   const currentFeatures =
     currentPlan?.features_display.map((f) => f.text) ?? [];
   const targetFeatures = new Set(plan.features_display.map((f) => f.text));
@@ -883,26 +618,28 @@ const DowngradeModal: React.FC<DowngradeModalProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+      onClick={onCancel}
     >
       <motion.div
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 50, opacity: 0 }}
-        className="card p-4 sm:p-6 w-full sm:max-w-md shadow-2xl rounded-t-2xl sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-white/[0.08] bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur-xl p-6 sm:p-7 shadow-2xl"
       >
-        <h3 className="text-base sm:text-lg font-bold text-text-primary mb-2 sm:mb-3 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-primary mb-2 flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-amber-400" />
-          {lang === "fr" ? "Confirmer le downgrade" : "Confirm downgrade"}
+          {lang === "fr" ? "Confirmer le changement" : "Confirm change"}
         </h3>
-        <p className="text-text-secondary text-xs sm:text-sm mb-3">
+        <p className="text-text-secondary text-sm mb-4">
           {lang === "fr"
-            ? `Passer au plan ${plan.name} ? Vos avantages actuels restent actifs jusqu'à la fin de la période.`
+            ? `Passer au plan ${plan.name} ? Vos avantages actuels restent actifs jusqu'à la fin de la période payée.`
             : `Switch to ${plan.name_en}? Current benefits stay active until period end.`}
         </p>
 
         {lostFeatures.length > 0 && (
-          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+          <div className="mb-5 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
             <p className="text-xs font-semibold text-red-400 mb-2">
               {lang === "fr" ? "Vous perdrez :" : "You will lose:"}
             </p>
@@ -910,7 +647,7 @@ const DowngradeModal: React.FC<DowngradeModalProps> = ({
               {lostFeatures.map((f, idx) => (
                 <li
                   key={idx}
-                  className="flex items-center gap-2 text-xs text-red-300"
+                  className="flex items-center gap-2 text-xs text-red-200/90"
                 >
                   <X className="w-3 h-3 flex-shrink-0" /> {f}
                 </li>
@@ -919,18 +656,18 @@ const DowngradeModal: React.FC<DowngradeModalProps> = ({
           </div>
         )}
 
-        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 sm:justify-end">
+        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
           <button
             onClick={onCancel}
-            className="btn-secondary min-h-[44px] active:scale-95"
+            className="px-5 py-3 rounded-xl text-sm font-medium text-text-secondary bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors min-h-[44px]"
           >
             {lang === "fr" ? "Annuler" : "Cancel"}
           </button>
           <button
             onClick={onConfirm}
-            className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium transition-colors min-h-[44px] active:scale-95"
+            className="px-5 py-3 rounded-xl text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 transition-colors min-h-[44px]"
           >
-            {lang === "fr" ? "Confirmer le downgrade" : "Confirm downgrade"}
+            {lang === "fr" ? "Confirmer" : "Confirm"}
           </button>
         </div>
       </motion.div>
@@ -938,9 +675,240 @@ const DowngradeModal: React.FC<DowngradeModalProps> = ({
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════════
+interface DifferentiatorsSectionProps {
+  lang: "fr" | "en";
+}
+
+const DifferentiatorsSection: React.FC<DifferentiatorsSectionProps> = ({
+  lang,
+}) => {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-50px" });
+  return (
+    <section ref={ref} className="py-16 sm:py-20">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+        transition={{ duration: 0.5, ease }}
+        className="text-center mb-10"
+      >
+        <span className="inline-block text-[11px] font-semibold uppercase tracking-widest text-violet-300 bg-violet-500/10 border border-violet-500/20 rounded-full px-3 py-1 mb-4">
+          {lang === "fr" ? "Pourquoi DeepSight" : "Why DeepSight"}
+        </span>
+        <h2 className="text-2xl sm:text-3xl font-semibold text-text-primary tracking-tight">
+          {lang === "fr"
+            ? "Plus qu'un résumeur. Une plateforme d'analyse."
+            : "More than a summarizer. An analysis platform."}
+        </h2>
+      </motion.div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        {DIFFERENTIATORS.map((d, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 16 }}
+            animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+            transition={{ duration: 0.4, delay: 0.05 * i, ease }}
+            className="group relative rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all"
+          >
+            <div className="flex items-start gap-3 mb-3">
+              <span className="text-2xl">{d.icon}</span>
+              <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider text-violet-300 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-full">
+                {lang === "fr" ? d.tag.fr : d.tag.en}
+              </span>
+            </div>
+            <h3 className="text-sm font-semibold text-text-primary mb-1.5">
+              {lang === "fr" ? d.title.fr : d.title.en}
+            </h3>
+            <p className="text-xs text-text-secondary leading-relaxed">
+              {lang === "fr" ? d.description.fr : d.description.en}
+            </p>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+const TestimonialsSection: React.FC<{ lang: "fr" | "en" }> = ({ lang }) => {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-50px" });
+  return (
+    <section ref={ref} className="py-16 sm:py-20">
+      <motion.h2
+        initial={{ opacity: 0, y: 16 }}
+        animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+        transition={{ duration: 0.5, ease }}
+        className="text-2xl sm:text-3xl font-semibold text-text-primary text-center mb-10 tracking-tight"
+      >
+        {lang === "fr" ? "Ils ont franchi le pas" : "They made the leap"}
+      </motion.h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {TESTIMONIALS.map((t, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 16 }}
+            animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+            transition={{ duration: 0.4, delay: 0.05 * i, ease }}
+            className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 flex flex-col"
+          >
+            <p className="text-sm text-text-secondary leading-relaxed mb-5 italic">
+              « {lang === "fr" ? t.text.fr : t.text.en} »
+            </p>
+            <div className="mt-auto flex items-center gap-3 pt-4 border-t border-white/[0.05]">
+              <span className="text-2xl">{t.avatar}</span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-text-primary truncate">
+                  {t.author}
+                </p>
+                <p className="text-[11px] text-text-tertiary truncate">
+                  {lang === "fr" ? t.role.fr : t.role.en}
+                </p>
+              </div>
+              <span
+                className={`ml-auto text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${
+                  t.plan === "expert"
+                    ? "bg-violet-500/10 text-violet-300 border-violet-500/20"
+                    : "bg-blue-500/10 text-blue-300 border-blue-500/20"
+                }`}
+              >
+                {t.plan}
+              </span>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+interface FaqItem {
+  q: { fr: string; en: string };
+  a: { fr: string; en: string };
+}
+
+const FAQ_ITEMS: FaqItem[] = [
+  {
+    q: {
+      fr: "Comment fonctionne l'essai gratuit 7 jours ?",
+      en: "How does the 7-day free trial work?",
+    },
+    a: {
+      fr: "Aucune carte bancaire requise pour démarrer. Vous accédez à toutes les fonctionnalités du plan choisi (Pro ou Expert) pendant 7 jours. À la fin, vous décidez de continuer ou non — sans engagement.",
+      en: "No card required to start. You get full access to your chosen plan (Pro or Expert) for 7 days. At the end, you choose whether to continue — no commitment.",
+    },
+  },
+  {
+    q: {
+      fr: "Quelle est la différence entre Pro et Expert ?",
+      en: "What's the difference between Pro and Expert?",
+    },
+    a: {
+      fr: "Pro convient à un apprenant régulier (25 analyses/mois, vidéos jusqu'à 1h, fact-check, voice 30 min). Expert s'adresse aux créateurs/chercheurs qui ont besoin de Playlists, Deep Research, voice 120 min, file prioritaire et chat illimité.",
+      en: "Pro fits a regular learner (25 analyses/month, videos up to 1h, fact-check, 30 min voice). Expert targets creators/researchers needing Playlists, Deep Research, 120 min voice, priority queue and unlimited chat.",
+    },
+  },
+  {
+    q: {
+      fr: "Puis-je changer ou annuler à tout moment ?",
+      en: "Can I change or cancel anytime?",
+    },
+    a: {
+      fr: "Oui. Upgrade : facturation au prorata, accès immédiat. Downgrade : effectif au renouvellement. Annulation : accès maintenu jusqu'à la fin de la période payée.",
+      en: "Yes. Upgrade: prorated billing, instant access. Downgrade: effective at renewal. Cancellation: access kept until paid period ends.",
+    },
+  },
+  {
+    q: {
+      fr: "L'engagement annuel est-il obligatoire ?",
+      en: "Is the annual commitment required?",
+    },
+    a: {
+      fr: "Non. Vous choisissez mensuel ou annuel. L'annuel offre 2 mois gratuits (−17 %). Vous pouvez basculer entre les deux quand vous voulez.",
+      en: "No. You pick monthly or yearly. Yearly gets you 2 months free (−17%). You can switch anytime.",
+    },
+  },
+  {
+    q: { fr: "Mes données sont-elles en sécurité ?", en: "Is my data secure?" },
+    a: {
+      fr: "Vos données sont hébergées en Europe (Hetzner Allemagne, RGPD). L'IA est française (Mistral AI). Aucun envoi vers les USA. Paiements sécurisés par Stripe.",
+      en: "Your data is hosted in Europe (Hetzner Germany, GDPR). AI is French (Mistral AI). No US transit. Payments secured by Stripe.",
+    },
+  },
+  {
+    q: {
+      fr: "Que se passe-t-il si j'épuise mon quota ?",
+      en: "What if I run out of quota?",
+    },
+    a: {
+      fr: "Vos analyses restent consultables. Vous pouvez attendre le renouvellement mensuel, acheter des packs de crédits, ou passer au plan supérieur (prorata appliqué).",
+      en: "Your analyses stay accessible. Wait for monthly renewal, buy credit packs, or upgrade (prorated billing applies).",
+    },
+  },
+];
+
+const FaqSection: React.FC<{ lang: "fr" | "en" }> = ({ lang }) => {
+  const [openIdx, setOpenIdx] = useState<number | null>(0);
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-50px" });
+
+  return (
+    <section ref={ref} className="py-16 sm:py-20">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+        transition={{ duration: 0.5, ease }}
+        className="max-w-3xl mx-auto"
+      >
+        <h2 className="text-2xl sm:text-3xl font-semibold text-text-primary text-center mb-10 tracking-tight">
+          {lang === "fr" ? "Questions fréquentes" : "Frequently asked"}
+        </h2>
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] divide-y divide-white/[0.05] overflow-hidden">
+          {FAQ_ITEMS.map((item, idx) => {
+            const isOpen = openIdx === idx;
+            return (
+              <button
+                key={idx}
+                onClick={() => setOpenIdx(isOpen ? null : idx)}
+                className="w-full text-left p-5 hover:bg-white/[0.02] transition-colors"
+                aria-expanded={isOpen}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="flex-1 text-sm font-medium text-text-primary">
+                    {lang === "fr" ? item.q.fr : item.q.en}
+                  </span>
+                  <ChevronDown
+                    className={`flex-shrink-0 w-4 h-4 text-text-tertiary transition-transform ${
+                      isOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </div>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.p
+                      initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                      animate={{ height: "auto", opacity: 1, marginTop: 12 }}
+                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                      transition={{ duration: 0.25, ease }}
+                      className="text-sm text-text-secondary leading-relaxed overflow-hidden"
+                    >
+                      {lang === "fr" ? item.a.fr : item.a.en}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </button>
+            );
+          })}
+        </div>
+      </motion.div>
+    </section>
+  );
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// COMPOSANT PRINCIPAL
+// ═════════════════════════════════════════════════════════════════════════════
 
 interface SubscriptionStatus {
   plan: string;
@@ -966,18 +934,13 @@ export const UpgradePage: React.FC = () => {
   const [downgradeTarget, setDowngradeTarget] = useState<ApiBillingPlan | null>(
     null,
   );
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [trialEligible, setTrialEligible] = useState(false);
   const [trialLoading, setTrialLoading] = useState(false);
-  // Pricing v2 : toggle mensuel/annuel (-17%)
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
 
   const currentPlan = useMemo(() => plans.find((p) => p.is_current), [plans]);
 
-  // ── Source tracking (PostHog) ──────────────────────────────────────────────
-  // Quand l'utilisateur arrive depuis l'extension Quick Voice Call (clic
-  // "Passer en Expert" sur l'UpgradeCTA), VoiceView ouvre l'URL avec
-  // ?source=voice_call. On capte l'event au mount pour le funnel.
+  // Source tracking analytics
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const source = params.get("source");
@@ -995,14 +958,12 @@ export const UpgradePage: React.FC = () => {
     }
   }, []);
 
-  // ── Load data ──────────────────────────────────────────────────────────────
+  // Load plans + subscription status + trial eligibility
   useEffect(() => {
     const load = async () => {
       setPlansLoading(true);
       try {
         await refreshUser(true);
-
-        // Load plans from API
         const [plansResponse, statusResponse] = await Promise.allSettled([
           billingApi.getPlans("web"),
           billingApi.getSubscriptionStatus(),
@@ -1014,7 +975,6 @@ export const UpgradePage: React.FC = () => {
         ) {
           setPlans(plansResponse.value.plans);
         } else {
-          // Fallback to planPrivileges.ts
           const userPlan = user?.plan || "free";
           setPlans(buildFallbackPlans(userPlan));
         }
@@ -1023,12 +983,11 @@ export const UpgradePage: React.FC = () => {
           setSubscriptionStatus(statusResponse.value);
         }
 
-        // Check trial eligibility
         try {
           const eligibility = await billingApi.checkTrialEligibility();
           setTrialEligible(eligibility.eligible);
         } catch {
-          // Trial eligibility check not available
+          // ignore
         }
       } catch (err) {
         console.error("Error loading plans:", err);
@@ -1039,18 +998,15 @@ export const UpgradePage: React.FC = () => {
       }
     };
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Actions ────────────────────────────────────────────────────────────────
-  // Pricing v2 : trial peut cibler Pro OU Expert + cycle monthly/yearly
   const handleStartTrial = async (plan: "pro" | "expert" = "pro") => {
     setTrialLoading(true);
     setError(null);
     try {
       const result = await billingApi.startTrial(plan, cycle);
-      if (result.checkout_url) {
-        window.location.href = result.checkout_url;
-      }
+      if (result.checkout_url) window.location.href = result.checkout_url;
     } catch (err: any) {
       setError(
         err?.message ||
@@ -1066,12 +1022,10 @@ export const UpgradePage: React.FC = () => {
   const handleSelectPlan = (plan: ApiBillingPlan) => {
     if (plan.is_current || (plan.price_monthly_cents === 0 && plan.is_current))
       return;
-
     if (plan.is_downgrade) {
       setDowngradeTarget(plan);
       return;
     }
-
     executePlanChange(plan);
   };
 
@@ -1087,14 +1041,12 @@ export const UpgradePage: React.FC = () => {
         !currentPlan ||
         currentPlan.price_monthly_cents === 0
       ) {
-        // Upgrade → Stripe checkout (Pricing v2 : passer le cycle)
         const result = await billingApi.createCheckout(plan.id, cycle);
         if (result.checkout_url) {
           window.location.href = result.checkout_url;
           return;
         }
       } else {
-        // Downgrade → portal or changePlan
         const result = await billingApi.changePlan(plan.id);
         if (result.success) {
           setSuccess(
@@ -1103,7 +1055,6 @@ export const UpgradePage: React.FC = () => {
               : "Plan changed! Takes effect at next renewal.",
           );
           await refreshUser(true);
-          // Reload plans to get updated is_current flags
           try {
             const plansResponse = await billingApi.getPlans("web");
             if (plansResponse.plans?.length) setPlans(plansResponse.plans);
@@ -1151,7 +1102,15 @@ export const UpgradePage: React.FC = () => {
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // Hierarchie visuelle : free=subdued, pro=default ou highlight si pas Expert reco, expert=highlight
+  const getEmphasis = (
+    plan: ApiBillingPlan,
+  ): "subdued" | "default" | "highlight" => {
+    if (plan.id === "expert") return "highlight";
+    if (plan.id === "free") return "subdued";
+    return "default";
+  };
+
   return (
     <div className="min-h-screen bg-bg-primary relative">
       <SEO
@@ -1168,55 +1127,90 @@ export const UpgradePage: React.FC = () => {
       />
 
       <main
-        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? "ml-[60px]" : "ml-[240px]"}`}
+        className={`relative z-10 transition-all duration-200 ease-out lg:${sidebarCollapsed ? "ml-[60px]" : "ml-[240px]"}`}
       >
-        <div className="min-h-screen p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 pb-24 lg:pb-8">
-          <div className="max-w-7xl mx-auto">
-            {/* Header */}
-            <header className="text-center mb-8 sm:mb-10">
-              <motion.h1
-                initial={{ opacity: 0, y: -10 }}
+        <div className="px-4 sm:px-6 lg:px-8 pt-16 lg:pt-12 pb-24 lg:pb-12">
+          <div className="max-w-6xl mx-auto">
+            {/* HERO */}
+            <section className="text-center pt-4 pb-12 sm:pb-16">
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="font-semibold text-2xl sm:text-3xl md:text-4xl text-text-primary mb-2 sm:mb-3 px-2"
+                transition={{ duration: 0.4, ease }}
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-widest text-violet-200 bg-violet-500/10 border border-violet-500/20 mb-5"
               >
-                {lang === "fr" ? "Choisissez votre plan" : "Choose your plan"}
+                <Sparkles className="w-3 h-3" />
+                {lang === "fr"
+                  ? "Tarifs DeepSight 2026"
+                  : "DeepSight pricing 2026"}
+              </motion.div>
+
+              <motion.h1
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease, delay: 0.05 }}
+                className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-tight text-text-primary mb-4"
+              >
+                {lang === "fr" ? "Investissez dans votre " : "Invest in your "}
+                <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+                  {lang === "fr" ? "compréhension" : "understanding"}
+                </span>
               </motion.h1>
+
               <motion.p
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease, delay: 0.1 }}
+                className="max-w-2xl mx-auto text-sm sm:text-base text-text-secondary mb-3"
+              >
+                {lang === "fr"
+                  ? "Une heure de vidéo analysée en 5 minutes. Des affirmations vérifiées par sources. Des synthèses exportables. Sans engagement."
+                  : "An hour of video analyzed in 5 minutes. Claims verified against sources. Exportable summaries. No commitment."}
+              </motion.p>
+
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="text-text-secondary text-sm sm:text-base max-w-2xl mx-auto px-4"
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="mt-6 mb-6"
               >
-                {lang === "fr"
-                  ? "Débloquez des fonctionnalités puissantes pour analyser le contenu vidéo."
-                  : "Unlock powerful features to analyze video content."}
-              </motion.p>
-            </header>
+                <TrustSignals lang={lang} />
+              </motion.div>
 
-            {/* Pricing v2 — Toggle mensuel/annuel */}
-            <div className="flex flex-col items-center gap-4 mb-8 sm:mb-10">
-              <BillingToggle value={cycle} onChange={setCycle} />
-            </div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease, delay: 0.25 }}
+                className="mt-10"
+              >
+                <BillingToggle value={cycle} onChange={setCycle} />
+              </motion.div>
+            </section>
 
-            {/* Pricing v2 — Grandfathering banner pour users legacy */}
+            {/* Banner grandfathering legacy */}
             {(user as { is_legacy_pricing?: boolean })?.is_legacy_pricing && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3 mb-6 text-sm text-amber-200 max-w-3xl mx-auto"
+                className="rounded-2xl bg-amber-500/10 border border-amber-500/30 px-5 py-4 mb-8 text-sm text-amber-200 max-w-3xl mx-auto"
               >
+                <strong className="font-semibold">
+                  {lang === "fr"
+                    ? "Tarif historique conservé · "
+                    : "Legacy price preserved · "}
+                </strong>
                 {lang === "fr"
-                  ? "Vous bénéficiez d'un tarif historique sur votre abonnement actuel. Vous gardez ce prix tant que votre abonnement reste actif (sans interruption)."
-                  : "You're on a legacy price for your current subscription. You keep this price as long as your subscription stays active."}
+                  ? "Vous bénéficiez d'un tarif historique sur votre abonnement actuel. Il reste valable tant que votre abonnement reste actif sans interruption."
+                  : "You're on a legacy price for your current subscription. It stays valid as long as your subscription remains active without interruption."}
               </motion.div>
             )}
 
-            {/* Alerts */}
+            {/* Alertes */}
             {subscriptionStatus?.cancel_at_period_end && (
-              <div className="card p-3 sm:p-4 mb-4 sm:mb-6 border-amber-500/30 bg-amber-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 flex-shrink-0" />
-                  <span className="text-amber-300 text-xs sm:text-sm">
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 sm:p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-3xl mx-auto">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                  <span className="text-amber-200 text-sm">
                     {lang === "fr"
                       ? `Abonnement annulé. Accès jusqu'au ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`
                       : `Subscription cancelled. Access until ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`}
@@ -1228,7 +1222,7 @@ export const UpgradePage: React.FC = () => {
                     const status = await billingApi.getSubscriptionStatus();
                     setSubscriptionStatus(status);
                   }}
-                  className="text-xs sm:text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1 min-h-[44px] px-3 py-2 rounded-lg bg-amber-500/10 active:scale-95 transition-all"
+                  className="text-sm text-amber-300 hover:text-amber-200 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500/15 border border-amber-500/20 transition-colors"
                 >
                   <RefreshCw className="w-4 h-4" />
                   {lang === "fr" ? "Réactiver" : "Reactivate"}
@@ -1238,9 +1232,9 @@ export const UpgradePage: React.FC = () => {
 
             {error && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="card p-3 sm:p-4 mb-4 sm:mb-6 border-red-500/30 bg-red-500/10 text-red-300 text-xs sm:text-sm flex items-center gap-2"
+                className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 sm:p-5 mb-6 flex items-center gap-2 text-red-200 text-sm max-w-3xl mx-auto"
               >
                 <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
               </motion.div>
@@ -1248,204 +1242,98 @@ export const UpgradePage: React.FC = () => {
 
             {success && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="card p-3 sm:p-4 mb-4 sm:mb-6 border-green-500/30 bg-green-500/10 text-green-300 text-xs sm:text-sm flex items-center gap-2"
+                className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 sm:p-5 mb-6 flex items-center gap-2 text-emerald-200 text-sm max-w-3xl mx-auto"
               >
                 <Check className="w-4 h-4 flex-shrink-0" /> {success}
               </motion.div>
             )}
 
-            {/* Pro Trial Banner */}
-            {trialEligible && currentPlan?.price_monthly_cents === 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="card p-4 sm:p-6 mb-6 sm:mb-8 bg-gradient-to-r from-blue-500/10 via-blue-400/10 to-cyan-500/10 border-blue-500/30 overflow-hidden relative"
-              >
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl hidden sm:block" />
-                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-cyan-500/20 rounded-full blur-3xl hidden sm:block" />
-                <div className="relative flex flex-col items-center gap-4 sm:gap-6 md:flex-row">
-                  <div className="flex-shrink-0">
-                    <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl shadow-blue-500/30">
-                      <Gift className="w-7 h-7 sm:w-10 sm:h-10 text-white" />
-                    </div>
-                  </div>
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-semibold mb-2">
-                      <Sparkles className="w-3 h-3" />
-                      {lang === "fr"
-                        ? "Essai gratuit 7 jours"
-                        : "7-day free trial"}
-                    </div>
-                    <h2 className="text-lg sm:text-2xl font-bold text-text-primary mb-2">
-                      {lang === "fr"
-                        ? "Essayez Pro gratuitement pendant 7 jours"
-                        : "Try Pro free for 7 days"}
-                    </h2>
-                    <p className="text-text-secondary text-xs sm:text-base mb-4 max-w-xl">
-                      {lang === "fr"
-                        ? "Accédez à toutes les fonctionnalités Pro — 8,99€/mois après l'essai. Sans CB requise pendant l'essai."
-                        : "Access all Pro features — €8.99/mo after trial. No card required during trial."}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 justify-center md:justify-start">
-                      {[
-                        {
-                          icon: Crown,
-                          text: lang === "fr" ? "25 analyses" : "25 analyses",
-                        },
-                        {
-                          icon: InfinityIcon,
-                          text:
-                            lang === "fr" ? "Chat illimité" : "Unlimited chat",
-                        },
-                        {
-                          icon: Clock,
-                          text:
-                            lang === "fr" ? "7 jours gratuits" : "7 days free",
-                        },
-                      ].map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-bg-tertiary/50 text-text-secondary text-[10px] sm:text-xs"
-                        >
-                          <item.icon className="w-3 h-3 text-blue-400" />
-                          {item.text}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex-shrink-0 w-full md:w-auto">
-                    <button
-                      onClick={() => handleStartTrial("pro")}
-                      disabled={trialLoading}
-                      className="w-full md:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm sm:text-lg shadow-xl shadow-blue-500/30 hover:opacity-90 transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-95"
-                    >
-                      {trialLoading ? (
-                        <DeepSightSpinnerMicro onLight />
-                      ) : (
-                        <>
-                          <Gift className="w-4 h-4 sm:w-5 sm:h-5" />
-                          {lang === "fr"
-                            ? "Commencer l'essai"
-                            : "Start free trial"}
-                        </>
-                      )}
-                    </button>
-                    <p className="text-xs text-text-tertiary mt-2 text-center">
-                      {lang === "fr"
-                        ? "Annulez à tout moment"
-                        : "Cancel anytime"}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
+            {/* GRILLE PLANS */}
+            {plansLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-[560px] rounded-3xl border border-white/[0.06] bg-white/[0.02] animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:items-end">
+                {plans.map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    cycle={cycle}
+                    lang={lang}
+                    loading={loading}
+                    trialEligible={trialEligible}
+                    trialLoading={trialLoading}
+                    emphasis={getEmphasis(plan)}
+                    onSelect={handleSelectPlan}
+                    onStartTrial={handleStartTrial}
+                    allPlans={plans}
+                  />
+                ))}
+              </div>
             )}
 
-            {/* View Toggle */}
-            <div className="flex justify-center mb-6 sm:mb-8">
-              <div className="inline-flex bg-bg-tertiary rounded-xl p-1">
-                <button
-                  onClick={() => setViewMode("cards")}
-                  className={`px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] active:scale-95 ${
-                    viewMode === "cards"
-                      ? "bg-accent-primary text-gray-900 shadow-lg"
-                      : "text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  {lang === "fr" ? "🃏 Cartes" : "🃏 Cards"}
-                </button>
-                <button
-                  onClick={() => setViewMode("table")}
-                  className={`px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] active:scale-95 hidden sm:block ${
-                    viewMode === "table"
-                      ? "bg-accent-primary text-gray-900 shadow-lg"
-                      : "text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  {lang === "fr" ? "📊 Comparaison" : "📊 Comparison"}
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <AnimatePresence mode="wait">
-              {viewMode === "cards" ? (
-                <motion.div
-                  key="cards"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  {/* Plan Cards */}
-                  {plansLoading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8 sm:mb-12">
-                      {[1, 2, 3].map((i) => (
-                        <SkeletonCard key={i} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8 sm:mb-12">
-                      {plans.map((plan, idx) => (
-                        <motion.div
-                          key={plan.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.08, duration: 0.4 }}
-                        >
-                          <PlanCard
-                            plan={plan}
-                            lang={lang}
-                            loading={loading}
-                            onSelect={handleSelectPlan}
-                            trialEligible={trialEligible}
-                            trialLoading={trialLoading}
-                            onStartTrial={handleStartTrial}
-                            allPlans={plans}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="table"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  {!plansLoading && (
-                    <ComparisonTable
-                      plans={plans}
-                      lang={lang}
-                      loading={loading}
-                      onSelect={handleSelectPlan}
-                    />
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Pricing v2 — Tableau comparatif simplifié (matrix v2) */}
-            <section className="mt-12 sm:mt-16 mb-8">
-              <h2 className="text-xl sm:text-2xl font-bold text-text-primary text-center mb-6">
-                {lang === "fr" ? "Comparer les plans" : "Compare plans"}
+            {/* COMPARAISON DETAILLEE */}
+            <section className="pt-16 sm:pt-24">
+              <h2 className="text-2xl sm:text-3xl font-semibold text-text-primary text-center mb-2 tracking-tight">
+                {lang === "fr" ? "Comparer en détail" : "Compare in detail"}
               </h2>
+              <p className="text-sm text-text-tertiary text-center mb-8">
+                {lang === "fr"
+                  ? "Toutes les fonctionnalités plan par plan."
+                  : "All features plan by plan."}
+              </p>
               <ComparisonTableV2 cycle={cycle} className="max-w-5xl mx-auto" />
             </section>
 
-            {/* Cancel subscription */}
+            {/* DIFFERENCIATEURS */}
+            <DifferentiatorsSection lang={lang} />
+
+            {/* TEMOIGNAGES */}
+            <TestimonialsSection lang={lang} />
+
+            {/* FAQ */}
+            <FaqSection lang={lang} />
+
+            {/* B2B */}
+            <section className="py-12">
+              <div className="max-w-3xl mx-auto rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-8 sm:p-10 text-center">
+                <h3 className="text-xl sm:text-2xl font-semibold text-text-primary mb-2 tracking-tight">
+                  {lang === "fr"
+                    ? "Besoin d'une offre sur-mesure ?"
+                    : "Need a custom plan?"}
+                </h3>
+                <p className="text-sm text-text-secondary mb-6 max-w-xl mx-auto">
+                  {lang === "fr"
+                    ? "Équipes éducatives, universités, organismes de formation, entreprises — contactez-nous pour un plan adapté à vos volumes et workflows."
+                    : "Educational teams, universities, training organizations, companies — contact us for a plan tailored to your volumes and workflows."}
+                </p>
+                <a
+                  href="mailto:contact@deepsightsynthesis.com?subject=Offre%20sur-mesure%20DeepSight"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-all"
+                >
+                  {lang === "fr" ? "Contactez l'équipe" : "Contact the team"}
+                  <span aria-hidden>→</span>
+                </a>
+              </div>
+            </section>
+
+            {/* Cancel subscription (paid users) */}
             {currentPlan &&
               currentPlan.price_monthly_cents > 0 &&
               !subscriptionStatus?.cancel_at_period_end && (
-                <div className="text-center mb-6 sm:mb-8">
+                <div className="text-center py-8">
                   <button
                     onClick={handleCancelSubscription}
                     disabled={loading === "cancel"}
-                    className="text-xs sm:text-sm text-text-tertiary hover:text-red-400 transition-colors flex items-center gap-2 mx-auto min-h-[44px] px-4 py-2 active:scale-95"
+                    className="text-xs sm:text-sm text-text-tertiary hover:text-red-400 transition-colors flex items-center gap-2 mx-auto px-4 py-2"
                   >
                     {loading === "cancel" && <DeepSightSpinnerMicro />}
                     {lang === "fr"
@@ -1455,155 +1343,12 @@ export const UpgradePage: React.FC = () => {
                 </div>
               )}
 
-            {/* Pourquoi DeepSight — Differenciateurs concurrentiels */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="card p-4 sm:p-6 mb-6 sm:mb-8"
-            >
-              <h3 className="font-bold text-base sm:text-lg text-text-primary mb-2 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary" />
-                {lang === "fr" ? "Pourquoi DeepSight ?" : "Why DeepSight?"}
-              </h3>
-              <p className="text-xs sm:text-sm text-text-secondary mb-4 sm:mb-5">
-                {lang === "fr"
-                  ? "Pas un simple resumeur. Une plateforme d'analyse, de verification et d'apprentissage."
-                  : "Not a simple summarizer. An analysis, verification and learning platform."}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {DIFFERENTIATORS.map((d, i) => (
-                  <div
-                    key={i}
-                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 sm:p-4 hover:bg-white/[0.04] transition-colors"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xl">{d.icon}</span>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-accent-primary bg-accent-primary/10 px-2 py-0.5 rounded-full">
-                        {lang === "fr" ? d.tag.fr : d.tag.en}
-                      </span>
-                    </div>
-                    <h4 className="text-sm font-semibold text-text-primary mb-1">
-                      {lang === "fr" ? d.title.fr : d.title.en}
-                    </h4>
-                    <p className="text-xs text-text-secondary leading-relaxed">
-                      {lang === "fr" ? d.description.fr : d.description.en}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Credit Packs — Achats a la carte */}
-            {/* FAQ */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="card p-4 sm:p-6 mb-6 sm:mb-8"
-            >
-              <h3 className="font-bold text-base sm:text-lg text-text-primary mb-4 sm:mb-5 flex items-center gap-2">
-                <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary" />
-                {lang === "fr" ? "Questions fréquentes" : "FAQ"}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-xs sm:text-sm">
-                <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">
-                    {lang === "fr"
-                      ? "Comment fonctionne l'essai gratuit ?"
-                      : "How does the free trial work?"}
-                  </p>
-                  <p className="text-text-secondary">
-                    {lang === "fr"
-                      ? "7 jours Pro gratuits. Annulez à tout moment."
-                      : "7 days Pro free. Cancel anytime."}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">
-                    {lang === "fr"
-                      ? "Comment fonctionne l'upgrade ?"
-                      : "How does upgrade work?"}
-                  </p>
-                  <p className="text-text-secondary">
-                    {lang === "fr"
-                      ? "Vous êtes facturé la différence au prorata. Nouveaux avantages instantanés."
-                      : "You pay the prorated difference. New benefits are instant."}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">
-                    {lang === "fr" ? "Puis-je annuler ?" : "Can I cancel?"}
-                  </p>
-                  <p className="text-text-secondary">
-                    {lang === "fr"
-                      ? "Oui, à tout moment. Accès maintenu jusqu'à fin de période payée."
-                      : "Yes, anytime. Access kept until paid period ends."}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">
-                    {lang === "fr"
-                      ? "Moyens de paiement ?"
-                      : "Payment methods?"}
-                  </p>
-                  <p className="text-text-secondary">
-                    {lang === "fr"
-                      ? "Toutes cartes bancaires via Stripe. Paiements sécurisés."
-                      : "All cards via Stripe. Secure payments."}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* B2B / Sur-mesure */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="card p-4 sm:p-6 mb-6 sm:mb-8 border border-white/10 text-center"
-            >
-              <h3 className="font-bold text-base sm:text-lg text-text-primary mb-2">
-                {lang === "fr"
-                  ? "Besoin d'une offre sur-mesure ?"
-                  : "Need a custom plan?"}
-              </h3>
-              <p className="text-text-secondary text-xs sm:text-sm mb-4">
-                {lang === "fr"
-                  ? "Équipes, universités, entreprises — contactez-nous pour un plan adapté à vos besoins."
-                  : "Teams, universities, enterprises — contact us for a plan tailored to your needs."}
-              </p>
-              <a
-                href="mailto:contact@deepsightsynthesis.com?subject=Offre%20sur-mesure%20DeepSight"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-text-primary text-sm font-medium transition-all"
-              >
-                {lang === "fr" ? "Contactez-nous" : "Contact us"}
-              </a>
-            </motion.div>
-
-            {/* Garantie */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.55 }}
-              className="text-center mb-6 sm:mb-8"
-            >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20">
-                <Check className="w-4 h-4 text-green-400" />
-                <span className="text-sm text-green-400 font-medium">
-                  {lang === "fr"
-                    ? "Garantie satisfait ou remboursé 14 jours"
-                    : "14-day money-back guarantee"}
-                </span>
-              </div>
-            </motion.div>
-
-            {/* Contact */}
+            {/* Footer contact */}
             <div className="text-center text-xs sm:text-sm text-text-tertiary pb-4">
-              {lang === "fr" ? "Questions ? " : "Questions? "}
+              {lang === "fr" ? "Une question ? " : "A question? "}
               <a
                 href="mailto:contact@deepsightsynthesis.com"
-                className="text-accent-primary hover:underline"
+                className="text-violet-300 hover:text-violet-200 hover:underline"
               >
                 contact@deepsightsynthesis.com
               </a>
@@ -1612,7 +1357,7 @@ export const UpgradePage: React.FC = () => {
         </div>
       </main>
 
-      {/* Downgrade Confirmation Modal */}
+      {/* Downgrade modal */}
       <AnimatePresence>
         {downgradeTarget && (
           <DowngradeModal
@@ -1625,11 +1370,11 @@ export const UpgradePage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Glow pulse animation for popular plan */}
+      {/* Glow keyframes (Expert pulsation) */}
       <style>{`
-        @keyframes glow-pulse {
-          0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.15); }
-          50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.3); }
+        @keyframes expert-glow {
+          0%, 100% { opacity: 0.45; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.02); }
         }
       `}</style>
     </div>

@@ -1,7 +1,8 @@
 // extension/src/sidepanel/components/UpgradeCTA.tsx
 //
 // CTA d'upgrade post-call ou bloquant — pousse vers Expert (19,99€/mois)
-// avec 30 min de voice call inclus.
+// avec voice call inclus. Editorial Premium : ribbon ESSAI 7 JOURS,
+// glow doré, accents or/ambre alignés sur la warm palette extension.
 //
 // 3 reasons supportées :
 //  - trial_used     → "Tu viens d'utiliser ton essai gratuit"
@@ -35,8 +36,19 @@ export function UpgradeCTA({
       : reason === "monthly_quota"
         ? cta.monthlyQuotaBody
         : cta.proNoVoiceBody;
+
+  // Le trial 7j est dispo uniquement si l'user n'a pas encore utilisé son trial.
+  // Reason="trial_used" implique trial déjà consommé → pas de ribbon trial.
+  const showTrialRibbon = reason !== "trial_used";
+
   return (
     <div className="ds-upgrade-cta" data-testid="ds-upgrade-cta">
+      {showTrialRibbon && (
+        <span className="ds-upgrade-cta__ribbon">
+          <span aria-hidden>🎁</span>
+          ESSAI 7 JOURS · SANS CB
+        </span>
+      )}
       <div className="ds-upgrade-cta__emoji" aria-hidden>
         ✨
       </div>

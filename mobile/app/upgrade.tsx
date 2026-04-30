@@ -52,6 +52,10 @@ interface UpgradePlanView {
   period: string;
   features: string[];
   popular?: boolean;
+  tier?: "subdued" | "default" | "highlight";
+  tagline?: string;
+  highlightFeatures?: string[];
+  yearlySavings?: string;
 }
 
 /**
@@ -62,32 +66,47 @@ function buildPlanViews(cycle: BillingCycle): UpgradePlanView[] {
   return PLANS_INFO.filter((p) => p.id !== "free").map((p) => {
     const monthly = p.priceDisplay.fr.replace("/mois", "").trim();
     const yearly = p.priceYearlyDisplay.fr.replace("/an", "").trim();
+    const isExpert = p.id === "expert";
+    const yearlySavings = isExpert ? "−39,98 €" : "−17,98 €";
     return {
       id: p.id,
       name: p.name.fr,
       price: cycle === "yearly" ? yearly : monthly,
       period: cycle === "yearly" ? "/an" : "/mois",
       popular: p.popular,
-      features:
-        p.id === "pro"
-          ? [
-              "25 analyses/mois",
-              "Vidéos jusqu'à 1 h",
-              "Mind Maps + Flashcards",
-              "Export PDF + Markdown",
-              "Voice Chat 30 min/mois",
-              "Recherche web (20/mois)",
-              "Fact-checking",
-            ]
-          : [
-              "100 analyses/mois",
-              "Vidéos jusqu'à 4 h",
-              "Playlists (10×20 vidéos)",
-              "Voice Chat 120 min/mois",
-              "Recherche web (60/mois)",
-              "Deep Research + TTS",
-              "Support prioritaire",
-            ],
+      tier: (isExpert ? "highlight" : "default") as
+        | "subdued"
+        | "default"
+        | "highlight",
+      tagline: isExpert
+        ? "Pour les créateurs et chercheurs"
+        : "Pour apprendre sérieusement",
+      yearlySavings: cycle === "yearly" ? yearlySavings : undefined,
+      highlightFeatures: isExpert
+        ? [
+            "Chat IA illimité",
+            "Playlists (10×20 vidéos)",
+            "Voice Chat 120 min/mois",
+            "Deep Research + TTS",
+          ]
+        : [
+            "Cartes mentales interactives",
+            "Fact-check automatique",
+            "Voice Chat 30 min/mois",
+          ],
+      features: isExpert
+        ? [
+            "100 analyses/mois",
+            "Vidéos jusqu'à 4 h",
+            "Recherche web (60/mois)",
+            "Support prioritaire",
+          ]
+        : [
+            "25 analyses/mois",
+            "Vidéos jusqu'à 1 h",
+            "Recherche web (20/mois)",
+            "Export PDF + Markdown",
+          ],
     };
   });
 }
@@ -203,8 +222,7 @@ export default function UpgradeScreen() {
             style={[
               styles.toggleText,
               {
-                color:
-                  cycle === "monthly" ? "#ffffff" : colors.textSecondary,
+                color: cycle === "monthly" ? "#ffffff" : colors.textSecondary,
               },
             ]}
           >
@@ -229,8 +247,7 @@ export default function UpgradeScreen() {
             style={[
               styles.toggleText,
               {
-                color:
-                  cycle === "yearly" ? "#ffffff" : colors.textSecondary,
+                color: cycle === "yearly" ? "#ffffff" : colors.textSecondary,
               },
             ]}
           >
@@ -306,9 +323,7 @@ export default function UpgradeScreen() {
               size={18}
               color={colors.accentPrimary}
             />
-            <Text
-              style={[styles.trialText, { color: colors.accentPrimary }]}
-            >
+            <Text style={[styles.trialText, { color: colors.accentPrimary }]}>
               Essai 7 jours gratuit ({activePlan.name}) — sans CB
             </Text>
           </Pressable>
