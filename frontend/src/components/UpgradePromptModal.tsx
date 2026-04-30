@@ -2,11 +2,10 @@
  * UpgradePromptModal v2.0 - Modal that appears when user reaches their limit
  * Encourages upgrade with clear value proposition
  *
- * Aligned with pricing strategy:
+ * Aligned with Pricing v2 (Avril 2026) :
  * - Free: 0€ - 5 analyses/mois
- * - Starter: 2.99€ - Essentials
- * - Standard: 5.99€ - Utilisateurs réguliers
- * - Pro: 12.99€ - Créateurs & Pros (POPULAIRE)
+ * - Pro: 8,99€ - 25 analyses + voice chat + fact-checking (POPULAIRE, trial 7j)
+ * - Expert: 19,99€ - 100 analyses + playlists + deep research (trial 7j)
  */
 
 import React from "react";
