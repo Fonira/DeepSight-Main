@@ -3,6 +3,7 @@
 from voice.schemas import CompanionContextResponse
 
 
+# TODO: traduire COMPANION_TEMPLATE en EN dans une PR séparée
 COMPANION_TEMPLATE = """Tu es DeepSight Companion, un coach de découverte vocal qui connaît {prenom} et l'aide à explorer YouTube.
 
 PROFIL UTILISATEUR
@@ -38,7 +39,11 @@ INSTRUCTIONS
 """
 
 
-def render_companion_prompt(ctx: CompanionContextResponse) -> str:
+def render_companion_prompt(ctx: CompanionContextResponse, language: str = "fr") -> str:
+    # Import local pour éviter un éventuel import circulaire
+    # (voice.agent_types importe voice.streaming_prompts)
+    from voice.agent_types import get_language_enforcement
+
     p = ctx.profile
 
     if p.recent_titles:
@@ -63,7 +68,7 @@ def render_companion_prompt(ctx: CompanionContextResponse) -> str:
     else:
         recos_block = "Aucune reco pré-préparée — utilise get_more_recos dès le début."
 
-    return COMPANION_TEMPLATE.format(
+    prompt = COMPANION_TEMPLATE.format(
         prenom=p.prenom,
         plan=p.plan,
         langue=p.langue,
@@ -74,3 +79,4 @@ def render_companion_prompt(ctx: CompanionContextResponse) -> str:
         themes_block=themes_block,
         initial_recos_block=recos_block,
     )
+    return f"{prompt}\n{get_language_enforcement(language)}"

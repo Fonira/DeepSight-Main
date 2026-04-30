@@ -647,13 +647,13 @@ EXPLORER_STREAMING = AgentConfig(
     description_fr="Appel vocal sur une vidéo YouTube avec analyse en streaming",
     system_prompt_fr=EXPLORER_STREAMING_PROMPT_FR,
     system_prompt_en=EXPLORER_STREAMING_PROMPT_EN,
-    tools=["web_search", "deep_research", "check_fact"],
+    tools=["search_in_transcript", "web_search", "deep_research", "check_fact"],
     voice_style="warm",
     temperature=0.7,
     max_session_minutes=30,  # Expert tier monthly cap; runtime quota enforces per-session
     requires_summary=False,  # context arrives via [CTX UPDATE] during the call
-    first_message_fr="Salut ! Je commence à écouter cette vidéo. Pose-moi tes questions, je m'adapte au fur et à mesure que je découvre le contenu.",
-    first_message="Hi! I'm starting to listen to this video. Ask me anything, I'll adapt as I discover the content.",
+    first_message_fr="Salut ! On part sur « {video_title} » — je commence à écouter, qu'est-ce qui t'intrigue dans cette vidéo ?",
+    first_message="Hi! We're tackling « {video_title} » — I'm starting to listen, what catches your attention in this video?",
     plan_minimum="free",  # Free has 1 lifetime trial; quota service enforces A+D
 )
 
