@@ -39,46 +39,32 @@ const LEGAL_INFO = {
 
 const PLANS = [
   {
-    name: "Gratuit",
+    name: "Free",
     price: "0",
     period: "",
-    analyses: "3",
-    credits: "150",
-    features: "10 min max, 3 jours d'historique",
-  },
-  {
-    name: "Etudiant",
-    price: "2,99",
-    period: "/mois",
-    analyses: "40",
-    credits: "2 000",
-    features: "Flashcards, cartes conceptuelles",
-  },
-  {
-    name: "Starter",
-    price: "5,99",
-    period: "/mois",
-    analyses: "60",
-    credits: "3 000",
-    features: "2h max, exports, 60 jours d'historique",
+    analyses: "5",
+    features: "Flashcards, 60 jours d'historique, videos jusqu'a 15 min",
   },
   {
     name: "Pro",
-    price: "12,99",
+    price: "8,99",
     period: "/mois",
-    analyses: "300",
-    credits: "15 000",
-    features: "Playlists, chat illimite, synthese vocale",
+    analyses: "25",
+    features:
+      "Mindmap, fact-check, web search, export PDF, voice chat 30 min/mois",
   },
   {
-    name: "Equipe",
-    price: "29,99",
+    name: "Expert",
+    price: "19,99",
     period: "/mois",
-    analyses: "1 000",
-    credits: "50 000",
-    features: "Acces API, 5 utilisateurs",
+    analyses: "100",
+    features:
+      "Playlists, chat illimite, deep research, voice chat 120 min/mois, file prioritaire",
   },
 ];
+
+// Essai gratuit de 7 jours sans carte bancaire propose sur les plans Pro et Expert.
+// Les abonnements annuels beneficient d'une reduction de 17 %.
 
 const LegalCGV: React.FC = () => {
   return (
@@ -195,9 +181,6 @@ const LegalCGV: React.FC = () => {
                       Analyses/mois
                     </th>
                     <th className="text-left py-3 px-4 text-white font-semibold">
-                      Credits
-                    </th>
-                    <th className="text-left py-3 px-4 text-white font-semibold">
                       Fonctionnalites cles
                     </th>
                   </tr>
@@ -215,7 +198,6 @@ const LegalCGV: React.FC = () => {
                         <span className="text-text-muted">{plan.period}</span>
                       </td>
                       <td className="py-3 px-4">{plan.analyses}</td>
-                      <td className="py-3 px-4">{plan.credits}</td>
                       <td className="py-3 px-4 text-text-secondary text-xs">
                         {plan.features}
                       </td>
@@ -234,11 +216,13 @@ const LegalCGV: React.FC = () => {
               souscription ou du renouvellement de l'abonnement.
             </p>
             <p>
-              Les credits representent une unite de consommation interne au
-              Service. Chaque operation (analyse, question au chat, etc.)
-              consomme un nombre de credits variable selon sa complexite. Les
-              credits non utilises a la fin du mois ne sont pas reportes sur le
-              mois suivant.
+              Un essai gratuit de 7 jours sans carte bancaire est propose sur
+              les formules Pro et Expert. Les abonnements annuels beneficient
+              d'une reduction de 17 % par rapport au tarif mensuel cumule.
+            </p>
+            <p>
+              Les analyses non utilisees a la fin du mois ne sont pas reportees
+              sur le mois suivant.
             </p>
           </div>
         </section>

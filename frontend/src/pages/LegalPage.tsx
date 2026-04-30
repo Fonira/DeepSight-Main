@@ -414,34 +414,32 @@ const CGU: React.FC = () => (
       </h3>
       <div className="text-text-primary space-y-3">
         <p>Le service propose plusieurs formules d'abonnement :</p>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 my-4">
+        <div className="grid md:grid-cols-3 gap-4 my-4">
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
-            <p className="font-bold text-white">Découverte</p>
+            <p className="font-bold text-white">Free</p>
             <p className="text-2xl font-bold text-amber-400">0€</p>
             <p className="text-sm text-text-secondary">5 analyses/mois</p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
-            <p className="font-bold text-white">Starter</p>
-            <p className="text-2xl font-bold text-amber-400">
-              4,99€<span className="text-sm">/mois</span>
-            </p>
-            <p className="text-sm text-text-secondary">50 analyses/mois</p>
-          </div>
-          <div className="bg-white/5 p-4 rounded-lg border border-white/10">
             <p className="font-bold text-white">Pro</p>
             <p className="text-2xl font-bold text-amber-400">
-              9,99€<span className="text-sm">/mois</span>
+              8,99€<span className="text-sm">/mois</span>
             </p>
-            <p className="text-sm text-text-secondary">200 analyses/mois</p>
+            <p className="text-sm text-text-secondary">25 analyses/mois</p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
             <p className="font-bold text-white">Expert</p>
             <p className="text-2xl font-bold text-amber-400">
-              14,99€<span className="text-sm">/mois</span>
+              19,99€<span className="text-sm">/mois</span>
             </p>
-            <p className="text-sm text-text-secondary">Analyses illimitées</p>
+            <p className="text-sm text-text-secondary">100 analyses/mois</p>
           </div>
         </div>
+        <p>
+          Un essai gratuit de 7 jours sans carte bancaire est proposé sur les
+          formules Pro et Expert. Les abonnements annuels bénéficient d'une
+          réduction de 17 %.
+        </p>
         <p>Les prix sont indiqués en euros TTC ({LEGAL_INFO.vat.status}).</p>
         <p>
           Le paiement est effectué par carte bancaire via la plateforme
