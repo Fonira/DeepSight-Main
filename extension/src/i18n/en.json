@@ -41,19 +41,14 @@
   },
   "upsell": {
     "free": {
-      "label": "Plus",
-      "feature": "25 analyses + Mind maps + Web Search + Fact-check",
-      "price": "€4.99"
-    },
-    "plus": {
       "label": "Pro",
-      "feature": "100 analyses + Voice chat 45min + Playlists + Mistral Large",
-      "price": "€9.99"
+      "feature": "30 analyses + Mind maps + Web Search + Playlists",
+      "price": "€8.99"
     },
     "pro": {
-      "label": "Pro",
-      "feature": "100 analyses + Voice chat 45min + Playlists + Mistral Large",
-      "price": "€9.99"
+      "label": "Expert",
+      "feature": "100 analyses + Voice chat 30min + Mistral Large + Priority",
+      "price": "€19.99"
     }
   },
   "analysis": {
@@ -277,7 +272,7 @@
       "monthlyQuotaBody": "You've used your 30 min of voice call this month. Wait for next month… or upgrade for more.",
       "proNoVoiceBody": "Voice call is only included in the Expert plan (30 min/month).",
       "planName": "Expert",
-      "planPrice": "$14.99",
+      "planPrice": "€19.99",
       "planPeriod": "/mo",
       "feature1": "✓ 30 min voice call/month",
       "feature2": "✓ Unlimited analyses",
@@ -301,7 +296,7 @@
   "promos": {
     "free": [
       {
-        "text": "30 analyses/month + Mind maps + Web Search — from €5.99/mo",
+        "text": "30 analyses/month + Mind maps + Web Search — from €8.99/mo",
         "cta": "Upgrade to Pro"
       },
       {

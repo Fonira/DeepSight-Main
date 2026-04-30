@@ -41,19 +41,14 @@
   },
   "upsell": {
     "free": {
-      "label": "Plus",
-      "feature": "25 analyses + Cartes mentales + Web Search + Fact-check",
-      "price": "4,99€"
-    },
-    "plus": {
       "label": "Pro",
-      "feature": "100 analyses + Voice chat 45 min + Playlists + Mistral Large",
-      "price": "9,99€"
+      "feature": "30 analyses + Cartes mentales + Web Search + Playlists",
+      "price": "8,99€"
     },
     "pro": {
-      "label": "Pro",
-      "feature": "100 analyses + Voice chat 45 min + Playlists + Mistral Large",
-      "price": "9,99€"
+      "label": "Expert",
+      "feature": "100 analyses + Voice chat 30 min + Mistral Large + Priorité",
+      "price": "19,99€"
     }
   },
   "analysis": {
@@ -277,7 +272,7 @@
       "monthlyQuotaBody": "Tu as utilisé tes 30 min de voice call ce mois-ci. Patience jusqu'au mois prochain… ou upgrade pour plus.",
       "proNoVoiceBody": "Le voice call est inclus uniquement dans le plan Expert (30 min/mois).",
       "planName": "Expert",
-      "planPrice": "14.99€",
+      "planPrice": "19,99€",
       "planPeriod": "/mois",
       "feature1": "✓ 30 min de voice call/mois",
       "feature2": "✓ Analyses illimitées",
@@ -301,7 +296,7 @@
   "promos": {
     "free": [
       {
-        "text": "30 analyses/mois + Cartes mentales + Web Search — dès 5,99€/mois",
+        "text": "30 analyses/mois + Cartes mentales + Web Search — dès 8,99€/mois",
         "cta": "Passer à Pro"
       },
       {
