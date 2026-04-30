@@ -37,6 +37,7 @@ import { DeepSightSpinnerMicro } from "../components/ui";
 import { billingApi, type ApiBillingPlan } from "../services/api";
 import { SEO } from "../components/SEO";
 import { BreadcrumbJsonLd } from "../components/BreadcrumbJsonLd";
+import { ProductJsonLd } from "../components/ProductJsonLd";
 import { analytics } from "../services/analytics";
 import {
   PLANS_INFO as FALLBACK_PLANS_INFO,
@@ -1139,10 +1140,11 @@ export const UpgradePage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative">
       <SEO
         title="Tarifs"
-        description="Découvrez les plans DeepSight : Gratuit, Plus (4,99€/mois) et Pro (9,99€/mois). Analysez vos vidéos YouTube et TikTok avec l'IA."
+        description="Découvrez les plans DeepSight : Gratuit, Pro (8,99 €/mois) et Expert (19,99 €/mois). Analysez vos vidéos YouTube et TikTok avec l'IA, fact-checking nuancé et voice agent."
         path="/upgrade"
       />
       <BreadcrumbJsonLd path="/upgrade" />
+      <ProductJsonLd />
       <DoodleBackground variant="creative" />
       <Sidebar
         collapsed={sidebarCollapsed}
