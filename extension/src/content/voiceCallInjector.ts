@@ -33,6 +33,44 @@ interface MessageResponseShape {
 }
 
 /**
+ * Récupère le titre VIDÉO réel sans les artefacts du document.title du
+ * navigateur. Trois sources tentées dans l'ordre :
+ *
+ * 1. `<meta property="og:title">` — le titre officiel injecté par YouTube
+ *    pour les bots/preview cards. Toujours propre, sans "(N)" ni "- YouTube".
+ * 2. `h1.ytd-watch-metadata yt-formatted-string` (DOM YouTube watch). Le
+ *    titre rendu dans la page elle-même.
+ * 3. Fallback `document.title` strippé manuellement (filet de sécurité —
+ *    le backend re-sanitize aussi via `_sanitize_video_title`).
+ *
+ * Pourquoi : Chrome préfixe document.title avec "(N) " quand N tabs ou
+ * notifications sont en attente, et YouTube suffixe " - YouTube".
+ * L'agent voice voyait alors « (3) Quantum Physics ... - YouTube ».
+ */
+function getCleanVideoTitle(): string {
+  // Source 1 — meta og:title (toujours propre)
+  const og = document.querySelector<HTMLMetaElement>(
+    'meta[property="og:title"]',
+  );
+  const ogTitle = og?.content?.trim();
+  if (ogTitle) return ogTitle;
+
+  // Source 2 — h1 watch metadata (YouTube watch page)
+  const h1 = document.querySelector<HTMLElement>(
+    "h1.ytd-watch-metadata yt-formatted-string, h1.title yt-formatted-string",
+  );
+  const h1Title = h1?.textContent?.trim();
+  if (h1Title) return h1Title;
+
+  // Source 3 — fallback document.title strippé
+  return (document.title || "")
+    .replace(/^\(\d+\)\s*/, "")
+    .replace(/\s*[-—|]\s*YouTube\s*$/i, "")
+    .replace(/\s*[-—|]\s*TikTok\s*$/i, "")
+    .trim();
+}
+
+/**
  * Cherche un container stable dans le DOM YouTube watch page. Tente plusieurs
  * sélecteurs dans l'ordre de stabilité décroissante. Renvoie null si rien
  * trouvé (l'appelant utilisera alors un overlay fixed).
@@ -140,7 +178,7 @@ export async function injectVoiceCallButton(): Promise<void> {
     trialUsed: state.trialUsed,
     monthlyMinutesUsed: state.monthlyMinutesUsed,
     videoId,
-    videoTitle: document.title,
+    videoTitle: getCleanVideoTitle(),
   });
 
   if (useFloating) {

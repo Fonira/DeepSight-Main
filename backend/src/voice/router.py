@@ -99,6 +99,36 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
+def _sanitize_video_title(raw: str | None) -> str:
+    """Strip Chrome notification counters and platform suffixes from titles.
+
+    The extension passes ``document.title`` straight to the backend. Chrome
+    adds a ``(N)`` prefix when N tabs/notifications are queued, and YouTube
+    appends ``" - YouTube"``. Both leak into the voice agent's first_message
+    and the system_prompt's "VIDÉO ÉCOUTÉE" block — the agent then says
+    "On part sur « (3) Quantum Physics — YouTube »" which is jarring.
+
+    Examples:
+        "(3) Quantum Physics ... - YouTube"  → "Quantum Physics ..."
+        "Bel article  | YouTube"             → "Bel article"
+        "(12) Mike Tyson"                    → "Mike Tyson"
+        "video title — YouTube"              → "video title"
+    """
+    if not raw:
+        return ""
+    import re
+
+    title = raw.strip()
+    # Strip "(N) " prefix added by Chrome / browser notification counter.
+    title = re.sub(r"^\(\d+\)\s*", "", title)
+    # Strip " - YouTube" / " — YouTube" / " | YouTube" platform suffix.
+    title = re.sub(r"\s*[-—|]\s*YouTube\s*$", "", title, flags=re.IGNORECASE)
+    # Same for TikTok though less common.
+    title = re.sub(r"\s*[-—|]\s*TikTok\s*$", "", title, flags=re.IGNORECASE)
+    return title.strip()
+
+
 # Rate limiting (Spec #0): per-summary AND per-user caps with Redis INCR + TTL.
 # In-memory dicts are used when Redis is unavailable.
 _web_search_counts: dict[str, int] = {}
@@ -1301,7 +1331,7 @@ async def create_voice_session(
         existing_summary = existing_summary_result.scalar_one_or_none()
         if existing_summary is None:
             v1_video_title = (
-                request.video_title
+                _sanitize_video_title(request.video_title)
                 if request.video_title
                 else f"[En cours] YT {request.video_id}"
             )
@@ -1663,7 +1693,7 @@ async def create_voice_session(
             # WHICH video. We resolve title+channel via YouTube oEmbed
             # (1 request, <100ms typical, no API key required) so the system
             # prompt carries enough context from turn #1.
-            title = (request.video_title or "").strip()
+            title = _sanitize_video_title(request.video_title)
             channel = ""
             try:
                 async with httpx.AsyncClient(timeout=2.0) as client:
@@ -1853,7 +1883,7 @@ async def create_voice_session(
         # Streaming agent: interpolate {video_title} placeholder (front-provided title,
         # already resolved via YouTube oEmbed in the system_prompt meta-block above when missing)
         if agent_config.agent_type == "explorer_streaming" and "{video_title}" in first_message:
-            streaming_title = (request.video_title or "").strip()
+            streaming_title = _sanitize_video_title(request.video_title)
             if not streaming_title:
                 streaming_title = "cette vidéo" if language == "fr" else "this video"
             first_message = first_message.replace("{video_title}", streaming_title)
