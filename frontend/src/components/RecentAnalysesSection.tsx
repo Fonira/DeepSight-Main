@@ -15,7 +15,7 @@ import { sanitizeTitle } from "../utils/sanitize";
 interface RecentAnalysesSectionProps {
   language: "fr" | "en";
   onVideoSelect: (videoId: string) => void;
-  /** Navigate to the analysis detail (e.g. /history?open=summaryId) */
+  /** Navigate to the analysis conversation in the hub (e.g. /hub?summary=summaryId) */
   onOpenAnalysis?: (summaryId: number, videoId: string) => void;
   hidden?: boolean;
 }
@@ -98,6 +98,7 @@ export const RecentAnalysesSection: React.FC<RecentAnalysesSectionProps> = ({
         {recent.map((item) => (
           <button
             key={item.id}
+            data-recent-analysis-id={item.id}
             onClick={() =>
               onOpenAnalysis
                 ? onOpenAnalysis(item.id, item.video_id)
