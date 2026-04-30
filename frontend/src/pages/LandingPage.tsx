@@ -46,6 +46,9 @@ import {
   DemoAnalysisStatic,
   DemoChatStatic,
   PricingSection,
+  Testimonials,
+  TrustBadges,
+  SocialProofCounter,
 } from "../components/landing";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1068,6 +1071,8 @@ const LandingPage: React.FC = () => {
           </ScrollReveal>
         </div>
       </section>
+      {/* ─── SOCIAL PROOF COUNTER (bandeau hero) ─── */}
+      <SocialProofCounter language={language} />
       {/* ─── DEMO INTERACTIVE ─── */}
       <section className="py-12 sm:py-20 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
@@ -1075,6 +1080,8 @@ const LandingPage: React.FC = () => {
           <DemoChatStatic language={language} />
         </div>
       </section>
+      {/* ─── TESTIMONIALS ─── */}
+      <Testimonials language={language} />
       {/* ─── FEATURES ─── */}
       <section id="features" className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
@@ -1364,6 +1371,8 @@ const LandingPage: React.FC = () => {
       </section>
       {/* ─── PRICING ─── */}
       <PricingSection language={language} onNavigate={navigate} />
+      {/* ─── TRUST BADGES (sous pricing) ─── */}
+      <TrustBadges language={language} />
       {/* ─── FAQ ─── */}
       <section className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto">
