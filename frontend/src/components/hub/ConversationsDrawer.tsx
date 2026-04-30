@@ -67,6 +67,7 @@ export const ConversationsDrawer: React.FC<Props> = ({
           <button
             key={c.id}
             type="button"
+            data-conv-id={c.id}
             onClick={() => {
               onSelect(c.id);
               onClose();
