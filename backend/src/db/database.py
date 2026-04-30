@@ -880,13 +880,17 @@ class VoiceQuota(Base):
 
 
 class VoiceQuotaStreaming(Base):
-    """🎙️ Quick Voice Call A+D quota (Quick Voice Call V1, migration 008).
+    """🎙️ Quick Voice Call A+D quota + purchased balance (migrations 008 + 011).
 
     Tracks quota for the streaming Quick Voice Call feature using the strict
     A+D model:
       * Free  : ``lifetime_trial_used`` boolean, single 3-min lifetime trial
-      * Pro   : always blocked (CTA upgrade — no row needed beyond plan record)
-      * Expert: ``monthly_minutes_used`` rolling 30-day window, capped at 30
+      * Pro   : ``monthly_minutes_used`` rolling 30-day window, capped at 30
+      * Expert: ``monthly_minutes_used`` rolling 30-day window, capped at 120
+
+    The ``purchased_minutes`` column (migration 011) holds a non-expiring
+    balance from voice top-up pack purchases, consumed AFTER the plan
+    allowance is drained.
 
     Note: this is intentionally distinct from the legacy ``VoiceQuota`` model
     (table ``voice_quotas``, plural) which tracks per-month seconds for the
@@ -902,6 +906,56 @@ class VoiceQuotaStreaming(Base):
     monthly_period_start = Column(DateTime(timezone=True), nullable=False)
     lifetime_trial_used = Column(Boolean, nullable=False, default=False, server_default="false")
     lifetime_trial_used_at = Column(DateTime(timezone=True), nullable=True)
+    # Non-expiring balance (top-up packs, migration 011)
+    purchased_minutes = Column(Float, nullable=False, default=0.0, server_default="0")
+
+
+class VoiceCreditPack(Base):
+    """🎙️ Catalog d'un pack de minutes vocales achetable (migration 011)."""
+
+    __tablename__ = "voice_credit_packs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    slug = Column(String(64), unique=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    minutes = Column(Integer, nullable=False)
+    price_cents = Column(Integer, nullable=False)
+    description = Column(Text, nullable=True)
+    stripe_product_id = Column(String(100), nullable=True)
+    stripe_price_id = Column(String(100), nullable=True, unique=True)
+    is_active = Column(Boolean, nullable=False, default=True, server_default=text("true"))
+    display_order = Column(Integer, nullable=False, default=0, server_default="0")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class VoiceCreditPurchase(Base):
+    """🎙️ Historique achat pack — 1 row par Stripe checkout completion (migration 011)."""
+
+    __tablename__ = "voice_credit_purchases"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    pack_id = Column(
+        Integer,
+        ForeignKey("voice_credit_packs.id"),
+        nullable=False,
+    )
+    minutes_purchased = Column(Integer, nullable=False)
+    price_paid_cents = Column(Integer, nullable=False)
+    stripe_session_id = Column(String(255), unique=True, nullable=True)
+    stripe_payment_intent_id = Column(String(255), unique=True, nullable=True)
+    status = Column(String(20), nullable=False, default="pending", server_default="'pending'")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_voice_credit_purchases_user_status", "user_id", "status"),
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -33,15 +33,29 @@ from db.database import VoiceQuotaStreaming, User
 logger = logging.getLogger(__name__)
 
 
-# ─── Spec constants (locked decision #4 — A+D strict) ────────────────────
-TOP_TIER_MONTHLY_MINUTES: float = 30.0
-EXPERT_MONTHLY_MINUTES: float = TOP_TIER_MONTHLY_MINUTES  # Backwards-compat alias
+# ─── Spec constants (locked decision #4 — A+D strict, VC-1 updated 2026-04-29) ────
+# Plan-aware allowance (rolling 30-day window):
+#   Pro    : 30 min/month  (statu quo)
+#   Expert : 120 min/month (VC-1 audit Kimi : differentiation tier)
+MONTHLY_MINUTES_BY_PLAN: dict[str, float] = {
+    "pro": 30.0,
+    "expert": 120.0,
+}
+TOP_TIER_MONTHLY_MINUTES: float = 30.0  # legacy alias, kept for callers that don't pass plan
+EXPERT_MONTHLY_MINUTES: float = MONTHLY_MINUTES_BY_PLAN["expert"]
 FREE_TRIAL_MINUTES: float = 3.0
 MONTHLY_PERIOD_DAYS: int = 30
 
-# Plans that grant the rolling monthly minutes quota. "expert" is kept as an
-# alias for legacy/test callers — production currently only uses "pro".
+# Plans that grant the rolling monthly minutes quota.
 TOP_TIER_PLANS: frozenset[str] = frozenset({"pro", "expert"})
+
+
+def _plan_monthly_allowance(plan: str) -> float:
+    """Return the rolling 30-day minutes cap for a given plan.
+
+    Returns 0.0 for plans without a Quick Voice Call allowance.
+    """
+    return float(MONTHLY_MINUTES_BY_PLAN.get(plan.lower(), 0.0))
 
 
 QuotaReason = Literal["trial_used", "pro_no_voice", "monthly_quota"]
@@ -131,10 +145,13 @@ async def check_voice_quota(user: User, db: AsyncSession) -> QuotaCheck:
         )
 
     if plan in TOP_TIER_PLANS:
-        remaining = TOP_TIER_MONTHLY_MINUTES - quota.monthly_minutes_used
-        if remaining <= 0:
+        plan_cap = _plan_monthly_allowance(plan)
+        remaining_allowance = max(plan_cap - float(quota.monthly_minutes_used or 0.0), 0.0)
+        purchased = float(getattr(quota, "purchased_minutes", 0.0) or 0.0)
+        total_available = remaining_allowance + purchased
+        if total_available <= 0:
             return QuotaCheck(allowed=False, reason="monthly_quota")
-        return QuotaCheck(allowed=True, max_minutes=remaining)
+        return QuotaCheck(allowed=True, max_minutes=total_available)
 
     # Starter / Student / unknown legacy plan → blocked, CTA upgrade Pro.
     # We reuse the historical "pro_no_voice" reason code so the existing
@@ -155,9 +172,13 @@ async def check_voice_quota(user: User, db: AsyncSession) -> QuotaCheck:
 async def consume_voice_minutes(user: User, minutes: float, db: AsyncSession) -> None:
     """Record ``minutes`` of voice usage against ``user``'s quota.
 
+    Consumption order (locked decision H4 — protect paid minutes from monthly reset):
+      1. Plan allowance (rolling 30j) — drained first
+      2. Purchased balance (non-expiring) — overflow fallback
+
     For Free users, flips the lifetime trial flag (single-shot).
-    For top-tier users (Pro / Expert legacy), increments the monthly rolling
-    counter.
+    For top-tier users (Pro / Expert), splits ``minutes`` across both buckets:
+    plan allowance first, then purchased pack balance.
     For other plans (Starter / Student), no-op — they are blocked upstream by
     ``check_voice_quota``, this stays safe if called by mistake.
 
@@ -170,6 +191,19 @@ async def consume_voice_minutes(user: User, minutes: float, db: AsyncSession) ->
         quota.lifetime_trial_used = True
         quota.lifetime_trial_used_at = datetime.now(timezone.utc)
     elif plan in TOP_TIER_PLANS:
-        quota.monthly_minutes_used = float(quota.monthly_minutes_used or 0.0) + float(minutes)
+        plan_cap = _plan_monthly_allowance(plan)
+        remaining_allowance = max(
+            plan_cap - float(quota.monthly_minutes_used or 0.0), 0.0
+        )
+        from_allowance = min(float(minutes), remaining_allowance)
+        from_purchased = max(float(minutes) - from_allowance, 0.0)
+
+        quota.monthly_minutes_used = (
+            float(quota.monthly_minutes_used or 0.0) + from_allowance
+        )
+        if from_purchased > 0:
+            current_purchased = float(getattr(quota, "purchased_minutes", 0.0) or 0.0)
+            # Clamp à 0 — ne jamais descendre sous zéro même si race-condition
+            quota.purchased_minutes = max(current_purchased - from_purchased, 0.0)
 
     await db.commit()

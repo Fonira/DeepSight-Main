@@ -22,6 +22,8 @@ from db.database import (
     ChatMessage,
     AdminLog,
     VoiceQuotaStreaming,
+    VoiceCreditPack,
+    VoiceCreditPurchase,
 )
 from auth.dependencies import get_current_user, get_current_user_optional
 from core.config import STRIPE_CONFIG, FRONTEND_URL, get_stripe_key
@@ -1624,7 +1626,14 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
     """Gère la complétion d'un checkout"""
     metadata = data.get("metadata", {})
 
-    # ── Voice addon (one-time payment) ────────────────────────────────
+    # ── Voice pack top-up (NEW system, migration 011) ─────────────────
+    # Prioritized BEFORE legacy voice_addon so the new flow always wins
+    # if both flags are present (defensive: should never happen in practice).
+    if metadata.get("kind") == "voice_pack":
+        await _handle_voice_pack_checkout(session, data, metadata)
+        return
+
+    # ── Voice addon (LEGACY one-time payment, voice_bonus_seconds) ────
     if metadata.get("type") == "voice_addon":
         await _handle_voice_addon_checkout(session, data, metadata)
         return
@@ -1763,6 +1772,84 @@ async def _handle_voice_addon_checkout(session: AsyncSession, data: dict, metada
         user_id,
         pack_id,
         user.voice_bonus_seconds,
+    )
+
+
+async def _handle_voice_pack_checkout(session: AsyncSession, data: dict, metadata: dict):
+    """Handle a completed voice pack one-shot payment (NEW system, migration 011).
+
+    Idempotent : checks ``voice_credit_purchases.stripe_session_id`` before
+    crediting. Wraps the credit + purchase row insert in a single transaction
+    so a crash mid-handler can never leave purchased_minutes credited without
+    a corresponding history row (and vice versa).
+    """
+    from billing.voice_packs_service import add_purchased_minutes
+
+    session_id = data.get("id")
+    payment_intent = data.get("payment_intent")
+    user_id_str = metadata.get("user_id", "0")
+    pack_id_str = metadata.get("pack_id", "0")
+    minutes_str = metadata.get("minutes", "0")
+    pack_slug = metadata.get("pack_slug", "unknown")
+
+    try:
+        user_id = int(user_id_str)
+        pack_id = int(pack_id_str)
+        minutes = int(minutes_str)
+    except (ValueError, TypeError):
+        logger.warning(
+            "Voice pack: invalid metadata user_id=%s pack_id=%s minutes=%s",
+            user_id_str, pack_id_str, minutes_str,
+        )
+        return
+
+    if user_id <= 0 or pack_id <= 0 or minutes <= 0:
+        logger.warning(
+            "Voice pack: invalid values user_id=%s pack_id=%s minutes=%s",
+            user_id, pack_id, minutes,
+        )
+        return
+
+    # Idempotency: skip if this session_id already recorded
+    if session_id:
+        existing = await session.execute(
+            select(VoiceCreditPurchase).where(
+                VoiceCreditPurchase.stripe_session_id == session_id
+            )
+        )
+        if existing.scalar_one_or_none():
+            logger.info("Voice pack checkout %s already processed — skipping", session_id)
+            return
+
+    user = await session.get(User, user_id)
+    if not user:
+        logger.warning("Voice pack: user %s not found", user_id)
+        return
+
+    pack = await session.get(VoiceCreditPack, pack_id)
+    if not pack:
+        logger.warning("Voice pack: pack %s not found", pack_id)
+        return
+
+    # Credit + record in single transaction
+    await add_purchased_minutes(user_id, float(minutes), session)
+
+    purchase = VoiceCreditPurchase(
+        user_id=user_id,
+        pack_id=pack_id,
+        minutes_purchased=minutes,
+        price_paid_cents=int(data.get("amount_total") or pack.price_cents),
+        stripe_session_id=session_id,
+        stripe_payment_intent_id=payment_intent,
+        status="completed",
+        completed_at=datetime.now(timezone.utc),
+    )
+    session.add(purchase)
+
+    await session.commit()
+    logger.info(
+        "Voice pack credited: +%dmin user=%d slug=%s session=%s",
+        minutes, user_id, pack_slug, session_id,
     )
 
 
