@@ -47,13 +47,13 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Quels sont les différents plans disponibles ?",
     answer:
-      "Nous proposons un plan Gratuit (5 analyses/mois), Starter (2.99€, 20 analyses), Standard (5.99€, 50 analyses) et Pro (12.99€, 200 analyses avec playlists et accès API). Chaque plan offre des fonctionnalités progressives.",
+      "Nous proposons un plan Gratuit (5 analyses/mois), Pro (8,99€, 25 analyses + voice chat + fact-checking) et Expert (19,99€, 100 analyses + playlists + deep research). Essai 7 jours sans CB sur Pro et Expert. Réduction -17% sur les abonnements annuels.",
     icon: CreditCard,
   },
   {
     question: "Mes données sont-elles protégées ?",
     answer:
-      "Oui, DeepSight est conforme au RGPD. Vos données sont chiffrées, stockées sur des serveurs sécurisés (Railway + Vercel), et ne sont jamais partagées avec des tiers. Vous pouvez supprimer votre compte et toutes vos données à tout moment.",
+      "Oui, DeepSight est conforme au RGPD. Vos données sont chiffrées, stockées sur des serveurs sécurisés en Europe (Hetzner + Vercel), et ne sont jamais partagées avec des tiers. Vous pouvez supprimer votre compte et toutes vos données à tout moment.",
     icon: Shield,
   },
   {
@@ -65,7 +65,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Puis-je utiliser DeepSight pour mes études ?",
     answer:
-      "Absolument ! DeepSight propose des outils d'étude dédiés : quiz interactifs, cartes mentales, flashcards et export PDF/Markdown. Le plan Student est conçu spécifiquement pour les étudiants avec un tarif réduit.",
+      "Absolument ! DeepSight propose des outils d'étude dédiés : quiz interactifs, cartes mentales, flashcards et export PDF/Markdown. Le plan Pro à 8,99€/mois est idéal pour les étudiants (avec essai gratuit 7 jours sans CB).",
     icon: BookOpen,
   },
   {

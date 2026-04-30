@@ -1,6 +1,6 @@
 /**
  * PricingSection — Grille tarifaire 3 plans alignee sur planPrivileges.ts.
- * Plans : Gratuit (0) / Plus (4.99) / Pro (9.99)
+ * Plans v2 : Free (0) / Pro (8,99) / Expert (19,99) — trial 7j sans CB sur Pro/Expert.
  */
 
 import { motion, useInView } from "framer-motion";
