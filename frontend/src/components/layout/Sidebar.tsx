@@ -361,7 +361,9 @@ const WhackAMoleToggle: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
             ? "text-accent-primary hover:bg-white/5"
             : "text-text-tertiary hover:text-text-secondary hover:bg-white/3"
         }`}
-        title={enabled ? t.dashboard.modes.toggle_on : t.dashboard.modes.toggle_off}
+        title={
+          enabled ? t.dashboard.modes.toggle_on : t.dashboard.modes.toggle_off
+        }
       >
         <Gamepad2
           className={`w-4 h-4 flex-shrink-0 ${enabled ? "text-accent-primary" : "text-text-quaternary"}`}
@@ -444,6 +446,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const planBadgeStyles: Record<PlanId, string> = {
     free: "bg-gray-500/15 text-gray-400",
     pro: "bg-indigo-500/15 text-indigo-400",
+    expert: "bg-violet-500/15 text-violet-400",
   };
   const minPlanPlaylists = getMinPlanForFeature("playlistsEnabled");
   const minPlanStudy = getMinPlanForFeature("flashcardsEnabled");

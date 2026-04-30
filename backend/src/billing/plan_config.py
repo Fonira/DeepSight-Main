@@ -1,9 +1,16 @@
 """
 PLAN_CONFIG — Single Source of Truth pour les plans DeepSight.
 
-Migration Avril 2026 : 3 plans (Free / Plus 4.99€ / Pro 9.99€).
+Migration Avril 2026 (Pricing v2) : 3 plans (Free / Pro 8.99€ / Expert 19.99€).
+- Pro     8,99 €/mo    ou 89,90 €/an  (-17 %)
+- Expert  19,99 €/mo   ou 199,90 €/an (-17 %)
+
 Chaque plan définit : limites, features, affichage, prix, plateformes.
 Convention : -1 = illimité.
+
+Mapping legacy v0/v1 → v2 :
+  old "plus"  → new "pro"     (4.99 € → 8.99 € ; legacy users grandfathered)
+  old "pro"   → new "expert"  (9.99 € → 19.99 € ; legacy users grandfathered)
 """
 
 from enum import Enum
@@ -15,32 +22,35 @@ logger = logging.getLogger(__name__)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PLAN IDs & HIERARCHY — 3 plans (Avril 2026)
+# PLAN IDs & HIERARCHY — 3 plans v2 (Avril 2026)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 class PlanId(str, Enum):
     FREE = "free"
-    PLUS = "plus"
-    PRO = "pro"
+    PRO = "pro"        # Tier intermédiaire v2 — anciennement "plus"
+    EXPERT = "expert"  # Tier premium v2 — anciennement "pro"
 
 
 PLAN_HIERARCHY: list[PlanId] = [
     PlanId.FREE,
-    PlanId.PLUS,
     PlanId.PRO,
+    PlanId.EXPERT,
 ]
 
-# Aliases rétrocompatibilité — anciens plan IDs → plan valide actuel
-# Les anciens plans intermédiaires → plus, les anciens plans premium → pro
+# Aliases rétrocompatibilité — anciens plan IDs v0/v1 → plan canonique v2
+# v0 legacy "plus" → v2 "pro"
+# Anciens marketing names mappés sur v2
 PLAN_ALIASES: dict[str, str] = {
-    "etudiant": "plus",
-    "starter": "plus",
-    "student": "plus",
-    "expert": "pro",
-    "equipe": "pro",
-    "team": "pro",
-    "unlimited": "pro",
+    # v0 legacy
+    "plus": "pro",          # ancien Plus 4.99 € → nouveau Pro 8.99 €
+    # Anciens marketing names mappés sur v2
+    "etudiant": "pro",
+    "starter": "pro",
+    "student": "pro",
+    "equipe": "expert",
+    "team": "expert",
+    "unlimited": "expert",
 }
 
 
@@ -120,11 +130,11 @@ PLANS: dict[str, dict[str, Any]] = {
             {"text": "Historique 60 jours", "icon": "🗂️"},
         ],
         "features_locked": [
-            {"text": "Cartes mentales & Fact-check", "unlock_plan": "plus"},
-            {"text": "Export PDF & Markdown", "unlock_plan": "plus"},
-            {"text": "Recherche web IA", "unlock_plan": "plus"},
-            {"text": "Playlists & Deep Research", "unlock_plan": "pro"},
-            {"text": "Chat vocal & TTS", "unlock_plan": "pro"},
+            {"text": "Cartes mentales & Fact-check", "unlock_plan": "pro"},
+            {"text": "Export PDF & Markdown", "unlock_plan": "pro"},
+            {"text": "Recherche web IA", "unlock_plan": "pro"},
+            {"text": "Playlists & Deep Research", "unlock_plan": "expert"},
+            {"text": "Chat vocal étendu & TTS", "unlock_plan": "expert"},
         ],
         "platforms": {
             "web": {
@@ -183,14 +193,16 @@ PLANS: dict[str, dict[str, Any]] = {
             },
         },
     },
-    # ─── PLUS (4.99€/mois) — Plan intermédiaire, Avril 2026 ──────────────
-    # Expérience enrichie : meilleur modèle, exports, mind maps, web search
-    PlanId.PLUS: {
-        "name": "Plus",
-        "name_en": "Plus",
+    # ─── PRO (8.99€/mois ou 89.90€/an) — Tier intermediaire v2, Avril 2026 ──
+    # Anciennement "Plus" v0 — refonte tarif (4.99 → 8.99) + voice 30 min/mo
+    # Experience enrichie : meilleur modele, exports, mind maps, web search, voice
+    PlanId.PRO: {
+        "name": "Pro",
+        "name_en": "Pro",
         "description": "L'essentiel pour apprendre mieux, plus vite",
         "description_en": "Everything you need to learn better, faster",
-        "price_monthly_cents": 499,
+        "price_monthly_cents": 899,
+        "price_yearly_cents": 8990,
         "stripe_price_id_test": None,
         "stripe_price_id_live": None,
         "color": "#3B82F6",
@@ -224,8 +236,8 @@ PLANS: dict[str, dict[str, Any]] = {
                 "mistral-medium-2508",
             ],
             "default_model": "mistral-medium-2508",
-            "voice_chat_enabled": False,
-            "voice_monthly_minutes": 0,
+            "voice_chat_enabled": True,           # ⚠ v2 H4 : Pro a voice
+            "voice_monthly_minutes": 30,           # ⚠ v2 H4 : 30 min/mo
             "academic_papers_per_analysis": 15,
             "bibliography_export": True,
             "academic_full_text": False,
@@ -242,6 +254,7 @@ PLANS: dict[str, dict[str, Any]] = {
             {"text": "Flashcards, Quiz, Mind Maps", "icon": "🧠", "highlight": True},
             {"text": "Fact-check automatique", "icon": "🔍", "highlight": True},
             {"text": "Recherche web IA (20/mois)", "icon": "🌐", "highlight": True},
+            {"text": "Chat vocal ElevenLabs (30 min/mois)", "icon": "🎙️", "highlight": True},
             {"text": "Export PDF + Markdown", "icon": "📄"},
             {"text": "Papers académiques (15/analyse)", "icon": "📚"},
             {"text": "Débat IA (3/mois)", "icon": "⚔️"},
@@ -249,12 +262,12 @@ PLANS: dict[str, dict[str, Any]] = {
             {"text": "Historique permanent", "icon": "♾️"},
         ],
         "features_locked": [
-            {"text": "Playlists (jusqu'à 10)", "unlock_plan": "pro"},
-            {"text": "Deep Research", "unlock_plan": "pro"},
-            {"text": "Chat vocal ElevenLabs", "unlock_plan": "pro"},
-            {"text": "Lecture audio TTS", "unlock_plan": "pro"},
-            {"text": "Modèle Mistral Large", "unlock_plan": "pro"},
-            {"text": "File prioritaire", "unlock_plan": "pro"},
+            {"text": "Playlists (jusqu'à 10)", "unlock_plan": "expert"},
+            {"text": "Deep Research", "unlock_plan": "expert"},
+            {"text": "Chat vocal ElevenLabs étendu (120 min/mois)", "unlock_plan": "expert"},
+            {"text": "Lecture audio TTS", "unlock_plan": "expert"},
+            {"text": "Modèle Mistral Large", "unlock_plan": "expert"},
+            {"text": "File prioritaire", "unlock_plan": "expert"},
         ],
         "platforms": {
             "web": {
@@ -313,14 +326,16 @@ PLANS: dict[str, dict[str, Any]] = {
             },
         },
     },
-    # ─── PRO (9.99€/mois) — Plan premium complet, Avril 2026 ─────────────
-    # Features lourdes et coûteux : ElevenLabs, Deep Research, playlists, Mistral Large
-    PlanId.PRO: {
-        "name": "Pro",
-        "name_en": "Pro",
+    # ─── EXPERT (19.99€/mois ou 199.90€/an) — Tier premium v2, Avril 2026 ──
+    # Anciennement "Pro" v0 — refonte tarif (9.99 → 19.99) + voice 120 min/mo
+    # Features lourdes et coûteuses : ElevenLabs étendu, Deep Research, playlists, Mistral Large
+    PlanId.EXPERT: {
+        "name": "Expert",
+        "name_en": "Expert",
         "description": "Toute la puissance de DeepSight, sans limites",
         "description_en": "The full power of DeepSight, unlimited",
-        "price_monthly_cents": 999,
+        "price_monthly_cents": 1999,
+        "price_yearly_cents": 19990,
         "stripe_price_id_test": None,
         "stripe_price_id_live": None,
         "color": "#8B5CF6",
@@ -356,7 +371,7 @@ PLANS: dict[str, dict[str, Any]] = {
             ],
             "default_model": "mistral-large-2512",
             "voice_chat_enabled": True,
-            "voice_monthly_minutes": 45,
+            "voice_monthly_minutes": 120,          # ⚠ v2 H4 : Expert 120 min/mo (etait 45 v0)
             "academic_papers_per_analysis": 50,
             "bibliography_export": True,
             "academic_full_text": True,
@@ -379,7 +394,7 @@ PLANS: dict[str, dict[str, Any]] = {
             },
             {"text": "Recherche web IA (60/mois)", "icon": "🌐", "highlight": True},
             {"text": "Playlists (10 max, 20 vidéos)", "icon": "📋", "highlight": True},
-            {"text": "Chat vocal ElevenLabs (45 min/mois)", "icon": "🎙️", "highlight": True},
+            {"text": "Chat vocal ElevenLabs (120 min/mois)", "icon": "🎙️", "highlight": True},
             {"text": "Lecture audio TTS", "icon": "🔊", "highlight": True},
             {"text": "Débat IA (20/mois)", "icon": "⚔️"},
             {"text": "Export PDF + Markdown", "icon": "📄"},
@@ -496,34 +511,46 @@ def get_max_duration_for_platform(plan_id: str, platform: str) -> int:
 
 
 def init_stripe_prices() -> None:
-    """Charge les stripe_price_id depuis les variables d'environnement.
+    """Charge les stripe_price_id v2 depuis les variables d'environnement.
 
-    Env vars attendues :
-      STRIPE_PRICE_PLUS_TEST / STRIPE_PRICE_PLUS_LIVE
-      STRIPE_PRICE_PRO_TEST / STRIPE_PRICE_PRO_LIVE
+    Env vars v2 (nouvelles, 8 variables) :
+      STRIPE_PRICE_PRO_MONTHLY_TEST / _LIVE
+      STRIPE_PRICE_PRO_YEARLY_TEST  / _LIVE
+      STRIPE_PRICE_EXPERT_MONTHLY_TEST / _LIVE
+      STRIPE_PRICE_EXPERT_YEARLY_TEST  / _LIVE
+
+    Env vars v0 LEGACY (conservees pour grandfathering — ne plus utiliser pour
+    nouveaux checkouts mais les webhooks Stripe les voient encore) :
+      STRIPE_PRICE_PLUS_TEST / _LIVE   -> ancien Plus 4.99 €
+      STRIPE_PRICE_PRO_TEST  / _LIVE   -> ancien Pro 9.99 €
     """
-    # Plus
-    plus_test = os.environ.get("STRIPE_PRICE_PLUS_TEST", "")
-    plus_live = os.environ.get("STRIPE_PRICE_PLUS_LIVE", "")
-    PLANS[PlanId.PLUS]["stripe_price_id_test"] = plus_test or None
-    PLANS[PlanId.PLUS]["stripe_price_id_live"] = plus_live or None
-    if plus_test or plus_live:
-        logger.info(
-            "Stripe price loaded for PLUS: test=%s live=%s",
-            bool(plus_test),
-            bool(plus_live),
-        )
+    for plan in (PlanId.PRO, PlanId.EXPERT):
+        for cycle in ("monthly", "yearly"):
+            for mode in ("test", "live"):
+                env_key = f"STRIPE_PRICE_{plan.value.upper()}_{cycle.upper()}_{mode.upper()}"
+                val = os.environ.get(env_key, "")
+                # Stocker dans le dict du plan pour debug / inspection
+                price_field = f"stripe_price_id_{cycle}_{mode}"
+                PLANS[plan][price_field] = val or None
+                if val:
+                    logger.info("Stripe v2 price loaded: %s=%s", env_key, bool(val))
 
-    # Pro
-    pro_test = os.environ.get("STRIPE_PRICE_PRO_TEST", "")
-    pro_live = os.environ.get("STRIPE_PRICE_PRO_LIVE", "")
-    PLANS[PlanId.PRO]["stripe_price_id_test"] = pro_test or None
-    PLANS[PlanId.PRO]["stripe_price_id_live"] = pro_live or None
-    if pro_test or pro_live:
+    # Legacy v0 — conservees pour rétro-compat (webhooks Stripe + grandfathered subs)
+    legacy_plus_test = os.environ.get("STRIPE_PRICE_PLUS_TEST", "")
+    legacy_plus_live = os.environ.get("STRIPE_PRICE_PLUS_LIVE", "")
+    legacy_pro_test = os.environ.get("STRIPE_PRICE_PRO_TEST", "")
+    legacy_pro_live = os.environ.get("STRIPE_PRICE_PRO_LIVE", "")
+    if legacy_plus_test or legacy_plus_live:
         logger.info(
-            "Stripe price loaded for PRO: test=%s live=%s",
-            bool(pro_test),
-            bool(pro_live),
+            "Stripe legacy price loaded for PLUS (grandfathering): test=%s live=%s",
+            bool(legacy_plus_test),
+            bool(legacy_plus_live),
+        )
+    if legacy_pro_test or legacy_pro_live:
+        logger.info(
+            "Stripe legacy price loaded for PRO v0 (grandfathering): test=%s live=%s",
+            bool(legacy_pro_test),
+            bool(legacy_pro_live),
         )
 
 
@@ -555,33 +582,31 @@ def is_feature_available(plan_id: str, feature: str, platform: str = "web") -> b
     return platform_features.get(feature, False)
 
 
-# ─── Quick Voice Call (V1) — capability matrix ───────────────────────────
+# ─── Quick Voice Call (V1) — capability matrix v2 (Avril 2026) ───────────
 #
-# Spec § f maps each plan to a (policy, value) tuple. Decoupled from the
-# boolean `is_feature_available` because the policy carries semantic info
-# the frontend uses to surface the right CTA / counter (trial badge,
-# upgrade card, monthly minutes remaining indicator).
+# Pricing v2 mapping :
+#   free   -> trial_only (3 min lifetime)
+#   pro    -> monthly_minutes (30 min/mo rolling)  ⚠ v2 H4
+#   expert -> monthly_minutes (120 min/mo rolling) ⚠ v2 H4
 #
-# Plan label mapping (spec ↔ current SSOT):
-#   spec "free"   ↔ current `free`
-#   spec "pro"    ↔ current `plus` (intermediate paid — CTA upgrade)
-#   spec "expert" ↔ current `pro` (premium tier — 30 min/mois)
-#
-# `expert` is also accepted as an alias to current `pro` so the spec's
-# literal terminology continues to work.
+# Legacy aliases preserves backward compatibility :
+#   plus     (v0 legacy)    -> pro v2     -> 30 min
+#   etudiant/starter/student-> pro v2     -> 30 min
+#   equipe/team/unlimited   -> expert v2  -> 120 min
 
 VOICE_CALL_QUICK_CAPABILITY: dict[str, tuple[str, int | None]] = {
     "free": ("trial_only", 3),
-    "plus": ("upgrade_cta", None),
+    # v2 canoniques
     "pro": ("monthly_minutes", 30),
-    # Aliases preserving spec terminology
-    "expert": ("monthly_minutes", 30),
-    "etudiant": ("upgrade_cta", None),
-    "starter": ("upgrade_cta", None),
-    "student": ("upgrade_cta", None),
-    "equipe": ("monthly_minutes", 30),
-    "team": ("monthly_minutes", 30),
-    "unlimited": ("monthly_minutes", 30),
+    "expert": ("monthly_minutes", 120),
+    # Legacy v0 aliases — résolus vers v2
+    "plus": ("monthly_minutes", 30),       # v0 plus -> v2 pro -> 30 min
+    "etudiant": ("monthly_minutes", 30),
+    "starter": ("monthly_minutes", 30),
+    "student": ("monthly_minutes", 30),
+    "equipe": ("monthly_minutes", 120),
+    "team": ("monthly_minutes", 120),
+    "unlimited": ("monthly_minutes", 120),
 }
 
 
@@ -589,9 +614,9 @@ def get_voice_call_quick_capability(plan_id: str) -> tuple[str, int | None]:
     """Return the Quick Voice Call (V1) capability tuple for ``plan_id``.
 
     Returns one of :
-      * ``("trial_only", 3)``       → 1-shot 3-min lifetime trial
-      * ``("upgrade_cta", None)``   → blocked, CTA upgrade to premium
-      * ``("monthly_minutes", 30)`` → 30 min per rolling 30-day window
+      * ``("trial_only", 3)``        -> 1-shot 3-min lifetime trial (Free)
+      * ``("monthly_minutes", 30)``  -> 30 min/mo rolling (Pro v2)
+      * ``("monthly_minutes", 120)`` -> 120 min/mo rolling (Expert v2)
 
     Unknown plans default to the Free policy.
     """
@@ -601,7 +626,7 @@ def get_voice_call_quick_capability(plan_id: str) -> tuple[str, int | None]:
 
 
 def get_plan_index(plan_id: str) -> int:
-    """Retourne l'index du plan dans la hiérarchie (0 = free, 1 = plus, 2 = pro)."""
+    """Retourne l'index du plan dans la hiérarchie v2 (0=free, 1=pro, 2=expert)."""
     try:
         normalized = normalize_plan_id(plan_id)
         return PLAN_HIERARCHY.index(PlanId(normalized))
@@ -630,28 +655,88 @@ def get_minimum_plan_for(feature: str) -> str:
         web = PLANS[plan_id]["platforms"]["web"]
         if feature in web and web[feature]:
             return plan_id.value
-    return PlanId.PRO.value
+    return PlanId.EXPERT.value
 
 
-def get_price_id(plan_id: str, test_mode: bool = True) -> Optional[str]:
-    """Retourne le stripe_price_id pour un plan."""
-    plan = PLANS.get(plan_id)
-    if not plan:
+def get_price_id(plan_id: str, cycle: str = "monthly", test_mode: bool = True) -> Optional[str]:
+    """Retourne le stripe_price_id pour un (plan, cycle) v2.
+
+    Args:
+        plan_id: "free" | "pro" | "expert" (ou alias legacy)
+        cycle: "monthly" | "yearly"
+        test_mode: True = clés Stripe TEST, False = LIVE
+
+    Returns:
+        Price ID ou None si plan free / cycle invalide / env var non set.
+    """
+    if cycle not in ("monthly", "yearly"):
         return None
-    key = "stripe_price_id_test" if test_mode else "stripe_price_id_live"
-    return plan.get(key)
+    normalized = normalize_plan_id(plan_id)
+    if normalized == "free":
+        return None
+    suffix = "TEST" if test_mode else "LIVE"
+    env_var = f"STRIPE_PRICE_{normalized.upper()}_{cycle.upper()}_{suffix}"
+    return os.environ.get(env_var) or None
 
 
 def get_plan_by_price_id(price_id: str) -> Optional[str]:
-    """Retourne le plan_id correspondant à un stripe_price_id (test ou live)."""
+    """Retourne le plan_id v2 correspondant à un stripe_price_id (test/live, monthly/yearly)."""
     if not price_id:
         return None
-    for plan_id, plan in PLANS.items():
-        if plan.get("stripe_price_id_test") == price_id:
-            return plan_id if isinstance(plan_id, str) else plan_id.value
-        if plan.get("stripe_price_id_live") == price_id:
-            return plan_id if isinstance(plan_id, str) else plan_id.value
+    # Resolve via env vars (8 v2 + 4 legacy)
+    env_to_plan = {
+        # v2 actifs
+        "STRIPE_PRICE_PRO_MONTHLY_TEST": "pro",
+        "STRIPE_PRICE_PRO_MONTHLY_LIVE": "pro",
+        "STRIPE_PRICE_PRO_YEARLY_TEST": "pro",
+        "STRIPE_PRICE_PRO_YEARLY_LIVE": "pro",
+        "STRIPE_PRICE_EXPERT_MONTHLY_TEST": "expert",
+        "STRIPE_PRICE_EXPERT_MONTHLY_LIVE": "expert",
+        "STRIPE_PRICE_EXPERT_YEARLY_TEST": "expert",
+        "STRIPE_PRICE_EXPERT_YEARLY_LIVE": "expert",
+        # Legacy v0 (grandfathered)
+        "STRIPE_PRICE_PLUS_TEST": "pro",      # v0 plus -> v2 pro
+        "STRIPE_PRICE_PLUS_LIVE": "pro",
+        "STRIPE_PRICE_PRO_TEST": "expert",    # v0 pro -> v2 expert
+        "STRIPE_PRICE_PRO_LIVE": "expert",
+    }
+    for env_key, plan_value in env_to_plan.items():
+        if os.environ.get(env_key) == price_id:
+            return plan_value
     return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PLAN_PRICES_V2 — Pricing v2 (8.99 / 19.99) avec cycle mensuel + annuel −17 %
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Prix en centimes (€). Annuel = mensuel × 12 × 0.833 (≈ −17 %).
+PLAN_PRICES_V2: dict[str, dict[str, int]] = {
+    "pro": {
+        "monthly": 899,    # 8.99 €
+        "yearly": 8990,    # 89.90 € → ≈ 7.49 €/mo équivalent
+    },
+    "expert": {
+        "monthly": 1999,   # 19.99 €
+        "yearly": 19990,   # 199.90 € → ≈ 16.66 €/mo équivalent
+    },
+}
+
+# Voice minutes par plan — Pricing v2 (H4)
+PLAN_VOICE_MINUTES_V2: dict[str, int] = {
+    "free": 0,
+    "pro": 30,
+    "expert": 120,
+}
+
+
+def get_voice_minutes(plan_id: str) -> int:
+    """Retourne le nombre de minutes ElevenLabs/voice par mois pour un plan v2.
+
+    Free=0, Pro=30, Expert=120. Aliases legacy résolus via normalize_plan_id.
+    """
+    normalized = normalize_plan_id(plan_id)
+    return PLAN_VOICE_MINUTES_V2.get(normalized, 0)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

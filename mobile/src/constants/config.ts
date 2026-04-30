@@ -45,16 +45,26 @@ export const STORAGE_KEYS = {
   AMBIENT_LIGHTING_ENABLED: "deepsight_ambient_lighting_enabled",
 };
 
-// Plans - matches backend plan IDs (3-plan architecture: free/plus/pro)
+// Plans - matches backend plan IDs (Pricing v2 — 3-plan architecture: free/pro/expert)
+//
+// Migration v0 → v2 (Avril 2026) :
+//   - "plus" v0 (4,99 €) → "pro" v2 (8,99 €/mois, 89,90 €/an)
+//   - "pro"  v0 (9,99 €) → "expert" v2 (19,99 €/mois, 199,90 €/an)
+//   Mappings legacy gérés par normalize_plan_id côté backend (flag User.is_legacy_pricing
+//   pour le grandfathering) et par normalizePlanId côté mobile (config/planPrivileges.ts).
 export const PLANS = {
   FREE: "free",
-  PLUS: "plus",
   PRO: "pro",
-  // Legacy aliases for rétrocompatibilité
-  STUDENT: "plus",
-  STARTER: "plus",
-  EXPERT: "pro",
-  TEAM: "pro",
+  EXPERT: "expert",
+  // Legacy aliases pour rétrocompatibilité (mappés via normalize_plan_id côté backend) :
+  //   - "plus"     → "pro"
+  //   - "starter"  → "pro"
+  //   - "student" / "étudiant" → "pro"
+  //   - "team" / "unlimited"   → "expert"
+  PLUS: "pro",
+  STUDENT: "pro",
+  STARTER: "pro",
+  TEAM: "expert",
 } as const;
 
 export type PlanType = (typeof PLANS)[keyof typeof PLANS];

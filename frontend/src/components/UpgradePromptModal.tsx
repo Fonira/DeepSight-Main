@@ -2,18 +2,16 @@
  * UpgradePromptModal v2.0 - Modal that appears when user reaches their limit
  * Encourages upgrade with clear value proposition
  *
- * Aligned with pricing strategy:
+ * Aligned with Pricing v2 (Avril 2026) :
  * - Free: 0€ - 5 analyses/mois
- * - Starter: 2.99€ - Essentials
- * - Standard: 5.99€ - Utilisateurs réguliers
- * - Pro: 12.99€ - Créateurs & Pros (POPULAIRE)
+ * - Pro: 8,99€ - 25 analyses + voice chat + fact-checking (POPULAIRE, trial 7j)
+ * - Expert: 19,99€ - 100 analyses + playlists + deep research (trial 7j)
  */
 
 import React from "react";
 import {
   X,
   Zap,
-  GraduationCap,
   Star,
   Crown,
   Users,
@@ -31,6 +29,7 @@ import {
   PLANS_INFO,
   PLAN_LIMITS,
   CONVERSION_TRIGGERS,
+  type PlanId,
 } from "../config/planPrivileges";
 
 interface UpgradePromptModalProps {
@@ -158,38 +157,36 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
     return info[limitType] || info.credits;
   };
 
-  // Icon mapping — aligné sur PlanId (planPrivileges.ts)
+  // Icon mapping — aligné sur PlanId v2 (planPrivileges.ts)
   const iconMap: Record<string, React.ElementType> = {
     free: Zap,
-    etudiant: Star,
-    starter: GraduationCap,
-    pro: Crown,
+    pro: Star, // v2 Pro (était Plus v0)
+    expert: Crown, // v2 Expert (était Pro v0)
   };
 
   // Gradient mapping
   const gradientMap: Record<string, string> = {
     free: "from-gray-500 to-gray-600",
-    etudiant: "from-emerald-500 to-green-600",
-    starter: "from-blue-500 to-blue-600",
-    pro: "from-violet-500 to-purple-600",
+    pro: "from-blue-500 to-indigo-600",
+    expert: "from-violet-500 to-purple-600",
   };
 
   const lang = language === "fr" ? "fr" : "en";
   const formatPrice = (cents: number) =>
     `${(cents / 100).toFixed(2).replace(".", ",")}€`;
 
-  // Recommended plan based on current plan and limit type
+  // Recommended plan based on current plan and limit type (Pricing v2)
   const getRecommendedPlan = () => {
-    // Playlist limit? Recommend Pro directly
+    // Playlist / deepResearch / Expert-only features → recommend Expert directly
     if (limitType === "playlist") {
-      const info = PLANS_INFO.pro;
-      const limits = PLAN_LIMITS.pro;
+      const info = PLANS_INFO.expert;
+      const limits = PLAN_LIMITS.expert;
       return {
-        id: "pro",
+        id: "expert" as PlanId,
         name: lang === "fr" ? info.name : info.nameEn,
         price: formatPrice(info.priceMonthly),
-        icon: iconMap.pro,
-        color: gradientMap.pro,
+        icon: iconMap.expert,
+        color: gradientMap.expert,
         highlight:
           lang === "fr"
             ? `${limits.monthlyAnalyses} analyses/mois`
@@ -211,72 +208,46 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
       };
     }
 
-    // Default progression: free → etudiant → starter → pro
+    // Default progression v2 : free → pro → expert
     if (plan === "free") {
-      const info = PLANS_INFO.etudiant;
-      const limits = PLAN_LIMITS.etudiant;
+      const info = PLANS_INFO.pro;
+      const limits = PLAN_LIMITS.pro;
       return {
-        id: "etudiant",
+        id: "pro" as PlanId,
         name: lang === "fr" ? info.name : info.nameEn,
         price: formatPrice(info.priceMonthly),
-        icon: iconMap.etudiant,
-        color: gradientMap.etudiant,
+        icon: iconMap.pro,
+        color: gradientMap.pro,
         highlight:
-          lang === "fr" ? "Découvrez les essentiels" : "Discover essentials",
+          lang === "fr"
+            ? "L'essentiel pour apprendre mieux"
+            : "Everything to learn better",
         features:
           lang === "fr"
             ? [
                 `${limits.monthlyAnalyses} analyses/mois`,
-                "Flashcards & cartes mentales",
-                "Export Markdown",
-                "Historique permanent",
+                "Flashcards, Mind Maps, Fact-check",
+                `Recherche web IA (${limits.webSearchMonthly}/mois)`,
+                `Chat vocal (${limits.voiceChatMonthlyMinutes} min/mois)`,
               ]
             : [
                 `${limits.monthlyAnalyses} analyses/mo`,
-                "Flashcards & mind maps",
-                "Markdown export",
-                "Permanent history",
+                "Flashcards, Mind Maps, Fact-check",
+                `AI Web Search (${limits.webSearchMonthly}/mo)`,
+                `Voice chat (${limits.voiceChatMonthlyMinutes} min/mo)`,
               ],
       };
     }
-    if (plan === "etudiant") {
-      const info = PLANS_INFO.starter;
-      const limits = PLAN_LIMITS.starter;
-      return {
-        id: "starter",
-        name: lang === "fr" ? info.name : info.nameEn,
-        price: formatPrice(info.priceMonthly),
-        icon: iconMap.starter,
-        color: gradientMap.starter,
-        highlight:
-          lang === "fr"
-            ? `Recherche web (${limits.webSearchMonthly}/mois)`
-            : `Web search (${limits.webSearchMonthly}/mo)`,
-        features:
-          lang === "fr"
-            ? [
-                `${limits.monthlyAnalyses} analyses/mois`,
-                `Recherche web (${limits.webSearchMonthly}/mois)`,
-                "Flashcards & cartes mentales",
-                "Vidéos jusqu'à 2h",
-              ]
-            : [
-                `${limits.monthlyAnalyses} analyses/mo`,
-                `Web search (${limits.webSearchMonthly}/mo)`,
-                "Flashcards & mind maps",
-                "Videos up to 2h",
-              ],
-      };
-    }
-    // starter → pro
-    const info = PLANS_INFO.pro;
-    const limits = PLAN_LIMITS.pro;
+
+    // pro → expert
+    const info = PLANS_INFO.expert;
+    const limits = PLAN_LIMITS.expert;
     return {
-      id: "pro",
+      id: "expert" as PlanId,
       name: lang === "fr" ? info.name : info.nameEn,
       price: formatPrice(info.priceMonthly),
-      icon: iconMap.pro,
-      color: gradientMap.pro,
+      icon: iconMap.expert,
+      color: gradientMap.expert,
       highlight:
         lang === "fr"
           ? `Playlists (${limits.maxPlaylistVideos} vidéos)`
@@ -286,14 +257,14 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
           ? [
               `${limits.monthlyAnalyses} analyses/mois`,
               `Playlists (${limits.maxPlaylistVideos} vidéos)`,
-              "Chat illimité",
-              "Export PDF",
+              "Deep Research + Chat illimité",
+              `Chat vocal ${limits.voiceChatMonthlyMinutes} min/mois`,
             ]
           : [
               `${limits.monthlyAnalyses} analyses/mo`,
               `Playlists (${limits.maxPlaylistVideos} videos)`,
-              "Unlimited chat",
-              "PDF export",
+              "Deep Research + Unlimited chat",
+              `Voice chat ${limits.voiceChatMonthlyMinutes} min/mo`,
             ],
     };
   };

@@ -66,7 +66,7 @@ const FEATURE_CTAS: FeatureCTA[] = [
     labelKey: "flashcards",
     hash: "#flashcards",
     minPlan: "pro",
-    price: "5,99€",
+    price: "8,99€",
   },
   {
     key: "mind_maps",
@@ -75,7 +75,7 @@ const FEATURE_CTAS: FeatureCTA[] = [
     labelKey: "mindMaps",
     hash: "#mindmap",
     minPlan: "pro",
-    price: "5,99€",
+    price: "8,99€",
   },
   {
     key: "web_search",
@@ -84,7 +84,7 @@ const FEATURE_CTAS: FeatureCTA[] = [
     labelKey: "webSearch",
     hash: "#websearch",
     minPlan: "pro",
-    price: "5,99€",
+    price: "8,99€",
   },
   {
     key: "exports",
@@ -93,7 +93,7 @@ const FEATURE_CTAS: FeatureCTA[] = [
     labelKey: "exports",
     hash: "#export",
     minPlan: "pro",
-    price: "5,99€",
+    price: "8,99€",
   },
   {
     key: "playlists",
@@ -102,7 +102,7 @@ const FEATURE_CTAS: FeatureCTA[] = [
     labelKey: "playlists",
     hash: "#playlists",
     minPlan: "pro",
-    price: "5,99€",
+    price: "8,99€",
   },
 ];
 

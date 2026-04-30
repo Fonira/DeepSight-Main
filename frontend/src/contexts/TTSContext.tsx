@@ -120,7 +120,8 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const { user } = useAuthContext();
   const plan = user?.plan || "free";
-  const isPremium = plan !== "free" && plan !== "decouverte";
+  // v2 : tous les plans payants (pro, expert, + legacy aliases) sont premium TTS-eligible
+  const isPremium = plan !== "free";
 
   // Settings state
   const [autoPlayEnabled, setAutoPlayEnabledState] = useState(() =>

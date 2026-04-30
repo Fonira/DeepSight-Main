@@ -1,6 +1,6 @@
 /**
  * PricingSection — Grille tarifaire 3 plans alignee sur planPrivileges.ts.
- * Plans : Gratuit (0) / Plus (4.99) / Pro (9.99)
+ * Plans v2 : Free (0) / Pro (8,99) / Expert (19,99) — trial 7j sans CB sur Pro/Expert.
  */
 
 import { motion, useInView } from "framer-motion";
@@ -63,20 +63,20 @@ const PLAN_CARDS: PlanCard[] = [
     ],
   },
   {
-    id: "plus",
+    id: "pro",
     icon: Star,
     gradient: "from-blue-500 to-indigo-600",
     borderColor: "border-blue-500/50",
     glowColor: "shadow-xl shadow-blue-500/15",
     features: [
       {
-        textFr: `${PLAN_LIMITS.plus.monthlyAnalyses} analyses/mois`,
-        textEn: `${PLAN_LIMITS.plus.monthlyAnalyses} analyses/month`,
+        textFr: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/mois`,
+        textEn: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/month`,
         included: true,
       },
       {
-        textFr: `Videos jusqu'a ${PLAN_LIMITS.plus.maxVideoLengthMin} min`,
-        textEn: `Videos up to ${PLAN_LIMITS.plus.maxVideoLengthMin} min`,
+        textFr: `Videos jusqu'a ${PLAN_LIMITS.pro.maxVideoLengthMin} min`,
+        textEn: `Videos up to ${PLAN_LIMITS.pro.maxVideoLengthMin} min`,
         included: true,
       },
       {
@@ -115,20 +115,20 @@ const PLAN_CARDS: PlanCard[] = [
     ],
   },
   {
-    id: "pro",
+    id: "expert",
     icon: Crown,
     gradient: "from-violet-500 to-purple-600",
     borderColor: "border-violet-500/40",
     glowColor: "",
     features: [
       {
-        textFr: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/mois`,
-        textEn: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/month`,
+        textFr: `${PLAN_LIMITS.expert.monthlyAnalyses} analyses/mois`,
+        textEn: `${PLAN_LIMITS.expert.monthlyAnalyses} analyses/month`,
         included: true,
       },
       {
-        textFr: `Videos jusqu'a ${Math.round(PLAN_LIMITS.pro.maxVideoLengthMin / 60)}h`,
-        textEn: `Videos up to ${Math.round(PLAN_LIMITS.pro.maxVideoLengthMin / 60)}h`,
+        textFr: `Videos jusqu'a ${Math.round(PLAN_LIMITS.expert.maxVideoLengthMin / 60)}h`,
+        textEn: `Videos up to ${Math.round(PLAN_LIMITS.expert.maxVideoLengthMin / 60)}h`,
         included: true,
       },
       {
@@ -330,7 +330,7 @@ export default function PricingSection({
                       ? lang === "fr"
                         ? "Commencer gratuitement"
                         : "Start for free"
-                      : plan.id === "plus"
+                      : plan.id === "pro"
                         ? lang === "fr"
                           ? "Essayer 7 jours gratuitement"
                           : "Try 7 days free"

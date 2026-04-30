@@ -21,7 +21,7 @@ Note: This account has a Pro plan activated for full feature access during revie
 IN-APP PURCHASES
 DeepSight uses Stripe for subscription management via the web platform. The mobile app does NOT process payments directly — users are redirected to the web app (https://www.deepsightsynthesis.com/upgrade) for subscription purchases. The app functions as a client to our existing web service.
 
-Plan tiers: Free, Plus (€4.99/mo), Pro (€9.99/mo)
+Plan tiers (Pricing v2 — April 2026): Free, Pro (€8.99/mo or €89.90/yr), Expert (€19.99/mo or €199.90/yr). 7-day free trial without credit card on Pro and Expert.
 
 AI USAGE DISCLOSURE
 This app uses artificial intelligence in the following ways:
