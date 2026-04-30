@@ -2807,20 +2807,26 @@ a:hover {
 .ds-call-active__hangup,
 .ds-hangup {
   flex: 1;
-  padding: 11px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-strong);
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  font-size: 13px;
+  padding: 13px 18px;
+  border-radius: 12px;
+  font-size: 13.5px;
   font-weight: 600;
-  font-family: var(--font-body);
+  font-family: inherit;
+  letter-spacing: 0.015em;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    background 240ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 240ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 240ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 120ms cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
+  box-sizing: border-box;
 }
 
 .ds-call-active__mute-icon,
@@ -2832,46 +2838,96 @@ a:hover {
 .ds-call-active__mute-label,
 .ds-call-active__hangup-label {
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.015em;
+}
+
+/* Mute (état non-muté) — secondary v3 (transparent + border subtil) */
+.ds-call-active__mute {
+  border: 1px solid var(--v3-border, rgba(255, 255, 255, 0.08));
+  background: transparent;
+  color: var(--v3-text, #f5e6d0);
 }
 
 .ds-call-active__mute:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-accent);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.16);
   transform: translateY(-1px);
 }
 
 .ds-call-active__mute:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--v3-accent, #d4a574);
   outline-offset: 2px;
 }
 
-/* État MUTÉ — orange/red, plus visible */
+/* État MUTÉ — gold/copper accent v3 (en remplacement de l'orange générique) */
 .ds-call-active__mute.is-muted {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  border-color: transparent;
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.32);
+  background:
+    radial-gradient(
+      ellipse at top left,
+      rgba(244, 200, 140, 0.28) 0%,
+      transparent 60%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(212, 165, 116, 0.28) 0%,
+      rgba(180, 120, 70, 0.18) 50%,
+      rgba(212, 165, 116, 0.32) 100%
+    );
+  border: 1px solid rgba(244, 200, 140, 0.65);
+  color: #fff5e6;
+  text-shadow: 0 0 12px rgba(212, 165, 116, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 200, 0.22),
+    0 0 18px rgba(212, 165, 116, 0.32);
 }
 
 .ds-call-active__mute.is-muted:hover {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.42);
+  border-color: rgba(244, 200, 140, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 200, 0.28),
+    0 0 24px rgba(212, 165, 116, 0.45);
 }
 
+/* Hangup — destructive premium (rouge) avec radius/shadow alignés v3 */
 .ds-call-active__hangup,
 .ds-hangup {
-  background: linear-gradient(135deg, #ef4444, #b91c1c);
-  border-color: transparent;
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  background:
+    radial-gradient(
+      ellipse at top left,
+      rgba(255, 150, 150, 0.18) 0%,
+      transparent 60%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(239, 68, 68, 0.92) 0%,
+      rgba(185, 28, 28, 0.92) 100%
+    );
   color: #fff;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 200, 200, 0.18),
+    0 4px 14px rgba(239, 68, 68, 0.28);
 }
 
 .ds-call-active__hangup:hover,
 .ds-hangup:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-  background: linear-gradient(135deg, #f87171, #dc2626);
+  border-color: rgba(248, 113, 113, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 200, 200, 0.28),
+    0 6px 20px rgba(239, 68, 68, 0.45);
+  background:
+    radial-gradient(
+      ellipse at top left,
+      rgba(255, 180, 180, 0.28) 0%,
+      transparent 60%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(248, 113, 113, 0.95) 0%,
+      rgba(220, 38, 38, 0.95) 100%
+    );
 }
 
 .ds-call-active__hangup:focus-visible,
@@ -2932,6 +2988,51 @@ a:hover {
   border-radius: var(--radius-full);
   transition: width 0.4s ease-out;
   box-shadow: 0 0 8px rgba(139, 92, 246, 0.35);
+}
+
+/* Indeterminate state — pas encore de progress concret (phase=searching).
+   Sliding pill animation, no width transition. */
+.ds-ctx-bar__fill.is-indeterminate {
+  width: 40%;
+  transition: none;
+  animation: indeterminate-slide 1.3s ease-in-out infinite;
+}
+
+/* DeepSightSpinner inside CallActiveView header — visible only while
+   analysisPhase === "searching" (before the first [CTX UPDATE] arrives).
+   Tiny visual cue so the call screen never looks frozen for 5-30s. */
+.ds-call-active__searching {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  opacity: 0.85;
+}
+
+/* Central loading panel — visible while analysisPhase is "searching" OR
+   "streaming". GROS spinner DeepSight (md = 64px + logos orbitants
+   YouTube/TikTok/Mistral/Tournesol) avec label adaptatif "Recherche du
+   transcript…" / "Analyse en cours…". Disparaît quand "complete" reçu.
+   Placé juste après le header, au-dessus de la VoiceWaveform — le user
+   doit voir le feedback même quand le drawer settings est fermé. */
+.ds-call-active__loading-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 16px 12px;
+  gap: 6px;
+  animation: fadeInUp 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ── Upgrade CTA (post-call ou bloquant) ──────────── */
@@ -4247,15 +4348,23 @@ a:hover {
   font-weight: 600;
   color: rgba(255, 255, 255, 0.85);
 }
+/* Badge — emojis ⚡ (LIVE = auto-save instantané) / 💾 (HARD = staged + Apply).
+   Plus de pill ou de texte HARD/LIVE — l'emoji seul suffit, l'utilisateur
+   apprend rapidement le mapping. Tooltip natif via `title=` sur la Section
+   pour les deux secondes d'incertitude initiales. */
 .dsp-vs-section-badge {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(99, 102, 241, 0.15);
-  color: #a5a8ff;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.65;
+  padding: 0;
+  background: none;
+  color: inherit;
+  filter: grayscale(0.2);
+  transition: opacity 0.15s ease;
+}
+.dsp-vs-section-header:hover .dsp-vs-section-badge {
+  opacity: 0.95;
+  filter: none;
 }
 .dsp-vs-chevron {
   color: rgba(255, 255, 255, 0.3);
