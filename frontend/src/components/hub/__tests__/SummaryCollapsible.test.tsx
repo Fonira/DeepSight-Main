@@ -40,4 +40,38 @@ describe("SummaryCollapsible", () => {
     fireEvent.click(screen.getByText("02:14"));
     expect(onCitationClick).toHaveBeenCalledWith(134);
   });
+
+  it("renders the citations panel already open when defaultOpen is true", () => {
+    render(<SummaryCollapsible context={ctx} defaultOpen />);
+    // Citations are only rendered while the panel is expanded — finding them
+    // proves the panel mounted in the open state.
+    expect(screen.getByText("02:14")).toBeInTheDocument();
+    expect(screen.getByText("07:48")).toBeInTheDocument();
+  });
+
+  it("calls scrollIntoView at mount when defaultOpen is true", () => {
+    const scrollSpy = vi.fn();
+    // jsdom does not implement scrollIntoView; install a stub before render.
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      value: scrollSpy,
+      configurable: true,
+      writable: true,
+    });
+    render(<SummaryCollapsible context={ctx} defaultOpen />);
+    expect(scrollSpy).toHaveBeenCalledWith({
+      block: "center",
+      behavior: "smooth",
+    });
+  });
+
+  it("does not call scrollIntoView when defaultOpen is false", () => {
+    const scrollSpy = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      value: scrollSpy,
+      configurable: true,
+      writable: true,
+    });
+    render(<SummaryCollapsible context={ctx} />);
+    expect(scrollSpy).not.toHaveBeenCalled();
+  });
 });

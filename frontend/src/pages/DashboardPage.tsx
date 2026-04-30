@@ -410,8 +410,8 @@ export const DashboardPage: React.FC = () => {
       const response = await videoApi.quickChat(chatUrl, language);
 
       if (response.summary_id) {
-        // Naviguer directement vers le chat avec ce summary_id
-        navigate(`/chat?summary=${response.summary_id}`);
+        // Hub-first : ouvrir directement la conv dans le hub avec le résumé déroulé.
+        navigate(`/hub?summary=${response.summary_id}&open_summary=1`);
       }
     } catch (err: any) {
       setError(
@@ -1668,7 +1668,7 @@ export const DashboardPage: React.FC = () => {
                     });
                   }}
                   onOpenAnalysis={(summaryId) => {
-                    navigate(`/history?open=${summaryId}`);
+                    navigate(`/hub?summary=${summaryId}`);
                   }}
                 />
               </div>
