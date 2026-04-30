@@ -13,7 +13,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
-  Zap,
   MessageSquare,
   Globe,
   TrendingUp,
@@ -35,11 +34,9 @@ import {
   Lightbulb,
   Download,
   History,
-  Settings,
   Star,
   Compass,
   Wand2,
-  Languages,
   FileDown,
   Link2,
   Bookmark,

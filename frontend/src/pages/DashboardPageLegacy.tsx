@@ -86,13 +86,10 @@ import {
 // 📊 AnalysisHub — Panel intelligent à onglets
 import { AnalysisHub } from "../components/AnalysisHub";
 // 📥 Export & Share
-import { ExportMenu } from "../components/analysis/ExportMenu";
 import { AudioPlayer } from "../components/analysis/AudioPlayer";
-import { ShareButton } from "../components/analysis/ShareButton";
 import { AnalysisActionBar } from "../components/analysis/AnalysisActionBar";
 import { sanitizeTitle } from "../utils/sanitize";
 // 🎙️ Voice Chat
-import VoiceButton from "../components/voice/VoiceButton";
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
 import { useMicLevel } from "../components/voice/hooks/useMicLevel";
@@ -193,7 +190,7 @@ export const DashboardPage: React.FC = () => {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
-  const [chatQuota, setChatQuota] = useState<ChatQuota | null>(null);
+  const [_chatQuota, setChatQuota] = useState<ChatQuota | null>(null);
   const [wsQuota, setWsQuota] = useState<
     { used: number; limit: number; remaining: number } | undefined
   >(undefined);
@@ -207,9 +204,9 @@ export const DashboardPage: React.FC = () => {
   const [analysisCountThisMonth, setAnalysisCountThisMonth] = useState(0);
   const [lastAnalysisTimeSaved, setLastAnalysisTimeSaved] = useState(0);
   const [concepts, setConcepts] = useState<EnrichedConcept[]>([]);
-  const [conceptsLoading, setConceptsLoading] = useState(false);
-  const [conceptsProvider, setConceptsProvider] = useState<string>("none");
-  const [conceptsCategories, setConceptsCategories] = useState<
+  const [_conceptsLoading, setConceptsLoading] = useState(false);
+  const [_conceptsProvider, setConceptsProvider] = useState<string>("none");
+  const [_conceptsCategories, setConceptsCategories] = useState<
     Record<string, { label: string; icon: string; count: number }>
   >({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -266,7 +263,8 @@ export const DashboardPage: React.FC = () => {
   const voiceEnabled =
     isAdminVoice || PLAN_LIMITS[normalizedPlan].voiceChatEnabled;
   // Note: isStarterPlus réservé pour futures fonctionnalités
-  const isExpertUser = normalizedPlan === "pro"; // Pro est le plan le plus élevé
+  const _isExpertUser = normalizedPlan === "pro"; // Pro est le plan le plus élevé
+  void _isExpertUser;
   const canDeepResearch = ["pro", "expert", "admin", "unlimited"].includes(
     normalizedPlan,
   );
@@ -303,7 +301,7 @@ export const DashboardPage: React.FC = () => {
 
   // === 🏷️ Fonction pour charger les concepts enrichis ===
 
-  const loadConcepts = async (summaryId: number) => {
+  const _loadConcepts = async (summaryId: number) => {
     setConceptsLoading(true);
     try {
       // Utiliser l'endpoint enrichi (Mistral + Perplexity pour Pro/Expert)
@@ -319,6 +317,7 @@ export const DashboardPage: React.FC = () => {
       setConceptsLoading(false);
     }
   };
+  void _loadConcepts;
 
   // === Handlers timecodes ===
 
@@ -334,13 +333,14 @@ export const DashboardPage: React.FC = () => {
     [playerVisible],
   );
 
-  const chatMarkdownComponents = useMemo(() => {
+  const _chatMarkdownComponents = useMemo(() => {
     return createTimecodeMarkdownComponents({
       mode: "embedded",
       onTimecodeClick: handleTimecodeClick,
       linkClassName: "text-accent-primary hover:underline cursor-pointer",
     });
   }, [handleTimecodeClick]);
+  void _chatMarkdownComponents;
 
   // === Charger quota chat ===
 
@@ -556,7 +556,7 @@ export const DashboardPage: React.FC = () => {
         if (searchResult.results.length > 0) {
           // Convert to VideoCandidate format for the discovery modal
           const candidates: VideoCandidate[] = searchResult.results.map(
-            (r, idx) => ({
+            (r, _idx) => ({
               video_id: r.video_id,
               title: r.video_title,
               channel: r.video_channel,

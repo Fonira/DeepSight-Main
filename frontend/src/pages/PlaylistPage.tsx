@@ -624,8 +624,9 @@ export const PlaylistPage: React.FC = () => {
     (progress as ExtendedPlaylistTaskStatus)?.current_chunk || 0;
   const totalChunks =
     (progress as ExtendedPlaylistTaskStatus)?.total_chunks || 0;
-  const skippedVideos =
+  const _skippedVideos =
     (progress as ExtendedPlaylistTaskStatus)?.skipped_videos || [];
+  void _skippedVideos;
 
   // 🆕 Message d'encouragement
   const encouragementMsg = isProcessing
