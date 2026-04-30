@@ -1780,9 +1780,18 @@ async def create_voice_session(
                 voice_session_id=voice_session.id,
             )
         else:
+            # Use the same effective_summary_id logic as for the unified context
+            # block: streaming sessions auto-create a placeholder Summary (cf
+            # v1_summary / v3_summary above), so voice_session.summary_id is set
+            # even when request.summary_id is None. Without this, every webhook
+            # tool call (web_search, search_in_transcript, etc.) sends
+            # summary_id="0", which verify_tool_request rejects with 404, and
+            # the agent has to tell the user "web search is not available".
             tools_config = ElevenLabsClient.build_tools_config(
                 webhook_base_url=webhook_base_url,
-                api_token=str(request.summary_id or 0),
+                api_token=str(
+                    request.summary_id or voice_session.summary_id or 0
+                ),
             )
         # Filter tools to only those allowed for this agent type
         if agent_config.tools:
