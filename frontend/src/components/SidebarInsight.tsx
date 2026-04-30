@@ -57,7 +57,7 @@ export const SidebarInsight: React.FC<SidebarInsightProps> = ({
 
   const handleClick = useCallback(() => {
     if (localWord?.source === "history" && localWord?.summaryId) {
-      navigate(`/dashboard?id=${localWord.summaryId}`);
+      navigate(`/hub?summary=${localWord.summaryId}&open_summary=1`);
     } else if (localWord?.wikiUrl) {
       window.open(localWord.wikiUrl, "_blank", "noopener,noreferrer");
     }

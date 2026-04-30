@@ -230,7 +230,7 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
   // Navigation vers l'analyse source
   const handleTermClick = () => {
     if (isClickable && displayedWord.summaryId) {
-      navigate(`/dashboard?id=${displayedWord.summaryId}`);
+      navigate(`/hub?summary=${displayedWord.summaryId}&open_summary=1`);
     }
   };
 
@@ -411,7 +411,7 @@ export const LoadingWordCompact: React.FC<{ className?: string }> = ({
 
   const handleClick = () => {
     if (isClickable && currentWord.summaryId) {
-      navigate(`/dashboard?id=${currentWord.summaryId}`);
+      navigate(`/hub?summary=${currentWord.summaryId}&open_summary=1`);
     }
   };
 
@@ -628,7 +628,7 @@ export const LoadingWordGlobal: React.FC = () => {
 
   const handleClick = () => {
     if (isClickable && currentWord.summaryId) {
-      navigate(`/dashboard?id=${currentWord.summaryId}`);
+      navigate(`/hub?summary=${currentWord.summaryId}&open_summary=1`);
     }
   };
 

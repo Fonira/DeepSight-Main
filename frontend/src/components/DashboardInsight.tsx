@@ -49,7 +49,7 @@ export const DashboardInsight: React.FC = () => {
 
   const handleTermClick = useCallback(() => {
     if (currentWord?.source === "history" && currentWord?.summaryId) {
-      navigate(`/dashboard?id=${currentWord.summaryId}`);
+      navigate(`/hub?summary=${currentWord.summaryId}&open_summary=1`);
     }
   }, [currentWord, navigate]);
 

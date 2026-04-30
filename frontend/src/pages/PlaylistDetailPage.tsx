@@ -1478,7 +1478,7 @@ export const PlaylistDetailPage: React.FC = () => {
                   playlistId={id!}
                   onClose={() => setSelectedVideoId(null)}
                   onOpenInDashboard={() =>
-                    navigate(`/dashboard?id=${selectedVideo.id}`)
+                    navigate(`/hub?summary=${selectedVideo.id}&open_summary=1`)
                   }
                   language={language}
                 />
