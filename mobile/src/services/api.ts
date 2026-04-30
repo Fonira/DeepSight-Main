@@ -369,12 +369,13 @@ export const authApi = {
   },
 
   async resetPassword(
-    token: string,
-    password: string,
+    email: string,
+    code: string,
+    newPassword: string,
   ): Promise<{ message: string }> {
     return request("/api/auth/reset-password", {
       method: "POST",
-      body: { token, password },
+      body: { email, code, new_password: newPassword },
       requiresAuth: false,
     });
   },
