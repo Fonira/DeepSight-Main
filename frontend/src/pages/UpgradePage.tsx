@@ -37,6 +37,7 @@ import { DeepSightSpinnerMicro } from "../components/ui";
 import { billingApi, type ApiBillingPlan } from "../services/api";
 import { SEO } from "../components/SEO";
 import { BreadcrumbJsonLd } from "../components/BreadcrumbJsonLd";
+import { ProductJsonLd } from "../components/ProductJsonLd";
 import { analytics } from "../services/analytics";
 import {
   PLANS_INFO as FALLBACK_PLANS_INFO,
@@ -1143,6 +1144,7 @@ export const UpgradePage: React.FC = () => {
         path="/upgrade"
       />
       <BreadcrumbJsonLd path="/upgrade" />
+      <ProductJsonLd />
       <DoodleBackground variant="creative" />
       <Sidebar
         collapsed={sidebarCollapsed}
