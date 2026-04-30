@@ -89,6 +89,10 @@ const HubPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlConvId = searchParams.get("conv");
   const urlSummaryId = searchParams.get("summary");
+  // Hub-first : `?open_summary=1` ouvre le bloc résumé déroulé d'emblée et
+  // scrolle le wrapper au centre. Utilisé après une analyse fraîche (Quick
+  // Chat) pour que l'utilisateur arrive directement sur le résumé.
+  const openSummaryFromUrl = searchParams.get("open_summary") === "1";
 
   const { language } = useTranslation();
   const { user: _user } = useAuth();
@@ -372,7 +376,12 @@ const HubPage: React.FC = () => {
       />
 
       <div className="relative flex-1 flex flex-col overflow-hidden">
-        {summaryContext && <SummaryCollapsible context={summaryContext} />}
+        {summaryContext && (
+          <SummaryCollapsible
+            context={summaryContext}
+            defaultOpen={openSummaryFromUrl}
+          />
+        )}
         <Timeline messages={messages} isThinking={isThinking} />
         <InputBar
           onSend={handleSend}

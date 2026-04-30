@@ -1,5 +1,5 @@
 // frontend/src/components/hub/SummaryCollapsible.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import type { HubSummaryContext } from "./types";
@@ -7,6 +7,12 @@ import type { HubSummaryContext } from "./types";
 interface Props {
   context: HubSummaryContext;
   onCitationClick?: (timestampSecs: number) => void;
+  /**
+   * Hub-first : si `true`, le bloc résumé est rendu déjà déroulé et son wrapper
+   * est centré à l'écran via `scrollIntoView` au mount. Utilisé quand l'URL
+   * porte `?open_summary=1` (ex : redirect post-analyse).
+   */
+  defaultOpen?: boolean;
 }
 
 const formatTs = (s: number) => {
@@ -63,8 +69,10 @@ const parseInlineCitations = (text: string): ParsedSegment[] => {
 export const SummaryCollapsible: React.FC<Props> = ({
   context,
   onCitationClick,
+  defaultOpen = false,
 }) => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   /** Segments parsés à partir de `short_summary` : timecodes inline → pills. */
   const segments = useMemo(
@@ -73,8 +81,22 @@ export const SummaryCollapsible: React.FC<Props> = ({
   );
   const hasInlineCits = segments.some((s) => s.type === "cit");
 
+  // Hub-first : quand on arrive avec `?open_summary=1`, scroller le bloc résumé
+  // au centre de l'écran après mount (le panneau est déjà déroulé via
+  // `useState(defaultOpen)`). On ne le fait qu'une fois.
+  useEffect(() => {
+    if (!defaultOpen) return;
+    const node = wrapperRef.current;
+    if (!node || typeof node.scrollIntoView !== "function") return;
+    node.scrollIntoView({ block: "center", behavior: "smooth" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <div className="mx-4 my-3 px-4 py-3 bg-white/[0.04] border border-white/10 rounded-[14px]">
+    <div
+      ref={wrapperRef}
+      className="mx-4 my-3 px-4 py-3 bg-white/[0.04] border border-white/10 rounded-[14px]"
+    >
       <button
         type="button"
         aria-label="Résumé"
