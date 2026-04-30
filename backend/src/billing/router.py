@@ -76,9 +76,10 @@ _processed_events = _EventIdCache()
 
 
 class CreateCheckoutRequest(BaseModel):
-    """Requête pour créer une session de paiement"""
+    """Requête pour créer une session de paiement v2."""
 
-    plan: str  # pro
+    plan: str  # "pro" | "expert"
+    cycle: str = "monthly"  # "monthly" | "yearly"
     success_url: Optional[str] = None
     cancel_url: Optional[str] = None
 
@@ -189,25 +190,48 @@ async def get_or_create_stripe_customer(user: User, session: AsyncSession, force
         return customer.id
 
 
-def get_price_id(plan: str) -> Optional[str]:
-    """Retourne le price_id Stripe pour un plan"""
-    prices = STRIPE_CONFIG.get("PRICES", {})
-    plan_config = prices.get(plan)
+def get_price_id(plan: str, cycle: str = "monthly") -> Optional[str]:
+    """Retourne le price_id Stripe pour un plan v2 (cycle-aware).
 
-    if not plan_config:
-        logger.warning(f"Plan '{plan}' not found in PRICES config")
+    Args:
+        plan: "free" | "pro" | "expert" (ou alias legacy "plus" -> "pro").
+        cycle: "monthly" | "yearly" (default monthly pour rétro-compat).
+
+    Returns:
+        price_id Stripe ou None si plan/cycle invalide ou env var non set.
+    """
+    # Normaliser via plan_config (résout alias legacy plus->pro, etc.)
+    from .plan_config import normalize_plan_id, get_price_id as plan_get_price_id
+
+    normalized = normalize_plan_id(plan)
+    if normalized == "free":
         return None
 
     test_mode = STRIPE_CONFIG.get("TEST_MODE", True)
 
-    if test_mode:
-        price_id = plan_config.get("test") or plan_config.get("live")
-        logger.info(f"TEST MODE: Using price {price_id} for plan {plan}")
-    else:
-        price_id = plan_config.get("live")
-        logger.info(f"LIVE MODE: Using price {price_id} for plan {plan}")
+    # 1) Priorité v2 : env vars cycle-aware via plan_config.get_price_id
+    v2_price = plan_get_price_id(normalized, cycle, test_mode=test_mode)
+    if v2_price:
+        return v2_price
 
-    return price_id if price_id else None
+    # 2) Fallback legacy v0 : essayer le mapping legacy si env vars v2 non set
+    #    (utile pour grandfathering sub Stripe legacy actifs)
+    prices = STRIPE_CONFIG.get("PRICES", {})
+    plan_config = prices.get(plan) or prices.get(normalized)
+    if not plan_config:
+        logger.warning(f"Plan '{plan}' not found in PRICES config")
+        return None
+
+    # Si la structure cycle-aware existe (pro/expert v2), accéder via cycle
+    cycle_block = plan_config.get(cycle) if isinstance(plan_config.get(cycle), dict) else None
+    if cycle_block:
+        legacy_id = cycle_block.get("test" if test_mode else "live")
+        if legacy_id:
+            return legacy_id
+
+    # Sinon ancienne structure flat (legacy "plus" v0 + fields legacy ajoutés sur "pro" v2)
+    legacy_id = plan_config.get("test" if test_mode else "live")
+    return legacy_id or None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -220,79 +244,101 @@ def get_price_id(plan: str) -> Optional[str]:
 
 
 class TrialEligibilityResponse(BaseModel):
-    """Réponse d'éligibilité à l'essai gratuit"""
+    """Réponse d'éligibilité à l'essai gratuit v2 (Pro ou Expert)."""
 
     eligible: bool
     reason: Optional[str] = None
     trial_days: int = 7
-    trial_plan: str = "plus"
+    trial_plan: str = "pro"  # v2 default — anciennement "plus"
 
 
 @router.get("/trial-eligibility", response_model=TrialEligibilityResponse)
 async def check_trial_eligibility(
+    plan: str = Query("pro", description="Plan cible du trial : pro ou expert"),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    """
-    🆓 Vérifie si l'utilisateur peut bénéficier d'un essai gratuit Pro.
+    """🆓 Vérifie l'éligibilité à un essai 7 j sans CB pour Pro ou Expert (v2 H5).
 
-    Conditions d'éligibilité:
-    - Plan actuel = free
-    - N'a jamais eu d'abonnement payant
-    - N'a jamais bénéficié d'un essai gratuit
+    Conditions :
+      - plan ∈ {pro, expert}
+      - user.plan == "free"
+      - Aucun stripe_subscription_id existant
+      - Aucune transaction passée de type purchase / trial / upgrade
     """
-    # Vérifier le plan actuel
+    if plan not in ("pro", "expert"):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "invalid_plan",
+                "message": "plan must be 'pro' or 'expert'",
+            },
+        )
+
     if current_user.plan != "free":
         return TrialEligibilityResponse(
             eligible=False,
             reason="Vous avez déjà un abonnement actif",
             trial_days=0,
-            trial_plan="plus",
+            trial_plan=plan,
         )
 
-    # Vérifier s'il a déjà eu un abonnement
     if current_user.stripe_subscription_id:
         return TrialEligibilityResponse(
             eligible=False,
             reason="Vous avez déjà bénéficié d'un abonnement",
             trial_days=0,
-            trial_plan="plus",
+            trial_plan=plan,
         )
 
-    # Vérifier les transactions passées (si déjà eu des crédits achetés)
     result = await session.execute(
         select(CreditTransaction)
         .where(CreditTransaction.user_id == current_user.id)
         .where(CreditTransaction.transaction_type.in_(["purchase", "trial", "upgrade"]))
         .limit(1)
     )
-    has_past_purchase = result.scalar_one_or_none() is not None
-
-    if has_past_purchase:
+    if result.scalar_one_or_none() is not None:
         return TrialEligibilityResponse(
             eligible=False,
             reason="Vous avez déjà bénéficié d'un essai ou d'un abonnement",
             trial_days=0,
-            trial_plan="plus",
+            trial_plan=plan,
         )
 
-    return TrialEligibilityResponse(eligible=True, reason=None, trial_days=7, trial_plan="plus")
+    return TrialEligibilityResponse(eligible=True, trial_days=7, trial_plan=plan)
 
 
-@router.post("/start-pro-trial")
-async def start_pro_trial(
+@router.post("/start-trial")
+async def start_trial(
+    plan: str = Query("pro", description="Plan cible : pro ou expert"),
+    cycle: str = Query("monthly", description="monthly | yearly"),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    """
-    🆓 Démarre un essai gratuit Pro de 7 jours.
+    """🆓 Démarre un essai gratuit 7 j sans CB sur Pro ou Expert (Pricing v2 H5).
 
-    Crée une session Stripe Checkout avec trial_period_days=7.
-    L'utilisateur doit entrer sa carte mais ne sera pas facturé pendant 7 jours.
+    Crée une session Stripe Checkout avec :
+      - trial_period_days = 7
+      - payment_method_collection = "if_required"  -> pas de CB demandée pendant le trial
     """
-    # Vérifier l'éligibilité
-    eligibility = await check_trial_eligibility(current_user, session)
+    if plan not in ("pro", "expert"):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "invalid_plan",
+                "message": "plan must be 'pro' or 'expert'",
+            },
+        )
+    if cycle not in ("monthly", "yearly"):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "invalid_cycle",
+                "message": "cycle must be 'monthly' or 'yearly'",
+            },
+        )
 
+    eligibility = await check_trial_eligibility(plan, current_user, session)
     if not eligibility.eligible:
         raise HTTPException(
             status_code=400,
@@ -308,44 +354,62 @@ async def start_pro_trial(
     if not init_stripe():
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
-    price_id = get_price_id("plus")
+    price_id = get_price_id(plan, cycle)
     if not price_id:
-        raise HTTPException(status_code=400, detail="Plus plan not configured")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Plan {plan} ({cycle}) not configured",
+        )
 
-    # Créer ou récupérer le client Stripe
     try:
         customer_id = await get_or_create_stripe_customer(current_user, session)
     except stripe.error.StripeError as e:
         logger.error(f"Error creating Stripe customer: {e}")
-        raise HTTPException(status_code=500, detail="Erreur lors de la création du client Stripe")
+        raise HTTPException(
+            status_code=500, detail="Erreur lors de la création du client Stripe"
+        )
 
     try:
         checkout_session = stripe.checkout.Session.create(
             customer=customer_id,
             payment_method_types=["card"],
+            payment_method_collection="if_required",  # H5 : pas de CB pour le trial
             line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
             subscription_data={
                 "trial_period_days": 7,
-                "metadata": {"user_id": str(current_user.id), "is_trial": "true"},
+                "metadata": {
+                    "user_id": str(current_user.id),
+                    "is_trial": "true",
+                    "trial_plan": plan,
+                    "cycle": cycle,
+                },
             },
-            success_url=f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan=plus&trial=true",
+            success_url=(
+                f"{FRONTEND_URL}/payment/success"
+                f"?session_id={{CHECKOUT_SESSION_ID}}&plan={plan}"
+                f"&cycle={cycle}&trial=true"
+            ),
             cancel_url=f"{FRONTEND_URL}/upgrade",
-            allow_promotion_codes=False,  # Pas de code promo pour les essais
+            allow_promotion_codes=False,
             metadata={
                 "user_id": str(current_user.id),
-                "plan": "plus",
+                "plan": plan,
+                "cycle": cycle,
                 "is_trial": "true",
             },
         )
 
-        logger.info(f"Trial checkout session created for user {current_user.id}")
+        logger.info(
+            f"Trial v2 checkout: user={current_user.id} plan={plan} cycle={cycle}"
+        )
 
         return {
             "checkout_url": checkout_session.url,
             "session_id": checkout_session.id,
             "trial_days": 7,
-            "plan": "plus",
+            "plan": plan,
+            "cycle": cycle,
         }
 
     except stripe.error.StripeError as e:
@@ -353,15 +417,36 @@ async def start_pro_trial(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/start-pro-trial", deprecated=True)
+async def start_pro_trial_legacy(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """🔄 LEGACY — Ancien endpoint v0 qui démarrait un trial Plus 4.99 €.
+
+    Désormais redirige vers le nouveau /start-trial?plan=pro&cycle=monthly v2.
+    Conservé pour compatibilité clients mobiles non encore mis à jour.
+    """
+    return await start_trial(
+        plan="pro",
+        cycle="monthly",
+        current_user=current_user,
+        session=session,
+    )
+
+
 @router.get("/plans")
 async def get_plans(
     platform: str = Query("web", pattern="^(web|mobile|extension)$"),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """Retourne la liste des 5 plans avec limites filtrées par plateforme.
+    """🆕 Pricing v2 — Grille publique (Free / Pro 8.99 € / Expert 19.99 €).
 
-    Public (enrichi avec is_current / is_upgrade / is_downgrade si user connecté).
+    Enrichi par plateforme + (si user connecté) is_current / is_upgrade / is_downgrade.
+    Inclut prices monthly + yearly + voice_minutes + yearly_discount_pct.
     """
+    from .plan_config import PLAN_PRICES_V2, PLAN_VOICE_MINUTES_V2
+
     user_plan = (current_user.plan if current_user else "free") or "free"
     user_index = get_plan_index(user_plan)
 
@@ -374,6 +459,8 @@ async def get_plans(
         # Filtrage des limites par plateforme
         platform_features = get_platform_features(plan_id.value, platform)
 
+        # v2 : prices cycle-aware
+        prices = PLAN_PRICES_V2.get(plan_id.value, {})
         result.append(
             {
                 "id": plan_id.value,
@@ -381,7 +468,9 @@ async def get_plans(
                 "name_en": plan["name_en"],
                 "description": plan["description"],
                 "description_en": plan["description_en"],
-                "price_monthly_cents": plan["price_monthly_cents"],
+                "price_monthly_cents": plan.get("price_monthly_cents", 0),
+                "price_yearly_cents": plan.get("price_yearly_cents", prices.get("yearly", 0)),
+                "voice_minutes": PLAN_VOICE_MINUTES_V2.get(plan_id.value, 0),
                 "color": plan["color"],
                 "icon": plan["icon"],
                 "badge": plan["badge"],
@@ -396,7 +485,11 @@ async def get_plans(
             }
         )
 
-    return {"plans": result}
+    return {
+        "plans": result,
+        "currency": "EUR",
+        "yearly_discount_pct": 17,
+    }
 
 
 @router.get("/my-plan")
@@ -612,11 +705,14 @@ async def create_checkout_session(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# 🆕 Alias pour compatibilité avec le frontend
+# 🆕 Pricing v2 — endpoint /create-checkout accepte {plan, cycle}
+# Compat rétro : aussi accepte {plan_id} pour clients legacy non updatés.
 class CreateCheckoutByPlanId(BaseModel):
-    """Requête avec plan_id (format frontend)"""
+    """Requête v2 avec plan + cycle (compat rétro avec plan_id)."""
 
-    plan_id: str  # pro
+    plan: Optional[str] = None    # "pro" | "expert"
+    cycle: str = "monthly"         # "monthly" | "yearly"
+    plan_id: Optional[str] = None  # legacy alias of plan
 
 
 @router.post("/create-checkout")
@@ -625,9 +721,10 @@ async def create_checkout_by_plan_id(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    """
-    🆕 Endpoint compatible avec le frontend.
-    Accepte plan_id au lieu de plan.
+    """🆕 Pricing v2 — Crée une session Stripe Checkout pour Pro / Expert + cycle.
+
+    Body : {"plan": "pro"|"expert", "cycle": "monthly"|"yearly"}
+    Compat rétro : accepte aussi {"plan_id": "..."} (legacy frontend).
     """
     if not STRIPE_CONFIG.get("ENABLED"):
         raise HTTPException(status_code=400, detail="Stripe not enabled")
@@ -635,9 +732,34 @@ async def create_checkout_by_plan_id(
     if not init_stripe():
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
-    price_id = get_price_id(request.plan_id)
+    # Resolve plan : prefer 'plan', fallback to legacy 'plan_id'
+    plan = request.plan or request.plan_id
+    if not plan:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "missing_plan", "message": "plan is required"},
+        )
+
+    if plan not in ("pro", "expert"):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "invalid_plan",
+                "message": "plan must be 'pro' or 'expert'",
+            },
+        )
+    if request.cycle not in ("monthly", "yearly"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "invalid_cycle", "message": "cycle must be 'monthly' or 'yearly'"},
+        )
+
+    price_id = get_price_id(plan, request.cycle)
     if not price_id:
-        raise HTTPException(status_code=400, detail=f"Invalid plan: {request.plan_id}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Plan {plan} ({request.cycle}) price not configured",
+        )
 
     # Créer ou récupérer le client Stripe
     if current_user.stripe_customer_id:
@@ -652,8 +774,13 @@ async def create_checkout_by_plan_id(
         current_user.stripe_customer_id = customer_id
         await session.commit()
 
-    # URLs de retour (avec plan pour affichage immédiat)
-    success_url = f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={request.plan_id}"
+    # URLs de retour (avec plan + cycle pour affichage immédiat)
+    success_url = (
+        request.plan_id  # noqa: SIM222 — preserved for legacy compat
+        and f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={plan}"
+    ) or (
+        f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={plan}&cycle={request.cycle}"
+    )
     cancel_url = f"{FRONTEND_URL}/payment/cancel"
 
     try:
@@ -664,12 +791,18 @@ async def create_checkout_by_plan_id(
             mode="subscription",
             success_url=success_url,
             cancel_url=cancel_url,
-            allow_promotion_codes=True,  # Permet les codes promo
+            allow_promotion_codes=True,
             billing_address_collection="auto",
-            metadata={"user_id": str(current_user.id), "plan": request.plan_id},
+            metadata={
+                "user_id": str(current_user.id),
+                "plan": plan,
+                "cycle": request.cycle,
+            },
         )
 
-        logger.info(f"Checkout session created for user {current_user.id}, plan {request.plan_id}")
+        logger.info(
+            f"Checkout v2 session: user={current_user.id} plan={plan} cycle={request.cycle}"
+        )
 
         return {"checkout_url": checkout_session.url, "session_id": checkout_session.id}
 

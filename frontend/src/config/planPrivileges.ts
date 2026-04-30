@@ -1,13 +1,16 @@
 // ⚠️ MIROIR de backend/src/billing/plan_config.py — Synchroniser les deux fichiers
-// Migration Avril 2026 : 3 plans (Free / Plus 4.99€ / Pro 9.99€)
+// Migration Avril 2026 : Pricing v2 — 3 plans (Free / Pro 8.99 € / Expert 19.99 €)
+// Avec toggle mensuel/annuel −17 % et trial 7 j sans CB.
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type PlanId = "free" | "plus" | "pro";
+export type PlanId = "free" | "pro" | "expert";
 
-export const PLAN_HIERARCHY: PlanId[] = ["free", "plus", "pro"];
+export const PLAN_HIERARCHY: PlanId[] = ["free", "pro", "expert"];
+
+export type BillingCycle = "monthly" | "yearly";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LIMITES PAR PLAN
@@ -93,7 +96,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     ttsEnabled: false,
   },
 
-  plus: {
+  // Anciennement "plus" v0 (4.99 €) — devenu "pro" v2 (8.99 €) avec voice 30 min/mo
+  pro: {
     monthlyAnalyses: 25,
     maxVideoLengthMin: 60,
     concurrentAnalyses: 1,
@@ -116,8 +120,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 15,
     bibliographyExport: true,
-    voiceChatEnabled: false,
-    voiceChatMonthlyMinutes: 0,
+    voiceChatEnabled: true, // ⚠ v2 : Pro a voice (avant Plus n'avait pas)
+    voiceChatMonthlyMinutes: 30, // ⚠ v2 H4
     debateEnabled: true,
     debateMonthly: 3,
     debateCreditsPerDebate: 6,
@@ -127,7 +131,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     ttsEnabled: false,
   },
 
-  pro: {
+  // Anciennement "pro" v0 (9.99 €) — devenu "expert" v2 (19.99 €) avec voice 120 min/mo
+  expert: {
     monthlyAnalyses: 100,
     maxVideoLengthMin: 240,
     concurrentAnalyses: 3,
@@ -155,7 +160,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicPapersPerAnalysis: 50,
     bibliographyExport: true,
     voiceChatEnabled: true,
-    voiceChatMonthlyMinutes: 45,
+    voiceChatMonthlyMinutes: 120, // ⚠ v2 H4
     debateEnabled: true,
     debateMonthly: 20,
     debateCreditsPerDebate: 4,
@@ -206,7 +211,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     deepResearch: false,
     factcheck: false,
   },
-  plus: {
+  pro: {
     flashcards: true,
     mindmap: true,
     webSearch: true,
@@ -218,12 +223,12 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     prioritySupport: false,
     academicSearch: true,
     bibliographyExport: true,
-    voiceChat: false,
+    voiceChat: true, // ⚠ v2 : Pro a voice
     debate: true,
     deepResearch: false,
     factcheck: true,
   },
-  pro: {
+  expert: {
     flashcards: true,
     mindmap: true,
     webSearch: true,
@@ -258,6 +263,7 @@ export interface PlanInfo {
   description: string;
   descriptionEn: string;
   priceMonthly: number; // en centimes
+  priceYearly: number; // en centimes (Pricing v2)
   color: string;
   icon: string;
   badge: PlanBadge | null;
@@ -272,32 +278,35 @@ export const PLANS_INFO: Record<PlanId, PlanInfo> = {
     description: "Découvrez DeepSight gratuitement",
     descriptionEn: "Discover DeepSight for free",
     priceMonthly: 0,
+    priceYearly: 0,
     color: "#6B7280",
     icon: "Zap",
     badge: null,
     popular: false,
   },
 
-  plus: {
-    id: "plus",
-    name: "Plus",
-    nameEn: "Plus",
+  pro: {
+    id: "pro",
+    name: "Pro",
+    nameEn: "Pro",
     description: "L'essentiel pour apprendre mieux, plus vite",
     descriptionEn: "Everything you need to learn better, faster",
-    priceMonthly: 499,
+    priceMonthly: 899,
+    priceYearly: 8990,
     color: "#3B82F6",
     icon: "Star",
     badge: { text: "Populaire", color: "#3B82F6" },
     popular: true,
   },
 
-  pro: {
-    id: "pro",
-    name: "Pro",
-    nameEn: "Pro",
+  expert: {
+    id: "expert",
+    name: "Expert",
+    nameEn: "Expert",
     description: "Toute la puissance de DeepSight, sans limites",
     descriptionEn: "The full power of DeepSight, unlimited",
-    priceMonthly: 999,
+    priceMonthly: 1999,
+    priceYearly: 19990,
     color: "#8B5CF6",
     icon: "Crown",
     badge: { text: "Le + puissant", color: "#8B5CF6" },
@@ -341,7 +350,7 @@ export function getMinPlanForFeature(feature: keyof PlanLimits): PlanId {
       return plan;
     }
   }
-  return "pro";
+  return "expert";
 }
 
 export function formatLimit(value: number, unit?: string): string {
@@ -350,37 +359,38 @@ export function formatLimit(value: number, unit?: string): string {
   return String(value);
 }
 
-/** Parametres de conversion free→paid */
+/** Parametres de conversion free→paid (Pricing v2 H5) */
 export const CONVERSION_TRIGGERS = {
   freeAnalysisLimit: 5,
   freeAnalysisWarning: 3,
-  trialEnabled: false,
-  trialDays: 0,
-  trialPlan: "plus" as PlanId,
+  trialEnabled: true, // v2 H5 : trial 7 j actif
+  trialDays: 7,
+  trialPlan: "pro" as PlanId, // default trial → Pro v2
 };
 
-/** Normalise les alias de plans (etudiant→plus, starter→plus, expert→pro, etc.) */
+/** Normalise les alias de plans v0/v1 → v2 canonique (free / pro / expert). */
 export function normalizePlanId(raw: string | undefined | null): PlanId {
   if (!raw) return "free";
   const lower = raw.toLowerCase().trim();
   const aliases: Record<string, PlanId> = {
     free: "free",
     gratuit: "free",
-    // Anciens plans intermédiaires → plus
-    student: "plus",
-    etudiant: "plus",
-    étudiant: "plus",
-    starter: "plus",
-    // Anciens plans premium → pro
-    expert: "pro",
-    team: "pro",
-    equipe: "pro",
-    équipe: "pro",
-    unlimited: "pro",
-    admin: "pro",
-    // Plans actuels
-    plus: "plus",
+    // v0 legacy → v2 canonique
+    plus: "pro", // ancien Plus 4.99 € → nouveau Pro 8.99 €
+    // Anciens marketing names mappés sur Pro v2
+    student: "pro",
+    etudiant: "pro",
+    étudiant: "pro",
+    starter: "pro",
+    // Anciens premium / unlimited → expert
+    team: "expert",
+    equipe: "expert",
+    équipe: "expert",
+    unlimited: "expert",
+    admin: "expert",
+    // v2 canonique
     pro: "pro",
+    expert: "expert",
   };
   return aliases[lower] ?? "free";
 }
@@ -477,7 +487,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: "Les flashcards automatiques ont transforme mes revisions. Je retiens 3x mieux.",
       en: "Auto flashcards transformed my study sessions. I retain 3x better.",
     },
-    plan: "plus",
+    plan: "pro",
   },
   {
     avatar: "🎬",
@@ -487,7 +497,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: "J'analyse les videos YouTube et TikTok de mes concurrents en quelques minutes. Un gain de temps fou.",
       en: "I analyze competitor YouTube and TikTok videos in minutes. Incredible time saver.",
     },
-    plan: "pro",
+    plan: "expert",
   },
   {
     avatar: "📚",
@@ -497,7 +507,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: "Je cree des supports de cours a partir de documentaires en un clic.",
       en: "I create course materials from documentaries in one click.",
     },
-    plan: "plus",
+    plan: "pro",
   },
 ];
 

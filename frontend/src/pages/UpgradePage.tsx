@@ -1,9 +1,15 @@
 /**
- * UpgradePage v8.0 — Pricing 3 plans (Free / Plus / Pro)
+ * UpgradePage v9.0 — Pricing v2 (Free / Pro 8.99 € / Expert 19.99 €).
+ *
+ * Différences vs v8 :
+ *  - Toggle BillingToggle mensuel / annuel (-17 %)
+ *  - Composant ComparisonTable (matrice features × plans v2)
+ *  - 2 CTAs trial : "Essai 7 j gratuit Pro" + "Essai 7 j gratuit Expert"
+ *  - api.startTrial(plan, cycle) + api.createCheckout(plan, cycle)
+ *  - Banner amber legacy si user.is_legacy_pricing (grandfathering)
  *
  * Fetch GET /api/billing/plans?platform=web au mount.
  * Fallback sur planPrivileges.ts si API échoue (snake_case mapping).
- * Facturation mensuelle uniquement — pas de toggle annuel.
  */
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -23,7 +29,6 @@ import {
   ChevronUp,
   Lock,
   Infinity as InfinityIcon,
-  GraduationCap,
   Star,
   Gift,
   Clock,
@@ -34,7 +39,13 @@ import { useTranslation } from "../hooks/useTranslation";
 import { Sidebar } from "../components/layout/Sidebar";
 import DoodleBackground from "../components/DoodleBackground";
 import { DeepSightSpinnerMicro } from "../components/ui";
-import { billingApi, type ApiBillingPlan } from "../services/api";
+import {
+  billingApi,
+  type ApiBillingPlan,
+  type BillingCycle,
+} from "../services/api";
+import { BillingToggle } from "../components/pricing/BillingToggle";
+import { ComparisonTable as ComparisonTableV2 } from "../components/pricing/ComparisonTable";
 import { SEO } from "../components/SEO";
 import { BreadcrumbJsonLd } from "../components/BreadcrumbJsonLd";
 import { ProductJsonLd } from "../components/ProductJsonLd";
@@ -53,14 +64,14 @@ import {
 
 const PLAN_ICON_MAP: Record<string, React.ElementType> = {
   free: Zap,
-  plus: Star,
-  pro: Crown,
+  pro: Star, // v2 Pro (anciennement Plus)
+  expert: Crown, // v2 Expert (anciennement Pro)
 };
 
 const PLAN_GRADIENT_MAP: Record<string, string> = {
   free: "from-gray-500 to-gray-600",
-  plus: "from-blue-500 to-blue-600",
-  pro: "from-violet-500 to-purple-600",
+  pro: "from-blue-500 to-indigo-600",
+  expert: "from-violet-500 to-purple-600",
 };
 
 function formatPriceFr(cents: number): string {
@@ -139,7 +150,7 @@ function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
       featuresDisplay.push({
         text: "Flashcards & Cartes mentales",
         icon: "🧠",
-        highlight: pid === "pro",
+        highlight: pid === "expert",
       });
     if (limits.playlistsEnabled)
       featuresDisplay.push({
@@ -167,6 +178,8 @@ function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
       description: info.description,
       description_en: info.descriptionEn,
       price_monthly_cents: info.priceMonthly,
+      price_yearly_cents: info.priceYearly,
+      voice_minutes: limits.voiceChatMonthlyMinutes,
       color: info.color,
       icon: info.icon,
       badge: info.badge
@@ -956,6 +969,8 @@ export const UpgradePage: React.FC = () => {
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [trialEligible, setTrialEligible] = useState(false);
   const [trialLoading, setTrialLoading] = useState(false);
+  // Pricing v2 : toggle mensuel/annuel (-17%)
+  const [cycle, setCycle] = useState<BillingCycle>("monthly");
 
   const currentPlan = useMemo(() => plans.find((p) => p.is_current), [plans]);
 
@@ -1027,11 +1042,12 @@ export const UpgradePage: React.FC = () => {
   }, []);
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  const handleStartTrial = async () => {
+  // Pricing v2 : trial peut cibler Pro OU Expert + cycle monthly/yearly
+  const handleStartTrial = async (plan: "pro" | "expert" = "pro") => {
     setTrialLoading(true);
     setError(null);
     try {
-      const result = await billingApi.startProTrial();
+      const result = await billingApi.startTrial(plan, cycle);
       if (result.checkout_url) {
         window.location.href = result.checkout_url;
       }
@@ -1071,8 +1087,8 @@ export const UpgradePage: React.FC = () => {
         !currentPlan ||
         currentPlan.price_monthly_cents === 0
       ) {
-        // Upgrade → Stripe checkout
-        const result = await billingApi.createCheckout(plan.id);
+        // Upgrade → Stripe checkout (Pricing v2 : passer le cycle)
+        const result = await billingApi.createCheckout(plan.id, cycle);
         if (result.checkout_url) {
           window.location.href = result.checkout_url;
           return;
@@ -1140,7 +1156,7 @@ export const UpgradePage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative">
       <SEO
         title="Tarifs"
-        description="Découvrez les plans DeepSight : Gratuit, Pro (8,99 €/mois) et Expert (19,99 €/mois). Analysez vos vidéos YouTube et TikTok avec l'IA, fact-checking nuancé et voice agent."
+        description="Découvrez les plans DeepSight : Gratuit, Pro (8,99 €/mois) et Expert (19,99 €/mois). Analysez vos vidéos YouTube et TikTok avec l'IA, fact-checking nuancé et voice agent. Essai 7 jours sans CB."
         path="/upgrade"
       />
       <BreadcrumbJsonLd path="/upgrade" />
@@ -1176,6 +1192,24 @@ export const UpgradePage: React.FC = () => {
                   : "Unlock powerful features to analyze video content."}
               </motion.p>
             </header>
+
+            {/* Pricing v2 — Toggle mensuel/annuel */}
+            <div className="flex flex-col items-center gap-4 mb-8 sm:mb-10">
+              <BillingToggle value={cycle} onChange={setCycle} />
+            </div>
+
+            {/* Pricing v2 — Grandfathering banner pour users legacy */}
+            {(user as { is_legacy_pricing?: boolean })?.is_legacy_pricing && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3 mb-6 text-sm text-amber-200 max-w-3xl mx-auto"
+              >
+                {lang === "fr"
+                  ? "Vous bénéficiez d'un tarif historique sur votre abonnement actuel. Vous gardez ce prix tant que votre abonnement reste actif (sans interruption)."
+                  : "You're on a legacy price for your current subscription. You keep this price as long as your subscription stays active."}
+              </motion.div>
+            )}
 
             {/* Alerts */}
             {subscriptionStatus?.cancel_at_period_end && (
@@ -1246,13 +1280,13 @@ export const UpgradePage: React.FC = () => {
                     </div>
                     <h2 className="text-lg sm:text-2xl font-bold text-text-primary mb-2">
                       {lang === "fr"
-                        ? "Essayez Plus gratuitement pendant 7 jours"
-                        : "Try Plus free for 7 days"}
+                        ? "Essayez Pro gratuitement pendant 7 jours"
+                        : "Try Pro free for 7 days"}
                     </h2>
                     <p className="text-text-secondary text-xs sm:text-base mb-4 max-w-xl">
                       {lang === "fr"
-                        ? "Accédez à toutes les fonctionnalités Plus — 4,99€/mois après l'essai. Sans engagement."
-                        : "Access all Plus features — €4.99/mo after trial. No commitment."}
+                        ? "Accédez à toutes les fonctionnalités Pro — 8,99€/mois après l'essai. Sans CB requise pendant l'essai."
+                        : "Access all Pro features — €8.99/mo after trial. No card required during trial."}
                     </p>
                     <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 justify-center md:justify-start">
                       {[
@@ -1283,7 +1317,7 @@ export const UpgradePage: React.FC = () => {
                   </div>
                   <div className="flex-shrink-0 w-full md:w-auto">
                     <button
-                      onClick={handleStartTrial}
+                      onClick={() => handleStartTrial("pro")}
                       disabled={trialLoading}
                       className="w-full md:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm sm:text-lg shadow-xl shadow-blue-500/30 hover:opacity-90 transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-95"
                     >
@@ -1394,6 +1428,14 @@ export const UpgradePage: React.FC = () => {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Pricing v2 — Tableau comparatif simplifié (matrix v2) */}
+            <section className="mt-12 sm:mt-16 mb-8">
+              <h2 className="text-xl sm:text-2xl font-bold text-text-primary text-center mb-6">
+                {lang === "fr" ? "Comparer les plans" : "Compare plans"}
+              </h2>
+              <ComparisonTableV2 cycle={cycle} className="max-w-5xl mx-auto" />
+            </section>
 
             {/* Cancel subscription */}
             {currentPlan &&
