@@ -21,7 +21,7 @@ from typing import Optional
 
 import httpx
 import stripe
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,7 +62,12 @@ from voice.quota import (
     check_voice_quota,
     deduct_voice_usage,
 )
-from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
+from voice.elevenlabs import (
+    ElevenLabsClient,
+    get_elevenlabs_client,
+    VOICE_CALL_PROVIDER,
+    ALLOWED_VOICE_CALL_MODELS,
+)
 from voice.streaming_orchestrator import (
     create_production_orchestrator,
     PUBSUB_CHANNEL_PREFIX,
@@ -1062,6 +1067,7 @@ async def _run_main_analysis_for_video(
 @router.post("/session", response_model=VoiceSessionResponse)
 async def create_voice_session(
     request: VoiceSessionRequest,
+    response: Response = None,  # type: ignore[assignment] # FastAPI injects automatically; default keeps unit tests calling create_voice_session() directly working
     background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
@@ -1892,6 +1898,22 @@ async def create_voice_session(
         voice_settings = user_prefs.to_voice_settings()
         voice_chat_model = user_prefs.voice_chat_model or "eleven_turbo_v2_5"
 
+        # HARD-PIN: ElevenLabs only for voice-call (see backend/docs/architecture/tts-policy.md)
+        # Defence in depth — if a future contributor introduces a bypass that lets
+        # `voice_chat_model` be set from a request body field (today it comes only
+        # from validated user_prefs), this clamp ensures only ElevenLabs models
+        # ever reach `client.create_conversation_agent`. Phase 7 / Mistral-First.
+        if voice_chat_model not in ALLOWED_VOICE_CALL_MODELS:
+            logger.warning(
+                "voice_call.model_clamped_to_default",
+                extra={
+                    "user_id": current_user.id,
+                    "rejected_model": voice_chat_model,
+                    "fallback": "eleven_turbo_v2_5",
+                },
+            )
+            voice_chat_model = "eleven_turbo_v2_5"
+
         # ── Build turn configuration from user preferences (Phase 1: PTT) ──
         from voice.preferences import get_voice_chat_speed_preset, CONCISENESS_INJECTION_FR, CONCISENESS_INJECTION_EN
 
@@ -2008,6 +2030,11 @@ async def create_voice_session(
     max_session_minutes = plan_limits.get("max_session_minutes", 10)
     quota_remaining_seconds = quota_info.get("seconds_remaining", 0) if isinstance(quota_info, dict) else 0
     quota_remaining_minutes = round(quota_remaining_seconds / 60.0, 2)
+
+    # HARD-PIN observability: emit X-TTS-Provider header so dashboards can
+    # detect any provider anomaly on Quick Voice Call. See tts-policy.md.
+    if response is not None:
+        response.headers["X-TTS-Provider"] = VOICE_CALL_PROVIDER
 
     return VoiceSessionResponse(
         session_id=voice_session.id,
