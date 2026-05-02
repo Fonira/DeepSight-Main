@@ -178,6 +178,13 @@ class _DeepSightSettings(BaseSettings):
     YTDLP_COOKIES_PATH: str = ""
     MAX_DURATION_FOR_STT: int = Field(default=1200)
 
+    # -- Moderation (Mistral content safety) --
+    # Mode log_only par défaut : la modération calcule les scores et les log,
+    # mais n'empêche pas la requête d'aboutir. Bascule en `enforce` après
+    # 7 jours de calibration (verif faux positifs sur français familier).
+    MODERATION_ENABLED: bool = True
+    MODERATION_MODE: str = "log_only"  # log_only | enforce
+
     @property
     def is_production(self) -> bool:
         return self.ENV == "production" or self.RAILWAY_ENVIRONMENT is not None
@@ -690,6 +697,12 @@ MISTRAL_AGENT_ENABLED = True  # Set False to force Brave-only pipeline
 
 # Modèle de modération contenu
 MISTRAL_MODERATION_MODEL = "mistral-moderation-latest"
+
+# Modération — Phase 2 migration Mistral-First
+# log_only : calcule + log les scores mais laisse passer (calibration)
+# enforce  : bloque les contenus flagged (raise HTTP 400)
+MODERATION_ENABLED: bool = _settings.MODERATION_ENABLED
+MODERATION_MODE: str = _settings.MODERATION_MODE
 
 
 def resolve_mistral_model(model_id: str) -> str:
