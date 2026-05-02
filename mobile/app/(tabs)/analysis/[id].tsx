@@ -27,12 +27,10 @@ import { StreamingOverlay } from "@/components/analysis/StreamingOverlay";
 import { AnalysisContentDisplay } from "@/components/analysis/AnalysisContentDisplay";
 import { ChatView } from "@/components/analysis/ChatView";
 import { ActionBar } from "@/components/analysis/ActionBar";
-import { QuickChatScreen } from "@/components/analysis/QuickChatScreen";
+import { ConversationScreen } from "@/components/conversation";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
 import { DeepSightSpinner } from "@/components/ui/DeepSightSpinner";
 import { VoiceButton } from "@/components/voice/VoiceButton";
-import { VoiceScreen } from "@/components/voice/VoiceScreen";
-import { useVoiceChat } from "@/components/voice/useVoiceChat";
 import { ExportMenu } from "@/components/export";
 import { AcademicSourcesSection } from "@/components/academic";
 import { FactCheckButton } from "@/components/factcheck";
@@ -159,7 +157,11 @@ export default function AnalysisDetailScreen() {
   });
 
   const [isFavorite, setIsFavorite] = useState(summary?.isFavorite ?? false);
-  const voiceChat = useVoiceChat({ summaryId: id as string });
+  // Mode conversation = quel mode initial pour ConversationScreen quand on ouvre
+  // depuis le bouton voice (FAB). 'call' déclenche auto-start mic. 'chat' = mic gris.
+  const [conversationInitialMode, setConversationInitialMode] = useState<
+    "chat" | "call"
+  >("call");
 
   React.useEffect(() => {
     if (summary) setIsFavorite(summary.isFavorite);
@@ -424,7 +426,22 @@ export default function AnalysisDetailScreen() {
   const isQuickChat = quickChat === "true" || summary?.mode === "quick_chat";
 
   if (isQuickChat && summary) {
-    return <QuickChatScreen summary={summary} onBack={handleBack} />;
+    return (
+      <ConversationScreen
+        visible
+        summaryId={summary.id}
+        initialMode="chat"
+        videoTitle={summary.title || "Vidéo"}
+        channelName={summary.channel}
+        platform={
+          (summary.platform === "tiktok" ? "tiktok" : "youtube") as
+            | "youtube"
+            | "tiktok"
+        }
+        initialFavorite={summary.isFavorite}
+        onClose={handleBack}
+      />
+    );
   }
 
   // Loading state — Quick Chat = DeepSight spinner, analyse = skeleton
@@ -654,32 +671,30 @@ export default function AnalysisDetailScreen() {
         />
       )}
 
-      {/* Voice Chat */}
+      {/* Voice Chat — bouton FAB ouvre ConversationScreen en mode 'call' */}
       {summary && (
         <>
           <VoiceButton
             summaryId={id as string}
             videoTitle={summary.title || "Vidéo"}
-            onSessionStart={() => setIsVoiceVisible(true)}
-          />
-          <VoiceScreen
-            visible={isVoiceVisible}
-            onClose={() => {
-              setIsVoiceVisible(false);
-              voiceChat.stop();
+            onSessionStart={() => {
+              setConversationInitialMode("call");
+              setIsVoiceVisible(true);
             }}
+          />
+          <ConversationScreen
+            visible={isVoiceVisible}
+            summaryId={summary.id}
+            initialMode={conversationInitialMode}
             videoTitle={summary.title || "Vidéo"}
             channelName={summary.channel}
-            voiceStatus={voiceChat.status}
-            isSpeaking={voiceChat.isSpeaking}
-            messages={voiceChat.messages}
-            elapsedSeconds={voiceChat.elapsedSeconds}
-            remainingMinutes={voiceChat.remainingMinutes}
-            onStart={voiceChat.start}
-            onStop={voiceChat.stop}
-            onMuteToggle={voiceChat.toggleMute}
-            isMuted={voiceChat.isMuted}
-            error={voiceChat.error ?? undefined}
+            platform={
+              (summary.platform === "tiktok" ? "tiktok" : "youtube") as
+                | "youtube"
+                | "tiktok"
+            }
+            initialFavorite={summary.isFavorite}
+            onClose={() => setIsVoiceVisible(false)}
           />
         </>
       )}
