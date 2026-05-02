@@ -1390,6 +1390,7 @@ export const UpgradePage: React.FC = () => {
                       {plans.map((plan, idx) => (
                         <motion.div
                           key={plan.id}
+                          className="min-w-0"
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: idx * 0.08, duration: 0.4 }}

@@ -47,13 +47,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* Main Content */}
       <div
-        className={`flex-1 flex flex-col min-h-screen transition-all duration-200 ease-out ${
+        className={`flex-1 flex flex-col min-h-screen min-w-0 transition-all duration-200 ease-out ${
           sidebarCollapsed ? "lg:ml-[60px]" : "lg:ml-[240px]"
         }`}
       >
         <main
           id="main-content"
-          className="flex-1 overflow-y-auto pb-20 lg:pb-0 pt-14 lg:pt-0"
+          className="flex-1 min-w-0 overflow-y-auto pb-20 lg:pb-0 pt-14 lg:pt-0"
           role="main"
         >
           <motion.div
