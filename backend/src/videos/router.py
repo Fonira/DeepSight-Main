@@ -910,7 +910,17 @@ async def analyze_video(
             _vcache = get_video_cache()
             if _vcache is not None:
                 _analysis_lang = request.lang or "fr"
-                _cached = await _vcache.get_analysis(platform, video_id, request.mode, _analysis_lang)
+                # Cache key inclut model + deep_research : deux users avec mêmes
+                # (mode, lang) mais modèle Mistral ou deep_research différents NE
+                # partagent PAS l'analyse (params user-spécifiques).
+                _cached = await _vcache.get_analysis(
+                    platform,
+                    video_id,
+                    request.mode,
+                    _analysis_lang,
+                    model=model,
+                    deep_research=deep_research,
+                )
                 if _cached and _cached.get("summary_content"):
                     # Sauvegarder dans l'historique utilisateur (gratuit, source=cache)
                     _cache_summary_id = await save_summary(
@@ -2751,6 +2761,10 @@ async def _analyze_video_background_v6(
                         transcript_timestamped = _cached_t.get("transcript_timestamped")
                         detected_lang = _cached_t.get("detected_lang")
                         if transcript:
+                            # Transcript instantané (cross-user) → on saute l'extraction
+                            # et la barre avance directement de 20 % à 50 %.
+                            _task_store[task_id]["progress"] = 50
+                            _task_store[task_id]["message"] = "📝 Transcript trouvé"
                             logger.info(
                                 f"💾 [GLOBAL CACHE HIT] Transcript for {platform}/{video_id}: {len(transcript)} chars"
                             )
@@ -3232,6 +3246,8 @@ async def _analyze_video_background_v6(
                                 "reliability_score": reliability,
                                 "enrichment_data": enrichment_metadata,
                             },
+                            model=model,
+                            deep_research=deep_research,
                         )
                 except Exception as _vce:
                     logger.error(f"⚠️ [GLOBAL CACHE] Analysis cache set failed: {_vce}")
