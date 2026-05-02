@@ -25,6 +25,7 @@ from db.database import get_session, User, Summary
 from auth.dependencies import get_current_user
 from videos.service import get_summary_by_id
 from core.config import PLAN_LIMITS
+from core.moderation_service import moderate_text, MODERATION_MODE
 
 from .service import (
     check_chat_quota,
@@ -154,6 +155,18 @@ async def ask_question_v4(
     - Expert: Analyse exhaustive multi-sources
     """
     print(f"💬 [CHAT v4.0] Question from user {current_user.id} (plan: {current_user.plan})", flush=True)
+
+    # 🛡️ Phase 2 — Mistral moderation (log_only par défaut, fail-open)
+    moderation = await moderate_text(request.question)
+    if not moderation.allowed:
+        # Mode enforce : le contenu a flagged au moins une catégorie
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "content_policy_violation",
+                "categories": moderation.flagged_categories,
+            },
+        )
 
     # Utiliser la nouvelle fonction v4 si disponible
     if V4_AVAILABLE:
@@ -332,6 +345,17 @@ async def ask_question_stream(
     Pose une question avec réponse en streaming (Server-Sent Events).
     Note: Le streaming n'inclut pas l'enrichissement Perplexity.
     """
+    # 🛡️ Phase 2 — Mistral moderation (log_only par défaut, fail-open)
+    moderation = await moderate_text(request.question)
+    if not moderation.allowed:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "content_policy_violation",
+                "categories": moderation.flagged_categories,
+            },
+        )
+
     # Vérifier le quota
     can_ask, reason, quota_info = await check_chat_quota(session, current_user.id, request.summary_id)
 

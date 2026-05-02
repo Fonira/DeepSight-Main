@@ -192,6 +192,13 @@ class _DeepSightSettings(BaseSettings):
     MAX_DURATION_FOR_STT_PRO: int = Field(default=2400)  # 40 min
     MAX_DURATION_FOR_STT_EXPERT: int = Field(default=3600)  # 60 min
 
+    # -- Moderation (Mistral content safety) --
+    # Mode log_only par défaut : la modération calcule les scores et les log,
+    # mais n'empêche pas la requête d'aboutir. Bascule en `enforce` après
+    # 7 jours de calibration (verif faux positifs sur français familier).
+    MODERATION_ENABLED: bool = True
+    MODERATION_MODE: str = "log_only"  # log_only | enforce
+
     @property
     def is_production(self) -> bool:
         return self.ENV == "production" or self.RAILWAY_ENVIRONMENT is not None
@@ -744,6 +751,12 @@ MAGISTRAL_EPISTEMIC_TIERS: list = [
     for t in os.getenv("MAGISTRAL_EPISTEMIC_TIERS", "expert").split(",")
     if t.strip()
 ]
+
+# Modération — Phase 2 migration Mistral-First
+# log_only : calcule + log les scores mais laisse passer (calibration)
+# enforce  : bloque les contenus flagged (raise HTTP 400)
+MODERATION_ENABLED: bool = _settings.MODERATION_ENABLED
+MODERATION_MODE: str = _settings.MODERATION_MODE
 
 
 def resolve_mistral_model(model_id: str) -> str:
