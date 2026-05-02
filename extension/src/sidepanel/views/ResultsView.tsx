@@ -5,7 +5,7 @@ import { WEBAPP_URL } from "../../utils/config";
 import { ExternalLinkIcon } from "../shared/Icons";
 import { SynthesisView } from "../shared/SynthesisView";
 import { FeatureCTAGrid } from "../shared/FeatureCTAGrid";
-import { ChatView } from "./ChatView";
+import { ConversationView } from "./ConversationView";
 import { useTranslation } from "../../i18n/useTranslation";
 
 interface ResultsViewProps {
@@ -32,9 +32,10 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
 
   if (chatOpen) {
     return (
-      <ChatView
+      <ConversationView
         summaryId={summaryId}
         videoTitle={summary.video_title}
+        initialMode="chat"
         onClose={() => setChatOpen(false)}
         onSessionExpired={onLogout}
         userPlan={planInfo?.plan_id || user?.plan || "free"}
