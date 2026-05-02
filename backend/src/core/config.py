@@ -691,6 +691,37 @@ MISTRAL_AGENT_ENABLED = True  # Set False to force Brave-only pipeline
 # Modèle de modération contenu
 MISTRAL_MODERATION_MODEL = "mistral-moderation-latest"
 
+# =============================================================================
+# MAGISTRAL — Modèle de raisonnement épistémique (Phase 4 migration Mistral-First)
+# =============================================================================
+# Magistral Medium 1.2 (v25.09) = modèle frontier de raisonnement chain-of-thought
+# de Mistral. Utilisé en OVERRIDE Expert-only pour la génération de la synthèse
+# avec marqueurs épistémiques (SOLID/PLAUSIBLE/UNCERTAIN/À VÉRIFIER).
+#
+# Source officielle (vérifié 2026-05-02):
+#   https://docs.mistral.ai/getting-started/models/models_overview/
+#
+# Stratégie: override Expert-only via duration_router.get_optimal_model(),
+# hors MISTRAL_FALLBACK_ORDER. Si Magistral fail (429/5xx), la chaîne de
+# fallback existante (mistral-large-2512 → medium → small → DeepSeek) prend
+# le relais via llm_complete().
+#
+# ROLLOUT: flag par défaut OFF. Activation après validation qualité manuelle
+# sur 10 vidéos avec marqueurs visibles. Toggle = .env MAGISTRAL_EPISTEMIC_ENABLED=true
+# =============================================================================
+
+MAGISTRAL_EPISTEMIC_ENABLED: bool = (
+    os.getenv("MAGISTRAL_EPISTEMIC_ENABLED", "false").lower() == "true"
+)
+MAGISTRAL_EPISTEMIC_MODEL: str = os.getenv(
+    "MAGISTRAL_EPISTEMIC_MODEL", "magistral-medium-2509"
+)
+MAGISTRAL_EPISTEMIC_TIERS: list = [
+    t.strip().lower()
+    for t in os.getenv("MAGISTRAL_EPISTEMIC_TIERS", "expert").split(",")
+    if t.strip()
+]
+
 
 def resolve_mistral_model(model_id: str) -> str:
     """Résout un alias de modèle legacy vers le nouveau modèle."""

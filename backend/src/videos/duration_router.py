@@ -174,6 +174,22 @@ _MODEL_MEDIUM = "mistral-medium-2508"
 _MODEL_LARGE = "mistral-large-2512"
 _MODEL_INTERNAL = "ministral-8b-2512"
 
+# ── Magistral epistemic routing (Phase 4 migration Mistral-First) ──────────────
+# Override Expert-only pour la synthèse finale avec marqueurs épistémiques.
+# Imports depuis core/config (lazy) avec fallback statique si module indisponible
+# (cas tests unitaires sans .env). Les valeurs par défaut sont alignées sur
+# core/config.py — flag OFF, modèle officiel `magistral-medium-2509`, tiers=expert.
+try:
+    from core.config import (
+        MAGISTRAL_EPISTEMIC_ENABLED,
+        MAGISTRAL_EPISTEMIC_MODEL,
+        MAGISTRAL_EPISTEMIC_TIERS,
+    )
+except ImportError:  # pragma: no cover — fallback hors application context
+    MAGISTRAL_EPISTEMIC_ENABLED = False
+    MAGISTRAL_EPISTEMIC_MODEL = "magistral-medium-2509"
+    MAGISTRAL_EPISTEMIC_TIERS = ["expert"]
+
 # Concurrence adaptative par tier pour le chunking parallèle
 CONCURRENT_CHUNKS_BY_TIER = {
     VideoTier.MICRO: 1,
@@ -301,14 +317,53 @@ def get_optimal_model(
     Returns:
         Tuple (model_id, max_tokens)
     """
-    # Normaliser le plan
-    plan = user_plan.lower().strip()
+    # Normaliser le plan — préserver l'identité originale AVANT collapse pour
+    # le check Magistral Expert-only (sinon "expert" → "pro" et on ne peut plus
+    # distinguer Expert v2 19.99 € de Pro legacy).
+    raw_plan = user_plan.lower().strip()
+    plan = raw_plan
     if plan in ("starter", "student", "étudiant"):
         plan = "plus"
     elif plan in ("expert", "equipe", "unlimited", "team"):
         plan = "pro"
     elif plan not in ("free", "plus", "pro"):
         plan = "free"
+
+    # ── Magistral epistemic routing (Phase 4) ────────────────────────────────
+    # Override Expert-only pour la synthèse finale uniquement. Si Magistral
+    # fail (429/5xx), llm_complete() retombe sur la chaîne de fallback existante
+    # (mistral-large-2512 → medium → small → DeepSeek) — pas besoin de modifier
+    # MISTRAL_FALLBACK_ORDER.
+    if (
+        task == "synthesis"
+        and MAGISTRAL_EPISTEMIC_ENABLED
+        and raw_plan in MAGISTRAL_EPISTEMIC_TIERS
+    ):
+        # Reprendre les max_tokens du modèle large (paramétrage Pro/Expert
+        # heavy synthesis) pour ne pas brider Magistral arbitrairement.
+        tier_group_for_tokens = _TIER_GROUP.get(tier, "medium")
+        _, default_max_tokens = _MODEL_MATRIX["synthesis"].get(
+            (tier_group_for_tokens, "pro"), (_MODEL_LARGE, 6000)
+        )
+        # Bonus tokens si transcript ultra-long (cohérent avec logique ci-dessous)
+        if transcript_words > 45000:
+            default_max_tokens = min(default_max_tokens + 2000, 12000)
+        elif transcript_words > 15000:
+            default_max_tokens = min(default_max_tokens + 1000, 10000)
+
+        logger.info(
+            "magistral_epistemic_override",
+            extra={
+                "tier": tier.value,
+                "raw_plan": raw_plan,
+                "task": task,
+                "model": MAGISTRAL_EPISTEMIC_MODEL,
+                "max_tokens": default_max_tokens,
+                "transcript_words": transcript_words,
+                "reason": "expert_tier_epistemic_markers_enabled",
+            },
+        )
+        return MAGISTRAL_EPISTEMIC_MODEL, default_max_tokens
 
     # Déterminer le groupe de tier
     tier_group = _TIER_GROUP.get(tier, "medium")
