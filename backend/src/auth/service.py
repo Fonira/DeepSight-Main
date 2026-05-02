@@ -34,13 +34,24 @@ def generate_session_token() -> str:
 
 async def create_user_session(session: AsyncSession, user_id: int) -> str:
     """
-    Crée une nouvelle session pour l'utilisateur.
-    IMPORTANT: Invalide automatiquement toutes les sessions précédentes.
-    """
-    session_token = generate_session_token()
+    Multi-device: réutilise le session_token existant en DB s'il y en a un,
+    sinon en crée un nouveau. Les logins simultanés Web/Mobile/Extension
+    cohabitent — plus d'écrasement qui invaliderait les autres devices.
 
-    # Mettre à jour le session_token de l'utilisateur (invalide les anciennes sessions)
-    # Utiliser datetime.utcnow() pour éviter les problèmes de timezone avec PostgreSQL
+    Why: avant, chaque login/refresh écrasait `User.session_token`, déconnectant
+    silencieusement tous les autres devices (UX "SESSION_EXPIRED" récurrent dès
+    que l'user se reloggait ailleurs).
+    """
+    result = await session.execute(select(User.session_token).where(User.id == user_id))
+    existing = result.scalar_one_or_none()
+
+    if existing:
+        # Session déjà active → on update juste last_login, on garde le token.
+        await session.execute(update(User).where(User.id == user_id).values(last_login=datetime.utcnow()))
+        await session.commit()
+        return existing
+
+    session_token = generate_session_token()
     await session.execute(
         update(User).where(User.id == user_id).values(session_token=session_token, last_login=datetime.utcnow())
     )
@@ -51,11 +62,17 @@ async def create_user_session(session: AsyncSession, user_id: int) -> str:
 
 
 async def validate_session_token(session: AsyncSession, user_id: int, session_token: str) -> bool:
-    """Vérifie si le session_token est valide pour cet utilisateur"""
+    """Vérifie si le session_token est valide.
+
+    Multi-device: on n'exige plus l'égalité stricte avec le token DB. Tant
+    que le DB token n'a PAS été explicitement révoqué (NULL via /logout ou
+    invalidate_user_session), le JWT signé est suffisant.
+    """
     result = await session.execute(select(User.session_token).where(User.id == user_id))
     stored_token = result.scalar_one_or_none()
 
-    if not stored_token or stored_token != session_token:
+    # NULL en DB = logout/révocation volontaire → on rejette.
+    if stored_token is None:
         return False
     return True
 

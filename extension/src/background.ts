@@ -73,6 +73,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 // ── Core API Request ──
 
+/**
+ * Status tripartite du refresh : on ne veut JAMAIS clear l'auth sur une
+ * erreur transitoire (réseau coupé, 5xx serveur, timeout). Seul un 401
+ * explicite du backend signifie que le refresh_token est vraiment invalide.
+ */
+type RefreshResult = "ok" | "invalid_token" | "transient";
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -88,10 +95,15 @@ async function apiRequest<T>(
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
-  // Bug fix: proactive refresh if access_token is older than 20min
-  // to avoid 401 mid-request during long pollings.
+  // Proactive refresh : access_token vit 7j côté backend mais on rafraîchit
+  // bien avant pour limiter les 401 mid-request sur les longs pollings.
+  // 24h = grosse marge ; pas besoin de hammer le /refresh toutes les 20min.
   const refreshedAt = await getTokenRefreshedAt();
-  if (accessToken && refreshedAt && Date.now() - refreshedAt > 20 * 60 * 1000) {
+  if (
+    accessToken &&
+    refreshedAt &&
+    Date.now() - refreshedAt > 24 * 60 * 60 * 1000
+  ) {
     await tryRefreshToken();
     const fresh = await getStoredTokens();
     if (fresh.accessToken)
@@ -105,7 +117,7 @@ async function apiRequest<T>(
 
   if (response.status === 401) {
     const refreshed = await tryRefreshToken();
-    if (refreshed) {
+    if (refreshed === "ok") {
       const { accessToken: newToken } = await getStoredTokens();
       headers["Authorization"] = `Bearer ${newToken}`;
       const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -117,6 +129,13 @@ async function apiRequest<T>(
       }
       return retryResponse.json();
     }
+    if (refreshed === "transient") {
+      // Backend down / réseau coupé / 5xx — on ne clear PAS l'auth, l'user
+      // peut retry plus tard sans avoir à se relogguer.
+      console.warn("[DeepSight] Refresh transiently failed — keeping tokens.");
+      throw new Error("NETWORK_ERROR");
+    }
+    // refreshed === "invalid_token" → vraie expiration / révocation explicite.
     await clearStoredAuth();
     console.warn(
       "[DeepSight] Session expired, refresh failed. User needs to re-login.",
@@ -136,9 +155,9 @@ async function apiRequest<T>(
 
 // ── Auth API ──
 
-let inflightRefresh: Promise<boolean> | null = null;
+let inflightRefresh: Promise<RefreshResult> | null = null;
 
-async function tryRefreshToken(): Promise<boolean> {
+async function tryRefreshToken(): Promise<RefreshResult> {
   if (inflightRefresh) return inflightRefresh;
   inflightRefresh = (async () => {
     try {
@@ -150,34 +169,46 @@ async function tryRefreshToken(): Promise<boolean> {
   return inflightRefresh;
 }
 
-async function doRefreshToken(): Promise<boolean> {
+async function doRefreshToken(): Promise<RefreshResult> {
   const { refreshToken } = await getStoredTokens();
   if (!refreshToken) {
-    return false;
+    return "invalid_token";
   }
 
+  let response: Response;
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
+  } catch {
+    // Network error (offline, DNS, fetch abort) — surtout pas clear l'auth.
+    return "transient";
+  }
 
-    if (!response.ok) {
-      return false;
-    }
+  if (response.status === 401) {
+    // Backend dit explicitement "ce refresh_token n'est plus valide".
+    return "invalid_token";
+  }
 
+  if (!response.ok) {
+    // 5xx / 502 Caddy / 504 timeout — transient, on retry plus tard.
+    return "transient";
+  }
+
+  try {
     const data: LoginResponse = await response.json();
     if (!data.access_token) {
-      return false;
+      return "transient";
     }
     // Bug #10: keep existing refresh_token if server doesn't send a new one
     const newRefreshToken = data.refresh_token || refreshToken;
     await setStoredTokens(data.access_token, newRefreshToken);
     await setStoredUser(data.user);
-    return true;
+    return "ok";
   } catch {
-    return false;
+    return "transient";
   }
 }
 

@@ -138,18 +138,20 @@ async def refresh_token(data: RefreshTokenRequest, session: AsyncSession = Depen
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
-    # 🆕 Valider que le session_token est toujours valide
+    # Multi-device : on ne rotate plus le session_token à chaque refresh.
+    # On réutilise celui du JWT (ou récupère/crée idempotent côté DB s'il
+    # manque). Une révocation explicite (logout → DB NULL) reste détectée
+    # via validate_session_token (qui rejette uniquement si DB NULL).
     if old_session_token:
         is_valid = await validate_session_token(session, user_id, old_session_token)
         if not is_valid:
             raise HTTPException(status_code=401, detail="SESSION_EXPIRED", headers={"X-Session-Invalid": "true"})
+        kept_session_token = old_session_token
+    else:
+        kept_session_token = await create_user_session(session, user_id)
 
-    # 🆕 Créer une nouvelle session (rotation de session)
-    new_session_token = await create_user_session(session, user_id)
-
-    # Nouveaux tokens avec nouveau session_token
-    access_token = create_access_token(user.id, user.is_admin, new_session_token)
-    new_refresh_token = create_refresh_token(user.id, new_session_token)
+    access_token = create_access_token(user.id, user.is_admin, kept_session_token)
+    new_refresh_token = create_refresh_token(user.id, kept_session_token)
 
     return TokenResponse(
         access_token=access_token, refresh_token=new_refresh_token, user=UserResponse.model_validate(user)

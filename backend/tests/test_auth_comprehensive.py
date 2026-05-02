@@ -957,16 +957,36 @@ async def test_validate_session_token_valid(mock_db_session):
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_validate_session_token_invalid(mock_db_session):
+async def test_validate_session_token_multi_device_allowed(mock_db_session):
     """
-    Test : validate_session_token retourne False si le token ne correspond pas.
+    Test : multi-device — un session_token JWT n'est plus rejeté juste parce
+    qu'un autre device s'est reconnecté entre-temps. Tant que la DB n'est
+    pas explicitement NULL (logout volontaire), on accepte.
     """
     from auth.service import validate_session_token
 
     mock_db_session.execute = AsyncMock()
     mock_db_session.execute.return_value.scalar_one_or_none = MagicMock(return_value="current_session")
 
+    # JWT contient un ancien token, DB en a un nouveau (autre device s'est
+    # reconnecté) → on accepte quand même : le JWT signé est suffisant.
     result = await validate_session_token(mock_db_session, user_id=1, session_token="old_session")
+    assert result is True
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_validate_session_token_revoked(mock_db_session):
+    """
+    Test : validate_session_token rejette si la DB a été explicitement
+    nettoyée (NULL via /logout ou invalidate_user_session).
+    """
+    from auth.service import validate_session_token
+
+    mock_db_session.execute = AsyncMock()
+    mock_db_session.execute.return_value.scalar_one_or_none = MagicMock(return_value=None)
+
+    result = await validate_session_token(mock_db_session, user_id=1, session_token="any_token")
     assert result is False
 
 
