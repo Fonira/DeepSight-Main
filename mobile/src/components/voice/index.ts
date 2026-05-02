@@ -1,8 +1,11 @@
 /**
- * Voice Chat — barrel exports
+ * Voice Chat — barrel exports.
+ *
+ * Note : `VoiceScreen` et `PostCallScreen` ont été supprimés (PR Quick Chat +
+ * Quick Call unified). Utiliser `<ConversationScreen />` (mobile/src/components/conversation)
+ * comme single-source pour toute UI voice + chat.
  */
 export { VoiceButton } from "./VoiceButton";
-export { VoiceScreen } from "./VoiceScreen";
 export { useVoiceChat } from "./useVoiceChat";
 export { VoiceAnalytics, VoiceAnalyticsEvents } from "./voiceAnalytics";
 export { default as VoiceWaveform } from "./VoiceWaveform";

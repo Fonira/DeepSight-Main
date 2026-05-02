@@ -140,6 +140,12 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   web_search_used?: boolean;
+  // Voice timeline fields (Spec #1 — chat+voice unified backend persistence)
+  // Backend renvoie ces champs via `GET /api/chat/history/{summary_id}`.
+  source?: "text" | "voice";
+  voice_speaker?: "user" | "agent" | null;
+  voice_session_id?: string | null;
+  time_in_call_secs?: number | null;
 }
 
 export interface ChatHistory {
