@@ -2325,7 +2325,11 @@ async def _compress_audio(audio_data: bytes, audio_ext: str, source_name: str = 
 
 
 async def get_transcript_with_timestamps(
-    video_id: str, supadata_key: str = None, is_short: bool = False, duration: int = 0
+    video_id: str,
+    supadata_key: str = None,
+    is_short: bool = False,
+    duration: int = 0,
+    user_plan: Optional[str] = None,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     🎯 FONCTION PRINCIPALE v7.1 - Supadata PRIORITAIRE + STT pour TOUTES vidéos
@@ -2353,11 +2357,15 @@ async def get_transcript_with_timestamps(
     """
     # 🚦 Semaphore: limite les extractions concurrentes pour protéger les APIs
     async with _extraction_semaphore:
-        return await _get_transcript_with_timestamps_inner(video_id, supadata_key, is_short, duration)
+        return await _get_transcript_with_timestamps_inner(video_id, supadata_key, is_short, duration, user_plan)
 
 
 async def _get_transcript_with_timestamps_inner(
-    video_id: str, supadata_key: str = None, is_short: bool = False, duration: int = 0
+    video_id: str,
+    supadata_key: str = None,
+    is_short: bool = False,
+    duration: int = 0,
+    user_plan: Optional[str] = None,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Inner function — exécutée sous le semaphore de concurrence."""
     print("", flush=True)
@@ -2573,10 +2581,16 @@ async def _get_transcript_with_timestamps_inner(
     print(f"📋 PHASE 3: Audio STT (last resort{' — SHORT' if is_short else ' — full video'})", flush=True)
     print("─" * 50, flush=True)
 
-    # Duration guard: skip all STT providers for videos longer than MAX_DURATION_FOR_STT
-    if duration > 0 and duration > MAX_DURATION_FOR_STT:
+    # Duration guard: plan-aware cap (Mistral-First Phase 1).
+    # Free=20min / Pro=40min / Expert=60min. Voxtral handles up to 3h, so the
+    # caps reflect business policy (paid tiers unlock longer audio), not API limits.
+    from core.config import get_max_stt_duration as _get_max_stt_duration
+
+    max_stt_duration = _get_max_stt_duration(user_plan or "free")
+    if duration > 0 and duration > max_stt_duration:
         print(
-            f"  ⏭️ [STT] Skipped ALL STT providers: video duration {duration}s > MAX_DURATION_FOR_STT {MAX_DURATION_FOR_STT}s",
+            f"  ⏭️ [STT] Skipped ALL STT providers: video duration {duration}s > "
+            f"max_stt_duration {max_stt_duration}s for plan={user_plan or 'free'}",
             flush=True,
         )
     else:
