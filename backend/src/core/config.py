@@ -122,6 +122,13 @@ class _DeepSightSettings(BaseSettings):
     VERBOSE_LOGGING: str = "false"
     HEALTH_CHECK_SECRET: str = ""
 
+    # -- Analytics (server-side PostHog) --
+    # Optional. Server-side capture for events that cannot be tracked client-side
+    # (e.g. which web search provider served a query). Best-effort: failures are
+    # swallowed and never block the request.
+    POSTHOG_API_KEY: str = ""
+    POSTHOG_HOST: str = "https://eu.i.posthog.com"
+
     # -- Rate Limiting --
     RATE_LIMIT_ENABLED: str = "true"
 
