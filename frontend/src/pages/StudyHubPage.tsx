@@ -140,6 +140,10 @@ const StudyHubPage: React.FC = () => {
     navigate(`/study/${summaryId}?session=true`);
   };
 
+  const handleVideoOpen = (summaryId: number) => {
+    navigate(`/study/${summaryId}`);
+  };
+
   // ═════════════════════════════════════════════════════════════════════════════
   // Upgrade CTA (free users)
   // ═════════════════════════════════════════════════════════════════════════════
@@ -433,6 +437,7 @@ const StudyHubPage: React.FC = () => {
                           <VideoMasteryRow
                             key={video.summary_id}
                             video={video}
+                            onOpen={handleVideoOpen}
                             onStart={handleVideoStart}
                           />
                         ))}

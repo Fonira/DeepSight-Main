@@ -1,6 +1,6 @@
 /**
  * CONDITIONS GENERALES D'UTILISATION — Deep Sight
- * Page dediee CGU conforme a la legislation francaise
+ * Page dédiée CGU conforme a la legislation française
  * Derniere mise a jour : Fevrier 2026
  */
 
@@ -34,7 +34,7 @@ const LEGAL_INFO = {
   vat: {
     status: "TVA non applicable, article 293 B du CGI",
   },
-  lastUpdate: "13 fevrier 2026",
+  lastUpdate: "13 février 2026",
 };
 
 const LegalCGU: React.FC = () => {
@@ -79,7 +79,7 @@ const LegalCGU: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">
-                Conditions Generales d'Utilisation
+                Conditions Générales d'Utilisation
               </h1>
               <p className="text-text-secondary text-sm">
                 En vigueur au {LEGAL_INFO.lastUpdate}
@@ -97,11 +97,11 @@ const LegalCGU: React.FC = () => {
           </h2>
           <div className="text-text-primary space-y-3">
             <p>
-              Les presentes Conditions Generales d'Utilisation (ci-apres "CGU")
-              ont pour objet de definir les conditions dans lesquelles les
-              utilisateurs (ci-apres "l'Utilisateur" ou "les Utilisateurs")
+              Les présentes Conditions Générales d'Utilisation (ci-après "CGU")
+              ont pour objet de définir les conditions dans lesquelles les
+              utilisateurs (ci-après "l'Utilisateur" ou "les Utilisateurs")
               peuvent acceder et utiliser le service{" "}
-              <strong>{LEGAL_INFO.website.name}</strong> (ci-apres "le
+              <strong>{LEGAL_INFO.website.name}</strong> (ci-après "le
               Service"), accessible a l'adresse{" "}
               <a
                 href={LEGAL_INFO.website.url}
@@ -114,18 +114,18 @@ const LegalCGU: React.FC = () => {
             </p>
             <p>
               Le Service est edite par {LEGAL_INFO.company.name},{" "}
-              {LEGAL_INFO.company.type}, immatricule sous le numero SIRET{" "}
+              {LEGAL_INFO.company.type}, immatricule sous le numéro SIRET{" "}
               {LEGAL_INFO.company.siret}, RCS {LEGAL_INFO.company.rcs}, dont le
               siege social est situe au {LEGAL_INFO.company.address},{" "}
               {LEGAL_INFO.company.postalCode} {LEGAL_INFO.company.city},{" "}
-              {LEGAL_INFO.company.country} (ci-apres "l'Editeur").
+              {LEGAL_INFO.company.country} (ci-après "l'Éditeur").
             </p>
             <p>
               L'utilisation du Service implique l'acceptation pleine et entiere
-              des presentes CGU. En accedant au Service ou en creant un compte,
+              des présentes CGU. En accédant au Service ou en créant un compte,
               l'Utilisateur reconnait avoir lu, compris et accepte l'integralite
-              des presentes conditions. En cas de desaccord avec l'une
-              quelconque des dispositions des presentes CGU, l'Utilisateur est
+              des présentes conditions. En cas de désaccord avec l'une
+              quelconque des dispositions des présentes CGU, l'Utilisateur est
               invite a ne pas utiliser le Service.
             </p>
           </div>
@@ -139,28 +139,28 @@ const LegalCGU: React.FC = () => {
           <div className="text-text-primary space-y-3">
             <p>
               {LEGAL_INFO.website.name} est une plateforme SaaS (Software as a
-              Service) d'analyse de videos YouTube utilisant l'intelligence
+              Service) d'analyse de vidéos YouTube utilisant l'intelligence
               artificielle française avec un raisonnement méthodique et une
               vérification rigoureuse des faits. Le Service propose notamment :
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4">
               <li>
-                L'analyse automatisee de videos YouTube (transcription, synthese
+                L'analyse automatisée de vidéos YouTube (transcription, synthèse
                 structuree, categorisation epistemique)
               </li>
               <li>
                 La verification factuelle (fact-checking) des affirmations
-                contenues dans les videos
+                contenues dans les vidéos
               </li>
               <li>
                 Un assistant conversationnel (Chat IA) permettant d'interagir
                 avec le contenu analyse
               </li>
               <li>
-                Des outils d'etude : flashcards, cartes conceptuelles, quiz
+                Des outils d'étude : flashcards, cartes conceptuelles, quiz
               </li>
               <li>
-                L'analyse de playlists et corpus de videos (selon l'abonnement
+                L'analyse de playlists et corpus de vidéos (selon l'abonnement
                 souscrit)
               </li>
               <li>
@@ -168,13 +168,13 @@ const LegalCGU: React.FC = () => {
                 Markdown)
               </li>
               <li>
-                La lecture audio des analyses (synthese vocale, selon
+                La lecture audio des analyses (synthèse vocale, selon
                 l'abonnement)
               </li>
             </ul>
             <p>
               Le Service utilise exclusivement les sous-titres publiquement
-              accessibles des videos YouTube. Aucun telechargement de contenu
+              accessibles des vidéos YouTube. Aucun téléchargement de contenu
               audiovisuel n'est effectue. Les analyses sont generees par des
               modeles d'intelligence artificielle et sont fournies a titre
               informatif uniquement.
@@ -209,17 +209,17 @@ const LegalCGU: React.FC = () => {
             </p>
             <p>
               <strong>3.3 -- Exactitude des informations.</strong> L'Utilisateur
-              s'engage a fournir des informations exactes, completes et a jour
+              s'engage a fournir des informations exactes, complètes et a jour
               lors de son inscription, et a les maintenir a jour tout au long de
               l'utilisation du Service.
             </p>
             <p>
-              <strong>3.4 -- Securite du compte.</strong> L'Utilisateur est seul
-              responsable de la confidentialite de ses identifiants de connexion
+              <strong>3.4 -- Sécurité du compte.</strong> L'Utilisateur est seul
+              responsable de la confidentialité de ses identifiants de connexion
               (email, mot de passe). Toute activite effectuee depuis son compte
               est presumee avoir ete realisee par l'Utilisateur. En cas
               d'utilisation non autorisee de son compte, l'Utilisateur doit en
-              informer immediatement l'Editeur a l'adresse{" "}
+              informer immediatement l'Éditeur a l'adresse{" "}
               <a
                 href={`mailto:${LEGAL_INFO.contact.email}`}
                 className="text-amber-400 hover:underline"
@@ -231,7 +231,7 @@ const LegalCGU: React.FC = () => {
             <p>
               <strong>3.5 -- Unicite du compte.</strong> Chaque Utilisateur ne
               peut creer qu'un seul compte, sauf autorisation expresse de
-              l'Editeur. La creation de comptes multiples dans le but de
+              l'Éditeur. La creation de comptes multiples dans le but de
               contourner les limitations du Service est interdite.
             </p>
           </div>
@@ -245,17 +245,17 @@ const LegalCGU: React.FC = () => {
           <div className="text-text-primary space-y-3">
             <p>
               <strong>4.1 -- Acces au Service.</strong> Le Service est
-              accessible 24 heures sur 24, 7 jours sur 7, sous reserve des
-              periodes de maintenance programmee ou d'incidents techniques.
+              accessible 24 heures sur 24, 7 jours sur 7, sous réserve des
+              périodes de maintenance programmee ou d'incidents techniques.
             </p>
             <p>
-              <strong>4.2 -- Disponibilite.</strong> L'Editeur met en oeuvre les
+              <strong>4.2 -- Disponibilite.</strong> L'Éditeur met en oeuvre les
               moyens raisonnables pour assurer la disponibilite du Service, mais
               ne garantit pas une disponibilite continue et ininterrompue.
-              L'Editeur ne saurait etre tenu responsable des interruptions de
+              L'Éditeur ne saurait etre tenu responsable des interruptions de
               Service dues a des cas de force majeure, a des dysfonctionnements
               des reseaux de telecommunications, ou a des operations de
-              maintenance necessaires au bon fonctionnement du Service.
+              maintenance nécessaires au bon fonctionnement du Service.
             </p>
             <p>
               <strong>4.3 -- Configuration requise.</strong> L'Utilisateur doit
@@ -264,10 +264,10 @@ const LegalCGU: React.FC = () => {
               active et d'un appareil compatible pour acceder au Service.
             </p>
             <p>
-              <strong>4.4 -- Suspension et limitation.</strong> L'Editeur se
-              reserve le droit de suspendre ou limiter l'acces au Service, sans
-              preavis ni indemnite, en cas de violation des presentes CGU par
-              l'Utilisateur, ou pour des raisons techniques ou de securite.
+              <strong>4.4 -- Suspension et limitation.</strong> L'Éditeur se
+              réserve le droit de suspendre ou limiter l'acces au Service, sans
+              préavis ni indemnité, en cas de violation des présentes CGU par
+              l'Utilisateur, ou pour des raisons techniques ou de sécurité.
             </p>
           </div>
         </section>
@@ -279,22 +279,22 @@ const LegalCGU: React.FC = () => {
           </h2>
           <div className="text-text-primary space-y-3">
             <p>
-              <strong>5.1 -- Droits de l'Editeur.</strong> L'ensemble des
+              <strong>5.1 -- Droits de l'Éditeur.</strong> L'ensemble des
               elements composant le Service (textes, graphismes, logos, icones,
-              images, logiciels, bases de donnees, algorithmes, architecture
+              images, logiciels, bases de données, algorithmes, architecture
               technique, interface utilisateur) est la propriete exclusive de
-              l'Editeur ou fait l'objet d'une autorisation d'utilisation. Ces
+              l'Éditeur ou fait l'objet d'une autorisation d'utilisation. Ces
               elements sont proteges par les lois francaises et internationales
               relatives a la propriete intellectuelle.
             </p>
             <p>
-              <strong>5.2 -- Licence d'utilisation.</strong> L'Editeur accorde a
+              <strong>5.2 -- Licence d'utilisation.</strong> L'Éditeur accorde a
               l'Utilisateur une licence personnelle, non exclusive, non cessible
-              et non transferable d'utilisation du Service, pour la duree de son
-              inscription et dans le cadre des presentes CGU.
+              et non transferable d'utilisation du Service, pour la durée de son
+              inscription et dans le cadre des présentes CGU.
             </p>
             <p>
-              <strong>5.3 -- Contenu genere.</strong> Les analyses, syntheses et
+              <strong>5.3 -- Contenu genere.</strong> Les analyses, synthèses et
               autres contenus generes par le Service a la demande de
               l'Utilisateur sont la propriete de l'Utilisateur qui les a
               commandees. L'Utilisateur est libre de les utiliser, partager ou
@@ -305,7 +305,7 @@ const LegalCGU: React.FC = () => {
               representation, modification, publication, transmission,
               denaturation, totale ou partielle du Service ou de ses elements,
               par quelque procede que ce soit, sans l'autorisation ecrite
-              prealable de l'Editeur, est interdite et constitue une contrefacon
+              prealable de l'Éditeur, est interdite et constitue une contrefacon
               sanctionnee par les articles L.335-2 et suivants du Code de la
               propriete intellectuelle.
             </p>
@@ -321,8 +321,8 @@ const LegalCGU: React.FC = () => {
             <p>L'Utilisateur s'engage a :</p>
             <ul className="list-disc list-inside space-y-2 ml-4">
               <li>
-                Utiliser le Service de maniere loyale, conforme a sa destination
-                et dans le respect des presentes CGU
+                Utiliser le Service de manière loyale, conforme a sa destination
+                et dans le respect des présentes CGU
               </li>
               <li>
                 Ne pas analyser de contenus illicites, haineux, diffamatoires,
@@ -338,25 +338,25 @@ const LegalCGU: React.FC = () => {
               </li>
               <li>
                 Ne pas utiliser de moyens automatises (bots, scrapers, scripts)
-                pour acceder au Service ou en extraire des donnees
+                pour acceder au Service ou en extraire des données
               </li>
               <li>
                 Ne pas revendre, redistribuer ou sous-licencier le Service ou
-                l'acces au Service sans autorisation ecrite de l'Editeur
+                l'acces au Service sans autorisation ecrite de l'Éditeur
               </li>
               <li>
                 Ne pas perturber le fonctionnement du Service ou tenter de
-                compromettre sa securite
+                compromettre sa sécurité
               </li>
               <li>
-                Ne pas usurper l'identite d'un tiers ou creer de faux comptes
+                Ne pas usurper l'identité d'un tiers ou creer de faux comptes
               </li>
             </ul>
             <p>
               Le non-respect de ces engagements peut entrainer la suspension ou
-              la resiliation immediate du compte de l'Utilisateur, sans preavis
+              la résiliation immediate du compte de l'Utilisateur, sans préavis
               ni remboursement, et sans prejudice de toute action en reparation
-              du dommage subi par l'Editeur.
+              du dommage subi par l'Éditeur.
             </p>
           </div>
         </section>
@@ -370,7 +370,7 @@ const LegalCGU: React.FC = () => {
             <p>
               <strong>7.1 -- Nature informationnelle.</strong>{" "}
               {LEGAL_INFO.website.name} est un outil d'assistance base sur
-              l'intelligence artificielle. Les analyses, syntheses,
+              l'intelligence artificielle. Les analyses, synthèses,
               verifications factuelles et autres contenus generes par le Service
               sont fournis a titre informatif uniquement et ne constituent en
               aucun cas :
@@ -383,7 +383,7 @@ const LegalCGU: React.FC = () => {
               <li>
                 Une source d'information verifiee, exhaustive ou infaillible
               </li>
-              <li>Un substitut au visionnage des videos originales</li>
+              <li>Un substitut au visionnage des vidéos originales</li>
               <li>
                 Une garantie de l'exactitude ou de la fiabilite du contenu
                 source
@@ -397,7 +397,7 @@ const LegalCGU: React.FC = () => {
               generees par le Service aupres de sources primaires.
             </p>
             <p>
-              <strong>7.3 -- Exclusion de responsabilite.</strong> L'Editeur ne
+              <strong>7.3 -- Exclusion de responsabilite.</strong> L'Éditeur ne
               saurait etre tenu responsable :
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4">
@@ -407,9 +407,9 @@ const LegalCGU: React.FC = () => {
               </li>
               <li>De l'indisponibilite temporaire du Service</li>
               <li>
-                De la perte de donnees resultant d'un cas de force majeure
+                De la perte de données resultant d'un cas de force majeure
               </li>
-              <li>Du contenu des videos YouTube analysees par l'Utilisateur</li>
+              <li>Du contenu des vidéos YouTube analysées par l'Utilisateur</li>
               <li>
                 Des dommages indirects (perte de profit, perte de chance,
                 prejudice commercial) resultant de l'utilisation ou de
@@ -418,9 +418,9 @@ const LegalCGU: React.FC = () => {
             </ul>
             <p>
               <strong>7.4 -- Service en l'etat.</strong> Le Service est fourni
-              "en l'etat" ("as is"). L'Editeur ne garantit pas que le Service
+              "en l'etat" ("as is"). L'Éditeur ne garantit pas que le Service
               sera exempt d'erreurs, de bugs ou de vulnerabilites, ni que les
-              defauts seront corriges dans un delai determine.
+              defauts seront corriges dans un délai determine.
             </p>
           </div>
         </section>
@@ -428,30 +428,30 @@ const LegalCGU: React.FC = () => {
         {/* Article 8 */}
         <section className="bg-white/5 rounded-xl p-6 border border-white/10">
           <h2 className="text-lg font-semibold text-white mb-4">
-            Article 8 -- Donnees personnelles
+            Article 8 -- Données personnelles
           </h2>
           <div className="text-text-primary space-y-3">
             <p>
-              L'Editeur collecte et traite des donnees personnelles dans le
+              L'Éditeur collecte et traite des données personnelles dans le
               cadre de la fourniture du Service, conformement au Reglement
-              General sur la Protection des Donnees (RGPD) et a la loi
+              General sur la Protection des Données (RGPD) et a la loi
               Informatique et Libertes du 6 janvier 1978 modifiee.
             </p>
             <p>
               Les modalites de collecte, de traitement et de protection des
-              donnees personnelles sont detaillees dans la{" "}
+              données personnelles sont detaillees dans la{" "}
               <Link
                 to="/legal#privacy"
                 className="text-amber-400 hover:underline"
               >
-                Politique de Confidentialite
+                Politique de Confidentialité
               </Link>
-              , qui fait partie integrante des presentes CGU.
+              , qui fait partie intégrante des présentes CGU.
             </p>
             <p>
               L'Utilisateur dispose de droits d'acces, de rectification,
               d'effacement, de limitation, de portabilite et d'opposition sur
-              ses donnees, qu'il peut exercer en contactant l'Editeur a
+              ses données, qu'il peut exercer en contactant l'Éditeur a
               l'adresse{" "}
               <a
                 href={`mailto:${LEGAL_INFO.contact.email}`}
@@ -471,8 +471,8 @@ const LegalCGU: React.FC = () => {
           </h2>
           <div className="text-text-primary space-y-3">
             <p>
-              L'Editeur se reserve le droit de modifier les presentes CGU a tout
-              moment, notamment pour les adapter aux evolutions legislatives,
+              L'Éditeur se réserve le droit de modifier les présentes CGU a tout
+              moment, notamment pour les adapter aux évolutions legislatives,
               reglementaires ou techniques, ou pour prendre en compte de
               nouvelles fonctionnalites du Service.
             </p>
@@ -484,8 +484,8 @@ const LegalCGU: React.FC = () => {
               acceptation des nouvelles CGU.
             </p>
             <p>
-              En cas de desaccord avec les nouvelles conditions, l'Utilisateur
-              peut resilier son compte avant l'entree en vigueur des
+              En cas de désaccord avec les nouvelles conditions, l'Utilisateur
+              peut résilier son compte avant l'entree en vigueur des
               modifications.
             </p>
           </div>
@@ -499,7 +499,7 @@ const LegalCGU: React.FC = () => {
           <div className="text-text-primary space-y-3">
             <p>
               <strong>10.1 -- Resiliation par l'Utilisateur.</strong>{" "}
-              L'Utilisateur peut supprimer son compte a tout moment depuis les
+              L'Utilisateur peut supprimer son compte à tout moment depuis les
               parametres de son profil ou en contactant le support a l'adresse{" "}
               <a
                 href={`mailto:${LEGAL_INFO.contact.email}`}
@@ -510,16 +510,16 @@ const LegalCGU: React.FC = () => {
               .
             </p>
             <p>
-              <strong>10.2 -- Consequences de la resiliation.</strong> La
+              <strong>10.2 -- Consequences de la résiliation.</strong> La
               suppression du compte entraine la suppression definitive de toutes
-              les donnees associees (analyses, historique de conversations,
-              preferences) dans un delai de 30 jours, sous reserve des
+              les données associees (analyses, historique de conversations,
+              preferences) dans un délai de 30 jours, sous réserve des
               obligations legales de conservation.
             </p>
             <p>
-              <strong>10.3 -- Resiliation par l'Editeur.</strong> L'Editeur se
-              reserve le droit de suspendre ou resilier un compte en cas de
-              violation des presentes CGU, sans preavis ni indemnite.
+              <strong>10.3 -- Resiliation par l'Éditeur.</strong> L'Éditeur se
+              réserve le droit de suspendre ou résilier un compte en cas de
+              violation des présentes CGU, sans préavis ni indemnité.
             </p>
           </div>
         </section>
@@ -531,17 +531,17 @@ const LegalCGU: React.FC = () => {
           </h2>
           <div className="text-text-primary space-y-3">
             <p>
-              Les presentes CGU sont regies par le droit francais. Tout litige
-              relatif a l'interpretation ou a l'execution des presentes CGU sera
+              Les présentes CGU sont régies par le droit français. Tout litige
+              relatif a l'interprétation ou a l'exécution des présentes CGU sera
               soumis aux tribunaux competents du ressort de Lyon (France), sous
-              reserve des regles imperatives de competence applicables aux
+              réserve des regles imperatives de compétence applicables aux
               consommateurs.
             </p>
             <p>
               En cas de litige, les parties s'engagent a rechercher une solution
               amiable avant toute action judiciaire. A defaut d'accord amiable
-              dans un delai de 30 jours, le litige pourra etre porte devant les
-              juridictions competentes.
+              dans un délai de 30 jours, le litige pourra etre porte devant les
+              juridictions compétentes.
             </p>
           </div>
         </section>
@@ -561,7 +561,7 @@ const LegalCGU: React.FC = () => {
             </p>
             <p>
               Le consommateur peut egalement utiliser la plateforme de reglement
-              en ligne des litiges mise en place par la Commission europeenne,
+              en ligne des litiges mise en place par la Commission européenne,
               accessible a l'adresse suivante :{" "}
               <a
                 href="https://ec.europa.eu/consumers/odr"
@@ -575,7 +575,7 @@ const LegalCGU: React.FC = () => {
             </p>
             <p>
               Pour toute reclamation, l'Utilisateur est invite a contacter
-              prealablement l'Editeur a l'adresse{" "}
+              prealablement l'Éditeur a l'adresse{" "}
               <a
                 href={`mailto:${LEGAL_INFO.contact.email}`}
                 className="text-amber-400 hover:underline"
@@ -597,37 +597,37 @@ const LegalCGU: React.FC = () => {
         {/* Article 13 */}
         <section className="bg-white/5 rounded-xl p-6 border border-white/10">
           <h2 className="text-lg font-semibold text-white mb-4">
-            Article 13 -- Dispositions generales
+            Article 13 -- Dispositions générales
           </h2>
           <div className="text-text-primary space-y-3">
             <p>
               <strong>13.1 -- Divisibilite.</strong> Si l'une quelconque des
-              dispositions des presentes CGU etait declaree nulle ou
+              dispositions des présentes CGU était déclarée nulle ou
               inapplicable par une juridiction competente, les autres
               dispositions resteraient en vigueur et de plein effet.
             </p>
             <p>
-              <strong>13.2 -- Tolerance.</strong> Le fait pour l'Editeur de ne
+              <strong>13.2 -- Tolerance.</strong> Le fait pour l'Éditeur de ne
               pas se prevaloir d'un manquement de l'Utilisateur a l'une
-              quelconque des obligations visees dans les presentes CGU ne
+              quelconque des obligations visées dans les présentes CGU ne
               saurait etre interprete comme une renonciation a l'obligation en
               cause.
             </p>
             <p>
-              <strong>13.3 -- Integralite.</strong> Les presentes CGU, ensemble
+              <strong>13.3 -- Intégralité.</strong> Les présentes CGU, ensemble
               avec la{" "}
               <Link
                 to="/legal#privacy"
                 className="text-amber-400 hover:underline"
               >
-                Politique de Confidentialite
+                Politique de Confidentialité
               </Link>{" "}
               et les{" "}
               <Link to="/legal/cgv" className="text-amber-400 hover:underline">
-                Conditions Generales de Vente
+                Conditions Générales de Vente
               </Link>
               , constituent l'integralite de l'accord entre l'Utilisateur et
-              l'Editeur.
+              l'Éditeur.
             </p>
           </div>
         </section>
@@ -663,7 +663,7 @@ const LegalCGU: React.FC = () => {
               to="/legal#privacy"
               className="hover:text-text-secondary transition-colors"
             >
-              Confidentialite
+              Confidentialité
             </Link>
           </div>
         </footer>

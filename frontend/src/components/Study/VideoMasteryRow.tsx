@@ -10,11 +10,15 @@ import { MasteryRing } from "./MasteryRing";
 
 interface VideoMasteryRowProps {
   video: VideoMastery;
+  /** Called when the row body is clicked — opens the video detail page. */
+  onOpen?: (summaryId: number) => void;
+  /** Called when the right-side action button is clicked — starts/resumes a session. */
   onStart: (summaryId: number) => void;
 }
 
 export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
   video,
+  onOpen,
   onStart,
 }) => {
   const dueCards = video.due_cards ?? 0;
@@ -34,44 +38,53 @@ export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
       whileHover={{ x: 2 }}
       role="listitem"
     >
-      {/* Thumbnail / emoji */}
-      <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-white/5 text-lg">
-        🎬
-      </div>
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white truncate">{title}</p>
-        <div className="flex items-center gap-2 mt-0.5">
-          {channel && (
-            <span className="text-[11px] text-text-muted truncate">
-              {channel}
-            </span>
-          )}
-          {channel && <span className="text-[10px] text-white/25">·</span>}
-          <span className="text-[11px] text-text-tertiary">
-            {video.total_cards ?? 0} cartes
-          </span>
-          <span className="text-[10px] text-white/25">·</span>
-          <span className="text-[11px] text-text-tertiary">
-            {formatDate(video.last_studied)}
-          </span>
+      {/* Clickable row body — opens the video detail page */}
+      <button
+        type="button"
+        onClick={() => onOpen?.(video.summary_id)}
+        disabled={!onOpen}
+        aria-label={`Ouvrir ${title}`}
+        className="flex items-center gap-4 flex-1 min-w-0 text-left disabled:cursor-default"
+      >
+        {/* Thumbnail / emoji */}
+        <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-white/5 text-lg">
+          🎬
         </div>
-      </div>
-      {/* Mastery ring */}
-      <div className="flex-shrink-0">
-        <MasteryRing
-          percent={Math.round(video.mastery_percent ?? 0)}
-          size={40}
-          strokeWidth={4}
-        />
-      </div>
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-white truncate">{title}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            {channel && (
+              <span className="text-[11px] text-text-muted truncate">
+                {channel}
+              </span>
+            )}
+            {channel && <span className="text-[10px] text-white/25">·</span>}
+            <span className="text-[11px] text-text-tertiary">
+              {video.total_cards ?? 0} cartes
+            </span>
+            <span className="text-[10px] text-white/25">·</span>
+            <span className="text-[11px] text-text-tertiary">
+              {formatDate(video.last_studied)}
+            </span>
+          </div>
+        </div>
+        {/* Mastery ring */}
+        <div className="flex-shrink-0">
+          <MasteryRing
+            percent={Math.round(video.mastery_percent ?? 0)}
+            size={40}
+            strokeWidth={4}
+          />
+        </div>
+      </button>
       {/* Due badge */}
       {hasDue && (
         <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-indigo-500/15 text-[11px] font-medium text-indigo-300">
           {dueCards} dues
         </span>
       )}
-      {/* Action button */}
+      {/* Action button — starts a review session, distinct from row click */}
       <button
         type="button"
         onClick={() => onStart(video.summary_id)}

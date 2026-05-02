@@ -1,6 +1,6 @@
 /**
  * CONDITIONS GENERALES DE VENTE — Deep Sight
- * Page dediee CGV conforme a la legislation francaise
+ * Page dédiée CGV conforme a la legislation française
  * Derniere mise a jour : Fevrier 2026
  */
 
@@ -34,7 +34,7 @@ const LEGAL_INFO = {
   vat: {
     status: "TVA non applicable, article 293 B du CGI",
   },
-  lastUpdate: "13 fevrier 2026",
+  lastUpdate: "13 février 2026",
 };
 
 const PLANS = [
@@ -43,7 +43,7 @@ const PLANS = [
     price: "0",
     period: "",
     analyses: "5",
-    features: "Flashcards, 60 jours d'historique, videos jusqu'a 15 min",
+    features: "Flashcards, 60 jours d'historique, vidéos jusqu'à 15 min",
   },
   {
     name: "Pro",
@@ -59,7 +59,7 @@ const PLANS = [
     period: "/mois",
     analyses: "100",
     features:
-      "Playlists, chat illimite, deep research, voice chat 120 min/mois, file prioritaire",
+      "Playlists, chat illimité, deep research, voice chat 120 min/mois, file prioritaire",
   },
 ];
 
@@ -108,7 +108,7 @@ const LegalCGV: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">
-                Conditions Generales de Vente
+                Conditions Générales de Vente
               </h1>
               <p className="text-text-secondary text-sm">
                 En vigueur au {LEGAL_INFO.lastUpdate}
@@ -126,29 +126,29 @@ const LegalCGV: React.FC = () => {
           </h2>
           <div className="text-text-primary space-y-3">
             <p>
-              Les presentes Conditions Generales de Vente (ci-apres "CGV") ont
-              pour objet de definir les conditions dans lesquelles{" "}
+              Les présentes Conditions Générales de Vente (ci-après "CGV") ont
+              pour objet de définir les conditions dans lesquelles{" "}
               {LEGAL_INFO.company.name}, {LEGAL_INFO.company.type}, SIRET{" "}
-              {LEGAL_INFO.company.siret}, RCS {LEGAL_INFO.company.rcs} (ci-apres
-              "le Vendeur" ou "l'Editeur"), commercialise ses offres
+              {LEGAL_INFO.company.siret}, RCS {LEGAL_INFO.company.rcs} (ci-après
+              "le Vendeur" ou "l'Éditeur"), commercialise ses offres
               d'abonnement au service <strong>{LEGAL_INFO.website.name}</strong>{" "}
-              (ci-apres "le Service") aupres des utilisateurs (ci-apres "le
+              (ci-après "le Service") aupres des utilisateurs (ci-après "le
               Client" ou "l'Utilisateur").
             </p>
             <p>
-              Les presentes CGV s'appliquent a toute souscription d'abonnement
-              payant au Service, a l'exclusion de l'offre gratuite qui est regie
+              Les présentes CGV s'appliquent a toute souscription d'abonnement
+              payant au Service, à l'exclusion de l'offre gratuite qui est régie
               uniquement par les{" "}
               <Link to="/legal/cgu" className="text-amber-400 hover:underline">
-                Conditions Generales d'Utilisation
+                Conditions Générales d'Utilisation
               </Link>
               .
             </p>
             <p>
               Toute souscription a un abonnement implique l'acceptation sans
-              reserve des presentes CGV, ainsi que des{" "}
+              réserve des présentes CGV, ainsi que des{" "}
               <Link to="/legal/cgu" className="text-amber-400 hover:underline">
-                Conditions Generales d'Utilisation
+                Conditions Générales d'Utilisation
               </Link>{" "}
               du Service.
             </p>
@@ -209,7 +209,7 @@ const LegalCGV: React.FC = () => {
 
             <p>
               Les prix sont indiques en euros TTC ({LEGAL_INFO.vat.status}).
-              L'Editeur se reserve le droit de modifier ses tarifs a tout
+              L'Éditeur se réserve le droit de modifier ses tarifs a tout
               moment. Toute modification tarifaire sera communiquee aux
               Utilisateurs au moins 30 jours avant son entree en vigueur. Les
               tarifs applicables sont ceux en vigueur au moment de la
@@ -282,22 +282,22 @@ const LegalCGV: React.FC = () => {
               >
                 Stripe
               </a>
-              . L'Editeur ne collecte ni ne stocke directement les donnees
+              . L'Éditeur ne collecte ni ne stocke directement les données
               bancaires de l'Utilisateur.
             </p>
             <p>
               <strong>4.2 -- Renouvellement automatique.</strong> Les
               abonnements sont souscrits sur une base mensuelle et se
               renouvellent automatiquement a chaque date anniversaire de
-              souscription, sauf resiliation par l'Utilisateur avant la date de
+              souscription, sauf résiliation par l'Utilisateur avant la date de
               renouvellement. Le montant de l'abonnement est preleve
               automatiquement sur la carte bancaire enregistree.
             </p>
             <p>
-              <strong>4.3 -- Echec de paiement.</strong> En cas d'echec du
+              <strong>4.3 -- Echec de paiement.</strong> En cas d'échec du
               prelevement automatique (carte expiree, fonds insuffisants, etc.),
-              l'Editeur notifie l'Utilisateur par email. L'Utilisateur dispose
-              d'un delai de 7 jours pour mettre a jour ses informations de
+              l'Éditeur notifie l'Utilisateur par email. L'Utilisateur dispose
+              d'un délai de 7 jours pour mettre a jour ses informations de
               paiement. A defaut, l'abonnement sera suspendu et l'Utilisateur
               sera retrocede au plan gratuit.
             </p>
@@ -321,17 +321,17 @@ const LegalCGV: React.FC = () => {
               L221-28, 13&deg; du Code de la consommation, le droit de
               retractation ne peut etre exerce pour les contrats de fourniture
               d'un contenu numerique non fourni sur un support materiel dont
-              l'execution a commence apres accord prealable expres du
+              l'exécution a commence apres accord prealable expres du
               consommateur et renoncement expres a son droit de retractation.
             </p>
             <p>
               <strong>5.2 -- Application.</strong> En souscrivant a un
-              abonnement payant et en accedant immediatement aux fonctionnalites
+              abonnement payant et en accédant immediatement aux fonctionnalites
               premium du Service, l'Utilisateur :
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4">
               <li>
-                Reconnait que l'execution du contrat commence immediatement
+                Reconnait que l'exécution du contrat commence immediatement
                 apres la validation du paiement
               </li>
               <li>
@@ -341,9 +341,9 @@ const LegalCGV: React.FC = () => {
             </ul>
             <p>
               <strong>5.3 -- Alternative.</strong> Toutefois, l'Utilisateur peut
-              a tout moment resilier son abonnement. La resiliation prend effet
-              a la fin de la periode de facturation en cours, et l'Utilisateur
-              conserve l'acces aux fonctionnalites premium jusqu'a cette date.
+              à tout moment résilier son abonnement. La résiliation prend effet
+              a la fin de la période de facturation en cours, et l'Utilisateur
+              conserve l'acces aux fonctionnalites premium jusqu'à cette date.
               Aucun remboursement prorata temporis n'est effectue.
             </p>
           </div>
@@ -352,18 +352,18 @@ const LegalCGV: React.FC = () => {
         {/* Article 6 */}
         <section className="bg-white/5 rounded-xl p-6 border border-white/10">
           <h2 className="text-lg font-semibold text-white mb-4">
-            Article 6 -- Duree et resiliation
+            Article 6 -- Durée et résiliation
           </h2>
           <div className="text-text-primary space-y-3">
             <p>
-              <strong>6.1 -- Duree.</strong> Les abonnements sont souscrits pour
-              une duree d'un mois, renouvelable automatiquement par tacite
-              reconduction. Il n'y a aucun engagement de duree minimale au-dela
+              <strong>6.1 -- Durée.</strong> Les abonnements sont souscrits pour
+              une durée d'un mois, renouvelable automatiquement par tacite
+              reconduction. Il n'y a aucun engagement de durée minimale au-dela
               du mois en cours.
             </p>
             <p>
               <strong>6.2 -- Resiliation par l'Utilisateur.</strong>{" "}
-              L'Utilisateur peut resilier son abonnement a tout moment, sans
+              L'Utilisateur peut résilier son abonnement à tout moment, sans
               frais ni penalite, par l'un des moyens suivants :
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4">
@@ -383,19 +383,19 @@ const LegalCGV: React.FC = () => {
               </li>
             </ul>
             <p>
-              La resiliation prend effet a la fin de la periode de facturation
+              La résiliation prend effet a la fin de la période de facturation
               en cours. L'Utilisateur conserve l'acces aux fonctionnalites de
-              son abonnement jusqu'a cette date, puis son compte est
+              son abonnement jusqu'à cette date, puis son compte est
               automatiquement retrocede au plan gratuit.
             </p>
             <p>
-              <strong>6.3 -- Resiliation par l'Editeur.</strong> L'Editeur se
-              reserve le droit de resilier l'abonnement d'un Utilisateur en cas
+              <strong>6.3 -- Resiliation par l'Éditeur.</strong> L'Éditeur se
+              réserve le droit de résilier l'abonnement d'un Utilisateur en cas
               de violation des{" "}
               <Link to="/legal/cgu" className="text-amber-400 hover:underline">
                 CGU
               </Link>{" "}
-              ou des presentes CGV, sans preavis ni remboursement.
+              ou des présentes CGV, sans préavis ni remboursement.
             </p>
           </div>
         </section>
@@ -408,7 +408,7 @@ const LegalCGV: React.FC = () => {
           <div className="text-text-primary space-y-3">
             <p>
               <strong>7.1 -- Service en l'etat.</strong> Le Service est fourni
-              "en l'etat" ("as is"). L'Editeur s'engage a mettre en oeuvre les
+              "en l'etat" ("as is"). L'Éditeur s'engage a mettre en oeuvre les
               moyens raisonnables pour assurer le bon fonctionnement et la
               disponibilite du Service, mais ne garantit pas une disponibilite
               de 100%, ni l'absence d'erreurs, de bugs ou d'interruptions.
@@ -417,13 +417,13 @@ const LegalCGV: React.FC = () => {
               <strong>7.2 -- Limites de l'IA.</strong> Les contenus generes par
               le Service sont produits par des modeles d'intelligence
               artificielle et sont fournis a titre informatif uniquement.
-              L'Editeur ne garantit pas l'exactitude, l'exhaustivite ou la
+              L'Éditeur ne garantit pas l'exactitude, l'exhaustivite ou la
               fiabilite des analyses generees.
             </p>
             <p>
               <strong>7.3 -- Garantie legale de conformite.</strong>{" "}
               Conformement aux articles L217-3 et suivants du Code de la
-              consommation, l'Editeur est tenu de la garantie legale de
+              consommation, l'Éditeur est tenu de la garantie legale de
               conformite pour les contenus et services numeriques. En cas de
               defaut de conformite, l'Utilisateur peut demander la mise en
               conformite du Service ou, a defaut, obtenir une reduction du prix
@@ -432,7 +432,7 @@ const LegalCGV: React.FC = () => {
             </p>
             <p>
               <strong>7.4 -- Limitation de responsabilite.</strong> La
-              responsabilite totale de l'Editeur au titre des presentes CGV est
+              responsabilite totale de l'Éditeur au titre des présentes CGV est
               limitee au montant total des sommes effectivement versees par
               l'Utilisateur au cours des 12 mois precedant le fait generateur de
               responsabilite.
@@ -473,9 +473,9 @@ const LegalCGV: React.FC = () => {
               <li>Via le chat integre au Service (widget Crisp)</li>
             </ul>
             <p>
-              L'Editeur s'engage a accuser reception de toute reclamation dans
-              un delai de 48 heures ouvrees et a y apporter une reponse dans un
-              delai maximum de 30 jours.
+              L'Éditeur s'engage a accuser reception de toute reclamation dans
+              un délai de 48 heures ouvrees et a y apporter une reponse dans un
+              délai maximum de 30 jours.
             </p>
           </div>
         </section>
@@ -483,28 +483,28 @@ const LegalCGV: React.FC = () => {
         {/* Article 9 */}
         <section className="bg-white/5 rounded-xl p-6 border border-white/10">
           <h2 className="text-lg font-semibold text-white mb-4">
-            Article 9 -- Donnees personnelles
+            Article 9 -- Données personnelles
           </h2>
           <div className="text-text-primary space-y-3">
             <p>
               Dans le cadre de la souscription et de la gestion des abonnements,
-              l'Editeur collecte et traite des donnees personnelles (adresse
-              email, donnees de facturation via Stripe) conformement au
-              Reglement General sur la Protection des Donnees (RGPD).
+              l'Éditeur collecte et traite des données personnelles (adresse
+              email, données de facturation via Stripe) conformement au
+              Reglement General sur la Protection des Données (RGPD).
             </p>
             <p>
-              Les donnees bancaires sont collectees et traitees exclusivement
+              Les données bancaires sont collectees et traitees exclusivement
               par Stripe, prestataire de paiement certifie PCI DSS niveau 1.
-              L'Editeur n'a pas acces aux numeros de carte bancaire complets.
+              L'Éditeur n'a pas acces aux numeros de carte bancaire complets.
             </p>
             <p>
-              Pour plus d'informations sur le traitement de vos donnees
+              Pour plus d'informations sur le traitement de vos données
               personnelles, consultez la{" "}
               <Link
                 to="/legal#privacy"
                 className="text-amber-400 hover:underline"
               >
-                Politique de Confidentialite
+                Politique de Confidentialité
               </Link>
               .
             </p>
@@ -518,12 +518,12 @@ const LegalCGV: React.FC = () => {
           </h2>
           <div className="text-text-primary space-y-3">
             <p>
-              <strong>10.1 -- Droit applicable.</strong> Les presentes CGV sont
-              regies par le droit francais.
+              <strong>10.1 -- Droit applicable.</strong> Les présentes CGV sont
+              régies par le droit français.
             </p>
             <p>
               <strong>10.2 -- Resolution amiable.</strong> En cas de litige
-              relatif a l'interpretation ou a l'execution des presentes CGV, les
+              relatif a l'interprétation ou a l'exécution des présentes CGV, les
               parties s'engagent a rechercher une solution amiable prealablement
               a toute action judiciaire.
             </p>
@@ -532,7 +532,7 @@ const LegalCGV: React.FC = () => {
               L611-1 et suivants du Code de la consommation, en cas de litige
               non resolu par voie amiable, le consommateur peut recourir
               gratuitement a un mediateur de la consommation. Le consommateur
-              peut egalement utiliser la plateforme europeenne de reglement en
+              peut egalement utiliser la plateforme européenne de reglement en
               ligne des litiges :{" "}
               <a
                 href="https://ec.europa.eu/consumers/odr"
@@ -547,8 +547,8 @@ const LegalCGV: React.FC = () => {
             <p>
               <strong>10.4 -- Juridiction.</strong> A defaut de resolution
               amiable ou de mediation, le litige sera porte devant les tribunaux
-              competents du ressort de Lyon (France), sous reserve des regles
-              imperatives de competence applicables aux consommateurs.
+              competents du ressort de Lyon (France), sous réserve des regles
+              imperatives de compétence applicables aux consommateurs.
             </p>
           </div>
         </section>
@@ -651,7 +651,7 @@ const LegalCGV: React.FC = () => {
               to="/legal#privacy"
               className="hover:text-text-secondary transition-colors"
             >
-              Confidentialite
+              Confidentialité
             </Link>
           </div>
         </footer>

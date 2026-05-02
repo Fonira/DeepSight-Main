@@ -366,9 +366,26 @@ export const MyAccount: React.FC = () => {
       bgColor: "bg-indigo-500/10",
       icon: "⭐",
     },
+    expert: {
+      label: "Expert",
+      color: "text-violet-400",
+      bgColor: "bg-violet-500/10",
+      icon: "💎",
+    },
   };
 
-  const currentPlan = planConfig[normalizedPlan] || planConfig["free"];
+  // SSOT for plan display: prefer billing/my-plan (fresh from Stripe via
+  // backend) over user.plan from AuthContext, which can lag a Stripe
+  // upgrade until the next /api/auth/me refresh.
+  const effectivePlanId = myPlan?.plan || normalizedPlan;
+  if (myPlan?.plan && normalizedPlan && myPlan.plan !== normalizedPlan) {
+    console.warn(
+      "[MyAccount] plan desync: AuthContext.user.plan=%s, billing.my-plan=%s — using billing as SSOT",
+      normalizedPlan,
+      myPlan.plan,
+    );
+  }
+  const currentPlan = planConfig[effectivePlanId] || planConfig["free"];
 
   // État pour l'annulation d'abonnement
   const [cancelLoading, setCancelLoading] = useState(false);

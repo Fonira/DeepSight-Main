@@ -60,7 +60,7 @@ export const InputBar: React.FC<Props> = ({
   };
 
   return (
-    <div className="relative flex items-center gap-2 px-4 py-3 border-t border-white/10 bg-white/[0.02]">
+    <div className="relative flex items-center gap-2 px-4 py-3 border-t border-white/10 bg-bg-primary/80 backdrop-blur-xl flex-shrink-0">
       <button
         type="button"
         aria-label="attachments"
@@ -80,7 +80,7 @@ export const InputBar: React.FC<Props> = ({
         }}
         placeholder="Posez votre question — ou maintenez le micro…"
         disabled={disabled}
-        className="flex-1 bg-white/[0.04] border border-white/10 rounded-full px-4 py-2 text-sm text-white outline-none focus:border-indigo-500/40"
+        className="flex-1 bg-white/[0.08] border border-white/15 rounded-full px-4 py-2 text-sm text-white outline-none focus:border-indigo-500/40"
       />
       {val.trim() ? (
         <button

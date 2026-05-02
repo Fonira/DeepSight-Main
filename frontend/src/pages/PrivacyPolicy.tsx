@@ -1,6 +1,6 @@
 /**
  * POLITIQUE DE CONFIDENTIALITE — Deep Sight
- * Page dediee conforme RGPD + Chrome Web Store requirement
+ * Page dédiée conforme RGPD + Chrome Web Store requirement
  * Derniere mise a jour : Mars 2026
  */
 
@@ -87,7 +87,7 @@ const PrivacyPolicy: React.FC = () => {
             <span className="text-blue-300 font-medium">Conforme RGPD</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-            Politique de Confidentialite
+            Politique de Confidentialité
           </h1>
           <p className="text-slate-400">
             Derniere mise a jour : {LEGAL_INFO.lastUpdate}
@@ -97,7 +97,7 @@ const PrivacyPolicy: React.FC = () => {
         <div className="bg-slate-800/40 backdrop-blur-sm border border-white/10 rounded-2xl p-6 sm:p-10">
           <Section title="1. Responsable du traitement">
             <p>
-              Le responsable du traitement des donnees personnelles est{" "}
+              Le responsable du traitement des données personnelles est{" "}
               <strong className="text-white">{LEGAL_INFO.company.name}</strong>,{" "}
               {LEGAL_INFO.company.type}, SIRET {LEGAL_INFO.company.siret}, dont
               le siege social est situe au {LEGAL_INFO.company.address},{" "}
@@ -115,31 +115,31 @@ const PrivacyPolicy: React.FC = () => {
             </p>
           </Section>
 
-          <Section title="2. Donnees collectees">
-            <p>Deep Sight collecte les donnees suivantes :</p>
+          <Section title="2. Données collectees">
+            <p>Deep Sight collecte les données suivantes :</p>
             <ul className="list-disc pl-6 space-y-1.5">
               <li>
-                <strong className="text-white">Donnees d'inscription</strong> :
+                <strong className="text-white">Données d'inscription</strong> :
                 adresse email, nom (optionnel), mot de passe (hashe)
               </li>
               <li>
                 <strong className="text-white">
-                  Donnees d'authentification Google
+                  Données d'authentification Google
                 </strong>{" "}
                 : email, nom, photo de profil (via OAuth 2.0)
               </li>
               <li>
-                <strong className="text-white">Donnees d'utilisation</strong> :
-                URLs YouTube et TikTok analysees, historique d'analyses,
+                <strong className="text-white">Données d'utilisation</strong> :
+                URLs YouTube et TikTok analysées, historique d'analyses,
                 messages de chat
               </li>
               <li>
-                <strong className="text-white">Donnees de paiement</strong> :
+                <strong className="text-white">Données de paiement</strong> :
                 gerees exclusivement par Stripe Inc. (nous ne stockons pas vos
                 informations bancaires)
               </li>
               <li>
-                <strong className="text-white">Donnees techniques</strong> :
+                <strong className="text-white">Données techniques</strong> :
                 adresse IP (anonymisee), type de navigateur, plateforme
                 (web/mobile/extension)
               </li>
@@ -147,14 +147,14 @@ const PrivacyPolicy: React.FC = () => {
           </Section>
 
           <Section title="3. Finalites du traitement">
-            <p>Vos donnees sont traitees pour les finalites suivantes :</p>
+            <p>Vos données sont traitees pour les finalites suivantes :</p>
             <ul className="list-disc pl-6 space-y-1.5">
               <li>
-                Fournir le service d'analyse video IA (base legale : execution
+                Fournir le service d'analyse vidéo IA (base legale : exécution
                 du contrat)
               </li>
               <li>
-                Gerer votre compte et votre abonnement (base legale : execution
+                Gerer votre compte et votre abonnement (base legale : exécution
                 du contrat)
               </li>
               <li>
@@ -163,27 +163,27 @@ const PrivacyPolicy: React.FC = () => {
               </li>
               <li>
                 Envoyer des communications liees au service (base legale :
-                execution du contrat)
+                exécution du contrat)
               </li>
               <li>
-                Prevenir les abus et assurer la securite (base legale : interet
+                Prevenir les abus et assurer la sécurité (base legale : interet
                 legitime)
               </li>
             </ul>
           </Section>
 
-          <Section title="4. Extension Chrome — Donnees specifiques">
+          <Section title="4. Extension Chrome — Données spécifiques">
             <p>
-              L'extension Chrome Deep Sight accede aux donnees suivantes sur les
+              L'extension Chrome Deep Sight accède aux données suivantes sur les
               pages YouTube :
             </p>
             <ul className="list-disc pl-6 space-y-1.5">
               <li>
-                <strong className="text-white">URL de la video YouTube</strong>{" "}
+                <strong className="text-white">URL de la vidéo YouTube</strong>{" "}
                 : uniquement lorsque vous lancez explicitement une analyse
               </li>
               <li>
-                <strong className="text-white">Titre de la video</strong> : pour
+                <strong className="text-white">Titre de la vidéo</strong> : pour
                 l'affichage dans l'interface
               </li>
               <li>
@@ -200,9 +200,9 @@ const PrivacyPolicy: React.FC = () => {
             </p>
           </Section>
 
-          <Section title="5. Partage des donnees">
+          <Section title="5. Partage des données">
             <p>
-              Vos donnees sont partagees avec les prestataires techniques
+              Vos données sont partagees avec les prestataires techniques
               suivants, tous situes dans l'UE ou soumis a des garanties
               adequates :
             </p>
@@ -221,7 +221,7 @@ const PrivacyPolicy: React.FC = () => {
               </li>
               <li>
                 <strong className="text-white">Railway Corp.</strong> (USA) :
-                hebergement backend et base de donnees
+                hebergement backend et base de données
               </li>
               <li>
                 <strong className="text-white">Resend</strong> : envoi d'emails
@@ -229,27 +229,27 @@ const PrivacyPolicy: React.FC = () => {
               </li>
               <li>
                 <strong className="text-white">Sentry</strong> : monitoring
-                d'erreurs (donnees anonymisees)
+                d'erreurs (données anonymisees)
               </li>
             </ul>
             <p className="mt-3">
-              Nous ne vendons ni ne louons vos donnees personnelles a des tiers.
+              Nous ne vendons ni ne louons vos données personnelles a des tiers.
             </p>
           </Section>
 
-          <Section title="6. Duree de conservation">
+          <Section title="6. Durée de conservation">
             <ul className="list-disc pl-6 space-y-1.5">
               <li>
-                Donnees de compte : conservees tant que le compte est actif,
+                Données de compte : conservees tant que le compte est actif,
                 supprimees 30 jours apres demande de suppression
               </li>
               <li>
                 Historique d'analyses : selon votre plan (60 jours gratuit,
-                illimite pour les plans payants)
+                illimité pour les plans payants)
               </li>
               <li>Logs techniques : 90 jours</li>
               <li>
-                Donnees de facturation : 10 ans (obligation legale francaise)
+                Données de facturation : 10 ans (obligation legale française)
               </li>
             </ul>
           </Section>
@@ -259,19 +259,19 @@ const PrivacyPolicy: React.FC = () => {
             <ul className="list-disc pl-6 space-y-1.5">
               <li>
                 <strong className="text-white">Droit d'acces</strong> : obtenir
-                une copie de vos donnees
+                une copie de vos données
               </li>
               <li>
                 <strong className="text-white">Droit de rectification</strong> :
-                corriger vos donnees inexactes
+                corriger vos données inexactes
               </li>
               <li>
                 <strong className="text-white">Droit a l'effacement</strong> :
-                demander la suppression de vos donnees
+                demander la suppression de vos données
               </li>
               <li>
                 <strong className="text-white">Droit a la portabilite</strong> :
-                recevoir vos donnees dans un format structure
+                recevoir vos données dans un format structure
               </li>
               <li>
                 <strong className="text-white">Droit d'opposition</strong> :
@@ -279,7 +279,7 @@ const PrivacyPolicy: React.FC = () => {
               </li>
               <li>
                 <strong className="text-white">Droit a la limitation</strong> :
-                restreindre le traitement de vos donnees
+                restreindre le traitement de vos données
               </li>
             </ul>
             <p className="mt-3">
@@ -290,7 +290,7 @@ const PrivacyPolicy: React.FC = () => {
               >
                 {LEGAL_INFO.contact.email}
               </a>
-              . Nous repondrons dans un delai de 30 jours.
+              . Nous repondrons dans un délai de 30 jours.
             </p>
             <p className="mt-2">
               Vous pouvez egalement deposer une reclamation aupres de la CNIL
@@ -306,14 +306,14 @@ const PrivacyPolicy: React.FC = () => {
             </p>
           </Section>
 
-          <Section title="8. Securite des donnees">
+          <Section title="8. Sécurité des données">
             <ul className="list-disc pl-6 space-y-1.5">
               <li>Chiffrement HTTPS/TLS sur toutes les communications</li>
               <li>Mots de passe hashes avec bcrypt (salt unique)</li>
               <li>
                 Tokens JWT avec expiration courte (15 minutes) et refresh tokens
               </li>
-              <li>Base de donnees PostgreSQL avec acces restreint</li>
+              <li>Base de données PostgreSQL avec acces restreint</li>
               <li>
                 Aucune donnee bancaire stockee (delegation totale a Stripe)
               </li>
@@ -325,7 +325,7 @@ const PrivacyPolicy: React.FC = () => {
             <ul className="list-disc pl-6 space-y-1.5">
               <li>
                 <strong className="text-white">Cookies essentiels</strong> :
-                authentification JWT, preferences de theme — necessaires au
+                authentification JWT, preferences de theme — nécessaires au
                 fonctionnement
               </li>
               <li>
@@ -335,7 +335,7 @@ const PrivacyPolicy: React.FC = () => {
               </li>
             </ul>
             <p className="mt-2">
-              Vous pouvez gerer vos preferences de cookies a tout moment via le
+              Vous pouvez gerer vos preferences de cookies à tout moment via le
               bandeau cookies ou les parametres de votre navigateur.
             </p>
           </Section>
@@ -343,7 +343,7 @@ const PrivacyPolicy: React.FC = () => {
           <Section title="10. Modifications">
             <p>
               Nous nous reservons le droit de modifier cette politique de
-              confidentialite. En cas de modification substantielle, nous vous
+              confidentialité. En cas de modification substantielle, nous vous
               informerons par email ou notification dans l'application. La date
               de derniere mise a jour est indiquee en haut de cette page.
             </p>

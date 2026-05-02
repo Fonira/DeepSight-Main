@@ -2160,16 +2160,69 @@ export const exportsApi = {
 // 📊 USAGE API
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const usageApi = {
-  async getStats(): Promise<{
-    total_analyses: number;
-    total_chats: number;
-    analyses_this_month: number;
+export interface ApiUsageStats {
+  plan: string;
+  plan_name: string;
+  plan_color: string;
+  credits_remaining: number;
+  credits_monthly: number;
+  credits_used_this_month: number;
+  credits_percent_used: number;
+  analyses_this_month: number;
+  analyses_total: number;
+  chat_daily_limit: number;
+  chat_used_today: number;
+  chat_remaining_today: number;
+  web_search_enabled: boolean;
+  member_since?: string;
+}
+
+export interface ApiDetailedUsage {
+  period_days: number;
+  totals: {
+    analyses: number;
+    duration_seconds: number;
+    duration_formatted: string;
+    words_generated: number;
     credits_used: number;
-    by_day: Array<{ date: string; count: number }>;
-    by_type: Array<{ type: string; count: number }>;
-  }> {
+  };
+  daily_analyses: { date: string; count: number }[];
+  categories: Record<string, number>;
+  models_used: Record<string, number>;
+  averages: {
+    analyses_per_day: number;
+    credits_per_day: number;
+  };
+}
+
+export interface ApiRecentAnalysis {
+  id: number;
+  video_id: string;
+  video_title: string;
+  video_channel: string;
+  video_duration: number;
+  thumbnail_url: string;
+  category: string;
+  created_at: string;
+}
+
+export const usageApi = {
+  /** GET /api/usage/stats — synthèse plan + crédits + chat */
+  async getStats(): Promise<ApiUsageStats> {
     return request("/api/usage/stats");
+  },
+
+  /** GET /api/usage/detailed — usage détaillé sur N jours */
+  async getDetailed(days: number = 30): Promise<ApiDetailedUsage> {
+    return request(`/api/usage/detailed?days=${days}`);
+  },
+
+  /** GET /api/history/videos — analyses récentes pour la page Analytics */
+  async getRecentAnalyses(limit: number = 5): Promise<ApiRecentAnalysis[]> {
+    const data = await request<{
+      items?: ApiRecentAnalysis[];
+    }>(`/api/history/videos?page=1&per_page=${limit}`);
+    return data.items ?? [];
   },
 };
 

@@ -1,6 +1,8 @@
 // frontend/src/components/hub/MessageBubble.tsx
-import React from "react";
+import React, { useMemo } from "react";
 import { Mic } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import type { Components } from "react-markdown";
 import type { HubMessage } from "./types";
 import { VoiceBubble } from "./VoiceBubble";
 import {
@@ -20,6 +22,57 @@ const DEFAULT_BARS = [
   6, 14, 9, 20, 11, 16, 8, 18, 12, 22, 9, 15, 7, 19, 11, 14, 8, 17, 10, 13, 6,
   21, 9, 12, 15, 8, 17, 10,
 ];
+
+const markdownComponents: Components = {
+  h1: ({ children }) => (
+    <h3 className="text-base font-semibold text-white mt-1 mb-2 first:mt-0">
+      {children}
+    </h3>
+  ),
+  h2: ({ children }) => (
+    <h3 className="text-base font-semibold text-white mt-1 mb-2 first:mt-0">
+      {children}
+    </h3>
+  ),
+  h3: ({ children }) => (
+    <h4 className="text-sm font-semibold text-white mt-1 mb-1.5 first:mt-0">
+      {children}
+    </h4>
+  ),
+  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+  ul: ({ children }) => (
+    <ul className="list-disc pl-5 mb-2 space-y-0.5">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="list-decimal pl-5 mb-2 space-y-0.5">{children}</ol>
+  ),
+  li: ({ children }) => <li>{children}</li>,
+  strong: ({ children }) => (
+    <strong className="font-semibold text-white">{children}</strong>
+  ),
+  em: ({ children }) => <em className="italic">{children}</em>,
+  code: ({ children }) => (
+    <code className="bg-white/10 px-1 py-0.5 rounded font-mono text-[12px]">
+      {children}
+    </code>
+  ),
+  hr: () => <hr className="border-white/10 my-2" />,
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-indigo-300 underline hover:text-indigo-200"
+    >
+      {children}
+    </a>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-white/20 pl-3 my-2 text-white/80">
+      {children}
+    </blockquote>
+  ),
+};
 
 export const MessageBubble: React.FC<Props> = ({
   msg,
@@ -41,6 +94,11 @@ export const MessageBubble: React.FC<Props> = ({
   const { beforeQuestions, questions } = isAssistantText
     ? parseAskQuestions(msg.content)
     : { beforeQuestions: msg.content, questions: [] as string[] };
+
+  const beforeQuestionsText = useMemo(
+    () => (typeof beforeQuestions === "string" ? beforeQuestions : ""),
+    [beforeQuestions],
+  );
 
   if (isVoiceBubble) {
     return (
@@ -88,7 +146,15 @@ export const MessageBubble: React.FC<Props> = ({
             )}
           </div>
         )}
-        <p className="whitespace-pre-wrap">{beforeQuestions}</p>
+        {isAssistantText ? (
+          <div className="text-sm leading-relaxed">
+            <ReactMarkdown components={markdownComponents}>
+              {beforeQuestionsText}
+            </ReactMarkdown>
+          </div>
+        ) : (
+          <p className="whitespace-pre-wrap">{beforeQuestions}</p>
+        )}
         {isAssistantText && questions.length > 0 && onQuestionClick && (
           <ClickableQuestionsBlock
             questions={questions}

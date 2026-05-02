@@ -227,8 +227,14 @@ const HubPage: React.FC = () => {
       try {
         const resp = await videoApi.getHistory({ limit: 50, page: 1 });
         if (cancelled) return;
-        const convs: HubConversation[] = (resp.items || []).map(
-          (item: any) => ({
+        // Dedup defensively by summary id — backend may return duplicates if
+        // the same video was analysed multiple times in quick succession.
+        const seen = new Set<number>();
+        const convs: HubConversation[] = [];
+        for (const item of resp.items || []) {
+          if (seen.has(item.id)) continue;
+          seen.add(item.id);
+          convs.push({
             id: item.id,
             summary_id: item.id,
             title: sanitizeTitle(item.video_title) || "Sans titre",
@@ -238,8 +244,8 @@ const HubPage: React.FC = () => {
             video_thumbnail_url: item.thumbnail_url ?? null,
             last_snippet: undefined,
             updated_at: item.created_at,
-          }),
-        );
+          });
+        }
         setConversations(convs);
         // Auto-select if URL has ?conv=<id> or ?summary=<id>
         const target =
@@ -494,7 +500,6 @@ const HubPage: React.FC = () => {
 
       <HubHeader
         onMenuClick={toggleDrawer}
-        onHomeClick={() => navigate("/")}
         title={activeConv?.title ?? "Hub"}
         subtitle={
           activeConv
@@ -607,8 +612,12 @@ const HubPage: React.FC = () => {
             // then activate it so the user lands directly on the new session.
             try {
               const resp = await videoApi.getHistory({ limit: 50, page: 1 });
-              const convs: HubConversation[] = (resp.items || []).map(
-                (item: any) => ({
+              const seen = new Set<number>();
+              const convs: HubConversation[] = [];
+              for (const item of resp.items || []) {
+                if (seen.has(item.id)) continue;
+                seen.add(item.id);
+                convs.push({
                   id: item.id,
                   summary_id: item.id,
                   title: sanitizeTitle(item.video_title) || "Sans titre",
@@ -618,8 +627,8 @@ const HubPage: React.FC = () => {
                   video_thumbnail_url: item.thumbnail_url ?? null,
                   last_snippet: undefined,
                   updated_at: item.created_at,
-                }),
-              );
+                });
+              }
               setConversations(convs);
               setActiveConv(summaryId);
               setSearchParams({ conv: String(summaryId) });

@@ -41,86 +41,12 @@ import {
 
 import { useTranslation } from "../hooks/useTranslation";
 import { sanitizeTitle } from "../utils/sanitize";
-
-// Types
-interface UsageStats {
-  plan: string;
-  plan_name: string;
-  plan_color: string;
-  credits_remaining: number;
-  credits_monthly: number;
-  credits_used_this_month: number;
-  credits_percent_used: number;
-  analyses_this_month: number;
-  analyses_total: number;
-  chat_daily_limit: number;
-  chat_used_today: number;
-  chat_remaining_today: number;
-  web_search_enabled: boolean;
-  member_since?: string;
-}
-
-interface DetailedUsage {
-  period_days: number;
-  totals: {
-    analyses: number;
-    duration_seconds: number;
-    duration_formatted: string;
-    words_generated: number;
-    credits_used: number;
-  };
-  daily_analyses: { date: string; count: number }[];
-  categories: Record<string, number>;
-  models_used: Record<string, number>;
-  averages: {
-    analyses_per_day: number;
-    credits_per_day: number;
-  };
-}
-
-interface RecentAnalysis {
-  id: number;
-  video_id: string;
-  video_title: string;
-  video_channel: string;
-  video_duration: number;
-  thumbnail_url: string;
-  category: string;
-  created_at: string;
-}
-
-// API functions
-const fetchUsageStats = async (): Promise<UsageStats> => {
-  const token = localStorage.getItem("access_token");
-  const response = await fetch("/api/usage/stats", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) throw new Error("Failed to fetch usage stats");
-  return response.json();
-};
-
-const fetchDetailedUsage = async (
-  days: number = 30,
-): Promise<DetailedUsage> => {
-  const token = localStorage.getItem("access_token");
-  const response = await fetch(`/api/usage/detailed?days=${days}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) throw new Error("Failed to fetch detailed usage");
-  return response.json();
-};
-
-const fetchRecentAnalyses = async (
-  limit: number = 5,
-): Promise<RecentAnalysis[]> => {
-  const token = localStorage.getItem("access_token");
-  const response = await fetch(`/api/history/videos?page=1&per_page=${limit}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) return [];
-  const data = await response.json();
-  return data.items || data || [];
-};
+import {
+  usageApi,
+  type ApiUsageStats as UsageStats,
+  type ApiDetailedUsage as DetailedUsage,
+  type ApiRecentAnalysis as RecentAnalysis,
+} from "../services/api";
 
 export const AnalyticsPage: React.FC = () => {
   const { language } = useTranslation();
@@ -145,9 +71,9 @@ export const AnalyticsPage: React.FC = () => {
 
     try {
       const [stats, detailed, recent] = await Promise.all([
-        fetchUsageStats(),
-        fetchDetailedUsage(30),
-        fetchRecentAnalyses(5),
+        usageApi.getStats(),
+        usageApi.getDetailed(30),
+        usageApi.getRecentAnalyses(5),
       ]);
       setUsageStats(stats);
       setDetailedUsage(detailed);

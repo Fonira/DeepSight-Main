@@ -141,7 +141,7 @@ const ACKNOWLEDGEMENTS: Thanks[] = [
   {
     name: "Communaute Tournesol",
     description:
-      "Pour leur plateforme de recommandations collaboratives et ethiques",
+      "Pour leur plateforme de recommandations collaboratives et éthiques",
     icon: Sun,
   },
   {
@@ -165,7 +165,7 @@ const ACKNOWLEDGEMENTS: Thanks[] = [
   {
     name: "Claude / Anthropic",
     description:
-      "Pour l'assistance au developpement et l'acceleration du projet",
+      "Pour l'assistance au développement et l'accélération du projet",
     icon: Sparkles,
   },
 ];
@@ -240,7 +240,7 @@ const AboutPage = () => {
         {/* ── Header ── */}
         <motion.header variants={fadeUp} className="text-center space-y-4">
           <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-accent-primary/10 text-accent-primary">
-            A propos de DeepSight
+            À propos de DeepSight
           </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-text-primary tracking-tight">
             Analyser, comprendre,
@@ -248,9 +248,9 @@ const AboutPage = () => {
             <span className="text-gradient">apprendre autrement</span>
           </h1>
           <p className="text-text-secondary max-w-2xl mx-auto text-lg">
-            DeepSight est un SaaS d'analyse IA de videos YouTube & TikTok.
-            Syntheses intelligentes, fact-checking, outils d'etude, chat
-            contextuel — propulse par Mistral AI.
+            DeepSight est un SaaS d'analyse IA de vidéos YouTube & TikTok.
+            Synthèses intelligentes, fact-checking, outils d'étude, chat
+            contextuel — propulsé par Mistral AI.
           </p>
         </motion.header>
 
@@ -262,15 +262,15 @@ const AboutPage = () => {
             className="p-6 rounded-xl bg-bg-secondary border border-border-subtle space-y-4 text-text-secondary leading-relaxed"
           >
             <p>
-              DeepSight est ne d'un constat simple : nous consommons des heures
-              de contenu video chaque jour, mais nous n'en retenons qu'une
+              DeepSight est né d'un constat simple : nous consommons des heures
+              de contenu vidéo chaque jour, mais nous n'en retenons qu'une
               infime partie. Notre mission est de transformer cette consommation
               passive en apprentissage actif.
             </p>
             <p>
-              Grace a l'intelligence artificielle 100% francaise et europeenne,
-              DeepSight extrait, structure et enrichit le contenu des videos
-              pour vous permettre d'analyser, reviser et approfondir vos
+              Grâce à l'intelligence artificielle 100 % française et européenne,
+              DeepSight extrait, structure et enrichit le contenu des vidéos
+              pour vous permettre d'analyser, réviser et approfondir vos
               connaissances — sur web, mobile et extension Chrome.
             </p>
           </motion.div>
@@ -304,7 +304,7 @@ const AboutPage = () => {
 
         {/* ── Open Source ── */}
         <motion.section variants={stagger}>
-          <SectionTitle>Bibliotheques Open Source</SectionTitle>
+          <SectionTitle>Bibliothèques Open Source</SectionTitle>
           <motion.div
             variants={fadeUp}
             className="rounded-xl border border-border-subtle overflow-hidden"
@@ -365,9 +365,9 @@ const AboutPage = () => {
           </motion.div>
         </motion.section>
 
-        {/* ── Cree par ── */}
+        {/* ── Créé par ── */}
         <motion.section variants={stagger}>
-          <SectionTitle>Cree par</SectionTitle>
+          <SectionTitle>Créé par</SectionTitle>
           <motion.div
             variants={fadeUp}
             className="p-6 rounded-xl bg-bg-secondary border border-border-subtle"
