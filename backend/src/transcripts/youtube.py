@@ -1558,7 +1558,9 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
 # ═══════════════════════════════════════════════════════════════════════════════
 
 VOXTRAL_STT_URL = "https://api.mistral.ai/v1/audio/transcriptions"
-VOXTRAL_STT_MODEL = "voxtral-mini-latest"
+# v7.3 — Switch to transcribe-only model (faster + cheaper than chat-tuned voxtral-mini-latest)
+# Official doc: https://docs.mistral.ai/models/voxtral-mini-transcribe-26-02
+VOXTRAL_STT_MODEL = "voxtral-mini-2602"
 VOXTRAL_MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB (Mistral est très généreux)
 
 
@@ -1578,7 +1580,7 @@ async def get_transcript_voxtral(
     - Multilingue 13 langues avec détection auto
 
     API: POST /v1/audio/transcriptions (multipart/form-data)
-    Model: voxtral-mini-latest
+    Model: voxtral-mini-2602 (transcribe-only, fine-tuned for STT)
     """
     mistral_key = get_mistral_key()
     if not mistral_key:
@@ -2323,7 +2325,11 @@ async def _compress_audio(audio_data: bytes, audio_ext: str, source_name: str = 
 
 
 async def get_transcript_with_timestamps(
-    video_id: str, supadata_key: str = None, is_short: bool = False, duration: int = 0
+    video_id: str,
+    supadata_key: str = None,
+    is_short: bool = False,
+    duration: int = 0,
+    user_plan: Optional[str] = None,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     🎯 FONCTION PRINCIPALE v7.1 - Supadata PRIORITAIRE + STT pour TOUTES vidéos
@@ -2351,11 +2357,15 @@ async def get_transcript_with_timestamps(
     """
     # 🚦 Semaphore: limite les extractions concurrentes pour protéger les APIs
     async with _extraction_semaphore:
-        return await _get_transcript_with_timestamps_inner(video_id, supadata_key, is_short, duration)
+        return await _get_transcript_with_timestamps_inner(video_id, supadata_key, is_short, duration, user_plan)
 
 
 async def _get_transcript_with_timestamps_inner(
-    video_id: str, supadata_key: str = None, is_short: bool = False, duration: int = 0
+    video_id: str,
+    supadata_key: str = None,
+    is_short: bool = False,
+    duration: int = 0,
+    user_plan: Optional[str] = None,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Inner function — exécutée sous le semaphore de concurrence."""
     print("", flush=True)
@@ -2531,6 +2541,48 @@ async def _get_transcript_with_timestamps_inner(
             return simple, timestamped, lang
 
     # ═══════════════════════════════════════════════════════════════════════════════
+    # PHASE 1.5: VOXTRAL SHORT-CIRCUIT (Mistral-First Phase 1, Task 1.3)
+    # No captions detected by Supadata/Phase 1 → skip directly to Voxtral STT
+    # if duration fits the plan cap. Saves 5-30s vs trying yt-dlp first when
+    # the video has no captions at all.
+    # ═══════════════════════════════════════════════════════════════════════════════
+    from core.config import get_max_stt_duration as _get_max_stt_duration
+
+    _short_circuit_cap = _get_max_stt_duration(user_plan or "free")
+    _voxtral_cb = get_circuit_breaker("voxtral_stt")
+    if (
+        duration > 0
+        and duration <= _short_circuit_cap
+        and _voxtral_cb.can_execute()
+    ):
+        print("", flush=True)
+        print(
+            f"🎙️ PHASE 1.5: No captions detected by Supadata, short-circuiting to Voxtral STT "
+            f"(duration={duration}s ≤ cap={_short_circuit_cap}s, plan={user_plan or 'free'})",
+            flush=True,
+        )
+        print("─" * 50, flush=True)
+        try:
+            sc_simple, sc_timestamped, sc_lang = await get_transcript_voxtral(video_id)
+            if sc_simple and sc_timestamped:
+                _voxtral_cb.record_success()
+                print("✅ SUCCESS with Voxtral STT (Phase 1.5 short-circuit)", flush=True)
+                print(f"{'=' * 70}", flush=True)
+                await _cache_success(video_id, sc_simple, sc_timestamped, sc_lang, "Voxtral STT (short-circuit)")
+                return sc_simple, sc_timestamped, sc_lang
+            else:
+                print("  ❌ [Voxtral short-circuit] Empty result, falling back to Phase 2", flush=True)
+        except Exception as e:
+            print(
+                f"  ⚠️ [Voxtral short-circuit] Failed ({type(e).__name__}): {str(e)[:200]} — "
+                f"falling back to Phase 2",
+                flush=True,
+            )
+            # Don't record failure on circuit breaker — Phase 3 will retry the same provider
+            # only if the short-circuit timed out / network failed. Real STT errors will
+            # be recorded there. We want to give yt-dlp a chance before giving up on Voxtral.
+
+    # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 2: yt-dlp (séquentiel, plus lent mais fiable)
     # ═══════════════════════════════════════════════════════════════════════════════
     print("", flush=True)
@@ -2571,10 +2623,15 @@ async def _get_transcript_with_timestamps_inner(
     print(f"📋 PHASE 3: Audio STT (last resort{' — SHORT' if is_short else ' — full video'})", flush=True)
     print("─" * 50, flush=True)
 
-    # Duration guard: skip all STT providers for videos longer than MAX_DURATION_FOR_STT
-    if duration > 0 and duration > MAX_DURATION_FOR_STT:
+    # Duration guard: plan-aware cap (Mistral-First Phase 1).
+    # Free=20min / Pro=40min / Expert=60min. Voxtral handles up to 3h, so the
+    # caps reflect business policy (paid tiers unlock longer audio), not API limits.
+    # _get_max_stt_duration is already imported above at the Phase 1.5 short-circuit.
+    max_stt_duration = _get_max_stt_duration(user_plan or "free")
+    if duration > 0 and duration > max_stt_duration:
         print(
-            f"  ⏭️ [STT] Skipped ALL STT providers: video duration {duration}s > MAX_DURATION_FOR_STT {MAX_DURATION_FOR_STT}s",
+            f"  ⏭️ [STT] Skipped ALL STT providers: video duration {duration}s > "
+            f"max_stt_duration {max_stt_duration}s for plan={user_plan or 'free'}",
             flush=True,
         )
     else:

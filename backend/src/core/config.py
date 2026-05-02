@@ -122,6 +122,13 @@ class _DeepSightSettings(BaseSettings):
     VERBOSE_LOGGING: str = "false"
     HEALTH_CHECK_SECRET: str = ""
 
+    # -- Analytics (server-side PostHog) --
+    # Optional. Server-side capture for events that cannot be tracked client-side
+    # (e.g. which web search provider served a query). Best-effort: failures are
+    # swallowed and never block the request.
+    POSTHOG_API_KEY: str = ""
+    POSTHOG_HOST: str = "https://eu.i.posthog.com"
+
     # -- Rate Limiting --
     RATE_LIMIT_ENABLED: str = "true"
 
@@ -142,7 +149,10 @@ class _DeepSightSettings(BaseSettings):
     ELEVENLABS_MODEL_ID: str = "eleven_flash_v2_5"
 
     # -- Voxtral TTS (Mistral) --
-    VOXTRAL_MODEL: str = "voxtral-mini-tts-2603"
+    # Renamed from VOXTRAL_MODEL → VOXTRAL_TTS_MODEL (Mistral-First Phase 1, Task 1.4)
+    # to clarify that this is the *TTS* (text-to-speech) model. STT now uses
+    # voxtral-mini-2602 (transcribe-only) — see transcripts/youtube.py.
+    VOXTRAL_TTS_MODEL: str = "voxtral-mini-tts-2603"
     VOXTRAL_VOICE_FR_FEMALE: str = ""  # voice_id created via Mistral Voices API
     VOXTRAL_VOICE_FR_MALE: str = ""
     VOXTRAL_VOICE_EN_FEMALE: str = ""
@@ -177,6 +187,10 @@ class _DeepSightSettings(BaseSettings):
     # -- Transcript --
     YTDLP_COOKIES_PATH: str = ""
     MAX_DURATION_FOR_STT: int = Field(default=1200)
+    # Plan-aware STT duration caps (Mistral-First Phase 1)
+    MAX_DURATION_FOR_STT_FREE: int = Field(default=1200)  # 20 min
+    MAX_DURATION_FOR_STT_PRO: int = Field(default=2400)  # 40 min
+    MAX_DURATION_FOR_STT_EXPERT: int = Field(default=3600)  # 60 min
 
     # -- Moderation (Mistral content safety) --
     # Mode log_only par défaut : la modération calcule les scores et les log,
@@ -695,8 +709,48 @@ MISTRAL_AGENT_MODEL = "mistral-small-2603"
 # L'Agent est créé au runtime si activé. Brave reste en fallback.
 MISTRAL_AGENT_ENABLED = True  # Set False to force Brave-only pipeline
 
+# Mistral-First migration P5 — bascule la PRIORITÉ du provider primary entre
+# Mistral Agent et Perplexity. Le flag est OFF par défaut pour permettre le
+# merge sans rollout : tant que le benchmark qualité Mistral Agent vs Perplexity
+# Sonar Pro n'a pas validé Mistral, on garde Perplexity en première intention.
+#   - False (defaut)  → ordre = [perplexity, mistral_agent, brave]
+#   - True            → ordre = [mistral_agent, perplexity, brave]
+# Brave reste TOUJOURS en last-resort (n'est pas affecté par ce flag).
+MISTRAL_AGENT_PRIMARY = False
+
 # Modèle de modération contenu
 MISTRAL_MODERATION_MODEL = "mistral-moderation-latest"
+
+# =============================================================================
+# MAGISTRAL — Modèle de raisonnement épistémique (Phase 4 migration Mistral-First)
+# =============================================================================
+# Magistral Medium 1.2 (v25.09) = modèle frontier de raisonnement chain-of-thought
+# de Mistral. Utilisé en OVERRIDE Expert-only pour la génération de la synthèse
+# avec marqueurs épistémiques (SOLID/PLAUSIBLE/UNCERTAIN/À VÉRIFIER).
+#
+# Source officielle (vérifié 2026-05-02):
+#   https://docs.mistral.ai/getting-started/models/models_overview/
+#
+# Stratégie: override Expert-only via duration_router.get_optimal_model(),
+# hors MISTRAL_FALLBACK_ORDER. Si Magistral fail (429/5xx), la chaîne de
+# fallback existante (mistral-large-2512 → medium → small → DeepSeek) prend
+# le relais via llm_complete().
+#
+# ROLLOUT: flag par défaut OFF. Activation après validation qualité manuelle
+# sur 10 vidéos avec marqueurs visibles. Toggle = .env MAGISTRAL_EPISTEMIC_ENABLED=true
+# =============================================================================
+
+MAGISTRAL_EPISTEMIC_ENABLED: bool = (
+    os.getenv("MAGISTRAL_EPISTEMIC_ENABLED", "false").lower() == "true"
+)
+MAGISTRAL_EPISTEMIC_MODEL: str = os.getenv(
+    "MAGISTRAL_EPISTEMIC_MODEL", "magistral-medium-2509"
+)
+MAGISTRAL_EPISTEMIC_TIERS: list = [
+    t.strip().lower()
+    for t in os.getenv("MAGISTRAL_EPISTEMIC_TIERS", "expert").split(",")
+    if t.strip()
+]
 
 # Modération — Phase 2 migration Mistral-First
 # log_only : calcule + log les scores mais laisse passer (calibration)
@@ -905,6 +959,34 @@ HEALTH_CHECK_SECRET = _settings.HEALTH_CHECK_SECRET
 # =============================================================================
 
 MAX_DURATION_FOR_STT = _settings.MAX_DURATION_FOR_STT
+
+# Plan-aware STT duration caps (Mistral-First Phase 1)
+# Voxtral can handle up to 3h audio, so tier upgrades unlock longer videos.
+MAX_DURATION_FOR_STT_FREE = _settings.MAX_DURATION_FOR_STT_FREE
+MAX_DURATION_FOR_STT_PRO = _settings.MAX_DURATION_FOR_STT_PRO
+MAX_DURATION_FOR_STT_EXPERT = _settings.MAX_DURATION_FOR_STT_EXPERT
+
+
+def get_max_stt_duration(plan: str) -> int:
+    """
+    Return max STT duration (seconds) allowed for the given plan.
+
+    Free / Starter: 20 min
+    Student / Pro:  40 min
+    Expert:         60 min
+
+    Unknown plans fall back to Free.
+    """
+    if not plan:
+        return MAX_DURATION_FOR_STT_FREE
+    return {
+        "free": MAX_DURATION_FOR_STT_FREE,
+        "starter": MAX_DURATION_FOR_STT_FREE,
+        "student": MAX_DURATION_FOR_STT_PRO,
+        "pro": MAX_DURATION_FOR_STT_PRO,
+        "expert": MAX_DURATION_FOR_STT_EXPERT,
+    }.get(plan.lower(), MAX_DURATION_FOR_STT_FREE)
+
 
 TRANSCRIPT_CONFIG = {
     "circuit_breaker_failure_threshold": 5,

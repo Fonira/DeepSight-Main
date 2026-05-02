@@ -4,6 +4,13 @@ Phase 2 kickstart — API client for agent creation and signed URL generation.
 
 Uses the ElevenLabs Conversational AI API:
 https://elevenlabs.io/docs/api-reference/conversational-ai
+
+# HARD-PIN: ElevenLabs only for voice-call (see backend/docs/architecture/tts-policy.md)
+# This module is the single entry point for Quick Voice Call agent creation.
+# Voice-call routes (`/api/voice/session`, companion, debate) MUST NOT route
+# through `tts.providers.get_tts_provider()` (which would let the
+# Voxtral/OpenAI fallback chain handle conversational voice — breaking the
+# < 200ms latency requirement). Phase 7 of the Mistral-First migration.
 """
 
 from __future__ import annotations
@@ -13,6 +20,27 @@ from typing import Optional
 import httpx
 
 from core.logging import logger
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HARD-PIN constants — voice-call provider policy (Phase 7 / 2026-05-02)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# The single TTS provider authorised on Quick Voice Call routes. Any change
+# requires explicit product validation — see backend/docs/architecture/tts-policy.md.
+VOICE_CALL_PROVIDER: str = "elevenlabs"
+
+# Whitelist of ElevenLabs model_ids accepted by the conversational agent
+# creator. Mirrors the Pydantic validator in voice/schemas.py — duplicated
+# here on purpose so a future contributor cannot bypass the schema by calling
+# `create_conversation_agent` directly with a non-ElevenLabs model.
+ALLOWED_VOICE_CALL_MODELS: frozenset[str] = frozenset(
+    {
+        "eleven_flash_v2_5",       # ~150ms first-byte — recommended
+        "eleven_turbo_v2_5",       # ~300ms — current default
+        "eleven_multilingual_v2",  # higher quality, higher latency
+    }
+)
 
 
 class ElevenLabsClient:
@@ -61,9 +89,27 @@ class ElevenLabsClient:
             turn_config: ElevenLabs turn configuration (mode, turn_timeout, interruptions, eagerness).
 
         Raises:
-            ValueError: on 401 (invalid API key).
+            ValueError: on 401 (invalid API key) or invalid model_id (HARD-PIN).
             httpx.HTTPStatusError: on 429 (rate limit) or 5xx.
         """
+        # HARD-PIN: ElevenLabs only for voice-call (see tts-policy.md)
+        # Defence in depth — even if a caller bypasses the Pydantic schema in
+        # voice/schemas.py, this guard prevents a non-ElevenLabs model from
+        # reaching the ElevenLabs API (which would 4xx anyway, but the explicit
+        # error here is clearer and observable).
+        if model_id not in ALLOWED_VOICE_CALL_MODELS:
+            logger.error(
+                "voice_call.hard_pin_violation",
+                extra={
+                    "rejected_model": model_id,
+                    "allowed": sorted(ALLOWED_VOICE_CALL_MODELS),
+                },
+            )
+            raise ValueError(
+                f"Voice-call provider is hard-pinned to ElevenLabs. "
+                f"model_id={model_id!r} is not allowed. "
+                f"See backend/docs/architecture/tts-policy.md."
+            )
         # ── TTS config (flat properties since API update April 2026) ──
         tts_config: dict = {
             "voice_id": voice_id,
