@@ -239,7 +239,7 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
     <div className="card overflow-hidden">
       {/* Tab Bar — hidden if only one tab */}
       {visibleTabs.length > 1 && (
-        <div className="flex border-b border-border-subtle overflow-x-auto scrollbar-hide">
+        <div className="sticky top-0 z-10 flex border-b border-border-subtle overflow-x-auto scrollbar-hide bg-[#12121a]/95 backdrop-blur-sm">
           {visibleTabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
