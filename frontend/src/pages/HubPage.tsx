@@ -34,7 +34,7 @@ import { SourcesShelf } from "../components/hub/SourcesShelf";
 import { NewConversationModal } from "../components/hub/NewConversationModal";
 import { HubAnalysisPanel } from "../components/hub/HubAnalysisPanel";
 import { useAnalyzeAndOpenHub } from "../hooks/useAnalyzeAndOpenHub";
-import { Loader2 } from "lucide-react";
+import { LoadingSpinner } from "../components/LoadingSpinner";
 import type { HubConversation, HubMessage } from "../components/hub/types";
 
 const newId = () =>
@@ -524,9 +524,8 @@ const HubPage: React.FC = () => {
         {analyzingTaskId && !activeConvId ? (
           <div className="flex-1 flex items-center justify-center px-6">
             <div className="max-w-md w-full text-center">
-              <div className="relative mx-auto mb-5 w-16 h-16">
-                <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl animate-pulse" />
-                <Loader2 className="relative w-16 h-16 text-indigo-400 mx-auto animate-spin" />
+              <div className="mx-auto mb-5 flex justify-center">
+                <LoadingSpinner size="md" label="Analyse en cours" />
               </div>
               <p className="text-base text-white font-medium mb-1.5">
                 Analyse en cours
