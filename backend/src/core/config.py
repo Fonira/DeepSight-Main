@@ -149,7 +149,10 @@ class _DeepSightSettings(BaseSettings):
     ELEVENLABS_MODEL_ID: str = "eleven_flash_v2_5"
 
     # -- Voxtral TTS (Mistral) --
-    VOXTRAL_MODEL: str = "voxtral-mini-tts-2603"
+    # Renamed from VOXTRAL_MODEL → VOXTRAL_TTS_MODEL (Mistral-First Phase 1, Task 1.4)
+    # to clarify that this is the *TTS* (text-to-speech) model. STT now uses
+    # voxtral-mini-2602 (transcribe-only) — see transcripts/youtube.py.
+    VOXTRAL_TTS_MODEL: str = "voxtral-mini-tts-2603"
     VOXTRAL_VOICE_FR_FEMALE: str = ""  # voice_id created via Mistral Voices API
     VOXTRAL_VOICE_FR_MALE: str = ""
     VOXTRAL_VOICE_EN_FEMALE: str = ""
@@ -184,6 +187,10 @@ class _DeepSightSettings(BaseSettings):
     # -- Transcript --
     YTDLP_COOKIES_PATH: str = ""
     MAX_DURATION_FOR_STT: int = Field(default=1200)
+    # Plan-aware STT duration caps (Mistral-First Phase 1)
+    MAX_DURATION_FOR_STT_FREE: int = Field(default=1200)  # 20 min
+    MAX_DURATION_FOR_STT_PRO: int = Field(default=2400)  # 40 min
+    MAX_DURATION_FOR_STT_EXPERT: int = Field(default=3600)  # 60 min
 
     @property
     def is_production(self) -> bool:
@@ -939,6 +946,34 @@ HEALTH_CHECK_SECRET = _settings.HEALTH_CHECK_SECRET
 # =============================================================================
 
 MAX_DURATION_FOR_STT = _settings.MAX_DURATION_FOR_STT
+
+# Plan-aware STT duration caps (Mistral-First Phase 1)
+# Voxtral can handle up to 3h audio, so tier upgrades unlock longer videos.
+MAX_DURATION_FOR_STT_FREE = _settings.MAX_DURATION_FOR_STT_FREE
+MAX_DURATION_FOR_STT_PRO = _settings.MAX_DURATION_FOR_STT_PRO
+MAX_DURATION_FOR_STT_EXPERT = _settings.MAX_DURATION_FOR_STT_EXPERT
+
+
+def get_max_stt_duration(plan: str) -> int:
+    """
+    Return max STT duration (seconds) allowed for the given plan.
+
+    Free / Starter: 20 min
+    Student / Pro:  40 min
+    Expert:         60 min
+
+    Unknown plans fall back to Free.
+    """
+    if not plan:
+        return MAX_DURATION_FOR_STT_FREE
+    return {
+        "free": MAX_DURATION_FOR_STT_FREE,
+        "starter": MAX_DURATION_FOR_STT_FREE,
+        "student": MAX_DURATION_FOR_STT_PRO,
+        "pro": MAX_DURATION_FOR_STT_PRO,
+        "expert": MAX_DURATION_FOR_STT_EXPERT,
+    }.get(plan.lower(), MAX_DURATION_FOR_STT_FREE)
+
 
 TRANSCRIPT_CONFIG = {
     "circuit_breaker_failure_threshold": 5,

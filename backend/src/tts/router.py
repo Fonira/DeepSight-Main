@@ -540,7 +540,7 @@ async def tts_status():
             },
             "voxtral": {
                 "available": voxtral_available,
-                "model": _settings.VOXTRAL_MODEL,
+                "model": _settings.VOXTRAL_TTS_MODEL,
             },
             "openai": {
                 "available": openai_available,

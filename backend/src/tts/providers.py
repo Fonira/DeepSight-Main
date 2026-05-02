@@ -328,7 +328,7 @@ class VoxtralTTSProvider(TTSProvider):
 
         from core.config import _settings
 
-        resolved_model = model_id or _settings.VOXTRAL_MODEL
+        resolved_model = model_id or _settings.VOXTRAL_TTS_MODEL
 
         payload = {
             "model": resolved_model,
@@ -425,7 +425,7 @@ class VoxtralTTSProvider(TTSProvider):
         from core.config import _settings
 
         payload = {
-            "model": _settings.VOXTRAL_MODEL,
+            "model": _settings.VOXTRAL_TTS_MODEL,
             "input": text,
             "voice_id": resolved_voice,
             "response_format": "mp3",
