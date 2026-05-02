@@ -142,7 +142,10 @@ class _DeepSightSettings(BaseSettings):
     ELEVENLABS_MODEL_ID: str = "eleven_flash_v2_5"
 
     # -- Voxtral TTS (Mistral) --
-    VOXTRAL_MODEL: str = "voxtral-mini-tts-2603"
+    # Renamed from VOXTRAL_MODEL → VOXTRAL_TTS_MODEL (Mistral-First Phase 1, Task 1.4)
+    # to clarify that this is the *TTS* (text-to-speech) model. STT now uses
+    # voxtral-mini-2602 (transcribe-only) — see transcripts/youtube.py.
+    VOXTRAL_TTS_MODEL: str = "voxtral-mini-tts-2603"
     VOXTRAL_VOICE_FR_FEMALE: str = ""  # voice_id created via Mistral Voices API
     VOXTRAL_VOICE_FR_MALE: str = ""
     VOXTRAL_VOICE_EN_FEMALE: str = ""
