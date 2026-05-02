@@ -1283,16 +1283,28 @@ export const chatApi = {
         created_at: string;
         web_search_used?: boolean;
         sources?: Array<{ url: string; title: string }>;
+        // Voice timeline fields (backend ChatHistoryItem schema)
+        source?: "text" | "voice";
+        voice_speaker?: "user" | "agent" | null;
+        voice_session_id?: string | null;
+        time_in_call_secs?: number | null;
       }>;
       quota_info?: Record<string, unknown>;
     }>(`/api/chat/history/${summaryId}`);
     // Transform backend response (created_at, numeric id) to mobile ChatMessage format
+    // Passthrough voice timeline fields (source/voice_speaker/voice_session_id/time_in_call_secs)
+    // pour permettre le filtrage "audio user invisible" côté UI (useConversation).
     const messages: ChatMessage[] = (response.messages || []).map(
       (m, index) => ({
         id: m.id != null ? String(m.id) : `history-${index}-${Date.now()}`,
         role: m.role,
         content: m.content,
         timestamp: m.created_at,
+        web_search_used: m.web_search_used,
+        source: m.source,
+        voice_speaker: m.voice_speaker,
+        voice_session_id: m.voice_session_id,
+        time_in_call_secs: m.time_in_call_secs,
       }),
     );
     return { messages };
