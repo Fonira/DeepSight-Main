@@ -33,6 +33,7 @@ from auth.dependencies import (
 from core.config import PLAN_LIMITS, CATEGORIES, get_mistral_key
 from core.http_client import shared_http_client
 from core.logging import logger
+from core.moderation_service import moderate_text
 
 # Import du système de sécurité
 try:
@@ -1093,6 +1094,18 @@ async def analyze_video_v2(
     """
     logger.info(f"📥 [v2.0] Analyze request: {request.url} by user {current_user.id}")
 
+    # 🛡️ Phase 2 — Mistral moderation sur le user_prompt (si présent)
+    if getattr(request, "user_prompt", None):
+        moderation = await moderate_text(request.user_prompt)
+        if not moderation.allowed:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "content_policy_violation",
+                    "categories": moderation.flagged_categories,
+                },
+            )
+
     # 🎵 Détecter la plateforme
     platform = detect_platform(request.url)
 
@@ -1781,6 +1794,18 @@ async def analyze_video_v2_1(
             status_code=501,
             detail={"code": "feature_unavailable", "message": "Advanced analysis features are not available"},
         )
+
+    # 🛡️ Phase 2 — Mistral moderation sur le user_prompt (si présent)
+    if getattr(request, "user_prompt", None):
+        moderation = await moderate_text(request.user_prompt)
+        if not moderation.allowed:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "content_policy_violation",
+                    "categories": moderation.flagged_categories,
+                },
+            )
 
     # 🎵 Détecter la plateforme (YouTube ou TikTok)
     platform = detect_platform(request.url)
@@ -4765,6 +4790,23 @@ async def analyze_images(
         raise HTTPException(status_code=400, detail="Maximum 10 images par analyse")
     if len(request.images) < 1:
         raise HTTPException(status_code=400, detail="Au moins 1 image requise")
+
+    # 🛡️ Phase 2 — Mistral moderation sur title + context utilisateur (si présents)
+    user_text_parts = []
+    if request.title:
+        user_text_parts.append(request.title)
+    if request.context:
+        user_text_parts.append(request.context)
+    if user_text_parts:
+        moderation = await moderate_text(" ".join(user_text_parts))
+        if not moderation.allowed:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "content_policy_violation",
+                    "categories": moderation.flagged_categories,
+                },
+            )
 
     # Valider les tailles (base64 → ~1.37x taille originale, donc 14MB en b64 ≈ 10MB réel)
     MAX_B64_SIZE = 14_000_000

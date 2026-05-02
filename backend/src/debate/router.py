@@ -26,6 +26,7 @@ from core.http_client import shared_http_client
 from auth.dependencies import get_current_user, require_credits
 from core.config import PLAN_LIMITS
 from core.llm_provider import llm_complete
+from core.moderation_service import moderate_text
 from videos.web_search_provider import web_search_and_synthesize
 from core.credits import deduct_credits
 from db.database import (
@@ -1084,6 +1085,17 @@ async def debate_chat(
     Chat contextuel dans le cadre d'un débat.
     Le contexte inclut les thèses, arguments et fact-check des 2 vidéos.
     """
+    # 🛡️ Phase 2 — Mistral moderation sur le message utilisateur
+    moderation = await moderate_text(request.message)
+    if not moderation.allowed:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "content_policy_violation",
+                "categories": moderation.flagged_categories,
+            },
+        )
+
     debate = await _get_debate_owned(db, request.debate_id, current_user.id)
 
     if debate.status != "completed":
