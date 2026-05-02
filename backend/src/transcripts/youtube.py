@@ -2541,6 +2541,48 @@ async def _get_transcript_with_timestamps_inner(
             return simple, timestamped, lang
 
     # ═══════════════════════════════════════════════════════════════════════════════
+    # PHASE 1.5: VOXTRAL SHORT-CIRCUIT (Mistral-First Phase 1, Task 1.3)
+    # No captions detected by Supadata/Phase 1 → skip directly to Voxtral STT
+    # if duration fits the plan cap. Saves 5-30s vs trying yt-dlp first when
+    # the video has no captions at all.
+    # ═══════════════════════════════════════════════════════════════════════════════
+    from core.config import get_max_stt_duration as _get_max_stt_duration
+
+    _short_circuit_cap = _get_max_stt_duration(user_plan or "free")
+    _voxtral_cb = get_circuit_breaker("voxtral_stt")
+    if (
+        duration > 0
+        and duration <= _short_circuit_cap
+        and _voxtral_cb.can_execute()
+    ):
+        print("", flush=True)
+        print(
+            f"🎙️ PHASE 1.5: No captions detected by Supadata, short-circuiting to Voxtral STT "
+            f"(duration={duration}s ≤ cap={_short_circuit_cap}s, plan={user_plan or 'free'})",
+            flush=True,
+        )
+        print("─" * 50, flush=True)
+        try:
+            sc_simple, sc_timestamped, sc_lang = await get_transcript_voxtral(video_id)
+            if sc_simple and sc_timestamped:
+                _voxtral_cb.record_success()
+                print("✅ SUCCESS with Voxtral STT (Phase 1.5 short-circuit)", flush=True)
+                print(f"{'=' * 70}", flush=True)
+                await _cache_success(video_id, sc_simple, sc_timestamped, sc_lang, "Voxtral STT (short-circuit)")
+                return sc_simple, sc_timestamped, sc_lang
+            else:
+                print("  ❌ [Voxtral short-circuit] Empty result, falling back to Phase 2", flush=True)
+        except Exception as e:
+            print(
+                f"  ⚠️ [Voxtral short-circuit] Failed ({type(e).__name__}): {str(e)[:200]} — "
+                f"falling back to Phase 2",
+                flush=True,
+            )
+            # Don't record failure on circuit breaker — Phase 3 will retry the same provider
+            # only if the short-circuit timed out / network failed. Real STT errors will
+            # be recorded there. We want to give yt-dlp a chance before giving up on Voxtral.
+
+    # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 2: yt-dlp (séquentiel, plus lent mais fiable)
     # ═══════════════════════════════════════════════════════════════════════════════
     print("", flush=True)
@@ -2584,8 +2626,7 @@ async def _get_transcript_with_timestamps_inner(
     # Duration guard: plan-aware cap (Mistral-First Phase 1).
     # Free=20min / Pro=40min / Expert=60min. Voxtral handles up to 3h, so the
     # caps reflect business policy (paid tiers unlock longer audio), not API limits.
-    from core.config import get_max_stt_duration as _get_max_stt_duration
-
+    # _get_max_stt_duration is already imported above at the Phase 1.5 short-circuit.
     max_stt_duration = _get_max_stt_duration(user_plan or "free")
     if duration > 0 and duration > max_stt_duration:
         print(

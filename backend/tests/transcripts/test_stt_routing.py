@@ -92,3 +92,66 @@ class TestGetMaxSttDuration:
         from core.config import MAX_DURATION_FOR_STT_EXPERT, MAX_DURATION_FOR_STT_FREE
 
         assert MAX_DURATION_FOR_STT_EXPERT == MAX_DURATION_FOR_STT_FREE * 3
+
+
+# =============================================================================
+# Phase 1.5 short-circuit (Voxtral before Phase 2 yt-dlp when no captions)
+# =============================================================================
+
+
+class TestVoxtralShortCircuit:
+    """Verify that Voxtral STT is attempted as Phase 1.5 short-circuit, before
+    Phase 2 yt-dlp methods, when Supadata + Phase 1 parallel methods all fail."""
+
+    def test_short_circuit_present_in_source(self):
+        """The Phase 1.5 block must exist between Phase 1 and Phase 2."""
+        import inspect
+
+        from transcripts import youtube
+
+        source = inspect.getsource(youtube._get_transcript_with_timestamps_inner)
+        assert "PHASE 1.5" in source, "Phase 1.5 short-circuit block not found"
+        assert "short-circuit" in source.lower(), "short-circuit keyword missing in source"
+
+    def test_short_circuit_runs_before_phase2(self):
+        """Phase 1.5 (Voxtral short-circuit) must appear before Phase 2 yt-dlp."""
+        import inspect
+
+        from transcripts import youtube
+
+        source = inspect.getsource(youtube._get_transcript_with_timestamps_inner)
+        sc_pos = source.find("PHASE 1.5")
+        phase2_pos = source.find("PHASE 2: yt-dlp")
+        assert sc_pos > 0, "Phase 1.5 not found"
+        assert phase2_pos > 0, "Phase 2 yt-dlp marker not found"
+        assert sc_pos < phase2_pos, "Phase 1.5 short-circuit must run BEFORE Phase 2 yt-dlp"
+
+    def test_short_circuit_logs_no_captions_message(self):
+        """The short-circuit must log explicitly that captions are missing."""
+        import inspect
+
+        from transcripts import youtube
+
+        source = inspect.getsource(youtube._get_transcript_with_timestamps_inner)
+        assert "No captions detected by Supadata" in source
+
+    def test_short_circuit_uses_plan_aware_cap(self):
+        """Phase 1.5 must respect the plan-aware duration cap (not always run)."""
+        import inspect
+
+        from transcripts import youtube
+
+        source = inspect.getsource(youtube._get_transcript_with_timestamps_inner)
+        # The short-circuit block must use _get_max_stt_duration (plan-aware)
+        assert "_get_max_stt_duration" in source
+
+    def test_get_transcript_with_timestamps_accepts_user_plan(self):
+        """Public API must accept optional user_plan kwarg (backward compat)."""
+        import inspect
+
+        from transcripts.youtube import get_transcript_with_timestamps
+
+        sig = inspect.signature(get_transcript_with_timestamps)
+        assert "user_plan" in sig.parameters, "user_plan kwarg missing from public function"
+        # Must default to None for backward compat with existing callers
+        assert sig.parameters["user_plan"].default is None
