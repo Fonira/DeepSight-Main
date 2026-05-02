@@ -1,12 +1,13 @@
 // frontend/src/components/hub/HubHeader.tsx
 import React from "react";
+import { Link } from "react-router-dom";
 import { Menu, Home } from "lucide-react";
 import { DeepSightLogo } from "./DeepSightLogo";
 
 interface Props {
   onMenuClick: () => void;
-  /** Naviguer vers la home minimal landing (`/`). */
-  onHomeClick?: () => void;
+  /** When true, renders a "Tableau de bord" Link to /dashboard. */
+  showDashboardLink?: boolean;
   title: string;
   subtitle?: string;
   /** Active conversation source — drives the inline platform icon in subtitle. */
@@ -22,7 +23,7 @@ const SOURCE_ICON: Record<"youtube" | "tiktok", { src: string; alt: string }> =
 
 export const HubHeader: React.FC<Props> = ({
   onMenuClick,
-  onHomeClick,
+  showDashboardLink = true,
   title,
   subtitle,
   videoSource,
@@ -33,18 +34,17 @@ export const HubHeader: React.FC<Props> = ({
 
   return (
     <header className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-white/10 bg-white/[0.02] backdrop-blur-xl sticky top-0 z-10">
-      {onHomeClick && (
-        <button
-          type="button"
-          aria-label="Retour à l'accueil"
-          onClick={onHomeClick}
+      {showDashboardLink && (
+        <Link
+          to="/dashboard"
+          aria-label="Retour au tableau de bord"
           className="h-9 px-3 flex items-center gap-2 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/25 hover:border-indigo-400/50 hover:text-indigo-200 transition-colors flex-shrink-0"
         >
           <Home className="w-4 h-4" />
           <span className="text-[13px] font-medium hidden sm:inline">
-            Accueil
+            Tableau de bord
           </span>
-        </button>
+        </Link>
       )}
       <button
         type="button"
