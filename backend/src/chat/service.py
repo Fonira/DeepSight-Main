@@ -20,7 +20,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import ChatMessage, ChatQuota, Summary, User, WebSearchUsage
-from core.config import get_mistral_key, get_openai_key, is_openai_available, PLAN_LIMITS
+from core.config import get_mistral_key, PLAN_LIMITS
+from core.llm_provider import llm_complete
 from videos.web_search_provider import web_search_and_synthesize, WebSearchResult
 
 logger = logging.getLogger(__name__)
@@ -104,118 +105,6 @@ async def search_semantic_scholar(
     except Exception as e:
         print(f"❌ [SCHOLAR] Error: {e}", flush=True)
         return []
-
-
-def _detect_complex_question(question: str) -> bool:
-    """
-    Détecte si une question est complexe et nécessite GPT-4.
-
-    Questions complexes:
-    - Analyses comparatives
-    - Questions multi-étapes
-    - Raisonnement abstrait
-    - Synthèse de concepts
-    """
-    question_lower = question.lower()
-
-    COMPLEX_PATTERNS = [
-        # Analyses comparatives
-        "compare",
-        "différence entre",
-        "avantages et inconvénients",
-        "difference between",
-        "pros and cons",
-        "versus",
-        " vs ",
-        # Multi-étapes
-        "étapes pour",
-        "comment faire pour",
-        "processus de",
-        "steps to",
-        "how to",
-        "process of",
-        # Raisonnement abstrait
-        "pourquoi",
-        "implications",
-        "conséquences",
-        "why",
-        "implications",
-        "consequences",
-        # Synthèse
-        "résume et analyse",
-        "synthétise",
-        "en quoi",
-        "summarize and analyze",
-        "synthesize",
-        # Questions longues (>20 mots)
-    ]
-
-    # Question longue = probablement complexe
-    if len(question.split()) > 20:
-        return True
-
-    for pattern in COMPLEX_PATTERNS:
-        if pattern in question_lower:
-            return True
-
-    return False
-
-
-async def select_chat_model(question: str, user_plan: str) -> str:
-    """
-    Sélectionne le modèle approprié selon la question et le plan.
-
-    - Free: Toujours Mistral Small
-    - Pro: GPT-4 pour questions complexes, Mistral sinon
-    """
-    # Plan Free: toujours Mistral
-    if user_plan in ["free", "student"]:
-        return "mistral"
-
-    # Plan Pro: GPT-4 pour questions complexes
-    if user_plan in ["pro"]:
-        if _detect_complex_question(question) and is_openai_available():
-            return "openai"
-
-    return "mistral"
-
-
-async def generate_openai_response(
-    question: str, system_prompt: str, user_prompt: str, max_tokens: int = 4000
-) -> Optional[str]:
-    """
-    Génère une réponse avec OpenAI GPT-4 pour les questions complexes.
-    """
-    api_key = get_openai_key()
-    if not api_key:
-        return None
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": "gpt-4-turbo-preview",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "max_tokens": max_tokens,
-                    "temperature": 0.3,
-                },
-                timeout=90,
-            )
-
-            if response.status_code == 200:
-                return response.json()["choices"][0]["message"]["content"].strip()
-            else:
-                print(f"❌ [OpenAI] API error: {response.status_code}", flush=True)
-                return None
-
-    except Exception as e:
-        print(f"❌ [OpenAI] Error: {e}", flush=True)
-        return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -983,6 +872,58 @@ async def generate_chat_response(
     # Réponses concises par défaut, plus longues seulement si question complexe
     max_tokens = min(base_tokens, 600) if is_simple else base_tokens
 
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # 🧹 POST-PROCESSING helpers (préambules & formules de politesse)
+    # ═══════════════════════════════════════════════════════════════════════════════
+    def _strip_chat_artefacts(answer: str) -> str:
+        preambles_to_remove = [
+            "Bien sûr!",
+            "Bien sûr,",
+            "Bien sûr ",
+            "Certainement!",
+            "Certainement,",
+            "Excellente question!",
+            "Bonne question!",
+            "C'est une bonne question.",
+            "C'est une excellente question.",
+            "Je vais répondre à votre question.",
+            "Permettez-moi de répondre.",
+            "Avec plaisir!",
+            "Avec plaisir,",
+            "Sure!",
+            "Certainly!",
+            "Great question!",
+            "Good question!",
+            "Let me answer that.",
+            "I'll explain.",
+            "Of course!",
+            "That's a great question.",
+            "Happy to help!",
+        ]
+
+        for preamble in preambles_to_remove:
+            if answer.startswith(preamble):
+                answer = answer[len(preamble) :].strip()
+                break
+
+        endings_to_trim = [
+            "\n\nN'hésitez pas à poser d'autres questions!",
+            "\n\nN'hésitez pas si vous avez d'autres questions.",
+            "\n\nJ'espère que cela répond à votre question.",
+            "\n\nJ'espère que cela vous aide!",
+            "\n\nFeel free to ask more questions!",
+            "\n\nHope this helps!",
+            "\n\nLet me know if you have more questions.",
+        ]
+
+        for ending in endings_to_trim:
+            if answer.endswith(ending):
+                answer = answer[: -len(ending)].strip()
+                break
+
+        return answer
+
+    mistral_response: Optional[str] = None
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -1001,65 +942,50 @@ async def generate_chat_response(
             )
 
             if response.status_code == 200:
-                answer = response.json()["choices"][0]["message"]["content"].strip()
-
-                # ═══════════════════════════════════════════════════════════════════
-                # 🧹 POST-PROCESSING: Supprimer les préambules indésirables
-                # ═══════════════════════════════════════════════════════════════════
-                preambles_to_remove = [
-                    "Bien sûr!",
-                    "Bien sûr,",
-                    "Bien sûr ",
-                    "Certainement!",
-                    "Certainement,",
-                    "Excellente question!",
-                    "Bonne question!",
-                    "C'est une bonne question.",
-                    "C'est une excellente question.",
-                    "Je vais répondre à votre question.",
-                    "Permettez-moi de répondre.",
-                    "Avec plaisir!",
-                    "Avec plaisir,",
-                    "Sure!",
-                    "Certainly!",
-                    "Great question!",
-                    "Good question!",
-                    "Let me answer that.",
-                    "I'll explain.",
-                    "Of course!",
-                    "That's a great question.",
-                    "Happy to help!",
-                ]
-
-                for preamble in preambles_to_remove:
-                    if answer.startswith(preamble):
-                        answer = answer[len(preamble) :].strip()
-                        break
-
-                # Supprimer aussi les formules de politesse de fin
-                endings_to_trim = [
-                    "\n\nN'hésitez pas à poser d'autres questions!",
-                    "\n\nN'hésitez pas si vous avez d'autres questions.",
-                    "\n\nJ'espère que cela répond à votre question.",
-                    "\n\nJ'espère que cela vous aide!",
-                    "\n\nFeel free to ask more questions!",
-                    "\n\nHope this helps!",
-                    "\n\nLet me know if you have more questions.",
-                ]
-
-                for ending in endings_to_trim:
-                    if answer.endswith(ending):
-                        answer = answer[: -len(ending)].strip()
-                        break
-
-                return answer
+                mistral_response = response.json()["choices"][0]["message"]["content"].strip()
             else:
                 print(f"❌ Chat API error: {response.status_code}", flush=True)
-                return None
 
     except Exception as e:
         print(f"❌ Chat generation error: {e}", flush=True)
-        return None
+
+    # Mistral primary OK → post-process et retour
+    if mistral_response:
+        return _strip_chat_artefacts(mistral_response)
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # 🇪🇺 FALLBACK CHAIN — chaîne Mistral pure (small/medium/large) puis DeepSeek
+    # via core.llm_provider.llm_complete (auto-fallback 429/5xx + circuit breaker).
+    # Remplace l'ancien fallback OpenAI gpt-4-turbo-preview (jamais déclenché en
+    # prod, contradictoire avec le positionnement 100% européen).
+    # ═══════════════════════════════════════════════════════════════════════════════
+    logger.warning(
+        "Primary Mistral chat call failed, falling back via llm_complete chain",
+        extra={"primary_model": model, "lang": lang, "mode": mode},
+    )
+    fallback_result = await llm_complete(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        model=model,
+        max_tokens=max_tokens,
+        temperature=0.7,
+        timeout=60,
+    )
+
+    if fallback_result and fallback_result.content:
+        logger.info(
+            "Chat fallback succeeded",
+            extra={
+                "fallback_model": fallback_result.model_used,
+                "fallback_provider": fallback_result.provider,
+            },
+        )
+        return _strip_chat_artefacts(fallback_result.content)
+
+    logger.error("Chat fallback chain exhausted, no response available")
+    return None
 
 
 async def generate_chat_response_stream(
