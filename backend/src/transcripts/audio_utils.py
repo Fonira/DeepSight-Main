@@ -216,7 +216,9 @@ async def transcribe_audio_groq(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 VOXTRAL_STT_URL = "https://api.mistral.ai/v1/audio/transcriptions"
-VOXTRAL_STT_MODEL = "voxtral-mini-latest"
+# v7.3 — Switch to transcribe-only model (faster + cheaper than chat-tuned voxtral-mini-latest)
+# Official doc: https://docs.mistral.ai/models/voxtral-mini-transcribe-26-02
+VOXTRAL_STT_MODEL = "voxtral-mini-2602"
 
 
 async def transcribe_audio_voxtral(

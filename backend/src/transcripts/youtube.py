@@ -1558,7 +1558,9 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
 # ═══════════════════════════════════════════════════════════════════════════════
 
 VOXTRAL_STT_URL = "https://api.mistral.ai/v1/audio/transcriptions"
-VOXTRAL_STT_MODEL = "voxtral-mini-latest"
+# v7.3 — Switch to transcribe-only model (faster + cheaper than chat-tuned voxtral-mini-latest)
+# Official doc: https://docs.mistral.ai/models/voxtral-mini-transcribe-26-02
+VOXTRAL_STT_MODEL = "voxtral-mini-2602"
 VOXTRAL_MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB (Mistral est très généreux)
 
 
@@ -1578,7 +1580,7 @@ async def get_transcript_voxtral(
     - Multilingue 13 langues avec détection auto
 
     API: POST /v1/audio/transcriptions (multipart/form-data)
-    Model: voxtral-mini-latest
+    Model: voxtral-mini-2602 (transcribe-only, fine-tuned for STT)
     """
     mistral_key = get_mistral_key()
     if not mistral_key:
