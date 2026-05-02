@@ -92,9 +92,24 @@ export interface RecentAnalysis {
 // ── Chat ──
 
 export interface ChatMessage {
+  /** Identifiant stable côté backend (ChatHistoryItem.id) — optionnel pour
+   *  rétrocompat avec les bulles fabriquées localement avant ack serveur. */
+  id?: string;
   role: "user" | "assistant";
   content: string;
+  /** ISO 8601 timestamp from backend ChatHistoryItem.timestamp. */
+  timestamp?: string;
   web_search_used?: boolean;
+  /** Source du message — "text" pour un chat clavier, "voice" pour un
+   *  transcript ElevenLabs persisté côté backend. Défaut "text" si omis
+   *  (rétrocompat avec les payloads ChatView v1 qui n'ont pas le champ). */
+  source?: "text" | "voice";
+  /** Speaker du message voice (uniquement quand source="voice"). */
+  voice_speaker?: "user" | "agent" | null;
+  /** Identifiant de la session voice ElevenLabs liée au transcript. */
+  voice_session_id?: string | null;
+  /** Décalage en secondes depuis le début de la session voice. */
+  time_in_call_secs?: number | null;
 }
 
 export interface ChatOptions {
