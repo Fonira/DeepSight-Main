@@ -704,14 +704,19 @@ class TranscriptEmbedding(Base):
         String(100), ForeignKey("transcript_cache.video_id", ondelete="CASCADE"), nullable=False, index=True
     )
     chunk_index = Column(Integer, nullable=False, default=0)
-    embedding_json = Column(Text, nullable=False)  # JSON array of 1024 floats
+    embedding_json = Column(Text, nullable=False)  # JSON array of 1024 floats (mistral-embed dim)
     text_preview = Column(String(500))
     token_count = Column(Integer, default=0)
+    # Mistral-First Phase 6 — track which embedding model produced this row,
+    # so a future bump (e.g. mistral-embed-2602) can be applied progressively
+    # via scripts/reembed_progressive.py without downtime.
+    model_version = Column(String(50), nullable=False, default="mistral-embed", server_default="mistral-embed")
     created_at = Column(DateTime, default=func.now())
 
     __table_args__ = (
         UniqueConstraint("video_id", "chunk_index", name="uix_embedding_video_chunk"),
         Index("idx_transcript_embeddings_video", "video_id"),
+        Index("idx_transcript_embeddings_model_version", "model_version"),
     )
 
 
@@ -1281,6 +1286,7 @@ async def run_schema_migrations():
         "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS metadata_json TEXT",
         "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS metadata_enriched_at TIMESTAMP",
         # 🔍 TranscriptEmbedding for semantic search (Mar 2026)
+        # model_version added 2026-05-02 (Mistral-First Phase 6) — alembic 013
         """
         CREATE TABLE IF NOT EXISTS transcript_embeddings (
             id SERIAL PRIMARY KEY,
@@ -1289,11 +1295,15 @@ async def run_schema_migrations():
             embedding_json TEXT NOT NULL,
             text_preview VARCHAR(500),
             token_count INTEGER DEFAULT 0,
+            model_version VARCHAR(50) NOT NULL DEFAULT 'mistral-embed',
             created_at TIMESTAMP DEFAULT NOW(),
             UNIQUE(video_id, chunk_index)
         )
         """,
+        # Idempotent ALTER for already-bootstrapped DBs that pre-date model_version.
+        "ALTER TABLE transcript_embeddings ADD COLUMN IF NOT EXISTS model_version VARCHAR(50) NOT NULL DEFAULT 'mistral-embed'",
         "CREATE INDEX IF NOT EXISTS idx_transcript_embeddings_video ON transcript_embeddings(video_id)",
+        "CREATE INDEX IF NOT EXISTS idx_transcript_embeddings_model_version ON transcript_embeddings(model_version)",
         # 🆚 VideoComparison table (Mar 2026)
         """
         CREATE TABLE IF NOT EXISTS video_comparisons (

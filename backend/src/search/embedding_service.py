@@ -19,7 +19,25 @@ from core.config import MISTRAL_API_KEY
 logger = logging.getLogger(__name__)
 
 MISTRAL_EMBED_URL = "https://api.mistral.ai/v1/embeddings"
+# Mistral-First Phase 6 (2026-05-02) — bump checkpoint.
+#
+# State of Mistral embedding API at this date (verified via official docs +
+# cookbook, https://docs.mistral.ai/getting-started/models/benchmark/ +
+# https://github.com/mistralai/cookbook):
+#   * Generic text  → ``mistral-embed`` (alias, internal v23.12, dim=1024)
+#   * Code-only     → ``codestral-embed`` (v25.05, out of scope)
+#   * No ``mistral-embed-2510``/``2602`` published yet — the alias IS latest.
+#
+# When Mistral ships a newer text-embed revision:
+#   1. Verify dimension still equals ``EMBEDDING_DIMENSION`` (1024).
+#      If different → migration: re-create indexes, re-embed everything fresh.
+#      If equal     → just bump the constants below and run
+#                     ``backend/scripts/reembed_progressive.py``.
+#   2. Update ``MISTRAL_EMBED_MODEL`` and ``MODEL_VERSION_TAG`` together so
+#      ``model_version`` rows reflect the actual upstream version.
 MISTRAL_EMBED_MODEL = "mistral-embed"
+MODEL_VERSION_TAG = "mistral-embed"  # written to TranscriptEmbedding.model_version
+EMBEDDING_DIMENSION = 1024  # invariant — guarded by re-embedding script
 CHUNK_WORDS = 500
 BATCH_SIZE = 10
 MIN_SIMILARITY = 0.3
@@ -149,6 +167,7 @@ async def embed_transcript(video_id: str) -> bool:
                         embedding_json=json.dumps(embedding),
                         text_preview=chunk_text[:500],
                         token_count=len(chunk_text.split()),
+                        model_version=MODEL_VERSION_TAG,
                     )
                 )
                 stored += 1
