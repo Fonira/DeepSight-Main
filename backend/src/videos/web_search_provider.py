@@ -18,9 +18,18 @@ from dataclasses import dataclass, field
 import logging
 
 from core.config import get_mistral_key, get_brave_key, is_mistral_agent_available
+from core.config import MISTRAL_AGENT_PRIMARY
 from core.llm_provider import llm_complete
 from videos.brave_search import _call_brave_api
 from videos.perplexity_provider import perplexity_search, is_perplexity_provider_available
+
+# Optional analytics — track which provider served the result so we can monitor
+# the Perplexity fallback rate when MISTRAL_AGENT_PRIMARY is flipped on.
+try:
+    from core.analytics import track_event  # type: ignore
+except Exception:  # pragma: no cover — analytics is best-effort
+    def track_event(event_name: str, properties: Optional[Dict] = None) -> None:  # type: ignore
+        return None
 
 logger = logging.getLogger(__name__)
 
@@ -387,6 +396,40 @@ async def _brave_fallback_search(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+async def _try_perplexity_search(
+    query: str,
+    context: str,
+    purpose: Literal["enrichment", "fact_check", "chat", "debate", "deep_research"],
+    lang: str = "fr",
+    max_tokens: int = 1500,
+    timeout: float = 30.0,
+) -> Optional[WebSearchResult]:
+    """
+    Try Perplexity sonar-pro. Returns WebSearchResult on success, None otherwise.
+
+    Wrapper around `perplexity_search` that swallows exceptions so the chain in
+    `web_search_and_synthesize` can fall through cleanly.
+    """
+    if not is_perplexity_provider_available():
+        return None
+
+    try:
+        result = await perplexity_search(
+            query=query,
+            context=context,
+            purpose=purpose,
+            lang=lang,
+            max_tokens=max_tokens,
+            timeout=min(timeout * 0.5, 15.0),
+        )
+        if result and result.success:
+            return result
+        return None
+    except Exception as e:
+        logger.warning(f"[WEB_SEARCH] Perplexity exception (will fallback): {e}")
+        return None
+
+
 async def web_search_and_synthesize(
     query: str,
     context: str,
@@ -396,54 +439,65 @@ async def web_search_and_synthesize(
     max_tokens: int = 1500,
     mistral_model: Optional[str] = None,
     timeout: float = 30.0,
+    plan: Optional[str] = None,
 ) -> WebSearchResult:
     """
     Exécute une recherche web + synthèse IA.
 
-    Pipeline (chaîne de fallback) :
-      1. PRIMARY  : Mistral Agent (web_search natif, 1 appel API)
-      2. FALLBACK : Perplexity sonar-pro (citations natives, 1 appel API)
-      3. FALLBACK : Brave Search + Mistral synthesis (2 appels API)
+    Pipeline (chaîne de fallback) — l'ordre des deux premiers providers est
+    contrôlé par le flag `MISTRAL_AGENT_PRIMARY` (Phase 5 Mistral-First) :
 
-    Interface inchangée — les appelants n'ont pas besoin de modifier leur code.
-    Le champ `provider` indique quel pipeline a servi le résultat ("agent", "perplexity" ou "brave").
+      flag=False (défaut) → [perplexity, mistral_agent, brave]
+      flag=True           → [mistral_agent, perplexity, brave]
+
+    Brave Search reste TOUJOURS en last-resort. L'interface est inchangée —
+    les appelants n'ont pas à modifier leur code. Le champ `provider` indique
+    quel pipeline a servi le résultat ("agent", "perplexity" ou "brave").
+
+    Args:
+        plan: Optionnel. Plan utilisateur (free/pro/expert) pour la métrique
+            PostHog `web_search_provider_used`. Non bloquant.
     """
 
-    logger.info(f"[WEB_SEARCH] Starting: query='{query[:80]}', purpose={purpose}, lang={lang}")
-
-    # --- 1. Try Mistral Agent first ---
-    agent_result = await _try_agent_search(
-        query=query,
-        context=context,
-        purpose=purpose,
-        lang=lang,
-        timeout=timeout,
+    logger.info(
+        f"[WEB_SEARCH] Starting: query='{query[:80]}', purpose={purpose}, lang={lang}, "
+        f"flag(MISTRAL_AGENT_PRIMARY)={MISTRAL_AGENT_PRIMARY}"
     )
 
-    if agent_result and agent_result.success:
-        return agent_result
+    # ─── Build provider chain based on the feature flag ─────────────────────
+    # Each entry is (label, callable returning Optional[WebSearchResult]).
+    async def _agent_call() -> Optional[WebSearchResult]:
+        return await _try_agent_search(
+            query=query, context=context, purpose=purpose, lang=lang, timeout=timeout
+        )
 
-    # --- 2. Fallback: Perplexity sonar-pro ---
-    if is_perplexity_provider_available():
-        logger.info("[WEB_SEARCH] Agent unavailable, trying Perplexity")
-        try:
-            perplexity_result = await perplexity_search(
-                query=query,
-                context=context,
-                purpose=purpose,
-                lang=lang,
-                max_tokens=max_tokens,
-                timeout=min(timeout * 0.5, 15.0),
-            )
-            if perplexity_result and perplexity_result.success:
-                return perplexity_result
-        except Exception as e:
-            logger.warning(f"[WEB_SEARCH] Perplexity exception (will fallback to Brave): {e}")
+    async def _perplexity_call() -> Optional[WebSearchResult]:
+        return await _try_perplexity_search(
+            query=query,
+            context=context,
+            purpose=purpose,
+            lang=lang,
+            max_tokens=max_tokens,
+            timeout=timeout,
+        )
 
-    # --- 3. Fallback: Brave + Mistral ---
+    if MISTRAL_AGENT_PRIMARY:
+        primary_chain = [("agent", _agent_call), ("perplexity", _perplexity_call)]
+    else:
+        primary_chain = [("perplexity", _perplexity_call), ("agent", _agent_call)]
+
+    # ─── Try the primary chain ──────────────────────────────────────────────
+    for label, runner in primary_chain:
+        result = await runner()
+        if result and result.success:
+            _emit_provider_metric(result.provider or label, plan, purpose)
+            return result
+        logger.info(f"[WEB_SEARCH] Provider '{label}' unavailable/failed, trying next")
+
+    # ─── Last resort: Brave + Mistral ───────────────────────────────────────
     logger.info("[WEB_SEARCH] Falling back to Brave + Mistral pipeline")
 
-    return await _brave_fallback_search(
+    brave_result = await _brave_fallback_search(
         query=query,
         context=context,
         purpose=purpose,
@@ -453,6 +507,27 @@ async def web_search_and_synthesize(
         mistral_model=mistral_model,
         timeout=timeout,
     )
+    if brave_result and brave_result.success:
+        _emit_provider_metric(brave_result.provider or "brave", plan, purpose)
+    return brave_result
+
+
+def _emit_provider_metric(
+    provider: str, plan: Optional[str], purpose: str
+) -> None:
+    """Best-effort PostHog tracking of the provider that served a query."""
+    try:
+        track_event(
+            "web_search_provider_used",
+            {
+                "provider": provider,
+                "plan": plan or "unknown",
+                "purpose": purpose,
+                "flag_mistral_agent_primary": bool(MISTRAL_AGENT_PRIMARY),
+            },
+        )
+    except Exception as e:  # pragma: no cover — metric must never block
+        logger.debug(f"[WEB_SEARCH] track_event failed silently: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

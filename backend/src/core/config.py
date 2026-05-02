@@ -122,6 +122,13 @@ class _DeepSightSettings(BaseSettings):
     VERBOSE_LOGGING: str = "false"
     HEALTH_CHECK_SECRET: str = ""
 
+    # -- Analytics (server-side PostHog) --
+    # Optional. Server-side capture for events that cannot be tracked client-side
+    # (e.g. which web search provider served a query). Best-effort: failures are
+    # swallowed and never block the request.
+    POSTHOG_API_KEY: str = ""
+    POSTHOG_HOST: str = "https://eu.i.posthog.com"
+
     # -- Rate Limiting --
     RATE_LIMIT_ENABLED: str = "true"
 
@@ -687,6 +694,15 @@ MISTRAL_AGENT_MODEL = "mistral-small-2603"
 # Agent Mistral — web search natif (remplace pipeline Brave+Mistral)
 # L'Agent est créé au runtime si activé. Brave reste en fallback.
 MISTRAL_AGENT_ENABLED = True  # Set False to force Brave-only pipeline
+
+# Mistral-First migration P5 — bascule la PRIORITÉ du provider primary entre
+# Mistral Agent et Perplexity. Le flag est OFF par défaut pour permettre le
+# merge sans rollout : tant que le benchmark qualité Mistral Agent vs Perplexity
+# Sonar Pro n'a pas validé Mistral, on garde Perplexity en première intention.
+#   - False (defaut)  → ordre = [perplexity, mistral_agent, brave]
+#   - True            → ordre = [mistral_agent, perplexity, brave]
+# Brave reste TOUJOURS en last-resort (n'est pas affecté par ce flag).
+MISTRAL_AGENT_PRIMARY = False
 
 # Modèle de modération contenu
 MISTRAL_MODERATION_MODEL = "mistral-moderation-latest"
