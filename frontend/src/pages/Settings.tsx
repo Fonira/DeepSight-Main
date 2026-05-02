@@ -168,9 +168,17 @@ export const Settings: React.FC = () => {
   const Toggle: React.FC<{
     enabled: boolean;
     onToggle: () => void;
+    /** Required for screen readers — describes what the toggle controls. */
+    ariaLabel: string;
     color?: string;
     saved?: boolean;
-  }> = ({ enabled, onToggle, color = "bg-accent-primary", saved: isSaved }) => (
+  }> = ({
+    enabled,
+    onToggle,
+    ariaLabel,
+    color = "bg-accent-primary",
+    saved: isSaved,
+  }) => (
     <div className="relative flex items-center gap-2">
       {isSaved && (
         <span className="text-success text-xs flex items-center gap-1 animate-fade-in">
@@ -184,6 +192,7 @@ export const Settings: React.FC = () => {
         }`}
         role="switch"
         aria-checked={enabled}
+        aria-label={ariaLabel}
       >
         <span
           className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-200 ${
@@ -356,6 +365,10 @@ export const Settings: React.FC = () => {
                         !preferences.notifications,
                       )
                     }
+                    ariaLabel={tr(
+                      "Notifications navigateur",
+                      "Browser notifications",
+                    )}
                     saved={saved === "notifications"}
                   />
                 </SettingRow>
@@ -384,6 +397,7 @@ export const Settings: React.FC = () => {
                     enabled={autoPlayEnabled}
                     onToggle={() => setAutoPlayEnabled(!autoPlayEnabled)}
                     color="bg-cyan-500"
+                    ariaLabel={tr("Lecture automatique", "Auto-play voice")}
                     saved={saved === "ttsAutoPlay"}
                   />
                 </SettingRow>
@@ -441,6 +455,7 @@ export const Settings: React.FC = () => {
                     onToggle={() =>
                       savePreference("autoPlay", !preferences.autoPlay)
                     }
+                    ariaLabel={tr("Lecture automatique", "Auto-play")}
                     saved={saved === "autoPlay"}
                   />
                 </SettingRow>
@@ -464,6 +479,7 @@ export const Settings: React.FC = () => {
                       )
                     }
                     color="bg-yellow-500"
+                    ariaLabel={tr("Score Tournesol", "Tournesol Score")}
                     saved={saved === "showTournesol"}
                   />
                 </SettingRow>
@@ -487,6 +503,10 @@ export const Settings: React.FC = () => {
                       saveAmbientLighting(!preferences.ambientLighting)
                     }
                     color="bg-amber-400"
+                    ariaLabel={tr(
+                      "Effet ambiant lumineux",
+                      "Ambient lighting effect",
+                    )}
                     saved={saved === "ambientLighting"}
                   />
                 </SettingRow>
@@ -505,6 +525,7 @@ export const Settings: React.FC = () => {
                     onToggle={() =>
                       savePreference("autoSave", !preferences.autoSave)
                     }
+                    ariaLabel={tr("Sauvegarde automatique", "Auto-save")}
                     saved={saved === "autoSave"}
                   />
                 </SettingRow>
