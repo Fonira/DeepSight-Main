@@ -587,8 +587,8 @@ export const ApiDocsPage: React.FC = () => {
             </div>
           </div>
           <p className="text-text-secondary max-w-2xl">
-            Integrez DeepSight dans vos outils et automatisez l'analyse de
-            videos YouTube. L'API REST retourne du JSON et utilise des API keys
+            Intégrez DeepSight dans vos outils et automatisez l'analyse de
+            vidéos YouTube. L'API REST retourne du JSON et utilise des API keys
             pour l'authentification.
           </p>
         </div>
@@ -597,7 +597,7 @@ export const ApiDocsPage: React.FC = () => {
         <div className="card-elevated p-6 rounded-2xl mb-8">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Zap className="w-5 h-5 text-amber-400" />
-            Demarrage rapide
+            Démarrage rapide
           </h2>
 
           <div className="space-y-4">
@@ -606,7 +606,7 @@ export const ApiDocsPage: React.FC = () => {
                 1
               </span>
               <div>
-                <p className="text-sm font-medium">Generez votre cle API</p>
+                <p className="text-sm font-medium">Générez votre clé API</p>
                 <p className="text-xs text-text-tertiary">
                   Depuis{" "}
                   <button
@@ -615,7 +615,7 @@ export const ApiDocsPage: React.FC = () => {
                   >
                     Mon compte
                   </button>
-                  , section "Cle API". Necessite le plan Expert.
+                  , section « Clé API ». Nécessite le plan Expert.
                 </p>
               </div>
             </div>
@@ -625,7 +625,7 @@ export const ApiDocsPage: React.FC = () => {
                 2
               </span>
               <div>
-                <p className="text-sm font-medium">Authentifiez vos requetes</p>
+                <p className="text-sm font-medium">Authentifiez vos requêtes</p>
                 <pre className="bg-black/30 rounded-lg px-3 py-2 text-xs font-mono text-emerald-300 mt-1">
                   {`curl -H "X-API-Key: ds_live_YOUR_KEY" \\\n  ${API_BASE}/me`}
                 </pre>
@@ -669,9 +669,9 @@ export const ApiDocsPage: React.FC = () => {
               <h3 className="text-sm font-semibold">Rate Limiting</h3>
             </div>
             <p className="text-xs text-text-tertiary">
-              60 requetes/minute, 1000 requetes/jour. Headers{" "}
+              60 requêtes/minute, 1000 requêtes/jour. Headers{" "}
               <code className="text-accent-blue">X-RateLimit-*</code> dans
-              chaque reponse.
+              chaque réponse.
             </p>
           </div>
 
