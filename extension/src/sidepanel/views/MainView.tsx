@@ -22,7 +22,7 @@ import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
 import { LogoutIcon, ExternalLinkIcon } from "../shared/Icons";
 import { SynthesisView } from "../shared/SynthesisView";
-import { ChatView } from "./ChatView";
+import { ConversationView } from "./ConversationView";
 import { PromoBanner } from "../components/PromoBanner";
 import { VoiceCallButton } from "../components/VoiceCallButton";
 import { SuggestionPills } from "../components/SuggestionPills";
@@ -313,15 +313,21 @@ export const MainView: React.FC<MainViewProps> = ({
     }
   }, [video, mode, lang, isGuest, t]);
 
-  // Chat view (unchanged)
+  // Conversation view — fil unifié chat + voice (remplace ChatView v1).
+  // initialMode='chat' : la vue ouvre en mode texte (le mic peut être
+  // activé via confirm dialog pour bascule en call sans changer d'écran).
   if (chatOpen && analysis.phase === "complete") {
+    const platform = video ? detectPlatform(video.url) : null;
     return (
-      <ChatView
+      <ConversationView
         summaryId={analysis.summaryId}
         videoTitle={analysis.summary.video_title}
+        videoId={video?.videoId ?? null}
+        platform={platform}
+        initialMode="chat"
+        userPlan={planInfo?.plan_id || user?.plan || "free"}
         onClose={() => setChatOpen(false)}
         onSessionExpired={onLogout}
-        userPlan={planInfo?.plan_id || user?.plan || "free"}
       />
     );
   }

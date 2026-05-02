@@ -25,6 +25,12 @@ interface CreateSessionResponse {
   voice_session_id: string;
   signed_url?: string;
   agent_type?: string;
+  /**
+   * Summary placeholder created backend-side when agent_type ==
+   * "explorer_streaming" (Quick Voice Call sans analyse pré-existante).
+   * Permet à useConversation de loader la chat history une fois ack.
+   */
+  summary_id?: number | null;
 }
 
 interface BackgroundResponse<T = unknown> {
@@ -55,6 +61,8 @@ export interface VoiceSessionResponse {
   conversation_token?: string;
   max_minutes?: number;
   is_trial?: boolean;
+  /** Summary placeholder créé par le backend en mode explorer_streaming. */
+  summary_id?: number | null;
 }
 
 /** Erreur 402 du backend — VoiceView mappe `detail.reason` → UpgradeCTA. */
@@ -78,6 +86,11 @@ interface UseExtensionVoiceChatResult {
   error: string | null;
   transcripts: VoiceTranscript[];
   sessionId: string | null;
+  /**
+   * Summary placeholder backend (mode explorer_streaming). Null tant que
+   * la session n'a pas été créée (ou si l'analyse pré-existait via context).
+   */
+  summaryId: number | null;
   isActive: boolean;
   start: () => Promise<void>;
   stop: () => Promise<void>;
@@ -140,6 +153,11 @@ export function useExtensionVoiceChat(
   const [error, setError] = useState<string | null>(null);
   const [transcripts, setTranscripts] = useState<VoiceTranscript[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // Summary placeholder retourné par le backend en mode explorer_streaming
+  // (sinon réutilise le summaryId du context legacy si présent).
+  const [summaryId, setSummaryId] = useState<number | null>(
+    typeof context?.summaryId === "number" ? context.summaryId : null,
+  );
   const sessionStartedAt = useRef<number>(0);
   const cancelled = useRef(false);
 
@@ -213,6 +231,9 @@ export function useExtensionVoiceChat(
     }
 
     setSessionId(response.result.voice_session_id);
+    if (typeof response.result.summary_id === "number") {
+      setSummaryId(response.result.summary_id);
+    }
     sessionStartedAt.current = Date.now();
     setStatus("connecting");
 
@@ -315,6 +336,9 @@ export function useExtensionVoiceChat(
 
       const session = response.result;
       setSessionId(session.session_id);
+      if (typeof session.summary_id === "number") {
+        setSummaryId(session.summary_id);
+      }
       setLastSessionWasTrial(Boolean(session.is_trial));
       sessionStartedAt.current = Date.now();
       setStatus("connecting");
@@ -449,6 +473,7 @@ export function useExtensionVoiceChat(
     error,
     transcripts,
     sessionId,
+    summaryId,
     isActive: status === "listening" || status === "connecting",
     start,
     stop,

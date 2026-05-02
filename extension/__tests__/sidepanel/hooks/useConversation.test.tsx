@@ -53,6 +53,7 @@ let mockVoiceState: {
   status: string;
   transcripts: { speaker: string; content: string; ts: number }[];
   sessionId: string | null;
+  summaryId: number | null;
   conversation: unknown;
   isMuted: boolean;
   error: string | null;
@@ -67,6 +68,7 @@ const makeDefaultVoiceState = () => ({
   status: "idle" as const,
   transcripts: [] as { speaker: string; content: string; ts: number }[],
   sessionId: null as string | null,
+  summaryId: null as number | null,
   conversation: null as unknown,
   isMuted: false,
   error: null as string | null,

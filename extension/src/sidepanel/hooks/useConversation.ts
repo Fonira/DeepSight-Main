@@ -54,8 +54,15 @@ export interface UnifiedMessage {
 }
 
 export interface UseConversationInput {
-  /** Identifiant Summary backend (analyse existante). */
-  summaryId: number;
+  /**
+   * Identifiant Summary backend (analyse existante). Optionnel :
+   * - mode chat : doit être fourni (sinon pas de history, pas de chat).
+   * - mode call (Quick Voice Call) : peut être null/undefined si on lance
+   *   un appel sur une vidéo fraîche — le backend crée alors un Summary
+   *   placeholder en mode explorer_streaming et useConversation utilise
+   *   voice.summaryId une fois ack.
+   */
+  summaryId?: number | null;
   /** Titre de la vidéo affiché dans le header. */
   videoTitle: string;
   /** Plateforme vidéo (info pour l'agent voice). */
@@ -101,6 +108,8 @@ export interface UseConversationResult {
   contextComplete: boolean;
   /** True si l'extension est connectée à un agent ElevenLabs. */
   voiceConversationActive: boolean;
+  /** Summary id résolu (input.summaryId ou voice.summaryId post-ack). */
+  resolvedSummaryId: number | null;
 
   // ── Actions ──
   /** Envoie un message — route vers chat texte ou agent voice selon voiceMode. */
@@ -138,7 +147,7 @@ export function useConversation(
   // Contexte voice (pour pickAgentType — explorer/companion)
   const voiceContext = useMemo<VoicePanelContext>(
     () => ({
-      summaryId,
+      summaryId: typeof summaryId === "number" ? summaryId : null,
       videoId: videoId ?? null,
       videoTitle: videoTitle ?? null,
       platform: input.platform ?? null,
@@ -151,8 +160,24 @@ export function useConversation(
   // ── Streaming context (only when call active) ──
   const ctx = useStreamingVideoContext(voice.sessionId, voice.conversation);
 
+  // resolvedSummaryId : prefer input.summaryId, fall back to voice.summaryId
+  // une fois que le backend a créé le Summary placeholder (mode call sans
+  // analyse pré-existante).
+  const resolvedSummaryId: number | null =
+    typeof summaryId === "number"
+      ? summaryId
+      : typeof voice.summaryId === "number"
+        ? voice.summaryId
+        : null;
+
   // ── Charge l'historique chat unifié (avec transcripts voice persistés) ──
   useEffect(() => {
+    if (resolvedSummaryId === null) {
+      // Pas encore de summary → on garde loadingHistory true (le call vient
+      // de démarrer et le backend n'a pas encore créé le placeholder).
+      setLoadingHistory(true);
+      return;
+    }
     let cancelled = false;
     setLoadingHistory(true);
     void (async () => {
@@ -162,7 +187,7 @@ export function useConversation(
           MessageResponse
         >({
           action: "GET_CHAT_HISTORY",
-          data: { summaryId },
+          data: { summaryId: resolvedSummaryId },
         });
         if (cancelled) return;
         if (response.success && Array.isArray(response.result)) {
@@ -177,7 +202,7 @@ export function useConversation(
     return () => {
       cancelled = true;
     };
-  }, [summaryId]);
+  }, [resolvedSummaryId]);
 
   // ── Rebuild fil unifié à partir de chatMessages + transcripts live ──
   // Règle clé : audio user (source='voice', voice_speaker='user') filtré.
@@ -301,6 +326,10 @@ export function useConversation(
     async (text: string): Promise<void> => {
       const trimmed = text.trim();
       if (!trimmed || loading) return;
+      if (resolvedSummaryId === null) {
+        onError?.("Pas de session de chat active.");
+        return;
+      }
       setChatMessages((prev) => [
         ...prev,
         { role: "user", content: trimmed },
@@ -313,7 +342,7 @@ export function useConversation(
         >({
           action: "ASK_QUESTION",
           data: {
-            summaryId,
+            summaryId: resolvedSummaryId,
             question: trimmed,
             options: webSearchEnabled ? { use_web_search: true } : {},
           },
@@ -350,7 +379,7 @@ export function useConversation(
         setLoading(false);
       }
     },
-    [loading, summaryId, webSearchEnabled, onError],
+    [loading, resolvedSummaryId, webSearchEnabled, onError],
   );
 
   const sendMessage = useCallback(
@@ -409,6 +438,7 @@ export function useConversation(
   }, [elapsedSec, voice]);
 
   const clearHistory = useCallback(async (): Promise<void> => {
+    if (resolvedSummaryId === null) return;
     const confirmed = window.confirm(
       "Effacer l'historique chat + voice ?\nCette action supprime aussi les transcripts du dernier appel.",
     );
@@ -419,7 +449,7 @@ export function useConversation(
         MessageResponse
       >({
         action: "CLEAR_CHAT_HISTORY",
-        data: { summaryId, includeVoice: true },
+        data: { summaryId: resolvedSummaryId, includeVoice: true },
       });
       if (response.success) {
         setChatMessages([]);
@@ -434,7 +464,7 @@ export function useConversation(
     } catch (e) {
       onError?.((e as Error).message || "Clear failed");
     }
-  }, [summaryId, onError]);
+  }, [resolvedSummaryId, onError]);
 
   return {
     messages,
@@ -452,6 +482,8 @@ export function useConversation(
     contextProgress: ctx.contextProgress,
     contextComplete: ctx.contextComplete,
     voiceConversationActive: voice.conversation !== null,
+    /** Summary id résolu (input.summaryId ou voice.summaryId post-ack). */
+    resolvedSummaryId,
     sendMessage,
     requestStartCall,
     endCall,

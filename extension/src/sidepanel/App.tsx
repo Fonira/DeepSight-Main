@@ -3,7 +3,7 @@ import type { User, PlanInfo, MessageResponse } from "../types";
 import Browser from "../utils/browser-polyfill";
 import { LoginView } from "./views/LoginView";
 import { MainView } from "./views/MainView";
-import { VoiceView } from "./VoiceView";
+import { ConversationView } from "./views/ConversationView";
 import type { VoicePanelContext, PendingVoiceCall } from "./types";
 import { DeepSightSpinner } from "./shared/DeepSightSpinner";
 import MicroDoodleBackground from "./shared/MicroDoodleBackground";
@@ -330,16 +330,40 @@ export const App: React.FC = () => {
     );
   }
   if (voiceContext || pendingVoiceCall) {
+    // Quick Voice Call (B4) — déclenché depuis le widget YouTube. La
+    // ConversationView s'ouvre directement en mode 'call' avec le videoId
+    // du payload session storage. Le hook useConversation gère :
+    //   - auto-start de la session ElevenLabs (initialMode='call')
+    //   - création backend du Summary placeholder (explorer_streaming)
+    //   - bascule mute/end et toast post-hangup
+    // L'utilisateur peut taper du texte pendant le call (envoyé à l'agent
+    // qui répond à l'oral) et hangup retombe en mode chat dans la même UI.
+    const ctxVideoId =
+      pendingVoiceCall?.videoId ?? voiceContext?.videoId ?? null;
+    const ctxVideoTitle =
+      pendingVoiceCall?.videoTitle ??
+      voiceContext?.videoTitle ??
+      "Live";
+    const ctxSummaryId =
+      typeof voiceContext?.summaryId === "number"
+        ? voiceContext.summaryId
+        : null;
+    const ctxPlatform = voiceContext?.platform ?? null;
     return (
       <AmbientLightingProvider enabled={ambientEnabled}>
         <div className="ds-app-root">
           <DoodleBackground />
           <AmbientLightLayer />
           <SunflowerLayer />
-          <VoiceView
-            context={voiceContext}
-            pendingCall={pendingVoiceCall}
-            onReturnToMain={handleReturnFromVoice}
+          <ConversationView
+            summaryId={ctxSummaryId}
+            videoTitle={ctxVideoTitle}
+            videoId={ctxVideoId}
+            platform={ctxPlatform}
+            initialMode="call"
+            userPlan={planInfo?.plan_id || user?.plan || "free"}
+            onClose={handleReturnFromVoice}
+            onSessionExpired={handleLogout}
           />
         </div>
       </AmbientLightingProvider>
