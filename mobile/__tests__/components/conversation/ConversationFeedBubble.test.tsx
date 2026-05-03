@@ -2,9 +2,12 @@
  * Tests for ConversationFeedBubble.
  * Verifies bubble rendering : user text, assistant text (markdown),
  * assistant voice (with mic badge), audio user invisible.
+ *
+ * Polish (mai 2026) : long-press copy + haptic + onCopy callback.
  */
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
+import * as Clipboard from "expo-clipboard";
 
 // Mock ThemeContext (avoid loading storage / async-storage chain)
 jest.mock("../../../src/contexts/ThemeContext", () => {
@@ -31,7 +34,20 @@ jest.mock("react-native-markdown-display", () => {
   };
 });
 
+jest.mock("../../../src/utils/haptics", () => ({
+  haptics: {
+    selection: jest.fn(() => Promise.resolve()),
+    light: jest.fn(() => Promise.resolve()),
+    medium: jest.fn(() => Promise.resolve()),
+    heavy: jest.fn(() => Promise.resolve()),
+    success: jest.fn(() => Promise.resolve()),
+    warning: jest.fn(() => Promise.resolve()),
+    error: jest.fn(() => Promise.resolve()),
+  },
+}));
+
 import { ConversationFeedBubble } from "../../../src/components/conversation/ConversationFeedBubble";
+import { haptics } from "../../../src/utils/haptics";
 import type { UnifiedMessage } from "../../../src/hooks/useConversation";
 
 const baseTimestamp = Date.now();
@@ -62,6 +78,10 @@ const assistantVoiceMessage: UnifiedMessage = {
 };
 
 describe("ConversationFeedBubble", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("renders user text bubble (with content)", () => {
     const { getByText } = render(
       <ConversationFeedBubble message={userTextMessage} />,
@@ -96,5 +116,59 @@ describe("ConversationFeedBubble", () => {
       <ConversationFeedBubble message={userTextMessage} />,
     );
     expect(queryByTestId("voice-badge-mic")).toBeNull();
+  });
+
+  it("long-press on user bubble copies content to clipboard + haptic success", async () => {
+    const onCopy = jest.fn();
+    (Clipboard.setStringAsync as jest.Mock).mockResolvedValueOnce(true);
+    const { getByLabelText } = render(
+      <ConversationFeedBubble message={userTextMessage} onCopy={onCopy} />,
+    );
+    const bubble = getByLabelText(/Vous.*hello world/);
+    await act(async () => {
+      fireEvent(bubble, "longPress");
+    });
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith("hello world");
+    expect(haptics.success).toHaveBeenCalled();
+    expect(onCopy).toHaveBeenCalledWith("hello world");
+  });
+
+  it("long-press on assistant bubble copies content + onCopy callback", async () => {
+    const onCopy = jest.fn();
+    (Clipboard.setStringAsync as jest.Mock).mockResolvedValueOnce(true);
+    const { getByLabelText } = render(
+      <ConversationFeedBubble
+        message={assistantTextMessage}
+        onCopy={onCopy}
+      />,
+    );
+    const bubble = getByLabelText(/Assistant.*bold/);
+    await act(async () => {
+      fireEvent(bubble, "longPress");
+    });
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith("**bold** reply");
+    expect(onCopy).toHaveBeenCalledWith("**bold** reply");
+  });
+
+  it("long-press fires haptics.error on clipboard failure", async () => {
+    (Clipboard.setStringAsync as jest.Mock).mockRejectedValueOnce(
+      new Error("clipboard unavailable"),
+    );
+    const { getByLabelText } = render(
+      <ConversationFeedBubble message={userTextMessage} />,
+    );
+    const bubble = getByLabelText(/Vous/);
+    await act(async () => {
+      fireEvent(bubble, "longPress");
+    });
+    expect(haptics.error).toHaveBeenCalled();
+    expect(haptics.success).not.toHaveBeenCalled();
+  });
+
+  it("accessibility label includes role + voice tag for voice agent message", () => {
+    const { getByLabelText } = render(
+      <ConversationFeedBubble message={assistantVoiceMessage} />,
+    );
+    expect(getByLabelText(/Assistant \(voix\).*spoken reply/)).toBeTruthy();
   });
 });
