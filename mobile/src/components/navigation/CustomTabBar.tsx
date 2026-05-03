@@ -86,7 +86,6 @@ function TabItem({
   isDark,
 }: TabItemProps) {
   const meta = TAB_META[routeName];
-  if (!meta) return null;
 
   // Shared value that drives all animations for this tab
   const progress = useSharedValue(isFocused ? 1 : 0);
@@ -152,6 +151,9 @@ function TabItem({
     transform: [{ scale: progress.value }],
   }));
 
+  // Early return APRÈS tous les hooks — Rules of Hooks.
+  if (!meta) return null;
+
   return (
     <Pressable
       onPress={onPress}
@@ -208,10 +210,6 @@ export function CustomTabBar({ state, navigation }: TabBarProps) {
   const { isDark } = useTheme();
   const hidden = useTabBarStore((s) => s.hidden);
 
-  // Hidden en mode fullscreen analyse — l'écran consommateur appelle
-  // setTabBarHidden(true) via useEffect, et false au démontage / sortie.
-  if (hidden) return null;
-
   // Only show routes that have a TAB_META entry
   const visibleRoutes = useMemo(
     () =>
@@ -257,6 +255,11 @@ export function CustomTabBar({ state, navigation }: TabBarProps) {
     },
     [navigation],
   );
+
+  // Hidden en mode fullscreen analyse — l'écran consommateur appelle
+  // setTabBarHidden(true) via useEffect, et false au démontage / sortie.
+  // Early return APRÈS tous les hooks pour respecter les Rules of Hooks.
+  if (hidden) return null;
 
   // Bottom padding: safe area on iOS (notch), small fixed on Android
   const bottomPadding = Platform.select({
