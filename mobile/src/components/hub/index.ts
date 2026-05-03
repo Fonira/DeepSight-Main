@@ -16,6 +16,7 @@ export { InputBar } from "./InputBar";
 export { ConversationsDrawer } from "./ConversationsDrawer";
 export { VideoPiPPlayer } from "./VideoPiPPlayer";
 export { CallModeFullBleed } from "./CallModeFullBleed";
+export { HubEmptyState } from "./HubEmptyState";
 
 export type {
   HubMessage,
