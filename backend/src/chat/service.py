@@ -1620,8 +1620,8 @@ async def process_chat_message_v4(
         enrichment_level = level.value
 
     # 8. Sauvegarder les messages avec métadonnées v5.0
-    await save_chat_message(session, user_id, summary_id, "user", question)
-    await save_chat_message(
+    user_msg_id = await save_chat_message(session, user_id, summary_id, "user", question)
+    assistant_msg_id = await save_chat_message(
         session,
         user_id,
         summary_id,
@@ -1632,6 +1632,20 @@ async def process_chat_message_v4(
         sources=sources,
         enrichment_level=enrichment_level if ENRICHMENT_AVAILABLE else None,
     )
+
+    # ─── Semantic Search V1 trigger (fire-and-forget) ──────────────────
+    # Skip gracefully if either save failed (returns 0) — embedding
+    # without persisted messages would be a no-op.
+    if user_msg_id and assistant_msg_id:
+        try:
+            from search.embedding_service import embed_chat_turn
+            asyncio.create_task(embed_chat_turn(user_msg_id, assistant_msg_id))
+        except ImportError:
+            pass
+        except Exception as emb_err:
+            logger.warning(
+                f"[CHAT-V4] embed_chat_turn trigger failed for {user_msg_id}/{assistant_msg_id}: {emb_err}"
+            )
 
     # 9. Incrémenter les quotas
     await increment_chat_quota(session, user_id)

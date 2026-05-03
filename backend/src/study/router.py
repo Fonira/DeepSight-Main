@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
+from core.logging import logger
 from db.database import get_session, User
 from auth.dependencies import get_current_user
 from videos.service import get_summary_by_id, deduct_credit
@@ -175,6 +176,57 @@ async def generate_quiz(
                     )
             except Exception:
                 pass
+
+        # ─── V1 Semantic Search : matérialisation des quiz questions ────────────
+        import json as _json
+        from db.database import QuizQuestion as DBQuizQuestion
+        from sqlalchemy import delete as sa_delete
+
+        await session.execute(
+            sa_delete(DBQuizQuestion).where(DBQuizQuestion.summary_id == summary_id)
+        )
+
+        for idx, q in enumerate(quiz_questions):
+            # `q` peut être un Pydantic QuizQuestion (avec champs question/options/
+            # correct_index/explanation) ou un dict (avec en plus éventuellement
+            # `difficulty`). On gère les deux proprement via isinstance.
+            if isinstance(q, dict):
+                _question = q["question"]
+                _options = q["options"]
+                _correct = q["correct_index"]
+                _expl = q.get("explanation")
+                _diff = q.get("difficulty", "standard")
+            else:
+                _question = q.question
+                _options = q.options
+                _correct = q.correct_index
+                _expl = getattr(q, "explanation", None)
+                # Le Pydantic local QuizQuestion n'a pas de champ `difficulty`
+                _diff = getattr(q, "difficulty", "standard")
+            db_q = DBQuizQuestion(
+                summary_id=summary_id,
+                user_id=current_user.id,
+                position=idx,
+                question=_question,
+                options_json=_json.dumps(_options),
+                correct_index=_correct,
+                explanation=_expl,
+                difficulty=_diff,
+            )
+            session.add(db_q)
+
+        await session.commit()
+
+        # ─── Semantic Search V1 trigger ─────────────────────────────────────
+        try:
+            import asyncio
+            from search.embedding_service import embed_quiz
+            asyncio.create_task(embed_quiz(summary_id))
+        except ImportError:
+            pass
+        except Exception as emb_err:
+            logger.warning(f"[STUDY] embed_quiz trigger failed for {summary_id}: {emb_err}")
+        # ─── End V1 Semantic Search materialization ─────────────────────────────
 
         return QuizResponse(
             success=True,
@@ -399,6 +451,38 @@ async def generate_flashcards(
                     )
             except Exception:
                 pass
+
+        # ─── V1 Semantic Search : matérialisation des flashcards ────────────────
+        from db.database import Flashcard as DBFlashcard
+        from sqlalchemy import delete as sa_delete
+
+        # 1. Delete existantes pour ce summary
+        await session.execute(sa_delete(DBFlashcard).where(DBFlashcard.summary_id == summary_id))
+
+        # 2. Insert nouvelles
+        for idx, card in enumerate(flashcards):
+            db_card = DBFlashcard(
+                summary_id=summary_id,
+                user_id=current_user.id,
+                position=idx,
+                front=card.front if hasattr(card, "front") else card["front"],
+                back=card.back if hasattr(card, "back") else card["back"],
+                category=getattr(card, "category", None) if hasattr(card, "category") else card.get("category"),
+            )
+            session.add(db_card)
+
+        await session.commit()
+
+        # ─── Semantic Search V1 trigger ─────────────────────────────────────
+        try:
+            import asyncio
+            from search.embedding_service import embed_flashcards
+            asyncio.create_task(embed_flashcards(summary_id))
+        except ImportError:
+            pass
+        except Exception as emb_err:
+            logger.warning(f"[STUDY] embed_flashcards trigger failed for {summary_id}: {emb_err}")
+        # ─── End V1 Semantic Search materialization ─────────────────────────────
 
         return FlashcardsResponse(
             success=True, summary_id=summary_id, flashcards=flashcards, title=summary.video_title or "Flashcards"

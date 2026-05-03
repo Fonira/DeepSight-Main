@@ -336,6 +336,17 @@ async def save_summary(
     await session.commit()
     await session.refresh(summary)
 
+    # ─── Semantic Search V1 trigger (fire-and-forget) ──────────────────
+    try:
+        import asyncio
+        from search.embedding_service import embed_summary
+
+        asyncio.create_task(embed_summary(summary.id))
+    except ImportError:
+        pass
+    except Exception as emb_err:
+        logger.warning(f"[VIDEOS] embed_summary trigger failed for {summary.id}: {emb_err}")
+
     # 🆕 Lancer le pipeline de chunking en arrière-plan (non-bloquant)
     # Le résumé est déjà sauvegardé, le chunking est une amélioration optionnelle
     if transcript_context and summary.id:
