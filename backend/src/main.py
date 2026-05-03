@@ -98,6 +98,7 @@ from auth.router import router as auth_router
 from videos.router import router as videos_router
 from chat.router import router as chat_router
 from billing.router import router as billing_router
+from tutor.router import router as tutor_router
 from billing.voice_packs_router import router as voice_packs_router
 from admin.router import router as admin_router
 from admin.finetuning_router import router as finetuning_router
@@ -1050,6 +1051,7 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(demo_router, prefix="/api/demo", tags=["Demo"])
 app.include_router(videos_router, prefix="/api/videos", tags=["Videos"])
 app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
+app.include_router(tutor_router, prefix="/api/tutor", tags=["Tutor"])
 app.include_router(billing_router, prefix="/api/billing", tags=["Billing"])
 app.include_router(billing_router, prefix="/api/stripe", tags=["Stripe"], include_in_schema=False)
 app.include_router(voice_packs_router, tags=["Voice Packs"])
