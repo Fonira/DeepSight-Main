@@ -60,7 +60,7 @@ export const InputBar: React.FC<Props> = ({
   };
 
   return (
-    <div className="relative flex items-center gap-2 px-4 py-3 border-t border-white/10 bg-white/[0.02]">
+    <div className="relative flex items-center gap-2 px-4 py-3 border-t border-white/10 bg-[#0a0a0f]/95 backdrop-blur-xl flex-shrink-0">
       <button
         type="button"
         aria-label="attachments"
