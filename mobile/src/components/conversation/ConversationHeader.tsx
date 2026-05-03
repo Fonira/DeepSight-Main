@@ -3,16 +3,38 @@
  * title (videoTitle) + plateforme badge + VoiceQuotaBadge + settings + close.
  *
  * Repris du pattern header de VoiceScreen.tsx (lignes 502-560).
+ *
+ * Polish (mai 2026) :
+ * - Settings icon : rotation 90° au press (Reanimated withSpring)
+ * - Title onPress : scroll horizontal smooth pour les titres tronqués (long videos)
+ * - Press scale 0.92 sur close button
+ * - haptics.light sur settings, selection sur title, light sur close
+ * - VoiceQuotaBadge déjà animé via son onPress (haptic interne)
  */
 
-import React from "react";
-import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
+import React, { useRef, useState } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { VoiceQuotaBadge } from "../voice/VoiceQuotaBadge";
 import { sp, borderRadius } from "../../theme/spacing";
 import { fontFamily, fontSize } from "../../theme/typography";
+import { haptics } from "../../utils/haptics";
 
 type Platform_ = "youtube" | "tiktok" | "live";
 
@@ -46,22 +68,88 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   const { colors } = useTheme();
   const badge = platformBadge(platform);
 
+  // Settings icon rotation
+  const settingsRotation = useSharedValue(0);
+  const settingsStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${settingsRotation.value}deg` }],
+  }));
+
+  // Close button press scale
+  const closeScale = useSharedValue(1);
+  const closeStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: closeScale.value }],
+  }));
+
+  // Title horizontal scroll (overflow long titles)
+  const titleScrollRef = useRef<ScrollView | null>(null);
+  const [titleContentWidth, setTitleContentWidth] = useState(0);
+  const [titleViewportWidth, setTitleViewportWidth] = useState(0);
+  const [titleScrollX, setTitleScrollX] = useState(0);
+
+  const titleOverflows = titleContentWidth > titleViewportWidth + 4;
+
   const handleSettings = () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    }
+    haptics.light();
+    settingsRotation.value = withSpring(
+      settingsRotation.value === 0 ? 90 : 0,
+      { damping: 12, stiffness: 220 },
+    );
     onOpenSettings();
+  };
+
+  const handleClosePressIn = () => {
+    closeScale.value = withTiming(0.92, { duration: 80 });
+  };
+  const handleClosePressOut = () => {
+    closeScale.value = withSpring(1, { damping: 12, stiffness: 240 });
+  };
+  const handleClose = () => {
+    haptics.light();
+    onClose();
+  };
+
+  const handleTitlePress = () => {
+    if (!titleOverflows || !titleScrollRef.current) return;
+    haptics.selection();
+    // Toggle between start (0) and end of overflowing content
+    const targetX =
+      titleScrollX > 4
+        ? 0
+        : Math.max(0, titleContentWidth - titleViewportWidth);
+    titleScrollRef.current.scrollTo({ x: targetX, animated: true });
+  };
+
+  const handleTitleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setTitleScrollX(e.nativeEvent.contentOffset.x);
+  };
+
+  const handleTitleLayout = (e: LayoutChangeEvent) => {
+    setTitleViewportWidth(e.nativeEvent.layout.width);
   };
 
   return (
     <View style={[styles.header, { borderBottomColor: colors.border }]}>
-      <View style={styles.titles}>
-        <Text
-          numberOfLines={1}
-          style={[styles.title, { color: colors.textPrimary }]}
+      <Pressable
+        style={styles.titles}
+        onPress={handleTitlePress}
+        onLayout={handleTitleLayout}
+        accessibilityRole="header"
+        accessibilityLabel={`${videoTitle}${channelName ? ` — ${channelName}` : ""}`}
+      >
+        <ScrollView
+          ref={titleScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={titleOverflows}
+          onScroll={handleTitleScroll}
+          onContentSizeChange={(w) => setTitleContentWidth(w)}
+          scrollEventThrottle={16}
+          contentContainerStyle={styles.titleScrollContent}
         >
-          {videoTitle}
-        </Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            {videoTitle}
+          </Text>
+        </ScrollView>
         {channelName ? (
           <Text
             numberOfLines={1}
@@ -70,7 +158,7 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
             {channelName}
           </Text>
         ) : null}
-      </View>
+      </Pressable>
       <View style={[styles.badge, { backgroundColor: badge.bg }]}>
         <Text style={styles.badgeText}>{badge.label}</Text>
       </View>
@@ -81,6 +169,7 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
       <Pressable
         onPress={handleSettings}
         hitSlop={12}
+        testID="header-settings"
         style={({ pressed }) => [
           styles.iconBtn,
           {
@@ -91,27 +180,34 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
         accessibilityRole="button"
         accessibilityLabel="Paramètres vocaux"
       >
-        <Ionicons
-          name="settings-outline"
-          size={18}
-          color={colors.textSecondary}
-        />
+        <Animated.View style={settingsStyle}>
+          <Ionicons
+            name="settings-outline"
+            size={18}
+            color={colors.textSecondary}
+          />
+        </Animated.View>
       </Pressable>
-      <Pressable
-        onPress={onClose}
-        hitSlop={12}
-        style={({ pressed }) => [
-          styles.iconBtn,
-          {
-            backgroundColor: colors.bgTertiary,
-            opacity: pressed ? 0.7 : 1,
-          },
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Fermer"
-      >
-        <Ionicons name="close" size={20} color={colors.textSecondary} />
-      </Pressable>
+      <Animated.View style={closeStyle}>
+        <Pressable
+          onPress={handleClose}
+          onPressIn={handleClosePressIn}
+          onPressOut={handleClosePressOut}
+          hitSlop={12}
+          testID="header-close"
+          style={({ pressed }) => [
+            styles.iconBtn,
+            {
+              backgroundColor: colors.bgTertiary,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Fermer"
+        >
+          <Ionicons name="close" size={20} color={colors.textSecondary} />
+        </Pressable>
+      </Animated.View>
     </View>
   );
 };
@@ -128,6 +224,9 @@ const styles = StyleSheet.create({
   titles: {
     flex: 1,
     marginRight: sp.xs,
+  },
+  titleScrollContent: {
+    alignItems: "center",
   },
   title: {
     fontFamily: fontFamily.bodySemiBold,
