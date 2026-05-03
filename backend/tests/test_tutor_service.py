@@ -70,3 +70,71 @@ async def test_delete_session(redis_client_fixture):
 
     loaded = await load_session(redis_client_fixture, "test-3")
     assert loaded is None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V1.1 — synthesize_audio_data_url (ElevenLabs TTS helper)
+# ═══════════════════════════════════════════════════════════════════════════════
+import base64
+from unittest.mock import patch, AsyncMock, MagicMock
+from src.tutor.service import synthesize_audio_data_url
+
+
+@pytest.mark.asyncio
+async def test_synthesize_audio_data_url_returns_data_url():
+    """Quand ElevenLabs répond OK, renvoie un data URL base64 valide."""
+    fake_audio_bytes = b"\xff\xfb\x90\x00fake mp3 data"
+
+    # Mock httpx.AsyncClient context manager + post
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.content = fake_audio_bytes
+
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("src.tutor.service.httpx.AsyncClient", return_value=mock_client):
+        with patch("src.tutor.service.get_elevenlabs_key", return_value="fake-key"):
+            result = await synthesize_audio_data_url("Bonjour", lang="fr")
+
+    assert result is not None
+    assert result.startswith("data:audio/mpeg;base64,")
+    decoded = base64.b64decode(result.split(",", 1)[1])
+    assert decoded == fake_audio_bytes
+
+
+@pytest.mark.asyncio
+async def test_synthesize_audio_data_url_returns_none_on_error():
+    """Quand ElevenLabs fail (500), renvoie None (graceful fallback)."""
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+    mock_response.text = "internal error"
+
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("src.tutor.service.httpx.AsyncClient", return_value=mock_client):
+        with patch("src.tutor.service.get_elevenlabs_key", return_value="fake-key"):
+            result = await synthesize_audio_data_url("Bonjour", lang="fr")
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_synthesize_audio_data_url_no_api_key():
+    """Sans clé API → None (no call attempted)."""
+    with patch("src.tutor.service.get_elevenlabs_key", return_value=None):
+        result = await synthesize_audio_data_url("Bonjour", lang="fr")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_synthesize_audio_data_url_empty_text():
+    """Texte vide → None (rien à synthétiser)."""
+    with patch("src.tutor.service.get_elevenlabs_key", return_value="fake-key"):
+        result = await synthesize_audio_data_url("   ", lang="fr")
+    assert result is None
