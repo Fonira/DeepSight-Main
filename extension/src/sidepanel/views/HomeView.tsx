@@ -3,7 +3,11 @@ import { RecentsList, RecentAnalysis } from "../components/RecentsList";
 import { VideoDetectedCard } from "../components/VideoDetectedCard";
 import { UrlInputCard } from "../components/UrlInputCard";
 import { PlanBadge } from "../components/PlanBadge";
+import { QuickSearch } from "../components/QuickSearch";
 import { CurrentTabInfo } from "../hooks/useCurrentTab";
+import Browser from "../../utils/browser-polyfill";
+import { WEBAPP_URL } from "../../utils/config";
+import type { SearchResult } from "../../types/search";
 
 interface User {
   plan: "free" | "etudiant" | "starter" | "pro" | "equipe";
@@ -34,6 +38,19 @@ export function HomeView({
     currentTab.url !== null &&
     videoMeta !== undefined;
 
+  // Phase 4 — extension light tier : on ouvre l'analyse directement dans
+  // l'app web (pas d'AnalysisView autonome côté extension). Cohérent avec
+  // le footer "Voir tous sur deepsightsynthesis.com" et avec le pattern
+  // existant des recents (`v3-recent-item` ouvre /summary/{id} dans nouvel
+  // onglet web — cf. spec § 6.2 + plan task 7).
+  const handleSelectSearchResult = (result: SearchResult) => {
+    if (result.summary_id !== null && result.summary_id !== undefined) {
+      Browser.tabs.create({
+        url: `${WEBAPP_URL}/summary/${result.summary_id}`,
+      });
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <PlanBadge
@@ -52,6 +69,9 @@ export function HomeView({
       ) : (
         <UrlInputCard onSubmit={onAnalyze} />
       )}
+
+      {/* Phase 4 Semantic Search V1 (light tier) — au-dessus de la liste Recents */}
+      <QuickSearch onSelectResult={handleSelectSearchResult} />
 
       <div
         style={{
