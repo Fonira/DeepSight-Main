@@ -30,6 +30,7 @@ from .service import (
     load_session,
     make_session_id,
     now_ms,
+    synthesize_audio_data_url,
 )
 from .prompts import build_tutor_system_prompt, TUTOR_PERSONA_VERSION
 
@@ -145,12 +146,10 @@ async def session_start(
         TutorTurn(role="assistant", content=first_prompt, timestamp_ms=now_ms()),
     )
 
-    # TTS V1.1 — placeholder None
+    # TTS V1.1 — synthèse audio ElevenLabs si mode voice
     audio_url: Optional[str] = None
     if body.mode == "voice":
-        # V1.1 : ElevenLabs TTS — pour l'instant on retourne None,
-        # le client peut faire le TTS local s'il le souhaite.
-        audio_url = None
+        audio_url = await synthesize_audio_data_url(first_prompt, lang=body.lang)
 
     logger.info(
         "[tutor] session_start ok session_id=%s user_id=%s plan=%s mode=%s",
@@ -246,6 +245,8 @@ async def session_turn(
 
     # TTS V1.1
     audio_url: Optional[str] = None
+    if state.mode == "voice":
+        audio_url = await synthesize_audio_data_url(ai_response, lang=state.lang)
 
     # Reload pour avoir le turn count à jour
     state = await load_session(redis, session_id)

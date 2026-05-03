@@ -59,6 +59,7 @@ export const Tutor: React.FC = () => {
           messages={tutor.messages}
           loading={tutor.loading}
           mode={tutor.mode}
+          audioUrl={tutor.currentAudioUrl}
           onSubmit={tutor.submitTextTurn}
           onSwitchToText={() => {
             /* géré localement dans TutorDeepSession */

@@ -21,6 +21,7 @@ interface TutorState {
   lang: TutorLang;
   loading: boolean;
   error: string | null;
+  currentAudioUrl: string | null;
 }
 
 type Action =
@@ -35,9 +36,10 @@ type Action =
       concept_def: string;
       summary_id: number | null;
       source_video_title: string | null;
+      audio_url: string | null;
     }
   | { type: "TURN_PENDING"; user_input: string }
-  | { type: "TURN_DONE"; ai_response: string }
+  | { type: "TURN_DONE"; ai_response: string; audio_url: string | null }
   | { type: "DEEPEN" }
   | { type: "SESSION_ENDED" }
   | { type: "ERROR"; message: string };
@@ -54,6 +56,7 @@ const initialState: TutorState = {
   lang: "fr",
   loading: false,
   error: null,
+  currentAudioUrl: null,
 };
 
 function reducer(state: TutorState, action: Action): TutorState {
@@ -79,6 +82,7 @@ function reducer(state: TutorState, action: Action): TutorState {
         conceptDef: action.concept_def,
         summaryId: action.summary_id,
         sourceVideoTitle: action.source_video_title,
+        currentAudioUrl: action.audio_url,
         messages: [
           {
             role: "assistant",
@@ -112,6 +116,7 @@ function reducer(state: TutorState, action: Action): TutorState {
             timestamp_ms: Date.now(),
           },
         ],
+        currentAudioUrl: action.audio_url,
         loading: false,
       };
     case "DEEPEN":
@@ -166,6 +171,7 @@ export function useTutor() {
         concept_def: params.concept_def,
         summary_id: params.summary_id ?? null,
         source_video_title: params.source_video_title ?? null,
+        audio_url: resp.audio_url,
       });
     } catch (err) {
       dispatch({ type: "ERROR", message: (err as Error).message });
@@ -180,7 +186,11 @@ export function useTutor() {
         const resp = await tutorApi.sessionTurn(state.sessionId, {
           user_input,
         });
-        dispatch({ type: "TURN_DONE", ai_response: resp.ai_response });
+        dispatch({
+          type: "TURN_DONE",
+          ai_response: resp.ai_response,
+          audio_url: resp.audio_url,
+        });
       } catch (err) {
         dispatch({ type: "ERROR", message: (err as Error).message });
       }
