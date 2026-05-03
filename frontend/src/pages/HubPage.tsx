@@ -675,6 +675,8 @@ const HubPage: React.FC = () => {
               onCallToggle={() => setVoiceCallOpen(!voiceCallOpen)}
               onPttHoldComplete={handlePttHoldComplete}
               disabled={!activeConvId}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
             />
           </>
         )}
