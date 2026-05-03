@@ -495,7 +495,7 @@ export const LoadingWordGlobal: React.FC = () => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // 🔧 Sur desktop lg+, le DidYouKnowCard prend le relais — ce widget flottant ne s'affiche que sur mobile/tablette
+  // 🔧 Sur desktop lg+, le Tuteur prend le relais — ce widget flottant ne s'affiche que sur mobile/tablette
   const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024;
   if (isDesktop) return null;
 
