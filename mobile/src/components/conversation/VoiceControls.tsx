@@ -7,28 +7,34 @@
  * - 'ended' : ne rend rien (l'EndedToast s'affiche par-dessus)
  * - 'quota_exceeded' : card warning + bouton "Acheter des minutes"
  *
- * Les composants visuels (PulsingCircle, WaveformPlaceholder) sont repris
- * du legacy `VoiceScreen.tsx` (sera supprimé en Task 7).
+ * Polish (mai 2026) :
+ * - Pulse "respiration" sur le bouton mic en mode 'live'
+ * - Glow background animé pendant l'appel
+ * - Haptic feedback (medium tap, success on transition live → ended)
+ * - Press-scale 0.95 sur le CTA "Acheter des minutes" (quota exceeded)
+ * - Transitions FadeIn/FadeOut entre états
  */
 
-import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import Animated, {
-  type SharedValue,
+  FadeIn,
+  FadeOut,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
   withTiming,
   withSequence,
   withDelay,
+  withSpring,
   Easing,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { sp, borderRadius } from "../../theme/spacing";
 import { fontFamily, fontSize } from "../../theme/typography";
 import { palette } from "../../theme/colors";
+import { haptics } from "../../utils/haptics";
 import VoiceAddonModal from "../voice/VoiceAddonModal";
 import type { VoiceMode } from "../../hooks/useConversation";
 
@@ -97,6 +103,85 @@ const Waveform: React.FC<{ color: string }> = ({ color }) => {
   );
 };
 
+// ─── Mic pulse "respiration" (mode live) ───
+const PulsingMicIcon: React.FC<{
+  isMuted: boolean;
+  iconColor: string;
+}> = ({ isMuted, iconColor }) => {
+  const pulse = useSharedValue(1);
+
+  useEffect(() => {
+    if (isMuted) {
+      pulse.value = withTiming(1, { duration: 200 });
+      return;
+    }
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1.15, {
+          duration: 700,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        withTiming(1, {
+          duration: 700,
+          easing: Easing.inOut(Easing.ease),
+        }),
+      ),
+      -1,
+      false,
+    );
+  }, [isMuted, pulse]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+  }));
+
+  return (
+    <Animated.View style={pulseStyle}>
+      <Ionicons
+        name={isMuted ? "mic-off" : "mic"}
+        size={20}
+        color={iconColor}
+      />
+    </Animated.View>
+  );
+};
+
+// ─── CTA Acheter (press-scale animation) ───
+const UpgradeButton: React.FC<{
+  bg: string;
+  onPress: () => void;
+}> = ({ bg, onPress }) => {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const onPressIn = () => {
+    scale.value = withTiming(0.95, { duration: 80 });
+  };
+  const onPressOut = () => {
+    scale.value = withSpring(1, { damping: 10, stiffness: 220 });
+  };
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        style={[styles.upgradeBtn, { backgroundColor: bg }]}
+        accessibilityRole="button"
+        accessibilityLabel="Acheter des minutes"
+      >
+        <Text style={[styles.upgradeBtnText, { color: palette.white }]}>
+          Acheter des minutes
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+};
+
 export const VoiceControls: React.FC<VoiceControlsProps> = ({
   voiceMode,
   isMuted,
@@ -107,6 +192,37 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
 }) => {
   const { colors } = useTheme();
   const [addonVisible, setAddonVisible] = useState(false);
+  const previousModeRef = useRef<VoiceMode>(voiceMode);
+
+  // Glow background pendant un appel actif
+  const glow = useSharedValue(0);
+  useEffect(() => {
+    if (voiceMode === "live") {
+      glow.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0, { duration: 1400, easing: Easing.inOut(Easing.ease) }),
+        ),
+        -1,
+        false,
+      );
+    } else {
+      glow.value = withTiming(0, { duration: 200 });
+    }
+  }, [voiceMode, glow]);
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glow.value * 0.45,
+  }));
+
+  // Haptic transition live → ended
+  useEffect(() => {
+    const prev = previousModeRef.current;
+    if (prev === "live" && voiceMode === "ended") {
+      haptics.success();
+    }
+    previousModeRef.current = voiceMode;
+  }, [voiceMode]);
 
   if (voiceMode === "ended") {
     // L'EndedToast est rendu séparément par le parent.
@@ -115,7 +231,9 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
 
   if (voiceMode === "off") {
     return (
-      <View
+      <Animated.View
+        entering={FadeIn.duration(180)}
+        exiting={FadeOut.duration(140)}
         style={[
           styles.container,
           {
@@ -128,13 +246,15 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
         <Text style={[styles.offLabel, { color: colors.textTertiary }]}>
           Appel non démarré
         </Text>
-      </View>
+      </Animated.View>
     );
   }
 
   if (voiceMode === "quota_exceeded") {
     return (
-      <View
+      <Animated.View
+        entering={FadeIn.duration(200)}
+        exiting={FadeOut.duration(140)}
         style={[
           styles.container,
           styles.quotaContainer,
@@ -145,49 +265,38 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
         ]}
       >
         <Text style={[styles.quotaLabel, { color: "#fca5a5" }]}>
-          ⚠ Quota voice épuisé
+          Quota voice epuise
         </Text>
-        <Pressable
+        <UpgradeButton
+          bg={colors.accentPrimary}
           onPress={() => {
-            if (Platform.OS !== "web") {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(
-                () => {},
-              );
-            }
+            haptics.medium();
             setAddonVisible(true);
           }}
-          style={({ pressed }) => [
-            styles.upgradeBtn,
-            {
-              backgroundColor: colors.accentPrimary,
-              opacity: pressed ? 0.85 : 1,
-            },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Acheter des minutes"
-        >
-          <Text style={[styles.upgradeBtnText, { color: palette.white }]}>
-            Acheter des minutes
-          </Text>
-        </Pressable>
+        />
         <VoiceAddonModal
           visible={addonVisible}
           onClose={() => setAddonVisible(false)}
         />
-      </View>
+      </Animated.View>
     );
   }
 
   // voiceMode === 'live'
   const handleEnd = () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-    }
+    haptics.medium();
     onEnd();
   };
 
+  const handleMuteToggle = () => {
+    haptics.medium();
+    onToggleMute();
+  };
+
   return (
-    <View
+    <Animated.View
+      entering={FadeIn.duration(200)}
+      exiting={FadeOut.duration(140)}
       style={[
         styles.container,
         styles.liveContainer,
@@ -197,9 +306,21 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
         },
       ]}
     >
+      {/* Glow background (pulse pendant l'appel) */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.glow,
+          {
+            backgroundColor: colors.accentPrimary,
+            borderRadius: borderRadius.lg,
+          },
+          glowStyle,
+        ]}
+      />
       {/* Mute */}
       <Pressable
-        onPress={onToggleMute}
+        onPress={handleMuteToggle}
         style={({ pressed }) => [
           styles.iconBtn,
           {
@@ -210,10 +331,9 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
         accessibilityRole="button"
         accessibilityLabel={isMuted ? "Réactiver micro" : "Couper micro"}
       >
-        <Ionicons
-          name={isMuted ? "mic-off" : "mic"}
-          size={20}
-          color={isMuted ? palette.red : colors.textPrimary}
+        <PulsingMicIcon
+          isMuted={isMuted}
+          iconColor={isMuted ? palette.red : colors.textPrimary}
         />
       </Pressable>
 
@@ -238,7 +358,7 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
       >
         <Ionicons name="stop" size={18} color={palette.white} />
       </Pressable>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -253,6 +373,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: sp.sm,
+    overflow: "hidden",
   },
   liveContainer: {
     justifyContent: "space-between",
@@ -317,6 +438,13 @@ const styles = StyleSheet.create({
     backgroundColor: palette.red,
     alignItems: "center",
     justifyContent: "center",
+  },
+  glow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 });
 
