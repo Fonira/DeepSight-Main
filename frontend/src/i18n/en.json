@@ -170,27 +170,7 @@
     "noResultsFound": "No results found",
     "tryAnother": "Try another search",
     "selectToAnalyze": "Select to analyze",
-    "loadingResults": "Searching...",
-    "modes": {
-      "toggle_on": "Quiz mode: enabled",
-      "toggle_off": "Quiz mode: disabled",
-      "focus": {
-        "label": "Focus Mode",
-        "description": "Distraction-free minimalist interface"
-      },
-      "quiz": {
-        "label": "Quiz Mode",
-        "description": "Learn through interactive questions"
-      },
-      "classic": {
-        "label": "Classic Mode",
-        "description": "Standard interface with all options"
-      },
-      "expert": {
-        "label": "Expert Mode",
-        "description": "Full control over prompts and parameters"
-      }
-    }
+    "loadingResults": "Searching..."
   },
   "onboarding": {
     "skip": "Skip",

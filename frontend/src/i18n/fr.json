@@ -170,27 +170,7 @@
     "noResultsFound": "Aucun résultat trouvé",
     "tryAnother": "Essayez une autre recherche",
     "selectToAnalyze": "Sélectionnez pour analyser",
-    "loadingResults": "Recherche en cours...",
-    "modes": {
-      "toggle_on": "Mode Quiz : activé",
-      "toggle_off": "Mode Quiz : désactivé",
-      "focus": {
-        "label": "Mode Focus",
-        "description": "Interface minimaliste sans distraction"
-      },
-      "quiz": {
-        "label": "Mode Quiz",
-        "description": "Apprenez en jouant avec des questions interactives"
-      },
-      "classic": {
-        "label": "Mode Classique",
-        "description": "Interface standard avec toutes les options"
-      },
-      "expert": {
-        "label": "Mode Expert",
-        "description": "Contrôle total sur les prompts et paramètres"
-      }
-    }
+    "loadingResults": "Recherche en cours..."
   },
   "onboarding": {
     "skip": "Passer",
