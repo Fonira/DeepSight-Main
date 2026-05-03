@@ -27,7 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logging import logger
-from db.database import FlashcardReview, Summary, User
+from db.database import FlashcardReview, Summary
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Constantes

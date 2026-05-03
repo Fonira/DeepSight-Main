@@ -5,7 +5,7 @@ Templates live in backend/src/templates/emails/ and extend `_base.html`.
 """
 
 from typing import Optional
-from core.config import APP_NAME, FRONTEND_URL
+from core.config import FRONTEND_URL
 
 
 async def send_email(

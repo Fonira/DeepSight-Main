@@ -29,7 +29,7 @@ from .recent_queries import (
     push_recent_query,
     clear_recent_queries,
 )
-from .within_search import search_within, NotOwnerError, WithinMatch
+from .within_search import search_within, NotOwnerError
 
 logger = logging.getLogger(__name__)
 
