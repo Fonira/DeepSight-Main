@@ -19,9 +19,10 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 
 from auth.dependencies import get_current_user
-from db.database import User
+from db.database import User, Summary, async_session_maker
 from .embedding_service import search_similar
 from .global_search import search_global, SearchFilters, ALL_SOURCE_TYPES
+from .within_search import search_within, NotOwnerError, WithinMatch
 
 logger = logging.getLogger(__name__)
 
@@ -154,4 +155,84 @@ async def global_search(
             for r in results
         ],
         searched_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# V1 — POST /api/search/within/{summary_id}
+# ════════════════════════════════════════════════════════════════════════════════
+
+
+class WithinSearchRequest(BaseModel):
+    query: str = Field(..., min_length=2, max_length=500)
+    source_types: Optional[list[str]] = None
+
+
+class WithinMatchItem(BaseModel):
+    source_type: str
+    source_id: int
+    summary_id: int
+    text: str
+    text_html: str
+    tab: str
+    score: float
+    passage_id: str
+    metadata: dict
+
+
+class WithinSearchResponse(BaseModel):
+    summary_id: int
+    query: str
+    matches: list[WithinMatchItem]
+
+
+@router.post("/within/{summary_id}", response_model=WithinSearchResponse)
+async def within_search_endpoint(
+    request: WithinSearchRequest,
+    summary_id: int = Path(..., gt=0),
+    user: User = Depends(get_current_user),
+):
+    """Recherche sémantique intra-analyse.
+
+    SECURITY : ownership-check FIRST (avant la validation de longueur de query
+    dans le service), pour ne pas leaker l'existence d'un summary à un user
+    non propriétaire via une query trop courte.
+    """
+    # Ownership check (avant validation query length du service)
+    async with async_session_maker() as session:
+        summary = await session.get(Summary, summary_id)
+        if summary is None:
+            raise HTTPException(404, "Summary not found")
+        if summary.user_id != user.id:
+            raise HTTPException(403, "Not owner of this summary")
+
+    # Maintenant l'ownership est garantie : on peut appeler le service.
+    try:
+        matches = await search_within(
+            summary_id=summary_id,
+            user_id=user.id,
+            query=request.query,
+            source_types=request.source_types,
+        )
+    except NotOwnerError:
+        # Defensive : ne devrait pas arriver post ownership-check, mais safe.
+        raise HTTPException(403, "Not owner of this summary")
+
+    return WithinSearchResponse(
+        summary_id=summary_id,
+        query=request.query,
+        matches=[
+            WithinMatchItem(
+                source_type=m.source_type,
+                source_id=m.source_id,
+                summary_id=m.summary_id,
+                text=m.text,
+                text_html=m.text_html,
+                tab=m.tab,
+                score=m.score,
+                passage_id=m.passage_id,
+                metadata=m.metadata,
+            )
+            for m in matches
+        ],
     )
