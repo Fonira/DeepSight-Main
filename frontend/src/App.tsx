@@ -49,6 +49,7 @@ import { UpgradeModal } from "./components/UpgradeModal";
 import { VoicePrefsStagingProvider } from "./components/voice/staging/VoicePrefsStagingProvider";
 import { StagedPrefsToolbar } from "./components/voice/staging/StagedPrefsToolbar";
 import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
+import { Tutor } from "./components/Tutor";
 import { analytics } from "./services/analytics";
 import { DeepSightSpinner } from "./components/ui/DeepSightSpinner";
 
@@ -483,6 +484,9 @@ const ProtectedLayout = () => {
       {shouldShowOnboarding && (
         <OnboardingFlow onComplete={() => setOnboardingDismissed(true)} />
       )}
+      {/* 🎓 Le Tuteur — compagnon d'apprentissage (remplace DidYouKnowCard) */}
+      {/* Le composant fait son propre check isAuthenticated + currentWord (early return null) */}
+      <Tutor />
     </>
   );
 };
@@ -519,8 +523,9 @@ const AMBIENT_LIGHT_HIDDEN_ROUTES = ["/hub"];
 
 const RouterAwareAmbientLight = () => {
   const location = useLocation();
-  const hidden = AMBIENT_LIGHT_HIDDEN_ROUTES.some((path) =>
-    location.pathname === path || location.pathname.startsWith(path + "/"),
+  const hidden = AMBIENT_LIGHT_HIDDEN_ROUTES.some(
+    (path) =>
+      location.pathname === path || location.pathname.startsWith(path + "/"),
   );
   if (hidden) return null;
   return <AmbientLightLayer intensity="normal" />;
