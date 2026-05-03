@@ -10,6 +10,7 @@ from typing import AsyncGenerator
 from sqlalchemy import (
     Column,
     Integer,
+    BigInteger,
     String,
     Text,
     Float,
@@ -19,6 +20,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     UniqueConstraint,
+    CheckConstraint,
     text,
     JSON,
 )
@@ -717,6 +719,44 @@ class TranscriptEmbedding(Base):
         UniqueConstraint("video_id", "chunk_index", name="uix_embedding_video_chunk"),
         Index("idx_transcript_embeddings_video", "video_id"),
         Index("idx_transcript_embeddings_model_version", "model_version"),
+    )
+
+
+class ChannelContext(Base):
+    """
+    📺 Cache du contexte de chaîne (YouTube/TikTok), cross-user.
+
+    Stocke jusqu'à ~50 vidéos récentes (titres + descriptions + tags +
+    métadonnées chaîne) pour permettre à Mistral de calibrer son analyse
+    (chaîne poubelle / dangereuse / divertissement / éducative).
+
+    Clé primaire composite (channel_id, platform) — refresh par upsert
+    (ON CONFLICT). TTL géré côté application via ``expires_at`` + purge.
+    Cf. migration 014_add_channel_contexts.
+    """
+
+    __tablename__ = "channel_contexts"
+
+    channel_id = Column(String(128), primary_key=True, nullable=False)
+    platform = Column(String(16), primary_key=True, nullable=False)
+    name = Column(Text)
+    description = Column(Text)
+    subscriber_count = Column(BigInteger)
+    video_count = Column(Integer)
+    # JSON cross-DB : JSONB sur PostgreSQL, TEXT sérialisé sur SQLite.
+    tags = Column(JSON, nullable=True, default=list, server_default="[]")
+    categories = Column(JSON, nullable=True, default=list, server_default="[]")
+    # last_videos : liste d'objets {title, description, tags, view_count, upload_date}
+    last_videos = Column(JSON, nullable=False)
+    fetched_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "platform IN ('youtube', 'tiktok')",
+            name="ck_channel_contexts_platform",
+        ),
+        Index("idx_channel_contexts_expires_at", "expires_at"),
     )
 
 

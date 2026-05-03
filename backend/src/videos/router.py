@@ -2670,6 +2670,16 @@ async def _analyze_video_background_v2_1(
             pass
 
 
+async def _async_none():
+    """Helper async qui résout immédiatement sur None.
+
+    Utilisé pour rendre les branches optionnelles (ex: contexte chaîne quand
+    aucun channel_id n'est extractible) compatibles avec ``asyncio.gather``
+    sans logique conditionnelle dispersée.
+    """
+    return None
+
+
 async def _analyze_video_background_v6(
     task_id: str,
     video_id: str,
@@ -2749,6 +2759,38 @@ async def _analyze_video_background_v6(
                 raise Exception("Could not fetch video info")
 
             logger.info(f"✅ Video info: {video_info.get('title', 'Unknown')[:50]}")
+
+            # 🏷️ v8.0: Extraire l'ID de chaîne (channel_id YouTube ou username TikTok)
+            # → utilisé en étape 3+4 pour fetch le contexte chaîne en parallèle.
+            # Imports lazy : évitent les coûts de chargement quand la feature ne tire pas.
+            _channel_external_id: Optional[str] = None
+            try:
+                if platform == "tiktok":
+                    from transcripts.tiktok import (
+                        extract_tiktok_username_from_video_metadata as _extract_chan_id,
+                    )
+
+                    _channel_external_id = _extract_chan_id(video_info)
+                else:
+                    from transcripts.youtube_channel import (
+                        extract_channel_id_from_video_metadata as _extract_chan_id,
+                    )
+
+                    _channel_external_id = _extract_chan_id(video_info)
+            except Exception as _ce:
+                # Fail-safe : aucune erreur ne doit bloquer l'analyse principale.
+                logger.warning(f"[CHANNEL-CTX] Failed to extract channel id: {_ce}")
+                _channel_external_id = None
+
+            if _channel_external_id:
+                logger.info(
+                    f"🏷️ [CHANNEL-CTX] Resolved channel id for {platform}: {_channel_external_id}"
+                )
+            else:
+                logger.info(
+                    f"🏷️ [CHANNEL-CTX] No channel id resolvable for {platform}/{video_id} — "
+                    "context fetch will be skipped"
+                )
 
             # ═══════════════════════════════════════════════════════════════════
             # 2. EXTRAIRE LA TRANSCRIPTION (avec global cache check)
@@ -2942,12 +2984,66 @@ async def _analyze_video_background_v6(
                     logger.error(f"⚠️ [v5.0] PRE-ANALYSIS failed (continuing without): {e}")
                     return None, [], enrichment_level
 
-            # ⚡ Lancer les deux en parallèle
-            (category, confidence), (_web_ctx, _enrich_src, _) = await asyncio.gather(
-                _detect_category_async(), _enrich_web_async()
+            # 🏷️ v8.0 — Fetch contexte chaîne (async, lazy import)
+            async def _fetch_channel_context_async():
+                if not _channel_external_id:
+                    return None
+                try:
+                    from services.channel_content_cache import (
+                        get_or_fetch_channel_context as _get_chan_ctx,
+                    )
+
+                    ctx = await _get_chan_ctx(platform, _channel_external_id, limit=50)
+                    if ctx:
+                        logger.info(
+                            f"✅ [CHANNEL-CTX] Fetched context for {platform}/"
+                            f"{_channel_external_id}: name='{ctx.get('name', '')[:40]}', "
+                            f"{len(ctx.get('last_videos') or [])} recent videos"
+                        )
+                    else:
+                        logger.warning(
+                            f"⚠️ [CHANNEL-CTX] No context returned for {platform}/{_channel_external_id}"
+                        )
+                    return ctx
+                except Exception as e:
+                    logger.error(
+                        f"⚠️ [CHANNEL-CTX] Fetch failed (continuing without): {e}"
+                    )
+                    return None
+
+            # ⚡ Lancer les trois en parallèle (return_exceptions=True pour fail-safe)
+            results = await asyncio.gather(
+                _detect_category_async(),
+                _enrich_web_async(),
+                _fetch_channel_context_async(),
+                return_exceptions=True,
             )
+
+            # Unpack catégorie (avec safety)
+            cat_result = results[0]
+            if isinstance(cat_result, Exception):
+                logger.error(f"⚠️ [v6.1] Category detection failed: {cat_result}")
+                category, confidence = (category or "general", 0.5)
+            else:
+                category, confidence = cat_result
+
+            # Unpack enrichissement web (avec safety)
+            web_result = results[1]
+            if isinstance(web_result, Exception):
+                logger.error(f"⚠️ [v6.1] Web enrichment failed: {web_result}")
+                _web_ctx, _enrich_src = None, []
+            else:
+                _web_ctx, _enrich_src, _ = web_result
             web_context = _web_ctx
             enrichment_sources = _enrich_src
+
+            # Unpack contexte chaîne (avec safety)
+            chan_result = results[2]
+            if isinstance(chan_result, Exception):
+                logger.error(f"⚠️ [v6.1] Channel context fetch raised: {chan_result}")
+                channel_context = None
+            else:
+                channel_context = chan_result
 
             _task_store[task_id]["progress"] = 45
             logger.info("⚡ [v6.1] Category + web enrichment computed in PARALLEL")
@@ -3033,6 +3129,7 @@ async def _analyze_video_background_v6(
                         share_count=video_info.get("share_count") or 0,
                         content_type=video_info.get("content_type", "video"),
                         chapters=video_info.get("chapters"),
+                        channel_context=channel_context,
                     )
             else:
                 # ════════════════════════════════════════════════════════════
@@ -3072,6 +3169,7 @@ async def _analyze_video_background_v6(
                     share_count=video_info.get("share_count") or 0,
                     content_type=video_info.get("content_type", "video"),
                     chapters=video_info.get("chapters"),
+                    channel_context=channel_context,
                 )
 
             if not summary_content:
