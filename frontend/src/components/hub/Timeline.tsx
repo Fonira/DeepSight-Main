@@ -10,34 +10,59 @@ interface Props {
   isThinking?: boolean;
   /** Click handler for inline `[ask:...]` followups in assistant messages. */
   onQuestionClick?: (question: string) => void;
+  /**
+   * True si la Timeline est dans l'onglet Chat actif (F3). L'empty state
+   * "Posez votre première question" est rendu UNIQUEMENT dans ce cas.
+   * Sinon, retourne null (le HubPage n'affiche pas la Timeline quand
+   * activeTab !== "chat", mais on garde la guard pour défense en
+   * profondeur en cas de réutilisation future).
+   *
+   * Default: true (rétrocompat avec usages legacy hors HubPage).
+   */
+  isActiveTab?: boolean;
 }
 
 export const Timeline: React.FC<Props> = ({
   messages,
   isThinking,
   onQuestionClick,
+  isActiveTab = true,
 }) => {
   const sorted = [...messages].sort((a, b) => a.timestamp - b.timestamp);
-  const endRef = useRef<HTMLDivElement>(null);
+  const lastBubbleRef = useRef<HTMLDivElement>(null);
+  const lastIdRef = useRef<string | null>(null);
 
+  // F14 — scroll vers le NOUVEAU bubble user/assistant (pas vers endRef du
+  // conteneur, qui causait des sauts au milieu de la synthèse dans l'ancien
+  // layout single-scroll).
   useEffect(() => {
-    // jsdom (used by vitest) does not implement scrollIntoView — guard it.
-    if (typeof endRef.current?.scrollIntoView === "function") {
-      endRef.current.scrollIntoView({ behavior: "smooth" });
+    const newest = sorted[sorted.length - 1];
+    if (!newest) return;
+    if (newest.id === lastIdRef.current) return;
+    lastIdRef.current = newest.id;
+    if (typeof lastBubbleRef.current?.scrollIntoView === "function") {
+      lastBubbleRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
     }
-  }, [sorted.length, isThinking]);
+  }, [sorted]);
 
   if (sorted.length === 0 && !isThinking) {
+    if (!isActiveTab) {
+      return null;
+    }
     return (
-      <div className="px-6 py-12 text-center">
-        <div className="max-w-sm mx-auto">
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="max-w-sm text-center">
           <Sparkles className="w-10 h-10 text-white/40 mx-auto mb-3" />
           <p className="text-base text-white/95 font-medium mb-1.5">
             Posez votre première question
           </p>
           <p className="text-sm text-white/70 leading-relaxed">
-            Tapez votre question, maintenez le micro pour une note vocale, ou
-            cliquez sur 📞 pour passer en appel.
+            L'agent connaît le contexte de la vidéo. Tapez votre question,
+            maintenez le micro pour une note vocale, ou cliquez sur 📞 pour
+            passer en appel.
           </p>
         </div>
       </div>
@@ -47,12 +72,13 @@ export const Timeline: React.FC<Props> = ({
   return (
     <div className="px-4 py-5">
       <div className="max-w-3xl mx-auto flex flex-col gap-4">
-        {sorted.map((msg) => (
-          <MessageBubble
+        {sorted.map((msg, i) => (
+          <div
             key={msg.id}
-            msg={msg}
-            onQuestionClick={onQuestionClick}
-          />
+            ref={i === sorted.length - 1 ? lastBubbleRef : undefined}
+          >
+            <MessageBubble msg={msg} onQuestionClick={onQuestionClick} />
+          </div>
         ))}
         {isThinking && (
           <div className="flex justify-start" aria-live="polite">
@@ -70,7 +96,6 @@ export const Timeline: React.FC<Props> = ({
             </div>
           </div>
         )}
-        <div ref={endRef} />
       </div>
     </div>
   );

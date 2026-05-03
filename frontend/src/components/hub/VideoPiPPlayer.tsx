@@ -87,9 +87,11 @@ export const VideoPiPPlayer: React.FC<Props> = ({
         </button>
         <div className="absolute bottom-6 left-6 right-6 px-4 py-3 bg-black/50 backdrop-blur-xl rounded-xl border border-white/10">
           <p className="text-sm text-white">{title}</p>
-          <p className="font-mono text-[11px] text-white/65 mt-1">
-            00:00 / {fmt(durationSecs)}
-          </p>
+          {durationSecs > 0 && (
+            <p className="font-mono text-[11px] text-white/65 mt-1">
+              00:00 / {fmt(durationSecs)}
+            </p>
+          )}
         </div>
       </motion.div>
     );
@@ -134,9 +136,11 @@ export const VideoPiPPlayer: React.FC<Props> = ({
       >
         <Maximize2 className="w-2.5 h-2.5" />
       </button>
-      <span className="absolute bottom-0.5 right-1 font-mono text-[8px] text-white/70 bg-black/55 px-1 rounded">
-        {fmt(durationSecs)}
-      </span>
+      {durationSecs > 0 && (
+        <span className="absolute bottom-0.5 right-1 font-mono text-[8px] text-white/70 bg-black/55 px-1 rounded">
+          {fmt(durationSecs)}
+        </span>
+      )}
     </motion.div>
   );
 };

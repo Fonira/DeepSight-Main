@@ -457,9 +457,14 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
             </motion.button>
 
             {/* ═══════════════════════════════════════════════════════════
-                 ACTION BUTTONS
+                 ACTION BUTTONS — F8 : overflow-x-auto pour éviter
+                 troncature à droite ≥lg (Citer / Écouter coupés).
                  ═══════════════════════════════════════════════════════════ */}
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap lg:flex-nowrap lg:ml-auto">
+            <div
+              role="toolbar"
+              aria-label="Actions de la synthèse"
+              className="flex items-center gap-1.5 sm:gap-2 flex-nowrap overflow-x-auto scrollbar-hide lg:ml-auto"
+            >
               {/* Copier */}
               <ActionButton
                 icon={

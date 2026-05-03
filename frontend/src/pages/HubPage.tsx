@@ -29,12 +29,16 @@ import { InputBar } from "../components/hub/InputBar";
 import { ConversationsDrawer } from "../components/hub/ConversationsDrawer";
 import { VideoPiPPlayer } from "../components/hub/VideoPiPPlayer";
 import { CallModeFullBleed } from "../components/hub/CallModeFullBleed";
-import { SourcesShelf } from "../components/hub/SourcesShelf";
 import { NewConversationModal } from "../components/hub/NewConversationModal";
 import { HubAnalysisPanel } from "../components/hub/HubAnalysisPanel";
+import { HubTabBar } from "../components/hub/HubTabBar";
 import { useAnalyzeAndOpenHub } from "../hooks/useAnalyzeAndOpenHub";
 import { Loader2 } from "lucide-react";
-import type { HubConversation, HubMessage } from "../components/hub/types";
+import type {
+  HubConversation,
+  HubMessage,
+  TabId,
+} from "../components/hub/types";
 
 const newId = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -80,7 +84,9 @@ const buildHubSubtitle = (
 ): string => {
   if (!source) return "";
   const platform = source === "tiktok" ? "TikTok" : "YouTube";
-  const duration = formatVideoDuration(durationSecs ?? 0);
+  // F7 — guard explicite : ne pas afficher "00:00" si durée nulle/absente.
+  const duration =
+    durationSecs && durationSecs > 0 ? formatVideoDuration(durationSecs) : "";
   const ago = formatAnalyzedAgo(updatedAt);
   const parts = [platform];
   if (duration) parts.push(duration);
@@ -88,11 +94,71 @@ const buildHubSubtitle = (
   return parts.join(" · ");
 };
 
+const AnalyzingPlaceholder: React.FC<{
+  progress: number;
+  message: string;
+  error: string | null;
+}> = ({ progress, message, error }) => (
+  <div className="flex-1 flex items-center justify-center px-6">
+    <div className="max-w-md w-full text-center">
+      <div className="relative mx-auto mb-5 w-16 h-16">
+        <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl animate-pulse" />
+        <Loader2 className="relative w-16 h-16 text-indigo-400 mx-auto animate-spin" />
+      </div>
+      <p className="text-base text-white font-medium mb-1.5">
+        Analyse en cours
+      </p>
+      <p className="text-sm text-white/65 mb-4 leading-relaxed">
+        {message || "Démarrage… extraction du transcript et synthèse en route."}
+      </p>
+      <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden mb-2">
+        <div
+          className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500 ease-out"
+          style={{ width: `${Math.min(progress, 95)}%` }}
+        />
+      </div>
+      <p className="text-[11px] font-mono text-white/40">
+        {Math.min(progress, 95)}% · L'analyse continue même si vous fermez
+        l'onglet.
+      </p>
+      {error && (
+        <div className="mt-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+          {error}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+const NoConvPlaceholder: React.FC<{ onOpenDrawer: () => void }> = ({
+  onOpenDrawer,
+}) => (
+  <div className="flex-1 flex items-center justify-center px-6">
+    <div className="max-w-sm text-center">
+      <p className="text-base text-white font-medium mb-2">
+        Aucune conversation sélectionnée
+      </p>
+      <p className="text-sm text-white/65 mb-4">
+        Choisissez une conversation existante ou collez une URL YouTube/TikTok
+        pour analyser une nouvelle vidéo.
+      </p>
+      <button
+        type="button"
+        onClick={onOpenDrawer}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/25 transition-colors text-sm"
+      >
+        Ouvrir la liste
+      </button>
+    </div>
+  </div>
+);
+
 const HubPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlConvId = searchParams.get("conv");
   const urlSummaryId = searchParams.get("summary");
+  const urlTab = searchParams.get("tab") as TabId | null;
 
   const { language } = useTranslation();
   const { user } = useAuth();
@@ -102,6 +168,7 @@ const HubPage: React.FC = () => {
   const {
     conversations,
     activeConvId,
+    activeTab,
     messages,
     summaryContext,
     fullSummary,
@@ -112,8 +179,10 @@ const HubPage: React.FC = () => {
     voiceCallOpen,
     pipExpanded,
     newConvModalOpen,
+    tabScrollPositions,
     setConversations,
     setActiveConv,
+    setActiveTab,
     setMessages,
     appendMessage,
     setSummaryContext,
@@ -121,6 +190,7 @@ const HubPage: React.FC = () => {
     setConcepts,
     setReliability,
     setReliabilityLoading,
+    setTabScrollPosition,
     toggleDrawer,
     setPipExpanded,
     setVoiceCallOpen,
@@ -379,6 +449,21 @@ const HubPage: React.FC = () => {
     setReliabilityLoading,
   ]);
 
+  // ── Sync URL ?tab= avec activeTab du store ──
+  useEffect(() => {
+    if (urlTab && urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+  }, [urlTab, activeTab, setActiveTab]);
+
+  // ── Tab par défaut au chargement d'une conv ──
+  useEffect(() => {
+    if (urlTab) return; // URL prime
+    if (activeConvId === null) return;
+    const next: TabId = messages.length > 0 ? "chat" : "synthesis";
+    if (next !== activeTab) setActiveTab(next);
+  }, [activeConvId, messages.length, urlTab, activeTab, setActiveTab]);
+
   // ── Auto-play TTS on assistant text messages ──
   const prevCountRef = useRef(messages.length);
   useEffect(() => {
@@ -480,6 +565,17 @@ const HubPage: React.FC = () => {
     [voiceEnabled, setVoiceCallOpen],
   );
 
+  // ── Handle tab change : update store + push URL ?tab= ──
+  const handleTabChange = useCallback(
+    (tab: TabId) => {
+      setActiveTab(tab);
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", tab);
+      setSearchParams(next, { replace: true });
+    },
+    [setActiveTab, searchParams, setSearchParams],
+  );
+
   const activeConv = conversations.find((c) => c.id === activeConvId) ?? null;
 
   return (
@@ -515,66 +611,73 @@ const HubPage: React.FC = () => {
         }
       />
 
+      {activeConvId !== null && (
+        <HubTabBar
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          chatMessageCount={messages.length}
+          factCheckCount={
+            reliability?.fact_check_lite?.high_risk_claims?.length ?? 0
+          }
+        />
+      )}
+
       <div className="relative flex-1 flex flex-col overflow-hidden">
         {analyzingTaskId && !activeConvId ? (
-          <div className="flex-1 flex items-center justify-center px-6">
-            <div className="max-w-md w-full text-center">
-              <div className="relative mx-auto mb-5 w-16 h-16">
-                <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl animate-pulse" />
-                <Loader2 className="relative w-16 h-16 text-indigo-400 mx-auto animate-spin" />
-              </div>
-              <p className="text-base text-white font-medium mb-1.5">
-                Analyse en cours
-              </p>
-              <p className="text-sm text-white/65 mb-4 leading-relaxed">
-                {analyzingMessage ||
-                  "Démarrage… extraction du transcript et synthèse en route."}
-              </p>
-              <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden mb-2">
-                <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500 ease-out"
-                  style={{ width: `${Math.min(analyzingProgress, 95)}%` }}
-                />
-              </div>
-              <p className="text-[11px] font-mono text-white/40">
-                {Math.min(analyzingProgress, 95)}% · L'analyse continue même si
-                vous fermez l'onglet.
-              </p>
-              {analyzingError && (
-                <div className="mt-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
-                  {analyzingError}
-                </div>
-              )}
-            </div>
-          </div>
+          <AnalyzingPlaceholder
+            progress={analyzingProgress}
+            message={analyzingMessage}
+            error={analyzingError}
+          />
+        ) : activeConvId === null ? (
+          <NoConvPlaceholder onOpenDrawer={toggleDrawer} />
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto min-h-0">
-              {summaryContext && (
-                <HubAnalysisPanel
-                  selectedSummary={fullSummary}
-                  concepts={concepts}
-                  reliability={reliability}
-                  reliabilityLoading={reliabilityLoading}
-                  user={user}
-                  language={language as "fr" | "en"}
+            {activeTab === "chat" ? (
+              <div className="flex-1 overflow-y-auto min-h-0">
+                <Timeline
+                  messages={messages}
+                  isThinking={isThinking}
+                  onQuestionClick={handleSend}
                 />
-              )}
-              <Timeline
-                messages={messages}
-                isThinking={isThinking}
-                onQuestionClick={handleSend}
-              />
-            </div>
+              </div>
+            ) : (
+              <div
+                key={activeTab}
+                className="flex-1 overflow-y-auto min-h-0"
+                ref={(el) => {
+                  if (!el) return;
+                  el.scrollTop = tabScrollPositions[activeTab] ?? 0;
+                }}
+                onScroll={(e) => {
+                  setTabScrollPosition(
+                    activeTab,
+                    (e.target as HTMLDivElement).scrollTop,
+                  );
+                }}
+              >
+                {summaryContext && (
+                  <HubAnalysisPanel
+                    selectedSummary={fullSummary}
+                    concepts={concepts}
+                    reliability={reliability}
+                    reliabilityLoading={reliabilityLoading}
+                    user={user}
+                    language={language as "fr" | "en"}
+                    activeTab={activeTab as Exclude<TabId, "chat">}
+                    onTabChange={(t) => handleTabChange(t)}
+                  />
+                )}
+              </div>
+            )}
             <InputBar
               onSend={handleSend}
               onCallToggle={() => setVoiceCallOpen(!voiceCallOpen)}
               onPttHoldComplete={handlePttHoldComplete}
               disabled={!activeConvId}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
             />
-            <div className="flex justify-center px-3 pb-3 pt-1 flex-shrink-0">
-              <SourcesShelf />
-            </div>
           </>
         )}
 

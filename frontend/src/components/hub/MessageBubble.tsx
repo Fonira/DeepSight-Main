@@ -1,6 +1,8 @@
 // frontend/src/components/hub/MessageBubble.tsx
 import React from "react";
 import { Mic } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { HubMessage } from "./types";
 import { VoiceBubble } from "./VoiceBubble";
 import {
@@ -20,6 +22,95 @@ const DEFAULT_BARS = [
   6, 14, 9, 20, 11, 16, 8, 18, 12, 22, 9, 15, 7, 19, 11, 14, 8, 17, 10, 13, 6,
   21, 9, 12, 15, 8, 17, 10,
 ];
+
+/**
+ * Rend le markdown des messages chat (F5).
+ * Avant ce fix, le bold, les titres et les liens markdown étaient affichés
+ * bruts dans la timeline. Liens en target=_blank avec rel sécurisé.
+ * Listes, code, titres, blockquote, tables tous stylés.
+ */
+const MarkdownRenderer: React.FC<{ text: string }> = ({ text }) => (
+  <ReactMarkdown
+    remarkPlugins={[remarkGfm]}
+    components={{
+      a: ({ href, children, ...props }) => (
+        <a
+          {...props}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-indigo-300 underline hover:text-indigo-200"
+        >
+          {children}
+        </a>
+      ),
+      code: ({ className, children, ...props }) => {
+        const isInline = !className?.includes("language-");
+        if (isInline) {
+          return (
+            <code
+              className="px-1 py-0.5 bg-white/10 rounded text-[12px] font-mono"
+              {...props}
+            >
+              {children}
+            </code>
+          );
+        }
+        return (
+          <code className="text-[12px] font-mono text-white/85" {...props}>
+            {children}
+          </code>
+        );
+      },
+      pre: ({ children }) => (
+        <pre className="my-2 p-3 bg-black/30 rounded-md overflow-x-auto">
+          {children}
+        </pre>
+      ),
+      ul: ({ children }) => (
+        <ul className="list-disc pl-5 my-1.5 space-y-0.5">{children}</ul>
+      ),
+      ol: ({ children }) => (
+        <ol className="list-decimal pl-5 my-1.5 space-y-0.5">{children}</ol>
+      ),
+      li: ({ children }) => <li className="my-0.5">{children}</li>,
+      h1: ({ children }) => (
+        <h1 className="text-base font-semibold mt-2 mb-1">{children}</h1>
+      ),
+      h2: ({ children }) => (
+        <h2 className="text-base font-semibold mt-2 mb-1">{children}</h2>
+      ),
+      h3: ({ children }) => (
+        <h3 className="text-sm font-semibold mt-1.5 mb-1">{children}</h3>
+      ),
+      h4: ({ children }) => (
+        <h4 className="text-sm font-semibold mt-1.5 mb-1">{children}</h4>
+      ),
+      hr: () => <hr className="my-2 border-white/10" />,
+      blockquote: ({ children }) => (
+        <blockquote className="border-l-2 border-white/20 pl-3 my-1.5 text-white/80 italic">
+          {children}
+        </blockquote>
+      ),
+      table: ({ children }) => (
+        <div className="overflow-x-auto my-2">
+          <table className="text-xs border-collapse">{children}</table>
+        </div>
+      ),
+      th: ({ children }) => (
+        <th className="border border-white/10 px-2 py-1 text-left font-semibold">
+          {children}
+        </th>
+      ),
+      td: ({ children }) => (
+        <td className="border border-white/10 px-2 py-1">{children}</td>
+      ),
+      p: ({ children }) => <p className="my-1 leading-relaxed">{children}</p>,
+    }}
+  >
+    {text}
+  </ReactMarkdown>
+);
 
 export const MessageBubble: React.FC<Props> = ({
   msg,
@@ -88,7 +179,7 @@ export const MessageBubble: React.FC<Props> = ({
             )}
           </div>
         )}
-        <p className="whitespace-pre-wrap">{beforeQuestions}</p>
+        <MarkdownRenderer text={beforeQuestions} />
         {isAssistantText && questions.length > 0 && onQuestionClick && (
           <ClickableQuestionsBlock
             questions={questions}

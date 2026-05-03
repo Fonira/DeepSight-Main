@@ -42,6 +42,23 @@ const groupBy = (convs: HubConversation[]) => {
   return { today, yesterday, week, older };
 };
 
+/** Format date courte FR pour différencier les doublons dans le drawer (F13). */
+const fmtShortDate = (iso: string): string => {
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const now = new Date();
+    const sameYear = d.getFullYear() === now.getFullYear();
+    return d.toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "short",
+      year: sameYear ? undefined : "2-digit",
+    });
+  } catch {
+    return "";
+  }
+};
+
 export const ConversationsDrawer: React.FC<Props> = ({
   open,
   onClose,
@@ -93,7 +110,7 @@ export const ConversationsDrawer: React.FC<Props> = ({
             className={
               "w-full px-3 py-2 rounded-lg mb-0.5 flex gap-2.5 items-start text-left transition-colors " +
               (c.id === activeConvId
-                ? "bg-indigo-500/10 border border-indigo-500/20"
+                ? "bg-indigo-500/15 border border-indigo-500/40 ring-2 ring-indigo-500/30"
                 : "border border-transparent hover:bg-white/[0.04]")
             }
           >
@@ -120,8 +137,18 @@ export const ConversationsDrawer: React.FC<Props> = ({
             )}
             <div className="flex-1 min-w-0">
               <p className="text-[13px] text-white/85 truncate">{c.title}</p>
-              <p className="text-[11px] text-white/45 truncate mt-0.5">
-                {c.last_snippet ?? ""}
+              <p className="text-[11px] text-white/45 truncate mt-0.5 flex items-center gap-1.5">
+                {c.last_snippet ? (
+                  <span className="truncate">{c.last_snippet}</span>
+                ) : null}
+                {c.last_snippet && fmtShortDate(c.updated_at) && (
+                  <span className="text-white/30">·</span>
+                )}
+                {fmtShortDate(c.updated_at) && (
+                  <span className="font-mono text-white/35 flex-shrink-0">
+                    {fmtShortDate(c.updated_at)}
+                  </span>
+                )}
               </p>
             </div>
           </button>

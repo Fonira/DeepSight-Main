@@ -49,6 +49,16 @@ interface AnalysisHubProps {
   voiceEnabled?: boolean;
   /** Callback to open voice modal (managed by parent) */
   onOpenVoice?: () => void;
+  /**
+   * Si fourni, le composant fonctionne en mode "controlled" : l'onglet actif
+   * est piloté par le parent. Sinon, fallback au state local (rétrocompat
+   * avec Dashboard existant).
+   */
+  activeTabExternal?: TabType;
+  /** Setter externe — requis si `activeTabExternal` est fourni. */
+  onTabChange?: (tab: TabType) => void;
+  /** Si true, masque la tab bar interne (le parent affiche sa propre HubTabBar). */
+  hideInternalTabBar?: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -125,8 +135,14 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
   showVoice,
   voiceEnabled,
   onOpenVoice,
+  activeTabExternal,
+  onTabChange,
+  hideInternalTabBar,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>("synthesis");
+  const [activeTabInternal, setActiveTabInternal] =
+    useState<TabType>("synthesis");
+  const activeTab = activeTabExternal ?? activeTabInternal;
+  const setActiveTab = onTabChange ?? setActiveTabInternal;
 
   // Quiz state (lazy)
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestionData[] | null>(
@@ -148,7 +164,9 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
     setFlashcards(null);
     setFlashcardsLoading(false);
     setFlashcardsError(null);
-    setActiveTab("synthesis");
+    if (!activeTabExternal) {
+      setActiveTab("synthesis");
+    }
   }, [selectedSummary.id]);
 
   // Generate quiz
@@ -238,7 +256,7 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
   return (
     <div className="card overflow-hidden">
       {/* Tab Bar — hidden if only one tab */}
-      {visibleTabs.length > 1 && (
+      {!hideInternalTabBar && visibleTabs.length > 1 && (
         <div className="sticky top-0 z-10 flex border-b border-border-subtle overflow-x-auto scrollbar-hide bg-[#12121a]/95 backdrop-blur-sm">
           {visibleTabs.map((tab) => {
             const isActive = activeTab === tab.id;

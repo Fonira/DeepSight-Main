@@ -33,7 +33,6 @@ describe("ConversationsDrawer", () => {
         conversations={convs}
         activeConvId={null}
         onSelect={() => {}}
-        onNewConv={() => {}}
       />,
     );
     expect(container.firstChild).toBeNull();
@@ -47,7 +46,6 @@ describe("ConversationsDrawer", () => {
         conversations={convs}
         activeConvId={null}
         onSelect={() => {}}
-        onNewConv={() => {}}
       />,
     );
     expect(screen.getByText("Lex Fridman · conscience")).toBeInTheDocument();
@@ -63,7 +61,6 @@ describe("ConversationsDrawer", () => {
         conversations={convs}
         activeConvId={null}
         onSelect={onSelect}
-        onNewConv={() => {}}
       />,
     );
     fireEvent.click(screen.getByText("Naval · le levier"));
@@ -78,7 +75,6 @@ describe("ConversationsDrawer", () => {
         conversations={convs}
         activeConvId={null}
         onSelect={() => {}}
-        onNewConv={() => {}}
       />,
     );
     fireEvent.change(screen.getByPlaceholderText(/rechercher/i), {
@@ -86,5 +82,43 @@ describe("ConversationsDrawer", () => {
     });
     expect(screen.queryByText("Lex Fridman · conscience")).toBeNull();
     expect(screen.getByText("Naval · le levier")).toBeInTheDocument();
+  });
+
+  it("active conv item has visible indigo ring (F13)", () => {
+    const { container } = render(
+      <ConversationsDrawer
+        open={true}
+        onClose={() => {}}
+        conversations={convs}
+        activeConvId={2}
+        onSelect={() => {}}
+      />,
+    );
+    const activeBtn = container.querySelector('[data-conv-id="2"]');
+    expect(activeBtn?.className).toMatch(/ring-2/);
+    expect(activeBtn?.className).toMatch(/ring-indigo/);
+  });
+
+  it("displays short date under each conversation title (F13)", () => {
+    render(
+      <ConversationsDrawer
+        open={true}
+        onClose={() => {}}
+        conversations={[
+          {
+            id: 99,
+            summary_id: 99,
+            title: "Conv avec date",
+            video_source: "youtube",
+            video_thumbnail_url: null,
+            updated_at: "2026-04-15T10:00:00Z",
+          },
+        ]}
+        activeConvId={null}
+        onSelect={() => {}}
+      />,
+    );
+    // Format FR : "15 avr." en 2026
+    expect(screen.getByText(/15 avr/)).toBeInTheDocument();
   });
 });

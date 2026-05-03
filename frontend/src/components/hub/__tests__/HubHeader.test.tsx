@@ -39,4 +39,25 @@ describe("HubHeader", () => {
     );
     expect(screen.getByTestId("pip-mock")).toBeInTheDocument();
   });
+
+  it("renders only the logo as home — no labelled 'Accueil' pill (F2)", () => {
+    render(
+      <HubHeader onMenuClick={() => {}} onHomeClick={() => {}} title="Test" />,
+    );
+    expect(screen.queryByText("Accueil")).not.toBeInTheDocument();
+    const homeButtons = screen.getAllByRole("button", {
+      name: "Retour à l'accueil",
+    });
+    expect(homeButtons).toHaveLength(1);
+  });
+
+  it("applies line-clamp-1 to long titles (F9)", () => {
+    const longTitle = "A".repeat(200);
+    const { container } = render(
+      <HubHeader onMenuClick={() => {}} title={longTitle} />,
+    );
+    const titleEl = container.querySelector("p.line-clamp-1");
+    expect(titleEl).toBeInTheDocument();
+    expect(titleEl?.textContent).toBe(longTitle);
+  });
 });

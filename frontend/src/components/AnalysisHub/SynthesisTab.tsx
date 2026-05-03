@@ -277,18 +277,20 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
             </div>
           )}
 
-        {/* Temps économisé */}
-        <div className="mt-6 not-prose">
-          <AnalysisValueDisplay
-            videoDuration={selectedSummary.video_duration || 0}
-            keyPointsCount={
-              selectedSummary.summary_content?.split("##").length - 1 || 0
-            }
-            conceptsCount={concepts.length}
-            showUpgradeCTA={user?.plan === "free" || user?.plan === "student"}
-            compact={false}
-          />
-        </div>
+        {/* Temps économisé — F7 : guard durée > 0 (sinon affiche "~0 sec absurde"). */}
+        {(selectedSummary.video_duration ?? 0) > 0 && (
+          <div className="mt-6 not-prose">
+            <AnalysisValueDisplay
+              videoDuration={selectedSummary.video_duration || 0}
+              keyPointsCount={
+                selectedSummary.summary_content?.split("##").length - 1 || 0
+              }
+              conceptsCount={concepts.length}
+              showUpgradeCTA={user?.plan === "free" || user?.plan === "student"}
+              compact={false}
+            />
+          </div>
+        )}
       </div>
 
       {/* Citation Modal */}

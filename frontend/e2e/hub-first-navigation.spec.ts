@@ -43,28 +43,13 @@ test.describe("Hub-first navigation", () => {
     await login(page);
   });
 
-  test("?open_summary=1 renders the summary already expanded", async ({
-    page,
-  }) => {
-    const summaryId = await pickFirstSummaryId(page);
-    if (summaryId === null) {
-      test.skip(true, "test user has no analyses");
-      return;
-    }
+  // Hub redesign 2026-05-03 (fix/hub-nav-redesign) — SummaryCollapsible retiré
+  // du HubPage. Le paramètre URL `?open_summary=1` n'est plus géré : la synthèse
+  // est désormais le contenu de l'onglet "Synthèse" de la HubTabBar globale.
+  // Les 2 tests qui suivaient ce flow ont été remplacés par les tests sticky-tab
+  // / tab-routing ci-dessous.
 
-    await page.goto(`/hub?summary=${summaryId}&open_summary=1`);
-
-    // The "RÉSUMÉ" pill is always present, but the citations row only shows
-    // when the panel is in the open state.
-    await expect(page.getByText("RÉSUMÉ")).toBeVisible();
-    // Citations are timestamps formatted MM:SS — at least one MM:SS pill
-    // visible is the open-state proof.
-    await expect(page.locator("text=/^\\d{2}:\\d{2}$/").first()).toBeVisible({
-      timeout: 5000,
-    });
-  });
-
-  test("?summary=ID without open_summary keeps the summary collapsed", async ({
+  test("HubTabBar reste sticky même après scroll dans Synthèse (F1)", async ({
     page,
   }) => {
     const summaryId = await pickFirstSummaryId(page);
@@ -74,9 +59,35 @@ test.describe("Hub-first navigation", () => {
     }
 
     await page.goto(`/hub?summary=${summaryId}`);
-    await expect(page.getByText("RÉSUMÉ")).toBeVisible();
-    // Citations should NOT be visible when collapsed.
-    await expect(page.locator("text=/^\\d{2}:\\d{2}$/").first()).toBeHidden();
+    await expect(page.getByTestId("hub-tab-synthesis")).toBeVisible();
+
+    // Scroll dans le panel Synthèse, la tab bar doit rester visible (sticky).
+    await page.evaluate(() => {
+      const scrollEl = document.querySelector(
+        ".flex-1.overflow-y-auto.min-h-0",
+      ) as HTMLElement | null;
+      scrollEl?.scrollTo({ top: 2000 });
+    });
+    await page.waitForTimeout(300);
+    await expect(page.getByTestId("hub-tab-synthesis")).toBeVisible();
+    await expect(page.getByTestId("hub-tab-chat")).toBeVisible();
+  });
+
+  test("clic sur onglet Chat affiche la Timeline (empty state ou messages)", async ({
+    page,
+  }) => {
+    const summaryId = await pickFirstSummaryId(page);
+    if (summaryId === null) {
+      test.skip(true, "test user has no analyses");
+      return;
+    }
+
+    await page.goto(`/hub?summary=${summaryId}`);
+    await page.click('[data-testid="hub-tab-chat"]');
+    // Soit l'empty state visible (conv vide), soit au moins un message rendu.
+    const empty = page.getByText(/posez votre première question/i);
+    const anyBubble = page.locator('[data-testid^="hub-msg-"]').first();
+    await expect(empty.or(anyBubble)).toBeVisible({ timeout: 5000 });
   });
 
   test("Dashboard recent-analyses click lands on /hub with summary param", async ({
