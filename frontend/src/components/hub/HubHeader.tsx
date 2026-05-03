@@ -54,7 +54,18 @@ export const HubHeader: React.FC<Props> = ({
       >
         <Menu className="w-4 h-4" />
       </button>
-      <DeepSightLogo size={36} />
+      {onHomeClick ? (
+        <button
+          type="button"
+          onClick={onHomeClick}
+          aria-label="Retour à l'accueil"
+          className="flex-shrink-0 rounded-md hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+        >
+          <DeepSightLogo size={36} />
+        </button>
+      ) : (
+        <DeepSightLogo size={36} />
+      )}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white truncate">{title}</p>
         {subtitle && (

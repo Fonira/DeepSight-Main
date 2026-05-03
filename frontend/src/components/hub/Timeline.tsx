@@ -29,8 +29,8 @@ export const Timeline: React.FC<Props> = ({
 
   if (sorted.length === 0 && !isThinking) {
     return (
-      <div className="flex-1 flex items-center justify-center px-6">
-        <div className="max-w-sm text-center">
+      <div className="px-6 py-12 text-center">
+        <div className="max-w-sm mx-auto">
           <Sparkles className="w-10 h-10 text-white/40 mx-auto mb-3" />
           <p className="text-base text-white/95 font-medium mb-1.5">
             Posez votre première question
@@ -45,7 +45,7 @@ export const Timeline: React.FC<Props> = ({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-5">
+    <div className="px-4 py-5">
       <div className="max-w-3xl mx-auto flex flex-col gap-4">
         {sorted.map((msg) => (
           <MessageBubble

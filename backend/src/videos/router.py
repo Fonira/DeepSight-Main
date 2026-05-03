@@ -3553,7 +3553,14 @@ async def get_summary(
         video_channel=summary.video_channel or "Unknown",
         video_duration=summary.video_duration or 0,
         video_url=summary.video_url or f"https://youtube.com/watch?v={summary.video_id}",
-        thumbnail_url=summary.thumbnail_url or f"https://img.youtube.com/vi/{summary.video_id}/mqdefault.jpg",
+        thumbnail_url=(
+            summary.thumbnail_url
+            or (
+                f"https://img.youtube.com/vi/{summary.video_id}/mqdefault.jpg"
+                if (summary.platform or "youtube") != "tiktok"
+                else ""
+            )
+        ),
         category=summary.category,
         category_confidence=summary.category_confidence,
         lang=summary.lang,
