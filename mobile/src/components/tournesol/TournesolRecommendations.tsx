@@ -161,6 +161,108 @@ export function TournesolRecommendations({
     return colors.textTertiary;
   };
 
+  const renderCard = useCallback(
+    ({ item }: { item: TournesolResult }) => {
+      const videoId = item.entity.metadata.video_id;
+      const score = item.collective_rating.tournesol_score;
+      const thumbnail = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+
+      return (
+        <Pressable
+          style={[
+            styles.card,
+            { backgroundColor: colors.bgElevated, borderColor: colors.border },
+          ]}
+          onPress={() => handleVideoPress(videoId)}
+          accessibilityLabel={`Analyser: ${item.entity.metadata.name}`}
+        >
+          {/* Thumbnail */}
+          <View style={styles.thumbnailContainer}>
+            <Image
+              source={{ uri: thumbnail }}
+              style={styles.thumbnail}
+              contentFit="cover"
+            />
+            {/* Score badge */}
+            <View
+              style={[
+                styles.scoreBadge,
+                {
+                  backgroundColor: getScoreColor(score) + "20",
+                  borderColor: getScoreColor(score) + "40",
+                },
+              ]}
+            >
+              <Text style={styles.sunflower}>{"\uD83C\uDF3B"}</Text>
+              <Text style={[styles.scoreText, { color: getScoreColor(score) }]}>
+                {score > 0 ? "+" : ""}
+                {Math.round(score)}
+              </Text>
+            </View>
+            {/* Duration */}
+            {item.entity.metadata.duration && (
+              <View style={styles.durationBadge}>
+                <Text style={styles.durationText}>
+                  {formatDuration(item.entity.metadata.duration)}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Info */}
+          <View style={styles.cardInfo}>
+            <Text
+              style={[styles.cardTitle, { color: colors.textPrimary }]}
+              numberOfLines={2}
+            >
+              {item.entity.metadata.name}
+            </Text>
+            <Text
+              style={[styles.cardChannel, { color: colors.textTertiary }]}
+              numberOfLines={1}
+            >
+              {item.entity.metadata.uploader || "YouTube"}
+            </Text>
+            <View style={styles.cardStats}>
+              <Text style={[styles.cardStat, { color: colors.textMuted }]}>
+                {item.collective_rating.n_contributors}{" "}
+                {language === "fr" ? "votes" : "votes"}
+              </Text>
+            </View>
+          </View>
+
+          {/* Analyze CTA */}
+          <View
+            style={[
+              styles.analyzeCta,
+              { backgroundColor: palette.indigo + "15" },
+            ]}
+          >
+            <Ionicons name="sparkles" size={12} color={palette.indigo} />
+            <Text style={[styles.analyzeText, { color: palette.indigo }]}>
+              {language === "fr" ? "Analyser" : "Analyze"}
+            </Text>
+          </View>
+        </Pressable>
+      );
+    },
+    [
+      colors.bgElevated,
+      colors.border,
+      colors.textPrimary,
+      colors.textTertiary,
+      colors.textMuted,
+      handleVideoPress,
+      language,
+    ],
+  );
+
+  const keyExtractor = useCallback(
+    (item: TournesolResult) => item.entity.uid,
+    [],
+  );
+
+  // Early returns APRÈS tous les hooks — Rules of Hooks
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -172,99 +274,6 @@ export function TournesolRecommendations({
   if (error || results.length === 0) {
     return null; // Silently hide if no data
   }
-
-  const renderCard = useCallback(
-    ({ item }: { item: TournesolResult }) => {
-    const videoId = item.entity.metadata.video_id;
-    const score = item.collective_rating.tournesol_score;
-    const thumbnail = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-
-    return (
-      <Pressable
-        style={[
-          styles.card,
-          { backgroundColor: colors.bgElevated, borderColor: colors.border },
-        ]}
-        onPress={() => handleVideoPress(videoId)}
-        accessibilityLabel={`Analyser: ${item.entity.metadata.name}`}
-      >
-        {/* Thumbnail */}
-        <View style={styles.thumbnailContainer}>
-          <Image
-            source={{ uri: thumbnail }}
-            style={styles.thumbnail}
-            contentFit="cover"
-          />
-          {/* Score badge */}
-          <View
-            style={[
-              styles.scoreBadge,
-              {
-                backgroundColor: getScoreColor(score) + "20",
-                borderColor: getScoreColor(score) + "40",
-              },
-            ]}
-          >
-            <Text style={styles.sunflower}>{"\uD83C\uDF3B"}</Text>
-            <Text style={[styles.scoreText, { color: getScoreColor(score) }]}>
-              {score > 0 ? "+" : ""}
-              {Math.round(score)}
-            </Text>
-          </View>
-          {/* Duration */}
-          {item.entity.metadata.duration && (
-            <View style={styles.durationBadge}>
-              <Text style={styles.durationText}>
-                {formatDuration(item.entity.metadata.duration)}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Info */}
-        <View style={styles.cardInfo}>
-          <Text
-            style={[styles.cardTitle, { color: colors.textPrimary }]}
-            numberOfLines={2}
-          >
-            {item.entity.metadata.name}
-          </Text>
-          <Text
-            style={[styles.cardChannel, { color: colors.textTertiary }]}
-            numberOfLines={1}
-          >
-            {item.entity.metadata.uploader || "YouTube"}
-          </Text>
-          <View style={styles.cardStats}>
-            <Text style={[styles.cardStat, { color: colors.textMuted }]}>
-              {item.collective_rating.n_contributors}{" "}
-              {language === "fr" ? "votes" : "votes"}
-            </Text>
-          </View>
-        </View>
-
-        {/* Analyze CTA */}
-        <View
-          style={[
-            styles.analyzeCta,
-            { backgroundColor: palette.indigo + "15" },
-          ]}
-        >
-          <Ionicons name="sparkles" size={12} color={palette.indigo} />
-          <Text style={[styles.analyzeText, { color: palette.indigo }]}>
-            {language === "fr" ? "Analyser" : "Analyze"}
-          </Text>
-        </View>
-      </Pressable>
-    );
-    },
-    [colors.bgElevated, colors.border, colors.textPrimary, colors.textTertiary, colors.textMuted, handleVideoPress, language],
-  );
-
-  const keyExtractor = useCallback(
-    (item: TournesolResult) => item.entity.uid,
-    [],
-  );
 
   return (
     <Animated.View
