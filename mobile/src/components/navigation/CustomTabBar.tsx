@@ -46,6 +46,11 @@ const TAB_META: Record<
 > = {
   index: { icon: "home-outline", iconFocused: "home", label: "Accueil" },
   library: { icon: "time-outline", iconFocused: "time", label: "Historique" },
+  search: {
+    icon: "search-outline",
+    iconFocused: "search",
+    label: "Rechercher",
+  },
   hub: {
     icon: "chatbubbles-outline",
     iconFocused: "chatbubbles",
