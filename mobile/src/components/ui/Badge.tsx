@@ -11,7 +11,7 @@ interface BadgeProps {
   textStyle?: TextStyle;
 }
 
-export const Badge: React.FC<BadgeProps> = ({
+const BadgeComponent: React.FC<BadgeProps> = ({
   label,
   variant = "default",
   size = "sm",
@@ -64,6 +64,8 @@ export const Badge: React.FC<BadgeProps> = ({
     </View>
   );
 };
+
+export const Badge = React.memo(BadgeComponent);
 
 const styles = StyleSheet.create({
   badge: {

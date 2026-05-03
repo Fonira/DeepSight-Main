@@ -45,7 +45,7 @@ const getScoreBadge = (
   return { label: `${score}%`, variant: "error" };
 };
 
-export const VideoStudyCard: React.FC<VideoStudyCardProps> = ({
+const VideoStudyCardComponent: React.FC<VideoStudyCardProps> = ({
   summary,
   progress,
   onFlashcards,
@@ -188,6 +188,8 @@ export const VideoStudyCard: React.FC<VideoStudyCardProps> = ({
   );
 };
 
+export const VideoStudyCard = React.memo(VideoStudyCardComponent);
+
 const styles = StyleSheet.create({
   card: {
     flex: 1,
@@ -261,3 +263,4 @@ const styles = StyleSheet.create({
 });
 
 export default VideoStudyCard;
+
