@@ -722,6 +722,245 @@ class TranscriptEmbedding(Base):
     )
 
 
+# ════════════════════════════════════════════════════════════════════════════════
+# 🔍 SEARCH INDEX V1 — Semantic Search étendu (Summary + Flashcard + Quiz + Chat)
+# ════════════════════════════════════════════════════════════════════════════════
+
+
+class Flashcard(Base):
+    """Flashcards persistées (matérialisation pour permettre l'indexation sémantique).
+    Avant V1 elles étaient générées à la volée par study/router.py sans persistance."""
+
+    __tablename__ = "flashcards"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    summary_id = Column(
+        Integer,
+        ForeignKey("summaries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    position = Column(Integer, nullable=False, default=0)
+    front = Column(Text, nullable=False)
+    back = Column(Text, nullable=False)
+    category = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("summary_id", "position", name="uix_flashcards_summary_position"),
+        Index("ix_flashcards_summary", "summary_id"),
+        Index("ix_flashcards_user", "user_id"),
+    )
+
+
+class QuizQuestion(Base):
+    """Quiz questions persistées (matérialisation pour permettre l'indexation)."""
+
+    __tablename__ = "quiz_questions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    summary_id = Column(
+        Integer,
+        ForeignKey("summaries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    position = Column(Integer, nullable=False, default=0)
+    question = Column(Text, nullable=False)
+    options_json = Column(Text, nullable=False)  # JSON list[str]
+    correct_index = Column(Integer, nullable=False)
+    explanation = Column(Text, nullable=True)
+    difficulty = Column(String(20), nullable=False, default="standard", server_default="standard")
+    created_at = Column(DateTime, default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("summary_id", "position", name="uix_quiz_summary_position"),
+        Index("ix_quiz_summary", "summary_id"),
+        Index("ix_quiz_user", "user_id"),
+    )
+
+
+class SummaryEmbedding(Base):
+    """Embeddings par section du structured_index d'un Summary."""
+
+    __tablename__ = "summary_embeddings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    summary_id = Column(
+        Integer,
+        ForeignKey("summaries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    section_index = Column(Integer, nullable=False)
+    section_ref = Column(String(100), nullable=True)  # ts ou anchor
+    embedding_json = Column(Text, nullable=False)  # JSON 1024 floats
+    text_preview = Column(String(500))
+    token_count = Column(Integer, default=0)
+    model_version = Column(
+        String(50), nullable=False, default="mistral-embed", server_default="mistral-embed"
+    )
+    source_metadata = Column(Text, nullable=True)  # JSON {tab, start_ts?, end_ts?, anchor?}
+    created_at = Column(DateTime, default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("summary_id", "section_index", name="uix_summary_emb_section"),
+        Index("ix_summary_emb_user", "user_id"),
+        Index("ix_summary_emb_summary", "summary_id"),
+        Index("ix_summary_emb_model", "model_version"),
+    )
+
+
+class FlashcardEmbedding(Base):
+    """1 embedding par flashcard (Q+A concaténés)."""
+
+    __tablename__ = "flashcard_embeddings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    flashcard_id = Column(
+        Integer,
+        ForeignKey("flashcards.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    summary_id = Column(
+        Integer,
+        ForeignKey("summaries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    embedding_json = Column(Text, nullable=False)
+    text_preview = Column(String(500))
+    model_version = Column(
+        String(50), nullable=False, default="mistral-embed", server_default="mistral-embed"
+    )
+    created_at = Column(DateTime, default=func.now())
+
+    __table_args__ = (
+        Index("ix_flashcard_emb_user", "user_id"),
+        Index("ix_flashcard_emb_summary", "summary_id"),
+    )
+
+
+class QuizEmbedding(Base):
+    """1 embedding par question quiz (question + bonne réponse)."""
+
+    __tablename__ = "quiz_embeddings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    quiz_question_id = Column(
+        Integer,
+        ForeignKey("quiz_questions.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    summary_id = Column(
+        Integer,
+        ForeignKey("summaries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    embedding_json = Column(Text, nullable=False)
+    text_preview = Column(String(500))
+    model_version = Column(
+        String(50), nullable=False, default="mistral-embed", server_default="mistral-embed"
+    )
+    created_at = Column(DateTime, default=func.now())
+
+    __table_args__ = (
+        Index("ix_quiz_emb_user", "user_id"),
+        Index("ix_quiz_emb_summary", "summary_id"),
+    )
+
+
+class ChatEmbedding(Base):
+    """1 embedding par turn user+assistant fusionné dans une conversation."""
+
+    __tablename__ = "chat_embeddings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    summary_id = Column(
+        Integer,
+        ForeignKey("summaries.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    turn_index = Column(Integer, nullable=False)
+    user_message_id = Column(
+        Integer,
+        ForeignKey("chat_messages.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    agent_message_id = Column(
+        Integer,
+        ForeignKey("chat_messages.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    embedding_json = Column(Text, nullable=False)
+    text_preview = Column(String(500))
+    token_count = Column(Integer, default=0)
+    model_version = Column(
+        String(50), nullable=False, default="mistral-embed", server_default="mistral-embed"
+    )
+    created_at = Column(DateTime, default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("summary_id", "turn_index", name="uix_chat_emb_turn"),
+        Index("ix_chat_emb_user", "user_id"),
+        Index("ix_chat_emb_summary_turn", "summary_id", "turn_index"),
+    )
+
+
+class ExplainPassageCache(Base):
+    """Cache tooltip IA — 7 jours par sha256(query+passage_text+summary_id)."""
+
+    __tablename__ = "explain_passage_cache"
+
+    cache_key = Column(String(64), primary_key=True)
+    explanation = Column(Text, nullable=False)
+    model_used = Column(String(50), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    expires_at = Column(DateTime, nullable=False)
+
+    __table_args__ = (Index("ix_explain_cache_expires", "expires_at"),)
+
+
 class ChannelContext(Base):
     """
     📺 Cache du contexte de chaîne (YouTube/TikTok), cross-user.
