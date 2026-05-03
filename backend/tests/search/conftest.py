@@ -42,15 +42,33 @@ def mock_mistral_embed_batch_response(fake_embedding_1024, fake_embedding_other_
 
 
 @pytest.fixture
-def patch_httpx_post(monkeypatch, mock_mistral_embed_response):
-    """Patche httpx.AsyncClient.post pour retourner un embedding factice."""
-    mock_response = MagicMock()
-    mock_response.json = MagicMock(return_value=mock_mistral_embed_response)
-    mock_response.raise_for_status = MagicMock()
-    mock_response.status_code = 200
+def patch_httpx_post(monkeypatch, fake_embedding_1024):
+    """Patche httpx.AsyncClient.post pour retourner N embeddings factices.
 
-    async def mock_post(*_args, **_kwargs):
-        return mock_response
+    Le fixture inspecte le payload JSON envoyé pour produire EXACTEMENT autant
+    d'embeddings que d'entrées dans `input` (compatible single + batch). Cela
+    permet aux helpers `embed_summary`/`embed_flashcards`/etc. d'embarquer
+    plusieurs sections d'un coup sans recevoir un batch sous-dimensionné.
+    """
+
+    async def mock_post(*_args, **kwargs):
+        payload = kwargs.get("json") or {}
+        inputs = payload.get("input") or []
+        # Si l'appelant utilise generate_embedding (single text passé en list[str])
+        # ou generate_embeddings_batch (list[str]) — len(inputs) suffit.
+        n = max(len(inputs), 1)
+        data = [{"embedding": fake_embedding_1024, "index": i} for i in range(n)]
+        response = MagicMock()
+        response.json = MagicMock(
+            return_value={
+                "data": data,
+                "model": "mistral-embed",
+                "usage": {"prompt_tokens": 10 * n, "total_tokens": 10 * n},
+            }
+        )
+        response.raise_for_status = MagicMock()
+        response.status_code = 200
+        return response
 
     import httpx
 

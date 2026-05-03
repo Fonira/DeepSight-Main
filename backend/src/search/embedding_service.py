@@ -181,6 +181,106 @@ async def embed_transcript(video_id: str) -> bool:
         return False
 
 
+# ════════════════════════════════════════════════════════════════════════════════
+# 🔍 SEMANTIC SEARCH V1 — embed helpers étendus
+# ════════════════════════════════════════════════════════════════════════════════
+
+
+async def embed_summary(summary_id: int) -> bool:
+    """Embed un Summary par section du structured_index, fallback chunks full_digest.
+
+    Idempotent : delete les SummaryEmbedding existants pour ce summary, puis insert.
+    Returns True si succès, False si Summary introuvable ou échec embed.
+    """
+    from db.database import async_session_maker, Summary, SummaryEmbedding
+    from sqlalchemy import select, delete as sa_delete
+
+    async with async_session_maker() as session:
+        summary = await session.get(Summary, summary_id)
+        if summary is None:
+            logger.warning(f"[EMBED-SUMMARY] Summary {summary_id} not found")
+            return False
+
+        # Parse structured_index si présent
+        sections: list[dict] = []
+        if summary.structured_index:
+            try:
+                parsed = json.loads(summary.structured_index)
+                if isinstance(parsed, list):
+                    sections = parsed
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(
+                    f"[EMBED-SUMMARY] structured_index invalid JSON for {summary_id}: {e}"
+                )
+
+        # Fallback : chunks 500 mots du full_digest
+        if not sections:
+            text = summary.full_digest or summary.summary_content or ""
+            if not text.strip():
+                logger.info(f"[EMBED-SUMMARY] No content to embed for {summary_id}")
+                return False
+            chunks = _chunk_text(text, words_per_chunk=CHUNK_WORDS)
+            sections = [
+                {"ts": None, "title": f"Section {i + 1}", "summary": chunk, "kw": []}
+                for i, chunk in enumerate(chunks)
+            ]
+
+        # Préparer les textes à embed
+        texts = [
+            f"{section.get('title', '')}\n\n{section.get('summary', '')}"
+            for section in sections
+        ]
+
+        # Delete existants (idempotence)
+        await session.execute(
+            sa_delete(SummaryEmbedding).where(SummaryEmbedding.summary_id == summary_id)
+        )
+
+        # Embed par batches de 10
+        all_embeddings: list = []
+        for i in range(0, len(texts), BATCH_SIZE):
+            batch = texts[i : i + BATCH_SIZE]
+            batch_embeddings = await generate_embeddings_batch(batch)
+            all_embeddings.extend(batch_embeddings)
+
+        # Insert
+        inserted = 0
+        for idx, (section, embedding) in enumerate(zip(sections, all_embeddings)):
+            if embedding is None:
+                logger.warning(f"[EMBED-SUMMARY] Embedding {idx} failed for {summary_id}")
+                continue
+            preview = (texts[idx] or "")[:497]
+            if len(texts[idx]) > 500:
+                preview += "..."
+            session.add(
+                SummaryEmbedding(
+                    summary_id=summary_id,
+                    user_id=summary.user_id,
+                    section_index=idx,
+                    section_ref=str(section.get("ts")) if section.get("ts") else None,
+                    embedding_json=json.dumps(embedding),
+                    text_preview=preview,
+                    token_count=len(texts[idx].split()),
+                    model_version=MODEL_VERSION_TAG,
+                    source_metadata=json.dumps(
+                        {
+                            "tab": "synthesis" if summary.structured_index else "digest",
+                            "ts": section.get("ts"),
+                            "title": section.get("title"),
+                            "kw": section.get("kw", []),
+                        }
+                    ),
+                )
+            )
+            inserted += 1
+
+        await session.commit()
+        logger.info(
+            f"[EMBED-SUMMARY] {summary_id}: {inserted}/{len(sections)} sections embedded"
+        )
+        return inserted > 0
+
+
 async def search_similar(
     query: str,
     limit: int = 10,
