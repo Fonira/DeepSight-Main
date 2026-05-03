@@ -245,6 +245,22 @@ def mock_httpx_client():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🗄️ REDIS FIXTURE (fakeredis pour tests unit sans dépendance externe)
+# ═══════════════════════════════════════════════════════════════════════════════
+import fakeredis.aioredis
+import pytest_asyncio
+
+
+@pytest_asyncio.fixture
+async def redis_client_fixture():
+    """Client Redis async mocké via fakeredis (decode_responses=True pour str)."""
+    client = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    yield client
+    await client.flushall()
+    await client.aclose()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 📁 CONFIGURATION PYTEST
 # ═══════════════════════════════════════════════════════════════════════════════
 

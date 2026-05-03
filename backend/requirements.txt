@@ -108,6 +108,7 @@ pytest-asyncio>=0.23.0
 pytest-cov>=4.1.0
 pytest-timeout>=2.2.0
 httpx>=0.26.0  # Pour TestClient FastAPI
+fakeredis[lua]>=2.0  # Mock Redis async pour tests unit (tutor.service, etc.)
 # youtube-search-python - removed (conflicts)
 yt-dlp>=2024.1.0
 
