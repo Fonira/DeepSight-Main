@@ -193,7 +193,7 @@ async def embed_summary(summary_id: int) -> bool:
     Returns True si succès, False si Summary introuvable ou échec embed.
     """
     from db.database import async_session_maker, Summary, SummaryEmbedding
-    from sqlalchemy import select, delete as sa_delete
+    from sqlalchemy import delete as sa_delete
 
     async with async_session_maker() as session:
         summary = await session.get(Summary, summary_id)

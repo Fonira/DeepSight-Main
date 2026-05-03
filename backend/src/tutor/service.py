@@ -5,15 +5,13 @@ V1 : sessions en Redis avec TTL 1h. Pas de table SQL.
 V1.1 : ajout helper TTS ElevenLabs (synthesize_audio_data_url).
 """
 import base64
-import json
 import uuid
 import time
 import logging
 from typing import Optional
 import httpx
 import redis.asyncio as aioredis
-from tutor.schemas import TutorSessionState, TutorTurn, TutorMode, TutorLang
-from tutor.prompts import build_tutor_system_prompt, TUTOR_PERSONA_VERSION
+from tutor.schemas import TutorSessionState, TutorTurn
 from core.config import get_elevenlabs_key
 
 

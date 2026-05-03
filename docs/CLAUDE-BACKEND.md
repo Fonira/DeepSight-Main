@@ -445,3 +445,82 @@ async def get_user_summary(db: AsyncSession, user_id: int, summary_id: int) -> S
 - Secrets hardcodés → toujours via `config.py`
 - SQL brut sans paramétrage → SQLAlchemy ORM
 - `print()` → utiliser le logger structuré
+
+---
+
+## 🔍 Semantic Search V1 (mai 2026)
+
+Étend le moteur sémantique de DeepSight (avant : transcripts only) à tout le contenu personnel d'un user.
+
+### Sources indexées (5 types)
+
+| Source | Table embedding | Granularité | Trigger |
+|---|---|---|---|
+| Synthèse | `summary_embeddings` | 1 par section du `structured_index` (fallback chunks 500 mots) | `videos/service.py` après création Summary |
+| Transcript | `transcript_embeddings` (existant) | 1 par chunk 500 mots | `transcripts/cache_db.py` (existant) |
+| Flashcard | `flashcard_embeddings` | 1 par flashcard (Q+A concaténés) | `study/router.py:generate_flashcards` |
+| Quiz | `quiz_embeddings` | 1 par question (énoncé + bonne réponse) | `study/router.py:generate_quiz` |
+| Chat turn | `chat_embeddings` | 1 par paire user+agent (skip <30 tokens) | `chat/router.py` (legacy+stream) + `chat/service.py:process_chat_message_v4` (path V4 prod dominant) |
+
+**Matérialisation flashcards/quiz** : avant V1 ces deux étaient générés à la volée sans persistance. Maintenant `Flashcard` et `QuizQuestion` sont persistés en DB à chaque génération (delete-then-insert pour idempotence).
+
+### Stack technique
+
+- **Provider** : `mistral-embed` (1024-dim, v23.12)
+- **Storage** : JSON Text dans Postgres (pas pgvector V1 — pragmatique pour scope personnel <5k passages/user)
+- **Cosine** : pure Python (`embedding_service.py:_cosine_similarity`)
+- **Cache query** : Redis 24h sur `hash(query)`
+- **Cache tooltip** : PG 7 jours sur `sha256(query+passage_text+summary_id)`
+- **Filtre** : `user_id` au niveau SQL (jamais cross-user en V1)
+
+### Endpoints (`/api/search/`)
+
+| Méthode | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/global` | tous plans | Recherche cross-source flat list, filtres (platform/lang/category/dates/favorites/playlist/source_types) |
+| POST | `/within/{summary_id}` | owner only | Recherche intra-analyse, ownership check **avant** validation query (sécurité contre leak d'existence) |
+| POST | `/explain-passage` | Pro+Expert | Tooltip IA Mistral `mistral-small-latest` (2 phrases, max_tokens 200, cache PG 7j) |
+| GET | `/recent-queries` | tous plans | 10 dernières queries du user (Redis LIST, TTL 90j, fallback in-memory) |
+| DELETE | `/recent-queries` | tous plans | Vider l'historique recherche |
+| POST | `/semantic` | tous plans | **Legacy** — endpoint transcripts-only conservé pour backward compat |
+
+Push automatique fire-and-forget de la query depuis `/global` → `recent_queries`.
+
+### Feature flag
+
+- `SEMANTIC_SEARCH_V1_ENABLED` env var (default `false`) → permet rollback instantané : les endpoints répondent toujours mais le frontend cache l'onglet Search via `is_semantic_search_v1_enabled()`.
+- `semantic_search_tooltip` dans `plan_config.py` :
+  - Free : `False` (Free voit upsell côté UI)
+  - Pro : `True` web + mobile, `False` extension
+  - Expert : idem Pro
+
+### Backfill prod
+
+Script `backend/scripts/backfill_search_index.py` (idempotent, rate-limited 2s entre batches Mistral).
+
+```bash
+# Sur le VPS Hetzner :
+docker cp /opt/deepsight/repo/backend/scripts/. repo-backend-1:/app/scripts/
+docker exec -d repo-backend-1 sh -c 'cd /app && nohup python -m scripts.backfill_search_index --all-users --batch-size 50 > /tmp/backfill.log 2>&1 &'
+docker exec repo-backend-1 tail -f /tmp/backfill.log
+```
+
+**Note Dockerfile** : le dossier `scripts/` n'est PAS copié par le Dockerfile actuel (`deploy/hetzner/Dockerfile` ligne 32 = `COPY src/`). Pour les futurs runs, soit ajouter `COPY scripts/ ./scripts/` dans le Dockerfile, soit refaire le `docker cp` à chaque rebuild.
+
+### Migration Alembic 015
+
+Tables créées : `flashcards`, `quiz_questions`, `summary_embeddings`, `flashcard_embeddings`, `quiz_embeddings`, `chat_embeddings`, `explain_passage_cache`. Toutes avec `ON DELETE CASCADE` depuis `users`/`summaries`.
+
+⚠️ En prod, les tables sont créées par `Base.metadata.create_all()` au boot avant que la migration soit lancée. Au déploiement, faire `alembic stamp 015_add_search_index_tables` (sans `upgrade`) si les tables existent déjà.
+
+### Performance attendue
+
+- ~80-120ms par query pour <1k passages (cosine pure Python)
+- Au-delà de 5k passages/user → migrer vers pgvector (V2)
+- Coûts Mistral : ~$0.0001/query embedding + $0.0005/tooltip (cache 7j)
+
+### Références
+
+- Spec : `docs/superpowers/specs/2026-05-03-semantic-search-design.md`
+- Plan d'implémentation : `docs/superpowers/plans/2026-05-03-semantic-search-v1-phase1-backend.md`
+- Mergé via PR #292 (2026-05-03), backfill prod le même jour (140 summaries + 80 chat turns indexés en ~30s)
