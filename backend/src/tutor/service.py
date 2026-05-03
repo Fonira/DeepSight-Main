@@ -12,8 +12,8 @@ import logging
 from typing import Optional
 import httpx
 import redis.asyncio as aioredis
-from src.tutor.schemas import TutorSessionState, TutorTurn, TutorMode, TutorLang
-from src.tutor.prompts import build_tutor_system_prompt, TUTOR_PERSONA_VERSION
+from tutor.schemas import TutorSessionState, TutorTurn, TutorMode, TutorLang
+from tutor.prompts import build_tutor_system_prompt, TUTOR_PERSONA_VERSION
 from core.config import get_elevenlabs_key
 
 
