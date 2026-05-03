@@ -67,3 +67,19 @@ export type HubVoiceState =
   | "call_connecting"
   | "call_active"
   | "call_ending";
+
+/**
+ * Identifiant des onglets globaux du Hub. Inclut les 5 onglets d'analyse
+ * (synthesis, quiz, flashcards, reliability, geo) ET l'onglet "chat" qui
+ * remplace l'ancienne archi single-scroll par une nav sticky globale.
+ *
+ * Source de vérité : doit rester en sync avec AnalysisHub.TabType + l'ajout
+ * "chat". URL deep-link via `?tab=<TabId>`.
+ */
+export type TabId =
+  | "synthesis"
+  | "quiz"
+  | "flashcards"
+  | "reliability"
+  | "geo"
+  | "chat";

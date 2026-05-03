@@ -170,26 +170,36 @@
     "noResultsFound": "Aucun résultat trouvé",
     "tryAnother": "Essayez une autre recherche",
     "selectToAnalyze": "Sélectionnez pour analyser",
-    "loadingResults": "Recherche en cours...",
-    "modes": {
-      "toggle_on": "Mode Quiz : activé",
-      "toggle_off": "Mode Quiz : désactivé",
-      "focus": {
-        "label": "Mode Focus",
-        "description": "Interface minimaliste sans distraction"
-      },
-      "quiz": {
-        "label": "Mode Quiz",
-        "description": "Apprenez en jouant avec des questions interactives"
-      },
-      "classic": {
-        "label": "Mode Classique",
-        "description": "Interface standard avec toutes les options"
-      },
-      "expert": {
-        "label": "Mode Expert",
-        "description": "Contrôle total sur les prompts et paramètres"
-      }
+    "loadingResults": "Recherche en cours..."
+  },
+  "tutor": {
+    "title": "Le Tuteur",
+    "idle": {
+      "hint": "Cliquez pour dialoguer"
+    },
+    "prompting": {
+      "ask": "On en parle ?",
+      "mode_text": "Texte",
+      "mode_text_duration": "30s",
+      "mode_voice": "Voix",
+      "mode_voice_duration": "5min",
+      "back": "Annuler"
+    },
+    "mini_chat": {
+      "input_placeholder": "Tapez votre réponse...",
+      "deepen": "Approfondir",
+      "close": "Fermer"
+    },
+    "deep_session": {
+      "pause": "Pause",
+      "switch_to_text": "Texte",
+      "end": "Fin",
+      "source_link": "Voir l'analyse source"
+    },
+    "errors": {
+      "session_failed": "Session impossible — réessayez",
+      "plan_required": "Disponible avec Pro ou Expert",
+      "voice_unavailable": "Voix indisponible — utilisez le mode texte"
     }
   },
   "onboarding": {

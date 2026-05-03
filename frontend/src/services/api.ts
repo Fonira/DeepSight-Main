@@ -18,6 +18,13 @@ import type {
   StudySessionData,
   SessionEndResult,
 } from "../types/gamification";
+import type {
+  SessionStartRequest,
+  SessionStartResponse,
+  SessionTurnRequest,
+  SessionTurnResponse,
+  SessionEndResponse,
+} from "../types/tutor";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ⚙️ CONFIGURATION
@@ -1435,6 +1442,55 @@ export const chatApi = {
       `/api/chat/history/${summaryId}?include_voice=${includeVoice}`,
       { method: "DELETE" },
     );
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎓 TUTOR API — Le Tuteur conversationnel (sessions Redis TTL 1h)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const tutorApi = {
+  /**
+   * 🚀 Démarre une session Tutor : crée Redis + génère 1er prompt Magistral.
+   * Endpoint: POST /api/tutor/session/start
+   */
+  async sessionStart(
+    payload: SessionStartRequest,
+  ): Promise<SessionStartResponse> {
+    return request<SessionStartResponse>("/api/tutor/session/start", {
+      method: "POST",
+      body: payload as unknown as Record<string, unknown>,
+      timeout: 60000,
+    });
+  },
+
+  /**
+   * 💬 Un tour de conversation : user input -> IA response.
+   * Endpoint: POST /api/tutor/session/{session_id}/turn
+   */
+  async sessionTurn(
+    sessionId: string,
+    payload: SessionTurnRequest,
+  ): Promise<SessionTurnResponse> {
+    return request<SessionTurnResponse>(
+      `/api/tutor/session/${sessionId}/turn`,
+      {
+        method: "POST",
+        body: payload as unknown as Record<string, unknown>,
+        timeout: 60000,
+      },
+    );
+  },
+
+  /**
+   * 🏁 Termine une session : durée, log analytics, supprime Redis.
+   * Endpoint: POST /api/tutor/session/{session_id}/end
+   */
+  async sessionEnd(sessionId: string): Promise<SessionEndResponse> {
+    return request<SessionEndResponse>(`/api/tutor/session/${sessionId}/end`, {
+      method: "POST",
+      body: {},
+    });
   },
 };
 
@@ -3190,6 +3246,7 @@ export default {
   auth: authApi,
   video: videoApi,
   chat: chatApi,
+  tutor: tutorApi,
   reliability: reliabilityApi,
   playlist: playlistApi,
   billing: billingApi,

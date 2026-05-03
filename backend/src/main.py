@@ -363,6 +363,15 @@ except ImportError as e:
     VOICE_ROUTER_AVAILABLE = False
     logger.warning(f"⚠️ Voice router not available: {e}")
 
+# 🎓 Tutor router (Le Tuteur — sessions conversationnelles Magistral)
+try:
+    from tutor.router import router as tutor_router
+
+    TUTOR_ROUTER_AVAILABLE = True
+except ImportError as e:
+    TUTOR_ROUTER_AVAILABLE = False
+    logger.warning(f"⚠️ Tutor router not available: {e}")
+
 # 🎮 Gamification router (XP, badges, streaks, heat-map)
 try:
     from gamification.router import router as gamification_router
@@ -1185,6 +1194,11 @@ if VIDEO_CACHE_AVAILABLE:
 if VOICE_ROUTER_AVAILABLE:
     app.include_router(voice_router, prefix="/api/voice", tags=["Voice"])
     logger.info("🎙️ Voice router loaded (GET /api/voice/quota, POST /api/voice/session, POST /api/voice/webhook)")
+
+# 🎓 Tutor router (Le Tuteur — sessions conversationnelles Magistral)
+if TUTOR_ROUTER_AVAILABLE:
+    app.include_router(tutor_router, prefix="/api/tutor", tags=["Tutor"])
+    logger.info("🎓 Tutor router loaded (POST /api/tutor/session/start)")
 
 # 🎮 Gamification router (XP, badges, streaks)
 if GAMIFICATION_ROUTER_AVAILABLE:

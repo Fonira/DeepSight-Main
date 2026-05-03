@@ -120,6 +120,7 @@ PLANS: dict[str, dict[str, Any]] = {
             "tts_enabled": False,
             "geo_enabled": False,
             "geo_monthly": 0,
+            "companion_dialogue_enabled": False,  # 🎓 Le Tuteur — Pro+ uniquement
         },
         "features_display": [
             {"text": "5 analyses / mois", "icon": "📊"},
@@ -246,6 +247,7 @@ PLANS: dict[str, dict[str, Any]] = {
             "tts_enabled": False,
             "geo_enabled": True,
             "geo_monthly": 10,
+            "companion_dialogue_enabled": True,  # 🎓 Le Tuteur — disponible dès Pro
         },
         "features_display": [
             {"text": "25 analyses / mois", "icon": "📊"},
@@ -380,6 +382,7 @@ PLANS: dict[str, dict[str, Any]] = {
             "tts_enabled": True,
             "geo_enabled": True,
             "geo_monthly": -1,
+            "companion_dialogue_enabled": True,  # 🎓 Le Tuteur — disponible Pro et Expert
         },
         "features_display": [
             {"text": "100 analyses / mois", "icon": "📊"},
