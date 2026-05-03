@@ -1439,6 +1439,70 @@ export const chatApi = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 🎓 TUTOR API — Le Tuteur conversationnel (sessions Redis TTL 1h)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import type {
+  TutorSessionStartRequest,
+  TutorSessionStartResponse,
+  TutorSessionTurnRequest,
+  TutorSessionTurnResponse,
+  TutorSessionEndResponse,
+} from "../types/tutor";
+
+export const tutorApi = {
+  /**
+   * 🚀 Démarre une session avec le Tuteur sur un concept donné.
+   * Endpoint: POST /api/tutor/session/start
+   * Crée une session Redis (TTL 1h) et renvoie le 1er prompt Magistral.
+   */
+  async startSession(
+    payload: TutorSessionStartRequest,
+  ): Promise<TutorSessionStartResponse> {
+    return request<TutorSessionStartResponse>("/api/tutor/session/start", {
+      method: "POST",
+      body: payload as unknown as Record<string, unknown>,
+      timeout: 60000,
+    });
+  },
+
+  /**
+   * 💬 Envoie un tour de dialogue à la session active.
+   * Endpoint: POST /api/tutor/session/{id}/turn
+   * Si `audio_blob_b64` est fourni (voice mode V1.1), backend pipeline Voxtral
+   * STT → Magistral → ElevenLabs TTS et renvoie `audio_url`.
+   */
+  async sendTurn(
+    sessionId: string,
+    payload: TutorSessionTurnRequest,
+  ): Promise<TutorSessionTurnResponse> {
+    return request<TutorSessionTurnResponse>(
+      `/api/tutor/session/${sessionId}/turn`,
+      {
+        method: "POST",
+        body: payload as unknown as Record<string, unknown>,
+        timeout: 60000,
+      },
+    );
+  },
+
+  /**
+   * 🏁 Termine une session : log analytics, supprime la clé Redis.
+   * Endpoint: POST /api/tutor/session/{id}/end
+   * Renvoie durée, nombre de turns, et lien vers l'analyse source si dispo.
+   */
+  async endSession(sessionId: string): Promise<TutorSessionEndResponse> {
+    return request<TutorSessionEndResponse>(
+      `/api/tutor/session/${sessionId}/end`,
+      {
+        method: "POST",
+        body: {},
+      },
+    );
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // 🛡️ RELIABILITY API
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -3190,6 +3254,7 @@ export default {
   auth: authApi,
   video: videoApi,
   chat: chatApi,
+  tutor: tutorApi,
   reliability: reliabilityApi,
   playlist: playlistApi,
   billing: billingApi,
