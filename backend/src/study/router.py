@@ -176,6 +176,49 @@ async def generate_quiz(
             except Exception:
                 pass
 
+        # ─── V1 Semantic Search : matérialisation des quiz questions ────────────
+        import json as _json
+        from db.database import QuizQuestion as DBQuizQuestion
+        from sqlalchemy import delete as sa_delete
+
+        await session.execute(
+            sa_delete(DBQuizQuestion).where(DBQuizQuestion.summary_id == summary_id)
+        )
+
+        for idx, q in enumerate(quiz_questions):
+            # `q` peut être un Pydantic QuizQuestion (avec champs question/options/
+            # correct_index/explanation) ou un dict (avec en plus éventuellement
+            # `difficulty`). On gère les deux proprement via isinstance.
+            if isinstance(q, dict):
+                _question = q["question"]
+                _options = q["options"]
+                _correct = q["correct_index"]
+                _expl = q.get("explanation")
+                _diff = q.get("difficulty", "standard")
+            else:
+                _question = q.question
+                _options = q.options
+                _correct = q.correct_index
+                _expl = getattr(q, "explanation", None)
+                # Le Pydantic local QuizQuestion n'a pas de champ `difficulty`
+                _diff = getattr(q, "difficulty", "standard")
+            db_q = DBQuizQuestion(
+                summary_id=summary_id,
+                user_id=current_user.id,
+                position=idx,
+                question=_question,
+                options_json=_json.dumps(_options),
+                correct_index=_correct,
+                explanation=_expl,
+                difficulty=_diff,
+            )
+            session.add(db_q)
+
+        await session.commit()
+
+        # Le trigger embed_quiz sera ajouté en Task 17, pas dans cette task
+        # ─── End V1 Semantic Search materialization ─────────────────────────────
+
         return QuizResponse(
             success=True,
             summary_id=summary_id,
