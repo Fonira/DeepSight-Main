@@ -101,7 +101,7 @@ const fetchTournesolScore = async (
   }
 };
 
-export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
+const TournesolWidgetComponent: React.FC<TournesolWidgetProps> = ({
   videoId,
   compact = false,
 }) => {
@@ -312,6 +312,8 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
     </TouchableOpacity>
   );
 };
+
+export const TournesolWidget = React.memo(TournesolWidgetComponent);
 
 const styles = StyleSheet.create({
   container: {

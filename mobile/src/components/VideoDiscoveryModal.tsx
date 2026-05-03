@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
-  FlatList,
   TextInput,
   ActivityIndicator,
   Keyboard,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
@@ -125,22 +125,25 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
     }
   }, [visible, initialQuery]);
 
-  const handleSelectVideo = (video: DiscoveredVideo) => {
-    Haptics.selectionAsync();
+  const handleSelectVideo = useCallback(
+    (video: DiscoveredVideo) => {
+      Haptics.selectionAsync();
 
-    if (allowMultiSelect) {
-      setSelectedVideos((prev) => {
-        if (prev.includes(video.video_id)) {
-          return prev.filter((id) => id !== video.video_id);
-        }
-        return [...prev, video.video_id];
-      });
-    } else {
-      const url = `https://youtube.com/watch?v=${video.video_id}`;
-      onSelectVideo(video.video_id, url);
-      onClose();
-    }
-  };
+      if (allowMultiSelect) {
+        setSelectedVideos((prev) => {
+          if (prev.includes(video.video_id)) {
+            return prev.filter((id) => id !== video.video_id);
+          }
+          return [...prev, video.video_id];
+        });
+      } else {
+        const url = `https://youtube.com/watch?v=${video.video_id}`;
+        onSelectVideo(video.video_id, url);
+        onClose();
+      }
+    },
+    [allowMultiSelect, onSelectVideo, onClose],
+  );
 
   const handleConfirmMultiple = () => {
     if (onSelectMultiple) {
@@ -175,7 +178,8 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
     return Colors.accentError;
   };
 
-  const renderVideoItem = ({ item }: { item: DiscoveredVideo }) => {
+  const renderVideoItem = useCallback(
+    ({ item }: { item: DiscoveredVideo }) => {
     const isSelected = selectedVideos.includes(item.video_id);
 
     return (
@@ -281,7 +285,14 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
         />
       </TouchableOpacity>
     );
-  };
+    },
+    [colors, selectedVideos, allowMultiSelect, handleSelectVideo],
+  );
+
+  const keyExtractor = useCallback(
+    (item: DiscoveredVideo) => item.video_id,
+    [],
+  );
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -425,10 +436,10 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
             </View>
           ) : (
             !searchError && (
-              <FlatList
+              <FlashList
                 data={videos}
                 renderItem={renderVideoItem}
-                keyExtractor={(item) => item.video_id}
+                keyExtractor={keyExtractor}
                 keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={styles.listContent}

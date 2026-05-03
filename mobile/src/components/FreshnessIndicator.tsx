@@ -90,14 +90,14 @@ const formatRelativeTime = (days: number, isEn: boolean): string => {
     : `Il y a ${years} an${years > 1 ? "s" : ""}`;
 };
 
-export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
+const FreshnessIndicatorComponent: React.FC<FreshnessIndicatorProps> = ({
   publicationDate,
   daysSincePublished,
   freshnessLevel,
   compact = false,
   onPress,
 }) => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { language } = useLanguage();
   const isEn = language === "en";
 
@@ -178,6 +178,8 @@ export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
     </Container>
   );
 };
+
+export const FreshnessIndicator = React.memo(FreshnessIndicatorComponent);
 
 const styles = StyleSheet.create({
   container: {

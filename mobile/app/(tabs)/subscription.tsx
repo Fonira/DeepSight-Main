@@ -8,7 +8,7 @@
  * Apple Pay fonctionne automatiquement via le Stripe Checkout Web
  * lorsqu'on ouvre l'URL dans expo-web-browser sur iOS.
  */
-import React, { useCallback, useState } from "react";
+import React, { Suspense, lazy, useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -33,7 +33,11 @@ import { OfflineCache, CachePriority } from "@/services/OfflineCache";
 import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
 import { CreditPacksModal } from "@/components/billing";
-import VoiceAddonModal from "@/components/voice/VoiceAddonModal";
+
+// VoiceAddonModal is heavy (depends on billing API + LinearGradient + several
+// inputs) and only rendered when the user taps "Voice add-on" — defer the
+// module load until then to keep this tab's first-paint snappy.
+const VoiceAddonModal = lazy(() => import("@/components/voice/VoiceAddonModal"));
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
 import { palette } from "@/theme/colors";
@@ -774,10 +778,14 @@ export default function SubscriptionScreen() {
         visible={creditPacksVisible}
         onClose={() => setCreditPacksVisible(false)}
       />
-      <VoiceAddonModal
-        visible={voiceAddonVisible}
-        onClose={() => setVoiceAddonVisible(false)}
-      />
+      {voiceAddonVisible && (
+        <Suspense fallback={null}>
+          <VoiceAddonModal
+            visible={voiceAddonVisible}
+            onClose={() => setVoiceAddonVisible(false)}
+          />
+        </Suspense>
+      )}
     </View>
   );
 }

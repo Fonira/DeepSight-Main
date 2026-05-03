@@ -36,7 +36,7 @@ const SOURCE_NAMES: Record<string, string> = {
   arxiv: "arXiv",
 };
 
-export const PaperCard: React.FC<PaperCardProps> = ({
+const PaperCardComponent: React.FC<PaperCardProps> = ({
   paper,
   onSelect,
   isSelected = false,
@@ -239,6 +239,8 @@ export const PaperCard: React.FC<PaperCardProps> = ({
     </Card>
   );
 };
+
+export const PaperCard = React.memo(PaperCardComponent);
 
 const styles = StyleSheet.create({
   card: {

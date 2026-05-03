@@ -34,7 +34,7 @@ const formatTime = (s: number) => {
 const TICK_MS = 60; // ~16fps - assez fluide pour une waveform de 8-15s
 const PLAYED_COLOR = "#6366f1";
 
-export const VoiceBubble: React.FC<Props> = ({
+const VoiceBubbleComponent: React.FC<Props> = ({
   durationSecs,
   bars,
   transcript,
@@ -175,6 +175,8 @@ export const VoiceBubble: React.FC<Props> = ({
     </View>
   );
 };
+
+export const VoiceBubble = React.memo(VoiceBubbleComponent);
 
 const styles = StyleSheet.create({
   column: {

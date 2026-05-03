@@ -26,14 +26,15 @@ const MetricBadge: React.FC<{
   value: string;
   bgColor: string;
   textColor: string;
-}> = ({ emoji, value, bgColor, textColor }) => (
+}> = React.memo(({ emoji, value, bgColor, textColor }) => (
   <View style={[styles.badge, { backgroundColor: bgColor }]}>
     <Text style={styles.badgeEmoji}>{emoji}</Text>
     <Text style={[styles.badgeText, { color: textColor }]}>{value}</Text>
   </View>
-);
+));
+MetricBadge.displayName = "MetricBadge";
 
-export const EngagementMetrics: React.FC<EngagementMetricsProps> = ({
+const EngagementMetricsComponent: React.FC<EngagementMetricsProps> = ({
   viewCount,
   likeCount,
   commentCount,
@@ -111,6 +112,8 @@ export const EngagementMetrics: React.FC<EngagementMetricsProps> = ({
     </View>
   );
 };
+
+export const EngagementMetrics = React.memo(EngagementMetricsComponent);
 
 const styles = StyleSheet.create({
   container: {

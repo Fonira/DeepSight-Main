@@ -53,7 +53,7 @@ const formatDuration = (seconds?: number): string => {
   return `${min}min`;
 };
 
-export const AnalysisCard: React.FC<AnalysisCardProps> = ({
+const AnalysisCardComponent: React.FC<AnalysisCardProps> = ({
   summary,
   isFavorite,
   onPress,
@@ -240,6 +240,8 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
     </View>
   );
 };
+
+export const AnalysisCard = React.memo(AnalysisCardComponent);
 
 const styles = StyleSheet.create({
   swipeWrapper: {

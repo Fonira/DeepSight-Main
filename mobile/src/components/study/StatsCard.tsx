@@ -103,7 +103,7 @@ const ScoreMini: React.FC<{ score: number }> = ({ score }) => {
   );
 };
 
-export const StatsCard: React.FC<StatsCardProps> = ({ stats }) => {
+const StatsCardComponent: React.FC<StatsCardProps> = ({ stats }) => {
   const { colors } = useTheme();
   const hasStats = stats.totalStudied > 0;
 
@@ -157,6 +157,8 @@ export const StatsCard: React.FC<StatsCardProps> = ({ stats }) => {
     </Card>
   );
 };
+
+export const StatsCard = React.memo(StatsCardComponent);
 
 const styles = StyleSheet.create({
   row: {

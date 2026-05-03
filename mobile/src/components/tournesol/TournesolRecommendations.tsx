@@ -10,11 +10,11 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   Pressable,
   ActivityIndicator,
   Linking,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -66,7 +66,7 @@ export function TournesolRecommendations({
   limit = 10,
   refreshTrigger = 0,
 }: Props) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const router = useRouter();
   const isOffline = useIsOffline();
   const [results, setResults] = useState<TournesolResult[]>([]);
@@ -173,7 +173,8 @@ export function TournesolRecommendations({
     return null; // Silently hide if no data
   }
 
-  const renderCard = ({ item }: { item: TournesolResult }) => {
+  const renderCard = useCallback(
+    ({ item }: { item: TournesolResult }) => {
     const videoId = item.entity.metadata.video_id;
     const score = item.collective_rating.tournesol_score;
     const thumbnail = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
@@ -256,7 +257,14 @@ export function TournesolRecommendations({
         </View>
       </Pressable>
     );
-  };
+    },
+    [colors.bgElevated, colors.border, colors.textPrimary, colors.textTertiary, colors.textMuted, handleVideoPress, language],
+  );
+
+  const keyExtractor = useCallback(
+    (item: TournesolResult) => item.entity.uid,
+    [],
+  );
 
   return (
     <Animated.View
@@ -286,16 +294,18 @@ export function TournesolRecommendations({
       </Text>
 
       {/* Horizontal carousel */}
-      <FlatList
-        data={results}
-        renderItem={renderCard}
-        keyExtractor={(item) => item.entity.uid}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.list}
-        snapToInterval={220}
-        decelerationRate="fast"
-      />
+      <View style={styles.listWrapper}>
+        <FlashList
+          data={results}
+          renderItem={renderCard}
+          keyExtractor={keyExtractor}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.list}
+          snapToInterval={220}
+          decelerationRate="fast"
+        />
+      </View>
     </Animated.View>
   );
 }
@@ -332,12 +342,15 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     marginBottom: sp.md,
   },
+  listWrapper: {
+    height: 240,
+  },
   list: {
-    gap: sp.md,
     paddingRight: sp.lg,
   },
   card: {
     width: 200,
+    marginRight: sp.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     overflow: "hidden",

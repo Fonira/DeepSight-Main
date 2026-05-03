@@ -25,7 +25,7 @@ const fontSizes: Record<string, number> = {
   xl: 28,
 };
 
-export const Avatar: React.FC<AvatarProps> = ({
+const AvatarComponent: React.FC<AvatarProps> = ({
   uri,
   name,
   size = "md",
@@ -80,6 +80,8 @@ export const Avatar: React.FC<AvatarProps> = ({
     </View>
   );
 };
+
+export const Avatar = React.memo(AvatarComponent);
 
 const styles = StyleSheet.create({
   image: {

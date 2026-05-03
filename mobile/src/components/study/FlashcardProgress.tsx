@@ -39,7 +39,7 @@ interface FlashcardProgressProps {
   strokeColor?: string;
 }
 
-export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
+const FlashcardProgressComponent: React.FC<FlashcardProgressProps> = ({
   progress,
   size = 64,
   strokeWidth = 5,
@@ -144,6 +144,8 @@ export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
     </Animated.View>
   );
 };
+
+export const FlashcardProgress = React.memo(FlashcardProgressComponent);
 
 const styles = StyleSheet.create({
   container: {

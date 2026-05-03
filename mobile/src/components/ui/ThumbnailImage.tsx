@@ -30,7 +30,7 @@ const getYouTubeFallbacks = (videoId: string): string[] => [
   `https://img.youtube.com/vi/${videoId}/default.jpg`,
 ];
 
-export const ThumbnailImage: React.FC<ThumbnailImageProps> = ({
+const ThumbnailImageComponent: React.FC<ThumbnailImageProps> = ({
   uri,
   videoId,
   style,
@@ -88,6 +88,8 @@ export const ThumbnailImage: React.FC<ThumbnailImageProps> = ({
     />
   );
 };
+
+export const ThumbnailImage = React.memo(ThumbnailImageComponent);
 
 const styles = StyleSheet.create({
   placeholder: {

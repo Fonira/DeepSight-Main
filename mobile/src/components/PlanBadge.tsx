@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, StyleSheet, Pressable, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -17,7 +17,7 @@ interface PlanBadgeProps {
   compact?: boolean;
 }
 
-export const PlanBadge: React.FC<PlanBadgeProps> = ({
+const PlanBadgeComponent: React.FC<PlanBadgeProps> = ({
   planName,
   planIcon,
   planColor,
@@ -27,10 +27,10 @@ export const PlanBadge: React.FC<PlanBadgeProps> = ({
 }) => {
   const { colors } = useTheme();
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Linking.openURL(UPGRADE_URL);
-  };
+  }, []);
 
   const showUsage = analysesUsed !== undefined && analysesLimit !== undefined;
   const isUnlimited = analysesLimit === -1;
@@ -70,6 +70,8 @@ export const PlanBadge: React.FC<PlanBadgeProps> = ({
     </Pressable>
   );
 };
+
+export const PlanBadge = React.memo(PlanBadgeComponent);
 
 const styles = StyleSheet.create({
   container: {
