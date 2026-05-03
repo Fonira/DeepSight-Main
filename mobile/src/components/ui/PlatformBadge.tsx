@@ -76,7 +76,7 @@ const SIZE_MAP = {
   },
 } as const;
 
-export const PlatformBadge: React.FC<PlatformBadgeProps> = ({
+const PlatformBadgeComponent: React.FC<PlatformBadgeProps> = ({
   platform = "youtube",
   size = "sm",
   showLabel = true,
@@ -145,6 +145,8 @@ export const PlatformBadge: React.FC<PlatformBadgeProps> = ({
     </View>
   );
 };
+
+export const PlatformBadge = React.memo(PlatformBadgeComponent);
 
 /**
  * Détecte la plateforme à partir de l'URL ou du videoId

@@ -44,7 +44,7 @@ const getScoreLabel = (score: number, isEn: boolean): string => {
   return isEn ? "Low" : "Faible";
 };
 
-export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
+const ReliabilityScoreComponent: React.FC<ReliabilityScoreProps> = ({
   overallScore,
   confidence,
   factors = [],
@@ -53,7 +53,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
   onAnalyze,
   isLoading = false,
 }) => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { language } = useLanguage();
   const isEn = language === "en";
 
@@ -345,6 +345,8 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
     </>
   );
 };
+
+export const ReliabilityScore = React.memo(ReliabilityScoreComponent);
 
 const styles = StyleSheet.create({
   container: {

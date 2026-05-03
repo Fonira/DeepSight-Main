@@ -125,22 +125,25 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
     }
   }, [visible, initialQuery]);
 
-  const handleSelectVideo = (video: DiscoveredVideo) => {
-    Haptics.selectionAsync();
+  const handleSelectVideo = useCallback(
+    (video: DiscoveredVideo) => {
+      Haptics.selectionAsync();
 
-    if (allowMultiSelect) {
-      setSelectedVideos((prev) => {
-        if (prev.includes(video.video_id)) {
-          return prev.filter((id) => id !== video.video_id);
-        }
-        return [...prev, video.video_id];
-      });
-    } else {
-      const url = `https://youtube.com/watch?v=${video.video_id}`;
-      onSelectVideo(video.video_id, url);
-      onClose();
-    }
-  };
+      if (allowMultiSelect) {
+        setSelectedVideos((prev) => {
+          if (prev.includes(video.video_id)) {
+            return prev.filter((id) => id !== video.video_id);
+          }
+          return [...prev, video.video_id];
+        });
+      } else {
+        const url = `https://youtube.com/watch?v=${video.video_id}`;
+        onSelectVideo(video.video_id, url);
+        onClose();
+      }
+    },
+    [allowMultiSelect, onSelectVideo, onClose],
+  );
 
   const handleConfirmMultiple = () => {
     if (onSelectMultiple) {
@@ -283,7 +286,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
       </TouchableOpacity>
     );
     },
-    [colors, selectedVideos, allowMultiSelect],
+    [colors, selectedVideos, allowMultiSelect, handleSelectVideo],
   );
 
   const keyExtractor = useCallback(
