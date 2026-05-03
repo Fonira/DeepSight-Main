@@ -147,9 +147,9 @@ class TestGetChannelContext:
         assert cmd[0] == "yt-dlp"
         assert "--flat-playlist" in cmd
         assert "--dump-single-json" in cmd
-        assert "--playlistend" in cmd
-        idx = cmd.index("--playlistend")
-        assert cmd[idx + 1] == "50"
+        assert "--playlist-items" in cmd
+        idx = cmd.index("--playlist-items")
+        assert cmd[idx + 1] == "1:50"
         assert "--no-warnings" in cmd
         assert "--skip-download" in cmd
         # URL canonique pour un UC...
