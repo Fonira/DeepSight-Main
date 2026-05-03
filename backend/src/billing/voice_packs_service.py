@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.database import (
     User,
     VoiceCreditPack,
-    VoiceQuotaStreaming,
 )
 from billing.voice_quota import (
     TOP_TIER_PLANS,

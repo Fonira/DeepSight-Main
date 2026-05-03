@@ -8,11 +8,10 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
 
 from db.database import (
     async_session_maker,
@@ -22,7 +21,6 @@ from db.database import (
     FlashcardEmbedding,
     QuizQuestion,
     QuizEmbedding,
-    ChatMessage,
     ChatEmbedding,
     TranscriptEmbedding,
     TranscriptCache,
