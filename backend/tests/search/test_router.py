@@ -495,3 +495,61 @@ async def test_explain_passage_works_for_pro_user(
     body = response.json()
     assert "X" in body["explanation"]
     assert body["model_used"] == "mistral-small-latest"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🧪 Tests — Task 15 : recent queries (push automatique + GET/DELETE)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_recent_queries_empty_initially(
+    authed_client: AsyncClient, cleanup_recent_queries
+):
+    """Sans aucune query précédente, GET retourne une liste vide."""
+    response = await authed_client.get("/api/search/recent-queries")
+    assert response.status_code == 200, response.text
+    assert response.json()["queries"] == []
+
+
+@pytest.mark.asyncio
+async def test_recent_queries_pushed_on_global_search(
+    authed_client: AsyncClient,
+    authed_user,
+    patched_query_embedding,
+    cleanup_recent_queries,
+):
+    """Après un POST /global, la query est ajoutée au top de la liste recent.
+
+    On teste via push direct (le fire-and-forget asyncio.create_task est
+    hors scope des sync assertions car il s'exécute après le return).
+    """
+    from search.recent_queries import push_recent_query, get_recent_queries
+
+    # Push direct (équivalent à ce que fait l'endpoint en fire-and-forget)
+    await push_recent_query(user_id=authed_user.id, query="test query")
+    queries = await get_recent_queries(user_id=authed_user.id)
+    assert "test query" in queries
+
+    # Vérifie aussi que l'endpoint GET expose bien la même donnée
+    response = await authed_client.get("/api/search/recent-queries")
+    assert response.status_code == 200
+    assert "test query" in response.json()["queries"]
+
+
+@pytest.mark.asyncio
+async def test_recent_queries_clear(
+    authed_client: AsyncClient, authed_user, cleanup_recent_queries
+):
+    """DELETE /recent-queries efface les queries (statut 204, body vide)."""
+    from search.recent_queries import push_recent_query
+
+    await push_recent_query(authed_user.id, "to-clear")
+
+    response = await authed_client.delete("/api/search/recent-queries")
+    assert response.status_code == 204
+    assert response.text == ""
+
+    response = await authed_client.get("/api/search/recent-queries")
+    assert response.status_code == 200
+    assert response.json()["queries"] == []
