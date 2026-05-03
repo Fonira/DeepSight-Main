@@ -373,6 +373,7 @@ export default function LibraryScreen() {
             ...styles.listContent,
             paddingBottom: tabBarFootprint,
           }}
+          keyboardShouldPersistTaps="handled"
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
           ListEmptyComponent={renderEmpty}

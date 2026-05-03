@@ -185,6 +185,7 @@ export default function StudyScreen() {
           { paddingTop: insets.top + sp.lg },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
         <Text style={[styles.title, { color: colors.textPrimary }]}>
