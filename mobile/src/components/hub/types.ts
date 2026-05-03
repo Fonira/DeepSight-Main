@@ -3,22 +3,12 @@
 // Mobile mirror of frontend/src/components/hub/types.ts.
 // Doit rester aligne avec le backend (PR #203 - HubMessage Pydantic).
 // Le mapping voice (voice_user / voice_agent / text) est applique au fetch dans HubScreen.
-
-export interface HubMessage {
-  /** crypto.randomUUID() cote client - evite les collisions de cles. */
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  source: "text" | "voice_user" | "voice_agent";
-  sources?: { title: string; url: string }[];
-  web_search_used?: boolean;
-  voice_session_id?: string | null;
-  time_in_call_secs?: number;
-  /** Pour les bulles voice - duree audio en secondes (waveform). */
-  audio_duration_secs?: number;
-  /** Date.now() au moment de l'append. */
-  timestamp: number;
-}
+//
+// Note (Hub Tab Unified, mai 2026) : les types HubMessage et HubVoiceState
+// ont ete retires car les composants mock qui les utilisaient (Timeline,
+// MessageBubble, VoiceBubble, CallModeFullBleed) ont ete supprimes.
+// Conservent : HubConversation (ConversationsDrawer + hub.tsx),
+// HubSummaryContext (SummaryCollapsible).
 
 export interface HubConversation {
   id: number;
@@ -47,10 +37,3 @@ export interface HubSummaryContext {
   /** Citations [timestamp_secs, label] cliquables qui jump au PiP. */
   citations: { ts: number; label: string }[];
 }
-
-export type HubVoiceState =
-  | "idle"
-  | "ptt_recording"
-  | "call_connecting"
-  | "call_active"
-  | "call_ending";

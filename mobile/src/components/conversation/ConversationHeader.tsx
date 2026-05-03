@@ -47,7 +47,10 @@ interface ConversationHeaderProps {
   remainingMinutes: number;
   onOpenSettings: () => void;
   onOpenAddon: () => void;
-  onClose: () => void;
+  /** Hub tab : burger ouvre ConversationsDrawer. Si null/absent : pas de burger. */
+  onMenuPress?: () => void;
+  /** Modal mode : close button. Si null/absent : pas de close. */
+  onClose?: () => void;
 }
 
 const platformBadge = (p: Platform_) => {
@@ -64,6 +67,7 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   remainingMinutes,
   onOpenSettings,
   onOpenAddon,
+  onMenuPress,
   onClose,
 }) => {
   const { colors } = useTheme();
@@ -107,7 +111,12 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   };
   const handleClose = () => {
     haptics.light();
-    onClose();
+    onClose?.();
+  };
+
+  const handleMenu = () => {
+    haptics.light();
+    onMenuPress?.();
   };
 
   const handleTitlePress = () => {
@@ -139,6 +148,28 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
         },
       ]}
     >
+      {onMenuPress ? (
+        <Pressable
+          onPress={handleMenu}
+          hitSlop={12}
+          testID="header-menu"
+          style={({ pressed }) => [
+            styles.iconBtn,
+            {
+              backgroundColor: colors.bgTertiary,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Conversations"
+        >
+          <Ionicons
+            name="menu-outline"
+            size={24}
+            color={colors.textSecondary}
+          />
+        </Pressable>
+      ) : null}
       <Pressable
         style={styles.titles}
         onPress={handleTitlePress}
@@ -198,26 +229,28 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
           />
         </Animated.View>
       </Pressable>
-      <Animated.View style={closeStyle}>
-        <Pressable
-          onPress={handleClose}
-          onPressIn={handleClosePressIn}
-          onPressOut={handleClosePressOut}
-          hitSlop={12}
-          testID="header-close"
-          style={({ pressed }) => [
-            styles.iconBtn,
-            {
-              backgroundColor: colors.bgTertiary,
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Fermer"
-        >
-          <Ionicons name="close" size={20} color={colors.textSecondary} />
-        </Pressable>
-      </Animated.View>
+      {onClose ? (
+        <Animated.View style={closeStyle}>
+          <Pressable
+            onPress={handleClose}
+            onPressIn={handleClosePressIn}
+            onPressOut={handleClosePressOut}
+            hitSlop={12}
+            testID="header-close"
+            style={({ pressed }) => [
+              styles.iconBtn,
+              {
+                backgroundColor: colors.bgTertiary,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Fermer"
+          >
+            <Ionicons name="close" size={20} color={colors.textSecondary} />
+          </Pressable>
+        </Animated.View>
+      ) : null}
     </View>
   );
 };

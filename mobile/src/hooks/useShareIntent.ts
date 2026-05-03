@@ -105,12 +105,12 @@ export function useDeepSightShareIntent(): void {
           throw new Error("No summary_id returned");
         }
 
-        // Navigate directly to Quick Chat screen
+        // Navigate to Hub tab in chat mode
         router.push({
-          pathname: "/(tabs)/analysis/[id]",
+          pathname: "/(tabs)/hub",
           params: {
-            id: String(result.summary_id),
-            quickChat: "true",
+            summaryId: String(result.summary_id),
+            initialMode: "chat",
           },
         } as any);
       } catch (err: any) {

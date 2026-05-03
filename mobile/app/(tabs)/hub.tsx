@@ -1,175 +1,155 @@
-// mobile/app/(tabs)/hub.tsx
-//
-// Hub conversationnel mobile - mirror de frontend/src/pages/HubPage.tsx.
-// Donnees mock pour l'instant (sampleData.ts). Wire-up backend (videoApi.getHistory + chatApi.getHistory)
-// dans une PR ulterieure.
-//
-// Architecture :
-//   <SafeAreaView>
-//     <DoodleBackground />               background ambient sparse
-//     <HubHeader />                      sticky top : burger / logo / titre / pip slot
-//     <SummaryCollapsible />              card collapsible
-//     <Timeline messages={} />            FlashList
-//     <InputBar />                        bottom : + / input / send|phone+mic
-//     <SourcesShelf />                    pill mono bottom
-//   <ConversationsDrawer />              modal slide-in gauche
-//   <CallModeFullBleed />                modal slide-up plein ecran
-//   <VideoPiPPlayer expanded />           overlay quand expanded=true
+/**
+ * mobile/app/(tabs)/hub.tsx
+ *
+ * Tab Hub unifié — chat + voice dans une seule UI.
+ *   - Pas de summaryId param → HubEmptyState (URL paste + pick conv)
+ *   - summaryId param → ConversationContent embedded
+ *   - Auto-resolve : si pas de summaryId mais history non-vide → push la 1ère conv
+ *   - Drawer multi-conv avec setParams + key remount
+ *
+ * Source of truth = params Expo Router (deep-link friendly).
+ *
+ * Spec : `docs/superpowers/specs/2026-05-04-mobile-hub-tab-unified-design.md` §4.4
+ */
 
-import React, { useCallback, useState } from "react";
-import { StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
-import { DoodleBackground } from "@/components/ui/DoodleBackground";
-import {
-  CallModeFullBleed,
-  ConversationsDrawer,
-  HubHeader,
-  InputBar,
-  type HubConversation,
-  type HubMessage,
-  SAMPLE_CONVERSATIONS,
-  SAMPLE_MESSAGES,
-  SAMPLE_SUMMARY_CONTEXT,
-  SourcesShelf,
-  SummaryCollapsible,
-  Timeline,
-  VideoPiPPlayer,
-} from "@/components/hub";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { View, StyleSheet, Alert } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { ConversationContent } from "@/components/conversation";
+import { ConversationsDrawer } from "@/components/hub/ConversationsDrawer";
+import { HubEmptyState } from "@/components/hub/HubEmptyState";
+import { historyApi, videoApi } from "@/services/api";
+import type { HubConversation } from "@/components/hub/types";
+import type { AnalysisSummary } from "@/types";
 
-const newId = () =>
-  typeof crypto !== "undefined" && (crypto as Crypto).randomUUID
-    ? (crypto as Crypto).randomUUID()
-    : `m-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+/**
+ * Map AnalysisSummary (retour historyApi.getHistory) → HubConversation
+ * (type attendu par ConversationsDrawer). Le drawer n'utilise pas tous les
+ * champs ; on remplit ce qui peut l'être.
+ */
+const toHubConversation = (s: AnalysisSummary): HubConversation => {
+  const numericId = Number(s.id);
+  // video_source est limité à youtube|tiktok côté drawer (pas "text")
+  const source: "youtube" | "tiktok" | undefined =
+    s.platform === "youtube" || s.platform === "tiktok"
+      ? s.platform
+      : undefined;
+  return {
+    id: numericId,
+    summary_id: numericId,
+    title: s.title || "Sans titre",
+    video_source: source,
+    video_thumbnail_url: s.thumbnail ?? null,
+    last_snippet: undefined,
+    updated_at: s.updatedAt ?? s.createdAt ?? new Date().toISOString(),
+  };
+};
 
 export default function HubScreen() {
-  // ── Local mock state - sera remplace par useHubStore (Zustand) en V2 ──
-  const [conversations] = useState<HubConversation[]>(SAMPLE_CONVERSATIONS);
-  const [activeConvId, setActiveConvId] = useState<number | null>(1);
-  const [messages, setMessages] = useState<HubMessage[]>(SAMPLE_MESSAGES);
+  const params = useLocalSearchParams<{
+    summaryId?: string;
+    videoUrl?: string;
+    initialMode?: "chat" | "call";
+  }>();
+  const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [voiceCallOpen, setVoiceCallOpen] = useState(false);
-  const [pipExpanded, setPipExpanded] = useState(false);
-  const [isThinking, setIsThinking] = useState(false);
 
-  const activeConv = conversations.find((c) => c.id === activeConvId) ?? null;
+  const summaryId = params.summaryId ?? null;
+  const initialMode = params.initialMode ?? "chat";
 
-  const handleSend = useCallback((text: string) => {
-    const userMsg: HubMessage = {
-      id: newId(),
-      role: "user",
-      content: text,
-      source: "text",
-      timestamp: Date.now(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
+  // Charger l'historique pour le drawer ET pour fallback last-conv
+  const { data: historyData } = useQuery({
+    queryKey: ["history", "hub-drawer"],
+    queryFn: () => historyApi.getHistory(1, 50),
+  });
 
-    // Simulate AI thinking response (mock for visual proto)
-    setIsThinking(true);
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: newId(),
-          role: "assistant",
-          content:
-            "Reponse simulee (mock). Le wire-up backend (chatApi.send) sera fait dans une PR ulterieure.",
-          source: "text",
-          timestamp: Date.now(),
-        },
-      ]);
-      setIsThinking(false);
-    }, 900);
-  }, []);
+  const conversations: AnalysisSummary[] = historyData?.items ?? [];
+  const drawerConvs: HubConversation[] = useMemo(
+    () => conversations.map(toHubConversation),
+    [conversations],
+  );
 
-  const handlePttHoldComplete = useCallback((_durationSecs: number) => {
-    setVoiceCallOpen(true);
-  }, []);
+  const activeConv = useMemo(
+    () => conversations.find((c) => String(c.id) === summaryId) ?? null,
+    [conversations, summaryId],
+  );
 
-  const handleSelectConv = useCallback((id: number) => {
-    setActiveConvId(id);
-    // En V2 : trigger fetch chatApi.getHistory(id)
-  }, []);
+  // Auto-resolve : si pas de summaryId mais history non vide → push le 1er
+  useEffect(() => {
+    if (!summaryId && conversations.length > 0) {
+      router.setParams({
+        summaryId: String(conversations[0].id),
+        initialMode: "chat",
+      });
+    }
+  }, [summaryId, conversations, router]);
+
+  const handleSelectConv = useCallback(
+    (id: string | number) => {
+      router.setParams({ summaryId: String(id), initialMode: "chat" });
+      setDrawerOpen(false);
+    },
+    [router],
+  );
 
   const handleNewConv = useCallback(() => {
-    setActiveConvId(null);
-    setMessages([]);
-  }, []);
+    // setParams(undefined) clear la query (Expo Router)
+    router.setParams({ summaryId: undefined, initialMode: undefined });
+    setDrawerOpen(false);
+  }, [router]);
+
+  const handlePasteUrl = useCallback(
+    async (url: string) => {
+      try {
+        const result = await videoApi.quickChat(url);
+        router.setParams({
+          summaryId: String(result.summary_id),
+          initialMode: "chat",
+        });
+      } catch (err: unknown) {
+        const e = err as { message?: string; detail?: string };
+        const msg =
+          e?.message || e?.detail || "Impossible de démarrer la conversation.";
+        Alert.alert("Erreur", msg);
+      }
+    },
+    [router],
+  );
+
+  // Active conv platform pour ConversationContent header
+  const headerPlatform: "youtube" | "tiktok" =
+    activeConv?.platform === "tiktok" ? "tiktok" : "youtube";
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
-      <StatusBar style="light" />
-      <View style={styles.bgWrap} pointerEvents="none">
-        <DoodleBackground variant="default" density="low" />
-      </View>
-
-      <HubHeader
-        onMenuClick={() => setDrawerOpen(true)}
-        title={activeConv?.title ?? "Hub"}
-        subtitle={
-          activeConv
-            ? `${activeConv.video_source?.toUpperCase() ?? "YOUTUBE"} · ${SAMPLE_SUMMARY_CONTEXT.video_duration_secs ? "18:32" : ""} · analysee il y a 12 min`
-            : undefined
-        }
-        videoSource={activeConv?.video_source ?? null}
-        pipSlot={
-          activeConv?.summary_id ? (
-            <VideoPiPPlayer
-              thumbnailUrl={activeConv.video_thumbnail_url ?? null}
-              title={activeConv.title}
-              durationSecs={SAMPLE_SUMMARY_CONTEXT.video_duration_secs}
-              expanded={false}
-              onExpand={() => setPipExpanded(true)}
-              onShrink={() => setPipExpanded(false)}
-            />
-          ) : null
-        }
-      />
-
-      <View style={styles.body}>
-        {activeConvId !== null ? (
-          <SummaryCollapsible context={SAMPLE_SUMMARY_CONTEXT} />
-        ) : null}
-        <Timeline messages={messages} isThinking={isThinking} />
-        <InputBar
-          onSend={handleSend}
-          onCallToggle={() => setVoiceCallOpen(!voiceCallOpen)}
-          onPttHoldComplete={handlePttHoldComplete}
-          disabled={activeConvId === null}
+    <View style={styles.root}>
+      {summaryId ? (
+        <ConversationContent
+          key={summaryId}
+          summaryId={summaryId}
+          initialMode={initialMode}
+          videoTitle={activeConv?.title ?? "Conversation"}
+          channelName={activeConv?.channel}
+          platform={headerPlatform}
+          initialFavorite={activeConv?.isFavorite ?? false}
+          onMenuPress={() => setDrawerOpen(true)}
         />
-        <View style={styles.shelfWrap}>
-          <SourcesShelf compact />
-        </View>
-      </View>
-
-      {pipExpanded && activeConv?.summary_id ? (
-        <VideoPiPPlayer
-          thumbnailUrl={activeConv.video_thumbnail_url ?? null}
-          title={activeConv.title}
-          durationSecs={SAMPLE_SUMMARY_CONTEXT.video_duration_secs}
-          expanded
-          onExpand={() => setPipExpanded(true)}
-          onShrink={() => setPipExpanded(false)}
+      ) : (
+        <HubEmptyState
+          onPickConv={() => setDrawerOpen(true)}
+          onPasteUrl={handlePasteUrl}
         />
-      ) : null}
+      )}
 
       <ConversationsDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        conversations={conversations}
-        activeConvId={activeConvId}
+        conversations={drawerConvs}
+        activeConvId={summaryId ? Number(summaryId) : null}
         onSelect={handleSelectConv}
         onNewConv={handleNewConv}
       />
-
-      <CallModeFullBleed
-        open={voiceCallOpen}
-        onClose={() => setVoiceCallOpen(false)}
-        summaryId={activeConv?.summary_id ?? null}
-        title={activeConv?.title ?? null}
-        subtitle={null}
-      />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -177,18 +157,5 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#0a0a0f",
-  },
-  bgWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  body: {
-    flex: 1,
-    flexDirection: "column",
-  },
-  shelfWrap: {
-    paddingHorizontal: 12,
-    paddingTop: 4,
-    paddingBottom: 10,
-    alignItems: "center",
   },
 });

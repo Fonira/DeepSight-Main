@@ -4,7 +4,9 @@
  * Spec : `docs/superpowers/specs/2026-05-02-quick-chat-call-unified-design.md`
  */
 export { ConversationScreen } from "./ConversationScreen";
+export { ConversationContent } from "./ConversationContent";
 export type { ConversationScreenProps } from "./ConversationScreen";
+export type { ConversationContentProps } from "./ConversationContent";
 export { ConversationHeader } from "./ConversationHeader";
 export { ConversationFeed } from "./ConversationFeed";
 export { ConversationFeedBubble } from "./ConversationFeedBubble";

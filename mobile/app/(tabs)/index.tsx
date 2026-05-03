@@ -92,12 +92,10 @@ export default function HomeScreen() {
       const result = await videoApi.quickChat(url);
       setQuickChatUrl("");
       router.push({
-        pathname: "/(tabs)/analysis/[id]",
+        pathname: "/(tabs)/hub",
         params: {
-          id: String(result.summary_id),
-          backTo: "home",
-          initialTab: "1",
-          quickChat: "true",
+          summaryId: String(result.summary_id),
+          initialMode: "chat",
         },
       } as any);
     } catch (err: any) {

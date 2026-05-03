@@ -24,6 +24,11 @@ jest.mock("../../../contexts/PlanContext", () => ({
   useVoiceChatGate: () => mockUseVoiceChatGate(),
 }));
 
+// Mock useTabBarFootprint (déterministe = 90)
+jest.mock("../../../hooks/useTabBarFootprint", () => ({
+  useTabBarFootprint: () => 90,
+}));
+
 // Mock colors / shadows
 jest.mock("../../../theme/colors", () => ({
   palette: {
@@ -235,7 +240,7 @@ describe("VoiceButton (Mobile)", () => {
     });
 
     const customOffset = 150;
-    const { getByLabelText } = render(
+    const tree = render(
       <VoiceButton
         videoTitle="Test"
         onSessionStart={onSessionStart}
@@ -243,17 +248,18 @@ describe("VoiceButton (Mobile)", () => {
       />,
     );
 
-    // On lit l'arbre rendu — le container parent doit avoir bottom = 150
-    const button = getByLabelText(/Démarrer le chat vocal/);
-    // Le Pressable est dans un View avec style { bottom: customOffset }.
-    // Remonte d'un parent (Pressable -> View container).
-    const container = button.parent?.parent;
-    const flatStyle = Array.isArray(container?.props?.style)
-      ? container?.props?.style
-          .flat()
-          .reduce((a: any, s: any) => ({ ...a, ...s }), {})
-      : container?.props?.style;
-    expect(flatStyle?.bottom).toBe(customOffset);
+    // Walk-down : trouve le premier View ayant `bottom` dans son style.
+    const flatten = (s: any): any => {
+      if (!s) return {};
+      if (Array.isArray(s))
+        return s.flat().reduce((a, x) => ({ ...a, ...flatten(x) }), {});
+      return s;
+    };
+    const allViews = tree.UNSAFE_root.findAllByType("View" as any);
+    const containerView = allViews.find(
+      (v: any) => flatten(v.props?.style).bottom !== undefined,
+    );
+    expect(flatten(containerView?.props?.style).bottom).toBe(customOffset);
   });
 
   it("rend sans summaryId quand agentType=companion (mode sans vidéo)", () => {

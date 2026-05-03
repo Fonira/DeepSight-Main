@@ -27,11 +27,9 @@ import { AnalysisSkeleton } from "@/components/ui/SkeletonLoader";
 import { VideoPlayer } from "@/components/analysis/VideoPlayer";
 import { StreamingOverlay } from "@/components/analysis/StreamingOverlay";
 import { AnalysisContentDisplay } from "@/components/analysis/AnalysisContentDisplay";
-import { ChatView } from "@/components/analysis/ChatView";
 import { ActionBar } from "@/components/analysis/ActionBar";
 import { ConversationScreen } from "@/components/conversation";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
-import { DeepSightSpinner } from "@/components/ui/DeepSightSpinner";
 import { VoiceButton } from "@/components/voice/VoiceButton";
 import { ExportMenu } from "@/components/export";
 import { AcademicSourcesSection } from "@/components/academic";
@@ -43,11 +41,10 @@ const TAB_LABELS = ["Résumé", "Sources", "Chat"] as const;
 const TAB_COUNT = TAB_LABELS.length;
 
 export default function AnalysisDetailScreen() {
-  const { id, backTo, initialTab, quickChat } = useLocalSearchParams<{
+  const { id, backTo, initialTab } = useLocalSearchParams<{
     id: string;
     backTo?: string;
     initialTab?: string;
-    quickChat?: string;
   }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -350,11 +347,6 @@ export default function AnalysisDetailScreen() {
     </View>
   );
 
-  /** keyboardVerticalOffset adapté selon le mode */
-  const kbOffset = isFullscreen
-    ? 88 // fullscreen : header compact (~56px) + tab bar (~44px) sans video player
-    : 120; // normal : header + video player + tab bar
-
   const effectiveSummaryIdStr = resolvedSummaryId || (id as string) || "";
   const canExport = !!summary && !isProcessing;
   const sourcesEnabled = !!summary && !!effectiveSummaryIdStr;
@@ -417,11 +409,44 @@ export default function AnalysisDetailScreen() {
           </View>
         )}
       </View>
-      <View key="chat" style={styles.page}>
-        <ChatView
-          summaryId={resolvedSummaryId || id || ""}
-          keyboardOffset={kbOffset}
+      <View key="chat" style={[styles.page, styles.chatPlaceholder]}>
+        <Ionicons
+          name="chatbubbles-outline"
+          size={48}
+          color={colors.textTertiary}
         />
+        <Text
+          style={[styles.chatPlaceholderTitle, { color: colors.textPrimary }]}
+        >
+          Conversations dans le Hub
+        </Text>
+        <Text
+          style={[styles.chatPlaceholderText, { color: colors.textTertiary }]}
+        >
+          Le chat avec cette vidéo se passe maintenant dans l'onglet Hub.
+        </Text>
+        <Pressable
+          style={[
+            styles.chatPlaceholderBtn,
+            { backgroundColor: palette.indigo },
+          ]}
+          onPress={() => {
+            router.push({
+              pathname: "/(tabs)/hub",
+              params: {
+                summaryId: String(resolvedSummaryId || id),
+                initialMode: "chat",
+              },
+            } as any);
+          }}
+          accessibilityLabel="Continuer la conversation dans le Hub"
+          accessibilityRole="button"
+        >
+          <Text style={styles.chatPlaceholderBtnText}>
+            Continuer dans le Hub
+          </Text>
+          <Ionicons name="arrow-forward" size={18} color="#fff" />
+        </Pressable>
       </View>
     </PagerView>
   );
@@ -439,47 +464,13 @@ export default function AnalysisDetailScreen() {
     </View>
   );
 
-  // ── Quick Chat mode ──────────────────────────────────────────────────────
-  const isQuickChat = quickChat === "true" || summary?.mode === "quick_chat";
-
-  if (isQuickChat && summary) {
-    return (
-      <ConversationScreen
-        visible
-        summaryId={summary.id}
-        initialMode="chat"
-        videoTitle={summary.title || "Vidéo"}
-        channelName={summary.channel}
-        platform={
-          (summary.platform === "tiktok" ? "tiktok" : "youtube") as
-            | "youtube"
-            | "tiktok"
-        }
-        initialFavorite={summary.isFavorite}
-        onClose={handleBack}
-      />
-    );
-  }
-
-  // Loading state — Quick Chat = DeepSight spinner, analyse = skeleton
+  // Loading state
   if (isLoading && !isProcessing) {
     return (
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
         {BackHeader}
-        {isQuickChat ? (
-          <View
-            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-          >
-            <DeepSightSpinner
-              size="lg"
-              label="Connexion au chat..."
-              showLabel
-            />
-          </View>
-        ) : (
-          <AnalysisSkeleton />
-        )}
+        <AnalysisSkeleton />
       </View>
     );
   }
@@ -895,5 +886,37 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.sm,
     color: "#ffffff",
+  },
+  // Tab Chat placeholder → CTA Hub
+  chatPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: sp["2xl"],
+    gap: sp.md,
+  },
+  chatPlaceholderTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.lg,
+    marginTop: sp.sm,
+  },
+  chatPlaceholderText: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.sm,
+    textAlign: "center",
+    marginBottom: sp.md,
+  },
+  chatPlaceholderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: sp.sm,
+    paddingVertical: sp.md,
+    paddingHorizontal: sp["2xl"],
+    borderRadius: borderRadius.lg,
+  },
+  chatPlaceholderBtnText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: fontSize.sm,
+    color: "#fff",
   },
 });

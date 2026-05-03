@@ -1,5 +1,5 @@
 ---
-title: Mobile Hub Tab Unifié — Design
+title: Mobile Hub Tab Unified — Design
 date: 2026-05-04
 type: spec
 tags:
@@ -7,405 +7,587 @@ tags:
   - type/spec
   - platform/mobile
 status: draft
-supersedes:
-  - docs/superpowers/specs/2026-05-02-quick-chat-call-unified-design.md (mobile portion only)
+extends:
+  - docs/superpowers/specs/2026-05-02-quick-chat-call-unified-design.md
+related:
+  - docs/superpowers/specs/2026-05-03-hub-nav-redesign-design.md (Hub WEB — pattern de référence)
+  - docs/superpowers/specs/2026-04-27-quick-voice-call-mobile-v3-design.md (backend explorer_streaming partagé)
 ---
 
-# Mobile Hub Tab Unifié — Design
+# Mobile Hub Tab Unified — Design
 
 **Date** : 2026-05-04
 **Auteur** : Maxime Le Parc (DeepSight)
-**Statut** : Draft — décisions architecturales verrouillées avec user 2026-05-04 via AskUserQuestion
-**Plateforme ciblée** : Mobile (Expo SDK 54)
-**Source d'inspiration** : `frontend/src/pages/HubPage.tsx` + `frontend/src/components/hub/*` (mirror direct)
+**Statut** : Draft — en attente de revue
+**Source** : Audit + brainstorm session 2026-05-04 (Opus 4.7, after /clear)
+**Plateforme ciblée** : Mobile (Expo) uniquement
+**Plateformes hors-scope** : Web (Hub web déjà refondu PR sprint 2026-05-03), Extension (PR2 unified mergée)
 
 ---
 
 ## 1. Contexte et problème
 
-### 1.1 État actuel mobile (vérifié 2026-05-04)
+Trois symptômes user observés sur DeepSight Mobile (verbatim 2026-05-04) :
 
-- **Pas d'onglet Hub** : `mobile/app/(tabs)/_layout.tsx` déclare 5 onglets (`index`, `library`, `study`, `profile`, `subscription`) + `analysis/[id]` caché. Aucun `hub.tsx`.
-- **Quick Chat depuis Home** (`mobile/app/(tabs)/index.tsx:75-109`) : POST `/api/videos/quick-chat` → navigate `/(tabs)/analysis/[id]?quickChat=true` → rend `QuickChatScreen` plein écran.
-- **`QuickChatScreen.tsx`** (`mobile/src/components/analysis/QuickChatScreen.tsx`) : chat texte uniquement, **AUCUN bouton voice**. Bug : l'utilisateur ne peut pas lancer un Quick Call sur la vidéo qu'il vient de coller.
-- **Voice uniquement sur analyse complète** : `mobile/app/(tabs)/analysis/[id].tsx:657-685` rend `<VoiceButton>` + `<VoiceScreen>` Modal **uniquement si `summary` chargé ET pas en mode `quickChat`**. Le FAB gold n'apparaît donc qu'après une analyse complète terminée.
-- **Pas de `ConversationScreen`** : le composant prévu par la spec `2026-05-02-quick-chat-call-unified-design.md` n'a jamais été créé. La spec est restée draft.
-- **3 sub-tabs sur analyse[id]** : Résumé / Sources / Chat (PagerView). Chat = `ChatView.tsx` séparé.
+1. **Quick Call invisible** sur une vidéo : le bouton voice (FAB gold) n'est accessible que lorsqu'une analyse complète a été ouverte (`analysis/[id].tsx` ligne 698), donc impossible avant analyse, et noyé sous l'`ActionBar` + `TabBar` post-sprint UX 2026-05-03 (le calcul `bottomOffset` du `VoiceButton` n'utilise pas `useTabBarFootprint` introduit par PR #274 — risque de masquage visuel).
+2. **Hub fantôme** : `mobile/app/(tabs)/hub.tsx` existe (proto mock avec `mobile/src/components/hub/*`) mais est caché de la TabBar (`href: null`) et utilise des données fixtures (`SAMPLE_CONVERSATIONS`/`SAMPLE_MESSAGES`). Aucun branchement backend.
+3. **3 surfaces chat dispersées** : Quick Chat URL input sur Home (`mobile/app/(tabs)/index.tsx`) → push `analysis/[id]?quickChat=true` qui rend `ConversationScreen` Modal ; ChatView dans tab Chat de l'analyse ; FAB Voice qui ouvre `ConversationScreen` Modal en mode `call`. Aucune cohérence "une seule conversation, une seule UI" comme côté web.
 
-### 1.2 Référence web (HubPage)
+**Vision cible** :
 
-- **Route `/hub`** (`frontend/src/pages/HubPage.tsx`) : single page conversationnelle.
-- **Composants `frontend/src/components/hub/*`** : `HubHeader`, `Timeline`, `MessageBubble`, `InputBar`, `ConversationsDrawer`, `SummaryCollapsible`, `VideoPiPPlayer`, `CallModeFullBleed`, `VoiceWaveformBars`, `VoiceBubble`.
-- **State global** : `frontend/src/store/hubStore.ts` (Zustand + Immer), 19 slots (conversations, activeConvId, messages, summaryContext, drawerOpen, voiceCallOpen, pipExpanded, voiceState, etc.).
-- **Backend déjà unifié** (PR #203 mergée) : `GET /api/chat/history/{summary_id}` retourne timeline mixte `text` + `voice_user` + `voice_agent` via colonnes `chat_messages.{source, voice_speaker, voice_session_id, time_in_call_secs}`.
-- **Mapping HubMessage** : `source = "text" | "voice_user" | "voice_agent"` (aplati frontend depuis le couple backend `(source, voice_speaker)`).
-
-### 1.3 Vision cible mobile
-
-- **Onglet `/(tabs)/hub`** = **mirror direct du pattern HubPage web**, single screen avec drawer overlay liste convos, Timeline scrollable, InputBar bas, VoiceControls intégré, CallModeFullBleed overlay.
-- **Quick Chat depuis Home** = navigate vers `/(tabs)/hub?videoUrl=X&initialMode=chat` (au lieu de `analysis/[id]?quickChat=true`).
-- **Quick Call depuis Home** = nouveau bouton à côté de Quick Chat, navigate vers `/(tabs)/hub?videoUrl=X&initialMode=call`.
-- **Suppression** : `QuickChatScreen.tsx`, `VoiceScreen.tsx`, FAB voice sur `analysis/[id].tsx`.
-- **`analysis/[id]/Chat` sub-tab** : conservé mais refactorise `ChatView.tsx` pour réutiliser les composants Hub (`Timeline` + `InputBar` partagés) — code partagé, UX cohérente.
-- **Audio user invisible** : règle UX permanente DeepSight, filtre dans `Timeline` (`source === "voice_user"` exclu).
+- **Hub = onglet stable** dans la TabBar mobile (déshider `href: null`).
+- **Hub = `ConversationScreen` embedded** (réutilise tous les composants `mobile/src/components/conversation/*` créés par PR1 du sprint 2026-05-02) — chat + voice unifiés dans la même UI.
+- **Drawer conversations à gauche** (`ConversationsDrawer`, déjà existant côté hub mock) pour switcher entre analyses.
+- **Quick Chat Home** reste sur Home, mais navigue vers tab Hub au lieu de l'écran Analysis Modal.
+- **ChatView du tab analyse** supprimé, redirige vers Hub.
+- **Quick Call directement accessible** depuis l'`InputBar` du Hub via le toggle mic (Alert confirm avant consommation quota), en plus du fix du FAB sur l'écran analyse classique (cas legacy).
 
 ---
 
 ## 2. Objectifs
 
-1. **Hub mobile = onglet stable** : route `/(tabs)/hub` accessible depuis la TabBar (à côté de Home/Library/Study/Profile/Abo).
-2. **Mirror direct web** : structure UI 1:1 avec `HubPage.tsx` (HubHeader / SummaryCollapsible / Timeline / InputBar / ConversationsDrawer / VideoPiPPlayer / CallModeFullBleed). Pas de réinvention.
-3. **Quick Chat + Quick Call accessibles depuis Home** : 2 boutons à côté l'un de l'autre dans le bloc actuel "Quick Chat" → migrent vers Hub avec `initialMode` adapté.
-4. **Fil unique mixté** : `HubMessage[]` triés par timestamp, bulles différenciées par `source` (text user/assistant, voice_agent avec badge 🎙️). `voice_user` exclu de l'affichage.
-5. **State global Zustand** : `mobile/src/stores/hubStore.ts` mirror minimal du `frontend/src/store/hubStore.ts` (slots web non-pertinents pour mobile = supprimés : `fullSummary`, `concepts`, `reliability`, `activeTab`, `tabScrollPositions`).
-6. **Suppression composants legacy** : `QuickChatScreen.tsx` + `VoiceScreen.tsx` + FAB voice analyse[id].
-7. **`analysis/[id]/Chat` sub-tab refactor** : `ChatView.tsx` utilise `Timeline` + `InputBar` du Hub. Code partagé. **PAS de duplication des composants**.
-8. **Backend zéro changement** : timeline déjà unifiée (PR #203). Sanity test pytest optionnel.
-9. **Phasage 2 PRs parallèles** : PR1 Hub Foundation (sans voice) / PR2 Voice Integration + cleanup. 2 sub-agents Opus 4.7 dans worktrees séparés.
+1. **Tab Hub stable** : `mobile/app/(tabs)/hub.tsx` apparaît dans `CustomTabBar` (6 onglets : Accueil · Historique · **Hub** · Étude · Abo · Profil — voir §3 décision #4 pour l'ordre).
+2. **Une seule UI conversationnelle** : `ConversationContent.tsx` extrait du `ConversationScreen` Modal pour être réutilisable en tab. Modal devient un wrapper léger pour les call-sites legacy ; tab Hub rend `ConversationContent` directement.
+3. **Quick Call accessible** : depuis le Hub (via mic toggle dans `ConversationInput`) ET depuis le FAB analyse classique (avec fix de `bottomOffset` pour utiliser `useTabBarFootprint`).
+4. **Multi-conversation switch sans démontage** : `useConversation` accepte `summaryId` qui peut changer ; le drawer pilote ce changement.
+5. **Suppression des duplications** : composants `mobile/src/components/hub/*` (Timeline mock, InputBar mock, CallModeFullBleed mock) → soit supprimés, soit migrés. ChatView du tab analyse → supprimé. `analysis/[id].tsx` mode `quickChat=true` (lignes 445-462) → supprimé (Quick Chat depuis Home pousse directement sur tab Hub).
 
 ---
 
-## 3. Décisions verrouillées (validées avec user 2026-05-04)
+## 3. Décisions verrouillées (brainstorm 2026-05-04)
 
-| #   | Décision                                  | Choix retenu                                                                                                          |
-| --- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| 1   | Pattern Hub mobile                        | **Mirror direct web HubPage** (single screen + drawer overlay liste convos)                                           |
-| 2   | Quick Call entry points                   | **Hub onglet (toujours)** + **Home onglet (Quick Call rapide)**. PAS de FAB analyse[id], PAS de Library long-press    |
-| 3   | FAB voice gold sur `analysis/[id].tsx`    | **Supprimé**. Remplacé par bouton "Discuter / Appeler" dans `ActionBar` qui navigate vers `/hub?summaryId=X`          |
-| 4   | Sub-tab Chat dans `analysis/[id].tsx`     | **Gardé mais réutilise composants Hub** (Timeline + InputBar partagés). Code partagé, UX cohérente                    |
-| 5   | Phasage de livraison                      | **2 PRs parallèles** : PR1 Hub Foundation (sans voice) / PR2 Voice Integration + cleanup                              |
-| 6   | Sub-agents implémentation                 | **Opus 4.7 obligatoire** (`claude-opus-4-7[1m]`) — mémoire user perma                                                 |
-| 7   | Worktrees                                 | `C:\Users\33667\DeepSight-hub-foundation` (PR1) + `C:\Users\33667\DeepSight-hub-voice` (PR2)                          |
-| 8   | Branche                                   | `feat/mobile-hub-tab-foundation` (PR1) + `feat/mobile-hub-tab-voice` (PR2) depuis `origin/main`                       |
-| 9   | Backend                                   | **Aucun changement**. Sanity test pytest optionnel sur `/api/chat/history/{id}` champs voice                          |
-| 10  | `QuickChatScreen.tsx` + `VoiceScreen.tsx` | **Supprimés en PR2** (callsites migrés). Pas conservés en legacy                                                      |
-| 11  | Audio user (voice_user) dans Timeline     | **Filtré côté UI** (mirror web : `m.source === "voice_user"` exclu de l'affichage). Persistance backend conservée     |
-| 12  | Routing Expo Router                       | `/(tabs)/hub` index avec query params : `?videoUrl=X&initialMode=chat\|call&summaryId=Y&convId=Z`                     |
-| 13  | TabBar order                              | Home / **Hub** / Library / Study / Profile / Abo (Hub en position 2, juste après Accueil)                             |
-| 14  | Icône TabBar Hub                          | `chatbubbles-outline` / `chatbubbles` (Ionicons), label "Hub"                                                         |
-| 15  | ConversationsDrawer pattern mobile        | **Bottom sheet** (`@gorhom/bottom-sheet`, déjà installé) au lieu de side drawer. Plus mobile-friendly que side drawer |
+| #   | Décision                                 | Choix retenu                                                                                                                                                                                                                                                                                                                      |
+| --- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Hub = onglet stable                      | **OUI**, déshider `href: null`, ajouter à `TAB_META` de `CustomTabBar.tsx`                                                                                                                                                                                                                                                        |
+| 2   | Hub UI                                   | **`ConversationContent` embedded** + `ConversationsDrawer` swipe-in left. Pas de "dashboard launchpad". L'user arrive sur la dernière conv ouverte (ou empty state).                                                                                                                                                              |
+| 3   | Sort de `ConversationScreen` Modal       | **Conservé** comme wrapper Modal léger pour les call-sites qui doivent pop-up sans navigation tab (futur). Refactor : extrait `ConversationContent.tsx` avec tout le layout, `ConversationScreen.tsx` devient `<Modal><ConversationContent /></Modal>` (~30 lignes).                                                              |
+| 4   | Quick Chat Home                          | **Reste sur Home** (`mobile/app/(tabs)/index.tsx` ligne 391-466). Au submit `videoApi.quickChat(url)` → `router.push('/(tabs)/hub?summaryId=X&initialMode=chat')` au lieu de `/analysis/[id]?quickChat=true`. Suppression du mode `quickChat` dans `analysis/[id].tsx`.                                                           |
+| 5   | ChatView dans tab Chat analyse           | **Supprimé** (`mobile/src/components/analysis/ChatView.tsx` ❌). Tab "Chat" du PagerView remplacé par bouton "Continuer dans le Hub" qui push `/(tabs)/hub?summaryId=X&initialMode=chat`. Ou : tab Chat retiré complètement → 2 tabs (Résumé · Sources). Décision §13 #1 ouverte.                                                 |
+| 6   | FAB Voice sur analyse                    | **Conservé** sur `analysis/[id].tsx` (entry point alternatif). Fix `bottomOffset` pour utiliser `useTabBarFootprint` (cohérence sprint 2026-05-03). Cible : `bottomOffset = useTabBarFootprint() + ACTION_BAR_HEIGHT + FAB_GAP`.                                                                                                  |
+| 7   | Composants `mobile/src/components/hub/*` | **Audit + tri** : conserver `ConversationsDrawer`, `HubHeader` (refacto), `SummaryCollapsible`, `VideoPiPPlayer`, `SourcesShelf`. Supprimer `Timeline`, `InputBar`, `CallModeFullBleed`, `MessageBubble`, `VoiceBubble`, `VoiceWaveformBars`, `DeepSightLogo`, `sampleData.ts` (remplacés par leurs équivalents `conversation/`). |
+| 8   | Audio user invisible                     | **Asymétrique** (règle UX permanente, mémoire `feedback_voice-fil-asymetrique.md` confirmée 2026-05-04). Audio agent affiché badge 🎙️, audio user JAMAIS affiché. Filtrage déjà appliqué dans `useConversation` ligne 116.                                                                                                        |
+| 9   | Multi-conversation switch                | **`useConversation` accepte `summaryId` mutable** : le drawer change `selectedSummaryId` state du tab Hub, qui re-pass à `ConversationContent` qui lui-même re-pass à `useConversation`. Audit du hook nécessaire (gérer reset interne propre vs `key={summaryId}` remount).                                                      |
+| 10  | Routing Expo Router                      | **`/(tabs)/hub`** index avec query params `?summaryId=X&initialMode=chat\|call&videoUrl=...`. Pas de route nested `/hub/[summaryId]` (over-engineered, l'écran reste single avec drawer).                                                                                                                                         |
+| 11  | Empty state Hub                          | **`EmptyConversationSuggestions`** (existant `mobile/src/components/conversation/EmptyConversationSuggestions.tsx`, intégré PR #277) si pas de summary chargé. Suggestions chips pré-remplies + CTA "Coller un lien YouTube/TikTok" (réutilise URL input pattern Home).                                                           |
+| 12  | Sub-agents implémentation                | **Opus 4.7 obligatoire** (`claude-opus-4-7[1m]`)                                                                                                                                                                                                                                                                                  |
+| 13  | Branche                                  | `feat/mobile-hub-tab-unified` depuis `origin/main`. Worktree `C:\Users\33667\DeepSight-mobile-hub-tab`.                                                                                                                                                                                                                           |
+| 14  | Scope backend                            | **Aucun changement requis**. `videoApi.getHistory`, `chatApi.getHistory`, `useConversation` tous existants et fonctionnels. Possible micro-fix passthrough champs voice si non encore vérifié sur `mobile/src/services/api.ts` (cf. spec 2026-05-02 §11.1 sanity check).                                                          |
 
 ---
 
 ## 4. Architecture macro — Mobile
 
+### 4.1 Layout général
+
 ```
-┌─ mobile/app/(tabs)/hub.tsx (NEW) ──────────────────────────────────────┐
-│  Route Expo Router : /(tabs)/hub                                       │
-│  Query params : ?videoUrl=X&initialMode=chat|call&summaryId=Y&convId=Z │
-│                                                                        │
-│  ┌── <HubHeader />                                                     │
-│  │   - Bouton ☰ → toggle ConversationsDrawer (bottom sheet)           │
-│  │   - Title (videoTitle ou "Hub")                                     │
-│  │   - Subtitle (platform badge YT/TikTok)                             │
-│  │   - VideoPiPPlayer slot (mini thumbnail vidéo si activeConv)       │
-│  └──                                                                   │
-│                                                                        │
-│  ┌── <SummaryCollapsible /> (visible si summaryContext)                │
-│  │   - Court résumé vidéo (≤200 char)                                  │
-│  │   - Citations [timestamp_secs, label] cliquables                    │
-│  └──                                                                   │
-│                                                                        │
-│  ┌── <Timeline />  (FlashList, scroll inverted)                        │
-│  │   data = HubMessage[] (filter voice_user, trié par timestamp)       │
-│  │   - <MessageBubble> user texte (right, indigo)                      │
-│  │   - <MessageBubble> agent texte (left, card)                        │
-│  │   - <MessageBubble> agent voice (left, card + 🎙️ badge)            │
-│  │   - <VoiceBubble> avec waveform pendant call live                   │
-│  │   - Empty state : "Pose ta première question…"                      │
-│  │   - <ThinkingDots /> en bas si isThinking                           │
-│  └──                                                                   │
-│                                                                        │
-│  ┌── <VoiceControls />  (PR2 — zone bas, fixe ~80dp)                   │
-│  │   États : 'off' | 'live' | 'ended' | 'quota_exceeded'               │
-│  │   - 'off' : zone discrète, pas affichée                             │
-│  │   - 'live' : Mute + End + timer + waveform                          │
-│  │   - 'ended' : toast 3s "✅ Appel terminé · X:XX"                    │
-│  │   - 'quota_exceeded' : CTA "Acheter des minutes"                    │
-│  └──                                                                   │
-│                                                                        │
-│  ┌── <InputBar />  (sticky bottom, au-dessus TabBar)                  │
-│  │   - TextInput multiline (placeholder dynamique)                    │
-│  │   - 📤 Send button                                                  │
-│  │   - 🎙️ Mic toggle (PR2) :                                          │
-│  │       voiceMode='off' → tap = Alert confirm + voice.start()         │
-│  │       voiceMode='live' → tap = voice.toggleMute()                   │
-│  │   - quota label                                                     │
-│  └──                                                                   │
-│                                                                        │
-│  ┌── <ConversationsDrawer />  (BottomSheet, snapPoints ['25%','75%']) │
-│  │   - Liste FlashList des conversations                               │
-│  │   - Item : thumbnail + titre + timestamp + last_snippet            │
-│  │   - Bouton "+ Nouvelle conversation" → focus URL input             │
-│  │   - Tap item → setActiveConv(id)                                   │
-│  └──                                                                   │
-│                                                                        │
-│  ┌── <CallModeFullBleed />  (PR2 — overlay full-screen pendant call)  │
-│  │   - Visible si voiceCallOpen && voiceState='call_active'           │
-│  │   - Background gradient gold + waveform fullscreen                 │
-│  │   - Bouton End centré bas                                          │
-│  │   - Tap arrière-plan → minimize (revient au Hub avec voice live)   │
-│  └──                                                                   │
-└────────────────────────────────────────────────────────────────────────┘
+┌─ TabBar globale (CustomTabBar — 6 onglets dont nouveau "Hub") ────┐
+│ [🏠 Accueil] [⏱ Historique] [💬 HUB] [📚 Étude] [✨ Abo] [⚙ Profil] │
+└────────────────────────────────────────────────────────────────────┘
+
+Quand tab Hub actif :
+
+┌─ /(tabs)/hub.tsx ──────────────────────────────────────────────────┐
+│                                                                    │
+│  state local : selectedSummaryId (depuis params route OU drawer)   │
+│                                                                    │
+│  if (!selectedSummaryId) :                                         │
+│    <HubEmptyState onPickConv={..} onPasteUrl={..} />               │
+│  else :                                                            │
+│    <ConversationContent                                            │
+│      summaryId={selectedSummaryId}                                 │
+│      videoUrl={params.videoUrl}                                    │
+│      initialMode={params.initialMode || 'chat'}                    │
+│      onClose={() => setSelectedSummaryId(null)}                    │
+│    />                                                              │
+│                                                                    │
+│  <ConversationsDrawer                                              │
+│    open={drawerOpen}                                               │
+│    onClose={..}                                                    │
+│    activeSummaryId={selectedSummaryId}                             │
+│    onSelect={(id) => setSelectedSummaryId(id)}                     │
+│    onNewConv={() => setSelectedSummaryId(null)}                    │
+│  />                                                                │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.1 Composants à créer (PR1 — Foundation)
+### 4.2 `ConversationContent.tsx` (NEW — extracted from ConversationScreen)
 
-| Fichier                                             | Rôle                                                                  | Référence web                        |
-| --------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------ |
-| `mobile/app/(tabs)/hub.tsx`                         | Route Expo Router racine + orchestration                              | `pages/HubPage.tsx`                  |
-| `mobile/src/components/hub/HubHeader.tsx`           | Header (menu drawer + title + PiP slot)                               | `components/hub/HubHeader`           |
-| `mobile/src/components/hub/Timeline.tsx`            | FlashList inverted, filter voice_user, render MessageBubble           | `components/hub/Timeline`            |
-| `mobile/src/components/hub/MessageBubble.tsx`       | Bulle user/agent texte/voice avec badge 🎙️                            | `components/hub/MessageBubble`       |
-| `mobile/src/components/hub/InputBar.tsx`            | TextInput + Send (mic = PR2)                                          | `components/hub/InputBar`            |
-| `mobile/src/components/hub/ConversationsDrawer.tsx` | BottomSheet liste convos                                              | `components/hub/ConversationsDrawer` |
-| `mobile/src/components/hub/SummaryCollapsible.tsx`  | Card collapsible avec contexte vidéo + citations                      | `components/hub/SummaryCollapsible`  |
-| `mobile/src/components/hub/VideoPiPPlayer.tsx`      | Mini thumbnail dans HubHeader                                         | `components/hub/VideoPiPPlayer`      |
-| `mobile/src/components/hub/types.ts`                | `HubMessage`, `HubConversation`, `HubSummaryContext`, `HubVoiceState` | `components/hub/types.ts`            |
-| `mobile/src/components/hub/index.ts`                | Barrel export                                                         | —                                    |
-| `mobile/src/stores/hubStore.ts`                     | Zustand (Immer) — slots minimum (cf. §4.3)                            | `store/hubStore.ts`                  |
-| `mobile/src/hooks/useHubData.ts`                    | Fetch conversations + messages quand activeConvId change              | (inline dans HubPage web)            |
+**Fichier** : `mobile/src/components/conversation/ConversationContent.tsx`
 
-### 4.2 Composants à créer (PR2 — Voice)
-
-| Fichier                                           | Rôle                                                          | Référence web                      |
-| ------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------- |
-| `mobile/src/components/hub/VoiceControls.tsx`     | Zone voice bas (off/live/ended/quota_exceeded)                | (split de `CallModeFullBleed`)     |
-| `mobile/src/components/hub/CallModeFullBleed.tsx` | Overlay fullscreen pendant call active                        | `components/hub/CallModeFullBleed` |
-| `mobile/src/components/hub/VoiceWaveformBars.tsx` | Barres de waveform animées Reanimated                         | `components/hub/VoiceWaveformBars` |
-| `mobile/src/components/hub/VoiceBubble.tsx`       | Bulle voice agent avec waveform mini                          | `components/hub/VoiceBubble`       |
-| `mobile/src/hooks/useHubVoice.ts`                 | Orchestre `useVoiceChat` + sync vers `hubStore.appendMessage` | (inline dans HubPage web)          |
-
-### 4.3 Slot store minimal (mobile)
+Tout le layout actuel de `ConversationScreen.tsx` lignes 232-296 (le contenu intérieur du Modal) est extrait dans ce nouveau composant. Props identiques sauf suppression de `visible` et `onClose` qui restent côté wrapper Modal.
 
 ```typescript
-// mobile/src/stores/hubStore.ts
-interface HubState {
-  // Données
-  conversations: HubConversation[];
-  activeConvId: number | null;
-  messages: HubMessage[];
-  summaryContext: HubSummaryContext | null;
-
-  // UI state
-  drawerOpen: boolean;
-  summaryExpanded: boolean;
-  pipExpanded: boolean;
-  voiceCallOpen: boolean; // PR2
-  voiceState: HubVoiceState; // PR2
-
-  // Setters
-  setConversations: (c: HubConversation[]) => void;
-  setActiveConv: (id: number | null) => void;
-  setMessages: (m: HubMessage[]) => void;
-  appendMessage: (m: HubMessage) => void;
-  setSummaryContext: (ctx: HubSummaryContext | null) => void;
-  toggleDrawer: () => void;
-  toggleSummary: () => void;
-  setPipExpanded: (v: boolean) => void;
-  setVoiceCallOpen: (v: boolean) => void; // PR2
-  setVoiceState: (s: HubVoiceState) => void; // PR2
-  reset: () => void;
+export interface ConversationContentProps {
+  summaryId?: string;
+  videoUrl?: string;
+  initialMode: "chat" | "call";
+  videoTitle: string;
+  channelName?: string;
+  platform?: "youtube" | "tiktok" | "live";
+  initialFavorite?: boolean;
+  /** Bouton burger en haut-gauche (ouvrir ConversationsDrawer côté Hub).
+   *  Si null/undefined : pas de burger affiché (mode Modal classique). */
+  onMenuPress?: () => void;
+  /** Bouton close en haut-droite (Modal mode). Si null : pas de close. */
+  onClose?: () => void;
 }
+
+export const ConversationContent: React.FC<ConversationContentProps> = (
+  props,
+) => {
+  const conv = useConversation({
+    summaryId: props.summaryId,
+    videoUrl: props.videoUrl,
+    initialMode: props.initialMode,
+  });
+  // ... tout le rendu actuel ConversationScreen lignes 232-296
+};
 ```
 
-**Slots web NON portés mobile (volontairement)** : `fullSummary`, `concepts`, `reliability`, `reliabilityLoading`, `newConvModalOpen`, `analyzingTaskId`, `activeTab`, `tabScrollPositions`. Raison : liés à l'`AnalysisHub` web qui n'a pas d'équivalent mobile (l'analyse mobile reste sur `analysis/[id].tsx` avec ses 3 sub-tabs).
+### 4.3 `ConversationScreen.tsx` (REFACTOR — wrapper Modal léger)
 
-### 4.4 Composants à modifier (PR1)
+**Fichier** : `mobile/src/components/conversation/ConversationScreen.tsx`
 
-| Fichier                                             | Modification                                                                                                                                                                                                                                                                                   |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mobile/app/(tabs)/_layout.tsx`                     | Ajouter `<Tabs.Screen name="hub" options={{title:"Hub"}}/>` en position 2 (après index)                                                                                                                                                                                                        |
-| `mobile/src/components/navigation/CustomTabBar.tsx` | Ajouter entrée `hub` dans `TAB_META` (icône `chatbubbles-outline`/`chatbubbles`, label "Hub")                                                                                                                                                                                                  |
-| `mobile/src/types/index.ts`                         | Étendre `ChatMessage` : `source?: "text"\|"voice"`, `voice_speaker?: "user"\|"agent"\|null`, `voice_session_id?: string\|null`, `time_in_call_secs?: number\|null`                                                                                                                             |
-| `mobile/src/services/api.ts`                        | Vérifier `chatApi.getHistory` mappe ces champs (passthrough). Si drop → fix.                                                                                                                                                                                                                   |
-| `mobile/app/(tabs)/index.tsx` (Home)                | Bloc Quick Chat actuel : ajouter bouton **Quick Call** à côté du Send. Quick Chat URL → `router.push('/(tabs)/hub?videoUrl=X&initialMode=chat')`. Quick Call → `router.push('/(tabs)/hub?videoUrl=X&initialMode=call')`. Supprimer l'appel `videoApi.quickChat()` (déplacé dans Hub si besoin) |
+Devient un wrapper d'environ 40 lignes :
 
-### 4.5 Composants à modifier (PR2)
-
-| Fichier                                        | Modification                                                                                                                                                                                                   |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mobile/src/components/hub/Timeline.tsx`       | Ajouter rendu `<VoiceBubble>` pour `source === "voice_agent"` avec waveform                                                                                                                                    |
-| `mobile/src/components/hub/InputBar.tsx`       | Ajouter Mic toggle button : `voiceMode='off'` → Alert confirm + start ; `voiceMode='live'` → toggleMute                                                                                                        |
-| `mobile/app/(tabs)/hub.tsx`                    | Intégrer `<VoiceControls>` + `<CallModeFullBleed>` + auto-start si `initialMode='call'`                                                                                                                        |
-| `mobile/app/(tabs)/analysis/[id].tsx`          | Supprimer `<VoiceButton>` + `<VoiceScreen>` (lignes 657-685, ligne 33-34 imports). Supprimer `useVoiceChat({summaryId: id})` (ligne 162). Supprimer state `isVoiceVisible`                                     |
-| `mobile/src/components/analysis/ActionBar.tsx` | Ajouter bouton "Discuter / Appeler" qui navigate vers `/hub?summaryId=X` (avec menu pour choisir mode chat ou call)                                                                                            |
-| `mobile/src/components/analysis/ChatView.tsx`  | Refactor : utiliser `<Timeline>` + `<InputBar>` + `<MessageBubble>` du Hub. Supprimer code dupliqué (TypingIndicator, renderMessage, suggestions row). Conserver `useChat(summaryId)` + `keyboardOffset` props |
-| `mobile/src/services/api.ts`                   | Ajouter `voiceApi.createSessionForHub({video_url, initialMode})` si pattern Hub Voice diffère (sinon réutiliser existant)                                                                                      |
-
-### 4.6 Composants à supprimer (PR2)
-
-- `mobile/src/components/analysis/QuickChatScreen.tsx` ❌ (callsites migrés vers Hub)
-- `mobile/src/components/voice/VoiceScreen.tsx` ❌ (remplacé par `CallModeFullBleed` dans Hub)
-- `mobile/src/components/voice/VoiceButton.tsx` ❌ ou conserver pour bouton dans ActionBar (à décider en PR2 review)
-- `mobile/src/components/voice/PostCallScreen.tsx` ❌ (si encore présent, supprimer — déjà absent ?)
-- Tests Jest associés : `__tests__/QuickChatScreen.test.tsx`, `__tests__/VoiceScreen.test.tsx`, `__tests__/VoiceButton.test.tsx`, `__tests__/VoiceButton.placement.test.tsx`, `__tests__/PostCallScreen.test.tsx`
-
-### 4.7 Routing Expo Router — query params
-
-```
-/(tabs)/hub                                      → Hub vide (liste convos visible via drawer)
-/(tabs)/hub?convId=42                           → Hub avec activeConv=42 (charge messages)
-/(tabs)/hub?summaryId=42                        → Hub avec activeConv=summaryId (alias)
-/(tabs)/hub?videoUrl=https://...&initialMode=chat → Hub Quick Chat sur vidéo fraîche
-/(tabs)/hub?videoUrl=https://...&initialMode=call → Hub Quick Call sur vidéo fraîche
+```typescript
+export const ConversationScreen: React.FC<ConversationScreenProps> = ({
+  visible,
+  onClose,
+  ...contentProps
+}) => {
+  const { colors } = useTheme();
+  return (
+    <Modal
+      visible={visible}
+      animationType="none"
+      transparent
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <Animated.View
+        entering={FadeIn.duration(duration.slow)}
+        style={[{ flex: 1, backgroundColor: colors.bgPrimary }]}
+      >
+        <Animated.View
+          entering={SlideInDown.duration(duration.slower).springify()}
+          style={{ flex: 1 }}
+        >
+          <ConversationContent {...contentProps} onClose={onClose} />
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+};
 ```
 
-Logique mount dans `hub.tsx` :
+### 4.4 `mobile/app/(tabs)/hub.tsx` (REWRITE)
 
-1. Lit query params via `useLocalSearchParams()`
-2. Si `convId` ou `summaryId` → `setActiveConv(Number(id))`
-3. Si `videoUrl` + `initialMode` :
-   - `'chat'` → POST `/api/videos/quick-chat` → setActiveConv(result.summary_id)
-   - `'call'` → délégation à `useHubVoice.startWithVideoUrl(videoUrl)` (PR2)
+**Fichier** : `mobile/app/(tabs)/hub.tsx`
 
-### 4.8 Diagnostic Quick Call invisible (résolu par cette spec)
+Remplacement complet de l'actuel proto mock :
 
-**Cause racine** : `mobile/app/(tabs)/analysis/[id].tsx:426-428` bypasse le rendu normal en mode `quickChat`, retournant `<QuickChatScreen>` qui n'a aucun bouton voice. Le FAB `<VoiceButton>` (lignes 657-685) n'est rendu qu'en mode analyse complète + `summary` chargé.
+```typescript
+import React, { useCallback, useEffect, useState } from "react";
+import { View, StyleSheet } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { ConversationContent } from "@/components/conversation/ConversationContent";
+import { ConversationsDrawer } from "@/components/hub/ConversationsDrawer";
+import { HubEmptyState } from "@/components/hub/HubEmptyState";
+import { historyApi } from "@/services/api";
 
-**Conséquence** : un utilisateur qui colle une URL dans Quick Chat sur Home ne voit JAMAIS le Quick Call sur cette vidéo. Il faut lancer une analyse complète (3-5 min de wait) pour voir le FAB gold.
+export default function HubScreen() {
+  const params = useLocalSearchParams<{
+    summaryId?: string;
+    videoUrl?: string;
+    initialMode?: "chat" | "call";
+  }>();
+  const router = useRouter();
 
-**Fix** : la PR1 ajoute un bouton **Quick Call** dans le bloc Quick Chat de Home (à côté de Quick Chat). Tap = navigate `/hub?videoUrl=X&initialMode=call`. La PR2 implémente l'intégration voice dans le Hub. Le FAB sur analyse[id] est supprimé en PR2 et remplacé par un bouton "Discuter / Appeler" dans `ActionBar` qui ouvre le Hub.
+  // Source of truth = params (deep-link friendly). Drawer mutate via router.setParams.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const summaryId = params.summaryId ?? null;
+  const initialMode = params.initialMode ?? "chat";
+
+  // Last opened conv fallback : si pas de params, charger la dernière analyse
+  const { data: lastConv } = useQuery({
+    queryKey: ["history", "last-conv"],
+    queryFn: async () => {
+      const r = await historyApi.getHistory(1, 1);
+      return r.items[0] ?? null;
+    },
+    enabled: !summaryId, // only when no explicit summaryId
+  });
+
+  // Auto-resolve : si pas summaryId mais lastConv existe → remplir params
+  useEffect(() => {
+    if (!summaryId && lastConv?.id) {
+      router.setParams({ summaryId: String(lastConv.id), initialMode: "chat" });
+    }
+  }, [summaryId, lastConv, router]);
+
+  const handleSelectConv = useCallback(
+    (id: string | number) => {
+      router.setParams({ summaryId: String(id), initialMode: "chat" });
+      setDrawerOpen(false);
+    },
+    [router],
+  );
+
+  const handleNewConv = useCallback(() => {
+    router.setParams({ summaryId: undefined, initialMode: undefined });
+    setDrawerOpen(false);
+  }, [router]);
+
+  return (
+    <View style={styles.root}>
+      {summaryId ? (
+        <ConversationContent
+          key={summaryId} // remount on switch — propre pour reset state useConversation
+          summaryId={summaryId}
+          initialMode={initialMode}
+          videoTitle={lastConv?.title ?? "Conversation"} // refined via useQuery sur summary
+          channelName={lastConv?.channel}
+          platform={(lastConv?.platform as "youtube" | "tiktok") ?? "youtube"}
+          initialFavorite={lastConv?.isFavorite}
+          onMenuPress={() => setDrawerOpen(true)}
+          // pas de onClose : on est en tab, pas en Modal
+        />
+      ) : (
+        <HubEmptyState
+          onPickConv={() => setDrawerOpen(true)}
+          onPasteUrl={(url) => {
+            // Inline quick-chat depuis Hub : appeler videoApi.quickChat puis setParams
+            // (cf. logique handleQuickChat de Home, factoriser en hook useQuickChatNavigate)
+          }}
+        />
+      )}
+
+      <ConversationsDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        activeSummaryId={summaryId}
+        onSelect={handleSelectConv}
+        onNewConv={handleNewConv}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#0a0a0f" },
+});
+```
+
+### 4.5 `CustomTabBar` — ajouter Hub
+
+**Fichier** : `mobile/src/components/navigation/CustomTabBar.tsx`
+
+Étendre `TAB_META` (ligne 39-60) avec :
+
+```typescript
+const TAB_META = {
+  index: { icon: "home-outline", iconFocused: "home", label: "Accueil" },
+  library: { icon: "time-outline", iconFocused: "time", label: "Historique" },
+  hub: {
+    icon: "chatbubbles-outline",
+    iconFocused: "chatbubbles",
+    label: "Hub",
+  },
+  study: { icon: "book-outline", iconFocused: "book", label: "Étude" },
+  subscription: {
+    icon: "sparkles-outline",
+    iconFocused: "sparkles",
+    label: "Abo",
+  },
+  profile: {
+    icon: "settings-outline",
+    iconFocused: "settings",
+    label: "Profil",
+  },
+};
+```
+
+Et `mobile/app/(tabs)/_layout.tsx` ligne 52-58 : retirer `href: null` du `Tabs.Screen name="hub"` :
+
+```typescript
+<Tabs.Screen
+  name="hub"
+  options={{
+    title: "Hub",
+  }}
+/>
+```
+
+L'ordre dans le code source détermine l'ordre dans la TabBar (Expo Router). Ordre cible : `index`, `library`, `hub`, `study`, `subscription`, `profile` (Hub au centre = pouce-friendly, position d'honneur).
+
+### 4.6 `HubEmptyState` (NEW)
+
+**Fichier** : `mobile/src/components/hub/HubEmptyState.tsx`
+
+Composant simple :
+
+- Icône logo DeepSight
+- Texte "Aucune conversation ouverte"
+- 2 CTA :
+  - "Coller un lien YouTube/TikTok" → opens inline URL input → `handleQuickChat` (réutilise pattern Home `handleQuickChat` lignes 76-111)
+  - "Choisir une conversation" → `onPickConv()` → ouvre drawer
+- Bonus : 3 chips suggestions (réutilise `EmptyConversationSuggestions`)
+
+### 4.7 Migration des call-sites
+
+**`mobile/app/(tabs)/index.tsx` (Home)** :
+
+Modifier `handleQuickChat` ligne 76-111 :
+
+```typescript
+const handleQuickChat = useCallback(async () => {
+  // ... validation URL identique
+  setQuickChatLoading(true);
+  try {
+    const result = await videoApi.quickChat(url);
+    setQuickChatUrl("");
+    // CHANGEMENT : push vers tab Hub au lieu de analysis/[id]
+    router.push({
+      pathname: "/(tabs)/hub",
+      params: {
+        summaryId: String(result.summary_id),
+        initialMode: "chat",
+      },
+    } as never);
+  } catch (err: any) {
+    /* identique */
+  } finally {
+    setQuickChatLoading(false);
+  }
+}, [quickChatUrl]);
+```
+
+**`mobile/app/(tabs)/analysis/[id].tsx`** :
+
+- Supprimer le bloc Quick Chat mode lignes 442-462 (`if (isQuickChat && summary)` → `<ConversationScreen ... />`).
+- Tab "Chat" du PagerView (ligne 420-425) → remplacé par soit :
+  - **Variante A (recommandée)** : un placeholder card "Continuer la conversation" → bouton qui push `/(tabs)/hub?summaryId={id}&initialMode=chat`
+  - **Variante B (clean)** : retirer complètement le tab Chat → 2 tabs au lieu de 3 (`Résumé`, `Sources`)
+- Fix `VoiceButton` ligne 696-705 : passer `bottomOffset={useTabBarFootprint() + ACTION_BAR_HEIGHT + FAB_GAP}` à la place du calcul interne.
+
+**Suppression** :
+
+- `mobile/src/components/analysis/ChatView.tsx` ❌
+- `mobile/src/components/analysis/ChatInput.tsx` ❌ (uniquement utilisé par ChatView)
+- `mobile/src/components/analysis/ChatMarkdown.tsx` ❌ (idem si pas réutilisé ailleurs — à vérifier via grep)
+- `mobile/src/components/hub/Timeline.tsx` ❌ (mock, remplacé par ConversationFeed)
+- `mobile/src/components/hub/InputBar.tsx` ❌ (mock, remplacé par ConversationInput)
+- `mobile/src/components/hub/CallModeFullBleed.tsx` ❌ (mock, remplacé par VoiceControls + EndedToast)
+- `mobile/src/components/hub/MessageBubble.tsx` ❌ (mock, remplacé par ConversationFeedBubble)
+- `mobile/src/components/hub/VoiceBubble.tsx` ❌ (mock, intégré dans ConversationFeedBubble)
+- `mobile/src/components/hub/VoiceWaveformBars.tsx` ❌ (mock — sauf si réutilisé par VoiceControls, à grep)
+- `mobile/src/components/hub/sampleData.ts` ❌
+- `mobile/src/components/hub/types.ts` ❌ (sauf si réutilisé)
+- `mobile/src/components/hub/__tests__/*` ❌ (tests des composants supprimés)
+
+**Conservation** :
+
+- `mobile/src/components/hub/HubHeader.tsx` (refacto pour accepter onMenuPress depuis Hub tab — déjà compatible)
+- `mobile/src/components/hub/ConversationsDrawer.tsx` (réutilisé tel quel + brancher backend `historyApi.getHistory`)
+- `mobile/src/components/hub/SummaryCollapsible.tsx` (intégrable dans ConversationContent si on veut afficher le summary collapsed au-dessus du fil — décision §13 #2 ouverte)
+- `mobile/src/components/hub/VideoPiPPlayer.tsx` (intégrable dans ConversationContent header — décision §13 #2 ouverte)
+- `mobile/src/components/hub/SourcesShelf.tsx` (intégrable dans ConversationContent footer — idem §13 #2)
+
+### 4.8 États & flows clés
+
+| État Hub                                | Ce qui s'affiche                                                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Pas de summaryId, pas de last conv      | `<HubEmptyState />` (icone, CTAs, suggestions)                                                                |
+| Pas de summaryId, last conv existe      | Auto-resolve : `setParams` → re-render avec `summaryId` (animation FadeIn `ConversationContent`)              |
+| `summaryId` présent, `initialMode=chat` | `<ConversationContent />` mode chat, mic gris, fil chargé                                                     |
+| `summaryId` présent, `initialMode=call` | `<ConversationContent />` mode call, auto-start mic via `useConversation` ligne 124-132                       |
+| Switch conv via drawer                  | `setParams({summaryId: newId})` → `key={summaryId}` provoque remount `ConversationContent` propre             |
+| Tab switch (vers Library, etc.)         | Hub démontage standard. Au retour : params persistés par Expo Router → reprend la conv où l'user s'est arrêté |
+
+### 4.9 Edge cases
+
+- **Voice live + tab switch** : si l'user est en voice live et change de tab → le Hub démontage → `useConversation` cleanup ferme la session voice (via `useEffect` cleanup `voice.stop()`). Pas idéal (perte UX), mais acceptable V1. Décision §13 #3 ouverte (KeepAlive ?).
+- **Quick Chat depuis Home pendant call live dans Hub** : Home `router.push` vers Hub → `ConversationContent` remount avec nouveau `summaryId` → call précédent terminé. Ok.
+- **Drawer ouvert + user tap conv** : `setParams` + close drawer en parallèle → `key={summaryId}` remount → animation visible (acceptable).
+- **Push notification deep-link** vers `/(tabs)/hub?summaryId=X` : Expo Router gère, le tab Hub mount avec params → fonctionne.
 
 ---
 
-## 5. Backend — aucun changement requis
+## 5. Fix Quick Call invisible — root cause
 
-**Constat** : la timeline chat + voice est **DÉJÀ unifiée backend** depuis PR #203 mergée 2026-04. Cf. spec `2026-05-02-quick-chat-call-unified-design.md` §6 pour détails complets :
+**Symptôme** : "Je ne vois toujours pas le Quick Call sur une vidéo sur le site mobile."
 
-- Table `chat_messages` (`backend/src/db/database.py`) : colonnes `source`, `voice_speaker`, `voice_session_id`, `time_in_call_secs`
-- Endpoint `GET /api/chat/history/{summary_id}` (`backend/src/chat/router.py:397`) : retourne timeline mixte ordonnée
-- Endpoint `POST /api/voice/transcripts/append` (`backend/src/voice/router.py:1927`) : persiste un tour voice
-- Schéma Pydantic `ChatHistoryItem` (`backend/src/chat/schemas.py:106-110`) : expose tous les champs
+**Diagnostic** :
 
-**Sanity check optionnel** (~10 lignes pytest) : `backend/tests/chat/test_history_includes_voice_fields.py` pour empêcher régression silencieuse côté backend. Peut être inclus dans PR1 ou commit séparé.
+1. **Cause principale** : Quick Call n'est exposé nulle part en tant que feature first-class. Le `VoiceButton` (FAB gold pulse) n'apparaît que sur `analysis/[id].tsx` ligne 696-705 quand `summary` est chargé. Sur Home, sur Library, sur Study : aucun entry voice.
+2. **Cause secondaire** : sur `analysis/[id].tsx`, le FAB calcule son `bottomOffset` manuellement (`TAB_BAR_HEIGHT (56) + ACTION_BAR_HEIGHT (72) + FAB_GAP (16) + insets.bottom = ~144 + insets`). Depuis le sprint UX 2026-05-03 (PR #274), la TabBar globale utilise `useTabBarFootprint` qui inclut `Math.max(insets.bottom, sp.sm) + sp.md`. Le calcul du FAB peut sous-estimer la hauteur réelle si `insets.bottom < sp.sm`, masquant partiellement le bouton derrière la TabBar.
+3. **Cause tertiaire** : quand l'user vient de Home via Quick Chat URL (Home ligne 94-102 → `/analysis/[id]?quickChat=true`), il atterrit directement sur `ConversationScreen` Modal (analysis ligne 445-462) qui n'expose **pas** le FAB voice — seulement le toggle mic dans l'`InputBar`, peu découvrable.
 
----
+**Fix dans ce sprint** :
 
-## 6. Phasage — 2 PRs (parallélisables, validé user)
+- **Hub tab** = exposition first-class de Quick Call accessible depuis le toggle mic dans le `ConversationInput` du Hub, ainsi que le bouton "Démarrer un appel" dans le `HubEmptyState` (proposé §13 #4).
+- **VoiceButton bottomOffset** = utiliser `useTabBarFootprint()` au lieu de la constante hardcodée :
 
-| PR  | Scope                                                                                                                                                                                                                                                                                                                                                               | Effort | Sub-agent | Worktree                                  |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | --------- | ----------------------------------------- |
-| PR1 | **Hub Foundation (sans voice)** : tab `/hub` + 12 composants (HubHeader, Timeline, MessageBubble, InputBar, ConversationsDrawer, SummaryCollapsible, VideoPiPPlayer, types, hubStore, useHubData) + extension `ChatMessage` mobile + Home boutons Quick Chat/Quick Call → navigate Hub + tests Jest                                                                 | 2j     | Agent A   | `C:\Users\33667\DeepSight-hub-foundation` |
-| PR2 | **Voice Integration + Cleanup** : VoiceControls + CallModeFullBleed + VoiceWaveformBars + VoiceBubble + useHubVoice + Mic dans InputBar + auto-start initialMode='call' + bouton "Discuter/Appeler" dans ActionBar + ChatView refactor (réutilise Timeline+InputBar) + suppression QuickChatScreen + VoiceScreen + FAB analyse[id] + tests Jest + smoke iOS+Android | 2j     | Agent B   | `C:\Users\33667\DeepSight-hub-voice`      |
+```typescript
+// mobile/src/components/voice/VoiceButton.tsx
+import { useTabBarFootprint } from "@/hooks/useTabBarFootprint";
 
-**Total** : ~4 jours Opus 4.7. Parallélisme via worktrees séparés. PR2 dépend logiquement de PR1 mais peut commencer en parallèle si Agent B mock les composants Hub manquants pendant PR1 en cours.
+const tabFootprint = useTabBarFootprint();
+const computedBottom =
+  bottomOffset ?? tabFootprint + ACTION_BAR_HEIGHT + FAB_GAP;
+```
 
-**Mémoires user à respecter** :
-
-- `feedback_opus-4-7-preference.md` : Agent A et B doivent tourner en `claude-opus-4-7[1m]`
-- `feedback_voice-fil-asymetrique.md` : audio user JAMAIS affiché dans Timeline (filter strict)
-- `feedback_multi-claude-parallel-workflow.md` : worktrees séparés, sub-agents Opus 4.7
+- **Suppression du mode `quickChat` dans analysis/[id].tsx** (lignes 442-462) puisque Quick Chat depuis Home navigue maintenant vers Hub.
 
 ---
 
-## 7. Risques et mitigations
+## 6. Backend — aucun changement requis
 
-| Risque                                                                                                              | Mitigation                                                                                                                                                         |
-| ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Composants Hub web utilisent Tailwind + Lucide icons → incompatibles RN                                             | Réécriture mobile native : `StyleSheet.create` + Ionicons. Le SOURCE de vérité est la **structure** (HubMessage, layout, behaviors), pas le code Tailwind/JSX.     |
-| `chatApi.getHistory` mobile drop-t-il les champs `source/voice_speaker/voice_session_id/time_in_call_secs` ?        | Vérifier `mobile/src/services/api.ts` mapping. Test passthrough ajouté dans PR1.                                                                                   |
-| Bouton Voice supprimé de analyse[id] : régression user ("où est passé le bouton gold ?")                            | Bouton "Discuter / Appeler" (avec menu chat/call) dans ActionBar = remplacement explicite. Smoke test iOS+Android validate.                                        |
-| `QuickChatScreen` callsite Home : si Quick Chat URL fail backend → on ne peut plus retomber sur QuickChatScreen     | PR1 ne supprime pas encore QuickChatScreen. Suppression dans PR2 après validation que /hub avec videoUrl + chat marche bien.                                       |
-| ConversationsDrawer en bottom sheet vs side drawer web : UX divergente                                              | Décision verrouillée (#15). BottomSheet est mobile-native (`@gorhom/bottom-sheet` déjà installé). Side drawer = anti-pattern mobile (TabBar bouffe l'espace).      |
-| Sub-tab Chat dans analyse[id] partage Timeline + InputBar → bug couplage avec hubStore                              | `Timeline` + `InputBar` doivent rester pure components (props-driven). Ne PAS importer `useHubStore` directement dedans. Le Hub passe les props depuis `hub.tsx`.  |
-| Auto-start voice en mode `initialMode='call'` consomme du quota sans confirmation                                   | Si `initialMode='call'` vient de Home (user a explicitement tapé "Quick Call") → start direct. Si autre source → garder Alert confirm. Décision verrouillable PR2. |
-| Tests Jest existants `__tests__/QuickChatScreen.test.tsx`, `VoiceScreen.test.tsx`, `VoiceButton.placement.test.tsx` | Supprimés en PR2 (composants supprimés). Nouveaux tests Hub couvrent les mêmes scenarios.                                                                          |
-| `analysis/[id]/Chat` sub-tab refactor casse le flow analyse                                                         | ChatView.tsx garde son interface (props `summaryId`, `keyboardOffset`). Refactor INTERNE uniquement (utilise Hub Timeline+InputBar en sous-composants). Tests E2E. |
+Identique au constat de la spec 2026-05-02 §6 : la timeline chat + voice est déjà unifiée backend.
+
+- `chatApi.getHistory(summary_id)` retourne tout (text + voice agent + voice user, le filtre user est UI-side).
+- `videoApi.quickChat(url)` retourne `summary_id` (utilisé par Home + Hub `HubEmptyState`).
+- `historyApi.getHistory(page, perPage)` pour `ConversationsDrawer`.
+- `videoApi.upgradeQuickChat(summaryId, mode)` déjà câblé dans `MiniActionBar`.
+
+Sanity check optionnel : grep `mobile/src/services/api.ts` pour confirmer que `chatApi.getHistory` mappe bien `source/voice_speaker/voice_session_id/time_in_call_secs` (sinon fix passthrough cf. spec 2026-05-02 §11.1).
 
 ---
 
-## 8. Métriques de succès (PostHog)
+## 7. Phasage — 1 PR (sub-agents séquentiels)
 
-- `hub_opened` (segmenté par source : `tabbar` | `home_quick_chat` | `home_quick_call` | `analysis_action_bar` | `library_card`)
-- `hub_conversation_selected_from_drawer` (KPI engagement liste)
-- `hub_message_sent_text` (segmenté par voiceMode au moment de l'envoi)
-- `hub_message_received_voice_agent` (transcript ElevenLabs ajouté au fil)
-- `hub_quick_call_from_home` (PR2 — bouton Quick Call sur Home)
-- `hub_voice_started` / `hub_voice_ended` / `hub_voice_quota_exceeded`
-- `hub_call_to_chat_dropped` (End pendant un call, retour fluide vers mode chat)
-- **KPI primary** : `hub_opened` / `app_session_started` ratio. Si > 50%, le Hub est devenu le centre de gravité (succès).
+| Sub-agent | Scope                                                                                                                                                          | Effort  | Dépend de |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | --------- |
+| Agent A   | **Foundation** : extract `ConversationContent` depuis `ConversationScreen` (refacto wrapper Modal) + tests Jest passants                                       | 0,5–1 j | —         |
+| Agent B   | **Hub tab** : rewrite `mobile/app/(tabs)/hub.tsx` + `HubEmptyState` + déshider `href:null` + ajout `hub` à `TAB_META` + brancher `ConversationsDrawer` backend | 1–1,5 j | Agent A   |
+| Agent C   | **Migration call-sites** : Home `handleQuickChat` push Hub + analysis `[id].tsx` cleanup quickChat mode + suppression ChatView + fix VoiceButton bottomOffset  | 0,5–1 j | Agent B   |
+| Agent D   | **Cleanup + tests** : suppression composants `hub/*` mock + tests Jest mis à jour + smoke iOS/Android + EAS update preview                                     | 0,5–1 j | Agent C   |
+
+**Total : 2,5–4,5 jours Opus 4.7 sub-agents séquentiels** (Agent A doit finir avant B, etc.).
+
+**Variante parallèle** : Agent A solo, puis Agent B + Agent C en parallèle (B touche `hub.tsx` + `(tabs)/_layout.tsx`, C touche `index.tsx` + `analysis/[id].tsx` — pas de chevauchement). Agent D séquentiel après A+B+C. **Total : 2–3 jours**.
 
 ---
 
-## 9. Tests
+## 8. Risques et mitigations
 
-### 9.1 PR1 — Mobile (Jest)
+| Risque                                                                                                              | Mitigation                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `useConversation` ne supporte pas le change de `summaryId` à chaud (state interne pollué)                           | `key={summaryId}` sur `<ConversationContent />` force remount propre. Coût : animation visible au switch (acceptable). Alternative : refactor `useConversation` pour reset interne, plus risqué. |
+| Voice live + tab switch perd la session sans warning                                                                | V1 : cleanup auto. V2 : ajouter Alert "Vous êtes en appel — quitter le Hub terminera la session. Continuer ?" si `voiceMode === 'live'` (décision §13 #3)                                        |
+| `ConversationsDrawer` actuel utilise mock data — branchement backend non-trivial                                    | Audit du composant (Agent B Task 1) avant rewrite. Probable refactor : ajouter prop `conversations` (provenant de `historyApi.getHistory` côté tab Hub).                                         |
+| Suppression `mobile/src/components/hub/Timeline.tsx` casse import dans `hub.tsx` proto                              | Le rewrite `hub.tsx` (Agent B) supprime tous les imports vers ces composants. Vérifier via grep avant delete (Agent D Task 1).                                                                   |
+| `analysis/[id].tsx` mode `quickChat=true` (ligne 443-462) référencé par d'autres call-sites (Library long-press ?)  | grep `quickChat=true\|quickChat: "true"\|quickChat: 'true'` cross-repo. Migration tous les call-sites vers tab Hub. Estimé 2-3 occurrences max.                                                  |
+| Régression sprint UX 2026-05-03 (DismissKeyboard, edge-to-edge, useTabBarFootprint)                                 | `ConversationContent` reprend tel quel le layout actuel `ConversationScreen` qui inclut déjà `DismissKeyboard`/edge-to-edge. Smoke test obligatoire (Agent D).                                   |
+| Tab Hub apparaît mais les params `summaryId` ne s'auto-clean pas au tab switch → user revient et voit ancienne conv | Comportement souhaité (persistance UX). Si problème user : `useFocusEffect` clear params. Décision §13 #5 ouverte.                                                                               |
+| `EmptyConversationSuggestions` (PR #277) hardcodé pour ChatView — refactor pour usage Hub empty state               | Adapter pour accepter `onSuggestionPress` callback générique. Déjà fait normalement (composant générique selon le code récent).                                                                  |
+| `VoiceButton` fix `bottomOffset` casse les autres call-sites (Library/Study)                                        | `useTabBarFootprint` retourne aussi 0 si TabBar cachée (mode fullscreen). Vérifier que `bottomOffset` est `null`-safe sur Library/Study (qui passent leur propre offset).                        |
 
-- `mobile/__tests__/stores/hubStore.test.ts` : mutations setConversations, setActiveConv (vide messages), appendMessage, toggleDrawer, reset
-- `mobile/__tests__/components/hub/Timeline.test.tsx` :
-  - `renders empty state when messages.length === 0`
-  - `excludes voice_user messages from display (audio user invisible rule)`
-  - `renders bubble user texte right-aligned`
-  - `renders bubble agent texte left-aligned with markdown`
-  - `renders thinking dots when isThinking=true`
-- `mobile/__tests__/components/hub/MessageBubble.test.tsx` :
-  - `user text bubble`
-  - `assistant text bubble with markdown`
-  - `assistant voice_agent bubble with 🎙️ badge`
-- `mobile/__tests__/components/hub/ConversationsDrawer.test.tsx` :
-  - `renders FlashList of conversations`
-  - `tap item calls setActiveConv with correct id`
-  - `bottom sheet snapPoints correct`
-- `mobile/__tests__/services/chatApi.test.ts` (passthrough fields) :
-  - `chatApi.getHistory returns source/voice_speaker/voice_session_id/time_in_call_secs unchanged`
+---
 
-### 9.2 PR2 — Mobile (Jest)
+## 9. Métriques de succès (PostHog)
 
-- `mobile/__tests__/hooks/useHubVoice.test.ts` :
-  - `auto-starts voice when initialMode='call' on mount`
-  - `does NOT auto-start voice when initialMode='chat'`
-  - `appendMessage called with source='voice_agent' on transcript`
-  - `transitions voiceState idle → connecting → call_active → call_ending → idle on hangup`
-  - `voiceCallOpen toggles correctly`
-- `mobile/__tests__/components/hub/VoiceControls.test.tsx` :
-  - `renders nothing when voiceState='idle'`
-  - `renders Mute+End when voiceState='call_active'`
-  - `renders quota_exceeded CTA when voice quota=0`
-- `mobile/__tests__/components/hub/CallModeFullBleed.test.tsx` :
-  - `renders fullscreen when voiceCallOpen=true`
-  - `tap background minimizes (sets voiceCallOpen=false)`
-- `mobile/__tests__/components/hub/InputBar.test.tsx` (mic toggle) :
-  - `mic button shows confirm dialog when voiceMode='off'`
-  - `mic button toggles mute when voiceMode='live'`
-- Tests existants supprimés : `QuickChatScreen.test.tsx`, `VoiceScreen.test.tsx`, `VoiceButton.test.tsx`, `VoiceButton.placement.test.tsx`, `PostCallScreen.test.tsx` (si présent)
+- `hub_tab_opened` (segmenté par source : tab_press, deep_link, home_quick_chat_redirect, library_select)
+- `hub_conversation_switched` (drawer click)
+- `hub_new_conv_started` (drawer "+ Nouvelle conversation" ou empty state CTA)
+- `hub_voice_started_from_input_mic` (mic toggle dans ConversationInput Hub) — **KPI clé**
+- `hub_chat_to_call_promoted_via_alert` (confirm Alert Démarrer l'appel) — KPI Quick Call discoverability
+- `analysis_chat_tab_redirect_to_hub_clicked` (si variante A retenue §13 #1)
+- `voice_button_visible_count` (quotidien, vérifie que le FAB n'est plus masqué) — sanity check Quick Call invisible fix
+- **KPI primary** : taux de session Quick Call lancées par jour AVANT vs APRÈS sprint. Cible : ≥ 2x.
 
-### 9.3 Smoke E2E manuel (PR2)
+---
+
+## 10. Tests
+
+### 10.1 Mobile (Jest, Agent D)
+
+- `mobile/__tests__/app/hub.test.tsx` (NEW) :
+  - `renders HubEmptyState when no summaryId param`
+  - `renders ConversationContent when summaryId param present`
+  - `setParams on drawer select`
+  - `setParams undefined on drawer new conv`
+  - `auto-resolves last conv when no summaryId and history has items`
+- `mobile/__tests__/components/hub/HubEmptyState.test.tsx` (NEW) :
+  - `renders 3 suggestion chips`
+  - `onPasteUrl called when URL pasted and submit`
+  - `onPickConv called when "Choisir une conversation" tapped`
+- `mobile/__tests__/components/conversation/ConversationContent.test.tsx` (REFACTOR — était `ConversationScreen.test.tsx`, déplacer la majorité des cases) :
+  - mêmes 9 cases que spec 2026-05-02 §11.2, sans le wrapper Modal
+- `mobile/__tests__/components/conversation/ConversationScreen.test.tsx` (NEW minimal — wrapper Modal) :
+  - `renders Modal with visible=true`
+  - `calls onClose on Modal onRequestClose`
+  - `passes contentProps to ConversationContent`
+- Mise à jour : suppression de `mobile/src/components/analysis/ChatView.tsx` → suppression `mobile/src/components/analysis/__tests__/ChatView.test.tsx` si existe.
+
+### 10.2 Smoke E2E manuel (Agent D, post-build)
 
 **iOS + Android** :
 
-1. Tab "Hub" depuis TabBar → Hub vide, drawer ouvre via menu ☰
-2. Home → tap "Quick Chat" + URL → navigate Hub mode chat → message envoyé/reçu OK
-3. Home → tap "Quick Call" + URL → navigate Hub mode call → voice auto-start → bulle 🎙️ apparaît
-4. Pendant call : tape un message texte → injecté dans conversation, agent répond à l'oral
-5. Tap End → toast "✅ Appel terminé" 3s → retour mode chat
-6. Drawer → tap conversation → activeConv change, messages chargent
-7. analyse[id] → tap "Discuter / Appeler" dans ActionBar → menu choix → navigate Hub avec summaryId
-8. Vérifier que FAB gold ABSENT sur analyse[id] (supprimé en PR2)
-9. analyse[id]/Chat sub-tab → vérifier que ChatView utilise Timeline+InputBar refactorisé (visuellement cohérent avec Hub)
-10. Long session : vérifier persistance bottomSheet/drawer state, scroll position Timeline
+1. Open app → tap "Hub" tab → vérifier `HubEmptyState` apparaît (si pas de last conv) ou la dernière conv est chargée (si history ≥ 1)
+2. Tap burger → `ConversationsDrawer` slide-in → sélectionner une conv → drawer ferme + `ConversationContent` re-render avec la conv sélectionnée
+3. Sur Hub avec conv chargée → tap mic dans `ConversationInput` → Alert "Démarrer l'appel ?" → confirm → voice live → bulle agent 🎙️ apparaît
+4. Tap End → toast 3s → retour mode chat → mic gris
+5. Sur Home → coller URL YouTube → tap Quick Chat → vérifier navigation vers tab Hub avec `summaryId` correct + initialMode=chat
+6. Sur tab Hub avec conv → tap "Bibliothèque" → tap "Hub" → vérifier que la même conv est restaurée (params persistés)
+7. Sur `analysis/[id].tsx` (via Library tap card) → vérifier FAB Voice gold visible **et accessible** (pas masqué TabBar)
+8. Sur `analysis/[id].tsx` → vérifier que tab "Chat" affiche soit le placeholder bouton "Continuer dans le Hub" (variante A §13 #1) soit n'existe plus (variante B)
+9. EAS update preview → smoke même flow sur build prod
 
 ---
 
-## 10. Décisions ouvertes (à valider en review PR1/PR2)
+## 11. Critères d'acceptation
 
-| #   | Décision                                                                            | Défaut proposé                                                                                                                                                 |
-| --- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Auto-start voice si `initialMode='call'` depuis Home : confirm dialog ou direct ?   | **Direct** (le user a explicitement tapé "Quick Call" sur Home, l'intention est claire). Confirm dialog garde sa place uniquement pour toggle Mic depuis chat. |
-| 2   | Bouton "Discuter / Appeler" dans ActionBar : 2 boutons séparés ou 1 menu ?          | **1 bouton avec long-press menu** : tap = chat (default), long-press = menu choix [Chat / Call]. Économise l'espace dans ActionBar.                            |
-| 3   | `VoiceButton.tsx` (existant) : conserver pour ActionBar ou supprimer complètement ? | **Supprimer** et créer un bouton inline simple dans ActionBar (pas de FAB). Le pattern FAB n'est plus utilisé.                                                 |
-| 4   | Hub vide sans activeConv : afficher CTA "Coller URL" ou ouvrir drawer auto ?        | **CTA "Coller URL ou choisir une conversation"** + bouton ouvrir drawer. Empty state explicite, pas de drawer auto-open intrusif.                              |
-| 5   | Persistance `hubStore` (Zustand) : in-memory ou avec `persist` middleware ?         | **In-memory** pour PR1. Activer `persist` (AsyncStorage) en PR3 si UX demande "rouvrir l'app sur la dernière conversation". Out-of-scope PR1+PR2.              |
-
----
-
-## 11. Lien avec specs antérieures
-
-- **Supersedes (mobile portion)** : `docs/superpowers/specs/2026-05-02-quick-chat-call-unified-design.md` — la partie mobile (Modal `ConversationScreen`) est REMPLACÉE par cette spec (onglet Hub stable). La partie extension reste valide et hors-scope ici.
-- **Référence implémentation** : `frontend/src/pages/HubPage.tsx` + `frontend/src/components/hub/*` + `frontend/src/store/hubStore.ts` (mirror direct).
-- **Étend** : `docs/superpowers/specs/2026-04-26-quick-voice-call-design.md` (V1 extension, mergée PR #149)
-- **Cohérent avec** : `docs/superpowers/specs/2026-04-29-merge-voice-chat-context-design.md` (Agent context bidirectionnel)
+- [ ] Tab `Hub` visible dans la TabBar mobile (6 onglets dont Hub au centre)
+- [ ] Tap tab Hub → `HubEmptyState` (si vide) ou `ConversationContent` (si last conv resolved)
+- [ ] `ConversationsDrawer` swipe-in left, liste conversations depuis backend (`historyApi.getHistory`)
+- [ ] Switch conv via drawer → re-render propre, pas de fuite état précédent
+- [ ] Mic toggle dans `ConversationInput` du Hub → Alert confirm → voice live (Quick Call discoverable)
+- [ ] Quick Chat URL Home → push tab Hub (pas analysis/[id]?quickChat)
+- [ ] Tab "Chat" de `analysis/[id].tsx` → variante A (CTA Hub) OU variante B (tab supprimé) — selon décision §13 #1
+- [ ] FAB Voice sur `analysis/[id].tsx` plus jamais masqué par TabBar (utilise `useTabBarFootprint`)
+- [ ] Audio user invisible respecté (bulles agent voice 🎙️ visibles, bulles user voice non visibles)
+- [ ] Suppression effective : `ChatView.tsx`, `Timeline.tsx` mock, `InputBar.tsx` mock, `CallModeFullBleed.tsx`, etc.
+- [ ] Tests Jest verts (`useConversation`, `ConversationContent`, `Hub`, `HubEmptyState`)
+- [ ] Smoke iOS + Android : tous les flows §10.2 OK
+- [ ] EAS update preview live et testé
 
 ---
 
-_Spec produite en mode brainstorming Superpowers (Opus 4.7). Décisions verrouillées avec user 2026-05-04 via AskUserQuestion. Plan d'implémentation : `docs/superpowers/plans/2026-05-04-mobile-hub-tab-unified.md`._
+## 12. Décisions ouvertes (à valider en review user — 5 décisions)
+
+| #   | Décision                                                                                                     | Défaut proposé                                                                                                                                                                                    |
+| --- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Tab "Chat" de `analysis/[id].tsx` : placeholder CTA vers Hub (variante A) OU suppression du tab (variante B) | **Variante A** (CTA "Continuer dans le Hub"). Maintient la découvrabilité du chat depuis l'analyse. Variante B casse l'habitude actuelle et oblige l'user à connaître le tab Hub.                 |
+| 2   | Intégrer `SummaryCollapsible` + `VideoPiPPlayer` + `SourcesShelf` dans `ConversationContent` (pour Hub)      | **Pas dans ce sprint** (V1 minimal). Le Hub mobile garde le layout actuel `ConversationContent` (header + feed + voice + input). Intégration richer (résumé collapsible + PiP) en V2 spec dédiée. |
+| 3   | Voice live + tab switch : warning Alert OU cleanup silencieux                                                | **Cleanup silencieux V1** (comportement Modal actuel). V2 si feedback user négatif → Alert "Quitter le Hub terminera l'appel ?".                                                                  |
+| 4   | `HubEmptyState` : 1 ou 2 CTA (URL paste, pick conv, démarrer call vide)                                      | **2 CTA** : "Coller un lien YouTube/TikTok" + "Choisir une conversation". Pas de "démarrer un call sans vidéo" (mode `companion` non scope V1, déjà tranché spec 2026-04-27 §3 décision tacite).  |
+| 5   | Persistance `?summaryId=` au tab switch                                                                      | **OUI** (Expo Router params persistent par défaut). Si pas souhaité → `useFocusEffect` clear params au unmount. Décision : laisser persister (UX = reprendre où on était).                        |
+
+---
+
+## 13. Méga-plan d'implémentation
+
+Le découpage en sous-agents Opus 4.7 sera produit par invocation de la skill `writing-plans` après approbation de ce spec. Vue macro :
+
+- **Agent A — Foundation** : extract `ConversationContent` depuis `ConversationScreen` (refacto wrapper Modal), tests Jest. Estimation : 0,5–1 jour.
+- **Agent B — Hub tab** : rewrite `mobile/app/(tabs)/hub.tsx`, créer `HubEmptyState`, déshider `href:null`, ajout `hub` à `TAB_META`, brancher `ConversationsDrawer` backend. Estimation : 1–1,5 jour.
+- **Agent C — Migration call-sites** : `index.tsx` push Hub, `analysis/[id].tsx` cleanup quickChat mode, suppression ChatView, fix VoiceButton bottomOffset. Estimation : 0,5–1 jour.
+- **Agent D — Cleanup + tests** : suppression composants `hub/*` mock, tests Jest mis à jour, smoke iOS/Android, EAS update preview. Estimation : 0,5–1 jour.
+
+Possibilité parallélisation B + C après A, voir §7. **Toutes les invocations Agent doivent utiliser `model: claude-opus-4-7[1m]`** (mémoire user perma).
+
+---
+
+## 14. Lien avec specs antérieures
+
+- **Étend** : `docs/superpowers/specs/2026-05-02-quick-chat-call-unified-design.md` (refacto extract ConversationContent + ajout call-site Hub tab)
+- **Réfère** : `docs/superpowers/specs/2026-05-03-hub-nav-redesign-design.md` (pattern Hub WEB — tab sticky + InputBar context-aware — mais NON appliqué tel quel mobile car layout Modal natif est différent du web sticky scrollable)
+- **Réfère** : `docs/superpowers/specs/2026-04-27-quick-voice-call-mobile-v3-design.md` (backend `explorer_streaming` partagé, déjà mergé)
+
+---
+
+_Spec produit en mode brainstorming Superpowers (Opus 4.7). À reviewer et committer sur `main` avant lancement de la writing-plans skill._
