@@ -656,7 +656,7 @@ export default function StudyScreen() {
                             pathname: "/(tabs)/analysis/[id]",
                             params: {
                               id: summary.id,
-                              backTo: "library",
+                              backTo: "study",
                               initialTab: "0",
                             },
                           } as any)
@@ -666,7 +666,7 @@ export default function StudyScreen() {
                             pathname: "/(tabs)/analysis/[id]",
                             params: {
                               id: summary.id,
-                              backTo: "library",
+                              backTo: "study",
                               initialTab: "1",
                             },
                           } as any)

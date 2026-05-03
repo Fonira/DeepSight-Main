@@ -172,6 +172,10 @@ export default function AnalysisDetailScreen() {
     store.resetAnalysis();
     if (backTo === "library") {
       router.replace("/(tabs)/library");
+    } else if (backTo === "study") {
+      router.replace("/(tabs)/study");
+    } else if (backTo === "home") {
+      router.replace("/(tabs)");
     } else {
       router.back();
     }
