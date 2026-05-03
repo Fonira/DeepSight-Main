@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
+from core.logging import logger
 from db.database import get_session, User
 from auth.dependencies import get_current_user
 from videos.service import get_summary_by_id, deduct_credit
@@ -216,7 +217,15 @@ async def generate_quiz(
 
         await session.commit()
 
-        # Le trigger embed_quiz sera ajouté en Task 17, pas dans cette task
+        # ─── Semantic Search V1 trigger ─────────────────────────────────────
+        try:
+            import asyncio
+            from search.embedding_service import embed_quiz
+            asyncio.create_task(embed_quiz(summary_id))
+        except ImportError:
+            pass
+        except Exception as emb_err:
+            logger.warning(f"[STUDY] embed_quiz trigger failed for {summary_id}: {emb_err}")
         # ─── End V1 Semantic Search materialization ─────────────────────────────
 
         return QuizResponse(
@@ -464,8 +473,15 @@ async def generate_flashcards(
 
         await session.commit()
 
-        # 3. Le trigger embed_flashcards sera ajouté en Task 17, pas dans cette task
-        #    (le helper n'existe pas encore à ce stade du plan)
+        # ─── Semantic Search V1 trigger ─────────────────────────────────────
+        try:
+            import asyncio
+            from search.embedding_service import embed_flashcards
+            asyncio.create_task(embed_flashcards(summary_id))
+        except ImportError:
+            pass
+        except Exception as emb_err:
+            logger.warning(f"[STUDY] embed_flashcards trigger failed for {summary_id}: {emb_err}")
         # ─── End V1 Semantic Search materialization ─────────────────────────────
 
         return FlashcardsResponse(
