@@ -33,7 +33,6 @@ describe("ConversationsDrawer", () => {
         conversations={convs}
         activeConvId={null}
         onSelect={() => {}}
-        onNewConv={() => {}}
       />,
     );
     expect(container.firstChild).toBeNull();
@@ -47,7 +46,6 @@ describe("ConversationsDrawer", () => {
         conversations={convs}
         activeConvId={null}
         onSelect={() => {}}
-        onNewConv={() => {}}
       />,
     );
     expect(screen.getByText("Lex Fridman · conscience")).toBeInTheDocument();
@@ -63,7 +61,6 @@ describe("ConversationsDrawer", () => {
         conversations={convs}
         activeConvId={null}
         onSelect={onSelect}
-        onNewConv={() => {}}
       />,
     );
     fireEvent.click(screen.getByText("Naval · le levier"));
@@ -78,7 +75,6 @@ describe("ConversationsDrawer", () => {
         conversations={convs}
         activeConvId={null}
         onSelect={() => {}}
-        onNewConv={() => {}}
       />,
     );
     fireEvent.change(screen.getByPlaceholderText(/rechercher/i), {
