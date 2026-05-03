@@ -9,6 +9,7 @@ interface TutorDeepSessionProps {
   messages: TutorTurn[];
   loading: boolean;
   mode: "text" | "voice";
+  audioUrl?: string | null;
   onSubmit: (input: string) => void;
   onSwitchToText: () => void;
   onClose: () => void;
@@ -19,6 +20,7 @@ export const TutorDeepSession: React.FC<TutorDeepSessionProps> = ({
   messages,
   loading,
   mode,
+  audioUrl,
   onSubmit,
   onSwitchToText,
   onClose,
@@ -91,6 +93,15 @@ export const TutorDeepSession: React.FC<TutorDeepSessionProps> = ({
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           className="relative w-full max-w-2xl h-[80vh] rounded-3xl border border-accent-primary/25 bg-bg-secondary/98 backdrop-blur-2xl shadow-2xl shadow-black/60 flex flex-col overflow-hidden"
         >
+          {audioUrl && (
+            <audio
+              key={audioUrl}
+              src={audioUrl}
+              autoPlay
+              style={{ display: "none" }}
+            />
+          )}
+
           <header className="flex items-center justify-between px-6 py-4 border-b border-white/5">
             <div className="flex flex-col">
               <span className="text-[10px] uppercase tracking-wider text-accent-primary font-semibold">
