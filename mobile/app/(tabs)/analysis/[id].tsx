@@ -31,7 +31,6 @@ import { ChatView } from "@/components/analysis/ChatView";
 import { ActionBar } from "@/components/analysis/ActionBar";
 import { ConversationScreen } from "@/components/conversation";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
-import { DeepSightSpinner } from "@/components/ui/DeepSightSpinner";
 import { VoiceButton } from "@/components/voice/VoiceButton";
 import { ExportMenu } from "@/components/export";
 import { AcademicSourcesSection } from "@/components/academic";
@@ -43,11 +42,10 @@ const TAB_LABELS = ["Résumé", "Sources", "Chat"] as const;
 const TAB_COUNT = TAB_LABELS.length;
 
 export default function AnalysisDetailScreen() {
-  const { id, backTo, initialTab, quickChat } = useLocalSearchParams<{
+  const { id, backTo, initialTab } = useLocalSearchParams<{
     id: string;
     backTo?: string;
     initialTab?: string;
-    quickChat?: string;
   }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -439,47 +437,13 @@ export default function AnalysisDetailScreen() {
     </View>
   );
 
-  // ── Quick Chat mode ──────────────────────────────────────────────────────
-  const isQuickChat = quickChat === "true" || summary?.mode === "quick_chat";
-
-  if (isQuickChat && summary) {
-    return (
-      <ConversationScreen
-        visible
-        summaryId={summary.id}
-        initialMode="chat"
-        videoTitle={summary.title || "Vidéo"}
-        channelName={summary.channel}
-        platform={
-          (summary.platform === "tiktok" ? "tiktok" : "youtube") as
-            | "youtube"
-            | "tiktok"
-        }
-        initialFavorite={summary.isFavorite}
-        onClose={handleBack}
-      />
-    );
-  }
-
-  // Loading state — Quick Chat = DeepSight spinner, analyse = skeleton
+  // Loading state
   if (isLoading && !isProcessing) {
     return (
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
         {BackHeader}
-        {isQuickChat ? (
-          <View
-            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-          >
-            <DeepSightSpinner
-              size="lg"
-              label="Connexion au chat..."
-              showLabel
-            />
-          </View>
-        ) : (
-          <AnalysisSkeleton />
-        )}
+        <AnalysisSkeleton />
       </View>
     );
   }
