@@ -1,5 +1,5 @@
 // frontend/src/components/hub/__tests__/Timeline.test.tsx
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Timeline } from "../Timeline";
 import type { HubMessage } from "../types";
@@ -39,5 +39,33 @@ describe("Timeline", () => {
       .map((p) => p.textContent)
       .filter((t) => ["Q1", "A1", "transcript"].includes(t || ""));
     expect(texts).toEqual(["Q1", "A1", "transcript"]);
+  });
+
+  it("hides empty state when isActiveTab is false (F3)", () => {
+    const { container } = render(
+      <Timeline messages={[]} isActiveTab={false} />,
+    );
+    expect(
+      screen.queryByText(/posez votre première question/i),
+    ).not.toBeInTheDocument();
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("shows empty state when isActiveTab is true (F3)", () => {
+    render(<Timeline messages={[]} isActiveTab={true} />);
+    expect(
+      screen.getByText(/posez votre première question/i),
+    ).toBeInTheDocument();
+  });
+
+  it("scrolls to last bubble when new message arrives (F14)", () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const { rerender } = render(<Timeline messages={[msgs[0]]} />);
+    rerender(<Timeline messages={[msgs[0], msgs[1]]} />);
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "end",
+    });
   });
 });
