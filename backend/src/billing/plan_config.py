@@ -150,6 +150,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "export_pdf": False,
                 "playlists": False,
                 "history": True,
+                "semantic_search_tooltip": False,
                 "voice_chat": False,
                 "voice_call_quick": True,  # Quick Voice Call V1 — 1-shot lifetime trial
                 "debate": False,
@@ -168,6 +169,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "export_pdf": False,
                 "playlists": False,
                 "history": True,
+                "semantic_search_tooltip": False,
                 "voice_chat": False,
                 "voice_call_quick": True,  # Quick Voice Call V1 — 1-shot lifetime trial
                 "debate": False,
@@ -186,6 +188,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "export_pdf": False,
                 "playlists": False,
                 "history": True,
+                "semantic_search_tooltip": False,
                 "voice_chat": False,
                 "voice_call_quick": True,  # Quick Voice Call V1 — 1-shot lifetime trial
                 "debate": False,
@@ -284,6 +287,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "export_pdf": True,
                 "playlists": False,
                 "history": True,
+                "semantic_search_tooltip": True,  # V1 — tooltip IA "pourquoi ce passage matche"
                 "voice_chat": False,
                 "voice_call_quick": True,   # Quick Voice Call V1 — 30 min/mois (Pro v2)
                 "debate": True,
@@ -302,6 +306,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "export_pdf": False,
                 "playlists": False,
                 "history": True,
+                "semantic_search_tooltip": True,  # V1 — tooltip IA "pourquoi ce passage matche"
                 "voice_chat": False,
                 "voice_call_quick": True,   # Quick Voice Call V1 — 30 min/mois (Pro v2)
                 "debate": False,
@@ -320,6 +325,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "export_pdf": False,
                 "playlists": False,
                 "history": True,
+                "semantic_search_tooltip": False,
                 "voice_chat": False,
                 "voice_call_quick": True,   # Quick Voice Call V1 — 30 min/mois (Pro v2)
                 "debate": False,
@@ -420,6 +426,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "export_pdf": True,
                 "playlists": True,
                 "history": True,
+                "semantic_search_tooltip": True,  # V1 — tooltip IA "pourquoi ce passage matche"
                 "voice_chat": True,
                 "voice_call_quick": True,  # Quick Voice Call V1 — 30 min/mois
                 "debate": True,
@@ -438,6 +445,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "export_pdf": False,
                 "playlists": True,
                 "history": True,
+                "semantic_search_tooltip": True,  # V1 — tooltip IA "pourquoi ce passage matche"
                 "voice_chat": True,
                 "voice_call_quick": True,  # Quick Voice Call V1 — 30 min/mois
                 "debate": False,
@@ -456,6 +464,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "export_pdf": False,
                 "playlists": False,
                 "history": True,
+                "semantic_search_tooltip": False,
                 "voice_chat": False,
                 "voice_call_quick": True,  # Quick Voice Call V1 — 30 min/mois
                 "debate": False,

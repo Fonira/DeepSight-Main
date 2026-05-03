@@ -752,6 +752,12 @@ MAGISTRAL_EPISTEMIC_TIERS: list = [
     if t.strip()
 ]
 
+
+# 🔍 Semantic Search V1 (extended : summary + flashcard + quiz + chat)
+SEMANTIC_SEARCH_V1_ENABLED: bool = (
+    os.getenv("SEMANTIC_SEARCH_V1_ENABLED", "false").lower() == "true"
+)
+
 # Modération — Phase 2 migration Mistral-First
 # log_only : calcule + log les scores mais laisse passer (calibration)
 # enforce  : bloque les contenus flagged (raise HTTP 400)
@@ -873,6 +879,15 @@ def is_web_search_available() -> bool:
 def is_mistral_agent_available() -> bool:
     """Check if Mistral Agent web search is enabled and configured."""
     return bool(MISTRAL_AGENT_ENABLED and MISTRAL_API_KEY)
+
+
+def is_semantic_search_v1_enabled() -> bool:
+    """Check if extended semantic search V1 is enabled (gates UI rollout).
+
+    The endpoints exist regardless, but the frontend hides the search tab if
+    this returns False. Allows progressive rollout.
+    """
+    return SEMANTIC_SEARCH_V1_ENABLED and bool(MISTRAL_API_KEY)
 
 
 def get_plan_limits(plan: str) -> Dict[str, Any]:
