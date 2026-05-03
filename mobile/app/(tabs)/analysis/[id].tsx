@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { View, Text, Pressable, StatusBar, StyleSheet } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarFootprint } from "@/hooks/useTabBarFootprint";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PagerView from "react-native-pager-view";
 import Animated, {
@@ -40,7 +41,6 @@ import { usePlan } from "@/contexts/PlanContext";
 
 const TAB_LABELS = ["Résumé", "Sources", "Chat"] as const;
 const TAB_COUNT = TAB_LABELS.length;
-const TAB_BAR_HEIGHT = 60;
 
 export default function AnalysisDetailScreen() {
   const { id, backTo, initialTab, quickChat } = useLocalSearchParams<{
@@ -52,6 +52,7 @@ export default function AnalysisDetailScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
+  const tabBarFootprint = useTabBarFootprint();
   const { colors, isDark } = useTheme();
   const store = useAnalysisStore();
   const isOffline = useIsOffline();
@@ -374,6 +375,9 @@ export default function AnalysisDetailScreen() {
           isLoading={isLoading && canFetchSummary}
           error={error && !isProcessing ? "Erreur de chargement" : null}
           onRetry={() => refetch()}
+          // Le container parent réserve déjà la footprint TabBar — le scroll
+          // du content peut donc se contenter d'une marge respiration.
+          bottomPadding={isFullscreen ? insets.bottom + sp.lg : sp["2xl"]}
         />
       </View>
       <View key="sources" style={styles.page}>
@@ -577,10 +581,9 @@ export default function AnalysisDetailScreen() {
         styles.container,
         {
           backgroundColor: colors.bgPrimary,
-          // En fullscreen : paddingBottom=0 pour que l'overlay absolu atteigne le bas de l'écran
-          paddingBottom: isFullscreen
-            ? 0
-            : TAB_BAR_HEIGHT + Math.max(insets.bottom, sp.sm),
+          // En fullscreen : paddingBottom=0 pour que l'overlay absolu atteigne le bas de l'écran.
+          // En mode normal : footprint partagé pour ne jamais cacher le dernier élément derrière la TabBar.
+          paddingBottom: isFullscreen ? 0 : tabBarFootprint,
         },
       ]}
     >

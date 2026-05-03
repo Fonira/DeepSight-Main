@@ -8,6 +8,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarFootprint } from "@/hooks/useTabBarFootprint";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,6 +36,7 @@ const QUERY_KEY_BASE = "library";
 export default function LibraryScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const tabBarFootprint = useTabBarFootprint();
   const router = useRouter();
   const queryClient = useQueryClient();
   const isOffline = useIsOffline();
@@ -367,7 +369,10 @@ export default function LibraryScreen() {
           data={filteredItems}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{
+            ...styles.listContent,
+            paddingBottom: tabBarFootprint,
+          }}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
           ListEmptyComponent={renderEmpty}
@@ -440,7 +445,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: sp.lg,
-    paddingBottom: 80,
   },
   emptyContainer: {
     alignItems: "center",

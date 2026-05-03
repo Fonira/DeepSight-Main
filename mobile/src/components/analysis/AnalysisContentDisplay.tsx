@@ -49,6 +49,9 @@ interface AnalysisContentDisplayProps {
   /** Legacy props — compat with old AnalysisScreen */
   showEmptyState?: boolean;
   emptyStateMessage?: string;
+  /** ScrollView paddingBottom — défaut 120 (compat). Le parent (analysis/[id])
+   *  peut injecter `useTabBarFootprint()` pour aligner avec la TabBar globale. */
+  bottomPadding?: number;
 }
 
 // ── Epistemic Markers ──────────────────────────────────────────────────────
@@ -199,6 +202,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
   onRetry,
   showEmptyState = false,
   emptyStateMessage,
+  bottomPadding = 120,
 }) => {
   const { colors, isDark } = useTheme();
   const displayText = isStreaming ? streamingText : content || "";
@@ -641,7 +645,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
 
       <ScrollView
         style={localStyles.scroll}
-        contentContainerStyle={localStyles.scrollContent}
+        contentContainerStyle={[localStyles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View
@@ -687,7 +691,6 @@ const localStyles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: sp.lg,
-    paddingBottom: 120,
   },
   // Cursor
   cursorRow: {
