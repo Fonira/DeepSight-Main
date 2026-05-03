@@ -1,33 +1,23 @@
 /**
- * Tests for ConversationScreen (root component).
+ * Tests for ConversationScreen (thin Modal wrapper around ConversationContent).
  *
- * Covers spec §11.2 scenarios :
- * - empty state with suggestion chips
- * - chat bubbles user/assistant
- * - voice agent bubble with mic badge
- * - NO voice user bubble (filtered upstream)
- * - VoiceControls 'off' default
- * - VoiceControls 'live' when voice active
- * - EndedToast on hangup
- * - mic button confirm dialog when voiceMode='off'
- * - mic button toggleMute when voiceMode='live'
+ * Le contenu UI est testé dans `ConversationContent.test.tsx`. Ici on
+ * vérifie uniquement le wrapper Modal :
+ *   - Modal visible quand visible=true
+ *   - onClose câblé à onRequestClose
+ *   - contentProps transmis à ConversationContent (forwarding)
  */
 import React from "react";
-import { render, fireEvent, act } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { render, fireEvent } from "@testing-library/react-native";
+import { Alert, Modal } from "react-native";
 
 // ─── Mocks ───
-const mockSendMessage = jest.fn();
-const mockRequestStartCall = jest.fn();
-const mockEndCall = jest.fn();
-const mockToggleMute = jest.fn();
 const mockUseConversation = jest.fn();
 
 jest.mock("../../../src/hooks/useConversation", () => ({
   useConversation: (...args: any[]) => mockUseConversation(...args),
 }));
 
-// Mock ThemeContext
 jest.mock("../../../src/contexts/ThemeContext", () => {
   const { darkColors } = jest.requireActual("../../../src/theme/colors");
   return {
@@ -41,7 +31,6 @@ jest.mock("../../../src/contexts/ThemeContext", () => {
   };
 });
 
-// Mock react-native-markdown-display
 jest.mock("react-native-markdown-display", () => {
   const React = require("react");
   const { Text } = require("react-native");
@@ -52,7 +41,6 @@ jest.mock("react-native-markdown-display", () => {
   };
 });
 
-// Mock VoiceAddonModal (heavy deps)
 jest.mock("../../../src/components/voice/VoiceAddonModal", () => {
   const React = require("react");
   const { View } = require("react-native");
@@ -62,7 +50,6 @@ jest.mock("../../../src/components/voice/VoiceAddonModal", () => {
   };
 });
 
-// Mock VoiceSettings (heavy bottom-sheet/native deps)
 jest.mock("../../../src/components/voice/VoiceSettings", () => {
   const React = require("react");
   const { View } = require("react-native");
@@ -76,17 +63,15 @@ jest.spyOn(Alert, "alert").mockImplementation(() => {});
 import { ConversationScreen } from "../../../src/components/conversation/ConversationScreen";
 import type { UnifiedMessage } from "../../../src/hooks/useConversation";
 
-const baseTimestamp = Date.now();
-
 const defaultReturn = (overrides = {}) => ({
   messages: [] as UnifiedMessage[],
   voiceMode: "off" as const,
   endedToastVisible: false,
   summaryId: "1",
-  sendMessage: mockSendMessage,
-  requestStartCall: mockRequestStartCall,
-  endCall: mockEndCall,
-  toggleMute: mockToggleMute,
+  sendMessage: jest.fn(),
+  requestStartCall: jest.fn(),
+  endCall: jest.fn(),
+  toggleMute: jest.fn(),
   isMuted: false,
   isSpeaking: false,
   elapsedSeconds: 0,
@@ -99,198 +84,56 @@ const defaultReturn = (overrides = {}) => ({
   ...overrides,
 });
 
-describe("ConversationScreen", () => {
+describe("ConversationScreen (wrapper Modal)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  it("renders empty state with suggestion chips when messages.length === 0", () => {
     mockUseConversation.mockReturnValue(defaultReturn());
-    const { getByText } = render(
+  });
+
+  it("renders Modal with visible=true", () => {
+    const { UNSAFE_getByType } = render(
       <ConversationScreen
         visible
         summaryId="1"
         initialMode="chat"
-        videoTitle="Some video"
+        videoTitle="Test"
         onClose={jest.fn()}
       />,
     );
-    expect(getByText("Résume en 3 points clés")).toBeTruthy();
+    const modal = UNSAFE_getByType(Modal);
+    expect(modal.props.visible).toBe(true);
   });
 
-  it("renders chat bubbles with user/assistant differentiation", () => {
-    mockUseConversation.mockReturnValue(
-      defaultReturn({
-        messages: [
-          {
-            id: "u1",
-            role: "user",
-            content: "Hi",
-            source: "text",
-            timestamp: baseTimestamp,
-          },
-          {
-            id: "a1",
-            role: "assistant",
-            content: "Hello back",
-            source: "text",
-            timestamp: baseTimestamp + 1000,
-          },
-        ] as UnifiedMessage[],
-      }),
-    );
-    const { getByText } = render(
+  it("forwards onClose to onRequestClose", () => {
+    const onClose = jest.fn();
+    const { UNSAFE_getByType } = render(
       <ConversationScreen
         visible
         summaryId="1"
         initialMode="chat"
-        videoTitle="Some video"
-        onClose={jest.fn()}
+        videoTitle="Test"
+        onClose={onClose}
       />,
     );
-    expect(getByText("Hi")).toBeTruthy();
-    expect(getByText("Hello back")).toBeTruthy();
+    const modal = UNSAFE_getByType(Modal);
+    modal.props.onRequestClose();
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("renders voice agent bubble with mic badge", () => {
-    mockUseConversation.mockReturnValue(
-      defaultReturn({
-        messages: [
-          {
-            id: "av1",
-            role: "assistant",
-            content: "Voiced reply",
-            source: "voice",
-            voiceSpeaker: "agent",
-            timestamp: baseTimestamp,
-          },
-        ] as UnifiedMessage[],
-      }),
-    );
-    const { getByTestId } = render(
-      <ConversationScreen
-        visible
-        summaryId="1"
-        initialMode="chat"
-        videoTitle="Some video"
-        onClose={jest.fn()}
-      />,
-    );
-    expect(getByTestId("voice-badge-mic")).toBeTruthy();
-  });
-
-  it("does NOT render voice user bubble (filtered upstream by useConversation)", () => {
-    // Le hook filtre les voice user — on simule un return SANS voice user
-    mockUseConversation.mockReturnValue(
-      defaultReturn({
-        messages: [
-          {
-            id: "av1",
-            role: "assistant",
-            content: "Agent response",
-            source: "voice",
-            voiceSpeaker: "agent",
-            timestamp: baseTimestamp,
-          },
-        ] as UnifiedMessage[],
-      }),
-    );
-    const { queryByText } = render(
-      <ConversationScreen
-        visible
-        summaryId="1"
-        initialMode="chat"
-        videoTitle="Some video"
-        onClose={jest.fn()}
-      />,
-    );
-    // Pas de bulle user pour la voix
-    expect(queryByText("(user voice content)")).toBeNull();
-  });
-
-  it("renders VoiceControls in 'off' state by default", () => {
-    mockUseConversation.mockReturnValue(defaultReturn());
-    const { getByText } = render(
-      <ConversationScreen
-        visible
-        summaryId="1"
-        initialMode="chat"
-        videoTitle="Some video"
-        onClose={jest.fn()}
-      />,
-    );
-    expect(getByText("Appel non démarré")).toBeTruthy();
-  });
-
-  it("renders VoiceControls in 'live' state when voiceMode='live'", () => {
-    mockUseConversation.mockReturnValue(
-      defaultReturn({ voiceMode: "live", elapsedSeconds: 34 }),
-    );
+  it("passes contentProps through to ConversationContent (header close button works)", () => {
+    const onClose = jest.fn();
     const { getByLabelText } = render(
       <ConversationScreen
         visible
         summaryId="1"
         initialMode="chat"
-        videoTitle="Some video"
-        onClose={jest.fn()}
+        videoTitle="Test"
+        onClose={onClose}
       />,
     );
-    expect(getByLabelText("Couper micro")).toBeTruthy();
-    expect(getByLabelText("Terminer l'appel")).toBeTruthy();
-  });
-
-  it("renders EndedToast when endedToastVisible=true", () => {
-    mockUseConversation.mockReturnValue(
-      defaultReturn({
-        voiceMode: "ended",
-        endedToastVisible: true,
-        elapsedSeconds: 272,
-      }),
-    );
-    const { getByTestId } = render(
-      <ConversationScreen
-        visible
-        summaryId="1"
-        initialMode="chat"
-        videoTitle="Some video"
-        onClose={jest.fn()}
-      />,
-    );
-    expect(getByTestId("ended-toast")).toBeTruthy();
-  });
-
-  it("mic button calls requestStartCall when voiceMode='off'", () => {
-    mockUseConversation.mockReturnValue(defaultReturn());
-    const { getByLabelText } = render(
-      <ConversationScreen
-        visible
-        summaryId="1"
-        initialMode="chat"
-        videoTitle="Some video"
-        onClose={jest.fn()}
-      />,
-    );
-    const micBtn = getByLabelText("Démarrer un appel vocal");
-    fireEvent.press(micBtn);
-    expect(mockRequestStartCall).toHaveBeenCalled();
-  });
-
-  it("mic button calls toggleMute when voiceMode='live'", () => {
-    mockUseConversation.mockReturnValue(
-      defaultReturn({ voiceMode: "live", isMuted: false }),
-    );
-    const { getByLabelText } = render(
-      <ConversationScreen
-        visible
-        summaryId="1"
-        initialMode="chat"
-        videoTitle="Some video"
-        onClose={jest.fn()}
-      />,
-    );
-    // Le bouton mic dans l'input → toggleMute
-    const micInputBtn = getByLabelText("Couper le micro");
-    fireEvent.press(micInputBtn);
-    expect(mockToggleMute).toHaveBeenCalled();
+    // Le bouton close du header doit être câblé via l'onClose forwardé
+    const closeBtn = getByLabelText("Fermer");
+    fireEvent.press(closeBtn);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
