@@ -277,7 +277,7 @@ class TestGetTiktokAccountContext:
 
     @pytest.mark.asyncio
     async def test_get_tiktok_account_context_respects_limit_arg(self):
-        """`--playlistend N` must reflect the limit argument."""
+        """`--playlist-items 1:N` must reflect the limit argument."""
         from transcripts import tiktok
 
         captured_cmd = {}
@@ -292,9 +292,9 @@ class TestGetTiktokAccountContext:
             await tiktok.get_tiktok_account_context("user1", limit=20)
 
         cmd = captured_cmd["cmd"]
-        # find --playlistend index
-        idx = cmd.index("--playlistend")
-        assert cmd[idx + 1] == "20"
+        # find --playlist-items index
+        idx = cmd.index("--playlist-items")
+        assert cmd[idx + 1] == "1:20"
 
     @pytest.mark.asyncio
     async def test_get_tiktok_account_context_returns_youtube_compatible_shape(self):
