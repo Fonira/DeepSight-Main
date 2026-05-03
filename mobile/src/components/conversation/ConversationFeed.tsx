@@ -201,6 +201,7 @@ export const ConversationFeed: React.FC<ConversationFeedProps> = ({
         inverted
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         maxToRenderPerBatch={10}
         windowSize={10}
         removeClippedSubviews={Platform.OS === "android"}

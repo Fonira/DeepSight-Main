@@ -17,6 +17,7 @@ import {
   Keyboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarFootprint } from "@/hooks/useTabBarFootprint";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -46,6 +47,7 @@ const FAB_GAP = 16;
 
 export default function StudyScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarFootprint = useTabBarFootprint();
   const { colors } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
@@ -171,7 +173,7 @@ export default function StudyScreen() {
         styles.container,
         {
           backgroundColor: colors.bgPrimary,
-          paddingBottom: 60 + Math.max(insets.bottom, sp.sm),
+          paddingBottom: tabBarFootprint,
         },
       ]}
     >
@@ -183,6 +185,7 @@ export default function StudyScreen() {
           { paddingTop: insets.top + sp.lg },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
         <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -656,7 +659,7 @@ export default function StudyScreen() {
                             pathname: "/(tabs)/analysis/[id]",
                             params: {
                               id: summary.id,
-                              backTo: "library",
+                              backTo: "study",
                               initialTab: "0",
                             },
                           } as any)
@@ -666,7 +669,7 @@ export default function StudyScreen() {
                             pathname: "/(tabs)/analysis/[id]",
                             params: {
                               id: summary.id,
-                              backTo: "library",
+                              backTo: "study",
                               initialTab: "1",
                             },
                           } as any)

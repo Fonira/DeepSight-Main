@@ -16,6 +16,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarFootprint } from "@/hooks/useTabBarFootprint";
 import type { SimpleBottomSheetRef } from "@/components/ui/SimpleBottomSheet";
 import { router } from "expo-router";
 import { Image } from "expo-image";
@@ -56,6 +57,7 @@ const TABS: { key: InputMode; label: string; icon: string }[] = [
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarFootprint = useTabBarFootprint();
   const { colors, isDark } = useTheme();
   const user = useAuthStore((s) => s.user);
   const { logout } = useAuth();
@@ -205,7 +207,7 @@ export default function HomeScreen() {
           styles.scrollContent,
           {
             paddingTop: insets.top + sp.md,
-            paddingBottom: 80 + Math.max(insets.bottom, sp.md),
+            paddingBottom: tabBarFootprint,
           },
         ]}
         refreshControl={

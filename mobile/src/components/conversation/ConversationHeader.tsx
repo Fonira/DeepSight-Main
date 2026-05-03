@@ -7,6 +7,7 @@
 
 import React from "react";
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -44,6 +45,7 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   onClose,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const badge = platformBadge(platform);
 
   const handleSettings = () => {
@@ -54,7 +56,15 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   };
 
   return (
-    <View style={[styles.header, { borderBottomColor: colors.border }]}>
+    <View
+      style={[
+        styles.header,
+        {
+          borderBottomColor: colors.border,
+          paddingTop: insets.top + sp.sm,
+        },
+      ]}
+    >
       <View style={styles.titles}>
         <Text
           numberOfLines={1}

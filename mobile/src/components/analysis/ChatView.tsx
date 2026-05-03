@@ -324,6 +324,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         inverted
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         maxToRenderPerBatch={10}
         windowSize={10}
         removeClippedSubviews={Platform.OS === "android"}

@@ -11,6 +11,7 @@
 
 import React from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { sp, borderRadius } from "../../theme/spacing";
@@ -40,6 +41,7 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
   quotaText,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const canSend = inputText.trim().length > 0 && !isLoading;
 
   // Placeholder dynamique selon voiceMode
@@ -67,7 +69,14 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
     voiceMode === "ended" || voiceMode === "quota_exceeded";
 
   return (
-    <View style={styles.inputWrapper}>
+    <View
+      style={[
+        styles.inputWrapper,
+        // Edge-to-edge: l'input gère son propre bottom safe area car
+        // ConversationScreen ne pad plus.
+        { paddingBottom: Math.max(insets.bottom, sp.sm) },
+      ]}
+    >
       <View
         style={[
           styles.inputRow,
