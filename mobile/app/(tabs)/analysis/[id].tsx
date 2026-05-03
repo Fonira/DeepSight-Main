@@ -633,12 +633,17 @@ export default function AnalysisDetailScreen() {
         </View>
       )}
 
-      {/* Video Player — masqué en fullscreen */}
-      {!isFullscreen && summary?.videoId && (
+      {/* Video Player — masqué en fullscreen.
+          NB: la condition de visibilité (videoId valide, plateforme connue,
+          thumbnail TikTok dispo) est gérée DANS VideoPlayer pour garantir un
+          rendu null systématique si le contenu n'est pas affichable. */}
+      {!isFullscreen && summary && (
         <VideoPlayer
           videoId={summary.videoId}
           title={summary.title}
           scrollY={scrollY}
+          platform={summary.platform}
+          thumbnail={summary.thumbnail}
         />
       )}
 
