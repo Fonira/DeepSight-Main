@@ -17,12 +17,15 @@ from core.llm_provider import llm_complete
 from .schemas import (
     SessionStartRequest,
     SessionStartResponse,
+    SessionTurnRequest,
+    SessionTurnResponse,
     TutorSessionState,
     TutorTurn,
 )
 from .service import (
     create_session,
     append_turn,
+    load_session,
     make_session_id,
     now_ms,
 )
@@ -158,4 +161,101 @@ async def session_start(
         session_id=session_id,
         first_prompt=first_prompt,
         audio_url=audio_url,
+    )
+
+
+@router.post("/session/{session_id}/turn", response_model=SessionTurnResponse)
+async def session_turn(
+    session_id: str,
+    body: SessionTurnRequest,
+    user: User = Depends(get_current_user),
+):
+    """Un tour de conversation : user input -> IA response."""
+    _check_plan_access(user)
+
+    if not body.user_input and not body.audio_blob_b64:
+        raise HTTPException(
+            status_code=400,
+            detail="user_input ou audio_blob_b64 requis",
+        )
+
+    redis = _get_redis()
+    state = await load_session(redis, session_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Session non trouvée ou expirée")
+    if state.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Session non autorisée")
+
+    # STT si audio (V1.1)
+    user_text = body.user_input
+    if body.audio_blob_b64 and not user_text:
+        # V1.1 : Voxtral STT
+        raise HTTPException(
+            status_code=501,
+            detail="STT non implémenté V1.0 (use user_input)",
+        )
+
+    # Append user turn
+    await append_turn(
+        redis,
+        session_id,
+        TutorTurn(role="user", content=user_text, timestamp_ms=now_ms()),
+    )
+
+    # Reload to get full conversation
+    state = await load_session(redis, session_id)
+    system_prompt = build_tutor_system_prompt(
+        concept_term=state.concept_term,
+        concept_def=state.concept_def,
+        source_video_title=state.source_video_title,
+        lang=state.lang,
+    )
+    messages = [{"role": "system", "content": system_prompt}] + [
+        {"role": t.role, "content": t.content} for t in state.turns
+    ]
+    model = _select_magistral_model(user.plan)
+
+    try:
+        llm_result = await llm_complete(
+            messages=messages,
+            model=model,
+            max_tokens=300,
+            temperature=0.7,
+        )
+    except Exception as e:
+        logger.exception(
+            "[tutor] llm_complete failed for turn session=%s: %s", session_id, e
+        )
+        raise HTTPException(status_code=502, detail="LLM provider unavailable")
+
+    ai_response = _extract_llm_content(llm_result).strip()
+    if not ai_response:
+        logger.error(
+            "[tutor] LLM returned empty content on turn session=%s", session_id
+        )
+        raise HTTPException(status_code=502, detail="LLM returned empty response")
+
+    # Append assistant turn
+    await append_turn(
+        redis,
+        session_id,
+        TutorTurn(role="assistant", content=ai_response, timestamp_ms=now_ms()),
+    )
+
+    # TTS V1.1
+    audio_url: Optional[str] = None
+
+    # Reload pour avoir le turn count à jour
+    state = await load_session(redis, session_id)
+
+    logger.info(
+        "[tutor] session_turn ok session_id=%s user_id=%s turns=%d",
+        session_id,
+        user.id,
+        len(state.turns),
+    )
+    return SessionTurnResponse(
+        ai_response=ai_response,
+        audio_url=audio_url,
+        turn_count=len(state.turns),
     )

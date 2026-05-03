@@ -190,3 +190,68 @@ async def test_session_start_unauthenticated(async_client):
         json={"concept_term": "X", "concept_def": "Y"},
     )
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_session_turn_text(authenticated_pro_client):
+    """Un turn texte : POST avec user_input retourne ai_response."""
+    with patch(
+        "tutor.router.llm_complete",
+        new_callable=AsyncMock,
+    ) as mock_llm:
+        mock_llm.return_value = _make_llm_result()
+
+        # 1. Démarrer une session
+        start_resp = await authenticated_pro_client.post(
+            "/api/tutor/session/start",
+            json={
+                "concept_term": "Rasoir d'Occam",
+                "concept_def": "Principe de parcimonie...",
+                "mode": "text",
+                "lang": "fr",
+            },
+        )
+        session_id = start_resp.json()["session_id"]
+
+        # 2. Envoyer un tour user
+        turn_resp = await authenticated_pro_client.post(
+            f"/api/tutor/session/{session_id}/turn",
+            json={"user_input": "Choisir l'explication la plus simple."},
+        )
+    assert turn_resp.status_code == 200
+    data = turn_resp.json()
+    assert "ai_response" in data
+    assert isinstance(data["ai_response"], str)
+    assert data["turn_count"] == 3  # 1 assistant initial + 1 user + 1 assistant
+
+
+@pytest.mark.asyncio
+async def test_session_turn_invalid_session(authenticated_pro_client):
+    """Session inexistante -> 404."""
+    response = await authenticated_pro_client.post(
+        "/api/tutor/session/tutor-doesnotexist/turn",
+        json={"user_input": "test"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_session_turn_empty_input(authenticated_pro_client):
+    """Ni user_input ni audio_blob -> 400."""
+    with patch(
+        "tutor.router.llm_complete",
+        new_callable=AsyncMock,
+    ) as mock_llm:
+        mock_llm.return_value = _make_llm_result()
+
+        start_resp = await authenticated_pro_client.post(
+            "/api/tutor/session/start",
+            json={"concept_term": "X", "concept_def": "Y", "mode": "text", "lang": "fr"},
+        )
+        session_id = start_resp.json()["session_id"]
+
+        response = await authenticated_pro_client.post(
+            f"/api/tutor/session/{session_id}/turn",
+            json={},
+        )
+    assert response.status_code == 400
