@@ -70,12 +70,12 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tournesolRefreshKey, setTournesolRefreshKey] = useState(0);
-  const [quickChatUrl, setQuickChatUrl] = useState("");
-  const [quickChatLoading, setQuickChatLoading] = useState(false);
+  const [quickCallUrl, setQuickCallUrl] = useState("");
+  const [quickCallLoading, setQuickCallLoading] = useState(false);
 
-  // Quick Chat handler
-  const handleQuickChat = useCallback(async () => {
-    const url = quickChatUrl.trim();
+  // Quick Call handler — prépare la conv puis ouvre le hub en mode appel vocal
+  const handleQuickCall = useCallback(async () => {
+    const url = quickCallUrl.trim();
     if (!url) return;
     const isValid =
       url.includes("youtube.com") ||
@@ -87,26 +87,26 @@ export default function HomeScreen() {
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Keyboard.dismiss();
-    setQuickChatLoading(true);
+    setQuickCallLoading(true);
     try {
       const result = await videoApi.quickChat(url);
-      setQuickChatUrl("");
+      setQuickCallUrl("");
       router.push({
         pathname: "/(tabs)/hub",
         params: {
           summaryId: String(result.summary_id),
-          initialMode: "chat",
+          initialMode: "call",
         },
       } as any);
     } catch (err: any) {
       Alert.alert(
-        "Erreur Quick Chat",
-        err?.message || "Impossible de préparer le chat.",
+        "Erreur Quick Call",
+        err?.message || "Impossible de préparer l'appel.",
       );
     } finally {
-      setQuickChatLoading(false);
+      setQuickCallLoading(false);
     }
-  }, [quickChatUrl]);
+  }, [quickCallUrl]);
 
   // Animated tab indicator
   const indicatorX = useSharedValue(0);
@@ -386,7 +386,7 @@ export default function HomeScreen() {
         {/* Credit Bar */}
         <CreditBar />
 
-        {/* Quick Chat Block */}
+        {/* Quick Call Block */}
         <View
           style={[
             styles.quickChatBox,
@@ -394,28 +394,28 @@ export default function HomeScreen() {
           ]}
         >
           <View style={styles.quickChatHeader}>
-            <Ionicons name="flash" size={16} color={palette.amber} />
+            <Ionicons name="call" size={16} color={palette.indigo} />
             <Text
               style={[styles.quickChatTitle, { color: colors.textPrimary }]}
             >
-              Quick Chat
+              Quick Call
             </Text>
             <View
               style={[
                 styles.quickChatBadge,
-                { backgroundColor: palette.green + "20" },
+                { backgroundColor: palette.indigo + "20" },
               ]}
             >
               <Text
-                style={[styles.quickChatBadgeText, { color: palette.green }]}
+                style={[styles.quickChatBadgeText, { color: palette.indigo }]}
               >
-                0 crédit
+                Voice
               </Text>
             </View>
           </View>
           <Text style={[styles.quickChatDesc, { color: colors.textTertiary }]}>
-            Chatte directement avec une vidéo YouTube ou TikTok — sans analyse
-            complète
+            Lance un appel vocal direct avec une vidéo YouTube ou TikTok — pose
+            tes questions à l'oral
           </Text>
           <View style={styles.quickChatRow}>
             <TextInput
@@ -429,34 +429,35 @@ export default function HomeScreen() {
               ]}
               placeholder="https://youtube.com/... ou tiktok.com/..."
               placeholderTextColor={colors.textMuted}
-              value={quickChatUrl}
-              onChangeText={setQuickChatUrl}
+              value={quickCallUrl}
+              onChangeText={setQuickCallUrl}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
               returnKeyType="go"
-              onSubmitEditing={handleQuickChat}
-              editable={!quickChatLoading}
+              onSubmitEditing={handleQuickCall}
+              editable={!quickCallLoading}
             />
             <Pressable
               style={[
                 styles.quickChatBtn,
                 {
-                  backgroundColor: quickChatUrl.trim()
+                  backgroundColor: quickCallUrl.trim()
                     ? palette.indigo
                     : colors.bgSecondary,
                 },
               ]}
-              onPress={handleQuickChat}
-              disabled={quickChatLoading || !quickChatUrl.trim()}
+              onPress={handleQuickCall}
+              disabled={quickCallLoading || !quickCallUrl.trim()}
+              accessibilityLabel="Lancer un appel vocal"
             >
-              {quickChatLoading ? (
+              {quickCallLoading ? (
                 <DeepSightSpinner size="xs" speed="fast" />
               ) : (
                 <Ionicons
-                  name="chatbubble-ellipses"
+                  name="mic"
                   size={18}
-                  color={quickChatUrl.trim() ? "#fff" : colors.textMuted}
+                  color={quickCallUrl.trim() ? "#fff" : colors.textMuted}
                 />
               )}
             </Pressable>
