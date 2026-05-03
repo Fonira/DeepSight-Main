@@ -19,8 +19,10 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 
 from auth.dependencies import get_current_user
+from billing.plan_config import is_feature_available
 from db.database import User, Summary, async_session_maker
 from .embedding_service import search_similar
+from .explain_passage import explain_passage
 from .global_search import search_global, SearchFilters, ALL_SOURCE_TYPES
 from .within_search import search_within, NotOwnerError, WithinMatch
 
@@ -236,3 +238,57 @@ async def within_search_endpoint(
             for m in matches
         ],
     )
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# V1 — POST /api/search/explain-passage  (Pro+Expert only)
+# ════════════════════════════════════════════════════════════════════════════════
+
+
+class ExplainPassageRequest(BaseModel):
+    summary_id: int = Field(..., gt=0)
+    passage_text: str = Field(..., min_length=1, max_length=5000)
+    query: str = Field(..., min_length=2, max_length=500)
+    source_type: str = Field(..., pattern="^(summary|flashcard|quiz|chat|transcript)$")
+
+
+class ExplainPassageResponse(BaseModel):
+    explanation: str
+    cached: bool
+    model_used: str
+
+
+@router.post("/explain-passage", response_model=ExplainPassageResponse)
+async def explain_passage_endpoint(
+    request: ExplainPassageRequest,
+    user: User = Depends(get_current_user),
+):
+    """Tooltip IA — explique pourquoi un passage matche une query.
+
+    Plan gating : `semantic_search_tooltip` feature flag (Pro+Expert only).
+    Free user → 403.
+    """
+    # Plan gating
+    if not is_feature_available(
+        user.plan, feature="semantic_search_tooltip", platform="web"
+    ):
+        raise HTTPException(
+            403,
+            "Le tooltip IA est inclus à partir du plan Pro. Upgrade pour débloquer.",
+        )
+
+    # Verify ownership of the summary
+    async with async_session_maker() as session:
+        summary = await session.get(Summary, request.summary_id)
+        if summary is None:
+            raise HTTPException(404, "Summary not found")
+        if summary.user_id != user.id:
+            raise HTTPException(403, "Not owner of this summary")
+
+    result = await explain_passage(
+        summary_id=request.summary_id,
+        passage_text=request.passage_text,
+        query=request.query,
+        source_type=request.source_type,
+    )
+    return ExplainPassageResponse(**result)

@@ -76,6 +76,9 @@ async def async_session():
         patch("search.global_search.async_session_maker", SessionMaker),
         patch("search.within_search.async_session_maker", SessionMaker),
         patch("search.router.async_session_maker", SessionMaker),
+        # explain_passage importe async_session_maker en LOCAL dans la fonction,
+        # donc on patch le module source `db.database.async_session_maker`.
+        patch("db.database.async_session_maker", SessionMaker),
     ]
     for p in patchers:
         p.start()
@@ -438,3 +441,57 @@ async def test_search_within_403_for_short_query_when_not_owner(
     assert response.status_code == 403
     # Vérifie qu'on ne reçoit PAS 200 avec un body vide (qui leakait l'existence)
     assert response.status_code != 200
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🧪 Tests — Task 14 : POST /api/search/explain-passage (plan gating)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_explain_passage_403_for_free_user(
+    authed_client_free: AsyncClient,
+    summary_factory,
+    authed_user_free,
+):
+    """Un user Free ne peut pas utiliser le tooltip IA → 403."""
+    summary = await summary_factory(user=authed_user_free)
+    response = await authed_client_free.post(
+        "/api/search/explain-passage",
+        json={
+            "summary_id": summary.id,
+            "passage_text": "some passage",
+            "query": "some query",
+            "source_type": "summary",
+        },
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_explain_passage_works_for_pro_user(
+    authed_client_pro: AsyncClient,
+    summary_factory,
+    authed_user_pro,
+):
+    """Un user Pro reçoit l'explication (Mistral mocké)."""
+    summary = await summary_factory(user=authed_user_pro)
+    with patch(
+        "search.explain_passage._call_mistral_chat", new_callable=AsyncMock
+    ) as mock_call:
+        mock_call.return_value = (
+            "Le passage parle directement de X, ce qui correspond à la query."
+        )
+        response = await authed_client_pro.post(
+            "/api/search/explain-passage",
+            json={
+                "summary_id": summary.id,
+                "passage_text": "some passage",
+                "query": "some query",
+                "source_type": "summary",
+            },
+        )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert "X" in body["explanation"]
+    assert body["model_used"] == "mistral-small-latest"
