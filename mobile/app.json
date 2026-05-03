@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.deepsight.app",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "appleTeamId": "XGPXQ9KQ2G",
       "associatedDomains": [
         "applinks:deepsightsynthesis.com",
