@@ -19,11 +19,11 @@ raisonnement et améliore donc la cohérence des marqueurs apposés.
 
 ## Modèle utilisé selon le plan
 
-| Plan code-side | Plan v2 affiché    | Tier de durée | Modèle synthèse (flag OFF) | Modèle synthèse (flag ON)            |
-| -------------- | ------------------ | ------------- | -------------------------- | ------------------------------------ |
-| `free`         | Free (0 €)         | tous          | `mistral-small-2603`       | `mistral-small-2603` (inchangé)      |
-| `plus`         | Pro (8.99 €)       | tous          | `mistral-medium-2508`      | `mistral-medium-2508` (inchangé)     |
-| `pro`          | Expert (19.99 €)   | tous          | `mistral-large-2512`       | **`magistral-medium-2509`** (Magistral) |
+| Plan code-side | Plan v2 affiché  | Tier de durée | Modèle synthèse (flag OFF) | Modèle synthèse (flag ON)               |
+| -------------- | ---------------- | ------------- | -------------------------- | --------------------------------------- |
+| `free`         | Free (0 €)       | tous          | `mistral-small-2603`       | `mistral-small-2603` (inchangé)         |
+| `plus`         | Pro (8.99 €)     | tous          | `mistral-medium-2508`      | `mistral-medium-2508` (inchangé)        |
+| `pro`          | Expert (19.99 €) | tous          | `mistral-large-2512`       | **`magistral-medium-2509`** (Magistral) |
 
 > **Note de mapping legacy** : dans `videos/duration_router.get_optimal_model()`,
 > le paramètre `user_plan="expert"` (Pricing v2) est normalisé vers le code interne
@@ -98,14 +98,14 @@ docker restart repo-backend-1
 
 Suite : `backend/tests/test_magistral_epistemic_routing.py`
 
-| Test                                              | Vérifie                                                      |
-| ------------------------------------------------- | ------------------------------------------------------------ |
-| `test_expert_tier_uses_magistral_when_enabled`    | Flag ON + plan="expert" → Magistral                          |
+| Test                                                 | Vérifie                                                      |
+| ---------------------------------------------------- | ------------------------------------------------------------ |
+| `test_expert_tier_uses_magistral_when_enabled`       | Flag ON + plan="expert" → Magistral                          |
 | `test_expert_tier_falls_back_to_large_when_disabled` | Flag OFF + plan="expert" → `mistral-large-2512`              |
-| `test_pro_tier_unchanged_when_flag_on`            | Flag ON + plan="plus" (Pro v2) → `mistral-medium-2508`       |
-| `test_free_tier_unchanged_when_flag_on`           | Flag ON + plan="free" → `mistral-small-2603`                 |
-| `test_default_flag_is_off`                        | Garantie : `MAGISTRAL_EPISTEMIC_ENABLED is False` par défaut |
-| `test_expert_tier_only_for_synthesis_task`        | Flag ON + task="chunk_analysis" → JAMAIS Magistral (coût)    |
+| `test_pro_tier_unchanged_when_flag_on`               | Flag ON + plan="plus" (Pro v2) → `mistral-medium-2508`       |
+| `test_free_tier_unchanged_when_flag_on`              | Flag ON + plan="free" → `mistral-small-2603`                 |
+| `test_default_flag_is_off`                           | Garantie : `MAGISTRAL_EPISTEMIC_ENABLED is False` par défaut |
+| `test_expert_tier_only_for_synthesis_task`           | Flag ON + task="chunk_analysis" → JAMAIS Magistral (coût)    |
 
 ## Observabilité
 

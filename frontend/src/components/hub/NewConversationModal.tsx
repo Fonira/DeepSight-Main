@@ -140,7 +140,9 @@ export const NewConversationModal: React.FC<Props> = ({
       }, POLL_INTERVAL_MS);
     } catch (err) {
       setAnalyzing(false);
-      setError(err instanceof Error ? err.message : "Erreur lors de l'analyse.");
+      setError(
+        err instanceof Error ? err.message : "Erreur lors de l'analyse.",
+      );
     }
   }, [url, language, onSuccess, onClose, cleanup]);
 

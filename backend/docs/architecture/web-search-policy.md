@@ -98,4 +98,3 @@ Aucun test ne dépend d'une clé API réelle ; toute dépendance externe est moc
 
 - **2026-05-02** — Phase 5 du plan Mistral-First : ajout du flag et de la métrique.
 - Pré-Phase 5 — La chaîne avait déjà été migrée à `[mistral_agent, perplexity, brave]` sans flag. La Phase 5 introduit le flag pour pouvoir revenir à `[perplexity, mistral_agent, brave]` (comportement par défaut prudent jusqu'au benchmark).
-

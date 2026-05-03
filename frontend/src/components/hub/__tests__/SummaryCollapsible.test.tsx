@@ -127,7 +127,8 @@ describe("SummaryCollapsible", () => {
     // "important" apparaît à la fois dans le texte normal et dans le bold ;
     // on cible précisément l'élément STRONG via une fonction de matcher.
     const strong = screen.getByText(
-      (_, el) => el?.tagName === "STRONG" && /important/i.test(el.textContent ?? ""),
+      (_, el) =>
+        el?.tagName === "STRONG" && /important/i.test(el.textContent ?? ""),
     );
     expect(strong.tagName).toBe("STRONG");
   });

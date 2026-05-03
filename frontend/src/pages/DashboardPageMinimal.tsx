@@ -121,9 +121,7 @@ const DashboardPageMinimal: React.FC = () => {
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 <span>
                   {message ||
-                    (language === "fr"
-                      ? "Analyse en cours…"
-                      : "Analyzing…")}
+                    (language === "fr" ? "Analyse en cours…" : "Analyzing…")}
                 </span>
               </div>
               <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">

@@ -42,16 +42,16 @@ test.describe("Dashboard minimal landing (default home)", () => {
 
     // SmartInputBar — soit "Coller" soit le placeholder de search/url
     const smartInput = page
-      .locator('input, textarea')
+      .locator("input, textarea")
       .filter({ has: page.locator(":visible") })
       .first();
     await expect(smartInput).toBeVisible({ timeout: 8000 });
 
     // Pas d'AnalysisHub tabs (Résumé / Études / Fact-check / etc.) — propre à
     // la legacy. Si on les trouve, c'est que le minimal n'est pas servi.
-    await expect(
-      page.getByRole("tab", { name: /fact-?check/i }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: /fact-?check/i })).toHaveCount(
+      0,
+    );
 
     // Tournesol présent (la section "Recommandations Tournesol" est unique au
     // minimal landing + au mobile).
@@ -66,8 +66,11 @@ test.describe("Dashboard minimal landing (default home)", () => {
     await page.goto("/dashboard?legacy=1");
     // La legacy page expose les tabs AnalysisHub : on attend de voir au moins
     // un onglet "Résumé" ou "Synthèse" qui n'existe pas dans le minimal.
-    await expect(page.locator("body")).toContainText(/résumé|synthèse|analyse/i, {
-      timeout: 8000,
-    });
+    await expect(page.locator("body")).toContainText(
+      /résumé|synthèse|analyse/i,
+      {
+        timeout: 8000,
+      },
+    );
   });
 });

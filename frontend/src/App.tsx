@@ -519,8 +519,9 @@ const AMBIENT_LIGHT_HIDDEN_ROUTES = ["/hub"];
 
 const RouterAwareAmbientLight = () => {
   const location = useLocation();
-  const hidden = AMBIENT_LIGHT_HIDDEN_ROUTES.some((path) =>
-    location.pathname === path || location.pathname.startsWith(path + "/"),
+  const hidden = AMBIENT_LIGHT_HIDDEN_ROUTES.some(
+    (path) =>
+      location.pathname === path || location.pathname.startsWith(path + "/"),
   );
   if (hidden) return null;
   return <AmbientLightLayer intensity="normal" />;
