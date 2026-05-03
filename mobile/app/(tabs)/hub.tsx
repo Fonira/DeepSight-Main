@@ -54,6 +54,9 @@ export default function HubScreen() {
   }>();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Quand l'user clique "Nouvelle", on désactive l'auto-resolve pour
+  // laisser HubEmptyState s'afficher (sinon le useEffect re-pousse la 1ère conv).
+  const [intentNewConv, setIntentNewConv] = useState(false);
 
   const summaryId = params.summaryId ?? null;
   const initialMode = params.initialMode ?? "chat";
@@ -75,18 +78,20 @@ export default function HubScreen() {
     [conversations, summaryId],
   );
 
-  // Auto-resolve : si pas de summaryId mais history non vide → push le 1er
+  // Auto-resolve : si pas de summaryId mais history non vide → push le 1er.
+  // Désactivé tant que l'user a explicitement demandé une nouvelle conv.
   useEffect(() => {
-    if (!summaryId && conversations.length > 0) {
+    if (!summaryId && !intentNewConv && conversations.length > 0) {
       router.setParams({
         summaryId: String(conversations[0].id),
         initialMode: "chat",
       });
     }
-  }, [summaryId, conversations, router]);
+  }, [summaryId, intentNewConv, conversations, router]);
 
   const handleSelectConv = useCallback(
     (id: string | number) => {
+      setIntentNewConv(false);
       router.setParams({ summaryId: String(id), initialMode: "chat" });
       setDrawerOpen(false);
     },
@@ -94,6 +99,7 @@ export default function HubScreen() {
   );
 
   const handleNewConv = useCallback(() => {
+    setIntentNewConv(true);
     // setParams(undefined) clear la query (Expo Router)
     router.setParams({ summaryId: undefined, initialMode: undefined });
     setDrawerOpen(false);
@@ -103,6 +109,7 @@ export default function HubScreen() {
     async (url: string) => {
       try {
         const result = await videoApi.quickChat(url);
+        setIntentNewConv(false);
         router.setParams({
           summaryId: String(result.summary_id),
           initialMode: "chat",
