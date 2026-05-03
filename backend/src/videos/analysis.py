@@ -1503,6 +1503,175 @@ def get_transcript_limit(duration: int, mode: str) -> int:
     return min(base, 300000)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🏷️ CONTEXTE CHAÎNE — Directive système + helper de formatage
+# ═══════════════════════════════════════════════════════════════════════════════
+
+CHANNEL_CONTEXT_DIRECTIVE_FR = """
+═══════════════════════════════════════════════════════════════════════════════
+🏷️ CONTEXTE CHAÎNE — DIRECTIVE OBLIGATOIRE
+═══════════════════════════════════════════════════════════════════════════════
+Tu reçois en plus un contexte sur la chaîne YouTube/TikTok du vidéaste (jusqu'à 50 dernières vidéos avec titres, descriptions, tags, ainsi que les métadonnées de la chaîne). Tu DOIS produire en fin d'analyse une section `## Contexte chaîne` qui :
+- Classifie la chaîne dans une de ces catégories : divertissement / éducative / informative / promotionnelle / militante / poubelle (low-effort, clickbait massif, désinformation) / dangereuse (incitations, haine, complotisme dur) / autre (à préciser)
+- Indique si la vidéo analysée est représentative de la chaîne ou une exception (signal fort/faible)
+- Décrit en 1-2 phrases les intentions probables du vidéaste à la lumière de l'ensemble de ses contenus
+- Reste neutre et factuel — pas de jugement moral, juste classification descriptive
+
+Si aucun contexte chaîne n'est fourni, ne génère PAS cette section.
+"""
+
+CHANNEL_CONTEXT_DIRECTIVE_EN = """
+═══════════════════════════════════════════════════════════════════════════════
+🏷️ CHANNEL CONTEXT — MANDATORY DIRECTIVE
+═══════════════════════════════════════════════════════════════════════════════
+You also receive context about the video creator's YouTube/TikTok channel (up to 50 latest videos with titles, descriptions, tags, plus channel metadata). You MUST produce at the end of your analysis a `## Channel Context` section that:
+- Classifies the channel into one of these categories: entertainment / educational / informative / promotional / activist / low-quality (low-effort, massive clickbait, misinformation) / dangerous (incitement, hate, hard conspiracy) / other (to specify)
+- Indicates whether the analyzed video is representative of the channel or an exception (strong/weak signal)
+- Describes in 1-2 sentences the creator's probable intentions in light of their overall content
+- Remains neutral and factual — no moral judgment, just descriptive classification
+
+If no channel context is provided, do NOT generate this section.
+"""
+
+
+def _format_channel_context_block(ctx: Optional[Dict], language: str = "fr") -> str:
+    """
+    Formate un bloc texte du contexte chaîne pour injection dans le user_prompt.
+
+    - Tronque la description chaîne à 500 chars.
+    - Tronque les descriptions de chaque vidéo à 200 chars.
+    - Gère proprement les valeurs manquantes (None, listes vides, etc.).
+    - Si ctx est None ou vide, retourne une chaîne vide (l'appelant ne doit
+      alors PAS append ce bloc au prompt).
+
+    Args:
+        ctx: dict au shape unifié `{channel_id, platform, name, description,
+            subscriber_count, video_count, tags, categories, last_videos}`.
+        language: "fr" ou "en" pour les libellés.
+
+    Returns:
+        Bloc texte formaté (avec saut de ligne en tête) ou "" si ctx vide.
+    """
+    if not ctx or not isinstance(ctx, dict):
+        return ""
+
+    is_fr = language == "fr"
+
+    # Helpers locaux pour formattage défensif
+    def _fmt_count(value) -> str:
+        if value is None:
+            return "n/a"
+        try:
+            return _format_view_count(int(value)) or str(int(value))
+        except (TypeError, ValueError):
+            return "n/a"
+
+    def _join_list(value) -> str:
+        if not value or not isinstance(value, list):
+            return "n/a"
+        items = [str(v) for v in value if v is not None and str(v).strip()]
+        return ", ".join(items) if items else "n/a"
+
+    platform = str(ctx.get("platform") or "n/a")
+    name = str(ctx.get("name") or "").strip() or "n/a"
+    description = str(ctx.get("description") or "").strip()
+    if len(description) > 500:
+        description = description[:500] + "..."
+    if not description:
+        description = "n/a"
+
+    subs_str = _fmt_count(ctx.get("subscriber_count"))
+    vcount_str = _fmt_count(ctx.get("video_count"))
+    tags_str = _join_list(ctx.get("tags"))
+    cats_str = _join_list(ctx.get("categories"))
+
+    last_videos = ctx.get("last_videos") or []
+    if not isinstance(last_videos, list):
+        last_videos = []
+
+    if is_fr:
+        header = (
+            "\n\n═══════════════════════════════════════════════════════════════════════════════\n"
+            "### Contexte chaîne (référence)\n"
+            "═══════════════════════════════════════════════════════════════════════════════\n"
+            f"- Plateforme : {platform}\n"
+            f"- Nom : {name}\n"
+            f"- Description : {description}\n"
+            f"- Abonnés : {subs_str}\n"
+            f"- Total vidéos : {vcount_str}\n"
+            f"- Tags chaîne : {tags_str}\n"
+            f"- Catégories : {cats_str}\n"
+        )
+        if last_videos:
+            header += f"\n#### {len(last_videos)} dernières vidéos de la chaîne :\n"
+        else:
+            header += "\n#### Aucune vidéo récente disponible.\n"
+    else:
+        header = (
+            "\n\n═══════════════════════════════════════════════════════════════════════════════\n"
+            "### Channel Context (reference)\n"
+            "═══════════════════════════════════════════════════════════════════════════════\n"
+            f"- Platform: {platform}\n"
+            f"- Name: {name}\n"
+            f"- Description: {description}\n"
+            f"- Subscribers: {subs_str}\n"
+            f"- Total videos: {vcount_str}\n"
+            f"- Channel tags: {tags_str}\n"
+            f"- Categories: {cats_str}\n"
+        )
+        if last_videos:
+            header += f"\n#### {len(last_videos)} latest videos from the channel:\n"
+        else:
+            header += "\n#### No recent videos available.\n"
+
+    lines = [header]
+    for idx, v in enumerate(last_videos, 1):
+        if not isinstance(v, dict):
+            continue
+        title = str(v.get("title") or "").strip() or ("(sans titre)" if is_fr else "(untitled)")
+        upload_date = v.get("upload_date") or ""
+        if upload_date:
+            upload_label = f"[{upload_date}] "
+        else:
+            upload_label = ""
+
+        view_count = v.get("view_count")
+        if view_count is None:
+            views_label = "n/a"
+        else:
+            try:
+                views_label = _format_view_count(int(view_count)) or str(int(view_count))
+            except (TypeError, ValueError):
+                views_label = "n/a"
+
+        if is_fr:
+            views_suffix = f"({views_label} vues)" if views_label != "n/a" else "(vues n/a)"
+        else:
+            views_suffix = f"({views_label} views)" if views_label != "n/a" else "(views n/a)"
+
+        v_tags = _join_list(v.get("tags"))
+        v_desc = str(v.get("description") or "").strip()
+        if len(v_desc) > 200:
+            v_desc = v_desc[:200] + "..."
+        if not v_desc:
+            v_desc = "n/a"
+
+        if is_fr:
+            lines.append(
+                f"{idx}. {upload_label}{title} {views_suffix}\n"
+                f"   Tags: {v_tags}\n"
+                f"   Description: {v_desc}\n"
+            )
+        else:
+            lines.append(
+                f"{idx}. {upload_label}{title} {views_suffix}\n"
+                f"   Tags: {v_tags}\n"
+                f"   Description: {v_desc}\n"
+            )
+
+    return "".join(lines)
+
+
 def build_analysis_prompt(
     title: str,
     transcript: str,
@@ -1524,6 +1693,8 @@ def build_analysis_prompt(
     engagement_rate: float = 0.0,
     content_type: str = "video",
     chapters: list = None,
+    # 🏷️ v8.0: Contexte chaîne (calibration analyse Mistral)
+    channel_context: Optional[Dict] = None,
 ) -> Tuple[str, str]:
     """
     Construit le prompt système et utilisateur pour l'analyse.
@@ -1682,6 +1853,7 @@ C'est une fonctionnalité ESSENTIELLE de Deep Sight. Sans [[concepts]], la répo
 📊 LONGUEUR CIBLE : {min_words}-{max_words} mots
 
 🌐 RÉPONDS ENTIÈREMENT EN FRANÇAIS IMPECCABLE.
+{CHANNEL_CONTEXT_DIRECTIVE_FR}
 """
 
         platform_label = "TikTok" if platform == "tiktok" else "YouTube"
@@ -1758,6 +1930,7 @@ This is an ESSENTIAL feature of Deep Sight. Without [[concepts]], the response i
 TARGET LENGTH: {min_words}-{max_words} words
 
 RESPOND ENTIRELY IN ENGLISH.
+{CHANNEL_CONTEXT_DIRECTIVE_EN}
 """
 
         platform_label = "TikTok" if platform == "tiktok" else "YouTube"
@@ -1797,6 +1970,15 @@ RESPOND ENTIRELY IN ENGLISH.
 
 {content_instruction_en}"""
 
+    # 🏷️ v8.0: Append le bloc contexte chaîne (si fourni) — APRÈS le user_prompt
+    # Note : l'injection web_context est faite par generate_summary() en aval,
+    # donc le bloc chaîne est injecté ici pour qu'il soit présent dans les
+    # appels directs à build_analysis_prompt aussi (tests + appels manuels).
+    # generate_summary() ré-append ensuite éventuellement le web_context.
+    channel_block = _format_channel_context_block(channel_context, language=lang)
+    if channel_block:
+        user_prompt = user_prompt + channel_block
+
     return system_prompt, user_prompt
 
 
@@ -1831,6 +2013,8 @@ async def generate_summary(
     engagement_rate: float = 0.0,
     content_type: str = "video",
     chapters: list = None,
+    # 🏷️ v8.0: Contexte chaîne (calibration analyse Mistral)
+    channel_context: Optional[Dict] = None,
 ) -> Optional[str]:
     """
     Génère un résumé avec Mistral AI.
@@ -1880,6 +2064,7 @@ async def generate_summary(
         engagement_rate=engagement_rate,
         content_type=content_type,
         chapters=chapters,
+        channel_context=channel_context,
     )
 
     # 🆕 v3.0: Injecter le contexte web dans le prompt utilisateur

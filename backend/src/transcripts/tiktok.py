@@ -1059,3 +1059,273 @@ def detect_platform(url: str) -> str:
     if is_tiktok_url(url):
         return "tiktok"
     return "youtube"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 👤 ACCOUNT CONTEXT (métadonnées compte + N derniers posts)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Regex pour extraire les hashtags d'une caption TikTok (ex: "Salut #fyp #viral")
+_HASHTAG_RE = re.compile(r"#([\wÀ-￿]+)", re.UNICODE)
+# Regex pour extraire le username depuis une URL TikTok (ex: ".../@charlidamelio/video/...")
+_TIKTOK_USERNAME_FROM_URL_RE = re.compile(r"tiktok\.com/@([\w.\-]+)", re.IGNORECASE)
+
+
+def _normalize_tiktok_username(username: str) -> str:
+    """Strip whitespace + leading '@' d'un username TikTok."""
+    if not username:
+        return ""
+    return username.strip().lstrip("@").strip()
+
+
+def _extract_hashtags(text: str) -> list:
+    """Extrait les hashtags d'un texte (sans le #). Préserve l'ordre, dedup."""
+    if not text:
+        return []
+    seen = set()
+    tags: list = []
+    for match in _HASHTAG_RE.findall(text):
+        tag = match.strip()
+        if not tag:
+            continue
+        # Dédup case-insensitive mais on garde la casse originale
+        key = tag.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        tags.append(tag)
+    return tags
+
+
+def extract_tiktok_username_from_video_metadata(metadata: Dict[str, Any]) -> Optional[str]:
+    """
+    Extrait le username TikTok depuis les métadonnées d'une vidéo
+    (output de get_tiktok_video_info() ou yt-dlp brut).
+
+    Priorité des champs candidats :
+        1. uploader_id (yt-dlp brut, ex: "charlidamelio")
+        2. webpage_url / url contenant "/@username/"
+        3. uploader (peut être display name OU handle)
+        4. channel (peut être display name OU handle)
+
+    Returns:
+        username sans "@" et sans whitespace, ou None si introuvable.
+    """
+    if not metadata or not isinstance(metadata, dict):
+        return None
+
+    # 1. uploader_id (yt-dlp natif, le plus fiable)
+    uploader_id = metadata.get("uploader_id")
+    if uploader_id and isinstance(uploader_id, str):
+        normalized = _normalize_tiktok_username(uploader_id)
+        if normalized:
+            return normalized
+
+    # 2. webpage_url / url contenant /@username/
+    for url_field in ("webpage_url", "url", "original_url"):
+        url_val = metadata.get(url_field)
+        if url_val and isinstance(url_val, str):
+            match = _TIKTOK_USERNAME_FROM_URL_RE.search(url_val)
+            if match:
+                normalized = _normalize_tiktok_username(match.group(1))
+                if normalized:
+                    return normalized
+
+    # 3. uploader (peut être un handle)
+    uploader = metadata.get("uploader")
+    if uploader and isinstance(uploader, str):
+        normalized = _normalize_tiktok_username(uploader)
+        if normalized:
+            return normalized
+
+    # 4. channel (fallback)
+    channel = metadata.get("channel")
+    if channel and isinstance(channel, str):
+        normalized = _normalize_tiktok_username(channel)
+        if normalized:
+            return normalized
+
+    return None
+
+
+async def get_tiktok_account_context(username: str, limit: int = 50) -> Optional[Dict[str, Any]]:
+    """
+    Récupère le contexte d'un compte TikTok : métadonnées + N derniers posts.
+
+    Le shape retourné est strictement IDENTIQUE à get_channel_context() YouTube
+    pour permettre l'injection unifiée dans le prompt Mistral.
+
+    Args:
+        username: handle TikTok sans @ (ex: "charlidamelio") OU avec @ (sera normalisé)
+        limit: nombre maximum de posts à récupérer (défaut 50)
+
+    Returns:
+        dict shape:
+        {
+            "channel_id": str,                # username (sans @)
+            "platform": "tiktok",
+            "name": str,                      # display name (channel/uploader)
+            "description": str,               # bio
+            "subscriber_count": int | None,   # follower_count
+            "video_count": int | None,
+            "tags": list[str],                # vide pour TikTok
+            "categories": list[str],          # vide pour TikTok
+            "last_videos": [
+                {
+                    "title": str,             # caption courte / titre
+                    "description": str,       # caption complète tronquée 200ch
+                    "tags": list[str],        # hashtags extraits
+                    "view_count": int | None,
+                    "upload_date": str | None,  # YYYYMMDD format yt-dlp
+                },
+                ...
+            ],
+        }
+
+        Returns None on failure (compte privé, suspendu, rate limit, yt-dlp error).
+    """
+    normalized_username = _normalize_tiktok_username(username)
+    if not normalized_username:
+        logger.warning("[TIKTOK] get_tiktok_account_context: empty username")
+        return None
+
+    safe_limit = max(1, min(limit, 200))  # bornes raisonnables
+    account_url = f"https://www.tiktok.com/@{normalized_username}"
+
+    logger.info(f"[TIKTOK] Fetching account context for @{normalized_username} (limit={safe_limit})")
+
+    try:
+        loop = asyncio.get_event_loop()
+
+        def _fetch_account():
+            cmd = [
+                "yt-dlp",
+                *_yt_dlp_extra_args(),
+                "--flat-playlist",
+                "--dump-single-json",
+                "--playlistend",
+                str(safe_limit),
+                "--no-warnings",
+                "--skip-download",
+                account_url,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            if result.returncode != 0:
+                stderr = (result.stderr or "")[:300]
+                logger.warning(
+                    f"[TIKTOK] yt-dlp account fetch failed for @{normalized_username}: {stderr}"
+                )
+                return None
+            try:
+                return json.loads(result.stdout)
+            except json.JSONDecodeError as e:
+                logger.warning(f"[TIKTOK] yt-dlp account JSON parse error: {e}")
+                return None
+
+        data = await asyncio.wait_for(
+            loop.run_in_executor(audio_executor, _fetch_account),
+            timeout=60,
+        )
+    except asyncio.TimeoutError:
+        logger.warning(f"[TIKTOK] Account fetch timeout for @{normalized_username}")
+        return None
+    except Exception as e:
+        logger.error(f"[TIKTOK] Account fetch error for @{normalized_username}: {e}")
+        return None
+
+    if not data or not isinstance(data, dict):
+        return None
+
+    # Métadonnées du compte (champs yt-dlp pour une page de compte TikTok)
+    display_name = (
+        data.get("channel")
+        or data.get("uploader")
+        or data.get("title")
+        or normalized_username
+    )
+    description = data.get("description", "") or ""
+    subscriber_count = (
+        data.get("channel_follower_count")
+        or data.get("uploader_follower_count")
+        or data.get("follower_count")
+    )
+    # Convertir en int si possible
+    if subscriber_count is not None:
+        try:
+            subscriber_count = int(subscriber_count)
+        except (TypeError, ValueError):
+            subscriber_count = None
+
+    entries = data.get("entries") or []
+    if not isinstance(entries, list):
+        entries = []
+
+    last_videos: list = []
+    for entry in entries[:safe_limit]:
+        if not entry or not isinstance(entry, dict):
+            continue
+        # TikTok = caption avec hashtags inline. yt-dlp expose generalement
+        # `title` (souvent égal à la caption) et `description`.
+        raw_title = entry.get("title") or entry.get("description") or ""
+        raw_description = entry.get("description") or entry.get("title") or ""
+
+        # Title : conservé brut (cohérence shape avec YouTube channel context)
+        title = raw_title or ""
+
+        # Description : tronquée à 200 chars (cohérence YouTube channel context)
+        description_field = raw_description or ""
+        if len(description_field) > 200:
+            description_field = description_field[:200]
+
+        # Hashtags : on les extrait du texte le plus riche
+        hashtag_source = raw_description if len(raw_description or "") >= len(raw_title or "") else raw_title
+        tags = _extract_hashtags(hashtag_source or "")
+
+        view_count = entry.get("view_count")
+        if view_count is not None:
+            try:
+                view_count = int(view_count)
+            except (TypeError, ValueError):
+                view_count = None
+
+        upload_date = entry.get("upload_date")
+        if upload_date is not None and not isinstance(upload_date, str):
+            upload_date = str(upload_date)
+
+        last_videos.append(
+            {
+                "title": title,
+                "description": description_field,
+                "tags": tags,
+                "view_count": view_count,
+                "upload_date": upload_date,
+            }
+        )
+
+    # video_count : on prend playlist_count si dispo, sinon le nombre d'entries
+    raw_video_count = data.get("playlist_count") or data.get("video_count")
+    if raw_video_count is not None:
+        try:
+            video_count = int(raw_video_count)
+        except (TypeError, ValueError):
+            video_count = len(last_videos) or None
+    else:
+        video_count = len(last_videos) or None
+
+    result = {
+        "channel_id": normalized_username,
+        "platform": "tiktok",
+        "name": str(display_name)[:200] if display_name else normalized_username,
+        "description": str(description)[:2000] if description else "",
+        "subscriber_count": subscriber_count,
+        "video_count": video_count,
+        "tags": [],         # TikTok n'a pas de tags compte
+        "categories": [],   # TikTok n'a pas de catégories compte
+        "last_videos": last_videos,
+    }
+
+    logger.info(
+        f"[TIKTOK] Account context OK for @{normalized_username}: "
+        f"{len(last_videos)} posts, followers={subscriber_count}"
+    )
+    return result
