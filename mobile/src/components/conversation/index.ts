@@ -13,4 +13,6 @@ export { ContextProgressBanner } from "./ContextProgressBanner";
 export { VoiceControls } from "./VoiceControls";
 export { EndedToast } from "./EndedToast";
 export { MiniActionBar } from "./MiniActionBar";
+export { EmptyConversationSuggestions } from "./EmptyConversationSuggestions";
+export type { EmptyConversationSuggestionsProps } from "./EmptyConversationSuggestions";
 export type { VoiceMode, UnifiedMessage } from "../../hooks/useConversation";
