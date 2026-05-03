@@ -15,7 +15,11 @@ vi.mock("../../../services/api", () => ({
 }));
 
 vi.mock("../../../hooks/useTranslation", () => ({
-  useTranslation: () => ({ language: "en", t: (k: string) => k, setLanguage: () => {} }),
+  useTranslation: () => ({
+    language: "en",
+    t: (k: string) => k,
+    setLanguage: () => {},
+  }),
 }));
 
 import { voicePacksApi } from "../../../services/api";

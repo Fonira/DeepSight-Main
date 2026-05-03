@@ -37,21 +37,21 @@ Le brainstorming a verrouillé une vision : **remplacer le widget passif `DidYou
 
 ## Décisions verrouillées
 
-| #   | Décision                            | Choix retenu                                                                                                                                                       |
-| --- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Objectif produit                    | **Vraiment apprendre & retenir** les concepts vus dans les vidéos analysées                                                                                        |
-| 2   | Angle dominant                      | **Sérieux + IA conversationnelle + touche ludique** (mix sobre Anki + compagnon Voxtral + un peu mini-jeux)                                                        |
-| 3   | Place de l'IA                       | **Centrale** — l'expérience EST le dialogue (Voxtral voix + Magistral texte)                                                                                       |
-| 4   | Approche                            | **Refonte du widget en compagnon conversationnel** — pas de page dédiée, pas de refonte StudyHubPage                                                               |
-| 5   | Persona tuteur                      | **Sobre & professionnel** — vouvoiement ou tutoiement adulte neutre, citations académiques, "Voyons ensemble...", appellation "Tuteur" (pas de nom propre)         |
-| 6   | Proactivité                         | **Discret — jamais d'initiative IA**. State `prompting` requalifié en intermédiaire de mode-selection après click manuel.                                          |
-| 7   | Périmètre plateforme V1             | **Web only**. Mobile + Extension → V2                                                                                                                              |
-| 8   | SRS sur concepts                    | **Hors scope V1** — rotation simple recency/historique comme aujourd'hui. V2 → table `concept_review_state` FSRS-compatible                                        |
-| 9   | Suppressions                        | `WhackAMoleToggle`, components `WhackAMole/*`, hook `useWhackAMole`. Le toggle "Mode Quiz" disparaît de la sidebar.                                                 |
-| 10  | Inchangé                            | `StudyHubPage` (`/study`), `LoadingWordContext`, FSRS sur flashcards par-vidéo, `StudyPage` (`/study/:summaryId`), gamification existante                          |
-| 11  | LLM                                 | **Magistral** (medium pour Pro, large pour Expert). System prompt fixe V1, persona "Tuteur DeepSight"                                                              |
-| 12  | Voix                                | **Voxtral STT** (input user) + **ElevenLabs TTS** (output) — réutilise infra Quick Voice Call déjà en prod                                                         |
-| 13  | Sous-agents implémentation          | **Opus 4.7 obligatoire** (`claude-opus-4-7[1m]`) pour tout sub-agent Agent/Task                                                                                    |
+| #   | Décision                   | Choix retenu                                                                                                                                               |
+| --- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Objectif produit           | **Vraiment apprendre & retenir** les concepts vus dans les vidéos analysées                                                                                |
+| 2   | Angle dominant             | **Sérieux + IA conversationnelle + touche ludique** (mix sobre Anki + compagnon Voxtral + un peu mini-jeux)                                                |
+| 3   | Place de l'IA              | **Centrale** — l'expérience EST le dialogue (Voxtral voix + Magistral texte)                                                                               |
+| 4   | Approche                   | **Refonte du widget en compagnon conversationnel** — pas de page dédiée, pas de refonte StudyHubPage                                                       |
+| 5   | Persona tuteur             | **Sobre & professionnel** — vouvoiement ou tutoiement adulte neutre, citations académiques, "Voyons ensemble...", appellation "Tuteur" (pas de nom propre) |
+| 6   | Proactivité                | **Discret — jamais d'initiative IA**. State `prompting` requalifié en intermédiaire de mode-selection après click manuel.                                  |
+| 7   | Périmètre plateforme V1    | **Web only**. Mobile + Extension → V2                                                                                                                      |
+| 8   | SRS sur concepts           | **Hors scope V1** — rotation simple recency/historique comme aujourd'hui. V2 → table `concept_review_state` FSRS-compatible                                |
+| 9   | Suppressions               | `WhackAMoleToggle`, components `WhackAMole/*`, hook `useWhackAMole`. Le toggle "Mode Quiz" disparaît de la sidebar.                                        |
+| 10  | Inchangé                   | `StudyHubPage` (`/study`), `LoadingWordContext`, FSRS sur flashcards par-vidéo, `StudyPage` (`/study/:summaryId`), gamification existante                  |
+| 11  | LLM                        | **Magistral** (medium pour Pro, large pour Expert). System prompt fixe V1, persona "Tuteur DeepSight"                                                      |
+| 12  | Voix                       | **Voxtral STT** (input user) + **ElevenLabs TTS** (output) — réutilise infra Quick Voice Call déjà en prod                                                 |
+| 13  | Sous-agents implémentation | **Opus 4.7 obligatoire** (`claude-opus-4-7[1m]`) pour tout sub-agent Agent/Task                                                                            |
 
 ## Architecture macro
 
@@ -116,12 +116,12 @@ Remplace `DidYouKnowCard.tsx`. State machine à 4 états avec transitions toutes
 
 ### États détaillés
 
-| State          | Layout                                                       | Contenu                                                                                                                | Trigger out                                       |
-| -------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `idle`         | Card top-right 200×140                                       | Concept actuel (term + short def) + spinner cosmic actuel + boutons next/refresh/close                                 | Click sur le widget → `prompting`                 |
-| `prompting`    | Card top-right 220×180                                       | "**Rasoir d'Occam** — On en parle ?" + 2 boutons mode (`Texte 30s` / `Voix 5min`) + bouton retour                      | Click mode → `mini-chat` ou `deep-session`        |
-| `mini-chat`    | Card top-right 280×400 (panel expansé)                       | Header + thread messages (msg-ai / msg-user) + input texte + bouton mic + bouton "Approfondir" + bouton fermer         | Click "Approfondir" → `deep-session` ; X → `idle` |
-| `deep-session` | Modal fullscreen                                             | Header (concept + timer) + voice orb pulsante + transcript live + boutons Pause / Texte / Fin + lien analyse source    | Click "Fin" / Échap → `idle`                      |
+| State          | Layout                                 | Contenu                                                                                                             | Trigger out                                       |
+| -------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `idle`         | Card top-right 200×140                 | Concept actuel (term + short def) + spinner cosmic actuel + boutons next/refresh/close                              | Click sur le widget → `prompting`                 |
+| `prompting`    | Card top-right 220×180                 | "**Rasoir d'Occam** — On en parle ?" + 2 boutons mode (`Texte 30s` / `Voix 5min`) + bouton retour                   | Click mode → `mini-chat` ou `deep-session`        |
+| `mini-chat`    | Card top-right 280×400 (panel expansé) | Header + thread messages (msg-ai / msg-user) + input texte + bouton mic + bouton "Approfondir" + bouton fermer      | Click "Approfondir" → `deep-session` ; X → `idle` |
+| `deep-session` | Modal fullscreen                       | Header (concept + timer) + voice orb pulsante + transcript live + boutons Pause / Texte / Fin + lien analyse source | Click "Fin" / Échap → `idle`                      |
 
 ### Hook `useCompanion`
 
@@ -145,11 +145,11 @@ companion/
 
 ### Endpoints
 
-| Méthode | Route                                | Body                                                                       | Réponse                                                                       |
-| ------- | ------------------------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| POST    | `/api/companion/session/start`       | `{ concept_term, concept_def, summary_id?, mode: "text"\|"voice", lang }` | `{ session_id, first_prompt, audio_url? }`                                    |
-| POST    | `/api/companion/session/{id}/turn`   | `{ user_input?, audio_blob? }`                                             | `{ ai_response, audio_url?, turn_count }`                                     |
-| POST    | `/api/companion/session/{id}/end`    | `{}`                                                                       | `{ duration_sec, turns_count, source_summary_url?, source_video_title? }`    |
+| Méthode | Route                              | Body                                                                      | Réponse                                                                   |
+| ------- | ---------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| POST    | `/api/companion/session/start`     | `{ concept_term, concept_def, summary_id?, mode: "text"\|"voice", lang }` | `{ session_id, first_prompt, audio_url? }`                                |
+| POST    | `/api/companion/session/{id}/turn` | `{ user_input?, audio_blob? }`                                            | `{ ai_response, audio_url?, turn_count }`                                 |
+| POST    | `/api/companion/session/{id}/end`  | `{}`                                                                      | `{ duration_sec, turns_count, source_summary_url?, source_video_title? }` |
 
 ### Session state (Redis)
 
@@ -213,27 +213,27 @@ ou à appliquer le concept à un cas concret.
 
 ## Réutilisation existant (zéro refonte sur ces briques)
 
-| Brique                                                  | Rôle dans le Tuteur                                                                  |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `LoadingWordContext`                                    | Source des concepts (historique user + 50 defaults)                                  |
-| `/api/history/keywords` (existant)                      | Backend keyword extraction Mistral                                                   |
-| Pipeline image IA fal.ai                                | Image éventuelle dans deep-session (background décoratif)                            |
-| Voxtral STT (existant `/api/voice/*`)                   | Transcription de l'input user en mode voix                                           |
-| ElevenLabs TTS (existant — Quick Voice Call en prod)    | Synthèse vocale du tuteur en mode voix                                               |
-| Chat v4 Magistral (existant `/api/chat/*`)              | Référence d'implémentation pour le streaming SSE et l'enrichissement                 |
-| `is_feature_available()` SSOT plan_limits               | Plan gating Pro/Expert                                                               |
-| Voice quota existant (`VoiceQuota` table)               | Compteur des minutes voix consommées                                                 |
-| Sentry / analytics                                      | Tracking erreurs et événements session                                               |
+| Brique                                               | Rôle dans le Tuteur                                                  |
+| ---------------------------------------------------- | -------------------------------------------------------------------- |
+| `LoadingWordContext`                                 | Source des concepts (historique user + 50 defaults)                  |
+| `/api/history/keywords` (existant)                   | Backend keyword extraction Mistral                                   |
+| Pipeline image IA fal.ai                             | Image éventuelle dans deep-session (background décoratif)            |
+| Voxtral STT (existant `/api/voice/*`)                | Transcription de l'input user en mode voix                           |
+| ElevenLabs TTS (existant — Quick Voice Call en prod) | Synthèse vocale du tuteur en mode voix                               |
+| Chat v4 Magistral (existant `/api/chat/*`)           | Référence d'implémentation pour le streaming SSE et l'enrichissement |
+| `is_feature_available()` SSOT plan_limits            | Plan gating Pro/Expert                                               |
+| Voice quota existant (`VoiceQuota` table)            | Compteur des minutes voix consommées                                 |
+| Sentry / analytics                                   | Tracking erreurs et événements session                               |
 
 ## Suppressions (la "remplacement" du Mode Quiz)
 
-| Fichier / brique                                                          | Action                                                  |
-| ------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `frontend/src/components/DidYouKnowCard.tsx`                              | **Supprimé** — remplacé par `Companion.tsx`             |
-| `frontend/src/components/WhackAMole/` (tout le dossier)                   | **Archivé** dans `_archive/WhackAMole/` pour V2         |
-| `frontend/src/components/WhackAMole/useWhackAMole.ts`                     | **Archivé** (renaîtra en V2 Mode Défi optionnel)        |
-| `frontend/src/components/WhackAMole/whackAMoleConstants.ts`               | **Archivé**                                             |
-| `frontend/src/components/layout/Sidebar.tsx` — `WhackAMoleToggle` (l.304) | **Supprimé** du composant Sidebar                        |
+| Fichier / brique                                                                | Action                                                    |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `frontend/src/components/DidYouKnowCard.tsx`                                    | **Supprimé** — remplacé par `Companion.tsx`               |
+| `frontend/src/components/WhackAMole/` (tout le dossier)                         | **Archivé** dans `_archive/WhackAMole/` pour V2           |
+| `frontend/src/components/WhackAMole/useWhackAMole.ts`                           | **Archivé** (renaîtra en V2 Mode Défi optionnel)          |
+| `frontend/src/components/WhackAMole/whackAMoleConstants.ts`                     | **Archivé**                                               |
+| `frontend/src/components/layout/Sidebar.tsx` — `WhackAMoleToggle` (l.304)       | **Supprimé** du composant Sidebar                         |
 | `frontend/src/i18n/{fr,en}.json` — clés `dashboard.modes.{quiz,classic,expert}` | **Supprimées** ou réutilisées pour le Tuteur si pertinent |
 
 ## Migrations DB
@@ -251,16 +251,17 @@ ou à appliquer le concept à un cas concret.
 
 ## Risks & open questions
 
-| Risque                                                                        | Mitigation                                                                                              |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Magistral génère un dialogue creux ou trop long                               | Few-shot dans system prompt + max_tokens serré (300) + safeguards "réponse 2-3 phrases"                 |
-| Voxtral STT mauvaise qualité sur accents francophones                         | Fallback texte toujours dispo + bouton "réessayer" sur turn raté                                        |
-| User lance une session voix dans un environnement public et est embarrassé    | State PROMPTING force le choix Texte/Voix avant — pas de "voice par défaut surprise"                    |
-| Perte de session sur reload de page                                           | localStorage avec `session_id` actif + endpoint `/session/{id}/resume` (V1.1 si nécessaire)             |
-| Coût Magistral large (Expert) si user enchaîne 100 sessions/mois              | Quota voice existant capot ; ajouter compteur `companion_turns_per_month` si abus observé               |
-| Confusion avec le "Coach Vocal de Découverte" (autre feature) déjà speccé     | UX : le Coach Vocal est dans la sidebar (onglet dédié), le Tuteur est ambient widget — rôles distincts  |
+| Risque                                                                     | Mitigation                                                                                             |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Magistral génère un dialogue creux ou trop long                            | Few-shot dans system prompt + max_tokens serré (300) + safeguards "réponse 2-3 phrases"                |
+| Voxtral STT mauvaise qualité sur accents francophones                      | Fallback texte toujours dispo + bouton "réessayer" sur turn raté                                       |
+| User lance une session voix dans un environnement public et est embarrassé | State PROMPTING force le choix Texte/Voix avant — pas de "voice par défaut surprise"                   |
+| Perte de session sur reload de page                                        | localStorage avec `session_id` actif + endpoint `/session/{id}/resume` (V1.1 si nécessaire)            |
+| Coût Magistral large (Expert) si user enchaîne 100 sessions/mois           | Quota voice existant capot ; ajouter compteur `companion_turns_per_month` si abus observé              |
+| Confusion avec le "Coach Vocal de Découverte" (autre feature) déjà speccé  | UX : le Coach Vocal est dans la sidebar (onglet dédié), le Tuteur est ambient widget — rôles distincts |
 
 **Open questions** :
+
 - Faut-il bloquer le widget Tuteur sur certaines pages où il est gênant (page d'analyse en cours, billing, settings) ? → **À trancher en review.**
 - Persona V1 fixe ou personnalisable plus tôt (ex: réglage ton dans Settings) ? → **V2.**
 - Faut-il logger les transcripts pour analyse qualité ? → **Oui, anonymisés, retention 30j.** À confirmer en review RGPD.

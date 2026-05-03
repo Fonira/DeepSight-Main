@@ -7,9 +7,10 @@ const mockNavigate = vi.fn();
 const mockAnalyze = vi.fn();
 
 vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual<typeof import("react-router-dom")>(
-    "react-router-dom",
-  );
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -136,7 +137,9 @@ describe("DashboardPageMinimal", () => {
 
   it("smoke renders header, smart input, recent and tournesol sections", () => {
     renderPage();
-    expect(screen.getByText(/que souhaitez-vous comprendre/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/que souhaitez-vous comprendre/i),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("smart-input")).toBeInTheDocument();
     expect(screen.getByTestId("recent-section")).toBeInTheDocument();
     expect(screen.getByTestId("tournesol-section")).toBeInTheDocument();
