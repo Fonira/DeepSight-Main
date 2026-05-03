@@ -84,7 +84,9 @@ const buildHubSubtitle = (
 ): string => {
   if (!source) return "";
   const platform = source === "tiktok" ? "TikTok" : "YouTube";
-  const duration = formatVideoDuration(durationSecs ?? 0);
+  // F7 — guard explicite : ne pas afficher "00:00" si durée nulle/absente.
+  const duration =
+    durationSecs && durationSecs > 0 ? formatVideoDuration(durationSecs) : "";
   const ago = formatAnalyzedAgo(updatedAt);
   const parts = [platform];
   if (duration) parts.push(duration);
