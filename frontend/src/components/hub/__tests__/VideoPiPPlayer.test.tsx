@@ -51,4 +51,46 @@ describe("VideoPiPPlayer", () => {
       screen.getByRole("button", { name: /réduire/i }),
     ).toBeInTheDocument();
   });
+
+  it("hides duration badge when durationSecs === 0 (F7)", () => {
+    const { container } = render(
+      <VideoPiPPlayer
+        thumbnailUrl="https://example.com/thumb.jpg"
+        title="t"
+        durationSecs={0}
+        expanded={false}
+        onExpand={() => {}}
+        onShrink={() => {}}
+      />,
+    );
+    expect(container.textContent).not.toContain("00:00");
+  });
+
+  it("shows formatted duration when > 0", () => {
+    const { container } = render(
+      <VideoPiPPlayer
+        thumbnailUrl="https://example.com/thumb.jpg"
+        title="t"
+        durationSecs={125}
+        expanded={false}
+        onExpand={() => {}}
+        onShrink={() => {}}
+      />,
+    );
+    expect(container.textContent).toContain("02:05");
+  });
+
+  it("hides 0/00:00 timeline in expanded mode when duration is 0 (F7)", () => {
+    const { container } = render(
+      <VideoPiPPlayer
+        thumbnailUrl={null}
+        title="t"
+        durationSecs={0}
+        expanded={true}
+        onExpand={() => {}}
+        onShrink={() => {}}
+      />,
+    );
+    expect(container.textContent).not.toContain("00:00 /");
+  });
 });
