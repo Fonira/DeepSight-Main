@@ -30,6 +30,14 @@ const ThinkingDots: React.FC = () => {
   );
 };
 
+const keyExtractor = (item: HubMessage) => item.id;
+
+const renderMessage = ({ item }: { item: HubMessage }) => (
+  <View style={styles.itemSpacing}>
+    <MessageBubble msg={item} />
+  </View>
+);
+
 export const Timeline: React.FC<Props> = ({ messages, isThinking }) => {
   const sorted = useMemo(
     () => [...messages].sort((a, b) => a.timestamp - b.timestamp),
@@ -45,6 +53,11 @@ export const Timeline: React.FC<Props> = ({ messages, isThinking }) => {
     }, 50);
     return () => clearTimeout(t);
   }, [sorted.length, isThinking]);
+
+  const footer = useMemo(
+    () => (isThinking ? <ThinkingDots /> : null),
+    [isThinking],
+  );
 
   if (sorted.length === 0 && !isThinking) {
     return (
@@ -64,13 +77,9 @@ export const Timeline: React.FC<Props> = ({ messages, isThinking }) => {
       <FlashList
         ref={listRef}
         data={sorted}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.itemSpacing}>
-            <MessageBubble msg={item} />
-          </View>
-        )}
-        ListFooterComponent={isThinking ? <ThinkingDots /> : null}
+        keyExtractor={keyExtractor}
+        renderItem={renderMessage}
+        ListFooterComponent={footer}
         contentContainerStyle={styles.listContent}
       />
     </View>

@@ -22,7 +22,7 @@ const DEFAULT_BARS = [
   21, 9, 12, 15, 8, 17, 10,
 ];
 
-export const MessageBubble: React.FC<Props> = ({ msg, bars }) => {
+const MessageBubbleComponent: React.FC<Props> = ({ msg, bars }) => {
   const isUser = msg.role === "user";
   const isVoiceBubble =
     (msg.source === "voice_user" || msg.source === "voice_agent") &&
@@ -82,6 +82,8 @@ export const MessageBubble: React.FC<Props> = ({ msg, bars }) => {
     </View>
   );
 };
+
+export const MessageBubble = React.memo(MessageBubbleComponent);
 
 const styles = StyleSheet.create({
   row: {
