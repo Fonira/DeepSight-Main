@@ -56,10 +56,13 @@ export const TutorMiniChat: React.FC<TutorMiniChatProps> = ({
   }, []);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
+    // jsdom (tests) ne définit pas scrollTo — guard nécessaire.
+    if (scrollRef.current && typeof scrollRef.current.scrollTo === "function") {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   }, [messages]);
 
   const handleSubmit = (e: React.FormEvent) => {

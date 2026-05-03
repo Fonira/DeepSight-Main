@@ -91,10 +91,13 @@ export const TutorDeepSession: React.FC<TutorDeepSessionProps> = ({
   // Auto-scroll + focus
   useEffect(() => {
     if (textInputVisible) inputRef.current?.focus();
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
+    // jsdom (tests) ne définit pas scrollTo — guard nécessaire.
+    if (scrollRef.current && typeof scrollRef.current.scrollTo === "function") {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   }, [textInputVisible, messages]);
 
   const handleSubmit = (e: React.FormEvent) => {
