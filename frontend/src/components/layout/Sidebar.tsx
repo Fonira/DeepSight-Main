@@ -25,7 +25,6 @@ import {
   MessageCircle,
   GraduationCap,
   Menu,
-  Gamepad2,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
@@ -300,119 +299,6 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
   );
 };
 
-// === WhackAMole Toggle ===
-const WhackAMoleToggle: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
-  const { t } = useTranslation();
-  const [enabled, setEnabled] = useState(() => {
-    try {
-      return localStorage.getItem("ds-whack-a-mole-enabled") !== "false";
-    } catch {
-      return true;
-    }
-  });
-  const [mode, setMode] = useState<"classic" | "reverse">(() => {
-    try {
-      return localStorage.getItem("ds-whack-a-mole-mode") === "reverse"
-        ? "reverse"
-        : "classic";
-    } catch {
-      return "classic";
-    }
-  });
-
-  const toggle = () => {
-    const next = !enabled;
-    setEnabled(next);
-    try {
-      localStorage.setItem("ds-whack-a-mole-enabled", String(next));
-    } catch {
-      /* */
-    }
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: "ds-whack-a-mole-enabled",
-        newValue: String(next),
-      }),
-    );
-  };
-
-  const switchMode = (newMode: "classic" | "reverse") => {
-    setMode(newMode);
-    try {
-      localStorage.setItem("ds-whack-a-mole-mode", newMode);
-    } catch {
-      /* */
-    }
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: "ds-whack-a-mole-mode",
-        newValue: newMode,
-      }),
-    );
-  };
-
-  return (
-    <div>
-      <button
-        onClick={toggle}
-        className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
-          enabled
-            ? "text-accent-primary hover:bg-white/5"
-            : "text-text-tertiary hover:text-text-secondary hover:bg-white/3"
-        }`}
-        title={
-          enabled ? t.dashboard.modes.toggle_on : t.dashboard.modes.toggle_off
-        }
-      >
-        <Gamepad2
-          className={`w-4 h-4 flex-shrink-0 ${enabled ? "text-accent-primary" : "text-text-quaternary"}`}
-        />
-        {!collapsed && (
-          <span className="text-xs font-medium truncate">
-            {t.dashboard.modes.quiz.label}
-          </span>
-        )}
-        {!collapsed && (
-          <span
-            className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-              enabled
-                ? "bg-accent-primary/15 text-accent-primary"
-                : "bg-white/5 text-text-quaternary"
-            }`}
-          >
-            {enabled ? "ON" : "OFF"}
-          </span>
-        )}
-      </button>
-      {/* Mode selector — visible when game enabled and sidebar expanded */}
-      {enabled && !collapsed && (
-        <div className="flex gap-1 px-3 pb-2">
-          <button
-            onClick={() => switchMode("classic")}
-            className={`flex-1 text-[10px] py-1 rounded-md transition-all ${
-              mode === "classic"
-                ? "bg-accent-primary/15 text-accent-primary border border-accent-primary/20"
-                : "text-text-muted hover:text-text-secondary hover:bg-white/5 border border-transparent"
-            }`}
-          >
-            {t.dashboard.modes.classic.label}
-          </button>
-          <button
-            onClick={() => switchMode("reverse")}
-            className={`flex-1 text-[10px] py-1 rounded-md transition-all ${
-              mode === "reverse"
-                ? "bg-accent-primary/15 text-accent-primary border border-accent-primary/20"
-                : "text-text-muted hover:text-text-secondary hover:bg-white/5 border border-transparent"
-            }`}
-          >
-            {t.dashboard.modes.expert.label}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
 // === Sidebar ===
 interface SidebarProps {
   collapsed?: boolean;
@@ -637,11 +523,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* 💡 Le Saviez-Vous — Sidebar Pulse */}
         <div className="border-t border-border-subtle">
           <SidebarInsight collapsed={collapsed} />
-        </div>
-
-        {/* 🎮 Whack-a-Mole toggle */}
-        <div className="border-t border-border-subtle">
-          <WhackAMoleToggle collapsed={collapsed} />
         </div>
 
         {/* Plan Badge */}
