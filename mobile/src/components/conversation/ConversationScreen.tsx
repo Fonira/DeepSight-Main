@@ -19,6 +19,7 @@ import React, { useCallback, useRef, useState } from "react";
 import {
   View,
   Modal,
+  StatusBar,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -26,7 +27,6 @@ import {
   Alert,
 } from "react-native";
 import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import type BottomSheet from "@gorhom/bottom-sheet";
@@ -79,7 +79,6 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
   onClose,
 }) => {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const settingsSheetRef = useRef<BottomSheet | null>(null);
   const [addonVisible, setAddonVisible] = useState(false);
@@ -210,19 +209,21 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
       statusBarTranslucent
       onRequestClose={onClose}
     >
+      {/*
+        Edge-to-edge: la Modal `statusBarTranslucent` couvre toute la hauteur
+        écran, status bar et home indicator inclus. Le composant déclare son
+        propre StatusBar pour conserver les icônes lisibles sur fond bgPrimary.
+        Les paddings safe-area ne sont PLUS appliqués sur l'inner View — c'est
+        au Header (top) et à l'Input (bottom) de gérer leur propre inset.
+      */}
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <Animated.View
         entering={FadeIn.duration(duration.slow)}
         style={[styles.root, { backgroundColor: colors.bgPrimary }]}
       >
         <Animated.View
           entering={SlideInDown.duration(duration.slower).springify()}
-          style={[
-            styles.inner,
-            {
-              paddingTop: insets.top,
-              paddingBottom: insets.bottom,
-            },
-          ]}
+          style={styles.inner}
         >
           <ConversationHeader
             videoTitle={videoTitle}
@@ -237,7 +238,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
           <KeyboardAvoidingView
             style={styles.flex}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
-            keyboardVerticalOffset={insets.top + 56}
+            keyboardVerticalOffset={0}
           >
             {conv.streaming ? (
               <ContextProgressBanner
