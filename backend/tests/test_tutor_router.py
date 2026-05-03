@@ -296,3 +296,92 @@ async def test_session_end(authenticated_pro_client):
             json={"user_input": "still alive?"},
         )
         assert turn_after_end.status_code == 404
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V1.1 — TTS ElevenLabs (mode voice)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_session_start_voice_mode_returns_audio_url(authenticated_pro_client, monkeypatch):
+    """Mode voice → audio_url est un data URL non-null (TTS appelé)."""
+    fake_data_url = "data:audio/mpeg;base64,ZmFrZQ=="
+
+    async def fake_synth(text, lang="fr", voice_id=None):
+        return fake_data_url
+
+    monkeypatch.setattr("tutor.router.synthesize_audio_data_url", fake_synth)
+
+    with patch(
+        "tutor.router.llm_complete",
+        new_callable=AsyncMock,
+    ) as mock_llm:
+        mock_llm.return_value = _make_llm_result()
+
+        response = await authenticated_pro_client.post(
+            "/api/tutor/session/start",
+            json={
+                "concept_term": "X",
+                "concept_def": "Y",
+                "mode": "voice",
+                "lang": "fr",
+            },
+        )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["audio_url"] == fake_data_url
+
+
+@pytest.mark.asyncio
+async def test_session_start_text_mode_audio_url_is_null(authenticated_pro_client):
+    """Mode text → audio_url reste None (régression V1.0 préservée)."""
+    with patch(
+        "tutor.router.llm_complete",
+        new_callable=AsyncMock,
+    ) as mock_llm:
+        mock_llm.return_value = _make_llm_result()
+
+        response = await authenticated_pro_client.post(
+            "/api/tutor/session/start",
+            json={
+                "concept_term": "X",
+                "concept_def": "Y",
+                "mode": "text",
+                "lang": "fr",
+            },
+        )
+    assert response.status_code == 200
+    assert response.json()["audio_url"] is None
+
+
+@pytest.mark.asyncio
+async def test_session_turn_voice_mode_returns_audio_url(authenticated_pro_client, monkeypatch):
+    """Mode voice → /turn renvoie aussi audio_url non-null."""
+    fake_data_url = "data:audio/mpeg;base64,dHVybg=="
+
+    async def fake_synth(text, lang="fr", voice_id=None):
+        return fake_data_url
+
+    monkeypatch.setattr("tutor.router.synthesize_audio_data_url", fake_synth)
+
+    with patch(
+        "tutor.router.llm_complete",
+        new_callable=AsyncMock,
+    ) as mock_llm:
+        mock_llm.return_value = _make_llm_result()
+
+        # Start in voice mode
+        start_resp = await authenticated_pro_client.post(
+            "/api/tutor/session/start",
+            json={"concept_term": "X", "concept_def": "Y", "mode": "voice", "lang": "fr"},
+        )
+        session_id = start_resp.json()["session_id"]
+
+        # Turn
+        turn_resp = await authenticated_pro_client.post(
+            f"/api/tutor/session/{session_id}/turn",
+            json={"user_input": "Mon idée"},
+        )
+    assert turn_resp.status_code == 200
+    assert turn_resp.json()["audio_url"] == fake_data_url
