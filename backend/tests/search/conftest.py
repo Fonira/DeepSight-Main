@@ -1,8 +1,7 @@
 # backend/tests/search/conftest.py
 """Fixtures partagées pour les tests search/."""
 
-import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 

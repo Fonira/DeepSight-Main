@@ -738,13 +738,11 @@ class Flashcard(Base):
         Integer,
         ForeignKey("summaries.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     user_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     position = Column(Integer, nullable=False, default=0)
     front = Column(Text, nullable=False)
@@ -769,13 +767,11 @@ class QuizQuestion(Base):
         Integer,
         ForeignKey("summaries.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     user_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     position = Column(Integer, nullable=False, default=0)
     question = Column(Text, nullable=False)
@@ -802,13 +798,11 @@ class SummaryEmbedding(Base):
         Integer,
         ForeignKey("summaries.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     user_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     section_index = Column(Integer, nullable=False)
     section_ref = Column(String(100), nullable=True)  # ts ou anchor
@@ -845,13 +839,11 @@ class FlashcardEmbedding(Base):
         Integer,
         ForeignKey("summaries.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     user_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     embedding_json = Column(Text, nullable=False)
     text_preview = Column(String(500))
@@ -882,13 +874,11 @@ class QuizEmbedding(Base):
         Integer,
         ForeignKey("summaries.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     user_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     embedding_json = Column(Text, nullable=False)
     text_preview = Column(String(500))
@@ -913,13 +903,11 @@ class ChatEmbedding(Base):
         Integer,
         ForeignKey("summaries.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     user_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     turn_index = Column(Integer, nullable=False)
     user_message_id = Column(
