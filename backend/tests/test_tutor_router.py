@@ -255,3 +255,44 @@ async def test_session_turn_empty_input(authenticated_pro_client):
             json={},
         )
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_session_end(authenticated_pro_client):
+    """Fermer une session retourne durée + turn count + supprime de Redis."""
+    with patch(
+        "tutor.router.llm_complete",
+        new_callable=AsyncMock,
+    ) as mock_llm:
+        mock_llm.return_value = _make_llm_result()
+
+        start_resp = await authenticated_pro_client.post(
+            "/api/tutor/session/start",
+            json={
+                "concept_term": "X",
+                "concept_def": "Y",
+                "summary_id": 42,
+                "source_video_title": "Vidéo Test",
+                "mode": "text",
+                "lang": "fr",
+            },
+        )
+        session_id = start_resp.json()["session_id"]
+
+        end_resp = await authenticated_pro_client.post(
+            f"/api/tutor/session/{session_id}/end",
+            json={},
+        )
+        assert end_resp.status_code == 200
+        data = end_resp.json()
+        assert data["turns_count"] >= 1
+        assert data["duration_sec"] >= 0
+        assert data["source_summary_url"] == "/dashboard?id=42"
+        assert data["source_video_title"] == "Vidéo Test"
+
+        # La session doit être supprimée
+        turn_after_end = await authenticated_pro_client.post(
+            f"/api/tutor/session/{session_id}/turn",
+            json={"user_input": "still alive?"},
+        )
+        assert turn_after_end.status_code == 404

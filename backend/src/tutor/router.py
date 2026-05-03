@@ -15,6 +15,7 @@ from core.plan_limits import check_feature_access
 from core.llm_provider import llm_complete
 
 from .schemas import (
+    SessionEndResponse,
     SessionStartRequest,
     SessionStartResponse,
     SessionTurnRequest,
@@ -25,6 +26,7 @@ from .schemas import (
 from .service import (
     create_session,
     append_turn,
+    delete_session,
     load_session,
     make_session_id,
     now_ms,
@@ -258,4 +260,43 @@ async def session_turn(
         ai_response=ai_response,
         audio_url=audio_url,
         turn_count=len(state.turns),
+    )
+
+
+@router.post("/session/{session_id}/end", response_model=SessionEndResponse)
+async def session_end(
+    session_id: str,
+    user: User = Depends(get_current_user),
+):
+    """Termine une session : durée, log analytics, supprime Redis."""
+    _check_plan_access(user)
+
+    redis = _get_redis()
+    state = await load_session(redis, session_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Session non trouvée ou expirée")
+    if state.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Session non autorisée")
+
+    duration_sec = max(0, (now_ms() - state.started_at_ms) // 1000)
+    source_summary_url = (
+        f"/dashboard?id={state.summary_id}" if state.summary_id else None
+    )
+
+    # V1.1 : log analytics dans table AnalyticsEvent (placeholder)
+    logger.info(
+        "[tutor] session ended %s user=%s duration=%ss turns=%d",
+        session_id,
+        user.id,
+        duration_sec,
+        len(state.turns),
+    )
+
+    await delete_session(redis, session_id)
+
+    return SessionEndResponse(
+        duration_sec=duration_sec,
+        turns_count=len(state.turns),
+        source_summary_url=source_summary_url,
+        source_video_title=state.source_video_title,
     )
