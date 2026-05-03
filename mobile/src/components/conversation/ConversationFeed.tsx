@@ -31,6 +31,7 @@ import { fontFamily, fontSize } from "../../theme/typography";
 import { palette } from "../../theme/colors";
 import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 import { ConversationFeedBubble } from "./ConversationFeedBubble";
+import { EmptyConversationSuggestions } from "./EmptyConversationSuggestions";
 import type { UnifiedMessage } from "../../hooks/useConversation";
 
 const SUGGESTED_QUESTIONS = [
@@ -138,28 +139,7 @@ export const ConversationFeed: React.FC<ConversationFeedProps> = ({
         <Text style={[styles.welcomeSubtitle, { color: colors.textTertiary }]}>
           Pose une question sur cette vidéo...
         </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.suggestionsRow}
-          style={styles.suggestionsScroll}
-        >
-          {SUGGESTED_QUESTIONS.map((q) => (
-            <Pressable
-              key={q}
-              onPress={() => onSuggestionPress(q)}
-              style={[
-                styles.suggestionChip,
-                { borderColor: palette.cyan + "4D" },
-              ]}
-              accessibilityLabel={q}
-            >
-              <Text style={[styles.suggestionText, { color: palette.cyan }]}>
-                {q}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+        <EmptyConversationSuggestions onSelect={onSuggestionPress} />
       </View>
     );
   }
