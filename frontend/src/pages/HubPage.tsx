@@ -24,7 +24,6 @@ import { SEO } from "../components/SEO";
 import { sanitizeTitle } from "../utils/sanitize";
 import { useHubStore } from "../store/hubStore";
 import { HubHeader } from "../components/hub/HubHeader";
-import { SummaryCollapsible } from "../components/hub/SummaryCollapsible";
 import { Timeline } from "../components/hub/Timeline";
 import { InputBar } from "../components/hub/InputBar";
 import { ConversationsDrawer } from "../components/hub/ConversationsDrawer";
@@ -94,10 +93,6 @@ const HubPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlConvId = searchParams.get("conv");
   const urlSummaryId = searchParams.get("summary");
-  // Hub-first : `?open_summary=1` ouvre le bloc résumé déroulé d'emblée et
-  // scrolle le wrapper au centre. Utilisé après une analyse fraîche (Quick
-  // Chat) pour que l'utilisateur arrive directement sur le résumé.
-  const openSummaryFromUrl = searchParams.get("open_summary") === "1";
 
   const { language } = useTranslation();
   const { user } = useAuth();
@@ -554,34 +549,30 @@ const HubPage: React.FC = () => {
           </div>
         ) : (
           <>
-            {summaryContext && (
-              <SummaryCollapsible
-                context={summaryContext}
-                defaultOpen={openSummaryFromUrl}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {summaryContext && (
+                <HubAnalysisPanel
+                  selectedSummary={fullSummary}
+                  concepts={concepts}
+                  reliability={reliability}
+                  reliabilityLoading={reliabilityLoading}
+                  user={user}
+                  language={language as "fr" | "en"}
+                />
+              )}
+              <Timeline
+                messages={messages}
+                isThinking={isThinking}
+                onQuestionClick={handleSend}
               />
-            )}
-            {summaryContext && (
-              <HubAnalysisPanel
-                selectedSummary={fullSummary}
-                concepts={concepts}
-                reliability={reliability}
-                reliabilityLoading={reliabilityLoading}
-                user={user}
-                language={language as "fr" | "en"}
-              />
-            )}
-            <Timeline
-              messages={messages}
-              isThinking={isThinking}
-              onQuestionClick={handleSend}
-            />
+            </div>
             <InputBar
               onSend={handleSend}
               onCallToggle={() => setVoiceCallOpen(!voiceCallOpen)}
               onPttHoldComplete={handlePttHoldComplete}
               disabled={!activeConvId}
             />
-            <div className="flex justify-center px-3 pb-3 pt-1">
+            <div className="flex justify-center px-3 pb-3 pt-1 flex-shrink-0">
               <SourcesShelf />
             </div>
           </>

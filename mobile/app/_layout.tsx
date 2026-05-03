@@ -24,6 +24,7 @@ import { AmbientLightLayer } from "../src/components/backgrounds/AmbientLightLay
 import { SunflowerLayer } from "../src/components/backgrounds/SunflowerLayer";
 import { AmbientLightingProvider } from "../src/contexts/AmbientLightingContext";
 import { useAmbientLightingEnabled } from "../src/hooks/useAmbientLightingEnabled";
+import { DismissKeyboardView } from "../src/components/ui/DismissKeyboardView";
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -188,17 +189,26 @@ function RootNavigator() {
     <AmbientLightingProvider enabled={ambientEnabled}>
       <View style={rootStyles.root}>
         <StatusBar style="light" backgroundColor={darkColors.bgPrimary} />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: "transparent" },
-            animation: "fade",
-          }}
-        >
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="splash" />
-        </Stack>
+        {/*
+          DismissKeyboardView wraps the navigator so any tap that reaches the
+          background (i.e. not absorbed by an interactive child) dismisses the
+          keyboard. ScrollView/FlatList children should set
+          `keyboardShouldPersistTaps="handled"` to keep their inner buttons
+          tappable while the keyboard is open.
+        */}
+        <DismissKeyboardView>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: "transparent" },
+              animation: "fade",
+            }}
+          >
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="splash" />
+          </Stack>
+        </DismissKeyboardView>
         {/*
           v3 ambient layers rendered AFTER the Stack → they float ABOVE every
           page background. pointerEvents="none" lets gestures pass through.

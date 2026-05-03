@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, StyleSheet, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarFootprint } from "@/hooks/useTabBarFootprint";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
@@ -42,6 +43,7 @@ const isPaidPlan = (plan: PlanType): boolean => plan !== "free";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarFootprint = useTabBarFootprint();
   const { colors } = useTheme();
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -91,7 +93,7 @@ export default function ProfileScreen() {
           styles.scrollContent,
           {
             paddingTop: insets.top + sp.lg,
-            paddingBottom: 80 + Math.max(insets.bottom, sp.sm),
+            paddingBottom: tabBarFootprint,
           },
         ]}
         showsVerticalScrollIndicator={false}

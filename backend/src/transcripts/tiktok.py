@@ -177,10 +177,38 @@ def extract_tiktok_video_id(url: str) -> Optional[str]:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+async def _enrich_info_via_oembed(info: Dict[str, Any], url: str) -> Dict[str, Any]:
+    """
+    Complète un dict d'info TikTok via l'API oEmbed publique si le titre est
+    générique ou si la thumbnail est manquante. Mute toute exception.
+    """
+    needs_title = not info.get("title") or info.get("title") in ("TikTok Video", "TikTok", "")
+    needs_thumbnail = not info.get("thumbnail_url")
+    if not (needs_title or needs_thumbnail):
+        return info
+    try:
+        oembed = await _get_info_via_oembed(url)
+        if not oembed:
+            return info
+        if needs_title:
+            oembed_title = oembed.get("title")
+            if oembed_title and oembed_title not in ("TikTok Video", "TikTok", ""):
+                info["title"] = oembed_title
+                logger.info(f"[TIKTOK] Title enriched via oEmbed: {oembed_title[:50]}")
+        if needs_thumbnail and oembed.get("thumbnail_url"):
+            info["thumbnail_url"] = oembed["thumbnail_url"]
+            logger.info("[TIKTOK] Thumbnail enriched via oEmbed")
+    except Exception as e:
+        logger.warning(f"[TIKTOK] oEmbed enrichment failed: {e}")
+    return info
+
+
 async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
     """
     Récupère les métadonnées d'une vidéo TikTok.
     🆕 v3.0: Supadata metadata en priorité, puis yt-dlp, puis oEmbed.
+    🆕 v3.1: Enrichissement oEmbed systématique si title/thumbnail manquants
+    après Supadata ou yt-dlp (oEmbed est public, pas de blocage IP).
 
     Retourne un dict compatible avec le format get_video_info() de youtube.py:
     {
@@ -245,11 +273,11 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
                     logger.info(
                         f"[TIKTOK] Supadata metadata OK: {data.get('title', '')[:50]} ({duration}s, type={content_type})"
                     )
-                    return {
+                    info = {
                         "video_id": str(vid),
-                        "title": (data.get("title", "TikTok Video") or "TikTok Video")[:500],
+                        "title": (data.get("title", "") or "")[:500],
                         "channel": channel_str,
-                        "thumbnail_url": data.get("thumbnail", ""),
+                        "thumbnail_url": data.get("thumbnail", "") or "",
                         "duration": duration,
                         "upload_date": data.get("uploadDate") or data.get("createdAt"),
                         "description": (data.get("description", "") or "")[:2000],
@@ -269,6 +297,11 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
                         "music_title": music_data.get("title") if isinstance(music_data, dict) else None,
                         "music_author": music_data.get("author") if isinstance(music_data, dict) else None,
                     }
+                    # Enrich via oEmbed if Supadata returned partial data
+                    info = await _enrich_info_via_oembed(info, url)
+                    if not info.get("title"):
+                        info["title"] = "TikTok Video"
+                    return info
                 else:
                     logger.warning(f"[TIKTOK] Supadata metadata error {resp.status_code}")
         except Exception as e:
@@ -341,9 +374,9 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
 
             info = {
                 "video_id": video_id,
-                "title": data.get("title", data.get("description", "TikTok Video"))[:500],
+                "title": (data.get("title") or data.get("description") or "")[:500],
                 "channel": data.get("uploader", data.get("creator", "Unknown")),
-                "thumbnail_url": data.get("thumbnail", ""),
+                "thumbnail_url": data.get("thumbnail", "") or "",
                 "duration": duration,
                 "upload_date": data.get("upload_date"),
                 "description": (data.get("description", "") or "")[:2000],
@@ -355,6 +388,11 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
                 "tags": data.get("tags", []),
                 "categories": ["Social Media"],
             }
+
+            # Enrich via oEmbed if yt-dlp returned partial data
+            info = await _enrich_info_via_oembed(info, url)
+            if not info.get("title"):
+                info["title"] = "TikTok Video"
 
             logger.info(f'[TIKTOK] Info OK ({label}): "{info["title"][:50]}" by {info["channel"]} ({duration}s)')
             _circuit_breaker.record_success()

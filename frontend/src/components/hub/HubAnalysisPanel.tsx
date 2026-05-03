@@ -88,9 +88,9 @@ export const HubAnalysisPanel: React.FC<HubAnalysisPanelProps> = ({
   };
 
   return (
-    <div className="px-4 mb-3 w-full max-w-3xl mx-auto">
+    <div className="px-4 mb-3 w-full">
       <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
-        <div className="max-h-[60vh] overflow-y-auto overscroll-contain">
+        <div>
           <AnalysisHub
             selectedSummary={selectedSummary}
             reliabilityData={reliability}

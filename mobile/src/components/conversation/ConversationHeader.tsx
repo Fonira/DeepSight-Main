@@ -18,11 +18,13 @@ import {
   Text,
   Pressable,
   StyleSheet,
+  Platform,
   ScrollView,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -49,8 +51,7 @@ interface ConversationHeaderProps {
 }
 
 const platformBadge = (p: Platform_) => {
-  if (p === "tiktok")
-    return { label: "TikTok", bg: "#010101", border: "#333" };
+  if (p === "tiktok") return { label: "TikTok", bg: "#010101", border: "#333" };
   if (p === "live")
     return { label: "Live", bg: "rgba(245,180,0,0.20)", border: "#f5b400" };
   return { label: "YT", bg: "#FF0000", border: "#FF0000" };
@@ -66,6 +67,7 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   onClose,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const badge = platformBadge(platform);
 
   // Settings icon rotation
@@ -90,10 +92,10 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
 
   const handleSettings = () => {
     haptics.light();
-    settingsRotation.value = withSpring(
-      settingsRotation.value === 0 ? 90 : 0,
-      { damping: 12, stiffness: 220 },
-    );
+    settingsRotation.value = withSpring(settingsRotation.value === 0 ? 90 : 0, {
+      damping: 12,
+      stiffness: 220,
+    });
     onOpenSettings();
   };
 
@@ -128,7 +130,15 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   };
 
   return (
-    <View style={[styles.header, { borderBottomColor: colors.border }]}>
+    <View
+      style={[
+        styles.header,
+        {
+          borderBottomColor: colors.border,
+          paddingTop: insets.top + sp.sm,
+        },
+      ]}
+    >
       <Pressable
         style={styles.titles}
         onPress={handleTitlePress}

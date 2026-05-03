@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { View, Text, Pressable, StatusBar, StyleSheet } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarFootprint } from "@/hooks/useTabBarFootprint";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PagerView from "react-native-pager-view";
 import Animated, {
@@ -20,6 +21,7 @@ import { resetCircuitBreaker } from "@/services/RetryService";
 import { OfflineCache, CachePriority } from "@/services/OfflineCache";
 import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { useAnalysisStore } from "@/stores/analysisStore";
+import { useTabBarStore } from "@/stores/tabBarStore";
 import type { AnalysisSummary } from "@/types";
 import { AnalysisSkeleton } from "@/components/ui/SkeletonLoader";
 import { VideoPlayer } from "@/components/analysis/VideoPlayer";
@@ -39,7 +41,6 @@ import { usePlan } from "@/contexts/PlanContext";
 
 const TAB_LABELS = ["Résumé", "Sources", "Chat"] as const;
 const TAB_COUNT = TAB_LABELS.length;
-const TAB_BAR_HEIGHT = 60;
 
 export default function AnalysisDetailScreen() {
   const { id, backTo, initialTab, quickChat } = useLocalSearchParams<{
@@ -51,6 +52,7 @@ export default function AnalysisDetailScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
+  const tabBarFootprint = useTabBarFootprint();
   const { colors, isDark } = useTheme();
   const store = useAnalysisStore();
   const isOffline = useIsOffline();
@@ -171,6 +173,10 @@ export default function AnalysisDetailScreen() {
     store.resetAnalysis();
     if (backTo === "library") {
       router.replace("/(tabs)/library");
+    } else if (backTo === "study") {
+      router.replace("/(tabs)/study");
+    } else if (backTo === "home") {
+      router.replace("/(tabs)");
     } else {
       router.back();
     }
@@ -259,6 +265,14 @@ export default function AnalysisDetailScreen() {
   const handleToggleFullscreen = useCallback(() => {
     setIsFullscreen((prev) => !prev);
   }, []);
+
+  // Cacher la TabBar globale en mode fullscreen — restaurée au démontage.
+  // Ce store pilote `<CustomTabBar>` directement (cf. tabBarStore.ts).
+  const setTabBarHidden = useTabBarStore((s) => s.setTabBarHidden);
+  React.useEffect(() => {
+    setTabBarHidden(isFullscreen);
+    return () => setTabBarHidden(false);
+  }, [isFullscreen, setTabBarHidden]);
 
   // Sync PagerView page after fullscreen toggle — the conditional rendering
   // (`!isFullscreen && Pager` vs `isFullscreen && Pager`) causes React to
@@ -361,6 +375,9 @@ export default function AnalysisDetailScreen() {
           isLoading={isLoading && canFetchSummary}
           error={error && !isProcessing ? "Erreur de chargement" : null}
           onRetry={() => refetch()}
+          // Le container parent réserve déjà la footprint TabBar — le scroll
+          // du content peut donc se contenter d'une marge respiration.
+          bottomPadding={isFullscreen ? insets.bottom + sp.lg : sp["2xl"]}
         />
       </View>
       <View key="sources" style={styles.page}>
@@ -564,10 +581,9 @@ export default function AnalysisDetailScreen() {
         styles.container,
         {
           backgroundColor: colors.bgPrimary,
-          // En fullscreen : paddingBottom=0 pour que l'overlay absolu atteigne le bas de l'écran
-          paddingBottom: isFullscreen
-            ? 0
-            : TAB_BAR_HEIGHT + Math.max(insets.bottom, sp.sm),
+          // En fullscreen : paddingBottom=0 pour que l'overlay absolu atteigne le bas de l'écran.
+          // En mode normal : footprint partagé pour ne jamais cacher le dernier élément derrière la TabBar.
+          paddingBottom: isFullscreen ? 0 : tabBarFootprint,
         },
       ]}
     >
@@ -705,7 +721,10 @@ export default function AnalysisDetailScreen() {
       )}
 
       {/* ── MODE FULLSCREEN ──────────────────────────────── */}
-      {/* paddingBottom du container est 0 → l'overlay couvre l'écran entier */}
+      {/* paddingBottom du container est 0 → l'overlay couvre l'écran entier.
+          La TabBar globale est cachée via tabBarStore (cf. useEffect ci-dessus)
+          donc on n'a plus besoin de réserver TAB_BAR_HEIGHT — seul le safe area
+          bottom suffit. */}
       {isFullscreen && (
         <View
           style={[
@@ -713,9 +732,7 @@ export default function AnalysisDetailScreen() {
             {
               backgroundColor: colors.bgPrimary,
               paddingTop: insets.top,
-              // TAB_BAR_HEIGHT : le CustomTabBar est position:absolute bottom:0
-              // il chevauche le contenu fullscreen → on réserve sa hauteur
-              paddingBottom: insets.bottom + TAB_BAR_HEIGHT,
+              paddingBottom: insets.bottom,
             },
           ]}
         >
