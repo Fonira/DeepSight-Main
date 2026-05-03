@@ -27,9 +27,7 @@ vi.mock("../../AnalysisHub", () => ({
     <div data-testid="analysis-hub-mock">
       <span data-testid="ah-summary-id">{props.selectedSummary.id}</span>
       <span data-testid="ah-concepts-count">{props.concepts.length}</span>
-      <span data-testid="ah-tabs">
-        {(props.enabledTabs ?? []).join(",")}
-      </span>
+      <span data-testid="ah-tabs">{(props.enabledTabs ?? []).join(",")}</span>
       <span data-testid="ah-has-reliability">
         {props.reliabilityData ? "yes" : "no"}
       </span>
@@ -87,8 +85,7 @@ const renderPanel = (overrides: PanelOverrides = {}) => {
   // override defaults (e.g. selectedSummary: null for the empty-state test).
   const selectedSummary =
     "selectedSummary" in overrides ? overrides.selectedSummary! : summary;
-  const concepts =
-    "concepts" in overrides ? overrides.concepts! : [concept];
+  const concepts = "concepts" in overrides ? overrides.concepts! : [concept];
   const reliability =
     "reliability" in overrides ? overrides.reliability! : null;
   const reliabilityLoading = overrides.reliabilityLoading ?? false;
@@ -102,6 +99,8 @@ const renderPanel = (overrides: PanelOverrides = {}) => {
         reliabilityLoading={reliabilityLoading}
         user={user}
         language="fr"
+        activeTab="synthesis"
+        onTabChange={vi.fn()}
       />
     </MemoryRouter>,
   );

@@ -1,23 +1,10 @@
 // frontend/src/components/hub/HubAnalysisPanel.tsx
 //
-// Wrapper inline du composant AnalysisHub pour l'embed dans /hub, juste sous
-// le SummaryCollapsible et au-dessus de la Timeline. Remplace l'ancien
-// HubToolbox léger (3 boutons) par le panneau complet à 5 onglets : Synthèse
-// (avec mots-clés), Quiz, Flashcards, Fiabilité, GEO.
+// Wrapper de AnalysisHub pour l'embed dans /hub. Ne porte plus la tab bar
+// interne (déléguée à HubTabBar globale). Plus de wrapper card — le panel
+// remplit directement la zone TabPanel du HubPage.
 //
-// Style : container `rounded-2xl border-white/10 bg-white/[0.02]`, largeur
-// `max-w-3xl mx-auto` pour s'aligner sur la Timeline et SummaryCollapsible.
-// Les onglets sont contrôlés par AnalysisHub lui-même (state local).
-//
-// Props : `selectedSummary` (Summary complet) + `concepts` + `reliability` +
-// `reliabilityLoading` injectés depuis HubPage (qui les hydrate dans le
-// hubStore via les API videoApi/reliabilityApi).
-//
-// Callbacks v1 :
-//   - onTimecodeClick : no-op (l'utilisateur clique sur les timecodes du
-//     SummaryCollapsible qui sont déjà câblés). V2 : wire au PiP player.
-//   - onOpenChat : no-op (l'InputBar du Hub est déjà visible en bas — on
-//     pourrait scroll-to-input + autofocus en V2).
+// Reçoit `activeTab` du HubPage et le forward à AnalysisHub en mode controlled.
 
 import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
@@ -28,38 +15,30 @@ import type {
   ReliabilityResult,
   User,
 } from "../../services/api";
+import type { TabId } from "./types";
 
-interface HubAnalysisPanelProps {
-  /** Summary complet (hydraté via videoApi.getSummary). */
+interface Props {
   selectedSummary: Summary | null;
-  /** Concepts enrichis (hydratés via videoApi.getEnrichedConcepts). */
   concepts: EnrichedConcept[];
-  /** Reliability data (hydraté via reliabilityApi.getReliability). */
   reliability: ReliabilityResult | null;
-  /** True pendant le fetch reliability. */
   reliabilityLoading: boolean;
-  /** Utilisateur courant — utilisé par AnalysisHub pour les gates plan/credits. */
   user: User | null;
-  /** Langue UI. */
   language: "fr" | "en";
+  /** Onglet actif piloté par HubPage — exclut "chat" (rendu hors AnalysisHub). */
+  activeTab: Exclude<TabId, "chat">;
+  /** Callback pour switch d'onglet depuis liens internes synthesis-tab. */
+  onTabChange: (tab: Exclude<TabId, "chat">) => void;
 }
 
-/**
- * Renders nothing if there's nothing to show. We require AT LEAST a
- * `selectedSummary` to render — without it, AnalysisHub has no synthesis to
- * display. We then show the panel as soon as there is content (concepts) or a
- * reliability result, OR if the user is authenticated (so empty states like
- * "Generate quiz" remain accessible). For a guest viewing a fresh analysis
- * with no concepts/reliability cached yet, we still render so the synthesis
- * tab shows the markdown content.
- */
-export const HubAnalysisPanel: React.FC<HubAnalysisPanelProps> = ({
+export const HubAnalysisPanel: React.FC<Props> = ({
   selectedSummary,
   concepts,
   reliability,
   reliabilityLoading,
   user,
   language,
+  activeTab,
+  onTabChange,
 }) => {
   const navigate = useNavigate();
 
@@ -70,50 +49,42 @@ export const HubAnalysisPanel: React.FC<HubAnalysisPanelProps> = ({
     [navigate],
   );
 
-  // v1 no-ops : timecodes du Hub passent déjà via SummaryCollapsible, et
-  // l'InputBar est toujours présente en bas du Hub.
   const handleTimecodeClick = useCallback((_seconds: number) => {
-    /* no-op */
+    /* no-op v1 */
   }, []);
   const handleOpenChat = useCallback((_msg?: string) => {
-    /* no-op */
+    // L'onglet Chat est géré par le parent HubPage (hors AnalysisHub).
+    // Ce callback est gardé pour compat AnalysisHub mais delegated au parent
+    // via la prop onTabChange qui ne supporte que les tabs analyse.
   }, []);
 
   if (!selectedSummary) return null;
 
-  // Adapter `User | null` au shape attendu par AnalysisHubProps : `{ plan?, credits? }`.
   const analysisUser = {
     plan: user?.plan,
     credits: user?.credits,
   };
 
   return (
-    <div className="px-4 mb-3 w-full">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
-        <div>
-          <AnalysisHub
-            selectedSummary={selectedSummary}
-            reliabilityData={reliability}
-            reliabilityLoading={reliabilityLoading}
-            user={analysisUser}
-            language={language}
-            concepts={concepts}
-            onTimecodeClick={handleTimecodeClick}
-            onOpenChat={handleOpenChat}
-            onNavigate={handleNavigate}
-            enabledTabs={[
-              "synthesis",
-              "reliability",
-              "quiz",
-              "flashcards",
-              "geo",
-            ]}
-            showKeywords
-            showStudyTools={false}
-            showVoice={false}
-          />
-        </div>
-      </div>
+    <div className="px-4 py-4 w-full">
+      <AnalysisHub
+        selectedSummary={selectedSummary}
+        reliabilityData={reliability}
+        reliabilityLoading={reliabilityLoading}
+        user={analysisUser}
+        language={language}
+        concepts={concepts}
+        onTimecodeClick={handleTimecodeClick}
+        onOpenChat={handleOpenChat}
+        onNavigate={handleNavigate}
+        enabledTabs={["synthesis", "reliability", "quiz", "flashcards", "geo"]}
+        showKeywords
+        showStudyTools={false}
+        showVoice={false}
+        activeTabExternal={activeTab}
+        onTabChange={onTabChange}
+        hideInternalTabBar
+      />
     </div>
   );
 };
