@@ -20,6 +20,7 @@ import { resetCircuitBreaker } from "@/services/RetryService";
 import { OfflineCache, CachePriority } from "@/services/OfflineCache";
 import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { useAnalysisStore } from "@/stores/analysisStore";
+import { useTabBarStore } from "@/stores/tabBarStore";
 import type { AnalysisSummary } from "@/types";
 import { AnalysisSkeleton } from "@/components/ui/SkeletonLoader";
 import { VideoPlayer } from "@/components/analysis/VideoPlayer";
@@ -259,6 +260,14 @@ export default function AnalysisDetailScreen() {
   const handleToggleFullscreen = useCallback(() => {
     setIsFullscreen((prev) => !prev);
   }, []);
+
+  // Cacher la TabBar globale en mode fullscreen — restaurée au démontage.
+  // Ce store pilote `<CustomTabBar>` directement (cf. tabBarStore.ts).
+  const setTabBarHidden = useTabBarStore((s) => s.setTabBarHidden);
+  React.useEffect(() => {
+    setTabBarHidden(isFullscreen);
+    return () => setTabBarHidden(false);
+  }, [isFullscreen, setTabBarHidden]);
 
   // Sync PagerView page after fullscreen toggle — the conditional rendering
   // (`!isFullscreen && Pager` vs `isFullscreen && Pager`) causes React to
@@ -705,7 +714,10 @@ export default function AnalysisDetailScreen() {
       )}
 
       {/* ── MODE FULLSCREEN ──────────────────────────────── */}
-      {/* paddingBottom du container est 0 → l'overlay couvre l'écran entier */}
+      {/* paddingBottom du container est 0 → l'overlay couvre l'écran entier.
+          La TabBar globale est cachée via tabBarStore (cf. useEffect ci-dessus)
+          donc on n'a plus besoin de réserver TAB_BAR_HEIGHT — seul le safe area
+          bottom suffit. */}
       {isFullscreen && (
         <View
           style={[
@@ -713,9 +725,7 @@ export default function AnalysisDetailScreen() {
             {
               backgroundColor: colors.bgPrimary,
               paddingTop: insets.top,
-              // TAB_BAR_HEIGHT : le CustomTabBar est position:absolute bottom:0
-              // il chevauche le contenu fullscreen → on réserve sa hauteur
-              paddingBottom: insets.bottom + TAB_BAR_HEIGHT,
+              paddingBottom: insets.bottom,
             },
           ]}
         >

@@ -18,6 +18,7 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useTabBarStore } from "@/stores/tabBarStore";
 import { palette } from "@/theme/colors";
 import { fontFamily, fontSize } from "@/theme/typography";
 
@@ -32,7 +33,7 @@ const ANIM_CONFIG = {
 } as const;
 
 const ICON_SIZE = 22;
-const TAB_BAR_HEIGHT = 56;
+export const TAB_BAR_HEIGHT = 56;
 
 /** Tab definitions — only routes listed here appear in the bar */
 const TAB_META: Record<
@@ -200,6 +201,11 @@ export function CustomTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { isDark } = useTheme();
+  const hidden = useTabBarStore((s) => s.hidden);
+
+  // Hidden en mode fullscreen analyse — l'écran consommateur appelle
+  // setTabBarHidden(true) via useEffect, et false au démontage / sortie.
+  if (hidden) return null;
 
   // Only show routes that have a TAB_META entry
   const visibleRoutes = useMemo(
