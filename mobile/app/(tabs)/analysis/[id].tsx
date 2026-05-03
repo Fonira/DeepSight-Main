@@ -31,6 +31,8 @@ import { ActionBar } from "@/components/analysis/ActionBar";
 import { ConversationScreen } from "@/components/conversation";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
 import { VoiceButton } from "@/components/voice/VoiceButton";
+import { TutorButton } from "@/components/tutor/TutorButton";
+import { TutorBottomSheet } from "@/components/tutor/TutorBottomSheet";
 import { ExportMenu } from "@/components/export";
 import { AcademicSourcesSection } from "@/components/academic";
 import { FactCheckButton } from "@/components/factcheck";
@@ -67,6 +69,7 @@ export default function AnalysisDetailScreen() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isVoiceVisible, setIsVoiceVisible] = useState(false);
   const [isExportVisible, setIsExportVisible] = useState(false);
+  const [isTutorVisible, setIsTutorVisible] = useState(false);
   const [tabBarWidth, setTabBarWidth] = useState(0);
   const scrollY = useSharedValue(0);
   const tabIndicatorX = useSharedValue(initialTabIndex);
@@ -663,6 +666,11 @@ export default function AnalysisDetailScreen() {
       {/* Action Bar — masquée en fullscreen */}
       {!isFullscreen && summary && (
         <View>
+          <TutorButton
+            onPress={() => setIsTutorVisible(true)}
+            disabled={!summary.title}
+            style={styles.tutorButtonInline}
+          />
           <ActionBar
             summaryId={summary.id}
             title={summary.title}
@@ -671,6 +679,18 @@ export default function AnalysisDetailScreen() {
             onFavoriteChange={setIsFavorite}
           />
         </View>
+      )}
+
+      {/* Tuteur V2 mobile lite — bottom-sheet text-only sur le concept de l'analyse */}
+      {summary && (
+        <TutorBottomSheet
+          isOpen={isTutorVisible}
+          onClose={() => setIsTutorVisible(false)}
+          conceptTerm={summary.title ?? null}
+          conceptDef={summary.title ?? null}
+          summaryId={Number(summary.id)}
+          sourceVideoTitle={summary.title ?? undefined}
+        />
       )}
 
       {/* Export Menu */}
@@ -774,6 +794,10 @@ export default function AnalysisDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  tutorButtonInline: {
+    marginHorizontal: sp.lg,
+    marginBottom: sp.sm,
+  },
   // Headers
   header: {
     flexDirection: "row",

@@ -2355,6 +2355,66 @@ export const reliabilityApi = {
   },
 };
 
+// ============================================
+// 🎓 TUTOR API — Le Tuteur conversationnel (sessions Redis TTL 1h)
+// V2 mobile lite : text-only, pas de voice (pas de Voxtral/ElevenLabs côté mobile)
+// ============================================
+import type {
+  SessionStartRequest as TutorSessionStartRequest,
+  SessionStartResponse as TutorSessionStartResponse,
+  SessionTurnRequest as TutorSessionTurnRequest,
+  SessionTurnResponse as TutorSessionTurnResponse,
+  SessionEndResponse as TutorSessionEndResponse,
+} from "../types/tutor";
+
+export const tutorApi = {
+  /**
+   * Démarre une session Tutor : crée la session Redis + génère le 1er prompt Magistral.
+   * Endpoint: POST /api/tutor/session/start
+   */
+  async sessionStart(
+    payload: TutorSessionStartRequest,
+  ): Promise<TutorSessionStartResponse> {
+    return request<TutorSessionStartResponse>("/api/tutor/session/start", {
+      method: "POST",
+      body: payload as unknown as Record<string, unknown>,
+      timeout: 60000,
+    });
+  },
+
+  /**
+   * Un tour de conversation : user input → IA response.
+   * Endpoint: POST /api/tutor/session/{session_id}/turn
+   */
+  async sessionTurn(
+    sessionId: string,
+    payload: TutorSessionTurnRequest,
+  ): Promise<TutorSessionTurnResponse> {
+    return request<TutorSessionTurnResponse>(
+      `/api/tutor/session/${sessionId}/turn`,
+      {
+        method: "POST",
+        body: payload as unknown as Record<string, unknown>,
+        timeout: 60000,
+      },
+    );
+  },
+
+  /**
+   * Termine une session : durée, log analytics, supprime Redis.
+   * Endpoint: POST /api/tutor/session/{session_id}/end
+   */
+  async sessionEnd(sessionId: string): Promise<TutorSessionEndResponse> {
+    return request<TutorSessionEndResponse>(
+      `/api/tutor/session/${sessionId}/end`,
+      {
+        method: "POST",
+        body: {},
+      },
+    );
+  },
+};
+
 export default {
   authApi,
   userApi,
@@ -2373,5 +2433,6 @@ export default {
   trendingApi,
   searchApi,
   reliabilityApi,
+  tutorApi,
   ApiError,
 };
