@@ -400,6 +400,31 @@ async def generate_flashcards(
             except Exception:
                 pass
 
+        # ─── V1 Semantic Search : matérialisation des flashcards ────────────────
+        from db.database import Flashcard as DBFlashcard
+        from sqlalchemy import delete as sa_delete
+
+        # 1. Delete existantes pour ce summary
+        await session.execute(sa_delete(DBFlashcard).where(DBFlashcard.summary_id == summary_id))
+
+        # 2. Insert nouvelles
+        for idx, card in enumerate(flashcards):
+            db_card = DBFlashcard(
+                summary_id=summary_id,
+                user_id=current_user.id,
+                position=idx,
+                front=card.front if hasattr(card, "front") else card["front"],
+                back=card.back if hasattr(card, "back") else card["back"],
+                category=getattr(card, "category", None) if hasattr(card, "category") else card.get("category"),
+            )
+            session.add(db_card)
+
+        await session.commit()
+
+        # 3. Le trigger embed_flashcards sera ajouté en Task 17, pas dans cette task
+        #    (le helper n'existe pas encore à ce stade du plan)
+        # ─── End V1 Semantic Search materialization ─────────────────────────────
+
         return FlashcardsResponse(
             success=True, summary_id=summary_id, flashcards=flashcards, title=summary.video_title or "Flashcards"
         )
