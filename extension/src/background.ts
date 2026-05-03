@@ -31,6 +31,11 @@ import type {
   PlanInfo,
   QuickChatResponse,
 } from "./types";
+import type {
+  GlobalSearchOptions,
+  GlobalSearchResponse,
+  RecentQueriesResponse,
+} from "./types/search";
 
 // ─── SidePanel toggle behavior (Chrome 114+) ──────────────────────────────
 // Native click-to-toggle: clicking the action icon opens the sidebar; clicking again closes it.
@@ -410,6 +415,35 @@ async function quickChat(
     method: "POST",
     body: JSON.stringify({ url, lang }),
   });
+}
+
+// ── Search API (Phase 4 extension — Semantic Search V1) ──
+//
+// Backend Phase 1 mergée prod via PR #292. L'extension consomme uniquement
+// /search/global et /search/recent-queries (light tier — pas d'intra-analyse
+// search ni de tooltip IA, qui sont réservés au web tier). Le sidepanel ne
+// peut pas appeler fetch() directement (CSP MV3) → tout passe par
+// `apiRequest` ici qui gère le refresh JWT 401.
+
+async function searchGlobal(
+  options: GlobalSearchOptions,
+): Promise<GlobalSearchResponse> {
+  // limit max 10 côté extension (vs 30 web/mobile) — espace contraint sidepanel.
+  const body: Record<string, unknown> = {
+    query: options.query,
+    limit: options.limit ?? 10,
+  };
+  if (options.source_types && options.source_types.length > 0) {
+    body.source_types = options.source_types;
+  }
+  return apiRequest<GlobalSearchResponse>("/search/global", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+async function getRecentQueries(): Promise<RecentQueriesResponse> {
+  return apiRequest<RecentQueriesResponse>("/search/recent-queries");
 }
 
 // ── Chat API ──
@@ -1066,6 +1100,25 @@ async function handleExtensionMessage(
       try {
         const plan = await fetchPlan();
         return { success: true, plan };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "SEARCH_GLOBAL": {
+      const opts = (message.data ?? {}) as unknown as GlobalSearchOptions;
+      try {
+        const searchResults = await searchGlobal(opts);
+        return { success: true, searchResults };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case "GET_RECENT_QUERIES": {
+      try {
+        const result = await getRecentQueries();
+        return { success: true, recentQueries: result.queries };
       } catch (e) {
         return { success: false, error: (e as Error).message };
       }
