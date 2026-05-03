@@ -281,6 +281,64 @@ async def embed_summary(summary_id: int) -> bool:
         return inserted > 0
 
 
+async def embed_flashcards(summary_id: int) -> bool:
+    """Embed toutes les flashcards d'un Summary (Q+A concaténés).
+
+    Idempotent : delete les FlashcardEmbedding existants, puis insert.
+    """
+    from db.database import async_session_maker, Flashcard, FlashcardEmbedding
+    from sqlalchemy import select, delete as sa_delete
+
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(Flashcard)
+            .where(Flashcard.summary_id == summary_id)
+            .order_by(Flashcard.position)
+        )
+        flashcards = result.scalars().all()
+
+        if not flashcards:
+            logger.info(f"[EMBED-FLASHCARD] No flashcards for summary {summary_id}")
+            return False
+
+        # Texts : "Q: ...\n\nA: ..."
+        texts = [f"Q: {f.front}\n\nA: {f.back}" for f in flashcards]
+
+        # Delete existants
+        await session.execute(
+            sa_delete(FlashcardEmbedding).where(FlashcardEmbedding.summary_id == summary_id)
+        )
+
+        # Embed par batches
+        all_embeddings: list = []
+        for i in range(0, len(texts), BATCH_SIZE):
+            batch = texts[i : i + BATCH_SIZE]
+            all_embeddings.extend(await generate_embeddings_batch(batch))
+
+        user_id = flashcards[0].user_id
+        inserted = 0
+        for f, embedding, text in zip(flashcards, all_embeddings, texts):
+            if embedding is None:
+                continue
+            session.add(
+                FlashcardEmbedding(
+                    flashcard_id=f.id,
+                    summary_id=summary_id,
+                    user_id=user_id,
+                    embedding_json=json.dumps(embedding),
+                    text_preview=text[:500],
+                    model_version=MODEL_VERSION_TAG,
+                )
+            )
+            inserted += 1
+
+        await session.commit()
+        logger.info(
+            f"[EMBED-FLASHCARD] {summary_id}: {inserted}/{len(flashcards)} flashcards embedded"
+        )
+        return inserted > 0
+
+
 async def search_similar(
     query: str,
     limit: int = 10,

@@ -288,3 +288,47 @@ async def test_embed_summary_returns_false_on_missing_summary(async_session):
     from search.embedding_service import embed_summary
     result = await embed_summary(summary_id=999999)
     assert result is False
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🧪 TASK 7 — embed_flashcards
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_embed_flashcards(
+    async_session, summary_factory, flashcard_factory, patch_httpx_post
+):
+    summary = await summary_factory()
+    f1 = await flashcard_factory(summary=summary, position=0, front="Q1", back="A1")
+    f2 = await flashcard_factory(summary=summary, position=1, front="Q2", back="A2")
+
+    from search.embedding_service import embed_flashcards
+    result = await embed_flashcards(summary.id)
+
+    assert result is True
+    rows = (
+        await async_session.execute(
+            select(FlashcardEmbedding).where(FlashcardEmbedding.summary_id == summary.id)
+        )
+    ).scalars().all()
+    assert len(rows) == 2
+    assert {r.flashcard_id for r in rows} == {f1.id, f2.id}
+    assert all("Q" in r.text_preview and "A" in r.text_preview for r in rows)
+
+
+@pytest.mark.asyncio
+async def test_embed_flashcards_idempotent(
+    async_session, summary_factory, flashcard_factory, patch_httpx_post
+):
+    summary = await summary_factory()
+    await flashcard_factory(summary=summary, position=0, front="Q", back="A")
+    from search.embedding_service import embed_flashcards
+    await embed_flashcards(summary.id)
+    await embed_flashcards(summary.id)
+    rows = (
+        await async_session.execute(
+            select(FlashcardEmbedding).where(FlashcardEmbedding.summary_id == summary.id)
+        )
+    ).scalars().all()
+    assert len(rows) == 1
