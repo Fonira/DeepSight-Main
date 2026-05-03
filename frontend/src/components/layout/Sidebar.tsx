@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   History,
+  Search,
   Swords,
   Settings,
   CreditCard,
@@ -442,6 +443,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               to="/history"
               icon={History}
               label={t.nav.history}
+              collapsed={collapsed}
+            />
+            <NavItem
+              to="/search"
+              icon={Search}
+              label={language === "fr" ? "Recherche" : "Search"}
               collapsed={collapsed}
             />
             <NavItem

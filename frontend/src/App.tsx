@@ -310,6 +310,7 @@ const PlaylistDetailPage = lazyWithRetry(
   () => import("./pages/PlaylistDetailPage"),
 );
 const History = lazyWithRetry(() => import("./pages/History"));
+const SearchPage = lazyWithRetry(() => import("./pages/SearchPage"));
 const UpgradePage = lazyWithRetry(() => import("./pages/UpgradePage"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
 const MyAccount = lazyWithRetry(() => import("./pages/MyAccount"));
@@ -344,8 +345,9 @@ const PREFETCH_MAP: Record<string, string[]> = {
     "/voice-call",
     "/study",
     "/about",
+    "/search",
   ],
-  "/history": ["/dashboard", "/analytics"],
+  "/history": ["/dashboard", "/analytics", "/search"],
   "/settings": ["/account"],
   "/debate": ["/dashboard", "/history"],
   "/upgrade": ["/dashboard", "/payment/success"],
@@ -367,6 +369,7 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   "/hub": () => import("./pages/HubPage"),
   "/study": () => import("./pages/StudyHubPage"),
   "/about": () => import("./pages/AboutPage"),
+  "/search": () => import("./pages/SearchPage"),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -823,6 +826,22 @@ const AppRoutes = () => {
                                 fallback={<PageSkeleton variant="full" />}
                               >
                                 <History />
+                              </Suspense>
+                            </RouteErrorBoundary>
+                          }
+                        />
+
+                        <Route
+                          path="/search"
+                          element={
+                            <RouteErrorBoundary
+                              variant="full"
+                              componentName="SearchPage"
+                            >
+                              <Suspense
+                                fallback={<PageSkeleton variant="full" />}
+                              >
+                                <SearchPage />
                               </Suspense>
                             </RouteErrorBoundary>
                           }
