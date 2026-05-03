@@ -1,856 +1,1467 @@
-# Mobile Hub Tab Unifié — Implementation Plan
+# Mobile Hub Tab Unified — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Créer un onglet Hub stable `/(tabs)/hub` mobile, mirror direct de `frontend/src/pages/HubPage.tsx`, qui devient le centre de gravité de toutes les surfaces conversationnelles (Quick Chat + Quick Call + historique convos). Suppression de `QuickChatScreen` + `VoiceScreen` + FAB voice analyse[id]. Refacto ChatView pour réutiliser les composants Hub.
+**Goal:** Activer le tab `Hub` mobile DeepSight (déshider `href:null`), embedder `ConversationContent` (extrait du `ConversationScreen` Modal) avec `ConversationsDrawer` swipe-in, faire converger Quick Chat Home + ChatView analyse vers le Hub, fixer Quick Call invisible (FAB bottomOffset + entry first-class via mic toggle Hub).
 
-**Architecture:** Tab Expo Router `/(tabs)/hub` + 12 composants `mobile/src/components/hub/*` (mirror web) + Zustand store `hubStore.ts` (slots minimum) + 2 hooks (`useHubData`, `useHubVoice`) + extension type `ChatMessage` mobile. Backend déjà unifié (PR #203 mergée) — aucun changement requis.
+**Architecture:** Refactor `ConversationScreen` Modal → wrapper léger autour de `ConversationContent` réutilisable en tab. Tab Hub = `ConversationContent` embedded + `ConversationsDrawer` (multi-conv switch via `key={summaryId}` remount + Expo Router params).
 
-**Tech Stack:** Expo SDK 54 + React Native 0.81 + React 19 + Reanimated 4 + TanStack Query 5 + Zustand + Immer + `@gorhom/bottom-sheet` + `@shopify/flash-list` + Jest.
+**Tech Stack:** Expo SDK 54 + React Native 0.81 + Expo Router v2 + Reanimated 4 + Jest + @shopify/flash-list.
 
 **Spec:** `docs/superpowers/specs/2026-05-04-mobile-hub-tab-unified-design.md`
 
-**Branches:**
+**Branche:** `feat/mobile-hub-tab-unified` depuis `origin/main`. Worktree `C:\Users\33667\DeepSight-mobile-hub-tab`.
 
-- PR1 : `feat/mobile-hub-tab-foundation` depuis `origin/main`
-- PR2 : `feat/mobile-hub-tab-voice` depuis `origin/main` (peut commencer en parallèle PR1 via mocks composants Hub)
-
-**Worktrees:**
-
-- PR1 : `C:\Users\33667\DeepSight-hub-foundation`
-- PR2 : `C:\Users\33667\DeepSight-hub-voice`
-
-**Sub-agents:** Opus 4.7 obligatoire (`claude-opus-4-7[1m]` — mémoire user perma).
+**Sub-agents Opus 4.7** : 4 agents (A→B→C→D séquentiels, ou A→[B,C parallèles]→D pour gagner ~1j).
 
 ---
 
 ## File Structure
 
-### PR1 — Hub Foundation (Agent A, ~2j)
+### Create
 
-**Create**
+- `mobile/src/components/conversation/ConversationContent.tsx` — extrait du Modal, contient tout le layout actuel
+- `mobile/src/components/hub/HubEmptyState.tsx` — empty state Hub (URL paste + pick conv + suggestions)
+- `mobile/__tests__/app/hub.test.tsx`
+- `mobile/__tests__/components/hub/HubEmptyState.test.tsx`
+- `mobile/__tests__/components/conversation/ConversationContent.test.tsx` (déplacement de la majorité des cases depuis `ConversationScreen.test.tsx`)
 
-- `mobile/app/(tabs)/hub.tsx` — route Expo Router racine + orchestration
-- `mobile/src/components/hub/HubHeader.tsx`
+### Modify
+
+- `mobile/src/components/conversation/ConversationScreen.tsx` — refacto wrapper Modal léger (~40 lignes)
+- `mobile/src/components/conversation/index.ts` — re-export `ConversationContent`
+- `mobile/src/components/voice/VoiceButton.tsx` — `bottomOffset` utilise `useTabBarFootprint`
+- `mobile/src/components/navigation/CustomTabBar.tsx` — étendre `TAB_META` avec entrée `hub`
+- `mobile/app/(tabs)/_layout.tsx` — retirer `href: null` du `Tabs.Screen name="hub"`
+- `mobile/app/(tabs)/hub.tsx` — **rewrite complet** (proto mock → ConversationContent + drawer)
+- `mobile/app/(tabs)/index.tsx` — `handleQuickChat` push tab Hub au lieu de `analysis/[id]?quickChat=true`
+- `mobile/app/(tabs)/analysis/[id].tsx` — supprimer mode `quickChat`, tab Chat → CTA Hub (variante A), VoiceButton fix
+- `mobile/src/components/hub/HubHeader.tsx` — vérifier compatibilité `onMenuPress` callback (probablement déjà OK)
+- `mobile/src/components/hub/ConversationsDrawer.tsx` — brancher `historyApi.getHistory` au lieu de mock
+- `mobile/src/components/conversation/__tests__/ConversationScreen.test.tsx` — réduire au test wrapper Modal
+- `mobile/src/components/__tests__/ChatView.test.tsx` — supprimer si existe (composant supprimé)
+
+### Delete
+
+- `mobile/src/components/analysis/ChatView.tsx`
+- `mobile/src/components/analysis/ChatInput.tsx` (si seul usage = ChatView, à grep d'abord)
+- `mobile/src/components/analysis/ChatMarkdown.tsx` (idem grep)
 - `mobile/src/components/hub/Timeline.tsx`
-- `mobile/src/components/hub/MessageBubble.tsx`
 - `mobile/src/components/hub/InputBar.tsx`
-- `mobile/src/components/hub/ConversationsDrawer.tsx`
-- `mobile/src/components/hub/SummaryCollapsible.tsx`
-- `mobile/src/components/hub/VideoPiPPlayer.tsx`
-- `mobile/src/components/hub/types.ts` — `HubMessage`, `HubConversation`, `HubSummaryContext`, `HubVoiceState`
-- `mobile/src/components/hub/index.ts` — barrel export
-- `mobile/src/stores/hubStore.ts` — Zustand + Immer
-- `mobile/src/hooks/useHubData.ts` — fetch conversations + messages
-- `mobile/__tests__/stores/hubStore.test.ts`
-- `mobile/__tests__/components/hub/Timeline.test.tsx`
-- `mobile/__tests__/components/hub/MessageBubble.test.tsx`
-- `mobile/__tests__/components/hub/ConversationsDrawer.test.tsx`
-- `mobile/__tests__/services/chatApi.passthrough.test.ts`
-
-**Modify**
-
-- `mobile/app/(tabs)/_layout.tsx` — ajouter `<Tabs.Screen name="hub">` en position 2
-- `mobile/src/components/navigation/CustomTabBar.tsx` — ajouter entrée `hub` dans `TAB_META`
-- `mobile/src/types/index.ts` — étendre `ChatMessage` (4 nouveaux champs voice)
-- `mobile/src/services/api.ts` — vérifier `chatApi.getHistory` passthrough champs voice
-- `mobile/app/(tabs)/index.tsx` — bloc Quick Chat : ajouter bouton Quick Call + nav vers Hub
-
-**Delete**
-
-- _Aucun en PR1_ (suppressions en PR2 après validation Hub OK)
-
-### PR2 — Voice Integration + Cleanup (Agent B, ~2j)
-
-**Create**
-
-- `mobile/src/components/hub/VoiceControls.tsx`
 - `mobile/src/components/hub/CallModeFullBleed.tsx`
-- `mobile/src/components/hub/VoiceWaveformBars.tsx`
+- `mobile/src/components/hub/MessageBubble.tsx`
 - `mobile/src/components/hub/VoiceBubble.tsx`
-- `mobile/src/hooks/useHubVoice.ts`
-- `mobile/__tests__/hooks/useHubVoice.test.ts`
-- `mobile/__tests__/components/hub/VoiceControls.test.tsx`
-- `mobile/__tests__/components/hub/CallModeFullBleed.test.tsx`
-- `mobile/__tests__/components/hub/InputBar.mic.test.tsx`
+- `mobile/src/components/hub/VoiceWaveformBars.tsx` (si non réutilisé par VoiceControls — grep)
+- `mobile/src/components/hub/DeepSightLogo.tsx` (si non utilisé ailleurs — grep)
+- `mobile/src/components/hub/sampleData.ts`
+- `mobile/src/components/hub/types.ts` (si non réutilisé — grep)
+- `mobile/src/components/hub/__tests__/*` pour les composants supprimés
 
-**Modify**
+### Conserve
 
-- `mobile/src/components/hub/Timeline.tsx` — ajouter rendu `<VoiceBubble>` pour `source === "voice_agent"`
-- `mobile/src/components/hub/InputBar.tsx` — ajouter Mic toggle (Alert confirm + start | toggleMute)
-- `mobile/app/(tabs)/hub.tsx` — intégrer `<VoiceControls>` + `<CallModeFullBleed>` + auto-start `initialMode='call'`
-- `mobile/app/(tabs)/analysis/[id].tsx` — supprimer `<VoiceButton>` + `<VoiceScreen>` + `useVoiceChat` ; supprimer `isVoiceVisible`
-- `mobile/src/components/analysis/ActionBar.tsx` — ajouter bouton "Discuter / Appeler" → navigate `/hub?summaryId=X`
-- `mobile/src/components/analysis/ChatView.tsx` — refacto interne : utiliser `<Timeline>` + `<InputBar>` + `<MessageBubble>` du Hub (composition, pas duplication)
-
-**Delete**
-
-- `mobile/src/components/analysis/QuickChatScreen.tsx`
-- `mobile/src/components/voice/VoiceScreen.tsx`
-- `mobile/src/components/voice/VoiceButton.tsx` (sauf si conservé pour ActionBar — décision review PR2)
-- `mobile/src/components/voice/PostCallScreen.tsx` (si encore présent)
-- `mobile/src/components/analysis/__tests__/QuickChatScreen.test.tsx` (si présent)
-- `mobile/src/components/voice/__tests__/VoiceScreen.test.tsx`
-- `mobile/src/components/voice/__tests__/VoiceButton.test.tsx`
-- `mobile/src/components/voice/__tests__/VoiceButton.placement.test.tsx`
-- `mobile/src/components/voice/__tests__/PostCallScreen.test.tsx` (si présent)
-
-### Optionnel — Backend sanity check
-
-- `backend/tests/chat/test_history_includes_voice_fields.py` — 1 test pytest (~10 lignes) vérifiant que `GET /api/chat/history/{summary_id}` retourne `source/voice_speaker/voice_session_id/time_in_call_secs`. Peut être inclus dans PR1 ou commit séparé.
+- `mobile/src/components/hub/HubHeader.tsx` (refacto léger)
+- `mobile/src/components/hub/ConversationsDrawer.tsx` (brancher backend)
+- `mobile/src/components/hub/SummaryCollapsible.tsx` (réservé V2 intégration ConversationContent)
+- `mobile/src/components/hub/VideoPiPPlayer.tsx` (idem)
+- `mobile/src/components/hub/SourcesShelf.tsx` (idem)
 
 ---
 
-# PR1 — Hub Foundation (Agent A)
+# Agent A — Foundation : extract `ConversationContent`
 
-## Task 1 : Étendre type `ChatMessage` mobile + tests passthrough api
+**Goal** : Refactor `ConversationScreen` en `ConversationContent` (réutilisable embedded) + wrapper Modal léger. Aucun changement de comportement, juste un refacto de séparation.
 
-**Files:**
+**Estimation** : 0,5–1 jour Opus 4.7.
 
-- Modify: `mobile/src/types/index.ts`
-- Modify: `mobile/src/services/api.ts` (`chatApi.getHistory`)
-- Create: `mobile/__tests__/services/chatApi.passthrough.test.ts`
+**Dépend de** : rien.
 
-- [ ] **Step 1** : Lire `mobile/src/types/index.ts`, localiser l'interface `ChatMessage` actuelle.
-- [ ] **Step 2** : Étendre `ChatMessage` :
-  ```typescript
-  export interface ChatMessage {
-    id: string;
-    role: "user" | "assistant";
-    content: string;
-    timestamp: string;
-    // NEW (mirror backend)
-    source?: "text" | "voice";
-    voice_speaker?: "user" | "agent" | null;
-    voice_session_id?: string | null;
-    time_in_call_secs?: number | null;
-  }
-  ```
-- [ ] **Step 3** : Ouvrir `mobile/src/services/api.ts`, localiser `chatApi.getHistory`. Vérifier que le mapping ne drop pas les nouveaux champs (passthrough).
-- [ ] **Step 4** : Si drop → ajuster pour passthrough explicite (`source: m.source, voice_speaker: m.voice_speaker, ...`).
-- [ ] **Step 5** : Créer `mobile/__tests__/services/chatApi.passthrough.test.ts` avec mock fetch retournant 1 message voice + assertion sur les 4 champs préservés.
-- [ ] **Step 6** : `npm run typecheck` → 0 erreur sur les fichiers touchés.
-- [ ] **Step 7** : `npm run test -- chatApi.passthrough` → 1 test PASS.
+**Bloque** : Agent B, Agent C.
 
-## Task 2 : Créer `mobile/src/components/hub/types.ts`
+## Task A1 : Lire et comprendre `ConversationScreen` actuel
 
-**Files:**
+- [ ] **Step 1 : Lire le fichier**
 
-- Create: `mobile/src/components/hub/types.ts`
+```bash
+cat mobile/src/components/conversation/ConversationScreen.tsx
+```
 
-- [ ] **Step 1** : Lire `frontend/src/components/hub/types.ts` (référence web).
-- [ ] **Step 2** : Créer la version mobile en copiant la structure :
-  ```typescript
-  export interface HubMessage {
-    id: string;
-    role: "user" | "assistant";
-    content: string;
-    source: "text" | "voice_user" | "voice_agent";
-    sources?: { title: string; url: string }[];
-    web_search_used?: boolean;
-    voice_session_id?: string | null;
-    time_in_call_secs?: number;
-    audio_duration_secs?: number;
-    timestamp: number;
-  }
-  export interface HubConversation {
-    id: number;
-    summary_id: number | null;
-    title: string;
-    video_source?: "youtube" | "tiktok";
-    video_thumbnail_url?: string | null;
-    last_snippet?: string;
-    updated_at: string;
-  }
-  export interface HubSummaryContext {
-    summary_id: number;
-    video_title: string;
-    video_channel: string;
-    video_duration_secs: number;
-    video_source: "youtube" | "tiktok";
-    video_thumbnail_url: string | null;
-    short_summary: string;
-    citations: { ts: number; label: string }[];
-  }
-  export type HubVoiceState =
-    | "idle"
-    | "ptt_recording"
-    | "call_connecting"
-    | "call_active"
-    | "call_ending";
-  ```
-- [ ] **Step 3** : Vérifier compat strict TS (zéro `any`, exports nommés).
+Identifier les sections :
 
-## Task 3 : Créer `mobile/src/stores/hubStore.ts`
+- Imports (lignes 1-47)
+- Interface props (lignes 49-68)
+- Composant root (lignes 70-304) — distinguer la partie Modal wrapper (lignes 204-302) du contenu (lignes 232-296)
 
-**Files:**
+- [ ] **Step 2 : Lister les call-sites actuels de `ConversationScreen`**
 
-- Create: `mobile/src/stores/hubStore.ts`
-- Create: `mobile/__tests__/stores/hubStore.test.ts`
+```bash
+cd mobile && grep -rn "ConversationScreen" src/ app/ __tests__/
+```
 
-- [ ] **Step 1** : Lire `frontend/src/store/hubStore.ts` (référence web). Identifier les slots minimaux (cf. spec §4.3).
-- [ ] **Step 2** : Créer `mobile/src/stores/hubStore.ts` avec Zustand + Immer (déjà installé pour authStore/analysisStore) :
-  - Slots data : `conversations`, `activeConvId`, `messages`, `summaryContext`
-  - Slots UI : `drawerOpen`, `summaryExpanded`, `pipExpanded`, `voiceCallOpen`, `voiceState`
-  - Setters : `setConversations`, `setActiveConv` (vide messages), `setMessages`, `appendMessage`, `setSummaryContext`, `toggleDrawer`, `toggleSummary`, `setPipExpanded`, `setVoiceCallOpen`, `setVoiceState`, `reset`
-- [ ] **Step 3** : Créer test `mobile/__tests__/stores/hubStore.test.ts` couvrant :
-  - `setActiveConv vide messages`
-  - `appendMessage push`
-  - `toggleDrawer flip boolean`
-  - `reset restaure INITIAL`
-- [ ] **Step 4** : `npm run test -- hubStore` → 4+ PASS.
+Documenter pour vérifier après refacto que tous les call-sites continuent de marcher.
 
-## Task 4 : Créer `mobile/src/components/hub/MessageBubble.tsx`
+## Task A2 : Créer `ConversationContent.tsx` (extract)
 
-**Files:**
+**Files** :
 
-- Create: `mobile/src/components/hub/MessageBubble.tsx`
-- Create: `mobile/__tests__/components/hub/MessageBubble.test.tsx`
+- Create: `mobile/src/components/conversation/ConversationContent.tsx`
+- Modify: `mobile/src/components/conversation/index.ts` (re-export)
 
-- [ ] **Step 1** : Lire `frontend/src/components/hub/MessageBubble.tsx` (référence). Identifier les props et le rendu (3 variants : user texte / assistant texte / assistant voice).
-- [ ] **Step 2** : Réécrire mobile-native :
-  - `StyleSheet.create` (PAS Tailwind)
-  - Ionicons (PAS Lucide)
-  - Réutiliser `ChatMarkdown` existant (`mobile/src/components/analysis/ChatMarkdown.tsx`) pour le rendu markdown agent
-  - Bulle user : right-aligned, `palette.indigo` bg
-  - Bulle agent texte : left-aligned, `colors.bgCard` bg
-  - Bulle agent voice : left-aligned + badge 🎙️ (Ionicons `mic-outline`) inline droite + label "voix"
-- [ ] **Step 3** : Parse `[ask:...]` follow-up questions (réutiliser code existant de `ChatView.tsx`).
-- [ ] **Step 4** : Tests Jest :
-  - `user text bubble renders right-aligned`
-  - `assistant text bubble renders markdown`
-  - `assistant voice_agent bubble renders 🎙️ badge`
-  - `[ask:] questions render clickable buttons`
-- [ ] **Step 5** : `npm run test -- MessageBubble` → 4+ PASS.
+- [ ] **Step 1 : Test failing (placeholder)**
 
-## Task 5 : Créer `mobile/src/components/hub/Timeline.tsx`
+```typescript
+// mobile/__tests__/components/conversation/ConversationContent.test.tsx
+import { render } from "@testing-library/react-native";
+import { ConversationContent } from "../../../src/components/conversation/ConversationContent";
 
-**Files:**
+// mock useConversation pour ne pas vraiment hit backend
+jest.mock("../../../src/hooks/useConversation", () => ({
+  useConversation: () => ({
+    messages: [],
+    voiceMode: "off",
+    endedToastVisible: false,
+    summaryId: "test-id",
+    sendMessage: jest.fn(),
+    requestStartCall: jest.fn(),
+    endCall: jest.fn(),
+    toggleMute: jest.fn(),
+    isMuted: false,
+    isSpeaking: false,
+    elapsedSeconds: 0,
+    remainingMinutes: 30,
+    isLoading: false,
+    contextProgress: 0,
+    contextComplete: false,
+    streaming: false,
+    error: null,
+  }),
+}));
 
-- Create: `mobile/src/components/hub/Timeline.tsx`
-- Create: `mobile/__tests__/components/hub/Timeline.test.tsx`
+describe("ConversationContent", () => {
+  it("renders header + feed + input without Modal wrapper", () => {
+    const { getByLabelText } = render(
+      <ConversationContent
+        summaryId="1"
+        initialMode="chat"
+        videoTitle="Test Video"
+      />,
+    );
+    // ConversationHeader devrait être présent
+    expect(getByLabelText(/conversation/i)).toBeTruthy(); // si a11y existant
+  });
 
-- [ ] **Step 1** : Lire `frontend/src/components/hub/Timeline.tsx`. Reproduire le tri par timestamp + scroll-to-end + empty state.
-- [ ] **Step 2** : Réécrire mobile-native avec `@shopify/flash-list` (FlashList inverted = pas inverse, on garde l'ordre chronologique avec scroll bottom auto).
-- [ ] **Step 3** : Filtre strict : `messages.filter(m => m.source !== "voice_user")` AVANT render. **Règle UX DeepSight** (`feedback_voice-fil-asymetrique.md`).
-- [ ] **Step 4** : Empty state : "Pose ta première question..." + 3 suggestions chips (cf. SUGGESTED_QUESTIONS de QuickChatScreen).
-- [ ] **Step 5** : `isThinking` prop → render `<TypingIndicator>` (réutiliser code de QuickChatScreen).
-- [ ] **Step 6** : Tests Jest :
-  - `excludes voice_user messages from display`
-  - `renders empty state when messages.length === 0`
-  - `renders bubbles in chronological order`
-  - `renders thinking dots when isThinking=true`
-- [ ] **Step 7** : `npm run test -- Timeline` → 4+ PASS.
+  it("calls onMenuPress when burger button tapped (Hub mode)", () => {
+    const onMenuPress = jest.fn();
+    const { getByLabelText } = render(
+      <ConversationContent
+        summaryId="1"
+        initialMode="chat"
+        videoTitle="Test"
+        onMenuPress={onMenuPress}
+      />,
+    );
+    // Le burger doit être passé à ConversationHeader
+    // (selon implémentation finale du header)
+  });
+});
+```
 
-## Task 6 : Créer `mobile/src/components/hub/InputBar.tsx`
+- [ ] **Step 2 : Run test (FAIL — module not found)**
 
-**Files:**
+```bash
+cd mobile && npm test -- ConversationContent.test.tsx
+```
 
-- Create: `mobile/src/components/hub/InputBar.tsx`
+- [ ] **Step 3 : Implementation**
 
-- [ ] **Step 1** : Lire `frontend/src/components/hub/InputBar.tsx`. Identifier les props (onSend, isLoading, placeholder, quotaText).
-- [ ] **Step 2** : Réécrire mobile-native :
-  - `TextInput` multiline (max 5 lines, scrollEnabled)
-  - Bouton Send (Ionicons `send`) avec haptic feedback
-  - Quota label dessous (ex : "5/15 questions")
-  - **PAS de Mic toggle ici** → ajouté en PR2
-  - `KeyboardAvoidingView` parent (pas dans InputBar lui-même)
-- [ ] **Step 3** : Props :
-  ```typescript
-  interface InputBarProps {
-    inputText: string;
-    setInputText: (s: string) => void;
-    onSend: () => void;
-    isLoading: boolean;
-    quotaText?: string;
-    placeholder?: string;
-  }
-  ```
+Créer `mobile/src/components/conversation/ConversationContent.tsx`. Copier le contenu de `ConversationScreen.tsx` lignes 70-304 sans le `<Modal>` wrapper (lignes 204-227 et 302). Garder :
 
-## Task 7 : Créer `mobile/src/components/hub/ConversationsDrawer.tsx`
+- `useConversation` hook call (déjà ligne 90-98)
+- `useState` pour `inputText`, `isFavorite`, etc. (lignes 84-88)
+- Tous les handlers (`handleSend`, `handleSuggestion`, `handleMicTap`, `handleToggleFavorite`, `handleShare`, `handleViewAnalysis`, etc.)
+- Le `quotaText` computation (lignes 192-198)
+- Le rendu des composants enfants (lignes 232-296) — sans le `<Modal>` ni le `<Animated.View entering={FadeIn}>` outer
 
-**Files:**
+Adapter les props :
 
-- Create: `mobile/src/components/hub/ConversationsDrawer.tsx`
-- Create: `mobile/__tests__/components/hub/ConversationsDrawer.test.tsx`
+```typescript
+export interface ConversationContentProps {
+  summaryId?: string;
+  videoUrl?: string;
+  initialMode: "chat" | "call";
+  videoTitle: string;
+  channelName?: string;
+  platform?: "youtube" | "tiktok" | "live";
+  initialFavorite?: boolean;
+  /** Hub tab : burger ouvre ConversationsDrawer. Si null/absent : pas de burger. */
+  onMenuPress?: () => void;
+  /** Modal mode : close button. Si null : pas de close. */
+  onClose?: () => void;
+}
+```
 
-- [ ] **Step 1** : Lire `frontend/src/components/hub/ConversationsDrawer.tsx` (référence). Identifier le pattern (liste + tap → setActiveConv).
-- [ ] **Step 2** : Mobile-native : utiliser `@gorhom/bottom-sheet` (déjà installé) au lieu de side drawer.
-  - `snapPoints: ['25%', '75%']`
-  - Header : "Conversations" + bouton "+ Nouvelle"
-  - FlashList des `HubConversation[]` :
-    - Item : thumbnail (Image expo-image) + title + last_snippet + timestamp relatif
-    - Tap item → `setActiveConv(c.id)` + `closeDrawer()`
-    - Long-press → menu contextuel (delete) — out-of-scope PR1, à laisser en TODO
-  - Empty state : "Aucune conversation. Démarre depuis Home avec une URL vidéo."
-- [ ] **Step 3** : Tests Jest :
-  - `renders FlashList of conversations`
-  - `tap item calls setActiveConv with correct id`
-  - `bottom sheet snapPoints correct`
-- [ ] **Step 4** : `npm run test -- ConversationsDrawer` → 3+ PASS.
+Passer `onMenuPress` et `onClose` à `<ConversationHeader>` (qui doit accepter ces deux callbacks — vérifier signature actuelle de `ConversationHeader`).
 
-## Task 8 : Créer `mobile/src/components/hub/SummaryCollapsible.tsx` + `VideoPiPPlayer.tsx` + `HubHeader.tsx`
+- [ ] **Step 4 : Run test (PASS)**
 
-**Files:**
+```bash
+cd mobile && npm test -- ConversationContent.test.tsx
+```
 
-- Create: `mobile/src/components/hub/SummaryCollapsible.tsx`
-- Create: `mobile/src/components/hub/VideoPiPPlayer.tsx`
-- Create: `mobile/src/components/hub/HubHeader.tsx`
+Expected : PASS.
 
-- [ ] **Step 1** : Lire les 3 référence web. Identifier les props et comportements.
-- [ ] **Step 2** : `SummaryCollapsible` mobile-native :
-  - Card collapsible (Reanimated layout animation)
-  - Titre vidéo + court résumé (`short_summary`)
-  - Citations cliquables (chips horizontal scroll) → callback `onCitationTap(ts)`
-  - Toggle expand/collapse via tap header
-- [ ] **Step 3** : `VideoPiPPlayer` mobile-native :
-  - Mini thumbnail vidéo (Image expo-image, 48x48 dp dans HubHeader / 96x96 dp si expanded)
-  - Tap → toggle `pipExpanded`
-  - Pas de vrai player vidéo en PR1 (juste thumbnail) — TODO PR3 si besoin
-- [ ] **Step 4** : `HubHeader` mobile-native :
-  - Bouton ☰ (Ionicons `menu`) → `toggleDrawer()`
-  - Title (numberOfLines=1, ellipsis)
-  - Subtitle (platform badge YT/TikTok)
-  - VideoPiPPlayer slot (côté droit) si `summaryContext` existe
+- [ ] **Step 5 : Commit**
 
-## Task 9 : Créer `mobile/src/components/hub/index.ts` (barrel export)
+```bash
+git add mobile/src/components/conversation/ConversationContent.tsx mobile/__tests__/components/conversation/ConversationContent.test.tsx
+git commit -m "feat(mobile): extract ConversationContent from ConversationScreen Modal"
+```
 
-**Files:**
+## Task A3 : Refacto `ConversationScreen` en wrapper Modal léger
 
-- Create: `mobile/src/components/hub/index.ts`
+**Files** :
 
-- [ ] **Step 1** : Re-export tous les composants Hub PR1 :
-  ```typescript
-  export * from "./types";
-  export { HubHeader } from "./HubHeader";
-  export { Timeline } from "./Timeline";
-  export { MessageBubble } from "./MessageBubble";
-  export { InputBar } from "./InputBar";
-  export { ConversationsDrawer } from "./ConversationsDrawer";
-  export { SummaryCollapsible } from "./SummaryCollapsible";
-  export { VideoPiPPlayer } from "./VideoPiPPlayer";
-  ```
+- Modify: `mobile/src/components/conversation/ConversationScreen.tsx`
+- Modify: `mobile/src/components/conversation/__tests__/ConversationScreen.test.tsx` (réduit)
 
-## Task 10 : Créer `mobile/src/hooks/useHubData.ts`
+- [ ] **Step 1 : Réécrire `ConversationScreen.tsx`**
 
-**Files:**
+Remplacer tout le contenu actuel (~319 lignes) par un wrapper d'environ 40 lignes :
 
-- Create: `mobile/src/hooks/useHubData.ts`
+```typescript
+import React from "react";
+import { Modal, StatusBar } from "react-native";
+import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
+import { useTheme } from "../../contexts/ThemeContext";
+import { duration } from "../../theme/animations";
+import {
+  ConversationContent,
+  type ConversationContentProps,
+} from "./ConversationContent";
 
-- [ ] **Step 1** : Implémenter le hook qui orchestre les fetchs :
-  - Mount → `videoApi.getHistory({page:1, limit:50})` → map en `HubConversation[]` → `setConversations()`
-  - `activeConvId` change → `chatApi.getHistory(activeConvId)` → map en `HubMessage[]` → `setMessages()` (mapping source aplati : `voice + speaker:user → voice_user`, etc.)
-  - Build `summaryContext` minimal depuis conv + setSummaryContext()
-  - Cleanup : cancel via `cancelled = true` flag
-- [ ] **Step 2** : Compatible avec mode offline : si fetch fail → ne pas crash, log warn.
-- [ ] **Step 3** : Pas de tests unitaires dédiés (testé via integration test `hub.tsx` ou skip).
+export interface ConversationScreenProps
+  extends Omit<ConversationContentProps, "onMenuPress"> {
+  visible: boolean;
+  onClose: () => void;
+}
 
-## Task 11 : Créer `mobile/app/(tabs)/hub.tsx`
+export const ConversationScreen: React.FC<ConversationScreenProps> = ({
+  visible,
+  onClose,
+  ...contentProps
+}) => {
+  const { colors } = useTheme();
+  return (
+    <Modal
+      visible={visible}
+      animationType="none"
+      transparent
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
+      <Animated.View
+        entering={FadeIn.duration(duration.slow)}
+        style={{ flex: 1, backgroundColor: colors.bgPrimary }}
+      >
+        <Animated.View
+          entering={SlideInDown.duration(duration.slower).springify()}
+          style={{ flex: 1 }}
+        >
+          <ConversationContent {...contentProps} onClose={onClose} />
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+};
 
-**Files:**
+export default ConversationScreen;
+```
 
-- Create: `mobile/app/(tabs)/hub.tsx`
+- [ ] **Step 2 : Adapter le test existant `ConversationScreen.test.tsx`**
 
-- [ ] **Step 1** : Squelette React component avec :
-  - `useLocalSearchParams<{ videoUrl?, initialMode?, summaryId?, convId? }>()`
-  - `useHubStore()` pour les slots
-  - `useHubData()` pour les fetchs
-  - Mount logic :
-    - Si `convId` ou `summaryId` → `setActiveConv(Number(id))`
-    - Si `videoUrl` + `initialMode='chat'` → POST `/api/videos/quick-chat` puis `setActiveConv(result.summary_id)`
-    - Si `videoUrl` + `initialMode='call'` → TODO PR2 (placeholder Alert "Voice not yet wired")
-- [ ] **Step 2** : JSX layout (cf. spec §4) :
-  ```tsx
-  <View style={styles.container}>
-    <DoodleBackground variant="default" density="low" />
-    <HubHeader ... />
-    {summaryContext && <SummaryCollapsible context={summaryContext} />}
-    <Timeline messages={messages} isThinking={isThinking} />
-    {/* VoiceControls slot — PR2 */}
-    <InputBar ... />
-    <ConversationsDrawer ... />
-    {/* CallModeFullBleed — PR2 */}
-  </View>
-  ```
-- [ ] **Step 3** : `handleSend` :
-  - `chatApi.send(activeConvId, text, false)` → `appendMessage(userMsg)` puis `appendMessage(assistantMsg)`
-  - Pendant fetch : `setIsThinking(true)`, finally false
+Réduire à 3 cases (les 9 cases originales sont déplacées dans `ConversationContent.test.tsx`) :
 
-## Task 12 : Modifier `mobile/app/(tabs)/_layout.tsx` + `CustomTabBar.tsx`
+```typescript
+describe("ConversationScreen (wrapper)", () => {
+  it("renders Modal with visible=true", () => {
+    const { UNSAFE_getByType } = render(
+      <ConversationScreen
+        visible
+        summaryId="1"
+        initialMode="chat"
+        videoTitle="Test"
+        onClose={jest.fn()}
+      />,
+    );
+    const modal = UNSAFE_getByType(Modal);
+    expect(modal.props.visible).toBe(true);
+  });
 
-**Files:**
+  it("does not render content when visible=false", () => {
+    const { queryByText } = render(
+      <ConversationScreen
+        visible={false}
+        summaryId="1"
+        initialMode="chat"
+        videoTitle="Test"
+        onClose={jest.fn()}
+      />,
+    );
+    // Modal non visible → contenu non monté
+    // (selon comportement RN, à valider — peut nécessiter mock plus profond)
+  });
 
-- Modify: `mobile/app/(tabs)/_layout.tsx`
+  it("forwards onClose to onRequestClose", () => {
+    const onClose = jest.fn();
+    const { UNSAFE_getByType } = render(
+      <ConversationScreen
+        visible
+        summaryId="1"
+        initialMode="chat"
+        videoTitle="Test"
+        onClose={onClose}
+      />,
+    );
+    const modal = UNSAFE_getByType(Modal);
+    modal.props.onRequestClose();
+    expect(onClose).toHaveBeenCalled();
+  });
+});
+```
+
+- [ ] **Step 3 : Update `mobile/src/components/conversation/index.ts`**
+
+Re-export `ConversationContent` :
+
+```typescript
+export { ConversationScreen } from "./ConversationScreen";
+export { ConversationContent } from "./ConversationContent";
+export type { ConversationScreenProps } from "./ConversationScreen";
+export type { ConversationContentProps } from "./ConversationContent";
+// ... autres re-exports existants
+```
+
+- [ ] **Step 4 : Run full conversation tests + smoke compile**
+
+```bash
+cd mobile && npm test -- conversation
+npm run typecheck
+```
+
+Expected : tous PASS, typecheck zéro erreur (hors les 19 erreurs pré-existantes documentées).
+
+- [ ] **Step 5 : Smoke test sur `analysis/[id].tsx` (call-site existant)**
+
+```bash
+cd mobile && npx expo start
+```
+
+Sur device : ouvrir une analyse existante depuis Library → tap bouton Quick Chat → vérifier que `ConversationScreen` Modal s'ouvre normalement (rien ne doit avoir changé visuellement).
+
+- [ ] **Step 6 : Commit**
+
+```bash
+git add mobile/src/components/conversation/ConversationScreen.tsx mobile/src/components/conversation/index.ts mobile/__tests__/components/conversation/ConversationScreen.test.tsx
+git commit -m "refactor(mobile): ConversationScreen → thin Modal wrapper around ConversationContent"
+```
+
+## Task A4 : Hand-off to Agent B
+
+- [ ] **Step 1 : Push branch + status**
+
+```bash
+git push -u origin feat/mobile-hub-tab-unified
+git log --oneline -5
+```
+
+- [ ] **Step 2 : Brief Agent B**
+
+Le contexte minimal pour Agent B :
+
+> ConversationContent extrait, wrapper Modal léger. Tu peux maintenant rendre `<ConversationContent />` dans `mobile/app/(tabs)/hub.tsx` sans le wrapper Modal. Spec §4.4 décrit le rewrite hub.tsx complet.
+
+---
+
+# Agent B — Hub tab : rewrite + déshider + drawer backend
+
+**Goal** : Rewrite `mobile/app/(tabs)/hub.tsx` pour utiliser `ConversationContent` + `ConversationsDrawer`. Déshider le tab. Brancher le drawer sur backend.
+
+**Estimation** : 1–1,5 jour Opus 4.7.
+
+**Dépend de** : Agent A (ConversationContent disponible).
+
+**Bloque** : Agent C.
+
+**Parallélisable avec** : Agent C dans une variante (Agent B touche `hub.tsx` + `(tabs)/_layout.tsx` + `CustomTabBar.tsx` + `ConversationsDrawer.tsx`, Agent C touche `index.tsx` + `analysis/[id].tsx` + `VoiceButton.tsx`. Aucun chevauchement de fichiers).
+
+## Task B1 : Étendre `CustomTabBar` + déshider hub.tsx
+
+**Files** :
+
 - Modify: `mobile/src/components/navigation/CustomTabBar.tsx`
+- Modify: `mobile/app/(tabs)/_layout.tsx`
 
-- [ ] **Step 1** : `_layout.tsx` : ajouter `<Tabs.Screen name="hub" options={{title:"Hub"}} />` en position 2 (juste après `index`).
-- [ ] **Step 2** : `CustomTabBar.tsx` : ajouter dans `TAB_META` :
-  ```typescript
-  hub: { icon: "chatbubbles-outline", iconFocused: "chatbubbles", label: "Hub" },
-  ```
-- [ ] **Step 3** : Vérifier que l'ordre dans `TAB_META` correspond à l'ordre `Tabs.Screen` (l'objet JS préserve l'ordre d'insertion en pratique sur V8/Hermes mais le CustomTabBar trie via `state.routes` order, donc OK).
-- [ ] **Step 4** : Smoke iOS : Hub apparaît en TabBar position 2, label "Hub", icône chatbubbles.
+- [ ] **Step 1 : Modifier `CustomTabBar.tsx` `TAB_META`**
 
-## Task 13 : Modifier `mobile/app/(tabs)/index.tsx` (Home)
+Ajouter l'entrée `hub` après `library` :
 
-**Files:**
+```typescript
+const TAB_META = {
+  index: { icon: "home-outline", iconFocused: "home", label: "Accueil" },
+  library: { icon: "time-outline", iconFocused: "time", label: "Historique" },
+  hub: {
+    icon: "chatbubbles-outline",
+    iconFocused: "chatbubbles",
+    label: "Hub",
+  },
+  study: { icon: "book-outline", iconFocused: "book", label: "Étude" },
+  subscription: {
+    icon: "sparkles-outline",
+    iconFocused: "sparkles",
+    label: "Abo",
+  },
+  profile: {
+    icon: "settings-outline",
+    iconFocused: "settings",
+    label: "Profil",
+  },
+};
+```
 
-- Modify: `mobile/app/(tabs)/index.tsx`
+- [ ] **Step 2 : Modifier `_layout.tsx`**
 
-- [ ] **Step 1** : Localiser le bloc Quick Chat (lignes 389-464). Modifier `handleQuickChat` pour navigate vers Hub :
-  ```typescript
-  const handleQuickChat = useCallback(() => {
-    const url = quickChatUrl.trim();
-    if (!url) return;
-    if (!isValidVideoUrl(url)) { Alert.alert(...); return; }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Keyboard.dismiss();
-    router.push({
-      pathname: "/(tabs)/hub",
-      params: { videoUrl: url, initialMode: "chat" }
+Ligne 52-58, retirer `href: null`. Réordonner pour mettre `hub` après `library` (l'ordre des `<Tabs.Screen>` détermine l'ordre dans la TabBar) :
+
+```typescript
+<Tabs.Screen name="index" options={{ title: "Accueil" }} />
+<Tabs.Screen name="library" options={{ title: "Bibliothèque" }} />
+<Tabs.Screen name="hub" options={{ title: "Hub" }} />
+<Tabs.Screen name="study" options={{ title: "Étude & Chat" }} />
+<Tabs.Screen name="subscription" options={{ title: "Abonnement" }} />
+<Tabs.Screen name="profile" options={{ title: "Profil" }} />
+{/* analysis/[id] reste caché */}
+<Tabs.Screen name="analysis/[id]" options={{ href: null, title: "Analyse" }} />
+```
+
+- [ ] **Step 3 : Smoke test (le tab Hub apparaît mais affiche encore le mock)**
+
+```bash
+cd mobile && npx expo start
+```
+
+Tap "Hub" tab → doit afficher le proto mock actuel (sera rewrite Task B3).
+
+- [ ] **Step 4 : Commit**
+
+```bash
+git add mobile/src/components/navigation/CustomTabBar.tsx mobile/app/(tabs)/_layout.tsx
+git commit -m "feat(mobile): unhide Hub tab in TabBar (6 tabs total)"
+```
+
+## Task B2 : Brancher `ConversationsDrawer` sur backend
+
+**Files** :
+
+- Modify: `mobile/src/components/hub/ConversationsDrawer.tsx`
+- Test: `mobile/__tests__/components/hub/ConversationsDrawer.test.tsx`
+
+- [ ] **Step 1 : Lire la signature actuelle**
+
+```bash
+cat mobile/src/components/hub/ConversationsDrawer.tsx | head -60
+```
+
+Repérer comment le composant reçoit `conversations`. Probablement passé en prop directement (mock data côté `hub.tsx` actuel).
+
+- [ ] **Step 2 : Adapter la signature pour accepter `conversations` ou loader interne**
+
+Choix archi : laisser le **parent** (`hub.tsx`) charger via TanStack Query, et passer la liste en prop. Garde le drawer pure presentational. Cohérent avec le pattern actuel.
+
+Si le drawer accepte déjà `conversations: HubConversation[]` en prop → rien à modifier ici, c'est `hub.tsx` qui fournira les vraies données via `historyApi.getHistory`.
+
+Si le drawer fait son propre fetch → refacto pour pure presentational.
+
+- [ ] **Step 3 : Type cohérent avec `historyApi.getHistory` retour**
+
+Vérifier que le type `HubConversation` exposé par `ConversationsDrawer` est compatible avec `AnalysisSummary` (retour de `historyApi.getHistory`). Si pas → adapter le type ou créer un mapper inline dans `hub.tsx`.
+
+- [ ] **Step 4 : Tests existants drawer**
+
+```bash
+cd mobile && npm test -- ConversationsDrawer
+```
+
+S'ils existent, vérifier qu'ils passent encore.
+
+- [ ] **Step 5 : Commit (si modif)**
+
+```bash
+git add mobile/src/components/hub/ConversationsDrawer.tsx mobile/__tests__/components/hub/ConversationsDrawer.test.tsx 2>/dev/null
+git commit -m "refactor(mobile): ConversationsDrawer accepts conversations prop (backend-ready)"
+```
+
+(Skip si aucune modif nécessaire.)
+
+## Task B3 : Créer `HubEmptyState`
+
+**Files** :
+
+- Create: `mobile/src/components/hub/HubEmptyState.tsx`
+- Test: `mobile/__tests__/components/hub/HubEmptyState.test.tsx`
+
+- [ ] **Step 1 : Test failing**
+
+```typescript
+// mobile/__tests__/components/hub/HubEmptyState.test.tsx
+import { render, fireEvent } from "@testing-library/react-native";
+import { HubEmptyState } from "../../../src/components/hub/HubEmptyState";
+
+describe("HubEmptyState", () => {
+  it("renders title and 2 CTAs", () => {
+    const { getByText } = render(
+      <HubEmptyState onPickConv={jest.fn()} onPasteUrl={jest.fn()} />,
+    );
+    expect(getByText(/aucune conversation/i)).toBeTruthy();
+    expect(getByText(/coller un lien/i)).toBeTruthy();
+    expect(getByText(/choisir une conversation/i)).toBeTruthy();
+  });
+
+  it("calls onPickConv when 'Choisir' CTA tapped", () => {
+    const onPickConv = jest.fn();
+    const { getByText } = render(
+      <HubEmptyState onPickConv={onPickConv} onPasteUrl={jest.fn()} />,
+    );
+    fireEvent.press(getByText(/choisir une conversation/i));
+    expect(onPickConv).toHaveBeenCalled();
+  });
+
+  it("calls onPasteUrl when URL submitted", () => {
+    const onPasteUrl = jest.fn();
+    const { getByPlaceholderText } = render(
+      <HubEmptyState onPickConv={jest.fn()} onPasteUrl={onPasteUrl} />,
+    );
+    const input = getByPlaceholderText(/youtube.com|tiktok.com/i);
+    fireEvent.changeText(input, "https://youtube.com/watch?v=abc");
+    fireEvent(input, "submitEditing");
+    expect(onPasteUrl).toHaveBeenCalledWith("https://youtube.com/watch?v=abc");
+  });
+});
+```
+
+- [ ] **Step 2 : Run test (FAIL)**
+
+```bash
+cd mobile && npm test -- HubEmptyState.test.tsx
+```
+
+- [ ] **Step 3 : Implementation**
+
+```typescript
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TextInput, Pressable, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/contexts/ThemeContext";
+import { palette } from "@/theme/colors";
+import { sp, borderRadius } from "@/theme/spacing";
+import { fontFamily, fontSize } from "@/theme/typography";
+
+interface HubEmptyStateProps {
+  onPickConv: () => void;
+  onPasteUrl: (url: string) => void;
+}
+
+export const HubEmptyState: React.FC<HubEmptyStateProps> = ({ onPickConv, onPasteUrl }) => {
+  const { colors } = useTheme();
+  const [url, setUrl] = useState("");
+
+  const handleSubmit = () => {
+    const trimmed = url.trim();
+    const isValid =
+      trimmed.includes("youtube.com") ||
+      trimmed.includes("youtu.be") ||
+      trimmed.includes("tiktok.com");
+    if (!isValid) {
+      Alert.alert("Lien invalide", "Colle un lien YouTube ou TikTok.");
+      return;
+    }
+    onPasteUrl(trimmed);
+    setUrl("");
+  };
+
+  return (
+    <View style={styles.root}>
+      <Ionicons name="chatbubbles-outline" size={64} color={colors.textTertiary} />
+      <Text style={[styles.title, { color: colors.textPrimary }]}>Aucune conversation</Text>
+      <Text style={[styles.subtitle, { color: colors.textTertiary }]}>
+        Colle un lien YouTube ou TikTok, ou choisis une conversation existante.
+      </Text>
+
+      {/* CTA 1 — URL paste */}
+      <View style={[styles.urlRow, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+        <TextInput
+          style={[styles.input, { color: colors.textPrimary }]}
+          placeholder="youtube.com/... ou tiktok.com/..."
+          placeholderTextColor={colors.textMuted}
+          value={url}
+          onChangeText={setUrl}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          returnKeyType="go"
+          onSubmitEditing={handleSubmit}
+        />
+        <Pressable
+          style={[styles.urlBtn, { backgroundColor: url.trim() ? palette.indigo : colors.bgSecondary }]}
+          onPress={handleSubmit}
+          disabled={!url.trim()}
+        >
+          <Ionicons name="arrow-forward" size={20} color={url.trim() ? "#fff" : colors.textMuted} />
+        </Pressable>
+      </View>
+
+      {/* CTA 2 — Pick conv */}
+      <Pressable
+        style={[styles.pickConv, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}
+        onPress={onPickConv}
+      >
+        <Ionicons name="list-outline" size={18} color={colors.textSecondary} />
+        <Text style={[styles.pickConvText, { color: colors.textSecondary }]}>
+          Choisir une conversation
+        </Text>
+      </Pressable>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  root: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: sp.xl, gap: sp.md },
+  title: { fontFamily: fontFamily.displaySemiBold, fontSize: fontSize.xl, marginTop: sp.md },
+  subtitle: { fontFamily: fontFamily.body, fontSize: fontSize.sm, textAlign: "center", marginBottom: sp.lg },
+  urlRow: {
+    flexDirection: "row", alignItems: "center", borderRadius: borderRadius.lg, borderWidth: 1, padding: 4, width: "100%",
+  },
+  input: { flex: 1, height: 40, paddingHorizontal: sp.md, fontFamily: fontFamily.body, fontSize: fontSize.sm },
+  urlBtn: { width: 40, height: 40, borderRadius: borderRadius.md, alignItems: "center", justifyContent: "center" },
+  pickConv: {
+    flexDirection: "row", alignItems: "center", gap: sp.sm,
+    paddingVertical: sp.md, paddingHorizontal: sp.lg, borderRadius: borderRadius.lg, borderWidth: 1,
+  },
+  pickConvText: { fontFamily: fontFamily.bodyMedium, fontSize: fontSize.sm },
+});
+```
+
+- [ ] **Step 4 : Run test (PASS)**
+
+```bash
+cd mobile && npm test -- HubEmptyState.test.tsx
+```
+
+- [ ] **Step 5 : Commit**
+
+```bash
+git add mobile/src/components/hub/HubEmptyState.tsx mobile/__tests__/components/hub/HubEmptyState.test.tsx
+git commit -m "feat(mobile): add HubEmptyState (URL paste + pick conv)"
+```
+
+## Task B4 : Rewrite `mobile/app/(tabs)/hub.tsx`
+
+**Files** :
+
+- Modify: `mobile/app/(tabs)/hub.tsx`
+- Test: `mobile/__tests__/app/hub.test.tsx`
+
+- [ ] **Step 1 : Test failing**
+
+```typescript
+import { render, waitFor } from "@testing-library/react-native";
+import HubScreen from "../../app/(tabs)/hub";
+
+jest.mock("expo-router", () => ({
+  useLocalSearchParams: jest.fn(() => ({})),
+  useRouter: jest.fn(() => ({ setParams: jest.fn(), push: jest.fn() })),
+}));
+jest.mock("../../src/services/api", () => ({
+  historyApi: {
+    getHistory: jest.fn(() => Promise.resolve({ items: [] })),
+  },
+}));
+jest.mock("../../src/hooks/useConversation", () => ({
+  useConversation: () => ({
+    messages: [], voiceMode: "off", endedToastVisible: false,
+    summaryId: null, sendMessage: jest.fn(), requestStartCall: jest.fn(),
+    endCall: jest.fn(), toggleMute: jest.fn(), isMuted: false, isSpeaking: false,
+    elapsedSeconds: 0, remainingMinutes: 30, isLoading: false,
+    contextProgress: 0, contextComplete: false, streaming: false, error: null,
+  }),
+}));
+
+describe("HubScreen", () => {
+  it("renders HubEmptyState when no summaryId param and no last conv", async () => {
+    const { useLocalSearchParams } = require("expo-router");
+    useLocalSearchParams.mockReturnValue({});
+    const { findByText } = render(<HubScreen />);
+    expect(await findByText(/aucune conversation/i)).toBeTruthy();
+  });
+
+  it("renders ConversationContent when summaryId param present", async () => {
+    const { useLocalSearchParams } = require("expo-router");
+    useLocalSearchParams.mockReturnValue({ summaryId: "42", initialMode: "chat" });
+    const { findByLabelText } = render(<HubScreen />);
+    // ConversationContent rendu (vérification souple via son a11y label si dispo)
+  });
+
+  it("auto-resolves last conv when no summaryId and history non-empty", async () => {
+    const { useLocalSearchParams, useRouter } = require("expo-router");
+    const setParams = jest.fn();
+    useLocalSearchParams.mockReturnValue({});
+    useRouter.mockReturnValue({ setParams, push: jest.fn() });
+    const { historyApi } = require("../../src/services/api");
+    historyApi.getHistory.mockResolvedValueOnce({
+      items: [{ id: "99", title: "Last Conv", platform: "youtube", isFavorite: false }],
     });
-    setQuickChatUrl("");
-  }, [quickChatUrl]);
-  ```
-- [ ] **Step 2** : Ajouter un bouton **Quick Call** à côté du bouton Quick Chat (icône `call` Ionicons, gold bg) :
-  ```tsx
-  <Pressable
-    style={[styles.quickChatBtn, { backgroundColor: palette.gold }]}
-    onPress={handleQuickCall}
-  >
-    <Ionicons name="call" size={18} color="#fff" />
-  </Pressable>
-  ```
-- [ ] **Step 3** : Implémenter `handleQuickCall` qui navigate vers Hub avec `initialMode='call'`.
-- [ ] **Step 4** : Adapter le titre du bloc : "Quick Chat" → "Discuter / Appeler" (ou "Quick Discussion").
-- [ ] **Step 5** : Smoke iOS : tap Quick Chat → Hub charge avec videoUrl + chat mode. Tap Quick Call → Hub charge avec videoUrl + call mode (mais en PR1, voice = placeholder Alert).
+    render(<HubScreen />);
+    await waitFor(() => {
+      expect(setParams).toHaveBeenCalledWith({
+        summaryId: "99",
+        initialMode: "chat",
+      });
+    });
+  });
+});
+```
 
-## Task 14 : Tests d'intégration PR1
+- [ ] **Step 2 : Run test (FAIL)**
 
-- [ ] **Step 1** : `npm run typecheck` → 0 erreur sur les fichiers Hub PR1 (existant 19 erreurs TS pré-existantes — ne pas confondre, cf. `project_deepsight-mobile-refonte.md`).
-- [ ] **Step 2** : `npm run test` → tous les tests Hub PR1 PASS (15+).
-- [ ] **Step 3** : `npm run lint -- --fix` sur les nouveaux fichiers.
-- [ ] **Step 4** : Smoke iOS : ouvrir l'app → tab Hub visible → tap → Hub vide rendu OK → ouvrir drawer → liste convos chargée depuis API → tap conv → messages chargés.
+```bash
+cd mobile && npm test -- hub.test.tsx
+```
 
-## Task 15 : Commit + push PR1
+- [ ] **Step 3 : Implementation**
 
-- [ ] **Step 1** : `git status` dans worktree `C:\Users\33667\DeepSight-hub-foundation`.
-- [ ] **Step 2** : `git add` fichiers créés/modifiés (NE PAS inclure `.claude/settings.local.json`, `id_hetzner_b64.txt`, `extension/dist/*.map`).
-- [ ] **Step 3** : Commit message :
+Remplacer tout le contenu de `mobile/app/(tabs)/hub.tsx` par le code de la spec §4.4. Adapter les imports selon disponibilité réelle :
 
-  ```
-  feat(mobile): Hub Foundation — onglet conversationnel unifié
+```typescript
+import React, { useCallback, useEffect, useState } from "react";
+import { View, StyleSheet } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { ConversationContent } from "@/components/conversation";
+import { ConversationsDrawer } from "@/components/hub/ConversationsDrawer";
+import { HubEmptyState } from "@/components/hub/HubEmptyState";
+import { historyApi } from "@/services/api";
+import type { AnalysisSummary } from "@/types";
 
-  PR1 du sprint Mobile Hub Tab Unifié (spec 2026-05-04).
-  Crée l'onglet /(tabs)/hub mirror du HubPage web :
-  - 12 composants hub/* (HubHeader, Timeline, MessageBubble, InputBar, ConversationsDrawer, SummaryCollapsible, VideoPiPPlayer, types, index)
-  - Zustand store hubStore avec slots minimaux
-  - Hook useHubData pour fetchs conversations + messages
-  - Extension type ChatMessage avec champs voice
-  - TabBar : Hub en position 2 (après Home)
-  - Home : Quick Chat + Quick Call boutons → navigate Hub avec initialMode
-
-  Voice intégration = PR2.
-
-  Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-  ```
-
-- [ ] **Step 4** : `git push -u origin feat/mobile-hub-tab-foundation`.
-- [ ] **Step 5** : `gh pr create --title "feat(mobile): Hub Foundation — tab conversationnel" --body "..."` (corps avec lien spec + plan + checklist test plan).
-
----
-
-# PR2 — Voice Integration + Cleanup (Agent B)
-
-> **Dépendance** : peut commencer en parallèle PR1 si Agent B mock les composants Hub manquants. Sinon, démarrer après PR1 mergée.
-
-## Task 16 : Créer `mobile/src/components/hub/VoiceWaveformBars.tsx`
-
-**Files:**
-
-- Create: `mobile/src/components/hub/VoiceWaveformBars.tsx`
-
-- [ ] **Step 1** : Lire `frontend/src/components/hub/VoiceWaveformBars.tsx` (référence).
-- [ ] **Step 2** : Mobile-native avec Reanimated 4 :
-  - Props : `isActive: boolean`, `barCount?: number = 5`, `color?: string = palette.gold`
-  - 5 barres animées (sharedValue scale Y, withRepeat sequence)
-  - Fond gradient subtil (`expo-linear-gradient`) si `isActive`
-- [ ] **Step 3** : Performance : `useEffect` cleanup pour stop les `withRepeat` au unmount.
-
-## Task 17 : Créer `mobile/src/components/hub/VoiceBubble.tsx`
-
-**Files:**
-
-- Create: `mobile/src/components/hub/VoiceBubble.tsx`
-
-- [ ] **Step 1** : Lire `frontend/src/components/hub/VoiceBubble.tsx`.
-- [ ] **Step 2** : Mobile-native :
-  - Bulle agent voice (left-aligned, card bg)
-  - Inline VoiceWaveformBars mini (3 bars, isActive=false par défaut, isActive=true si `audio_duration_secs` is recent)
-  - Texte transcript (markdown via ChatMarkdown)
-  - Badge 🎙️ + label "voix"
-- [ ] **Step 3** : Reuse du code MessageBubble (composition).
-
-## Task 18 : Créer `mobile/src/components/hub/VoiceControls.tsx`
-
-**Files:**
-
-- Create: `mobile/src/components/hub/VoiceControls.tsx`
-- Create: `mobile/__tests__/components/hub/VoiceControls.test.tsx`
-
-- [ ] **Step 1** : Composant zone bas (au-dessus de InputBar) qui rend selon `voiceState` :
-  - `'idle'` → null (rien rendu)
-  - `'call_active'` → row : VoiceWaveformBars + timer "0:34" + remainingMinutes + 2 boutons (Mute, End)
-  - `'call_ending'` → toast "✅ Appel terminé · X:XX min" (animé Reanimated FadeIn/FadeOut, auto-dismiss 3s)
-  - `'quota_exceeded'` → CTA "⚠ Quota épuisé · Acheter des minutes" (ouvre VoiceAddonModal existant ou navigate `/subscription`)
-- [ ] **Step 2** : Props :
-  ```typescript
-  interface VoiceControlsProps {
-    voiceState: HubVoiceState;
-    elapsedSeconds: number;
-    remainingMinutes: number;
-    isMuted: boolean;
-    onToggleMute: () => void;
-    onEnd: () => void;
-    onUpgrade: () => void;
-  }
-  ```
-- [ ] **Step 3** : Tests Jest :
-  - `renders nothing when voiceState='idle'`
-  - `renders Mute+End when voiceState='call_active'`
-  - `renders quota CTA when voiceState='quota_exceeded'`
-- [ ] **Step 4** : `npm run test -- VoiceControls` → 3+ PASS.
-
-## Task 19 : Créer `mobile/src/components/hub/CallModeFullBleed.tsx`
-
-**Files:**
-
-- Create: `mobile/src/components/hub/CallModeFullBleed.tsx`
-- Create: `mobile/__tests__/components/hub/CallModeFullBleed.test.tsx`
-
-- [ ] **Step 1** : Overlay full-screen (`position:absolute`, top:0/bottom:0/left:0/right:0, zIndex 100).
-- [ ] **Step 2** : Background : LinearGradient gold (palette.gold + palette.amber).
-- [ ] **Step 3** : Contenu central : VoiceWaveformBars XL (10 bars), timer big, "🎙️ Appel actif".
-- [ ] **Step 4** : Bouton End centré bas (cercle rouge 80x80).
-- [ ] **Step 5** : Tap arrière-plan (Pressable) → `setVoiceCallOpen(false)` (minimize, voice continue mais retour Hub Timeline).
-- [ ] **Step 6** : Tests Jest :
-  - `renders fullscreen when voiceCallOpen=true`
-  - `tap background minimizes (calls setVoiceCallOpen(false))`
-- [ ] **Step 7** : `npm run test -- CallModeFullBleed` → 2+ PASS.
-
-## Task 20 : Créer `mobile/src/hooks/useHubVoice.ts`
-
-**Files:**
-
-- Create: `mobile/src/hooks/useHubVoice.ts`
-- Create: `mobile/__tests__/hooks/useHubVoice.test.ts`
-
-- [ ] **Step 1** : Hook qui orchestre `useVoiceChat` + sync vers `hubStore` :
-
-  ```typescript
-  export function useHubVoice(input: {
+export default function HubScreen() {
+  const params = useLocalSearchParams<{
     summaryId?: string;
     videoUrl?: string;
     initialMode?: "chat" | "call";
-  }) {
-    const voiceChat = useVoiceChat({
-      summaryId: input.summaryId,
-      agentType: input.videoUrl ? "explorer_streaming" : undefined,
-    });
-    const { setVoiceState, setVoiceCallOpen, appendMessage } = useHubStore();
+  }>();
+  const router = useRouter();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-    // Sync voiceState depuis voice.status
-    useEffect(() => {
-      switch (voiceChat.status) {
-        case "idle":
-          setVoiceState("idle");
-          break;
-        case "connecting":
-          setVoiceState("call_connecting");
-          break;
-        case "listening":
-        case "thinking":
-        case "speaking":
-          setVoiceState("call_active");
-          break;
-        case "ended":
-          setVoiceState("call_ending");
-          break;
-      }
-    }, [voiceChat.status]);
+  const summaryId = params.summaryId ?? null;
+  const initialMode = params.initialMode ?? "chat";
 
-    // Append voice transcripts au timeline (filter 'user' speaker)
-    useEffect(() => {
-      const lastMsg = voiceChat.messages[voiceChat.messages.length - 1];
-      if (!lastMsg) return;
-      if (lastMsg.source === "agent") {
-        appendMessage({
-          id: `voice-${Date.now()}`,
-          role: "assistant",
-          content: lastMsg.text,
-          source: "voice_agent",
-          voice_session_id: voiceChat.sessionId,
-          time_in_call_secs: voiceChat.elapsedSeconds,
-          timestamp: Date.now(),
-        });
-      }
-      // Note: voice user transcripts persistés backend mais PAS appendMessage (audio user invisible)
-    }, [voiceChat.messages]);
+  // Charger l'historique pour le drawer ET pour fallback last-conv
+  const { data: historyData } = useQuery({
+    queryKey: ["history", "hub-drawer"],
+    queryFn: () => historyApi.getHistory(1, 50),
+  });
 
-    // Auto-start si initialMode='call'
-    useEffect(() => {
-      if (input.initialMode === "call" && voiceChat.status === "idle") {
-        voiceChat.start({ videoUrl: input.videoUrl });
-      }
-    }, []); // mount only
+  const conversations = historyData?.items ?? [];
+  const activeConv = conversations.find((c) => String(c.id) === summaryId) ?? null;
 
-    return {
-      ...voiceChat,
-      requestStartCall: () =>
-        Alert.alert(
-          "Démarrer l'appel ?",
-          `Quota : ${voiceChat.remainingMinutes.toFixed(0)} min restantes ce mois`,
-          [
-            { text: "Annuler", style: "cancel" },
-            {
-              text: "Démarrer",
-              onPress: () => voiceChat.start({ videoUrl: input.videoUrl }),
-            },
-          ],
-        ),
-    };
-  }
-  ```
+  // Auto-resolve : si pas de summaryId mais history non vide → push le 1er
+  useEffect(() => {
+    if (!summaryId && conversations.length > 0) {
+      router.setParams({
+        summaryId: String(conversations[0].id),
+        initialMode: "chat",
+      });
+    }
+  }, [summaryId, conversations, router]);
 
-- [ ] **Step 2** : Tests Jest :
-  - `auto-starts voice when initialMode='call' on mount`
-  - `does NOT auto-start voice when initialMode='chat'`
-  - `appendMessage called with source='voice_agent' on transcript agent`
-  - `appendMessage NOT called for source='user' (filter)`
-  - `voiceState transitions correctly`
-- [ ] **Step 3** : `npm run test -- useHubVoice` → 5+ PASS.
+  const handleSelectConv = useCallback(
+    (id: string | number) => {
+      router.setParams({ summaryId: String(id), initialMode: "chat" });
+      setDrawerOpen(false);
+    },
+    [router],
+  );
 
-## Task 21 : Modifier `mobile/src/components/hub/InputBar.tsx` (Mic toggle)
+  const handleNewConv = useCallback(() => {
+    router.setParams({ summaryId: undefined, initialMode: undefined });
+    setDrawerOpen(false);
+  }, [router]);
 
-**Files:**
+  const handlePasteUrl = useCallback(
+    async (url: string) => {
+      // Réutilise pattern Home : videoApi.quickChat → setParams
+      const { videoApi } = await import("@/services/api");
+      const result = await videoApi.quickChat(url);
+      router.setParams({
+        summaryId: String(result.summary_id),
+        initialMode: "chat",
+      });
+    },
+    [router],
+  );
 
-- Modify: `mobile/src/components/hub/InputBar.tsx`
-- Create: `mobile/__tests__/components/hub/InputBar.mic.test.tsx`
+  return (
+    <View style={styles.root}>
+      {summaryId ? (
+        <ConversationContent
+          key={summaryId}
+          summaryId={summaryId}
+          initialMode={initialMode}
+          videoTitle={activeConv?.title ?? "Conversation"}
+          channelName={activeConv?.channel}
+          platform={(activeConv?.platform as "youtube" | "tiktok") ?? "youtube"}
+          initialFavorite={activeConv?.isFavorite ?? false}
+          onMenuPress={() => setDrawerOpen(true)}
+        />
+      ) : (
+        <HubEmptyState
+          onPickConv={() => setDrawerOpen(true)}
+          onPasteUrl={handlePasteUrl}
+        />
+      )}
 
-- [ ] **Step 1** : Ajouter prop `voiceMode: 'off' | 'live'`, `onMicTap: () => void`.
-- [ ] **Step 2** : Rendre bouton Mic à droite du Send :
-  - `voiceMode='off'` → icône `mic-outline` gris
-  - `voiceMode='live'` → icône `mic` ou `volume-mute-outline` selon `isMuted`
-- [ ] **Step 3** : Tap → `onMicTap()` (le parent gère le routing : Alert confirm si off, toggleMute si live).
-- [ ] **Step 4** : Tests Jest :
-  - `mic button shows correct icon for voiceMode='off'`
-  - `mic button shows mic icon for voiceMode='live'`
-  - `tap mic calls onMicTap`
-- [ ] **Step 5** : `npm run test -- InputBar.mic` → 3+ PASS.
-
-## Task 22 : Modifier `mobile/src/components/hub/Timeline.tsx` (VoiceBubble)
-
-**Files:**
-
-- Modify: `mobile/src/components/hub/Timeline.tsx`
-
-- [ ] **Step 1** : Dans `renderMessage`, switch sur `msg.source` :
-  - `'text'` → `<MessageBubble msg={msg} />`
-  - `'voice_agent'` → `<VoiceBubble msg={msg} />`
-  - `'voice_user'` → return null (déjà filtré, double safety)
-- [ ] **Step 2** : Vérifier que les imports `VoiceBubble` sont bien dans `index.ts`.
-
-## Task 23 : Modifier `mobile/app/(tabs)/hub.tsx` (intégrer Voice)
-
-**Files:**
-
-- Modify: `mobile/app/(tabs)/hub.tsx`
-
-- [ ] **Step 1** : Importer `useHubVoice` + `<VoiceControls>` + `<CallModeFullBleed>`.
-- [ ] **Step 2** : Ajouter `const voice = useHubVoice({ summaryId: activeConvId, videoUrl, initialMode })`.
-- [ ] **Step 3** : Ajouter `<VoiceControls>` au-dessus de `<InputBar>` avec props :
-  ```tsx
-  <VoiceControls
-    voiceState={voiceState}
-    elapsedSeconds={voice.elapsedSeconds}
-    remainingMinutes={voice.remainingMinutes}
-    isMuted={voice.isMuted}
-    onToggleMute={voice.toggleMute}
-    onEnd={voice.stop}
-    onUpgrade={() => router.push("/(tabs)/subscription")}
-  />
-  ```
-- [ ] **Step 4** : Ajouter `<CallModeFullBleed>` overlay :
-  ```tsx
-  {
-    voiceCallOpen && voiceState === "call_active" && (
-      <CallModeFullBleed
-        elapsedSeconds={voice.elapsedSeconds}
-        onEnd={voice.stop}
-        onMinimize={() => setVoiceCallOpen(false)}
+      <ConversationsDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        conversations={conversations as any} // adapter le type si nécessaire
+        activeConvId={summaryId ? Number(summaryId) : null}
+        onSelect={handleSelectConv}
+        onNewConv={handleNewConv}
       />
-    );
-  }
-  ```
-- [ ] **Step 5** : Adapter `<InputBar>` props : `voiceMode = voiceState === 'call_active' ? 'live' : 'off'`, `onMicTap = voiceState === 'idle' ? voice.requestStartCall : voice.toggleMute`.
-- [ ] **Step 6** : Si `initialMode='call'` from query params → `useHubVoice` auto-start déjà géré dans le hook.
+    </View>
+  );
+}
 
-## Task 24 : Supprimer FAB voice + VoiceScreen sur `analysis/[id].tsx`
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#0a0a0f" },
+});
+```
 
-**Files:**
+⚠️ Vérifier signature exacte de `ConversationsDrawer.tsx` actuel et adapter (peut nécessiter mapping `AnalysisSummary` → `HubConversation`).
+
+- [ ] **Step 4 : Run test (PASS)**
+
+```bash
+cd mobile && npm test -- hub.test.tsx
+```
+
+- [ ] **Step 5 : Smoke test**
+
+```bash
+cd mobile && npx expo start
+```
+
+Sur device :
+
+1. Tap "Hub" tab → vérifier `HubEmptyState` ou auto-load last conv
+2. Burger → drawer s'ouvre avec liste conversations réelles
+3. Sélectionner conv → drawer ferme + `ConversationContent` re-render
+4. Tap "Nouvelle conversation" dans drawer → retour empty state
+
+- [ ] **Step 6 : Commit**
+
+```bash
+git add mobile/app/(tabs)/hub.tsx mobile/__tests__/app/hub.test.tsx
+git commit -m "feat(mobile): rewrite Hub tab with ConversationContent + ConversationsDrawer + EmptyState"
+```
+
+## Task B5 : Hand-off to Agent C (et D)
+
+- [ ] **Step 1 : Push + status**
+
+```bash
+git push
+git log --oneline -10
+```
+
+- [ ] **Step 2 : Brief**
+
+> Hub tab actif et fonctionnel. Maintenant migrer Home Quick Chat (push tab Hub) et `analysis/[id].tsx` (cleanup mode quickChat + tab Chat → CTA Hub + fix VoiceButton bottomOffset). Spec §4.7.
+
+---
+
+# Agent C — Migration call-sites + fix Quick Call
+
+**Goal** : Migrer Home `handleQuickChat` push Hub. Cleanup mode `quickChat` dans `analysis/[id].tsx`. Tab Chat → CTA Hub. Fix `VoiceButton.bottomOffset` pour cohérence sprint UX 2026-05-03.
+
+**Estimation** : 0,5–1 jour Opus 4.7.
+
+**Dépend de** : Agent A (ConversationContent), Agent B (Hub tab).
+
+**Bloque** : Agent D.
+
+**Parallélisable avec** : Agent B (zéro chevauchement de fichiers) — peut démarrer en parallèle dès que Agent A est mergé.
+
+## Task C1 : Migrer Home `handleQuickChat`
+
+**Files** :
+
+- Modify: `mobile/app/(tabs)/index.tsx`
+
+- [ ] **Step 1 : Lire `handleQuickChat` actuel**
+
+Lignes 76-111 de `index.tsx`. Identifier le bloc `router.push({ pathname: "/(tabs)/analysis/[id]", params: {..., quickChat: "true"} })`.
+
+- [ ] **Step 2 : Modifier le push**
+
+Remplacer par :
+
+```typescript
+const result = await videoApi.quickChat(url);
+setQuickChatUrl("");
+router.push({
+  pathname: "/(tabs)/hub",
+  params: {
+    summaryId: String(result.summary_id),
+    initialMode: "chat",
+  },
+} as never);
+```
+
+Suppression des params `backTo`, `initialTab`, `quickChat`.
+
+- [ ] **Step 3 : Smoke test**
+
+```bash
+cd mobile && npx expo start
+```
+
+Sur device : Home → coller URL YouTube → submit Quick Chat → vérifier navigation vers tab Hub avec conv chargée.
+
+- [ ] **Step 4 : Commit**
+
+```bash
+git add mobile/app/(tabs)/index.tsx
+git commit -m "feat(mobile): Home Quick Chat URL pushes to Hub tab (instead of analysis/[id]?quickChat)"
+```
+
+## Task C2 : Cleanup mode `quickChat` dans `analysis/[id].tsx`
+
+**Files** :
 
 - Modify: `mobile/app/(tabs)/analysis/[id].tsx`
 
-- [ ] **Step 1** : Supprimer imports lignes 33-35 :
-  ```typescript
-  import { VoiceButton } from "@/components/voice/VoiceButton";
-  import { VoiceScreen } from "@/components/voice/VoiceScreen";
-  import { useVoiceChat } from "@/components/voice/useVoiceChat";
-  ```
-- [ ] **Step 2** : Supprimer `const voiceChat = useVoiceChat({ summaryId: id as string });` (ligne 162).
-- [ ] **Step 3** : Supprimer `const [isVoiceVisible, setIsVoiceVisible] = useState(false);` (ligne 71).
-- [ ] **Step 4** : Supprimer le bloc complet `<VoiceButton>` + `<VoiceScreen>` lignes 657-685.
-- [ ] **Step 5** : `npm run typecheck` → 0 erreur sur ce fichier.
+- [ ] **Step 1 : Repérer le bloc**
 
-## Task 25 : Ajouter bouton "Discuter / Appeler" dans `ActionBar.tsx`
+Lignes 442-462 de `analysis/[id].tsx` :
 
-**Files:**
+```typescript
+const isQuickChat = quickChat === "true" || summary?.mode === "quick_chat";
 
-- Modify: `mobile/src/components/analysis/ActionBar.tsx`
+if (isQuickChat && summary) {
+  return <ConversationScreen ... />;
+}
+```
 
-- [ ] **Step 1** : Lire `mobile/src/components/analysis/ActionBar.tsx` (structure actuelle).
-- [ ] **Step 2** : Ajouter un bouton "Discuter / Appeler" :
-  - Icône `chatbubbles` + label "Discuter" (par défaut)
-  - Tap court → navigate `/hub?summaryId=${summaryId}&initialMode=chat`
-  - Long-press → menu contextuel (Action Sheet) avec 2 choix : "Discuter" (chat mode) / "Appeler" (call mode) → navigate avec initialMode adapté
-- [ ] **Step 3** : Position : à droite du bouton Favori ou en remplacement.
-- [ ] **Step 4** : Smoke iOS : sur analyse[id], le bouton Discuter est visible, tap → Hub avec summaryId. Long-press → menu → tap Appeler → Hub avec call mode.
+- [ ] **Step 2 : Supprimer le bloc + le param `quickChat`**
 
-## Task 26 : Refactor `ChatView.tsx` pour utiliser composants Hub
+```typescript
+// Supprimer ligne 46-51 le destructuring quickChat
+const { id, backTo, initialTab } = useLocalSearchParams<{
+  id: string;
+  backTo?: string;
+  initialTab?: string;
+}>();
+```
 
-**Files:**
+Et supprimer les lignes 442-462 (le `if (isQuickChat && summary)` block).
 
-- Modify: `mobile/src/components/analysis/ChatView.tsx`
+Adapter le `loading state` lignes 469-484 qui référence `isQuickChat` :
 
-- [ ] **Step 1** : Garder l'interface (props `summaryId`, `keyboardOffset`).
-- [ ] **Step 2** : Refacto INTERNE : remplacer le code FlatList + renderMessage + ChatInput + bubbles par :
-  ```tsx
-  <KeyboardAvoidingView ... keyboardVerticalOffset={keyboardOffset}>
-    <Timeline messages={hubMessages} isThinking={isLoading} />
-    <InputBar
-      inputText={inputText}
-      setInputText={setInputText}
-      onSend={handleSend}
-      isLoading={isLoading}
-      quotaText={quotaText}
-    />
-  </KeyboardAvoidingView>
-  ```
-- [ ] **Step 3** : Convertir `ChatMessage[]` (du `useChat`) en `HubMessage[]` (mapping inline ou via helper `chatMessageToHub()`).
-- [ ] **Step 4** : Supprimer le code dupliqué (TypingIndicator, renderMessage, parseAskQuestions, SUGGESTED_QUESTIONS) — ces fonctions sont déjà dans Timeline/MessageBubble du Hub.
-- [ ] **Step 5** : Conserver `useChat(summaryId)` pour le state chat.
-- [ ] **Step 6** : Smoke iOS : analyse[id]/Chat sub-tab fonctionne identiquement à avant, mais visuellement cohérent avec le Hub (mêmes bulles).
+```typescript
+if (isLoading && !isProcessing) {
+  return (
+    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      {BackHeader}
+      <AnalysisSkeleton />
+    </View>
+  );
+}
+```
 
-## Task 27 : Supprimer composants legacy
+(Suppression du conditionnel quickChat → DeepSightSpinner).
 
-**Files:**
+- [ ] **Step 3 : Vérifier les call-sites de `quickChat=true`**
 
-- Delete: `mobile/src/components/analysis/QuickChatScreen.tsx`
-- Delete: `mobile/src/components/voice/VoiceScreen.tsx`
-- Delete: `mobile/src/components/voice/VoiceButton.tsx` (sauf si conservé pour ActionBar)
-- Delete: `mobile/src/components/voice/PostCallScreen.tsx` (si présent)
-- Delete: `mobile/src/components/analysis/__tests__/QuickChatScreen.test.tsx` (si présent)
-- Delete: `mobile/src/components/voice/__tests__/VoiceScreen.test.tsx`
-- Delete: `mobile/src/components/voice/__tests__/VoiceButton.test.tsx`
-- Delete: `mobile/src/components/voice/__tests__/VoiceButton.placement.test.tsx`
-- Delete: `mobile/src/components/voice/__tests__/PostCallScreen.test.tsx` (si présent)
+```bash
+cd mobile && grep -rn "quickChat" app/ src/ __tests__/
+```
 
-- [ ] **Step 1** : `grep` cross-repo `QuickChatScreen|VoiceScreen|PostCallScreen` pour vérifier qu'aucun import résiduel ne casse.
-- [ ] **Step 2** : Modifier `mobile/app/(tabs)/analysis/[id].tsx` : supprimer le bloc `if (isQuickChat && summary) { return <QuickChatScreen .../>; }` (ligne 426-428). Si `quickChat=true` query param arrive sur analyse[id] (legacy URL), redirect vers `/hub?summaryId=X&initialMode=chat`.
-- [ ] **Step 3** : `git rm` les fichiers + tests associés.
-- [ ] **Step 4** : `npm run typecheck` → 0 erreur (les imports sont propres).
-- [ ] **Step 5** : `npm run test` → tous les tests Hub PASS, anciens tests supprimés.
+Si reste des occurrences (Library long-press, etc.) → migrer aussi vers tab Hub push.
 
-## Task 28 : Tests d'intégration PR2 + smoke E2E
+- [ ] **Step 4 : Smoke test**
 
-- [ ] **Step 1** : `npm run typecheck` → 0 erreur sur les fichiers Hub PR2 (existant 19 erreurs TS pré-existantes ne sont pas régression).
-- [ ] **Step 2** : `npm run test` → tous les tests Hub PR2 PASS (15+).
-- [ ] **Step 3** : Smoke E2E iOS :
-  - Tab Hub → Hub vide ou avec activeConv si déjà sélectionné
-  - Home → Quick Chat → Hub charge en mode chat → message envoyé/reçu
-  - Home → Quick Call → Hub charge en mode call → voice auto-start → bulle 🎙️ apparaît dans Timeline
-  - Pendant call : tape texte → injecté dans conversation, agent répond à l'oral, bulle 🎙️ ajoutée
-  - Vérifier qu'AUCUNE bulle voice_user n'apparaît (filter)
-  - Tap End dans VoiceControls → toast 3s → retour mode chat
-  - Tap CallModeFullBleed background → minimize, voice continue, retour Hub Timeline
-  - Drawer → liste convos depuis `videoApi.getHistory` → tap → activeConv change, messages chargent
-  - analyse[id] : FAB gold ABSENT (supprimé). Bouton "Discuter" dans ActionBar → tap → Hub charge avec summaryId
-  - analyse[id]/Chat sub-tab : visuellement cohérent avec Hub (mêmes bulles)
-- [ ] **Step 4** : Smoke E2E Android : idem iOS.
+```bash
+cd mobile && npx expo start
+```
 
-## Task 29 : Commit + push PR2
+Sur device : Library → tap analyse classique → vérifier que l'analyse s'ouvre normalement (pas en mode quickChat). Quick Chat depuis Home (Task C1) → doit aller dans tab Hub.
 
-- [ ] **Step 1** : `git status` dans worktree `C:\Users\33667\DeepSight-hub-voice`.
-- [ ] **Step 2** : `git add` fichiers créés/modifiés/supprimés (gitignore handles `.claude/settings.local.json` etc.).
-- [ ] **Step 3** : Commit message :
+- [ ] **Step 5 : Commit**
 
-  ```
-  feat(mobile): Hub Voice Integration + cleanup legacy
+```bash
+git add mobile/app/(tabs)/analysis/[id].tsx
+git commit -m "refactor(mobile): remove quickChat mode from analysis/[id].tsx (handled by Hub tab)"
+```
 
-  PR2 du sprint Mobile Hub Tab Unifié (spec 2026-05-04).
-  Intègre voice dans le Hub :
-  - VoiceControls + CallModeFullBleed + VoiceWaveformBars + VoiceBubble
-  - Hook useHubVoice (orchestre useVoiceChat + sync hubStore + filter voice_user)
-  - InputBar Mic toggle (Alert confirm + start | toggleMute)
-  - Auto-start voice si initialMode='call' depuis Home
-  - Bouton "Discuter / Appeler" dans ActionBar analyse[id] (long-press menu)
-  - ChatView refacto : utilise Timeline + InputBar du Hub (composition)
+## Task C3 : Tab Chat de l'analyse → CTA Hub (variante A)
 
-  Cleanup :
-  - Suppression QuickChatScreen + VoiceScreen + FAB voice analyse[id]
-  - Tests legacy supprimés (couverts par tests Hub)
+**Files** :
 
-  Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-  ```
+- Modify: `mobile/app/(tabs)/analysis/[id].tsx`
 
-- [ ] **Step 4** : `git push -u origin feat/mobile-hub-tab-voice`.
-- [ ] **Step 5** : `gh pr create --title "feat(mobile): Hub Voice + cleanup legacy" --body "..."` (corps avec lien spec + plan + checklist test plan + dépendance PR1).
+- [ ] **Step 1 : Lire le tab Chat actuel**
+
+Lignes 420-425 de `analysis/[id].tsx` :
+
+```typescript
+<View key="chat" style={styles.page}>
+  <ChatView
+    summaryId={resolvedSummaryId || id || ""}
+    keyboardOffset={kbOffset}
+  />
+</View>
+```
+
+- [ ] **Step 2 : Remplacer par placeholder CTA Hub**
+
+```typescript
+<View key="chat" style={[styles.page, styles.chatPlaceholder]}>
+  <Ionicons name="chatbubbles-outline" size={48} color={colors.textTertiary} />
+  <Text style={[styles.chatPlaceholderTitle, { color: colors.textPrimary }]}>
+    Conversations dans le Hub
+  </Text>
+  <Text style={[styles.chatPlaceholderText, { color: colors.textTertiary }]}>
+    Le chat avec cette vidéo se passe maintenant dans l'onglet Hub.
+  </Text>
+  <Pressable
+    style={[styles.chatPlaceholderBtn, { backgroundColor: palette.indigo }]}
+    onPress={() => {
+      router.push({
+        pathname: "/(tabs)/hub",
+        params: {
+          summaryId: String(resolvedSummaryId || id),
+          initialMode: "chat",
+        },
+      } as never);
+    }}
+  >
+    <Text style={styles.chatPlaceholderBtnText}>Continuer dans le Hub</Text>
+    <Ionicons name="arrow-forward" size={18} color="#fff" />
+  </Pressable>
+</View>
+```
+
+Ajouter les styles correspondants.
+
+- [ ] **Step 3 : Suppression import ChatView (Agent D le fera)**
+
+Marquer pour suppression : `import { ChatView } from "@/components/analysis/ChatView";` (ligne 30) → suppression dans Agent D.
+
+- [ ] **Step 4 : Smoke test**
+
+```bash
+cd mobile && npx expo start
+```
+
+Sur device : Library → analyse → swipe sur tab "Chat" → voir le placeholder CTA → tap → ouvre tab Hub avec ce summaryId.
+
+- [ ] **Step 5 : Commit**
+
+```bash
+git add mobile/app/(tabs)/analysis/[id].tsx
+git commit -m "feat(mobile): replace ChatView tab with 'Continue in Hub' CTA (variante A)"
+```
+
+## Task C4 : Fix `VoiceButton.bottomOffset`
+
+**Files** :
+
+- Modify: `mobile/src/components/voice/VoiceButton.tsx`
+
+- [ ] **Step 1 : Repérer le calcul actuel**
+
+Lignes 71-73 + 96-98 :
+
+```typescript
+const TAB_BAR_HEIGHT = 56;
+const ACTION_BAR_HEIGHT = 72;
+const FAB_GAP = 16;
+
+const computedBottom =
+  bottomOffset ?? TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + FAB_GAP + insets.bottom;
+```
+
+- [ ] **Step 2 : Utiliser `useTabBarFootprint`**
+
+```typescript
+import { useTabBarFootprint } from "@/hooks/useTabBarFootprint";
+
+const ACTION_BAR_HEIGHT = 72;
+const FAB_GAP = 16;
+
+// Note: useTabBarFootprint() = TAB_BAR_HEIGHT + max(insets.bottom, sp.sm) + sp.md
+//       déjà cohérent avec sprint UX 2026-05-03 (PR #274)
+const tabFootprint = useTabBarFootprint();
+const computedBottom =
+  bottomOffset ?? tabFootprint + ACTION_BAR_HEIGHT + FAB_GAP;
+```
+
+- [ ] **Step 3 : Smoke test sur les 3 call-sites**
+
+```bash
+cd mobile && grep -rn "VoiceButton" src/ app/ | grep -v __tests__
+```
+
+Vérifier que les call-sites (analysis/[id].tsx + Library + Study si présent) passent leur propre `bottomOffset` ou laissent le default.
+
+- [ ] **Step 4 : Smoke device — vérifier que le FAB n'est plus masqué**
+
+```bash
+cd mobile && npx expo start
+```
+
+Sur iPhone (devrait être le pire cas avec home indicator) :
+
+1. Library → tap analyse → vérifier FAB Voice gold visible **clairement au-dessus de la TabBar**
+2. Sur Android (devices sans nav bar gestures) : idem
+
+- [ ] **Step 5 : Commit**
+
+```bash
+git add mobile/src/components/voice/VoiceButton.tsx
+git commit -m "fix(mobile): VoiceButton bottomOffset uses useTabBarFootprint (no more FAB hidden under TabBar)"
+```
+
+## Task C5 : Hand-off to Agent D
+
+- [ ] **Step 1 : Push + status**
+
+```bash
+git push
+git log --oneline -15
+```
+
+- [ ] **Step 2 : Brief**
+
+> Migration call-sites OK. Hub fonctionnel, Quick Chat Home redirige, ChatView tab remplacé par CTA, VoiceButton fixé. Reste : suppression composants legacy + tests + smoke complet + EAS update preview. Spec §4.7 (delete list) + §10.
 
 ---
 
-# Phase finale — Merge + OTA
+# Agent D — Cleanup + tests + EAS preview
 
-## Task 30 : Review + merge PR1 + PR2
+**Goal** : Supprimer composants legacy mock, mettre à jour tests, smoke iOS+Android, EAS update preview.
 
-- [ ] **Step 1** : Review PR1 (Maxime) → merge dans `main`.
-- [ ] **Step 2** : Rebase PR2 sur `main` post-merge PR1 (si parallèle).
-- [ ] **Step 3** : Review PR2 (Maxime) → merge dans `main`.
-- [ ] **Step 4** : `eas update --branch production --message "Mobile Hub Tab v1.0"` → OTA prod.
-- [ ] **Step 5** : Notifier user via Asana (DeepSight Mobile project).
+**Estimation** : 0,5–1 jour Opus 4.7.
 
-## Task 31 : Post-merge — observabilité + cleanup
+**Dépend de** : Agent A, B, C tous mergés sur la branche.
 
-- [ ] **Step 1** : Vérifier PostHog : events `hub_opened` / `hub_voice_started` / `hub_quick_call_from_home` flow.
-- [ ] **Step 2** : Sentry : pas d'erreur nouvelle après OTA.
-- [ ] **Step 3** : Mettre à jour memoire `project_deepsight-mobile-refonte.md` : note "Hub onglet livré 2026-05-04".
-- [ ] **Step 4** : Créer note Obsidian : `01-Projects/DeepSight/Audits/2026-05-04-mobile-hub-tab-livraison.md` avec récap PR1+PR2 + métriques semaine post-OTA.
+**Bloque** : merge final sur main.
+
+## Task D1 : grep et suppression composants `analysis/Chat*`
+
+**Files** :
+
+- Delete: `mobile/src/components/analysis/ChatView.tsx`
+- Delete (conditionnel): `mobile/src/components/analysis/ChatInput.tsx`, `ChatMarkdown.tsx`
+
+- [ ] **Step 1 : grep ChatView**
+
+```bash
+cd mobile && grep -rn "ChatView\|from.*ChatInput\|from.*ChatMarkdown" src/ app/ __tests__/
+```
+
+Confirmer que ChatView n'est plus importé nulle part (Agent C a normalement déjà supprimé l'import dans `analysis/[id].tsx`).
+
+- [ ] **Step 2 : Vérifier ChatInput / ChatMarkdown réutilisation**
+
+```bash
+grep -rn "import.*ChatInput\|import.*ChatMarkdown" src/ app/ __tests__/
+```
+
+Si zéro réutilisation → delete. Sinon laisser.
+
+- [ ] **Step 3 : Delete confirmé**
+
+```bash
+rm mobile/src/components/analysis/ChatView.tsx
+# Si grep step 2 vide :
+rm mobile/src/components/analysis/ChatInput.tsx 2>/dev/null
+rm mobile/src/components/analysis/ChatMarkdown.tsx 2>/dev/null
+```
+
+- [ ] **Step 4 : Tests legacy**
+
+```bash
+ls mobile/src/components/analysis/__tests__/ 2>/dev/null
+ls mobile/__tests__/components/analysis/ 2>/dev/null
+```
+
+Supprimer les tests qui référencent ChatView/ChatInput/ChatMarkdown.
+
+- [ ] **Step 5 : Run test suite**
+
+```bash
+cd mobile && npm test
+```
+
+Expected : tous PASS, aucun import cassé.
+
+- [ ] **Step 6 : Commit**
+
+```bash
+git add -A
+git commit -m "refactor(mobile): delete legacy ChatView (replaced by Hub tab)"
+```
+
+## Task D2 : Suppression composants `hub/*` mock
+
+**Files** :
+
+- Delete: `mobile/src/components/hub/Timeline.tsx`, `InputBar.tsx`, `CallModeFullBleed.tsx`, `MessageBubble.tsx`, `VoiceBubble.tsx`, `VoiceWaveformBars.tsx`, `DeepSightLogo.tsx`, `sampleData.ts`, `types.ts`
+- Delete: tests associés dans `mobile/src/components/hub/__tests__/`
+
+- [ ] **Step 1 : grep chaque composant pour vérifier non-réutilisation**
+
+```bash
+cd mobile && for c in Timeline InputBar CallModeFullBleed MessageBubble VoiceBubble VoiceWaveformBars DeepSightLogo SAMPLE_CONVERSATIONS SAMPLE_MESSAGES; do
+  echo "=== $c ===";
+  grep -rn "$c" src/ app/ __tests__/ | grep -v "/hub/" | head -5;
+done
+```
+
+Pour chaque composant : si la liste de matches est vide (hors `hub/` qui sera deleted) → safe à delete. Sinon investiguer.
+
+- [ ] **Step 2 : Audit `index.ts` du dossier hub**
+
+```bash
+cat mobile/src/components/hub/index.ts
+```
+
+Identifier les re-exports. Mettre à jour pour ne re-exporter que les composants conservés (ConversationsDrawer, HubHeader, SummaryCollapsible, VideoPiPPlayer, SourcesShelf).
+
+- [ ] **Step 3 : Delete**
+
+```bash
+cd mobile/src/components/hub
+rm Timeline.tsx InputBar.tsx CallModeFullBleed.tsx MessageBubble.tsx VoiceBubble.tsx VoiceWaveformBars.tsx DeepSightLogo.tsx sampleData.ts types.ts 2>/dev/null
+```
+
+- [ ] **Step 4 : Tests**
+
+```bash
+ls mobile/src/components/hub/__tests__/
+# Supprimer les tests pour les composants supprimés
+rm mobile/src/components/hub/__tests__/Timeline.test.tsx 2>/dev/null
+rm mobile/src/components/hub/__tests__/InputBar.test.tsx 2>/dev/null
+# etc.
+```
+
+- [ ] **Step 5 : Update `mobile/src/components/hub/index.ts`**
+
+Garder uniquement :
+
+```typescript
+export { HubHeader } from "./HubHeader";
+export { ConversationsDrawer } from "./ConversationsDrawer";
+export { SummaryCollapsible } from "./SummaryCollapsible";
+export { VideoPiPPlayer } from "./VideoPiPPlayer";
+export { SourcesShelf } from "./SourcesShelf";
+export { HubEmptyState } from "./HubEmptyState";
+```
+
+- [ ] **Step 6 : Run test suite + typecheck**
+
+```bash
+cd mobile && npm test
+npm run typecheck
+```
+
+Expected : PASS, zéro nouvelle erreur typecheck.
+
+- [ ] **Step 7 : Commit**
+
+```bash
+git add -A
+git commit -m "refactor(mobile): delete legacy hub/* mock components (Timeline, InputBar, CallModeFullBleed, etc.)"
+```
+
+## Task D3 : Smoke E2E iOS + Android
+
+- [ ] **Step 1 : Build dev iOS**
+
+```bash
+cd mobile && npx expo run:ios --device
+```
+
+- [ ] **Step 2 : Scenarios iOS (cf. spec §10.2)**
+
+1. Open app → tap "Hub" tab → vérifier `HubEmptyState` (si vide) ou auto-load last conv
+2. Tap burger → drawer slide-in → vérifier liste conversations réelles depuis backend
+3. Sélectionner conv → drawer ferme + `ConversationContent` re-render
+4. Tap mic dans `ConversationInput` → Alert "Démarrer l'appel ?" → confirm → voice live → bulle agent 🎙️ → audio user invisible
+5. Tap End → toast 3s → retour mode chat
+6. Sur Home → coller URL → Quick Chat → vérifier navigation vers tab Hub
+7. Tab switch (Hub → Library → Hub) → conv restaurée
+8. Sur `analysis/[id]` (depuis Library) → vérifier FAB Voice gold visible (PAS masqué TabBar)
+9. Sur `analysis/[id]` → swipe tab Chat → voir CTA "Continuer dans le Hub" → tap → ouvre Hub avec ce summary
+
+- [ ] **Step 3 : Build dev Android**
+
+```bash
+cd mobile && npx expo run:android --device
+```
+
+Mêmes scenarios.
+
+- [ ] **Step 4 : EAS update preview (canary)**
+
+```bash
+cd mobile && eas update --channel preview --message "Hub tab unified — testing"
+```
+
+Récupérer l'OTA group ID. Tester sur build prod téléchargée.
+
+- [ ] **Step 5 : Smoke notes (commit en doc si bugs trouvés)**
+
+Si bugs trouvés → créer commits de fix dans cette même branche avant push final.
+
+## Task D4 : Push + PR + merge
+
+- [ ] **Step 1 : Status final**
+
+```bash
+cd mobile/.. && git log --oneline -25
+git diff main..HEAD --stat
+```
+
+- [ ] **Step 2 : Push branch**
+
+```bash
+git push origin feat/mobile-hub-tab-unified
+```
+
+- [ ] **Step 3 : Créer PR via gh**
+
+```bash
+gh pr create --title "feat(mobile): Hub tab unified + Quick Call discoverable + cleanup legacy" --body "$(cat <<'EOF'
+## Summary
+- Activer le tab Hub (déshider href:null, ajouter à TAB_META)
+- Extract ConversationContent (réutilisable embedded) depuis ConversationScreen Modal
+- Rewrite app/(tabs)/hub.tsx avec ConversationContent + ConversationsDrawer + HubEmptyState
+- Migrer Home Quick Chat URL → push tab Hub (au lieu de analysis/[id]?quickChat)
+- Tab Chat de analysis/[id] → CTA "Continuer dans le Hub"
+- Fix VoiceButton bottomOffset (utilise useTabBarFootprint, plus de FAB masqué)
+- Suppression composants legacy mock (hub/Timeline, InputBar, CallModeFullBleed, analysis/ChatView, etc.)
+
+## Test plan
+- [x] Tests Jest verts (useConversation, ConversationContent, Hub, HubEmptyState, VoiceButton)
+- [x] Smoke iOS device : tous flows §10.2 spec OK
+- [x] Smoke Android device : idem
+- [x] EAS update preview live et testé
+
+Spec : docs/superpowers/specs/2026-05-04-mobile-hub-tab-unified-design.md
+Plan : docs/superpowers/plans/2026-05-04-mobile-hub-tab-unified.md
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
+- [ ] **Step 4 : Attendre CI** (lint + typecheck + tests)
+
+- [ ] **Step 5 : Merge après review user**
+
+- [ ] **Step 6 : Post-merge — EAS update prod**
+
+```bash
+cd mobile && eas update --channel production --message "Hub tab unified shipped"
+```
 
 ---
 
-## Self-review du plan
+# Self-Review (Plan)
 
-- [x] **Placeholder scan** : aucun `TODO`, `FIXME`, ou `<XXX>` dans les Task.
-- [x] **Type consistency** : `HubMessage`, `HubConversation`, `HubSummaryContext`, `HubVoiceState` définis (Task 2). Mapping backend → mobile cohérent (Task 1, 10, 20).
-- [x] **Spec coverage** : 31 tasks couvrent les 9 objectifs spec §2 + les 15 décisions verrouillées §3.
-- [x] **Files paths absolus** : tous les paths sont relatifs au repo `DeepSight-Main/`. Worktrees absolus listés en header.
-- [x] **TDD approach** : chaque création de composant a un test Jest associé. Smoke E2E iOS+Android en fin PR2.
-- [x] **Sub-agents Opus 4.7** : explicitement marqué (mémoire user perma).
-- [x] **Memoires user respectées** :
-  - `feedback_voice-fil-asymetrique.md` : filter strict `voice_user` dans Timeline (Task 5)
-  - `feedback_opus-4-7-preference.md` : sub-agents Opus 4.7 (header + Task 15/29)
-  - `feedback_multi-claude-parallel-workflow.md` : worktrees séparés PR1/PR2 (header)
-  - `feedback_auto-push-after-commit.md` : push direct origin sur branche feature (Task 15, 29)
+**Spec coverage check :**
+
+| Spec section                              | Couvert par task                        |
+| ----------------------------------------- | --------------------------------------- |
+| §3 décision #1 (Hub onglet stable)        | B1                                      |
+| §3 décision #2 (Hub UI = ConvContent)     | A2 + A3 + B4                            |
+| §3 décision #3 (ConvScreen wrapper léger) | A3                                      |
+| §3 décision #4 (Quick Chat Home → Hub)    | C1                                      |
+| §3 décision #5 (ChatView supprimé/CTA)    | C3 + D1                                 |
+| §3 décision #6 (FAB Voice fix)            | C4                                      |
+| §3 décision #7 (composants hub/\* tri)    | D2                                      |
+| §3 décision #8 (audio user invisible)     | OK (déjà dans useConversation existant) |
+| §3 décision #9 (multi-conv switch)        | B4 (key={summaryId} remount)            |
+| §3 décision #10 (routing /(tabs)/hub)     | B4                                      |
+| §3 décision #11 (HubEmptyState)           | B3                                      |
+| §3 décision #14 (backend = aucun chgmt)   | OK (sanity check optionnel non bloqué)  |
+| §4.7 migration call-sites                 | C1 + C2 + C3                            |
+| §5 fix Quick Call invisible               | C4 (bottomOffset) + B1+B4 (Hub entry)   |
+| §10.2 smoke scenarios                     | D3                                      |
+| §11 critères acceptation                  | Couvert globalement par D3              |
+
+**Placeholder scan** : aucun `TBD`/`TODO`/`implement later` dans les Tasks A-D. Code inline complet pour :
+
+- A2 Step 3 (ConversationContent extract logique)
+- A3 Step 1 (ConversationScreen wrapper)
+- B1 Step 1+2 (TAB_META + \_layout.tsx)
+- B3 Step 3 (HubEmptyState complet)
+- B4 Step 3 (hub.tsx complet)
+- C1 Step 2 (handleQuickChat)
+- C3 Step 2 (CTA Hub placeholder)
+- C4 Step 2 (useTabBarFootprint)
+
+Tasks A2/B4 référencent "lignes 232-296 de ConversationScreen" et "spec §4.4" → implémentation par copy/adapt, acceptable car pas d'invention nouvelle.
+
+**Type consistency** :
+
+- `ConversationContentProps` défini en A2, utilisé en A3, B4, C3 — cohérent
+- `summaryId: string` partout (jamais number côté front, conversion faite par `useResolvedSummaryId` existant)
+- `params` Expo Router : `useLocalSearchParams<{ summaryId?: string; ... }>` partout
+- `historyApi.getHistory` retour : `{ items: AnalysisSummary[] }` — utilisé en B4 + drawer
+- `VoiceButton.bottomOffset?: number` reste optionnel (cohérent avec usages Library/Study)
+
+**Découpage agents** :
+
+- A → B → C → D séquentiel = 2,5–4,5 j
+- A → [B || C] → D parallèle (zéro chevauchement fichiers entre B et C) = 2–3 j
+- Recommandé : parallélisation B+C pour gagner ~1 jour. Mémoire user `feedback_multi-claude-parallel-workflow.md` valide ce pattern.
+
+**Risques majeurs anticipés** (cf. spec §8) :
+
+- `useConversation` non-`summaryId`-mutable → mitigation `key={summaryId}` (Task B4 Step 3 implémenté)
+- Voice live + tab switch perte session → V1 cleanup silencieux acceptable (décision §13 #3)
+- `ConversationsDrawer` mock → audit Task B2 + adaptation
+- Régression sprint UX 2026-05-03 → smoke obligatoire Task D3
 
 ---
 
-_Plan généré par Opus 4.7 le 2026-05-04. Spec : `docs/superpowers/specs/2026-05-04-mobile-hub-tab-unified-design.md`. Sub-agents Opus 4.7 obligatoires._
+# Execution Handoff
+
+Plan complet sauvegardé à `docs/superpowers/plans/2026-05-04-mobile-hub-tab-unified.md`. Spec à `docs/superpowers/specs/2026-05-04-mobile-hub-tab-unified-design.md`.
+
+**Recommandation** : exécution **Subagent-Driven Parallèle** :
+
+1. **Agent A** (foundation) en solo — 0,5–1 j
+2. Quand A merged : **Agent B + Agent C en parallèle** (worktrees ou sessions séparées) — 1–1,5 j
+3. Quand B+C merged : **Agent D** (cleanup + smoke) — 0,5–1 j
+
+**Total estimé** : **2–3 jours** Opus 4.7 sur worktree `C:\Users\33667\DeepSight-mobile-hub-tab`.
+
+**Toutes les invocations Agent doivent utiliser `model: claude-opus-4-7[1m]`** (mémoire user perma).
