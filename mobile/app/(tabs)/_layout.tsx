@@ -24,15 +24,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="study"
+        name="hub"
         options={{
-          title: "Étude & Chat",
+          title: "Hub",
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="study"
         options={{
-          title: "Profil",
+          title: "Étude & Chat",
         }}
       />
       <Tabs.Screen
@@ -41,19 +41,18 @@ export default function TabsLayout() {
           title: "Abonnement",
         }}
       />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profil",
+        }}
+      />
       {/* Routes cachées de la tab bar */}
       <Tabs.Screen
         name="analysis/[id]"
         options={{
           href: null,
           title: "Analyse",
-        }}
-      />
-      <Tabs.Screen
-        name="hub"
-        options={{
-          href: null,
-          title: "Hub",
         }}
       />
     </Tabs>
