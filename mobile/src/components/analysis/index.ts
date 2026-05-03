@@ -14,5 +14,4 @@ export {
 export { VideoPlayer } from "./VideoPlayer";
 export { StreamingOverlay } from "./StreamingOverlay";
 export { SummaryView } from "./SummaryView";
-export { ChatView } from "./ChatView";
 export { ActionBar } from "./ActionBar";
