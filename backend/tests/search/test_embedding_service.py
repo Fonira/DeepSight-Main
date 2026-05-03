@@ -332,3 +332,45 @@ async def test_embed_flashcards_idempotent(
         )
     ).scalars().all()
     assert len(rows) == 1
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🧪 TASK 8 — embed_quiz
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_embed_quiz(
+    async_session, summary_factory, quiz_question_factory, patch_httpx_post
+):
+    summary = await summary_factory()
+    q1 = await quiz_question_factory(
+        summary=summary,
+        position=0,
+        question="Quelle est la capitale ?",
+        options=["Paris", "Lyon", "Berlin", "Rome"],
+        correct_index=0,
+    )
+    q2 = await quiz_question_factory(
+        summary=summary,
+        position=1,
+        question="Combien font 2+2 ?",
+        options=["3", "4", "5"],
+        correct_index=1,
+    )
+
+    from search.embedding_service import embed_quiz
+    result = await embed_quiz(summary.id)
+
+    assert result is True
+    rows = (
+        await async_session.execute(
+            select(QuizEmbedding).where(QuizEmbedding.summary_id == summary.id)
+        )
+    ).scalars().all()
+    assert len(rows) == 2
+    # Le text_preview doit contenir question + bonne réponse
+    assert any("Paris" in r.text_preview for r in rows)
+    assert any("4" in r.text_preview for r in rows)
+    # Vérifier qu'on a bien les 2 quiz_question_id
+    assert {r.quiz_question_id for r in rows} == {q1.id, q2.id}

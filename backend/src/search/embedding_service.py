@@ -339,6 +339,75 @@ async def embed_flashcards(summary_id: int) -> bool:
         return inserted > 0
 
 
+async def embed_quiz(summary_id: int) -> bool:
+    """Embed toutes les quiz questions d'un Summary (question + bonne réponse).
+
+    Idempotent.
+    """
+    from db.database import async_session_maker, QuizQuestion, QuizEmbedding
+    from sqlalchemy import select, delete as sa_delete
+
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(QuizQuestion)
+            .where(QuizQuestion.summary_id == summary_id)
+            .order_by(QuizQuestion.position)
+        )
+        questions = result.scalars().all()
+
+        if not questions:
+            logger.info(f"[EMBED-QUIZ] No quiz questions for summary {summary_id}")
+            return False
+
+        # Texts : "Q: ...\n\nBonne réponse : ..."
+        texts: list[str] = []
+        for q in questions:
+            try:
+                options = json.loads(q.options_json)
+                correct_text = (
+                    options[q.correct_index]
+                    if 0 <= q.correct_index < len(options)
+                    else "?"
+                )
+            except (json.JSONDecodeError, IndexError, TypeError):
+                correct_text = "?"
+            texts.append(f"Q: {q.question}\n\nBonne réponse : {correct_text}")
+
+        # Delete existants
+        await session.execute(
+            sa_delete(QuizEmbedding).where(QuizEmbedding.summary_id == summary_id)
+        )
+
+        # Embed par batches
+        all_embeddings: list = []
+        for i in range(0, len(texts), BATCH_SIZE):
+            batch = texts[i : i + BATCH_SIZE]
+            all_embeddings.extend(await generate_embeddings_batch(batch))
+
+        user_id = questions[0].user_id
+        inserted = 0
+        for q, embedding, text in zip(questions, all_embeddings, texts):
+            if embedding is None:
+                continue
+            session.add(
+                QuizEmbedding(
+                    quiz_question_id=q.id,
+                    summary_id=summary_id,
+                    user_id=user_id,
+                    embedding_json=json.dumps(embedding),
+                    text_preview=text[:500],
+                    model_version=MODEL_VERSION_TAG,
+                )
+            )
+            inserted += 1
+
+        await session.commit()
+        logger.info(
+            f"[EMBED-QUIZ] {summary_id}: {inserted}/{len(questions)} quiz embedded"
+        )
+        return inserted > 0
+
+
 async def search_similar(
     query: str,
     limit: int = 10,
