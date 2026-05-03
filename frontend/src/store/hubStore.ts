@@ -5,6 +5,7 @@ import type {
   HubMessage,
   HubSummaryContext,
   HubVoiceState,
+  TabId,
 } from "../components/hub/types";
 import type {
   Summary,
@@ -38,6 +39,14 @@ interface HubState {
   newConvModalOpen: boolean;
   /** task_id de l'analyse en cours déclenchée depuis la modal (pour debug/cleanup). */
   analyzingTaskId: string | null;
+  /** Onglet actuellement actif dans la HubTabBar globale. */
+  activeTab: TabId;
+  /**
+   * Position de scroll mémorisée par onglet (scrollTop). Réutilisée
+   * lorsque l'utilisateur revient sur un onglet déjà visité (F15). Live
+   * pendant la session — pas persistée.
+   */
+  tabScrollPositions: Record<TabId, number>;
 
   setConversations: (convs: HubConversation[]) => void;
   setActiveConv: (id: number | null) => void;
@@ -55,6 +64,8 @@ interface HubState {
   setVoiceState: (s: HubVoiceState) => void;
   setNewConvModalOpen: (open: boolean) => void;
   setAnalyzingTaskId: (taskId: string | null) => void;
+  setActiveTab: (tab: TabId) => void;
+  setTabScrollPosition: (tab: TabId, scrollTop: number) => void;
   reset: () => void;
 }
 
@@ -75,6 +86,8 @@ const INITIAL: Pick<
   | "voiceState"
   | "newConvModalOpen"
   | "analyzingTaskId"
+  | "activeTab"
+  | "tabScrollPositions"
 > = {
   conversations: [],
   activeConvId: null,
@@ -91,6 +104,15 @@ const INITIAL: Pick<
   voiceState: "idle",
   newConvModalOpen: false,
   analyzingTaskId: null,
+  activeTab: "synthesis",
+  tabScrollPositions: {
+    synthesis: 0,
+    quiz: 0,
+    flashcards: 0,
+    reliability: 0,
+    geo: 0,
+    chat: 0,
+  },
 };
 
 export const useHubStore = create<HubState>()(
@@ -160,6 +182,14 @@ export const useHubStore = create<HubState>()(
     setAnalyzingTaskId: (taskId) =>
       set((s) => {
         s.analyzingTaskId = taskId;
+      }),
+    setActiveTab: (tab) =>
+      set((s) => {
+        s.activeTab = tab;
+      }),
+    setTabScrollPosition: (tab, scrollTop) =>
+      set((s) => {
+        s.tabScrollPositions[tab] = scrollTop;
       }),
     reset: () =>
       set((s) => {
