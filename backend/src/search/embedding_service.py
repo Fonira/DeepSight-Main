@@ -408,6 +408,96 @@ async def embed_quiz(summary_id: int) -> bool:
         return inserted > 0
 
 
+MIN_TURN_TOKENS = 30  # filtre turns trop courts (ok merci, etc.)
+
+
+async def embed_chat_turn(user_msg_id: int, agent_msg_id: int) -> bool:
+    """Embed une paire user+agent comme un seul turn searchable.
+
+    Skip si tokens combinés < MIN_TURN_TOKENS (filtre noise).
+    Idempotent par (summary_id, turn_index) — recompute le turn_index à partir
+    de la position du user_msg dans la conversation.
+    """
+    from db.database import async_session_maker, ChatMessage, ChatEmbedding
+    from sqlalchemy import select, func as sa_func, delete as sa_delete
+
+    async with async_session_maker() as session:
+        user_msg = await session.get(ChatMessage, user_msg_id)
+        agent_msg = await session.get(ChatMessage, agent_msg_id)
+        if user_msg is None or agent_msg is None:
+            logger.warning(
+                f"[EMBED-CHAT] Messages not found: user={user_msg_id} agent={agent_msg_id}"
+            )
+            return False
+
+        if user_msg.summary_id != agent_msg.summary_id:
+            logger.warning(
+                f"[EMBED-CHAT] summary_id mismatch: {user_msg.summary_id} != {agent_msg.summary_id}"
+            )
+            return False
+
+        summary_id = user_msg.summary_id
+        if summary_id is None:
+            logger.info("[EMBED-CHAT] Skipping orphan messages (no summary_id)")
+            return False
+
+        # Filtre noise — approx 1 token = 1 mot
+        combined_tokens = len(user_msg.content.split()) + len(agent_msg.content.split())
+        if combined_tokens < MIN_TURN_TOKENS:
+            logger.debug(
+                f"[EMBED-CHAT] Skip short turn ({combined_tokens} tokens) for summary {summary_id}"
+            )
+            return False
+
+        # Compute turn_index : nb de paires user+assistant dans cette conversation
+        # jusqu'à user_msg (basé sur created_at).
+        result = await session.execute(
+            select(sa_func.count())
+            .select_from(ChatMessage)
+            .where(
+                ChatMessage.summary_id == summary_id,
+                ChatMessage.role == "user",
+                ChatMessage.created_at < user_msg.created_at,
+            )
+        )
+        turn_index = result.scalar() or 0
+
+        # Embed
+        text = f"Q: {user_msg.content}\n\nA: {agent_msg.content}"
+        embedding = await generate_embedding(text)
+        if embedding is None:
+            logger.warning(f"[EMBED-CHAT] Embedding failed for turn {turn_index}")
+            return False
+
+        # Idempotence : delete pour ce (summary_id, turn_index) puis insert
+        await session.execute(
+            sa_delete(ChatEmbedding).where(
+                ChatEmbedding.summary_id == summary_id,
+                ChatEmbedding.turn_index == turn_index,
+            )
+        )
+
+        session.add(
+            ChatEmbedding(
+                summary_id=summary_id,
+                user_id=user_msg.user_id,
+                turn_index=turn_index,
+                user_message_id=user_msg_id,
+                agent_message_id=agent_msg_id,
+                embedding_json=json.dumps(embedding),
+                text_preview=text[:500],
+                token_count=combined_tokens,
+                model_version=MODEL_VERSION_TAG,
+            )
+        )
+
+        await session.commit()
+        logger.info(
+            f"[EMBED-CHAT] summary {summary_id} turn {turn_index} embedded ({combined_tokens} tokens)"
+        )
+        return True
+
+
 async def search_similar(
     query: str,
     limit: int = 10,

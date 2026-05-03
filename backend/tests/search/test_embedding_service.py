@@ -374,3 +374,68 @@ async def test_embed_quiz(
     assert any("4" in r.text_preview for r in rows)
     # Vérifier qu'on a bien les 2 quiz_question_id
     assert {r.quiz_question_id for r in rows} == {q1.id, q2.id}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🧪 TASK 9 — embed_chat_turn
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_embed_chat_turn(
+    async_session, summary_factory, chat_message_factory, patch_httpx_post
+):
+    summary = await summary_factory()
+    # Contenu volontairement >30 tokens combinés pour passer le filtre noise
+    # (`MIN_TURN_TOKENS = 30`).
+    user_msg = await chat_message_factory(
+        summary=summary,
+        role="user",
+        content=(
+            "Peux-tu m'expliquer en détail la transition énergétique européenne, "
+            "ses objectifs principaux et son calendrier de mise en oeuvre prévu pour "
+            "les vingt prochaines années ?"
+        ),
+    )
+    agent_msg = await chat_message_factory(
+        summary=summary,
+        role="assistant",
+        content=(
+            "La transition énergétique européenne désigne le passage progressif des "
+            "énergies fossiles vers les renouvelables, encadré par le Green Deal de "
+            "2019. Elle vise la neutralité carbone à l'horizon 2050."
+        ),
+    )
+
+    from search.embedding_service import embed_chat_turn
+    result = await embed_chat_turn(user_msg.id, agent_msg.id)
+
+    assert result is True
+    rows = (
+        await async_session.execute(
+            select(ChatEmbedding).where(ChatEmbedding.summary_id == summary.id)
+        )
+    ).scalars().all()
+    assert len(rows) == 1
+    assert rows[0].user_message_id == user_msg.id
+    assert rows[0].agent_message_id == agent_msg.id
+
+
+@pytest.mark.asyncio
+async def test_embed_chat_turn_skips_short_turns(
+    async_session, summary_factory, chat_message_factory, patch_httpx_post
+):
+    """Turn avec <30 tokens combinés doit être skippé."""
+    summary = await summary_factory()
+    user_msg = await chat_message_factory(summary=summary, role="user", content="ok")
+    agent_msg = await chat_message_factory(
+        summary=summary, role="assistant", content="d'accord"
+    )
+
+    from search.embedding_service import embed_chat_turn
+    result = await embed_chat_turn(user_msg.id, agent_msg.id)
+    assert result is False
+    rows = (
+        await async_session.execute(select(ChatEmbedding))
+    ).scalars().all()
+    assert len(rows) == 0
