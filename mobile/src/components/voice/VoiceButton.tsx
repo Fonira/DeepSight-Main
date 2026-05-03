@@ -22,7 +22,6 @@
 
 import React, { useCallback } from "react";
 import { Alert, Image, Pressable, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -34,6 +33,7 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useVoiceChatGate } from "../../contexts/PlanContext";
+import { useTabBarFootprint } from "../../hooks/useTabBarFootprint";
 import { palette } from "../../theme/colors";
 import { shadows } from "../../theme/shadows";
 
@@ -54,7 +54,8 @@ interface VoiceButtonProps {
   /**
    * Override du calcul `bottom` du FAB. Utilisé par les écrans qui n'ont pas
    * d'ActionBar (Library, Study chat) ou qui ont un layout custom.
-   * Default = TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + FAB_GAP + insets.bottom.
+   * Default = useTabBarFootprint() + ACTION_BAR_HEIGHT + FAB_GAP
+   * (la footprint inclut TAB_BAR_HEIGHT + safe-area bottom).
    */
   bottomOffset?: number;
   onSessionStart?: () => void;
@@ -68,7 +69,6 @@ const LOGO_IMAGE_SIZE = 34;
 const MIC_BADGE_SIZE = 22;
 const MIC_ICON_SIZE = 12;
 
-const TAB_BAR_HEIGHT = 56;
 const ACTION_BAR_HEIGHT = 72;
 const FAB_GAP = 16;
 
@@ -92,10 +92,11 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
 }) => {
   useTheme();
   const { enabled, requiresUpgrade } = useVoiceChatGate();
-  const insets = useSafeAreaInsets();
+  // useTabBarFootprint() = TAB_BAR_HEIGHT (56) + max(insets.bottom, sp.sm) + sp.md
+  // cohérent avec sprint UX 2026-05-03 (PR #274) — TabBar fullscreen edge-to-edge.
+  const tabFootprint = useTabBarFootprint();
   const computedBottom =
-    bottomOffset ??
-    TAB_BAR_HEIGHT + ACTION_BAR_HEIGHT + FAB_GAP + insets.bottom;
+    bottomOffset ?? tabFootprint + ACTION_BAR_HEIGHT + FAB_GAP;
 
   const ringScale = useSharedValue(1);
   const ringOpacity = useSharedValue(0.5);

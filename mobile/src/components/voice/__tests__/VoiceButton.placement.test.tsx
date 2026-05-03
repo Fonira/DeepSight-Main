@@ -26,6 +26,14 @@ jest.mock("../../../contexts/PlanContext", () => ({
   useVoiceChatGate: () => mockUseVoiceChatGate(),
 }));
 
+// Mock useTabBarFootprint — valeur déterministe 90 pour reproduire le calcul
+// "ancien équivalent" (TAB_BAR_HEIGHT(56) + max(insets.bottom(34), sp.sm) + sp.md(12) = 102)
+// Pour rester proche des assertions historiques on utilise 90 (valeur cohérente avec
+// un footprint moyen Android sans gros notch).
+jest.mock("../../../hooks/useTabBarFootprint", () => ({
+  useTabBarFootprint: () => 90,
+}));
+
 jest.mock("../../../theme/colors", () => ({
   palette: { gold: "#C8903A", white: "#fff", black: "#000" },
 }));
@@ -73,15 +81,21 @@ jest.mock("@expo/vector-icons", () => ({ Ionicons: "Ionicons" }));
 import { VoiceButton } from "../VoiceButton";
 
 // Helpers pour extraire le `bottom` depuis les styles
-function getBottomOffset(node: any): number | undefined {
-  // Container = parent direct du Pressable
-  const container = node.parent?.parent;
-  const styles = container?.props?.style;
-  if (!styles) return undefined;
-  const flat = Array.isArray(styles)
-    ? styles.flat().reduce((a: any, s: any) => ({ ...a, ...s }), {})
-    : styles;
-  return flat.bottom;
+const flatten = (s: any): any => {
+  if (!s) return {};
+  if (Array.isArray(s))
+    return s.flat().reduce((a, x) => ({ ...a, ...flatten(x) }), {});
+  return s;
+};
+
+// Walk-down : cherche le premier View dans l'arbre (UNSAFE_root) ayant style.bottom.
+// Robuste face aux changements de hiérarchie (mock reanimated, refacto props).
+function getBottomOffset(tree: any): number | undefined {
+  const allViews = tree.UNSAFE_root.findAllByType("View" as any);
+  const container = allViews.find(
+    (v: any) => flatten(v.props?.style).bottom !== undefined,
+  );
+  return container ? flatten(container.props?.style).bottom : undefined;
 }
 
 describe("VoiceButton placement (Spec #3)", () => {
@@ -97,7 +111,7 @@ describe("VoiceButton placement (Spec #3)", () => {
     const TAB_BAR = 56;
     const offset = TAB_BAR + mockInsetsBottom + 16;
 
-    const { getByLabelText } = render(
+    const tree = render(
       <VoiceButton
         agentType="companion"
         videoTitle="Discussion libre"
@@ -105,15 +119,14 @@ describe("VoiceButton placement (Spec #3)", () => {
       />,
     );
 
-    const button = getByLabelText(/chat vocal/i);
-    expect(getBottomOffset(button)).toBe(106);
+    expect(getBottomOffset(tree)).toBe(106);
   });
 
   it("Study chat context : bottomOffset = TAB_BAR(56) + insets.bottom(34) + 16 = 106", () => {
     const TAB_BAR = 56;
     const offset = TAB_BAR + mockInsetsBottom + 16;
 
-    const { getByLabelText } = render(
+    const tree = render(
       <VoiceButton
         summaryId="123"
         agentType="explorer"
@@ -122,27 +135,21 @@ describe("VoiceButton placement (Spec #3)", () => {
       />,
     );
 
-    const button = getByLabelText(/chat vocal/i);
-    expect(getBottomOffset(button)).toBe(106);
+    expect(getBottomOffset(tree)).toBe(106);
   });
 
-  it("Analysis screen (default) : bottomOffset n'est pas explicite et utilise TAB_BAR + ACTION_BAR + insets", () => {
-    const { getByLabelText } = render(
-      <VoiceButton summaryId="42" videoTitle="Analyse" />,
-    );
+  it("Analysis screen (default) : bottomOffset utilise useTabBarFootprint() + ACTION_BAR + FAB_GAP", () => {
+    const tree = render(<VoiceButton summaryId="42" videoTitle="Analyse" />);
 
-    const button = getByLabelText(/chat vocal/i);
-    const bottom = getBottomOffset(button);
-    // TAB_BAR_HEIGHT(56) + ACTION_BAR_HEIGHT(72) + FAB_GAP(16) + insets.bottom(34) = 178
-    expect(bottom).toBe(56 + 72 + 16 + mockInsetsBottom);
+    // useTabBarFootprint() = 90 (mock) + ACTION_BAR_HEIGHT(72) + FAB_GAP(16) = 178
+    expect(getBottomOffset(tree)).toBe(90 + 72 + 16);
   });
 
   it("bottomOffset explicite override le calcul par défaut", () => {
-    const { getByLabelText } = render(
+    const tree = render(
       <VoiceButton summaryId="42" videoTitle="Analyse" bottomOffset={42} />,
     );
 
-    const button = getByLabelText(/chat vocal/i);
-    expect(getBottomOffset(button)).toBe(42);
+    expect(getBottomOffset(tree)).toBe(42);
   });
 });
