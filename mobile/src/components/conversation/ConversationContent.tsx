@@ -22,16 +22,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Share,
-  Alert,
 } from "react-native";
-import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import type BottomSheet from "@gorhom/bottom-sheet";
 import { useConversation } from "../../hooks/useConversation";
-import { historyApi, videoApi } from "../../services/api";
-import { useAnalysisStore } from "../../stores/analysisStore";
+import { historyApi } from "../../services/api";
 import { VoiceSettings } from "../voice/VoiceSettings";
 import VoiceAddonModal from "../voice/VoiceAddonModal";
+import { HubAnalysisSheet } from "../hub/HubAnalysisSheet";
 import { ConversationHeader } from "./ConversationHeader";
 import { ConversationFeed } from "./ConversationFeed";
 import { ConversationInput } from "./ConversationInput";
@@ -72,13 +70,11 @@ export const ConversationContent: React.FC<ConversationContentProps> = ({
   onMenuPress,
   onClose,
 }) => {
-  const router = useRouter();
   const settingsSheetRef = useRef<BottomSheet | null>(null);
+  const summarySheetRef = useRef<BottomSheet | null>(null);
   const [addonVisible, setAddonVisible] = useState(false);
   const [inputText, setInputText] = useState("");
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
-  const [isUpgrading, setIsUpgrading] = useState(false);
-  const store = useAnalysisStore();
 
   const conv = useConversation({
     summaryId,
@@ -138,39 +134,15 @@ export const ConversationContent: React.FC<ConversationContentProps> = ({
     }
   }, [videoTitle, videoUrl]);
 
-  const handleViewAnalysis = useCallback(async () => {
+  const handleShowSummary = useCallback(() => {
     if (!conv.summaryId) return;
-    if (isUpgrading) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    setIsUpgrading(true);
-    try {
-      const result = await videoApi.upgradeQuickChat(
-        Number(conv.summaryId),
-        "standard",
-      );
-      if (result.status === "completed") {
-        router.replace({
-          pathname: "/(tabs)/analysis/[id]",
-          params: { id: conv.summaryId, initialTab: "0" },
-        } as never);
-        onClose?.();
-        return;
-      }
-      // Streaming overlay flow
-      store.startAnalysis(result.task_id);
-      router.replace({
-        pathname: "/(tabs)/analysis/[id]",
-        params: { id: result.task_id, initialTab: "0" },
-      } as never);
-      onClose?.();
-    } catch (err: unknown) {
-      setIsUpgrading(false);
-      const e = err as { message?: string; detail?: string };
-      const msg =
-        e?.message || e?.detail || "Erreur lors du lancement de l'analyse";
-      Alert.alert("Erreur", msg);
-    }
-  }, [conv.summaryId, isUpgrading, router, store, onClose]);
+    summarySheetRef.current?.expand();
+  }, [conv.summaryId]);
+
+  const handleCloseSummary = useCallback(() => {
+    summarySheetRef.current?.close();
+  }, []);
 
   // ─── Settings sheet ───
   const handleOpenSettings = useCallback(() => {
@@ -240,9 +212,8 @@ export const ConversationContent: React.FC<ConversationContentProps> = ({
 
         <MiniActionBar
           isFavorite={isFavorite}
-          isUpgrading={isUpgrading}
-          canViewAnalysis={Boolean(conv.summaryId)}
-          onViewAnalysis={handleViewAnalysis}
+          canShowSummary={Boolean(conv.summaryId)}
+          onShowSummary={handleShowSummary}
           onToggleFavorite={handleToggleFavorite}
           onShare={handleShare}
         />
@@ -264,6 +235,12 @@ export const ConversationContent: React.FC<ConversationContentProps> = ({
       <VoiceAddonModal
         visible={addonVisible}
         onClose={() => setAddonVisible(false)}
+      />
+
+      <HubAnalysisSheet
+        ref={summarySheetRef}
+        summaryId={conv.summaryId ?? null}
+        onClose={handleCloseSummary}
       />
     </>
   );

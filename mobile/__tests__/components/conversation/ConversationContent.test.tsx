@@ -72,6 +72,15 @@ jest.mock("../../../src/components/voice/VoiceSettings", () => {
   };
 });
 
+// Mock HubAnalysisSheet (uses useQuery + bottom-sheet)
+jest.mock("../../../src/components/hub/HubAnalysisSheet", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    HubAnalysisSheet: React.forwardRef(() => React.createElement(View, null)),
+  };
+});
+
 jest.spyOn(Alert, "alert").mockImplementation(() => {});
 
 import { ConversationContent } from "../../../src/components/conversation/ConversationContent";
