@@ -7,11 +7,17 @@
  * Features:
  * - ~40-60 SVG icons per tile (vs web's ~200 in 500px tile)
  * - 200px tile size (vs web's 500px)
- * - Back layer: 0.04-0.06 opacity, Front layer: 0.08-0.12
- * - ~10% accent icons in brand violet (#9B6B4A / #C8903A)
+ * - ~10% accent icons in brand gold (#9B6B4A / #C8903A)
  * - Themed variants: video, study, tech, AI, creative
  * - No external dependencies — pure React + inline SVG + CSS
  * - Performance: Uses CSS background-image with SVG data URIs
+ *
+ * ✨ v14 LUMINOUS UPGRADE :
+ * - Layer opacities boosted ~+55% (back 0.10-0.14, front 0.18-0.26, accents 0.22-0.32)
+ * - Edge mask radius widened (60% → 75%) for more visible coverage
+ * - Wrapper opacity 1.0 + glow filter (brightness 1.15 saturate 1.12) + mixBlendMode screen
+ * - Stroke width slightly thicker for stronger presence
+ * - Stays minimaliste : same 2-layer architecture, no new icon pools (small space)
  */
 
 import React, { useMemo } from "react";
@@ -224,7 +230,7 @@ const generateTileSVG = (
   };
   const variantOffset = variantOffsets[variant as MicroVariant] ?? 0;
 
-  // Back layer: 25 items, large, low opacity
+  // Back layer: 25 items, large — v14 boosted opacity (0.04→0.10 base)
   for (let i = 0; i < 25; i++) {
     const seed = variantOffset + 100 + i * 37;
     const path = pick(icons, seed);
@@ -232,34 +238,8 @@ const generateTileSVG = (
     const y = seededRandom(seed + 2) * tileSize;
     const rotation = pickRotation(seed + 3);
     const scale = 0.8 + seededRandom(seed + 4) * 0.4;
-    const opacity = (0.04 + seededRandom(seed + 5) * 0.02) * layerOpacityFactor;
+    const opacity = (0.1 + seededRandom(seed + 5) * 0.04) * layerOpacityFactor;
     const color = pickColor(seed + 9);
-    const strokeWidth = 1.2 + (seededRandom(seed + 10) - 0.5) * 0.6;
-
-    svgElements += renderIconSVG(
-      path,
-      x,
-      y,
-      scale,
-      rotation,
-      color,
-      opacity,
-      strokeWidth,
-      false,
-    );
-  }
-
-  // Front layer: 30 items, medium, higher opacity
-  for (let i = 0; i < 30; i++) {
-    const seed = variantOffset + 300 + i * 23;
-    const path = pick(icons, seed);
-    const x = seededRandom(seed + 1) * tileSize;
-    const y = seededRandom(seed + 2) * tileSize;
-    const rotation = pickRotation(seed + 3);
-    const scale = 0.5 + seededRandom(seed + 4) * 0.3;
-    const opacity = (0.08 + seededRandom(seed + 5) * 0.04) * layerOpacityFactor;
-    const isAccent = seededRandom(seed + 6) < 0.1; // ~10% accent
-    const color = pickColor(seed + 9, isAccent);
     const strokeWidth = 1.4 + (seededRandom(seed + 10) - 0.5) * 0.6;
 
     svgElements += renderIconSVG(
@@ -275,13 +255,45 @@ const generateTileSVG = (
     );
   }
 
-  // Micro accent dots: 15 items, tiny filled circles, accent color
+  // Front layer: 30 items, medium — v14 boosted opacity (0.08→0.18 base, accents 0.22→0.32)
+  for (let i = 0; i < 30; i++) {
+    const seed = variantOffset + 300 + i * 23;
+    const path = pick(icons, seed);
+    const x = seededRandom(seed + 1) * tileSize;
+    const y = seededRandom(seed + 2) * tileSize;
+    const rotation = pickRotation(seed + 3);
+    const scale = 0.5 + seededRandom(seed + 4) * 0.3;
+    const isAccent = seededRandom(seed + 6) < 0.12; // ~12% accent (was 10%)
+    const baseOpacity = isAccent
+      ? 0.32 + seededRandom(seed + 5) * 0.1
+      : 0.18 + seededRandom(seed + 5) * 0.08;
+    const opacity = baseOpacity * layerOpacityFactor;
+    const color = pickColor(seed + 9, isAccent);
+    const strokeWidth = isAccent
+      ? 1.7 + (seededRandom(seed + 10) - 0.5) * 0.4
+      : 1.5 + (seededRandom(seed + 10) - 0.5) * 0.6;
+
+    svgElements += renderIconSVG(
+      path,
+      x,
+      y,
+      scale,
+      rotation,
+      color,
+      opacity,
+      strokeWidth,
+      false,
+    );
+  }
+
+  // Micro accent dots: 15 items, tiny filled circles — v14 boosted opacity (0.10→0.22)
   for (let i = 0; i < 15; i++) {
     const seed = variantOffset + 600 + i * 41;
     const x = seededRandom(seed + 1) * tileSize;
     const y = seededRandom(seed + 2) * tileSize;
     const radius = 0.5 + seededRandom(seed + 3) * 1.5;
-    const opacity = (0.1 + seededRandom(seed + 4) * 0.05) * layerOpacityFactor;
+    const opacity =
+      (0.22 + seededRandom(seed + 4) * 0.1) * layerOpacityFactor;
     const color =
       seededRandom(seed + 5) > 0.5 ? accentPrimary : accentSecondary;
 
@@ -293,11 +305,11 @@ const generateTileSVG = (
       <defs>
         <mask id="tileEdgeFade">
           <rect width="${tileSize}" height="${tileSize}" fill="white" />
-          <radialGradient id="edgeFadeGrad" cx="50%" cy="50%" r="60%">
+          <radialGradient id="edgeFadeGrad" cx="50%" cy="50%" r="75%">
             <stop offset="0%" stop-color="white" />
             <stop offset="100%" stop-color="black" />
           </radialGradient>
-          <circle cx="${tileSize / 2}" cy="${tileSize / 2}" r="${tileSize * 0.55}" fill="url(#edgeFadeGrad)" />
+          <circle cx="${tileSize / 2}" cy="${tileSize / 2}" r="${tileSize * 0.7}" fill="url(#edgeFadeGrad)" />
         </mask>
       </defs>
       <g mask="url(#tileEdgeFade)">
@@ -330,13 +342,15 @@ const MicroDoodleBackground: React.FC<MicroDoodleBackgroundProps> = ({
     return svgToDataUri(tileGradientSvg);
   }, [variant]);
 
-  // Memoize the combined style
+  // Memoize the combined style — v14 adds glow filter + screen blend on dark surface
   const backgroundStyle: React.CSSProperties = useMemo(
     () => ({
       backgroundImage: `url("${backgroundDataUri}")`,
       backgroundSize: `${TILE_SIZE}px ${TILE_SIZE}px`,
       backgroundRepeat: "repeat",
       backgroundAttachment: "fixed",
+      filter: "brightness(1.15) saturate(1.12)",
+      mixBlendMode: "screen",
     }),
     [backgroundDataUri],
   );

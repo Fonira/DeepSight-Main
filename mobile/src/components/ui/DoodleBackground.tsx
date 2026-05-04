@@ -1,13 +1,22 @@
 /**
- * DEEP SIGHT DOODLES — React Native Port
+ * DEEP SIGHT DOODLES v14 — LUMINOUS THEMED BACKGROUNDS (React Native port)
  *
- * Dense, creative, multi-layered doodle backgrounds with per-page themes.
- * Port of the web DoodleBackground v13 using react-native-svg.
+ * Brighter, more visible, with new sacred/cosmic/chaos shapes.
  *
- * 53 unique SVG icon paths + 8 decorative shapes
- * 7 depth layers, 6 themed variants
- * Seeded random for deterministic placement
- * Radial gradient edge fade via SVG
+ * v14 Highlights (over v13):
+ * - +36 new SVG paths (sacred geometry, cosmic, chaos squiggles)
+ * - Higher per-layer opacity (~+50%) for stronger presence
+ * - Glow simulated via SVG <Filter feGaussianBlur> + slightly thicker strokes
+ * - Wider visibility radius (radial fade starts at 0.78 vs 0.55)
+ * - Stroke variation (dasharray on ~22% of strokes for sketched feel)
+ * - Accent layer reinforced (Layer 4 opacity 0.40-0.62 in dark, strokeWidth 2.0-2.4)
+ * - 6 themed variants kept: default, video, academic, analysis, tech, creative
+ * - Density caps respected (low/medium/high) so total stays <120 even at high
+ *
+ * RN-specific notes:
+ * - mixBlendMode is not natively available -> simulated with brighter colors + opacity
+ * - CSS mask-image not available -> radial fade via SVG <RadialGradient>
+ * - Total elements at density="low" (the default in screens) ~= 80
  */
 
 import React, { useMemo } from "react";
@@ -19,10 +28,14 @@ import Svg, {
   RadialGradient,
   Stop,
   Rect,
+  Filter,
+  FeGaussianBlur,
+  FeMerge,
+  FeMergeNode,
 } from "react-native-svg";
 import { useTheme } from "../../contexts/ThemeContext";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// Types
 
 /** Canonical internal variants */
 type DoodleVariantCanonical =
@@ -34,11 +47,11 @@ type DoodleVariantCanonical =
   | "creative";
 
 /**
- * All accepted variants — including semantic aliases per page:
- * - 'home'    → 'default'   (abstract / général)
- * - 'history' → 'video'     (vidéos, bibliothèque)
- * - 'profile' → 'creative'  (utilisateur, créativité)
- * - 'quiz'    → 'academic'  (révisions, étude)
+ * All accepted variants -- including semantic aliases per page:
+ * - 'home'    -> 'default'   (abstract / general)
+ * - 'history' -> 'video'     (videos, library)
+ * - 'profile' -> 'creative'  (user, creativity)
+ * - 'quiz'    -> 'academic'  (revision, study)
  */
 export type DoodleVariant =
   | DoodleVariantCanonical
@@ -67,7 +80,7 @@ interface DoodleBackgroundProps {
   density?: "low" | "medium" | "high";
 }
 
-// ─── SVG Icon Paths (24×24 viewBox, stroke-based) ──────────────────────────
+// SVG Icon Paths (24x24 viewBox, stroke-based)
 
 const ICONS_VIDEO = [
   "M5 3l14 9-14 9V3z",
@@ -174,6 +187,90 @@ const ICONS_ABSTRACT = [
   "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42",
 ];
 
+// SACRED GEOMETRY (vesica, fleur de vie, metatron, mandalas) -- v14 NEW
+const ICONS_SACRED = [
+  // Vesica Piscis (twin overlapping circles)
+  "M9 12a4 4 0 008 0M15 12a4 4 0 00-8 0M11 8a4 4 0 014 8M9 8a4 4 0 00-4 8",
+  // Star of David (Sceau de Salomon)
+  "M12 2l5.196 9H6.804zM12 22l-5.196-9h10.392zM3.804 6.5l16.392 11M20.196 6.5L3.804 17.5",
+  // Flower of Life (7 circles)
+  "M12 6a3 3 0 100 6 3 3 0 000-6zM7 9a3 3 0 100 6 3 3 0 000-6zM17 9a3 3 0 100 6 3 3 0 000-6zM12 12a3 3 0 100 6 3 3 0 000-6zM7 15a3 3 0 100 6 3 3 0 000-6zM17 15a3 3 0 100 6 3 3 0 000-6z",
+  // Yin Yang
+  "M12 2a10 10 0 010 20 5 5 0 010-10 5 5 0 000-10zM12 6a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 15a1.5 1.5 0 100 3 1.5 1.5 0 000-3z",
+  // Pentagram (5-point star inscribed)
+  "M12 2l3 9h9l-7 5 3 9-8-6-8 6 3-9-7-5h9zM5 11h14M9 21l3-9 3 9",
+  // Ankh
+  "M12 2a3 3 0 100 6 3 3 0 000-6zM12 8v14M5 14h14",
+  // Mandala (8-fold)
+  "M12 12m-2 0a2 2 0 104 0 2 2 0 10-4 0M12 4v6M12 14v6M4 12h6M14 12h6M6.34 6.34l4.24 4.24M13.42 13.42l4.24 4.24M17.66 6.34l-4.24 4.24M10.58 13.42l-4.24 4.24",
+  // Mer-Ka-Ba (two interlocking triangles)
+  "M12 2l9 16H3zM12 22l-9-16h18zM3 18h18M3 6h18",
+  // Triquetra (3 vesicas)
+  "M12 4a5 5 0 015 8M12 4a5 5 0 00-5 8M7 12a5 5 0 0010 0M7 12c0 3 2 5 5 5s5-2 5-5",
+  // Metatron's cube simplified
+  "M12 2v20M2 12h20M5 5l14 14M19 5L5 19M12 2a4 4 0 100 8 4 4 0 000-8zM12 14a4 4 0 100 8 4 4 0 000-8z",
+  // Eye of Horus stylized
+  "M2 12c2-4 6-6 10-6s8 2 10 6c-2 4-6 6-10 6s-8-2-10-6zM12 8a4 4 0 100 8 4 4 0 000-8zM12 11a1 1 0 100 2 1 1 0 000-2zM16 16l3 4M8 16l-3 4",
+  // Hexagram of overlapping circles
+  "M12 4a4 4 0 100 8 4 4 0 000-8zM12 12a4 4 0 100 8 4 4 0 000-8zM6 8a4 4 0 100 8 4 4 0 000-8zM18 8a4 4 0 100 8 4 4 0 000-8z",
+];
+
+// COSMIC (galaxies, planets, comets, deep space) -- v14 NEW
+const ICONS_COSMIC = [
+  // Spiral galaxy
+  "M12 12a3 3 0 014 3M16 15a7 7 0 01-12-2M4 13a11 11 0 0118 4M22 17a15 15 0 01-20-7M12 12a3 3 0 00-2-2",
+  // Saturn with rings
+  "M12 8a4 4 0 100 8 4 4 0 000-8zM2 14c0 2 4 3 10 3s10-1 10-3M2 10c0-2 4-3 10-3s10 1 10 3",
+  // Comet with tail
+  "M16 12a4 4 0 11-8 0 4 4 0 018 0zM14 14l8-12M10 16l-6 6M4 14l4 4M22 2l-3 1",
+  // Constellation Big Dipper
+  "M3 18l3-2 4-3 5-1 4-3 5 2M6 16l1-1M10 13l1 1M15 12l-1 1M19 9l-1-1M22 11l1-1",
+  // Nebula clouds
+  "M5 8c0 4 5 6 9 4M19 16c0-4-5-6-9-4M2 12c5-3 11-3 16 0M22 12c-5 3-11 3-16 0M8 6a2 2 0 100 4 2 2 0 000-4zM16 14a2 2 0 100 4 2 2 0 000-4z",
+  // Black hole accretion disk
+  "M12 12a3 3 0 100 6 3 3 0 000-6zM12 6a9 9 0 010 12M12 6a9 9 0 000 12M2 12c2-2 6-2 10 0M22 12c-2-2-6-2-10 0",
+  // Astronaut helmet
+  "M12 8a4 4 0 100-8 4 4 0 000 8zM8 22V12h8v10M10 14h4M9 22v-3M15 22v-3M10 4l4 0",
+  // Orbiting planet
+  "M12 12a5 5 0 100 6 5 5 0 000-6zM3 13a13 13 0 0118 0M21 11a13 13 0 00-18 0M2 7l3-1M19 7l3 1",
+  // UFO with beam
+  "M12 18a8 6 0 110-12 8 6 0 010 12zM5 14h14M9 12V8M15 12V8M10 22l4-4",
+  // Shooting star with sparkle
+  "M12 2l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6zM4 4l-2 2M3 8l-1 1M7 4L5 2",
+  // Sun with prominent rays
+  "M12 8a4 4 0 100 8 4 4 0 000-8zM12 1v3M12 20v3M1 12h3M20 12h3M3.5 3.5l2 2M18.5 18.5l2 2M3.5 20.5l2-2M18.5 5.5l2-2",
+  // Crescent moon with stars
+  "M12 2a10 10 0 100 20 8 8 0 010-20zM18 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM20 14l.5 1 1 .5-1 .5-.5 1-.5-1-1-.5 1-.5z",
+];
+
+// CHAOS / FREEHAND (squiggles, spirals, abstract scribbles) -- v14 NEW
+const ICONS_CHAOS = [
+  // Archimedean spiral
+  "M12 12a2 2 0 014 0 4 4 0 01-8 0 6 6 0 0112 0 8 8 0 01-16 0",
+  // Lemniscate (figure 8)
+  "M3 12c0-3 3-5 6-5s5 2 6 5 3 5 6 5 6-2 6-5-3-5-6-5-5 2-6 5-3 5-6 5-6-2-6-5z",
+  // Long squiggle
+  "M2 12c1.5-2 3-2 4.5 0S9 14 10.5 12s3-2 4.5 0 3 2 4.5 0 3-2 4.5 0",
+  // Triple wave horizontal
+  "M2 6c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 18c2-3 4-3 6 0s4 3 6 0 4-3 6 0",
+  // Scribble loop figure-8
+  "M6 12c-3 0-5-2-5-5s2-5 5-5 5 2 5 5M14 12c3 0 5-2 5-5s-2-5-5-5-5 2-5 5M6 12c3 0 5 2 5 5s-2 5-5 5-5-2-5-5M14 12c-3 0-5 2-5 5s2 5 5 5 5-2 5-5",
+  // Wavy trace
+  "M2 18c3-1 4-5 6-5s3 4 6 4 3-4 6-4 3 4 4 5",
+  // Scribble fill (3 chaotic strokes)
+  "M3 5c2 1 4 0 6 1s4 3 6 2 5 0 6 2M4 10c1 2 3 1 5 2s3 3 5 2 4 0 6 2M3 16c2 1 4 0 6 1s4 3 6 2 5 0 6 2",
+  // Dotted star burst
+  "M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2M12 8a2 2 0 100 8 2 2 0 000-8z",
+  // Double imperfect circle
+  "M5 12a7 7 0 0114 0 7 7 0 01-14 0M3 12a9 9 0 0118 0 9 9 0 01-18 0",
+  // Arabesque flourish
+  "M2 12s2-4 5-4 3 4 6 4 3-4 5-4 4 4 4 4M22 18s-2-4-5-4-3 4-6 4-3-4-5-4-4 4-4 4",
+  // Vortex
+  "M12 4a8 8 0 11-8 8 6 6 0 016-6 4 4 0 014 4 2 2 0 01-2 2",
+  // Nested triangles
+  "M12 4l8 14H4zM12 8l5 9H7zM12 12l3 5H9z",
+];
+
 const SHAPES_DECORATIVE = [
   "M12 10a2 2 0 100 4 2 2 0 000-4z",
   "M12 5v14M5 12h14",
@@ -185,7 +282,7 @@ const SHAPES_DECORATIVE = [
   "M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z",
 ];
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// Helpers
 
 const seededRandom = (seed: number): number => {
   const x = Math.sin(seed * 9999) * 10000;
@@ -201,18 +298,23 @@ const getIconPool = (variant: DoodleVariantCanonical): string[] => {
     ...ICONS_AI,
     ...ICONS_CREATIVE,
     ...ICONS_ABSTRACT,
+    ...ICONS_SACRED,
+    ...ICONS_COSMIC,
+    ...ICONS_CHAOS,
   ];
+  // Variant emphasis -- v14 mixes thematic + sacred/cosmic/chaos for richness
   const emphasis: Record<DoodleVariantCanonical, string[]> = {
-    default: [...ICONS_ABSTRACT, ...ICONS_ABSTRACT],
-    video: [...ICONS_VIDEO, ...ICONS_VIDEO, ...ICONS_VIDEO],
-    academic: [...ICONS_STUDY, ...ICONS_STUDY, ...ICONS_STUDY],
-    analysis: [...ICONS_ANALYTICS, ...ICONS_ANALYTICS, ...ICONS_ANALYTICS],
-    tech: [...ICONS_TECH, ...ICONS_TECH, ...ICONS_TECH, ...ICONS_ABSTRACT],
+    default: [...ICONS_ABSTRACT, ...ICONS_SACRED, ...ICONS_COSMIC, ...ICONS_CHAOS],
+    video: [...ICONS_VIDEO, ...ICONS_VIDEO, ...ICONS_VIDEO, ...ICONS_COSMIC],
+    academic: [...ICONS_STUDY, ...ICONS_STUDY, ...ICONS_STUDY, ...ICONS_SACRED],
+    analysis: [...ICONS_ANALYTICS, ...ICONS_ANALYTICS, ...ICONS_ANALYTICS, ...ICONS_COSMIC],
+    tech: [...ICONS_TECH, ...ICONS_TECH, ...ICONS_TECH, ...ICONS_ABSTRACT, ...ICONS_COSMIC],
     creative: [
       ...ICONS_CREATIVE,
       ...ICONS_CREATIVE,
       ...ICONS_CREATIVE,
-      ...ICONS_ABSTRACT,
+      ...ICONS_CHAOS,
+      ...ICONS_SACRED,
     ],
   };
   return [...all, ...emphasis[variant]];
@@ -222,7 +324,15 @@ const ROTATIONS = [
   0, 12, -12, 25, -25, 40, -40, 55, -55, 70, -70, 90, -90, 135, -135, 180,
 ];
 
-// ─── Color Palettes ─────────────────────────────────────────────────────────
+// Dashed stroke variants for sketched feel -- ~22% of stroked icons get one
+const DASH_PATTERNS = ["", "", "", "", "2 3", "3 2", "1 4", "4 1", "5 2 1 2"];
+const pickDash = (seed: number): string => {
+  const v = Math.sin(seed * 7919) * 10000;
+  const r = v - Math.floor(v);
+  return DASH_PATTERNS[Math.floor(r * DASH_PATTERNS.length)];
+};
+
+// Color Palettes -- v14 brighter for darker mode glow effect
 
 const DARK_COLORS = [
   "#A78BFA",
@@ -237,6 +347,8 @@ const DARK_COLORS = [
   "#E5E7EB",
   "#D1D5DB",
   "#9CA3AF",
+  "#E2E8F0",
+  "#FDE68A",
 ];
 
 const LIGHT_COLORS = [
@@ -252,9 +364,11 @@ const LIGHT_COLORS = [
   "#374151",
   "#6B7280",
   "#0EA5E9",
+  "#94A3B8",
+  "#D97706",
 ];
 
-// ─── Doodle Item Type ───────────────────────────────────────────────────────
+// Doodle Item Type
 
 interface DoodleItem {
   path: string;
@@ -266,17 +380,19 @@ interface DoodleItem {
   opacity: number;
   strokeWidth: number;
   fill: boolean;
+  isAccent: boolean;
+  dasharray: string;
 }
 
-// ─── Density multipliers ────────────────────────────────────────────────────
-
+// Density multipliers -- low = ~80 elements, medium = ~140, high = ~200
+// All screens currently use density="low" so target stays below 120 cap.
 const DENSITY_MULTIPLIER: Record<string, number> = {
   low: 0.4,
   medium: 0.7,
   high: 1.0,
 };
 
-// ─── Component ──────────────────────────────────────────────────────────────
+// Component
 
 export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
   variant = "default",
@@ -289,8 +405,9 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
   const canonicalVariant: DoodleVariantCanonical =
     VARIANT_ALIAS[variant] ?? "default";
 
-  const accentPrimary = isDark ? "#A78BFA" : "#8B5CF6";
-  const accentSecondary = isDark ? "#818CF8" : "#6366F1";
+  // v14: brighter accent colors in dark mode for glow effect, deeper in light mode
+  const accentPrimary = isDark ? "#D4A054" : "#C8903A";
+  const accentSecondary = isDark ? "#C8903A" : "#D4A054";
   const colorPalette = isDark ? DARK_COLORS : LIGHT_COLORS;
 
   const pickColor = (seed: number) =>
@@ -324,10 +441,17 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     };
     const vo = VARIANT_SEEDS[canonicalVariant];
 
+    // Variable strokeWidth helper for mixed-media feel
+    const sw = (seed: number, base: number) => {
+      const v = seededRandom(seed);
+      return +(base + (v - 0.5) * 0.6).toFixed(1); // +/-0.3 around base
+    };
+
     // Layer 1: Deep Background (large, visible)
     const l1Count = Math.round(20 * mult);
     for (let i = 0; i < l1Count; i++) {
       const s = vo + 100 + i * 37;
+      const dash = pickDash(s + 700);
       items.push({
         path: pick(iconPool, s),
         x: seededRandom(s + 1) * tileW,
@@ -336,10 +460,12 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         scale: 1.0 + seededRandom(s + 4) * 0.5,
         color: pickColor(s + 9),
         opacity: isDark
-          ? 0.08 + seededRandom(s + 5) * 0.06
-          : 0.12 + seededRandom(s + 5) * 0.08,
-        strokeWidth: 1.8,
+          ? 0.18 + seededRandom(s + 5) * 0.10
+          : 0.20 + seededRandom(s + 5) * 0.12,
+        strokeWidth: sw(s + 10, 2.0),
         fill: false,
+        isAccent: false,
+        dasharray: dash,
       });
     }
 
@@ -347,6 +473,7 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     const l2Count = Math.round(45 * mult);
     for (let i = 0; i < l2Count; i++) {
       const s = vo + 300 + i * 23;
+      const dash = pickDash(s + 700);
       items.push({
         path: pick(iconPool, s),
         x: seededRandom(s + 1) * tileW,
@@ -355,10 +482,12 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         scale: 0.6 + seededRandom(s + 4) * 0.35,
         color: pickColor(s + 9),
         opacity: isDark
-          ? 0.13 + seededRandom(s + 5) * 0.08
-          : 0.16 + seededRandom(s + 5) * 0.1,
-        strokeWidth: 1.6,
+          ? 0.26 + seededRandom(s + 5) * 0.14
+          : 0.28 + seededRandom(s + 5) * 0.16,
+        strokeWidth: sw(s + 10, 1.7),
         fill: false,
+        isAccent: false,
+        dasharray: dash,
       });
     }
 
@@ -366,6 +495,7 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     const l3Count = Math.round(35 * mult);
     for (let i = 0; i < l3Count; i++) {
       const s = vo + 600 + i * 31;
+      const dash = pickDash(s + 700);
       items.push({
         path: pick(iconPool, s),
         x: seededRandom(s + 1) * tileW,
@@ -374,14 +504,16 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         scale: 0.4 + seededRandom(s + 4) * 0.25,
         color: pickColor(s + 9),
         opacity: isDark
-          ? 0.18 + seededRandom(s + 5) * 0.1
-          : 0.2 + seededRandom(s + 5) * 0.12,
-        strokeWidth: 1.6,
+          ? 0.32 + seededRandom(s + 5) * 0.16
+          : 0.36 + seededRandom(s + 5) * 0.18,
+        strokeWidth: sw(s + 10, 1.6),
         fill: false,
+        isAccent: false,
+        dasharray: dash,
       });
     }
 
-    // Layer 4: Brand Accent (violet highlights)
+    // Layer 4: Brand Accent (gold/violet highlights, GLOW) -- v14 reinforced
     const l4Count = Math.round(15 * mult);
     for (let i = 0; i < l4Count; i++) {
       const s = vo + 900 + i * 41;
@@ -390,13 +522,15 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         x: seededRandom(s + 1) * tileW,
         y: seededRandom(s + 2) * tileH,
         rotation: rot(s + 3),
-        scale: 0.5 + seededRandom(s + 4) * 0.35,
+        scale: 0.55 + seededRandom(s + 4) * 0.40,
         color: seededRandom(s + 6) > 0.5 ? accentPrimary : accentSecondary,
         opacity: isDark
-          ? 0.22 + seededRandom(s + 5) * 0.12
-          : 0.25 + seededRandom(s + 5) * 0.14,
-        strokeWidth: 1.8,
+          ? 0.42 + seededRandom(s + 5) * 0.20
+          : 0.52 + seededRandom(s + 5) * 0.20,
+        strokeWidth: sw(s + 10, 2.2),
         fill: false,
+        isAccent: true,
+        dasharray: "",
       });
     }
 
@@ -404,6 +538,7 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     const l5Count = Math.round(30 * mult);
     for (let i = 0; i < l5Count; i++) {
       const s = vo + 1200 + i * 47;
+      const dash = pickDash(s + 700);
       items.push({
         path: pick(iconPool, s),
         x: seededRandom(s + 1) * tileW,
@@ -412,10 +547,12 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         scale: 0.25 + seededRandom(s + 4) * 0.2,
         color: pickColor(s + 9),
         opacity: isDark
-          ? 0.14 + seededRandom(s + 5) * 0.08
-          : 0.16 + seededRandom(s + 5) * 0.1,
-        strokeWidth: 1.4,
+          ? 0.21 + seededRandom(s + 5) * 0.10
+          : 0.23 + seededRandom(s + 5) * 0.12,
+        strokeWidth: sw(s + 10, 1.4),
         fill: false,
+        isAccent: false,
+        dasharray: dash,
       });
     }
 
@@ -433,13 +570,15 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         color: useAccent ? pickColor(s + 9) : pickColor(s + 11),
         opacity: useAccent
           ? isDark
-            ? 0.28 + seededRandom(s + 5) * 0.14
-            : 0.3 + seededRandom(s + 5) * 0.16
+            ? 0.40 + seededRandom(s + 5) * 0.18
+            : 0.42 + seededRandom(s + 5) * 0.20
           : isDark
-            ? 0.2 + seededRandom(s + 5) * 0.12
-            : 0.22 + seededRandom(s + 5) * 0.14,
+            ? 0.28 + seededRandom(s + 5) * 0.14
+            : 0.30 + seededRandom(s + 5) * 0.16,
         strokeWidth: 0,
         fill: true,
+        isAccent: false,
+        dasharray: "",
       });
     }
 
@@ -455,10 +594,12 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         scale: 0.45 + seededRandom(s + 4) * 0.3,
         color: pickColor(s + 9),
         opacity: isDark
-          ? 0.06 + seededRandom(s + 5) * 0.04
-          : 0.1 + seededRandom(s + 5) * 0.06,
+          ? 0.10 + seededRandom(s + 5) * 0.06
+          : 0.14 + seededRandom(s + 5) * 0.08,
         strokeWidth: 0,
         fill: true,
+        isAccent: false,
+        dasharray: "",
       });
     }
 
@@ -487,19 +628,37 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
       pointerEvents="none"
     >
       <Defs>
-        <RadialGradient id="fadeGrad" cx="50%" cy="50%" rx="55%" ry="55%">
+        {/*
+         * v14: Wider visibility radius (fade kicks in later, at 0.78 vs 0.55).
+         * Doodles stay visible across more of the screen before fading to bg.
+         */}
+        <RadialGradient id="fadeGrad" cx="50%" cy="50%" rx="78%" ry="78%">
           <Stop offset="0" stopColor={bgColor} stopOpacity="0" />
-          <Stop offset="0.7" stopColor={bgColor} stopOpacity="0" />
+          <Stop offset="0.85" stopColor={bgColor} stopOpacity="0" />
           <Stop offset="1" stopColor={bgColor} stopOpacity="1" />
         </RadialGradient>
+
+        {/*
+         * v14: Glow filter for accent layer -- simulates the web v14
+         * `filter: brightness/saturate` + `mixBlendMode: screen`. Uses
+         * feGaussianBlur halo merged behind the source path for a luminous feel.
+         */}
+        <Filter id="accentGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <FeGaussianBlur stdDeviation="1.4" result="blur" />
+          <FeMerge>
+            <FeMergeNode in="blur" />
+            <FeMergeNode in="SourceGraphic" />
+          </FeMerge>
+        </Filter>
       </Defs>
 
-      {/* Doodle elements */}
+      {/* Doodle elements -- accent layer rendered with glow filter */}
       {tileDoodles.map((d, i) => (
         <G
           key={i}
           transform={`translate(${d.x.toFixed(1)}, ${d.y.toFixed(1)}) rotate(${d.rotation}) scale(${d.scale.toFixed(2)})`}
           opacity={d.opacity}
+          filter={d.isAccent ? "url(#accentGlow)" : undefined}
         >
           <Path
             d={d.path}
@@ -510,11 +669,12 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
             strokeWidth={d.strokeWidth}
             strokeLinecap="round"
             strokeLinejoin="round"
+            strokeDasharray={d.dasharray || undefined}
           />
         </G>
       ))}
 
-      {/* Radial gradient edge fade */}
+      {/* Radial gradient edge fade -- now wider so doodles fill more screen */}
       <Rect x="0" y="0" width={width} height={height} fill="url(#fadeGrad)" />
     </Svg>
   );

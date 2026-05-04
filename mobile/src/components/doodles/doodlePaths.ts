@@ -186,6 +186,91 @@ export const ICONS_ABSTRACT = {
 } as const;
 
 // ============================================================================
+// SACRED GEOMETRY (12 paths) — v14 NEW
+// Vesica Piscis, fleur de vie, métatron, mandalas, sacred symbols
+// ============================================================================
+export const ICONS_SACRED = {
+  vesicaPiscis:
+    "M9 12a4 4 0 008 0M15 12a4 4 0 00-8 0M11 8a4 4 0 014 8M9 8a4 4 0 00-4 8",
+  starOfDavid:
+    "M12 2l5.196 9H6.804zM12 22l-5.196-9h10.392zM3.804 6.5l16.392 11M20.196 6.5L3.804 17.5",
+  flowerOfLife:
+    "M12 6a3 3 0 100 6 3 3 0 000-6zM7 9a3 3 0 100 6 3 3 0 000-6zM17 9a3 3 0 100 6 3 3 0 000-6zM12 12a3 3 0 100 6 3 3 0 000-6zM7 15a3 3 0 100 6 3 3 0 000-6zM17 15a3 3 0 100 6 3 3 0 000-6z",
+  yinYang:
+    "M12 2a10 10 0 010 20 5 5 0 010-10 5 5 0 000-10zM12 6a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 15a1.5 1.5 0 100 3 1.5 1.5 0 000-3z",
+  pentagram: "M12 2l3 9h9l-7 5 3 9-8-6-8 6 3-9-7-5h9zM5 11h14M9 21l3-9 3 9",
+  ankh: "M12 2a3 3 0 100 6 3 3 0 000-6zM12 8v14M5 14h14",
+  mandala:
+    "M12 12m-2 0a2 2 0 104 0 2 2 0 10-4 0M12 4v6M12 14v6M4 12h6M14 12h6M6.34 6.34l4.24 4.24M13.42 13.42l4.24 4.24M17.66 6.34l-4.24 4.24M10.58 13.42l-4.24 4.24",
+  merKaBa: "M12 2l9 16H3zM12 22l-9-16h18zM3 18h18M3 6h18",
+  triquetra:
+    "M12 4a5 5 0 015 8M12 4a5 5 0 00-5 8M7 12a5 5 0 0010 0M7 12c0 3 2 5 5 5s5-2 5-5",
+  metatronsCube:
+    "M12 2v20M2 12h20M5 5l14 14M19 5L5 19M12 2a4 4 0 100 8 4 4 0 000-8zM12 14a4 4 0 100 8 4 4 0 000-8z",
+  eyeOfHorus:
+    "M2 12c2-4 6-6 10-6s8 2 10 6c-2 4-6 6-10 6s-8-2-10-6zM12 8a4 4 0 100 8 4 4 0 000-8zM12 11a1 1 0 100 2 1 1 0 000-2zM16 16l3 4M8 16l-3 4",
+  hexagram:
+    "M12 4a4 4 0 100 8 4 4 0 000-8zM12 12a4 4 0 100 8 4 4 0 000-8zM6 8a4 4 0 100 8 4 4 0 000-8zM18 8a4 4 0 100 8 4 4 0 000-8z",
+} as const;
+
+// ============================================================================
+// COSMIC (12 paths) — v14 NEW
+// Galaxies, planets, comets, deep space iconography
+// ============================================================================
+export const ICONS_COSMIC = {
+  spiralGalaxy:
+    "M12 12a3 3 0 014 3M16 15a7 7 0 01-12-2M4 13a11 11 0 0118 4M22 17a15 15 0 01-20-7M12 12a3 3 0 00-2-2",
+  saturnRings:
+    "M12 8a4 4 0 100 8 4 4 0 000-8zM2 14c0 2 4 3 10 3s10-1 10-3M2 10c0-2 4-3 10-3s10 1 10 3",
+  comet: "M16 12a4 4 0 11-8 0 4 4 0 018 0zM14 14l8-12M10 16l-6 6M4 14l4 4M22 2l-3 1",
+  bigDipper:
+    "M3 18l3-2 4-3 5-1 4-3 5 2M6 16l1-1M10 13l1 1M15 12l-1 1M19 9l-1-1M22 11l1-1",
+  nebula:
+    "M5 8c0 4 5 6 9 4M19 16c0-4-5-6-9-4M2 12c5-3 11-3 16 0M22 12c-5 3-11 3-16 0M8 6a2 2 0 100 4 2 2 0 000-4zM16 14a2 2 0 100 4 2 2 0 000-4z",
+  blackHole:
+    "M12 12a3 3 0 100 6 3 3 0 000-6zM12 6a9 9 0 010 12M12 6a9 9 0 000 12M2 12c2-2 6-2 10 0M22 12c-2-2-6-2-10 0",
+  astronaut:
+    "M12 8a4 4 0 100-8 4 4 0 000 8zM8 22V12h8v10M10 14h4M9 22v-3M15 22v-3M10 4l4 0",
+  orbitingPlanet:
+    "M12 12a5 5 0 100 6 5 5 0 000-6zM3 13a13 13 0 0118 0M21 11a13 13 0 00-18 0M2 7l3-1M19 7l3 1",
+  ufo: "M12 18a8 6 0 110-12 8 6 0 010 12zM5 14h14M9 12V8M15 12V8M10 22l4-4",
+  shootingStar:
+    "M12 2l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6zM4 4l-2 2M3 8l-1 1M7 4L5 2",
+  sunRaysProminent:
+    "M12 8a4 4 0 100 8 4 4 0 000-8zM12 1v3M12 20v3M1 12h3M20 12h3M3.5 3.5l2 2M18.5 18.5l2 2M3.5 20.5l2-2M18.5 5.5l2-2",
+  crescentMoonStars:
+    "M12 2a10 10 0 100 20 8 8 0 010-20zM18 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM20 14l.5 1 1 .5-1 .5-.5 1-.5-1-1-.5 1-.5z",
+} as const;
+
+// ============================================================================
+// CHAOS / FREEHAND (12 paths) — v14 NEW
+// Squiggles, spirals, lemniscates, abstract scribbles
+// ============================================================================
+export const ICONS_CHAOS = {
+  archimedeanSpiral:
+    "M12 12a2 2 0 014 0 4 4 0 01-8 0 6 6 0 0112 0 8 8 0 01-16 0",
+  lemniscate:
+    "M3 12c0-3 3-5 6-5s5 2 6 5 3 5 6 5 6-2 6-5-3-5-6-5-5 2-6 5-3 5-6 5-6-2-6-5z",
+  longSquiggle:
+    "M2 12c1.5-2 3-2 4.5 0S9 14 10.5 12s3-2 4.5 0 3 2 4.5 0 3-2 4.5 0",
+  tripleWave:
+    "M2 6c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 18c2-3 4-3 6 0s4 3 6 0 4-3 6 0",
+  scribbleFigure8:
+    "M6 12c-3 0-5-2-5-5s2-5 5-5 5 2 5 5M14 12c3 0 5-2 5-5s-2-5-5-5-5 2-5 5M6 12c3 0 5 2 5 5s-2 5-5 5-5-2-5-5M14 12c-3 0-5 2-5 5s2 5 5 5 5-2 5-5",
+  wavyTrace: "M2 18c3-1 4-5 6-5s3 4 6 4 3-4 6-4 3 4 4 5",
+  scribbleFill:
+    "M3 5c2 1 4 0 6 1s4 3 6 2 5 0 6 2M4 10c1 2 3 1 5 2s3 3 5 2 4 0 6 2M3 16c2 1 4 0 6 1s4 3 6 2 5 0 6 2",
+  dottedStarBurst:
+    "M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2M12 8a2 2 0 100 8 2 2 0 000-8z",
+  doubleImperfectCircle:
+    "M5 12a7 7 0 0114 0 7 7 0 01-14 0M3 12a9 9 0 0118 0 9 9 0 01-18 0",
+  arabesque:
+    "M2 12s2-4 5-4 3 4 6 4 3-4 5-4 4 4 4 4M22 18s-2-4-5-4-3 4-6 4-3-4-5-4-4 4-4 4",
+  vortex: "M12 4a8 8 0 11-8 8 6 6 0 016-6 4 4 0 014 4 2 2 0 01-2 2",
+  nestedTriangles: "M12 4l8 14H4zM12 8l5 9H7zM12 12l3 5H9z",
+} as const;
+
+// ============================================================================
 // DECORATIVE SHAPES (15 paths)
 // ============================================================================
 export const SHAPES_DECORATIVE = {
@@ -231,6 +316,12 @@ export const DOODLE_MAP: Record<string, string> = {
   ...ICONS_CREATIVE,
   // ABSTRACT
   ...ICONS_ABSTRACT,
+  // SACRED — v14
+  ...ICONS_SACRED,
+  // COSMIC — v14
+  ...ICONS_COSMIC,
+  // CHAOS — v14
+  ...ICONS_CHAOS,
   // DECORATIVE SHAPES
   ...SHAPES_DECORATIVE,
 };
@@ -246,6 +337,10 @@ export const DOODLE_CATEGORIES = {
   ai: ICONS_AI,
   creative: ICONS_CREATIVE,
   abstract: ICONS_ABSTRACT,
+  // v14 NEW pools — accessible to DoodleIcon / DoodleDivider / DoodleEmptyState
+  sacred: ICONS_SACRED,
+  cosmic: ICONS_COSMIC,
+  chaos: ICONS_CHAOS,
   decorative: SHAPES_DECORATIVE,
 } as const;
 
