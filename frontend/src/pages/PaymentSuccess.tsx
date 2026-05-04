@@ -10,6 +10,7 @@ import { billingApi } from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { ArrowRight, User, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import DoodleBackground from "../components/DoodleBackground";
 
 // ─── Plan metadata ────────────────────────────────────────────
 interface PlanInfo {
@@ -290,6 +291,7 @@ export const PaymentSuccess: React.FC = () => {
             : "#0a0a0f",
       }}
     >
+      <DoodleBackground variant="creative" />
       {/* Ambient glow */}
       {status === "success" && plan && (
         <div

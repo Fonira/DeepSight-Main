@@ -11,6 +11,7 @@ import { Lock, AlertCircle, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
 import { SEO } from "../components/SEO";
+import DoodleBackground from "../components/DoodleBackground";
 import { DeepSightSpinnerMicro } from "../components/ui/DeepSightSpinner";
 import { Toast } from "../components/Toast";
 import api from "../services/api";
@@ -140,6 +141,7 @@ export const ChangePassword: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary flex items-center justify-center p-6 sm:p-8 relative">
+      <DoodleBackground variant="default" />
       <SEO
         title={t.auth.passwordFlow.change.seoTitle}
         description={t.auth.passwordFlow.change.seoDescription}

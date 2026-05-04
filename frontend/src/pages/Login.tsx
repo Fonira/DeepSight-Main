@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
 import { SEO } from "../components/SEO";
+import DoodleBackground from "../components/DoodleBackground";
 
 import { Mail, Lock, AlertCircle, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { DeepSightSpinnerMicro } from "../components/ui/DeepSightSpinner";
@@ -234,6 +235,7 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary flex">
+      <DoodleBackground variant="default" />
       <SEO
         title="Connexion"
         description="Connectez-vous à Deep Sight pour analyser vos vidéos YouTube et TikTok avec l'IA."
