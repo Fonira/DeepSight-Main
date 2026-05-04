@@ -20,22 +20,15 @@ export function useCmdFIntercept({
       const isCmdF =
         (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f" && !e.shiftKey;
       if (!isCmdF) return;
-      const scope = document.querySelector(scopeSelector);
-      if (!scope) return;
-      const active = document.activeElement;
-      const inScope = active
-        ? scope.contains(active) || scope === active
-        : false;
-      // Also intercept if the user is just on the page (no input focused)
-      const onPageNoInputFocused =
-        !active ||
-        active === document.body ||
-        (active instanceof HTMLElement &&
-          !["INPUT", "TEXTAREA"].includes(active.tagName));
-      if (inScope || onPageNoInputFocused) {
-        e.preventDefault();
-        onIntercept();
-      }
+      // Strict scope policy: only intercept Cmd/Ctrl+F when the *event target*
+      // is inside the scope element (typically `.analysis-page`). Anywhere
+      // else on the app, leave the browser default Find-in-page intact —
+      // intercepting globally surprises users on dashboards / settings / etc.
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      if (!target.closest(scopeSelector)) return;
+      e.preventDefault();
+      onIntercept();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
