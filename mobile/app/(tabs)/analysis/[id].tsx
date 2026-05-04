@@ -107,15 +107,14 @@ const IntraAnalysisSearchInput: React.FC = () => {
 };
 
 function AnalysisDetailScreenInner() {
-  // Note : `q` / `highlight` / `tab` sont consommés par le wrapper externe
-  // `AnalysisDetailScreen` qui pose le SemanticHighlighterProvider. Ils sont
-  // re-extraits ici uniquement pour piloter l'état initial de la SearchBar
-  // intra-analyse (`searchBarVisible = Boolean(q)`).
-  const { id, backTo, initialTab, q } = useLocalSearchParams<{
+  // Note : `q` / `highlight` pilotent l'état initial de la SearchBar intra-analyse
+  // (`searchBarVisible = Boolean(q)`) et l'`initialPassageId` du provider semantic.
+  const { id, backTo, initialTab, q, highlight } = useLocalSearchParams<{
     id: string;
     backTo?: string;
     initialTab?: string;
     q?: string;
+    highlight?: string;
   }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -639,7 +638,22 @@ function AnalysisDetailScreenInner() {
     );
   }
 
+  // SemanticHighlighter — summaryId effectif (peut être 0 tant qu'un task_id
+  // n'est pas résolu). Le `key` force un re-mount quand l'id devient valide,
+  // ce qui réinitialise correctement le state du provider et permet au query
+  // de se déclencher (cf. `enabled = query.length>=2 && summaryId>0`).
+  const semanticSummaryId = (() => {
+    const n = Number(effectiveId);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  })();
+
   return (
+    <SemanticHighlighterProvider
+      key={semanticSummaryId}
+      summaryId={semanticSummaryId}
+      initialQuery={q ?? ""}
+      initialPassageId={highlight ?? null}
+    >
     <View
       style={[
         styles.container,
@@ -890,37 +904,18 @@ function AnalysisDetailScreenInner() {
         </>
       )}
     </View>
+    </SemanticHighlighterProvider>
   );
 }
 
 /**
- * Wrapper exporté default — instancie le `SemanticHighlighterProvider` autour
- * de l'écran. Le summaryId effectif est passé via la prop. La query/passage_id
- * initiaux viennent des params URL `?q=...&highlight=...`.
+ * Default export — alias direct de `AnalysisDetailScreenInner`.
+ * Le `SemanticHighlighterProvider` est désormais instancié À L'INTÉRIEUR
+ * d'Inner pour avoir accès à `effectiveId` (résolu après streaming d'un
+ * task_id frais). Cf. fix bloquant #2 PR #298.
  */
 export default function AnalysisDetailScreen() {
-  const { id, q, highlight } = useLocalSearchParams<{
-    id: string;
-    q?: string;
-    highlight?: string;
-  }>();
-
-  // Note: Le summaryId réel peut différer de `id` (id peut être un task_id).
-  // On utilise une approximation : si id est numérique on l'utilise,
-  // sinon le provider est désactivé (summaryId=0). Le provider rejette les fetch
-  // quand summaryId<=0 (cf. SemanticHighlighter `enabled` guard).
-  const numericId = Number(id);
-  const summaryId = Number.isFinite(numericId) && numericId > 0 ? numericId : 0;
-
-  return (
-    <SemanticHighlighterProvider
-      summaryId={summaryId}
-      initialQuery={q ?? ""}
-      initialPassageId={highlight ?? null}
-    >
-      <AnalysisDetailScreenInner />
-    </SemanticHighlighterProvider>
-  );
+  return <AnalysisDetailScreenInner />;
 }
 
 const styles = StyleSheet.create({
