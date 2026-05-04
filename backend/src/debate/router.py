@@ -487,7 +487,14 @@ async def _run_debate_pipeline(
                 debate.status = "searching"
                 await session.commit()
 
-                opposing = await _search_opposing_video(
+                # Sprint Débat IA v2 — multi-criteria matching via debate.matching.
+                # Le legacy `_search_opposing_video` est remplacé par
+                # `search_opposing_video_legacy_compat` (drop-in qui appelle
+                # `_search_perspective_video(..., relation='opposite', ...)` sous
+                # le capot, conserve le shape de retour {url, title, channel}).
+                from debate.matching import search_opposing_video_legacy_compat
+
+                opposing = await search_opposing_video_legacy_compat(
                     topic=detected_topic,
                     thesis_a=thesis_a,
                     video_a_id=video_a_id,
@@ -495,6 +502,8 @@ async def _run_debate_pipeline(
                     video_a_channel=debate.video_a_channel,
                     lang=lang,
                     model=model,
+                    user_plan=user_plan,
+                    db=session,
                 )
                 if opposing and opposing.get("url"):
                     try:
