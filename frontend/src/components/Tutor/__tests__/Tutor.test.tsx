@@ -4,7 +4,8 @@ import { Tutor } from "../Tutor";
 
 // jsdom n'implémente pas Element.scrollTo — TutorMiniChat utilise scrollRef.current?.scrollTo
 beforeAll(() => {
-  Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo;
+  Element.prototype.scrollTo =
+    vi.fn() as unknown as typeof Element.prototype.scrollTo;
 });
 
 vi.mock("../../../services/api", () => ({

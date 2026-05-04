@@ -7,12 +7,7 @@ import { ConversationView } from "./views/ConversationView";
 import type { VoicePanelContext, PendingVoiceCall } from "./types";
 import { DeepSightSpinner } from "./shared/DeepSightSpinner";
 import MicroDoodleBackground from "./shared/MicroDoodleBackground";
-import { AmbientLightingProvider } from "./contexts/AmbientLightingContext";
-import { AmbientLightLayer } from "./components/AmbientLightLayer";
-import { SunflowerLayer } from "./components/SunflowerLayer";
 import DoodleBackground from "./components/DoodleBackground";
-
-const AMBIENT_PREF_KEY = "ambient_lighting_enabled";
 
 type ViewName = "loading" | "login" | "main";
 
@@ -81,32 +76,6 @@ export const App: React.FC = () => {
     message: string;
     type: "error" | "success";
   } | null>(null);
-
-  // Ambient lighting v3 — pref `ambient_lighting_enabled` (default true).
-  // Synced with backend pref via /api/auth/preferences (PR1 backend), but
-  // for the extension we read the locally cached value to avoid blocking
-  // the first paint on a network round-trip.
-  const [ambientEnabled, setAmbientEnabled] = useState<boolean>(true);
-  useEffect(() => {
-    const localStore = (
-      Browser as unknown as {
-        storage?: { local?: { get?: (k: string) => Promise<unknown> } };
-      }
-    ).storage?.local;
-    if (!localStore?.get) return;
-    localStore
-      .get(AMBIENT_PREF_KEY)
-      .then((data) => {
-        const raw = (data as Record<string, unknown> | undefined)?.[
-          AMBIENT_PREF_KEY
-        ];
-        // Default ON when undefined; OFF only on explicit `false`.
-        if (raw === false) setAmbientEnabled(false);
-      })
-      .catch(() => {
-        /* fall back to default ON */
-      });
-  }, []);
 
   // Initial read at mount + cleanup of the consumed key (B4 centralisation).
   useEffect(() => {
@@ -315,18 +284,14 @@ export const App: React.FC = () => {
   // Voice flow short-circuit: when SW set voicePanelContext, render VoiceView only.
   if (!voiceChecked) {
     return (
-      <AmbientLightingProvider enabled={ambientEnabled}>
-        <div className="ds-app-root">
-          <DoodleBackground />
-          <AmbientLightLayer />
-          <SunflowerLayer />
-          <div className="app-container">
-            <div className="loading-view">
-              <DeepSightSpinner size="md" speed="normal" />
-            </div>
+      <div className="ds-app-root">
+        <DoodleBackground />
+        <div className="app-container">
+          <div className="loading-view">
+            <DeepSightSpinner size="md" speed="normal" />
           </div>
         </div>
-      </AmbientLightingProvider>
+      </div>
     );
   }
   if (voiceContext || pendingVoiceCall) {
@@ -341,90 +306,80 @@ export const App: React.FC = () => {
     const ctxVideoId =
       pendingVoiceCall?.videoId ?? voiceContext?.videoId ?? null;
     const ctxVideoTitle =
-      pendingVoiceCall?.videoTitle ??
-      voiceContext?.videoTitle ??
-      "Live";
+      pendingVoiceCall?.videoTitle ?? voiceContext?.videoTitle ?? "Live";
     const ctxSummaryId =
       typeof voiceContext?.summaryId === "number"
         ? voiceContext.summaryId
         : null;
     const ctxPlatform = voiceContext?.platform ?? null;
     return (
-      <AmbientLightingProvider enabled={ambientEnabled}>
-        <div className="ds-app-root">
-          <DoodleBackground />
-          <AmbientLightLayer />
-          <SunflowerLayer />
-          <ConversationView
-            summaryId={ctxSummaryId}
-            videoTitle={ctxVideoTitle}
-            videoId={ctxVideoId}
-            platform={ctxPlatform}
-            initialMode="call"
-            userPlan={planInfo?.plan_id || user?.plan || "free"}
-            onClose={handleReturnFromVoice}
-            onSessionExpired={handleLogout}
-          />
-        </div>
-      </AmbientLightingProvider>
+      <div className="ds-app-root">
+        <DoodleBackground />
+        <ConversationView
+          summaryId={ctxSummaryId}
+          videoTitle={ctxVideoTitle}
+          videoId={ctxVideoId}
+          platform={ctxPlatform}
+          initialMode="call"
+          userPlan={planInfo?.plan_id || user?.plan || "free"}
+          onClose={handleReturnFromVoice}
+          onSessionExpired={handleLogout}
+        />
+      </div>
     );
   }
 
   return (
-    <AmbientLightingProvider enabled={ambientEnabled}>
-      <div className="ds-app-root">
-        <DoodleBackground />
-        <AmbientLightLayer />
-        <SunflowerLayer />
-        <div
-          className="app-container noise-overlay ambient-glow"
-          style={{ position: "relative" }}
-        >
-          <MicroDoodleBackground variant={getCurrentVariant()} />
-          <div style={{ position: "relative", zIndex: 1 }}>
-            {/* Toast notification */}
-            {toast && (
-              <div
-                className={`ds-toast ds-toast-${toast.type}`}
-                onClick={() => setToast(null)}
-              >
-                {toast.message}
-              </div>
-            )}
+    <div className="ds-app-root">
+      <DoodleBackground />
+      <div
+        className="app-container noise-overlay"
+        style={{ position: "relative" }}
+      >
+        <MicroDoodleBackground variant={getCurrentVariant()} />
+        <div style={{ position: "relative", zIndex: 1 }}>
+          {/* Toast notification */}
+          {toast && (
+            <div
+              className={`ds-toast ds-toast-${toast.type}`}
+              onClick={() => setToast(null)}
+            >
+              {toast.message}
+            </div>
+          )}
 
-            {view === "loading" && (
-              <div className="loading-view">
-                <DeepSightSpinner
-                  size="md"
-                  speed="normal"
-                  showLabel
-                  label="DeepSight"
-                />
-              </div>
-            )}
-
-            {view === "login" && (
-              <LoginView
-                onLogin={handleLogin}
-                onGoogleLogin={handleGoogleLogin}
-                onGuestMode={handleGuestMode}
-                error={error}
+          {view === "loading" && (
+            <div className="loading-view">
+              <DeepSightSpinner
+                size="md"
+                speed="normal"
+                showLabel
+                label="DeepSight"
               />
-            )}
+            </div>
+          )}
 
-            {view === "main" && (
-              <MainView
-                user={user}
-                planInfo={planInfo}
-                isGuest={isGuest}
-                onLogout={handleLogout}
-                onLoginRedirect={handleLoginRedirect}
-                onError={showError}
-              />
-            )}
-          </div>
+          {view === "login" && (
+            <LoginView
+              onLogin={handleLogin}
+              onGoogleLogin={handleGoogleLogin}
+              onGuestMode={handleGuestMode}
+              error={error}
+            />
+          )}
+
+          {view === "main" && (
+            <MainView
+              user={user}
+              planInfo={planInfo}
+              isGuest={isGuest}
+              onLogout={handleLogout}
+              onLoginRedirect={handleLoginRedirect}
+              onError={showError}
+            />
+          )}
         </div>
       </div>
-    </AmbientLightingProvider>
+    </div>
   );
 };

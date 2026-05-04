@@ -72,7 +72,7 @@ export interface User {
   analysis_count?: number;
   analysis_limit?: number;
   // Bag JSON merge non-destructivement par PUT /api/auth/preferences
-  // (ambient_lighting_enabled, has_completed_onboarding, persona, etc.)
+  // (has_completed_onboarding, persona, etc.)
   preferences?: Record<string, unknown>;
 }
 
@@ -866,7 +866,7 @@ export const authApi = {
     default_model?: string;
     // Bag JSON arbitraire mergé non-destructivement côté backend
     // (auth/service.py:update_user_preferences). Utilisé pour
-    // has_completed_onboarding, persona, ambient_lighting_enabled.
+    // has_completed_onboarding, persona, etc.
     extra_preferences?: Record<string, unknown>;
   }): Promise<{ success: boolean; message: string }> {
     return request("/api/auth/preferences", {

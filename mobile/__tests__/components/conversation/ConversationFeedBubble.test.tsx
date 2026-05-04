@@ -137,10 +137,7 @@ describe("ConversationFeedBubble", () => {
     const onCopy = jest.fn();
     (Clipboard.setStringAsync as jest.Mock).mockResolvedValueOnce(true);
     const { getByLabelText } = render(
-      <ConversationFeedBubble
-        message={assistantTextMessage}
-        onCopy={onCopy}
-      />,
+      <ConversationFeedBubble message={assistantTextMessage} onCopy={onCopy} />,
     );
     const bubble = getByLabelText(/Assistant.*bold/);
     await act(async () => {

@@ -1,12 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, Phone, Send, Plus } from "lucide-react";
+import { Mic, Send, Plus } from "lucide-react";
 import type { TabId } from "./types";
 
 interface Props {
   onSend: (text: string) => void;
-  onCallToggle: () => void;
-  /** Called when the user releases the mic button after holding > 0.4s. */
+  /**
+   * Called when the user releases the mic button after holding > 0.4s.
+   * Le CTA Démarrer un appel vocal (hero) est désormais géré par HubPage
+   * via QuickVoiceCallCTA — l'ancienne icône Phone à droite a été retirée
+   * pour éviter deux CTA redondants.
+   */
   onPttHoldComplete: (durationSecs: number) => void;
   disabled?: boolean;
   /** Onglet actif — l'envoi sur autre que "chat" doit aussi switcher (F4). */
@@ -17,7 +21,6 @@ interface Props {
 
 export const InputBar: React.FC<Props> = ({
   onSend,
-  onCallToggle,
   onPttHoldComplete,
   disabled,
   activeTab,
@@ -134,33 +137,23 @@ export const InputBar: React.FC<Props> = ({
           <Send className="w-4 h-4 -ml-px" />
         </button>
       ) : (
-        <>
-          <button
-            type="button"
-            aria-label="Full Call mode"
-            onClick={onCallToggle}
-            className="w-9 h-9 rounded-full text-white/55 hover:text-violet-400 transition-colors grid place-items-center"
-          >
-            <Phone className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="Maintenir pour enregistrer"
-            onMouseDown={startHold}
-            onMouseUp={endHold}
-            onMouseLeave={() => holding && endHold()}
-            onTouchStart={startHold}
-            onTouchEnd={endHold}
-            className={
-              "w-9 h-9 grid place-items-center rounded-full transition-all " +
-              (holding
-                ? "bg-red-500 text-white scale-110 shadow-[0_8px_24px_rgba(239,68,68,.4)]"
-                : "bg-indigo-500/15 text-indigo-400")
-            }
-          >
-            <Mic className="w-4 h-4" />
-          </button>
-        </>
+        <button
+          type="button"
+          aria-label="Maintenir pour enregistrer"
+          onMouseDown={startHold}
+          onMouseUp={endHold}
+          onMouseLeave={() => holding && endHold()}
+          onTouchStart={startHold}
+          onTouchEnd={endHold}
+          className={
+            "w-9 h-9 grid place-items-center rounded-full transition-all " +
+            (holding
+              ? "bg-red-500 text-white scale-110 shadow-[0_8px_24px_rgba(239,68,68,.4)]"
+              : "bg-indigo-500/15 text-indigo-400")
+          }
+        >
+          <Mic className="w-4 h-4" />
+        </button>
       )}
 
       <AnimatePresence>

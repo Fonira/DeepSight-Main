@@ -47,11 +47,11 @@ export const darkColors = {
   glassBorder: "rgba(200, 144, 58, 0.10)",
   glassHover: "rgba(200, 144, 58, 0.08)",
 
-  // Text - ambient lighting v3 slate palette
+  // Text — slate palette (white-cast on dark surfaces)
   textPrimary: "#ffffff",
-  textSecondary: "#f1f5f9", // slate-100 (was #D4CCC4)
-  textTertiary: "#cbd5e1", // slate-300 (was #B5A89B)
-  textMuted: "#e2e8f0", // slate-200 (was #7A7068)
+  textSecondary: "#f1f5f9", // slate-100
+  textTertiary: "#cbd5e1", // slate-300
+  textMuted: "#e2e8f0", // slate-200
   textDisabled: "rgba(255, 255, 255, 0.45)",
   textMeta: "#cbd5e1", // slate-300
 
@@ -179,9 +179,8 @@ export interface ThemeColors {
 }
 
 /**
- * Ambient lighting v3 — semantic text tokens (white-cast on dark surfaces)
+ * Semantic text tokens (white-cast on dark surfaces)
  * Used by components reading `colors.text.*` directly (independent of Theme switching).
- * Designed for max readability over animated ambient lighting backgrounds.
  */
 export const colors = {
   text: {

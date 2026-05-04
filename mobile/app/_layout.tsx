@@ -20,10 +20,6 @@ import { ElevenLabsProvider } from "@elevenlabs/react-native";
 import { createQueryClient } from "../src/utils/queryClient";
 import { darkColors } from "../src/theme/colors";
 import { useShareIntent } from "../src/hooks/useShareIntent";
-import { AmbientLightLayer } from "../src/components/backgrounds/AmbientLightLayer";
-import { SunflowerLayer } from "../src/components/backgrounds/SunflowerLayer";
-import { AmbientLightingProvider } from "../src/contexts/AmbientLightingContext";
-import { useAmbientLightingEnabled } from "../src/hooks/useAmbientLightingEnabled";
 import { DismissKeyboardView } from "../src/components/ui/DismissKeyboardView";
 
 // Prevent splash screen from auto-hiding
@@ -181,42 +177,30 @@ function RootNavigator() {
     }
   }, [isAuthenticated, isLoading, segments]);
 
-  // Read user preference from local storage (default: enabled). Re-reads when
-  // the app comes back to the foreground so toggling in Profile takes effect.
-  const ambientEnabled = useAmbientLightingEnabled();
-
   return (
-    <AmbientLightingProvider enabled={ambientEnabled}>
-      <View style={rootStyles.root}>
-        <StatusBar style="light" backgroundColor={darkColors.bgPrimary} />
-        {/*
-          DismissKeyboardView wraps the navigator so any tap that reaches the
-          background (i.e. not absorbed by an interactive child) dismisses the
-          keyboard. ScrollView/FlatList children should set
-          `keyboardShouldPersistTaps="handled"` to keep their inner buttons
-          tappable while the keyboard is open.
-        */}
-        <DismissKeyboardView>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: "transparent" },
-              animation: "fade",
-            }}
-          >
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="splash" />
-          </Stack>
-        </DismissKeyboardView>
-        {/*
-          v3 ambient layers rendered AFTER the Stack → they float ABOVE every
-          page background. pointerEvents="none" lets gestures pass through.
-        */}
-        <AmbientLightLayer />
-        <SunflowerLayer />
-      </View>
-    </AmbientLightingProvider>
+    <View style={rootStyles.root}>
+      <StatusBar style="light" backgroundColor={darkColors.bgPrimary} />
+      {/*
+        DismissKeyboardView wraps the navigator so any tap that reaches the
+        background (i.e. not absorbed by an interactive child) dismisses the
+        keyboard. ScrollView/FlatList children should set
+        `keyboardShouldPersistTaps="handled"` to keep their inner buttons
+        tappable while the keyboard is open.
+      */}
+      <DismissKeyboardView>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: "transparent" },
+            animation: "fade",
+          }}
+        >
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="splash" />
+        </Stack>
+      </DismissKeyboardView>
+    </View>
   );
 }
 

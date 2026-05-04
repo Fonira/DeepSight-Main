@@ -130,7 +130,10 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
   };
 
   return (
-    <div className="chat-view conversation-view" data-testid="conversation-view">
+    <div
+      className="chat-view conversation-view"
+      data-testid="conversation-view"
+    >
       {/* Header */}
       <div className="chat-header">
         <button
