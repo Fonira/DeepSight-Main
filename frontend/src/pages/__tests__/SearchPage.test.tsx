@@ -4,15 +4,22 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SearchPage from "../SearchPage";
-import { searchApi } from "../../services/api";
+import { searchApi, ApiError } from "../../services/api";
 
-vi.mock("../../services/api", () => ({
-  searchApi: {
-    searchGlobal: vi.fn(),
-    getRecentQueries: vi.fn().mockResolvedValue({ queries: [] }),
-    clearRecentQueries: vi.fn(),
-  },
-}));
+vi.mock("../../services/api", async () => {
+  const actual =
+    await vi.importActual<typeof import("../../services/api")>(
+      "../../services/api",
+    );
+  return {
+    ...actual,
+    searchApi: {
+      searchGlobal: vi.fn(),
+      getRecentQueries: vi.fn().mockResolvedValue({ queries: [] }),
+      clearRecentQueries: vi.fn(),
+    },
+  };
+});
 vi.mock("../../components/layout/Sidebar", () => ({ Sidebar: () => null }));
 vi.mock("../../components/DoodleBackground", () => ({ default: () => null }));
 vi.mock("../../components/SEO", () => ({ SEO: () => null }));
