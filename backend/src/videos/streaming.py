@@ -13,6 +13,7 @@
 
 import json
 import asyncio
+import os
 import uuid
 import httpx
 from datetime import datetime
@@ -640,6 +641,7 @@ async def analysis_stream_generator(
                         video_channel=metadata.get("channel", ""),
                         transcript=transcript,
                         lang=lang,
+                        video_id=video_id,
                     )
 
                 if brave_text and brave_sources:
@@ -763,10 +765,15 @@ async def analysis_stream_generator(
                 print(f"⚠️ [WEB-ENRICH] Error (non-blocking): {e}", flush=True)
 
         # 🦁 Brave fact-check standard (si pas de deep research)
+        # Cost optimisation : BRAVE_FACTCHECK_KEYWORDS_DISABLED=true permet de
+        # couper le déclenchement par keywords (sur free users notamment) tout
+        # en gardant Brave actif pour les analyses Pro+ avec web_enrichment.
+        # Default False → zéro changement de comportement.
         brave_context = None
         if not deep_research and BRAVE_SEARCH_AVAILABLE:
             brave_should_run = should_enrich
-            if not brave_should_run:
+            keywords_disabled = os.getenv("BRAVE_FACTCHECK_KEYWORDS_DISABLED", "false").lower() == "true"
+            if not brave_should_run and not keywords_disabled:
                 fast_kw = [
                     "ai",
                     "gpt",
@@ -803,6 +810,7 @@ async def analysis_stream_generator(
                         video_channel=metadata.get("channel", ""),
                         transcript=transcript,
                         lang=lang,
+                        video_id=video_id,
                     )
 
                     if brave_text:
