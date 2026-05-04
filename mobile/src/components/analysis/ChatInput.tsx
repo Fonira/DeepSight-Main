@@ -5,6 +5,7 @@ import type { ThemeColors } from "../../theme/colors";
 import { sp, borderRadius } from "../../theme/spacing";
 import { fontFamily, fontSize } from "../../theme/typography";
 import { palette } from "../../theme/colors";
+import { PasteLinkButton } from "../shared/PasteLinkButton";
 
 interface ChatInputProps {
   inputText: string;
@@ -33,6 +34,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           { backgroundColor: colors.bgCard, borderColor: colors.border },
         ]}
       >
+        <PasteLinkButton onPaste={setInputText} />
         <TextInput
           value={inputText}
           onChangeText={setInputText}

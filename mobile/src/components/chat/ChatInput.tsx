@@ -23,6 +23,7 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { Spacing, Typography, BorderRadius } from "../../constants/theme";
+import { PasteLinkButton } from "../shared/PasteLinkButton";
 
 interface ChatInputProps {
   value: string;
@@ -79,6 +80,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         { backgroundColor: colors.bgPrimary, borderTopColor: colors.border },
       ]}
     >
+      <PasteLinkButton onPaste={onChangeText} />
+
       {showWebSearch && (
         <Pressable
           style={[

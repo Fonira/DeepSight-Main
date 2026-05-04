@@ -5,6 +5,8 @@ Extraction de (platform, video_id) depuis une URL YouTube ou TikTok.
 import re
 from urllib.parse import urlparse, parse_qs
 
+from voice.url_validator import normalize_url
+
 
 def extract_video_id(url: str) -> tuple[str, str]:
     """Extrait (platform, video_id) depuis une URL vidéo.
@@ -13,10 +15,13 @@ def extract_video_id(url: str) -> tuple[str, str]:
       - YouTube : youtube.com/watch?v=, youtu.be/, /embed/, /v/, /shorts/
       - TikTok  : tiktok.com/@user/video/ID, tiktok.com/t/CODE, vm.tiktok.com/CODE
 
+    Tolère également les schemes natifs mobile (vnd.youtube://, snssdk1233://,
+    tiktok://) et les Android intent:// links via :func:`normalize_url`.
+
     Raises:
         ValueError: Si l'URL n'est pas supportée.
     """
-    url = url.strip()
+    url = normalize_url(url.strip())
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
 

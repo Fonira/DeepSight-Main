@@ -33,6 +33,7 @@ import { useTTSContext } from "../contexts/TTSContext";
 import { EnrichedMarkdown, cleanConceptMarkers } from "./EnrichedMarkdown";
 import { ThumbnailImage } from "./ThumbnailImage";
 import { CopyMessageButton } from "./CopyMessageButton";
+import { PasteLinkButton } from "./PasteLinkButton";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 TYPES
@@ -630,6 +631,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
           {/* Input row */}
           <form onSubmit={handleSubmit} className="flex items-end gap-2">
+            <PasteLinkButton
+              onPaste={(text) => setInput(text)}
+              language={language}
+            />
             <textarea
               ref={inputRef}
               value={input}
