@@ -5,7 +5,7 @@
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -28,6 +28,19 @@ class DebateChatRequest(BaseModel):
 
     debate_id: int = Field(..., description="ID du débat")
     message: str = Field(..., min_length=1, max_length=2000, description="Message utilisateur")
+
+
+class AddPerspectiveRequest(BaseModel):
+    """Requête pour ajouter une perspective complémentaire ou nuance à un débat existant.
+
+    Sprint Débat IA v2 — POST /api/debate/{debate_id}/add-perspective.
+    """
+
+    relation_type: Literal["complement", "nuance"] = Field(
+        ...,
+        description="Type de relation : 'complement' (autre angle, enrichissement) "
+        "ou 'nuance' (ni pour ni contre, conditionnel)",
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

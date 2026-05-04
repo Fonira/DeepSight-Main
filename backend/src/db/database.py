@@ -1030,12 +1030,25 @@ class DebateAnalysis(Base):
     credits_used = Column(Integer, default=0)
     lang = Column(String(5), default="fr")
 
+    # 🎯 Débat IA v2 — colonnes ajoutées par migration 017
+    miro_board_url = Column(String(500))  # NULL si pas généré
+    miro_board_id = Column(String(100))  # ID Miro API
+    relation_type_dominant = Column(
+        String(20), default="opposite", nullable=False, server_default="opposite"
+    )  # opposite | complement | nuance — calculé après chaque add-perspective
+
     # Timestamps
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     # Relations
     chat_messages = relationship("DebateChatMessage", back_populates="debate", cascade="all, delete-orphan")
+    perspectives = relationship(
+        "DebatePerspective",
+        back_populates="debate",
+        cascade="all, delete-orphan",
+        order_by="DebatePerspective.position",
+    )
 
     __table_args__ = (
         Index("idx_debate_analyses_user", "user_id"),
@@ -1059,6 +1072,59 @@ class DebateChatMessage(Base):
     debate = relationship("DebateAnalysis", back_populates="chat_messages")
 
     __table_args__ = (Index("idx_debate_chat_messages_debate", "debate_id"),)
+
+
+class DebatePerspective(Base):
+    """Perspective ajoutée à un débat v2 (B initiale + ajouts complément/nuance).
+
+    Migration 017 — Débat IA v2 mode adaptatif 1-N (max 3 perspectives par débat).
+    Position 0 = perspective B initiale (héritée de DebateAnalysis pré-v2 par backfill).
+    Position 1-2 = perspectives ajoutées par l'utilisateur (complément ou nuance).
+    """
+
+    __tablename__ = "debate_perspectives"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    debate_id = Column(
+        Integer,
+        ForeignKey("debate_analyses.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    position = Column(Integer, nullable=False, default=0)
+    # 0 = perspective B initiale (auto-search ou manuelle), 1-2 = ajouts user
+
+    video_id = Column(String(100), nullable=False)
+    platform = Column(String(20), default="youtube", nullable=False)
+    video_title = Column(String(500))
+    video_channel = Column(String(255))
+    video_thumbnail = Column(Text)
+
+    thesis = Column(Text)
+    arguments = Column(Text)  # JSON list (même schema que arguments_a/b)
+
+    relation_type = Column(
+        String(20), nullable=False, default="opposite", server_default="opposite"
+    )  # opposite | complement | nuance
+    # Stocké comme String pour souplesse (v2.1 pourra ajouter 'historical', 'critical_reading'...)
+
+    channel_quality_score = Column(Float, default=0.5, server_default="0.5")
+    audience_level = Column(
+        String(20), default="unknown", server_default="unknown"
+    )  # vulgarisation | expert | unknown
+
+    fact_check_results = Column(Text)  # JSON list
+
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    # Relations
+    debate = relationship("DebateAnalysis", back_populates="perspectives")
+
+    __table_args__ = (
+        Index("idx_debate_perspectives_debate", "debate_id"),
+        Index("idx_debate_perspectives_debate_position", "debate_id", "position"),
+        UniqueConstraint("debate_id", "position", name="uq_debate_perspective_position"),
+    )
 
 
 class SharedAnalysis(Base):
