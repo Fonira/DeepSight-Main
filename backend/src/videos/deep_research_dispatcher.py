@@ -22,9 +22,7 @@ from videos.brave_search import get_brave_deep_research_context
 logger = logging.getLogger(__name__)
 
 
-def _format_agent_result_as_context(
-    content: str, sources: List[Dict[str, str]]
-) -> str:
+def _format_agent_result_as_context(content: str, sources: List[Dict[str, str]]) -> str:
     """Formate la réponse Agent dans le même style que Brave Deep Research.
 
     Le prompt downstream attend un préfixe explicite et les sources listées,
@@ -32,8 +30,7 @@ def _format_agent_result_as_context(
     """
     return (
         "═══ 🤖🔬 MISTRAL AGENT DEEP RESEARCH ═══\n"
-        f"{len(sources)} sources collectées via recherche web Mistral.\n\n"
-        + content
+        f"{len(sources)} sources collectées via recherche web Mistral.\n\n" + content
     )
 
 

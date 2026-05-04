@@ -91,7 +91,7 @@ class _DeepSightSettings(BaseSettings):
     # Pricing v0 LEGACY — conservees pour grandfathering / mapping webhooks
     STRIPE_PRICE_PLUS_TEST: str = ""
     STRIPE_PRICE_PLUS_LIVE: str = ""
-    STRIPE_PRICE_PRO_TEST: str = ""    # ⚠ ancien Pro 9.99 € (legacy), pas le nouveau Pro 8.99 €
+    STRIPE_PRICE_PRO_TEST: str = ""  # ⚠ ancien Pro 9.99 € (legacy), pas le nouveau Pro 8.99 €
     STRIPE_PRICE_PRO_LIVE: str = ""
 
     # Pricing v2 — 4 plans actifs (Pro 8.99 / Expert 19.99) × 2 cycles (8 vars)
@@ -724,9 +724,7 @@ MISTRAL_AGENT_PRIMARY = False
 # Brave Search ($102/mois → ~$76/mois). Default OFF tant que le benchmark
 # qualité Agent vs Brave Deep Research n'est pas validé. Brave reste fallback
 # automatique en cas d'échec/circuit-breaker Agent.
-DEEP_RESEARCH_USE_MISTRAL_AGENT = (
-    os.getenv("DEEP_RESEARCH_USE_MISTRAL_AGENT", "false").lower() == "true"
-)
+DEEP_RESEARCH_USE_MISTRAL_AGENT = os.getenv("DEEP_RESEARCH_USE_MISTRAL_AGENT", "false").lower() == "true"
 
 # Modèle de modération contenu
 MISTRAL_MODERATION_MODEL = "mistral-moderation-latest"
@@ -750,23 +748,15 @@ MISTRAL_MODERATION_MODEL = "mistral-moderation-latest"
 # sur 10 vidéos avec marqueurs visibles. Toggle = .env MAGISTRAL_EPISTEMIC_ENABLED=true
 # =============================================================================
 
-MAGISTRAL_EPISTEMIC_ENABLED: bool = (
-    os.getenv("MAGISTRAL_EPISTEMIC_ENABLED", "false").lower() == "true"
-)
-MAGISTRAL_EPISTEMIC_MODEL: str = os.getenv(
-    "MAGISTRAL_EPISTEMIC_MODEL", "magistral-medium-2509"
-)
+MAGISTRAL_EPISTEMIC_ENABLED: bool = os.getenv("MAGISTRAL_EPISTEMIC_ENABLED", "false").lower() == "true"
+MAGISTRAL_EPISTEMIC_MODEL: str = os.getenv("MAGISTRAL_EPISTEMIC_MODEL", "magistral-medium-2509")
 MAGISTRAL_EPISTEMIC_TIERS: list = [
-    t.strip().lower()
-    for t in os.getenv("MAGISTRAL_EPISTEMIC_TIERS", "expert").split(",")
-    if t.strip()
+    t.strip().lower() for t in os.getenv("MAGISTRAL_EPISTEMIC_TIERS", "expert").split(",") if t.strip()
 ]
 
 
 # 🔍 Semantic Search V1 (extended : summary + flashcard + quiz + chat)
-SEMANTIC_SEARCH_V1_ENABLED: bool = (
-    os.getenv("SEMANTIC_SEARCH_V1_ENABLED", "false").lower() == "true"
-)
+SEMANTIC_SEARCH_V1_ENABLED: bool = os.getenv("SEMANTIC_SEARCH_V1_ENABLED", "false").lower() == "true"
 
 # Modération — Phase 2 migration Mistral-First
 # log_only : calcule + log les scores mais laisse passer (calibration)

@@ -91,9 +91,7 @@ async def _increment_brave_request_counter() -> None:
         logger.debug("brave counter increment skipped: %s", exc)
 
 
-def _serialize_factcheck_payload(
-    context_text: Optional[str], sources: List[Dict[str, str]]
-) -> Dict[str, object]:
+def _serialize_factcheck_payload(context_text: Optional[str], sources: List[Dict[str, str]]) -> Dict[str, object]:
     return {"context_text": context_text, "sources": sources}
 
 
