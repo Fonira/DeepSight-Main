@@ -12,20 +12,19 @@ jest.mock("react-native-reanimated", () => {
   return {
     __esModule: true,
     default: {
-      View: React.forwardRef((props: { style?: unknown; children?: React.ReactNode }, ref) =>
-        React.createElement(View, { ...props, ref }, props.children),
+      View: React.forwardRef(
+        (props: { style?: unknown; children?: React.ReactNode }, ref) =>
+          React.createElement(View, { ...props, ref }, props.children),
       ),
     },
-    View: React.forwardRef((props: { style?: unknown; children?: React.ReactNode }, ref) =>
-      React.createElement(View, { ...props, ref }, props.children),
+    View: React.forwardRef(
+      (props: { style?: unknown; children?: React.ReactNode }, ref) =>
+        React.createElement(View, { ...props, ref }, props.children),
     ),
     useSharedValue: (initial: number) => ({ value: initial }),
     useAnimatedStyle: (fn: () => Record<string, unknown>) => fn(),
-    interpolate: (
-      _value: number,
-      _input: number[],
-      output: number[],
-    ) => output[0],
+    interpolate: (_value: number, _input: number[], output: number[]) =>
+      output[0],
     Easing: {
       bezier: () => ({}),
     },
@@ -129,11 +128,7 @@ describe("VideoPlayer — conditional render", () => {
 
   it("renders null when YouTube videoId contains forbidden characters", () => {
     const { toJSON } = render(
-      <VideoPlayer
-        {...baseProps}
-        videoId="!!!invalid!!"
-        platform="youtube"
-      />,
+      <VideoPlayer {...baseProps} videoId="!!!invalid!!" platform="youtube" />,
     );
     expect(toJSON()).toBeNull();
   });
@@ -151,11 +146,7 @@ describe("VideoPlayer — conditional render", () => {
 
   it("renders null when platform is text or unknown", () => {
     const { toJSON } = render(
-      <VideoPlayer
-        {...baseProps}
-        videoId="abc"
-        platform={"text" as never}
-      />,
+      <VideoPlayer {...baseProps} videoId="abc" platform={"text" as never} />,
     );
     expect(toJSON()).toBeNull();
   });
@@ -164,11 +155,7 @@ describe("VideoPlayer — conditional render", () => {
 describe("VideoPlayer — compact mode", () => {
   it("renders compact mode with valid 11-char YouTube videoId", () => {
     const { getByTestId } = render(
-      <VideoPlayer
-        {...baseProps}
-        videoId="dQw4w9WgXcQ"
-        platform="youtube"
-      />,
+      <VideoPlayer {...baseProps} videoId="dQw4w9WgXcQ" platform="youtube" />,
     );
     expect(getByTestId("video-player-compact")).toBeTruthy();
   });
@@ -187,11 +174,7 @@ describe("VideoPlayer — compact mode", () => {
 
   it("uses the YouTube hqdefault thumbnail URL for YouTube videos", () => {
     const { getByTestId } = render(
-      <VideoPlayer
-        {...baseProps}
-        videoId="dQw4w9WgXcQ"
-        platform="youtube"
-      />,
+      <VideoPlayer {...baseProps} videoId="dQw4w9WgXcQ" platform="youtube" />,
     );
     const thumb = getByTestId("video-player-thumbnail");
     expect(thumb.props.source.uri).toBe(
@@ -217,11 +200,7 @@ describe("VideoPlayer — compact mode", () => {
 describe("VideoPlayer — tap-to-expand", () => {
   it("expands to YouTube embed mode when compact thumbnail is tapped", () => {
     const { getByTestId, queryByTestId } = render(
-      <VideoPlayer
-        {...baseProps}
-        videoId="dQw4w9WgXcQ"
-        platform="youtube"
-      />,
+      <VideoPlayer {...baseProps} videoId="dQw4w9WgXcQ" platform="youtube" />,
     );
     // Initially compact, no embed
     expect(queryByTestId("mock-youtube-iframe")).toBeNull();
@@ -250,11 +229,7 @@ describe("VideoPlayer — tap-to-expand", () => {
 
   it("collapses back to compact mode when close button is pressed", () => {
     const { getByTestId, queryByTestId } = render(
-      <VideoPlayer
-        {...baseProps}
-        videoId="dQw4w9WgXcQ"
-        platform="youtube"
-      />,
+      <VideoPlayer {...baseProps} videoId="dQw4w9WgXcQ" platform="youtube" />,
     );
 
     // Expand

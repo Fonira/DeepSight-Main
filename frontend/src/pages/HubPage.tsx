@@ -32,6 +32,7 @@ import { CallModeFullBleed } from "../components/hub/CallModeFullBleed";
 import { NewConversationModal } from "../components/hub/NewConversationModal";
 import { HubAnalysisPanel } from "../components/hub/HubAnalysisPanel";
 import { HubTabBar } from "../components/hub/HubTabBar";
+import { QuickVoiceCallCTA } from "../components/hub/QuickVoiceCallCTA";
 import { useAnalyzeAndOpenHub } from "../hooks/useAnalyzeAndOpenHub";
 import { Loader2 } from "lucide-react";
 import type {
@@ -130,10 +131,15 @@ const AnalyzingPlaceholder: React.FC<{
   </div>
 );
 
-const NoConvPlaceholder: React.FC<{ onOpenDrawer: () => void }> = ({
-  onOpenDrawer,
-}) => (
-  <div className="flex-1 flex items-center justify-center px-6">
+const NoConvPlaceholder: React.FC<{
+  onOpenDrawer: () => void;
+  onStartCall?: () => void;
+  voiceEnabled?: boolean;
+}> = ({ onOpenDrawer, onStartCall, voiceEnabled }) => (
+  <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
+    {voiceEnabled && onStartCall && (
+      <QuickVoiceCallCTA onStart={onStartCall} variant="hero" />
+    )}
     <div className="max-w-sm text-center">
       <p className="text-base text-white font-medium mb-2">
         Aucune conversation sélectionnée
@@ -630,11 +636,21 @@ const HubPage: React.FC = () => {
             error={analyzingError}
           />
         ) : activeConvId === null ? (
-          <NoConvPlaceholder onOpenDrawer={toggleDrawer} />
+          <NoConvPlaceholder
+            onOpenDrawer={toggleDrawer}
+            onStartCall={() => setVoiceCallOpen(true)}
+            voiceEnabled={voiceEnabled}
+          />
         ) : (
           <>
             {activeTab === "chat" ? (
               <div className="flex-1 overflow-y-auto min-h-0">
+                {voiceEnabled && (
+                  <QuickVoiceCallCTA
+                    onStart={() => setVoiceCallOpen(true)}
+                    disabled={!activeConvId}
+                  />
+                )}
                 <Timeline
                   messages={messages}
                   isThinking={isThinking}
@@ -672,7 +688,6 @@ const HubPage: React.FC = () => {
             )}
             <InputBar
               onSend={handleSend}
-              onCallToggle={() => setVoiceCallOpen(!voiceCallOpen)}
               onPttHoldComplete={handlePttHoldComplete}
               disabled={!activeConvId}
               activeTab={activeTab}

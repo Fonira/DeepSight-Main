@@ -155,11 +155,7 @@ export const MiniActionBar: React.FC<MiniActionBarProps> = ({
         {isUpgrading ? (
           <DeepSightSpinner size="xs" speed="fast" />
         ) : (
-          <Ionicons
-            name="analytics-outline"
-            size={16}
-            color={palette.indigo}
-          />
+          <Ionicons name="analytics-outline" size={16} color={palette.indigo} />
         )}
         <Text style={[styles.upgradeActionText, { color: palette.indigo }]}>
           {isUpgrading ? "Lancement..." : "Analyse complète"}
@@ -172,11 +168,7 @@ export const MiniActionBar: React.FC<MiniActionBarProps> = ({
         testID="mini-action-share"
         style={styles.miniAction}
       >
-        <Ionicons
-          name="share-outline"
-          size={18}
-          color={colors.textTertiary}
-        />
+        <Ionicons name="share-outline" size={18} color={colors.textTertiary} />
         <Text style={[styles.miniActionText, { color: colors.textTertiary }]}>
           Partager
         </Text>

@@ -9,7 +9,6 @@
  * - Pas de framer-motion : SVG static via data URI
  * - Pas de désactivation mobile : actif TOUJOURS
  * - prefers-reduced-motion → render null
- * - z-index 0 (sous AmbientLightLayer qui est en z-index 1)
  *
  * Garde tous les arrays d'icônes du fichier source web (ICONS_VIDEO, ICONS_STUDY,
  * ICONS_TECH, ICONS_AI, ICONS_CREATIVE, ICONS_ABSTRACT, ICONS_OBJECTS,

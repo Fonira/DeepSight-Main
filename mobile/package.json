@@ -4,7 +4,6 @@
   "description": "Deep Sight - AI-Powered Video Analysis Mobile App",
   "main": "expo-router/entry",
   "scripts": {
-    "postinstall": "tsc -p ../packages/lighting-engine/tsconfig.build.json",
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
     "android": "expo run:android",
@@ -27,7 +26,6 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "@deepsight/lighting-engine": "file:../packages/lighting-engine",
     "@elevenlabs/client": "^0.15.2",
     "@elevenlabs/react-native": "^0.5.12",
     "@expo/vector-icons": "^15.0.3",

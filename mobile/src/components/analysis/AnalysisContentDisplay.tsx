@@ -645,7 +645,10 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
 
       <ScrollView
         style={localStyles.scroll}
-        contentContainerStyle={[localStyles.scrollContent, { paddingBottom: bottomPadding }]}
+        contentContainerStyle={[
+          localStyles.scrollContent,
+          { paddingBottom: bottomPadding },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View

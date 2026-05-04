@@ -17,12 +17,7 @@
  */
 
 import React from "react";
-import {
-  Keyboard,
-  Pressable,
-  StyleSheet,
-  type ViewProps,
-} from "react-native";
+import { Keyboard, Pressable, StyleSheet, type ViewProps } from "react-native";
 
 export const DismissKeyboardView: React.FC<ViewProps> = ({
   children,

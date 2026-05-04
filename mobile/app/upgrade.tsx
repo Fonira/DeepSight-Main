@@ -203,8 +203,7 @@ export default function UpgradeScreen() {
             style={[
               styles.toggleText,
               {
-                color:
-                  cycle === "monthly" ? "#ffffff" : colors.textSecondary,
+                color: cycle === "monthly" ? "#ffffff" : colors.textSecondary,
               },
             ]}
           >
@@ -229,8 +228,7 @@ export default function UpgradeScreen() {
             style={[
               styles.toggleText,
               {
-                color:
-                  cycle === "yearly" ? "#ffffff" : colors.textSecondary,
+                color: cycle === "yearly" ? "#ffffff" : colors.textSecondary,
               },
             ]}
           >
@@ -306,9 +304,7 @@ export default function UpgradeScreen() {
               size={18}
               color={colors.accentPrimary}
             />
-            <Text
-              style={[styles.trialText, { color: colors.accentPrimary }]}
-            >
+            <Text style={[styles.trialText, { color: colors.accentPrimary }]}>
               Essai 7 jours gratuit ({activePlan.name}) — sans CB
             </Text>
           </Pressable>

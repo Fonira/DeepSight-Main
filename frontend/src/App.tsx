@@ -35,9 +35,6 @@ import { LanguageProvider } from "./contexts/LanguageContext";
 import { LoadingWordProvider } from "./contexts/LoadingWordContext";
 import { TTSProvider } from "./contexts/TTSContext";
 import { PrivateRoute } from "./components/PrivateRoute";
-import { AmbientLightLayer } from "./components/AmbientLightLayer";
-import { SunflowerLayer } from "./components/SunflowerLayer";
-import { AmbientLightingProvider } from "./contexts/AmbientLightingContext";
 import { SkipLink } from "./components/SkipLink";
 import { SEO } from "./components/SEO";
 
@@ -492,46 +489,6 @@ const ProtectedLayout = () => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🌅 AMBIENT LIGHTING — read user preference (default ON)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Read the ambient lighting preference from localStorage. Default: enabled.
- * The preference is also synced to the backend via /api/auth/preferences when
- * the user toggles it from Settings.
- */
-function getAmbientLightingEnabled(): boolean {
-  try {
-    const raw = localStorage.getItem("ambient_lighting_enabled");
-    if (raw === null || raw === undefined) return true;
-    return raw !== "false";
-  } catch {
-    return true;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🌅 ROUTER-AWARE AMBIENT LIGHT — gated to showcase routes only
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// AmbientLight v3 affiché sur TOUTES les routes (signature visuelle DeepSight,
-// le rayon de soleil + tournesol héliotrope sont une marque de fabrique
-// présente partout, plus juste sur les routes vitrines).
-// Routes où l'ambient lighting (beam + halo) est masqué pour ne pas alourdir
-// l'interface — les vues conversationnelles (Hub) ont déjà leur propre ambiance.
-const AMBIENT_LIGHT_HIDDEN_ROUTES = ["/hub"];
-
-const RouterAwareAmbientLight = () => {
-  const location = useLocation();
-  const hidden = AMBIENT_LIGHT_HIDDEN_ROUTES.some(
-    (path) =>
-      location.pathname === path || location.pathname.startsWith(path + "/"),
-  );
-  if (hidden) return null;
-  return <AmbientLightLayer intensity="normal" />;
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // 🛣️ APP ROUTES
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -545,12 +502,7 @@ const AppRoutes = () => {
           <TTSProvider>
             <VoicePrefsStagingProvider>
               <Router>
-                <AmbientLightingProvider enabled={getAmbientLightingEnabled()}>
-                  {/* ✨ Couche lumineuse cosmique (engine v3 — beam + halo) — restreinte aux routes vitrines */}
-                  <RouterAwareAmbientLight />
-                  {/* 🌻 Tournesol mascot suivant la course du soleil */}
-                  <SunflowerLayer />
-
+                <>
                   {/* ♿ Skip Link pour l'accessibilité */}
                   <SkipLink targetId="main-content" />
 
@@ -1100,7 +1052,7 @@ const AppRoutes = () => {
                   <ErrorBoundary fallback={null}>
                     <StagedPrefsToolbar />
                   </ErrorBoundary>
-                </AmbientLightingProvider>
+                </>
               </Router>
             </VoicePrefsStagingProvider>
           </TTSProvider>

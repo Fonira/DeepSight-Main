@@ -83,7 +83,11 @@ export const ConversationFeed: React.FC<ConversationFeedProps> = ({
   }
 
   return (
-    <div className="chat-messages" ref={scrollRef} data-testid="conversation-feed">
+    <div
+      className="chat-messages"
+      ref={scrollRef}
+      data-testid="conversation-feed"
+    >
       {messages.map((m) => (
         <ConversationFeedBubble
           key={m.id}

@@ -110,10 +110,7 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
         aria-pressed={voiceMode === "live" && !isMuted}
         data-testid="conversation-mic-btn"
       >
-        <MicIcon
-          size={14}
-          muted={voiceMode === "live" && isMuted}
-        />
+        <MicIcon size={14} muted={voiceMode === "live" && isMuted} />
       </button>
 
       {/* Web search toggle */}

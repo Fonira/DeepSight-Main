@@ -143,7 +143,10 @@ const ConversationFeedBubbleImpl: React.FC<ConversationFeedBubbleProps> = ({
             { backgroundColor: palette.indigo, borderColor: "transparent" },
           ]}
         >
-          <Text style={[styles.bubbleText, { color: palette.white }]} selectable>
+          <Text
+            style={[styles.bubbleText, { color: palette.white }]}
+            selectable
+          >
             {message.content}
           </Text>
         </Pressable>
