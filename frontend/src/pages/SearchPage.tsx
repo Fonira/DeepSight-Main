@@ -54,7 +54,10 @@ const SearchPage: React.FC = () => {
     setParams(next, { replace: true });
   }, [query, filters, setParams]);
 
-  const { data, isFetching, error } = useSemanticSearch({ query, filters });
+  const { data, isFetching, error, featureDisabled } = useSemanticSearch({
+    query,
+    filters,
+  });
 
   // Track query when results land
   useEffect(() => {
@@ -135,19 +138,35 @@ const SearchPage: React.FC = () => {
             <SearchAdvancedFilters filters={filters} onChange={setFilters} />
           )}
 
-          {error && (
+          {featureDisabled && (
+            <div
+              role="status"
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-6 py-10 text-center"
+            >
+              <p className="text-base text-white/85 font-medium mb-1">
+                Fonctionnalité bientôt disponible
+              </p>
+              <p className="text-sm text-white/55">
+                La recherche sémantique est en cours d'activation côté serveur.
+                Reviens d'ici quelques minutes — aucune action requise de ta
+                part.
+              </p>
+            </div>
+          )}
+
+          {!featureDisabled && error && (
             <div className="text-center py-8 text-red-300">
               Une erreur est survenue. Réessaie dans un instant.
             </div>
           )}
 
-          {!error && isFetching && (
+          {!featureDisabled && !error && isFetching && (
             <div className="flex justify-center py-10">
               <DeepSightSpinner size="md" />
             </div>
           )}
 
-          {!error && !isFetching && isEmptyQuery && (
+          {!featureDisabled && !error && !isFetching && isEmptyQuery && (
             <SearchEmptyState
               variant="no-query"
               recentQueries={recent}
@@ -155,11 +174,15 @@ const SearchPage: React.FC = () => {
             />
           )}
 
-          {!error && !isFetching && !isEmptyQuery && !hasResults && (
-            <SearchEmptyState variant="no-results" query={query} />
-          )}
+          {!featureDisabled &&
+            !error &&
+            !isFetching &&
+            !isEmptyQuery &&
+            !hasResults && (
+              <SearchEmptyState variant="no-results" query={query} />
+            )}
 
-          {!error && !isFetching && hasResults && data && (
+          {!featureDisabled && !error && !isFetching && hasResults && data && (
             <SearchResultsList
               results={data.results}
               query={query}
