@@ -18,6 +18,7 @@ import { sp, borderRadius } from "../../theme/spacing";
 import { fontFamily, fontSize } from "../../theme/typography";
 import { palette } from "../../theme/colors";
 import type { VoiceMode } from "../../hooks/useConversation";
+import { PasteLinkButton } from "../shared/PasteLinkButton";
 
 interface ConversationInputProps {
   inputText: string;
@@ -80,6 +81,7 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
           { backgroundColor: colors.bgCard, borderColor: colors.border },
         ]}
       >
+        <PasteLinkButton onPaste={setInputText} />
         <TextInput
           value={inputText}
           onChangeText={setInputText}
