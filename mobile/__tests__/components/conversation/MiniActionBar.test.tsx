@@ -1,6 +1,6 @@
 /**
  * Tests for MiniActionBar.
- * Verifies callbacks + haptics per button + isUpgrading + isFavorite states.
+ * Verifies callbacks + haptics per button + canShowSummary + isFavorite states.
  */
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
@@ -15,14 +15,6 @@ jest.mock("../../../src/contexts/ThemeContext", () => {
       setTheme: jest.fn(),
       toggleTheme: jest.fn(),
     }),
-  };
-});
-
-jest.mock("../../../src/components/ui/DeepSightSpinner", () => {
-  const React = require("react");
-  const { View } = require("react-native");
-  return {
-    DeepSightSpinner: () => React.createElement(View, { testID: "spinner" }),
   };
 });
 
@@ -43,7 +35,6 @@ import { haptics } from "../../../src/utils/haptics";
 
 const baseProps = {
   isFavorite: false,
-  onViewAnalysis: jest.fn(),
   onToggleFavorite: jest.fn(),
   onShare: jest.fn(),
 };
@@ -53,11 +44,20 @@ describe("MiniActionBar", () => {
     jest.clearAllMocks();
   });
 
-  it("renders all 3 actions", () => {
-    const { getByTestId } = render(<MiniActionBar {...baseProps} />);
+  it("renders Favori and Partager by default (no Résumé)", () => {
+    const { getByTestId, queryByTestId } = render(
+      <MiniActionBar {...baseProps} />,
+    );
     expect(getByTestId("mini-action-favorite")).toBeTruthy();
-    expect(getByTestId("mini-action-view-analysis")).toBeTruthy();
     expect(getByTestId("mini-action-share")).toBeTruthy();
+    expect(queryByTestId("mini-action-show-summary")).toBeNull();
+  });
+
+  it("renders Résumé when canShowSummary=true", () => {
+    const { getByTestId } = render(
+      <MiniActionBar {...baseProps} canShowSummary onShowSummary={jest.fn()} />,
+    );
+    expect(getByTestId("mini-action-show-summary")).toBeTruthy();
   });
 
   it("fires haptics.light + onToggleFavorite on Favori tap", () => {
@@ -70,14 +70,18 @@ describe("MiniActionBar", () => {
     expect(onToggleFavorite).toHaveBeenCalledTimes(1);
   });
 
-  it("fires haptics.medium + onViewAnalysis on Analyse complète tap", () => {
-    const onViewAnalysis = jest.fn();
+  it("fires haptics.medium + onShowSummary on Résumé tap", () => {
+    const onShowSummary = jest.fn();
     const { getByTestId } = render(
-      <MiniActionBar {...baseProps} onViewAnalysis={onViewAnalysis} />,
+      <MiniActionBar
+        {...baseProps}
+        canShowSummary
+        onShowSummary={onShowSummary}
+      />,
     );
-    fireEvent.press(getByTestId("mini-action-view-analysis"));
+    fireEvent.press(getByTestId("mini-action-show-summary"));
     expect(haptics.medium).toHaveBeenCalled();
-    expect(onViewAnalysis).toHaveBeenCalledTimes(1);
+    expect(onShowSummary).toHaveBeenCalledTimes(1);
   });
 
   it("fires haptics.light + onShare on Partager tap", () => {
@@ -88,39 +92,5 @@ describe("MiniActionBar", () => {
     fireEvent.press(getByTestId("mini-action-share"));
     expect(haptics.light).toHaveBeenCalled();
     expect(onShare).toHaveBeenCalledTimes(1);
-  });
-
-  it("renders spinner when isUpgrading=true", () => {
-    const { getByTestId, queryByText } = render(
-      <MiniActionBar {...baseProps} isUpgrading={true} />,
-    );
-    expect(getByTestId("spinner")).toBeTruthy();
-    expect(queryByText("Lancement...")).toBeTruthy();
-  });
-
-  it("disables Analyse complète tap when isUpgrading=true", () => {
-    const onViewAnalysis = jest.fn();
-    const { getByTestId } = render(
-      <MiniActionBar
-        {...baseProps}
-        isUpgrading={true}
-        onViewAnalysis={onViewAnalysis}
-      />,
-    );
-    fireEvent.press(getByTestId("mini-action-view-analysis"));
-    expect(onViewAnalysis).not.toHaveBeenCalled();
-  });
-
-  it("disables Analyse complète tap when canViewAnalysis=false", () => {
-    const onViewAnalysis = jest.fn();
-    const { getByTestId } = render(
-      <MiniActionBar
-        {...baseProps}
-        canViewAnalysis={false}
-        onViewAnalysis={onViewAnalysis}
-      />,
-    );
-    fireEvent.press(getByTestId("mini-action-view-analysis"));
-    expect(onViewAnalysis).not.toHaveBeenCalled();
   });
 });
