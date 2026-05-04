@@ -22,13 +22,46 @@ import {
 
 // Audio ducking pendant les voice calls — instance unique par tab.
 const audioController = new YouTubeAudioController();
+
+/**
+ * Saute la lecture du <video> YouTube actif au timestamp `ts` (en secondes).
+ *
+ * Phase 4 Semantic Search V1 : déclenché par le sidepanel quand l'utilisateur
+ * clique un résultat dont le video_id correspond à la vidéo de l'onglet
+ * courant. On scope la query au lecteur principal (#movie_player video) pour
+ * éviter de toucher des miniatures/previews qui peuvent contenir leurs
+ * propres <video>. Best-effort : si rien trouvé, on tombe silencieusement.
+ */
+const jumpToTimestamp = (ts: number): void => {
+  if (!Number.isFinite(ts) || ts < 0) return;
+  const player = document.querySelector<HTMLVideoElement>(
+    "#movie_player video, video.html5-main-video, video",
+  );
+  if (!player) return;
+  try {
+    player.currentTime = ts;
+    // Tente une lecture (no-op si déjà playing). play() peut rejeter si
+    // l'autoplay policy le bloque — on swallow.
+    void player.play().catch(() => {
+      /* autoplay blocked or already playing */
+    });
+  } catch {
+    /* readonly currentTime in some weird states — swallow */
+  }
+};
+
 // Defensive : `chrome.runtime.onMessage` peut ne pas exister dans certains
 // contextes de test où le mock chrome est minimaliste.
 if (chrome?.runtime?.onMessage?.addListener) {
-  chrome.runtime.onMessage.addListener((msg: { type?: string }) => {
-    if (msg?.type === "DUCK_AUDIO") audioController.attach();
-    if (msg?.type === "RESTORE_AUDIO") audioController.detach();
-  });
+  chrome.runtime.onMessage.addListener(
+    (msg: { type?: string; action?: string; ts?: number }) => {
+      if (msg?.type === "DUCK_AUDIO") audioController.attach();
+      if (msg?.type === "RESTORE_AUDIO") audioController.detach();
+      if (msg?.action === "JUMP_TO_TIMESTAMP") {
+        jumpToTimestamp(typeof msg.ts === "number" ? msg.ts : 0);
+      }
+    },
+  );
 }
 
 let lastUrl = location.href;
