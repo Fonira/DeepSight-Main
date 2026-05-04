@@ -63,9 +63,7 @@ const HighlightActionSheetController: React.FC<{
       setM(null);
       return;
     }
-    const found = ctx.matches.find(
-      (x) => x.passage_id === ctx.activePassageId,
-    );
+    const found = ctx.matches.find((x) => x.passage_id === ctx.activePassageId);
     setM(found ?? null);
   }, [ctx?.activePassageId, ctx?.matches]);
 
@@ -654,206 +652,34 @@ function AnalysisDetailScreenInner() {
       initialQuery={q ?? ""}
       initialPassageId={highlight ?? null}
     >
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.bgPrimary,
-          // En fullscreen : paddingBottom=0 pour que l'overlay absolu atteigne le bas de l'écran.
-          // En mode normal : footprint partagé pour ne jamais cacher le dernier élément derrière la TabBar.
-          paddingBottom: isFullscreen ? 0 : tabBarFootprint,
-        },
-      ]}
-    >
-      <DoodleBackground variant="analysis" density="low" />
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.bgPrimary,
+            // En fullscreen : paddingBottom=0 pour que l'overlay absolu atteigne le bas de l'écran.
+            // En mode normal : footprint partagé pour ne jamais cacher le dernier élément derrière la TabBar.
+            paddingBottom: isFullscreen ? 0 : tabBarFootprint,
+          },
+        ]}
+      >
+        <DoodleBackground variant="analysis" density="low" />
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* Streaming Overlay */}
-      {showStreamingOverlay && id && (
-        <StreamingOverlay
-          taskId={id}
-          onCancel={handleCancelAnalysis}
-          onComplete={handleStreamingComplete}
-        />
-      )}
-
-      {/* ── MODE NORMAL ─────────────────────────────────── */}
-
-      {/* Header normal — masqué en fullscreen */}
-      {!isFullscreen && (
-        <View style={[styles.header, { paddingTop: insets.top + sp.sm }]}>
-          <Pressable
-            onPress={handleBack}
-            style={styles.iconButton}
-            accessibilityLabel="Retour"
-            accessibilityRole="button"
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-          </Pressable>
-          <Text
-            style={[styles.headerTitle, { color: colors.textPrimary }]}
-            numberOfLines={1}
-          >
-            {summary?.title || "Analyse"}
-          </Text>
-          {/* Bouton loupe — recherche intra-analyse (Semantic Search V1) */}
-          <Pressable
-            onPress={() => setSearchBarVisible((v) => !v)}
-            style={styles.iconButton}
-            accessibilityLabel={
-              searchBarVisible
-                ? "Fermer la recherche"
-                : "Rechercher dans cette analyse"
-            }
-            accessibilityRole="button"
-            hitSlop={8}
-          >
-            <Ionicons
-              name={searchBarVisible ? "close" : "search"}
-              size={22}
-              color={colors.textTertiary}
-            />
-          </Pressable>
-          {/* Bouton export */}
-          {canExport && (
-            <Pressable
-              onPress={() => setIsExportVisible(true)}
-              style={styles.iconButton}
-              accessibilityLabel="Exporter l'analyse"
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name="share-outline"
-                size={22}
-                color={colors.textTertiary}
-              />
-            </Pressable>
-          )}
-          {/* Bouton nouvelle analyse */}
-          <Pressable
-            onPress={handleNewAnalysis}
-            style={styles.iconButton}
-            accessibilityLabel="Nouvelle analyse"
-            accessibilityRole="button"
-          >
-            <Ionicons
-              name="add-circle-outline"
-              size={24}
-              color={colors.textTertiary}
-            />
-          </Pressable>
-        </View>
-      )}
-
-      {/* Search bar intra-analyse — visible quand searchBarVisible=true */}
-      {!isFullscreen && searchBarVisible && <IntraAnalysisSearchInput />}
-
-      {/* Video Player — masqué en fullscreen.
-          NB: la condition de visibilité (videoId valide, plateforme connue,
-          thumbnail TikTok dispo) est gérée DANS VideoPlayer pour garantir un
-          rendu null systématique si le contenu n'est pas affichable. */}
-      {!isFullscreen && summary && (
-        <VideoPlayer
-          videoId={summary.videoId}
-          title={summary.title}
-          scrollY={scrollY}
-          platform={summary.platform}
-          thumbnail={summary.thumbnail}
-        />
-      )}
-
-      {/* Tab bar — masqué en fullscreen */}
-      {!isFullscreen && TabBar}
-
-      {/* PagerView normal — masqué en fullscreen */}
-      {!isFullscreen && Pager}
-
-      {/* Action Bar — masquée en fullscreen */}
-      {!isFullscreen && summary && (
-        <View>
-          <TutorButton
-            onPress={() => setIsTutorVisible(true)}
-            disabled={!summary.title}
-            style={styles.tutorButtonInline}
+        {/* Streaming Overlay */}
+        {showStreamingOverlay && id && (
+          <StreamingOverlay
+            taskId={id}
+            onCancel={handleCancelAnalysis}
+            onComplete={handleStreamingComplete}
           />
-          <ActionBar
-            summaryId={summary.id}
-            title={summary.title}
-            videoId={summary.videoId}
-            isFavorite={isFavorite}
-            onFavoriteChange={setIsFavorite}
-          />
-        </View>
-      )}
+        )}
 
-      {/* Tuteur V2 mobile lite — bottom-sheet text-only sur le concept de l'analyse */}
-      {summary && (
-        <TutorBottomSheet
-          isOpen={isTutorVisible}
-          onClose={() => setIsTutorVisible(false)}
-          conceptTerm={summary.title ?? null}
-          conceptDef={summary.title ?? null}
-          summaryId={Number(summary.id)}
-          sourceVideoTitle={summary.title ?? undefined}
-        />
-      )}
+        {/* ── MODE NORMAL ─────────────────────────────────── */}
 
-      {/* Export Menu */}
-      {summary && (
-        <ExportMenu
-          summaryId={Number(summary.id)}
-          videoTitle={summary.title || "analyse"}
-          visible={isExportVisible}
-          onClose={() => setIsExportVisible(false)}
-        />
-      )}
-
-      {/* Voice Chat — bouton FAB ouvre ConversationScreen en mode 'call' */}
-      {summary && (
-        <>
-          <VoiceButton
-            summaryId={id as string}
-            videoTitle={summary.title || "Vidéo"}
-            onSessionStart={() => {
-              setConversationInitialMode("call");
-              setIsVoiceVisible(true);
-            }}
-          />
-          <ConversationScreen
-            visible={isVoiceVisible}
-            summaryId={summary.id}
-            initialMode={conversationInitialMode}
-            videoTitle={summary.title || "Vidéo"}
-            channelName={summary.channel}
-            platform={
-              (summary.platform === "tiktok" ? "tiktok" : "youtube") as
-                | "youtube"
-                | "tiktok"
-            }
-            initialFavorite={summary.isFavorite}
-            onClose={() => setIsVoiceVisible(false)}
-          />
-        </>
-      )}
-
-      {/* ── MODE FULLSCREEN ──────────────────────────────── */}
-      {/* paddingBottom du container est 0 → l'overlay couvre l'écran entier.
-          La TabBar globale est cachée via tabBarStore (cf. useEffect ci-dessus)
-          donc on n'a plus besoin de réserver TAB_BAR_HEIGHT — seul le safe area
-          bottom suffit. */}
-      {isFullscreen && (
-        <View
-          style={[
-            styles.fullscreenOverlay,
-            {
-              backgroundColor: colors.bgPrimary,
-              paddingTop: insets.top,
-              paddingBottom: insets.bottom,
-            },
-          ]}
-        >
-          {/* Header compact fullscreen */}
-          <View style={styles.fullscreenHeader}>
+        {/* Header normal — masqué en fullscreen */}
+        {!isFullscreen && (
+          <View style={[styles.header, { paddingTop: insets.top + sp.sm }]}>
             <Pressable
               onPress={handleBack}
               style={styles.iconButton}
@@ -872,38 +698,225 @@ function AnalysisDetailScreenInner() {
             >
               {summary?.title || "Analyse"}
             </Text>
+            {/* Bouton loupe — recherche intra-analyse (Semantic Search V1) */}
             <Pressable
-              onPress={handleToggleFullscreen}
+              onPress={() => setSearchBarVisible((v) => !v)}
               style={styles.iconButton}
-              accessibilityLabel="Quitter le plein écran"
+              accessibilityLabel={
+                searchBarVisible
+                  ? "Fermer la recherche"
+                  : "Rechercher dans cette analyse"
+              }
+              accessibilityRole="button"
+              hitSlop={8}
+            >
+              <Ionicons
+                name={searchBarVisible ? "close" : "search"}
+                size={22}
+                color={colors.textTertiary}
+              />
+            </Pressable>
+            {/* Bouton export */}
+            {canExport && (
+              <Pressable
+                onPress={() => setIsExportVisible(true)}
+                style={styles.iconButton}
+                accessibilityLabel="Exporter l'analyse"
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="share-outline"
+                  size={22}
+                  color={colors.textTertiary}
+                />
+              </Pressable>
+            )}
+            {/* Bouton nouvelle analyse */}
+            <Pressable
+              onPress={handleNewAnalysis}
+              style={styles.iconButton}
+              accessibilityLabel="Nouvelle analyse"
               accessibilityRole="button"
             >
               <Ionicons
-                name="contract-outline"
-                size={22}
-                color={colors.textPrimary}
+                name="add-circle-outline"
+                size={24}
+                color={colors.textTertiary}
               />
             </Pressable>
           </View>
+        )}
 
-          {/* Tab bar en fullscreen */}
-          {TabBar}
+        {/* Search bar intra-analyse — visible quand searchBarVisible=true */}
+        {!isFullscreen && searchBarVisible && <IntraAnalysisSearchInput />}
 
-          {/* PagerView plein écran — instance distincte mais même comportement */}
-          {Pager}
-        </View>
-      )}
-
-      {/* ── Semantic Search V1 — overlays intra-analyse ─────────────── */}
-      {!isFullscreen && (
-        <>
-          <HighlightNavigationBar bottomOffset={tabBarFootprint + 20} />
-          <HighlightActionSheetController
-            summaryId={Number(effectiveId) || 0}
+        {/* Video Player — masqué en fullscreen.
+          NB: la condition de visibilité (videoId valide, plateforme connue,
+          thumbnail TikTok dispo) est gérée DANS VideoPlayer pour garantir un
+          rendu null systématique si le contenu n'est pas affichable. */}
+        {!isFullscreen && summary && (
+          <VideoPlayer
+            videoId={summary.videoId}
+            title={summary.title}
+            scrollY={scrollY}
+            platform={summary.platform}
+            thumbnail={summary.thumbnail}
           />
-        </>
-      )}
-    </View>
+        )}
+
+        {/* Tab bar — masqué en fullscreen */}
+        {!isFullscreen && TabBar}
+
+        {/* PagerView normal — masqué en fullscreen */}
+        {!isFullscreen && Pager}
+
+        {/* Action Bar — masquée en fullscreen */}
+        {!isFullscreen && summary && (
+          <View>
+            <TutorButton
+              onPress={() => setIsTutorVisible(true)}
+              disabled={!summary.title}
+              style={styles.tutorButtonInline}
+            />
+            <ActionBar
+              summaryId={summary.id}
+              title={summary.title}
+              videoId={summary.videoId}
+              isFavorite={isFavorite}
+              onFavoriteChange={setIsFavorite}
+            />
+          </View>
+        )}
+
+        {/* Tuteur V2 mobile lite — bottom-sheet text-only sur le concept de l'analyse */}
+        {summary && (
+          <TutorBottomSheet
+            isOpen={isTutorVisible}
+            onClose={() => setIsTutorVisible(false)}
+            conceptTerm={summary.title ?? null}
+            conceptDef={summary.title ?? null}
+            summaryId={Number(summary.id)}
+            sourceVideoTitle={summary.title ?? undefined}
+          />
+        )}
+
+        {/* Export Menu */}
+        {summary && (
+          <ExportMenu
+            summaryId={Number(summary.id)}
+            videoTitle={summary.title || "analyse"}
+            visible={isExportVisible}
+            onClose={() => setIsExportVisible(false)}
+          />
+        )}
+
+        {/* Voice Chat — bouton FAB ouvre ConversationScreen en mode 'call' */}
+        {summary && (
+          <>
+            <VoiceButton
+              summaryId={id as string}
+              videoTitle={summary.title || "Vidéo"}
+              onSessionStart={() => {
+                setConversationInitialMode("call");
+                setIsVoiceVisible(true);
+              }}
+            />
+            <ConversationScreen
+              visible={isVoiceVisible}
+              summaryId={summary.id}
+              initialMode={conversationInitialMode}
+              videoTitle={summary.title || "Vidéo"}
+              channelName={summary.channel}
+              platform={
+                (summary.platform === "tiktok" ? "tiktok" : "youtube") as
+                  | "youtube"
+                  | "tiktok"
+              }
+              initialFavorite={summary.isFavorite}
+              onClose={() => setIsVoiceVisible(false)}
+            />
+          </>
+        )}
+
+        {/* ── MODE FULLSCREEN ──────────────────────────────── */}
+        {/* paddingBottom du container est 0 → l'overlay couvre l'écran entier.
+          La TabBar globale est cachée via tabBarStore (cf. useEffect ci-dessus)
+          donc on n'a plus besoin de réserver TAB_BAR_HEIGHT — seul le safe area
+          bottom suffit. */}
+        {isFullscreen && (
+          <View
+            style={[
+              styles.fullscreenOverlay,
+              {
+                backgroundColor: colors.bgPrimary,
+                paddingTop: insets.top,
+                paddingBottom: insets.bottom,
+              },
+            ]}
+          >
+            {/* Header compact fullscreen */}
+            <View style={styles.fullscreenHeader}>
+              <Pressable
+                onPress={handleBack}
+                style={styles.iconButton}
+                accessibilityLabel="Retour"
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="arrow-back"
+                  size={24}
+                  color={colors.textPrimary}
+                />
+              </Pressable>
+              <Text
+                style={[styles.headerTitle, { color: colors.textPrimary }]}
+                numberOfLines={1}
+              >
+                {summary?.title || "Analyse"}
+              </Text>
+              <Pressable
+                onPress={handleToggleFullscreen}
+                style={styles.iconButton}
+                accessibilityLabel="Quitter le plein écran"
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="contract-outline"
+                  size={22}
+                  color={colors.textPrimary}
+                />
+              </Pressable>
+            </View>
+
+            {/* Tab bar en fullscreen */}
+            {TabBar}
+
+            {/* PagerView plein écran — instance distincte mais même comportement */}
+            {Pager}
+          </View>
+        )}
+
+        {/* ── Semantic Search V1 — overlays intra-analyse ─────────────── */}
+        {!isFullscreen && (
+          <>
+            {/*
+            Stack vertical : la nav bar se positionne AU-DESSUS du `VoiceButton`
+            (rendu uniquement quand `summary` existe). Sinon (fallback pré-summary),
+            offset court près de la tab bar. Décision arbitrée 2026-05-04 :
+            VoiceButton à `tabBarFootprint + 88`, hauteur 64, gap stack 12 →
+            nav bar à `tabBarFootprint + 88 + 64 + 12 = tabBarFootprint + 164`.
+          */}
+            <HighlightNavigationBar
+              bottomOffset={
+                summary ? tabBarFootprint + 164 : tabBarFootprint + 20
+              }
+            />
+            <HighlightActionSheetController
+              summaryId={Number(effectiveId) || 0}
+            />
+          </>
+        )}
+      </View>
     </SemanticHighlighterProvider>
   );
 }
