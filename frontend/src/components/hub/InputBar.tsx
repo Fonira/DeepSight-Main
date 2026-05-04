@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, Send, Plus } from "lucide-react";
 import type { TabId } from "./types";
+import { PasteLinkButton } from "../PasteLinkButton";
 
 interface Props {
   onSend: (text: string) => void;
@@ -112,6 +113,7 @@ export const InputBar: React.FC<Props> = ({
       >
         <Plus className="w-4 h-4" />
       </button>
+      <PasteLinkButton onPaste={(text) => setVal(text)} disabled={disabled} />
       <input
         type="text"
         value={val}
