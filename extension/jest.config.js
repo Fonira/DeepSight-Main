@@ -24,13 +24,5 @@ module.exports = {
     "\\.(css|less|scss)$": "<rootDir>/__tests__/setup/style-mock.ts",
     "\\.(png|jpg|jpeg|gif|svg)$": "<rootDir>/__tests__/setup/file-mock.ts",
     "^webextension-polyfill$": "<rootDir>/__tests__/setup/polyfill-mock.ts",
-    // @deepsight/lighting-engine ships TypeScript via package.json `exports`;
-    // ts-jest can't traverse `exports` with `.ts` entries — map directly to the source.
-    "^@deepsight/lighting-engine$":
-      "<rootDir>/node_modules/@deepsight/lighting-engine/src/index.ts",
-    // ESM-style relative imports inside lighting-engine src use ".js" extensions
-    // (required by NodeNext / Bundler resolution). Strip them so ts-jest can
-    // resolve to the .ts source files in CommonJS test mode.
-    "^(\\.{1,2}/.*)\\.js$": "$1",
   },
 };
