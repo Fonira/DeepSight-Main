@@ -366,6 +366,12 @@ export const MyAccount: React.FC = () => {
       bgColor: "bg-indigo-500/10",
       icon: "⭐",
     },
+    expert: {
+      label: "Expert",
+      color: "text-violet-400",
+      bgColor: "bg-violet-500/10",
+      icon: "👑",
+    },
   };
 
   const currentPlan = planConfig[normalizedPlan] || planConfig["free"];

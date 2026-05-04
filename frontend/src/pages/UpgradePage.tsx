@@ -232,6 +232,7 @@ interface PlanCardProps {
   trialLoading: boolean;
   onStartTrial: () => void;
   allPlans: ApiBillingPlan[];
+  cycle: BillingCycle;
 }
 
 const PlanCard: React.FC<PlanCardProps> = ({
@@ -243,6 +244,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
   trialLoading,
   onStartTrial,
   allPlans,
+  cycle,
 }) => {
   const Icon = getPlanIcon(plan.id);
   const gradient = getPlanGradient(plan.id);
@@ -252,9 +254,22 @@ const PlanCard: React.FC<PlanCardProps> = ({
   const isFree = plan.price_monthly_cents === 0;
   const nameDisplay = lang === "fr" ? plan.name : plan.name_en;
 
-  const monthlyPrice = plan.price_monthly_cents;
-  const displayPrice = monthlyPrice;
+  const isYearly = cycle === "yearly";
+  const displayPrice = isFree
+    ? 0
+    : isYearly
+      ? (plan.price_yearly_cents ?? plan.price_monthly_cents)
+      : plan.price_monthly_cents;
   const priceDisplay = formatPriceFr(displayPrice);
+  const priceSuffix = isFree
+    ? ""
+    : isYearly
+      ? lang === "fr"
+        ? "/an"
+        : "/yr"
+      : lang === "fr"
+        ? "/mois"
+        : "/mo";
 
   // Find unlock plan names for features_locked
   const getUnlockPlanName = (unlockPlanId: string) => {
@@ -327,7 +342,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
             {priceDisplay}
           </span>
           <span className="text-text-tertiary text-xs sm:text-sm ml-1">
-            €/{lang === "fr" ? "mois" : "mo"}
+            €{priceSuffix}
           </span>
         </div>
 
@@ -1403,6 +1418,7 @@ export const UpgradePage: React.FC = () => {
                             trialLoading={trialLoading}
                             onStartTrial={handleStartTrial}
                             allPlans={plans}
+                            cycle={cycle}
                           />
                         </motion.div>
                       ))}
