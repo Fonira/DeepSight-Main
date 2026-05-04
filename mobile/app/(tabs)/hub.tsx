@@ -51,6 +51,7 @@ export default function HubScreen() {
     summaryId?: string;
     videoUrl?: string;
     initialMode?: "chat" | "call";
+    prefillQuery?: string;
   }>();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -60,6 +61,23 @@ export default function HubScreen() {
 
   const summaryId = params.summaryId ?? null;
   const initialMode = params.initialMode ?? "chat";
+  // prefillQuery : injecté par PassageActionSheet ("Demander à l'IA") ou
+  // tout autre deep-link. Capturé une seule fois au mount via useState pour
+  // éviter qu'un re-render le re-déclenche après que l'input ait été modifié
+  // par l'user. Le param URL est ensuite cleared via setParams.
+  const [pendingPrefill, setPendingPrefill] = useState<string | null>(
+    params.prefillQuery ?? null,
+  );
+  useEffect(() => {
+    if (params.prefillQuery && pendingPrefill !== params.prefillQuery) {
+      setPendingPrefill(params.prefillQuery);
+    }
+    // Clear le param URL une fois lu pour éviter re-trigger après navigation.
+    if (params.prefillQuery) {
+      router.setParams({ prefillQuery: undefined });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.prefillQuery]);
 
   // Charger l'historique pour le drawer ET pour fallback last-conv
   const { data: historyData } = useQuery({
@@ -140,6 +158,8 @@ export default function HubScreen() {
           platform={headerPlatform}
           initialFavorite={activeConv?.isFavorite ?? false}
           onMenuPress={() => setDrawerOpen(true)}
+          prefillQuery={pendingPrefill}
+          onPrefillConsumed={() => setPendingPrefill(null)}
         />
       ) : (
         <HubEmptyState

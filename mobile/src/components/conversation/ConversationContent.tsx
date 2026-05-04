@@ -16,7 +16,7 @@
  * Spec : `docs/superpowers/specs/2026-05-04-mobile-hub-tab-unified-design.md` §4.2
  */
 
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   KeyboardAvoidingView,
@@ -57,6 +57,14 @@ export interface ConversationContentProps {
   onMenuPress?: () => void;
   /** Modal mode : close button. Si null/absent : pas de close. */
   onClose?: () => void;
+  /**
+   * Texte à pré-remplir dans l'input au mount (ex: "Demander à l'IA"
+   * depuis PassageActionSheet de la search V1). Une fois consommé,
+   * `onPrefillConsumed` est appelé pour que le parent clear son état.
+   */
+  prefillQuery?: string | null;
+  /** Callback déclenché une fois `prefillQuery` injecté dans l'input. */
+  onPrefillConsumed?: () => void;
 }
 
 export const ConversationContent: React.FC<ConversationContentProps> = ({
@@ -69,12 +77,24 @@ export const ConversationContent: React.FC<ConversationContentProps> = ({
   initialFavorite = false,
   onMenuPress,
   onClose,
+  prefillQuery,
+  onPrefillConsumed,
 }) => {
   const settingsSheetRef = useRef<BottomSheet | null>(null);
   const summarySheetRef = useRef<BottomSheet | null>(null);
   const [addonVisible, setAddonVisible] = useState(false);
   const [inputText, setInputText] = useState("");
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
+
+  // Inject prefillQuery into the input draft once on mount/change, then
+  // signal the parent so it can clear its URL param. Don't write again
+  // afterwards — the user is free to edit or send the draft.
+  useEffect(() => {
+    if (prefillQuery && prefillQuery.length > 0) {
+      setInputText(prefillQuery);
+      onPrefillConsumed?.();
+    }
+  }, [prefillQuery, onPrefillConsumed]);
 
   const conv = useConversation({
     summaryId,
