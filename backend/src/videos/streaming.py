@@ -62,15 +62,15 @@ except ImportError as e:
         return None, []
 
 
-# 🔬 Deep Research imports
+# 🔬 Deep Research imports — dispatcher Mistral Agent / Brave (Phase 2 cost optim)
 try:
-    from videos.brave_search import get_brave_deep_research_context
+    from videos.deep_research_dispatcher import dispatch_deep_research_context
 
     BRAVE_DEEP_RESEARCH_AVAILABLE = True
 except ImportError:
     BRAVE_DEEP_RESEARCH_AVAILABLE = False
 
-    async def get_brave_deep_research_context(*args, **kwargs):
+    async def dispatch_deep_research_context(*args, **kwargs):
         return None, []
 
 
@@ -636,7 +636,7 @@ async def analysis_stream_generator(
 
                 brave_text, brave_sources = None, []
                 if BRAVE_DEEP_RESEARCH_AVAILABLE:
-                    brave_text, brave_sources = await get_brave_deep_research_context(
+                    brave_text, brave_sources = await dispatch_deep_research_context(
                         video_title=metadata.get("title", ""),
                         video_channel=metadata.get("channel", ""),
                         transcript=transcript,

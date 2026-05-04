@@ -718,6 +718,16 @@ MISTRAL_AGENT_ENABLED = True  # Set False to force Brave-only pipeline
 # Brave reste TOUJOURS en last-resort (n'est pas affecté par ce flag).
 MISTRAL_AGENT_PRIMARY = False
 
+# Phase 2 cost optimisation (mai 2026) — bascule du Deep Research vidéo
+# (5 queries × 8 résultats Brave = ~40 appels par analyse) vers l'Agent Mistral
+# natif (1 seul appel via web_search). Économie estimée : ~15-25% du budget
+# Brave Search ($102/mois → ~$76/mois). Default OFF tant que le benchmark
+# qualité Agent vs Brave Deep Research n'est pas validé. Brave reste fallback
+# automatique en cas d'échec/circuit-breaker Agent.
+DEEP_RESEARCH_USE_MISTRAL_AGENT = (
+    os.getenv("DEEP_RESEARCH_USE_MISTRAL_AGENT", "false").lower() == "true"
+)
+
 # Modèle de modération contenu
 MISTRAL_MODERATION_MODEL = "mistral-moderation-latest"
 
