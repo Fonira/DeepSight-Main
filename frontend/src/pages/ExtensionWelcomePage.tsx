@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { SEO } from "../components/SEO";
+import DoodleBackground from "../components/DoodleBackground";
 import { useAuth } from "../hooks/useAuth";
 
 const STEPS = [
@@ -64,6 +65,7 @@ const ExtensionWelcomePage = () => {
       />
 
       <div className="min-h-screen bg-bg-primary relative overflow-hidden">
+        <DoodleBackground variant="tech" />
         {/* Ambient glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-accent-primary/5 rounded-full blur-[150px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent-violet/5 rounded-full blur-[100px] pointer-events-none" />

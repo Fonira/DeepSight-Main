@@ -12,6 +12,7 @@ import { shareApi, SharedAnalysisResponse } from "../services/api";
 import { sanitizeTitle } from "../utils/sanitize";
 import { DeepSightSpinner } from "../components/ui/DeepSightSpinner";
 import { BreadcrumbJsonLd } from "../components/BreadcrumbJsonLd";
+import DoodleBackground from "../components/DoodleBackground";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -179,6 +180,7 @@ export default function SharedAnalysisPage() {
 
   return (
     <div className="min-h-screen bg-bg-primary">
+      <DoodleBackground variant="video" />
       {/* SEO Meta Tags */}
       <Helmet>
         <title>{`Analyse DeepSight : ${data.video_title}`}</title>

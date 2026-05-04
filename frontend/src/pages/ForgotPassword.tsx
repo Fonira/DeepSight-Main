@@ -11,6 +11,7 @@ import { Mail, AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
 
 import { useTranslation } from "../hooks/useTranslation";
 import { SEO } from "../components/SEO";
+import DoodleBackground from "../components/DoodleBackground";
 import { DeepSightSpinnerMicro } from "../components/ui/DeepSightSpinner";
 import api from "../services/api";
 
@@ -93,6 +94,7 @@ export const ForgotPassword: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary flex">
+      <DoodleBackground variant="default" />
       <SEO
         title={t.auth.passwordFlow.forgot.seoTitle}
         description={t.auth.passwordFlow.forgot.seoDescription}

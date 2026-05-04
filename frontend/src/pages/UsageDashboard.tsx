@@ -45,6 +45,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
+import DoodleBackground from "../components/DoodleBackground";
 import { SEO } from "../components/SEO";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../hooks/useAuth";
@@ -621,285 +622,298 @@ export function UsageDashboard() {
   };
 
   return (
-    <DashboardLayout>
-      <SEO title="Utilisation" path="/usage" />
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <BarChart3 className="w-8 h-8 text-accent-primary" />
-            <h1 className="text-2xl font-bold text-text-primary">
-              {language === "fr" ? "Utilisation" : "Usage"}
-            </h1>
-          </div>
-          <p className="text-text-secondary">
-            {language === "fr"
-              ? "Gérez votre abonnement et suivez votre utilisation"
-              : "Manage your subscription and track your usage"}
-          </p>
-        </div>
-
-        {/* Plan actuel */}
-        <div
-          className="card mb-8 p-6"
-          style={{ borderLeftColor: planInfo.color, borderLeftWidth: 4 }}
-        >
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <div className="text-sm text-text-tertiary mb-1">
-                {language === "fr" ? "Plan actuel" : "Current plan"}
-              </div>
-              <div className="text-2xl font-bold text-text-primary flex items-center gap-2">
-                <span>
-                  {planInfo.icon === "GraduationCap"
-                    ? "🎓"
-                    : planInfo.icon === "Crown"
-                      ? "👑"
-                      : planInfo.icon === "Users"
-                        ? "👥"
-                        : "⚡"}
-                </span>
-                <span>
-                  {language === "fr" ? planInfo.name : planInfo.nameEn}
-                </span>
-              </div>
-              {planInfo.priceMonthly > 0 && (
-                <div className="text-sm text-text-secondary mt-0.5">
-                  {(planInfo.priceMonthly / 100).toFixed(2)}€/
-                  {language === "fr" ? "mois" : "month"}
-                </div>
-              )}
-              {user?.email && (
-                <div className="text-xs text-text-muted mt-1">{user.email}</div>
-              )}
+    <>
+      <DoodleBackground variant="analysis" />
+      <DashboardLayout>
+        <SEO title="Utilisation" path="/usage" />
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <BarChart3 className="w-8 h-8 text-accent-primary" />
+              <h1 className="text-2xl font-bold text-text-primary">
+                {language === "fr" ? "Utilisation" : "Usage"}
+              </h1>
             </div>
-            <button
-              onClick={() => navigate("/upgrade")}
-              className="btn btn-primary flex items-center gap-2"
-            >
-              <CreditCard className="w-4 h-4" />
-              {language === "fr" ? "Gérer l'abonnement" : "Manage subscription"}
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <p className="text-text-secondary">
+              {language === "fr"
+                ? "Gérez votre abonnement et suivez votre utilisation"
+                : "Manage your subscription and track your usage"}
+            </p>
           </div>
-        </div>
 
-        {/* Stats Grid — Données réelles depuis planPrivileges */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            icon={TrendingUp}
-            title={language === "fr" ? "Analyses/mois" : "Analyses/month"}
-            value={user?.analysis_count ?? 0}
-            subtitle={`/ ${formatNumber(limits.monthlyAnalyses, language)} ${language === "fr" ? "max" : "max"}`}
-            color="blue"
-            progress={user?.analysis_count ?? 0}
-            maxValue={
-              limits.monthlyAnalyses === -1 ? 1000 : limits.monthlyAnalyses
-            }
-          />
-          <StatCard
-            icon={MessageSquare}
-            title={language === "fr" ? "Chat IA/jour" : "AI Chat/day"}
-            value={limits.chatDailyLimit === -1 ? "∞" : limits.chatDailyLimit}
-            subtitle={`${limits.chatQuestionsPerVideo === -1 ? "∞" : limits.chatQuestionsPerVideo} ${language === "fr" ? "par vidéo" : "per video"}`}
-            color="purple"
-          />
-          <StatCard
-            icon={Globe}
-            title={language === "fr" ? "Recherche web" : "Web search"}
-            value={
-              limits.webSearchEnabled
-                ? limits.webSearchMonthly === -1
-                  ? "∞"
-                  : formatNumber(limits.webSearchMonthly, language)
-                : language === "fr"
-                  ? "Non"
-                  : "No"
-            }
-            subtitle={
-              limits.webSearchEnabled
-                ? language === "fr"
-                  ? "Perplexity AI"
-                  : "Perplexity AI"
-                : language === "fr"
-                  ? `Plan Starter requis`
-                  : "Starter plan required"
-            }
-            color={limits.webSearchEnabled ? "amber" : "rose"}
-          />
-          <StatCard
-            icon={Clock}
-            title={language === "fr" ? "Durée max vidéo" : "Max video length"}
-            value={
-              limits.maxVideoLengthMin === -1
-                ? "∞"
-                : `${limits.maxVideoLengthMin} min`
-            }
-            subtitle={
-              limits.historyRetentionDays === -1
-                ? language === "fr"
-                  ? "Historique permanent"
-                  : "Permanent history"
-                : `${limits.historyRetentionDays}j ${language === "fr" ? "d'historique" : "history"}`
-            }
-            color="green"
-          />
-        </div>
-
-        {/* ═══════════════════════════════════════════════════════════════════════ */}
-        {/* 🎬 VIDÉO DE PRÉSENTATION */}
-        {/* ═══════════════════════════════════════════════════════════════════════ */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-            <Video className="w-5 h-5 text-accent-primary" />
-            {language === "fr" ? "Vidéo de présentation" : "Introduction Video"}
-          </h2>
-
-          <div className="card overflow-hidden">
-            <div className="aspect-video bg-gradient-to-br from-bg-tertiary to-bg-secondary relative flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-20 h-20 rounded-full bg-accent-primary/20 flex items-center justify-center mx-auto mb-4 cursor-pointer hover:bg-accent-primary/30 transition-colors group">
-                  <Play
-                    className="w-10 h-10 text-accent-primary group-hover:scale-110 transition-transform"
-                    fill="currentColor"
-                  />
+          {/* Plan actuel */}
+          <div
+            className="card mb-8 p-6"
+            style={{ borderLeftColor: planInfo.color, borderLeftWidth: 4 }}
+          >
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <div className="text-sm text-text-tertiary mb-1">
+                  {language === "fr" ? "Plan actuel" : "Current plan"}
                 </div>
-                <h3 className="text-xl font-semibold text-text-primary mb-2">
-                  {language === "fr"
-                    ? "Découvrez Deep Sight en 3 minutes"
-                    : "Discover Deep Sight in 3 minutes"}
-                </h3>
-                <p className="text-text-secondary max-w-md mx-auto">
-                  {language === "fr"
-                    ? "Apprenez à utiliser toutes les fonctionnalités de Deep Sight pour analyser vos vidéos YouTube et TikTok efficacement."
-                    : "Learn how to use all Deep Sight features to effectively analyze your YouTube and TikTok videos."}
-                </p>
-                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bg-tertiary text-text-tertiary text-sm">
-                  <Clock className="w-4 h-4" />
-                  {language === "fr"
-                    ? "Vidéo à venir prochainement"
-                    : "Video coming soon"}
+                <div className="text-2xl font-bold text-text-primary flex items-center gap-2">
+                  <span>
+                    {planInfo.icon === "GraduationCap"
+                      ? "🎓"
+                      : planInfo.icon === "Crown"
+                        ? "👑"
+                        : planInfo.icon === "Users"
+                          ? "👥"
+                          : "⚡"}
+                  </span>
+                  <span>
+                    {language === "fr" ? planInfo.name : planInfo.nameEn}
+                  </span>
                 </div>
+                {planInfo.priceMonthly > 0 && (
+                  <div className="text-sm text-text-secondary mt-0.5">
+                    {(planInfo.priceMonthly / 100).toFixed(2)}€/
+                    {language === "fr" ? "mois" : "month"}
+                  </div>
+                )}
+                {user?.email && (
+                  <div className="text-xs text-text-muted mt-1">
+                    {user.email}
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ═══════════════════════════════════════════════════════════════════════ */}
-        {/* 📚 GUIDE D'UTILISATION COMPLET */}
-        {/* ═══════════════════════════════════════════════════════════════════════ */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-accent-primary" />
-            {language === "fr"
-              ? "Guide d'utilisation complet"
-              : "Complete User Guide"}
-          </h2>
-
-          <div className="space-y-3">
-            {USER_GUIDE.sections.map((section) => (
-              <GuideSection
-                key={section.id}
-                section={section}
-                language={language}
-                isOpen={openSections.includes(section.id)}
-                onToggle={() => toggleSection(section.id)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* ═══════════════════════════════════════════════════════════════════════ */}
-        {/* ✅ FONCTIONNALITÉS DE VOTRE PLAN — depuis planPrivileges.ts */}
-        {/* ═══════════════════════════════════════════════════════════════════════ */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-accent-primary" />
-            {language === "fr"
-              ? "Fonctionnalités de votre plan"
-              : "Your plan features"}
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <FeatureItem
-              enabled={features.flashcards}
-              label={
-                language === "fr"
-                  ? "Flashcards automatiques"
-                  : "Auto flashcards"
-              }
-            />
-            <FeatureItem
-              enabled={features.mindmap}
-              label={language === "fr" ? "Cartes conceptuelles" : "Mind maps"}
-            />
-            <FeatureItem
-              enabled={features.webSearch}
-              label={
-                language === "fr"
-                  ? "Fact-checking Perplexity"
-                  : "Perplexity fact-checking"
-              }
-            />
-            <FeatureItem
-              enabled={features.playlists}
-              label={
-                language === "fr" ? "Analyse de playlists" : "Playlist analysis"
-              }
-            />
-            <FeatureItem
-              enabled={features.exportPdf}
-              label={language === "fr" ? "Export PDF" : "PDF export"}
-            />
-            <FeatureItem
-              enabled={features.exportMarkdown}
-              label={language === "fr" ? "Export Markdown" : "Markdown export"}
-            />
-            <FeatureItem
-              enabled={features.ttsAudio}
-              label={
-                language === "fr"
-                  ? "Lecture audio (TTS)"
-                  : "Audio playback (TTS)"
-              }
-            />
-            <FeatureItem
-              enabled={features.apiAccess}
-              label={language === "fr" ? "Accès API" : "API access"}
-            />
-            <FeatureItem
-              enabled={features.prioritySupport}
-              label={
-                language === "fr" ? "Support prioritaire" : "Priority support"
-              }
-            />
-            <FeatureItem
-              enabled={limits.concurrentAnalyses > 1}
-              label={
-                language === "fr"
-                  ? `Analyses simultanées (${limits.concurrentAnalyses})`
-                  : `Concurrent analyses (${limits.concurrentAnalyses})`
-              }
-            />
-          </div>
-
-          {planId === "free" && (
-            <div className="mt-6 pt-4 border-t border-border-subtle">
               <button
                 onClick={() => navigate("/upgrade")}
-                className="btn btn-primary w-full flex items-center justify-center gap-2"
+                className="btn btn-primary flex items-center gap-2"
               >
-                <Sparkles className="w-4 h-4" />
+                <CreditCard className="w-4 h-4" />
                 {language === "fr"
-                  ? "Passer à un plan supérieur"
-                  : "Upgrade your plan"}
+                  ? "Gérer l'abonnement"
+                  : "Manage subscription"}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
-          )}
+          </div>
+
+          {/* Stats Grid — Données réelles depuis planPrivileges */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <StatCard
+              icon={TrendingUp}
+              title={language === "fr" ? "Analyses/mois" : "Analyses/month"}
+              value={user?.analysis_count ?? 0}
+              subtitle={`/ ${formatNumber(limits.monthlyAnalyses, language)} ${language === "fr" ? "max" : "max"}`}
+              color="blue"
+              progress={user?.analysis_count ?? 0}
+              maxValue={
+                limits.monthlyAnalyses === -1 ? 1000 : limits.monthlyAnalyses
+              }
+            />
+            <StatCard
+              icon={MessageSquare}
+              title={language === "fr" ? "Chat IA/jour" : "AI Chat/day"}
+              value={limits.chatDailyLimit === -1 ? "∞" : limits.chatDailyLimit}
+              subtitle={`${limits.chatQuestionsPerVideo === -1 ? "∞" : limits.chatQuestionsPerVideo} ${language === "fr" ? "par vidéo" : "per video"}`}
+              color="purple"
+            />
+            <StatCard
+              icon={Globe}
+              title={language === "fr" ? "Recherche web" : "Web search"}
+              value={
+                limits.webSearchEnabled
+                  ? limits.webSearchMonthly === -1
+                    ? "∞"
+                    : formatNumber(limits.webSearchMonthly, language)
+                  : language === "fr"
+                    ? "Non"
+                    : "No"
+              }
+              subtitle={
+                limits.webSearchEnabled
+                  ? language === "fr"
+                    ? "Perplexity AI"
+                    : "Perplexity AI"
+                  : language === "fr"
+                    ? `Plan Starter requis`
+                    : "Starter plan required"
+              }
+              color={limits.webSearchEnabled ? "amber" : "rose"}
+            />
+            <StatCard
+              icon={Clock}
+              title={language === "fr" ? "Durée max vidéo" : "Max video length"}
+              value={
+                limits.maxVideoLengthMin === -1
+                  ? "∞"
+                  : `${limits.maxVideoLengthMin} min`
+              }
+              subtitle={
+                limits.historyRetentionDays === -1
+                  ? language === "fr"
+                    ? "Historique permanent"
+                    : "Permanent history"
+                  : `${limits.historyRetentionDays}j ${language === "fr" ? "d'historique" : "history"}`
+              }
+              color="green"
+            />
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════════════════ */}
+          {/* 🎬 VIDÉO DE PRÉSENTATION */}
+          {/* ═══════════════════════════════════════════════════════════════════════ */}
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+              <Video className="w-5 h-5 text-accent-primary" />
+              {language === "fr"
+                ? "Vidéo de présentation"
+                : "Introduction Video"}
+            </h2>
+
+            <div className="card overflow-hidden">
+              <div className="aspect-video bg-gradient-to-br from-bg-tertiary to-bg-secondary relative flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-full bg-accent-primary/20 flex items-center justify-center mx-auto mb-4 cursor-pointer hover:bg-accent-primary/30 transition-colors group">
+                    <Play
+                      className="w-10 h-10 text-accent-primary group-hover:scale-110 transition-transform"
+                      fill="currentColor"
+                    />
+                  </div>
+                  <h3 className="text-xl font-semibold text-text-primary mb-2">
+                    {language === "fr"
+                      ? "Découvrez Deep Sight en 3 minutes"
+                      : "Discover Deep Sight in 3 minutes"}
+                  </h3>
+                  <p className="text-text-secondary max-w-md mx-auto">
+                    {language === "fr"
+                      ? "Apprenez à utiliser toutes les fonctionnalités de Deep Sight pour analyser vos vidéos YouTube et TikTok efficacement."
+                      : "Learn how to use all Deep Sight features to effectively analyze your YouTube and TikTok videos."}
+                  </p>
+                  <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bg-tertiary text-text-tertiary text-sm">
+                    <Clock className="w-4 h-4" />
+                    {language === "fr"
+                      ? "Vidéo à venir prochainement"
+                      : "Video coming soon"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════════════════ */}
+          {/* 📚 GUIDE D'UTILISATION COMPLET */}
+          {/* ═══════════════════════════════════════════════════════════════════════ */}
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-accent-primary" />
+              {language === "fr"
+                ? "Guide d'utilisation complet"
+                : "Complete User Guide"}
+            </h2>
+
+            <div className="space-y-3">
+              {USER_GUIDE.sections.map((section) => (
+                <GuideSection
+                  key={section.id}
+                  section={section}
+                  language={language}
+                  isOpen={openSections.includes(section.id)}
+                  onToggle={() => toggleSection(section.id)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════════════════ */}
+          {/* ✅ FONCTIONNALITÉS DE VOTRE PLAN — depuis planPrivileges.ts */}
+          {/* ═══════════════════════════════════════════════════════════════════════ */}
+          <div className="card p-6">
+            <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-accent-primary" />
+              {language === "fr"
+                ? "Fonctionnalités de votre plan"
+                : "Your plan features"}
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <FeatureItem
+                enabled={features.flashcards}
+                label={
+                  language === "fr"
+                    ? "Flashcards automatiques"
+                    : "Auto flashcards"
+                }
+              />
+              <FeatureItem
+                enabled={features.mindmap}
+                label={language === "fr" ? "Cartes conceptuelles" : "Mind maps"}
+              />
+              <FeatureItem
+                enabled={features.webSearch}
+                label={
+                  language === "fr"
+                    ? "Fact-checking Perplexity"
+                    : "Perplexity fact-checking"
+                }
+              />
+              <FeatureItem
+                enabled={features.playlists}
+                label={
+                  language === "fr"
+                    ? "Analyse de playlists"
+                    : "Playlist analysis"
+                }
+              />
+              <FeatureItem
+                enabled={features.exportPdf}
+                label={language === "fr" ? "Export PDF" : "PDF export"}
+              />
+              <FeatureItem
+                enabled={features.exportMarkdown}
+                label={
+                  language === "fr" ? "Export Markdown" : "Markdown export"
+                }
+              />
+              <FeatureItem
+                enabled={features.ttsAudio}
+                label={
+                  language === "fr"
+                    ? "Lecture audio (TTS)"
+                    : "Audio playback (TTS)"
+                }
+              />
+              <FeatureItem
+                enabled={features.apiAccess}
+                label={language === "fr" ? "Accès API" : "API access"}
+              />
+              <FeatureItem
+                enabled={features.prioritySupport}
+                label={
+                  language === "fr" ? "Support prioritaire" : "Priority support"
+                }
+              />
+              <FeatureItem
+                enabled={limits.concurrentAnalyses > 1}
+                label={
+                  language === "fr"
+                    ? `Analyses simultanées (${limits.concurrentAnalyses})`
+                    : `Concurrent analyses (${limits.concurrentAnalyses})`
+                }
+              />
+            </div>
+
+            {planId === "free" && (
+              <div className="mt-6 pt-4 border-t border-border-subtle">
+                <button
+                  onClick={() => navigate("/upgrade")}
+                  className="btn btn-primary w-full flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {language === "fr"
+                    ? "Passer à un plan supérieur"
+                    : "Upgrade your plan"}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </DashboardLayout>
+      </DashboardLayout>
+    </>
   );
 }
 

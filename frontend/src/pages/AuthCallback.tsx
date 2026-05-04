@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import DoodleBackground from "../components/DoodleBackground";
 import { setTokens, authApi, clearTokens } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -350,6 +351,7 @@ export function AuthCallback() {
       </style>
 
       <div style={styles.container}>
+        <DoodleBackground variant="default" />
         <div style={styles.card}>
           <div style={styles.icon}>{currentStatus.icon}</div>
 

@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "../hooks/useTranslation";
 import { SEO } from "../components/SEO";
 import { BreadcrumbJsonLd } from "../components/BreadcrumbJsonLd";
+import DoodleBackground from "../components/DoodleBackground";
 import {
   Key,
   Copy,
@@ -556,6 +557,7 @@ export const ApiDocsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary">
+      <DoodleBackground variant="tech" />
       <SEO
         title="Documentation API"
         description="Documentation de l'API publique DeepSight v1 : endpoints, authentification par clé API, exemples curl, schémas de réponse. Réservé au plan Pro."

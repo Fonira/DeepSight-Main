@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import DoodleBackground from "../components/DoodleBackground";
 
 const NotFoundPage = () => {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ const NotFoundPage = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary flex items-center justify-center px-4 relative overflow-hidden">
+      <DoodleBackground variant="default" />
       {/* Ambient glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent-primary/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent-violet/5 rounded-full blur-[100px] pointer-events-none" />
