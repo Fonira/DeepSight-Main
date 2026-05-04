@@ -162,6 +162,9 @@ export interface PlanFeatures {
   voiceChat: boolean;
   debate: boolean;
   deepResearch: boolean;
+  // Semantic Search V1 — tooltip IA sur passage match (web only V1, mobile V1.1).
+  // Mirror du backend pour cohérence cross-platform & upsell potentiel V1.1.
+  semanticSearchTooltip: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
@@ -198,6 +201,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     voiceChat: false,
     debate: false,
     deepResearch: false,
+    semanticSearchTooltip: false,
   },
 
   // Anciennement "plus" v0
@@ -234,6 +238,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     voiceChat: true, // ⚠ v2 : Pro a la voice (avant Plus n'avait pas)
     debate: true,
     deepResearch: false,
+    semanticSearchTooltip: true,
   },
 
   // Anciennement "pro" v0
@@ -270,6 +275,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     voiceChat: true,
     debate: true,
     deepResearch: true,
+    semanticSearchTooltip: true,
   },
 };
 

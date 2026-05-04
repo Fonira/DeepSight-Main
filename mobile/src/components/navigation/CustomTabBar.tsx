@@ -21,6 +21,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useTabBarStore } from "@/stores/tabBarStore";
 import { palette } from "@/theme/colors";
 import { fontFamily, fontSize } from "@/theme/typography";
+import { useSemanticSearchEnabled } from "@/hooks/useSemanticSearchEnabled";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -46,6 +47,11 @@ const TAB_META: Record<
 > = {
   index: { icon: "home-outline", iconFocused: "home", label: "Accueil" },
   library: { icon: "time-outline", iconFocused: "time", label: "Historique" },
+  search: {
+    icon: "search-outline",
+    iconFocused: "search",
+    label: "Rechercher",
+  },
   hub: {
     icon: "chatbubbles-outline",
     iconFocused: "chatbubbles",
@@ -210,13 +216,17 @@ export function CustomTabBar({ state, navigation }: TabBarProps) {
   const { isDark } = useTheme();
   const hidden = useTabBarStore((s) => s.hidden);
 
+  // Feature flag — cache le tab "search" si Semantic Search V1 est OFF.
+  const searchEnabled = useSemanticSearchEnabled();
+
   // Only show routes that have a TAB_META entry
   const visibleRoutes = useMemo(
     () =>
       (state.routes as Array<{ key: string; name: string }>).filter(
-        (route) => route.name in TAB_META,
+        (route) =>
+          route.name in TAB_META && (route.name !== "search" || searchEnabled),
       ),
-    [state.routes],
+    [state.routes, searchEnabled],
   );
 
   const tabWidth = width / visibleRoutes.length;

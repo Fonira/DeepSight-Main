@@ -38,15 +38,84 @@ import { AcademicSourcesSection } from "@/components/academic";
 import { FactCheckButton } from "@/components/factcheck";
 import { WebEnrichment } from "@/components/enrichment";
 import { usePlan } from "@/contexts/PlanContext";
+import {
+  SemanticHighlighterProvider,
+  HighlightNavigationBar,
+  PassageActionSheet,
+  useSemanticHighlighter,
+} from "@/components/highlight";
+import { SearchBar as IntraSearchBar } from "@/components/search/SearchBar";
+import type { WithinMatchItem } from "@/services/api";
 
 const TAB_LABELS = ["Résumé", "Sources", "Chat"] as const;
 const TAB_COUNT = TAB_LABELS.length;
 
-export default function AnalysisDetailScreen() {
-  const { id, backTo, initialTab } = useLocalSearchParams<{
+// Sub-composant : contrôle l'ouverture du PassageActionSheet quand
+// `activePassageId` change. Doit être rendu DANS le SemanticHighlighterProvider.
+const HighlightActionSheetController: React.FC<{
+  summaryId: number;
+}> = ({ summaryId }) => {
+  const ctx = useSemanticHighlighter();
+  const [m, setM] = useState<WithinMatchItem | null>(null);
+
+  React.useEffect(() => {
+    if (!ctx?.activePassageId) {
+      setM(null);
+      return;
+    }
+    const found = ctx.matches.find(
+      (x) => x.passage_id === ctx.activePassageId,
+    );
+    setM(found ?? null);
+  }, [ctx?.activePassageId, ctx?.matches]);
+
+  return (
+    <PassageActionSheet
+      match={m}
+      query={ctx?.query ?? ""}
+      summaryId={summaryId}
+      isOpen={!!m}
+      onClose={() => {
+        ctx?.setActivePassageId(null);
+        setM(null);
+      }}
+    />
+  );
+};
+
+// Sub-composant : input de la SearchBar intra-analyse, branchée au Provider.
+// Debounce 300ms avant de pousser dans `ctx.setQuery`.
+const IntraAnalysisSearchInput: React.FC = () => {
+  const ctx = useSemanticHighlighter();
+  const [localValue, setLocalValue] = useState(ctx?.query ?? "");
+
+  React.useEffect(() => {
+    const t = setTimeout(() => ctx?.setQuery(localValue), 300);
+    return () => clearTimeout(t);
+  }, [localValue, ctx]);
+
+  return (
+    <View style={{ paddingHorizontal: sp.lg, paddingVertical: sp.sm }}>
+      <IntraSearchBar
+        value={localValue}
+        onChangeText={setLocalValue}
+        autoFocus
+        placeholder="Rechercher dans cette analyse…"
+      />
+    </View>
+  );
+};
+
+function AnalysisDetailScreenInner() {
+  // Note : `q` / `highlight` / `tab` sont consommés par le wrapper externe
+  // `AnalysisDetailScreen` qui pose le SemanticHighlighterProvider. Ils sont
+  // re-extraits ici uniquement pour piloter l'état initial de la SearchBar
+  // intra-analyse (`searchBarVisible = Boolean(q)`).
+  const { id, backTo, initialTab, q } = useLocalSearchParams<{
     id: string;
     backTo?: string;
     initialTab?: string;
+    q?: string;
   }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -70,6 +139,7 @@ export default function AnalysisDetailScreen() {
   const [isVoiceVisible, setIsVoiceVisible] = useState(false);
   const [isExportVisible, setIsExportVisible] = useState(false);
   const [isTutorVisible, setIsTutorVisible] = useState(false);
+  const [searchBarVisible, setSearchBarVisible] = useState(Boolean(q));
   const [tabBarWidth, setTabBarWidth] = useState(0);
   const scrollY = useSharedValue(0);
   const tabIndicatorX = useSharedValue(initialTabIndex);
@@ -612,6 +682,24 @@ export default function AnalysisDetailScreen() {
           >
             {summary?.title || "Analyse"}
           </Text>
+          {/* Bouton loupe — recherche intra-analyse (Semantic Search V1) */}
+          <Pressable
+            onPress={() => setSearchBarVisible((v) => !v)}
+            style={styles.iconButton}
+            accessibilityLabel={
+              searchBarVisible
+                ? "Fermer la recherche"
+                : "Rechercher dans cette analyse"
+            }
+            accessibilityRole="button"
+            hitSlop={8}
+          >
+            <Ionicons
+              name={searchBarVisible ? "close" : "search"}
+              size={22}
+              color={colors.textTertiary}
+            />
+          </Pressable>
           {/* Bouton export */}
           {canExport && (
             <Pressable
@@ -642,6 +730,9 @@ export default function AnalysisDetailScreen() {
           </Pressable>
         </View>
       )}
+
+      {/* Search bar intra-analyse — visible quand searchBarVisible=true */}
+      {!isFullscreen && searchBarVisible && <IntraAnalysisSearchInput />}
 
       {/* Video Player — masqué en fullscreen.
           NB: la condition de visibilité (videoId valide, plateforme connue,
@@ -788,7 +879,47 @@ export default function AnalysisDetailScreen() {
           {Pager}
         </View>
       )}
+
+      {/* ── Semantic Search V1 — overlays intra-analyse ─────────────── */}
+      {!isFullscreen && (
+        <>
+          <HighlightNavigationBar bottomOffset={tabBarFootprint + 20} />
+          <HighlightActionSheetController
+            summaryId={Number(effectiveId) || 0}
+          />
+        </>
+      )}
     </View>
+  );
+}
+
+/**
+ * Wrapper exporté default — instancie le `SemanticHighlighterProvider` autour
+ * de l'écran. Le summaryId effectif est passé via la prop. La query/passage_id
+ * initiaux viennent des params URL `?q=...&highlight=...`.
+ */
+export default function AnalysisDetailScreen() {
+  const { id, q, highlight } = useLocalSearchParams<{
+    id: string;
+    q?: string;
+    highlight?: string;
+  }>();
+
+  // Note: Le summaryId réel peut différer de `id` (id peut être un task_id).
+  // On utilise une approximation : si id est numérique on l'utilise,
+  // sinon le provider est désactivé (summaryId=0). Le provider rejette les fetch
+  // quand summaryId<=0 (cf. SemanticHighlighter `enabled` guard).
+  const numericId = Number(id);
+  const summaryId = Number.isFinite(numericId) && numericId > 0 ? numericId : 0;
+
+  return (
+    <SemanticHighlighterProvider
+      summaryId={summaryId}
+      initialQuery={q ?? ""}
+      initialPassageId={highlight ?? null}
+    >
+      <AnalysisDetailScreenInner />
+    </SemanticHighlighterProvider>
   );
 }
 
