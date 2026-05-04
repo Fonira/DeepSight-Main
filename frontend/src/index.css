@@ -18,6 +18,8 @@ html {
   font-size: 18px;
 }
 
+@import "./styles/highlight.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

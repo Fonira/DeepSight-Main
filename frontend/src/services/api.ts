@@ -2581,7 +2581,83 @@ export interface SemanticSearchResponse {
   searched_at: string;
 }
 
+// ─── Search V1 — Phase 2 (Global / Within / Explain) ──────────────────────────
+
+export type SearchSourceType =
+  | "summary"
+  | "flashcard"
+  | "quiz"
+  | "chat"
+  | "transcript";
+
+export interface SearchFilters {
+  source_types?: SearchSourceType[];
+  platform?: "youtube" | "tiktok" | "text";
+  lang?: string;
+  category?: string;
+  date_from?: string; // ISO date YYYY-MM-DD
+  date_to?: string;
+  favorites_only?: boolean;
+  playlist_id?: number;
+}
+
+export interface SearchResultMetadata {
+  summary_title?: string;
+  summary_thumbnail?: string;
+  video_id?: string;
+  channel?: string;
+  tab?: "synthesis" | "digest" | "flashcards" | "quiz" | "chat" | "transcript";
+  start_ts?: number;
+  end_ts?: number;
+  anchor?: string;
+  flashcard_id?: number;
+  quiz_question_id?: number;
+}
+
+export interface GlobalSearchResult {
+  source_type: SearchSourceType;
+  source_id: number;
+  summary_id: number;
+  score: number;
+  text_preview: string;
+  source_metadata: SearchResultMetadata;
+}
+
+export interface GlobalSearchResponse {
+  query: string;
+  total_results: number;
+  results: GlobalSearchResult[];
+  searched_at: string;
+}
+
+export interface WithinMatch {
+  source_type: SearchSourceType;
+  source_id: number;
+  text: string;
+  text_html: string;
+  start_offset: number;
+  end_offset: number;
+  tab: "synthesis" | "digest" | "flashcards" | "quiz" | "chat" | "transcript";
+  score: number;
+  passage_id: string;
+}
+
+export interface WithinSearchResponse {
+  matches: WithinMatch[];
+}
+
+export interface ExplainPassageResponse {
+  explanation: string;
+  cached: boolean;
+  model_used: string;
+}
+
+export interface RecentQueriesResponse {
+  queries: string[];
+}
+
 export const searchApi = {
+  // Legacy — keep for backward compat with /api/search/semantic transcript-only
   async semanticSearch(
     query: string,
     limit: number = 10,
@@ -2591,6 +2667,57 @@ export const searchApi = {
       method: "POST",
       body: { query, limit, category },
     });
+  },
+
+  // V1 Phase 2 — Global cross-source search
+  async searchGlobal(
+    query: string,
+    filters: SearchFilters = {},
+    limit: number = 20,
+  ): Promise<GlobalSearchResponse> {
+    return request("/api/search/global", {
+      method: "POST",
+      body: { query, limit, ...filters },
+    });
+  },
+
+  // V1 Phase 2 — Intra-analysis search
+  async searchWithin(
+    summaryId: number,
+    query: string,
+    sourceTypes?: SearchSourceType[],
+  ): Promise<WithinSearchResponse> {
+    return request(`/api/search/within/${summaryId}`, {
+      method: "POST",
+      body: { query, source_types: sourceTypes },
+    });
+  },
+
+  // V1 Phase 2 — Explain a passage (Pro/Expert only on backend)
+  async explainPassage(
+    summaryId: number,
+    passageText: string,
+    query: string,
+    sourceType: SearchSourceType,
+  ): Promise<ExplainPassageResponse> {
+    return request("/api/search/explain-passage", {
+      method: "POST",
+      body: {
+        summary_id: summaryId,
+        passage_text: passageText,
+        query,
+        source_type: sourceType,
+      },
+    });
+  },
+
+  // V1 Phase 2 — Recent queries (server-side persistence)
+  async getRecentQueries(): Promise<RecentQueriesResponse> {
+    return request("/api/search/recent-queries", { method: "GET" });
+  },
+
+  async clearRecentQueries(): Promise<void> {
+    await request("/api/search/recent-queries", { method: "DELETE" });
   },
 };
 
