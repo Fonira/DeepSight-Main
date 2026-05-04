@@ -1,17 +1,12 @@
 /**
- * MiniActionBar — 3 actions sticky au-dessus de l'input :
+ * MiniActionBar — actions sticky au-dessus de l'input :
  * - Favori (toggle filled/outlined) → onToggleFavorite
- * - Analyse complète (CTA principal, indigo) → onViewAnalysis
+ * - Résumé (CTA, ouvre HubAnalysisSheet in-place) → onShowSummary
  * - Partager → onShare
  *
- * Refactor du `miniActionBar` existant de QuickChatScreen.tsx.
- *
- * Polish (mai 2026) :
- * - Press scale 0.95 + spring back sur chaque bouton
- * - Haptics light sur les actions secondaires (Favori, Partager)
- * - Haptics medium sur le CTA principal (Analyse complète)
- * - Loading state visible (DeepSightSpinner) quand isUpgrading
- * - Variant favori filled/outlined avec couleur amber sur filled
+ * Le bouton "Analyse complète" (qui naviguait vers /(tabs)/analysis/[id])
+ * a été retiré : il causait un crash de l'app et l'affichage de l'analyse
+ * se fait désormais in-place via HubAnalysisSheet.
  */
 
 import React from "react";
@@ -24,7 +19,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
-import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 import { sp, borderRadius } from "../../theme/spacing";
 import { fontFamily, fontSize } from "../../theme/typography";
 import { palette } from "../../theme/colors";
@@ -32,11 +26,12 @@ import { haptics } from "../../utils/haptics";
 
 interface MiniActionBarProps {
   isFavorite: boolean;
-  isUpgrading?: boolean;
-  canViewAnalysis?: boolean;
-  onViewAnalysis: () => void;
+  /** Active le bouton "Résumé" (ouvre HubAnalysisSheet). Défaut : false. */
+  canShowSummary?: boolean;
   onToggleFavorite: () => void;
   onShare: () => void;
+  /** Optionnel : tap "Résumé" → ouvre le bottom sheet d'analyse côté Hub. */
+  onShowSummary?: () => void;
 }
 
 // ─── Reusable press-scale wrapper ───
@@ -92,11 +87,10 @@ const PressScale: React.FC<PressScaleProps> = ({
 
 export const MiniActionBar: React.FC<MiniActionBarProps> = ({
   isFavorite,
-  isUpgrading = false,
-  canViewAnalysis = true,
-  onViewAnalysis,
+  canShowSummary = false,
   onToggleFavorite,
   onShare,
+  onShowSummary,
 }) => {
   const { colors } = useTheme();
 
@@ -105,14 +99,14 @@ export const MiniActionBar: React.FC<MiniActionBarProps> = ({
     onToggleFavorite();
   };
 
-  const handleViewAnalysis = () => {
-    haptics.medium();
-    onViewAnalysis();
-  };
-
   const handleShare = () => {
     haptics.light();
     onShare();
+  };
+
+  const handleShowSummary = () => {
+    haptics.medium();
+    onShowSummary?.();
   };
 
   return (
@@ -138,29 +132,29 @@ export const MiniActionBar: React.FC<MiniActionBarProps> = ({
         </Text>
       </PressScale>
 
-      <PressScale
-        onPress={handleViewAnalysis}
-        disabled={isUpgrading || !canViewAnalysis}
-        accessibilityLabel="Voir l'analyse complète"
-        testID="mini-action-view-analysis"
-        style={[
-          styles.upgradeAction,
-          {
-            backgroundColor: palette.indigo + "20",
-            borderColor: palette.indigo + "40",
-            opacity: !canViewAnalysis ? 0.4 : 1,
-          },
-        ]}
-      >
-        {isUpgrading ? (
-          <DeepSightSpinner size="xs" speed="fast" />
-        ) : (
-          <Ionicons name="analytics-outline" size={16} color={palette.indigo} />
-        )}
-        <Text style={[styles.upgradeActionText, { color: palette.indigo }]}>
-          {isUpgrading ? "Lancement..." : "Analyse complète"}
-        </Text>
-      </PressScale>
+      {canShowSummary ? (
+        <PressScale
+          onPress={handleShowSummary}
+          accessibilityLabel="Voir le résumé"
+          testID="mini-action-show-summary"
+          style={[
+            styles.upgradeAction,
+            {
+              backgroundColor: palette.indigo + "20",
+              borderColor: palette.indigo + "40",
+            },
+          ]}
+        >
+          <Ionicons
+            name="document-text-outline"
+            size={16}
+            color={palette.indigo}
+          />
+          <Text style={[styles.upgradeActionText, { color: palette.indigo }]}>
+            Résumé
+          </Text>
+        </PressScale>
+      ) : null}
 
       <PressScale
         onPress={handleShare}
