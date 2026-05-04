@@ -2035,6 +2035,35 @@ a:hover {
   background: var(--accent-primary-muted);
 }
 
+.chat-paste-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.chat-paste-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+}
+
+.chat-paste-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chat-paste-success {
+  color: var(--accent-success, #22c55e) !important;
+  border-color: var(--accent-success, #22c55e) !important;
+}
+
 .chat-input {
   flex: 1;
   padding: 8px 12px;

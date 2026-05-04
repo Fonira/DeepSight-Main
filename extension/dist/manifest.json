@@ -16,6 +16,7 @@
     "alarms",
     "identity",
     "clipboardWrite",
+    "clipboardRead",
     "sidePanel",
     "offscreen"
   ],
