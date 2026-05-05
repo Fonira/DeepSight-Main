@@ -27,6 +27,7 @@ from db.database import (
 )
 from auth.dependencies import get_current_user, get_current_user_optional
 from core.config import STRIPE_CONFIG, FRONTEND_URL, get_stripe_key, STRIPE_AUTOMATIC_TAX_ENABLED
+from services.audit_log import log_audit
 from .plan_config import (
     PLANS,
     PLAN_HIERARCHY,
@@ -889,6 +890,17 @@ async def change_subscription_plan(
     valid_plans = [p for p in PLAN_HIERARCHY if p != "free"]
     if new_plan not in valid_plans:
         raise HTTPException(status_code=400, detail=f"Invalid plan: {new_plan}")
+
+    # Audit log RGPD — log l'intention. Effectif tracé via Stripe webhook
+    # (subscription.updated → users.plan). Multi-branch endpoint, log avant
+    # toute mutation Stripe.
+    await log_audit(
+        session,
+        action="plan.changed",
+        user_id=current_user.id,
+        details={"from": current_plan, "to": new_plan},
+    )
+    await session.commit()
 
     # Si même plan, rien à faire
     if new_plan == current_plan:

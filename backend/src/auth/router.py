@@ -53,6 +53,7 @@ from .service import (
     validate_session_token,
     verify_google_id_token,
 )
+from services.audit_log import log_audit
 from .dependencies import get_current_user
 from .email import send_verification_email, send_password_reset_email, send_welcome_email
 
@@ -191,6 +192,17 @@ async def delete_account(
     # Invalider la session avant suppression
     await invalidate_user_session(session, current_user.id)
 
+    # Audit log RGPD AVANT delete — capture user_id avant cascade SET NULL.
+    await log_audit(
+        session,
+        action="account.deleted",
+        user_id=current_user.id,
+        details={
+            "plan": current_user.plan,
+            "auth_method": "google" if current_user.google_id else "email",
+        },
+    )
+
     # Supprimer l'utilisateur (cascade delete automatique)
     await session.delete(current_user)
     await session.commit()
@@ -283,6 +295,10 @@ async def reset_password_endpoint(data: ResetPasswordRequest, session: AsyncSess
     if not success:
         raise HTTPException(status_code=400, detail=message)
 
+    # Audit log RGPD — user_id absent (flow anonyme), email dans details.
+    await log_audit(session, action="password.reset", details={"email": data.email})
+    await session.commit()
+
     return MessageResponse(success=True, message=message)
 
 
@@ -295,6 +311,9 @@ async def change_password_endpoint(
 
     if not success:
         raise HTTPException(status_code=400, detail=message)
+
+    await log_audit(session, action="password.changed", user_id=current_user.id)
+    await session.commit()
 
     return MessageResponse(success=True, message=message)
 
