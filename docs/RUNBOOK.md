@@ -437,3 +437,172 @@ What actually broke and why.
 - **Apple Developer**: 6740487498 → developer.apple.com support
 - **Google Play**: console support
 - **GitHub** (repo + Actions): support@github.com
+
+---
+
+## §16 Centralized logs (Axiom)
+
+### Why
+
+Without a log drain, the only way to investigate a prod issue is `ssh root@89.167.23.214 && docker logs repo-backend-1`. That gives ephemeral output, no full-text query, no retention beyond Docker's rotation, and no cross-container correlation. Axiom.co solves all three with a free tier (500 GB/month) that easily covers our current volume.
+
+### What is shipped
+
+The backend logger (`core.logging.DeepSightLogger`) attaches an extra handler — `AxiomHandler` (`backend/src/core/axiom_handler.py`) — whenever `AXIOM_TOKEN` and `AXIOM_DATASET_NAME` are both set. Every existing `logger.info(...) / logger.error(...) / logger.exception(...)` call across the backend is then duplicated to Axiom (stdout still emits the same line — Axiom is **additive**, not a replacement).
+
+Each event is a JSON object with:
+
+| Field         | Type    | Source                                                                                |
+| ------------- | ------- | ------------------------------------------------------------------------------------- |
+| `_time`       | string  | ISO 8601 UTC, set at emit time (Axiom convention).                                    |
+| `level`       | string  | `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL`.                                  |
+| `logger`      | string  | Logger name (`deepsight`, `deepsight.video`, `deepsight.billing`, …).                 |
+| `message`     | string  | Human-readable message.                                                               |
+| `service`     | string  | `deepsight-api` (overridable via `SERVICE_NAME`).                                     |
+| `environment` | string  | Value of `ENVIRONMENT` (or `ENV`), e.g. `production`.                                 |
+| `version`     | string  | Value of `VERSION` env var.                                                           |
+| `location`    | object  | `{ file, line, function }` of the log call site.                                      |
+| `request_id`  | string  | Set by `core.middleware.LoggingMiddleware` (correlates lines of the same HTTP req).   |
+| `user_id`     | int     | Set by middleware after auth.                                                         |
+| `user_email`  | string  | Same.                                                                                 |
+| `extra`       | object  | All `**kwargs` passed to `logger.info(...)` (e.g. `video_id`, `duration_ms`).         |
+| `exception`   | object  | `{ type, message, traceback }` when called with `exc_info=True` or `logger.exception()`. |
+
+The handler is **async, non-blocking, drop-on-error**:
+
+- Records go through a bounded in-memory `queue.Queue` (10 000 max).
+- A daemon thread (`axiom-log-drain`) batches up to 100 records and flushes every 5 s, whichever comes first.
+- HTTP failures retry up to 2 times with linear backoff, then drop the batch (we never block the request path).
+- If `httpx` is unavailable, if the queue is full, or if the Axiom API errors persistently, the handler silently increments a counter and moves on — the FastAPI request never sees it.
+
+Per-log overhead at the call site is **< 0.5 ms** (a single `queue.put_nowait`). The actual HTTP cost is paid on the worker thread.
+
+### Activation (Hetzner production)
+
+1. Sign up at https://axiom.co (free tier, EU region available).
+2. Create a dataset named `deepsight-prod` (or any name — we just need the slug).
+3. Create an **API token** in `Settings → API Tokens` with `Ingest` permission scoped to that dataset. Tokens look like `xaat-xxxx`.
+4. SSH the VPS and edit `/opt/deepsight/repo/.env.production`:
+
+   ```env
+   AXIOM_TOKEN=xaat-xxxxxxxxxxxxxxxxxxxxx
+   AXIOM_DATASET_NAME=deepsight-prod
+   # AXIOM_INGEST_URL=https://api.axiom.co  # default; set https://api.eu.axiom.co for EU region
+   ```
+
+5. Recreate the backend container so it picks up the new env:
+
+   ```bash
+   ssh root@89.167.23.214 'docker restart repo-backend-1'
+   ```
+
+6. Generate a test event:
+
+   ```bash
+   ssh root@89.167.23.214 'docker exec repo-backend-1 curl -s http://localhost:8080/api/health/status'
+   ```
+
+7. Open the Axiom dashboard, navigate to the dataset, you should see the events within ~5 s.
+
+To **disable** the drain at any time, comment out (or delete) `AXIOM_TOKEN` and `docker restart repo-backend-1`. The handler becomes a no-op on the next start.
+
+### Querying
+
+Axiom uses APL (Axiom Processing Language), SQL-like:
+
+```apl
+['deepsight-prod']
+| where level == "ERROR"
+| where _time > ago(1h)
+| project _time, message, location.file, request_id, user_id
+```
+
+Common queries:
+
+```apl
+// All errors for one user in the last 24h
+['deepsight-prod'] | where user_id == 42 and level == "ERROR" | order by _time desc
+
+// Slow requests (custom field set by core.middleware.PerformanceMiddleware)
+['deepsight-prod'] | where extra.duration_ms > 5000 | summarize count() by extra.path
+
+// Trace a single request across the stack
+['deepsight-prod'] | where request_id == "abc123-…" | order by _time asc
+```
+
+### Verifying the integration locally (without prod token)
+
+You don't need a real token to assert the wiring. Use the `is_axiom_configured()` and `install_axiom_handler()` helpers:
+
+```bash
+# Negative path — no token, handler should be a no-op
+cd backend
+python -c "
+from core.axiom_handler import is_axiom_configured, install_axiom_handler
+import logging
+print('configured?', is_axiom_configured())  # → False
+log = logging.getLogger('demo')
+print('handler:', install_axiom_handler(log))  # → None
+"
+
+# Positive path — set fake env vars, handler should attach
+AXIOM_TOKEN=xaat-fake AXIOM_DATASET_NAME=test python -c "
+from core.axiom_handler import is_axiom_configured, install_axiom_handler
+import logging
+print('configured?', is_axiom_configured())  # → True
+log = logging.getLogger('demo')
+log.setLevel(logging.INFO)
+h = install_axiom_handler(log)
+print('handler attached:', h is not None)  # → True
+log.info('hello axiom')
+import time; time.sleep(0.5)
+print('stats:', h.stats)  # queue should drain (will fail HTTP — that's fine)
+"
+```
+
+The second command will queue 1 record, attempt the POST against the fake token, get a 401 from Axiom, and increment `dropped_http_error`. **No exception is raised** — that is the contract.
+
+You can also smoke-test against a real Axiom dataset with curl directly:
+
+```bash
+curl -X POST "https://api.axiom.co/v1/datasets/deepsight-prod/ingest" \
+  -H "Authorization: Bearer $AXIOM_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '[{"_time":"'"$(date -u +%FT%TZ)"'","level":"INFO","message":"manual test","service":"manual"}]'
+```
+
+A `200 OK` confirms the token + dataset combo works.
+
+### Operational tips
+
+- **Log volume sanity check**: in the Axiom dashboard under `Settings → Usage`, watch monthly ingest. Free tier = 500 GB/month. Our current peak (~150 req/s) emits roughly 10–30 KB/s of structured logs → ~30 GB/month, well under quota.
+- **PII**: `user_email` is included to ease support workflows. Axiom signs a DPA on request — confirm before keeping the field on long-retention datasets. To redact, edit `_record_to_payload()` in `axiom_handler.py`.
+- **Sentry coexistence**: Sentry stays the source of truth for **exceptions** (with stack traces, breadcrumbs, releases, source maps). Axiom is the source of truth for **flow logs** (every INFO line, every middleware checkpoint). Don't migrate Sentry — they solve different problems.
+- **Caddy access logs**: this section covers the backend Python logger only. Caddy still writes its access log to `/data/logs/access.log` inside `repo-caddy-1` (bind-mounted to the host). A second drain for Caddy → Axiom is intentionally **out of scope** for this iteration because of the known Caddyfile bind-mount inode desync bug (see §8) — the backend Python logs cover ~95% of the diagnostic value.
+
+### Troubleshooting
+
+| Symptom                                                       | Likely cause                                                                                       | Fix                                                                                          |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| No events appear in Axiom after `docker restart`              | `AXIOM_TOKEN` or `AXIOM_DATASET_NAME` empty in `.env.production`.                                  | Re-edit `.env.production`, ensure both are set, restart container.                           |
+| Events appear briefly then stop                               | Quota exceeded or token revoked.                                                                   | Check Axiom usage page; rotate token.                                                        |
+| `dropped_queue_full` keeps climbing                           | Worker thread can't keep up (rare — would require ~2 000 req/s sustained).                         | Increase `DEFAULT_QUEUE_MAXSIZE` in `axiom_handler.py` or shorten `DEFAULT_FLUSH_INTERVAL_S`. |
+| `dropped_http_error` keeps climbing                           | Network egress blocked or Axiom 5xx.                                                               | Check `https://status.axiom.co`. Verify `curl -v https://api.axiom.co` from the container.   |
+| Backend boots but no logs reach Axiom (and Sentry works)      | `httpx` import failed inside the worker (extremely unlikely — Sentry uses `httpx` too).            | `docker exec repo-backend-1 pip show httpx`.                                                 |
+| Log lines show in stdout but `request_id` is empty in Axiom   | Log emitted outside an HTTP request (e.g. APScheduler job, startup banner). Expected. Filter accordingly. | n/a                                                                                          |
+
+### Files involved
+
+| Path                                          | Role                                                |
+| --------------------------------------------- | --------------------------------------------------- |
+| `backend/src/core/axiom_handler.py`           | Async HTTP handler implementation.                  |
+| `backend/src/core/logging.py`                 | Calls `install_axiom_handler()` from `__init__`.    |
+| `backend/src/core/config.py`                  | Declares `AXIOM_TOKEN`, `AXIOM_DATASET_NAME`, etc.  |
+| `deploy/hetzner/caddy/Caddyfile`              | Untouched in this iteration (see §8 reasoning).     |
+| `.env.production` (on VPS, **not** in repo)   | Where you put the actual token.                     |
+
+### Future work
+
+- Drain Caddy access logs via the `caddy-axiom` plugin or a sidecar `vector` container. Skipped here to avoid touching the Caddyfile bind-mount.
+- Add a `/api/admin/axiom-stats` endpoint that surfaces `get_axiom_stats()` so we can graph drop rates without SSH.
+- Pipe APScheduler job heartbeats with a stable `job_id` field for easier alerting on missed backups.

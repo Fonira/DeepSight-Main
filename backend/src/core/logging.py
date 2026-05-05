@@ -172,6 +172,18 @@ class DeepSightLogger:
         self._logger.addHandler(handler)
         self._logger.propagate = False
 
+        # Handler Axiom optionnel — drain centralisé vers Axiom.co.
+        # Activé uniquement si AXIOM_TOKEN + AXIOM_DATASET_NAME sont définis.
+        # Async, non-bloquant, drop-on-error : ne peut JAMAIS casser le logger.
+        try:
+            from core.axiom_handler import install_axiom_handler
+
+            install_axiom_handler(self._logger, level=getattr(logging, LOG_LEVEL))
+        except Exception:  # noqa: BLE001
+            # Toute erreur d'import/init côté Axiom est silencieuse — la stack
+            # de logging stdout/JSON reste 100% fonctionnelle.
+            pass
+
     def _log(self, level: int, message: str, exc_info: bool = False, **kwargs):
         """Log avec extras structurés."""
         record = self._logger.makeRecord(
