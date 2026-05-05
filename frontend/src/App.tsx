@@ -48,6 +48,8 @@ import { StagedPrefsToolbar } from "./components/voice/staging/StagedPrefsToolba
 import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
 import { Tutor } from "./components/Tutor";
 import { analytics } from "./services/analytics";
+import { initWebVitals } from "./services/webVitals";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DeepSightSpinner } from "./components/ui/DeepSightSpinner";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1158,13 +1160,17 @@ const AppRoutes = () => {
 
 const App = () => {
   // 📊 Initialiser PostHog analytics (RGPD-compliant, attend le consentement)
+  // 📈 Initialiser Core Web Vitals tracking → PostHog (auto-gated sur consentement)
   useEffect(() => {
     analytics.init();
+    initWebVitals();
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <AppRoutes />
+      {/* 📈 Vercel Speed Insights — perf monitoring (anonymisé, RGPD legitimate interest) */}
+      <SpeedInsights />
     </QueryClientProvider>
   );
 };
