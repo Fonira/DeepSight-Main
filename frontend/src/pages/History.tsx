@@ -246,6 +246,17 @@ const formatDuration = (seconds: number): string => {
   return `${m} min`;
 };
 
+// 📦 Portal Export Menu — position helper (shared by History + PlaylistDetailView)
+const calcExportMenuPos = (
+  btnRef: React.RefObject<HTMLButtonElement | null>,
+) => {
+  if (btnRef.current) {
+    const rect = btnRef.current.getBoundingClientRect();
+    return { top: rect.bottom + 4, left: Math.max(8, rect.right - 176) };
+  }
+  return { top: 0, left: 0 };
+};
+
 const formatRelativeDate = (dateString: string, lang: string): string => {
   const date = new Date(dateString);
   const now = new Date();
@@ -602,18 +613,6 @@ export const History: React.FC = () => {
 
   const isProUser = normalizePlanId(user?.plan) === "pro";
 
-  // 📦 Portal Export Menu — position helper
-  const calcExportMenuPos = useCallback(
-    (btnRef: React.RefObject<HTMLButtonElement | null>) => {
-      if (btnRef.current) {
-        const rect = btnRef.current.getBoundingClientRect();
-        return { top: rect.bottom + 4, left: Math.max(8, rect.right - 176) };
-      }
-      return { top: 0, left: 0 };
-    },
-    [],
-  );
-
   // 📦 Click-outside + scroll/resize handler for detail export menu
   useEffect(() => {
     if (!detailShowExportMenu) return;
@@ -837,7 +836,7 @@ export const History: React.FC = () => {
       const pollInterval = setInterval(async () => {
         try {
           const status = await videoApi.getTaskStatus(response.task_id);
-          if (status.status === "completed" || status.status === "done") {
+          if (status.status === "completed") {
             clearInterval(pollInterval);
             upgradeIntervalRef.current = null;
             // Reload the summary
@@ -849,7 +848,7 @@ export const History: React.FC = () => {
             });
             setUpgradeLoading(false);
             setUpgradeTaskId(null);
-          } else if (status.status === "error" || status.status === "failed") {
+          } else if (status.status === "failed") {
             clearInterval(pollInterval);
             upgradeIntervalRef.current = null;
             setUpgradeLoading(false);

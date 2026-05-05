@@ -926,10 +926,10 @@ export const TournesolMini: React.FC<{
 
           if (result.found && result.data) {
             setData(result.data);
-          } else {
           }
         }
-      } catch (err) {
+      } catch {
+        // Silently ignore — Tournesol API may be down or video not indexed
       } finally {
         setLoading(false);
       }

@@ -4,7 +4,10 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { DeepSightSpinner } from "../ui/DeepSightSpinner";
+import {
+  DeepSightSpinner,
+  DeepSightSpinnerMicro,
+} from "../ui/DeepSightSpinner";
 import {
   MessageSquare,
   Zap,

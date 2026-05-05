@@ -529,8 +529,6 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     setNavSeed(navCountRef.current * 7919); // prime multiplier for spread
   }, [location.pathname]);
 
-  if (isMobileOrReduced) return null;
-
   const accentPrimary = isDark ? "#D4A054" : "#C8903A";
   const accentSecondary = isDark ? "#C8903A" : "#D4A054";
 
@@ -797,6 +795,9 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
   const glowFilter = isDark
     ? "brightness(1.18) saturate(1.15)"
     : "brightness(1.05) saturate(1.10)";
+
+  // Early return APRÈS tous les hooks (rules-of-hooks).
+  if (isMobileOrReduced) return null;
 
   return (
     <div

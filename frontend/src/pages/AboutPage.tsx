@@ -26,7 +26,7 @@ import {
   MessageSquare,
   Sun,
 } from "lucide-react";
-import Layout from "../components/Layout";
+import { Layout } from "../components/Layout";
 import { SEO } from "../components/SEO";
 import { BreadcrumbJsonLd } from "../components/BreadcrumbJsonLd";
 import DoodleBackground from "../components/DoodleBackground";

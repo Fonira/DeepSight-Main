@@ -242,7 +242,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({
   /**
    * Utilise les données locales en fallback — biaisé vers les centres d'intérêt utilisateur
    */
-  const useLocalFallback = useCallback(() => {
+  const applyLocalFallback = useCallback(() => {
     const excludeList = Array.from(displayedWords).slice(-20);
 
     // Si l'utilisateur a un historique, biaiser vers ses catégories préférées
@@ -265,7 +265,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({
   /**
    * Utilise un mot de l'historique — PRIORITÉ ABSOLUE (PAS DE FALLBACK LOCAL)
    */
-  const useHistoryWord = useCallback(() => {
+  const applyHistoryWord = useCallback(() => {
     const excludeList = Array.from(displayedWords);
     const keyword = getRandomHistoryKeyword(excludeList);
 
@@ -371,10 +371,10 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({
       if (isMountedRef.current) {
         if (keywords.length > 0) {
           // Utiliser l'historique
-          useHistoryWord();
+          applyHistoryWord();
         } else if (!userHasHistory) {
           // L'utilisateur n'a PAS d'historique → fallback local OK
-          useLocalFallback();
+          applyLocalFallback();
         } else {
           // L'utilisateur A un historique mais keywords vide (erreur?) → ne rien afficher plutôt que local
           // Réessayer après 2 secondes
@@ -387,14 +387,14 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({
       console.error("[LoadingWord] Critical error:", err);
       // Même sur erreur critique, ne pas afficher de mot local si on sait que l'utilisateur a un historique
       if (historyKeywordsCache.length > 0) {
-        useHistoryWord();
+        applyHistoryWord();
       }
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
       }
     }
-  }, [fetchHistoryKeywords, useHistoryWord, useLocalFallback]);
+  }, [fetchHistoryKeywords, applyHistoryWord, applyLocalFallback]);
 
   /**
    * Rafraîchit le mot manuellement — TOUJOURS vérifier l'historique d'abord
@@ -411,14 +411,14 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({
     if (historyKeywordsCache.length > 0) {
       const roll = Math.random();
       if (roll < 0.7) {
-        useHistoryWord();
+        applyHistoryWord();
       } else {
-        useLocalFallback();
+        applyLocalFallback();
       }
     } else {
-      useLocalFallback();
+      applyLocalFallback();
     }
-  }, [useHistoryWord, useLocalFallback]);
+  }, [applyHistoryWord, applyLocalFallback]);
 
   /**
    * 🆕 Injecte des concepts enrichis (depuis ConceptsGlossary/KeywordsModal)
@@ -453,6 +453,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({
             : c.definition),
         wiki_url: c.wiki_url || null,
         confidence: "high",
+        image_url: null,
       }));
 
       // Injecter en tête du cache (prioritaires)
@@ -629,9 +630,9 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({
       if (historyKeywordsCache.length > 0) {
         const roll = Math.random();
         if (roll < 0.7) {
-          useHistoryWord();
+          applyHistoryWord();
         } else {
-          useLocalFallback();
+          applyLocalFallback();
         }
       } else {
         fetchWord();

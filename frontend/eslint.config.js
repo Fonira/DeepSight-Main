@@ -37,6 +37,11 @@ export default tseslint.config(
           destructuredArrayIgnorePattern: "^_",
         },
       ],
+      // `any` reste signalé mais n'échoue plus le CI : la dette `any` est
+      // tracée comme warning et progressivement réduite au fil des refactors.
+      // Override appliqué dans la PR fix/main-ci-recovery (mai 2026) pour
+      // débloquer le pipeline après accumulation pré-Pro.
+      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
 );

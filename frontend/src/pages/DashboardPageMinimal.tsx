@@ -39,8 +39,7 @@ const DashboardPageMinimal: React.FC = () => {
   const { user } = useAuth();
   const { language } = useTranslation();
   const navigate = useNavigate();
-  const { analyzing, progress, message, error, analyze } =
-    useAnalyzeAndOpenHub();
+  const { analyzing, error, analyze } = useAnalyzeAndOpenHub();
 
   const [smartInput, setSmartInput] = useState<SmartInputValue>({
     mode: "search",
@@ -120,15 +119,8 @@ const DashboardPageMinimal: React.FC = () => {
               <div className="flex items-center gap-2 text-[13px] text-indigo-300">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 <span>
-                  {message ||
-                    (language === "fr" ? "Analyse en cours…" : "Analyzing…")}
+                  {language === "fr" ? "Analyse en cours…" : "Analyzing…"}
                 </span>
-              </div>
-              <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-indigo-500 transition-all duration-300"
-                  style={{ width: `${Math.min(progress, 95)}%` }}
-                />
               </div>
             </div>
           )}

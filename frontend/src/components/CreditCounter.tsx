@@ -50,41 +50,11 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
   const credits = user?.credits ?? 0;
   const plan = normalizePlanId(user?.plan);
   const planLimits = PLAN_LIMITS[plan];
-  const maxCredits = planLimits.monthlyCredits;
   const maxAnalyses = planLimits.monthlyAnalyses;
 
   // Calculate urgency level based on plan and credits
+  // shouldShowLowCreditsAlert(credits, plan) → boolean (true = under threshold)
   const urgency = useMemo(() => {
-    // Pro plan with higher limits - check if still good
-    if (plan === "pro" && maxCredits >= 10000) {
-      const alertLevel = shouldShowLowCreditsAlert(credits, maxCredits);
-      if (alertLevel === "critical") {
-        return {
-          level: "critical",
-          color: "text-orange-400",
-          bg: "bg-orange-500/10",
-          border: "border-orange-500/30",
-        };
-      }
-      if (alertLevel === "warning") {
-        return {
-          level: "warning",
-          color: "text-amber-400",
-          bg: "bg-amber-500/10",
-          border: "border-amber-500/30",
-        };
-      }
-      return {
-        level: "none",
-        color: "text-green-400",
-        bg: "bg-green-500/10",
-        border: "border-green-500/30",
-      };
-    }
-
-    // Use conversion triggers thresholds (percentage-based)
-    const alertLevel = shouldShowLowCreditsAlert(credits, maxCredits);
-
     if (credits <= 0) {
       return {
         level: "empty",
@@ -93,20 +63,12 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
         border: "border-red-500/30",
       };
     }
-    if (alertLevel === "critical") {
+    if (shouldShowLowCreditsAlert(credits, plan)) {
       return {
         level: "critical",
         color: "text-orange-400",
         bg: "bg-orange-500/10",
         border: "border-orange-500/30",
-      };
-    }
-    if (alertLevel === "warning") {
-      return {
-        level: "warning",
-        color: "text-amber-400",
-        bg: "bg-amber-500/10",
-        border: "border-amber-500/30",
       };
     }
     return {
@@ -115,7 +77,7 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
       bg: "bg-green-500/10",
       border: "border-green-500/30",
     };
-  }, [credits, plan, maxCredits]);
+  }, [credits, plan]);
 
   const handleUpgrade = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -239,23 +201,10 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
         </div>
       )}
 
-      {/* Credits progress bar */}
-      {maxCredits > 0 && urgency.level !== "none" && (
-        <div className="mb-2">
-          <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all ${urgency.color.replace("text-", "bg-")}`}
-              style={{
-                width: `${Math.min((credits / maxCredits) * 100, 100)}%`,
-              }}
-            />
-          </div>
-          <div className="mt-1 flex items-center justify-between text-xs text-text-tertiary">
-            <span>{formatCredits(credits)}</span>
-            <span>{formatCredits(maxCredits)}</span>
-          </div>
-        </div>
-      )}
+      {/* La barre de progression "credits / maxCredits" a été retirée :
+          le PlanLimits actuel ne définit pas `monthlyCredits` (le système
+          se base sur `monthlyAnalyses` + crédits dynamiques user-level).
+          La progress bar des analyses au-dessus suffit à informer l'user. */}
 
       {/* Upgrade button */}
       {showUpgradeButton && plan !== "pro" && (

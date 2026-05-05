@@ -55,6 +55,11 @@ const STATUS_BADGE: Record<
     className: "bg-red-500/15 text-red-400",
     icon: XCircle,
   },
+  adding_perspective: {
+    label: "Ajout perspective…",
+    className: "bg-violet-500/15 text-violet-400",
+    icon: SpinnerBadgeIcon,
+  },
 };
 
 export const DebateSummaryCard: React.FC<DebateSummaryCardProps> = ({

@@ -50,7 +50,7 @@ interface TimecodeButtonProps {
  * Parse un timecode string en secondes
  */
 export function parseTimecode(timecode: string): number | null {
-  const clean = timecode.replace(/[\[\]\(\)]/g, "").trim();
+  const clean = timecode.replace(/[[\]()]/g, "").trim();
   const parts = clean.split(":").map((p) => parseInt(p, 10));
 
   if (parts.some(isNaN)) return null;

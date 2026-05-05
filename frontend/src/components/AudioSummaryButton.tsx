@@ -48,7 +48,10 @@ export const AudioSummaryButton: React.FC<AudioSummaryButtonProps> = ({
     setError(null);
 
     try {
-      const response = await api.generateAudioSummary(summaryId, { language });
+      // L'endpoint TTS n'a pas de paramètre `language` — la langue est dérivée
+      // du contenu de la synthèse côté backend. Réservé pour future i18n voix.
+      void language;
+      const response = await api.video.exportAudio(summaryId);
       setAudioData({
         audio_url: response.audio_url,
         duration_estimate: response.duration_estimate,

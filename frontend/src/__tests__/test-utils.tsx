@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
 import { vi } from "vitest";
 import { LanguageProvider } from "../contexts/LanguageContext";
+import { ThemeProvider } from "../contexts/ThemeContext";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 CUSTOM RENDER OPTIONS
@@ -40,7 +41,9 @@ export function renderWithProviders(
       <HelmetProvider>
         <QueryClientProvider client={queryClient}>
           <MemoryRouter {...routerProps}>
-            <LanguageProvider>{children}</LanguageProvider>
+            <ThemeProvider>
+              <LanguageProvider>{children}</LanguageProvider>
+            </ThemeProvider>
           </MemoryRouter>
         </QueryClientProvider>
       </HelmetProvider>
@@ -78,7 +81,9 @@ export function renderHookWithProviders<TProps, TResult>(
       <HelmetProvider>
         <QueryClientProvider client={queryClient}>
           <MemoryRouter>
-            <LanguageProvider>{children}</LanguageProvider>
+            <ThemeProvider>
+              <LanguageProvider>{children}</LanguageProvider>
+            </ThemeProvider>
           </MemoryRouter>
         </QueryClientProvider>
       </HelmetProvider>

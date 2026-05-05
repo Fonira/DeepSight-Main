@@ -175,7 +175,7 @@ describe("Login", () => {
 
 describe("Logout", () => {
   it("logout → clears tokens and user", async () => {
-    mockAuthApi.logout.mockResolvedValueOnce({});
+    mockAuthApi.logout.mockResolvedValueOnce(undefined);
 
     const { result } = renderHook(() => useAuth());
 
@@ -193,7 +193,7 @@ describe("Logout", () => {
     const handler = vi.fn();
     window.addEventListener("auth:logout", handler);
 
-    mockAuthApi.logout.mockResolvedValueOnce({});
+    mockAuthApi.logout.mockResolvedValueOnce(undefined);
 
     const { result } = renderHook(() => useAuth());
 
@@ -270,7 +270,10 @@ describe("Register", () => {
 
 describe("Verify Email", () => {
   it("verifyEmail calls API correctly", async () => {
-    mockAuthApi.verifyEmail.mockResolvedValueOnce({});
+    mockAuthApi.verifyEmail.mockResolvedValueOnce({
+      access_token: "test-access",
+      refresh_token: "test-refresh",
+    });
 
     const { result } = renderHook(() => useAuth());
 

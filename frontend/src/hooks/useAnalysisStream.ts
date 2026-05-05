@@ -321,7 +321,7 @@ export function useAnalysisStream(
             }
             break;
 
-          case "error":
+          case "error": {
             const error: StreamError = {
               code: data.code || "UNKNOWN",
               message: data.message || "Une erreur est survenue",
@@ -346,6 +346,7 @@ export function useAnalysisStream(
 
             eventSourceRef.current?.close();
             break;
+          }
 
           case "heartbeat":
             // Keep-alive, ignore

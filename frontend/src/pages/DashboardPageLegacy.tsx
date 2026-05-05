@@ -36,6 +36,7 @@ import {
   AlertCircle,
   Microscope,
   XCircle,
+  Shield,
 } from "lucide-react";
 import { DeepSightSpinner } from "../components/ui";
 import { videoApi, chatApi, reliabilityApi, ApiError } from "../services/api";
@@ -578,7 +579,7 @@ export const DashboardPage: React.FC = () => {
             videos: candidates,
             total_found: searchResult.total_results,
             search_metadata: { source: "library", languages: [] },
-          } as DiscoveryResponse);
+          } as unknown as DiscoveryResponse);
           setShowDiscoveryModal(true);
         } else {
           setError(
@@ -1416,7 +1417,11 @@ export const DashboardPage: React.FC = () => {
                           <VideoPlayer
                             ref={playerRef}
                             videoId={selectedSummary.video_id}
-                            platform={selectedSummary.platform || "youtube"}
+                            platform={
+                              selectedSummary.platform === "tiktok"
+                                ? "tiktok"
+                                : "youtube"
+                            }
                             initialTime={playerStartTime}
                             className="w-full h-full"
                           />
