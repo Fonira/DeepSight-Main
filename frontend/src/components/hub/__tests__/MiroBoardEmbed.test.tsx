@@ -15,17 +15,17 @@ describe("MiroBoardEmbed", () => {
     expect(region).toHaveAttribute("aria-busy", "true");
   });
 
-  it("renders iframe when status=ready and boardId present", () => {
+  it("renders 'Open in Miro' link when status=ready and boardId present", () => {
     render(<MiroBoardEmbed boardId="abc123" status="ready" />);
-    const iframe = screen.getByTestId("miro-board-embed-iframe");
-    expect(iframe).toBeInTheDocument();
-    expect(iframe.tagName).toBe("IFRAME");
-    expect(iframe).toHaveAttribute("title", "Miro Workspace");
-    expect(iframe).toHaveAttribute("loading", "lazy");
-    expect(iframe).toHaveAttribute(
-      "referrerpolicy",
-      "strict-origin-when-cross-origin",
-    );
+    const ready = screen.getByTestId("miro-board-embed-ready");
+    expect(ready).toBeInTheDocument();
+    expect(screen.getByText(/Workspace Miro prêt/i)).toBeInTheDocument();
+
+    const link = screen.getByTestId("miro-board-embed-open-link");
+    expect(link.tagName).toBe("A");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(link).toHaveAttribute("href", "https://miro.com/app/board/abc123");
   });
 
   it("renders error block when status=failed", () => {
@@ -45,16 +45,22 @@ describe("MiroBoardEmbed", () => {
     ).toBeInTheDocument();
   });
 
-  it("iframe src includes boardId in expected format", () => {
-    render(<MiroBoardEmbed boardId="myBoardXYZ" status="ready" />);
-    const iframe = screen.getByTestId("miro-board-embed-iframe");
-    const src = iframe.getAttribute("src") ?? "";
-    expect(src).toContain("https://miro.com/app/embed/myBoardXYZ/");
-    expect(src).toContain("embedMode=view_only_without_ui");
-    expect(src).toContain("moveToViewport=fit");
+  it("uses viewLink prop when provided (overrides boardId-based URL)", () => {
+    render(
+      <MiroBoardEmbed
+        boardId="abc123"
+        status="ready"
+        viewLink="https://miro.com/app/board/o9J_kyabc=/"
+      />,
+    );
+    const link = screen.getByTestId("miro-board-embed-open-link");
+    expect(link).toHaveAttribute(
+      "href",
+      "https://miro.com/app/board/o9J_kyabc=/",
+    );
   });
 
-  it("does NOT render iframe when status=ready but boardId is null (fallback path)", () => {
+  it("uses viewLink fallback when boardId is null but status=ready", () => {
     render(
       <MiroBoardEmbed
         boardId={null}
@@ -62,10 +68,20 @@ describe("MiroBoardEmbed", () => {
         viewLink="https://miro.com/app/board/o9J_kyabc=/"
       />,
     );
+    // No iframe ever (we removed it entirely)
     expect(screen.queryByTestId("miro-board-embed-iframe")).toBeNull();
+    // Renders the ready link card (viewLink works as the URL source)
+    expect(screen.getByTestId("miro-board-embed-ready")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("miro-board-embed-open-link"),
+    ).toHaveAttribute("href", "https://miro.com/app/board/o9J_kyabc=/");
+  });
+
+  it("renders safe fallback when status=ready but no boardId AND no viewLink", () => {
+    render(<MiroBoardEmbed boardId={null} status="ready" />);
     expect(screen.getByTestId("miro-board-embed-fallback")).toBeInTheDocument();
     expect(
-      screen.getByTestId("miro-board-embed-fallback-link"),
-    ).toHaveAttribute("href", "https://miro.com/app/board/o9J_kyabc=/");
+      screen.getByText(/Workspace prêt mais lien indisponible/i),
+    ).toBeInTheDocument();
   });
 });
