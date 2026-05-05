@@ -3,11 +3,18 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { useSemanticSearch } from "../useSemanticSearch";
-import { searchApi } from "../../../services/api";
+import { searchApi, ApiError } from "../../../services/api";
 
-vi.mock("../../../services/api", () => ({
-  searchApi: { searchGlobal: vi.fn() },
-}));
+vi.mock("../../../services/api", async () => {
+  const actual =
+    await vi.importActual<typeof import("../../../services/api")>(
+      "../../../services/api",
+    );
+  return {
+    ...actual,
+    searchApi: { searchGlobal: vi.fn() },
+  };
+});
 
 const wrapper = ({ children }: { children: React.ReactNode }) => {
   const qc = new QueryClient({
@@ -76,5 +83,43 @@ describe("useSemanticSearch", () => {
       expect(searchApi.searchGlobal).toHaveBeenCalledTimes(1);
       expect(searchApi.searchGlobal).toHaveBeenLastCalledWith("aist", {}, 20);
     });
+  });
+
+  it("exposes featureDisabled=true when backend returns 404 (flag off)", async () => {
+    (
+      searchApi.searchGlobal as unknown as ReturnType<typeof vi.fn>
+    ).mockRejectedValue(new ApiError("Not Found", 404));
+    const { result } = renderHook(
+      () => useSemanticSearch({ query: "ai", filters: {}, debounceMs: 0 }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.featureDisabled).toBe(true));
+    // Generic error must NOT be exposed when feature is disabled —
+    // SearchPage relies on this distinction to render a dedicated empty state.
+    expect(result.current.error).toBeNull();
+  });
+
+  it("exposes featureDisabled=true when backend returns 503", async () => {
+    (
+      searchApi.searchGlobal as unknown as ReturnType<typeof vi.fn>
+    ).mockRejectedValue(new ApiError("Service Unavailable", 503));
+    const { result } = renderHook(
+      () => useSemanticSearch({ query: "ai", filters: {}, debounceMs: 0 }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.featureDisabled).toBe(true));
+    expect(result.current.error).toBeNull();
+  });
+
+  it("keeps generic error for non-feature-disabled status (e.g. 500)", async () => {
+    (
+      searchApi.searchGlobal as unknown as ReturnType<typeof vi.fn>
+    ).mockRejectedValue(new ApiError("Server error", 500));
+    const { result } = renderHook(
+      () => useSemanticSearch({ query: "ai", filters: {}, debounceMs: 0 }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.error).not.toBeNull());
+    expect(result.current.featureDisabled).toBe(false);
   });
 });

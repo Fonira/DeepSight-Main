@@ -26,7 +26,7 @@ import {
   DebateSummaryCard,
   DebateChat,
 } from "../components/debate";
-import { debateApi } from "../services/api";
+import { debateApi, ApiError } from "../services/api";
 import type { DebateAnalysis, DebateListItem } from "../types/debate";
 import { Sidebar } from "../components/layout/Sidebar";
 import DoodleBackground from "../components/DoodleBackground";
@@ -227,6 +227,47 @@ const MOCK_DEBATES_LIST: DebateListItem[] = [
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_RETRIES = 3;
+// Backoff sequence for poll retries: 1s, 2s, 4s (exponential, max 3 attempts)
+const POLL_RETRY_BACKOFF_MS = [1000, 2000, 4000];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ERROR MESSAGE HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Translates an unknown error (typically an ApiError) into a user-facing French message.
+ * Distinguishes network / auth / rate-limited / server / other states.
+ */
+const getApiErrorMessage = (err: unknown, fallback: string): string => {
+  if (err instanceof ApiError) {
+    // status === 0 → fetch failed before reaching server (offline, DNS, CORS, abort)
+    if (err.status === 0) {
+      return "Erreur de connexion réseau — vérifie ta connexion";
+    }
+    // status === 408 → AbortController timeout
+    if (err.status === 408) {
+      return "Délai d'attente dépassé — réessaie";
+    }
+    if (err.status === 401) {
+      return "Session expirée — reconnecte-toi";
+    }
+    if (err.status === 429) {
+      return "Trop de requêtes, attends quelques secondes";
+    }
+    if (err.status >= 500 && err.status < 600) {
+      return "Erreur serveur — réessaie dans une minute";
+    }
+    // Other 4xx — use the API-translated message if non-empty
+    if (err.message && err.message.trim().length > 0) {
+      return err.message;
+    }
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return fallback;
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DEBATE PAGE
@@ -247,9 +288,17 @@ export const DebatePage: React.FC = () => {
   const [debateLoading, setDebateLoading] = useState(false);
   const [debatesList, setDebatesList] = useState<DebateListItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [useMock, setUseMock] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  // Dev-only mock fallback. Production users see explicit error states instead
+  // of silent mock data — see loadHistory() / handleCreateDebate() below.
+  const [devMockEnabled, setDevMockEnabled] = useState(false);
+  const [pollError, setPollError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRetryCountRef = useRef<number>(0);
+  const pollRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // 🎙️ Voice Chat — Debate moderator agent
   const { user } = useAuth();
@@ -278,8 +327,21 @@ export const DebatePage: React.FC = () => {
   useEffect(() => {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (pollRetryTimeoutRef.current) clearTimeout(pollRetryTimeoutRef.current);
       if (avatarPollRef.current) clearInterval(avatarPollRef.current);
     };
+  }, []);
+
+  // ─── Stable stopPolling helper (declared before consumers) ───
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    if (pollRetryTimeoutRef.current) {
+      clearTimeout(pollRetryTimeoutRef.current);
+      pollRetryTimeoutRef.current = null;
+    }
   }, []);
 
   // ─── Fetch agent voice avatar when debate completes ───
@@ -346,15 +408,33 @@ export const DebatePage: React.FC = () => {
   }, [selectedDebate?.id, selectedDebate?.status, voiceEnabled]);
 
   // ─── Load history ───
+  // Production: surface API errors explicitly via `historyError` (with retry CTA).
+  // Dev only: fall back to mock data so the UI is testable offline.
   const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
     try {
       const res = await debateApi.getHistory(1, 20);
       setDebatesList(res.debates);
-      setUseMock(false);
-    } catch {
-      // API not available — fallback to mock
-      setDebatesList(MOCK_DEBATES_LIST);
-      setUseMock(true);
+      setDevMockEnabled(false);
+    } catch (err: unknown) {
+      if (import.meta.env.DEV) {
+        // Dev local — keep mock fallback so the UI remains testable offline.
+        setDebatesList(MOCK_DEBATES_LIST);
+        setDevMockEnabled(true);
+        setHistoryError(null);
+      } else {
+        // Production — surface a real error state with retry. NEVER silently
+        // swap to mock data; that masked real backend issues from users.
+        setDebatesList([]);
+        setDevMockEnabled(false);
+        setHistoryError(
+          getApiErrorMessage(
+            err,
+            "Impossible de charger l'historique des débats",
+          ),
+        );
+      }
     } finally {
       setHistoryLoading(false);
     }
@@ -367,12 +447,14 @@ export const DebatePage: React.FC = () => {
   // ─── Load selected debate when debateId changes ───
   const loadDebate = useCallback(
     async (id: string) => {
-      if (useMock) {
+      // Dev-only mock fallback when API is unreachable (see loadHistory).
+      if (devMockEnabled) {
         setSelectedDebate(MOCK_DEBATE);
         return;
       }
 
       setDebateLoading(true);
+      setError(null);
       try {
         const result = await debateApi.getResult(Number(id));
         setSelectedDebate(result);
@@ -383,14 +465,22 @@ export const DebatePage: React.FC = () => {
         if (isInProgress) {
           startPolling(Number(id));
         }
-      } catch {
-        // Fallback to mock
-        setSelectedDebate(MOCK_DEBATE);
+      } catch (err: unknown) {
+        if (import.meta.env.DEV) {
+          // Dev — fallback to mock so we can iterate offline
+          setSelectedDebate(MOCK_DEBATE);
+        } else {
+          // Production — surface the real error, do NOT show fake mock data
+          setSelectedDebate(null);
+          setError(
+            getApiErrorMessage(err, "Impossible de charger ce débat"),
+          );
+        }
       } finally {
         setDebateLoading(false);
       }
     },
-    [useMock],
+    [devMockEnabled],
   );
 
   useEffect(() => {
@@ -398,31 +488,46 @@ export const DebatePage: React.FC = () => {
       loadDebate(debateId);
     } else {
       setSelectedDebate(null);
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
+      setPollError(null);
+      stopPolling();
     }
-  }, [debateId, loadDebate]);
+  }, [debateId, loadDebate, stopPolling]);
 
   // ─── Polling for in-progress debates ───
+  // On API error: retry up to POLL_MAX_RETRIES times with exponential backoff
+  // (1s → 2s → 4s). After max retries, surface an explicit error message via
+  // `pollError` instead of silently freezing the UI on the last known status.
   const startPolling = useCallback(
     (id: number) => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
+      stopPolling();
+      pollRetryCountRef.current = 0;
+      setPollError(null);
 
-      pollingRef.current = setInterval(async () => {
+      const tick = async () => {
         try {
           const statusRes = await debateApi.getStatus(id);
+          // Reset retry counter on any successful tick
+          pollRetryCountRef.current = 0;
+          setPollError(null);
+
           if (
             statusRes.status === "completed" ||
             statusRes.status === "failed"
           ) {
-            if (pollingRef.current) clearInterval(pollingRef.current);
-            pollingRef.current = null;
+            stopPolling();
             // Fetch the full result
-            const result = await debateApi.getResult(id);
-            setSelectedDebate(result);
-            loadHistory(); // Refresh list
+            try {
+              const result = await debateApi.getResult(id);
+              setSelectedDebate(result);
+              loadHistory(); // Refresh list
+            } catch (err: unknown) {
+              setError(
+                getApiErrorMessage(
+                  err,
+                  "Impossible de charger le résultat du débat",
+                ),
+              );
+            }
           } else {
             // Update status and video titles from polling response
             setSelectedDebate((prev) =>
@@ -458,14 +563,54 @@ export const DebatePage: React.FC = () => {
                 : prev,
             );
           }
-        } catch {
-          // Stop polling on error
-          if (pollingRef.current) clearInterval(pollingRef.current);
-          pollingRef.current = null;
+        } catch (err: unknown) {
+          // Stop the running interval so we don't pile up requests on a flaky network
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+
+          if (pollRetryCountRef.current >= POLL_MAX_RETRIES) {
+            // Exhausted — surface an explicit error and give up
+            setPollError(
+              getApiErrorMessage(
+                err,
+                "Impossible de suivre la progression du débat",
+              ),
+            );
+            return;
+          }
+
+          // Schedule a single retry tick with exponential backoff
+          const backoffIdx = Math.min(
+            pollRetryCountRef.current,
+            POLL_RETRY_BACKOFF_MS.length - 1,
+          );
+          const delay = POLL_RETRY_BACKOFF_MS[backoffIdx];
+          pollRetryCountRef.current += 1;
+
+          if (pollRetryTimeoutRef.current) {
+            clearTimeout(pollRetryTimeoutRef.current);
+          }
+          pollRetryTimeoutRef.current = setTimeout(() => {
+            pollRetryTimeoutRef.current = null;
+            // After backoff, run one tick. If it succeeds, resume the regular interval.
+            tick().then(() => {
+              if (
+                !pollingRef.current &&
+                pollRetryCountRef.current === 0 &&
+                !pollError
+              ) {
+                pollingRef.current = setInterval(tick, POLL_INTERVAL_MS);
+              }
+            });
+          }, delay);
         }
-      }, POLL_INTERVAL_MS);
+      };
+
+      pollingRef.current = setInterval(tick, POLL_INTERVAL_MS);
     },
-    [loadHistory],
+    [loadHistory, stopPolling, pollError],
   );
 
   // ─── Create debate ───
@@ -477,8 +622,9 @@ export const DebatePage: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    if (useMock) {
-      // Mock fallback
+    // Dev-only: simulate a successful creation against MOCK data so we can
+    // iterate offline. Production ALWAYS hits the real API.
+    if (devMockEnabled && import.meta.env.DEV) {
       setTimeout(() => {
         setLoading(false);
         setSearchParams({ id: "1" });
@@ -497,11 +643,9 @@ export const DebatePage: React.FC = () => {
       setSearchParams({ id: String(res.debate_id) });
     } catch (err: unknown) {
       setLoading(false);
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Erreur lors de la création du débat";
-      setError(message);
+      setError(
+        getApiErrorMessage(err, "Erreur lors de la création du débat"),
+      );
     }
   };
 
@@ -510,10 +654,8 @@ export const DebatePage: React.FC = () => {
   };
 
   const handleBack = () => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
+    stopPolling();
+    setPollError(null);
     setSelectedDebate(null);
     setSearchParams({});
   };
@@ -605,6 +747,33 @@ export const DebatePage: React.FC = () => {
             className="mb-8"
           >
             <DebateStatusTracker status={selectedDebate.status} />
+          </motion.div>
+        )}
+        {/* Poll error — surfaced when status polling fails after 3 retries */}
+        {isInProgress && pollError && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 backdrop-blur-xl"
+          >
+            <div className="flex items-start gap-2 mb-3">
+              <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-400">
+                  Suivi de progression interrompu
+                </p>
+                <p className="text-xs text-amber-300/70 mt-1">{pollError}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedDebate) startPolling(selectedDebate.id);
+              }}
+              className="text-xs font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
+            >
+              Reprendre le suivi
+            </button>
           </motion.div>
         )}
         {/* Failed state */}
@@ -770,6 +939,29 @@ export const DebatePage: React.FC = () => {
           <div className="flex items-center justify-center py-12">
             <DeepSightSpinnerSmall />
           </div>
+        ) : historyError ? (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 backdrop-blur-xl"
+          >
+            <div className="flex items-start gap-2 mb-3">
+              <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-400">
+                  Impossible de charger l'historique des débats
+                </p>
+                <p className="text-xs text-red-300/70 mt-1">{historyError}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={loadHistory}
+              className="text-xs font-medium text-red-300 hover:text-red-200 underline underline-offset-2"
+            >
+              Réessayer
+            </button>
+          </motion.div>
         ) : debatesList.length > 0 ? (
           <div className="space-y-2">
             {debatesList.map((debate) => (

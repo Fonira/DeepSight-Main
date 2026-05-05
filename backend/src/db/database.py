@@ -1127,6 +1127,31 @@ class DebatePerspective(Base):
     )
 
 
+class DebateVideoBCandidatesCache(Base):
+    """Cache 7j des candidats matching B (top-5) pour un (topic, relation, lang, bucket).
+
+    Sprint Débat IA v2 — alembic 016 (cache table only — perspectives table arrives in 017).
+    Cf. docs/superpowers/specs/2026-05-04-debate-ia-v2.md §4.3 / §4.4.
+    """
+
+    __tablename__ = "debate_video_b_candidates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    cache_key = Column(String(64), unique=True, nullable=False, index=True)  # sha256 hex
+    topic_normalized = Column(String(255))  # debug uniquement
+    relation_type = Column(String(20), nullable=False)  # 'opposite' | 'complement' | 'nuance'
+    lang = Column(String(5), nullable=False)
+    duration_bucket = Column(String(10), nullable=False)  # 'short' | 'medium' | 'long'
+    candidates_json = Column(Text, nullable=False)  # JSON list of top-5 PerspectiveCandidate
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+
+    __table_args__ = (
+        Index("idx_debate_video_b_candidates_key", "cache_key"),
+        Index("idx_debate_video_b_candidates_expires", "expires_at"),
+    )
+
+
 class SharedAnalysis(Base):
     """Table des analyses partagées (liens publics)"""
 
