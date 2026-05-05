@@ -24,6 +24,20 @@ export {
 export { getSpriteFrameIndex } from "./sprite-frame.js";
 export { KEYFRAMES_V3 } from "./keyframes.v3.js";
 export type { KeyframeV3 } from "./keyframes.v3.js";
+export {
+  SUNFLOWER_PALETTES,
+  SUNFLOWER_PETAL_SCALE,
+  SUNFLOWER_HALOS,
+  getSunflowerPhase,
+  getSunflowerRotation,
+  getSunflowerOpacity,
+} from "./sunflower-phase.js";
+export type {
+  SunflowerPhase,
+  SunflowerPalette,
+  SunflowerHalo,
+} from "./sunflower-phase.js";
+export { buildSunflowerSVG, SUNFLOWER_GEOMETRY } from "./sunflower-svg.js";
 export type {
   RGB,
   StarDensity,

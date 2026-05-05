@@ -92,3 +92,4 @@ extension/dist/*.map
 .superpowers/
 
 .worktrees/
+.claude-worktrees/
