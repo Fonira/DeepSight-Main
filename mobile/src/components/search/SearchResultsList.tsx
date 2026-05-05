@@ -42,13 +42,30 @@ export const SearchResultsList: React.FC<SearchResultsListProps> = ({
     (item: GlobalSearchResultItem) => {
       const summaryId = item.summary_id ?? item.source_id;
       const tab = item.source_metadata.tab ?? "synthesis";
+
+      // Flashcards/quiz vivent dans l'onglet Étude, pas dans l'écran d'analyse
+      // (TAB_LABELS = Résumé/Sources/Chat). Route vers le bon écran sans passer
+      // par l'analyse plein écran qui n'a pas de tab adapté.
+      if (tab === "flashcards" || tab === "quiz") {
+        router.push({
+          pathname: "/(tabs)/study",
+          params: { summaryId: String(summaryId) },
+        } as never);
+        return;
+      }
+
+      // synthesis/digest/transcript → tab Résumé (index 0)
+      // chat → tab Chat (index 2)
+      const initialTab = tab === "chat" ? "2" : "0";
+
       router.push({
         pathname: "/(tabs)/analysis/[id]",
         params: {
           id: String(summaryId),
           q: query,
           highlight: String(item.source_id),
-          tab,
+          initialTab,
+          backTo: "search",
         },
       } as never);
     },
@@ -67,8 +84,7 @@ export const SearchResultsList: React.FC<SearchResultsListProps> = ({
   );
 
   const keyExtractor = useCallback(
-    (item: GlobalSearchResultItem) =>
-      `${item.source_type}-${item.source_id}`,
+    (item: GlobalSearchResultItem) => `${item.source_type}-${item.source_id}`,
     [],
   );
 
@@ -101,11 +117,7 @@ export const SearchResultsList: React.FC<SearchResultsListProps> = ({
   if (results.length === 0) {
     return (
       <View style={styles.center}>
-        <Ionicons
-          name="search-outline"
-          size={42}
-          color={colors.textTertiary}
-        />
+        <Ionicons name="search-outline" size={42} color={colors.textTertiary} />
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
           Aucun résultat pour « {query} »
         </Text>

@@ -132,7 +132,9 @@ function AnalysisDetailScreenInner() {
     store.status === "processing" || store.status === "pending",
   );
   const [activeTab, setActiveTab] = useState(initialTabIndex);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  // Synthèse détaillée = toujours plein écran à l'ouverture (TabBar globale cachée).
+  // Le toggle reste dispo pour sortir manuellement si besoin.
+  const [isFullscreen, setIsFullscreen] = useState(true);
   const [isVoiceVisible, setIsVoiceVisible] = useState(false);
   const [isExportVisible, setIsExportVisible] = useState(false);
   const [isTutorVisible, setIsTutorVisible] = useState(false);
@@ -164,7 +166,7 @@ function AnalysisDetailScreenInner() {
     if (id !== prevIdRef.current) {
       prevIdRef.current = id;
       setResolvedSummaryId(null);
-      setIsFullscreen(false);
+      setIsFullscreen(true);
       startedStreaming.current =
         store.status === "processing" || store.status === "pending";
     }
@@ -242,6 +244,8 @@ function AnalysisDetailScreenInner() {
       router.replace("/(tabs)/library");
     } else if (backTo === "study") {
       router.replace("/(tabs)/study");
+    } else if (backTo === "search") {
+      router.replace("/(tabs)/search");
     } else if (backTo === "home") {
       router.replace("/(tabs)");
     } else {
