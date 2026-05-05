@@ -27,6 +27,10 @@ vi.mock("../../services/api", async () => {
       getWorkspace: vi.fn(),
       deleteWorkspace: vi.fn(),
     },
+    videoApi: {
+      ...actual.videoApi,
+      getSummary: vi.fn(),
+    },
   };
 });
 
@@ -49,7 +53,7 @@ vi.mock("../../hooks/useAuth", () => ({
   useAuth: () => mockAuthState,
 }));
 
-import { hubApi, type HubWorkspace } from "../../services/api";
+import { hubApi, videoApi, type HubWorkspace } from "../../services/api";
 import { useHubWorkspacesStore } from "../../store/useHubWorkspacesStore";
 import HubWorkspacesPage from "../HubWorkspacesPage";
 
@@ -58,6 +62,10 @@ const mockedHubApi = hubApi as unknown as {
   listWorkspaces: ReturnType<typeof vi.fn>;
   getWorkspace: ReturnType<typeof vi.fn>;
   deleteWorkspace: ReturnType<typeof vi.fn>;
+};
+
+const mockedVideoApi = videoApi as unknown as {
+  getSummary: ReturnType<typeof vi.fn>;
 };
 
 function makeWorkspace(overrides: Partial<HubWorkspace> = {}): HubWorkspace {
@@ -90,11 +98,32 @@ function renderAtPath(path: string) {
 describe("HubWorkspacesPage", () => {
   beforeEach(() => {
     useHubWorkspacesStore.getState().reset();
-    vi.clearAllMocks();
+    // Reset complet (vide implementations + history) — nécessaire pour purger
+    // les mockResolvedValueOnce queued entre tests qui sinon polluent les
+    // tests suivants.
+    mockedHubApi.createWorkspace.mockReset();
+    mockedHubApi.listWorkspaces.mockReset();
+    mockedHubApi.getWorkspace.mockReset();
+    mockedHubApi.deleteWorkspace.mockReset();
+    mockedVideoApi.getSummary.mockReset();
     mockAuthState = {
       user: { plan: "expert", is_admin: false, preferences: {} },
       loading: false,
     };
+    // Default : résout avec un summary générique pour les tests existants qui
+    // n'override pas spécifiquement videoApi.getSummary mais qui montent le
+    // mode détail (mode détail / polling). Évite l'erreur
+    // "Cannot read properties of undefined (reading 'then')" tout en gardant
+    // un lien `hub-workspaces-analysis-link-${id}` cliquable.
+    mockedVideoApi.getSummary.mockImplementation(async (sid: number) => ({
+      id: sid,
+      video_id: `vid-${sid}`,
+      video_title: `Analyse ${sid}`,
+      video_channel: "Test Channel",
+      thumbnail_url: undefined,
+      summary_content: "stub",
+      created_at: "2026-05-05T12:00:00Z",
+    }));
   });
 
   afterEach(() => {
@@ -256,5 +285,78 @@ describe("HubWorkspacesPage", () => {
     ).toBeInTheDocument();
     // Aucun appel API ne doit avoir lieu pour un non-expert
     expect(mockedHubApi.listWorkspaces).not.toHaveBeenCalled();
+  });
+
+  // ─── 7. Detail mode — fetches and displays real titles ─────────────────────
+  it("fetches and displays real titles for summary_ids in detail view", async () => {
+    const ws = makeWorkspace({
+      id: 200,
+      name: "Real Titles WS",
+      status: "ready",
+      miro_board_id: "boardX",
+      summary_ids: [501, 502, 503],
+    });
+    mockedHubApi.getWorkspace.mockResolvedValueOnce(ws);
+
+    // 3 summaries : 2 OK (titres + thumbnail + channel) + 1 fail (indisponible)
+    mockedVideoApi.getSummary.mockImplementation(async (sid: number) => {
+      if (sid === 501) {
+        return {
+          id: 501,
+          video_id: "abc",
+          video_title: "Le futur de l'IA",
+          video_channel: "Science Étonnante",
+          thumbnail_url: "https://img.test/501.jpg",
+          summary_content: "...",
+          created_at: "2026-05-05T12:00:00Z",
+        };
+      }
+      if (sid === 502) {
+        return {
+          id: 502,
+          video_id: "def",
+          video_title: "Conscience et qualia",
+          video_channel: "Monsieur Phi",
+          thumbnail_url: "https://img.test/502.jpg",
+          summary_content: "...",
+          created_at: "2026-05-05T12:00:00Z",
+        };
+      }
+      throw new Error("not found");
+    });
+
+    renderAtPath("/hub/workspaces/200");
+
+    // Vrais titres affichés
+    await waitFor(() => {
+      expect(screen.getByText("Le futur de l'IA")).toBeInTheDocument();
+      expect(screen.getByText("Conscience et qualia")).toBeInTheDocument();
+    });
+
+    // Channel affiché
+    expect(screen.getByText("Science Étonnante")).toBeInTheDocument();
+    expect(screen.getByText("Monsieur Phi")).toBeInTheDocument();
+
+    // Items disponibles : liens cliquables vers /analysis/:id
+    expect(
+      screen.getByTestId("hub-workspaces-analysis-link-501"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("hub-workspaces-analysis-link-502"),
+    ).toBeInTheDocument();
+
+    // Item 503 indisponible — fallback italique sans lien
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("hub-workspaces-analysis-unavailable-503"),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText(/analyse #503 \(indisponible\)/i)).toBeInTheDocument();
+
+    // 3 fetchs déclenchés
+    expect(mockedVideoApi.getSummary).toHaveBeenCalledTimes(3);
+    expect(mockedVideoApi.getSummary).toHaveBeenCalledWith(501);
+    expect(mockedVideoApi.getSummary).toHaveBeenCalledWith(502);
+    expect(mockedVideoApi.getSummary).toHaveBeenCalledWith(503);
   });
 });

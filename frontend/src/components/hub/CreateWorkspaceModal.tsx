@@ -91,14 +91,27 @@ export const CreateWorkspaceModal: React.FC<Props> = ({
           name: trimmed,
           summary_ids: initialSummaryIds,
         });
+        // Wave 2c — preserve onCreated callback for parent cleanup (e.g. exit
+        // select mode dans ConversationsDrawer), puis navigate vers le détail
+        // AVANT onClose() pour que la redirection se déclenche même si le parent
+        // démonte le modal sur close.
         onCreated?.(ws.id);
+        navigate(`/hub/workspaces/${ws.id}`);
         onClose();
       } catch {
         // L'erreur est déjà capturée dans le store (createError).
         // On ne ferme PAS le modal : l'utilisateur voit le message friendly.
       }
     },
-    [name, isCreating, createWorkspace, initialSummaryIds, onCreated, onClose],
+    [
+      name,
+      isCreating,
+      createWorkspace,
+      initialSummaryIds,
+      onCreated,
+      onClose,
+      navigate,
+    ],
   );
 
   const handleQuotaRedirect = useCallback(() => {
