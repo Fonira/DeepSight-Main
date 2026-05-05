@@ -178,10 +178,11 @@ async def generate_debate_board(
 
     async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
         # ─── 1. Create board ─────────────────────────────────────────────
-        # Policy options omitted: `permissionsPolicy.sharingAccess` and
-        # `sharingPolicy.organizationAccess`/`teamAccess` require Miro Team
-        # plan and produce 403 4.0602 on Personal Starter accounts. Miro
-        # applies sensible defaults when policy is absent.
+        # `sharingPolicy.access: "view"` makes the board readable via its
+        # viewLink (required for the embed iframe). Other policy options
+        # (`permissionsPolicy.sharingAccess`, `organizationAccess`,
+        # `teamAccess`) require Miro Team plan and produce 403 4.0602 on
+        # Personal Starter — keep them out so default policy applies.
         # Cf. https://developers.miro.com/reference/create-board
         board_body = {
             "name": board_name,
@@ -189,6 +190,9 @@ async def generate_debate_board(
                 f"Débat IA généré par DeepSight — {topic}. "
                 f"Comparaison automatique entre {len(perspectives) + 1} vidéos."
             )[:500],
+            "policy": {
+                "sharingPolicy": {"access": "view"},
+            },
         }
         board = await _miro_post(client, "/boards", token, board_body)
         board_id: str = str(board.get("id") or "")
@@ -383,13 +387,17 @@ async def create_hub_workspace_board(
         # ─── 1. Create board ──────────────────────────────────────────────
         # Policy options omitted: `permissionsPolicy.sharingAccess` and
         # `sharingPolicy.organizationAccess`/`teamAccess` require Miro Team
-        # plan and produce 403 4.0602 on Personal Starter accounts. Miro
-        # applies sensible defaults when policy is absent.
+        # plan and produce 403 4.0602 on Personal Starter accounts. Adding
+        # `sharingPolicy.access: "view"` is necessary so the embed iframe
+        # can load the board (defaults to "private" otherwise).
         board_body = {
             "name": safe_name,
             "description": (
                 f"DeepSight Hub Workspace — {len(summaries)} analyses"
             )[:500],
+            "policy": {
+                "sharingPolicy": {"access": "view"},
+            },
         }
         board = await _miro_post(client, "/boards", token, board_body)
         board_id: str = str(board.get("id") or "")
