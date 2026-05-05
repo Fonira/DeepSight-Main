@@ -26,7 +26,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "@elevenlabs/client": "^0.15.2",
+    "@elevenlabs/client": "^1.5.0",
     "@elevenlabs/react-native": "^0.5.12",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.8",
