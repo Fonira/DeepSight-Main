@@ -10,6 +10,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
 import { Sidebar } from "../components/layout/Sidebar";
 import { billingApi, authApi, type ApiBillingMyPlan } from "../services/api";
+import { resetCookieConsent } from "../components/CookieBanner";
 import {
   PLANS_INFO,
   getMinPlanForFeature,
@@ -24,6 +25,7 @@ import {
   Key,
   Trash2,
   Download,
+  Cookie,
   LogOut,
   Check,
   AlertCircle,
@@ -1365,7 +1367,7 @@ export const MyAccount: React.FC = () => {
                   {tr("Vos données", "Your data")}
                 </h2>
               </div>
-              <div className="panel-body">
+              <div className="panel-body space-y-3">
                 <button
                   onClick={handleExportData}
                   disabled={isExporting}
@@ -1390,6 +1392,39 @@ export const MyAccount: React.FC = () => {
                   ) : (
                     <ChevronRight className="w-5 h-5 text-text-tertiary" />
                   )}
+                </button>
+
+                <button
+                  onClick={() => {
+                    resetCookieConsent();
+                    showToast(
+                      tr(
+                        "Préférences cookies réinitialisées",
+                        "Cookie preferences reset",
+                      ),
+                      "success",
+                    );
+                  }}
+                  className="w-full flex items-center justify-between p-4 rounded-lg bg-bg-secondary hover:bg-bg-tertiary transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <Cookie className="w-5 h-5 text-accent-primary" />
+                    <div>
+                      <p className="font-medium">
+                        {tr(
+                          "Modifier mes préférences cookies",
+                          "Manage cookie preferences",
+                        )}
+                      </p>
+                      <p className="text-sm text-text-tertiary">
+                        {tr(
+                          "Réouvre le bandeau pour ajuster votre consentement (analyse, marketing)",
+                          "Reopens the banner so you can adjust your consent (analytics, marketing)",
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-text-tertiary" />
                 </button>
               </div>
             </section>
