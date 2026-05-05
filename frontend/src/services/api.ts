@@ -72,7 +72,7 @@ export interface User {
   analysis_count?: number;
   analysis_limit?: number;
   // Bag JSON merge non-destructivement par PUT /api/auth/preferences
-  // (ambient_lighting_enabled, has_completed_onboarding, persona, etc.)
+  // (has_completed_onboarding, persona, etc.)
   preferences?: Record<string, unknown>;
 }
 
@@ -866,7 +866,7 @@ export const authApi = {
     default_model?: string;
     // Bag JSON arbitraire mergé non-destructivement côté backend
     // (auth/service.py:update_user_preferences). Utilisé pour
-    // has_completed_onboarding, persona, ambient_lighting_enabled.
+    // has_completed_onboarding, persona, etc.
     extra_preferences?: Record<string, unknown>;
   }): Promise<{ success: boolean; message: string }> {
     return request("/api/auth/preferences", {
@@ -2581,7 +2581,83 @@ export interface SemanticSearchResponse {
   searched_at: string;
 }
 
+// ─── Search V1 — Phase 2 (Global / Within / Explain) ──────────────────────────
+
+export type SearchSourceType =
+  | "summary"
+  | "flashcard"
+  | "quiz"
+  | "chat"
+  | "transcript";
+
+export interface SearchFilters {
+  source_types?: SearchSourceType[];
+  platform?: "youtube" | "tiktok" | "text";
+  lang?: string;
+  category?: string;
+  date_from?: string; // ISO date YYYY-MM-DD
+  date_to?: string;
+  favorites_only?: boolean;
+  playlist_id?: number;
+}
+
+export interface SearchResultMetadata {
+  summary_title?: string;
+  summary_thumbnail?: string;
+  video_id?: string;
+  channel?: string;
+  tab?: "synthesis" | "digest" | "flashcards" | "quiz" | "chat" | "transcript";
+  start_ts?: number;
+  end_ts?: number;
+  anchor?: string;
+  flashcard_id?: number;
+  quiz_question_id?: number;
+}
+
+export interface GlobalSearchResult {
+  source_type: SearchSourceType;
+  source_id: number;
+  summary_id: number;
+  score: number;
+  text_preview: string;
+  source_metadata: SearchResultMetadata;
+}
+
+export interface GlobalSearchResponse {
+  query: string;
+  total_results: number;
+  results: GlobalSearchResult[];
+  searched_at: string;
+}
+
+export interface WithinMatch {
+  source_type: SearchSourceType;
+  source_id: number;
+  text: string;
+  text_html: string;
+  start_offset: number;
+  end_offset: number;
+  tab: "synthesis" | "digest" | "flashcards" | "quiz" | "chat" | "transcript";
+  score: number;
+  passage_id: string;
+}
+
+export interface WithinSearchResponse {
+  matches: WithinMatch[];
+}
+
+export interface ExplainPassageResponse {
+  explanation: string;
+  cached: boolean;
+  model_used: string;
+}
+
+export interface RecentQueriesResponse {
+  queries: string[];
+}
+
 export const searchApi = {
+  // Legacy — keep for backward compat with /api/search/semantic transcript-only
   async semanticSearch(
     query: string,
     limit: number = 10,
@@ -2591,6 +2667,57 @@ export const searchApi = {
       method: "POST",
       body: { query, limit, category },
     });
+  },
+
+  // V1 Phase 2 — Global cross-source search
+  async searchGlobal(
+    query: string,
+    filters: SearchFilters = {},
+    limit: number = 20,
+  ): Promise<GlobalSearchResponse> {
+    return request("/api/search/global", {
+      method: "POST",
+      body: { query, limit, ...filters },
+    });
+  },
+
+  // V1 Phase 2 — Intra-analysis search
+  async searchWithin(
+    summaryId: number,
+    query: string,
+    sourceTypes?: SearchSourceType[],
+  ): Promise<WithinSearchResponse> {
+    return request(`/api/search/within/${summaryId}`, {
+      method: "POST",
+      body: { query, source_types: sourceTypes },
+    });
+  },
+
+  // V1 Phase 2 — Explain a passage (Pro/Expert only on backend)
+  async explainPassage(
+    summaryId: number,
+    passageText: string,
+    query: string,
+    sourceType: SearchSourceType,
+  ): Promise<ExplainPassageResponse> {
+    return request("/api/search/explain-passage", {
+      method: "POST",
+      body: {
+        summary_id: summaryId,
+        passage_text: passageText,
+        query,
+        source_type: sourceType,
+      },
+    });
+  },
+
+  // V1 Phase 2 — Recent queries (server-side persistence)
+  async getRecentQueries(): Promise<RecentQueriesResponse> {
+    return request("/api/search/recent-queries", { method: "GET" });
+  },
+
+  async clearRecentQueries(): Promise<void> {
+    await request("/api/search/recent-queries", { method: "DELETE" });
   },
 };
 
@@ -2973,8 +3100,14 @@ export interface DebateStatusResponse {
   debate_id: number;
   status: string;
   progress_message: string;
+  video_a_id?: string;
+  video_b_id?: string;
   video_a_title?: string;
   video_b_title?: string;
+  video_a_channel?: string;
+  video_b_channel?: string;
+  video_a_thumbnail?: string;
+  video_b_thumbnail?: string;
 }
 
 export interface DebateChatMessage {
@@ -3045,6 +3178,27 @@ export const debateApi = {
   }> {
     const qs = regenerate ? "?regenerate=true" : "";
     return request(`/api/voice/debate/${debateId}/avatar${qs}`);
+  },
+
+  /**
+   * 🆕 Sprint Débat IA v2 — Ajoute une perspective complémentaire ou une nuance
+   * à un débat existant (max 3 perspectives au total). Coût : 3 crédits.
+   *
+   * @param debateId      Id du débat
+   * @param relation_type 'complement' (angle complémentaire) ou 'nuance' (qualification)
+   *                      'opposite' n'est PAS exposé ici — c'est la perspective initiale
+   *                      créée par POST /api/debate/create.
+   * @returns DebateAnalysis mis à jour (status passe à 'adding_perspective' puis polling).
+   */
+  async addPerspective(
+    debateId: number,
+    relation_type: "complement" | "nuance",
+  ): Promise<DebateAnalysis> {
+    return request<DebateAnalysis>(`/api/debate/${debateId}/add-perspective`, {
+      method: "POST",
+      body: { relation_type },
+      timeout: 60000,
+    });
   },
 };
 

@@ -24,6 +24,12 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="search"
+        options={{
+          title: "Recherche",
+        }}
+      />
+      <Tabs.Screen
         name="hub"
         options={{
           title: "Hub",

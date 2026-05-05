@@ -5,13 +5,7 @@ import { InputBar } from "../InputBar";
 describe("InputBar", () => {
   it("calls onSend with the trimmed text", () => {
     const onSend = vi.fn();
-    render(
-      <InputBar
-        onSend={onSend}
-        onCallToggle={() => {}}
-        onPttHoldComplete={() => {}}
-      />,
-    );
+    render(<InputBar onSend={onSend} onPttHoldComplete={() => {}} />);
     const input = screen.getByPlaceholderText(/posez votre question/i);
     fireEvent.change(input, { target: { value: "Hello world" } });
     const sendBtn = screen.getByRole("button", { name: /envoyer/i });
@@ -19,33 +13,16 @@ describe("InputBar", () => {
     expect(onSend).toHaveBeenCalledWith("Hello world");
   });
 
-  it("shows mic and call buttons when input is empty", () => {
-    render(
-      <InputBar
-        onSend={() => {}}
-        onCallToggle={() => {}}
-        onPttHoldComplete={() => {}}
-      />,
-    );
-    expect(
-      screen.getByRole("button", { name: /full call/i }),
-    ).toBeInTheDocument();
+  it("shows mic button when input is empty (no Phone CTA — it lives on the Hub now)", () => {
+    render(<InputBar onSend={() => {}} onPttHoldComplete={() => {}} />);
     expect(
       screen.getByRole("button", { name: /maintenir/i }),
     ).toBeInTheDocument();
-  });
-
-  it("calls onCallToggle when phone button pressed", () => {
-    const onCallToggle = vi.fn();
-    render(
-      <InputBar
-        onSend={() => {}}
-        onCallToggle={onCallToggle}
-        onPttHoldComplete={() => {}}
-      />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: /full call/i }));
-    expect(onCallToggle).toHaveBeenCalled();
+    // Le micro-bouton téléphone a été retiré au profit du QuickVoiceCallCTA
+    // hero rendu par HubPage. On vérifie qu'il n'est plus présent ici.
+    expect(
+      screen.queryByRole("button", { name: /full call/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("send on non-chat tab calls onTabChange('chat') then onSend (F4)", () => {
@@ -54,7 +31,6 @@ describe("InputBar", () => {
     render(
       <InputBar
         onSend={onSend}
-        onCallToggle={() => {}}
         onPttHoldComplete={() => {}}
         activeTab="synthesis"
         onTabChange={onTabChange}
@@ -73,7 +49,6 @@ describe("InputBar", () => {
     render(
       <InputBar
         onSend={onSend}
-        onCallToggle={() => {}}
         onPttHoldComplete={() => {}}
         activeTab="chat"
         onTabChange={onTabChange}
@@ -87,13 +62,7 @@ describe("InputBar", () => {
   });
 
   it("renders the Plateformes chip (open by default)", () => {
-    render(
-      <InputBar
-        onSend={() => {}}
-        onCallToggle={() => {}}
-        onPttHoldComplete={() => {}}
-      />,
-    );
+    render(<InputBar onSend={() => {}} onPttHoldComplete={() => {}} />);
     expect(screen.getByText(/Plateformes/i)).toBeInTheDocument();
   });
 });

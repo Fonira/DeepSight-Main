@@ -8,7 +8,7 @@
  * Backend : timeline unifiée déjà en place (PR #203). Schema HubMessage
  * mappé depuis ChatMessage côté API (source/voice_session_id/time_in_call_secs).
  */
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { videoApi, chatApi, reliabilityApi } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
@@ -32,7 +32,15 @@ import { CallModeFullBleed } from "../components/hub/CallModeFullBleed";
 import { NewConversationModal } from "../components/hub/NewConversationModal";
 import { HubAnalysisPanel } from "../components/hub/HubAnalysisPanel";
 import { HubTabBar } from "../components/hub/HubTabBar";
+import { QuickVoiceCallCTA } from "../components/hub/QuickVoiceCallCTA";
 import { useAnalyzeAndOpenHub } from "../hooks/useAnalyzeAndOpenHub";
+import { SemanticHighlightProvider } from "../components/highlight/SemanticHighlightProvider";
+import { HighlightNavigationBar } from "../components/highlight/HighlightNavigationBar";
+import { IntraAnalysisSearchBar } from "../components/highlight/IntraAnalysisSearchBar";
+import { ExplainTooltip } from "../components/highlight/ExplainTooltip";
+import { useCmdFIntercept } from "../components/highlight/useCmdFIntercept";
+import { useSemanticHighlight } from "../components/highlight/useSemanticHighlight";
+import type { WithinMatch } from "../services/api";
 import { Loader2 } from "lucide-react";
 import type {
   HubConversation,
@@ -130,10 +138,15 @@ const AnalyzingPlaceholder: React.FC<{
   </div>
 );
 
-const NoConvPlaceholder: React.FC<{ onOpenDrawer: () => void }> = ({
-  onOpenDrawer,
-}) => (
-  <div className="flex-1 flex items-center justify-center px-6">
+const NoConvPlaceholder: React.FC<{
+  onOpenDrawer: () => void;
+  onStartCall?: () => void;
+  voiceEnabled?: boolean;
+}> = ({ onOpenDrawer, onStartCall, voiceEnabled }) => (
+  <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
+    {voiceEnabled && onStartCall && (
+      <QuickVoiceCallCTA onStart={onStartCall} variant="hero" />
+    )}
     <div className="max-w-sm text-center">
       <p className="text-base text-white font-medium mb-2">
         Aucune conversation sélectionnée
@@ -157,8 +170,15 @@ const HubPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlConvId = searchParams.get("conv");
-  const urlSummaryId = searchParams.get("summary");
+  // Accepts both `?summaryId=` (canonical, used by SearchResultCard from
+  // Phase 2 web) and legacy `?summary=`. Falls through `urlConvId` when
+  // neither is present.
+  const urlSummaryId =
+    searchParams.get("summaryId") ?? searchParams.get("summary");
   const urlTab = searchParams.get("tab") as TabId | null;
+  // ?q= drives the SemanticHighlightProvider (synthesis highlights) when
+  // arriving from /search with a deeplink. Propagated via UrlQueryBridge.
+  const urlQ = searchParams.get("q");
 
   const { language } = useTranslation();
   const { user } = useAuth();
@@ -306,15 +326,53 @@ const HubPage: React.FC = () => {
           }),
         );
         setConversations(convs);
-        // Auto-select if URL has ?conv=<id> or ?summary=<id>
+        // Auto-select if URL has ?conv=<id> or ?summary[Id]=<id>.
         const target =
           urlConvId !== null
             ? Number(urlConvId)
             : urlSummaryId !== null
               ? Number(urlSummaryId)
               : null;
-        if (target && convs.find((c) => c.id === target)) {
+        if (!target) return;
+        if (convs.find((c) => c.id === target)) {
           setActiveConv(target);
+          return;
+        }
+        // Conv not in user's history (legitimate case when arriving from
+        // /search on a summary that exists but has no chat conversation yet,
+        // or a shared analysis). Fetch the summary directly and synthesize
+        // a HubConversation entry so the analysis panel can render.
+        try {
+          const summary = await videoApi.getSummary(target);
+          if (cancelled || !summary) return;
+          const platform: "youtube" | "tiktok" =
+            (summary as { platform?: string }).platform === "tiktok"
+              ? "tiktok"
+              : "youtube";
+          const synthetic: HubConversation = {
+            id: target,
+            summary_id: target,
+            title:
+              sanitizeTitle(
+                (summary as { video_title?: string; title?: string })
+                  .video_title ?? (summary as { title?: string }).title,
+              ) || "Sans titre",
+            video_source: platform,
+            video_thumbnail_url:
+              (summary as { thumbnail_url?: string }).thumbnail_url ?? null,
+            last_snippet: undefined,
+            updated_at:
+              (summary as { created_at?: string; updated_at?: string })
+                .updated_at ?? (summary as { created_at?: string }).created_at,
+          };
+          setConversations([synthetic, ...convs]);
+          setActiveConv(target);
+        } catch (err) {
+          console.warn(
+            `[HubPage] could not resolve summaryId=${target} as a synthetic conversation:`,
+            err,
+          );
+          // Leave activeConvId null — empty-state will show.
         }
       } catch (err) {
         console.error("[HubPage] fetch conversations failed:", err);
@@ -578,172 +636,313 @@ const HubPage: React.FC = () => {
 
   const activeConv = conversations.find((c) => c.id === activeConvId) ?? null;
 
+  // ── Semantic Search V1 / Task 16 — Hub wiring ───────────────────────────
+  // Local UI state for the intra-analysis search bar + explain tooltip.
+  // The actual highlight chain (provider → marks → nav bar → tooltip) is
+  // driven by `<SemanticHighlightProvider>` which wraps the whole return,
+  // and `<HighlightedText>` lives inside `HubAnalysisPanel`. The tooltip
+  // listens to a window CustomEvent dispatched by the marks click handler
+  // to stay decoupled from the provider tree.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [tooltipMatch, setTooltipMatch] = useState<WithinMatch | null>(null);
+  const [tooltipAnchor, setTooltipAnchor] = useState<DOMRect | null>(null);
+  // Source of truth for "is an analysis attached to the active conv ?".
+  // Use `activeConv.summary_id` (resolved as soon as conversations load)
+  // rather than `fullSummary.id` (only resolved after the deep fetch),
+  // so the magnifier button + provider become available immediately.
+  const summaryIdNum = activeConv?.summary_id
+    ? Number(activeConv.summary_id)
+    : null;
+
+  useCmdFIntercept({
+    scopeSelector: ".analysis-page",
+    onIntercept: () => setSearchOpen(true),
+    enabled: activeTab !== "chat",
+  });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (
+        e as CustomEvent<{ match: WithinMatch; rect: DOMRect | null }>
+      ).detail;
+      if (detail?.match) {
+        setTooltipMatch(detail.match);
+        setTooltipAnchor(detail.rect);
+      }
+    };
+    window.addEventListener("ds-highlight-click", handler);
+    return () => window.removeEventListener("ds-highlight-click", handler);
+  }, []);
+
   return (
-    <div className="relative h-screen flex flex-col overflow-hidden bg-[#0a0a0f]">
-      <DoodleBackground variant="default" className="!opacity-[0.32]" />
-      <SEO title="Hub" path="/hub" />
+    <SemanticHighlightProvider summaryId={summaryIdNum}>
+      <div className="relative h-screen flex flex-col overflow-hidden bg-[#0a0a0f]">
+        <DoodleBackground variant="default" className="!opacity-[0.32]" />
+        <SEO title="Hub" path="/hub" />
 
-      <HubHeader
-        onMenuClick={toggleDrawer}
-        onHomeClick={() => navigate("/")}
-        title={activeConv?.title ?? "Hub"}
-        subtitle={
-          activeConv
-            ? buildHubSubtitle(
-                activeConv.video_source,
-                summaryContext?.video_duration_secs,
-                activeConv.updated_at,
-              ) || undefined
-            : undefined
-        }
-        videoSource={activeConv?.video_source ?? null}
-        pipSlot={
-          activeConv?.summary_id ? (
-            <VideoPiPPlayer
-              thumbnailUrl={activeConv.video_thumbnail_url ?? null}
-              title={activeConv.title}
-              durationSecs={summaryContext?.video_duration_secs ?? 0}
-              expanded={pipExpanded}
-              onExpand={() => setPipExpanded(true)}
-              onShrink={() => setPipExpanded(false)}
-            />
-          ) : null
-        }
-      />
-
-      {activeConvId !== null && (
-        <HubTabBar
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          chatMessageCount={messages.length}
-          factCheckCount={
-            reliability?.fact_check_lite?.high_risk_claims?.length ?? 0
+        <HubHeader
+          onMenuClick={toggleDrawer}
+          onHomeClick={() => navigate("/")}
+          onSearchClick={
+            // Show the magnifier as soon as a conversation is in scope
+            // (active OR resolved via URL deeplink). The previous
+            // `activeTab !== "chat"` guard was hiding the button on first
+            // paint because the hubStore default is `activeTab="chat"` —
+            // the URL ?tab= only applies after a useEffect tick, so the
+            // button flickered out for the user even on /hub?tab=synthesis.
+            // From the chat tab, opening the magnifier still makes sense:
+            // it searches the analysis content, not the chat history.
+            activeConv || urlConvId || urlSummaryId
+              ? () => setSearchOpen(true)
+              : undefined
+          }
+          title={activeConv?.title ?? "Hub"}
+          subtitle={
+            activeConv
+              ? buildHubSubtitle(
+                  activeConv.video_source,
+                  summaryContext?.video_duration_secs,
+                  activeConv.updated_at,
+                ) || undefined
+              : undefined
+          }
+          videoSource={activeConv?.video_source ?? null}
+          pipSlot={
+            activeConv?.summary_id ? (
+              <VideoPiPPlayer
+                thumbnailUrl={activeConv.video_thumbnail_url ?? null}
+                title={activeConv.title}
+                durationSecs={summaryContext?.video_duration_secs ?? 0}
+                expanded={pipExpanded}
+                onExpand={() => setPipExpanded(true)}
+                onShrink={() => setPipExpanded(false)}
+              />
+            ) : null
           }
         />
-      )}
 
-      <div className="relative flex-1 flex flex-col overflow-hidden">
-        {analyzingTaskId && !activeConvId ? (
-          <AnalyzingPlaceholder
-            progress={analyzingProgress}
-            message={analyzingMessage}
-            error={analyzingError}
+        {activeConvId !== null && (
+          <HubTabBar
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            chatMessageCount={messages.length}
+            factCheckCount={
+              reliability?.fact_check_lite?.high_risk_claims?.length ?? 0
+            }
           />
-        ) : activeConvId === null ? (
-          <NoConvPlaceholder onOpenDrawer={toggleDrawer} />
-        ) : (
-          <>
-            {activeTab === "chat" ? (
-              <div className="flex-1 overflow-y-auto min-h-0">
-                <Timeline
-                  messages={messages}
-                  isThinking={isThinking}
-                  onQuestionClick={handleSend}
-                />
-              </div>
-            ) : (
-              <div
-                key={activeTab}
-                className="flex-1 overflow-y-auto min-h-0"
-                ref={(el) => {
-                  if (!el) return;
-                  el.scrollTop = tabScrollPositions[activeTab] ?? 0;
-                }}
-                onScroll={(e) => {
-                  setTabScrollPosition(
-                    activeTab,
-                    (e.target as HTMLDivElement).scrollTop,
-                  );
-                }}
-              >
-                {summaryContext && (
-                  <HubAnalysisPanel
-                    selectedSummary={fullSummary}
-                    concepts={concepts}
-                    reliability={reliability}
-                    reliabilityLoading={reliabilityLoading}
-                    user={user}
-                    language={language as "fr" | "en"}
-                    activeTab={activeTab as Exclude<TabId, "chat">}
-                    onTabChange={(t) => handleTabChange(t)}
-                  />
-                )}
-              </div>
-            )}
-            <InputBar
-              onSend={handleSend}
-              onCallToggle={() => setVoiceCallOpen(!voiceCallOpen)}
-              onPttHoldComplete={handlePttHoldComplete}
-              disabled={!activeConvId}
-              activeTab={activeTab}
-              onTabChange={handleTabChange}
-            />
-          </>
         )}
 
-        <ConversationsDrawer
-          open={drawerOpen}
-          onClose={toggleDrawer}
-          conversations={conversations}
-          activeConvId={activeConvId}
-          onSelect={(id) => {
-            setActiveConv(id);
-            setSearchParams({ conv: String(id) });
-          }}
-          onAnalyze={triggerAnalyze}
-        />
+        <div className="relative flex-1 flex flex-col overflow-hidden">
+          {analyzingTaskId && !activeConvId ? (
+            <AnalyzingPlaceholder
+              progress={analyzingProgress}
+              message={analyzingMessage}
+              error={analyzingError}
+            />
+          ) : activeConvId === null ? (
+            <NoConvPlaceholder
+              onOpenDrawer={toggleDrawer}
+              onStartCall={() => setVoiceCallOpen(true)}
+              voiceEnabled={voiceEnabled}
+            />
+          ) : (
+            <>
+              {activeTab === "chat" ? (
+                <div className="flex-1 overflow-y-auto min-h-0">
+                  {voiceEnabled && (
+                    <QuickVoiceCallCTA
+                      onStart={() => setVoiceCallOpen(true)}
+                      disabled={!activeConvId}
+                    />
+                  )}
+                  <Timeline
+                    messages={messages}
+                    isThinking={isThinking}
+                    onQuestionClick={handleSend}
+                  />
+                </div>
+              ) : (
+                <div
+                  key={activeTab}
+                  className="analysis-page flex-1 overflow-y-auto min-h-0"
+                  ref={(el) => {
+                    if (!el) return;
+                    el.scrollTop = tabScrollPositions[activeTab] ?? 0;
+                  }}
+                  onScroll={(e) => {
+                    setTabScrollPosition(
+                      activeTab,
+                      (e.target as HTMLDivElement).scrollTop,
+                    );
+                  }}
+                >
+                  {summaryContext && (
+                    <HubAnalysisPanel
+                      selectedSummary={fullSummary}
+                      concepts={concepts}
+                      reliability={reliability}
+                      reliabilityLoading={reliabilityLoading}
+                      user={user}
+                      language={language as "fr" | "en"}
+                      activeTab={activeTab as Exclude<TabId, "chat">}
+                      onTabChange={(t) => handleTabChange(t)}
+                    />
+                  )}
+                </div>
+              )}
+              <InputBar
+                onSend={handleSend}
+                onPttHoldComplete={handlePttHoldComplete}
+                disabled={!activeConvId}
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+              />
+            </>
+          )}
 
-        <NewConversationModal
-          open={newConvModalOpen}
-          onClose={() => setNewConvModalOpen(false)}
-          onSuccess={async (summaryId) => {
-            // Re-fetch conversations to surface the freshly analyzed entry,
-            // then activate it so the user lands directly on the new session.
-            try {
-              const resp = await videoApi.getHistory({ limit: 50, page: 1 });
-              const convs: HubConversation[] = (resp.items || []).map(
-                (item: any) => ({
-                  id: item.id,
-                  summary_id: item.id,
-                  title: sanitizeTitle(item.video_title) || "Sans titre",
-                  video_source: (item.platform === "tiktok"
-                    ? "tiktok"
-                    : "youtube") as "youtube" | "tiktok",
-                  video_thumbnail_url: item.thumbnail_url ?? null,
-                  last_snippet: undefined,
-                  updated_at: item.created_at,
-                }),
-              );
-              setConversations(convs);
-              setActiveConv(summaryId);
-              setSearchParams({ conv: String(summaryId) });
-              if (drawerOpen) toggleDrawer();
-            } catch (err) {
-              console.error("[HubPage] re-fetch after analyze failed:", err);
-              // Best-effort: surface at least the new active conv even if
-              // the history fetch fails (the user can still chat with it).
-              setActiveConv(summaryId);
-              setSearchParams({ conv: String(summaryId) });
-            }
-          }}
-          language={language as "fr" | "en"}
-        />
+          <ConversationsDrawer
+            open={drawerOpen}
+            onClose={toggleDrawer}
+            conversations={conversations}
+            activeConvId={activeConvId}
+            onSelect={(id) => {
+              setActiveConv(id);
+              setSearchParams({ conv: String(id) });
+            }}
+            onAnalyze={triggerAnalyze}
+          />
 
-        {voiceEnabled && (
-          <CallModeFullBleed
-            open={voiceCallOpen}
-            onClose={() => setVoiceCallOpen(false)}
-            summaryId={activeConv?.summary_id ?? null}
-            title={activeConv?.title ?? null}
-            subtitle={null}
-            onVoiceMessage={handleVoiceMessage}
-            controllerRef={voiceControllerRef}
+          <NewConversationModal
+            open={newConvModalOpen}
+            onClose={() => setNewConvModalOpen(false)}
+            onSuccess={async (summaryId) => {
+              // Re-fetch conversations to surface the freshly analyzed entry,
+              // then activate it so the user lands directly on the new session.
+              try {
+                const resp = await videoApi.getHistory({ limit: 50, page: 1 });
+                const convs: HubConversation[] = (resp.items || []).map(
+                  (item: any) => ({
+                    id: item.id,
+                    summary_id: item.id,
+                    title: sanitizeTitle(item.video_title) || "Sans titre",
+                    video_source: (item.platform === "tiktok"
+                      ? "tiktok"
+                      : "youtube") as "youtube" | "tiktok",
+                    video_thumbnail_url: item.thumbnail_url ?? null,
+                    last_snippet: undefined,
+                    updated_at: item.created_at,
+                  }),
+                );
+                setConversations(convs);
+                setActiveConv(summaryId);
+                setSearchParams({ conv: String(summaryId) });
+                if (drawerOpen) toggleDrawer();
+              } catch (err) {
+                console.error("[HubPage] re-fetch after analyze failed:", err);
+                // Best-effort: surface at least the new active conv even if
+                // the history fetch fails (the user can still chat with it).
+                setActiveConv(summaryId);
+                setSearchParams({ conv: String(summaryId) });
+              }
+            }}
             language={language as "fr" | "en"}
+          />
+
+          {voiceEnabled && (
+            <CallModeFullBleed
+              open={voiceCallOpen}
+              onClose={() => setVoiceCallOpen(false)}
+              summaryId={activeConv?.summary_id ?? null}
+              title={activeConv?.title ?? null}
+              subtitle={null}
+              onVoiceMessage={handleVoiceMessage}
+              controllerRef={voiceControllerRef}
+              language={language as "fr" | "en"}
+            />
+          )}
+        </div>
+
+        {/* ── Semantic Search V1 / Task 16 overlays ──────────────────────── */}
+        <HighlightNavigationBar />
+        <IntraAnalysisSearchBar
+          open={searchOpen}
+          onClose={() => setSearchOpen(false)}
+        />
+        {urlQ && summaryIdNum !== null && <UrlQueryBridge q={urlQ} />}
+        {summaryIdNum !== null && (
+          <ExplainTooltipBridge
+            match={tooltipMatch}
+            anchorRect={tooltipAnchor}
+            summaryId={summaryIdNum}
+            onClose={() => {
+              setTooltipMatch(null);
+              setTooltipAnchor(null);
+            }}
+            onCiteInChat={(passage) => {
+              handleTabChange("chat");
+              handleSend(passage);
+            }}
+            onJumpToTab={(tab) => {
+              // The WithinMatch tab vocabulary partially overlaps with the
+              // HubTabBar one. "synthesis" / "flashcards" / "quiz" map 1:1.
+              // "transcript", "digest", "chat" don't have a dedicated tab —
+              // they fall through to "synthesis" which is the closest visual
+              // anchor in the Hub layout.
+              const target =
+                tab === "flashcards" || tab === "quiz" ? tab : "synthesis";
+              handleTabChange(target as TabId);
+            }}
           />
         )}
       </div>
-    </div>
+    </SemanticHighlightProvider>
   );
+};
+
+/**
+ * Bridge sub-component that lives INSIDE the SemanticHighlightProvider so
+ * it can read the live `query` from context. The tooltip itself is decoupled
+ * from the provider (it accepts `query` as a prop) so it stays portable.
+ */
+const ExplainTooltipBridge: React.FC<{
+  match: WithinMatch | null;
+  anchorRect: DOMRect | null;
+  summaryId: number;
+  onClose: () => void;
+  onCiteInChat: (passage: string) => void;
+  onJumpToTab: (tab: WithinMatch["tab"]) => void;
+}> = ({ match, anchorRect, summaryId, onClose, onCiteInChat, onJumpToTab }) => {
+  const ctx = useSemanticHighlight();
+  return (
+    <ExplainTooltip
+      open={match !== null}
+      match={match}
+      query={ctx?.query ?? ""}
+      summaryId={summaryId}
+      anchorRect={anchorRect}
+      onClose={onClose}
+      onCiteInChat={onCiteInChat}
+      onJumpToTab={onJumpToTab}
+    />
+  );
+};
+
+/**
+ * Propagates the URL `?q=` deeplink param into the SemanticHighlightProvider
+ * once the provider mounts (and the conv/summary is resolved). Without this,
+ * arriving on `/hub?summaryId=119&q=mistral&highlight=...` from /search
+ * would never trigger the within-search fetch and no <mark> would render
+ * even though everything else is wired correctly.
+ */
+const UrlQueryBridge: React.FC<{ q: string }> = ({ q }) => {
+  const ctx = useSemanticHighlight();
+  useEffect(() => {
+    if (ctx && q && ctx.query !== q) {
+      ctx.setQuery(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, ctx?.setQuery]);
+  return null;
 };
 
 export default HubPage;

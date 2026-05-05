@@ -14,6 +14,7 @@ import React, { useState } from "react";
 import { SendIcon } from "../shared/Icons";
 import { DoodleIcon } from "../shared/doodles/DoodleIcon";
 import { useTranslation } from "../../i18n/useTranslation";
+import { PasteLinkButton } from "./PasteLinkButton";
 
 interface ConversationInputProps {
   /** Plan paid (autorise le toggle web-search). */
@@ -70,7 +71,7 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
   sessionExpired,
   onSubmit,
 }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [value, setValue] = useState("");
 
   const handleSend = (): void => {
@@ -99,6 +100,13 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
 
   return (
     <div className="chat-input-area" data-testid="conversation-input">
+      {/* Paste link (extreme left) */}
+      <PasteLinkButton
+        onPaste={(text) => setValue(text)}
+        language={language}
+        disabled={disabled || sessionExpired}
+      />
+
       {/* Mic toggle (gauche) */}
       <button
         type="button"
@@ -110,10 +118,7 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
         aria-pressed={voiceMode === "live" && !isMuted}
         data-testid="conversation-mic-btn"
       >
-        <MicIcon
-          size={14}
-          muted={voiceMode === "live" && isMuted}
-        />
+        <MicIcon size={14} muted={voiceMode === "live" && isMuted} />
       </button>
 
       {/* Web search toggle */}

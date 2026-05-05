@@ -1,0 +1,35 @@
+/* frontend/src/styles/highlight.css
+   Semantic Search V1 highlight visuals.
+   amber-400 = rgb(251 191 36) ; amber-300 = rgb(252 211 77) */
+
+.ds-highlight {
+  background: rgb(251 191 36 / 0.35);
+  color: rgb(252 211 77);
+  padding: 0 2px;
+  border-radius: 2px;
+  border-bottom: 2px solid rgb(251 191 36);
+  cursor: pointer;
+  transition: background 200ms ease;
+}
+.ds-highlight:hover {
+  background: rgb(251 191 36 / 0.55);
+}
+.ds-highlight.flash {
+  animation: ds-highlight-flash 800ms ease-in-out;
+}
+@keyframes ds-highlight-flash {
+  0%,
+  100% {
+    background: rgb(251 191 36 / 0.35);
+  }
+  50% {
+    background: rgb(251 191 36 / 0.85);
+  }
+}
+
+/* Honour reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .ds-highlight.flash {
+    animation: none;
+  }
+}

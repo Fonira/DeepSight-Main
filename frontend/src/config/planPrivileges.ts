@@ -191,6 +191,7 @@ export interface PlanFeatures {
   debate: boolean;
   deepResearch: boolean;
   factcheck: boolean;
+  semanticSearchTooltip: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
@@ -210,6 +211,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     debate: false,
     deepResearch: false,
     factcheck: false,
+    semanticSearchTooltip: false,
   },
   pro: {
     flashcards: true,
@@ -227,6 +229,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     debate: true,
     deepResearch: false,
     factcheck: true,
+    semanticSearchTooltip: true,
   },
   expert: {
     flashcards: true,
@@ -244,6 +247,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     debate: true,
     deepResearch: true,
     factcheck: true,
+    semanticSearchTooltip: true,
   },
 };
 

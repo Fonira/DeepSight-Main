@@ -4,6 +4,7 @@ import {
   Swords,
   MessageCircle,
   History,
+  Search,
   Gem,
   Settings,
   Crown,
@@ -24,8 +25,9 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   const navItems = [
     { path: "/dashboard", icon: Video, label: "Vidéo" },
     { path: "/debate", icon: Swords, label: "Débat IA" },
-    { path: "/hub", icon: MessageCircle, label: "Hub" },
     { path: "/history", icon: History, label: "Historique" },
+    { path: "/search", icon: Search, label: "Recherche" },
+    { path: "/hub", icon: MessageCircle, label: "Hub" },
     { path: "/upgrade", icon: Gem, label: "Upgrade" },
     { path: "/settings", icon: Settings, label: "Paramètres" },
   ];

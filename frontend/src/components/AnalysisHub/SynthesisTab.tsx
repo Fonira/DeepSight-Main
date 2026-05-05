@@ -32,6 +32,7 @@ import { CitationExport } from "../CitationExport";
 import { StudyToolsModal } from "../StudyToolsModal";
 import { KeywordsModal } from "../KeywordsModal";
 import { AnalysisActionBar } from "../analysis/AnalysisActionBar";
+import { DebateContextualCTA } from "../debate";
 import { videoApi, shareApi } from "../../services/api";
 import { sanitizeTitle } from "../../utils/sanitize";
 import type { Summary, EnrichedConcept } from "../../services/api";
@@ -288,6 +289,24 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
               conceptsCount={concepts.length}
               showUpgradeCTA={user?.plan === "free" || user?.plan === "student"}
               compact={false}
+            />
+          </div>
+        )}
+
+        {/* CTA Débat IA — confronter cette vidéo à une perspective opposée.
+            Wave 4 G du sprint Débat IA v2. */}
+        {(selectedSummary.video_url || selectedSummary.video_id) && (
+          <div className="mt-6 not-prose">
+            <DebateContextualCTA
+              videoUrl={
+                selectedSummary.video_url ||
+                `https://www.youtube.com/watch?v=${selectedSummary.video_id}`
+              }
+              userPlan={
+                (user?.plan === "pro" || user?.plan === "expert"
+                  ? user.plan
+                  : "free") as "free" | "pro" | "expert"
+              }
             />
           </div>
         )}

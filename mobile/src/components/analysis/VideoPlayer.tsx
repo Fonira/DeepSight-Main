@@ -134,7 +134,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       <Pressable
         testID="video-player-compact-pressable"
         onPress={handleExpand}
-        style={[styles.compactPressable, { backgroundColor: colors.bgSecondary }]}
+        style={[
+          styles.compactPressable,
+          { backgroundColor: colors.bgSecondary },
+        ]}
         accessibilityLabel={`Lire ${title} en ${isTikTok ? "TikTok" : "YouTube"}`}
         accessibilityRole="button"
       >
@@ -175,7 +178,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           />
         </View>
 
-        <View style={[styles.playCta, { backgroundColor: colors.accentPrimary }]}>
+        <View
+          style={[styles.playCta, { backgroundColor: colors.accentPrimary }]}
+        >
           <Ionicons name="play" size={16} color="#ffffff" />
         </View>
       </Pressable>

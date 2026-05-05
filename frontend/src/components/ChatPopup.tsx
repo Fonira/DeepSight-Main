@@ -47,6 +47,7 @@ import {
 import { EnrichedMarkdown } from "./EnrichedMarkdown";
 import { AudioPlayerButton } from "./AudioPlayerButton";
 import { CopyMessageButton } from "./CopyMessageButton";
+import { PasteLinkButton } from "./PasteLinkButton";
 
 // =============================================================================
 // TYPES
@@ -1196,6 +1197,12 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
               }}
             >
               <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                {/* Paste link (extreme left) */}
+                <PasteLinkButton
+                  onPaste={(text) => setInput(text)}
+                  language={language}
+                />
+
                 {/* Web search toggle (compact, in input bar) */}
                 {isProUser && onToggleWebSearch && (
                   <button

@@ -29,6 +29,7 @@ import {
 import Layout from "../components/Layout";
 import { SEO } from "../components/SEO";
 import { BreadcrumbJsonLd } from "../components/BreadcrumbJsonLd";
+import DoodleBackground from "../components/DoodleBackground";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION VARIANTS
@@ -211,6 +212,7 @@ const SectionTitle: React.FC<{ children: React.ReactNode }> = ({
 const AboutPage = () => {
   return (
     <div className="min-h-screen bg-bg-primary">
+      <DoodleBackground variant="creative" />
       <SEO
         title="À propos"
         description="Découvrez DeepSight : IA française d'analyse vidéo YouTube & TikTok. Propulsé par Mistral AI, vos données restent en Europe."

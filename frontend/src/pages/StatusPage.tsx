@@ -27,6 +27,7 @@ import {
   type ServiceStatus,
 } from "../services/api";
 import { SEO } from "../components/SEO";
+import DoodleBackground from "../components/DoodleBackground";
 
 // ───────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -177,6 +178,7 @@ export default function StatusPage() {
   if (error && !data) {
     return (
       <div className="min-h-screen bg-[var(--bg-primary,#0a0a0f)] flex flex-col items-center justify-center p-4">
+        <DoodleBackground variant="tech" />
         <div className="text-center max-w-md">
           <XCircle
             size={48}
@@ -210,6 +212,7 @@ export default function StatusPage() {
   if (loading || !data) {
     return (
       <div className="min-h-screen bg-[var(--bg-primary,#0a0a0f)] p-4 md:p-8">
+        <DoodleBackground variant="tech" />
         <div className="max-w-3xl mx-auto">
           <div className="animate-pulse space-y-6">
             <div className="h-10 w-64 rounded-lg bg-[var(--bg-tertiary,#1a1a24)]" />
@@ -245,6 +248,7 @@ export default function StatusPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary,#0a0a0f)] text-[var(--text-primary,#f5f5f7)]">
+      <DoodleBackground variant="tech" />
       <SEO
         title="Statut des services"
         description="État en temps réel des services DeepSight : API, base de données, IA, paiements."

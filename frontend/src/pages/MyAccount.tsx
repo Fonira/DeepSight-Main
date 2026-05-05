@@ -349,7 +349,9 @@ export const MyAccount: React.FC = () => {
     navigate("/");
   };
 
-  // Plan info - v5.0 (Free, Pro, Expert)
+  // Plan info — fallback Tailwind classes used ONLY before myPlan resolves.
+  // Once billingApi.getMyPlan("web") returns, render uses myPlan.plan_name /
+  // plan_icon / plan_color (hex) from the backend SSOT (PLANS[plan_id]).
   const planConfig: Record<
     string,
     { label: string; color: string; bgColor: string; icon: string }
@@ -365,6 +367,12 @@ export const MyAccount: React.FC = () => {
       color: "text-indigo-400",
       bgColor: "bg-indigo-500/10",
       icon: "⭐",
+    },
+    expert: {
+      label: "Expert",
+      color: "text-violet-400",
+      bgColor: "bg-violet-500/10",
+      icon: "👑",
     },
   };
 
@@ -463,7 +471,17 @@ export const MyAccount: React.FC = () => {
             <header className="mb-8">
               <div className="flex items-center gap-4">
                 <div
-                  className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl ${currentPlan.bgColor} flex items-center justify-center ${currentPlan.color} text-xl sm:text-2xl font-bold shadow-lg`}
+                  className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-xl sm:text-2xl font-bold shadow-lg ${
+                    myPlan ? "" : `${currentPlan.bgColor} ${currentPlan.color}`
+                  }`}
+                  style={
+                    myPlan
+                      ? {
+                          backgroundColor: `${myPlan.plan_color}20`,
+                          color: myPlan.plan_color,
+                        }
+                      : undefined
+                  }
                 >
                   {user?.email?.charAt(0).toUpperCase() || "U"}
                 </div>
@@ -473,9 +491,23 @@ export const MyAccount: React.FC = () => {
                   </h1>
                   <p className="text-text-secondary text-sm flex items-center gap-2 mt-1">
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${currentPlan.bgColor} ${currentPlan.color}`}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                        myPlan
+                          ? ""
+                          : `${currentPlan.bgColor} ${currentPlan.color}`
+                      }`}
+                      style={
+                        myPlan
+                          ? {
+                              backgroundColor: `${myPlan.plan_color}20`,
+                              color: myPlan.plan_color,
+                            }
+                          : undefined
+                      }
                     >
-                      {currentPlan.icon} {currentPlan.label}
+                      {myPlan
+                        ? `${myPlan.plan_icon} ${myPlan.plan_name}`
+                        : `${currentPlan.icon} ${currentPlan.label}`}
                     </span>
                     <span className="text-text-tertiary">•</span>
                     <span>{user?.email}</span>
@@ -517,9 +549,18 @@ export const MyAccount: React.FC = () => {
                   iconColor={currentPlan.color}
                   label={tr("Abonnement", "Subscription")}
                   value={
-                    <span className={`font-semibold ${currentPlan.color}`}>
-                      {currentPlan.icon} {currentPlan.label}
-                    </span>
+                    myPlan ? (
+                      <span
+                        className="font-semibold"
+                        style={{ color: myPlan.plan_color }}
+                      >
+                        {myPlan.plan_icon} {myPlan.plan_name}
+                      </span>
+                    ) : (
+                      <span className={`font-semibold ${currentPlan.color}`}>
+                        {currentPlan.icon} {currentPlan.label}
+                      </span>
+                    )
                   }
                 />
                 {user?.credits !== undefined && (

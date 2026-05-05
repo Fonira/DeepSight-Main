@@ -180,111 +180,116 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
 
   const renderVideoItem = useCallback(
     ({ item }: { item: DiscoveredVideo }) => {
-    const isSelected = selectedVideos.includes(item.video_id);
+      const isSelected = selectedVideos.includes(item.video_id);
 
-    return (
-      <TouchableOpacity
-        style={[
-          styles.videoItem,
-          { backgroundColor: colors.bgElevated },
-          isSelected && { borderColor: colors.accentPrimary, borderWidth: 2 },
-        ]}
-        onPress={() => handleSelectVideo(item)}
-      >
-        {allowMultiSelect && (
-          <View
-            style={[
-              styles.checkbox,
-              isSelected && { backgroundColor: colors.accentPrimary },
-            ]}
-          >
-            {isSelected && (
-              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-            )}
+      return (
+        <TouchableOpacity
+          style={[
+            styles.videoItem,
+            { backgroundColor: colors.bgElevated },
+            isSelected && { borderColor: colors.accentPrimary, borderWidth: 2 },
+          ]}
+          onPress={() => handleSelectVideo(item)}
+        >
+          {allowMultiSelect && (
+            <View
+              style={[
+                styles.checkbox,
+                isSelected && { backgroundColor: colors.accentPrimary },
+              ]}
+            >
+              {isSelected && (
+                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+              )}
+            </View>
+          )}
+
+          <View style={styles.thumbnailContainer}>
+            <Image
+              source={{ uri: item.thumbnail }}
+              style={styles.thumbnail}
+              contentFit="cover"
+            />
+            <View style={styles.durationBadge}>
+              <Text style={styles.durationText}>
+                {formatDuration(item.duration)}
+              </Text>
+            </View>
           </View>
-        )}
 
-        <View style={styles.thumbnailContainer}>
-          <Image
-            source={{ uri: item.thumbnail }}
-            style={styles.thumbnail}
-            contentFit="cover"
-          />
-          <View style={styles.durationBadge}>
-            <Text style={styles.durationText}>
-              {formatDuration(item.duration)}
+          <View style={styles.videoInfo}>
+            <Text
+              style={[styles.videoTitle, { color: colors.textPrimary }]}
+              numberOfLines={2}
+            >
+              {item.title}
             </Text>
-          </View>
-        </View>
-
-        <View style={styles.videoInfo}>
-          <Text
-            style={[styles.videoTitle, { color: colors.textPrimary }]}
-            numberOfLines={2}
-          >
-            {item.title}
-          </Text>
-          <Text
-            style={[styles.channelName, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {item.channel}
-          </Text>
-
-          <View style={styles.metaRow}>
-            <Text style={[styles.viewsText, { color: colors.textTertiary }]}>
-              {formatViews(item.views)} {isEn ? "views" : "vues"}
+            <Text
+              style={[styles.channelName, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {item.channel}
             </Text>
 
-            {item.quality_score !== undefined && (
-              <View
-                style={[
-                  styles.scoreBadge,
-                  {
-                    backgroundColor: getQualityColor(item.quality_score) + "20",
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="star"
-                  size={10}
-                  color={getQualityColor(item.quality_score)}
-                />
-                <Text
+            <View style={styles.metaRow}>
+              <Text style={[styles.viewsText, { color: colors.textTertiary }]}>
+                {formatViews(item.views)} {isEn ? "views" : "vues"}
+              </Text>
+
+              {item.quality_score !== undefined && (
+                <View
                   style={[
-                    styles.scoreText,
-                    { color: getQualityColor(item.quality_score) },
+                    styles.scoreBadge,
+                    {
+                      backgroundColor:
+                        getQualityColor(item.quality_score) + "20",
+                    },
                   ]}
                 >
-                  {item.quality_score}
-                </Text>
-              </View>
-            )}
+                  <Ionicons
+                    name="star"
+                    size={10}
+                    color={getQualityColor(item.quality_score)}
+                  />
+                  <Text
+                    style={[
+                      styles.scoreText,
+                      { color: getQualityColor(item.quality_score) },
+                    ]}
+                  >
+                    {item.quality_score}
+                  </Text>
+                </View>
+              )}
 
-            {item.tournesol_score !== undefined && item.tournesol_score > 0 && (
-              <View
-                style={[
-                  styles.scoreBadge,
-                  { backgroundColor: Colors.accentSecondary + "20" },
-                ]}
-              >
-                <Text
-                  style={[styles.scoreText, { color: Colors.accentSecondary }]}
-                >
-                  T:{item.tournesol_score}
-                </Text>
-              </View>
-            )}
+              {item.tournesol_score !== undefined &&
+                item.tournesol_score > 0 && (
+                  <View
+                    style={[
+                      styles.scoreBadge,
+                      { backgroundColor: Colors.accentSecondary + "20" },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.scoreText,
+                        { color: Colors.accentSecondary },
+                      ]}
+                    >
+                      T:{item.tournesol_score}
+                    </Text>
+                  </View>
+                )}
+            </View>
           </View>
-        </View>
 
-        <Ionicons
-          name="chevron-forward"
-          size={20}
-          color={colors.textTertiary}
-        />
-      </TouchableOpacity>
-    );
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={colors.textTertiary}
+          />
+        </TouchableOpacity>
+      );
     },
     [colors, selectedVideos, allowMultiSelect, handleSelectVideo],
   );

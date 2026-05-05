@@ -1,2 +1,0 @@
-// Types partagés engine
-export {};

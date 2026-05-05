@@ -330,10 +330,7 @@ export function useConversation(
         onError?.("Pas de session de chat active.");
         return;
       }
-      setChatMessages((prev) => [
-        ...prev,
-        { role: "user", content: trimmed },
-      ]);
+      setChatMessages((prev) => [...prev, { role: "user", content: trimmed }]);
       setLoading(true);
       try {
         const response = await Browser.runtime.sendMessage<

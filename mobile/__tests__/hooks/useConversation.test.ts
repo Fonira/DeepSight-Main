@@ -195,9 +195,7 @@ describe("useConversation", () => {
   });
 
   it("does NOT auto-start voice when initialMode='chat'", () => {
-    renderHook(() =>
-      useConversation({ summaryId: "1", initialMode: "chat" }),
-    );
+    renderHook(() => useConversation({ summaryId: "1", initialMode: "chat" }));
 
     expect(mockVoiceStart).not.toHaveBeenCalled();
   });
@@ -261,9 +259,7 @@ describe("useConversation", () => {
   });
 
   it("loadHistory called once on resolvedSummaryId resolution", () => {
-    renderHook(() =>
-      useConversation({ summaryId: "42", initialMode: "chat" }),
-    );
+    renderHook(() => useConversation({ summaryId: "42", initialMode: "chat" }));
 
     expect(mockLoadHistory).toHaveBeenCalledTimes(1);
   });

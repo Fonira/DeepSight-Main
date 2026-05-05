@@ -33,6 +33,7 @@ import { sp, borderRadius as br } from "../../theme/spacing";
 import { fontFamily, fontSize, lineHeight } from "../../theme/typography";
 import { palette } from "../../theme/colors";
 import { AnalysisSkeleton } from "../ui/SkeletonLoader";
+import { HighlightedText } from "../highlight/HighlightedText";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -533,10 +534,18 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
           }
         }
 
+        // Cas par défaut : on wrap dans HighlightedText pour permettre
+        // au SemanticHighlighter de surligner les passages matchés (Task 10).
+        // Si le provider est absent (pas de SemanticHighlighterProvider parent)
+        // ou si pas de matches sur ce tab, HighlightedText rend le texte tel quel.
         return (
-          <Text key={node.key} style={[styles.text, { color: textColor }]}>
+          <HighlightedText
+            key={node.key}
+            tab="synthesis"
+            style={[styles.text, { color: textColor }]}
+          >
             {text}
-          </Text>
+          </HighlightedText>
         );
       },
     }),
@@ -645,7 +654,10 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
 
       <ScrollView
         style={localStyles.scroll}
-        contentContainerStyle={[localStyles.scrollContent, { paddingBottom: bottomPadding }]}
+        contentContainerStyle={[
+          localStyles.scrollContent,
+          { paddingBottom: bottomPadding },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View

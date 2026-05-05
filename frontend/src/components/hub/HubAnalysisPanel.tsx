@@ -9,13 +9,37 @@
 import React, { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnalysisHub } from "../AnalysisHub";
+import { HighlightedText } from "../highlight/HighlightedText";
 import type {
   Summary,
   EnrichedConcept,
   ReliabilityResult,
   User,
+  WithinMatch,
 } from "../../services/api";
 import type { TabId } from "./types";
+
+/**
+ * Map HubTabBar tab id ("synthesis" | "reliability" | "quiz" | "flashcards" |
+ * "geo") to the WithinMatch tab vocabulary expected by the highlight chain
+ * ("synthesis" | "digest" | "flashcards" | "quiz" | "chat" | "transcript").
+ *
+ * Only "synthesis", "flashcards" and "quiz" overlap. Tabs without a backend
+ * counterpart (reliability, geo) fall back to "synthesis" — the HighlightedText
+ * filter then renders zero marks for them, which is the desired no-op.
+ */
+const toMatchTab = (
+  tab: Exclude<TabId, "chat">,
+): WithinMatch["tab"] => {
+  switch (tab) {
+    case "synthesis":
+    case "flashcards":
+    case "quiz":
+      return tab;
+    default:
+      return "synthesis";
+  }
+};
 
 interface Props {
   selectedSummary: Summary | null;
@@ -67,24 +91,42 @@ export const HubAnalysisPanel: React.FC<Props> = ({
 
   return (
     <div className="px-4 py-4 w-full">
-      <AnalysisHub
-        selectedSummary={selectedSummary}
-        reliabilityData={reliability}
-        reliabilityLoading={reliabilityLoading}
-        user={analysisUser}
-        language={language}
-        concepts={concepts}
-        onTimecodeClick={handleTimecodeClick}
-        onOpenChat={handleOpenChat}
-        onNavigate={handleNavigate}
-        enabledTabs={["synthesis", "reliability", "quiz", "flashcards", "geo"]}
-        showKeywords
-        showStudyTools={false}
-        showVoice={false}
-        activeTabExternal={activeTab}
-        onTabChange={onTabChange}
-        hideInternalTabBar
-      />
+      <HighlightedText
+        tab={toMatchTab(activeTab)}
+        onMarkClick={(_id, match) => {
+          // Bubble up the click + bounding rect to HubPage so it can position
+          // and open the ExplainTooltip. Using a CustomEvent keeps this
+          // component decoupled from the highlight provider/tooltip wiring.
+          const el = document.querySelector<HTMLElement>(
+            `mark.ds-highlight[data-passage-id="${match.passage_id}"]`,
+          );
+          const rect = el?.getBoundingClientRect() ?? null;
+          window.dispatchEvent(
+            new CustomEvent("ds-highlight-click", {
+              detail: { match, rect },
+            }),
+          );
+        }}
+      >
+        <AnalysisHub
+          selectedSummary={selectedSummary}
+          reliabilityData={reliability}
+          reliabilityLoading={reliabilityLoading}
+          user={analysisUser}
+          language={language}
+          concepts={concepts}
+          onTimecodeClick={handleTimecodeClick}
+          onOpenChat={handleOpenChat}
+          onNavigate={handleNavigate}
+          enabledTabs={["synthesis", "reliability", "quiz", "flashcards", "geo"]}
+          showKeywords
+          showStudyTools={false}
+          showVoice={false}
+          activeTabExternal={activeTab}
+          onTabChange={onTabChange}
+          hideInternalTabBar
+        />
+      </HighlightedText>
     </div>
   );
 };

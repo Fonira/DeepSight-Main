@@ -1,5 +1,4 @@
 import React from "react";
-import { BeamCard } from "../shared/BeamCard";
 
 export interface Suggestion {
   id: string;
@@ -15,12 +14,10 @@ interface Props {
 const MAX_VISIBLE = 3;
 
 /**
- * SuggestionPills — V3 cinematic chips row.
+ * SuggestionPills — compact action chips row.
  *
  * Renders up to 3 contextual action chips below the primary video card in
- * MainView. Each chip uses the BeamCard pattern with a subtler beam intensity
- * for a compact appearance, preserving the V3 golden-beam visual signature
- * while staying visually quieter than the primary cards.
+ * MainView.
  *
  * Returns null when no suggestions are provided so MainView can render the
  * component unconditionally without producing empty markup.
@@ -33,13 +30,19 @@ export const SuggestionPills: React.FC<Props> = ({ suggestions }) => {
   return (
     <div className="v3-suggestion-pills" role="group" aria-label="Suggestions">
       {visible.map((s) => (
-        <BeamCard
+        <div
           key={s.id}
-          className="v3-suggestion-pill"
+          className="v3-card v3-suggestion-pill"
+          role="button"
+          tabIndex={0}
+          aria-label={s.label}
           onClick={s.onTrigger}
-          ariaLabel={s.label}
-          intensity={0.2}
-          haloIntensity={0.15}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              s.onTrigger();
+            }
+          }}
         >
           {s.icon && (
             <span className="v3-suggestion-pill-icon" aria-hidden="true">
@@ -47,7 +50,7 @@ export const SuggestionPills: React.FC<Props> = ({ suggestions }) => {
             </span>
           )}
           <span className="v3-suggestion-pill-label">{s.label}</span>
-        </BeamCard>
+        </div>
       ))}
     </div>
   );

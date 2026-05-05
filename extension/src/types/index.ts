@@ -1,3 +1,5 @@
+import type { GlobalSearchResponse } from "./search";
+
 // ── User & Auth ──
 
 export interface User {
@@ -207,7 +209,10 @@ export type MessageAction =
   | "VOICE_UPDATE_PREFERENCES"
   | "VOICE_GET_CATALOG"
   | "GET_VOICE_BUTTON_STATE"
-  | "GET_AUTH_TOKEN";
+  | "GET_AUTH_TOKEN"
+  // Recherche sémantique V1 (Phase 4 extension)
+  | "SEARCH_GLOBAL"
+  | "GET_RECENT_QUERIES";
 
 export interface ExtensionMessage {
   action: MessageAction;
@@ -231,6 +236,9 @@ export interface MessageResponse {
   error?: string;
   share_url?: string;
   state?: VoiceButtonState;
+  // Phase 4 — Semantic Search V1
+  searchResults?: GlobalSearchResponse;
+  recentQueries?: string[];
 }
 
 // ── Category Icons ──

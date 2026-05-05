@@ -15,6 +15,8 @@ import {
   FileText,
   AlertTriangle,
   Sparkles,
+  Plus,
+  Lightbulb,
 } from "lucide-react";
 import { DeepSightSpinnerSmall } from "../components/ui/DeepSightSpinner";
 import {
@@ -25,9 +27,16 @@ import {
   DebateStatusTracker,
   DebateSummaryCard,
   DebateChat,
+  DebateOnboardingTour,
+  DebateExamples,
+  type DebateExample,
 } from "../components/debate";
-import { debateApi } from "../services/api";
-import type { DebateAnalysis, DebateListItem } from "../types/debate";
+import { debateApi, ApiError } from "../services/api";
+import type {
+  DebateAnalysis,
+  DebateListItem,
+  DebatePerspective,
+} from "../types/debate";
 import { Sidebar } from "../components/layout/Sidebar";
 import DoodleBackground from "../components/DoodleBackground";
 import { DoodleDivider } from "../components/doodles";
@@ -227,6 +236,47 @@ const MOCK_DEBATES_LIST: DebateListItem[] = [
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_RETRIES = 3;
+// Backoff sequence for poll retries: 1s, 2s, 4s (exponential, max 3 attempts)
+const POLL_RETRY_BACKOFF_MS = [1000, 2000, 4000];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ERROR MESSAGE HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Translates an unknown error (typically an ApiError) into a user-facing French message.
+ * Distinguishes network / auth / rate-limited / server / other states.
+ */
+const getApiErrorMessage = (err: unknown, fallback: string): string => {
+  if (err instanceof ApiError) {
+    // status === 0 → fetch failed before reaching server (offline, DNS, CORS, abort)
+    if (err.status === 0) {
+      return "Erreur de connexion réseau — vérifie ta connexion";
+    }
+    // status === 408 → AbortController timeout
+    if (err.status === 408) {
+      return "Délai d'attente dépassé — réessaie";
+    }
+    if (err.status === 401) {
+      return "Session expirée — reconnecte-toi";
+    }
+    if (err.status === 429) {
+      return "Trop de requêtes, attends quelques secondes";
+    }
+    if (err.status >= 500 && err.status < 600) {
+      return "Erreur serveur — réessaie dans une minute";
+    }
+    // Other 4xx — use the API-translated message if non-empty
+    if (err.message && err.message.trim().length > 0) {
+      return err.message;
+    }
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return fallback;
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DEBATE PAGE
@@ -247,9 +297,22 @@ export const DebatePage: React.FC = () => {
   const [debateLoading, setDebateLoading] = useState(false);
   const [debatesList, setDebatesList] = useState<DebateListItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [useMock, setUseMock] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  // Dev-only mock fallback. Production users see explicit error states instead
+  // of silent mock data — see loadHistory() / handleCreateDebate() below.
+  const [devMockEnabled, setDevMockEnabled] = useState(false);
+  const [pollError, setPollError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // 🆕 Sprint Débat IA v2 — Add perspective (complement / nuance)
+  const [isAddingPerspective, setIsAddingPerspective] = useState(false);
+  const [addPerspectiveError, setAddPerspectiveError] = useState<string | null>(
+    null,
+  );
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRetryCountRef = useRef<number>(0);
+  const pollRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // 🎙️ Voice Chat — Debate moderator agent
   const { user } = useAuth();
@@ -278,8 +341,22 @@ export const DebatePage: React.FC = () => {
   useEffect(() => {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (pollRetryTimeoutRef.current)
+        clearTimeout(pollRetryTimeoutRef.current);
       if (avatarPollRef.current) clearInterval(avatarPollRef.current);
     };
+  }, []);
+
+  // ─── Stable stopPolling helper (declared before consumers) ───
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    if (pollRetryTimeoutRef.current) {
+      clearTimeout(pollRetryTimeoutRef.current);
+      pollRetryTimeoutRef.current = null;
+    }
   }, []);
 
   // ─── Fetch agent voice avatar when debate completes ───
@@ -346,15 +423,33 @@ export const DebatePage: React.FC = () => {
   }, [selectedDebate?.id, selectedDebate?.status, voiceEnabled]);
 
   // ─── Load history ───
+  // Production: surface API errors explicitly via `historyError` (with retry CTA).
+  // Dev only: fall back to mock data so the UI is testable offline.
   const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
     try {
       const res = await debateApi.getHistory(1, 20);
       setDebatesList(res.debates);
-      setUseMock(false);
-    } catch {
-      // API not available — fallback to mock
-      setDebatesList(MOCK_DEBATES_LIST);
-      setUseMock(true);
+      setDevMockEnabled(false);
+    } catch (err: unknown) {
+      if (import.meta.env.DEV) {
+        // Dev local — keep mock fallback so the UI remains testable offline.
+        setDebatesList(MOCK_DEBATES_LIST);
+        setDevMockEnabled(true);
+        setHistoryError(null);
+      } else {
+        // Production — surface a real error state with retry. NEVER silently
+        // swap to mock data; that masked real backend issues from users.
+        setDebatesList([]);
+        setDevMockEnabled(false);
+        setHistoryError(
+          getApiErrorMessage(
+            err,
+            "Impossible de charger l'historique des débats",
+          ),
+        );
+      }
     } finally {
       setHistoryLoading(false);
     }
@@ -367,12 +462,14 @@ export const DebatePage: React.FC = () => {
   // ─── Load selected debate when debateId changes ───
   const loadDebate = useCallback(
     async (id: string) => {
-      if (useMock) {
+      // Dev-only mock fallback when API is unreachable (see loadHistory).
+      if (devMockEnabled) {
         setSelectedDebate(MOCK_DEBATE);
         return;
       }
 
       setDebateLoading(true);
+      setError(null);
       try {
         const result = await debateApi.getResult(Number(id));
         setSelectedDebate(result);
@@ -383,14 +480,20 @@ export const DebatePage: React.FC = () => {
         if (isInProgress) {
           startPolling(Number(id));
         }
-      } catch {
-        // Fallback to mock
-        setSelectedDebate(MOCK_DEBATE);
+      } catch (err: unknown) {
+        if (import.meta.env.DEV) {
+          // Dev — fallback to mock so we can iterate offline
+          setSelectedDebate(MOCK_DEBATE);
+        } else {
+          // Production — surface the real error, do NOT show fake mock data
+          setSelectedDebate(null);
+          setError(getApiErrorMessage(err, "Impossible de charger ce débat"));
+        }
       } finally {
         setDebateLoading(false);
       }
     },
-    [useMock],
+    [devMockEnabled],
   );
 
   useEffect(() => {
@@ -398,31 +501,46 @@ export const DebatePage: React.FC = () => {
       loadDebate(debateId);
     } else {
       setSelectedDebate(null);
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
+      setPollError(null);
+      stopPolling();
     }
-  }, [debateId, loadDebate]);
+  }, [debateId, loadDebate, stopPolling]);
 
   // ─── Polling for in-progress debates ───
+  // On API error: retry up to POLL_MAX_RETRIES times with exponential backoff
+  // (1s → 2s → 4s). After max retries, surface an explicit error message via
+  // `pollError` instead of silently freezing the UI on the last known status.
   const startPolling = useCallback(
     (id: number) => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
+      stopPolling();
+      pollRetryCountRef.current = 0;
+      setPollError(null);
 
-      pollingRef.current = setInterval(async () => {
+      const tick = async () => {
         try {
           const statusRes = await debateApi.getStatus(id);
+          // Reset retry counter on any successful tick
+          pollRetryCountRef.current = 0;
+          setPollError(null);
+
           if (
             statusRes.status === "completed" ||
             statusRes.status === "failed"
           ) {
-            if (pollingRef.current) clearInterval(pollingRef.current);
-            pollingRef.current = null;
+            stopPolling();
             // Fetch the full result
-            const result = await debateApi.getResult(id);
-            setSelectedDebate(result);
-            loadHistory(); // Refresh list
+            try {
+              const result = await debateApi.getResult(id);
+              setSelectedDebate(result);
+              loadHistory(); // Refresh list
+            } catch (err: unknown) {
+              setError(
+                getApiErrorMessage(
+                  err,
+                  "Impossible de charger le résultat du débat",
+                ),
+              );
+            }
           } else {
             // Update status and video titles from polling response
             setSelectedDebate((prev) =>
@@ -458,14 +576,54 @@ export const DebatePage: React.FC = () => {
                 : prev,
             );
           }
-        } catch {
-          // Stop polling on error
-          if (pollingRef.current) clearInterval(pollingRef.current);
-          pollingRef.current = null;
+        } catch (err: unknown) {
+          // Stop the running interval so we don't pile up requests on a flaky network
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+
+          if (pollRetryCountRef.current >= POLL_MAX_RETRIES) {
+            // Exhausted — surface an explicit error and give up
+            setPollError(
+              getApiErrorMessage(
+                err,
+                "Impossible de suivre la progression du débat",
+              ),
+            );
+            return;
+          }
+
+          // Schedule a single retry tick with exponential backoff
+          const backoffIdx = Math.min(
+            pollRetryCountRef.current,
+            POLL_RETRY_BACKOFF_MS.length - 1,
+          );
+          const delay = POLL_RETRY_BACKOFF_MS[backoffIdx];
+          pollRetryCountRef.current += 1;
+
+          if (pollRetryTimeoutRef.current) {
+            clearTimeout(pollRetryTimeoutRef.current);
+          }
+          pollRetryTimeoutRef.current = setTimeout(() => {
+            pollRetryTimeoutRef.current = null;
+            // After backoff, run one tick. If it succeeds, resume the regular interval.
+            tick().then(() => {
+              if (
+                !pollingRef.current &&
+                pollRetryCountRef.current === 0 &&
+                !pollError
+              ) {
+                pollingRef.current = setInterval(tick, POLL_INTERVAL_MS);
+              }
+            });
+          }, delay);
         }
-      }, POLL_INTERVAL_MS);
+      };
+
+      pollingRef.current = setInterval(tick, POLL_INTERVAL_MS);
     },
-    [loadHistory],
+    [loadHistory, stopPolling, pollError],
   );
 
   // ─── Create debate ───
@@ -477,8 +635,9 @@ export const DebatePage: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    if (useMock) {
-      // Mock fallback
+    // Dev-only: simulate a successful creation against MOCK data so we can
+    // iterate offline. Production ALWAYS hits the real API.
+    if (devMockEnabled && import.meta.env.DEV) {
       setTimeout(() => {
         setLoading(false);
         setSearchParams({ id: "1" });
@@ -497,11 +656,7 @@ export const DebatePage: React.FC = () => {
       setSearchParams({ id: String(res.debate_id) });
     } catch (err: unknown) {
       setLoading(false);
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Erreur lors de la création du débat";
-      setError(message);
+      setError(getApiErrorMessage(err, "Erreur lors de la création du débat"));
     }
   };
 
@@ -509,14 +664,54 @@ export const DebatePage: React.FC = () => {
     setSearchParams({ id: String(id) });
   };
 
-  const handleBack = () => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
+  // Wave 4 G — DebateExamples démo. Le backend ne sert pas les exemples
+  // pré-générés : on scroll vers le formulaire pour que l'utilisateur colle
+  // ses propres URLs, et on affiche le topic d'inspiration via un état temporaire.
+  const [exampleHint, setExampleHint] = useState<DebateExample | null>(null);
+  const handleExampleClick = useCallback((example: DebateExample) => {
+    setExampleHint(example);
+    const target = document.querySelector('[data-onboard="debate-input"]');
+    if (target instanceof HTMLElement) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+  }, []);
+
+  const handleBack = () => {
+    stopPolling();
+    setPollError(null);
     setSelectedDebate(null);
+    setAddPerspectiveError(null);
     setSearchParams({});
   };
+
+  // ─── 🆕 Sprint Débat IA v2 — Add perspective handler ───
+  // Appelle POST /api/debate/{id}/add-perspective puis relance le polling
+  // pour suivre la progression jusqu'à ce que la perspective soit prête.
+  const handleAddPerspective = useCallback(
+    async (relation_type: "complement" | "nuance") => {
+      if (!selectedDebate || isAddingPerspective) return;
+      setIsAddingPerspective(true);
+      setAddPerspectiveError(null);
+      try {
+        const updated = await debateApi.addPerspective(
+          selectedDebate.id,
+          relation_type,
+        );
+        setSelectedDebate(updated);
+        // Si l'API renvoie un statut non-final, relancer le polling
+        if (updated.status !== "completed" && updated.status !== "failed") {
+          startPolling(updated.id);
+        }
+      } catch (err: unknown) {
+        setAddPerspectiveError(
+          getApiErrorMessage(err, "Impossible d'ajouter la perspective"),
+        );
+      } finally {
+        setIsAddingPerspective(false);
+      }
+    },
+    [selectedDebate, isAddingPerspective, startPolling],
+  );
 
   // ─── Content margin class (responsive with sidebar) ───
   const mainClass = `transition-all duration-200 ease-out relative z-10 ${
@@ -556,6 +751,42 @@ export const DebatePage: React.FC = () => {
     const hasFactChecks =
       selectedDebate.fact_check_results &&
       selectedDebate.fact_check_results.length > 0;
+
+    // Map DebateAnalysis → DebateVSLayout props.
+    // Backward-compat v1: if perspectives[] is empty but video_b_* is set, derive a single implicit perspective.
+    const vsVideoA = {
+      title: selectedDebate.video_a_title ?? "",
+      channel: selectedDebate.video_a_channel ?? "",
+      thumbnail: selectedDebate.video_a_thumbnail ?? "",
+      videoId: selectedDebate.video_a_id,
+      platform: selectedDebate.platform_a,
+      thesis: selectedDebate.thesis_a ?? "",
+      arguments: selectedDebate.arguments_a ?? [],
+    };
+    const vsPerspectives: DebatePerspective[] =
+      selectedDebate.perspectives && selectedDebate.perspectives.length > 0
+        ? selectedDebate.perspectives
+        : selectedDebate.video_b_id
+          ? [
+              {
+                id: -1,
+                position: 0,
+                video_id: selectedDebate.video_b_id,
+                platform: selectedDebate.platform_b ?? "youtube",
+                video_title: selectedDebate.video_b_title,
+                video_channel: selectedDebate.video_b_channel,
+                video_thumbnail: selectedDebate.video_b_thumbnail,
+                thesis: selectedDebate.thesis_b,
+                arguments: selectedDebate.arguments_b ?? [],
+                relation_type:
+                  selectedDebate.relation_type_dominant ?? "opposite",
+                channel_quality_score: 0,
+                audience_level: "unknown",
+                fact_check_results: null,
+                created_at: selectedDebate.created_at,
+              },
+            ]
+          : [];
 
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -607,6 +838,33 @@ export const DebatePage: React.FC = () => {
             <DebateStatusTracker status={selectedDebate.status} />
           </motion.div>
         )}
+        {/* Poll error — surfaced when status polling fails after 3 retries */}
+        {isInProgress && pollError && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 backdrop-blur-xl"
+          >
+            <div className="flex items-start gap-2 mb-3">
+              <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-400">
+                  Suivi de progression interrompu
+                </p>
+                <p className="text-xs text-amber-300/70 mt-1">{pollError}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedDebate) startPolling(selectedDebate.id);
+              }}
+              className="text-xs font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
+            >
+              Reprendre le suivi
+            </button>
+          </motion.div>
+        )}
         {/* Failed state */}
         {selectedDebate.status === "failed" && (
           <motion.div
@@ -628,12 +886,68 @@ export const DebatePage: React.FC = () => {
           </motion.div>
         )}
         {/* VS Layout */}
-        <div className="mb-4">
-          <DebateVSLayout debate={selectedDebate} />
+        <div className="mb-4" data-onboard="debate-vs-layout">
+          <DebateVSLayout
+            videoA={vsVideoA}
+            perspectives={vsPerspectives}
+            isLoading={isInProgress && vsPerspectives.length === 0}
+          />
         </div>
         {/* Completed sections with doodle dividers */}
         {selectedDebate.status === "completed" && (
           <>
+            {/* 🆕 Sprint Débat IA v2 — Add perspective buttons (cap 1+N à 3 perspectives totales) */}
+            <div className="flex flex-wrap gap-3 justify-center mb-6">
+              <button
+                type="button"
+                onClick={() => handleAddPerspective("complement")}
+                disabled={
+                  isAddingPerspective ||
+                  (selectedDebate.perspectives?.length ?? 0) >= 3
+                }
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAddingPerspective ? (
+                  <DeepSightSpinnerSmall />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                + Complément
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddPerspective("nuance")}
+                disabled={
+                  isAddingPerspective ||
+                  (selectedDebate.perspectives?.length ?? 0) >= 3
+                }
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAddingPerspective ? (
+                  <DeepSightSpinnerSmall />
+                ) : (
+                  <Lightbulb className="w-4 h-4" />
+                )}
+                + Nuance
+              </button>
+            </div>
+
+            {/* Add perspective error */}
+            {addPerspectiveError && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 backdrop-blur-xl max-w-2xl mx-auto"
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-300/90">
+                    {addPerspectiveError}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
             {/* Doodle divider between VS and convergence/divergence */}
             <DoodleDivider variant="analysis" density="sparse" />
 
@@ -747,9 +1061,42 @@ export const DebatePage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="mb-4"
+        data-onboard="debate-input"
       >
+        {exampleHint && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-3 p-3 rounded-lg bg-violet-500/10 border border-violet-500/20 text-sm text-violet-300 backdrop-blur-xl flex items-start gap-2"
+          >
+            <Lightbulb className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-medium text-violet-200 mb-0.5">
+                {exampleHint.emoji} {exampleHint.topic}
+              </p>
+              <p className="text-xs text-violet-300/70">
+                Colle l'URL d'une vidéo qui parle de ce sujet pour lancer le
+                débat. DeepSight trouvera automatiquement la perspective
+                opposée.
+              </p>
+            </div>
+            <button
+              onClick={() => setExampleHint(null)}
+              className="text-xs text-violet-300/60 hover:text-violet-200"
+              aria-label="Fermer le rappel d'exemple"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
         <DebateCreateForm onSubmit={handleCreateDebate} loading={loading} />
       </motion.div>
+
+      {/* Démo : 3 exemples pré-faits sans coût crédits — affichés uniquement
+          quand aucun débat passé n'existe pour ne pas alourdir l'historique. */}
+      {!historyLoading && !historyError && debatesList.length === 0 && (
+        <DebateExamples onSelectExample={handleExampleClick} />
+      )}
 
       {/* Doodle divider between form and history */}
       <DoodleDivider variant="analysis" density="sparse" />
@@ -770,6 +1117,29 @@ export const DebatePage: React.FC = () => {
           <div className="flex items-center justify-center py-12">
             <DeepSightSpinnerSmall />
           </div>
+        ) : historyError ? (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 backdrop-blur-xl"
+          >
+            <div className="flex items-start gap-2 mb-3">
+              <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-400">
+                  Impossible de charger l'historique des débats
+                </p>
+                <p className="text-xs text-red-300/70 mt-1">{historyError}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={loadHistory}
+              className="text-xs font-medium text-red-300 hover:text-red-200 underline underline-offset-2"
+            >
+              Réessayer
+            </button>
+          </motion.div>
         ) : debatesList.length > 0 ? (
           <div className="space-y-2">
             {debatesList.map((debate) => (
@@ -800,6 +1170,10 @@ export const DebatePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative text-white">
+      {/* Coachmark progressif au 1er lancement — Wave 4 G.
+          Persistance localStorage ; ne s'affiche qu'une fois par device. */}
+      <DebateOnboardingTour />
+
       {/* Doodle background */}
       <ErrorBoundary fallback={null}>
         <DoodleBackground variant="analysis" />

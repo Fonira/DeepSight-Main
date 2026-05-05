@@ -27,7 +27,6 @@ import { PromoBanner } from "../components/PromoBanner";
 import { VoiceCallButton } from "../components/VoiceCallButton";
 import { SuggestionPills } from "../components/SuggestionPills";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
-import { BeamCard } from "../shared/BeamCard";
 import { useTranslation } from "../../i18n/useTranslation";
 
 interface MainViewProps {
@@ -349,11 +348,6 @@ export const MainView: React.FC<MainViewProps> = ({
       ? `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`
       : null;
 
-  /*
-    V3 layout reserves bottom-right ~76x76px for the parallel session's
-    <SunflowerLayer /> mascot (ambient-lighting-v3 PR). Do not place
-    floating elements (FAB, voice button, etc.) in that corner.
-  */
   return (
     <div className="v3-app">
       <div className="v3-app-scroll v3-stagger">
@@ -503,7 +497,7 @@ export const MainView: React.FC<MainViewProps> = ({
         {video && analysis.phase === "idle" && (
           <>
             {!isGuest && isQuotaExceeded ? (
-              <BeamCard>
+              <div className="v3-card">
                 <div className="v3-card-eyebrow">
                   {t.analysis.quotaExceeded}
                 </div>
@@ -531,9 +525,9 @@ export const MainView: React.FC<MainViewProps> = ({
                 >
                   {t.common.viewPlans} {"↗"}
                 </a>
-              </BeamCard>
+              </div>
             ) : isGuest && guestUsed ? (
-              <BeamCard>
+              <div className="v3-card">
                 <div className="v3-card-eyebrow">{t.guest.banner}</div>
                 <h3 className="v3-card-title">{t.guest.exhaustedText}</h3>
                 <button
@@ -544,7 +538,7 @@ export const MainView: React.FC<MainViewProps> = ({
                 >
                   {t.common.createAccount} {"↗"}
                 </button>
-              </BeamCard>
+              </div>
             ) : (
               <>
                 {/* Mode + Lang as pill toggles */}
@@ -588,7 +582,7 @@ export const MainView: React.FC<MainViewProps> = ({
                 </div>
 
                 {/* Primary analysis card — video detected */}
-                <BeamCard>
+                <div className="v3-card">
                   {thumbSrc ? (
                     <img
                       src={thumbSrc}
@@ -620,7 +614,7 @@ export const MainView: React.FC<MainViewProps> = ({
                   <button className="v3-button-primary" onClick={startAnalysis}>
                     {t.analysis.analyzeButton} {"→"}
                   </button>
-                </BeamCard>
+                </div>
 
                 {video && (
                   <SuggestionPills
@@ -657,7 +651,7 @@ export const MainView: React.FC<MainViewProps> = ({
                 )}
 
                 {/* Quick Chat secondary card */}
-                <BeamCard>
+                <div className="v3-card">
                   <div className="v3-card-eyebrow">
                     {t.analysis.quickChatButton}
                   </div>
@@ -676,7 +670,7 @@ export const MainView: React.FC<MainViewProps> = ({
                       ? t.analysis.quickChatPreparing
                       : t.analysis.quickChatButton}
                   </button>
-                </BeamCard>
+                </div>
               </>
             )}
           </>
@@ -684,11 +678,11 @@ export const MainView: React.FC<MainViewProps> = ({
 
         {/* ── Empty state (no video detected) ────────────────────── */}
         {!video && analysis.phase === "idle" && (
-          <BeamCard>
+          <div className="v3-card">
             <div className="v3-card-eyebrow">{t.analysis.noVideo}</div>
             <h3 className="v3-card-title">{t.analysis.analyzeButton}</h3>
             <p className="v3-card-desc">{t.mistral.badge}</p>
-          </BeamCard>
+          </div>
         )}
 
         {/* ── Analyzing state ────────────────────────────────────── */}
@@ -707,7 +701,7 @@ export const MainView: React.FC<MainViewProps> = ({
 
         {/* ── Error state ────────────────────────────────────────── */}
         {analysis.phase === "error" && (
-          <BeamCard>
+          <div className="v3-card">
             <div className="v3-card-eyebrow">Erreur</div>
             <h3 className="v3-card-title" style={{ color: "#fca5a5" }}>
               {analysis.message}
@@ -718,7 +712,7 @@ export const MainView: React.FC<MainViewProps> = ({
             >
               {t.common.retry}
             </button>
-          </BeamCard>
+          </div>
         )}
 
         {/* ── Complete (synthesis) ───────────────────────────────── */}
@@ -732,7 +726,7 @@ export const MainView: React.FC<MainViewProps> = ({
             />
 
             {!isGuest && nextPlan && userPlanId !== "pro" && (
-              <BeamCard>
+              <div className="v3-card">
                 <div className="v3-card-eyebrow">{nextPlan.label}</div>
                 <h3 className="v3-card-title">{nextPlan.feature}</h3>
                 <p className="v3-card-desc">
@@ -748,11 +742,11 @@ export const MainView: React.FC<MainViewProps> = ({
                 >
                   {t.common.unlock} {"↗"}
                 </a>
-              </BeamCard>
+              </div>
             )}
 
             {isGuest && (
-              <BeamCard>
+              <div className="v3-card">
                 <div className="v3-card-eyebrow">{t.guest.banner}</div>
                 <p className="v3-card-desc">{t.guest.exhaustedText}</p>
                 <button
@@ -763,7 +757,7 @@ export const MainView: React.FC<MainViewProps> = ({
                 >
                   {t.common.createAccount} {"↗"}
                 </button>
-              </BeamCard>
+              </div>
             )}
           </>
         )}

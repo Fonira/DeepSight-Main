@@ -18,6 +18,7 @@ import { sp, borderRadius } from "../../theme/spacing";
 import { fontFamily, fontSize } from "../../theme/typography";
 import { palette } from "../../theme/colors";
 import type { VoiceMode } from "../../hooks/useConversation";
+import { PasteLinkButton } from "../shared/PasteLinkButton";
 
 interface ConversationInputProps {
   inputText: string;
@@ -46,9 +47,7 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
 
   // Placeholder dynamique selon voiceMode
   const placeholder =
-    voiceMode === "live"
-      ? "Écris pendant l'appel..."
-      : "Pose une question...";
+    voiceMode === "live" ? "Écris pendant l'appel..." : "Pose une question...";
 
   // Bouton mic — couleur + icône selon voiceMode + isMuted
   let micIcon: React.ComponentProps<typeof Ionicons>["name"] = "mic-outline";
@@ -65,8 +64,7 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
     micBg = colors.bgElevated;
   }
 
-  const micDisabled =
-    voiceMode === "ended" || voiceMode === "quota_exceeded";
+  const micDisabled = voiceMode === "ended" || voiceMode === "quota_exceeded";
 
   return (
     <View
@@ -83,6 +81,7 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
           { backgroundColor: colors.bgCard, borderColor: colors.border },
         ]}
       >
+        <PasteLinkButton onPaste={setInputText} />
         <TextInput
           value={inputText}
           onChangeText={setInputText}

@@ -17,10 +17,7 @@ export const TikTokEmbed: React.FC<TikTokEmbedProps> = ({ videoId }) => {
   const embedUrl = `https://www.tiktok.com/embed/v2/${videoId}`;
 
   return (
-    <View
-      testID="tiktok-embed-container"
-      style={styles.container}
-    >
+    <View testID="tiktok-embed-container" style={styles.container}>
       <WebView
         testID="tiktok-embed-webview"
         source={{ uri: embedUrl }}

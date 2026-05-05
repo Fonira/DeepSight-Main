@@ -37,7 +37,9 @@ import { CreditPacksModal } from "@/components/billing";
 // VoiceAddonModal is heavy (depends on billing API + LinearGradient + several
 // inputs) and only rendered when the user taps "Voice add-on" — defer the
 // module load until then to keep this tab's first-paint snappy.
-const VoiceAddonModal = lazy(() => import("@/components/voice/VoiceAddonModal"));
+const VoiceAddonModal = lazy(
+  () => import("@/components/voice/VoiceAddonModal"),
+);
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
 import { palette } from "@/theme/colors";
@@ -295,9 +297,7 @@ export default function SubscriptionScreen() {
   const userPlanRaw = (user?.plan ?? "free") as PlanType;
   // Normalize legacy aliases (plus → pro, etc.) pour matcher PLANS_CONFIG v2
   const userPlanNormalized = normalizePlanId(userPlanRaw) as PlanId;
-  const userPlanConfig = PLANS_CONFIG.find(
-    (p) => p.id === userPlanNormalized,
-  );
+  const userPlanConfig = PLANS_CONFIG.find((p) => p.id === userPlanNormalized);
   const userPlanPrice =
     cycle === "yearly"
       ? (userPlanConfig?.priceRawYearly ?? 0)
@@ -535,8 +535,7 @@ export default function SubscriptionScreen() {
               style={[
                 styles.toggleText,
                 {
-                  color:
-                    cycle === "monthly" ? "#ffffff" : colors.textSecondary,
+                  color: cycle === "monthly" ? "#ffffff" : colors.textSecondary,
                 },
               ]}
             >
@@ -559,8 +558,7 @@ export default function SubscriptionScreen() {
               style={[
                 styles.toggleText,
                 {
-                  color:
-                    cycle === "yearly" ? "#ffffff" : colors.textSecondary,
+                  color: cycle === "yearly" ? "#ffffff" : colors.textSecondary,
                 },
               ]}
             >
@@ -591,9 +589,7 @@ export default function SubscriptionScreen() {
         {/* ── CTA Trial 7j sans CB (Sprint B H5 — user free seulement) ── */}
         {trialAvailable && (
           <View style={styles.trialSection}>
-            <Text
-              style={[styles.trialTitle, { color: colors.textPrimary }]}
-            >
+            <Text style={[styles.trialTitle, { color: colors.textPrimary }]}>
               Essayez 7 jours gratuit, sans carte bancaire
             </Text>
             <View style={styles.trialButtonsRow}>

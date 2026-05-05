@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { SEO } from "../components/SEO";
 import { Sidebar } from "../components/layout/Sidebar";
+import DoodleBackground from "../components/DoodleBackground";
 import { useTranslation } from "../hooks/useTranslation";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
 import { useVoiceEnabled } from "../components/voice/hooks/useVoiceEnabled";
@@ -232,6 +233,7 @@ const VoiceCallPage: React.FC = () => {
   if (!voiceEnabled) {
     return (
       <div className="min-h-screen bg-bg-primary relative">
+        <DoodleBackground variant="tech" />
         <SEO title={tr("Appel vocal", "Voice call")} path="/voice-call" />
         <Sidebar
           collapsed={sidebarCollapsed}
@@ -279,6 +281,7 @@ const VoiceCallPage: React.FC = () => {
   // ── Main view ──
   return (
     <div className="min-h-screen bg-bg-primary relative">
+      <DoodleBackground variant="tech" />
       <SEO title={tr("Appel vocal", "Voice call")} path="/voice-call" />
       <Sidebar
         collapsed={sidebarCollapsed}

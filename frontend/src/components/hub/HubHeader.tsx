@@ -1,6 +1,6 @@
 // frontend/src/components/hub/HubHeader.tsx
 import React from "react";
-import { Menu } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { DeepSightLogo } from "./DeepSightLogo";
 
 interface Props {
@@ -12,6 +12,13 @@ interface Props {
   /** Active conversation source — drives the inline platform icon in subtitle. */
   videoSource?: "youtube" | "tiktok" | null;
   pipSlot?: React.ReactNode;
+  /**
+   * Toggle the intra-analysis search bar (Semantic Search V1 Phase 2 web,
+   * Task 16). When provided, a magnifier button is rendered to the right
+   * of the title, before the PiP slot. Cmd/Ctrl+F inside `.analysis-page`
+   * triggers the same callback via useCmdFIntercept.
+   */
+  onSearchClick?: () => void;
 }
 
 const SOURCE_ICON: Record<"youtube" | "tiktok", { src: string; alt: string }> =
@@ -27,6 +34,7 @@ export const HubHeader: React.FC<Props> = ({
   subtitle,
   videoSource,
   pipSlot,
+  onSearchClick,
 }) => {
   const sourceIcon =
     videoSource && SOURCE_ICON[videoSource] ? SOURCE_ICON[videoSource] : null;
@@ -70,6 +78,17 @@ export const HubHeader: React.FC<Props> = ({
           </p>
         )}
       </div>
+      {onSearchClick && (
+        <button
+          type="button"
+          aria-label="Rechercher dans cette analyse"
+          aria-keyshortcuts="Control+F Meta+F"
+          onClick={onSearchClick}
+          className="w-8 h-8 grid place-items-center rounded-lg text-white/65 hover:bg-white/[0.06] hover:text-white flex-shrink-0"
+        >
+          <Search className="w-4 h-4" />
+        </button>
+      )}
       {pipSlot}
     </header>
   );

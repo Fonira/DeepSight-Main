@@ -2287,8 +2287,90 @@ export const trendingApi = {
 };
 
 // ============================================
-// Search API — Semantic search (auth required)
+// Search API V1 — Semantic Search (auth required)
 // ============================================
+
+export type SearchSourceType =
+  | "summary"
+  | "flashcard"
+  | "quiz"
+  | "chat"
+  | "transcript";
+
+export interface GlobalSearchRequest {
+  query: string;
+  limit?: number;
+  source_types?: SearchSourceType[];
+  platform?: "youtube" | "tiktok" | "text";
+  lang?: string;
+  category?: string;
+  date_from?: string; // ISO 8601
+  date_to?: string;
+  favorites_only?: boolean;
+  playlist_id?: string;
+}
+
+export interface GlobalSearchResultItem {
+  source_type: SearchSourceType;
+  source_id: number;
+  summary_id: number | null;
+  score: number;
+  text_preview: string;
+  source_metadata: {
+    summary_title?: string;
+    summary_thumbnail?: string;
+    video_id?: string;
+    channel?: string;
+    tab?:
+      | "synthesis"
+      | "digest"
+      | "flashcards"
+      | "quiz"
+      | "chat"
+      | "transcript";
+    start_ts?: number;
+    end_ts?: number;
+    anchor?: string;
+    flashcard_id?: number;
+    quiz_question_id?: number;
+  };
+}
+
+export interface GlobalSearchResponse {
+  query: string;
+  total_results: number;
+  results: GlobalSearchResultItem[];
+  searched_at: string;
+}
+
+export interface WithinSearchRequest {
+  query: string;
+  source_types?: SearchSourceType[];
+}
+
+export interface WithinMatchItem {
+  source_type: SearchSourceType;
+  source_id: number;
+  summary_id: number;
+  text: string;
+  text_html: string;
+  tab: "synthesis" | "digest" | "flashcards" | "quiz" | "chat" | "transcript";
+  score: number;
+  passage_id: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface WithinSearchResponse {
+  summary_id: number;
+  query: string;
+  matches: WithinMatchItem[];
+}
+
+export interface RecentQueriesResponse {
+  queries: string[];
+}
+
+// LEGACY (existant — gardé pour compat)
 export interface SemanticSearchResult {
   video_id: string;
   score: number;
@@ -2307,6 +2389,33 @@ export interface SemanticSearchResponse {
 }
 
 export const searchApi = {
+  // ───── V1 (Phase 1 backend mergée) ─────
+  async globalSearch(req: GlobalSearchRequest): Promise<GlobalSearchResponse> {
+    return request("/api/search/global", {
+      method: "POST",
+      body: req as unknown as Record<string, unknown>,
+    });
+  },
+
+  async withinSearch(
+    summaryId: number,
+    req: WithinSearchRequest,
+  ): Promise<WithinSearchResponse> {
+    return request(`/api/search/within/${summaryId}`, {
+      method: "POST",
+      body: req as unknown as Record<string, unknown>,
+    });
+  },
+
+  async getRecentQueries(): Promise<RecentQueriesResponse> {
+    return request("/api/search/recent-queries");
+  },
+
+  async clearRecentQueries(): Promise<void> {
+    await request("/api/search/recent-queries", { method: "DELETE" });
+  },
+
+  // ───── Legacy (gardé pour compat) ─────
   async semanticSearch(
     query: string,
     limit: number = 10,

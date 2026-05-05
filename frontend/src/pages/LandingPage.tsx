@@ -50,6 +50,7 @@ import {
   TrustBadges,
   SocialProofCounter,
 } from "../components/landing";
+import DoodleBackground from "../components/DoodleBackground";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION HELPERS
@@ -595,6 +596,7 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative overflow-hidden">
+      <DoodleBackground variant="creative" />
       <SEO
         title="Analyse YouTube & TikTok par IA"
         description="Analysez et synthétisez vos vidéos YouTube et TikTok avec l'IA française. Résumés intelligents, fact-checking méthodique, points clés, timestamps, et chat interactif."

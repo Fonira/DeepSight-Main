@@ -1,19 +1,28 @@
 /**
- * DOODLE BACKGROUND — Extension Sidepanel (port simplifié du frontend web v13)
+ * DOODLE BACKGROUND — Extension Sidepanel (port simplifié du frontend web v14)
  *
  * Adaptations sidepanel (vs frontend/src/components/DoodleBackground.tsx) :
  * - TILE 280px (vs 500px) → ~1.4 tiles visibles dans 400px
- * - ~60 éléments (vs 200) répartis sur 7 layers
+ * - ~85 éléments (vs 200) répartis sur 7 layers
  * - Dark mode forcé (sidepanel toujours sombre)
  * - Pas de useLocation : seed statique mémorisé au mount
  * - Pas de framer-motion : SVG static via data URI
  * - Pas de désactivation mobile : actif TOUJOURS
  * - prefers-reduced-motion → render null
- * - z-index 0 (sous AmbientLightLayer qui est en z-index 1)
+ *
+ * ✨ v14 LUMINOUS UPGRADE :
+ * - +30 nouveaux paths (SACRED + COSMIC + CHAOS) → pool ~80 paths
+ * - Opacités layer-par-layer ~+55% pour visibilité renforcée
+ * - Layer 4 (brand accent) boostée : 0.45–0.65 + strokeWidth 2.2
+ * - Mask élargi (black 70% vs 50%)
+ * - Filter glow : brightness(1.18) saturate(1.15) + mixBlendMode screen
+ * - Stroke-dasharray sur ~22% des éléments non-accent (effet sketch)
+ * - Wrapper opacity 0.35 → 0.55 (les doodles existent vraiment)
  *
  * Garde tous les arrays d'icônes du fichier source web (ICONS_VIDEO, ICONS_STUDY,
  * ICONS_TECH, ICONS_AI, ICONS_CREATIVE, ICONS_ABSTRACT, ICONS_OBJECTS,
- * ICONS_WHIMSICAL, ICONS_SCIENCE, ICONS_BRAND, SHAPES_ORGANIC, SHAPES_DECORATIVE).
+ * ICONS_WHIMSICAL, ICONS_SCIENCE, ICONS_BRAND, SHAPES_ORGANIC, SHAPES_DECORATIVE),
+ * + nouveaux pools v14 ICONS_SACRED, ICONS_COSMIC, ICONS_CHAOS.
  */
 
 import React, { useMemo, useState, useEffect } from "react";
@@ -44,6 +53,14 @@ const SHAPES_ORGANIC: string[] = ["M12.3 2.1c5.4.2 9.8 4.3 10.1 9.7.3 5.6-4.1 10
 // prettier-ignore
 const SHAPES_DECORATIVE: string[] = ["M12 10a2 2 0 100 4 2 2 0 000-4z","M12 5v14M5 12h14","M18 6L6 18M6 6l12 12","M12 8a4 4 0 100 8 4 4 0 000-8z","M12 6l6 10H6z","M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z"];
 
+// ─── v14 NEW POOLS — Sacred Geometry, Cosmic, Chaos ─────────────────────────
+// prettier-ignore
+const ICONS_SACRED: string[] = ["M9 12a4 4 0 008 0M15 12a4 4 0 00-8 0M11 8a4 4 0 014 8M9 8a4 4 0 00-4 8","M12 2l5.196 9H6.804zM12 22l-5.196-9h10.392zM3.804 6.5l16.392 11M20.196 6.5L3.804 17.5","M12 6a3 3 0 100 6 3 3 0 000-6zM7 9a3 3 0 100 6 3 3 0 000-6zM17 9a3 3 0 100 6 3 3 0 000-6zM12 12a3 3 0 100 6 3 3 0 000-6zM7 15a3 3 0 100 6 3 3 0 000-6zM17 15a3 3 0 100 6 3 3 0 000-6z","M12 2a10 10 0 010 20 5 5 0 010-10 5 5 0 000-10zM12 6a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 15a1.5 1.5 0 100 3 1.5 1.5 0 000-3z","M12 2l3 9h9l-7 5 3 9-8-6-8 6 3-9-7-5h9zM5 11h14M9 21l3-9 3 9","M12 2a3 3 0 100 6 3 3 0 000-6zM12 8v14M5 14h14","M12 12m-2 0a2 2 0 104 0 2 2 0 10-4 0M12 4v6M12 14v6M4 12h6M14 12h6M6.34 6.34l4.24 4.24M13.42 13.42l4.24 4.24M17.66 6.34l-4.24 4.24M10.58 13.42l-4.24 4.24","M12 2l9 16H3zM12 22l-9-16h18zM3 18h18M3 6h18","M12 4a5 5 0 015 8M12 4a5 5 0 00-5 8M7 12a5 5 0 0010 0M7 12c0 3 2 5 5 5s5-2 5-5","M12 2v20M2 12h20M5 5l14 14M19 5L5 19M12 2a4 4 0 100 8 4 4 0 000-8zM12 14a4 4 0 100 8 4 4 0 000-8z"];
+// prettier-ignore
+const ICONS_COSMIC: string[] = ["M12 12a3 3 0 014 3M16 15a7 7 0 01-12-2M4 13a11 11 0 0118 4M22 17a15 15 0 01-20-7M12 12a3 3 0 00-2-2","M12 8a4 4 0 100 8 4 4 0 000-8zM2 14c0 2 4 3 10 3s10-1 10-3M2 10c0-2 4-3 10-3s10 1 10 3","M16 12a4 4 0 11-8 0 4 4 0 018 0zM14 14l8-12M10 16l-6 6M4 14l4 4M22 2l-3 1","M5 8c0 4 5 6 9 4M19 16c0-4-5-6-9-4M2 12c5-3 11-3 16 0M22 12c-5 3-11 3-16 0M8 6a2 2 0 100 4 2 2 0 000-4zM16 14a2 2 0 100 4 2 2 0 000-4z","M12 12a3 3 0 100 6 3 3 0 000-6zM12 6a9 9 0 010 12M12 6a9 9 0 000 12M2 12c2-2 6-2 10 0M22 12c-2-2-6-2-10 0","M12 18a8 6 0 110-12 8 6 0 010 12zM5 14h14M9 12V8M15 12V8M10 22l4-4","M12 2l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6zM4 4l-2 2M3 8l-1 1M7 4L5 2","M12 8a4 4 0 100 8 4 4 0 000-8zM12 1v3M12 20v3M1 12h3M20 12h3M3.5 3.5l2 2M18.5 18.5l2 2M3.5 20.5l2-2M18.5 5.5l2-2","M12 2a10 10 0 100 20 8 8 0 010-20zM18 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM20 14l.5 1 1 .5-1 .5-.5 1-.5-1-1-.5 1-.5z"];
+// prettier-ignore
+const ICONS_CHAOS: string[] = ["M12 12a2 2 0 014 0 4 4 0 01-8 0 6 6 0 0112 0 8 8 0 01-16 0","M3 12c0-3 3-5 6-5s5 2 6 5 3 5 6 5 6-2 6-5-3-5-6-5-5 2-6 5-3 5-6 5-6-2-6-5z","M2 12c1.5-2 3-2 4.5 0S9 14 10.5 12s3-2 4.5 0 3 2 4.5 0 3-2 4.5 0","M2 6c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 18c2-3 4-3 6 0s4 3 6 0 4-3 6 0","M2 18c3-1 4-5 6-5s3 4 6 4 3-4 6-4 3 4 4 5","M2 12s2-4 5-4 3 4 6 4 3-4 5-4 4 4 4 4M22 18s-2-4-5-4-3 4-6 4-3-4-5-4-4 4-4 4","M12 4a8 8 0 11-8 8 6 6 0 016-6 4 4 0 014 4 2 2 0 01-2 2","M12 4l8 14H4zM12 8l5 9H7zM12 12l3 5H9z"];
+
 const ICON_POOL: string[] = [
   ...ICONS_VIDEO,
   ...ICONS_STUDY,
@@ -55,6 +72,9 @@ const ICON_POOL: string[] = [
   ...ICONS_WHIMSICAL,
   ...ICONS_SCIENCE,
   ...ICONS_BRAND,
+  ...ICONS_SACRED,
+  ...ICONS_COSMIC,
+  ...ICONS_CHAOS,
 ];
 const ROTATIONS = [0, 12, -12, 25, -25, 40, -40, 55, -55, 90, -90, 135, 180];
 const DARK_PALETTE = [
@@ -68,9 +88,18 @@ const DARK_PALETTE = [
   "#C084FC",
   "#A5B4FC",
   "#E5E7EB",
+  "#FDE68A",
 ];
 const ACCENT_PRIMARY = "#D4A054";
 const ACCENT_SECONDARY = "#C8903A";
+
+// Dashed stroke variants for sketched feel — ~22% of stroked icons get one
+const DASH_PATTERNS = ["", "", "", "", "2 3", "3 2", "1 4", "4 1", "5 2 1 2"];
+const pickDash = (seed: number): string => {
+  const v = Math.sin(seed * 7919) * 10000;
+  const r = v - Math.floor(v);
+  return DASH_PATTERNS[Math.floor(r * DASH_PATTERNS.length)];
+};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const seededRandom = (seed: number): number => {
@@ -139,13 +168,13 @@ const DoodleBackground: React.FC = () => {
         rotation: pickNum(ROTATIONS, s + 3),
         scale: 0.95 + seededRandom(s + 4) * 0.4,
         color: pickStr(DARK_PALETTE, s + 9),
-        opacity: 0.12 + seededRandom(s + 5) * 0.06,
-        strokeWidth: sw(s + 10, 1.6),
+        opacity: 0.2 + seededRandom(s + 5) * 0.1,
+        strokeWidth: sw(s + 10, 1.9),
         fill: false,
       });
     }
-    // Layer 2 : Mid — 12 items
-    for (let i = 0; i < 12; i++) {
+    // Layer 2 : Mid — 14 items
+    for (let i = 0; i < 14; i++) {
       const s = vo + 300 + i * 23;
       out.push({
         path: pickStr(ICON_POOL, s),
@@ -154,13 +183,13 @@ const DoodleBackground: React.FC = () => {
         rotation: pickNum(ROTATIONS, s + 3),
         scale: 0.55 + seededRandom(s + 4) * 0.3,
         color: pickStr(DARK_PALETTE, s + 9),
-        opacity: 0.18 + seededRandom(s + 5) * 0.08,
-        strokeWidth: sw(s + 10, 1.4),
+        opacity: 0.28 + seededRandom(s + 5) * 0.14,
+        strokeWidth: sw(s + 10, 1.7),
         fill: false,
       });
     }
-    // Layer 3 : Front (small bold) — 10 items
-    for (let i = 0; i < 10; i++) {
+    // Layer 3 : Front (small bold) — 12 items
+    for (let i = 0; i < 12; i++) {
       const s = vo + 600 + i * 31;
       out.push({
         path: pickStr(ICON_POOL, s),
@@ -169,28 +198,28 @@ const DoodleBackground: React.FC = () => {
         rotation: pickNum(ROTATIONS, s + 3),
         scale: 0.4 + seededRandom(s + 4) * 0.22,
         color: pickStr(DARK_PALETTE, s + 9),
-        opacity: 0.22 + seededRandom(s + 5) * 0.1,
-        strokeWidth: sw(s + 10, 1.3),
+        opacity: 0.34 + seededRandom(s + 5) * 0.16,
+        strokeWidth: sw(s + 10, 1.6),
         fill: false,
       });
     }
-    // Layer 4 : Brand accent doré DeepSight — 6 items
-    for (let i = 0; i < 6; i++) {
+    // Layer 4 : Brand accent doré DeepSight — 8 items (boosted v14)
+    for (let i = 0; i < 8; i++) {
       const s = vo + 900 + i * 41;
       out.push({
         path: pickStr(ICON_POOL, s),
         x: seededRandom(s + 1) * TILE,
         y: seededRandom(s + 2) * TILE,
         rotation: pickNum(ROTATIONS, s + 3),
-        scale: 0.5 + seededRandom(s + 4) * 0.3,
+        scale: 0.5 + seededRandom(s + 4) * 0.35,
         color: seededRandom(s + 6) > 0.5 ? ACCENT_PRIMARY : ACCENT_SECONDARY,
-        opacity: 0.28 + seededRandom(s + 5) * 0.12,
-        strokeWidth: sw(s + 10, 1.6),
+        opacity: 0.45 + seededRandom(s + 5) * 0.2,
+        strokeWidth: sw(s + 10, 2.2),
         fill: false,
       });
     }
-    // Layer 5 : Micro (tiny scattered) — 9 items
-    for (let i = 0; i < 9; i++) {
+    // Layer 5 : Micro (tiny scattered) — 12 items
+    for (let i = 0; i < 12; i++) {
       const s = vo + 1200 + i * 47;
       out.push({
         path: pickStr(ICON_POOL, s),
@@ -199,13 +228,13 @@ const DoodleBackground: React.FC = () => {
         rotation: seededRandom(s + 3) * 360,
         scale: 0.22 + seededRandom(s + 4) * 0.18,
         color: pickStr(DARK_PALETTE, s + 9),
-        opacity: 0.14 + seededRandom(s + 5) * 0.06,
-        strokeWidth: sw(s + 10, 1.1),
+        opacity: 0.22 + seededRandom(s + 5) * 0.1,
+        strokeWidth: sw(s + 10, 1.4),
         fill: false,
       });
     }
-    // Layer 6 : Decorative dots/shapes (filled) — 12 items
-    for (let i = 0; i < 12; i++) {
+    // Layer 6 : Decorative dots/shapes (filled) — 14 items
+    for (let i = 0; i < 14; i++) {
       const s = vo + 1500 + i * 13;
       const useAccent = seededRandom(s + 7) > 0.78;
       out.push({
@@ -216,14 +245,14 @@ const DoodleBackground: React.FC = () => {
         scale: 0.18 + seededRandom(s + 4) * 0.25,
         color: useAccent ? ACCENT_PRIMARY : pickStr(DARK_PALETTE, s + 11),
         opacity: useAccent
-          ? 0.26 + seededRandom(s + 5) * 0.12
-          : 0.2 + seededRandom(s + 5) * 0.1,
+          ? 0.42 + seededRandom(s + 5) * 0.18
+          : 0.3 + seededRandom(s + 5) * 0.14,
         strokeWidth: 0,
         fill: true,
       });
     }
-    // Layer 7 : Organic hand-drawn (subtle) — 3 items
-    for (let i = 0; i < 3; i++) {
+    // Layer 7 : Organic hand-drawn (subtle) — 4 items
+    for (let i = 0; i < 4; i++) {
       const s = vo + 2500 + i * 53;
       out.push({
         path: pickStr(SHAPES_ORGANIC, s),
@@ -232,8 +261,8 @@ const DoodleBackground: React.FC = () => {
         rotation: seededRandom(s + 3) * 360,
         scale: 0.6 + seededRandom(s + 4) * 0.4,
         color: pickStr(DARK_PALETTE, s + 9),
-        opacity: 0.06 + seededRandom(s + 5) * 0.04,
-        strokeWidth: sw(s + 10, 1.0),
+        opacity: 0.1 + seededRandom(s + 5) * 0.06,
+        strokeWidth: sw(s + 10, 1.2),
         fill: false,
       });
     }
@@ -241,14 +270,20 @@ const DoodleBackground: React.FC = () => {
     return out;
   }, [reducedMotion]);
 
-  // Build the tiled SVG data URI
+  // Build the tiled SVG data URI — adds stroke-dasharray on ~22% of non-accent strokes
   const patternSvg = useMemo<string | null>(() => {
     if (items.length === 0) return null;
     const paths = items
-      .map(
-        (d) =>
-          `<g transform="translate(${d.x.toFixed(1)},${d.y.toFixed(1)}) rotate(${d.rotation}) scale(${d.scale.toFixed(2)})" opacity="${d.opacity.toFixed(3)}"><path d="${d.path}" transform="translate(-12,-12)" fill="${d.fill ? d.color : "none"}" stroke="${d.fill ? "none" : d.color}" stroke-width="${d.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/></g>`,
-      )
+      .map((d, idx) => {
+        const isAccent =
+          d.color === ACCENT_PRIMARY || d.color === ACCENT_SECONDARY;
+        const dash =
+          !d.fill && !isAccent
+            ? pickDash(idx * 1009 + Math.floor(d.x) + Math.floor(d.y))
+            : "";
+        const dashAttr = dash ? ` stroke-dasharray="${dash}"` : "";
+        return `<g transform="translate(${d.x.toFixed(1)},${d.y.toFixed(1)}) rotate(${d.rotation}) scale(${d.scale.toFixed(2)})" opacity="${d.opacity.toFixed(3)}"><path d="${d.path}" transform="translate(-12,-12)" fill="${d.fill ? d.color : "none"}" stroke="${d.fill ? "none" : d.color}" stroke-width="${d.strokeWidth}"${dashAttr} stroke-linecap="round" stroke-linejoin="round"/></g>`;
+      })
       .join("");
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TILE} ${TILE}">${paths}</svg>`;
     return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
@@ -256,9 +291,9 @@ const DoodleBackground: React.FC = () => {
 
   if (reducedMotion || !patternSvg) return null;
 
-  // Gradient mask radial pour fade aux bords (premium edge fading)
+  // Wider radial mask for more visible doodle area (was 50%, now 70%)
   const maskGradient =
-    "radial-gradient(ellipse 100% 100% at 50% 50%, black 50%, transparent 100%)";
+    "radial-gradient(ellipse 110% 110% at 50% 50%, black 70%, transparent 100%)";
 
   return (
     <div
@@ -272,12 +307,15 @@ const DoodleBackground: React.FC = () => {
         overflow: "hidden",
         pointerEvents: "none",
         zIndex: 0,
-        opacity: 0.35,
+        opacity: 0.55,
         backgroundImage: patternSvg,
         backgroundRepeat: "repeat",
         backgroundSize: `${TILE}px ${TILE}px`,
         maskImage: maskGradient,
         WebkitMaskImage: maskGradient,
+        // ✨ v14 glow: brightness + saturate boost + screen blend on dark surface
+        filter: "brightness(1.18) saturate(1.15)",
+        mixBlendMode: "screen",
       }}
     />
   );

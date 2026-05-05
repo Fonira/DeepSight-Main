@@ -18,6 +18,8 @@ html {
   font-size: 18px;
 }
 
+@import "./styles/highlight.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -37,13 +39,13 @@ html {
     --bg-active: #2a2a3a;
     --bg-surface: rgba(17, 17, 24, 0.8);
 
-    /* === Text tokens v3 (ambient lighting) === */
+    /* === Text tokens === */
     --text-primary: #ffffff;
     --text-secondary: #f1f5f9; /* slate-100 — was warm-gray */
     --text-muted: #e2e8f0; /* slate-200 — was warm-gray */
     --text-disabled: rgba(255, 255, 255, 0.45);
     --text-meta: #cbd5e1; /* slate-300 for timestamps/counts */
-    --text-tertiary: #cbd5e1; /* slate-300 — v3 white-cast equivalent of legacy warm-gray tertiary */
+    --text-tertiary: #cbd5e1; /* slate-300 */
     --text-inverse: #0a0a0f;
 
     /* === Accent — Gold/Amber === */
@@ -123,20 +125,6 @@ html {
     --z-overlay: 200;
     --z-modal: 300;
     --z-toast: 400;
-  }
-
-  /* === ISOLATION — Refonte lisibilité ===
-     Ferme les contextes de blend pour les zones de contenu : bloque le
-     mix-blend-mode: screen de l'AmbientLightLayer sans toucher aux calques
-     cosmétiques eux-mêmes (les rayons restent dans les gutters).
-     Audit confirmant safety : .audit-portals.md (10 portals → document.body,
-     position:fixed not confined par isolation: isolate). */
-  main,
-  [role="main"],
-  .card,
-  .panel,
-  aside[data-sidebar] {
-    isolation: isolate;
   }
 
   /* === TEXTURE NOISE (Anti-AI-Slop) === */
@@ -250,45 +238,6 @@ html {
     opacity: 0.018;
     pointer-events: none;
     z-index: 0;
-  }
-
-  /* Ambient gradient glow */
-  body::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(
-        ellipse 80% 50% at 50% -10%,
-        rgba(200, 144, 58, 0.06) 0%,
-        transparent 60%
-      ),
-      radial-gradient(
-        ellipse 50% 40% at 90% 80%,
-        rgba(155, 107, 74, 0.03) 0%,
-        transparent 50%
-      ),
-      radial-gradient(
-        ellipse 40% 30% at 10% 90%,
-        rgba(196, 139, 124, 0.02) 0%,
-        transparent 50%
-      );
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .light body::after {
-    background:
-      radial-gradient(
-        ellipse 80% 50% at 50% -10%,
-        rgba(166, 120, 40, 0.03) 0%,
-        transparent 60%
-      ),
-      radial-gradient(
-        ellipse 50% 40% at 90% 80%,
-        rgba(139, 107, 72, 0.02) 0%,
-        transparent 50%
-      );
   }
 
   /* Scrollbar */
@@ -671,27 +620,5 @@ html {
     left: 0;
     top: 0;
     z-index: 40;
-  }
-
-  /* === SUNFLOWER v3.1 — bioluminescent halo pulse === */
-  @keyframes ds-sunflower-biolum {
-    0%,
-    100% {
-      opacity: 0.5;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.85;
-      transform: scale(1.08);
-    }
-  }
-  .ds-sunflower-halo--pulse {
-    animation: ds-sunflower-biolum 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .ds-sunflower-halo--pulse {
-      animation: none;
-      opacity: 0.6;
-    }
   }
 }

@@ -4,7 +4,6 @@
   "description": "DeepSight - AI Video Analysis Chrome Extension",
   "private": true,
   "scripts": {
-    "postinstall": "tsc -p ../packages/lighting-engine/tsconfig.build.json",
     "build": "webpack --mode production",
     "dev": "webpack --mode development --watch",
     "typecheck": "tsc --noEmit",
@@ -42,7 +41,6 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
-    "@deepsight/lighting-engine": "file:../packages/lighting-engine",
     "@elevenlabs/client": "^0.15.2",
     "preact": "^10.29.1",
     "webextension-polyfill": "^0.12.0"
