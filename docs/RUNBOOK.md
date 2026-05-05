@@ -753,3 +753,284 @@ If the script is later wired into a workflow:
 - `TELEGRAM_INTEGRATION_INSTALLATION_ID` (optional)
 
 Use `gh secret set <NAME>` to set them.
+
+---
+
+## 18. Cloudflare WAF + DNS proxy on `api.deepsightsynthesis.com`
+
+> **Sprint Scalability — Chantier A (audit P0).** Mitigates DDoS, brute-force,
+> and OWASP-class threats by putting Cloudflare's edge in front of the Hetzner
+> single-VPS backend.
+
+### 18.1 — Why
+
+The Hetzner VPS (`89.167.23.214`, 16 GB RAM) is currently the only hop between
+the public internet and the FastAPI backend. Issues this section addresses:
+
+- **Unfiltered DDoS** — a script kiddie can saturate the VPS via SSL handshake
+  flood, slow-loris, GET spam.
+- **No global rate limiting that survives backend down-time** — the FastAPI
+  Redis-backed limiter only protects when the backend is up.
+- **No WAF in front** — SQL injection / OWASP top 10 reach the application.
+
+The mitigation is to move `api.*` from DNS-only to Cloudflare-proxied (orange
+cloud) and apply WAF custom rules + rate-limit rules + edge cache rules. Stripe
+webhooks and Caddy auto-SSL must continue to function.
+
+### 18.2 — Architecture after rollout
+
+```
+Internet
+    |
+    v
+Cloudflare edge (WAF + rate limit + cache)
+    |  (only on api.deepsightsynthesis.com)
+    v
+Hetzner VPS 89.167.23.214
+    |  port 80/443
+    v
+Caddy (auto-SSL Let's Encrypt, reverse proxy)
+    |
+    v
+FastAPI 4 workers (port 8080)
+```
+
+`www.deepsightsynthesis.com` keeps Vercel's edge in front (unchanged).
+
+### 18.3 — Pre-requisites
+
+- The zone `deepsightsynthesis.com` is already managed by Cloudflare
+  (confirmed by sub-processors note: "Cloudflare R2 — backups").
+- Cloudflare plan : Free is enough for custom rules and 1 cache rule, but
+  rate-limiting requires **at least Pro tier** for advanced thresholds.
+  → If on Free plan, the rate-limit upserts will fail gracefully; the script
+  reports `failed` and continues with WAF + cache.
+- An SSH-reachable Caddy that already serves a valid Let's Encrypt cert on
+  `api.deepsightsynthesis.com` (current state in production).
+
+### 18.4 — Manual steps in Cloudflare dashboard (one-time)
+
+These can NOT be done via the script — they are zone-level toggles.
+
+1. **Bascule DNS proxy on `api`**
+   - Dashboard > zone `deepsightsynthesis.com` > **DNS** > Records
+   - Find the `A` record `api -> 89.167.23.214`
+   - Toggle the proxy status from **DNS only (grey cloud)** to **Proxied (orange cloud)**
+   - Save
+
+2. **SSL/TLS mode = Full (strict)**
+   - Dashboard > zone > **SSL/TLS** > Overview
+   - Set encryption mode to **Full (strict)** (not Flexible, not Full)
+   - Reason : Caddy already serves a valid Let's Encrypt cert on origin.
+     Cloudflare will validate it. Flexible mode would downgrade origin to
+     plain HTTP and break HSTS guarantees.
+
+3. **Verify Caddy auto-SSL still works after the proxy flip**
+   - Wait ~3 min for Cloudflare to reload DNS.
+   - From your laptop : `curl -sI https://api.deepsightsynthesis.com/health`
+   - Expected : `HTTP/2 200` and a `cf-ray` header (proves traffic goes through Cloudflare).
+   - If 502/521 from Cloudflare : Caddy origin not reachable on 443 from Cloudflare's IPs.
+     Check Hetzner firewall rules — ensure 443/tcp is open to `0.0.0.0/0` (Cloudflare uses many IPs).
+
+4. **Configure the Stripe webhook page rule (legacy Page Rules, manual only)**
+   - Dashboard > zone > **Rules** > Page Rules > Create Page Rule
+   - URL : `api.deepsightsynthesis.com/api/billing/webhook`
+   - Settings :
+     - Browser Integrity Check : `Off`
+     - Security Level : `Essentially Off`
+     - Cache Level : `Bypass`
+   - Save & Deploy.
+   - Reason : Stripe sends signed webhooks (HMAC); any Cloudflare interception
+     can break the signature. The custom WAF rule "Challenge non-Stripe IPs on
+     billing webhook" already filters imposters; this Page Rule is belt-and-suspenders.
+
+### 18.5 — Generate the Cloudflare API token
+
+Dashboard > **My Profile** > **API Tokens** > **Create Token** > **Custom token**
+
+Required permissions:
+
+| Resource          | Permission |
+| ----------------- | ---------- |
+| Zone              | Read       |
+| Zone WAF          | Edit       |
+| Zone Rate Limit   | Edit       |
+| Zone Cache Rules  | Edit       |
+
+Zone Resources: `Include > Specific zone > deepsightsynthesis.com`
+
+Save the token (shown only once). It's referenced as `CLOUDFLARE_API_TOKEN`
+below.
+
+### 18.6 — Find the Zone ID
+
+Dashboard > zone `deepsightsynthesis.com` > **Overview** (right sidebar) >
+**API** section > copy `Zone ID` (32-char hex string). It's referenced as
+`CLOUDFLARE_ZONE_ID` below.
+
+### 18.7 — Run the setup script
+
+The script `backend/scripts/setup_cloudflare_waf.py` is idempotent: matches
+existing rules by description (suffixed `[managed]`) and upserts.
+
+```bash
+cd C:/Users/33667/DeepSight-Main
+
+# 1) Inspect what will be applied (no API call)
+python backend/scripts/setup_cloudflare_waf.py --show-config
+
+# 2) Diff against current Cloudflare state (read-only)
+export CLOUDFLARE_API_TOKEN="<your token>"
+export CLOUDFLARE_ZONE_ID="<your zone id>"
+python backend/scripts/setup_cloudflare_waf.py --dry-run
+
+# 3) Apply (create/update) rules
+python backend/scripts/setup_cloudflare_waf.py --apply
+```
+
+The script outputs a final table:
+
+```
+STATUS         KIND         DESCRIPTION
+[+] created    custom       Block empty UA or known scrapers [managed]
+[~] updated    rate_limit   Rate limit /api/auth/login 5/min [managed]
+[=] skipped    cache        Edge cache /api/health 30s [managed]
+[!] failed     rate_limit   ...                       (only on plan-restricted features)
+```
+
+Re-running with `--apply` is safe: rules already in sync are reported as
+`skipped`.
+
+### 18.8 — Rules that will be created
+
+| Type       | Description                                                | Action                  |
+| ---------- | ---------------------------------------------------------- | ----------------------- |
+| WAF        | Block empty UA or known scrapers                           | block                   |
+| WAF        | Challenge non-Stripe IPs on billing webhook                | managed_challenge       |
+| WAF        | Block oversize body except on exports (>10 MB)             | block                   |
+| WAF        | Challenge non-JSON POST on auth endpoints                  | managed_challenge       |
+| Rate limit | `/api/auth/login` 5/min                                    | block 1h                |
+| Rate limit | `/api/auth/register` 3/min                                 | block 1h                |
+| Rate limit | `/api/videos/analyze` 10/min                               | challenge 10min         |
+| Rate limit | `/api/*` wildcard 100/min                                  | managed_challenge 5min  |
+| Cache      | `/api/health` edge TTL 30s                                 | cache                   |
+| Cache      | `/api/tournesol/*` GET edge TTL 5min                       | cache                   |
+
+Source of truth : `backend/scripts/cloudflare_rules_config.py`.
+
+### 18.9 — Critical rules and risk levels
+
+| Rule                                                  | Why critical                                                                                         | Risk if removed                                |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Page Rule on `/api/billing/webhook`                   | Stripe HMAC-signed webhooks rely on byte-exact body. Any Cloudflare manipulation breaks the signature. | Stripe webhooks 4xx, billing breaks silently. |
+| `Challenge non-Stripe IPs on billing webhook`         | Reverses the page rule scope: legit Stripe IPs are NEVER challenged.                                 | Stripe IPs hit captcha; payments fail.        |
+| `Rate limit /api/auth/login`                          | Brute-force credential stuffing today's #1 SaaS attack vector.                                        | Account takeovers via leaked passwords.       |
+| `Block empty UA or known scrapers`                    | Cuts 90% of script-based volumetric attacks.                                                         | VPS CPU saturation under bot load.            |
+
+### 18.10 — Rollback
+
+If anything goes wrong (Stripe down, Caddy SSL renewal fails, latency spike), the
+fastest rollback is to put the API back on DNS-only mode:
+
+1. Dashboard > zone > DNS > Records
+2. Find `api` A record > toggle proxy status to **DNS only (grey cloud)** > Save
+3. Wait ~30s for global DNS propagation.
+
+Cloudflare WAF rules stay in place but are no longer evaluated. Re-enable later
+by flipping the cloud back to orange.
+
+To roll back individual rules, edit them in the dashboard
+(`Security > WAF > Custom rules` / `Security > Bots & DDoS > Rate limiting`).
+The script never deletes rules, only upserts; manual deletion is fine.
+
+### 18.11 — Troubleshooting
+
+#### Stripe webhooks suddenly fail with 400
+
+- Check that the Page Rule on `/api/billing/webhook` is active and on top of any other matching rules (Page Rule order matters).
+- Check that `Challenge non-Stripe IPs on billing webhook` custom rule did NOT challenge a legit Stripe IP. Cloudflare changes Stripe IPs ~1×/year; if so, update `STRIPE_WEBHOOK_IPS` in `backend/scripts/cloudflare_rules_config.py` from https://stripe.com/files/ips/ips_webhooks.txt and re-run `--apply`.
+- In Cloudflare dashboard > **Security** > Events, filter by URI = `/api/billing/webhook` and last 24h to see what triggered.
+
+#### Caddy auto-SSL renewal fails after orange-cloud flip
+
+Caddy uses HTTP-01 challenge by default on port 80. Cloudflare proxies port 80,
+which usually works, but if the auto-SSL fails:
+
+- Switch Caddy to **DNS-01 challenge** (using Cloudflare API token with `Zone:DNS:Edit`):
+  - Edit `deploy/hetzner/caddy/Caddyfile`. ⚠️ Bind-mount inode bug in production
+    means you can NOT just rewrite the host file. See `reference_caddy-bind-mount-inode-bug` memory.
+  - Workaround: extract the version inside the container, edit, copy back via
+    `docker cp`, then `docker exec repo-caddy-1 caddy reload`.
+- Or temporarily flip back to grey-cloud for 1 renewal cycle (90 days).
+
+#### `--apply` fails on rate limit rules with HTTP 403
+
+Most common cause: the zone is on Free plan. Rate limiting rules need at least
+**Pro plan** ($20/mo). Either upgrade or accept that only WAF custom rules + cache rules apply (the script reports `failed` but completes).
+
+#### Wildcard `/api/*` rate limit triggers on legitimate users
+
+Threshold is 100 req/min per IP. Heavy-usage Expert-plan users may hit it
+during long sessions. To raise:
+
+- Edit `backend/scripts/cloudflare_rules_config.py` >
+  `Rate limit /api/* wildcard 100/min` > bump `requests_per_period`
+- Re-run `python backend/scripts/setup_cloudflare_waf.py --apply` (idempotent;
+  the existing rule is updated in place).
+
+#### YouTube IP ban on Hetzner stays active
+
+Cloudflare proxy does NOT change the egress IP DeepSight uses to call YouTube.
+The Hetzner VPS still talks to YouTube directly. If YouTube blocks the Hetzner
+IP, only Webshare proxy (`YOUTUBE_PROXY` env var) or Supadata fallback help.
+This RUNBOOK section is unrelated to that issue.
+
+### 18.12 — Verification post-rollout
+
+```bash
+# 1) DNS proxy active
+dig api.deepsightsynthesis.com +short
+# Expected: a Cloudflare anycast IP (104.x or 172.x), NOT 89.167.23.214
+
+# 2) HTTP path through Cloudflare
+curl -sI https://api.deepsightsynthesis.com/health | grep -i 'cf-ray\|server'
+# Expected: cf-ray header present, server: cloudflare
+
+# 3) Origin still reachable on 443 from Cloudflare's IPs
+curl -sI -k --resolve api.deepsightsynthesis.com:443:89.167.23.214 \
+  https://api.deepsightsynthesis.com/health
+# Expected: HTTP/2 200 (proves origin works for Cloudflare)
+
+# 4) Stripe test webhook (Stripe CLI)
+stripe trigger checkout.session.completed --api-key sk_test_xxx
+# Expected: 200 in Stripe Dashboard > Developers > Webhooks > attempt log
+
+# 5) Rate limit triggers as expected
+for i in $(seq 1 10); do
+  curl -sI -X POST https://api.deepsightsynthesis.com/api/auth/login \
+    -d '{"email":"x@x","password":"x"}' \
+    -H 'Content-Type: application/json'
+done
+# Expected: requests 1-5 = 401 (bad creds, normal), 6-10 = 429 from Cloudflare
+```
+
+### 18.13 — Updating the configuration
+
+To add/edit/disable a rule:
+
+1. Edit `backend/scripts/cloudflare_rules_config.py`. Keep the `description`
+   field stable (it's the idempotency key); change only `expression`/`action`/`enabled`.
+2. Run `--dry-run` first, sanity-check the diff.
+3. Run `--apply`.
+
+To **remove** a rule, delete it manually in the Cloudflare dashboard. The script does not delete (safety). Future enhancement: `--prune` flag.
+
+### 18.14 — Open follow-ups
+
+- Move the Stripe webhook IP list to `core/config.py` so backend and Cloudflare
+  setup share one source of truth.
+- Consider a 2nd Hetzner VPS in another region with a Cloudflare Load Balancer
+  for active-active HA (out of scope for this sprint, but enabled by having
+  Cloudflare in front).
+- Add a Cloudflare Worker on `/api/auth/*` to issue short-lived bot challenge
+  tokens, removing the need for `managed_challenge` UX hits on legit mobile users.
