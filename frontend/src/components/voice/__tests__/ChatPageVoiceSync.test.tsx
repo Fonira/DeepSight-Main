@@ -15,7 +15,7 @@
  */
 
 import React, { useCallback, useRef, useState } from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, render, screen, fireEvent } from "@testing-library/react";
 
 // ─── Types mirrored from ChatPage / VoiceOverlay (kept local to avoid

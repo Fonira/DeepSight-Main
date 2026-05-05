@@ -67,7 +67,7 @@ const DoodleEmptyState: React.FC<DoodleEmptyStateProps> = ({
     animate: { y: 0, opacity: 1 },
     float: {
       y: [-6, 0, -6],
-      transition: { duration: 3, repeat: Infinity, ease: "easeInOut" },
+      transition: { duration: 3, repeat: Infinity, ease: "easeInOut" as const },
     },
   };
 
@@ -116,7 +116,11 @@ const DoodleEmptyState: React.FC<DoodleEmptyStateProps> = ({
               }}
               animate={{
                 rotate: 360,
-                transition: { duration: 20, repeat: Infinity, linear: true },
+                transition: {
+                  duration: 20,
+                  repeat: Infinity,
+                  ease: "linear" as const,
+                },
               }}
             >
               <DoodleIcon

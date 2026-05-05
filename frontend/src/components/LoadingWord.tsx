@@ -497,7 +497,6 @@ export const LoadingWordGlobal: React.FC = () => {
 
   // 🔧 Sur desktop lg+, le DidYouKnowCard prend le relais — ce widget flottant ne s'affiche que sur mobile/tablette
   const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024;
-  if (isDesktop) return null;
 
   // 🔧 Utiliser le contexte partagé pour la visibilité (accessible depuis la sidebar)
   const isVisible = isWidgetVisible;
@@ -517,6 +516,9 @@ export const LoadingWordGlobal: React.FC = () => {
     },
     "loading-word-widget",
   );
+
+  // Early returns APRÈS tous les hooks (rules-of-hooks).
+  if (isDesktop) return null;
 
   // 🔒 Ne pas afficher si l'utilisateur n'est pas connecté
   if (!isAuthenticated) {

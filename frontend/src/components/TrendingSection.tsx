@@ -172,7 +172,7 @@ const TrendingCard: React.FC<TrendingCardProps> = ({
       {/* Thumbnail */}
       <div className="relative aspect-video overflow-hidden">
         <ThumbnailImage
-          thumbnailUrl={video.thumbnail_url}
+          thumbnailUrl={video.thumbnail_url ?? undefined}
           videoId={video.video_id}
           title={video.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

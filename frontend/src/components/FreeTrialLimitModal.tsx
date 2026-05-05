@@ -65,8 +65,18 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
   const remainingAnalyses = Math.max(0, maxFreeAnalyses - analysisCount);
 
   // Calculate time saved
+  // calculateTimeSaved attend un nombre d'analyses, pas une durée — on dérive
+  // un compteur fictif (1 analyse) pour la formatation, et on affiche les
+  // minutes dérivées de `videoDurationSeconds` directement.
+  const timeSavedMinutes =
+    videoDurationSeconds > 0 ? Math.round(videoDurationSeconds / 60) : 0;
   const timeSaved =
-    videoDurationSeconds > 0 ? calculateTimeSaved(videoDurationSeconds) : null;
+    timeSavedMinutes > 0
+      ? {
+          minutes: timeSavedMinutes,
+          equivalent: calculateTimeSaved(1).display,
+        }
+      : null;
 
   const t = (fr: string, en: string) => (language === "fr" ? fr : en);
 
@@ -315,7 +325,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
         {/* Pro plan highlight - best value entry */}
         <div className="px-6 py-3">
           <div
-            className={`relative p-4 rounded-xl bg-gradient-to-br ${proPlan.gradient} bg-opacity-10 border border-emerald-500/30 cursor-pointer hover:scale-[1.02] transition-transform`}
+            className={`relative p-4 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 bg-opacity-10 border border-emerald-500/30 cursor-pointer hover:scale-[1.02] transition-transform`}
             onClick={handleSelectPro}
           >
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-green-500/5 rounded-xl" />
@@ -327,21 +337,22 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-text-primary">
-                      {proPlan.name[language === "fr" ? "fr" : "en"]}
+                      {language === "fr" ? proPlan.name : proPlan.nameEn}
                     </h3>
                     <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-medium">
-                      {proPlan.badge?.[language === "fr" ? "fr" : "en"] ||
-                        t("Recommandé", "Recommended")}
+                      {proPlan.badge?.text || t("Recommandé", "Recommended")}
                     </span>
                   </div>
                   <p className="text-sm text-text-secondary">
-                    {proPlan.killerFeature[language === "fr" ? "fr" : "en"]}
+                    {language === "fr"
+                      ? proPlan.description
+                      : proPlan.descriptionEn}
                   </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-emerald-400">
-                  {(proPlan.price / 100).toFixed(2).replace(".", ",")}€
+                  {(proPlan.priceMonthly / 100).toFixed(2).replace(".", ",")}€
                 </p>
                 <p className="text-xs text-text-tertiary">/{t("mois", "mo")}</p>
               </div>

@@ -34,7 +34,7 @@ import { useLoadingWord } from "../contexts/LoadingWordContext";
 interface Concept {
   term: string;
   definition: string;
-  category: "person" | "technology" | "company" | "concept" | "other";
+  category?: string;
   wiki_url?: string | null;
   source?: string;
 }
@@ -259,13 +259,13 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = memo(
                             {concept.term}
                           </h4>
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border ${categoryColors[concept.category]}`}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border ${categoryColors[concept.category ?? "other"]}`}
                           >
                             <CategoryIcon
-                              category={concept.category}
+                              category={concept.category ?? "other"}
                               className="w-3 h-3"
                             />
-                            {labels[concept.category]}
+                            {labels[concept.category ?? "other"]}
                           </span>
                         </div>
 
