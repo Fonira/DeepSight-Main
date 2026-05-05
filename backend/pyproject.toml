@@ -44,3 +44,39 @@ ignore = [
 
 # Tests : tolerance plus large
 "tests/**/*.py" = ["F401", "F811", "F841", "E402", "E741"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    "slow: tests that take >5s (deselect with '-m \"not slow\"')",
+    "integration: tests that hit external services or DB",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/alembic/*",
+    "*/__init__.py",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+# Threshold raised progressively. Bump to 70 once we cleanup the dead code in
+# videos/router.py and billing/router.py. See docs/RUNBOOK.md for the audit cmd.
+fail_under = 50
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
