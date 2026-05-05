@@ -1877,6 +1877,109 @@ async def delete_debate(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# POST /{debate_id}/generate-miro-board — Génération board Miro (Pro+)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/{debate_id}/generate-miro-board")
+async def generate_miro_board(
+    debate_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Génère un board Miro pour un débat (Pro+ uniquement).
+
+    Workflow :
+      1. Ownership check.
+      2. Plan check : free → 403.
+      3. Si miro_board_url existe déjà → return cached (idempotent).
+      4. Charge perspectives + convergence/divergence.
+      5. Appelle miro_service.generate_debate_board (REST API).
+      6. Persist debate.miro_board_url + miro_board_id.
+      7. Return {miro_board_url, miro_board_id, cached=False}.
+
+    Erreurs :
+      - 403 si user.plan = 'free' (debate gated to pro+).
+      - 503 si MIRO_API_TOKEN absent en .env.production.
+      - 502 si Miro REST API fail (réseau, rate limit, etc.).
+    """
+    # 1. Ownership
+    debate = await _get_debate_owned(db, debate_id, current_user.id)
+
+    # 2. Plan check (debate gated to pro+, miro embed inclus)
+    raw_plan = (current_user.plan or "free").lower()
+    if raw_plan == "free" and not getattr(current_user, "is_admin", False):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_required",
+                "message": "Miro board generation requires Pro or Expert plan",
+                "required": "pro",
+            },
+        )
+
+    # 3. Cache : board déjà généré → retourner directement
+    if debate.miro_board_url and debate.miro_board_id:
+        return {
+            "miro_board_url": debate.miro_board_url,
+            "miro_board_id": debate.miro_board_id,
+            "cached": True,
+        }
+
+    # 4. Charge données (perspectives + convergences/divergences)
+    from .miro_service import (
+        MiroServiceError,
+        _parse_json_field,
+        generate_debate_board,
+    )
+
+    perspectives = await _load_perspectives(db, debate_id)
+    convergence_points = _parse_json_field(debate.convergence_points)
+    divergence_points = _parse_json_field(debate.divergence_points)
+
+    # 5. Appel service
+    try:
+        board = await generate_debate_board(
+            debate=debate,
+            perspectives=perspectives,
+            convergence_points=convergence_points,
+            divergence_points=divergence_points,
+        )
+    except MiroServiceError as exc:
+        msg = str(exc)
+        # Token absent → 503 (config manquante côté serveur)
+        if "MIRO_API_TOKEN not configured" in msg:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "miro_not_configured",
+                    "message": "Miro intégration non configurée sur le serveur",
+                },
+            )
+        # Sinon Miro upstream fail → 502
+        logger.exception("[DEBATE] Miro board generation failed: %s", msg)
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "code": "miro_upstream_error",
+                "message": "Échec de la génération du board Miro",
+                "upstream": msg[:300],
+            },
+        )
+
+    # 6. Persist
+    debate.miro_board_url = board["view_link"]
+    debate.miro_board_id = board["board_id"]
+    await db.commit()
+
+    return {
+        "miro_board_url": debate.miro_board_url,
+        "miro_board_id": debate.miro_board_id,
+        "cached": False,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # POST /chat — Chat avec contexte des 2 vidéos
 # ═══════════════════════════════════════════════════════════════════════════════
 
