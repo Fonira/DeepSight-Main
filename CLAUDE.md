@@ -594,7 +594,7 @@ eas submit --platform android
 | **VPS Hetzner**  | clawdbot — (voir .env.production pour IP)                           |
 | **API publique** | https://api.deepsightsynthesis.com (Caddy reverse proxy + auto-SSL) |
 | **Frontend**     | Vercel — auto-deploy on `main` push                                 |
-| **Mobile**       | EAS Build — App Store (ascAppId: 6740487498) + Play Store           |
+| **Mobile**       | EAS Build — App Store (ascAppId: 6758403428) + Play Store           |
 
 ### Docker Stack Hetzner (Production)
 
