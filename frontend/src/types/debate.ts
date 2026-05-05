@@ -139,7 +139,7 @@ export interface DebateAnalysis {
   perspectives?: DebatePerspective[];
   /** Relation dominante (calculée backend) — pilote le naming "Débat IA" vs "Perspectives IA". */
   relation_type_dominant?: RelationType | null;
-  /** URL Miro Board associé (si généré). */
+  /** URL Miro Board associé (si généré). Wave 3 F. */
   miro_board_url?: string | null;
   miro_board_id?: string | null;
 }

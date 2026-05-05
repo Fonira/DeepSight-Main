@@ -61,6 +61,12 @@ class _DeepSightSettings(BaseSettings):
     TOGETHER_API_KEY: str = ""
     MISTRAL_IMAGE_AGENT_ID: str = ""  # Mistral Agents API — DeepSight Art Director
 
+    # -- Miro (Débat IA v2 — boards générés sur compte org DeepSight) --
+    # Cf. docs/superpowers/specs/2026-05-04-debate-ia-v2.md §7.4.
+    # Token admin DeepSight (account-level) — boards créés sur compte org,
+    # partagés en read-only via viewLink. v2.1 : OAuth user-level.
+    MIRO_API_TOKEN: str = ""
+
     # -- YouTube Proxy (pour contourner le blocage IP YouTube sur VPS) --
     YOUTUBE_PROXY: str = ""  # ex: socks5://user:pass@host:port ou http://user:pass@host:port
 
