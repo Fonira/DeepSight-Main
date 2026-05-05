@@ -330,6 +330,9 @@ const ExtensionWelcomePage = lazyWithRetry(
   () => import("./pages/ExtensionWelcomePage"),
 );
 const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
+const LegalSubProcessors = lazyWithRetry(
+  () => import("./pages/LegalSubProcessors"),
+);
 const ApiDocsPage = lazyWithRetry(() => import("./pages/ApiDocsPage"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -628,6 +631,22 @@ const AppRoutes = () => {
                               fallback={<PageSkeleton variant="full" />}
                             >
                               <PrivacyPolicy />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/legal/sub-processors"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="LegalSubProcessors"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="full" />}
+                            >
+                              <LegalSubProcessors />
                             </Suspense>
                           </RouteErrorBoundary>
                         }

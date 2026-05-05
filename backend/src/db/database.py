@@ -480,6 +480,39 @@ class AdminLog(Base):
     created_at = Column(DateTime, default=func.now())
 
 
+class AuditLog(Base):
+    """RGPD-compliant audit trail for sensitive user actions.
+
+    Distinct from AdminLog — this table records actions a user takes on
+    their own account (or that an admin takes on a user's account) that
+    have legal/compliance significance: account deletion, plan change,
+    password change/reset, data export.
+
+    Article 30 GDPR processing record.
+    """
+
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    actor_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    action = Column(String(80), nullable=False, index=True)
+    details = Column(JSON, nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False, index=True)
+
+
 class ApiStatus(Base):
     """Table du status des APIs externes"""
 

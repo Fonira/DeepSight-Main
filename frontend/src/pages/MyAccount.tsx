@@ -10,6 +10,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
 import { Sidebar } from "../components/layout/Sidebar";
 import { billingApi, authApi, type ApiBillingMyPlan } from "../services/api";
+import { resetCookieConsent } from "../components/CookieBanner";
 import {
   PLANS_INFO,
   getMinPlanForFeature,
@@ -23,6 +24,8 @@ import {
   Shield,
   Key,
   Trash2,
+  Download,
+  Cookie,
   LogOut,
   Check,
   AlertCircle,
@@ -103,6 +106,7 @@ export const MyAccount: React.FC = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const normalizedPlan = normalizePlanId(user?.plan);
   const isPaidUser = normalizedPlan !== "free";
@@ -141,6 +145,31 @@ export const MyAccount: React.FC = () => {
       showToast(message, "error");
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 📦 Export GDPR (Article 20)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const handleExportData = async () => {
+    setIsExporting(true);
+    try {
+      await authApi.exportMyData();
+      showToast(
+        tr(
+          "Export téléchargé. Vérifiez vos téléchargements.",
+          "Export downloaded. Check your downloads.",
+        ),
+        "success",
+      );
+    } catch (error: any) {
+      const message =
+        error?.message ||
+        tr("Erreur lors de l'export", "Error exporting data");
+      showToast(message, "error");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -1321,6 +1350,76 @@ export const MyAccount: React.FC = () => {
                         {tr(
                           "Se déconnecter de Deep Sight",
                           "Sign out of Deep Sight",
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-text-tertiary" />
+                </button>
+              </div>
+            </section>
+
+            {/* Vos données — RGPD Article 20 */}
+            <section className="card">
+              <div className="panel-header">
+                <h2 className="font-semibold flex items-center gap-2">
+                  <Download className="w-5 h-5" />
+                  {tr("Vos données", "Your data")}
+                </h2>
+              </div>
+              <div className="panel-body space-y-3">
+                <button
+                  onClick={handleExportData}
+                  disabled={isExporting}
+                  className="w-full flex items-center justify-between p-4 rounded-lg bg-bg-secondary hover:bg-bg-tertiary transition-colors text-left disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center gap-3">
+                    <Download className="w-5 h-5 text-accent-primary" />
+                    <div>
+                      <p className="font-medium">
+                        {tr("Exporter mes données", "Export my data")}
+                      </p>
+                      <p className="text-sm text-text-tertiary">
+                        {tr(
+                          "Téléchargez un ZIP avec toutes vos données personnelles (RGPD Article 20)",
+                          "Download a ZIP with all your personal data (GDPR Article 20)",
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  {isExporting ? (
+                    <DeepSightSpinnerMicro />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-text-tertiary" />
+                  )}
+                </button>
+
+                <button
+                  onClick={() => {
+                    resetCookieConsent();
+                    showToast(
+                      tr(
+                        "Préférences cookies réinitialisées",
+                        "Cookie preferences reset",
+                      ),
+                      "success",
+                    );
+                  }}
+                  className="w-full flex items-center justify-between p-4 rounded-lg bg-bg-secondary hover:bg-bg-tertiary transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <Cookie className="w-5 h-5 text-accent-primary" />
+                    <div>
+                      <p className="font-medium">
+                        {tr(
+                          "Modifier mes préférences cookies",
+                          "Manage cookie preferences",
+                        )}
+                      </p>
+                      <p className="text-sm text-text-tertiary">
+                        {tr(
+                          "Réouvre le bandeau pour ajuster votre consentement (analyse, marketing)",
+                          "Reopens the banner so you can adjust your consent (analytics, marketing)",
                         )}
                       </p>
                     </div>
