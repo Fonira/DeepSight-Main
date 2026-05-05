@@ -896,6 +896,58 @@ export const DebatePage: React.FC = () => {
         {/* Completed sections with doodle dividers */}
         {selectedDebate.status === "completed" && (
           <>
+            {/* 🆕 Sprint Débat IA v2 — Add perspective buttons (cap 1+N à 3 perspectives totales) */}
+            <div className="flex flex-wrap gap-3 justify-center mb-6">
+              <button
+                type="button"
+                onClick={() => handleAddPerspective("complement")}
+                disabled={
+                  isAddingPerspective ||
+                  (selectedDebate.perspectives?.length ?? 0) >= 3
+                }
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAddingPerspective ? (
+                  <DeepSightSpinnerSmall />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                + Complément
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddPerspective("nuance")}
+                disabled={
+                  isAddingPerspective ||
+                  (selectedDebate.perspectives?.length ?? 0) >= 3
+                }
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAddingPerspective ? (
+                  <DeepSightSpinnerSmall />
+                ) : (
+                  <Lightbulb className="w-4 h-4" />
+                )}
+                + Nuance
+              </button>
+            </div>
+
+            {/* Add perspective error */}
+            {addPerspectiveError && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 backdrop-blur-xl max-w-2xl mx-auto"
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-300/90">
+                    {addPerspectiveError}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
             {/* Doodle divider between VS and convergence/divergence */}
             <DoodleDivider variant="analysis" density="sparse" />
 
