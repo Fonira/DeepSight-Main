@@ -99,6 +99,22 @@ jobs:
               -f deploy/hetzner/Dockerfile \
               backend
 
+            # ─── Trivy scan (HIGH/CRITICAL CVE check) ──────────────────────
+            # Warn-only for now. Flip --exit-code to 1 once the baseline is
+            # clean (track in docs/RUNBOOK.md "Tightening Trivy").
+            echo "[trivy] Scanning deepsight-backend:latest for HIGH/CRITICAL CVEs..."
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v /tmp/trivy-cache:/root/.cache/trivy \
+              aquasec/trivy:latest image \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --no-progress \
+              --exit-code 0 \
+              --timeout 5m \
+              deepsight-backend:latest || \
+              echo "::warning::Trivy reported vulnerabilities (non-blocking)"
+
             # Recreate the backend container.
             docker stop repo-backend-1 || true
             docker rm repo-backend-1 || true
