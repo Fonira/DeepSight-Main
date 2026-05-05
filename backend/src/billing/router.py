@@ -675,6 +675,8 @@ async def create_checkout_session(
             "payment_method_types": ["card"],
             "line_items": [{"price": price_id, "quantity": 1}],
             "mode": "subscription",
+            # Stripe Tax (TVA EU / VAT MOSS) — env-driven, see RUNBOOK §9.
+            "automatic_tax": {"enabled": STRIPE_AUTOMATIC_TAX_ENABLED},
             "success_url": success_url,
             "cancel_url": cancel_url,
             "allow_promotion_codes": True,
@@ -792,6 +794,8 @@ async def create_checkout_by_plan_id(
             payment_method_types=["card"],
             line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
+            # Stripe Tax (TVA EU / VAT MOSS) — env-driven, see RUNBOOK §9.
+            automatic_tax={"enabled": STRIPE_AUTOMATIC_TAX_ENABLED},
             success_url=success_url,
             cancel_url=cancel_url,
             allow_promotion_codes=True,
@@ -916,6 +920,8 @@ async def change_subscription_plan(
             payment_method_types=["card"],
             line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
+            # Stripe Tax (TVA EU / VAT MOSS) — env-driven, see RUNBOOK §9.
+            automatic_tax={"enabled": STRIPE_AUTOMATIC_TAX_ENABLED},
             success_url=f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={new_plan}",
             cancel_url=f"{FRONTEND_URL}/upgrade",
             allow_promotion_codes=True,
@@ -2259,6 +2265,8 @@ async def create_credit_pack_checkout(
         customer=customer_id,
         mode="payment",
         payment_method_types=["card"],
+        # Stripe Tax (TVA EU / VAT MOSS) — env-driven, see RUNBOOK §9.
+        automatic_tax={"enabled": STRIPE_AUTOMATIC_TAX_ENABLED},
         line_items=[
             {
                 "price_data": {
