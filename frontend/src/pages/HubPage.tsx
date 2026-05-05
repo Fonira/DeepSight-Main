@@ -326,15 +326,53 @@ const HubPage: React.FC = () => {
           }),
         );
         setConversations(convs);
-        // Auto-select if URL has ?conv=<id> or ?summary=<id>
+        // Auto-select if URL has ?conv=<id> or ?summary[Id]=<id>.
         const target =
           urlConvId !== null
             ? Number(urlConvId)
             : urlSummaryId !== null
               ? Number(urlSummaryId)
               : null;
-        if (target && convs.find((c) => c.id === target)) {
+        if (!target) return;
+        if (convs.find((c) => c.id === target)) {
           setActiveConv(target);
+          return;
+        }
+        // Conv not in user's history (legitimate case when arriving from
+        // /search on a summary that exists but has no chat conversation yet,
+        // or a shared analysis). Fetch the summary directly and synthesize
+        // a HubConversation entry so the analysis panel can render.
+        try {
+          const summary = await videoApi.getSummary(target);
+          if (cancelled || !summary) return;
+          const platform: "youtube" | "tiktok" =
+            (summary as { platform?: string }).platform === "tiktok"
+              ? "tiktok"
+              : "youtube";
+          const synthetic: HubConversation = {
+            id: target,
+            summary_id: target,
+            title:
+              sanitizeTitle(
+                (summary as { video_title?: string; title?: string })
+                  .video_title ?? (summary as { title?: string }).title,
+              ) || "Sans titre",
+            video_source: platform,
+            video_thumbnail_url:
+              (summary as { thumbnail_url?: string }).thumbnail_url ?? null,
+            last_snippet: undefined,
+            updated_at:
+              (summary as { created_at?: string; updated_at?: string })
+                .updated_at ?? (summary as { created_at?: string }).created_at,
+          };
+          setConversations([synthetic, ...convs]);
+          setActiveConv(target);
+        } catch (err) {
+          console.warn(
+            `[HubPage] could not resolve summaryId=${target} as a synthetic conversation:`,
+            err,
+          );
+          // Leave activeConvId null — empty-state will show.
         }
       } catch (err) {
         console.error("[HubPage] fetch conversations failed:", err);

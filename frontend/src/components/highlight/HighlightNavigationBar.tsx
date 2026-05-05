@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronUp, ChevronDown, X } from "lucide-react";
 import { useSemanticHighlight } from "./useSemanticHighlight";
 
@@ -31,13 +32,20 @@ export const HighlightNavigationBar: React.FC = () => {
   const total = ctx.matches.length;
   const current = ctx.currentIndex + 1;
 
-  return (
+  // Portal to <body> with `position: fixed` so the bar stays visible
+  // regardless of any ancestor with `overflow: hidden` / `h-screen` /
+  // flex stacking that would otherwise clip a `sticky` element. Bug
+  // observed in HubPage where the bar was rendered inside an
+  // `h-screen overflow-hidden flex flex-col` container and the sticky
+  // positioning resolved to y=623 (off-screen).
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <nav
       role="navigation"
       aria-label="Résultats de recherche"
-      className="sticky top-[56px] z-40 mx-auto w-full max-w-3xl px-4"
+      className="fixed left-1/2 -translate-x-1/2 top-[64px] z-50 w-full max-w-3xl px-4 pointer-events-none"
     >
-      <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-[#12121a]/95 border border-amber-500/30 backdrop-blur-xl shadow-lg">
+      <div className="pointer-events-auto flex items-center gap-2 px-3 py-2 rounded-lg bg-[#12121a]/95 border border-amber-500/30 backdrop-blur-xl shadow-lg">
         <span
           className="text-sm font-mono text-amber-300 tabular-nums"
           aria-live="polite"
@@ -75,6 +83,7 @@ export const HighlightNavigationBar: React.FC = () => {
           <X className="w-4 h-4" />
         </button>
       </div>
-    </nav>
+    </nav>,
+    document.body,
   );
 };

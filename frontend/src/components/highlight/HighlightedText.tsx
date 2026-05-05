@@ -15,6 +15,59 @@ const MAX_MARKS = 50;
  */
 const SKIP_PARENT_TAGS = new Set(["CODE", "PRE", "KBD"]);
 
+/**
+ * Stopwords ignored when falling back to query-word highlighting.
+ * Short connectives that would either match noise or already be in
+ * SKIP_PARENT_TAGS adjacency.
+ */
+const QUERY_STOPWORDS = new Set([
+  "le",
+  "la",
+  "les",
+  "un",
+  "une",
+  "des",
+  "du",
+  "de",
+  "et",
+  "ou",
+  "est",
+  "sont",
+  "dans",
+  "sur",
+  "avec",
+  "pour",
+  "par",
+  "que",
+  "qui",
+  "ce",
+  "ces",
+  "the",
+  "and",
+  "or",
+  "of",
+  "in",
+  "on",
+  "to",
+  "for",
+  "with",
+  "is",
+  "are",
+  "this",
+  "that",
+  "these",
+  "those",
+]);
+
+/** Extract significant query words (≥3 chars, not stopwords). */
+function significantQueryWords(q: string): string[] {
+  return q
+    .toLowerCase()
+    .split(/[\s,;:!?'"().]+/)
+    .map((w) => w.trim())
+    .filter((w) => w.length >= 3 && !QUERY_STOPWORDS.has(w));
+}
+
 interface Props {
   /** Tab identity — only matches for this tab are rendered */
   tab: WithinMatch["tab"];
@@ -76,26 +129,59 @@ export const HighlightedText: React.FC<Props> = ({
         return NodeFilter.FILTER_ACCEPT;
       },
     });
-    const targets: { node: Text; match: WithinMatch }[] = [];
+    // Significant query words are used as a fallback when the full passage
+    // text isn't found as a contiguous text node (which is the common case
+    // — markdown render fragments paragraphs into <strong>/<em>/<a> spans
+    // so `indexOf(match.text)` rarely matches a full sentence).
+    const queryWords = significantQueryWords(ctx.query);
+
+    type Target = { node: Text; match: WithinMatch; term: string };
+    const targets: Target[] = [];
     let node: Node | null = walker.nextNode();
     while (node && targets.length < MAX_MARKS) {
       const txt = node.nodeValue ?? "";
+      const txtLower = txt.toLowerCase();
+      let matched = false;
+
+      // 1) Try exact passage text first (ideal case — single text node)
       for (const m of tabMatches) {
-        const idx = txt.indexOf(m.text);
-        if (idx >= 0) {
-          targets.push({ node: node as Text, match: m });
+        if (txt.indexOf(m.text) >= 0) {
+          targets.push({ node: node as Text, match: m, term: m.text });
+          matched = true;
           break;
         }
       }
+
+      // 2) Fallback : look for any significant query word in this node.
+      //    Each occurrence becomes a separate <mark> associated with the
+      //    first match whose passage text contains the same word (so the
+      //    explain tooltip routes to a sensible passage).
+      if (!matched && queryWords.length > 0) {
+        for (const word of queryWords) {
+          const idx = txtLower.indexOf(word);
+          if (idx >= 0) {
+            const term = txt.slice(idx, idx + word.length);
+            const associatedMatch =
+              tabMatches.find((m) => m.text.toLowerCase().includes(word)) ??
+              tabMatches[0];
+            targets.push({ node: node as Text, match: associatedMatch, term });
+            break; // one mark per text node max in fallback mode
+          }
+        }
+      }
+
       node = walker.nextNode();
     }
 
-    targets.forEach(({ node: textNode, match }) => {
+    targets.forEach(({ node: textNode, match, term }) => {
       const txt = textNode.nodeValue ?? "";
-      const idx = txt.indexOf(match.text);
+      // Use lowercased index lookup so the fallback (query word) is
+      // case-insensitive but we preserve the original casing in the mark.
+      const idx = txt.toLowerCase().indexOf(term.toLowerCase());
       if (idx < 0) return;
+      const actualTerm = txt.slice(idx, idx + term.length);
       const before = txt.slice(0, idx);
-      const after = txt.slice(idx + match.text.length);
+      const after = txt.slice(idx + term.length);
       const parent = textNode.parentNode;
       if (!parent) return;
       const mark = document.createElement("mark");
@@ -105,7 +191,7 @@ export const HighlightedText: React.FC<Props> = ({
         "aria-label",
         `Passage correspondant : ${match.text.slice(0, 60)}`,
       );
-      mark.textContent = match.text;
+      mark.textContent = actualTerm;
       if (ctx.matches[ctx.currentIndex]?.passage_id === match.passage_id) {
         mark.classList.add("flash");
       }
@@ -144,7 +230,7 @@ export const HighlightedText: React.FC<Props> = ({
       root.addEventListener("click", handler);
       return () => root.removeEventListener("click", handler);
     }
-  }, [ctx?.matches, ctx?.currentIndex, tab, onMarkClick, ctx]);
+  }, [ctx?.matches, ctx?.currentIndex, ctx?.query, tab, onMarkClick, ctx]);
 
   return (
     <div ref={containerRef} data-highlight-tab={tab}>
