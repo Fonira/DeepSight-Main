@@ -320,6 +320,9 @@ const AnalyticsPage = lazyWithRetry(() => import("./pages/AnalyticsPage"));
 const StudyPage = lazyWithRetry(() => import("./pages/StudyPage"));
 const StudyHubPage = lazyWithRetry(() => import("./pages/StudyHubPage"));
 const HubPage = lazyWithRetry(() => import("./pages/HubPage"));
+const HubWorkspacesPage = lazyWithRetry(
+  () => import("./pages/HubWorkspacesPage"),
+);
 const DebatePage = lazyWithRetry(() => import("./pages/DebatePage"));
 const NotFoundPage = lazyWithRetry(() => import("./pages/NotFoundPage"));
 const ExtensionWelcomePage = lazyWithRetry(
@@ -949,6 +952,38 @@ const AppRoutes = () => {
                                 fallback={<PageSkeleton variant="full" />}
                               >
                                 <HubPage />
+                              </Suspense>
+                            </RouteErrorBoundary>
+                          }
+                        />
+
+                        <Route
+                          path="/hub/workspaces"
+                          element={
+                            <RouteErrorBoundary
+                              variant="full"
+                              componentName="HubWorkspacesPage"
+                            >
+                              <Suspense
+                                fallback={<PageSkeleton variant="full" />}
+                              >
+                                <HubWorkspacesPage />
+                              </Suspense>
+                            </RouteErrorBoundary>
+                          }
+                        />
+
+                        <Route
+                          path="/hub/workspaces/:id"
+                          element={
+                            <RouteErrorBoundary
+                              variant="full"
+                              componentName="HubWorkspacesPage"
+                            >
+                              <Suspense
+                                fallback={<PageSkeleton variant="full" />}
+                              >
+                                <HubWorkspacesPage />
                               </Suspense>
                             </RouteErrorBoundary>
                           }
