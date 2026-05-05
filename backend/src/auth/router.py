@@ -4,7 +4,9 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
@@ -321,6 +323,40 @@ async def change_password_endpoint(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 👤 PROFIL UTILISATEUR
 # ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/me/export")
+async def export_my_data(
+    request: Request,
+    current_user=Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """RGPD Article 20 — Export de toutes les données personnelles en ZIP.
+
+    Returns a ZIP archive (user.json + analyses.json + chats.json +
+    transactions.json + audit_logs.json + README.md). The download is
+    audit-logged.
+    """
+    from auth.export import build_user_export_zip
+
+    zip_bytes = await build_user_export_zip(session, current_user)
+
+    await log_audit(
+        session,
+        action="data.exported",
+        user_id=current_user.id,
+        request=request,
+        details={"size_bytes": len(zip_bytes)},
+    )
+    await session.commit()
+
+    today = datetime.now(timezone.utc).strftime("%Y%m%d")
+    filename = f"deepsight-export-{current_user.id}-{today}.zip"
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/me", response_model=UserResponse)

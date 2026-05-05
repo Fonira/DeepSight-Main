@@ -888,6 +888,32 @@ export const authApi = {
     clearTokens();
     return response;
   },
+
+  /**
+   * RGPD Article 20 — Right to data portability.
+   * Downloads a ZIP archive with the user's personal data.
+   * Triggers a browser file download (no return value).
+   */
+  async exportMyData(): Promise<void> {
+    const token = getAccessToken();
+    const response = await fetch(`${API_URL}/api/auth/me/export`, {
+      method: "GET",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.status} ${response.statusText}`);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const today = new Date().toISOString().slice(0, 10);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `deepsight-export-${today}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
