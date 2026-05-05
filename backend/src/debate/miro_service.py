@@ -337,3 +337,185 @@ async def generate_debate_board(
         len(divergence_points[:5]),
     )
     return {"board_id": board_id, "view_link": view_link}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 🧩 HUB MIRO WORKSPACE — Sprint Hub Miro MVP (2026-05-05)
+# Spec : docs/superpowers/specs/2026-05-05-hub-miro-workspace-mvp.md
+# Helper distinct de generate_debate_board pour ne pas casser la signature
+# Débat IA déjà en prod.
+# ═════════════════════════════════════════════════════════════════════════════
+
+
+HUB_CARD_WIDTH = 300
+HUB_CARD_HEIGHT = 200
+HUB_CARD_GAP_X = 50
+HUB_CARD_GAP_Y = 60
+HUB_GRID_COLUMNS = 4  # 4 cards/row → grille équilibrée jusqu'à 20 cards (5 rows)
+
+
+async def create_hub_workspace_board(
+    name: str,
+    summaries: list,
+) -> dict:
+    """Crée un board Miro pour un Hub Workspace DeepSight.
+
+    Layout :
+      - Grille (HUB_GRID_COLUMNS colonnes) de cards Miro, une par Summary.
+      - Card width=300, height=200, gap horizontal=50, vertical=60.
+      - Chaque card affiche : titre vidéo, channel, lien.
+
+    Parameters
+    ----------
+    name : str
+        Nom donné par l'utilisateur (max 200 chars).
+    summaries : list
+        Liste d'objets Summary (SQLAlchemy) — doit exposer ``video_title``,
+        ``video_channel``, ``video_url``, ``video_id``, ``platform``.
+
+    Returns
+    -------
+    dict
+        ``{"board_id": str, "view_link": str}``
+
+    Raises
+    ------
+    MiroServiceError
+        Si MIRO_API_TOKEN absent ou Miro API call échoue.
+    """
+    token = _get_miro_token()
+    if not token:
+        raise MiroServiceError("MIRO_API_TOKEN not configured")
+
+    safe_name = (name or "Workspace").strip()[:200] or "Workspace"
+
+    async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+        # ─── 1. Create board ──────────────────────────────────────────────
+        board_body = {
+            "name": safe_name,
+            "description": (
+                f"DeepSight Hub Workspace — {len(summaries)} analyses"
+            )[:500],
+            "policy": {
+                "permissionsPolicy": {
+                    "collaborationToolsStartAccess": "all_editors",
+                    "copyAccess": "anyone",
+                    "sharingAccess": "team_members_with_editing_rights",
+                },
+                "sharingPolicy": {
+                    "access": "view",
+                    "inviteToAccountAndBoardLinkAccess": "no_access",
+                    "organizationAccess": "view",
+                    "teamAccess": "view",
+                },
+            },
+        }
+        board = await _miro_post(client, "/boards", token, board_body)
+        board_id: str = str(board.get("id") or "")
+        if not board_id:
+            raise MiroServiceError(
+                f"Miro create board returned no id: {board!r}"
+            )
+
+        # ─── 2. Cards (grille) ────────────────────────────────────────────
+        # Position grille : colonne = idx % cols, row = idx // cols.
+        # Centrée autour de (0,0) horizontalement.
+        cols = HUB_GRID_COLUMNS
+        col_step = HUB_CARD_WIDTH + HUB_CARD_GAP_X
+        row_step = HUB_CARD_HEIGHT + HUB_CARD_GAP_Y
+        total = len(summaries)
+        n_cols_actual = min(cols, max(1, total))
+        # x_start = position de la 1ère colonne (centré)
+        x_start = -((n_cols_actual - 1) * col_step) / 2
+
+        for idx, summary in enumerate(summaries):
+            col = idx % cols
+            row = idx // cols
+            x = x_start + col * col_step
+            y = row * row_step
+
+            video_title = _truncate(getattr(summary, "video_title", None), 100) or "Sans titre"
+            video_channel = _truncate(getattr(summary, "video_channel", None), 80) or ""
+            video_url = getattr(summary, "video_url", None) or ""
+            platform_name = (getattr(summary, "platform", None) or "youtube").lower()
+
+            # Body HTML formatté (Miro card supporte HTML basique).
+            description_parts = [f"<p><strong>{video_title}</strong></p>"]
+            if video_channel:
+                description_parts.append(f"<p>{video_channel}</p>")
+            if video_url:
+                description_parts.append(
+                    f'<p><a href="{video_url}">Ouvrir la vidéo ({platform_name})</a></p>'
+                )
+            description_html = "".join(description_parts)
+
+            await _miro_post(
+                client,
+                f"/boards/{board_id}/cards",
+                token,
+                {
+                    "data": {
+                        "title": video_title,
+                        "description": description_html,
+                    },
+                    "position": {"x": x, "y": y},
+                    "geometry": {
+                        "width": HUB_CARD_WIDTH,
+                        "height": HUB_CARD_HEIGHT,
+                    },
+                },
+            )
+
+        # ─── 3. Get board details (viewLink) ──────────────────────────────
+        board_detail = await _miro_get(client, f"/boards/{board_id}", token)
+        view_link = (
+            board_detail.get("viewLink")
+            or board_detail.get("view_link")
+            or board.get("viewLink")
+            or board.get("view_link")
+            or f"https://miro.com/app/board/{board_id}/"
+        )
+
+    logger.info(
+        "[MIRO] Hub workspace board generated: id=%s, summaries=%d",
+        board_id,
+        total,
+    )
+    return {"board_id": board_id, "view_link": view_link}
+
+
+async def delete_hub_workspace_board(board_id: str) -> bool:
+    """Best-effort delete d'un board Miro. Logue mais ne raise pas.
+
+    Returns
+    -------
+    bool
+        True si delete OK, False si échec (token absent ou API fail).
+    """
+    token = _get_miro_token()
+    if not token or not board_id:
+        return False
+
+    url = f"{MIRO_API_BASE}/boards/{board_id}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+            resp = await client.delete(url, headers=headers)
+            if resp.status_code in (200, 204):
+                return True
+            logger.warning(
+                "[MIRO] Hub workspace board delete non-2xx: status=%s board=%s",
+                resp.status_code,
+                board_id,
+            )
+            return False
+    except httpx.HTTPError as exc:
+        logger.warning(
+            "[MIRO] Hub workspace board delete network error: %s (board=%s)",
+            exc,
+            board_id,
+        )
+        return False
