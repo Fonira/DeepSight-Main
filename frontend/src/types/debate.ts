@@ -84,6 +84,9 @@ export interface DebateAnalysis {
   mode: DebateMode;
   lang: string;
   created_at: string;
+  // Wave 3 F — Miro embed (Débat IA v2)
+  miro_board_url?: string | null;
+  miro_board_id?: string | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
