@@ -1207,3 +1207,147 @@ mind-map pages — could be lazier) and the analytics dashboard.
 | Lighthouse scores wildly inconsistent run-to-run | We already average 3 runs (median). For more stability, raise `numberOfRuns` to 5.              |
 | Size-limit fails locally with "Chrome not found" | Expected on Windows — we use the `@size-limit/file` plugin, no Chrome needed. Re-run.            |
 | Comment doesn't appear on PR                     | Check the workflow logs — usually a permission issue (`pull-requests: write`).                  |
+
+---
+
+## 21. Status page (Instatus)
+
+Public status page hosted on **Instatus** (free tier — 5 components,
+custom domain, email + webhook subscriptions). Domain :
+`https://status.deepsightsynthesis.com`.
+
+The internal `/status` page (`frontend/src/pages/StatusPage.tsx`)
+embeds the Instatus public summary in its own design — both views
+coexist : internal = realtime deep health check, external = curated
+public-facing status with incident history.
+
+### 21.1. Pre-setup checklist (one-time, action user)
+
+Avant de pouvoir lancer le script, il faut :
+
+- [ ] **Compte Instatus créé** sur https://instatus.com avec
+      `ops@deepsightsynthesis.com` (free plan suffit).
+- [ ] **Page créée** dans Instatus admin :
+      - Name : `DeepSight`
+      - Subdomain : `deepsight` (URL Instatus par défaut :
+        `deepsight.instatus.com`).
+      - Logo : upload `frontend/public/logo.svg`.
+      - Brand color : `#6366f1` (indigo DeepSight).
+- [ ] **Custom domain** `status.deepsightsynthesis.com` :
+      Instatus admin → Settings → Custom domain → ajouter le domaine.
+      Côté DNS Cloudflare → ajouter un `CNAME status` pointant vers
+      `stats.instatus.com`. **Activer le SSL automatique** (let's encrypt)
+      côté Instatus une fois le CNAME propagé (~5–30 min).
+- [ ] **5 components stub créés manuellement** (peuvent rester vides — le
+      script va les enrichir/recréer en idempotent) :
+      `API`, `Web`, `Mobile App`, `Extension Chrome`, `Database`.
+      (Ou laissez le script tout créer — voir §21.4.)
+
+### 21.2. Récupérer `INSTATUS_API_KEY`
+
+1. Instatus admin → User menu (top right) → **API Tokens**.
+2. Cliquer **Create token**, nom `setup-script`, permission
+   **Manage components** (read/write).
+3. Copier la clé `ist_...` (visible une seule fois).
+4. Stocker dans le password manager + GitHub Actions secrets si
+   automation prévue.
+
+### 21.3. Récupérer `INSTATUS_PAGE_ID`
+
+1. Instatus admin → ouvrir la page `DeepSight`.
+2. Regarder l'URL : `https://dashboard.instatus.com/pages/{PAGE_ID}`.
+3. Le segment après `/pages/` est l'ID. Le copier dans les secrets/env.
+
+### 21.4. Run du script de setup
+
+```bash
+# Étape 1 — show config (aucun appel réseau, sanity check de la config locale)
+python backend/scripts/setup_instatus_components.py --show-config
+
+# Étape 2 — dry-run (besoin OPTIONNEL des credentials pour comparer au remote ;
+# sans credentials, la commande affiche simplement "would POST" pour les 5)
+INSTATUS_API_KEY=ist_xxx INSTATUS_PAGE_ID=abcd1234 \
+    python backend/scripts/setup_instatus_components.py --dry-run
+
+# Étape 3 — apply (création/mise à jour idempotente)
+INSTATUS_API_KEY=ist_xxx INSTATUS_PAGE_ID=abcd1234 \
+    python backend/scripts/setup_instatus_components.py --apply
+```
+
+Codes de sortie :
+
+| Code | Signification                                                       |
+| ---- | ------------------------------------------------------------------- |
+| 0    | OK (tous les composants créés/à jour ou rien à faire)               |
+| 1    | Variables d'environnement manquantes                                |
+| 2    | Plus de 5 composants définis (free tier max — éditer le config.py)  |
+| 3    | Échec de l'appel `GET /components` (clé invalide ou page inexistante) |
+| 4    | Au moins un composant a échoué (PUT/POST) — relire la table         |
+
+Le script peut être ré-exécuté à volonté : il match les composants par
+`name` et applique uniquement les diffs.
+
+### 21.5. Subscriptions (Instatus admin)
+
+- **Email** : `Subscribers → Email → Enable opt-in form`. Les visiteurs
+  de la status page peuvent s'abonner sans compte. RGPD : opt-in
+  explicite, désinscription un clic.
+- **Telegram (via webhook)** : `Subscribers → Webhook → Add webhook` →
+  URL :
+  `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=`.
+  Format JSON : Instatus envoie `{ event, page, incident, components }`.
+  Pour parser proprement, intercaler un bridge léger (Cloudflare Worker
+  ou route Next API) qui formate avant de POST sur l'API Telegram.
+  Tokens à réutiliser : secrets GitHub `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`.
+- **Slack-compatible webhook** (générique) : pour intégrations futures
+  (Discord, MS Teams, etc.) — utiliser le format Slack-compatible payload
+  proposé par Instatus.
+
+### 21.6. Poster un incident manuellement
+
+Instatus admin → **Incidents** → **New incident** :
+
+1. Title (court, en français côté public — ex. « Lenteurs API »)
+2. Affected components (cocher les bons, ex. `API` + `Database`)
+3. Status initial : `INVESTIGATING`
+4. Message public (markdown supporté) — toujours dater + signer
+5. Notify subscribers : ON
+6. Update status au fur et à mesure : `IDENTIFIED` → `MONITORING` → `RESOLVED`
+
+### 21.7. Automatisation future (hors scope ce PR)
+
+- **Sentry → Instatus auto-incident** : configurer une Sentry alert
+  rule → webhook → endpoint Instatus
+  `POST https://api.instatus.com/v1/{page-id}/incidents` quand un seuil
+  d'erreurs est dépassé (ex. > 50 erreurs/5 min sur le router `videos`).
+  Nécessite un bridge (Cloudflare Worker) pour adapter le payload Sentry
+  au schéma Instatus.
+- **UptimeRobot → Instatus** : Instatus supporte un webhook entrant
+  natif (à activer dans `Components → Connect monitor`). Parking pour
+  plus tard si on veut éviter de payer le tier Instatus monitors.
+
+### 21.8. Embed dans `frontend/src/pages/StatusPage.tsx`
+
+La section `<InstatusSection />` fait un `fetch('/summary.json')` sur
+le custom domain (pas d'auth, pas de token). Trois états :
+
+| État          | Affichage                                                              |
+| ------------- | ---------------------------------------------------------------------- |
+| `loading`     | Skeleton glassmorphism (4 cards)                                       |
+| `ready`       | Banner global + cards composants + liste incidents actifs              |
+| `unavailable` | Message FR : « Statut externe en cours de configuration. »             |
+
+Le fallback graceful permet de merger ce PR **avant** que la status
+page externe ne soit configurée — l'UI ne casse pas, elle invite juste
+à finaliser le setup.
+
+### 21.9. Troubleshooting
+
+| Symptom                                       | Fix                                                                                                                  |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `CNAME` ne propage pas (commande `dig` vide)  | Attendre 5–30 min. Si > 1h, vérifier que le record Cloudflare est sur **DNS only** (pas proxy) au moins pour validation initiale. |
+| SSL Instatus en `Pending` après 24h          | Désactiver puis réactiver le custom domain dans Instatus admin. Vérifier que le proxy Cloudflare est désactivé pour ce CNAME. |
+| Script renvoie code 3 (`GET /components` KO) | Clé `INSTATUS_API_KEY` invalide ou révoquée. Régénérer dans admin → API Tokens.                                       |
+| Script renvoie code 2 (> 5 composants)       | Free tier limit. Soit retirer un composant de `instatus_components_config.py`, soit upgrader Instatus.                |
+| `<InstatusSection />` reste en `unavailable` | Vérifier que `https://status.deepsightsynthesis.com/summary.json` répond en JSON public. CORS doit être ouvert (Instatus le fait par défaut). |
+| Subscribers Telegram ne reçoivent rien       | Tester le webhook Instatus → Telegram avec curl. Vérifier que le bot Telegram a bien le droit de poster dans le chat. |

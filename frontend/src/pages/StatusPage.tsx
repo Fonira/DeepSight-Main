@@ -2,6 +2,11 @@
  * Page de statut interne — accessible aux utilisateurs connectés.
  * Appelle le proxy Vercel /api/status (deep health check) toutes les 60s.
  * Fallback public /api/health/status si le proxy échoue.
+ *
+ * Section "Live status (Instatus)" en bas : fetch le summary.json public
+ * de la status page externe https://status.deepsightsynthesis.com et
+ * affiche les composants en cards cohérentes avec le design DeepSight.
+ * Fallback gracieux si Instatus pas encore configuré.
  */
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -20,6 +25,8 @@ import {
   Mail,
   HardDrive,
   Cpu,
+  ExternalLink,
+  Globe,
 } from "lucide-react";
 import {
   statusApi,
@@ -34,6 +41,89 @@ import DoodleBackground from "../components/DoodleBackground";
 // ───────────────────────────────────────────────────────────────────────────
 
 const POLL_INTERVAL = 60; // seconds
+
+// ───────────────────────────────────────────────────────────────────────────
+// Instatus public summary endpoint (no auth required, served by status page
+// custom domain). Format documenté : https://instatus.com/help/api
+// ───────────────────────────────────────────────────────────────────────────
+
+const INSTATUS_SUMMARY_URL =
+  "https://status.deepsightsynthesis.com/summary.json";
+const INSTATUS_PUBLIC_URL = "https://status.deepsightsynthesis.com";
+
+type InstatusComponentStatus =
+  | "OPERATIONAL"
+  | "UNDERMAINTENANCE"
+  | "DEGRADEDPERFORMANCE"
+  | "PARTIALOUTAGE"
+  | "MAJOROUTAGE";
+
+type InstatusPageStatus =
+  | "UP"
+  | "HASISSUES"
+  | "UNDERMAINTENANCE"
+  | "DOWN";
+
+interface InstatusComponent {
+  id: string;
+  name: string;
+  status: InstatusComponentStatus;
+  showcase?: boolean;
+  group?: { id: string; name: string } | null;
+}
+
+interface InstatusSummary {
+  page: { name: string; url: string; status: InstatusPageStatus };
+  activeIncidents: ReadonlyArray<{ id: string; name: string; status: string }>;
+  components: ReadonlyArray<InstatusComponent>;
+  activeMaintenances: ReadonlyArray<{ id: string; name: string }>;
+}
+
+function instatusStatusColor(status: InstatusComponentStatus): string {
+  switch (status) {
+    case "OPERATIONAL":
+      return "var(--status-success, #10b981)";
+    case "UNDERMAINTENANCE":
+    case "DEGRADEDPERFORMANCE":
+      return "var(--status-warning, #f59e0b)";
+    case "PARTIALOUTAGE":
+    case "MAJOROUTAGE":
+    default:
+      return "var(--status-error, #ef4444)";
+  }
+}
+
+function instatusStatusLabel(status: InstatusComponentStatus): string {
+  switch (status) {
+    case "OPERATIONAL":
+      return "Opérationnel";
+    case "UNDERMAINTENANCE":
+      return "En maintenance";
+    case "DEGRADEDPERFORMANCE":
+      return "Performances dégradées";
+    case "PARTIALOUTAGE":
+      return "Panne partielle";
+    case "MAJOROUTAGE":
+      return "Panne majeure";
+    default:
+      return "Inconnu";
+  }
+}
+
+function instatusPageLabel(status: InstatusPageStatus): string {
+  switch (status) {
+    case "UP":
+      return "Tous les services sont opérationnels";
+    case "HASISSUES":
+      return "Incident en cours";
+    case "UNDERMAINTENANCE":
+      return "Maintenance planifiée";
+    case "DOWN":
+      return "Service indisponible";
+    default:
+      return "Statut inconnu";
+  }
+}
 
 const SERVICE_META: Record<
   string,
@@ -124,6 +214,215 @@ function statusLabel(status: string): string {
   if (status === "operational") return "Op\u00e9rationnel";
   if (status === "degraded") return "D\u00e9grad\u00e9";
   return "Hors service";
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Instatus section — fetch public summary.json + render in DeepSight design
+// ───────────────────────────────────────────────────────────────────────────
+
+function InstatusSection() {
+  const [summary, setSummary] = useState<InstatusSummary | null>(null);
+  const [state, setState] = useState<"loading" | "ready" | "unavailable">(
+    "loading",
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    (async () => {
+      try {
+        const resp = await fetch(INSTATUS_SUMMARY_URL, {
+          signal: controller.signal,
+          // No credentials — public endpoint
+          mode: "cors",
+        });
+        if (!resp.ok) {
+          if (!cancelled) setState("unavailable");
+          return;
+        }
+        const json = (await resp.json()) as InstatusSummary;
+        if (cancelled) return;
+        // Sanity check : si la forme attendue n'est pas là, fallback gracieux
+        if (!json || typeof json !== "object" || !Array.isArray(json.components)) {
+          setState("unavailable");
+          return;
+        }
+        setSummary(json);
+        setState("ready");
+      } catch {
+        if (!cancelled) setState("unavailable");
+      } finally {
+        clearTimeout(timeout);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  // Header commun à tous les états (loading/ready/unavailable)
+  const header = (
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <Globe size={18} style={{ color: "var(--accent-primary, #6366f1)" }} />
+        <h2 className="text-lg font-semibold">Statut public (Instatus)</h2>
+      </div>
+      <a
+        href={INSTATUS_PUBLIC_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-xs text-[var(--text-tertiary,#6b6b80)] hover:text-[var(--accent-primary,#6366f1)] transition-colors"
+      >
+        Page complète
+        <ExternalLink size={12} />
+      </a>
+    </div>
+  );
+
+  if (state === "loading") {
+    return (
+      <section aria-label="Statut Instatus" className="space-y-2">
+        {header}
+        <div className="rounded-xl p-5 border border-[var(--border-subtle,#ffffff0d)] bg-[var(--bg-secondary,#111118)]">
+          <div className="animate-pulse space-y-3">
+            <div className="h-4 w-48 rounded bg-[var(--bg-tertiary,#1a1a24)]" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="h-14 rounded-lg bg-[var(--bg-tertiary,#1a1a24)]"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (state === "unavailable" || !summary) {
+    return (
+      <section aria-label="Statut Instatus" className="space-y-2">
+        {header}
+        <div className="rounded-xl p-5 border border-[var(--border-subtle,#ffffff0d)] bg-[var(--bg-secondary,#111118)] text-center">
+          <p className="text-sm text-[var(--text-secondary,#a1a1b5)]">
+            Statut externe en cours de configuration.
+          </p>
+          <p className="text-xs text-[var(--text-tertiary,#6b6b80)] mt-1">
+            La page publique sera bientôt disponible sur{" "}
+            <code className="text-[var(--accent-primary,#6366f1)]">
+              status.deepsightsynthesis.com
+            </code>
+            .
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const showcaseComponents = summary.components.filter(
+    (c) => c.showcase !== false,
+  );
+  const pageColor =
+    summary.page.status === "UP"
+      ? "var(--status-success, #10b981)"
+      : summary.page.status === "UNDERMAINTENANCE"
+        ? "var(--status-warning, #f59e0b)"
+        : "var(--status-error, #ef4444)";
+
+  return (
+    <section aria-label="Statut Instatus" className="space-y-2">
+      {header}
+
+      {/* Status global Instatus */}
+      <div
+        className="rounded-xl p-5 border"
+        style={{
+          borderColor: `${pageColor}33`,
+          background: `${pageColor}0a`,
+        }}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <span
+            className="inline-block w-2.5 h-2.5 rounded-full"
+            style={{ backgroundColor: pageColor }}
+            aria-hidden="true"
+          />
+          <span
+            className="text-sm font-medium"
+            style={{ color: pageColor }}
+          >
+            {instatusPageLabel(summary.page.status)}
+          </span>
+          {summary.activeIncidents.length > 0 && (
+            <span className="ml-auto text-xs text-[var(--text-tertiary,#6b6b80)]">
+              {summary.activeIncidents.length} incident
+              {summary.activeIncidents.length > 1 ? "s" : ""} actif
+              {summary.activeIncidents.length > 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+
+        {/* Cards composants */}
+        {showcaseComponents.length === 0 ? (
+          <p className="text-xs text-[var(--text-tertiary,#6b6b80)]">
+            Aucun composant configuré.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {showcaseComponents.map((c) => {
+              const color = instatusStatusColor(c.status);
+              return (
+                <div
+                  key={c.id}
+                  className="rounded-lg px-3 py-2.5 border border-[var(--border-subtle,#ffffff0d)] bg-[var(--bg-tertiary,#1a1a24)]/40 flex items-center justify-between"
+                >
+                  <div className="min-w-0 flex-1 mr-2">
+                    <p className="text-sm font-medium truncate">{c.name}</p>
+                    {c.group && (
+                      <p className="text-xs text-[var(--text-tertiary,#6b6b80)] truncate">
+                        {c.group.name}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    className="text-xs font-medium tabular-nums shrink-0"
+                    style={{ color }}
+                  >
+                    {instatusStatusLabel(c.status)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Incidents actifs */}
+      {summary.activeIncidents.length > 0 && (
+        <div className="rounded-xl p-4 border border-[var(--status-error,#ef4444)]/30 bg-[var(--status-error,#ef4444)]/5">
+          <h3 className="text-sm font-semibold text-[var(--status-error,#ef4444)] mb-2">
+            Incidents en cours
+          </h3>
+          <ul className="space-y-1">
+            {summary.activeIncidents.map((inc) => (
+              <li
+                key={inc.id}
+                className="text-xs text-[var(--text-secondary,#a1a1b5)]"
+              >
+                {inc.name}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -382,6 +681,9 @@ export default function StatusPage() {
             );
           })}
         </div>
+
+        {/* Live status (Instatus) — section additive, pas de breaking change */}
+        <InstatusSection />
 
         {/* Footer */}
         <div className="text-center text-xs text-[var(--text-muted,#45455a)] space-y-1 pt-4">
