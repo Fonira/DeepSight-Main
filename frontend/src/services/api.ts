@@ -3173,6 +3173,27 @@ export const debateApi = {
     const qs = regenerate ? "?regenerate=true" : "";
     return request(`/api/voice/debate/${debateId}/avatar${qs}`);
   },
+
+  /**
+   * 🆕 Sprint Débat IA v2 — Ajoute une perspective complémentaire ou une nuance
+   * à un débat existant (max 3 perspectives au total). Coût : 3 crédits.
+   *
+   * @param debateId      Id du débat
+   * @param relation_type 'complement' (angle complémentaire) ou 'nuance' (qualification)
+   *                      'opposite' n'est PAS exposé ici — c'est la perspective initiale
+   *                      créée par POST /api/debate/create.
+   * @returns DebateAnalysis mis à jour (status passe à 'adding_perspective' puis polling).
+   */
+  async addPerspective(
+    debateId: number,
+    relation_type: "complement" | "nuance",
+  ): Promise<DebateAnalysis> {
+    return request<DebateAnalysis>(`/api/debate/${debateId}/add-perspective`, {
+      method: "POST",
+      body: { relation_type },
+      timeout: 60000,
+    });
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -8,7 +8,7 @@
  * Backend : timeline unifiée déjà en place (PR #203). Schema HubMessage
  * mappé depuis ChatMessage côté API (source/voice_session_id/time_in_call_secs).
  */
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { videoApi, chatApi, reliabilityApi } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
@@ -170,8 +170,15 @@ const HubPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlConvId = searchParams.get("conv");
-  const urlSummaryId = searchParams.get("summary");
+  // Accepts both `?summaryId=` (canonical, used by SearchResultCard from
+  // Phase 2 web) and legacy `?summary=`. Falls through `urlConvId` when
+  // neither is present.
+  const urlSummaryId =
+    searchParams.get("summaryId") ?? searchParams.get("summary");
   const urlTab = searchParams.get("tab") as TabId | null;
+  // ?q= drives the SemanticHighlightProvider (synthesis highlights) when
+  // arriving from /search with a deeplink. Propagated via UrlQueryBridge.
+  const urlQ = searchParams.get("q");
 
   const { language } = useTranslation();
   const { user } = useAuth();
@@ -601,7 +608,13 @@ const HubPage: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [tooltipMatch, setTooltipMatch] = useState<WithinMatch | null>(null);
   const [tooltipAnchor, setTooltipAnchor] = useState<DOMRect | null>(null);
-  const summaryIdNum = fullSummary?.id ? Number(fullSummary.id) : null;
+  // Source of truth for "is an analysis attached to the active conv ?".
+  // Use `activeConv.summary_id` (resolved as soon as conversations load)
+  // rather than `fullSummary.id` (only resolved after the deep fetch),
+  // so the magnifier button + provider become available immediately.
+  const summaryIdNum = activeConv?.summary_id
+    ? Number(activeConv.summary_id)
+    : null;
 
   useCmdFIntercept({
     scopeSelector: ".analysis-page",
@@ -809,6 +822,7 @@ const HubPage: React.FC = () => {
           open={searchOpen}
           onClose={() => setSearchOpen(false)}
         />
+        {urlQ && summaryIdNum !== null && <UrlQueryBridge q={urlQ} />}
         {summaryIdNum !== null && (
           <ExplainTooltipBridge
             match={tooltipMatch}
@@ -865,6 +879,24 @@ const ExplainTooltipBridge: React.FC<{
       onJumpToTab={onJumpToTab}
     />
   );
+};
+
+/**
+ * Propagates the URL `?q=` deeplink param into the SemanticHighlightProvider
+ * once the provider mounts (and the conv/summary is resolved). Without this,
+ * arriving on `/hub?summaryId=119&q=mistral&highlight=...` from /search
+ * would never trigger the within-search fetch and no <mark> would render
+ * even though everything else is wired correctly.
+ */
+const UrlQueryBridge: React.FC<{ q: string }> = ({ q }) => {
+  const ctx = useSemanticHighlight();
+  useEffect(() => {
+    if (ctx && q && ctx.query !== q) {
+      ctx.setQuery(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, ctx?.setQuery]);
+  return null;
 };
 
 export default HubPage;
