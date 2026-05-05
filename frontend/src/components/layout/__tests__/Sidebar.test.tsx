@@ -4,16 +4,29 @@
  *
  * PR #214 a fusionné /chat + /voice-call dans /hub. Ces tests garantissent
  * qu'aucune NavLink/Link/onClick navigate ne renvoie sur l'ancienne route.
+ *
+ * Wave 2c — ajout de tests pour la visibilité conditionnelle de l'item
+ * "Workspaces" (Expert + admin uniquement).
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 // --- Mocks pour Sidebar.tsx ---
+// User mutable entre tests — permet de simuler free / pro / expert / admin.
+const mockUser = vi.hoisted(() => ({
+  current: {
+    id: 1,
+    email: "test@test.com",
+    plan: "free" as "free" | "pro" | "expert",
+    is_admin: false as boolean,
+  },
+}));
+
 vi.mock("../../../hooks/useAuth", () => ({
   useAuth: () => ({
-    user: { id: 1, email: "test@test.com", plan: "free" },
+    user: mockUser.current,
     logout: vi.fn(),
     refreshUser: vi.fn(),
   }),
@@ -66,6 +79,16 @@ import { SidebarNav } from "../../sidebar/SidebarNav";
 const renderWith = (ui: React.ReactElement, route = "/dashboard") =>
   render(<MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>);
 
+// Reset user à `free` avant chaque test pour isoler.
+beforeEach(() => {
+  mockUser.current = {
+    id: 1,
+    email: "test@test.com",
+    plan: "free",
+    is_admin: false,
+  };
+});
+
 describe("Hub navigation — no legacy /chat or /voice-call links", () => {
   it("Sidebar exposes a single Hub entry pointing to /hub", () => {
     renderWith(<Sidebar />);
@@ -103,5 +126,52 @@ describe("Hub navigation — no legacy /chat or /voice-call links", () => {
       const label = btn.getAttribute("aria-label") || btn.textContent || "";
       expect(label.toLowerCase()).not.toContain("voix");
     }
+  });
+});
+
+describe("Sidebar — Workspaces nav item (Wave 2c discoverability)", () => {
+  it("renders Workspaces nav item for Expert user", () => {
+    mockUser.current = {
+      id: 42,
+      email: "expert@test.com",
+      plan: "expert",
+      is_admin: false,
+    };
+    renderWith(<Sidebar />);
+    const link = screen.getByRole("link", { name: /workspaces/i });
+    expect(link).toHaveAttribute("href", "/hub/workspaces");
+  });
+
+  it("does NOT render Workspaces nav item for Pro user", () => {
+    mockUser.current = {
+      id: 7,
+      email: "pro@test.com",
+      plan: "pro",
+      is_admin: false,
+    };
+    renderWith(<Sidebar />);
+    expect(
+      screen.queryByRole("link", { name: /workspaces/i }),
+    ).toBeNull();
+  });
+
+  it("does NOT render Workspaces nav item for Free user", () => {
+    // mockUser réinitialisé à free par beforeEach.
+    renderWith(<Sidebar />);
+    expect(
+      screen.queryByRole("link", { name: /workspaces/i }),
+    ).toBeNull();
+  });
+
+  it("renders Workspaces nav item for admin (bypass plan)", () => {
+    mockUser.current = {
+      id: 1,
+      email: "admin@test.com",
+      plan: "free",
+      is_admin: true,
+    };
+    renderWith(<Sidebar />);
+    const link = screen.getByRole("link", { name: /workspaces/i });
+    expect(link).toHaveAttribute("href", "/hub/workspaces");
   });
 });

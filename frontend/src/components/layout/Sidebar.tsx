@@ -25,6 +25,7 @@ import {
   User,
   MessageCircle,
   GraduationCap,
+  LayoutGrid,
   Menu,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
@@ -85,6 +86,11 @@ interface NavItemProps {
   badge?: string;
   badgeClassName?: string;
   external?: boolean;
+  /**
+   * Si true, l'item n'est actif que sur l'URL exacte (pas les enfants).
+   * Utile quand un parent et un enfant existent dans la nav (ex: /hub vs /hub/workspaces).
+   */
+  end?: boolean;
 }
 
 const NavItem: React.FC<NavItemProps> = ({
@@ -95,6 +101,7 @@ const NavItem: React.FC<NavItemProps> = ({
   badge,
   badgeClassName,
   external,
+  end,
 }) => {
   const baseClasses =
     "flex items-center gap-2.5 px-2.5 py-2 rounded-md transition-all text-[0.8125rem] font-medium relative";
@@ -122,6 +129,7 @@ const NavItem: React.FC<NavItemProps> = ({
   return (
     <NavLink
       to={to}
+      end={end}
       className={({ isActive }) =>
         `${baseClasses} ${
           isActive
@@ -349,6 +357,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const ADMIN_EMAIL = "maximeleparc3@gmail.com";
   const isUserAdmin =
     user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  // Hub Workspaces — gated Expert (cohérent avec ConversationsDrawer).
+  // Admin bypass : voir l'item même hors plan Expert pour debug/preview.
+  const canSeeHubWorkspaces = userPlan === "expert" || isUserAdmin;
   const handleLogoClick = () => {
     navigate("/dashboard");
     closeMobile();
@@ -462,8 +474,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
               icon={MessageCircle}
               label="Hub"
               collapsed={collapsed}
+              // Si Workspaces est visible, ne match que `/hub` exact pour éviter
+              // que les deux items soient actifs sur `/hub/workspaces`.
+              end={canSeeHubWorkspaces}
               {...getBadge(minPlanHub)}
             />
+            {canSeeHubWorkspaces && (
+              <NavItem
+                to="/hub/workspaces"
+                icon={LayoutGrid}
+                label="Workspaces"
+                collapsed={collapsed}
+              />
+            )}
             <NavItem
               to="/study"
               icon={GraduationCap}
