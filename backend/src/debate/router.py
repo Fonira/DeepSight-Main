@@ -1,22 +1,24 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  🎭 DEBATE ROUTER — Confrontation IA de perspectives vidéo                        ║
+║  🎭 DEBATE ROUTER — Confrontation IA de perspectives vidéo (v2 adaptatif 1-N)     ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
-║  POST   /api/debate/create              — Lancer un débat                         ║
-║  GET    /api/debate/status/{debate_id}  — Poll status                             ║
-║  GET    /api/debate/{debate_id}         — Résultat complet                        ║
-║  GET    /api/debate/history             — Liste des débats (paginé)               ║
-║  DELETE /api/debate/{debate_id}         — Supprimer un débat                      ║
-║  POST   /api/debate/chat               — Chat avec contexte des 2 vidéos         ║
-║  GET    /api/debate/chat/history/{id}   — Historique chat débat                   ║
+║  POST   /api/debate/create                       — Lancer un débat                ║
+║  POST   /api/debate/{debate_id}/add-perspective  — Ajouter complement|nuance      ║
+║  GET    /api/debate/status/{debate_id}           — Poll status                    ║
+║  GET    /api/debate/{debate_id}                  — Résultat complet               ║
+║  GET    /api/debate/history                      — Liste des débats (paginé)      ║
+║  DELETE /api/debate/{debate_id}                  — Supprimer un débat             ║
+║  POST   /api/debate/chat                         — Chat avec contexte             ║
+║  GET    /api/debate/chat/history/{id}            — Historique chat débat          ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
 import json
 import logging
 import re
+from collections import Counter
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select
@@ -32,6 +34,7 @@ from core.credits import deduct_credits
 from db.database import (
     DebateAnalysis,
     DebateChatMessage,
+    DebatePerspective,
     User,
     async_session_maker,
     get_session,
@@ -40,7 +43,19 @@ from utils.video_id import extract_video_id
 from transcripts.youtube import get_video_info, get_transcript_with_timestamps
 from transcripts.tiktok import get_tiktok_video_info, get_tiktok_transcript
 
+# Routing conditionnel matching réel (Sub-agent A) vs stub
+try:
+    from .matching import _search_perspective_video as _real_search_perspective_video  # type: ignore
+
+    _HAS_REAL_MATCHING = True
+except ImportError:
+    _HAS_REAL_MATCHING = False
+    _real_search_perspective_video = None  # type: ignore
+
+from .matching_stub import _search_perspective_video as _stub_search_perspective_video
+
 from .schemas import (
+    AddPerspectiveRequest,
     DebateChatMessageResponse,
     DebateChatRequest,
     DebateChatResponse,
@@ -48,6 +63,7 @@ from .schemas import (
     DebateCreateResponse,
     DebateHistoryResponse,
     DebateListItem,
+    DebatePerspectiveResponse,
     DebateResultResponse,
     DebateStatusResponse,
 )
@@ -66,12 +82,22 @@ STATUS_MESSAGES = {
     "analyzing_b": "Analyse de la vidéo opposée...",
     "comparing": "Analyse comparative avec Mistral IA...",
     "fact_checking": "Fact-checking croisé en cours...",
+    "adding_perspective": "Ajout d'une nouvelle perspective au débat...",
     "completed": "Débat terminé !",
     "failed": "Échec de l'analyse.",
 }
 
 MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
 # PERPLEXITY_CHAT_URL supprimé — migré vers web_search_provider
+
+# Magistral — modèle de raisonnement Mistral (chain-of-thought).
+# Utilisé pour l'analyse comparative entre vidéo A et chaque perspective B.
+# Cf. spec docs/superpowers/specs/2026-05-04-debate-ia-v2.md §5.
+MAGISTRAL_MODEL = "magistral-medium-2509"
+
+# Crédits par perspective ajoutée (sprint v2)
+ADD_PERSPECTIVE_CREDITS = 3
+MAX_PERSPECTIVES_PER_DEBATE = 3
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -101,25 +127,74 @@ def _normalize_fact_check(value: Optional[str]) -> list:
     return []
 
 
-def _debate_to_result(debate: DebateAnalysis) -> DebateResultResponse:
-    """Convert a DebateAnalysis ORM object to a DebateResultResponse."""
+def _perspective_to_response(p: DebatePerspective) -> DebatePerspectiveResponse:
+    """Convert a DebatePerspective ORM row to a Pydantic response model."""
+    return DebatePerspectiveResponse(
+        id=p.id,
+        position=p.position,
+        video_id=p.video_id,
+        platform=p.platform or "youtube",
+        video_title=p.video_title,
+        video_channel=p.video_channel,
+        video_thumbnail=p.video_thumbnail,
+        thesis=p.thesis,
+        arguments=_parse_json_field(p.arguments) if p.arguments else None,
+        relation_type=(p.relation_type or "opposite"),  # type: ignore[arg-type]
+        channel_quality_score=p.channel_quality_score
+        if p.channel_quality_score is not None
+        else 0.5,
+        audience_level=(p.audience_level or "unknown"),  # type: ignore[arg-type]
+        fact_check_results=(
+            _parse_json_field(p.fact_check_results) if p.fact_check_results else None
+        ),
+        created_at=p.created_at or datetime.utcnow(),
+    )
+
+
+def _debate_to_result(
+    debate: DebateAnalysis,
+    perspectives: Optional[List[DebatePerspective]] = None,
+) -> DebateResultResponse:
+    """Convert a DebateAnalysis ORM object to a DebateResultResponse.
+
+    v2 (2026-05-04) — Backward-compat:
+      - Si `perspectives` est fourni : la position=0 alimente les champs legacy
+        `video_b_*` / `thesis_b` / `arguments_b` pour les clients v1, et la
+        liste complète (1-N) part dans `perspectives[]`.
+      - Sinon (None) : fallback sur les colonnes legacy `video_b_*` du
+        DebateAnalysis (rétro-compat avant matérialisation du backfill).
+    """
+    persp_list = perspectives or []
+    p0 = persp_list[0] if persp_list else None
+
+    # Champs B legacy : priorité aux perspectives DB > colonnes legacy
+    video_b_id = (p0.video_id if p0 else None) or debate.video_b_id
+    video_b_title = (p0.video_title if p0 else None) or debate.video_b_title
+    video_b_channel = (p0.video_channel if p0 else None) or debate.video_b_channel
+    video_b_thumbnail = (p0.video_thumbnail if p0 else None) or debate.video_b_thumbnail
+    platform_b = (p0.platform if p0 else None) or getattr(debate, "platform_b", None)
+    thesis_b = (p0.thesis if p0 else None) or debate.thesis_b
+    arguments_b = (
+        _parse_json_field(p0.arguments) if p0 else _parse_json_field(debate.arguments_b)
+    )
+
     return DebateResultResponse(
         id=debate.id,
         video_a_id=debate.video_a_id,
-        video_b_id=debate.video_b_id,
+        video_b_id=video_b_id,
         platform_a=getattr(debate, "platform_a", None) or "youtube",
-        platform_b=getattr(debate, "platform_b", None),
+        platform_b=platform_b,
         video_a_title=debate.video_a_title or "Vidéo A",
-        video_b_title=debate.video_b_title,
+        video_b_title=video_b_title,
         video_a_channel=debate.video_a_channel,
-        video_b_channel=debate.video_b_channel,
+        video_b_channel=video_b_channel,
         video_a_thumbnail=debate.video_a_thumbnail,
-        video_b_thumbnail=debate.video_b_thumbnail,
+        video_b_thumbnail=video_b_thumbnail,
         detected_topic=debate.detected_topic,
         thesis_a=debate.thesis_a,
-        thesis_b=debate.thesis_b,
+        thesis_b=thesis_b,
         arguments_a=_parse_json_field(debate.arguments_a),
-        arguments_b=_parse_json_field(debate.arguments_b),
+        arguments_b=arguments_b,
         convergence_points=_parse_json_field(debate.convergence_points),
         divergence_points=_parse_json_field(debate.divergence_points),
         fact_check_results=_normalize_fact_check(debate.fact_check_results),
@@ -129,9 +204,110 @@ def _debate_to_result(debate: DebateAnalysis) -> DebateResultResponse:
         model_used=debate.model_used,
         credits_used=debate.credits_used or 0,
         lang=debate.lang or "fr",
+        relation_type_dominant=(
+            getattr(debate, "relation_type_dominant", None) or "opposite"
+        ),
+        perspectives=[_perspective_to_response(p) for p in persp_list],
         created_at=debate.created_at or datetime.utcnow(),
         updated_at=debate.updated_at,
     )
+
+
+async def _build_debate_response(
+    db: AsyncSession, debate: DebateAnalysis
+) -> DebateResultResponse:
+    """Charge les perspectives + assemble le DebateResultResponse complet.
+
+    Préférer ce helper sur `_debate_to_result` direct dès qu'on a une session
+    pour bénéficier du chargement des perspectives v2.
+    """
+    perspectives = await _load_perspectives(db, debate.id)
+    return _debate_to_result(debate, perspectives=perspectives)
+
+
+async def _recompute_relation_type_dominant(
+    session: AsyncSession, debate_id: int
+) -> str:
+    """Recalcule la relation_type dominante d'un débat à partir des perspectives.
+
+    Stratégie : count des relation_type sur les perspectives, prendre la plus
+    fréquente. En cas d'égalité ou si aucune perspective : 'opposite' (default).
+    Stocké sur DebateAnalysis.relation_type_dominant pour piloter le naming UI.
+    """
+    result = await session.execute(
+        select(DebatePerspective.relation_type).where(
+            DebatePerspective.debate_id == debate_id
+        )
+    )
+    relations = [r for r in result.scalars().all() if r]
+    if not relations:
+        dominant = "opposite"
+    else:
+        counts = Counter(relations)
+        dominant = counts.most_common(1)[0][0]
+
+    # Update sur DebateAnalysis
+    debate_result = await session.execute(
+        select(DebateAnalysis).where(DebateAnalysis.id == debate_id)
+    )
+    debate = debate_result.scalar_one_or_none()
+    if debate:
+        debate.relation_type_dominant = dominant
+        await session.commit()
+    return dominant
+
+
+async def _load_perspectives(
+    session: AsyncSession, debate_id: int
+) -> List[DebatePerspective]:
+    """Charge les perspectives d'un débat triées par position ascendante."""
+    result = await session.execute(
+        select(DebatePerspective)
+        .where(DebatePerspective.debate_id == debate_id)
+        .order_by(DebatePerspective.position.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def _persist_perspective(
+    session: AsyncSession,
+    debate_id: int,
+    position: int,
+    video_id: str,
+    platform: str,
+    video_title: str,
+    video_channel: str,
+    video_thumbnail: str,
+    thesis: Optional[str],
+    arguments: Optional[list],
+    relation_type: str,
+    channel_quality_score: float = 0.5,
+    audience_level: str = "unknown",
+    fact_check_results: Optional[list] = None,
+) -> DebatePerspective:
+    """Crée une row DebatePerspective. Caller doit await session.commit()."""
+    perspective = DebatePerspective(
+        debate_id=debate_id,
+        position=position,
+        video_id=video_id,
+        platform=platform,
+        video_title=(video_title or "")[:500],
+        video_channel=(video_channel or "")[:255],
+        video_thumbnail=video_thumbnail or "",
+        thesis=thesis,
+        arguments=json.dumps(arguments, ensure_ascii=False) if arguments else None,
+        relation_type=relation_type,
+        channel_quality_score=channel_quality_score,
+        audience_level=audience_level,
+        fact_check_results=(
+            json.dumps(fact_check_results, ensure_ascii=False)
+            if fact_check_results
+            else None
+        ),
+    )
+    session.add(perspective)
+    await session.flush()
+    return perspective
 
 
 async def _get_debate_owned(db: AsyncSession, debate_id: int, user_id: int) -> DebateAnalysis:
@@ -166,6 +342,42 @@ async def _call_mistral(
             logger.info("[DEBATE] Used fallback: %s:%s", result.provider, result.model_used)
         return result.content
     logger.error("[DEBATE] All LLM providers failed")
+    return None
+
+
+async def _call_magistral(
+    messages: list,
+    temperature: float = 0.3,
+    max_tokens: int = 4096,
+    json_mode: bool = False,
+    timeout: float = 180,
+) -> Optional[str]:
+    """Call Magistral (raisonnement chain-of-thought) avec fallback Mistral.
+
+    Magistral est invoqué via la même API Mistral (`magistral-medium-2509`).
+    En cas d'erreur 429/5xx, llm_complete() bascule automatiquement sur la
+    chaîne MISTRAL_FALLBACK_ORDER (small → medium → large → DeepSeek).
+
+    Sprint Débat IA v2 — utilisé pour l'analyse comparative entre vidéo A
+    et chaque perspective B/B'/B''.
+    """
+    result = await llm_complete(
+        messages=messages,
+        model=MAGISTRAL_MODEL,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        timeout=timeout,
+        json_mode=json_mode,
+    )
+    if result:
+        if result.fallback_used:
+            logger.info(
+                "[DEBATE/MAGISTRAL] Used fallback: %s:%s",
+                result.provider,
+                result.model_used,
+            )
+        return result.content
+    logger.error("[DEBATE/MAGISTRAL] All LLM providers failed")
     return None
 
 
@@ -355,6 +567,87 @@ async def _search_opposing_video(
         "No distinct YouTube video found via Brave for queries %s (excluded=%s)",
         queries,
         exclude_ids,
+    )
+    return None
+
+
+async def _search_perspective_video(
+    topic: str,
+    thesis_a: str,
+    relation_type: str,
+    video_a_id: str,
+    video_a_title: Optional[str] = None,
+    video_a_channel: Optional[str] = None,
+    video_a_duration: int = 0,
+    lang: str = "fr",
+    excluded_video_ids: Optional[set] = None,
+    user_plan: str = "free",
+    db: Optional[AsyncSession] = None,
+    model: str = "mistral-small-2603",
+) -> Optional[Dict[str, str]]:
+    """Wrapper qui route entre matching réel (Sub-agent A) et fallback legacy.
+
+    - Si `_HAS_REAL_MATCHING` (PR #311 Sub-agent A mergée) → délègue à matching.py
+      qui fait scoring multi-critères (relation pondérée selon opposite/complement/nuance).
+    - Sinon (PR Sub-agent A pas encore mergée), pour relation='opposite' on
+      fallback sur l'ancien `_search_opposing_video` (legacy mais fonctionnel).
+      Pour 'complement' / 'nuance' avec stub seulement → renvoie None (le caller
+      marquera la perspective failed).
+
+    Retour : dict {url, title, channel} compatible legacy, ou None.
+    """
+    excluded_video_ids = excluded_video_ids or {video_a_id}
+
+    if _HAS_REAL_MATCHING and _real_search_perspective_video is not None:
+        try:
+            candidate = await _real_search_perspective_video(  # type: ignore
+                topic=topic,
+                thesis_a=thesis_a,
+                relation_type=relation_type,
+                video_a_id=video_a_id,
+                video_a_title=video_a_title or "",
+                video_a_channel=video_a_channel or "",
+                video_a_duration=video_a_duration,
+                lang=lang,
+                excluded_video_ids=excluded_video_ids,
+                user_plan=user_plan,
+                db=db,
+            )
+            if candidate is None:
+                return None
+            # Adapt PerspectiveCandidate → legacy dict
+            return {
+                "url": f"https://www.youtube.com/watch?v={candidate.video_id}",
+                "title": candidate.title,
+                "channel": candidate.channel,
+                "platform": candidate.platform,
+                "thumbnail": candidate.thumbnail,
+                "channel_quality_score": candidate.channel_quality_score,
+                "audience_level": candidate.audience_level,
+            }
+        except Exception as e:
+            logger.warning(
+                "[DEBATE] Real matching failed for relation=%s, falling back: %s",
+                relation_type,
+                e,
+            )
+
+    # Fallback legacy : seul 'opposite' est supporté par _search_opposing_video.
+    if relation_type == "opposite":
+        return await _search_opposing_video(
+            topic=topic,
+            thesis_a=thesis_a,
+            video_a_id=video_a_id,
+            video_a_title=video_a_title,
+            video_a_channel=video_a_channel,
+            lang=lang,
+            model=model,
+        )
+
+    # Pas de matching réel pour complement/nuance sans matching.py
+    logger.warning(
+        "[DEBATE] No matching available for relation_type=%s without matching.py",
+        relation_type,
     )
     return None
 
@@ -594,8 +887,10 @@ async def _run_debate_pipeline(
 
             transcript_b_short = transcript_b[:8000]
 
-            # ── Step 5: Comparative analysis via Mistral ──
-            _debate_task_store[debate_id] = {"status": "comparing", "message": "Analyse comparative en cours..."}
+            # ── Step 5: Comparative analysis via Magistral ──
+            # Sprint v2 : on utilise magistral-medium-2509 (chain-of-thought reasoning)
+            # au lieu de mistral-small/medium pour l'analyse comparative.
+            _debate_task_store[debate_id] = {"status": "comparing", "message": "Analyse comparative (Magistral)..."}
             debate.status = "comparing"
             await session.commit()
 
@@ -629,17 +924,17 @@ async def _run_debate_pipeline(
                 },
             ]
 
-            # Retry up to 2 times if Mistral returns invalid JSON
+            # Retry up to 2 times if Magistral returns invalid JSON
             compare_data = None
             for attempt in range(2):
-                compare_result = await _call_mistral(
-                    compare_prompt, model=model, temperature=0.3, max_tokens=4096, json_mode=True
+                compare_result = await _call_magistral(
+                    compare_prompt, temperature=0.3, max_tokens=4096, json_mode=True
                 )
                 if not compare_result:
-                    logger.warning("[DEBATE] Mistral returned None for comparison (attempt %d)", attempt + 1)
+                    logger.warning("[DEBATE] Magistral returned None for comparison (attempt %d)", attempt + 1)
                     continue
 
-                # With json_mode=True, Mistral should return pure JSON
+                # With json_mode=True, should return pure JSON
                 try:
                     compare_data = json.loads(compare_result)
                 except json.JSONDecodeError as e:
@@ -680,6 +975,9 @@ async def _run_debate_pipeline(
                     divergence.append({"topic": item, "position_a": "", "position_b": ""})
             summary = compare_data.get("summary", "")
 
+            # v2: arguments_b et thesis_b sont stockés sur DebatePerspective(position=0).
+            # On garde aussi `debate.thesis_b` / `debate.arguments_b` en miroir pour
+            # backward-compat (clients v1 qui lisent les colonnes legacy).
             debate.thesis_b = thesis_b
             debate.arguments_b = json.dumps(arguments_b, ensure_ascii=False)
             debate.convergence_points = json.dumps(convergence, ensure_ascii=False)
@@ -839,6 +1137,50 @@ async def _run_debate_pipeline(
             debate.status = "completed"
             await session.commit()
 
+            # ── Step 6.5 (v2): Persist perspective B as DebatePerspective(position=0) ──
+            # IDEMPOTENT : si une perspective position=0 existe déjà (par ex. backfill
+            # alembic 017 sur un debate v1 qu'on retraite), on skip la création.
+            existing_p0 = await session.execute(
+                select(DebatePerspective).where(
+                    DebatePerspective.debate_id == debate_id,
+                    DebatePerspective.position == 0,
+                )
+            )
+            if existing_p0.scalar_one_or_none() is None:
+                try:
+                    await _persist_perspective(
+                        session=session,
+                        debate_id=debate_id,
+                        position=0,
+                        video_id=actual_video_b_id,
+                        platform=actual_platform_b,
+                        video_title=debate.video_b_title or "",
+                        video_channel=debate.video_b_channel or "",
+                        video_thumbnail=debate.video_b_thumbnail or "",
+                        thesis=thesis_b,
+                        arguments=arguments_b,
+                        relation_type="opposite",
+                        fact_check_results=fact_check_results,
+                    )
+                    await session.commit()
+                    logger.info(
+                        "[DEBATE] Persisted perspective position=0 for debate_id=%d",
+                        debate_id,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "[DEBATE] Failed to persist perspective position=0 for debate_id=%d: %s",
+                        debate_id,
+                        e,
+                    )
+
+            # Recalcule relation_type_dominant (avec une seule perspective opposée
+            # → reste 'opposite', mais c'est l'invariant qu'on veut maintenir).
+            try:
+                await _recompute_relation_type_dominant(session, debate_id)
+            except Exception as e:
+                logger.warning("[DEBATE] Failed to recompute relation_type_dominant: %s", e)
+
             # 🎨 Fire-and-forget: generate dynamic avatar for the voice agent.
             # Reuses the keyword_images pipeline with cross-debate cache on topic.
             try:
@@ -951,6 +1293,456 @@ async def create_debate(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# POST /{debate_id}/add-perspective — Ajouter complement|nuance (v2)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+async def _run_add_perspective_pipeline(
+    debate_id: int,
+    relation_type: str,
+    user_id: int,
+):
+    """Background pipeline pour ajouter une perspective B'/B'' à un débat existant.
+
+    Réutilise _search_perspective_video + Magistral comparison + fact-check
+    + _persist_perspective. Ne touche jamais aux colonnes legacy
+    `debate_analyses.video_b_*` (ce sont des données figées de la perspective
+    initiale = position 0).
+
+    Crédits déduits uniquement si la perspective est persistée avec succès.
+    """
+    async with async_session_maker() as session:
+        try:
+            # ── 1. Fetch debate + user + existing perspectives ──
+            result = await session.execute(
+                select(DebateAnalysis).where(DebateAnalysis.id == debate_id)
+            )
+            debate = result.scalar_one_or_none()
+            if not debate:
+                logger.error(
+                    "[DEBATE/add-perspective] Debate %d not found", debate_id
+                )
+                return
+
+            user_result = await session.execute(
+                select(User).where(User.id == user_id)
+            )
+            user = user_result.scalar_one_or_none()
+            if not user:
+                logger.error(
+                    "[DEBATE/add-perspective] User %d not found", user_id
+                )
+                return
+
+            # Re-check max perspectives (race condition safety)
+            existing = await _load_perspectives(session, debate_id)
+            if len(existing) >= MAX_PERSPECTIVES_PER_DEBATE:
+                logger.warning(
+                    "[DEBATE/add-perspective] Max perspectives reached for debate=%d",
+                    debate_id,
+                )
+                debate.status = "completed"
+                await session.commit()
+                return
+
+            new_position = len(existing)
+            excluded_video_ids = {debate.video_a_id} | {
+                p.video_id for p in existing if p.video_id
+            }
+
+            # Determine model based on user plan
+            plan_limits = PLAN_LIMITS.get(user.plan or "free", PLAN_LIMITS["free"])
+            model = plan_limits.get("default_model", "mistral-small-2603")
+            lang = debate.lang or "fr"
+            topic = debate.detected_topic or ""
+            thesis_a = debate.thesis_a or ""
+
+            _debate_task_store[debate_id] = {
+                "status": "searching",
+                "message": f"Recherche d'une perspective {relation_type}...",
+            }
+            debate.status = "adding_perspective"
+            await session.commit()
+
+            # ── 2. Search perspective video (delegates to matching.py if merged) ──
+            candidate = await _search_perspective_video(
+                topic=topic,
+                thesis_a=thesis_a,
+                relation_type=relation_type,
+                video_a_id=debate.video_a_id,
+                video_a_title=debate.video_a_title,
+                video_a_channel=debate.video_a_channel,
+                lang=lang,
+                excluded_video_ids=excluded_video_ids,
+                user_plan=user.plan or "free",
+                db=session,
+                model=model,
+            )
+
+            if not candidate or not candidate.get("url"):
+                logger.warning(
+                    "[DEBATE/add-perspective] No %s perspective found for debate=%d",
+                    relation_type,
+                    debate_id,
+                )
+                debate.status = "completed"
+                await session.commit()
+                _debate_task_store[debate_id] = {
+                    "status": "completed",
+                    "message": f"Aucune perspective {relation_type} trouvée.",
+                }
+                return
+
+            # Extract IDs / metadata
+            try:
+                cand_platform, cand_video_id = extract_video_id(candidate["url"])
+            except ValueError:
+                logger.warning(
+                    "[DEBATE/add-perspective] Invalid candidate URL: %s",
+                    candidate.get("url"),
+                )
+                debate.status = "completed"
+                await session.commit()
+                return
+
+            # Safety: never duplicate video A or any existing perspective
+            if cand_video_id in excluded_video_ids:
+                logger.warning(
+                    "[DEBATE/add-perspective] Candidate %s already in debate, skipping",
+                    cand_video_id,
+                )
+                debate.status = "completed"
+                await session.commit()
+                return
+
+            cand_title = candidate.get("title", "")
+            cand_channel = candidate.get("channel", "")
+            cand_thumbnail = candidate.get("thumbnail", "") or (
+                f"https://img.youtube.com/vi/{cand_video_id}/maxresdefault.jpg"
+                if cand_platform == "youtube"
+                else ""
+            )
+            cand_quality = candidate.get("channel_quality_score", 0.5)
+            cand_audience = candidate.get("audience_level", "unknown")
+
+            # ── 3. Fetch transcript for the new perspective ──
+            _debate_task_store[debate_id] = {
+                "status": "analyzing_b",
+                "message": f"Analyse de la perspective {relation_type}...",
+            }
+
+            if cand_platform == "tiktok":
+                tiktok_url = f"https://www.tiktok.com/@user/video/{cand_video_id}"
+                transcript_result = await get_tiktok_transcript(tiktok_url)
+                transcript = (
+                    transcript_result
+                    if isinstance(transcript_result, str)
+                    else (transcript_result[0] if transcript_result else None)
+                )
+            else:
+                transcript, _, _ = await get_transcript_with_timestamps(cand_video_id)
+
+            if not transcript:
+                logger.warning(
+                    "[DEBATE/add-perspective] Could not fetch transcript for %s",
+                    cand_video_id,
+                )
+                debate.status = "completed"
+                await session.commit()
+                _debate_task_store[debate_id] = {
+                    "status": "completed",
+                    "message": "Transcription introuvable pour la perspective.",
+                }
+                return
+
+            transcript_short = transcript[:8000]
+
+            # ── 4. Magistral comparison: A (debate) vs new perspective ──
+            _debate_task_store[debate_id] = {
+                "status": "comparing",
+                "message": "Analyse comparative (Magistral)...",
+            }
+
+            relation_label = {
+                "complement": "complète et enrichit",
+                "nuance": "nuance (ni pour ni contre, conditionnel)",
+            }.get(relation_type, "oppose")
+
+            compare_prompt = [
+                {
+                    "role": "system",
+                    "content": (
+                        "Tu es un analyste expert en argumentation et en pensée critique. "
+                        f"Compare la vidéo A et la vidéo B (qui {relation_label} la thèse A) "
+                        "de manière équilibrée et nuancée. "
+                        f"Langue de réponse : {lang}. "
+                        "Réponds UNIQUEMENT en JSON valide avec ce format :\n"
+                        "{\n"
+                        '  "thesis_b": "Thèse défendue par la nouvelle perspective",\n'
+                        '  "arguments_b": [{"claim": "...", "evidence": "...", "strength": "strong|moderate|weak"}, ...],\n'
+                        '  "summary": "En 2-3 paragraphes : comment cette perspective '
+                        + relation_label
+                        + ' la thèse A."\n'
+                        "}"
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"SUJET : {topic}\n\n"
+                        f"=== VIDÉO A : {debate.video_a_title} ===\n"
+                        f"Thèse A : {thesis_a}\n\n"
+                        f"=== NOUVELLE PERSPECTIVE ({relation_type.upper()}) : {cand_title} ===\n"
+                        f"Transcription :\n{transcript_short}"
+                    ),
+                },
+            ]
+
+            compare_data = None
+            for attempt in range(2):
+                compare_result = await _call_magistral(
+                    compare_prompt, temperature=0.3, max_tokens=4096, json_mode=True
+                )
+                if not compare_result:
+                    continue
+                try:
+                    compare_data = json.loads(compare_result)
+                except json.JSONDecodeError:
+                    compare_data = _extract_json(compare_result)
+                if compare_data and compare_data.get("thesis_b"):
+                    break
+                compare_data = None
+
+            thesis_b = (compare_data or {}).get("thesis_b", "Thèse non identifiée")
+            arguments_b = (compare_data or {}).get("arguments_b", [])
+
+            # ── 5. Fact-check (best-effort, non-blocking) ──
+            fact_check_results: List[Dict[str, Any]] = []
+            try:
+                from core.config import is_web_search_available
+
+                if is_web_search_available():
+                    args_str = ", ".join(
+                        a.get("claim", str(a)) if isinstance(a, dict) else str(a)
+                        for a in arguments_b[:3]
+                    )
+                    web_query = (
+                        f"fact check {relation_type}: {topic} — {thesis_b[:100]}"
+                    )
+                    web_ctx = await _call_perplexity(web_query)
+                    fc_prompt = [
+                        {
+                            "role": "system",
+                            "content": (
+                                "Tu es un fact-checker rigoureux. Analyse les affirmations "
+                                "en te basant sur le contexte web. Verdict : confirmed, "
+                                "nuanced, disputed, ou unverifiable. "
+                                "Réponds UNIQUEMENT avec un tableau JSON valide : "
+                                '[{"claim": "...", "verdict": "...", "source": "...", "explanation": "..."}]'
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": (
+                                f"Sujet : {topic}\nThèse perspective : {thesis_b}\n"
+                                f"Arguments : {args_str}\n\n"
+                                f"Contexte web :\n{web_ctx or 'Aucun résultat.'}\n"
+                            ),
+                        },
+                    ]
+                    fc_raw = await _call_mistral(
+                        fc_prompt, model=model, temperature=0.2, json_mode=False
+                    )
+                    if fc_raw:
+                        parsed = _extract_json(fc_raw)
+                        if parsed is None:
+                            arr = re.search(r"\[.*\]", fc_raw, re.DOTALL)
+                            if arr:
+                                try:
+                                    parsed = json.loads(arr.group(0))
+                                except json.JSONDecodeError:
+                                    pass
+                        if isinstance(parsed, list):
+                            fact_check_results = parsed
+            except Exception as e:
+                logger.warning(
+                    "[DEBATE/add-perspective] Fact-check failed (non-blocking): %s", e
+                )
+
+            # ── 6. Persist perspective + deduct credits ──
+            try:
+                await _persist_perspective(
+                    session=session,
+                    debate_id=debate_id,
+                    position=new_position,
+                    video_id=cand_video_id,
+                    platform=cand_platform,
+                    video_title=cand_title,
+                    video_channel=cand_channel,
+                    video_thumbnail=cand_thumbnail,
+                    thesis=thesis_b,
+                    arguments=arguments_b,
+                    relation_type=relation_type,
+                    channel_quality_score=cand_quality,
+                    audience_level=cand_audience,
+                    fact_check_results=fact_check_results,
+                )
+                await session.commit()
+            except Exception as e:
+                logger.exception(
+                    "[DEBATE/add-perspective] Persist failed for debate=%d: %s",
+                    debate_id,
+                    e,
+                )
+                debate.status = "completed"
+                await session.commit()
+                return
+
+            # Deduct credits only after successful persist
+            await deduct_credits(
+                session,
+                user_id,
+                ADD_PERSPECTIVE_CREDITS,
+                "debate_add_perspective",
+                f"Perspective {relation_type}: {topic[:50]}",
+                metadata={
+                    "debate_id": debate_id,
+                    "relation_type": relation_type,
+                    "position": new_position,
+                },
+            )
+
+            # ── 7. Recompute relation_type_dominant + finalize status ──
+            try:
+                await _recompute_relation_type_dominant(session, debate_id)
+            except Exception as e:
+                logger.warning(
+                    "[DEBATE/add-perspective] recompute dominant failed: %s", e
+                )
+
+            debate.status = "completed"
+            await session.commit()
+
+            _debate_task_store[debate_id] = {
+                "status": "completed",
+                "message": f"Perspective {relation_type} ajoutée !",
+            }
+            logger.info(
+                "[DEBATE/add-perspective] Persisted position=%d relation=%s for debate=%d",
+                new_position,
+                relation_type,
+                debate_id,
+            )
+        except Exception as e:
+            logger.exception(
+                "[DEBATE/add-perspective] Pipeline failed for debate=%d: %s",
+                debate_id,
+                e,
+            )
+            try:
+                # Best-effort revert status
+                result = await session.execute(
+                    select(DebateAnalysis).where(DebateAnalysis.id == debate_id)
+                )
+                d = result.scalar_one_or_none()
+                if d:
+                    d.status = "completed"
+                    await session.commit()
+            except Exception:
+                pass
+            _debate_task_store[debate_id] = {
+                "status": "failed",
+                "message": str(e)[:200],
+            }
+
+
+@router.post("/{debate_id}/add-perspective", response_model=DebateResultResponse)
+async def add_perspective(
+    debate_id: int,
+    request: AddPerspectiveRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Ajoute une perspective complémentaire ou nuancée à un débat existant.
+
+    Sprint Débat IA v2 :
+      - Coût : ADD_PERSPECTIVE_CREDITS (3 crédits, déduits après persist OK)
+      - Limite : MAX_PERSPECTIVES_PER_DEBATE (3 perspectives max par débat)
+      - Plan : pro ou expert (free → 403)
+      - relation_type : 'complement' ou 'nuance' uniquement (utiliser /create
+        pour la perspective initiale 'opposite')
+    """
+    # 1. Validate relation_type — Pydantic Literal couvre déjà, double-check au cas où.
+    if request.relation_type not in ("complement", "nuance"):
+        raise HTTPException(
+            status_code=400,
+            detail="relation_type must be 'complement' or 'nuance' (use /create for 'opposite')",
+        )
+
+    # 2. Fetch debate + ownership
+    debate = await _get_debate_owned(db, debate_id, current_user.id)
+
+    # 3. Plan check (debate gated to pro+)
+    raw_plan = (current_user.plan or "free").lower()
+    if raw_plan == "free" and not getattr(current_user, "is_admin", False):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_required",
+                "message": "Debate add-perspective requires Pro or Expert plan",
+                "required": "pro",
+            },
+        )
+
+    # 4. Credits check
+    credits = current_user.credits or 0
+    if credits < ADD_PERSPECTIVE_CREDITS and not getattr(current_user, "is_admin", False):
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "code": "insufficient_credits",
+                "message": f"Need {ADD_PERSPECTIVE_CREDITS} credits, you have {credits}",
+                "credits": credits,
+                "required": ADD_PERSPECTIVE_CREDITS,
+            },
+        )
+
+    # 5. Max perspectives check
+    perspectives = await _load_perspectives(db, debate_id)
+    if len(perspectives) >= MAX_PERSPECTIVES_PER_DEBATE:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "max_perspectives_reached",
+                "message": f"Max {MAX_PERSPECTIVES_PER_DEBATE} perspectives per debate reached",
+                "current": len(perspectives),
+                "max": MAX_PERSPECTIVES_PER_DEBATE,
+            },
+        )
+
+    # 6. Mark debate as adding_perspective + launch background task
+    debate.status = "adding_perspective"
+    await db.commit()
+
+    _debate_task_store[debate_id] = {
+        "status": "adding_perspective",
+        "message": f"Perspective {request.relation_type} en cours...",
+    }
+
+    background_tasks.add_task(
+        _run_add_perspective_pipeline,
+        debate_id=debate_id,
+        relation_type=request.relation_type,
+        user_id=current_user.id,
+    )
+
+    # 7. Return current state (perspectives reloaded)
+    await db.refresh(debate)
+    return await _build_debate_response(db, debate)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # GET /status/{debate_id} — Poll status
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1050,9 +1842,14 @@ async def get_debate_result(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """Récupère le résultat complet d'un débat terminé."""
+    """Récupère le résultat complet d'un débat terminé.
+
+    v2: charge les perspectives 1-N. Pour rétro-compat, les champs `video_b_*`
+    et `thesis_b` / `arguments_b` à la racine reflètent toujours la perspective
+    `position=0` (lue depuis `debate_perspectives`).
+    """
     debate = await _get_debate_owned(db, debate_id, current_user.id)
-    return _debate_to_result(debate)
+    return await _build_debate_response(db, debate)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

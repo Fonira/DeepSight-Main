@@ -5,8 +5,8 @@
 """
 
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, Field
+from typing import Literal, Optional
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -28,6 +28,19 @@ class DebateChatRequest(BaseModel):
 
     debate_id: int = Field(..., description="ID du débat")
     message: str = Field(..., min_length=1, max_length=2000, description="Message utilisateur")
+
+
+class AddPerspectiveRequest(BaseModel):
+    """Requête pour ajouter une perspective complémentaire ou nuance à un débat existant.
+
+    Sprint Débat IA v2 — POST /api/debate/{debate_id}/add-perspective.
+    """
+
+    relation_type: Literal["complement", "nuance"] = Field(
+        ...,
+        description="Type de relation : 'complement' (autre angle, enrichissement) "
+        "ou 'nuance' (ni pour ni contre, conditionnel)",
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -58,8 +71,38 @@ class DebateStatusResponse(BaseModel):
     video_b_thumbnail: Optional[str] = None
 
 
+class DebatePerspectiveResponse(BaseModel):
+    """Une perspective dans un débat v2 (B initiale + ajouts complément/nuance).
+
+    position 0 = perspective B initiale (auto-search ou manuelle).
+    position 1-2 = perspectives ajoutées via POST /add-perspective.
+    """
+
+    id: int
+    position: int
+    video_id: str
+    platform: str = "youtube"
+    video_title: Optional[str] = None
+    video_channel: Optional[str] = None
+    video_thumbnail: Optional[str] = None
+    thesis: Optional[str] = None
+    arguments: Optional[list] = None
+    relation_type: Literal["opposite", "complement", "nuance"] = "opposite"
+    channel_quality_score: float = 0.5
+    audience_level: Literal["vulgarisation", "expert", "unknown"] = "unknown"
+    fact_check_results: Optional[list] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class DebateResultResponse(BaseModel):
-    """Résultat complet d'un débat"""
+    """Résultat complet d'un débat.
+
+    v2 (2026-05-04) — `perspectives` est la SSOT pour les vidéos B/B'/B''.
+    Les champs legacy `video_b_*`, `thesis_b`, `arguments_b` reflètent toujours
+    la perspective `position=0` pour rétro-compat des clients v1.
+    """
 
     id: int
     video_a_id: str
@@ -86,11 +129,12 @@ class DebateResultResponse(BaseModel):
     model_used: Optional[str] = None
     credits_used: int = 0
     lang: str = "fr"
+    relation_type_dominant: Literal["opposite", "complement", "nuance"] = "opposite"
+    perspectives: list[DebatePerspectiveResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DebateChatResponse(BaseModel):
@@ -112,8 +156,7 @@ class DebateListItem(BaseModel):
     status: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DebateHistoryResponse(BaseModel):
@@ -132,5 +175,4 @@ class DebateChatMessageResponse(BaseModel):
     content: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
