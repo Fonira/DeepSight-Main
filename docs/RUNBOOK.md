@@ -1034,3 +1034,176 @@ To **remove** a rule, delete it manually in the Cloudflare dashboard. The script
   Cloudflare in front).
 - Add a Cloudflare Worker on `/api/auth/*` to issue short-lived bot challenge
   tokens, removing the need for `managed_challenge` UX hits on legit mobile users.
+
+---
+
+## 20. Frontend perf gates
+
+We run two complementary gates on every PR that touches `frontend/**`:
+
+- **Lighthouse CI** → `.github/workflows/lighthouse-ci.yml`
+- **Bundle size** (size-limit) → `.github/workflows/bundle-size.yml`
+
+Both currently run in **warn-only** mode: they will comment scores on the
+PR, surface regressions, and raise warnings, but they do **not** block
+merges. The goal of the first weeks is to collect a baseline, not to
+gatekeep. Promotion to blocking is a deliberate one-line change — see
+§20.4.
+
+### 20.1. Configuration files
+
+| File                              | Owner | Purpose                                |
+| --------------------------------- | ----- | -------------------------------------- |
+| `frontend/.lighthouserc.cjs`      | FE    | Lighthouse CI budgets, URLs to test    |
+| `frontend/.size-limit.cjs`        | FE    | Per-chunk gzipped size budgets         |
+| `.github/workflows/lighthouse-ci.yml` | DevOps | Wait Vercel preview, run lhci, comment PR |
+| `.github/workflows/bundle-size.yml`   | DevOps | Build, run size-limit, comment diff       |
+
+### 20.2. Reading the PR comments
+
+#### Lighthouse comment (one per PR, updates on push)
+
+```
+### Lighthouse CI — preview report
+
+Preview: https://deepsight-frontend-xxx.vercel.app
+
+| URL              | Perf | A11y | Best Practices | SEO | Report |
+| ---------------- | ---- | ---- | -------------- | --- | ------ |
+| `…/`             | 87   | 96   | 92             | 100 | view   |
+| `…/login`        | 92   | 100  | 92             | 100 | view   |
+| `…/upgrade`      | 78   | 95   | 92             | 100 | view   |
+| `…/legal/privacy`| 95   | 100  | 92             | 92  | view   |
+```
+
+**Targets** (from `.lighthouserc.cjs`):
+
+- Performance ≥ **75** (good ≥ 90)
+- Accessibility ≥ **90**
+- Best Practices ≥ **85**
+- SEO ≥ **90**
+- LCP < **4 s**
+- CLS < **0.1**
+- INP < **500 ms**
+
+If Performance drops below 75 on any tested URL, treat it as a regression
+to investigate before merge — even though the check itself doesn't fail
+the PR yet.
+
+#### Bundle size comment (one per PR, updates on push)
+
+```
+size-limit report 📦
+
+| Path                    | Size      | Loading time | Running time | Total time |
+| ----------------------- | --------- | ------------ | ------------ | ---------- |
+| initial bundle (index)  | 143.42 kB | 2.9 s        | —            | 2.9 s      |
+| vendor-react            | 53.76 kB  | 1.1 s        | —            | 1.1 s      |
+| total dist (all JS)     | 1.97 MB   | 39 s (3G)    | —            | 39 s       |
+```
+
+The action also shows `+X.YY kB` deltas vs the base branch. **Anything
+above +5 % on a single chunk warrants justification in the PR
+description.**
+
+### 20.3. Adjusting budgets
+
+Whenever a PR legitimately needs more headroom (new dependency, large
+feature):
+
+1. Run locally:
+   ```bash
+   cd frontend
+   npm run build
+   npm run size
+   ```
+2. Edit `frontend/.size-limit.cjs` — bump the offending entry to
+   `current + 5 %` (no slack for drift). Keep the comment up to date.
+3. For Lighthouse, edit `frontend/.lighthouserc.cjs` — adjust the
+   `minScore` / `maxNumericValue` in the `assertions` block.
+4. Mention the bump in the PR body, with the size before/after.
+
+### 20.4. Promote to blocking
+
+Once we have ~2 weeks of baseline data and budgets feel right:
+
+**Lighthouse CI**
+1. In `frontend/.lighthouserc.cjs`, replace every `"warn"` with `"error"`
+   in the `assertions` block.
+2. In branch protection (Settings → Branches → main), add
+   `Lighthouse CI / Lighthouse on Vercel preview` to the required checks.
+
+**Bundle size**
+1. The `andresz1/size-limit-action` already exits non-zero on budget
+   breach by default — no config change needed.
+2. In branch protection, add `Bundle Size / size-limit (gzipped JS)` to
+   the required checks.
+
+After promotion, document the date + commit SHA in this section so we
+know the gate was tightened.
+
+### 20.5. Skipping a check temporarily
+
+For infra-only PRs, hotfixes, or legitimately unrelated changes:
+
+- Add the label `skip-lighthouse` to skip the Lighthouse run
+- Add the label `skip-bundle-size` to skip the size-limit check
+
+Both labels short-circuit the workflow at the `if:` guard at the top of
+each YAML — no logs, no comment, no cost. Use sparingly; the labels are
+there for emergencies, not as a routine workaround.
+
+### 20.6. Local debugging
+
+#### Lighthouse local run
+
+```bash
+cd frontend
+npm run build
+npm run lighthouse:local
+```
+
+This boots `vite preview` on port 4173 and runs the same audits the CI
+would. Reports are written to `frontend/.lighthouseci/`.
+
+#### Bundle size local run
+
+```bash
+cd frontend
+npm run build
+npm run size              # human-readable
+npx size-limit --json     # machine-readable (used by CI)
+```
+
+If a chunk exceeds its budget, size-limit will exit non-zero and print
+the offender. Use `npm run analyze` to open the visualizer
+(`dist/bundle-stats.html`) and find what bloated.
+
+### 20.7. Expected baselines (2026-05-05)
+
+Captured on `ci/scale-lighthouse-bundle` branch from `origin/main`
+(`7b312fdc`):
+
+| Chunk / metric           | Value                |
+| ------------------------ | -------------------- |
+| initial bundle (index)   | 143.4 kB gzipped     |
+| vendor-react             | 53.8 kB gzipped      |
+| vendor-query             | 12.1 kB gzipped      |
+| vendor-ui                | 12.8 kB gzipped      |
+| vendor-motion            | 41.9 kB gzipped      |
+| vendor-markdown          | 48.3 kB gzipped      |
+| vendor-state             | 1.6 kB gzipped       |
+| total dist (JS, gzipped) | ~1.97 MB             |
+| Heaviest lazy chunks     | flowchart-elk (444 kB brotli), mindmap (170 kB), AnalyticsPage (95 kB), katex (78 kB), mermaid.core (68 kB) |
+
+If you need to slim the bundle, prime targets are mermaid (used only on
+mind-map pages — could be lazier) and the analytics dashboard.
+
+### 20.8. Troubleshooting
+
+| Symptom                                          | Fix                                                                                              |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Lighthouse step times out waiting for preview    | Vercel build > 5 min — check Vercel dashboard. Increase `max_timeout` in workflow if recurring. |
+| Lighthouse scores wildly inconsistent run-to-run | We already average 3 runs (median). For more stability, raise `numberOfRuns` to 5.              |
+| Size-limit fails locally with "Chrome not found" | Expected on Windows — we use the `@size-limit/file` plugin, no Chrome needed. Re-run.            |
+| Comment doesn't appear on PR                     | Check the workflow logs — usually a permission issue (`pull-requests: write`).                  |
