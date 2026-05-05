@@ -606,3 +606,150 @@ A `200 OK` confirms the token + dataset combo works.
 - Drain Caddy access logs via the `caddy-axiom` plugin or a sidecar `vector` container. Skipped here to avoid touching the Caddyfile bind-mount.
 - Add a `/api/admin/axiom-stats` endpoint that surfaces `get_axiom_stats()` so we can graph drop rates without SSH.
 - Pipe APScheduler job heartbeats with a stable `job_id` field for easier alerting on missed backups.
+
+---
+
+## 17. Sentry alert rules
+
+Sentry alerts for the 4 platforms (backend / frontend / mobile / extension)
+are provisioned **programmatically** by
+`backend/scripts/setup_sentry_alerts.py`. Rule definitions live in
+`backend/scripts/sentry_alerts_config.py` (single source of truth).
+
+The script is idempotent: it matches existing rules by `(name, project)`
+and updates them in place, so it can be re-run safely after a threshold
+change.
+
+### 17.1 Setting up the auth token (one-time per machine)
+
+1. Go to <https://sentry.io/settings/account/api/auth-tokens/>.
+2. Click **Create New Token**.
+3. Required scopes:
+   - `project:read`
+   - `project:write`
+   - `alerts:read`
+   - `alerts:write`
+4. Copy the token and export it locally:
+
+   ```bash
+   export SENTRY_AUTH_TOKEN=sntrys_…
+   ```
+
+   For permanent CI use, store it as a GitHub repository secret named
+   `SENTRY_AUTH_TOKEN`.
+
+5. Find the org and project slugs in the Sentry URL bar
+   (`https://sentry.io/organizations/<ORG_SLUG>/projects/<PROJECT_SLUG>/`).
+
+   ```bash
+   export SENTRY_ORG_SLUG=deepsight
+   export SENTRY_PROJECT_SLUG_BACKEND=deepsight-backend
+   export SENTRY_PROJECT_SLUG_FRONTEND=deepsight-frontend
+   export SENTRY_PROJECT_SLUG_MOBILE=deepsight-mobile
+   ```
+
+### 17.2 Activating the Telegram integration (one-time)
+
+The Telegram integration must be installed manually on the Sentry org
+before the script can route alerts to Telegram.
+
+1. Open <https://sentry.io/settings/integrations/telegram/>.
+2. Click **Add Installation**. Sentry asks for a Telegram bot token; reuse
+   the existing DeepSight bot (`TELEGRAM_BOT_TOKEN` already used by the
+   deploy workflow) or create a dedicated one with **@BotFather**.
+3. After install, open the integration page and copy the **Installation
+   ID** displayed in the URL or in the integration's settings panel
+   (numeric string, e.g. `123456`).
+4. Export it before running the script:
+
+   ```bash
+   export TELEGRAM_INTEGRATION_INSTALLATION_ID=123456
+   ```
+
+5. Add the bot to the destination chat (`TELEGRAM_CHAT_ID`) so it can
+   post messages. Use **@deepsight_alerts_bot** with **/start** in the
+   target chat or group.
+
+If `TELEGRAM_INTEGRATION_INSTALLATION_ID` is unset the script falls back
+to the default Sentry **email** action — alerts still fire, they just
+don't reach Telegram.
+
+### 17.3 Running the script
+
+```bash
+cd backend
+
+# Preview the changes without writing.
+python scripts/setup_sentry_alerts.py --dry-run --project all
+
+# Apply to all projects (default scope).
+python scripts/setup_sentry_alerts.py --project all
+
+# Or scope to a single Sentry project.
+python scripts/setup_sentry_alerts.py --project backend
+python scripts/setup_sentry_alerts.py --project frontend
+python scripts/setup_sentry_alerts.py --project mobile
+
+# Inspect the resolved rule definitions as JSON (no API calls).
+python scripts/setup_sentry_alerts.py --show-config | jq .
+```
+
+The script prints a table summarising each rule's project, kind (issue
+vs metric), criticality, action (`created` / `updated` / `FAILED`), and
+the resulting Sentry rule ID. Failures of one rule do not abort the
+others.
+
+### 17.4 Provisioned alert rules
+
+The 6 rules below are defined in `sentry_alerts_config.py`. Adjust the
+numeric thresholds in that file and re-run the script to roll changes
+out.
+
+| #   | Project   | Name                                 | Threshold                                        | Window | Criticality |
+| --- | --------- | ------------------------------------ | ------------------------------------------------ | ------ | ----------- |
+| 1   | backend   | HTTP 500 spike (>10/h)               | `>10` ERROR-level events                         | 1h     | high        |
+| 2   | backend   | Latency p95 > 5s                     | `p95(transaction.duration) > 5000 ms`            | 5min   | high        |
+| 3   | backend   | Sentry quota approaching (80%)       | `>800` events in 24h (≈80% of daily allotment)   | 24h    | low         |
+| 4   | frontend  | Issue affecting >5 users (1h)        | `>5` unique users on a single issue              | 1h     | high        |
+| 5   | frontend  | Browser error rate (>100/h)          | `>100` events with `exception` payload           | 1h     | medium      |
+| 6   | mobile    | Crash rate > 1% (24h)                | `percentage(sessions_crashed, sessions) > 1.0`   | 24h    | high        |
+
+### 17.5 Adjusting thresholds
+
+1. Edit `backend/scripts/sentry_alerts_config.py`. Each rule is a
+   frozen dataclass — change the value, save the file.
+2. Re-run with `--dry-run` to verify the diff is what you expect.
+3. Re-run without `--dry-run` to apply. The script matches by `name`
+   so the existing Sentry rule is updated in place.
+4. Commit the config change so the next operator picks up the same
+   threshold.
+
+### 17.6 Adding a new rule
+
+1. Append a new `IssueAlertRule(...)` or `MetricAlertRule(...)` to
+   `build_rules()` in `sentry_alerts_config.py`.
+2. Pick a unique `name` (used as the idempotence key).
+3. Run the script with `--dry-run`, then for real.
+
+### 17.7 Removing a rule
+
+The script never deletes rules (by design — operator can disable any
+alert in the Sentry UI without losing automation history). To purge
+a rule definitively:
+
+1. Remove the entry from `sentry_alerts_config.py`.
+2. Delete the rule manually in the Sentry UI (Project → Alerts → ⋯ → Delete).
+3. Commit the config change.
+
+### 17.8 Required GitHub Actions secrets (future CI integration)
+
+If the script is later wired into a workflow:
+
+- `SENTRY_AUTH_TOKEN`
+- `SENTRY_ORG_SLUG`
+- `SENTRY_PROJECT_SLUG_BACKEND`
+- `SENTRY_PROJECT_SLUG_FRONTEND`
+- `SENTRY_PROJECT_SLUG_MOBILE`
+- `TELEGRAM_INTEGRATION_INSTALLATION_ID` (optional)
+
+Use `gh secret set <NAME>` to set them.
