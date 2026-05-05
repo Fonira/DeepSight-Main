@@ -292,6 +292,7 @@ const LegalCGV = lazyWithRetry(() => import("./pages/LegalCGV"));
 const PaymentSuccess = lazyWithRetry(() => import("./pages/PaymentSuccess"));
 const PaymentCancel = lazyWithRetry(() => import("./pages/PaymentCancel"));
 const StatusPage = lazyWithRetry(() => import("./pages/StatusPage"));
+const ChangelogPage = lazyWithRetry(() => import("./pages/ChangelogPage"));
 const ContactPage = lazyWithRetry(() => import("./pages/ContactPage"));
 const AboutPage = lazyWithRetry(() => import("./pages/AboutPage"));
 const SharedAnalysisPage = lazyWithRetry(
@@ -659,6 +660,22 @@ const AppRoutes = () => {
                               fallback={<PageSkeleton variant="simple" />}
                             >
                               <StatusPage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/changelog"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="ChangelogPage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="full" />}
+                            >
+                              <ChangelogPage />
                             </Suspense>
                           </RouteErrorBoundary>
                         }
