@@ -187,6 +187,29 @@ describe("CreateWorkspaceModal", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
+  it("navigates to /hub/workspaces/:id on successful create", async () => {
+    fakeState.createWorkspace = vi.fn().mockResolvedValue({
+      id: 77,
+      name: "Nav target",
+      summary_ids: [5, 6],
+      miro_board_id: null,
+      miro_board_url: null,
+      status: "pending",
+      error_message: null,
+      created_at: "2026-05-05T12:00:00Z",
+      updated_at: "2026-05-05T12:00:00Z",
+    });
+    renderModal({ initialSummaryIds: [5, 6] });
+    fireEvent.change(screen.getByLabelText(/nom du workspace/i), {
+      target: { value: "Nav target" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^créer$/i }));
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith("/hub/workspaces/77"),
+    );
+  });
+
   it("closes on Escape key", () => {
     const onClose = vi.fn();
     renderModal({ onClose });

@@ -46,6 +46,7 @@ import {
   useHubWorkspacesStore,
   type HubWorkspaceErrorState,
 } from "../store/useHubWorkspacesStore";
+import { videoApi } from "../services/api";
 import type { HubWorkspace, HubWorkspaceStatus } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -413,6 +414,12 @@ interface DetailModeProps {
   onDelete: (id: number) => void;
 }
 
+interface SummaryPreview {
+  title: string;
+  thumbnail?: string;
+  channel?: string;
+}
+
 const DetailMode: React.FC<DetailModeProps> = ({
   id,
   workspace,
@@ -422,6 +429,53 @@ const DetailMode: React.FC<DetailModeProps> = ({
   onRefetch,
   onDelete,
 }) => {
+  // Wave 2c — fetch les détails des analyses pour afficher les vrais titres
+  // (au lieu de "Analyse #ID" brut). On stocke null = "fetch terminé, échec"
+  // (analyse supprimée / inaccessible) ; absent de la map = "fetch en cours".
+  const [summaryDetails, setSummaryDetails] = useState<
+    Record<number, SummaryPreview | null>
+  >({});
+  const [isLoadingSummaries, setIsLoadingSummaries] = useState(false);
+
+  const summaryIdsKey = workspace?.summary_ids.join(",") ?? "";
+
+  useEffect(() => {
+    if (!workspace || workspace.summary_ids.length === 0) {
+      setSummaryDetails({});
+      setIsLoadingSummaries(false);
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingSummaries(true);
+    setSummaryDetails({});
+    const ids = workspace.summary_ids;
+    Promise.all(
+      ids.map((sid) =>
+        videoApi
+          .getSummary(sid)
+          .then((s): SummaryPreview => ({
+            title: s.video_title,
+            thumbnail: s.thumbnail_url,
+            channel: s.video_channel,
+          }))
+          .catch((): SummaryPreview | null => null),
+      ),
+    ).then((results) => {
+      if (cancelled) return;
+      const next: Record<number, SummaryPreview | null> = {};
+      ids.forEach((sid, idx) => {
+        next[sid] = results[idx];
+      });
+      setSummaryDetails(next);
+      setIsLoadingSummaries(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // summaryIdsKey identifie la liste : se relance si elle change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaryIdsKey, workspace?.id]);
+
   if (isLoading && !workspace) {
     return <DetailSkeleton />;
   }
@@ -530,18 +584,96 @@ const DetailMode: React.FC<DetailModeProps> = ({
           </p>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {workspace.summary_ids.map((summaryId) => (
-              <li key={summaryId}>
-                <Link
-                  to={`/analysis/${summaryId}`}
-                  className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-text-secondary hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60"
-                  data-testid={`hub-workspaces-analysis-link-${summaryId}`}
-                >
-                  <span className="truncate">Analyse #{summaryId}</span>
-                  <ArrowUpRight className="w-3.5 h-3.5 shrink-0" aria-hidden />
-                </Link>
-              </li>
-            ))}
+            {workspace.summary_ids.map((summaryId) => {
+              const detail = summaryDetails[summaryId];
+              const hasFetched = summaryId in summaryDetails;
+              const isLoadingItem = !hasFetched && isLoadingSummaries;
+
+              if (isLoadingItem) {
+                return (
+                  <li key={summaryId}>
+                    <div
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 animate-pulse"
+                      data-testid={`hub-workspaces-analysis-skeleton-${summaryId}`}
+                    >
+                      <div className="w-10 h-7 rounded bg-white/10 shrink-0" />
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <div className="h-3 w-3/4 bg-white/10 rounded" />
+                        <div className="h-2.5 w-1/2 bg-white/5 rounded" />
+                      </div>
+                    </div>
+                  </li>
+                );
+              }
+
+              if (detail === null) {
+                return (
+                  <li key={summaryId}>
+                    <span
+                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5 text-xs text-text-muted italic cursor-not-allowed"
+                      data-testid={`hub-workspaces-analysis-unavailable-${summaryId}`}
+                      aria-label={`Analyse #${summaryId} indisponible`}
+                    >
+                      <span className="truncate">
+                        Analyse #{summaryId} (indisponible)
+                      </span>
+                    </span>
+                  </li>
+                );
+              }
+
+              if (detail) {
+                return (
+                  <li key={summaryId}>
+                    <Link
+                      to={`/analysis/${summaryId}`}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-text-secondary hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60"
+                      data-testid={`hub-workspaces-analysis-link-${summaryId}`}
+                    >
+                      {detail.thumbnail ? (
+                        <img
+                          src={detail.thumbnail}
+                          alt=""
+                          className="w-10 h-7 rounded object-cover shrink-0 bg-white/[0.04]"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-10 h-7 rounded bg-white/[0.04] shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-[12px] font-medium text-white/90">
+                          {detail.title}
+                        </p>
+                        {detail.channel && (
+                          <p className="truncate text-[10px] text-text-muted mt-0.5">
+                            {detail.channel}
+                          </p>
+                        )}
+                      </div>
+                      <ArrowUpRight
+                        className="w-3.5 h-3.5 shrink-0 text-text-muted"
+                        aria-hidden
+                      />
+                    </Link>
+                  </li>
+                );
+              }
+
+              // Fallback (jamais atteint en théorie : détail est defined OU
+              // null une fois fetch fini, OR loading sinon).
+              return (
+                <li key={summaryId}>
+                  <Link
+                    to={`/analysis/${summaryId}`}
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-text-secondary hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60"
+                    data-testid={`hub-workspaces-analysis-link-${summaryId}`}
+                  >
+                    <span className="truncate">Analyse #{summaryId}</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

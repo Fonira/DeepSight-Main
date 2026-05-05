@@ -1,7 +1,9 @@
 // frontend/src/components/hub/HubHeader.tsx
 import React from "react";
-import { Menu, Search } from "lucide-react";
+import { Menu, Search, LayoutGrid } from "lucide-react";
+import { Link } from "react-router-dom";
 import { DeepSightLogo } from "./DeepSightLogo";
+import { useAuthContext } from "../../contexts/AuthContext";
 
 interface Props {
   onMenuClick: () => void;
@@ -38,6 +40,12 @@ export const HubHeader: React.FC<Props> = ({
 }) => {
   const sourceIcon =
     videoSource && SOURCE_ICON[videoSource] ? SOURCE_ICON[videoSource] : null;
+
+  // Hub Workspaces — gated Expert/admin (cohérent avec ConversationsDrawer + Sidebar PR #340).
+  // Sur `/hub`, Sidebar globale n'est pas montée, donc on expose le lien ici pour discoverability.
+  const { user } = useAuthContext();
+  const canSeeHubWorkspaces =
+    user?.plan === "expert" || user?.is_admin === true;
 
   return (
     <header className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-white/10 bg-white/[0.02] backdrop-blur-xl sticky top-0 z-20 h-14">
@@ -88,6 +96,20 @@ export const HubHeader: React.FC<Props> = ({
         >
           <Search className="w-4 h-4" />
         </button>
+      )}
+      {canSeeHubWorkspaces && (
+        <Link
+          to="/hub/workspaces"
+          aria-label="Mes Workspaces Miro"
+          title="Mes Workspaces Miro"
+          data-testid="hub-header-workspaces-link"
+          className="flex-shrink-0 inline-flex items-center gap-1.5 h-8 px-2 sm:px-2.5 rounded-lg text-white/65 hover:bg-white/[0.06] hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+        >
+          <LayoutGrid className="w-4 h-4" />
+          <span className="hidden sm:inline text-[12px] font-medium">
+            Workspaces
+          </span>
+        </Link>
       )}
       {pipSlot}
     </header>
