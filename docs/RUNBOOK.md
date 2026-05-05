@@ -1351,3 +1351,154 @@ page externe ne soit configurée — l'UI ne casse pas, elle invite juste
 | Script renvoie code 2 (> 5 composants)       | Free tier limit. Soit retirer un composant de `instatus_components_config.py`, soit upgrader Instatus.                |
 | `<InstatusSection />` reste en `unavailable` | Vérifier que `https://status.deepsightsynthesis.com/summary.json` répond en JSON public. CORS doit être ouvert (Instatus le fait par défaut). |
 | Subscribers Telegram ne reçoivent rien       | Tester le webhook Instatus → Telegram avec curl. Vérifier que le bot Telegram a bien le droit de poster dans le chat. |
+
+---
+
+## §22 — PostHog funnels et insights
+
+Provisionne et maintient à jour les funnels (Acquisition / Activation / Retention / Revenue), cohortes et dashboards PostHog **par script** (versionné dans le repo, pas perdu dans l'UI).
+
+### Code
+
+- **Config (data classes)** : `backend/scripts/posthog_insights_config.py`
+- **Script idempotent** : `backend/scripts/setup_posthog_insights.py`
+
+### Contenu provisionné
+
+| Type            | Nb      | Détail                                                                                                                  |
+| --------------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Funnels         | **4**   | Acquisition / Activation / Revenue / Cross-Platform Activation                                                          |
+| Retention       | **2**   | Weekly retention (signup → video_analyzed) / Daily retention (signup → chat_message_sent)                               |
+| Trends          | **5**   | Daily Signups / Free→Paid Conversion / DAU engagement / Top events by week / API Errors by endpoint                     |
+| Cohorts         | **6**   | Free / Pro / Expert / Mobile-first / At-risk churn / Power users                                                        |
+| Dashboards      | **1**   | « DeepSight — Growth » (regroupe les 11 insights ci-dessus, pinned)                                                     |
+
+### Étape 1 — Générer une Personal API key PostHog
+
+Une **Personal API key** est requise (≠ project key publique exposée côté frontend dans `VITE_POSTHOG_KEY`).
+
+1. Aller sur PostHog → **Settings → Personal API Keys** :
+   - EU : https://eu.posthog.com/settings/user-api-keys
+   - US : https://us.posthog.com/settings/user-api-keys
+2. Cliquer **Create personal API key**.
+3. Donner un nom : `deepsight-script-setup-insights`.
+4. **Scopes** (cocher uniquement) :
+   - `insight:write` (et lecture incluse)
+   - `cohort:write`
+   - `dashboard:write`
+5. Sélectionner le projet DeepSight (ou « All projects » si plus simple).
+6. Copier la valeur (commence par `phx_`) — **elle ne sera plus affichée**.
+
+### Étape 2 — Trouver le Project ID
+
+- Dans l'URL d'un dashboard : `https://eu.posthog.com/project/<ID>/dashboard/...` → `<ID>` est le Project ID (entier).
+- Ou bien : **Settings → Project → General → Project ID**.
+
+### Étape 3 — Set des secrets
+
+Ne pas commit. Ajouter dans `.env.local` (gitignored) ou export shell :
+
+```bash
+export POSTHOG_API_KEY='phx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+export POSTHOG_PROJECT_ID='12345'
+export POSTHOG_HOST='https://eu.posthog.com'  # default OK
+```
+
+Pour CI/automation future, stocker dans **GitHub Actions secrets** (`POSTHOG_API_KEY`, `POSTHOG_PROJECT_ID`).
+
+### Étape 4 — Run du script
+
+```bash
+cd backend
+
+# A. Inspecter la config locale (no API call) — sécurité avant toute chose
+python scripts/setup_posthog_insights.py --show-config
+
+# B. Dry-run (lit PostHog, affiche [?+] would-create / [?~] would-update)
+python scripts/setup_posthog_insights.py --dry-run
+
+# C. Apply (upsert idempotent)
+python scripts/setup_posthog_insights.py --apply
+```
+
+#### États possibles dans le summary
+
+| Marker | Action          | Signification                              |
+| ------ | --------------- | ------------------------------------------ |
+| `[+]`  | created         | Nouvel objet créé sur PostHog              |
+| `[~]`  | updated         | Existait, payload modifié → PATCH appliqué |
+| `[=]`  | unchanged       | Existait, identique → no-op                |
+| `[?+]` | would-create    | Dry-run : serait créé                      |
+| `[?~]` | would-update    | Dry-run : serait modifié                   |
+| `[x]`  | failed          | HTTP error, message ci-dessous             |
+
+#### Exit codes
+
+| Code | Sens                                                    |
+| ---- | ------------------------------------------------------- |
+| `0`  | OK (apply ou dry-run sans erreur)                       |
+| `1`  | Au moins 1 ressource a failed (autres ont continué)     |
+| `2`  | Mauvaise config (POSTHOG_API_KEY ou POSTHOG_PROJECT_ID) |
+
+### Étape 5 — Ajuster la config
+
+1. Éditer `backend/scripts/posthog_insights_config.py` (ajouter / modifier funnels, cohorts, etc.).
+2. Re-run `--dry-run` pour visualiser le diff.
+3. Re-run `--apply` pour pousser.
+
+**Idempotence** : tous les objets sont matchés par leur `name`. Renommer un funnel = créer un nouveau (l'ancien reste). Pour supprimer un objet périmé, le faire **manuellement dans l'UI PostHog** (volontairement non automatisé pour éviter perte d'historique accidentelle).
+
+### Activation Session Replay (manuelle UI)
+
+Pas d'API publique stable, configuration uniquement via le dashboard PostHog.
+
+1. **Settings → Session Replay → Enable**.
+2. **Recording masks** (très important RGPD) :
+   - **Mask all inputs** : ON
+   - **Block selectors** : ajouter
+     ```
+     input[type="password"], input[name*="email" i], input[name*="card" i],
+     [data-sentry-mask], [data-replay-mask], .stripe-element, .billing-form
+     ```
+   - **Mask text content** : pour les sélecteurs `[data-private]`, `.user-name`, `.user-email`
+3. **Retention** : sélectionner **30 jours** (limite free tier), upgrader plus tard si besoin.
+4. **Sampling rate** : démarrer à **10 %** (cap budget pendant 1 mois), monter à 30 % une fois validé.
+5. Côté code, mettre à jour `frontend/src/services/analytics.ts` :
+   ```typescript
+   posthog.init(POSTHOG_KEY, {
+     // ...
+     disable_session_recording: false, // était true
+     session_recording: {
+       maskAllInputs: true,
+       maskInputOptions: { password: true, email: true },
+     },
+   });
+   ```
+6. Vérifier 24h plus tard sur Activity → Session recordings que les passwords/emails sont bien masqués.
+
+### Exporter un funnel pour weekly review
+
+1. Ouvrir le funnel dans PostHog (UI).
+2. Bouton **... → Export → PNG** (ou `Share` → screenshot via `claude-in-chrome` si automation).
+3. Coller dans le snapshot weekly du vault Obsidian (`00-Inbox/<date>-deepsight-snapshot.md`).
+4. Pour un export programmable de KPIs : `GET /api/projects/{id}/insights/{insight_id}/?refresh=true` retourne le JSON avec les counts par step.
+
+### Pièges connus
+
+- **403 Forbidden** sur `list_*` → la Personal API key n'a pas le scope ou n'est pas attachée au bon projet. Régénérer (étape 1).
+- **400 Bad Request** sur `create_insight` avec un funnel : l'event n'existe pas encore dans PostHog (jamais envoyé). Solution : envoyer un event de test depuis chaque plateforme avant de créer le funnel, OU le créer quand même (PostHog accepte les funnels pré-event).
+- **Encoding Windows** : le script force UTF-8 stdout. Si symboles cassés, vérifier `chcp 65001` dans le terminal.
+- **Plan PostHog free** : limite à 1M events/mois et 5k recordings/mois. Si dépassement, upgrader Cloud (≈ $0.0003/event).
+
+### Coût et plan PostHog
+
+- Free tier : 1M events + 5k session recordings + 1M feature flag requests / mois.
+- DeepSight cible (mai 2026) : ~200k events/mois → free tier OK.
+- Re-évaluer si > 80% utilisé (alerte PostHog email).
+
+### Recommandations futures
+
+- Ajouter un event `trial_started` et `trial_converted` une fois le flow Pro/Expert trial 7 jours stabilisé (cf. plan `2026-04-29-pricing-v2-stripe-grandfathering.md`) → permettra un funnel Trial dédié.
+- Brancher le backend (`POST /api/analytics/events`) sur PostHog server-side via un cron pour les events qui n'ont pas de version frontend (Stripe webhook → `payment_completed`).
+- Configurer une **Insight alert** PostHog sur le funnel Revenue : alert si conversion `upgrade_started → upgrade_completed` < 50% sur 7j (Slack via webhook).
+- Une fois 30j de data, créer un dashboard « DeepSight — Cohort Health » par cohorte (Free / Pro / Expert) avec retention 12 semaines.
