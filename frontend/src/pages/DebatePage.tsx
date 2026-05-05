@@ -327,7 +327,8 @@ export const DebatePage: React.FC = () => {
   useEffect(() => {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
-      if (pollRetryTimeoutRef.current) clearTimeout(pollRetryTimeoutRef.current);
+      if (pollRetryTimeoutRef.current)
+        clearTimeout(pollRetryTimeoutRef.current);
       if (avatarPollRef.current) clearInterval(avatarPollRef.current);
     };
   }, []);
@@ -472,9 +473,7 @@ export const DebatePage: React.FC = () => {
         } else {
           // Production — surface the real error, do NOT show fake mock data
           setSelectedDebate(null);
-          setError(
-            getApiErrorMessage(err, "Impossible de charger ce débat"),
-          );
+          setError(getApiErrorMessage(err, "Impossible de charger ce débat"));
         }
       } finally {
         setDebateLoading(false);
@@ -643,9 +642,7 @@ export const DebatePage: React.FC = () => {
       setSearchParams({ id: String(res.debate_id) });
     } catch (err: unknown) {
       setLoading(false);
-      setError(
-        getApiErrorMessage(err, "Erreur lors de la création du débat"),
-      );
+      setError(getApiErrorMessage(err, "Erreur lors de la création du débat"));
     }
   };
 
