@@ -752,6 +752,42 @@ export const DebatePage: React.FC = () => {
       selectedDebate.fact_check_results &&
       selectedDebate.fact_check_results.length > 0;
 
+    // Map DebateAnalysis → DebateVSLayout props.
+    // Backward-compat v1: if perspectives[] is empty but video_b_* is set, derive a single implicit perspective.
+    const vsVideoA = {
+      title: selectedDebate.video_a_title ?? "",
+      channel: selectedDebate.video_a_channel ?? "",
+      thumbnail: selectedDebate.video_a_thumbnail ?? "",
+      videoId: selectedDebate.video_a_id,
+      platform: selectedDebate.platform_a,
+      thesis: selectedDebate.thesis_a ?? "",
+      arguments: selectedDebate.arguments_a ?? [],
+    };
+    const vsPerspectives: DebatePerspective[] =
+      selectedDebate.perspectives && selectedDebate.perspectives.length > 0
+        ? selectedDebate.perspectives
+        : selectedDebate.video_b_id
+          ? [
+              {
+                id: -1,
+                position: 0,
+                video_id: selectedDebate.video_b_id,
+                platform: selectedDebate.platform_b ?? "youtube",
+                video_title: selectedDebate.video_b_title,
+                video_channel: selectedDebate.video_b_channel,
+                video_thumbnail: selectedDebate.video_b_thumbnail,
+                thesis: selectedDebate.thesis_b,
+                arguments: selectedDebate.arguments_b ?? [],
+                relation_type:
+                  selectedDebate.relation_type_dominant ?? "opposite",
+                channel_quality_score: 0,
+                audience_level: "unknown",
+                fact_check_results: null,
+                created_at: selectedDebate.created_at,
+              },
+            ]
+          : [];
+
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {/* Back button */}
@@ -851,7 +887,11 @@ export const DebatePage: React.FC = () => {
         )}
         {/* VS Layout */}
         <div className="mb-4" data-onboard="debate-vs-layout">
-          <DebateVSLayout debate={selectedDebate} />
+          <DebateVSLayout
+            videoA={vsVideoA}
+            perspectives={vsPerspectives}
+            isLoading={isInProgress && vsPerspectives.length === 0}
+          />
         </div>
         {/* Completed sections with doodle dividers */}
         {selectedDebate.status === "completed" && (
