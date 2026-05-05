@@ -1,0 +1,114 @@
+# Dependabot — automated dependency updates.
+# Monthly cadence keeps PR noise low while still surfacing CVE-relevant bumps.
+# See https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Backend Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "backend"
+    commit-message:
+      prefix: "chore(backend-deps)"
+    groups:
+      backend-minor:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Frontend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "chore(frontend-deps)"
+    groups:
+      frontend-dev:
+        dependency-type: "development"
+      frontend-prod:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Mobile npm dependencies (Expo SDK pinned manually)
+  - package-ecosystem: "npm"
+    directory: "/mobile"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "mobile"
+    commit-message:
+      prefix: "chore(mobile-deps)"
+    ignore:
+      # Expo SDK is upgraded manually via the upgrade-react-native skill
+      - dependency-name: "expo"
+      - dependency-name: "react-native"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+
+  # Extension npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/extension"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "extension"
+    commit-message:
+      prefix: "chore(extension-deps)"
+
+  # Vault MCP (Python)
+  - package-ecosystem: "pip"
+    directory: "/vault-mcp"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "vault-mcp"
+    commit-message:
+      prefix: "chore(vault-mcp-deps)"
+
+  # GitHub Actions (workflow files)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci-deps)"

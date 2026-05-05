@@ -110,6 +110,13 @@ class _DeepSightSettings(BaseSettings):
     STRIPE_PRICE_EXPERT_YEARLY_TEST: str = ""
     STRIPE_PRICE_EXPERT_YEARLY_LIVE: str = ""
 
+    # -- Stripe Tax (TVA EU / VAT MOSS / IOSS) --
+    # Toggle automatic_tax on Checkout sessions. Requires Stripe Tax to be
+    # ENABLED in the Stripe Dashboard first (Settings -> Tax). If False,
+    # checkouts run without tax computation (current legacy behavior).
+    # See docs/RUNBOOK.md "Stripe Tax activation" for the rollout playbook.
+    STRIPE_AUTOMATIC_TAX_ENABLED: bool = False
+
     # -- Google OAuth --
     GOOGLE_OAUTH_ENABLED: str = "false"
     GOOGLE_CLIENT_ID: str = ""
@@ -350,6 +357,11 @@ VOICE_CALL_DISABLED: bool = _settings.VOICE_CALL_DISABLED.lower() == "true"
 # =============================================================================
 # STRIPE
 # =============================================================================
+
+# Stripe Tax (TVA EU / VAT MOSS / IOSS) — toggle automatic_tax on Checkout
+# sessions. Requires Stripe Tax to be enabled in the Stripe Dashboard first.
+# See docs/RUNBOOK.md "Stripe Tax activation" for the rollout playbook.
+STRIPE_AUTOMATIC_TAX_ENABLED: bool = _settings.STRIPE_AUTOMATIC_TAX_ENABLED
 
 STRIPE_CONFIG = {
     "ENABLED": _settings.STRIPE_ENABLED.lower() == "true",

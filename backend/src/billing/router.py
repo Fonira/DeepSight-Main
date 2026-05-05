@@ -26,7 +26,7 @@ from db.database import (
     VoiceCreditPurchase,
 )
 from auth.dependencies import get_current_user, get_current_user_optional
-from core.config import STRIPE_CONFIG, FRONTEND_URL, get_stripe_key
+from core.config import STRIPE_CONFIG, FRONTEND_URL, get_stripe_key, STRIPE_AUTOMATIC_TAX_ENABLED
 from .plan_config import (
     PLANS,
     PLAN_HIERARCHY,
@@ -376,6 +376,9 @@ async def start_trial(
             payment_method_collection="if_required",  # H5 : pas de CB pour le trial
             line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
+            # Stripe Tax (TVA EU / VAT MOSS) — flip via STRIPE_AUTOMATIC_TAX_ENABLED.
+            # Requires Stripe Tax enabled in Dashboard (else Stripe rejects).
+            automatic_tax={"enabled": STRIPE_AUTOMATIC_TAX_ENABLED},
             subscription_data={
                 "trial_period_days": 7,
                 "metadata": {
