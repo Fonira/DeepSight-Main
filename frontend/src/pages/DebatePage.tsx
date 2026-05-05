@@ -27,6 +27,9 @@ import {
   DebateStatusTracker,
   DebateSummaryCard,
   DebateChat,
+  DebateOnboardingTour,
+  DebateExamples,
+  type DebateExample,
 } from "../components/debate";
 import { debateApi, ApiError } from "../services/api";
 import type {
@@ -661,6 +664,18 @@ export const DebatePage: React.FC = () => {
     setSearchParams({ id: String(id) });
   };
 
+  // Wave 4 G — DebateExamples démo. Le backend ne sert pas les exemples
+  // pré-générés : on scroll vers le formulaire pour que l'utilisateur colle
+  // ses propres URLs, et on affiche le topic d'inspiration via un état temporaire.
+  const [exampleHint, setExampleHint] = useState<DebateExample | null>(null);
+  const handleExampleClick = useCallback((example: DebateExample) => {
+    setExampleHint(example);
+    const target = document.querySelector('[data-onboard="debate-input"]');
+    if (target instanceof HTMLElement) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, []);
+
   const handleBack = () => {
     stopPolling();
     setPollError(null);
@@ -835,7 +850,7 @@ export const DebatePage: React.FC = () => {
           </motion.div>
         )}
         {/* VS Layout */}
-        <div className="mb-4">
+        <div className="mb-4" data-onboard="debate-vs-layout">
           <DebateVSLayout debate={selectedDebate} />
         </div>
         {/* Completed sections with doodle dividers */}
@@ -954,9 +969,42 @@ export const DebatePage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="mb-4"
+        data-onboard="debate-input"
       >
+        {exampleHint && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-3 p-3 rounded-lg bg-violet-500/10 border border-violet-500/20 text-sm text-violet-300 backdrop-blur-xl flex items-start gap-2"
+          >
+            <Lightbulb className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-medium text-violet-200 mb-0.5">
+                {exampleHint.emoji} {exampleHint.topic}
+              </p>
+              <p className="text-xs text-violet-300/70">
+                Colle l'URL d'une vidéo qui parle de ce sujet pour lancer le
+                débat. DeepSight trouvera automatiquement la perspective
+                opposée.
+              </p>
+            </div>
+            <button
+              onClick={() => setExampleHint(null)}
+              className="text-xs text-violet-300/60 hover:text-violet-200"
+              aria-label="Fermer le rappel d'exemple"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
         <DebateCreateForm onSubmit={handleCreateDebate} loading={loading} />
       </motion.div>
+
+      {/* Démo : 3 exemples pré-faits sans coût crédits — affichés uniquement
+          quand aucun débat passé n'existe pour ne pas alourdir l'historique. */}
+      {!historyLoading && !historyError && debatesList.length === 0 && (
+        <DebateExamples onSelectExample={handleExampleClick} />
+      )}
 
       {/* Doodle divider between form and history */}
       <DoodleDivider variant="analysis" density="sparse" />
@@ -1030,6 +1078,10 @@ export const DebatePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative text-white">
+      {/* Coachmark progressif au 1er lancement — Wave 4 G.
+          Persistance localStorage ; ne s'affiche qu'une fois par device. */}
+      <DebateOnboardingTour />
+
       {/* Doodle background */}
       <ErrorBoundary fallback={null}>
         <DoodleBackground variant="analysis" />
