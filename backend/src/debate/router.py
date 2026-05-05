@@ -43,16 +43,7 @@ from utils.video_id import extract_video_id
 from transcripts.youtube import get_video_info, get_transcript_with_timestamps
 from transcripts.tiktok import get_tiktok_video_info, get_tiktok_transcript
 
-# Routing conditionnel matching réel (Sub-agent A) vs stub
-try:
-    from .matching import _search_perspective_video as _real_search_perspective_video  # type: ignore
-
-    _HAS_REAL_MATCHING = True
-except ImportError:
-    _HAS_REAL_MATCHING = False
-    _real_search_perspective_video = None  # type: ignore
-
-from .matching_stub import _search_perspective_video as _stub_search_perspective_video
+from .matching import _search_perspective_video as _real_search_perspective_video
 
 from .schemas import (
     AddPerspectiveRequest,
@@ -585,52 +576,48 @@ async def _search_perspective_video(
     db: Optional[AsyncSession] = None,
     model: str = "mistral-small-2603",
 ) -> Optional[Dict[str, str]]:
-    """Wrapper qui route entre matching réel (Sub-agent A) et fallback legacy.
+    """Wrapper qui route vers matching multi-critères avec fallback legacy.
 
-    - Si `_HAS_REAL_MATCHING` (PR #311 Sub-agent A mergée) → délègue à matching.py
-      qui fait scoring multi-critères (relation pondérée selon opposite/complement/nuance).
-    - Sinon (PR Sub-agent A pas encore mergée), pour relation='opposite' on
-      fallback sur l'ancien `_search_opposing_video` (legacy mais fonctionnel).
-      Pour 'complement' / 'nuance' avec stub seulement → renvoie None (le caller
-      marquera la perspective failed).
+    Délègue à matching.py qui fait scoring multi-critères (relation pondérée
+    selon opposite/complement/nuance). Si matching renvoie None ou throw,
+    fallback sur l'ancien `_search_opposing_video` pour relation='opposite'
+    uniquement. Pour 'complement' / 'nuance' sans candidat → renvoie None.
 
     Retour : dict {url, title, channel} compatible legacy, ou None.
     """
     excluded_video_ids = excluded_video_ids or {video_a_id}
 
-    if _HAS_REAL_MATCHING and _real_search_perspective_video is not None:
-        try:
-            candidate = await _real_search_perspective_video(  # type: ignore
-                topic=topic,
-                thesis_a=thesis_a,
-                relation_type=relation_type,
-                video_a_id=video_a_id,
-                video_a_title=video_a_title or "",
-                video_a_channel=video_a_channel or "",
-                video_a_duration=video_a_duration,
-                lang=lang,
-                excluded_video_ids=excluded_video_ids,
-                user_plan=user_plan,
-                db=db,
-            )
-            if candidate is None:
-                return None
-            # Adapt PerspectiveCandidate → legacy dict
-            return {
-                "url": f"https://www.youtube.com/watch?v={candidate.video_id}",
-                "title": candidate.title,
-                "channel": candidate.channel,
-                "platform": candidate.platform,
-                "thumbnail": candidate.thumbnail,
-                "channel_quality_score": candidate.channel_quality_score,
-                "audience_level": candidate.audience_level,
-            }
-        except Exception as e:
-            logger.warning(
-                "[DEBATE] Real matching failed for relation=%s, falling back: %s",
-                relation_type,
-                e,
-            )
+    try:
+        candidate = await _real_search_perspective_video(
+            topic=topic,
+            thesis_a=thesis_a,
+            relation_type=relation_type,
+            video_a_id=video_a_id,
+            video_a_title=video_a_title or "",
+            video_a_channel=video_a_channel or "",
+            video_a_duration=video_a_duration,
+            lang=lang,
+            excluded_video_ids=excluded_video_ids,
+            user_plan=user_plan,
+            db=db,
+        )
+        if candidate is None:
+            return None
+        return {
+            "url": f"https://www.youtube.com/watch?v={candidate.video_id}",
+            "title": candidate.title,
+            "channel": candidate.channel,
+            "platform": candidate.platform,
+            "thumbnail": candidate.thumbnail,
+            "channel_quality_score": candidate.channel_quality_score,
+            "audience_level": candidate.audience_level,
+        }
+    except Exception as e:
+        logger.warning(
+            "[DEBATE] Real matching failed for relation=%s, falling back: %s",
+            relation_type,
+            e,
+        )
 
     # Fallback legacy : seul 'opposite' est supporté par _search_opposing_video.
     if relation_type == "opposite":
