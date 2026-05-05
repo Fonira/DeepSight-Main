@@ -684,12 +684,15 @@ const HubPage: React.FC = () => {
           onMenuClick={toggleDrawer}
           onHomeClick={() => navigate("/")}
           onSearchClick={
-            // Show the magnifier whenever a conversation is in scope
-            // (active OR resolved via URL deeplink), even if its summary
-            // hasn't been fetched yet. Strict `summaryIdNum` was hiding
-            // the button during the first paint while the synthetic conv
-            // was still resolving.
-            activeTab !== "chat" && (activeConv || urlConvId || urlSummaryId)
+            // Show the magnifier as soon as a conversation is in scope
+            // (active OR resolved via URL deeplink). The previous
+            // `activeTab !== "chat"` guard was hiding the button on first
+            // paint because the hubStore default is `activeTab="chat"` —
+            // the URL ?tab= only applies after a useEffect tick, so the
+            // button flickered out for the user even on /hub?tab=synthesis.
+            // From the chat tab, opening the magnifier still makes sense:
+            // it searches the analysis content, not the chat history.
+            activeConv || urlConvId || urlSummaryId
               ? () => setSearchOpen(true)
               : undefined
           }
