@@ -15,6 +15,8 @@ import {
   FileText,
   AlertTriangle,
   Sparkles,
+  Plus,
+  Lightbulb,
 } from "lucide-react";
 import { DeepSightSpinnerSmall } from "../components/ui/DeepSightSpinner";
 import {
@@ -27,7 +29,11 @@ import {
   DebateChat,
 } from "../components/debate";
 import { debateApi, ApiError } from "../services/api";
-import type { DebateAnalysis, DebateListItem } from "../types/debate";
+import type {
+  DebateAnalysis,
+  DebateListItem,
+  DebatePerspective,
+} from "../types/debate";
 import { Sidebar } from "../components/layout/Sidebar";
 import DoodleBackground from "../components/DoodleBackground";
 import { DoodleDivider } from "../components/doodles";
@@ -294,6 +300,11 @@ export const DebatePage: React.FC = () => {
   const [devMockEnabled, setDevMockEnabled] = useState(false);
   const [pollError, setPollError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // 🆕 Sprint Débat IA v2 — Add perspective (complement / nuance)
+  const [isAddingPerspective, setIsAddingPerspective] = useState(false);
+  const [addPerspectiveError, setAddPerspectiveError] = useState<string | null>(
+    null,
+  );
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRetryCountRef = useRef<number>(0);
   const pollRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -654,8 +665,38 @@ export const DebatePage: React.FC = () => {
     stopPolling();
     setPollError(null);
     setSelectedDebate(null);
+    setAddPerspectiveError(null);
     setSearchParams({});
   };
+
+  // ─── 🆕 Sprint Débat IA v2 — Add perspective handler ───
+  // Appelle POST /api/debate/{id}/add-perspective puis relance le polling
+  // pour suivre la progression jusqu'à ce que la perspective soit prête.
+  const handleAddPerspective = useCallback(
+    async (relation_type: "complement" | "nuance") => {
+      if (!selectedDebate || isAddingPerspective) return;
+      setIsAddingPerspective(true);
+      setAddPerspectiveError(null);
+      try {
+        const updated = await debateApi.addPerspective(
+          selectedDebate.id,
+          relation_type,
+        );
+        setSelectedDebate(updated);
+        // Si l'API renvoie un statut non-final, relancer le polling
+        if (updated.status !== "completed" && updated.status !== "failed") {
+          startPolling(updated.id);
+        }
+      } catch (err: unknown) {
+        setAddPerspectiveError(
+          getApiErrorMessage(err, "Impossible d'ajouter la perspective"),
+        );
+      } finally {
+        setIsAddingPerspective(false);
+      }
+    },
+    [selectedDebate, isAddingPerspective, startPolling],
+  );
 
   // ─── Content margin class (responsive with sidebar) ───
   const mainClass = `transition-all duration-200 ease-out relative z-10 ${

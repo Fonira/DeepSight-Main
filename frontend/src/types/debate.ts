@@ -2,7 +2,8 @@
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
  * ║  ⚔️ DEBATE TYPES — Débat IA entre vidéos                                         ║
  * ╠════════════════════════════════════════════════════════════════════════════════════╣
- * ║  v1.0 — Types pour la feature Débat IA (confrontation de 2 vidéos)               ║
+ * ║  v2.0 — Sprint Débat IA v2 : layout adaptatif 1+N (jusqu'à 3 perspectives)       ║
+ * ║         + relation_type (opposite/complement/nuance) + cols Miro                  ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
@@ -39,6 +40,48 @@ export interface FactCheckItem {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 🔀 RELATION TYPE — Nature de la relation entre la vidéo A et la perspective B
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Relation entre la vidéo A (source) et une perspective ajoutée :
+ *   - opposite   → débat classique (thèse opposée). Naming UI = "Débat IA".
+ *   - complement → angle complémentaire (qui couvre un autre aspect du sujet).
+ *   - nuance     → nuance / qualification de la thèse de A.
+ *
+ * Si toutes les perspectives sont `opposite`, l'UI parle de "Débat IA".
+ * Sinon (mix complement / nuance), l'UI parle de "Perspectives IA".
+ */
+export type RelationType = "opposite" | "complement" | "nuance";
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎯 DEBATE PERSPECTIVE — Une perspective ajoutée à un débat (B1, B2, ...)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Une perspective dans un débat 1+N.
+ * `position` indique l'ordre d'ajout (0 = première perspective B1, 1 = B2, 2 = B3, ...).
+ * La vidéo A reste hors de ce tableau (champs `video_a_*` au niveau racine).
+ */
+export interface DebatePerspective {
+  id: number;
+  /** Index 0..N de la perspective dans le débat (0 = B1, 1 = B2, 2 = B3) */
+  position: number;
+  video_id: string;
+  platform: string;
+  video_title: string | null;
+  video_channel: string | null;
+  video_thumbnail: string | null;
+  thesis: string | null;
+  arguments: DebateArgument[] | null;
+  relation_type: RelationType;
+  channel_quality_score: number;
+  audience_level: "vulgarisation" | "expert" | "unknown";
+  fact_check_results: FactCheckItem[] | null;
+  created_at: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // ⚔️ DEBATE STATUS — État de progression du débat
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -49,7 +92,8 @@ export type DebateStatus =
   | "comparing"
   | "fact_checking"
   | "completed"
-  | "failed";
+  | "failed"
+  | "adding_perspective";
 
 export type DebateMode = "auto" | "manual";
 
@@ -61,21 +105,26 @@ export type VideoPlatform = "youtube" | "tiktok";
 
 export interface DebateAnalysis {
   id: number;
+  // Vidéo A (source) — toujours présente
   video_a_id: string;
-  video_b_id: string | null;
   platform_a: VideoPlatform;
-  platform_b: VideoPlatform | null;
   video_a_title: string;
-  video_b_title: string | null;
   video_a_channel: string | null;
-  video_b_channel: string | null;
   video_a_thumbnail: string | null;
-  video_b_thumbnail: string | null;
-  detected_topic: string | null;
   thesis_a: string | null;
-  thesis_b: string | null;
   arguments_a: DebateArgument[];
+
+  // Vidéo B (legacy v1 — backward-compat lecture seule, dérivable depuis perspectives[0])
+  video_b_id: string | null;
+  platform_b: VideoPlatform | null;
+  video_b_title: string | null;
+  video_b_channel: string | null;
+  video_b_thumbnail: string | null;
+  thesis_b: string | null;
   arguments_b: DebateArgument[];
+
+  // Méta
+  detected_topic: string | null;
   convergence_points: string[];
   divergence_points: DivergencePoint[];
   fact_check_results: FactCheckItem[];
@@ -84,7 +133,13 @@ export interface DebateAnalysis {
   mode: DebateMode;
   lang: string;
   created_at: string;
-  // Wave 3 F — Miro embed (Débat IA v2)
+
+  // 🆕 v2 — Layout 1+N adaptatif
+  /** 0 à 3 perspectives. Si vide ou absent, l'UI dérive 1 perspective implicite depuis video_b_*. */
+  perspectives?: DebatePerspective[];
+  /** Relation dominante (calculée backend) — pilote le naming "Débat IA" vs "Perspectives IA". */
+  relation_type_dominant?: RelationType | null;
+  /** URL Miro Board associé (si généré). Wave 3 F. */
   miro_board_url?: string | null;
   miro_board_id?: string | null;
 }
@@ -102,4 +157,41 @@ export interface DebateListItem {
   video_b_thumbnail: string | null;
   status: DebateStatus;
   created_at: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ⚡ DEBATE V2 — Stubs pour layout 1+N adaptatif (Wave 3 — sera unifié au merge)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Type de relation d'une perspective B vers la vidéo A. */
+export type RelationType = "opposite" | "complement" | "nuance";
+
+/** Niveau d'audience de la chaîne. */
+export type AudienceLevel = "vulgarisation" | "expert" | "unknown";
+
+/**
+ * Une perspective additionnelle (B1, B2, ...) confrontée à la vidéo A.
+ * Stub minimal — sera enrichi par Sub-agent D au merge final.
+ */
+export interface DebatePerspective {
+  id: number;
+  position: number;
+  video_id?: string | null;
+  video_title: string | null;
+  video_channel: string | null;
+  video_thumbnail?: string | null;
+  thesis: string | null;
+  arguments: DebateArgument[] | null;
+  relation_type: RelationType;
+  channel_quality_score?: number;
+  audience_level?: AudienceLevel;
+  freshness_date?: string | null;
+}
+
+/** Point de convergence enrichi (V2). */
+export interface ConvergencePoint {
+  topic: string;
+  description: string;
+  /** Indices des perspectives concernées (-1 = vidéo A). */
+  perspective_indices?: number[];
 }
