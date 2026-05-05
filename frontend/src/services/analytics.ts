@@ -202,6 +202,29 @@ export const analytics = {
     if (!isInitialized) return false;
     return posthog.isFeatureEnabled(flag) ?? false;
   },
+
+  /**
+   * Tracker un événement du tour onboarding interactif (Shepherd.js).
+   *
+   * Helper dédié pour standardiser les noms d'events et faciliter le funnel
+   * dans PostHog. Tous les events sont gated sur le consentement analytics
+   * (capture() vérifie hasAnalyticsConsent en interne).
+   *
+   * @param step  identifiant de l'étape (ex: "welcome", "analyze-input"),
+   *              ou nom logique pour les events globaux ("tour" pour
+   *              started/completed/skipped au niveau du tour entier).
+   * @param action shown | completed | skipped
+   * @param extra propriétés additionnelles facultatives (ex: stepIndex)
+   */
+  trackOnboardingStep(
+    step: string,
+    action: "shown" | "completed" | "skipped",
+    extra?: Record<string, unknown>,
+  ): void {
+    if (!isInitialized || !hasAnalyticsConsent()) return;
+    const event = `onboarding_tour_${step}_${action}`;
+    posthog.capture(event, { step, action, ...extra });
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -239,6 +262,11 @@ export const AnalyticsEvents = {
   // Errors
   ERROR_OCCURRED: "error_occurred",
   API_ERROR: "api_error",
+
+  // Onboarding tour (Shepherd.js)
+  ONBOARDING_TOUR_STARTED: "onboarding_tour_started",
+  ONBOARDING_TOUR_COMPLETED: "onboarding_tour_completed",
+  ONBOARDING_TOUR_SKIPPED: "onboarding_tour_skipped",
 } as const;
 
 export type AnalyticsEvent =
