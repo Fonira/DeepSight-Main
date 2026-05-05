@@ -52,6 +52,14 @@ import { initWebVitals } from "./services/webVitals";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DeepSightSpinner } from "./components/ui/DeepSightSpinner";
 
+// 🎓 Tour Shepherd.js (chantier B Sprint Growth) — lazy-loadé pour ne pas
+// embarquer ~30 KB gzipped dans le bundle initial. N'est chargé que pour les
+// users dont `has_completed_onboarding !== true` ET qui ont fermé le modal
+// `OnboardingFlow` (cf. ProtectedLayout).
+const ShepherdTour = lazy(
+  () => import("./components/onboarding/ShepherdTour"),
+);
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 QUERY CLIENT CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -475,7 +483,9 @@ const HomeRoute = () => {
 
 const ProtectedLayout = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [tourClosed, setTourClosed] = useState(false);
 
   // Décision DB-3 (RELEASE-ORCHESTRATION L.562) : show pour anciens users sans flag
   // → tous les users dont preferences.has_completed_onboarding !== true voient le flow.
@@ -485,6 +495,21 @@ const ProtectedLayout = () => {
     user.preferences?.has_completed_onboarding !== true &&
     !onboardingDismissed;
 
+  // 🎓 Tour Shepherd démarre APRÈS le modal welcome (chantier B Sprint Growth).
+  // Conditions cumulées :
+  //   - user logué et pas encore onboardé (même flag que OnboardingFlow)
+  //   - le modal OnboardingFlow a été fermé (onboardingDismissed=true)
+  //   - le tour n'a pas déjà été fermé/skip dans cette session
+  //   - on est sur /dashboard (pour que les targets de la sidebar et du
+  //     SmartInputBar soient bien dans le DOM)
+  const shouldShowTour =
+    user !== null &&
+    user !== undefined &&
+    user.preferences?.has_completed_onboarding !== true &&
+    onboardingDismissed &&
+    !tourClosed &&
+    location.pathname.startsWith("/dashboard");
+
   // noindex sur toutes les routes protégées (dashboard, history, settings, etc.)
   return (
     <>
@@ -492,6 +517,11 @@ const ProtectedLayout = () => {
       <Outlet />
       {shouldShowOnboarding && (
         <OnboardingFlow onComplete={() => setOnboardingDismissed(true)} />
+      )}
+      {shouldShowTour && (
+        <Suspense fallback={null}>
+          <ShepherdTour onClose={() => setTourClosed(true)} />
+        </Suspense>
       )}
       {/* 🎓 Le Tuteur — compagnon d'apprentissage (remplace DidYouKnowCard) */}
       {/* Le composant fait son propre check isAuthenticated + currentWord (early return null) */}

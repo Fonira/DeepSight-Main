@@ -240,6 +240,37 @@
       "tip": "Tip: start with a video of 10 min max for a quick first result.",
       "cta": "Analyze",
       "skip": "Skip — Go to dashboard"
+    },
+    "tour": {
+      "buttons": {
+        "next": "Next",
+        "back": "Back",
+        "skip": "Skip tour",
+        "done": "Start my first analysis"
+      },
+      "aria": {
+        "stepLabel": "Step {{current}} of {{total}}"
+      },
+      "welcome": {
+        "title": "Welcome to DeepSight",
+        "text": "Let me show you how it works in 30 seconds. Let's go."
+      },
+      "analyze_input": {
+        "title": "Analyze a video",
+        "text": "Paste a YouTube or TikTok URL here. DeepSight generates a summary, key points and a fact-check in seconds."
+      },
+      "hub_nav": {
+        "title": "Your conversation Hub",
+        "text": "All your analyses, chats and workspaces live here, organized by topic."
+      },
+      "study_nav": {
+        "title": "Study & flashcards",
+        "text": "Once a video is analyzed, turn it into reviewable flashcards and mind maps."
+      },
+      "profile_menu": {
+        "title": "Your account",
+        "text": "Manage your plan, credits and data here. You start with 5 free analyses."
+      }
     }
   },
   "empty_states": {

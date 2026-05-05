@@ -240,6 +240,37 @@
       "tip": "Conseil : commencez par une vidéo de 10 min max pour un premier résultat rapide.",
       "cta": "Analyser",
       "skip": "Passer — Aller au tableau de bord"
+    },
+    "tour": {
+      "buttons": {
+        "next": "Suivant",
+        "back": "Précédent",
+        "skip": "Passer le tour",
+        "done": "Commencer ma première analyse"
+      },
+      "aria": {
+        "stepLabel": "Étape {{current}} sur {{total}}"
+      },
+      "welcome": {
+        "title": "Bienvenue sur DeepSight",
+        "text": "Je vous montre comment ça marche en 30 secondes. Allons-y."
+      },
+      "analyze_input": {
+        "title": "Analysez une vidéo",
+        "text": "Collez l'URL d'une vidéo YouTube ou TikTok ici. DeepSight génère une synthèse, des points clés et un fact-check en quelques secondes."
+      },
+      "hub_nav": {
+        "title": "Votre Hub de conversations",
+        "text": "Toutes vos analyses, chats et workspaces vivent ici, classés par sujet."
+      },
+      "study_nav": {
+        "title": "Études & flashcards",
+        "text": "Une fois une vidéo analysée, transformez-la en flashcards révisables et mind maps."
+      },
+      "profile_menu": {
+        "title": "Votre compte",
+        "text": "Gérez votre plan, vos crédits et vos données ici. Vous démarrez avec 5 analyses gratuites."
+      }
     }
   },
   "empty_states": {
