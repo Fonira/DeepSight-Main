@@ -399,6 +399,15 @@ except ImportError as e:
     DOCUMENTS_ROUTER_AVAILABLE = False
     logger.warning(f"⚠️ Documents router not available: {e}")
 
+# 🧩 Hub Miro Workspace router (Sprint Hub Miro MVP — 2026-05-05)
+try:
+    from hub.router import router as hub_router
+
+    HUB_ROUTER_AVAILABLE = True
+except ImportError as e:
+    HUB_ROUTER_AVAILABLE = False
+    logger.warning(f"⚠️ Hub router not available: {e}")
+
 # Global video cache instance
 _video_cache: "VideoContentCacheService | None" = None
 
@@ -1214,6 +1223,11 @@ if STUDY_REVIEW_ROUTER_AVAILABLE:
 if DOCUMENTS_ROUTER_AVAILABLE:
     app.include_router(documents_router, prefix="/api/documents", tags=["Documents"])
     logger.info("📄 Documents router loaded (POST /api/documents/analyze-url, /analyze-upload, /ocr-only)")
+
+# 🧩 Hub Miro Workspace router (Sprint Hub Miro MVP — 2026-05-05)
+if HUB_ROUTER_AVAILABLE:
+    app.include_router(hub_router, prefix="/api/hub", tags=["Hub"])
+    logger.info("🧩 Hub router loaded (POST /api/hub/workspaces — Expert only)")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🖼️ THUMBNAIL STATIC FILES (local VPS fallback when R2 creds not available)

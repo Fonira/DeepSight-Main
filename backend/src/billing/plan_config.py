@@ -156,6 +156,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
+                "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
             },
             "mobile": {
                 "analyse": True,
@@ -175,6 +176,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
+                "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
             },
             "extension": {
                 "analyse": True,
@@ -194,6 +196,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
+                "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
             },
         },
     },
@@ -293,6 +296,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "debate": True,
                 "deep_research": False,
                 "geo": True,
+                "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
             },
             "mobile": {
                 "analyse": True,
@@ -312,6 +316,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "debate": False,
                 "deep_research": False,
                 "geo": True,
+                "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
             },
             "extension": {
                 "analyse": True,
@@ -331,6 +336,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
+                "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
             },
         },
     },
@@ -432,6 +438,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "debate": True,
                 "deep_research": True,
                 "geo": True,
+                "hub_workspace": True,  # Hub Miro Workspace — Expert only (web)
             },
             "mobile": {
                 "analyse": True,
@@ -451,6 +458,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "debate": False,
                 "deep_research": False,
                 "geo": True,
+                "hub_workspace": False,  # Hub Miro Workspace — Expert only (web only, mobile = CTA web)
             },
             "extension": {
                 "analyse": True,
@@ -470,6 +478,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
+                "hub_workspace": False,  # Hub Miro Workspace — Expert only (web only, ext = CTA web)
             },
         },
     },

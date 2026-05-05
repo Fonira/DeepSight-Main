@@ -1489,6 +1489,68 @@ class ChatTextDigest(Base):
     )
 
 
+class HubWorkspace(Base):
+    """Hub Miro Workspace — workspace Miro généré depuis 2-20 analyses Summary.
+
+    Spec : docs/superpowers/specs/2026-05-05-hub-miro-workspace-mvp.md
+    Gating : Expert only (vérifié dans backend/src/hub/service.py).
+    Cap : 5 workspaces actifs (status IN pending|creating|ready) / user / 30 jours.
+
+    Workflow async :
+      1. POST /api/hub/workspaces → INSERT row(status='pending')
+      2. BackgroundTasks lance _create_miro_board_async → status='creating'
+      3. Sur succès → miro_board_id, miro_board_url renseignés, status='ready'
+      4. Sur erreur → status='failed', error_message renseigné
+
+    Migration : alembic 018_hub_workspace.py.
+    """
+
+    __tablename__ = "hub_workspaces"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Métadonnées workspace
+    name = Column(String(200), nullable=False)
+    # Liste d'IDs de Summary inclus dans le workspace (2-20 items, validé service-side)
+    summary_ids = Column(JSON, nullable=False)
+
+    # Miro (NULL au create, populés après async board create)
+    miro_board_id = Column(String(100), nullable=True)
+    miro_board_url = Column(String(500), nullable=True)
+
+    # Status : pending | creating | ready | failed
+    status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
+    error_message = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(
+        DateTime, default=func.now(), server_default=func.now(), nullable=False, index=True
+    )
+    updated_at = Column(
+        DateTime,
+        default=func.now(),
+        onupdate=func.now(),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("idx_hub_workspaces_user_created", "user_id", "created_at"),
+        Index("idx_hub_workspaces_user_status", "user_id", "status"),
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTIONS DATABASE
 # ═══════════════════════════════════════════════════════════════════════════════
