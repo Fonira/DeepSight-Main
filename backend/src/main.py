@@ -408,6 +408,15 @@ except ImportError as e:
     HUB_ROUTER_AVAILABLE = False
     logger.warning(f"⚠️ Hub router not available: {e}")
 
+# 👁️ Visual Analysis POC router (frames + Mistral Vision — 2026-05-05, admin/flag-gated)
+try:
+    from videos.visual_router import router as visual_router
+
+    VISUAL_ROUTER_AVAILABLE = True
+except ImportError as e:
+    VISUAL_ROUTER_AVAILABLE = False
+    logger.warning(f"⚠️ Visual analysis router not available: {e}")
+
 # Global video cache instance
 _video_cache: "VideoContentCacheService | None" = None
 
@@ -1228,6 +1237,11 @@ if DOCUMENTS_ROUTER_AVAILABLE:
 if HUB_ROUTER_AVAILABLE:
     app.include_router(hub_router, prefix="/api/hub", tags=["Hub"])
     logger.info("🧩 Hub router loaded (POST /api/hub/workspaces — Expert only)")
+
+# 👁️ Visual Analysis POC router (admin only, gated by VISUAL_ANALYSIS_ENABLED)
+if VISUAL_ROUTER_AVAILABLE:
+    app.include_router(visual_router, prefix="/api/admin/visual", tags=["Visual Analysis (POC)"])
+    logger.info("👁️ Visual analysis router loaded (GET /api/admin/visual/debug-from-url, /health)")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🖼️ THUMBNAIL STATIC FILES (local VPS fallback when R2 creds not available)
