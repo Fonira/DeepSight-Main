@@ -209,12 +209,14 @@ describe("HubWorkspacesPage", () => {
       expect(mockedHubApi.getWorkspace).toHaveBeenCalledWith(99);
     });
     await waitFor(() => {
-      expect(screen.getByTestId("miro-board-embed-iframe")).toBeInTheDocument();
+      expect(screen.getByTestId("miro-board-embed-ready")).toBeInTheDocument();
     });
-    const iframe = screen.getByTestId("miro-board-embed-iframe");
-    expect(iframe.getAttribute("src")).toContain(
-      "https://miro.com/app/embed/myBoard99/",
+    const link = screen.getByTestId("miro-board-embed-open-link");
+    // viewLink (miro_board_url) wins over boardId-based URL
+    expect(link.getAttribute("href")).toBe(
+      "https://miro.com/app/board/myBoard99/",
     );
+    expect(link.getAttribute("target")).toBe("_blank");
     // 3 analyses listées
     expect(
       screen.getByTestId("hub-workspaces-analysis-link-101"),
