@@ -3395,6 +3395,70 @@ export const keywordImageApi = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🧩 HUB WORKSPACE API — Miro Workspaces (Expert only, 5/30j cap)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type HubWorkspaceStatus = "pending" | "creating" | "ready" | "failed";
+
+export interface HubWorkspace {
+  id: number;
+  name: string;
+  summary_ids: number[];
+  miro_board_id: string | null;
+  miro_board_url: string | null;
+  status: HubWorkspaceStatus;
+  error_message: string | null;
+  created_at: string; // ISO
+  updated_at: string; // ISO
+}
+
+export interface HubWorkspaceCreatePayload {
+  name: string;
+  summary_ids: number[]; // 2..20 items
+}
+
+export interface HubWorkspaceListResponse {
+  items: HubWorkspace[];
+  total: number;
+}
+
+export const hubApi = {
+  async createWorkspace(
+    payload: HubWorkspaceCreatePayload,
+  ): Promise<HubWorkspace> {
+    return request<HubWorkspace>("/api/hub/workspaces", {
+      method: "POST",
+      body: { name: payload.name, summary_ids: payload.summary_ids },
+    });
+  },
+
+  async listWorkspaces(params?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<HubWorkspaceListResponse> {
+    const queryParams = new URLSearchParams();
+    if (typeof params?.limit === "number")
+      queryParams.set("limit", String(params.limit));
+    if (typeof params?.offset === "number")
+      queryParams.set("offset", String(params.offset));
+    const query = queryParams.toString();
+    return request<HubWorkspaceListResponse>(
+      `/api/hub/workspaces${query ? `?${query}` : ""}`,
+    );
+  },
+
+  async getWorkspace(id: number): Promise<HubWorkspace> {
+    return request<HubWorkspace>(`/api/hub/workspaces/${id}`);
+  },
+
+  async deleteWorkspace(id: number): Promise<void> {
+    await request<Record<string, never>>(`/api/hub/workspaces/${id}`, {
+      method: "DELETE",
+    });
+  },
+};
+
 // Export par défaut
 export default {
   auth: authApi,
@@ -3422,4 +3486,5 @@ export default {
   gamification: gamificationApi,
   keywordImage: keywordImageApi,
   geo: geoApi,
+  hub: hubApi,
 };
