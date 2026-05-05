@@ -42,7 +42,7 @@
     "posthog-js": "^1.161.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-helmet-async": "^2.0.5",
+    "react-helmet-async": "^3.0.0",
     "react-markdown": "^9.0.1",
     "react-router-dom": "^6.20.1",
     "recharts": "^3.7.0",
