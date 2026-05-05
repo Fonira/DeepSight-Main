@@ -530,6 +530,18 @@ async def test_pipeline_persists_video_b_as_perspective_position_0(
     monkeypatch.setattr(debate_router, "_call_mistral", mock_mistral)
     monkeypatch.setattr(debate_router, "_call_magistral", mock_magistral)
     monkeypatch.setattr(debate_router, "_call_perplexity", mock_perplexity)
+    # Sprint v2 (PR #311) : auto-search ne passe plus par
+    # debate_router._search_opposing_video, mais par
+    # debate.matching.search_opposing_video_legacy_compat (importé
+    # dynamiquement dans _run_debate_pipeline). On mocke la nouvelle voie.
+    import debate.matching as debate_matching
+
+    monkeypatch.setattr(
+        debate_matching,
+        "search_opposing_video_legacy_compat",
+        mock_search_opposing,
+    )
+    # Conservé pour les chemins legacy qui pourraient encore l'invoquer.
     monkeypatch.setattr(
         debate_router, "_search_opposing_video", mock_search_opposing
     )
