@@ -289,6 +289,10 @@ const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 const LegalPage = lazyWithRetry(() => import("./pages/LegalPage"));
 const LegalCGU = lazyWithRetry(() => import("./pages/LegalCGU"));
 const LegalCGV = lazyWithRetry(() => import("./pages/LegalCGV"));
+const TrustPage = lazyWithRetry(() => import("./pages/TrustPage"));
+const TrustSubprocessorsPage = lazyWithRetry(
+  () => import("./pages/TrustSubprocessorsPage"),
+);
 const PaymentSuccess = lazyWithRetry(() => import("./pages/PaymentSuccess"));
 const PaymentCancel = lazyWithRetry(() => import("./pages/PaymentCancel"));
 const StatusPage = lazyWithRetry(() => import("./pages/StatusPage"));
@@ -643,6 +647,38 @@ const AppRoutes = () => {
                               fallback={<PageSkeleton variant="full" />}
                             >
                               <LegalPage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/trust"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="TrustPage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="full" />}
+                            >
+                              <TrustPage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/trust/subprocessors"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="TrustSubprocessorsPage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="full" />}
+                            >
+                              <TrustSubprocessorsPage />
                             </Suspense>
                           </RouteErrorBoundary>
                         }
