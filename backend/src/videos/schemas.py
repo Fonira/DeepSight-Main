@@ -45,6 +45,10 @@ class AnalyzeVideoRequest(BaseModel):
     model: Optional[str] = Field(default=None, description="Modèle Mistral à utiliser")
     deep_research: bool = Field(default=False, description="🆕 Recherche approfondie (Expert only)")
     force_refresh: bool = Field(default=False, description="🆕 Ignorer le cache et forcer une nouvelle analyse")
+    include_visual_analysis: bool = Field(
+        default=False,
+        description="🆕 Phase 2 : enrichir l'analyse avec une couche visuelle (frames + Mistral Vision). Pro/Expert uniquement, +2 crédits, quota mensuel 30 (Pro) / illimité (Expert).",
+    )
 
 
 class AnalyzeVideoV2Request(BaseModel):
@@ -97,6 +101,12 @@ class AnalyzeVideoV2Request(BaseModel):
 
     # Webhook (pour notifications externes)
     webhook_url: Optional[str] = Field(default=None, description="URL de callback quand l'analyse est terminée")
+
+    # 🆕 Phase 2 : Visual Analysis (frames + Mistral Vision)
+    include_visual_analysis: bool = Field(
+        default=False,
+        description="🆕 Phase 2 : enrichir l'analyse avec une couche visuelle (storyboards YouTube + Mistral Vision). Pro/Expert uniquement, +2 crédits, quota mensuel 30 (Pro) / illimité (Expert).",
+    )
 
     class Config:
         json_schema_extra = {

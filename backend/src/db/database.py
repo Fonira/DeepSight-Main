@@ -1599,6 +1599,49 @@ class HubWorkspace(Base):
     )
 
 
+class VisualAnalysisQuota(Base):
+    """Quota mensuel d'analyses visuelles (Phase 2 Visual Analysis).
+
+    Tracke la consommation de la feature `include_visual_analysis` dans
+    AnalyzeVideoRequest / AnalyzeVideoV2Request. Quotas appliqués :
+      - Free  : 0 (CTA upsell, jamais incrémenté)
+      - Pro   : 30 / mois calendaire (period = "YYYY-MM")
+      - Expert: illimité (track quand même pour analytics)
+
+    Spec : 01-Projects/DeepSight/Sessions/2026-05-06-visual-analysis-phase-2-spec.md
+    Migration : alembic 019_visual_analysis_quota.py.
+    """
+
+    __tablename__ = "visual_analysis_quota"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Mois calendaire au format YYYY-MM (ex: "2026-05")
+    period = Column(String(7), nullable=False, index=True)
+    count = Column(Integer, nullable=False, default=0, server_default="0")
+    last_used_at = Column(
+        DateTime,
+        default=func.now(),
+        server_default=func.now(),
+        nullable=False,
+    )
+    created_at = Column(
+        DateTime,
+        default=func.now(),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("ix_visual_quota_user_period", "user_id", "period", unique=True),
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📨 EMAIL DLQ — Dead Letter Queue for failed Resend emails
 # ═══════════════════════════════════════════════════════════════════════════════
