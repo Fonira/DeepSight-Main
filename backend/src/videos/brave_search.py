@@ -10,12 +10,24 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import hashlib
+import logging
 import re
 from typing import Optional, List, Dict, Tuple
 from dataclasses import dataclass
 
+from core.cache import cache_service
 from core.config import get_brave_key
 from core.http_client import shared_http_client
+
+logger = logging.getLogger(__name__)
+
+# ── Cache TTLs (cost optimisation) ───────────────────────────────────────────
+# Fact-check : 72h — sujets d'actualité, on évite de servir trop ancien.
+# Deep research : 30j — recherche externe peu volatile, gros gain de cache.
+_FACTCHECK_CACHE_TTL = 72 * 3600
+_DEEP_RESEARCH_CACHE_TTL = 30 * 86400
+_CACHE_VERSION = "v1"  # Bump pour invalider tout le cache d'un coup si besoin
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -32,6 +44,67 @@ class BraveSearchResult:
     sources: List[Dict[str, str]]  # [{title, url, snippet}]
     query: str
     error: Optional[str] = None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 💾 CACHE HELPERS (cost optimisation)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _content_digest(video_title: str, video_channel: str, transcript: str) -> str:
+    """Hash stable du contenu vidéo (fallback si video_id absent)."""
+    payload = f"{video_title}|{video_channel}|{transcript[:1500]}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
+
+
+def _factcheck_cache_key(
+    video_id: Optional[str], video_title: str, video_channel: str, transcript: str, lang: str
+) -> str:
+    identity = f"id:{video_id}" if video_id else f"h:{_content_digest(video_title, video_channel, transcript)}"
+    return f"brave:factcheck:{_CACHE_VERSION}:{lang}:{identity}"
+
+
+def _deep_research_cache_key(
+    video_id: Optional[str], video_title: str, video_channel: str, transcript: str, lang: str
+) -> str:
+    identity = f"id:{video_id}" if video_id else f"h:{_content_digest(video_title, video_channel, transcript)}"
+    return f"brave:deepresearch:{_CACHE_VERSION}:{lang}:{identity}"
+
+
+async def _increment_brave_request_counter() -> None:
+    """Compteur quotidien d'appels HTTP réels à Brave Search (best-effort, jamais bloquant).
+
+    Permet de mesurer l'impact des optimisations cache sur la facture Brave
+    sans avoir à attendre la facture mensuelle. Lecture via admin/stats.
+    """
+    try:
+        from datetime import datetime, timezone
+
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        key = f"brave:requests:daily:{date}"
+        current = await cache_service.get(key)
+        if not isinstance(current, int):
+            current = 0
+        # 35j de rétention pour avoir un mois glissant + marge
+        await cache_service.set(key, current + 1, ttl=35 * 86400)
+    except Exception as exc:
+        logger.debug("brave counter increment skipped: %s", exc)
+
+
+def _serialize_factcheck_payload(context_text: Optional[str], sources: List[Dict[str, str]]) -> Dict[str, object]:
+    return {"context_text": context_text, "sources": sources}
+
+
+def _deserialize_factcheck_payload(
+    payload: Dict[str, object],
+) -> Tuple[Optional[str], List[Dict[str, str]]]:
+    context_text = payload.get("context_text") if isinstance(payload, dict) else None
+    sources = payload.get("sources") if isinstance(payload, dict) else None
+    if not isinstance(sources, list):
+        sources = []
+    if context_text is not None and not isinstance(context_text, str):
+        context_text = None
+    return context_text, sources
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -108,6 +181,9 @@ async def _call_brave_api(query: str, count: int = 5) -> BraveSearchResult:
     if len(query) > 400:
         query = query[:397] + "..."
 
+    # Compteur quotidien — mesure l'impact des optimisations cache
+    await _increment_brave_request_counter()
+
     try:
         async with shared_http_client() as client:
             response = await client.get(
@@ -183,7 +259,11 @@ async def _call_brave_api(query: str, count: int = 5) -> BraveSearchResult:
 
 
 async def get_brave_factcheck_context(
-    video_title: str, video_channel: str, transcript: str, lang: str = "fr"
+    video_title: str,
+    video_channel: str,
+    transcript: str,
+    lang: str = "fr",
+    video_id: Optional[str] = None,
 ) -> Tuple[Optional[str], List[Dict[str, str]]]:
     """
     Exécute 2-3 recherches Brave pour fact-checker le contenu vidéo.
@@ -197,6 +277,19 @@ async def get_brave_factcheck_context(
     if not api_key:
         print("⏭️ [BRAVE] Skipped — no API key", flush=True)
         return None, []
+
+    # ── Cache lookup (TTL 72h) ───────────────────────────────────────────────
+    cache_key = _factcheck_cache_key(video_id, video_title, video_channel, transcript, lang)
+    try:
+        cached = await cache_service.get(cache_key)
+    except Exception as exc:
+        logger.warning("brave factcheck cache GET error: %s", exc)
+        cached = None
+    if cached is not None:
+        ctx, src = _deserialize_factcheck_payload(cached)
+        if ctx is not None:
+            print(f"💾 [BRAVE] Fact-check cache HIT ({len(src)} sources) — saved 2-3 API calls", flush=True)
+            return ctx, src
 
     # Générer les requêtes intelligentes
     queries = generate_factcheck_queries(
@@ -256,6 +349,17 @@ async def get_brave_factcheck_context(
     success_count = sum(1 for r in results if isinstance(r, BraveSearchResult) and r.success)
     print(f"✅ [BRAVE] {success_count}/{len(queries)} queries OK — {len(all_sources)} unique sources", flush=True)
 
+    # ── Cache store (TTL 72h, succès uniquement) ─────────────────────────────
+    if success_count > 0:
+        try:
+            await cache_service.set(
+                cache_key,
+                _serialize_factcheck_payload(context_text, all_sources),
+                ttl=_FACTCHECK_CACHE_TTL,
+            )
+        except Exception as exc:
+            logger.warning("brave factcheck cache SET error: %s", exc)
+
     return context_text, all_sources
 
 
@@ -309,13 +413,30 @@ def generate_deep_research_queries(
 
 
 async def get_brave_deep_research_context(
-    video_title: str, video_channel: str, transcript: str, lang: str = "fr"
+    video_title: str,
+    video_channel: str,
+    transcript: str,
+    lang: str = "fr",
+    video_id: Optional[str] = None,
 ) -> "Tuple[Optional[str], List[Dict[str, str]]]":
     """🔬 Deep Research: 5 requêtes × 8 résultats = ~40 sources."""
     api_key = get_brave_key()
     if not api_key:
         print("⏭️ [BRAVE DEEP] Skipped — no API key", flush=True)
         return None, []
+
+    # ── Cache lookup (TTL 30j) ───────────────────────────────────────────────
+    cache_key = _deep_research_cache_key(video_id, video_title, video_channel, transcript, lang)
+    try:
+        cached = await cache_service.get(cache_key)
+    except Exception as exc:
+        logger.warning("brave deep research cache GET error: %s", exc)
+        cached = None
+    if cached is not None:
+        ctx, src = _deserialize_factcheck_payload(cached)
+        if ctx is not None:
+            print(f"💾 [BRAVE DEEP] Cache HIT ({len(src)} sources) — saved ~40 API calls", flush=True)
+            return ctx, src
 
     queries = generate_deep_research_queries(
         video_title=video_title,
@@ -370,5 +491,16 @@ async def get_brave_deep_research_context(
 
     success_count = sum(1 for r in results if isinstance(r, BraveSearchResult) and r.success)
     print(f"✅ [BRAVE DEEP] {success_count}/{len(queries)} queries OK — {len(all_sources)} unique sources", flush=True)
+
+    # ── Cache store (TTL 30j, succès uniquement) ─────────────────────────────
+    if success_count > 0:
+        try:
+            await cache_service.set(
+                cache_key,
+                _serialize_factcheck_payload(context_text, all_sources),
+                ttl=_DEEP_RESEARCH_CACHE_TTL,
+            )
+        except Exception as exc:
+            logger.warning("brave deep research cache SET error: %s", exc)
 
     return context_text, all_sources
