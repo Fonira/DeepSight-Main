@@ -2,6 +2,19 @@ import React, { useEffect, useRef } from "react";
 import { useSemanticHighlight } from "./useSemanticHighlight";
 import type { WithinMatch } from "../../services/api";
 
+/**
+ * Hard cap on the number of <mark> nodes rendered. Beyond this, performance
+ * degrades quickly (DOM mutations + scroll-into-view) and the UX becomes noisy
+ * — the user can refine the query instead.
+ */
+const MAX_MARKS = 50;
+
+/**
+ * Tags whose text content must NEVER be wrapped (preserves code blocks,
+ * keyboard hints and pre-formatted text exactly as the author wrote them).
+ */
+const SKIP_PARENT_TAGS = new Set(["CODE", "PRE", "KBD"]);
+
 interface Props {
   /** Tab identity — only matches for this tab are rendered */
   tab: WithinMatch["tab"];
@@ -38,14 +51,34 @@ export const HighlightedText: React.FC<Props> = ({
 
     if (!ctx || ctx.matches.length === 0) return;
 
-    const tabMatches = ctx.matches.filter((m) => m.tab === tab);
+    // Hard cap — only consider the top-N matches. Backend already orders by
+    // score, so this preserves the most relevant passages.
+    const tabMatches = ctx.matches
+      .filter((m) => m.tab === tab)
+      .slice(0, MAX_MARKS);
     if (tabMatches.length === 0) return;
 
-    // 2. Walk text nodes and wrap exact `text` occurrences
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    // 2. Walk text nodes and wrap exact `text` occurrences. Skip nodes whose
+    //    closest parent is a <code>, <pre>, or <kbd> — we never alter inline
+    //    code blocks or keyboard hints.
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => {
+        let parent: Node | null = n.parentNode;
+        while (parent && parent !== root) {
+          if (
+            parent.nodeType === Node.ELEMENT_NODE &&
+            SKIP_PARENT_TAGS.has((parent as Element).tagName)
+          ) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          parent = parent.parentNode;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
     const targets: { node: Text; match: WithinMatch }[] = [];
     let node: Node | null = walker.nextNode();
-    while (node) {
+    while (node && targets.length < MAX_MARKS) {
       const txt = node.nodeValue ?? "";
       for (const m of tabMatches) {
         const idx = txt.indexOf(m.text);

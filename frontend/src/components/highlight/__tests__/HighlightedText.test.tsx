@@ -79,4 +79,46 @@ describe("HighlightedText", () => {
     );
     expect(container.querySelector("mark.ds-highlight")).toBeNull();
   });
+
+  it("caps the number of marks rendered to 50 (hard cap)", () => {
+    // Build 60 matches all targeting the same passage text — only 50 should be wrapped.
+    const matches: WithinMatch[] = Array.from({ length: 60 }, (_, i) => ({
+      ...mockMatch,
+      passage_id: `cap-${i}`,
+      text: `cap${i}`,
+    }));
+    const Wrapper = wrap(matches);
+    const paragraphs = matches.map((m) => `<span>${m.text}</span>`).join(" ");
+    const { container } = render(
+      <Wrapper>
+        <HighlightedText tab="synthesis">
+          <p dangerouslySetInnerHTML={{ __html: paragraphs }} />
+        </HighlightedText>
+      </Wrapper>,
+    );
+    const marks = container.querySelectorAll("mark.ds-highlight");
+    expect(marks.length).toBeLessThanOrEqual(50);
+  });
+
+  it("does not wrap text inside <code>, <pre> or <kbd>", () => {
+    const Wrapper = wrap([mockMatch]);
+    const { container } = render(
+      <Wrapper>
+        <HighlightedText tab="synthesis">
+          <div>
+            <p>La transition énergétique impose une refonte.</p>
+            <pre>La transition énergétique appartient au pre.</pre>
+            <code>La transition énergétique appartient au code.</code>
+            <kbd>La transition énergétique appartient au kbd.</kbd>
+          </div>
+        </HighlightedText>
+      </Wrapper>,
+    );
+    const marks = container.querySelectorAll("mark.ds-highlight");
+    // Only the <p> match should be wrapped, not the pre/code/kbd ones.
+    expect(marks.length).toBe(1);
+    expect(marks[0].closest("pre")).toBeNull();
+    expect(marks[0].closest("code")).toBeNull();
+    expect(marks[0].closest("kbd")).toBeNull();
+  });
 });
