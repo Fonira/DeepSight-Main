@@ -104,12 +104,17 @@ export const useAnalysisStore = create<AnalysisStore>()(
     {
       name: "analysis-store",
       storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
       // Only persist user preferences and cached data, not transient analysis state
       partialize: (state) => ({
         options: state.options,
         recentSummaries: state.recentSummaries,
         favorites: state.favorites,
       }),
+      // First versioned schema. Bump `version` and branch on `from` when the
+      // shape of persisted fields changes, otherwise AsyncStorage will replay
+      // an incompatible payload at app start.
+      migrate: (persistedState, _from) => persistedState as AnalysisStore,
     },
   ),
 );

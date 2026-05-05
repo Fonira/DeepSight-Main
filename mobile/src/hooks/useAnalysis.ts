@@ -6,6 +6,7 @@ import type { AnalysisOptionsV2 } from "../types/v2";
 export function useAnalysis() {
   const store = useAnalysisStore();
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isMountedRef = useRef(true);
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
@@ -37,6 +38,9 @@ export function useAnalysis() {
         pollingRef.current = setInterval(async () => {
           try {
             const data = await videoApi.getStatus(taskId);
+            // A request can resolve after the hook unmounts and the interval
+            // has been cleared — avoid mutating the store in that window.
+            if (!isMountedRef.current) return;
 
             if (data.status === "processing") {
               store.setProgress(data.progress || 0);
@@ -53,6 +57,7 @@ export function useAnalysis() {
               store.failAnalysis(data.error || "Analysis failed");
             }
           } catch {
+            if (!isMountedRef.current) return;
             stopPolling();
             store.failAnalysis("Connection lost");
           }
@@ -65,7 +70,11 @@ export function useAnalysis() {
   );
 
   useEffect(() => {
-    return () => stopPolling();
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      stopPolling();
+    };
   }, [stopPolling]);
 
   return {
