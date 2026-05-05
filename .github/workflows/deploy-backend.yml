@@ -64,7 +64,7 @@ jobs:
       # ---------------------------------------------------------------------
       - name: Build and deploy on Hetzner VPS
         id: deploy
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ env.HETZNER_HOST }}
           username: ${{ env.HETZNER_USER }}
@@ -150,7 +150,7 @@ jobs:
       # ---------------------------------------------------------------------
       - name: Rollback to previous image
         if: failure() && steps.deploy.outcome == 'success' && steps.healthcheck.outcome == 'failure'
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ env.HETZNER_HOST }}
           username: ${{ env.HETZNER_USER }}
