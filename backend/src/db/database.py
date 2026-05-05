@@ -1585,6 +1585,87 @@ class HubWorkspace(Base):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 📨 EMAIL DLQ — Dead Letter Queue for failed Resend emails
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class EmailDLQ(Base):
+    """Email Dead Letter Queue — emails dont l'envoi a définitivement échoué.
+
+    Sprint scalabilité — chantier B (fix bug Resend 429 errors).
+
+    Persiste les emails après :
+    - N retries Resend exhaustés (429 / 5xx serveur Resend)
+    - Erreurs 4xx non recoverables (422 template, 403 from non vérifié, etc.)
+
+    Replay manuel via `POST /api/admin/email-dlq/{id}/replay`.
+
+    Migration : alembic 019_add_email_dlq.py.
+    """
+
+    __tablename__ = "email_dlq"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Email payload (suffisant pour replay)
+    email_to = Column(String(320), nullable=False)  # RFC 5321 max
+    subject = Column(String(500), nullable=False)
+    body_html = Column(Text, nullable=False)
+    body_text = Column(Text, nullable=True)
+    template_name = Column(String(100), nullable=True)
+    priority = Column(Boolean, default=False, server_default=text("false"), nullable=False)
+
+    # Diagnostic
+    failed_at = Column(
+        DateTime, default=func.now(), server_default=func.now(), nullable=False, index=True
+    )
+    error_message = Column(Text, nullable=True)
+    error_status_code = Column(Integer, nullable=True)
+    attempts = Column(Integer, default=1, server_default=text("1"), nullable=False)
+
+    # Replay state machine
+    # pending      → en attente de replay manuel
+    # replayed     → replay manuel réussi
+    # failed_again → replay manuel ré-échoué (laissé en attente d'un autre essai)
+    # abandoned    → admin a marqué comme abandonné (template foireux, etc.)
+    replay_status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
+    replayed_at = Column(DateTime, nullable=True)
+    replayed_by_admin_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Bookkeeping
+    created_at = Column(
+        DateTime, default=func.now(), server_default=func.now(), nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=func.now(),
+        onupdate=func.now(),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("idx_email_dlq_status_failed_at", "replay_status", "failed_at"),
+        Index("idx_email_dlq_email_to", "email_to"),
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTIONS DATABASE
 # ═══════════════════════════════════════════════════════════════════════════════
 

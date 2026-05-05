@@ -13,12 +13,23 @@ Sequence :
 Strategie : Eduquer d'abord, monetiser ensuite.
   → Appele toutes les heures via APScheduler (main.py)
   → Idempotent : ne renvoie jamais un email deja envoye
-  → Safety cap: max 30 emails par run
+  → Safety cap: max 30 emails par run (legacy)
+
+Sprint scalabilité — chantier B :
+- ÉTALEMENT BURST : si plus de ``ONBOARDING_BURST_THRESHOLD`` emails sont à
+  envoyer, on étale les envois sur ``ONBOARDING_SPREAD_WINDOW_SECONDS``
+  (1 email toutes les ``ONBOARDING_BURST_INTERVAL_SECONDS``). Cela laisse de la
+  marge aux emails transactionnels (verification, reset password, payment
+  success) qui passent en priorité dans la queue mais sont toujours bridés par
+  le rate limiter Resend (10 req/s global).
+- ``email_service.send_email`` propage maintenant ``user_id`` + ``template_name``
+  jusqu'à la DLQ pour traçabilité du replay manuel.
 
 Tracking : Table onboarding_email_log (auto-creee si absente).
 """
 
 import asyncio
+import os
 from datetime import datetime, timedelta
 from sqlalchemy import (
     Column,
@@ -36,8 +47,25 @@ from services.email_service import EmailService
 from core.config import APP_NAME, FRONTEND_URL
 from core.logging import logger
 
-# Resend rate limit: 2 req/sec → 0.6s entre chaque envoi pour marge
+# Resend rate limit: 2 req/sec → 0.6s entre chaque envoi pour marge.
+# Note: la queue email_queue + le rate limiter global gèrent déjà le cap dur,
+# ce throttle local sert juste à smooth le pacing dans le cron.
 RESEND_THROTTLE_SECONDS = 0.6
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Étalement burst (sprint scalabilité — chantier B)
+# ─────────────────────────────────────────────────────────────────────────────
+# Si plus de N emails sont à envoyer dans un seul run, on étale sur W secondes
+# pour laisser de la marge aux emails transactionnels (login, payment, etc.).
+ONBOARDING_BURST_THRESHOLD: int = int(os.environ.get("ONBOARDING_BURST_THRESHOLD", "30"))
+ONBOARDING_SPREAD_WINDOW_SECONDS: int = int(
+    os.environ.get("ONBOARDING_SPREAD_WINDOW_SECONDS", "300")  # 5 minutes
+)
+# Per-email floor when burst-spreading (1/10s = 0.1 req/s pour onboarding,
+# le reste de la bande passante Resend reste dispo pour le transactionnel).
+ONBOARDING_BURST_INTERVAL_SECONDS: float = float(
+    os.environ.get("ONBOARDING_BURST_INTERVAL_SECONDS", "10.0")
+)
 
 email_service = EmailService()
 
@@ -111,6 +139,8 @@ async def _send_j1_first_analysis(user: User) -> bool:
             f"Commencez : {FRONTEND_URL}/dashboard\n\n"
             f"— {APP_NAME}"
         ),
+        user_id=user.id,
+        template_name="onboarding_j1.html",
     )
 
 
@@ -129,6 +159,8 @@ async def _send_j3_chat_discovery(user: User) -> bool:
             f"Essayez : {FRONTEND_URL}/dashboard\n\n"
             f"— {APP_NAME}"
         ),
+        user_id=user.id,
+        template_name="onboarding_j3.html",
     )
 
 
@@ -147,6 +179,8 @@ async def _send_j5_flashcards(user: User) -> bool:
             f"Generez vos flashcards : {FRONTEND_URL}/dashboard\n\n"
             f"— {APP_NAME}"
         ),
+        user_id=user.id,
+        template_name="onboarding_j5.html",
     )
 
 
@@ -173,6 +207,8 @@ async def _send_j7_weekly_recap(user: User) -> bool:
             f"Astuce : utilisez le chat pour poser des questions sur vos videos.\n\n"
             f"— {APP_NAME}"
         ),
+        user_id=user.id,
+        template_name="onboarding_j7.html",
     )
 
 
@@ -190,6 +226,8 @@ async def _send_j10_european_ai(user: User) -> bool:
             f"Vos donnees restent en Europe. Conforme RGPD.\n\n"
             f"— {APP_NAME}"
         ),
+        user_id=user.id,
+        template_name="onboarding_j10.html",
     )
 
 
@@ -216,6 +254,8 @@ async def _send_j14_trial_cta(user: User) -> bool:
             f"Annulez a tout moment, aucun engagement.\n\n"
             f"— {APP_NAME}"
         ),
+        user_id=user.id,
+        template_name="onboarding_j14.html",
     )
 
 
@@ -242,12 +282,48 @@ LEGACY_KEY_MAP = {"j2": "j3"}  # j2 feature discovery → now j3
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+async def _plan_due_emails(
+    db: AsyncSession, users: list, now: datetime
+) -> list[tuple[User, str, callable]]:
+    """Compute the (user, email_key, sender_fn) tuples that are due to send.
+
+    Idempotent: skips keys already in onboarding_email_log. Honored by both
+    the burst path (étalement) and the legacy fast path (no spread).
+    """
+    due: list[tuple[User, str, callable]] = []
+    for user in users:
+        try:
+            sent_keys = await _get_sent_keys(db, user.id)
+            for old_key, new_key in LEGACY_KEY_MAP.items():
+                if old_key in sent_keys:
+                    sent_keys.add(new_key)
+
+            days_since_signup = (now - user.created_at).days
+            for email_key, min_days, sender_fn in ONBOARDING_SEQUENCE:
+                if days_since_signup >= min_days and email_key not in sent_keys:
+                    due.append((user, email_key, sender_fn))
+        except Exception as e:
+            logger.error(
+                "Onboarding planning error",
+                extra={"user_id": user.id, "error": str(e)},
+            )
+    return due
+
+
 async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
     """
     Traite les emails onboarding pour tous les utilisateurs eligibles.
     Idempotent — safe a appeler toutes les heures.
 
-    Returns: {"j1_sent": N, ..., "errors": N, "users_checked": N}
+    Sprint scalabilité — chantier B :
+    - Si plus de ``ONBOARDING_BURST_THRESHOLD`` (default 30) emails sont à
+      envoyer dans ce run, on étale les envois sur
+      ``ONBOARDING_SPREAD_WINDOW_SECONDS`` (default 5min) à raison de
+      1 email toutes les ``ONBOARDING_BURST_INTERVAL_SECONDS`` (default 10s).
+    - Le rate limiter global (token bucket Redis) reste seul juge final du
+      pacing, ce sleep local laisse juste de la marge pour le transactionnel.
+
+    Returns: {"j1_sent": N, ..., "errors": N, "users_checked": N, "burst_spread": bool}
     """
     await _ensure_table_exists(db)
 
@@ -255,6 +331,8 @@ async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
     stats = {f"{key}_sent": 0 for key, _, _ in ONBOARDING_SEQUENCE}
     stats["errors"] = 0
     stats["users_checked"] = 0
+    stats["burst_spread"] = 0  # 0 or 1, surfacé pour les métriques cron
+    stats["due_count"] = 0
 
     # Only process users signed up between 1 and 30 days ago
     cutoff_old = now - timedelta(days=30)
@@ -269,46 +347,58 @@ async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
             )
         )
     )
-    users = result.scalars().all()
+    users = list(result.scalars().all())
     stats["users_checked"] = len(users)
 
-    # Safety cap — max 30 emails par run (Resend rate limiting)
-    MAX_EMAILS_PER_RUN = 30
+    # Plan all due emails first → décide ensuite si on étale le burst.
+    due = await _plan_due_emails(db, users, now)
+    stats["due_count"] = len(due)
+
+    # Cap dur global (legacy safety) — dérivé de la fenêtre d'étalement quand
+    # le burst est actif (ex: 5min × 1/10s = 30 emails/run en burst).
+    use_burst_spread = len(due) > ONBOARDING_BURST_THRESHOLD
+    if use_burst_spread:
+        max_emails_per_run = max(
+            ONBOARDING_BURST_THRESHOLD,
+            int(ONBOARDING_SPREAD_WINDOW_SECONDS / ONBOARDING_BURST_INTERVAL_SECONDS),
+        )
+        spread_interval = ONBOARDING_BURST_INTERVAL_SECONDS
+        stats["burst_spread"] = 1
+        logger.warning(
+            "onboarding.burst_spread",
+            extra={
+                "metric": "onboarding.burst_spread",
+                "due_count": len(due),
+                "spread_window_seconds": ONBOARDING_SPREAD_WINDOW_SECONDS,
+                "interval_seconds": spread_interval,
+                "max_emails_per_run": max_emails_per_run,
+            },
+        )
+    else:
+        max_emails_per_run = max(ONBOARDING_BURST_THRESHOLD, 30)
+        spread_interval = RESEND_THROTTLE_SECONDS
+
     emails_sent_this_run = 0
 
-    for user in users:
-        if emails_sent_this_run >= MAX_EMAILS_PER_RUN:
+    for user, email_key, sender_fn in due:
+        if emails_sent_this_run >= max_emails_per_run:
             logger.warning(
                 "Onboarding cron hit MAX_EMAILS_PER_RUN cap",
-                extra={"cap": MAX_EMAILS_PER_RUN},
+                extra={"cap": max_emails_per_run, "burst_spread": bool(stats["burst_spread"])},
             )
             break
 
         try:
-            sent_keys = await _get_sent_keys(db, user.id)
-            # Map legacy keys
-            for old_key, new_key in LEGACY_KEY_MAP.items():
-                if old_key in sent_keys:
-                    sent_keys.add(new_key)
-
-            days_since_signup = (now - user.created_at).days
-
-            for email_key, min_days, sender_fn in ONBOARDING_SEQUENCE:
-                if emails_sent_this_run >= MAX_EMAILS_PER_RUN:
-                    break
-
-                if days_since_signup >= min_days and email_key not in sent_keys:
-                    await asyncio.sleep(RESEND_THROTTLE_SECONDS)
-                    success = await sender_fn(user)
-                    if success:
-                        await _mark_email_sent(db, user.id, email_key)
-                        stats[f"{email_key}_sent"] += 1
-                        emails_sent_this_run += 1
-                        sent_keys.add(email_key)
-                        logger.info(
-                            f"Onboarding {email_key} sent",
-                            extra={"user_id": user.id, "email": user.email},
-                        )
+            await asyncio.sleep(spread_interval)
+            success = await sender_fn(user)
+            if success:
+                await _mark_email_sent(db, user.id, email_key)
+                stats[f"{email_key}_sent"] += 1
+                emails_sent_this_run += 1
+                logger.info(
+                    f"Onboarding {email_key} sent",
+                    extra={"user_id": user.id, "email": user.email},
+                )
 
         except Exception as e:
             stats["errors"] += 1

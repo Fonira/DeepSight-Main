@@ -101,6 +101,7 @@ from billing.router import router as billing_router
 from billing.voice_packs_router import router as voice_packs_router
 from admin.router import router as admin_router
 from admin.finetuning_router import router as finetuning_router
+from admin.email_dlq_router import router as email_dlq_router
 from exports.router import router as exports_router
 from playlists.router import router as playlists_router
 from history.history_router import router as history_router
@@ -1084,6 +1085,7 @@ logger.info("Billing router loaded (available at /api/billing and /api/stripe)")
 logger.info("Voice packs router loaded (available at /api/billing/voice-packs)")
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(finetuning_router, prefix="/api/admin/finetune", tags=["Fine-tuning"])
+app.include_router(email_dlq_router, prefix="/api/admin", tags=["Admin — Email DLQ"])
 app.include_router(exports_router, prefix="/api/exports", tags=["Exports"])
 app.include_router(playlists_router, prefix="/api/playlists", tags=["Playlists"])
 app.include_router(history_router, prefix="/api/history", tags=["History"])

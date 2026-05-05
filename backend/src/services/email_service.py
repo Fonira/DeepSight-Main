@@ -1,6 +1,12 @@
 """
 EmailService — Transactional emails via Resend + Jinja2 templates
 Tous les envois passent par la queue async avec throttling (email_queue.py).
+
+Sprint scalabilité — chantier B :
+- ``template_name`` est maintenant tracé pour la DLQ (visible dans
+  ``GET /api/admin/email-dlq``).
+- Les retries 429/5xx, le DLQ et le rate limiter global vivent dans
+  ``services/email_queue.py`` et ``core/email_rate_limiter.py``.
 """
 
 from pathlib import Path
@@ -38,6 +44,8 @@ class EmailService:
         html_content: str,
         text_content: Optional[str] = None,
         priority: bool = False,
+        user_id: Optional[int] = None,
+        template_name: Optional[str] = None,
     ) -> bool:
         """
         Queue an email for sending via the throttled email queue.
@@ -45,6 +53,8 @@ class EmailService:
 
         Args:
             priority: True for critical emails (verification, password reset)
+            user_id: ID utilisateur cible (DLQ tracking)
+            template_name: Nom du template Jinja (DLQ tracking)
         """
         from services.email_queue import email_queue
 
@@ -54,6 +64,8 @@ class EmailService:
             html=html_content,
             text=text_content or "",
             priority=priority,
+            user_id=user_id,
+            template_name=template_name,
         )
 
     # ------------------------------------------------------------------
@@ -68,7 +80,7 @@ class EmailService:
     # High-level email methods
     # ------------------------------------------------------------------
 
-    async def send_welcome(self, to: str, username: str) -> bool:
+    async def send_welcome(self, to: str, username: str, user_id: Optional[int] = None) -> bool:
         html = self._render("welcome.html", username=username)
         return await self.send_email(
             to=to,
@@ -80,9 +92,13 @@ class EmailService:
                 f"Commencez ici : {FRONTEND_URL}/dashboard\n\n"
                 f"— L'equipe {APP_NAME}"
             ),
+            user_id=user_id,
+            template_name="welcome.html",
         )
 
-    async def send_verification(self, to: str, username: str, code: str) -> bool:
+    async def send_verification(
+        self, to: str, username: str, code: str, user_id: Optional[int] = None
+    ) -> bool:
         html = self._render("verification.html", username=username, code=code)
         return await self.send_email(
             to=to,
@@ -95,9 +111,13 @@ class EmailService:
                 f"— {APP_NAME}"
             ),
             priority=True,
+            user_id=user_id,
+            template_name="verification.html",
         )
 
-    async def send_reset_password(self, to: str, reset_url: str) -> bool:
+    async def send_reset_password(
+        self, to: str, reset_url: str, user_id: Optional[int] = None
+    ) -> bool:
         html = self._render("reset_password.html", reset_url=reset_url)
         return await self.send_email(
             to=to,
@@ -109,9 +129,14 @@ class EmailService:
                 f"Ce lien expire dans 1 heure.\n"
                 f"— {APP_NAME}"
             ),
+            priority=True,
+            user_id=user_id,
+            template_name="reset_password.html",
         )
 
-    async def send_payment_success(self, to: str, username: str, plan: str, credits: int) -> bool:
+    async def send_payment_success(
+        self, to: str, username: str, plan: str, credits: int, user_id: Optional[int] = None
+    ) -> bool:
         plan_display = {"pro": "Pro", "expert": "Expert"}.get(plan, plan.capitalize())
         # Pricing v2 (Alembic 012, mergée 2026-04-30)
         price_display = {"pro": "8,99", "expert": "19,99"}.get(plan, "—")
@@ -132,9 +157,13 @@ class EmailService:
                 f"Credits ajoutes : {credits}\n\n"
                 f"— {APP_NAME}"
             ),
+            user_id=user_id,
+            template_name="payment_success.html",
         )
 
-    async def send_payment_failed(self, to: str, username: str, plan: str) -> bool:
+    async def send_payment_failed(
+        self, to: str, username: str, plan: str, user_id: Optional[int] = None
+    ) -> bool:
         plan_display = {"starter": "Starter", "pro": "Pro", "expert": "Expert"}.get(plan, plan.capitalize())
         html = self._render(
             "payment_failed.html",
@@ -152,6 +181,8 @@ class EmailService:
                 f"{FRONTEND_URL}/settings\n\n"
                 f"— {APP_NAME}"
             ),
+            user_id=user_id,
+            template_name="payment_failed.html",
         )
 
     async def send_trial_ending_reminder(
@@ -160,6 +191,7 @@ class EmailService:
         username: str,
         trial_end_date: str,
         plan: str = "Pro",
+        user_id: Optional[int] = None,
     ) -> bool:
         plan_display = {"pro": "Pro", "expert": "Expert"}.get(plan, plan.capitalize())
         price_display = {"pro": "5,99", "expert": "14,99"}.get(plan, "5,99")
@@ -182,6 +214,8 @@ class EmailService:
                 f"Gerer : {FRONTEND_URL}/settings\n\n"
                 f"— {APP_NAME}"
             ),
+            user_id=user_id,
+            template_name="trial_ending.html",
         )
 
     async def send_analysis_complete(
@@ -190,6 +224,7 @@ class EmailService:
         username: str,
         video_title: str,
         summary_id: str,
+        user_id: Optional[int] = None,
     ) -> bool:
         analysis_url = f"{FRONTEND_URL}/analysis/{summary_id}"
         html = self._render(
@@ -208,6 +243,8 @@ class EmailService:
                 f"Consultez-la ici : {analysis_url}\n\n"
                 f"— {APP_NAME}"
             ),
+            user_id=user_id,
+            template_name="analysis_complete.html",
         )
 
 
