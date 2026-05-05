@@ -1,7 +1,7 @@
 """email_dlq — Dead Letter Queue for failed Resend emails
 
-Revision ID: 019_add_email_dlq
-Revises: 018_hub_workspace
+Revision ID: 020_add_email_dlq
+Revises: 019_add_audit_logs
 Create Date: 2026-05-05
 
 Sprint scalabilité — chantier B (fix bug Resend 429 errors, ~56/24h en prod).
@@ -22,8 +22,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "019_add_email_dlq"
-down_revision: Union[str, None] = "018_hub_workspace"
+revision: str = "020_add_email_dlq"
+down_revision: Union[str, None] = "019_add_audit_logs"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
