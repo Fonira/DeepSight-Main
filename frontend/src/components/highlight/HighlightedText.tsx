@@ -109,7 +109,15 @@ export const HighlightedText: React.FC<Props> = ({
     const tabMatches = ctx.matches
       .filter((m) => m.tab === tab)
       .slice(0, MAX_MARKS);
-    if (tabMatches.length === 0) return;
+    // DON'T early-return on empty tabMatches: a common case is the user
+    // searching for a term that matches transcripts (tab="transcript") but
+    // the visible Hub tab is "synthesis" (no transcript view exists). The
+    // query-word fallback below should still highlight occurrences of the
+    // search term in the currently visible content, even when there are no
+    // tab-specific matches. We only need at least one match (any tab) to
+    // associate marks with a passage_id.
+    const allMatches = ctx.matches.slice(0, MAX_MARKS);
+    if (allMatches.length === 0) return;
 
     // 2. Walk text nodes and wrap exact `text` occurrences. Skip nodes whose
     //    closest parent is a <code>, <pre>, or <kbd> — we never alter inline
@@ -155,7 +163,10 @@ export const HighlightedText: React.FC<Props> = ({
       // 2) Fallback : look for any significant query word in this node.
       //    Each occurrence becomes a separate <mark> associated with the
       //    first match whose passage text contains the same word (so the
-      //    explain tooltip routes to a sensible passage).
+      //    explain tooltip routes to a sensible passage). Falls back to
+      //    `allMatches` when no tab-specific match exists — handles the
+      //    case where the user searched a term matching transcripts but
+      //    is currently viewing the synthesis tab.
       if (!matched && queryWords.length > 0) {
         for (const word of queryWords) {
           const idx = txtLower.indexOf(word);
@@ -163,9 +174,17 @@ export const HighlightedText: React.FC<Props> = ({
             const term = txt.slice(idx, idx + word.length);
             const associatedMatch =
               tabMatches.find((m) => m.text.toLowerCase().includes(word)) ??
-              tabMatches[0];
-            targets.push({ node: node as Text, match: associatedMatch, term });
-            break; // one mark per text node max in fallback mode
+              allMatches.find((m) => m.text.toLowerCase().includes(word)) ??
+              tabMatches[0] ??
+              allMatches[0];
+            if (associatedMatch) {
+              targets.push({
+                node: node as Text,
+                match: associatedMatch,
+                term,
+              });
+              break; // one mark per text node max in fallback mode
+            }
           }
         }
       }

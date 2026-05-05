@@ -684,7 +684,12 @@ const HubPage: React.FC = () => {
           onMenuClick={toggleDrawer}
           onHomeClick={() => navigate("/")}
           onSearchClick={
-            activeTab !== "chat" && summaryIdNum
+            // Show the magnifier whenever a conversation is in scope
+            // (active OR resolved via URL deeplink), even if its summary
+            // hasn't been fetched yet. Strict `summaryIdNum` was hiding
+            // the button during the first paint while the synthetic conv
+            // was still resolving.
+            activeTab !== "chat" && (activeConv || urlConvId || urlSummaryId)
               ? () => setSearchOpen(true)
               : undefined
           }
