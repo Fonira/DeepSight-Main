@@ -8,7 +8,7 @@
  * Backend : timeline unifiée déjà en place (PR #203). Schema HubMessage
  * mappé depuis ChatMessage côté API (source/voice_session_id/time_in_call_secs).
  */
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { videoApi, chatApi, reliabilityApi } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
