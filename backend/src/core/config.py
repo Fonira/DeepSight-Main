@@ -135,6 +135,16 @@ class _DeepSightSettings(BaseSettings):
     VERBOSE_LOGGING: str = "false"
     HEALTH_CHECK_SECRET: str = ""
 
+    # -- Centralized logs (Axiom.co) --
+    # When AXIOM_TOKEN + AXIOM_DATASET_NAME are both set, every backend log line
+    # is shipped (async, non-blocking, drop-on-error) to the Axiom dataset.
+    # If either is empty the handler becomes a no-op — no thread, no HTTP call,
+    # no overhead. See backend/src/core/axiom_handler.py and
+    # docs/RUNBOOK.md §16 for activation details.
+    AXIOM_TOKEN: str = ""
+    AXIOM_DATASET_NAME: str = ""
+    AXIOM_INGEST_URL: str = "https://api.axiom.co"
+
     # -- Analytics (server-side PostHog) --
     # Optional. Server-side capture for events that cannot be tracked client-side
     # (e.g. which web search provider served a query). Best-effort: failures are
