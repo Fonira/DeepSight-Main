@@ -42,7 +42,7 @@ import sqlalchemy as sa
 
 
 revision: str = "017_debate_v2_perspectives"
-down_revision: Union[str, None] = "015_add_search_index_tables"
+down_revision: Union[str, None] = "016_debate_v2_video_b_candidates_cache"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
