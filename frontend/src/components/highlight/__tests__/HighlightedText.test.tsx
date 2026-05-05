@@ -88,9 +88,7 @@ describe("HighlightedText", () => {
       text: `cap${i}`,
     }));
     const Wrapper = wrap(matches);
-    const paragraphs = matches
-      .map((m) => `<span>${m.text}</span>`)
-      .join(" ");
+    const paragraphs = matches.map((m) => `<span>${m.text}</span>`).join(" ");
     const { container } = render(
       <Wrapper>
         <HighlightedText tab="synthesis">
