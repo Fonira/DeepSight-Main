@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import { View, Text, Pressable, StatusBar, StyleSheet } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTabBarFootprint } from "@/hooks/useTabBarFootprint";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -266,13 +266,17 @@ export default function AnalysisDetailScreen() {
     setIsFullscreen((prev) => !prev);
   }, []);
 
-  // Cacher la TabBar globale en mode fullscreen — restaurée au démontage.
-  // Ce store pilote `<CustomTabBar>` directement (cf. tabBarStore.ts).
+  // Cacher la TabBar globale en mode fullscreen — `useFocusEffect` garantit
+  // que la TabBar est réaffichée dès que l'écran perd le focus (back nav,
+  // tab switch, modal stack), pas seulement au démontage. Évite que la
+  // TabBar reste invisible si l'écran crash entre hide(true) et hide(false).
   const setTabBarHidden = useTabBarStore((s) => s.setTabBarHidden);
-  React.useEffect(() => {
-    setTabBarHidden(isFullscreen);
-    return () => setTabBarHidden(false);
-  }, [isFullscreen, setTabBarHidden]);
+  useFocusEffect(
+    React.useCallback(() => {
+      setTabBarHidden(isFullscreen);
+      return () => setTabBarHidden(false);
+    }, [isFullscreen, setTabBarHidden]),
+  );
 
   // Sync PagerView page after fullscreen toggle — the conditional rendering
   // (`!isFullscreen && Pager` vs `isFullscreen && Pager`) causes React to
