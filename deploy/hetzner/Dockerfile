@@ -41,12 +41,23 @@ COPY static/ ./static/
 COPY alembic.ini ./alembic.ini
 COPY alembic/ ./alembic/
 
+# Container entrypoint — runs alembic upgrade head before uvicorn so migrations
+# apply automatically on every container start. Replaces the manual
+# `docker exec repo-backend-1 alembic upgrade head` step that every recent
+# sprint had to do (Débat IA v2, Pricing v2, Semantic Search). Health check +
+# auto-rollback in deploy-backend.yml protect against bad migrations.
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 WORKDIR /app/src
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=30s \
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
     CMD curl -f http://localhost:8080/health || exit 1
+
+# Entrypoint runs alembic upgrade head, then exec's CMD (uvicorn).
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # 4 workers pour 8 vCPU (I/O bound async → 1 worker / 2 vCPU)
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", \
