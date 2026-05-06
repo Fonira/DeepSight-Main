@@ -674,6 +674,8 @@ export const videoApi = {
       tags?: string;
       created_at?: string;
       transcript_context?: string;
+      // Phase 2 — Visual Analysis (Mistral Vision)
+      visual_analysis?: import("../types").VisualAnalysis | null;
     }>(`/api/videos/summary/${summaryId}`);
 
     // Transform backend response to mobile format
@@ -717,6 +719,8 @@ export const videoApi = {
       tags: response.tags,
       reliabilityScore: response.reliability_score,
       creditsUsed: 1, // Default value
+      // 👁️ Phase 2 — Visual Analysis (peut être absent → tab affiche empty state)
+      visual_analysis: response.visual_analysis ?? null,
     } as AnalysisSummary & {
       notes?: string;
       tags?: string;
