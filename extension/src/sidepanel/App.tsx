@@ -4,6 +4,10 @@ import Browser from "../utils/browser-polyfill";
 import { LoginView } from "./views/LoginView";
 import { MainView } from "./views/MainView";
 import { ConversationView } from "./views/ConversationView";
+import {
+  VisualPanelView,
+  type VisualPanelContext,
+} from "./views/VisualPanelView";
 import type { VoicePanelContext, PendingVoiceCall } from "./types";
 import { DeepSightSpinner } from "./shared/DeepSightSpinner";
 import MicroDoodleBackground from "./shared/MicroDoodleBackground";
@@ -66,6 +70,14 @@ export const App: React.FC = () => {
   const [pendingVoiceCall, setPendingVoiceCall] =
     useState<PendingVoiceCall | null>(null);
   const [voiceChecked, setVoiceChecked] = useState(false);
+
+  // Visual panel flow (Phase 2 visual analysis) — symétrique du voice flow.
+  // Le badge YouTube `OPEN_SIDEPANEL_VISUAL` set `visualPanelContext` en
+  // session storage avant d'ouvrir le sidepanel. On lit ce contexte au mount
+  // et on short-circuit la vue Visual si présent.
+  const [visualContext, setVisualContext] =
+    useState<VisualPanelContext | null>(null);
+  const [visualChecked, setVisualChecked] = useState(false);
 
   const [view, setView] = useState<ViewName>("loading");
   const [user, setUser] = useState<User | null>(null);
@@ -136,11 +148,45 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // Lecture du visualPanelContext au mount + cleanup de la clé consommée.
   useEffect(() => {
-    if (voiceChecked && !voiceContext && !pendingVoiceCall) {
+    const session = getSessionStorage();
+    if (!session) {
+      setVisualChecked(true);
+      return;
+    }
+    session
+      .get("visualPanelContext")
+      .then((data) => {
+        const ctx =
+          (data?.visualPanelContext as VisualPanelContext | null) ?? null;
+        setVisualContext(ctx);
+        if (ctx) {
+          // Best-effort cleanup pour éviter de re-trigger au prochain mount.
+          void session.remove?.("visualPanelContext").catch(() => {});
+        }
+      })
+      .catch(() => {})
+      .finally(() => setVisualChecked(true));
+  }, []);
+
+  useEffect(() => {
+    if (
+      voiceChecked &&
+      visualChecked &&
+      !voiceContext &&
+      !pendingVoiceCall &&
+      !visualContext
+    ) {
       checkAuth();
     }
-  }, [voiceChecked, voiceContext, pendingVoiceCall]);
+  }, [
+    voiceChecked,
+    visualChecked,
+    voiceContext,
+    pendingVoiceCall,
+    visualContext,
+  ]);
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -281,8 +327,24 @@ export const App: React.FC = () => {
     return "default";
   }
 
+  // Visual flow short-circuit: when SW set visualPanelContext, render VisualPanelView.
+  if (visualContext) {
+    return (
+      <div className="ds-app-root">
+        <DoodleBackground />
+        <VisualPanelView
+          context={visualContext}
+          onClose={() => {
+            setVisualContext(null);
+          }}
+          onSessionExpired={handleLogout}
+        />
+      </div>
+    );
+  }
+
   // Voice flow short-circuit: when SW set voicePanelContext, render VoiceView only.
-  if (!voiceChecked) {
+  if (!voiceChecked || !visualChecked) {
     return (
       <div className="ds-app-root">
         <DoodleBackground />
