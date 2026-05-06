@@ -10,13 +10,14 @@ describe("HubTabBar", () => {
     factCheckCount: 0,
   };
 
-  it("rend les 6 onglets globaux", () => {
+  it("rend les 7 onglets globaux", () => {
     render(<HubTabBar {...baseProps} />);
     expect(screen.getByRole("tab", { name: /Synthèse/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Quiz/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Flashcards/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Fiabilité/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /GEO/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Visuel/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Chat/ })).toBeInTheDocument();
   });
 

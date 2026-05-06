@@ -111,6 +111,7 @@ const INITIAL: Pick<
     flashcards: 0,
     reliability: 0,
     geo: 0,
+    visual: 0,
     chat: 0,
   },
 };
