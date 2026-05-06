@@ -46,8 +46,8 @@ class AnalyzeVideoRequest(BaseModel):
     deep_research: bool = Field(default=False, description="🆕 Recherche approfondie (Expert only)")
     force_refresh: bool = Field(default=False, description="🆕 Ignorer le cache et forcer une nouvelle analyse")
     include_visual_analysis: bool = Field(
-        default=False,
-        description="🆕 Phase 2 : enrichir l'analyse avec une couche visuelle (frames + Mistral Vision). Pro/Expert uniquement, +2 crédits, quota mensuel 30 (Pro) / illimité (Expert).",
+        default=True,
+        description="🆕 Phase 2 (default ON): enrichir l'analyse avec une couche visuelle (frames + Mistral Vision). Pro/Expert uniquement, quota mensuel 30 (Pro) / illimité (Expert). Free skippé silencieusement par le quota check.",
     )
 
 
@@ -104,8 +104,8 @@ class AnalyzeVideoV2Request(BaseModel):
 
     # 🆕 Phase 2 : Visual Analysis (frames + Mistral Vision)
     include_visual_analysis: bool = Field(
-        default=False,
-        description="🆕 Phase 2 : enrichir l'analyse avec une couche visuelle (storyboards YouTube + Mistral Vision). Pro/Expert uniquement, +2 crédits, quota mensuel 30 (Pro) / illimité (Expert).",
+        default=True,
+        description="🆕 Phase 2 (default ON): enrichir l'analyse avec une couche visuelle (storyboards YouTube + Mistral Vision). Pro/Expert uniquement, quota mensuel 30 (Pro) / illimité (Expert). Free skippé silencieusement par le quota check.",
     )
 
     class Config:
@@ -294,6 +294,12 @@ class SummaryResponse(BaseModel):
     # Mistral à la demande sur le contenu existant. NULL si pas encore généré.
     # Forme : {key_quotes: [{quote, context?}], key_takeaways: [str], chapter_themes: [{theme, summary?}]}
     summary_extras: Optional[Dict[str, Any]] = None
+
+    # 👁️ Visual analysis (Phase 2 plumbing — alembic 024).
+    # Dict sérialisé d'une VisualAnalysis (frames + Mistral Vision).
+    # NULL = pas analysé visuellement (legacy avant Phase 2 plumbing, flag OFF,
+    # quota dépassé, ou Mistral fail).
+    visual_analysis: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True

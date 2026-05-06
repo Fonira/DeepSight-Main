@@ -253,6 +253,12 @@ class Summary(Base):
     # Migration : alembic 022_summary_extras.py.
     summary_extras = Column(JSON, nullable=True)
 
+    # Visual analysis persistence (Phase 2 plumbing — alembic 024).
+    # Dict sérialisé d'une VisualAnalysis (cf videos/visual_analyzer.py) ou None.
+    # Forme : {visual_hook, visual_structure, key_moments[], visible_text,
+    # visual_seo_indicators{}, summary_visual, model_used, frames_analyzed, frames_downsampled}.
+    visual_analysis = Column(JSON, nullable=True)
+
     # Hierarchical Digest Pipeline (Feb 2026)
     full_digest = Column(Text, nullable=True)  # Assembled full digest from chunk digests (~6-10K chars)
 
