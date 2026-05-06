@@ -1673,11 +1673,10 @@ async def _analyze_video_background_v2(
                     )
                     await session.commit()
                     logger.info(
-                        "👁️ [VISUAL_V2] persisted to Summary.visual_analysis (id=%s)",
-                        summary_id,
+                        f"👁️ [VISUAL_V2] persisted to Summary.visual_analysis (id={summary_id})"
                     )
                 except Exception as _vpe:
-                    logger.warning("👁️ [VISUAL_V2] persist failed (graceful): %s", _vpe)
+                    logger.warning(f"👁️ [VISUAL_V2] persist failed (graceful): {_vpe}")
                     await session.rollback()
 
             _task_store[task_id]["progress"] = 97
@@ -2577,11 +2576,10 @@ async def _analyze_video_background_v2_1(
                     )
                     await session.commit()
                     logger.info(
-                        "👁️ [VISUAL_V2.1] persisted to Summary.visual_analysis (id=%s)",
-                        summary_id,
+                        f"👁️ [VISUAL_V2.1] persisted to Summary.visual_analysis (id={summary_id})"
                     )
                 except Exception as _vpe:
-                    logger.warning("👁️ [VISUAL_V2.1] persist failed (graceful): %s", _vpe)
+                    logger.warning(f"👁️ [VISUAL_V2.1] persist failed (graceful): {_vpe}")
                     await session.rollback()
 
             # 🆕 v4.0: Index structuré
@@ -3194,20 +3192,19 @@ async def _analyze_video_background_v6(
                                 # après save_summary() (alembic 024).
                                 _visual_analysis_data = _visual.get("analysis")
                                 logger.info(
-                                    "👁️ [VISUAL] enrichment OK: frames=%d model=%s elapsed=%.1fs",
-                                    _visual.get("frame_count", 0),
-                                    _visual.get("model_used"),
-                                    _visual.get("elapsed_s", 0.0),
+                                    f"👁️ [VISUAL] enrichment OK: "
+                                    f"frames={_visual.get('frame_count', 0)} "
+                                    f"model={_visual.get('model_used')} "
+                                    f"elapsed={_visual.get('elapsed_s', 0.0):.1f}s"
                                 )
                             else:
                                 logger.info(
-                                    "👁️ [VISUAL] skipped: status=%s",
-                                    _visual.get("status"),
+                                    f"👁️ [VISUAL] skipped: status={_visual.get('status')}"
                                 )
                 except Exception as _ve:
                     # Graceful degradation : aucune erreur visuelle ne bloque l'analyse
                     logger.warning(
-                        "👁️ [VISUAL] enrichment raised (graceful): %s", _ve
+                        f"👁️ [VISUAL] enrichment raised (graceful): {_ve}"
                     )
 
             if needs_chunk:
@@ -3435,12 +3432,11 @@ async def _analyze_video_background_v6(
                     )
                     await session.commit()
                     logger.info(
-                        "👁️ [VISUAL] persisted to Summary.visual_analysis (id=%s)",
-                        summary_id,
+                        f"👁️ [VISUAL] persisted to Summary.visual_analysis (id={summary_id})"
                     )
                 except Exception as _vpe:
                     logger.warning(
-                        "👁️ [VISUAL] persist failed (graceful): %s", _vpe
+                        f"👁️ [VISUAL] persist failed (graceful): {_vpe}"
                     )
                     await session.rollback()
 
