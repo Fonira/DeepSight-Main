@@ -23,8 +23,7 @@ import {
 import { DeepSightSpinnerMicro } from "../ui";
 import { AudioPlayerButton } from "../AudioPlayerButton";
 import { AudioSummaryButton } from "../AudioSummaryButton";
-import { EnrichedMarkdown } from "../EnrichedMarkdown";
-import { SummaryEnrichments } from "../summary/SummaryEnrichments";
+import { SummaryNativeView } from "../summary/SummaryNativeView";
 import { DeepResearchSources } from "../SummaryReader";
 import { ConceptsGlossary } from "../ConceptsGlossary";
 import { AcademicSourcesPanel } from "../academic";
@@ -241,27 +240,24 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
       </div>
 
       {/* Content */}
-      <div className="p-4 sm:p-5 prose max-w-none">
-        <EnrichedMarkdown
-          language={language}
-          onTimecodeClick={onTimecodeClick}
-          className="text-text-primary"
-        >
-          {selectedSummary.summary_content || ""}
-        </EnrichedMarkdown>
-
-        {/* 📚 Spike 2026-05-06 — Enrichissements Mistral à la demande
-            (key_quotes + key_takeaways + chapter_themes). Bouton initial
-            si non généré, sinon rendu direct depuis cache DB. */}
-        <div className="mt-6 not-prose">
-          <SummaryEnrichments
+      <div className="p-4 sm:p-5">
+        {/* 📚 Refonte synthèse — Option A 2026-05-06.
+            Vue native sectionnée par défaut (Synthèse / Citations / À retenir /
+            Chapitres). Si `summary_extras` absent (Summary legacy avant Option
+            A) → fallback Markdown direct via <EnrichedMarkdown> à l'intérieur
+            de SummaryNativeView. */}
+        <div className="not-prose">
+          <SummaryNativeView
             summaryId={selectedSummary.id}
-            initialExtras={selectedSummary.summary_extras}
+            extras={selectedSummary.summary_extras}
+            summaryContent={selectedSummary.summary_content || ""}
+            language={language}
+            onTimecodeClick={(seconds) => onTimecodeClick(seconds)}
           />
         </div>
 
         {/* Glossaire des concepts */}
-        <div className="mt-6">
+        <div className="mt-6 not-prose">
           <ConceptsGlossary
             summaryId={selectedSummary.id}
             language={language}

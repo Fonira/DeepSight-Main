@@ -318,15 +318,28 @@ class SummaryQuote(BaseModel):
 
 
 class SummaryChapterTheme(BaseModel):
-    """Un chapitre / thème structuré du Summary (table des matières enrichie)."""
+    """Un chapitre / thème structuré du Summary.
+
+    Étendu 2026-05-06 (Option A) : key_points + key_quote optionnels pour la
+    vue native sectionnée. Backward-compat — un thème v1 (theme + summary) reste
+    valide.
+    """
 
     theme: str
     summary: Optional[str] = None
+    key_points: Optional[List[str]] = None
+    key_quote: Optional[SummaryQuote] = None
 
 
 class SummaryExtrasData(BaseModel):
-    """Forme stockée dans `summaries.summary_extras` (JSON nullable)."""
+    """Forme stockée dans `summaries.summary_extras` (JSON nullable).
 
+    Étendu 2026-05-06 (Option A) : `synthesis` optionnel pour la section
+    overview de la vue native. Backward-compat — un payload v1 sans synthesis
+    ni key_points reste valide.
+    """
+
+    synthesis: Optional[str] = None
     key_quotes: List[SummaryQuote] = Field(default_factory=list)
     key_takeaways: List[str] = Field(default_factory=list)
     chapter_themes: List[SummaryChapterTheme] = Field(default_factory=list)
