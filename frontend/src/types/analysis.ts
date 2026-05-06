@@ -381,3 +381,84 @@ export const WRITING_STYLE_CONFIG = WRITING_TONE_CONFIG as unknown as Record<
     emoji: string;
   }
 >;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎬 VISUAL ANALYSIS — Phase 2 (Mistral Vision sur storyboards YouTube)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Type de structure visuelle détectée dans la vidéo.
+ * Aligné avec le backend (`backend/src/videos/visual_analysis.py`).
+ */
+export type VisualStructure =
+  | "talking_head"
+  | "b_roll"
+  | "gameplay"
+  | "slides"
+  | "tutorial"
+  | "interview"
+  | "vlog"
+  | "mixed"
+  | "other";
+
+/**
+ * Niveau qualitatif utilisé par les indicateurs SEO visuels.
+ */
+export type VisualQualitativeLevel = "low" | "medium" | "high";
+
+/**
+ * Un moment clé identifié visuellement dans la vidéo.
+ */
+export interface VisualKeyMoment {
+  /** Timestamp en secondes depuis le début de la vidéo. */
+  timestamp_s: number;
+  /** Description courte (FR) de ce qui est visible. */
+  description: string;
+  /** Catégorie libre (ex : "title_card", "cta", "infographic"). */
+  type: string;
+}
+
+/**
+ * Indicateurs SEO visuels — destinés à éclairer le potentiel de rétention
+ * et de citation dans les moteurs IA. Tous les champs sont optionnels car
+ * le backend peut renvoyer un sous-ensemble selon le modèle utilisé.
+ */
+export interface VisualSeoIndicators {
+  /** Luminosité du hook d'intro (perçue par Mistral Vision). */
+  hook_brightness?: VisualQualitativeLevel;
+  /** Vrai si un visage est visible dans les ~3 premières secondes. */
+  face_visible_in_hook?: boolean;
+  /** Vrai si des sous-titres "burned-in" (incrustés) sont détectés. */
+  burned_in_subtitles?: boolean;
+  /** Vrai si l'intro contient des mouvements de caméra/zoom rapides. */
+  high_motion_intro?: boolean;
+  /** Estimation qualitative du soin apporté à la miniature/branding. */
+  thumbnail_quality_proxy?: VisualQualitativeLevel;
+}
+
+/**
+ * Payload Visual Analysis renvoyé par /api/videos/analyze quand Phase 2
+ * est activée. Embarqué dans l'objet `analysis` (réponse `Summary`) sous
+ * la clé `visual_analysis`. Peut être null si l'analyse n'a pas été lancée
+ * ou a échoué silencieusement (le tab UI affichera alors un empty state).
+ */
+export interface VisualAnalysis {
+  /** Hook visuel — ce qu'on voit dans les 3 premières secondes. */
+  visual_hook: string;
+  /** Type de structure visuelle dominante. */
+  visual_structure: VisualStructure;
+  /** Liste de moments visuels remarquables (1-10 typiquement). */
+  key_moments: VisualKeyMoment[];
+  /** Texte visible à l'écran (titres, sous-titres incrustés, CTA). */
+  visible_text: string;
+  /** Heuristiques de SEO/rétention dérivées de l'analyse visuelle. */
+  visual_seo_indicators: VisualSeoIndicators;
+  /** Résumé en prose de la couche visuelle. */
+  summary_visual: string;
+  /** Modèle Mistral Vision utilisé (ex: "pixtral-12b-2409"). */
+  model_used: string;
+  /** Nombre de frames extraites du storyboard analysées. */
+  frames_analyzed: number;
+  /** Vrai si le storyboard a été sous-échantillonné (cap budget). */
+  frames_downsampled: boolean;
+}

@@ -125,9 +125,9 @@ describe("HubAnalysisPanel", () => {
     expect(screen.getByTestId("analysis-hub-mock")).toBeInTheDocument();
     expect(screen.getByTestId("ah-summary-id")).toHaveTextContent("42");
     expect(screen.getByTestId("ah-concepts-count")).toHaveTextContent("1");
-    // The 5 tabs are explicitly enabled by HubAnalysisPanel.
+    // The 6 tabs are explicitly enabled by HubAnalysisPanel.
     expect(screen.getByTestId("ah-tabs")).toHaveTextContent(
-      "synthesis,reliability,quiz,flashcards,geo",
+      "synthesis,reliability,quiz,flashcards,geo,visual",
     );
   });
 

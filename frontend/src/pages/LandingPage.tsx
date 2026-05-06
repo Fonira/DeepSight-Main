@@ -49,6 +49,7 @@ import {
   Testimonials,
   TrustBadges,
   SocialProofCounter,
+  VisualAnalysisSection,
 } from "../components/landing";
 import DoodleBackground from "../components/DoodleBackground";
 
@@ -1082,6 +1083,8 @@ const LandingPage: React.FC = () => {
           <DemoChatStatic language={language} />
         </div>
       </section>
+      {/* ─── VISUAL ANALYSIS (Phase 2) ─── */}
+      <VisualAnalysisSection language={language} />
       {/* ─── TESTIMONIALS ─── */}
       <Testimonials language={language} />
       {/* ─── FEATURES ─── */}

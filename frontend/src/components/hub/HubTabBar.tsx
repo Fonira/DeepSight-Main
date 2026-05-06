@@ -5,6 +5,7 @@ import {
   BookMarked,
   Shield,
   Target,
+  Eye,
   MessageCircle,
 } from "lucide-react";
 import type { TabId } from "./types";
@@ -61,6 +62,13 @@ const TABS: TabConfig[] = [
     icon: Target,
     activeColor: "text-teal-400",
     activeBorder: "border-teal-500",
+  },
+  {
+    id: "visual",
+    label: "Visuel",
+    icon: Eye,
+    activeColor: "text-indigo-400",
+    activeBorder: "border-indigo-500",
   },
   {
     id: "chat",

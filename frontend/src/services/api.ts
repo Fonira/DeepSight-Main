@@ -161,6 +161,12 @@ export interface Summary {
   // 📚 Summary extras (spike 2026-05-06) — enrichissement post-processing
   // Mistral à la demande. NULL si pas encore généré.
   summary_extras?: SummaryExtrasData | null;
+
+  // 🎬 Visual Analysis Phase 2 (mai 2026) — payload Mistral Vision
+  // Présent uniquement quand l'analyse visuelle a été activée et a réussi.
+  // Type importé depuis ../types/analysis pour garder une seule source
+  // de vérité (mirror backend `analysis.visual_analysis`).
+  visual_analysis?: import("../types/analysis").VisualAnalysis | null;
 }
 
 // ─── Summary extras (spike 2026-05-06) ────────────────────────────────────────

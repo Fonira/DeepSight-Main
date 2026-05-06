@@ -50,6 +50,35 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+// Visual Analysis Types (Phase 2 — Mistral Vision)
+// Structure renvoyée par le backend après enrichissement frames + Vision.
+// Le mobile expose ces données via le tab "Visuel" du détail d'analyse.
+export interface VisualKeyMoment {
+  timestamp_s: number;
+  description: string;
+  type: string; // hook | transition | reveal | cta | peak | demo | other
+}
+
+export interface VisualSeoIndicators {
+  hook_brightness?: "low" | "medium" | "high";
+  face_visible_in_hook?: boolean;
+  burned_in_subtitles?: boolean;
+  high_motion_intro?: boolean;
+  thumbnail_quality_proxy?: "low" | "medium" | "high";
+}
+
+export interface VisualAnalysis {
+  visual_hook: string;
+  visual_structure: string; // talking_head | b_roll | gameplay | slides | tutorial | interview | vlog | mixed | other
+  key_moments: VisualKeyMoment[];
+  visible_text: string;
+  visual_seo_indicators: VisualSeoIndicators;
+  summary_visual: string;
+  model_used: string;
+  frames_analyzed: number;
+  frames_downsampled: boolean;
+}
+
 // Video Analysis Types
 export interface VideoInfo {
   id: string;
@@ -102,6 +131,12 @@ export interface AnalysisSummary {
   music_author?: string;
   source_tags?: string[];
   carousel_images?: string[];
+
+  // 👁️ Visual Analysis (Phase 2)
+  // Présent uniquement quand l'analyse a été lancée avec include_visual_analysis=true
+  // ET que la couche Mistral Vision a réussi (frames extraits + parse JSON).
+  // null/undefined = pas de couche visuelle disponible (fallback empty state).
+  visual_analysis?: VisualAnalysis | null;
 }
 
 export interface AnalysisRequest {

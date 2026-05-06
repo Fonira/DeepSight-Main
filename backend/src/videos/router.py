@@ -14,6 +14,7 @@
 import json
 import logging
 import math
+import os
 import httpx
 from uuid import uuid4
 from datetime import datetime
@@ -1050,6 +1051,7 @@ async def analyze_video(
         credit_cost=credit_cost,
         deep_research=deep_research,  # 🆕 v5.5
         platform=platform,  # 🎵 TikTok support
+        include_visual_analysis=request.include_visual_analysis,  # 🆕 Phase 2
     )
 
     await _invalidate_companion_cache()
@@ -2693,6 +2695,7 @@ async def _analyze_video_background_v6(
     credit_cost: int,
     deep_research: bool = False,  # 🆕 v5.5
     platform: str = "youtube",  # 🎵 TikTok support
+    include_visual_analysis: bool = False,  # 🆕 Phase 2 — frames + Mistral Vision
 ):
     """
     🔐 Fonction d'analyse v6.0 avec SÉCURITÉ RENFORCÉE.
@@ -3071,6 +3074,62 @@ async def _analyze_video_background_v6(
 
             # Variable pour stocker les chunks (remplie si vidéo longue)
             _long_video_result3 = None
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 🆕 PHASE 2 — VISUAL ANALYSIS ENRICHMENT (frames + Mistral Vision)
+            # Best-effort : si échec, on continue sans la couche visuelle.
+            # ═══════════════════════════════════════════════════════════════════
+            if include_visual_analysis and platform == "youtube":
+                try:
+                    from .visual_integration import (
+                        STATUS_OK,
+                        format_visual_context_for_prompt,
+                        maybe_enrich_with_visual,
+                    )
+                    from sqlalchemy import select as _sel
+                    from db.database import User as _UserModel
+
+                    _visual_flag_on = (
+                        os.getenv("VISUAL_ANALYSIS_ENABLED", "false").strip().lower()
+                        in {"1", "true", "yes", "on"}
+                    )
+                    if _visual_flag_on:
+                        _task_store[task_id]["progress"] = 50
+                        _task_store[task_id]["message"] = "👁️ Analyse visuelle en cours..."
+                        _user_q = await session.execute(
+                            _sel(_UserModel).where(_UserModel.id == user_id)
+                        )
+                        _user_row = _user_q.scalar_one_or_none()
+                        if _user_row:
+                            _visual = await maybe_enrich_with_visual(
+                                db=session,
+                                user=_user_row,
+                                url=url,
+                                transcript_excerpt=(transcript_to_analyze or "")[:8000],
+                                flag_enabled=True,
+                            )
+                            if _visual.get("status") == STATUS_OK:
+                                _visual_block = format_visual_context_for_prompt(_visual)
+                                if _visual_block:
+                                    web_context = (
+                                        (web_context or "") + "\n\n" + _visual_block
+                                    )
+                                logger.info(
+                                    "👁️ [VISUAL] enrichment OK: frames=%d model=%s elapsed=%.1fs",
+                                    _visual.get("frame_count", 0),
+                                    _visual.get("model_used"),
+                                    _visual.get("elapsed_s", 0.0),
+                                )
+                            else:
+                                logger.info(
+                                    "👁️ [VISUAL] skipped: status=%s",
+                                    _visual.get("status"),
+                                )
+                except Exception as _ve:
+                    # Graceful degradation : aucune erreur visuelle ne bloque l'analyse
+                    logger.warning(
+                        "👁️ [VISUAL] enrichment raised (graceful): %s", _ve
+                    )
 
             if needs_chunk:
                 # ════════════════════════════════════════════════════════════

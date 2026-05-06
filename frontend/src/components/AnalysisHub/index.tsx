@@ -5,12 +5,13 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { BookOpen, Brain, BookMarked, Shield, Target } from "lucide-react";
+import { BookOpen, Brain, BookMarked, Shield, Target, Eye } from "lucide-react";
 import { SynthesisTab } from "./SynthesisTab";
 import { QuizTab } from "./QuizTab";
 import { FlashcardsTab } from "./FlashcardsTab";
 import { ReliabilityTab } from "./ReliabilityTab";
 import { GeoTab } from "./GeoTab";
+import { VisualTab } from "./VisualTab";
 import { studyApi } from "../../services/api";
 import type {
   Summary,
@@ -25,7 +26,13 @@ import type { TimecodeInfo } from "../TimecodeRenderer";
 // 📦 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type TabType = "synthesis" | "quiz" | "flashcards" | "reliability" | "geo";
+type TabType =
+  | "synthesis"
+  | "quiz"
+  | "flashcards"
+  | "reliability"
+  | "geo"
+  | "visual";
 
 interface AnalysisHubProps {
   selectedSummary: Summary;
@@ -112,6 +119,14 @@ const TABS: {
     icon: Target,
     activeColor: "text-teal-400",
     activeBorder: "border-teal-500",
+  },
+  {
+    id: "visual",
+    labelFr: "Visuel",
+    labelEn: "Visual",
+    icon: Eye,
+    activeColor: "text-indigo-400",
+    activeBorder: "border-indigo-500",
   },
 ];
 
@@ -348,6 +363,13 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
         <GeoTab
           selectedSummary={selectedSummary}
           user={user}
+          language={language}
+        />
+      )}
+
+      {activeTab === "visual" && (
+        <VisualTab
+          visualAnalysis={selectedSummary.visual_analysis}
           language={language}
         />
       )}

@@ -34,6 +34,7 @@ import { URLInput } from "@/components/home/URLInput";
 import { CreditBar } from "@/components/home/CreditBar";
 import { RecentCarousel } from "@/components/home/RecentCarousel";
 import { OptionsSheet } from "@/components/home/OptionsSheet";
+import { VisualAnalysisBanner } from "@/components/home/VisualAnalysisBanner";
 import type { AnalysisSummary } from "@/types";
 import { textStyles, fontFamily, fontSize } from "@/theme/typography";
 import { sp, borderRadius } from "@/theme/spacing";
@@ -482,6 +483,9 @@ export default function HomeScreen() {
             isLoading={isLoading}
           />
         )}
+
+        {/* Visual Analysis discovery banner — Phase 2 (Mai 2026) */}
+        <VisualAnalysisBanner />
 
         {/* Tournesol Recommendations */}
         <TournesolRecommendations
