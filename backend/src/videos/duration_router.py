@@ -179,16 +179,25 @@ _MODEL_INTERNAL = "ministral-8b-2512"
 # Imports depuis core/config (lazy) avec fallback statique si module indisponible
 # (cas tests unitaires sans .env). Les valeurs par défaut sont alignées sur
 # core/config.py — flag OFF, modèle officiel `magistral-medium-2509`, tiers=expert.
+#
+# Le flag `MAGISTRAL_EPISTEMIC_ENABLED` (bool) reste exposé pour les tests existants
+# qui font `patch.object(duration_router, "MAGISTRAL_EPISTEMIC_ENABLED", True)`.
+# Le check live (PostHog feature flag `magistral`) est fait via
+# `is_magistral_epistemic_enabled(user_id)` quand un user_id est disponible.
 try:
     from core.config import (
         MAGISTRAL_EPISTEMIC_ENABLED,
         MAGISTRAL_EPISTEMIC_MODEL,
         MAGISTRAL_EPISTEMIC_TIERS,
+        is_magistral_epistemic_enabled,
     )
 except ImportError:  # pragma: no cover — fallback hors application context
     MAGISTRAL_EPISTEMIC_ENABLED = False
     MAGISTRAL_EPISTEMIC_MODEL = "magistral-medium-2509"
     MAGISTRAL_EPISTEMIC_TIERS = ["expert"]
+
+    def is_magistral_epistemic_enabled(distinct_id=None):  # type: ignore
+        return False
 
 # Concurrence adaptative par tier pour le chunking parallèle
 CONCURRENT_CHUNKS_BY_TIER = {
@@ -295,6 +304,7 @@ def get_optimal_model(
     user_plan: str = "free",
     task: str = "chunk_analysis",
     transcript_words: int = 0,
+    user_id: Optional[str] = None,
 ) -> Tuple[str, int]:
     """
     Retourne (model_id, max_tokens) optimaux pour une tâche donnée.
@@ -313,6 +323,9 @@ def get_optimal_model(
         user_plan: Plan de l'utilisateur ("free", "plus", "pro")
         task: Type de tâche
         transcript_words: Nombre de mots dans le transcript (optionnel)
+        user_id: ID utilisateur pour le check feature flag PostHog
+            (str(user.id) ou None → "server" pour les contextes batch).
+            Optionnel pour préserver les call sites existants.
 
     Returns:
         Tuple (model_id, max_tokens)
@@ -334,9 +347,20 @@ def get_optimal_model(
     # fail (429/5xx), llm_complete() retombe sur la chaîne de fallback existante
     # (mistral-large-2512 → medium → small → DeepSeek) — pas besoin de modifier
     # MISTRAL_FALLBACK_ORDER.
+    #
+    # Source de vérité pour l'activation :
+    # 1. Si la valeur module-level `MAGISTRAL_EPISTEMIC_ENABLED` est True
+    #    (cas où l'env var ou un test la met à True) → activé.
+    # 2. Sinon, on consulte PostHog feature flag `magistral` qui peut activer
+    #    pour ce user_id sans redeploy.
+    # Cette logique préserve les tests existants qui font
+    # `patch.object(duration_router, "MAGISTRAL_EPISTEMIC_ENABLED", True)`.
+    magistral_active = MAGISTRAL_EPISTEMIC_ENABLED or is_magistral_epistemic_enabled(
+        distinct_id=user_id
+    )
     if (
         task == "synthesis"
-        and MAGISTRAL_EPISTEMIC_ENABLED
+        and magistral_active
         and raw_plan in MAGISTRAL_EPISTEMIC_TIERS
     ):
         # Reprendre les max_tokens du modèle large (paramétrage Pro/Expert

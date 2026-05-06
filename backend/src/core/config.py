@@ -904,18 +904,107 @@ def is_web_search_available() -> bool:
     return bool(BRAVE_SEARCH_API_KEY and MISTRAL_API_KEY)
 
 
-def is_mistral_agent_available() -> bool:
-    """Check if Mistral Agent web search is enabled and configured."""
-    return bool(MISTRAL_AGENT_ENABLED and MISTRAL_API_KEY)
+def is_mistral_agent_available(distinct_id: Optional[str] = None) -> bool:
+    """Check if Mistral Agent web search is enabled and configured.
+
+    Reads the PostHog feature flag `mistral-agent` first (allows
+    flip-without-redeploy). Falls back to the legacy env var
+    `MISTRAL_AGENT_ENABLED` if PostHog is unreachable.
+
+    Args:
+        distinct_id: PostHog distinct id (str(user.id) si user authentifié,
+            "anonymous" / "server" sinon). Default: "server".
+    """
+    # Lazy import : évite cycle si posthog_client → core.config indirectement.
+    from core.posthog_client import feature_enabled_with_fallback
+
+    enabled = feature_enabled_with_fallback(
+        flag_key="mistral-agent",
+        distinct_id=distinct_id or "server",
+        env_var_fallback="MISTRAL_AGENT_ENABLED",
+        default=MISTRAL_AGENT_ENABLED,  # legacy module-level default = True
+    )
+    return bool(enabled and MISTRAL_API_KEY)
 
 
-def is_semantic_search_v1_enabled() -> bool:
+def is_semantic_search_v1_enabled(distinct_id: Optional[str] = None) -> bool:
     """Check if extended semantic search V1 is enabled (gates UI rollout).
+
+    Reads the PostHog feature flag `semantic-search-v1` first (allows
+    flip-without-redeploy). Falls back to the legacy env var
+    `SEMANTIC_SEARCH_V1_ENABLED` if PostHog is unreachable.
 
     The endpoints exist regardless, but the frontend hides the search tab if
     this returns False. Allows progressive rollout.
+
+    Args:
+        distinct_id: PostHog distinct id (str(user.id) si user authentifié,
+            "anonymous" / "server" sinon). Default: "server".
     """
-    return SEMANTIC_SEARCH_V1_ENABLED and bool(MISTRAL_API_KEY)
+    from core.posthog_client import feature_enabled_with_fallback
+
+    enabled = feature_enabled_with_fallback(
+        flag_key="semantic-search-v1",
+        distinct_id=distinct_id or "server",
+        env_var_fallback="SEMANTIC_SEARCH_V1_ENABLED",
+        default=SEMANTIC_SEARCH_V1_ENABLED,  # legacy module-level default
+    )
+    return bool(enabled) and bool(MISTRAL_API_KEY)
+
+
+def is_magistral_epistemic_enabled(distinct_id: Optional[str] = None) -> bool:
+    """Check if Magistral epistemic markers (Phase 4) are enabled.
+
+    Reads the PostHog feature flag `magistral` first (allows
+    flip-without-redeploy). Falls back to the legacy env var
+    `MAGISTRAL_EPISTEMIC_ENABLED` if PostHog is unreachable.
+
+    Args:
+        distinct_id: PostHog distinct id (str(user.id) si user authentifié,
+            "anonymous" / "server" sinon). Default: "server".
+    """
+    from core.posthog_client import feature_enabled_with_fallback
+
+    return feature_enabled_with_fallback(
+        flag_key="magistral",
+        distinct_id=distinct_id or "server",
+        env_var_fallback="MAGISTRAL_EPISTEMIC_ENABLED",
+        default=MAGISTRAL_EPISTEMIC_ENABLED,
+    )
+
+
+def is_moderation_enforce_mode(distinct_id: Optional[str] = None) -> bool:
+    """Check if moderation should run in *enforce* mode (block flagged content).
+
+    Reads the PostHog feature flag `moderation-enforce` first (allows
+    flip-without-redeploy from log_only → enforce without redeploy). Falls
+    back to the legacy env var `MODERATION_ENFORCE` if PostHog is unreachable,
+    and finally to the existing `MODERATION_MODE` setting (read live to
+    preserve `patch.object` test contracts).
+
+    Args:
+        distinct_id: PostHog distinct id (str(user.id) si user authentifié,
+            "anonymous" / "server" sinon). Default: "server".
+
+    Returns:
+        True if mode = enforce (block), False if log_only (let through).
+    """
+    from core.posthog_client import feature_enabled_with_fallback
+    import sys as _sys
+
+    # Le default doit être recalculé à chaque appel : le module-level
+    # `MODERATION_MODE` peut être patché en runtime (tests, hot reload).
+    # `globals()["MODERATION_MODE"]` ferait un seul lookup ; on passe
+    # par `sys.modules` pour récupérer la valeur courante du module.
+    _self = _sys.modules[__name__]
+    current_mode = getattr(_self, "MODERATION_MODE", "log_only")
+    legacy_default = str(current_mode).lower() == "enforce"
+    return feature_enabled_with_fallback(
+        flag_key="moderation-enforce",
+        distinct_id=distinct_id or "server",
+        env_var_fallback="MODERATION_ENFORCE",
+        default=legacy_default,
+    )
 
 
 def get_plan_limits(plan: str) -> Dict[str, Any]:

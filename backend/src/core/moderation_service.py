@@ -30,6 +30,7 @@ from core.config import (
     MODERATION_MODE,
     get_mistral_key,
 )
+from core.posthog_client import feature_enabled_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -163,7 +164,10 @@ def _extract_scores_and_flags(api_response: Dict[str, Any]) -> tuple[Dict[str, f
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def moderate_text(text: str) -> ModerationResult:
+async def moderate_text(
+    text: str,
+    distinct_id: str = "server",
+) -> ModerationResult:
     """Modère un texte utilisateur via Mistral Moderations.
 
     Comportement :
@@ -174,8 +178,14 @@ async def moderate_text(text: str) -> ModerationResult:
       est rempli pour les logs.
     - En mode `enforce` → allowed=False si au moins une catégorie est flagged.
 
+    Le mode (log_only vs enforce) est désormais lu via le feature flag PostHog
+    `moderation-enforce` (avec fallback env var `MODERATION_ENFORCE` puis
+    `MODERATION_MODE`). Permet de basculer log_only → enforce sans redeploy.
+
     Args:
         text: Le contenu à modérer (question chat, prompt débat, etc.)
+        distinct_id: PostHog distinct id (str(user.id) ou "server" / "anonymous"
+            pour les contextes sans user). Stable hash pour rollouts par %.
 
     Returns:
         ModerationResult avec allowed, flagged_categories, raw_scores.
@@ -188,6 +198,20 @@ async def moderate_text(text: str) -> ModerationResult:
     if not text or not text.strip():
         return ModerationResult(allowed=True, flagged_categories=[], raw_scores={})
 
+    # Détermination du mode :
+    # 1. Default = MODERATION_MODE module-level (lu live, donc respecte
+    #    `patch.object(mod, "MODERATION_MODE", "enforce")` dans les tests).
+    # 2. PostHog flag `moderation-enforce` peut override sans redeploy.
+    # 3. Fallback env var `MODERATION_ENFORCE` si PostHog est down.
+    legacy_default = MODERATION_MODE.lower() == "enforce"
+    enforce_mode = feature_enabled_with_fallback(
+        flag_key="moderation-enforce",
+        distinct_id=distinct_id,
+        env_var_fallback="MODERATION_ENFORCE",
+        default=legacy_default,
+    )
+    is_log_only = not enforce_mode
+
     # Appel API Mistral avec fail-open
     try:
         api_response = await _call_mistral(text)
@@ -195,7 +219,7 @@ async def moderate_text(text: str) -> ModerationResult:
         logger.warning(
             "[moderation] API call failed (fail-open): %s",
             exc,
-            extra={"moderation_mode": MODERATION_MODE},
+            extra={"moderation_mode": "enforce" if enforce_mode else "log_only"},
         )
         return ModerationResult(allowed=True, flagged_categories=[], raw_scores={})
 
@@ -203,7 +227,6 @@ async def moderate_text(text: str) -> ModerationResult:
     raw_scores, flagged = _extract_scores_and_flags(api_response)
 
     # Décision selon le mode
-    is_log_only = MODERATION_MODE.lower() == "log_only"
     allowed = True if is_log_only else (len(flagged) == 0)
 
     # Logging structuré
@@ -220,7 +243,7 @@ async def moderate_text(text: str) -> ModerationResult:
         logger.debug(
             "[moderation] clean text scores=%s mode=%s",
             {k: round(v, 3) for k, v in raw_scores.items()},
-            MODERATION_MODE,
+            "enforce" if enforce_mode else "log_only",
         )
 
     return ModerationResult(
