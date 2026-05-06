@@ -30,6 +30,7 @@ import {
   Zap,
   Image as ImageIcon,
   Info,
+  Loader2,
 } from "lucide-react";
 import type {
   VisualAnalysis,
@@ -45,6 +46,17 @@ import type {
 interface VisualTabProps {
   visualAnalysis: VisualAnalysis | null | undefined;
   language: "fr" | "en";
+  /**
+   * Callback déclenché par le CTA "Réanalyser avec le visuel" de l'empty state.
+   * Si fourni, le bouton devient interactif. Si absent, le CTA reste un badge
+   * informatif inerte (rétrocompat tests / pages legacy).
+   */
+  onReanalyze?: () => void;
+  /**
+   * Indique qu'une re-analyse est en cours — affiche un spinner et désactive
+   * le bouton pour éviter les double-clicks.
+   */
+  isReanalyzing?: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -179,29 +191,78 @@ const BooleanBadge: React.FC<{
 // 🚫 EMPTY STATE — Phase 2 non activée pour cette analyse
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const EmptyVisualState: React.FC<{ language: "fr" | "en" }> = ({
+interface EmptyVisualStateProps {
+  language: "fr" | "en";
+  onReanalyze?: () => void;
+  isReanalyzing?: boolean;
+}
+
+const EmptyVisualState: React.FC<EmptyVisualStateProps> = ({
   language,
-}) => (
-  <div className="p-8 sm:p-12 text-center">
-    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mb-4">
-      <Eye className="w-8 h-8 text-text-tertiary" aria-hidden="true" />
-    </div>
-    <h3 className="text-lg font-semibold text-text-primary mb-2">
-      {t(language, "Analyse visuelle non disponible", "Visual analysis unavailable")}
-    </h3>
-    <p className="text-sm text-text-tertiary max-w-md mx-auto mb-4">
-      {t(
-        language,
-        "Cette analyse n'a pas inclus la couche visuelle. Réanalysez la vidéo en activant l'option « Analyse visuelle » pour voir le hook, la structure, les moments clés et les indicateurs SEO visuels extraits par Mistral Vision.",
-        "This analysis did not include the visual layer. Re-run the analysis with the « Visual analysis » option enabled to see the hook, structure, key moments and SEO indicators extracted by Mistral Vision.",
+  onReanalyze,
+  isReanalyzing,
+}) => {
+  const ctaLabel = isReanalyzing
+    ? t(language, "Analyse en cours…", "Analysis in progress…")
+    : t(language, "Réanalyser avec le visuel", "Re-analyze with visuals");
+
+  // Common pill classes (button + badge fallback partagent l'esthétique).
+  const pillBase =
+    "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border transition-colors";
+  const pillIdle =
+    "bg-indigo-500/10 text-indigo-300 border-indigo-500/20 hover:bg-indigo-500/20";
+  const pillBusy =
+    "bg-indigo-500/5 text-indigo-300/70 border-indigo-500/10 cursor-wait";
+  const pillStatic = "bg-indigo-500/10 text-indigo-300 border-indigo-500/20";
+
+  return (
+    <div className="p-8 sm:p-12 text-center">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mb-4">
+        <Eye className="w-8 h-8 text-text-tertiary" aria-hidden="true" />
+      </div>
+      <h3 className="text-lg font-semibold text-text-primary mb-2">
+        {t(
+          language,
+          "Analyse visuelle non disponible",
+          "Visual analysis unavailable",
+        )}
+      </h3>
+      <p className="text-sm text-text-tertiary max-w-md mx-auto mb-4">
+        {t(
+          language,
+          "Cette analyse n'a pas inclus la couche visuelle. Réanalysez la vidéo en activant l'option « Analyse visuelle » pour voir le hook, la structure, les moments clés et les indicateurs SEO visuels extraits par Mistral Vision.",
+          "This analysis did not include the visual layer. Re-run the analysis with the « Visual analysis » option enabled to see the hook, structure, key moments and SEO indicators extracted by Mistral Vision.",
+        )}
+      </p>
+      {onReanalyze ? (
+        <button
+          type="button"
+          onClick={onReanalyze}
+          disabled={isReanalyzing}
+          aria-busy={isReanalyzing || undefined}
+          className={`${pillBase} ${
+            isReanalyzing ? pillBusy : pillIdle
+          } disabled:opacity-80`}
+        >
+          {isReanalyzing ? (
+            <Loader2
+              className="w-4 h-4 animate-spin"
+              aria-hidden="true"
+            />
+          ) : (
+            <Sparkles className="w-4 h-4" aria-hidden="true" />
+          )}
+          {ctaLabel}
+        </button>
+      ) : (
+        <span className={`${pillBase} ${pillStatic}`}>
+          <Sparkles className="w-4 h-4" aria-hidden="true" />
+          {ctaLabel}
+        </span>
       )}
-    </p>
-    <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-sm font-medium border border-indigo-500/20">
-      <Sparkles className="w-4 h-4" aria-hidden="true" />
-      {t(language, "Réanalyser avec le visuel", "Re-analyze with visuals")}
-    </span>
-  </div>
-);
+    </div>
+  );
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 COMPOSANT PRINCIPAL

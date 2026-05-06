@@ -1076,6 +1076,7 @@ export const videoApi = {
    * @param model - Modèle IA (mistral-small, medium, large)
    * @param deepResearch - Recherche approfondie (Expert only)
    * @param lang - Langue pour le résumé (fr/en) - IMPORTANT: doit être la langue de l'interface
+   * @param options - Options additionnelles (Phase 2 visual analysis, force refresh)
    */
   async analyze(
     url: string,
@@ -1084,21 +1085,30 @@ export const videoApi = {
     model?: string,
     deepResearch?: boolean,
     lang?: string,
+    options?: {
+      /** 🆕 Phase 2 : enrichir l'analyse avec une couche visuelle (Mistral Vision). Pro/Expert uniquement. */
+      includeVisualAnalysis?: boolean;
+      /** Bypass cache et forcer une nouvelle analyse fresh. */
+      forceRefresh?: boolean;
+    },
   ): Promise<{
     task_id: string;
     status: string;
     result?: { summary_id: number };
   }> {
+    const body: Record<string, unknown> = {
+      url,
+      category: category || "auto",
+      mode: mode || "standard",
+      model: model || "mistral-small-2603",
+      deep_research: deepResearch || false,
+      lang: lang || "fr", // 🌐 Langue du résumé
+    };
+    if (options?.includeVisualAnalysis) body.include_visual_analysis = true;
+    if (options?.forceRefresh) body.force_refresh = true;
     return request("/api/videos/analyze", {
       method: "POST",
-      body: {
-        url,
-        category: category || "auto",
-        mode: mode || "standard",
-        model: model || "mistral-small-2603",
-        deep_research: deepResearch || false,
-        lang: lang || "fr", // 🌐 Langue du résumé
-      },
+      body,
       timeout: 300000,
     });
   },
