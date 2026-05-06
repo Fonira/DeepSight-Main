@@ -15,7 +15,9 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_ENV": "development"
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_POSTHOG_KEY": "phc_wckMZ2qV1QVvmL7zC7K4kHgKIfFHtUeQINcsaIT4ttc",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://eu.i.posthog.com"
       }
     },
     "development-simulator": {
@@ -26,7 +28,9 @@
         "simulator": true
       },
       "env": {
-        "APP_ENV": "development"
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_POSTHOG_KEY": "phc_wckMZ2qV1QVvmL7zC7K4kHgKIfFHtUeQINcsaIT4ttc",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://eu.i.posthog.com"
       }
     },
     "preview": {
@@ -39,7 +43,9 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_ENV": "preview"
+        "APP_ENV": "preview",
+        "EXPO_PUBLIC_POSTHOG_KEY": "phc_wckMZ2qV1QVvmL7zC7K4kHgKIfFHtUeQINcsaIT4ttc",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://eu.i.posthog.com"
       }
     },
     "production": {
@@ -55,7 +61,9 @@
       },
       "env": {
         "APP_ENV": "production",
-        "EAS_NO_EAGER_BUNDLE": "1"
+        "EAS_NO_EAGER_BUNDLE": "1",
+        "EXPO_PUBLIC_POSTHOG_KEY": "phc_wckMZ2qV1QVvmL7zC7K4kHgKIfFHtUeQINcsaIT4ttc",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://eu.i.posthog.com"
       }
     }
   },

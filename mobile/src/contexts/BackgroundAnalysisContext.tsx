@@ -20,6 +20,10 @@ import React, {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { videoApi } from "../services/api";
+import {
+  posthogAnalytics,
+  AnalyticsEvents,
+} from "../services/posthog";
 import type { AnalysisSummary } from "../types";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -123,6 +127,19 @@ export const BackgroundAnalysisProvider: React.FC<{
               clearInterval(interval);
               pollingIntervals.current.delete(localId);
               setHasNewCompletedTask(true);
+
+              const result = status.result as
+                | (AnalysisSummary & {
+                    duration?: number;
+                    title?: string;
+                    thumbnail?: string;
+                  })
+                | undefined;
+              posthogAnalytics.capture(AnalyticsEvents.VIDEO_ANALYZED, {
+                video_id: (result as { video_id?: string } | undefined)?.video_id,
+                duration_s: (result as { duration?: number } | undefined)?.duration,
+                platform: "mobile",
+              });
 
               return {
                 ...videoTask,

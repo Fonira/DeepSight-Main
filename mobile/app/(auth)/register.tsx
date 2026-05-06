@@ -18,6 +18,10 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useTheme } from "@/contexts/ThemeContext";
 import { authApi, ApiError } from "@/services/api";
+import {
+  posthogAnalytics,
+  AnalyticsEvents,
+} from "@/services/posthog";
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize, textStyles } from "@/theme/typography";
 import { palette } from "@/theme/colors";
@@ -84,6 +88,10 @@ export default function RegisterScreen() {
 
     try {
       await authApi.register(username.trim(), email.trim(), password);
+      posthogAnalytics.capture(AnalyticsEvents.SIGNUP, {
+        method: "email",
+        platform: "mobile",
+      });
       router.push({
         pathname: "/(auth)/verify",
         params: { email: email.trim() },

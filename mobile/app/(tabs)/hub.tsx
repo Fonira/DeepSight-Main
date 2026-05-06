@@ -20,6 +20,10 @@ import { ConversationContent } from "@/components/conversation";
 import { ConversationsDrawer } from "@/components/hub/ConversationsDrawer";
 import { HubEmptyState } from "@/components/hub/HubEmptyState";
 import { historyApi, videoApi } from "@/services/api";
+import {
+  posthogAnalytics,
+  AnalyticsEvents,
+} from "@/services/posthog";
 import type { HubConversation } from "@/components/hub/types";
 import type { AnalysisSummary } from "@/types";
 
@@ -61,6 +65,19 @@ export default function HubScreen() {
 
   const summaryId = params.summaryId ?? null;
   const initialMode = params.initialMode ?? "chat";
+
+  // Track Hub tab open as a chat session start (PostHog).
+  // Mount-only — fires once when the tab is opened. The custom analytics
+  // service in `services/analytics.ts` already handles screen-level tracking
+  // independently.
+  useEffect(() => {
+    posthogAnalytics.capture(AnalyticsEvents.CHAT_SESSION_STARTED, {
+      surface: "mobile_hub_tab",
+      initial_mode: initialMode,
+      has_summary: Boolean(summaryId),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // prefillQuery : injecté par PassageActionSheet ("Demander à l'IA") ou
   // tout autre deep-link. Capturé une seule fois au mount via useState pour
   // éviter qu'un re-render le re-déclenche après que l'input ait été modifié

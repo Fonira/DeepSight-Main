@@ -17,6 +17,8 @@ import { ErrorProvider } from "../src/contexts/ErrorContext";
 import { OfflineProvider } from "../src/contexts/OfflineContext";
 import { BackgroundAnalysisProvider } from "../src/contexts/BackgroundAnalysisContext";
 import { ElevenLabsProvider } from "@elevenlabs/react-native";
+import { PostHogProvider } from "posthog-react-native";
+import { getPostHogClient } from "../src/services/posthog";
 import { createQueryClient } from "../src/utils/queryClient";
 import { darkColors } from "../src/theme/colors";
 import { useShareIntent } from "../src/hooks/useShareIntent";
@@ -89,6 +91,8 @@ const ebStyles = StyleSheet.create({
 });
 
 const queryClient = createQueryClient();
+// PostHog client — singleton init lazy ; null si EXPO_PUBLIC_POSTHOG_KEY absent.
+const posthogClient = getPostHogClient();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -126,7 +130,7 @@ export default function RootLayout() {
     return null;
   }
 
-  return (
+  const tree = (
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
@@ -155,6 +159,17 @@ export default function RootLayout() {
       </GestureHandlerRootView>
     </ErrorBoundary>
   );
+
+  // Wrap dans PostHogProvider seulement si la clé est configurée.
+  // Sinon on retourne l'arbre tel quel (no-op gracieux).
+  if (posthogClient) {
+    return (
+      <PostHogProvider client={posthogClient} autocapture={false}>
+        {tree}
+      </PostHogProvider>
+    );
+  }
+  return tree;
 }
 
 function RootNavigator() {
