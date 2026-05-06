@@ -26,6 +26,7 @@ import {
 import { Sidebar } from "../components/layout/Sidebar";
 import DoodleBackground from "../components/DoodleBackground";
 import { SEO } from "../components/SEO";
+import { DPOContactForm } from "../components/DPOContactForm";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📋 DONNÉES TRUST CENTER
@@ -40,8 +41,8 @@ const TRUST_INFO = {
     address: "15 rue Clément Mulat, 69350 La Mulatière, France",
   },
   dpo: {
-    current: "maximeleparc3@gmail.com",
-    future: "dpo@deepsightsynthesis.com",
+    current: "dpo@deepsightsynthesis.com",
+    legacy: "maximeleparc3@gmail.com",
     sla: "5 jours ouvrés (1 mois max conformément à l'Art 12 RGPD)",
   },
   links: {
@@ -834,25 +835,30 @@ const TrustPage: React.FC = () => {
               <div className="bg-white/5 rounded-xl p-6 border border-white/10 space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-text-muted mb-1">
-                    Délégué à la protection des données — contact actuel
+                    Délégué à la protection des données
                   </p>
-                  <a
-                    href={`mailto:${TRUST_INFO.dpo.current}`}
-                    className="text-lg text-accent-primary hover:underline font-medium"
-                  >
-                    {TRUST_INFO.dpo.current}
-                  </a>
+                  <p>
+                    <a
+                      href={`mailto:${TRUST_INFO.dpo.current}`}
+                      className="text-lg text-accent-primary hover:underline font-medium"
+                    >
+                      {TRUST_INFO.dpo.current}
+                    </a>{" "}
+                    <span className="inline-flex items-center px-2 py-0.5 ml-2 rounded text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Actif
+                    </span>
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wider text-text-muted mb-1">
-                    Adresse dédiée DPO — à venir
+                    Contact administratif (fallback)
                   </p>
-                  <p className="text-text-secondary">
-                    <span className="font-mono">{TRUST_INFO.dpo.future}</span>{" "}
-                    <span className="inline-flex items-center px-2 py-0.5 ml-2 rounded text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                      Roadmap Q2 2026
-                    </span>
-                  </p>
+                  <a
+                    href={`mailto:${TRUST_INFO.dpo.legacy}`}
+                    className="text-text-secondary hover:underline text-sm font-mono"
+                  >
+                    {TRUST_INFO.dpo.legacy}
+                  </a>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wider text-text-muted mb-1">
@@ -889,6 +895,10 @@ const TrustPage: React.FC = () => {
                     </a>
                   </p>
                 </div>
+              </div>
+
+              <div className="mt-6">
+                <DPOContactForm />
               </div>
             </section>
 
