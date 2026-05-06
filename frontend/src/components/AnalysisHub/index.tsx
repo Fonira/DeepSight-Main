@@ -12,7 +12,7 @@ import { FlashcardsTab } from "./FlashcardsTab";
 import { ReliabilityTab } from "./ReliabilityTab";
 import { GeoTab } from "./GeoTab";
 import { VisualTab } from "./VisualTab";
-import { studyApi } from "../../services/api";
+import { studyApi, videoApi } from "../../services/api";
 import type {
   Summary,
   EnrichedConcept,
@@ -251,6 +251,41 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
     }
   }, [selectedSummary.id, language]);
 
+  // Re-analyse with visual layer (CTA empty state du tab Visuel)
+  const [isReanalyzingVisual, setIsReanalyzingVisual] = useState(false);
+  const handleReanalyzeVisual = useCallback(async () => {
+    if (isReanalyzingVisual) return;
+    const url =
+      (selectedSummary as { video_url?: string; url?: string }).video_url ||
+      (selectedSummary as { url?: string }).url;
+    if (!url) return;
+    setIsReanalyzingVisual(true);
+    try {
+      await videoApi.analyze(
+        url,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        language,
+        { includeVisualAnalysis: true, forceRefresh: true },
+      );
+      window.alert(
+        language === "fr"
+          ? "Re-analyse lancée avec la couche visuelle. Retrouvez le résultat dans votre historique dans quelques instants."
+          : "Re-analysis started with the visual layer. The result will appear in your history shortly.",
+      );
+    } catch (e) {
+      window.alert(
+        language === "fr"
+          ? "Échec du lancement de la re-analyse. Réessayez plus tard."
+          : "Failed to trigger re-analysis. Please try again later.",
+      );
+    } finally {
+      setIsReanalyzingVisual(false);
+    }
+  }, [isReanalyzingVisual, selectedSummary, language]);
+
   // Badges
   const getTabBadge = (tabId: TabType): string | null => {
     if (tabId === "quiz" && quizQuestions) return `${quizQuestions.length}`;
@@ -371,6 +406,8 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
         <VisualTab
           visualAnalysis={selectedSummary.visual_analysis}
           language={language}
+          onReanalyze={handleReanalyzeVisual}
+          isReanalyzing={isReanalyzingVisual}
         />
       )}
     </div>
