@@ -50,7 +50,7 @@ def _llm_result(content: str):
 
     return LLMResult(
         content=content,
-        model_used="mistral-large-2512",
+        model_used="mistral-medium-2508",
         provider="mistral",
         attempts=1,
     )
