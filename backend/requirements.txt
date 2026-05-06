@@ -99,6 +99,7 @@ openai>=1.12.0                # OpenAI Whisper API
 # ─────────────────────────────────────────────────────────────────────────────────
 sentry-sdk[fastapi]>=2.50.0
 psutil>=5.9.0                # System metrics for health checks
+posthog>=3.7.0               # Feature flags (server-side read) + event capture SDK
 
 # ─────────────────────────────────────────────────────────────────────────────────
 # 🧪 TESTING (optionnel - pour développement)
