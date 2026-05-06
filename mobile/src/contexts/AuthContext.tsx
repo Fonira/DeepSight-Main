@@ -17,6 +17,10 @@ import {
 } from "../services/notifications";
 import { analytics } from "../services/analytics";
 import {
+  posthogAnalytics,
+  AnalyticsEvents,
+} from "../services/posthog";
+import {
   GOOGLE_CLIENT_ID,
   GOOGLE_IOS_CLIENT_ID,
   GOOGLE_ANDROID_CLIENT_ID,
@@ -124,6 +128,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         // Analytics: identify user + track google login
         analytics.identify(String(response.user.id), response.user.plan);
         analytics.track("login", { method: "google" });
+        // Mirror PostHog
+        posthogAnalytics.identify(String(response.user.id), {
+          plan: response.user.plan,
+          email: response.user.email,
+          platform: "mobile",
+        });
+        posthogAnalytics.capture(AnalyticsEvents.LOGIN, {
+          method: "google",
+          platform: "mobile",
+        });
         // Register push token (non-blocking)
         registerPushToken();
       } catch (err) {
@@ -251,6 +265,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       // Analytics: identify user + track login
       analytics.identify(String(response.user.id), response.user.plan);
       analytics.track("login", { method: "email" });
+      // Mirror PostHog
+      posthogAnalytics.identify(String(response.user.id), {
+        plan: response.user.plan,
+        email: response.user.email,
+        platform: "mobile",
+      });
+      posthogAnalytics.capture(AnalyticsEvents.LOGIN, {
+        method: "email",
+        platform: "mobile",
+      });
 
       // Register push token (non-blocking)
       registerPushToken();
@@ -406,6 +430,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       // Analytics: track logout + reset identity
       analytics.track("logout");
       analytics.reset();
+      // Mirror PostHog
+      posthogAnalytics.capture(AnalyticsEvents.LOGOUT, {
+        platform: "mobile",
+      });
+      posthogAnalytics.reset();
     } catch (cleanupError) {
       if (__DEV__) {
         console.warn("[Auth] Logout cleanup error:", cleanupError);

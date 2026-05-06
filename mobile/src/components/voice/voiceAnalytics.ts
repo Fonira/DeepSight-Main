@@ -10,6 +10,10 @@
  */
 
 import { analytics } from "../../services/analytics";
+import {
+  posthogAnalytics,
+  AnalyticsEvents,
+} from "../../services/posthog";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Event names (type-safe constants)
@@ -36,6 +40,8 @@ export const VoiceAnalytics = {
     platform: string;
     summaryId: number;
     language: string;
+    /** Si true, c'est un Quick Voice Call (pas de summary_id contextuel) */
+    quickCall?: boolean;
   }) {
     analytics.track("voice_chat_started" as any, {
       plan: data.plan,
@@ -43,6 +49,18 @@ export const VoiceAnalytics = {
       summary_id: data.summaryId,
       language: data.language,
     });
+    // Mirror PostHog : event distinct si Quick Voice Call.
+    posthogAnalytics.capture(
+      data.quickCall
+        ? AnalyticsEvents.QUICK_VOICE_CALL_STARTED
+        : AnalyticsEvents.VOICE_CHAT_STARTED,
+      {
+        plan: data.plan,
+        platform: data.platform,
+        summary_id: data.summaryId,
+        language: data.language,
+      },
+    );
   },
 
   /** Fin de session voice */

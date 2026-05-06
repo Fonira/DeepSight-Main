@@ -10,6 +10,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useRef,
   useCallback,
   ReactNode,
 } from "react";
@@ -22,6 +23,7 @@ import {
   normalizePlanId,
   type PlanId,
 } from "../config/planPrivileges";
+import { posthogAnalytics, AnalyticsEvents } from "../services/posthog";
 
 // Plan features configuration — dérivé de planPrivileges (source de vérité unique)
 export interface PlanFeatures {
@@ -153,9 +155,45 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({
   const { user, isAuthenticated } = useAuth();
   const [usage, setUsage] = useState<UsageStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const previousPlanRef = useRef<PlanType | null>(null);
 
   const plan = user?.plan || PLANS.FREE;
   const features = PLAN_FEATURES_MAP[plan] || PLAN_FEATURES_MAP[PLANS.FREE];
+
+  // Track plan upgrades — fires `plan_upgraded` PostHog event when the user's
+  // plan strictly increases (free→pro, free→expert, pro→expert).
+  useEffect(() => {
+    if (!isAuthenticated) {
+      previousPlanRef.current = null;
+      return;
+    }
+    const prev = previousPlanRef.current;
+    const planRank: Record<string, number> = {
+      free: 0,
+      pro: 1,
+      expert: 2,
+      // Legacy
+      plus: 1,
+    };
+    if (prev && prev !== plan) {
+      const prevRank = planRank[prev] ?? 0;
+      const newRank = planRank[plan] ?? 0;
+      if (newRank > prevRank) {
+        posthogAnalytics.capture(AnalyticsEvents.PLAN_UPGRADED, {
+          from_plan: prev,
+          to_plan: plan,
+          platform: "mobile",
+        });
+      } else {
+        posthogAnalytics.capture(AnalyticsEvents.PLAN_CHANGED, {
+          from_plan: prev,
+          to_plan: plan,
+          platform: "mobile",
+        });
+      }
+    }
+    previousPlanRef.current = plan;
+  }, [plan, isAuthenticated]);
 
   // Fetch usage stats
   const refreshUsage = useCallback(async () => {
