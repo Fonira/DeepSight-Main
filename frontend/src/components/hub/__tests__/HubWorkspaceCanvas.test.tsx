@@ -166,6 +166,123 @@ describe("HubWorkspaceCanvas", () => {
     expect(screen.getByTestId("hub-canvas-themes")).toBeInTheDocument();
   });
 
+  it("does NOT render synthesis section for v1 canvas (backward compat)", () => {
+    render(
+      <HubWorkspaceCanvas
+        canvasData={VALID_CANVAS}
+        summaryDetails={{}}
+        workspaceName="WS"
+        boardId="abc123"
+        viewLink={null}
+        status="ready"
+      />,
+    );
+    expect(screen.queryByTestId("hub-canvas-synthesis")).toBeNull();
+  });
+
+  it("renders synthesis section when canvasData.synthesis is present (v2)", () => {
+    const canvas: WorkspaceCanvasData = {
+      ...VALID_CANVAS,
+      synthesis:
+        "Cette synthèse transversale présente l'ensemble des analyses du workspace. Elle articule les points de convergence et les angles distincts.",
+    };
+    render(
+      <HubWorkspaceCanvas
+        canvasData={canvas}
+        summaryDetails={{}}
+        workspaceName="WS"
+        boardId="abc123"
+        viewLink={null}
+        status="ready"
+      />,
+    );
+    expect(screen.getByTestId("hub-canvas-synthesis")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Cette synthèse transversale présente/),
+    ).toBeInTheDocument();
+  });
+
+  it("renders theme.description when present (v2) and omits when absent", () => {
+    const canvas: WorkspaceCanvasData = {
+      shared_concepts: [],
+      themes: [
+        {
+          theme: "Thème AVEC description",
+          description: "Cet enjeu pose une question transversale clé.",
+          perspectives: [
+            { summary_id: 1, excerpt: "P1" },
+            { summary_id: 2, excerpt: "P2" },
+          ],
+        },
+        {
+          theme: "Thème SANS description",
+          perspectives: [
+            { summary_id: 1, excerpt: "P3" },
+            { summary_id: 2, excerpt: "P4" },
+          ],
+        },
+      ],
+    };
+    render(
+      <HubWorkspaceCanvas
+        canvasData={canvas}
+        summaryDetails={{}}
+        workspaceName="WS"
+        boardId="abc123"
+        viewLink={null}
+        status="ready"
+      />,
+    );
+    // Theme 0 a une description
+    expect(
+      screen.getByTestId("hub-canvas-theme-description-0"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Cet enjeu pose une question transversale clé."),
+    ).toBeInTheDocument();
+    // Theme 1 n'a pas de description
+    expect(screen.queryByTestId("hub-canvas-theme-description-1")).toBeNull();
+  });
+
+  it("renders perspective.key_quote when present (v2) and omits when absent", () => {
+    const canvas: WorkspaceCanvasData = {
+      shared_concepts: [],
+      themes: [
+        {
+          theme: "Thème quote",
+          perspectives: [
+            {
+              summary_id: 1,
+              excerpt: "Argument complet en plusieurs phrases.",
+              key_quote: "Citation littérale du contenu.",
+            },
+            {
+              summary_id: 2,
+              excerpt: "Argument sans quote.",
+            },
+          ],
+        },
+      ],
+    };
+    render(
+      <HubWorkspaceCanvas
+        canvasData={canvas}
+        summaryDetails={{}}
+        workspaceName="WS"
+        boardId="abc123"
+        viewLink={null}
+        status="ready"
+      />,
+    );
+    // P1 a une key_quote
+    expect(screen.getByTestId("hub-canvas-key-quote-0-1")).toBeInTheDocument();
+    expect(
+      screen.getByText("Citation littérale du contenu."),
+    ).toBeInTheDocument();
+    // P2 n'en a pas
+    expect(screen.queryByTestId("hub-canvas-key-quote-0-2")).toBeNull();
+  });
+
   it("renders empty state when canvasData has no concepts and no themes", () => {
     const canvas: WorkspaceCanvasData = {
       shared_concepts: [],

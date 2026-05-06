@@ -77,28 +77,41 @@ class HubWorkspaceCreate(BaseModel):
 
 
 class CanvasPerspective(BaseModel):
-    """Une perspective dans une thématique du canvas natif (Hub Workspace)."""
+    """Une perspective dans une thématique du canvas natif (Hub Workspace).
+
+    `key_quote` (v2, 2026-05-06) : citation littérale optionnelle extraite du
+    contenu de l'analyse pour illustrer puissamment le propos.
+    """
 
     summary_id: int
     excerpt: str
+    key_quote: Optional[str] = None
 
 
 class CanvasTheme(BaseModel):
-    """Une thématique du canvas natif, regroupant N perspectives par analyse."""
+    """Une thématique du canvas natif, regroupant N perspectives par analyse.
+
+    `description` (v2, 2026-05-06) : 1-2 phrases optionnelles posant l'enjeu du
+    thème avant de lister les perspectives par analyse.
+    """
 
     theme: str
+    description: Optional[str] = None
     perspectives: list[CanvasPerspective]
 
 
 class WorkspaceCanvasData(BaseModel):
-    """Canvas natif Hub Workspace (pivot 2026-05-06).
+    """Canvas natif Hub Workspace (pivot 2026-05-06, v2 enrichi).
 
     Forme stockée dans `hub_workspaces.canvas_data` (JSON nullable).
     NULL = workspace pré-pivot ou Mistral fail → frontend fallback MiroBoardEmbed.
+
+    v2 (2026-05-06) : ajout `synthesis` (overview transversal optionnel).
     """
 
     shared_concepts: list[str]
     themes: list[CanvasTheme]
+    synthesis: Optional[str] = None
 
 
 class HubWorkspaceResponse(BaseModel):

@@ -50,7 +50,7 @@ def _llm_result(content: str):
 
     return LLMResult(
         content=content,
-        model_used="mistral-medium-2508",
+        model_used="mistral-large-2512",
         provider="mistral",
         attempts=1,
     )
@@ -170,8 +170,8 @@ def test_validate_canvas_shape_rejects_non_dict_input():
     assert _validate_canvas_shape(None, {1, 2}) is None
 
 
-def test_validate_canvas_shape_caps_themes_at_6():
-    """Limite dure à 6 thèmes pour éviter UI surcharge."""
+def test_validate_canvas_shape_caps_themes_at_7():
+    """v2 : limite dure à 7 thèmes (vs 6 en v1) pour offrir plus de richesse."""
     from hub.canvas_service import _validate_canvas_shape
 
     raw = {
@@ -189,7 +189,147 @@ def test_validate_canvas_shape_caps_themes_at_6():
     }
     out = _validate_canvas_shape(raw, valid_summary_ids={1, 2})
     assert out is not None
-    assert len(out["themes"]) == 6
+    assert len(out["themes"]) == 7
+
+
+def test_validate_canvas_shape_caps_shared_concepts_at_10():
+    """v2 : cap shared_concepts à 10 (vs 8 en v1)."""
+    from hub.canvas_service import _validate_canvas_shape
+
+    raw = {
+        "shared_concepts": [f"concept-{i}" for i in range(15)],
+        "themes": [
+            {
+                "theme": "T",
+                "perspectives": [
+                    {"summary_id": 1, "excerpt": "A"},
+                    {"summary_id": 2, "excerpt": "B"},
+                ],
+            }
+        ],
+    }
+    out = _validate_canvas_shape(raw, valid_summary_ids={1, 2})
+    assert out is not None
+    assert len(out["shared_concepts"]) == 10
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# v2 — synthesis / theme.description / perspective.key_quote (champs optionnels)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def test_validate_canvas_shape_v2_extracts_synthesis_when_present():
+    from hub.canvas_service import _validate_canvas_shape
+
+    raw = {
+        "synthesis": "  Overview transversal en plusieurs phrases.  ",
+        "shared_concepts": ["c"],
+        "themes": [
+            {
+                "theme": "T",
+                "perspectives": [
+                    {"summary_id": 1, "excerpt": "A"},
+                    {"summary_id": 2, "excerpt": "B"},
+                ],
+            }
+        ],
+    }
+    out = _validate_canvas_shape(raw, valid_summary_ids={1, 2})
+    assert out is not None
+    assert out["synthesis"] == "Overview transversal en plusieurs phrases."
+
+
+def test_validate_canvas_shape_v2_omits_synthesis_when_invalid():
+    """Synthesis vide / non-str → champ omis (pas d'erreur)."""
+    from hub.canvas_service import _validate_canvas_shape
+
+    raw = {
+        "synthesis": "",
+        "shared_concepts": ["c"],
+        "themes": [
+            {
+                "theme": "T",
+                "perspectives": [
+                    {"summary_id": 1, "excerpt": "A"},
+                    {"summary_id": 2, "excerpt": "B"},
+                ],
+            }
+        ],
+    }
+    out = _validate_canvas_shape(raw, valid_summary_ids={1, 2})
+    assert out is not None
+    assert "synthesis" not in out
+
+
+def test_validate_canvas_shape_v2_extracts_theme_description():
+    from hub.canvas_service import _validate_canvas_shape
+
+    raw = {
+        "shared_concepts": ["c"],
+        "themes": [
+            {
+                "theme": "T",
+                "description": "  Pose l'enjeu en 1 phrase.  ",
+                "perspectives": [
+                    {"summary_id": 1, "excerpt": "A"},
+                    {"summary_id": 2, "excerpt": "B"},
+                ],
+            }
+        ],
+    }
+    out = _validate_canvas_shape(raw, valid_summary_ids={1, 2})
+    assert out is not None
+    assert out["themes"][0]["description"] == "Pose l'enjeu en 1 phrase."
+
+
+def test_validate_canvas_shape_v2_extracts_key_quote_when_present():
+    from hub.canvas_service import _validate_canvas_shape
+
+    raw = {
+        "shared_concepts": ["c"],
+        "themes": [
+            {
+                "theme": "T",
+                "perspectives": [
+                    {
+                        "summary_id": 1,
+                        "excerpt": "Argument complet en plusieurs phrases.",
+                        "key_quote": "Citation littérale tirée du contenu.",
+                    },
+                    {"summary_id": 2, "excerpt": "B sans quote"},
+                ],
+            }
+        ],
+    }
+    out = _validate_canvas_shape(raw, valid_summary_ids={1, 2})
+    assert out is not None
+    perspectives = out["themes"][0]["perspectives"]
+    assert perspectives[0]["key_quote"] == "Citation littérale tirée du contenu."
+    # Perspective sans key_quote → champ omis (pas null)
+    assert "key_quote" not in perspectives[1]
+
+
+def test_validate_canvas_shape_v2_backward_compat_v1_data():
+    """Un canvas v1 (sans synthesis/description/key_quote) reste valide."""
+    from hub.canvas_service import _validate_canvas_shape
+
+    raw_v1 = {
+        "shared_concepts": ["c1", "c2"],
+        "themes": [
+            {
+                "theme": "T1",
+                "perspectives": [
+                    {"summary_id": 1, "excerpt": "A"},
+                    {"summary_id": 2, "excerpt": "B"},
+                ],
+            }
+        ],
+    }
+    out = _validate_canvas_shape(raw_v1, valid_summary_ids={1, 2})
+    assert out is not None
+    assert "synthesis" not in out
+    assert "description" not in out["themes"][0]
+    assert "key_quote" not in out["themes"][0]["perspectives"][0]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
