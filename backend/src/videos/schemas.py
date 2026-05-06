@@ -667,6 +667,12 @@ class ExtensionSummary(BaseModel):
     video_title: str = Field(..., description="Titre de la vidéo")
     full_analysis_url: str = Field(..., description="URL vers l'analyse complète")
 
+    # 👁️ Visual analysis (Phase 2) — dict sérialisé d'une VisualAnalysis ou None.
+    # NULL = pas analysé visuellement (legacy avant Phase 2 plumbing, flag OFF,
+    # quota dépassé, ou Mistral fail). Permet à l'extension de skip /api/videos/{id}
+    # quand format=extension et avoir le visual_analysis directement.
+    visual_analysis: Optional[Dict[str, Any]] = None
+
 
 class ExtensionSummaryResponse(BaseModel):
     """Réponse condensée pour l'extension Chrome (format=extension)."""

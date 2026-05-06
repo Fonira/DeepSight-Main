@@ -197,6 +197,7 @@ def extract_extension_summary(
     category: str = "general",
     reliability_score: Optional[float] = None,
     tags: Optional[str] = None,
+    visual_analysis: Optional[Dict[str, Any]] = None,
 ) -> ExtensionSummaryResponse:
     """
     Extrait un résumé condensé pour l'extension Chrome à partir du markdown complet.
@@ -254,5 +255,6 @@ def extract_extension_summary(
             tags=extracted_tags,
             video_title=title,
             full_analysis_url=full_analysis_url,
+            visual_analysis=visual_analysis,
         )
     )

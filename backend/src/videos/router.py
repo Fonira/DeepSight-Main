@@ -1466,6 +1466,25 @@ async def _analyze_video_background_v2(
             # Variable pour stocker les chunks (remplie si vidéo longue)
             _long_video_result = None
 
+            # 👁️ Phase 2 visual hook (V2) — enrich full_context + capture pour persist post-save
+            _visual_analysis_data: Optional[Dict[str, Any]] = None
+            if options.get("include_visual_analysis", True) and platform == "youtube":
+                from .visual_integration import enrich_and_capture_visual
+
+                _visual_flag_on = (
+                    os.getenv("VISUAL_ANALYSIS_ENABLED", "false").strip().lower()
+                    in {"1", "true", "yes", "on"}
+                )
+                full_context, _visual_analysis_data = await enrich_and_capture_visual(
+                    db=session,
+                    user_id=user_id,
+                    url=url,
+                    transcript_excerpt=transcript_to_analyze or "",
+                    web_context=full_context or "",
+                    flag_enabled=_visual_flag_on,
+                    log_tag=f"VISUAL_V2 user={user_id}",
+                )
+
             if needs_chunk:
                 _task_store[task_id]["message"] = f"📚 Vidéo longue ({word_count} mots)..."
 
@@ -1642,6 +1661,24 @@ async def _analyze_video_background_v2(
                 music_author=video_info.get("music_author"),
                 carousel_images=video_info.get("carousel_images"),
             )
+
+            # 👁️ Phase 2 plumbing V2 : persist visual_analysis si capturé.
+            if _visual_analysis_data is not None:
+                try:
+                    from sqlalchemy import update as sql_update
+                    await session.execute(
+                        sql_update(Summary)
+                        .where(Summary.id == summary_id)
+                        .values(visual_analysis=_visual_analysis_data)
+                    )
+                    await session.commit()
+                    logger.info(
+                        "👁️ [VISUAL_V2] persisted to Summary.visual_analysis (id=%s)",
+                        summary_id,
+                    )
+                except Exception as _vpe:
+                    logger.warning("👁️ [VISUAL_V2] persist failed (graceful): %s", _vpe)
+                    await session.rollback()
 
             _task_store[task_id]["progress"] = 97
             _task_store[task_id]["message"] = "🧩 Indexation et finalisation..."
@@ -2316,6 +2353,25 @@ async def _analyze_video_background_v2_1(
             # Variable pour stocker les chunks (remplie si vidéo longue)
             _long_video_result2 = None
 
+            # 👁️ Phase 2 visual hook (V2.1) — enrich full_context + capture pour persist post-save
+            _visual_analysis_data: Optional[Dict[str, Any]] = None
+            if options.get("include_visual_analysis", True) and platform == "youtube":
+                from .visual_integration import enrich_and_capture_visual
+
+                _visual_flag_on = (
+                    os.getenv("VISUAL_ANALYSIS_ENABLED", "false").strip().lower()
+                    in {"1", "true", "yes", "on"}
+                )
+                full_context, _visual_analysis_data = await enrich_and_capture_visual(
+                    db=session,
+                    user_id=user_id,
+                    url=url,
+                    transcript_excerpt=transcript_to_analyze or "",
+                    web_context=full_context or "",
+                    flag_enabled=_visual_flag_on,
+                    log_tag=f"VISUAL_V2.1 user={user_id}",
+                )
+
             if needs_chunk:
                 _task_store[task_id]["message"] = f"📚 Vidéo longue ({word_count} mots)..."
 
@@ -2509,6 +2565,24 @@ async def _analyze_video_background_v2_1(
                 music_author=video_info.get("music_author"),
                 carousel_images=video_info.get("carousel_images"),
             )
+
+            # 👁️ Phase 2 plumbing V2.1 : persist visual_analysis si capturé.
+            if _visual_analysis_data is not None:
+                try:
+                    from sqlalchemy import update as sql_update
+                    await session.execute(
+                        sql_update(Summary)
+                        .where(Summary.id == summary_id)
+                        .values(visual_analysis=_visual_analysis_data)
+                    )
+                    await session.commit()
+                    logger.info(
+                        "👁️ [VISUAL_V2.1] persisted to Summary.visual_analysis (id=%s)",
+                        summary_id,
+                    )
+                except Exception as _vpe:
+                    logger.warning("👁️ [VISUAL_V2.1] persist failed (graceful): %s", _vpe)
+                    await session.rollback()
 
             # 🆕 v4.0: Index structuré
             await _save_structured_index(
@@ -3689,6 +3763,7 @@ async def get_summary(
             category=summary.category,
             reliability_score=summary.reliability_score,
             tags=summary.tags,
+            visual_analysis=summary.visual_analysis,
         )
 
     # Format complet (défaut)
