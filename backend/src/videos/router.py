@@ -3854,6 +3854,9 @@ async def get_summary(
         carousel_images=_carousel_images,
         # Summary extras (spike 2026-05-06) — null tant que pas généré
         summary_extras=getattr(summary, "summary_extras", None),
+        # Visual analysis (Phase 2 plumbing 2026-05-06) — null pour analyses
+        # legacy avant Phase 2, flag OFF, quota dépassé, ou Mistral fail.
+        visual_analysis=getattr(summary, "visual_analysis", None),
     )
 
 
