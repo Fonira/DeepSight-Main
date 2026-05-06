@@ -39,7 +39,8 @@ import { Sidebar } from "../components/layout/Sidebar";
 import DoodleBackground from "../components/DoodleBackground";
 import { SEO } from "../components/SEO";
 import { DoodleEmptyState } from "../components/doodles";
-import { MiroBoardEmbed } from "../components/hub";
+import { HubWorkspaceCanvas } from "../components/hub";
+import type { SummaryPreview } from "../components/hub";
 import { DeepSightSpinnerSmall } from "../components/ui/DeepSightSpinner";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -414,12 +415,6 @@ interface DetailModeProps {
   onDelete: (id: number) => void;
 }
 
-interface SummaryPreview {
-  title: string;
-  thumbnail?: string;
-  channel?: string;
-}
-
 const DetailMode: React.FC<DetailModeProps> = ({
   id,
   workspace,
@@ -559,13 +554,16 @@ const DetailMode: React.FC<DetailModeProps> = ({
         </div>
       </header>
 
-      {/* Miro embed */}
-      <MiroBoardEmbed
+      {/* Canvas natif (pivot 2026-05-06) — fallback Miro embed quand
+          canvas_data est null (workspaces pré-pivot ou Mistral fail). */}
+      <HubWorkspaceCanvas
+        canvasData={workspace.canvas_data}
+        summaryDetails={summaryDetails}
+        workspaceName={workspace.name}
         boardId={workspace.miro_board_id}
         viewLink={workspace.miro_board_url}
         status={workspace.status}
         errorMessage={workspace.error_message}
-        height={700}
         onRetry={onRefetch}
       />
 

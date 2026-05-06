@@ -9,7 +9,7 @@ Spec : docs/superpowers/specs/2026-05-05-hub-miro-workspace-mvp.md
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -76,8 +76,38 @@ class HubWorkspaceCreate(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+class CanvasPerspective(BaseModel):
+    """Une perspective dans une thématique du canvas natif (Hub Workspace)."""
+
+    summary_id: int
+    excerpt: str
+
+
+class CanvasTheme(BaseModel):
+    """Une thématique du canvas natif, regroupant N perspectives par analyse."""
+
+    theme: str
+    perspectives: list[CanvasPerspective]
+
+
+class WorkspaceCanvasData(BaseModel):
+    """Canvas natif Hub Workspace (pivot 2026-05-06).
+
+    Forme stockée dans `hub_workspaces.canvas_data` (JSON nullable).
+    NULL = workspace pré-pivot ou Mistral fail → frontend fallback MiroBoardEmbed.
+    """
+
+    shared_concepts: list[str]
+    themes: list[CanvasTheme]
+
+
 class HubWorkspaceResponse(BaseModel):
-    """Représentation d'un workspace Miro renvoyée par l'API."""
+    """Représentation d'un workspace renvoyée par l'API.
+
+    `canvas_data` (pivot 2026-05-06) est populé en background après création
+    du board Miro pour les nouveaux workspaces. NULL pour workspaces
+    pré-pivot → frontend bascule sur MiroBoardEmbed.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -89,6 +119,7 @@ class HubWorkspaceResponse(BaseModel):
     miro_board_url: Optional[str] = None
     status: str  # pending | creating | ready | failed
     error_message: Optional[str] = None
+    canvas_data: Optional[dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
 
