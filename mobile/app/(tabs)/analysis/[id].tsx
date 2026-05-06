@@ -37,6 +37,8 @@ import { ExportMenu } from "@/components/export";
 import { AcademicSourcesSection } from "@/components/academic";
 import { FactCheckButton } from "@/components/factcheck";
 import { WebEnrichment } from "@/components/enrichment";
+import { VisualTab } from "@/components/analysis/VisualTab";
+import type { VisualAnalysis } from "@/types";
 import { usePlan } from "@/contexts/PlanContext";
 import {
   SemanticHighlighterProvider,
@@ -47,7 +49,7 @@ import {
 import { SearchBar as IntraSearchBar } from "@/components/search/SearchBar";
 import type { WithinMatchItem } from "@/services/api";
 
-const TAB_LABELS = ["Résumé", "Sources", "Chat"] as const;
+const TAB_LABELS = ["Résumé", "Sources", "Visuel", "Chat"] as const;
 const TAB_COUNT = TAB_LABELS.length;
 
 // Sub-composant : contrôle l'ouverture du PassageActionSheet quand
@@ -482,6 +484,15 @@ function AnalysisDetailScreenInner() {
             </Text>
           </View>
         )}
+      </View>
+      <View key="visual" style={styles.page}>
+        <VisualTab
+          visualAnalysis={
+            (summary as { visual_analysis?: VisualAnalysis | null } | undefined)
+              ?.visual_analysis ?? null
+          }
+          bottomPadding={isFullscreen ? insets.bottom + sp.lg : sp["2xl"]}
+        />
       </View>
       <View key="chat" style={[styles.page, styles.chatPlaceholder]}>
         <Ionicons
