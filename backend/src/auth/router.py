@@ -181,8 +181,17 @@ async def delete_account(
     Supprime le compte de l'utilisateur connecté.
     Requiert le mot de passe pour les comptes email.
     Les comptes Google peuvent être supprimés sans mot de passe.
+
+    RGPD Article 17 — suppression sans délai indu :
+    1. Purge des fichiers user-specific R2 (audio summaries TTS) avant cascade
+    2. Cascade DELETE PG (summaries, chat_messages, quotas, sessions, etc.)
+    3. Les backups S3 expirent à J+30 (BACKUP_RETENTION_DAYS).
     """
-    from db.database import verify_password
+    import logging
+    from sqlalchemy import select
+    from db.database import verify_password, Summary
+
+    _logger = logging.getLogger(__name__)
 
     # Vérifier le mot de passe pour les comptes avec mot de passe
     if current_user.password_hash:
@@ -190,6 +199,34 @@ async def delete_account(
             raise HTTPException(status_code=400, detail="Mot de passe requis")
         if not verify_password(data.password, current_user.password_hash):
             raise HTTPException(status_code=401, detail="Mot de passe incorrect")
+
+    user_id = current_user.id
+
+    # Purge des fichiers user-specific R2 AVANT cascade DELETE PG.
+    # Best-effort: si R2 est indisponible on continue (Article 17 prioritaire).
+    try:
+        from storage.r2 import delete_objects_by_prefix
+        from tts.audio_summary import R2_AUDIO_PREFIX
+
+        summary_ids_result = await session.scalars(select(Summary.id).where(Summary.user_id == user_id))
+        summary_ids = list(summary_ids_result.all())
+
+        objects_deleted = 0
+        for sid in summary_ids:
+            objects_deleted += await delete_objects_by_prefix(f"{R2_AUDIO_PREFIX}/{sid}/")
+
+        _logger.info(
+            "R2 purge during account deletion: user_id=%s summaries=%d objects_deleted=%d",
+            user_id,
+            len(summary_ids),
+            objects_deleted,
+        )
+    except Exception as exc:
+        _logger.error(
+            "R2 purge failed during account deletion (proceeding with PG cascade): user_id=%s error=%s",
+            user_id,
+            exc,
+        )
 
     # Invalider la session avant suppression
     await invalidate_user_session(session, current_user.id)

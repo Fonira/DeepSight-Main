@@ -158,3 +158,93 @@ async def _check_exists_r2_remote(key: str) -> bool:
         return True
     except ClientError:
         return False
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Bulk delete by prefix (used by GDPR account deletion)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+async def delete_objects_by_prefix(prefix: str) -> int:
+    """Delete every stored object whose key starts with `prefix`. Best-effort.
+
+    Returns the number of objects successfully removed. Errors are logged but
+    not raised: callers (e.g. RGPD account deletion) must keep going even if
+    storage is partially unreachable.
+    """
+    if not prefix:
+        return 0
+    if _is_r2_credentials_set():
+        return await asyncio.to_thread(_delete_r2_by_prefix_sync, prefix)
+    return await asyncio.to_thread(_delete_local_by_prefix_sync, prefix)
+
+
+def _delete_r2_by_prefix_sync(prefix: str) -> int:
+    """List + batch-delete every R2 object under `prefix` (max 1000/batch)."""
+    from botocore.exceptions import ClientError
+
+    try:
+        client = _get_r2_client()
+    except Exception as exc:
+        logger.error(f"R2 client unavailable for prefix delete {prefix}: {exc}")
+        return 0
+
+    bucket = R2_CONFIG["BUCKET"]
+    deleted = 0
+    paginator = client.get_paginator("list_objects_v2")
+
+    try:
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            contents = page.get("Contents") or []
+            if not contents:
+                continue
+            objects = [{"Key": obj["Key"]} for obj in contents]
+            try:
+                response = client.delete_objects(
+                    Bucket=bucket,
+                    Delete={"Objects": objects, "Quiet": True},
+                )
+                errors = response.get("Errors", [])
+                deleted += len(objects) - len(errors)
+                if errors:
+                    logger.error(
+                        f"R2 batch delete partial failure for {prefix}: "
+                        f"{len(errors)} errors (first: {errors[0]})"
+                    )
+            except ClientError as exc:
+                logger.error(f"R2 batch delete failed for prefix {prefix}: {exc}")
+    except ClientError as exc:
+        logger.error(f"R2 list_objects failed for prefix {prefix}: {exc}")
+
+    return deleted
+
+
+def _delete_local_by_prefix_sync(prefix: str) -> int:
+    """Delete every local file under LOCAL_THUMB_DIR/<prefix>. Best-effort."""
+    target = LOCAL_THUMB_DIR / prefix
+    if not target.exists():
+        return 0
+
+    deleted = 0
+    if target.is_file():
+        try:
+            target.unlink()
+            return 1
+        except OSError as exc:
+            logger.error(f"Local delete failed for {target}: {exc}")
+            return 0
+
+    for path in target.rglob("*"):
+        if path.is_file():
+            try:
+                path.unlink()
+                deleted += 1
+            except OSError as exc:
+                logger.error(f"Local delete failed for {path}: {exc}")
+
+    try:
+        target.rmdir()
+    except OSError:
+        pass
+
+    return deleted
