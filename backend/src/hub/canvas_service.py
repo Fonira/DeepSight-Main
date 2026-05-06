@@ -34,12 +34,15 @@ logger = logging.getLogger(__name__)
 # Constants
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Modèle Mistral utilisé pour l'extraction (Expert plan only, 262K context).
-CANVAS_MODEL = "mistral-large-2512"
+# Modèle Mistral utilisé pour l'extraction.
+# Note 2026-05-06 : `mistral-large-2512` retourne 401 sur la clé prod
+# (modèle non encore libéré côté Mistral SaaS, ou non couvert par notre licence).
+# `llm_complete` ne fallback PAS sur 401 (uniquement sur 429/5xx) → on utilise
+# directement `mistral-medium-2508` (131K context, confirmé fonctionnel prod).
+CANVAS_MODEL = "mistral-medium-2508"
 
 # Tronque chaque extrait de summary à cette longueur pour rester sous la limite
-# de tokens (mistral-large-2512 = 262K context, mais on vise <= 50K input pour
-# rester économique et rapide).
+# de tokens (mistral-medium-2508 = 131K context, on vise <= 60K input).
 MAX_CHARS_PER_SUMMARY = 6000
 
 # Max tokens pour la réponse JSON Mistral.
