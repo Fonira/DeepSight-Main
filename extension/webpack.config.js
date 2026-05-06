@@ -4,6 +4,11 @@ const CopyPlugin = require("copy-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
+// Charge `extension/.env` si présent (gitignored). Permet de définir
+// POSTHOG_KEY / POSTHOG_HOST sans les exposer dans le repo. CI peut aussi
+// passer ces vars directement via `process.env` (sans .env).
+require("dotenv").config({ path: path.resolve(__dirname, ".env") });
+
 const manifestMap = {
   chrome: "manifest.json",
   firefox: "manifest.firefox.json",
@@ -19,6 +24,13 @@ module.exports = (env, argv) => {
   const outputDir = env?.target
     ? path.resolve(__dirname, "dist", targetBrowser)
     : path.resolve(__dirname, "dist");
+
+  // PostHog config injectée dans le bundle. Lue depuis l'env du process de
+  // build : POSTHOG_KEY (clé publique safe à committer mais on garde via env
+  // pour parité frontend) + POSTHOG_HOST optionnel. Build sans clé = posthog
+  // no-op (cf. src/lib/posthog.ts).
+  const POSTHOG_KEY = process.env.POSTHOG_KEY || "";
+  const POSTHOG_HOST = process.env.POSTHOG_HOST || "https://eu.i.posthog.com";
 
   return {
     entry: {
@@ -66,6 +78,10 @@ module.exports = (env, argv) => {
     plugins: [
       new webpack.DefinePlugin({
         __TARGET_BROWSER__: JSON.stringify(targetBrowser),
+        // Expose POSTHOG_KEY / POSTHOG_HOST au bundle (lu via process.env.* dans
+        // src/lib/posthog.ts). Sans clé → init no-op, build clean.
+        "process.env.POSTHOG_KEY": JSON.stringify(POSTHOG_KEY),
+        "process.env.POSTHOG_HOST": JSON.stringify(POSTHOG_HOST),
       }),
       new MiniCssExtractPlugin({
         filename: "[name].css",

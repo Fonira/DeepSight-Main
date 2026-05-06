@@ -1,11 +1,16 @@
 // extension/src/utils/analytics.ts
 //
-// Wrapper analytics minimal pour la VoiceView (Quick Voice Call Task 19).
+// Wrapper analytics pour la VoiceView (Quick Voice Call Task 19) et tout autre
+// event de l'extension.
 //
-// Stratégie : PostHog n'est pas (encore) bundlé dans l'extension. Ce module
-// expose un `track(event, props)` qui, à terme, appellera `posthog.capture()`
-// quand on installera `posthog-js`. En attendant, c'est un no-op observable
-// (les tests peuvent intercepter l'export `__lastTrackedEvent`).
+// Stratégie depuis 2026-05-06 : PostHog est bundlé via `lib/posthog.ts` (init
+// dans les entry points sidepanel + viewer uniquement). Ici on importe
+// directement le client `posthog` exporté par ce module et on appelle
+// `posthog.capture(...)`. Si `initPostHog()` n'a pas tourné (absence de clé
+// au build, ou code exécuté côté service worker / content script qui n'init
+// jamais posthog), `posthog.__loaded` est false et capture devient un no-op
+// silencieux interne à posthog-js. Le buffer in-memory ci-dessous reste comme
+// fallback observable (tests + futur forwarding manuel offline).
 //
 // Le contrat d'événements est défini dans la spec :
 //   `docs/superpowers/specs/2026-04-26-quick-voice-call-design.md`
@@ -16,6 +21,8 @@
 //   - voice_call_ended_reason          { videoId, reason: "user_hangup" | "trial_used" | "error" }
 //   - voice_call_upgrade_cta_shown     { reason }
 //   - voice_call_upgrade_cta_clicked   { reason }
+
+import { posthog } from "../lib/posthog";
 
 export type VoiceAnalyticsEvent =
   | "voice_call_started"
@@ -43,18 +50,22 @@ export function track(
   buffer.push(tracked);
   if (buffer.length > MAX_BUFFER) buffer.shift();
 
-  // Bridge vers PostHog si dispo (window.posthog est défini par posthog-js
-  // une fois installé). Best-effort, no-op sinon.
-  type PostHogShape = {
-    capture?: (event: string, props: Record<string, unknown>) => void;
-  };
-  const ph = (globalThis as unknown as { posthog?: PostHogShape }).posthog;
-  if (ph?.capture) {
-    try {
-      ph.capture(event, props);
-    } catch {
-      /* swallow — analytics ne doit jamais casser l'UX */
+  // Bridge vers PostHog. `posthog` vient de `lib/posthog.ts` ; si initPostHog()
+  // n'a pas été appelé (service worker, content script, build sans clé), le
+  // capture devient un no-op interne sans throw. On garde aussi le path
+  // `globalThis.posthog` pour compat tests qui mockent globalement.
+  try {
+    if (typeof posthog?.capture === "function") {
+      posthog.capture(event, props);
+    } else {
+      type PostHogShape = {
+        capture?: (event: string, props: Record<string, unknown>) => void;
+      };
+      const ph = (globalThis as unknown as { posthog?: PostHogShape }).posthog;
+      ph?.capture?.(event, props);
     }
+  } catch {
+    /* swallow — analytics ne doit jamais casser l'UX */
   }
 }
 
