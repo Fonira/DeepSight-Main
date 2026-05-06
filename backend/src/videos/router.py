@@ -3079,6 +3079,7 @@ async def _analyze_video_background_v6(
             # 🆕 PHASE 2 — VISUAL ANALYSIS ENRICHMENT (frames + Mistral Vision)
             # Best-effort : si échec, on continue sans la couche visuelle.
             # ═══════════════════════════════════════════════════════════════════
+            _visual_analysis_data: Optional[Dict[str, Any]] = None
             if include_visual_analysis and platform == "youtube":
                 try:
                     from .visual_integration import (
@@ -3114,6 +3115,10 @@ async def _analyze_video_background_v6(
                                     web_context = (
                                         (web_context or "") + "\n\n" + _visual_block
                                     )
+                                # 👁️ Phase 2 plumbing — capture le dict serialisé
+                                # pour persistance dans Summary.visual_analysis
+                                # après save_summary() (alembic 024).
+                                _visual_analysis_data = _visual.get("analysis")
                                 logger.info(
                                     "👁️ [VISUAL] enrichment OK: frames=%d model=%s elapsed=%.1fs",
                                     _visual.get("frame_count", 0),
@@ -3343,6 +3348,27 @@ async def _analyze_video_background_v6(
             )
 
             logger.info(f"💾 Summary saved: id={summary_id}")
+
+            # 👁️ Phase 2 plumbing : persiste visual_analysis si capturé.
+            # Best-effort — ne fait pas échouer le flow si ça plante.
+            if _visual_analysis_data is not None:
+                try:
+                    from sqlalchemy import update as sql_update
+                    await session.execute(
+                        sql_update(Summary)
+                        .where(Summary.id == summary_id)
+                        .values(visual_analysis=_visual_analysis_data)
+                    )
+                    await session.commit()
+                    logger.info(
+                        "👁️ [VISUAL] persisted to Summary.visual_analysis (id=%s)",
+                        summary_id,
+                    )
+                except Exception as _vpe:
+                    logger.warning(
+                        "👁️ [VISUAL] persist failed (graceful): %s", _vpe
+                    )
+                    await session.rollback()
 
             _task_store[task_id]["progress"] = 97
             _task_store[task_id]["message"] = "🧩 Indexation et finalisation..."
