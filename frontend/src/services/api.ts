@@ -157,6 +157,34 @@ export interface Summary {
   deep_research?: boolean;
   enrichment_sources?: string; // JSON string: [{title, url, snippet}]
   enrichment_data?: string; // JSON string: {level, sources, enriched_at}
+
+  // 📚 Summary extras (spike 2026-05-06) — enrichissement post-processing
+  // Mistral à la demande. NULL si pas encore généré.
+  summary_extras?: SummaryExtrasData | null;
+}
+
+// ─── Summary extras (spike 2026-05-06) ────────────────────────────────────────
+
+export interface SummaryQuote {
+  quote: string;
+  context?: string;
+}
+
+export interface SummaryChapterTheme {
+  theme: string;
+  summary?: string;
+}
+
+export interface SummaryExtrasData {
+  key_quotes: SummaryQuote[];
+  key_takeaways: string[];
+  chapter_themes: SummaryChapterTheme[];
+}
+
+export interface SummaryEnrichResponse {
+  summary_id: number;
+  cached: boolean;
+  extras: SummaryExtrasData | null;
 }
 
 export interface TranscriptSegment {
@@ -888,6 +916,32 @@ export const authApi = {
     clearTokens();
     return response;
   },
+
+  /**
+   * RGPD Article 20 — Right to data portability.
+   * Downloads a ZIP archive with the user's personal data.
+   * Triggers a browser file download (no return value).
+   */
+  async exportMyData(): Promise<void> {
+    const token = getAccessToken();
+    const response = await fetch(`${API_URL}/api/auth/me/export`, {
+      method: "GET",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.status} ${response.statusText}`);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const today = new Date().toISOString().slice(0, 10);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `deepsight-export-${today}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1213,6 +1267,24 @@ export const videoApi = {
 
   async getSummary(summaryId: number): Promise<Summary> {
     return request(`/api/videos/summary/${summaryId}`);
+  },
+
+  /**
+   * 📚 Spike 2026-05-06 : enrichit une analyse avec key_quotes + key_takeaways
+   * + chapter_themes via Mistral. Idempotent : retourne le cache si déjà
+   * généré (sauf si force=true).
+   *
+   * Endpoint: POST /api/videos/summary/{id}/enrich
+   */
+  async enrichSummary(
+    summaryId: number,
+    force: boolean = false,
+  ): Promise<SummaryEnrichResponse> {
+    const qs = force ? "?force=true" : "";
+    return request(`/api/videos/summary/${summaryId}/enrich${qs}`, {
+      method: "POST",
+      timeout: 60000,
+    });
   },
 
   async getConcepts(
@@ -3401,6 +3473,38 @@ export const keywordImageApi = {
 
 export type HubWorkspaceStatus = "pending" | "creating" | "ready" | "failed";
 
+/**
+ * Canvas natif Hub Workspace (pivot 2026-05-06, v2 enrichi).
+ *
+ * Remplace l'embed Miro iframe pour les nouveaux workspaces. Stocké côté
+ * backend dans `hub_workspaces.canvas_data` (JSON nullable). Aligné sur le
+ * Pydantic `WorkspaceCanvasData` (backend/src/hub/schemas.py).
+ *
+ * v2 (2026-05-06) ajoute des champs OPTIONNELS pour enrichir le rendu :
+ * - `synthesis` (top-level) : paragraphe d'overview transversal
+ * - `theme.description` : 1-2 phrases d'enjeu par thématique
+ * - `perspective.key_quote` : citation littérale optionnelle
+ *
+ * Backward-compat : un canvas v1 (sans ces champs) reste affichable.
+ */
+export interface CanvasPerspective {
+  summary_id: number;
+  excerpt: string;
+  key_quote?: string;
+}
+
+export interface CanvasTheme {
+  theme: string;
+  description?: string;
+  perspectives: CanvasPerspective[];
+}
+
+export interface WorkspaceCanvasData {
+  shared_concepts: string[];
+  themes: CanvasTheme[];
+  synthesis?: string;
+}
+
 export interface HubWorkspace {
   id: number;
   name: string;
@@ -3409,6 +3513,11 @@ export interface HubWorkspace {
   miro_board_url: string | null;
   status: HubWorkspaceStatus;
   error_message: string | null;
+  /**
+   * Canvas natif (pivot 2026-05-06). NULL pour workspaces pré-pivot ou si
+   * Mistral fail → frontend bascule sur MiroBoardEmbed (rétro-compat).
+   */
+  canvas_data: WorkspaceCanvasData | null;
   created_at: string; // ISO
   updated_at: string; // ISO
 }

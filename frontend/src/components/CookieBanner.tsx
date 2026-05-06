@@ -62,6 +62,26 @@ export function hasGivenConsent(): boolean {
   return getStoredConsent() !== null;
 }
 
+/**
+ * Efface le consentement existant et rouvre le bandeau.
+ * Permet à l'utilisateur de revenir sur son choix depuis MyAccount.
+ */
+export function resetCookieConsent(): void {
+  try {
+    localStorage.removeItem(CONSENT_STORAGE_KEY);
+  } catch {
+    /* Safari private mode */
+  }
+  // Notifier les services analytics qu'ils doivent se désactiver
+  window.dispatchEvent(
+    new CustomEvent("cookie-consent-updated", {
+      detail: { essential: true, analytics: false, marketing: false },
+    }),
+  );
+  // Re-afficher le banner
+  window.dispatchEvent(new CustomEvent("cookie-banner-show"));
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -80,6 +100,20 @@ export const CookieBanner: React.FC = () => {
       const timer = setTimeout(() => setVisible(true), 800);
       return () => clearTimeout(timer);
     }
+  }, []);
+
+  // Listener pour réouverture manuelle (depuis MyAccount → resetCookieConsent)
+  useEffect(() => {
+    const handler = () => {
+      // Reset les checkboxes à leurs valeurs précédentes (ou défaut false)
+      const consent = getStoredConsent();
+      setAnalyticsChecked(consent?.analytics ?? false);
+      setMarketingChecked(consent?.marketing ?? false);
+      setShowDetails(true);
+      setVisible(true);
+    };
+    window.addEventListener("cookie-banner-show", handler);
+    return () => window.removeEventListener("cookie-banner-show", handler);
   }, []);
 
   const saveAndClose = useCallback(

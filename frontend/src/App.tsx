@@ -48,7 +48,17 @@ import { StagedPrefsToolbar } from "./components/voice/staging/StagedPrefsToolba
 import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
 import { Tutor } from "./components/Tutor";
 import { analytics } from "./services/analytics";
+import { initWebVitals } from "./services/webVitals";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DeepSightSpinner } from "./components/ui/DeepSightSpinner";
+
+// 🎓 Tour Shepherd.js (chantier B Sprint Growth) — lazy-loadé pour ne pas
+// embarquer ~30 KB gzipped dans le bundle initial. N'est chargé que pour les
+// users dont `has_completed_onboarding !== true` ET qui ont fermé le modal
+// `OnboardingFlow` (cf. ProtectedLayout).
+const ShepherdTour = lazy(
+  () => import("./components/onboarding/ShepherdTour"),
+);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 QUERY CLIENT CONFIGURATION
@@ -296,6 +306,7 @@ const TrustSubprocessorsPage = lazyWithRetry(
 const PaymentSuccess = lazyWithRetry(() => import("./pages/PaymentSuccess"));
 const PaymentCancel = lazyWithRetry(() => import("./pages/PaymentCancel"));
 const StatusPage = lazyWithRetry(() => import("./pages/StatusPage"));
+const ChangelogPage = lazyWithRetry(() => import("./pages/ChangelogPage"));
 const ContactPage = lazyWithRetry(() => import("./pages/ContactPage"));
 const AboutPage = lazyWithRetry(() => import("./pages/AboutPage"));
 const SharedAnalysisPage = lazyWithRetry(
@@ -333,6 +344,9 @@ const ExtensionWelcomePage = lazyWithRetry(
   () => import("./pages/ExtensionWelcomePage"),
 );
 const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
+const LegalSubProcessors = lazyWithRetry(
+  () => import("./pages/LegalSubProcessors"),
+);
 const ApiDocsPage = lazyWithRetry(() => import("./pages/ApiDocsPage"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -473,7 +487,9 @@ const HomeRoute = () => {
 
 const ProtectedLayout = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [tourClosed, setTourClosed] = useState(false);
 
   // Décision DB-3 (RELEASE-ORCHESTRATION L.562) : show pour anciens users sans flag
   // → tous les users dont preferences.has_completed_onboarding !== true voient le flow.
@@ -483,6 +499,21 @@ const ProtectedLayout = () => {
     user.preferences?.has_completed_onboarding !== true &&
     !onboardingDismissed;
 
+  // 🎓 Tour Shepherd démarre APRÈS le modal welcome (chantier B Sprint Growth).
+  // Conditions cumulées :
+  //   - user logué et pas encore onboardé (même flag que OnboardingFlow)
+  //   - le modal OnboardingFlow a été fermé (onboardingDismissed=true)
+  //   - le tour n'a pas déjà été fermé/skip dans cette session
+  //   - on est sur /dashboard (pour que les targets de la sidebar et du
+  //     SmartInputBar soient bien dans le DOM)
+  const shouldShowTour =
+    user !== null &&
+    user !== undefined &&
+    user.preferences?.has_completed_onboarding !== true &&
+    onboardingDismissed &&
+    !tourClosed &&
+    location.pathname.startsWith("/dashboard");
+
   // noindex sur toutes les routes protégées (dashboard, history, settings, etc.)
   return (
     <>
@@ -490,6 +521,11 @@ const ProtectedLayout = () => {
       <Outlet />
       {shouldShowOnboarding && (
         <OnboardingFlow onComplete={() => setOnboardingDismissed(true)} />
+      )}
+      {shouldShowTour && (
+        <Suspense fallback={null}>
+          <ShepherdTour onClose={() => setTourClosed(true)} />
+        </Suspense>
       )}
       {/* 🎓 Le Tuteur — compagnon d'apprentissage (remplace DidYouKnowCard) */}
       {/* Le composant fait son propre check isAuthenticated + currentWord (early return null) */}
@@ -637,6 +673,22 @@ const AppRoutes = () => {
                       />
 
                       <Route
+                        path="/legal/sub-processors"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="LegalSubProcessors"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="full" />}
+                            >
+                              <LegalSubProcessors />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
                         path="/legal"
                         element={
                           <RouteErrorBoundary
@@ -695,6 +747,22 @@ const AppRoutes = () => {
                               fallback={<PageSkeleton variant="simple" />}
                             >
                               <StatusPage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      <Route
+                        path="/changelog"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="ChangelogPage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="full" />}
+                            >
+                              <ChangelogPage />
                             </Suspense>
                           </RouteErrorBoundary>
                         }
@@ -1158,13 +1226,17 @@ const AppRoutes = () => {
 
 const App = () => {
   // 📊 Initialiser PostHog analytics (RGPD-compliant, attend le consentement)
+  // 📈 Initialiser Core Web Vitals tracking → PostHog (auto-gated sur consentement)
   useEffect(() => {
     analytics.init();
+    initWebVitals();
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <AppRoutes />
+      {/* 📈 Vercel Speed Insights — perf monitoring (anonymisé, RGPD legitimate interest) */}
+      <SpeedInsights />
     </QueryClientProvider>
   );
 };

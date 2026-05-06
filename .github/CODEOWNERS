@@ -1,0 +1,6 @@
+# DeepSight CODEOWNERS
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Single maintainer for now. When the team grows, scope per directory.
+
+* @maximeleparc3

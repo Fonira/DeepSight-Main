@@ -1,0 +1,60 @@
+name: Bundle Size
+
+# Runs size-limit on every PR that touches the frontend, comparing the
+# new bundle against the base branch and commenting the diff.
+#
+# Currently in WARN-ONLY mode — see frontend/.size-limit.cjs and
+# docs/RUNBOOK.md §20 for the procedure to flip to blocking.
+#
+# Skip on a one-off PR by adding the `skip-bundle-size` label.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/bundle-size.yml"
+
+concurrency:
+  group: bundle-size-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  size-limit:
+    name: size-limit (gzipped JS)
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-bundle-size') }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # size-limit-action needs full history to diff against base.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Run size-limit and comment diff
+        uses: andresz1/size-limit-action@v1.8.0
+        # WARN-ONLY: even if size-limit reports a budget breach,
+        # `continue-on-error: true` lets the overall job succeed.
+        # The PR comment still shows the diff so reviewers can react.
+        # Remove this line + add to required checks to make blocking.
+        # See docs/RUNBOOK.md §20.4.
+        continue-on-error: true
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Frontend lives in a subdirectory — action will cd there.
+          directory: frontend
+          # Build before measuring (size-limit reads from dist/).
+          build_script: build
+          # Use the existing npm script (matches local DX).
+          script: size:check
+          package_manager: npm

@@ -5,9 +5,14 @@
  * ║  Composant pur prop-driven pour afficher un workspace Miro lié au Hub DeepSight.   ║
  * ║                                                                                    ║
  * ║  - status="pending"|"creating" → skeleton glassmorphism + spinner                  ║
- * ║  - status="ready" + boardId → iframe embed Miro view-only                          ║
- * ║  - status="ready" sans boardId → fallback compact + lien viewLink optionnel        ║
+ * ║  - status="ready" → carte cliquable "Ouvrir dans Miro" (nouvel onglet)             ║
  * ║  - status="failed" → bloc erreur amber/red + bouton "Réessayer" (onRetry)          ║
+ * ║                                                                                    ║
+ * ║  Pourquoi pas d'iframe embed ?                                                     ║
+ * ║  Le plan Miro Personal Starter ($8/mo) ne supporte pas l'embed iframe externe      ║
+ * ║  (le board s'affiche "Ce contenu est bloqué"). Le viewLink direct (nouvel onglet)  ║
+ * ║  marche par contre sur tous les plans. UX : un clic = board ouvert plein-écran     ║
+ * ║  dans Miro, où l'utilisateur retrouve la pleine puissance du whiteboard.           ║
  * ║                                                                                    ║
  * ║  Aucun appel API, aucun state global. Factorisé depuis DebateMiroEmbed pour        ║
  * ║  réutilisation Hub Workspace MVP. DebateMiroEmbed reste intact (prod Débat IA).    ║
@@ -28,9 +33,9 @@ export interface MiroBoardEmbedProps {
   status: "pending" | "creating" | "ready" | "failed";
   /** Message d'erreur backend si status=failed */
   errorMessage?: string | null;
-  /** Hauteur iframe (default 600px) */
+  /** Hauteur du bloc ready (default 600px) */
   height?: number;
-  /** Callback quand iframe a loaded — pour métriques / loading state externe */
+  /** Conservé pour rétro-compat — l'embed iframe a été remplacé par un lien externe */
   onLoad?: () => void;
   /** Callback "Réessayer" sur état failed — bouton n'est rendu que si fourni */
   onRetry?: () => void;
@@ -39,12 +44,12 @@ export interface MiroBoardEmbedProps {
 }
 
 /**
- * Construit l'URL d'embed Miro à partir d'un board ID.
+ * Construit l'URL public Miro à ouvrir en nouvel onglet à partir d'un board ID.
  *
- * Pattern Miro : `https://miro.com/app/embed/{boardId}/?embedMode=view_only_without_ui&moveToViewport=fit`
+ * Pattern Miro standard : `https://miro.com/app/board/{boardId}`
  */
-function buildEmbedUrl(boardId: string): string {
-  return `https://miro.com/app/embed/${boardId}/?embedMode=view_only_without_ui&moveToViewport=fit`;
+function buildBoardUrl(boardId: string): string {
+  return `https://miro.com/app/board/${boardId}`;
 }
 
 export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({
@@ -127,8 +132,11 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({
     );
   }
 
-  // ─── Ready : fallback si pas de boardId ───
-  if (!boardId) {
+  // ─── Ready : carte "Ouvrir dans Miro" (le plan Personal Starter ne permet pas l'embed iframe) ───
+  const boardUrl = viewLink || (boardId ? buildBoardUrl(boardId) : null);
+
+  if (!boardUrl) {
+    // Edge case : status=ready mais ni viewLink ni boardId — affiche un fallback safe
     return (
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -144,52 +152,53 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-white">
-              Workspace en cours d'initialisation
+              Workspace prêt mais lien indisponible
             </p>
             <p className="text-xs text-text-muted mt-1">
-              Le board Miro sera disponible dans quelques instants.
+              Réessaie de recharger la page dans quelques instants.
             </p>
-            {viewLink && (
-              <a
-                href={viewLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-text-secondary hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
-                data-testid="miro-board-embed-fallback-link"
-              >
-                Ouvrir dans Miro
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            )}
           </div>
         </div>
       </motion.div>
     );
   }
 
-  // ─── Ready : iframe embed ───
-  const embedUrl = buildEmbedUrl(boardId);
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       role="region"
       aria-label="Hub Workspace Miro Board"
-      className={`backdrop-blur-xl bg-white/5 border border-white/10 rounded-xl overflow-hidden ${className}`}
+      className={`backdrop-blur-xl bg-gradient-to-br from-white/[0.07] to-white/[0.03] border border-white/10 rounded-xl overflow-hidden ${className}`}
       data-testid="miro-board-embed-ready"
     >
-      <iframe
-        src={embedUrl}
-        width="100%"
-        height={height}
-        title="Miro Workspace"
-        loading="lazy"
-        allowFullScreen
-        referrerPolicy="strict-origin-when-cross-origin"
-        onLoad={onLoad}
-        className="block w-full border-0"
-        data-testid="miro-board-embed-iframe"
-      />
+      <div
+        className="flex flex-col items-center justify-center gap-5 px-6 py-12 text-center"
+        style={{ minHeight: height }}
+      >
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-400/30 flex items-center justify-center shadow-lg shadow-indigo-500/10">
+          <Layout className="w-8 h-8 text-indigo-300" />
+        </div>
+        <div className="max-w-md">
+          <h3 className="text-base font-semibold text-white">
+            Workspace Miro prêt
+          </h3>
+          <p className="text-sm text-text-muted mt-1.5 leading-relaxed">
+            Ton tableau visuel est créé avec toutes tes analyses. Ouvre-le
+            dans Miro pour explorer, organiser et collaborer en plein écran.
+          </p>
+        </div>
+        <a
+          href={boardUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 text-sm font-semibold text-white transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60"
+          data-testid="miro-board-embed-open-link"
+        >
+          Ouvrir dans Miro
+          <ExternalLink className="w-4 h-4" />
+        </a>
+      </div>
     </motion.div>
   );
 };

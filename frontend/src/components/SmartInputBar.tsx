@@ -615,7 +615,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   const hasEnoughCredits = creditCost === 0 || userCredits >= creditCost;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-tour-step="analyze-input">
       {/* ═══ Mode Tabs — Inline, pas de dropdown ═══ */}
       <div className="flex items-center gap-2 flex-wrap">
         {MODE_ORDER.map((m) => {

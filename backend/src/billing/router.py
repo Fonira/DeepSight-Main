@@ -26,7 +26,8 @@ from db.database import (
     VoiceCreditPurchase,
 )
 from auth.dependencies import get_current_user, get_current_user_optional
-from core.config import STRIPE_CONFIG, FRONTEND_URL, get_stripe_key
+from core.config import STRIPE_CONFIG, FRONTEND_URL, get_stripe_key, STRIPE_AUTOMATIC_TAX_ENABLED
+from services.audit_log import log_audit
 from .plan_config import (
     PLANS,
     PLAN_HIERARCHY,
@@ -376,6 +377,9 @@ async def start_trial(
             payment_method_collection="if_required",  # H5 : pas de CB pour le trial
             line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
+            # Stripe Tax (TVA EU / VAT MOSS) — flip via STRIPE_AUTOMATIC_TAX_ENABLED.
+            # Requires Stripe Tax enabled in Dashboard (else Stripe rejects).
+            automatic_tax={"enabled": STRIPE_AUTOMATIC_TAX_ENABLED},
             subscription_data={
                 "trial_period_days": 7,
                 "metadata": {
@@ -672,6 +676,8 @@ async def create_checkout_session(
             "payment_method_types": ["card"],
             "line_items": [{"price": price_id, "quantity": 1}],
             "mode": "subscription",
+            # Stripe Tax (TVA EU / VAT MOSS) — env-driven, see RUNBOOK §9.
+            "automatic_tax": {"enabled": STRIPE_AUTOMATIC_TAX_ENABLED},
             "success_url": success_url,
             "cancel_url": cancel_url,
             "allow_promotion_codes": True,
@@ -789,6 +795,8 @@ async def create_checkout_by_plan_id(
             payment_method_types=["card"],
             line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
+            # Stripe Tax (TVA EU / VAT MOSS) — env-driven, see RUNBOOK §9.
+            automatic_tax={"enabled": STRIPE_AUTOMATIC_TAX_ENABLED},
             success_url=success_url,
             cancel_url=cancel_url,
             allow_promotion_codes=True,
@@ -883,6 +891,17 @@ async def change_subscription_plan(
     if new_plan not in valid_plans:
         raise HTTPException(status_code=400, detail=f"Invalid plan: {new_plan}")
 
+    # Audit log RGPD — log l'intention. Effectif tracé via Stripe webhook
+    # (subscription.updated → users.plan). Multi-branch endpoint, log avant
+    # toute mutation Stripe.
+    await log_audit(
+        session,
+        action="plan.changed",
+        user_id=current_user.id,
+        details={"from": current_plan, "to": new_plan},
+    )
+    await session.commit()
+
     # Si même plan, rien à faire
     if new_plan == current_plan:
         return ChangePlanResponse(
@@ -913,6 +932,8 @@ async def change_subscription_plan(
             payment_method_types=["card"],
             line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
+            # Stripe Tax (TVA EU / VAT MOSS) — env-driven, see RUNBOOK §9.
+            automatic_tax={"enabled": STRIPE_AUTOMATIC_TAX_ENABLED},
             success_url=f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={new_plan}",
             cancel_url=f"{FRONTEND_URL}/upgrade",
             allow_promotion_codes=True,
@@ -2256,6 +2277,8 @@ async def create_credit_pack_checkout(
         customer=customer_id,
         mode="payment",
         payment_method_types=["card"],
+        # Stripe Tax (TVA EU / VAT MOSS) — env-driven, see RUNBOOK §9.
+        automatic_tax={"enabled": STRIPE_AUTOMATIC_TAX_ENABLED},
         line_items=[
             {
                 "price_data": {

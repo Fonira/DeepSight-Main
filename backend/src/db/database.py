@@ -246,6 +246,13 @@ class Summary(Base):
     enrichment_sources = Column(Text, nullable=True)  # JSON: [{title, url, snippet}]
     enrichment_data = Column(Text, nullable=True)  # JSON: {level, sources, enriched_at}
 
+    # Summary extras (spike 2026-05-06) — enrichissement post-processing Mistral
+    # appliqué à la demande sur le summary_content existant.
+    # Forme : {key_quotes: [{quote, context?}], key_takeaways: [str], chapter_themes: [{theme, summary?}]}
+    # NULL = enrichissement pas encore généré (POST /api/videos/summary/{id}/enrich).
+    # Migration : alembic 022_summary_extras.py.
+    summary_extras = Column(JSON, nullable=True)
+
     # Hierarchical Digest Pipeline (Feb 2026)
     full_digest = Column(Text, nullable=True)  # Assembled full digest from chunk digests (~6-10K chars)
 
@@ -478,6 +485,39 @@ class AdminLog(Base):
     target_user_id = Column(Integer)
     details = Column(Text)
     created_at = Column(DateTime, default=func.now())
+
+
+class AuditLog(Base):
+    """RGPD-compliant audit trail for sensitive user actions.
+
+    Distinct from AdminLog — this table records actions a user takes on
+    their own account (or that an admin takes on a user's account) that
+    have legal/compliance significance: account deletion, plan change,
+    password change/reset, data export.
+
+    Article 30 GDPR processing record.
+    """
+
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    actor_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    action = Column(String(80), nullable=False, index=True)
+    details = Column(JSON, nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False, index=True)
 
 
 class ApiStatus(Base):
@@ -1533,6 +1573,14 @@ class HubWorkspace(Base):
     )
     error_message = Column(Text, nullable=True)
 
+    # Canvas natif (pivot 2026-05-06) — rendu HTML/React inspiré de
+    # DebateConvergenceDivergence remplaçant l'embed Miro iframe.
+    # Forme : {"shared_concepts": [...], "themes": [{"theme": str,
+    # "perspectives": [{"summary_id": int, "excerpt": str}, ...]}]}
+    # NULL = workspace pré-pivot ou Mistral fail → fallback MiroBoardEmbed.
+    # Migration : alembic 021_hub_workspace_canvas_data.py.
+    canvas_data = Column(JSON, nullable=True)
+
     # Timestamps
     created_at = Column(
         DateTime, default=func.now(), server_default=func.now(), nullable=False, index=True
@@ -1548,6 +1596,87 @@ class HubWorkspace(Base):
     __table_args__ = (
         Index("idx_hub_workspaces_user_created", "user_id", "created_at"),
         Index("idx_hub_workspaces_user_status", "user_id", "status"),
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📨 EMAIL DLQ — Dead Letter Queue for failed Resend emails
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class EmailDLQ(Base):
+    """Email Dead Letter Queue — emails dont l'envoi a définitivement échoué.
+
+    Sprint scalabilité — chantier B (fix bug Resend 429 errors).
+
+    Persiste les emails après :
+    - N retries Resend exhaustés (429 / 5xx serveur Resend)
+    - Erreurs 4xx non recoverables (422 template, 403 from non vérifié, etc.)
+
+    Replay manuel via `POST /api/admin/email-dlq/{id}/replay`.
+
+    Migration : alembic 019_add_email_dlq.py.
+    """
+
+    __tablename__ = "email_dlq"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Email payload (suffisant pour replay)
+    email_to = Column(String(320), nullable=False)  # RFC 5321 max
+    subject = Column(String(500), nullable=False)
+    body_html = Column(Text, nullable=False)
+    body_text = Column(Text, nullable=True)
+    template_name = Column(String(100), nullable=True)
+    priority = Column(Boolean, default=False, server_default=text("false"), nullable=False)
+
+    # Diagnostic
+    failed_at = Column(
+        DateTime, default=func.now(), server_default=func.now(), nullable=False, index=True
+    )
+    error_message = Column(Text, nullable=True)
+    error_status_code = Column(Integer, nullable=True)
+    attempts = Column(Integer, default=1, server_default=text("1"), nullable=False)
+
+    # Replay state machine
+    # pending      → en attente de replay manuel
+    # replayed     → replay manuel réussi
+    # failed_again → replay manuel ré-échoué (laissé en attente d'un autre essai)
+    # abandoned    → admin a marqué comme abandonné (template foireux, etc.)
+    replay_status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
+    replayed_at = Column(DateTime, nullable=True)
+    replayed_by_admin_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Bookkeeping
+    created_at = Column(
+        DateTime, default=func.now(), server_default=func.now(), nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=func.now(),
+        onupdate=func.now(),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("idx_email_dlq_status_failed_at", "replay_status", "failed_at"),
+        Index("idx_email_dlq_email_to", "email_to"),
     )
 
 

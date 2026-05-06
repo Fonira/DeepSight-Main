@@ -470,16 +470,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               label={language === "fr" ? "Débat IA" : "AI Debate"}
               collapsed={collapsed}
             />
-            <NavItem
-              to="/hub"
-              icon={MessageCircle}
-              label="Hub"
-              collapsed={collapsed}
-              // Si Workspaces est visible, ne match que `/hub` exact pour éviter
-              // que les deux items soient actifs sur `/hub/workspaces`.
-              end={canSeeHubWorkspaces}
-              {...getBadge(minPlanHub)}
-            />
+            <div data-tour-step="hub-nav">
+              <NavItem
+                to="/hub"
+                icon={MessageCircle}
+                label="Hub"
+                collapsed={collapsed}
+                // Si Workspaces est visible, ne match que `/hub` exact pour éviter
+                // que les deux items soient actifs sur `/hub/workspaces`.
+                end={canSeeHubWorkspaces}
+                {...getBadge(minPlanHub)}
+              />
+            </div>
             {canSeeHubWorkspaces && (
               <NavItem
                 to="/hub/workspaces"
@@ -488,13 +490,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 collapsed={collapsed}
               />
             )}
-            <NavItem
-              to="/study"
-              icon={GraduationCap}
-              label={t.nav.study}
-              collapsed={collapsed}
-              {...getBadge(minPlanStudy)}
-            />
+            <div data-tour-step="study-nav">
+              <NavItem
+                to="/study"
+                icon={GraduationCap}
+                label={t.nav.study}
+                collapsed={collapsed}
+                {...getBadge(minPlanStudy)}
+              />
+            </div>
           </div>
 
           {/* ── Pill group: account & system ── */}
@@ -568,7 +572,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* User */}
-        <div className="border-t border-border-subtle">
+        <div className="border-t border-border-subtle" data-tour-step="profile-menu">
           <UserCard collapsed={collapsed} />
         </div>
       </aside>

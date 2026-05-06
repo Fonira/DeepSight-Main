@@ -16,6 +16,47 @@ import posthog from "posthog-js";
 import { hasAnalyticsConsent } from "../components/CookieBanner";
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 📊 TYPES — Core Web Vitals payload
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Nom court W3C d'une Core Web Vital. */
+export type WebVitalName = "CLS" | "FCP" | "FID" | "INP" | "LCP" | "TTFB";
+
+/** Classification W3C de la valeur d'une Web Vital. */
+export type WebVitalRating = "good" | "needs-improvement" | "poor";
+
+/** Type de navigation tel que reporté par la lib `web-vitals`. */
+export type WebVitalNavigationType =
+  | "navigate"
+  | "reload"
+  | "back-forward"
+  | "back-forward-cache"
+  | "prerender"
+  | "restore";
+
+/**
+ * Payload standard W3C pour une Core Web Vital.
+ * Compatible avec les `Metric` objects retournés par la librairie `web-vitals`.
+ */
+export interface WebVitalPayload {
+  /** Nom de la metric (LCP, FID, CLS, INP, TTFB, FCP) */
+  name: WebVitalName;
+  /** Valeur numérique (ms ou score selon la metric) */
+  value: number;
+  /** Classification W3C : good | needs-improvement | poor */
+  rating: WebVitalRating;
+  /** Delta depuis la dernière émission (utile pour CLS qui s'accumule) */
+  delta: number;
+  /** Identifiant unique du metric pour cette session */
+  id: string;
+  /**
+   * Type de navigation associé (navigate, reload, back-forward,
+   * back-forward-cache, prerender, restore).
+   */
+  navigationType?: WebVitalNavigationType;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 CONFIG
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -126,6 +167,27 @@ export const analytics = {
   },
 
   /**
+   * Tracker une Core Web Vital (LCP, FID, CLS, INP, TTFB, FCP).
+   *
+   * Émet un événement PostHog `web_vital` avec les propriétés W3C standard
+   * (name, value, rating, delta, id, navigationType) plus le path courant.
+   * Auto-gated sur le consentement RGPD via `hasAnalyticsConsent()`.
+   */
+  captureWebVital(metric: WebVitalPayload): void {
+    if (!isInitialized || !hasAnalyticsConsent()) return;
+    posthog.capture("web_vital", {
+      metric_name: metric.name,
+      metric_value: metric.value,
+      metric_rating: metric.rating,
+      metric_delta: metric.delta,
+      metric_id: metric.id,
+      navigation_type: metric.navigationType,
+      $current_url: window.location.href,
+      pathname: window.location.pathname,
+    });
+  },
+
+  /**
    * Ajouter des propriétés persistantes à tous les events
    */
   setUserProperties(properties: Record<string, unknown>): void {
@@ -139,6 +201,29 @@ export const analytics = {
   isFeatureEnabled(flag: string): boolean {
     if (!isInitialized) return false;
     return posthog.isFeatureEnabled(flag) ?? false;
+  },
+
+  /**
+   * Tracker un événement du tour onboarding interactif (Shepherd.js).
+   *
+   * Helper dédié pour standardiser les noms d'events et faciliter le funnel
+   * dans PostHog. Tous les events sont gated sur le consentement analytics
+   * (capture() vérifie hasAnalyticsConsent en interne).
+   *
+   * @param step  identifiant de l'étape (ex: "welcome", "analyze-input"),
+   *              ou nom logique pour les events globaux ("tour" pour
+   *              started/completed/skipped au niveau du tour entier).
+   * @param action shown | completed | skipped
+   * @param extra propriétés additionnelles facultatives (ex: stepIndex)
+   */
+  trackOnboardingStep(
+    step: string,
+    action: "shown" | "completed" | "skipped",
+    extra?: Record<string, unknown>,
+  ): void {
+    if (!isInitialized || !hasAnalyticsConsent()) return;
+    const event = `onboarding_tour_${step}_${action}`;
+    posthog.capture(event, { step, action, ...extra });
   },
 };
 
@@ -177,6 +262,11 @@ export const AnalyticsEvents = {
   // Errors
   ERROR_OCCURRED: "error_occurred",
   API_ERROR: "api_error",
+
+  // Onboarding tour (Shepherd.js)
+  ONBOARDING_TOUR_STARTED: "onboarding_tour_started",
+  ONBOARDING_TOUR_COMPLETED: "onboarding_tour_completed",
+  ONBOARDING_TOUR_SKIPPED: "onboarding_tour_skipped",
 } as const;
 
 export type AnalyticsEvent =

@@ -110,6 +110,13 @@ class _DeepSightSettings(BaseSettings):
     STRIPE_PRICE_EXPERT_YEARLY_TEST: str = ""
     STRIPE_PRICE_EXPERT_YEARLY_LIVE: str = ""
 
+    # -- Stripe Tax (TVA EU / VAT MOSS / IOSS) --
+    # Toggle automatic_tax on Checkout sessions. Requires Stripe Tax to be
+    # ENABLED in the Stripe Dashboard first (Settings -> Tax). If False,
+    # checkouts run without tax computation (current legacy behavior).
+    # See docs/RUNBOOK.md "Stripe Tax activation" for the rollout playbook.
+    STRIPE_AUTOMATIC_TAX_ENABLED: bool = False
+
     # -- Google OAuth --
     GOOGLE_OAUTH_ENABLED: str = "false"
     GOOGLE_CLIENT_ID: str = ""
@@ -127,6 +134,16 @@ class _DeepSightSettings(BaseSettings):
     LOG_FORMAT: str = "json"
     VERBOSE_LOGGING: str = "false"
     HEALTH_CHECK_SECRET: str = ""
+
+    # -- Centralized logs (Axiom.co) --
+    # When AXIOM_TOKEN + AXIOM_DATASET_NAME are both set, every backend log line
+    # is shipped (async, non-blocking, drop-on-error) to the Axiom dataset.
+    # If either is empty the handler becomes a no-op — no thread, no HTTP call,
+    # no overhead. See backend/src/core/axiom_handler.py and
+    # docs/RUNBOOK.md §16 for activation details.
+    AXIOM_TOKEN: str = ""
+    AXIOM_DATASET_NAME: str = ""
+    AXIOM_INGEST_URL: str = "https://api.axiom.co"
 
     # -- Analytics (server-side PostHog) --
     # Optional. Server-side capture for events that cannot be tracked client-side
@@ -350,6 +367,11 @@ VOICE_CALL_DISABLED: bool = _settings.VOICE_CALL_DISABLED.lower() == "true"
 # =============================================================================
 # STRIPE
 # =============================================================================
+
+# Stripe Tax (TVA EU / VAT MOSS / IOSS) — toggle automatic_tax on Checkout
+# sessions. Requires Stripe Tax to be enabled in the Stripe Dashboard first.
+# See docs/RUNBOOK.md "Stripe Tax activation" for the rollout playbook.
+STRIPE_AUTOMATIC_TAX_ENABLED: bool = _settings.STRIPE_AUTOMATIC_TAX_ENABLED
 
 STRIPE_CONFIG = {
     "ENABLED": _settings.STRIPE_ENABLED.lower() == "true",

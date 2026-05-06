@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.dependencies import get_current_user
-from core.config import FRONTEND_URL, STRIPE_CONFIG, get_stripe_key
+from core.config import FRONTEND_URL, STRIPE_CONFIG, get_stripe_key, STRIPE_AUTOMATIC_TAX_ENABLED
 from db.database import User, get_session
 from billing.voice_packs_service import (
     list_active_packs,
@@ -176,7 +176,9 @@ async def create_checkout(
             mode="payment",
             payment_method_types=["card"],
             line_items=line_items,
-            automatic_tax={"enabled": True},
+            # Stripe Tax env-driven (was hardcoded True — caused latent bug if
+            # Stripe Tax not enabled in Dashboard). See RUNBOOK §9.
+            automatic_tax={"enabled": STRIPE_AUTOMATIC_TAX_ENABLED},
             success_url=success_url,
             cancel_url=cancel_url,
             metadata={
