@@ -93,7 +93,7 @@
   },
 
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.deepsightsynthesis.com https://api.elevenlabs.io wss://api.elevenlabs.io https://*.elevenlabs.io wss://*.elevenlabs.io"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.deepsightsynthesis.com https://api.elevenlabs.io wss://api.elevenlabs.io https://*.elevenlabs.io wss://*.elevenlabs.io https://eu.i.posthog.com https://eu-assets.i.posthog.com"
   },
 
   "icons": {
