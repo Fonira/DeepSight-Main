@@ -244,6 +244,78 @@ async def maybe_enrich_with_visual(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🔌 HELPER UNIFIÉ — wraps maybe_enrich + format pour V1/V2/V2.1
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+async def enrich_and_capture_visual(
+    db: AsyncSession,
+    user_id: int,
+    url: str,
+    *,
+    transcript_excerpt: str,
+    web_context: str,
+    flag_enabled: bool,
+    log_tag: str,
+) -> Tuple[str, Optional[Dict[str, Any]]]:
+    """
+    Helper unifié appelé par V1, V2, V2.1 pour appliquer le hook visual.
+
+    Flow :
+    1. Check flag VISUAL_ANALYSIS_ENABLED
+    2. Fetch user (pour quota check)
+    3. Run maybe_enrich_with_visual (extraction storyboards + Mistral Vision)
+    4. Si OK : append visual block à web_context + capture le dict
+    5. Si KO : log + retourne web_context inchangé, visual_analysis_data=None
+
+    Renvoie (updated_web_context, visual_analysis_data).
+    Le caller persist `visual_analysis_data` sur Summary.visual_analysis
+    après save_summary().
+
+    Best-effort — toute exception est attrapée et loggée (graceful degradation).
+    """
+    if not flag_enabled:
+        return web_context, None
+
+    try:
+        _user_q = await db.execute(select(User).where(User.id == user_id))
+        _user_row = _user_q.scalar_one_or_none()
+        if not _user_row:
+            return web_context, None
+
+        _visual = await maybe_enrich_with_visual(
+            db=db,
+            user=_user_row,
+            url=url,
+            transcript_excerpt=(transcript_excerpt or "")[:8000],
+            flag_enabled=True,
+        )
+        if _visual.get("status") != STATUS_OK:
+            logger.info("👁️ [%s] visual skipped: status=%s", log_tag, _visual.get("status"))
+            return web_context, None
+
+        _visual_block = format_visual_context_for_prompt(_visual)
+        new_web_context = web_context or ""
+        if _visual_block:
+            new_web_context = (
+                (new_web_context + "\n\n" + _visual_block) if new_web_context else _visual_block
+            )
+
+        logger.info(
+            "👁️ [%s] visual enrichment OK: frames=%d model=%s elapsed=%.1fs",
+            log_tag,
+            _visual.get("frame_count", 0),
+            _visual.get("model_used"),
+            _visual.get("elapsed_s", 0.0),
+        )
+        return new_web_context, _visual.get("analysis")
+    except Exception as e:
+        # Graceful — pas de raise. L'analyse de base continue sans la couche visuelle.
+        logger.warning("👁️ [%s] visual enrichment raised (graceful): %s", log_tag, e)
+        return web_context, None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 📝 FORMAT POUR INJECTION DANS LE PROMPT
 # ═══════════════════════════════════════════════════════════════════════════════
 
