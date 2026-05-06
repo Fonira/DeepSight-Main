@@ -3427,6 +3427,28 @@ export const keywordImageApi = {
 
 export type HubWorkspaceStatus = "pending" | "creating" | "ready" | "failed";
 
+/**
+ * Canvas natif Hub Workspace (pivot 2026-05-06).
+ *
+ * Remplace l'embed Miro iframe pour les nouveaux workspaces. Stocké côté
+ * backend dans `hub_workspaces.canvas_data` (JSON nullable). Aligné sur le
+ * Pydantic `WorkspaceCanvasData` (backend/src/hub/schemas.py).
+ */
+export interface CanvasPerspective {
+  summary_id: number;
+  excerpt: string;
+}
+
+export interface CanvasTheme {
+  theme: string;
+  perspectives: CanvasPerspective[];
+}
+
+export interface WorkspaceCanvasData {
+  shared_concepts: string[];
+  themes: CanvasTheme[];
+}
+
 export interface HubWorkspace {
   id: number;
   name: string;
@@ -3435,6 +3457,11 @@ export interface HubWorkspace {
   miro_board_url: string | null;
   status: HubWorkspaceStatus;
   error_message: string | null;
+  /**
+   * Canvas natif (pivot 2026-05-06). NULL pour workspaces pré-pivot ou si
+   * Mistral fail → frontend bascule sur MiroBoardEmbed (rétro-compat).
+   */
+  canvas_data: WorkspaceCanvasData | null;
   created_at: string; // ISO
   updated_at: string; // ISO
 }

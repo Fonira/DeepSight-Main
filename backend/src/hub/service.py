@@ -345,17 +345,52 @@ async def _create_miro_board_async(workspace_id: int) -> None:
                 )
                 return
 
-            # 5. status='ready'
+            # 5. Persiste les infos Miro mais on garde status='creating'
+            # tant que le canvas natif n'est pas tenté → le polling frontend
+            # continue jusqu'à voir status='ready' avec canvas_data populé
+            # (ou null sur fail Mistral).
             workspace.miro_board_id = board.get("board_id")
             workspace.miro_board_url = board.get("view_link")
-            workspace.status = "ready"
             workspace.error_message = None
             await session.commit()
 
+            # 6. Pivot 2026-05-06 : génération du canvas natif Mistral.
+            # Best-effort — si Mistral échoue, canvas_data reste null et le
+            # frontend bascule sur MiroBoardEmbed (rétro-compat).
+            try:
+                from .canvas_service import generate_workspace_canvas
+
+                canvas_data = await generate_workspace_canvas(
+                    summaries=ordered,
+                    workspace_name=workspace.name,
+                )
+                if canvas_data is not None:
+                    workspace.canvas_data = canvas_data
+                    logger.info(
+                        "[HUB] Canvas natif généré ws=%s themes=%d shared=%d",
+                        workspace_id,
+                        len(canvas_data.get("themes", [])),
+                        len(canvas_data.get("shared_concepts", [])),
+                    )
+                else:
+                    logger.warning(
+                        "[HUB] Canvas natif None ws=%s — fallback Miro côté front",
+                        workspace_id,
+                    )
+            except Exception:  # pragma: no cover — defensive
+                logger.exception(
+                    "[HUB] Canvas natif failed ws=%s — fallback Miro côté front",
+                    workspace_id,
+                )
+
+            # 7. status='ready' (canvas_data populé ou null) → polling stop.
+            workspace.status = "ready"
+            await session.commit()
             logger.info(
-                "[HUB] Workspace ready id=%s board=%s",
+                "[HUB] Workspace ready id=%s board=%s canvas=%s",
                 workspace_id,
                 workspace.miro_board_id,
+                "yes" if workspace.canvas_data else "no",
             )
         except Exception as exc:  # pragma: no cover — defensive
             logger.exception(

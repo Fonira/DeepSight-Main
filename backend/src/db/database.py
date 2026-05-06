@@ -1566,6 +1566,14 @@ class HubWorkspace(Base):
     )
     error_message = Column(Text, nullable=True)
 
+    # Canvas natif (pivot 2026-05-06) — rendu HTML/React inspiré de
+    # DebateConvergenceDivergence remplaçant l'embed Miro iframe.
+    # Forme : {"shared_concepts": [...], "themes": [{"theme": str,
+    # "perspectives": [{"summary_id": int, "excerpt": str}, ...]}]}
+    # NULL = workspace pré-pivot ou Mistral fail → fallback MiroBoardEmbed.
+    # Migration : alembic 021_hub_workspace_canvas_data.py.
+    canvas_data = Column(JSON, nullable=True)
+
     # Timestamps
     created_at = Column(
         DateTime, default=func.now(), server_default=func.now(), nullable=False, index=True
