@@ -212,7 +212,7 @@ class TestAnalyzeFrames:
 
     @pytest.mark.asyncio
     async def test_downsample_above_threshold(self, tmp_path, monkeypatch):
-        """>MAX_FRAMES_PER_CALL → frames_downsampled True."""
+        """>MAX_FRAMES_TOTAL_CAP → frames_downsampled True + multi-batch parallèle."""
         from videos import visual_analyzer
 
         # Crée 80 fake frames
@@ -225,12 +225,13 @@ class TestAnalyzeFrames:
             timestamps.append(float(i))
 
         monkeypatch.setattr(visual_analyzer, "get_mistral_key", lambda: "fake-key")
-        monkeypatch.setattr(visual_analyzer, "MAX_FRAMES_PER_CALL", 30)
+        # Cap à 24 → avec batch_size=8 → 3 batches de 8
+        monkeypatch.setattr(visual_analyzer, "MAX_FRAMES_TOTAL_CAP", 24)
 
-        captured: dict = {}
+        call_payloads: list = []
 
         async def fake_vision(**kwargs):
-            captured["messages"] = kwargs.get("messages")
+            call_payloads.append(kwargs.get("messages"))
             return VALID_RESPONSE
 
         monkeypatch.setattr(visual_analyzer, "mistral_vision_request", fake_vision)
@@ -239,11 +240,69 @@ class TestAnalyzeFrames:
 
         assert result is not None
         assert result.frames_downsampled is True
-        assert result.frames_analyzed == 30
-        # Vérifie que le payload contient au plus 30 image_url
-        image_blocks = [
-            p
-            for p in captured["messages"][1]["content"]
-            if p.get("type") == "image_url"
-        ]
-        assert len(image_blocks) == 30
+        assert result.frames_analyzed == 24
+        # 3 batches lancés en parallèle (24 / 8)
+        assert len(call_payloads) == 3
+        # Chaque batch ≤MISTRAL_IMAGES_PER_REQUEST (8) images, >0
+        for messages in call_payloads:
+            image_blocks = [
+                p for p in messages[1]["content"] if p.get("type") == "image_url"
+            ]
+            assert 0 < len(image_blocks) <= visual_analyzer.MISTRAL_IMAGES_PER_REQUEST
+
+    @pytest.mark.asyncio
+    async def test_multi_batch_merge(self, tmp_path, monkeypatch):
+        """16 frames → 2 batches de 8, résultats mergés correctement."""
+        from videos import visual_analyzer
+
+        paths = []
+        timestamps = []
+        for i in range(16):
+            p = tmp_path / f"f{i:03d}.jpg"
+            _make_fake_jpeg(p)
+            paths.append(str(p))
+            timestamps.append(float(i * 5))  # 0s, 5s, 10s, ...
+
+        monkeypatch.setattr(visual_analyzer, "get_mistral_key", lambda: "fake-key")
+
+        call_count = [0]
+
+        async def fake_vision(**kwargs):
+            call_count[0] += 1
+            return VALID_RESPONSE
+
+        monkeypatch.setattr(visual_analyzer, "mistral_vision_request", fake_vision)
+
+        result = await visual_analyzer.analyze_frames(paths, timestamps)
+
+        assert result is not None
+        assert result.frames_analyzed == 16
+        assert result.frames_downsampled is False
+        # 2 batches : 16 / 8
+        assert call_count[0] == 2
+        # Les 2 batches retournent le même VALID_RESPONSE → key_moments dédupliqué à 1
+        assert len(result.key_moments) == 1
+        assert result.visual_structure == "talking_head"
+
+    @pytest.mark.asyncio
+    async def test_all_batches_fail_returns_none(self, tmp_path, monkeypatch):
+        """Si tous les batches échouent (None retourné) → analyze_frames retourne None."""
+        from videos import visual_analyzer
+
+        paths = []
+        timestamps = []
+        for i in range(16):
+            p = tmp_path / f"f{i:03d}.jpg"
+            _make_fake_jpeg(p)
+            paths.append(str(p))
+            timestamps.append(float(i))
+
+        monkeypatch.setattr(visual_analyzer, "get_mistral_key", lambda: "fake-key")
+
+        async def fake_vision_fail(**kwargs):
+            return None
+
+        monkeypatch.setattr(visual_analyzer, "mistral_vision_request", fake_vision_fail)
+
+        result = await visual_analyzer.analyze_frames(paths, timestamps)
+        assert result is None

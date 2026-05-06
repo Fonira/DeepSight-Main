@@ -4,21 +4,22 @@
 ╠════════════════════════════════════════════════════════════════════════════════════╣
 ║  Pipeline :                                                                        ║
 ║  1. Encode frames JPEG en base64                                                   ║
-║  2. Construit messages Mistral avec timestamps en texte avant chaque image        ║
-║  3. Appelle mistral_vision_request (réutilise fallback chain pixtral→small→Claude)║
-║  4. Parse JSON strict ; renvoie VisualAnalysis ou None                            ║
+║  2. Découpe en batches de MISTRAL_IMAGES_PER_REQUEST (8) — limite Mistral          ║
+║  3. Lance les batches en parallèle (asyncio.gather)                                ║
+║  4. Merge les résultats partiels en un VisualAnalysis unifié                       ║
 ║                                                                                    ║
 ║  Réutilise core.config.get_mistral_key + images.screenshot_detection.mistral_*    ║
-║  Spec: docs/superpowers/specs/2026-05-05-visual-analysis-poc.md (à créer)         ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import asyncio
 import base64
 import json
 import logging
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from core.config import get_mistral_key
 from images.screenshot_detection import mistral_vision_request
@@ -31,17 +32,18 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Ordre de préférence : pixtral-large > pixtral-12b > mistral-small (vision)
-# Aligné avec VISION_MODELS_ANALYSIS de screenshot_detection.py.
 PRIMARY_MODEL = "pixtral-large-2411"
 FALLBACK_MODELS = ["pixtral-12b-2409", "mistral-small-2603"]
 
-# Nombre max de frames envoyées à Mistral en un seul appel.
-# Au-delà, on downsample uniformément pour rester sous le seuil.
-# 80 frames × ~512 tokens ≈ 40k tokens input → safe pour pixtral-large (32k window).
-# pixtral-large = 128k context window, mais le coût grimpe vite.
-MAX_FRAMES_PER_CALL = 60
+# Limite dure côté Mistral (code 3051 si dépassée).
+MISTRAL_IMAGES_PER_REQUEST = 8
 
-VISION_TIMEOUT_S = 240.0
+# Cap global sur le nombre de frames analysées (8 batches × 8 frames).
+# Au-delà, downsampling uniforme pour rester sous le cap.
+MAX_FRAMES_TOTAL_CAP = 64
+
+# Timeout par batch (8 frames ~5-15s normalement).
+VISION_TIMEOUT_S = 90.0
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -56,12 +58,10 @@ class VisualAnalysis:
     visual_hook: str = ""
     visual_structure: str = ""  # talking_head|b_roll|gameplay|slides|tutorial|mixed|other
     key_moments: List[Dict[str, Any]] = field(default_factory=list)
-    # Chaque moment: {timestamp_s: float, description: str, type: hook|transition|reveal|cta|peak}
     visible_text: str = ""
     visual_seo_indicators: Dict[str, Any] = field(default_factory=dict)
     summary_visual: str = ""
 
-    # Métadonnées de l'analyse (non issues du LLM)
     model_used: str = ""
     frames_analyzed: int = 0
     frames_downsampled: bool = False
@@ -182,6 +182,148 @@ def _build_user_message(
     return parts
 
 
+def _parse_json_safe(raw: str, log_tag: str, batch_idx: int) -> Optional[Dict[str, Any]]:
+    """Parse JSON strict avec fallback brace extraction. None si tout échoue."""
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        logger.warning("[%s] batch %d JSON parse failed: %s ; trying brace extraction", log_tag, batch_idx, e)
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start >= 0 and end > start:
+            try:
+                return json.loads(raw[start : end + 1])
+            except json.JSONDecodeError:
+                logger.error("[%s] batch %d brace extraction failed. Raw: %s", log_tag, batch_idx, raw[:300])
+                return None
+        logger.error("[%s] batch %d no JSON object found", log_tag, batch_idx)
+        return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🧩 BATCH ANALYSIS — un appel Mistral pour ≤8 frames
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+async def _analyze_single_batch(
+    api_key: str,
+    batch_paths: List[str],
+    batch_ts: List[float],
+    transcript_excerpt: str,
+    model: str,
+    fallback_models: List[str],
+    log_tag: str,
+    batch_idx: int,
+) -> Optional[Dict[str, Any]]:
+    """Analyse un batch de ≤8 frames. Renvoie le dict JSON parsé ou None."""
+    user_content = _build_user_message(batch_paths, batch_ts, transcript_excerpt)
+    if user_content is None:
+        logger.warning("[%s] batch %d: no frame could be encoded", log_tag, batch_idx)
+        return None
+
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_content},
+    ]
+
+    raw = await mistral_vision_request(
+        api_key=api_key,
+        messages=messages,
+        model=model,
+        max_tokens=2048,
+        temperature=0.1,
+        response_format={"type": "json_object"},
+        timeout=VISION_TIMEOUT_S,
+        fallback_models=fallback_models,
+    )
+
+    if not raw:
+        logger.warning("[%s] batch %d: vision returned no content", log_tag, batch_idx)
+        return None
+
+    return _parse_json_safe(raw, log_tag, batch_idx)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔀 MERGE — combine N résultats partiels en un seul VisualAnalysis
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _merge_batch_results(
+    results: List[Dict[str, Any]],
+    model: str,
+    frames_count: int,
+    downsampled: bool,
+) -> VisualAnalysis:
+    """
+    Merge N dicts JSON partiels en un VisualAnalysis unifié.
+
+    Stratégie :
+    - visual_hook : du premier batch (premières frames de la vidéo)
+    - visual_structure : vote majoritaire entre batches
+    - key_moments : concat global, dédup par timestamp arrondi, trié, top 8
+    - visible_text : concat des textes uniques séparés par " | "
+    - visual_seo_indicators : du premier batch (le hook est ce qui compte le plus)
+    - summary_visual : 1er + milieu (si plus de 2 batches) pour rester concis
+    """
+    if not results:
+        return VisualAnalysis(
+            model_used=model,
+            frames_analyzed=frames_count,
+            frames_downsampled=downsampled,
+        )
+
+    visual_hook = str(results[0].get("visual_hook", "")).strip()
+
+    structures = [str(r.get("visual_structure", "")).strip() for r in results if r.get("visual_structure")]
+    visual_structure = Counter(structures).most_common(1)[0][0] if structures else ""
+
+    all_moments: List[Dict[str, Any]] = []
+    seen_ts: set = set()
+    for r in results:
+        for m in r.get("key_moments", []) or []:
+            ts = m.get("timestamp_s")
+            if not isinstance(ts, (int, float)):
+                continue
+            ts_key = round(float(ts))
+            if ts_key in seen_ts:
+                continue
+            seen_ts.add(ts_key)
+            all_moments.append(m)
+    all_moments.sort(key=lambda m: float(m.get("timestamp_s", 0) or 0))
+    key_moments = all_moments[:8]
+
+    seen_text: set = set()
+    text_parts: List[str] = []
+    for r in results:
+        t = str(r.get("visible_text", "")).strip()
+        if t and t not in seen_text:
+            seen_text.add(t)
+            text_parts.append(t)
+    visible_text = " | ".join(text_parts)
+
+    visual_seo_indicators = dict(results[0].get("visual_seo_indicators", {}) or {})
+
+    summaries = [str(r.get("summary_visual", "")).strip() for r in results if r.get("summary_visual")]
+    if len(summaries) <= 2:
+        summary_visual = " ".join(summaries)
+    else:
+        mid = len(summaries) // 2
+        summary_visual = f"{summaries[0]} {summaries[mid]}"
+
+    return VisualAnalysis(
+        visual_hook=visual_hook,
+        visual_structure=visual_structure,
+        key_moments=key_moments,
+        visible_text=visible_text,
+        visual_seo_indicators=visual_seo_indicators,
+        summary_visual=summary_visual,
+        model_used=model,
+        frames_analyzed=frames_count,
+        frames_downsampled=downsampled,
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🚀 API PUBLIQUE
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -199,13 +341,12 @@ async def analyze_frames(
     """
     Pipeline complet : frames → JSON structuré (VisualAnalysis).
 
+    Découpe les frames en batches de ≤MISTRAL_IMAGES_PER_REQUEST, lance les batches
+    en parallèle, merge les résultats partiels.
+
     Renvoie None si :
     - Aucune clé Mistral configurée
-    - Aucune frame n'a pu être encodée
-    - Mistral renvoie 0 réponse exploitable
-    - Le JSON parse échoue après plusieurs tentatives
-
-    Le caller est responsable du cleanup des frames après cet appel.
+    - Aucun batch n'a réussi
     """
     if not frame_paths:
         logger.warning("[%s] Empty frame_paths", log_tag)
@@ -224,73 +365,70 @@ async def analyze_frames(
         logger.error("[%s] MISTRAL_API_KEY missing — abort", log_tag)
         return None
 
-    # Downsample si trop de frames pour un seul appel
+    effective_fallbacks = fallback_models if fallback_models is not None else FALLBACK_MODELS
+
     downsampled = False
-    if len(frame_paths) > MAX_FRAMES_PER_CALL:
+    if len(frame_paths) > MAX_FRAMES_TOTAL_CAP:
         downsampled = True
-        sampled_paths = _downsample(frame_paths, MAX_FRAMES_PER_CALL)
-        sampled_ts = _downsample(frame_timestamps, MAX_FRAMES_PER_CALL)
+        sampled_paths = _downsample(frame_paths, MAX_FRAMES_TOTAL_CAP)
+        sampled_ts = _downsample(frame_timestamps, MAX_FRAMES_TOTAL_CAP)
         logger.info(
             "[%s] Downsampled %d → %d frames (cap %d)",
             log_tag,
             len(frame_paths),
             len(sampled_paths),
-            MAX_FRAMES_PER_CALL,
+            MAX_FRAMES_TOTAL_CAP,
         )
     else:
-        sampled_paths = frame_paths
-        sampled_ts = frame_timestamps
+        sampled_paths = list(frame_paths)
+        sampled_ts = list(frame_timestamps)
 
-    user_content = _build_user_message(sampled_paths, sampled_ts, transcript_excerpt)
-    if user_content is None:
-        logger.warning("[%s] No frame could be encoded", log_tag)
-        return None
+    batches: List[Tuple[List[str], List[float]]] = []
+    for i in range(0, len(sampled_paths), MISTRAL_IMAGES_PER_REQUEST):
+        b_paths = sampled_paths[i : i + MISTRAL_IMAGES_PER_REQUEST]
+        b_ts = sampled_ts[i : i + MISTRAL_IMAGES_PER_REQUEST]
+        batches.append((b_paths, b_ts))
 
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user_content},
-    ]
-
-    raw = await mistral_vision_request(
-        api_key=api_key,
-        messages=messages,
-        model=model,
-        max_tokens=2048,
-        temperature=0.1,
-        response_format={"type": "json_object"},
-        timeout=VISION_TIMEOUT_S,
-        fallback_models=fallback_models or FALLBACK_MODELS,
+    logger.info(
+        "[%s] Analyzing %d frames in %d parallel batches (≤%d frames each)",
+        log_tag,
+        len(sampled_paths),
+        len(batches),
+        MISTRAL_IMAGES_PER_REQUEST,
     )
 
-    if not raw:
-        logger.warning("[%s] Mistral vision returned no content", log_tag)
+    tasks = [
+        _analyze_single_batch(
+            api_key=api_key,
+            batch_paths=b_paths,
+            batch_ts=b_ts,
+            transcript_excerpt=transcript_excerpt,
+            model=model,
+            fallback_models=effective_fallbacks,
+            log_tag=log_tag,
+            batch_idx=idx,
+        )
+        for idx, (b_paths, b_ts) in enumerate(batches)
+    ]
+    raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    successful: List[Dict[str, Any]] = []
+    for idx, r in enumerate(raw_results):
+        if isinstance(r, Exception):
+            logger.warning("[%s] batch %d raised: %s", log_tag, idx, r)
+            continue
+        if r:
+            successful.append(r)
+
+    if not successful:
+        logger.error("[%s] All %d batches failed", log_tag, len(batches))
         return None
 
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as e:
-        # Tentative de récupération : isole le premier bloc {...}
-        logger.warning("[%s] JSON parse failed: %s ; trying brace extraction", log_tag, e)
-        start = raw.find("{")
-        end = raw.rfind("}")
-        if start >= 0 and end > start:
-            try:
-                data = json.loads(raw[start : end + 1])
-            except json.JSONDecodeError:
-                logger.error("[%s] JSON brace extraction also failed. Raw: %s", log_tag, raw[:500])
-                return None
-        else:
-            logger.error("[%s] No JSON object found in response", log_tag)
-            return None
+    logger.info("[%s] %d/%d batches succeeded", log_tag, len(successful), len(batches))
 
-    return VisualAnalysis(
-        visual_hook=str(data.get("visual_hook", "")).strip(),
-        visual_structure=str(data.get("visual_structure", "")).strip(),
-        key_moments=list(data.get("key_moments", []) or []),
-        visible_text=str(data.get("visible_text", "")).strip(),
-        visual_seo_indicators=dict(data.get("visual_seo_indicators", {}) or {}),
-        summary_visual=str(data.get("summary_visual", "")).strip(),
-        model_used=model,
-        frames_analyzed=len(sampled_paths),
-        frames_downsampled=downsampled,
+    return _merge_batch_results(
+        results=successful,
+        model=model,
+        frames_count=len(sampled_paths),
+        downsampled=downsampled,
     )
