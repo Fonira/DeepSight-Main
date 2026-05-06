@@ -15,7 +15,7 @@
 //
 // Pas de dépendance externe — `renderVoiceCallButton` est notre source de
 // vérité unique pour le rendu et l'envoi du message OPEN_VOICE_CALL.
-import { renderVoiceCallButton } from "./widget";
+import { renderVoiceCallButton, renderVisualAnalysisBadge } from "./widget";
 
 const HOST_ID = "ds-voice-call-host";
 
@@ -180,6 +180,17 @@ export async function injectVoiceCallButton(): Promise<void> {
     videoId,
     videoTitle: getCleanVideoTitle(),
   });
+
+  // Phase 2 Visual Analysis badge — sous le bouton Voice Call.
+  // Best-effort : si le rendu échoue, le bouton Voice Call reste fonctionnel.
+  try {
+    await renderVisualAnalysisBadge(shadow as unknown as HTMLElement, {
+      plan: state.plan,
+      videoId,
+    });
+  } catch {
+    /* graceful degradation — le badge est non-critique */
+  }
 
   if (useFloating) {
     document.body.appendChild(host);
