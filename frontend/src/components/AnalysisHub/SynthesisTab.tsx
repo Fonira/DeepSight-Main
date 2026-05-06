@@ -24,6 +24,7 @@ import { DeepSightSpinnerMicro } from "../ui";
 import { AudioPlayerButton } from "../AudioPlayerButton";
 import { AudioSummaryButton } from "../AudioSummaryButton";
 import { EnrichedMarkdown } from "../EnrichedMarkdown";
+import { SummaryEnrichments } from "../summary/SummaryEnrichments";
 import { DeepResearchSources } from "../SummaryReader";
 import { ConceptsGlossary } from "../ConceptsGlossary";
 import { AcademicSourcesPanel } from "../academic";
@@ -248,6 +249,16 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         >
           {selectedSummary.summary_content || ""}
         </EnrichedMarkdown>
+
+        {/* 📚 Spike 2026-05-06 — Enrichissements Mistral à la demande
+            (key_quotes + key_takeaways + chapter_themes). Bouton initial
+            si non généré, sinon rendu direct depuis cache DB. */}
+        <div className="mt-6 not-prose">
+          <SummaryEnrichments
+            summaryId={selectedSummary.id}
+            initialExtras={selectedSummary.summary_extras}
+          />
+        </div>
 
         {/* Glossaire des concepts */}
         <div className="mt-6">

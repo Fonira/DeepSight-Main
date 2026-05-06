@@ -280,8 +280,51 @@ class SummaryResponse(BaseModel):
     source_tags: Optional[List[str]] = None
     carousel_images: Optional[List[str]] = None
 
+    # 📚 Summary extras (spike 2026-05-06) — enrichissement post-processing
+    # Mistral à la demande sur le contenu existant. NULL si pas encore généré.
+    # Forme : {key_quotes: [{quote, context?}], key_takeaways: [str], chapter_themes: [{theme, summary?}]}
+    summary_extras: Optional[Dict[str, Any]] = None
+
     class Config:
         from_attributes = True
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📚 SUMMARY EXTRAS (spike 2026-05-06)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class SummaryQuote(BaseModel):
+    """Une citation extraite par Mistral d'un Summary (avec mini-contexte optionnel)."""
+
+    quote: str
+    context: Optional[str] = None
+
+
+class SummaryChapterTheme(BaseModel):
+    """Un chapitre / thème structuré du Summary (table des matières enrichie)."""
+
+    theme: str
+    summary: Optional[str] = None
+
+
+class SummaryExtrasData(BaseModel):
+    """Forme stockée dans `summaries.summary_extras` (JSON nullable)."""
+
+    key_quotes: List[SummaryQuote] = Field(default_factory=list)
+    key_takeaways: List[str] = Field(default_factory=list)
+    chapter_themes: List[SummaryChapterTheme] = Field(default_factory=list)
+
+
+class SummaryEnrichResponse(BaseModel):
+    """Réponse de POST /api/videos/summary/{id}/enrich.
+
+    `cached=True` si l'enrichissement existait déjà (pas de regen Mistral).
+    """
+
+    summary_id: int
+    cached: bool
+    extras: Optional[SummaryExtrasData] = None
 
 
 class SummaryListItem(BaseModel):

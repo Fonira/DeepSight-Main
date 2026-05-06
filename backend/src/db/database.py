@@ -246,6 +246,13 @@ class Summary(Base):
     enrichment_sources = Column(Text, nullable=True)  # JSON: [{title, url, snippet}]
     enrichment_data = Column(Text, nullable=True)  # JSON: {level, sources, enriched_at}
 
+    # Summary extras (spike 2026-05-06) — enrichissement post-processing Mistral
+    # appliqué à la demande sur le summary_content existant.
+    # Forme : {key_quotes: [{quote, context?}], key_takeaways: [str], chapter_themes: [{theme, summary?}]}
+    # NULL = enrichissement pas encore généré (POST /api/videos/summary/{id}/enrich).
+    # Migration : alembic 022_summary_extras.py.
+    summary_extras = Column(JSON, nullable=True)
+
     # Hierarchical Digest Pipeline (Feb 2026)
     full_digest = Column(Text, nullable=True)  # Assembled full digest from chunk digests (~6-10K chars)
 

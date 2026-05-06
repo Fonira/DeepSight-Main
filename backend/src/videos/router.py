@@ -3685,6 +3685,70 @@ async def get_summary(
         music_author=getattr(summary, "music_author", None),
         source_tags=_source_tags,
         carousel_images=_carousel_images,
+        # Summary extras (spike 2026-05-06) — null tant que pas généré
+        summary_extras=getattr(summary, "summary_extras", None),
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📚 SUMMARY EXTRAS — enrichissement post-processing Mistral (spike 2026-05-06)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/summary/{summary_id}/enrich")
+async def enrich_summary(
+    summary_id: int,
+    force: bool = Query(default=False, description="Force regen même si cache présent"),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Génère (ou retourne du cache) les extras Mistral d'une analyse.
+
+    Idempotent : si `summary_extras` est déjà populé, retourne le cache
+    sans regénérer (sauf si `force=true`).
+
+    Best-effort : si Mistral échoue, retourne 502 mais ne casse pas l'analyse.
+    """
+    summary = await get_summary_by_id(session, summary_id, current_user.id)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Summary not found")
+
+    existing = getattr(summary, "summary_extras", None)
+    if existing and not force:
+        from videos.schemas import SummaryEnrichResponse
+
+        return SummaryEnrichResponse(
+            summary_id=summary.id,
+            cached=True,
+            extras=existing,  # type: ignore[arg-type]  # Pydantic coerces dict→model
+        )
+
+    # Génération Mistral
+    from videos.summary_enrichment_service import generate_summary_extras
+
+    extras = await generate_summary_extras(summary)
+    if extras is None:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "code": "summary_enrichment_failed",
+                "message": (
+                    "L'enrichissement Mistral a échoué. Réessaie dans quelques "
+                    "secondes ou contacte le support si le problème persiste."
+                ),
+            },
+        )
+
+    # Persist
+    summary.summary_extras = extras
+    await session.commit()
+
+    from videos.schemas import SummaryEnrichResponse
+
+    return SummaryEnrichResponse(
+        summary_id=summary.id,
+        cached=False,
+        extras=extras,  # type: ignore[arg-type]
     )
 
 
