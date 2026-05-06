@@ -19,6 +19,7 @@ import {
   Sparkles,
   ExternalLink,
   Shield,
+  ShieldCheck,
   Info,
   Scale,
   BarChart3,
@@ -545,6 +546,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               to="/legal"
               icon={Scale}
               label={t.nav.legal}
+              collapsed={collapsed}
+            />
+            <NavItem
+              to="/trust"
+              icon={ShieldCheck}
+              label="Trust Center"
               collapsed={collapsed}
             />
           </div>
