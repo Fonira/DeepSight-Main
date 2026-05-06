@@ -3428,25 +3428,35 @@ export const keywordImageApi = {
 export type HubWorkspaceStatus = "pending" | "creating" | "ready" | "failed";
 
 /**
- * Canvas natif Hub Workspace (pivot 2026-05-06).
+ * Canvas natif Hub Workspace (pivot 2026-05-06, v2 enrichi).
  *
  * Remplace l'embed Miro iframe pour les nouveaux workspaces. Stocké côté
  * backend dans `hub_workspaces.canvas_data` (JSON nullable). Aligné sur le
  * Pydantic `WorkspaceCanvasData` (backend/src/hub/schemas.py).
+ *
+ * v2 (2026-05-06) ajoute des champs OPTIONNELS pour enrichir le rendu :
+ * - `synthesis` (top-level) : paragraphe d'overview transversal
+ * - `theme.description` : 1-2 phrases d'enjeu par thématique
+ * - `perspective.key_quote` : citation littérale optionnelle
+ *
+ * Backward-compat : un canvas v1 (sans ces champs) reste affichable.
  */
 export interface CanvasPerspective {
   summary_id: number;
   excerpt: string;
+  key_quote?: string;
 }
 
 export interface CanvasTheme {
   theme: string;
+  description?: string;
   perspectives: CanvasPerspective[];
 }
 
 export interface WorkspaceCanvasData {
   shared_concepts: string[];
   themes: CanvasTheme[];
+  synthesis?: string;
 }
 
 export interface HubWorkspace {

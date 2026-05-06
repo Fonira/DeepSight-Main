@@ -1,23 +1,29 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  🎨 HUB WORKSPACE CANVAS — rendu natif (pivot 2026-05-06)                          ║
+ * ║  🎨 HUB WORKSPACE CANVAS v2 — rendu natif enrichi (2026-05-06)                     ║
  * ╠════════════════════════════════════════════════════════════════════════════════════╣
  * ║  Remplace l'embed Miro iframe par un rendu HTML/React natif inspiré du composant   ║
  * ║  DebateConvergenceDivergence (style apprécié par l'utilisateur sur Débat IA).      ║
  * ║                                                                                    ║
- * ║  - canvasData absent (pré-pivot ou Mistral fail) → fallback sur MiroBoardEmbed     ║
- * ║  - canvasData présent → 2 sections glassmorphism dark mode :                       ║
- * ║      1. Concepts partagés (équivalent Convergence, palette emerald)                ║
- * ║      2. Perspectives complémentaires (équivalent Divergence, indigo/violet)        ║
+ * ║  v1 (initial) : 2 sections (concepts partagés + perspectives par thème).           ║
+ * ║  v2 (enrichi) : ajoute synthesis + theme.description + perspective.key_quote.      ║
  * ║                                                                                    ║
- * ║  Composant pur prop-driven : aucun appel API, aucun state global. La section       ║
- * ║  "Vue d'ensemble" (analyses cards) reste rendue par HubWorkspacesPage.             ║
+ * ║  Sections rendues :                                                                ║
+ * ║    1. Synthèse transversale (cyan, optionnel — affiché si présent)                 ║
+ * ║    2. Concepts partagés (emerald)                                                  ║
+ * ║    3. Perspectives complémentaires (indigo/violet) avec :                          ║
+ * ║         - description du thème (optionnel)                                         ║
+ * ║         - excerpt riche par analyse                                                ║
+ * ║         - key_quote en italique (optionnel)                                        ║
+ * ║                                                                                    ║
+ * ║  Backward-compat : un canvas v1 (sans synthesis/description/key_quote) reste       ║
+ * ║  parfaitement rendu. Workspaces pré-pivot ou Mistral fail → fallback Miro.        ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Handshake, Layers, Sparkles } from "lucide-react";
+import { Handshake, Layers, Quote, Sparkles } from "lucide-react";
 
 import { MiroBoardEmbed } from "./MiroBoardEmbed";
 import type {
@@ -66,6 +72,37 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
 };
 
+// ─── Sub-section v2 : Synthèse transversale (optionnel) ──────────────────────
+
+interface SynthesisSectionProps {
+  synthesis: string;
+}
+
+const SynthesisSection: React.FC<SynthesisSectionProps> = ({ synthesis }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.4 }}
+    className="rounded-xl bg-gradient-to-br from-cyan-500/[0.07] to-indigo-500/[0.05] border border-cyan-500/20 backdrop-blur-xl p-5"
+    data-testid="hub-canvas-synthesis"
+  >
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center">
+        <Sparkles className="w-4 h-4 text-cyan-400" aria-hidden />
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-white">Synthèse transversale</h3>
+        <p className="text-xs text-text-muted">
+          Vue d'ensemble du workspace
+        </p>
+      </div>
+    </div>
+    <p className="text-sm text-text-primary leading-relaxed whitespace-pre-line">
+      {synthesis}
+    </p>
+  </motion.div>
+);
+
 // ─── Sub-section : Concepts partagés ───────────────────────────────────────────
 
 interface SharedConceptsSectionProps {
@@ -92,7 +129,7 @@ const SharedConceptsSection: React.FC<SharedConceptsSectionProps> = ({
     </div>
 
     <motion.ul
-      className="space-y-2"
+      className="grid grid-cols-1 sm:grid-cols-2 gap-2"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -158,20 +195,34 @@ const ThemesSection: React.FC<ThemesSectionProps> = ({
           className="rounded-lg bg-indigo-500/[0.05] border border-indigo-500/10 p-4 space-y-3"
           data-testid={`hub-canvas-theme-${i}`}
         >
-          <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
-            {theme.theme}
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {/* Theme header : title + (optional) description */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
+              {theme.theme}
+            </p>
+            {theme.description && (
+              <p
+                className="text-xs text-text-secondary leading-relaxed italic"
+                data-testid={`hub-canvas-theme-description-${i}`}
+              >
+                {theme.description}
+              </p>
+            )}
+          </div>
+
+          {/* Perspectives grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {theme.perspectives.map((perspective, j) => {
               const detail = summaryDetails[perspective.summary_id];
               const fallbackTitle = `Analyse #${perspective.summary_id}`;
               return (
                 <div
                   key={`${i}-${j}-${perspective.summary_id}`}
-                  className="rounded-md bg-violet-500/[0.06] border border-violet-500/15 p-2.5"
+                  className="rounded-md bg-violet-500/[0.06] border border-violet-500/15 p-3 flex flex-col gap-2"
                   data-testid={`hub-canvas-perspective-${i}-${perspective.summary_id}`}
                 >
-                  <div className="flex items-start gap-2 mb-1.5">
+                  {/* Header : thumbnail + title */}
+                  <div className="flex items-start gap-2">
                     {detail?.thumbnail ? (
                       <img
                         src={detail.thumbnail}
@@ -186,9 +237,27 @@ const ThemesSection: React.FC<ThemesSectionProps> = ({
                       {detail?.title ?? fallbackTitle}
                     </p>
                   </div>
-                  <p className="text-xs text-text-secondary leading-relaxed">
+
+                  {/* Excerpt — riche v2 (3-5 phrases) */}
+                  <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-line">
                     {perspective.excerpt}
                   </p>
+
+                  {/* key_quote optionnel v2 */}
+                  {perspective.key_quote && (
+                    <div
+                      className="flex items-start gap-1.5 pl-2 border-l-2 border-violet-400/40 mt-0.5"
+                      data-testid={`hub-canvas-key-quote-${i}-${perspective.summary_id}`}
+                    >
+                      <Quote
+                        className="w-3 h-3 text-violet-400/70 shrink-0 mt-0.5"
+                        aria-hidden
+                      />
+                      <p className="text-[11px] text-violet-200/90 italic leading-relaxed">
+                        {perspective.key_quote}
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -249,7 +318,11 @@ export const HubWorkspaceCanvas: React.FC<HubWorkspaceCanvasProps> = ({
     );
   }
 
-  const { shared_concepts: sharedConcepts, themes } = canvasData;
+  const {
+    shared_concepts: sharedConcepts,
+    themes,
+    synthesis,
+  } = canvasData;
   const isEmpty = sharedConcepts.length === 0 && themes.length === 0;
 
   return (
@@ -259,6 +332,7 @@ export const HubWorkspaceCanvas: React.FC<HubWorkspaceCanvasProps> = ({
       data-testid="hub-workspace-canvas"
       className={`space-y-6 ${className}`}
     >
+      {synthesis && <SynthesisSection synthesis={synthesis} />}
       {sharedConcepts.length > 0 && (
         <SharedConceptsSection concepts={sharedConcepts} />
       )}
