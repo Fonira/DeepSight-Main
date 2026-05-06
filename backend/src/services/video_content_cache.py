@@ -238,33 +238,65 @@ class VideoContentCacheService:
     # ANALYSIS
     # ═══════════════════════════════════════════════════════════════
 
-    async def get_analysis(self, platform: str, video_id: str, mode: str, language: str) -> Optional[dict]:
-        """Récupère une analyse depuis le cache L1/L2."""
-        key = _build_key("analysis", platform, video_id, mode=mode, language=language)
+    @staticmethod
+    def _make_analysis_mode_key(mode: str, model: Optional[str], deep_research: bool) -> str:
+        """Encode model + deep_research dans la clé `mode` pour différencier les analyses
+        qui dépendent des paramètres user (plan/model/deep_research). Sans ça, deux users
+        avec des paramètres différents partageraient la même analyse — faux conceptuellement.
+        """
+        return f"{mode}|m={model or 'default'}|dr={int(bool(deep_research))}"
+
+    async def get_analysis(
+        self,
+        platform: str,
+        video_id: str,
+        mode: str,
+        language: str,
+        model: Optional[str] = None,
+        deep_research: bool = False,
+    ) -> Optional[dict]:
+        """Récupère une analyse depuis le cache L1/L2.
+
+        La clé inclut model + deep_research : deux users avec mêmes (mode, lang) mais
+        modèles Mistral différents (small vs large) ou deep_research différent NE
+        partagent PAS le cache.
+        """
+        mode_key = self._make_analysis_mode_key(mode, model, deep_research)
+        key = _build_key("analysis", platform, video_id, mode=mode_key, language=language)
 
         data = await self._redis_get(key)
         if data is not None:
-            logger.info("Cache HIT L1 analysis %s/%s mode=%s lang=%s", platform, video_id, mode, language)
+            logger.info("Cache HIT L1 analysis %s/%s mode=%s lang=%s", platform, video_id, mode_key, language)
             self._record_stat("analysis", "l1")
             return data
 
-        data = await self._pg_get_analysis(platform, video_id, mode, language)
+        data = await self._pg_get_analysis(platform, video_id, mode_key, language)
         if data is not None:
-            logger.info("Cache HIT L2 analysis %s/%s mode=%s lang=%s", platform, video_id, mode, language)
+            logger.info("Cache HIT L2 analysis %s/%s mode=%s lang=%s", platform, video_id, mode_key, language)
             await self._redis_set(key, data, "analysis")
             self._record_stat("analysis", "l2")
             return data
 
-        logger.info("Cache MISS analysis %s/%s mode=%s lang=%s", platform, video_id, mode, language)
+        logger.info("Cache MISS analysis %s/%s mode=%s lang=%s", platform, video_id, mode_key, language)
         self._record_stat("analysis", "miss")
         return None
 
-    async def set_analysis(self, platform: str, video_id: str, mode: str, language: str, data: dict) -> None:
-        """Stocke une analyse dans L1 + L2."""
-        key = _build_key("analysis", platform, video_id, mode=mode, language=language)
+    async def set_analysis(
+        self,
+        platform: str,
+        video_id: str,
+        mode: str,
+        language: str,
+        data: dict,
+        model: Optional[str] = None,
+        deep_research: bool = False,
+    ) -> None:
+        """Stocke une analyse dans L1 + L2 sous une clé qui inclut model + deep_research."""
+        mode_key = self._make_analysis_mode_key(mode, model, deep_research)
+        key = _build_key("analysis", platform, video_id, mode=mode_key, language=language)
         await asyncio.gather(
             self._redis_set(key, data, "analysis"),
-            self._pg_upsert_analysis(platform, video_id, mode, language, data),
+            self._pg_upsert_analysis(platform, video_id, mode_key, language, data),
             return_exceptions=True,
         )
 
