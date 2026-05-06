@@ -15,3 +15,5 @@ export { VideoPlayer } from "./VideoPlayer";
 export { StreamingOverlay } from "./StreamingOverlay";
 export { SummaryView } from "./SummaryView";
 export { ActionBar } from "./ActionBar";
+export { VisualTab, default as VisualTabDefault } from "./VisualTab";
+export type { VisualTabProps } from "./VisualTab";

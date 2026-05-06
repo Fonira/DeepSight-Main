@@ -121,6 +121,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "geo_enabled": False,
             "geo_monthly": 0,
             "companion_dialogue_enabled": False,  # 🎓 Le Tuteur — Pro+ uniquement
+            "visual_analysis_enabled": False,  # Phase 2 — frames + Mistral Vision
+            "visual_analysis_monthly": 0,
         },
         "features_display": [
             {"text": "5 analyses / mois", "icon": "📊"},
@@ -254,6 +256,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "geo_enabled": True,
             "geo_monthly": 10,
             "companion_dialogue_enabled": True,  # 🎓 Le Tuteur — disponible dès Pro
+            "visual_analysis_enabled": True,  # Phase 2 — frames + Mistral Vision
+            "visual_analysis_monthly": 30,
         },
         "features_display": [
             {"text": "25 analyses / mois", "icon": "📊"},
@@ -395,6 +399,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "geo_enabled": True,
             "geo_monthly": -1,
             "companion_dialogue_enabled": True,  # 🎓 Le Tuteur — disponible Pro et Expert
+            "visual_analysis_enabled": True,  # Phase 2 — frames + Mistral Vision
+            "visual_analysis_monthly": -1,  # illimité
         },
         "features_display": [
             {"text": "100 analyses / mois", "icon": "📊"},

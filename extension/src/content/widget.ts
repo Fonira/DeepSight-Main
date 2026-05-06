@@ -131,3 +131,94 @@ export async function renderVoiceCallButton(
 
   root.appendChild(btn);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 👁️ VISUAL ANALYSIS BADGE — Phase 2 (Mai 2026)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface VisualAnalysisBadgeOpts {
+  plan: "free" | "pro" | "expert";
+  videoId?: string;
+}
+
+/**
+ * Injecte un badge "👁️ Analyse visuelle" sous le bouton Voice Call.
+ *
+ * Pro/Expert  : badge violet "Inclus" → click ouvre le sidepanel (CTA info)
+ * Free        : badge cliquable "Disponible dès Pro" → click ouvre billing
+ *
+ * Indépendant du bouton Voice Call — cohabite dans le même host Shadow DOM
+ * mais ne dépend pas de son état.
+ */
+export async function renderVisualAnalysisBadge(
+  root: HTMLElement,
+  opts: VisualAnalysisBadgeOpts,
+): Promise<void> {
+  const isPaid = opts.plan === "pro" || opts.plan === "expert";
+
+  const badge = document.createElement("button");
+  badge.className = "ds-visual-badge";
+  badge.setAttribute(
+    "aria-label",
+    isPaid
+      ? "Analyse visuelle incluse dans votre plan"
+      : "Analyse visuelle disponible dès Pro",
+  );
+
+  const bg = isPaid
+    ? "linear-gradient(135deg,rgba(139,92,246,0.15),rgba(99,102,241,0.15))"
+    : "rgba(255,255,255,0.05)";
+  const borderColor = isPaid
+    ? "rgba(139,92,246,0.4)"
+    : "rgba(255,255,255,0.15)";
+
+  badge.style.cssText = [
+    "width:100%",
+    `background:${bg}`,
+    "color:#fff",
+    `border:1px solid ${borderColor}`,
+    "padding:8px 10px",
+    "border-radius:8px",
+    "font-weight:500",
+    "font-size:11px",
+    "margin-top:6px",
+    "cursor:pointer",
+    "display:flex",
+    "align-items:center",
+    "justify-content:space-between",
+    "gap:8px",
+    "transition:opacity 0.15s ease",
+  ].join(";");
+
+  const labelText = isPaid
+    ? "👁️ Analyse visuelle incluse"
+    : "👁️ Analyse visuelle";
+  const tagText = isPaid ? "Inclus" : "Pro+";
+  const tagBg = isPaid ? "rgba(34,197,94,0.2)" : "rgba(139,92,246,0.25)";
+  const tagColor = isPaid ? "#86efac" : "#c4b5fd";
+
+  badge.innerHTML = `
+    <span style="display:flex;align-items:center;gap:6px">
+      <span>${labelText}</span>
+    </span>
+    <span style="background:${tagBg};color:${tagColor};padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;letter-spacing:0.3px;text-transform:uppercase">${tagText}</span>
+  `;
+
+  badge.addEventListener("mouseenter", () => {
+    badge.style.opacity = "0.85";
+  });
+  badge.addEventListener("mouseleave", () => {
+    badge.style.opacity = "1";
+  });
+
+  badge.addEventListener("click", () => {
+    chrome.runtime.sendMessage({
+      type: isPaid ? "OPEN_SIDEPANEL_VISUAL" : "OPEN_BILLING_UPSELL",
+      videoId: opts.videoId,
+      feature: "visual_analysis",
+      plan: opts.plan,
+    });
+  });
+
+  root.appendChild(badge);
+}

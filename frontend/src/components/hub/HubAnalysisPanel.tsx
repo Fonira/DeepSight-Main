@@ -118,7 +118,14 @@ export const HubAnalysisPanel: React.FC<Props> = ({
           onTimecodeClick={handleTimecodeClick}
           onOpenChat={handleOpenChat}
           onNavigate={handleNavigate}
-          enabledTabs={["synthesis", "reliability", "quiz", "flashcards", "geo"]}
+          enabledTabs={[
+            "synthesis",
+            "reliability",
+            "quiz",
+            "flashcards",
+            "geo",
+            "visual",
+          ]}
           showKeywords
           showStudyTools={false}
           showVoice={false}

@@ -59,6 +59,10 @@ export interface PlanLimits {
   deepResearchEnabled: boolean;
   factcheckEnabled: boolean;
   ttsEnabled: boolean;
+
+  // Phase 2 Visual Analysis (storyboards + Mistral Vision)
+  visualAnalysisEnabled: boolean;
+  visualAnalysisMonthly: number; // 0 = désactivé, -1 = illimité
 }
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
@@ -94,6 +98,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     deepResearchEnabled: false,
     factcheckEnabled: false,
     ttsEnabled: false,
+    visualAnalysisEnabled: false,
+    visualAnalysisMonthly: 0,
   },
 
   // Anciennement "plus" v0 (4.99 €) — devenu "pro" v2 (8.99 €) avec voice 30 min/mo
@@ -129,6 +135,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     deepResearchEnabled: false,
     factcheckEnabled: true,
     ttsEnabled: false,
+    visualAnalysisEnabled: true,
+    visualAnalysisMonthly: 30,
   },
 
   // Anciennement "pro" v0 (9.99 €) — devenu "expert" v2 (19.99 €) avec voice 120 min/mo
@@ -168,6 +176,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     deepResearchEnabled: true,
     factcheckEnabled: true,
     ttsEnabled: true,
+    visualAnalysisEnabled: true,
+    visualAnalysisMonthly: -1, // illimité
   },
 };
 
@@ -192,6 +202,7 @@ export interface PlanFeatures {
   deepResearch: boolean;
   factcheck: boolean;
   semanticSearchTooltip: boolean;
+  visualAnalysis: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
@@ -212,6 +223,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     deepResearch: false,
     factcheck: false,
     semanticSearchTooltip: false,
+    visualAnalysis: false,
   },
   pro: {
     flashcards: true,
@@ -230,6 +242,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     deepResearch: false,
     factcheck: true,
     semanticSearchTooltip: true,
+    visualAnalysis: true,
   },
   expert: {
     flashcards: true,
@@ -248,6 +261,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     deepResearch: true,
     factcheck: true,
     semanticSearchTooltip: true,
+    visualAnalysis: true,
   },
 };
 

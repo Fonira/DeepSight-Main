@@ -45,6 +45,8 @@ export interface PlanLimits {
   voiceChatMonthlyMinutes: number; // 0 = disabled
   // Debate
   debateMonthly: number; // 0 = disabled, -1 = unlimited
+  // Phase 2 Visual Analysis (storyboards + Mistral Vision)
+  visualAnalysisMonthly: number; // 0 = disabled, -1 = unlimited
 }
 
 // Type for numeric-only limits (excludes boolean properties)
@@ -76,6 +78,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicPapersPerAnalysis: 5,
     voiceChatMonthlyMinutes: 0,
     debateMonthly: 0,
+    visualAnalysisMonthly: 0,
   },
 
   // Anciennement "plus" v0 (4,99 €) — devenu "pro" v2 (8,99 €) avec voice 30 min/mo
@@ -99,6 +102,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicPapersPerAnalysis: 15,
     voiceChatMonthlyMinutes: 30, // ⚠ v2 H4 — Pro a maintenant la voice
     debateMonthly: 3,
+    visualAnalysisMonthly: 30, // Phase 2 (Mai 2026)
   },
 
   // Anciennement "pro" v0 (9,99 €) — devenu "expert" v2 (19,99 €) avec voice 120 min/mo
@@ -122,6 +126,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicPapersPerAnalysis: 50,
     voiceChatMonthlyMinutes: 120, // ⚠ v2 H4
     debateMonthly: 20,
+    visualAnalysisMonthly: -1, // illimité (Phase 2 Mai 2026)
   },
 };
 
@@ -165,6 +170,8 @@ export interface PlanFeatures {
   // Semantic Search V1 — tooltip IA sur passage match (web only V1, mobile V1.1).
   // Mirror du backend pour cohérence cross-platform & upsell potentiel V1.1.
   semanticSearchTooltip: boolean;
+  // Phase 2 Visual Analysis — frames + Mistral Vision (Mai 2026)
+  visualAnalysis: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
@@ -202,6 +209,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     debate: false,
     deepResearch: false,
     semanticSearchTooltip: false,
+    visualAnalysis: false,
   },
 
   // Anciennement "plus" v0
@@ -239,6 +247,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     debate: true,
     deepResearch: false,
     semanticSearchTooltip: true,
+    visualAnalysis: true, // Phase 2 — quota 30/mois
   },
 
   // Anciennement "pro" v0
@@ -276,6 +285,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     debate: true,
     deepResearch: true,
     semanticSearchTooltip: true,
+    visualAnalysis: true, // Phase 2 — illimité
   },
 };
 

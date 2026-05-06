@@ -758,6 +758,24 @@ interface VoiceCallMessage {
   plan?: "free" | "pro" | "expert";
 }
 
+/**
+ * Visual analysis badge dispatcher — handles `{ type: "OPEN_SIDEPANEL_VISUAL", ... }`
+ * et `{ type: "OPEN_BILLING_UPSELL", ... }` émis par le badge "👁️ Analyse visuelle"
+ * injecté sur YouTube par `content/widget.ts` (renderVisualAnalysisBadge).
+ *
+ * - OPEN_SIDEPANEL_VISUAL : utilisateur Pro/Expert → ouvre le side panel pour
+ *   afficher l'analyse visuelle. Le contexte est stocké dans
+ *   `chrome.storage.session.visualPanelContext` (mêmes garanties que voicePanelContext).
+ * - OPEN_BILLING_UPSELL   : utilisateur Free → ouvre la page pricing dans un
+ *   nouvel onglet avec UTM tracking pour mesurer le funnel.
+ */
+interface VisualAnalysisMessage {
+  type: "OPEN_SIDEPANEL_VISUAL" | "OPEN_BILLING_UPSELL";
+  videoId?: string;
+  feature?: string;
+  plan?: "free" | "pro" | "expert";
+}
+
 /** [B8] Sidepanel → background : "demande-moi le micro via offscreen". */
 interface MicPermissionMessage {
   action:
@@ -802,7 +820,11 @@ async function openMicPermissionPopup(): Promise<void> {
 }
 
 export async function handleMessage(
-  message: ExtensionMessage | VoiceCallMessage | MicPermissionMessage,
+  message:
+    | ExtensionMessage
+    | VoiceCallMessage
+    | VisualAnalysisMessage
+    | MicPermissionMessage,
   sender?: chrome.runtime.MessageSender | number,
 ): Promise<MessageResponse> {
   // Backwards compat: accept either a full sender object (preferred) or a
@@ -926,6 +948,99 @@ export async function handleMessage(
     // [N6] Idem au RESTORE — restore tous les volumes.
     await broadcastVoiceAudioMessage("RESTORE_AUDIO", senderTabId);
     return { success: true };
+  }
+
+  // ── Visual analysis badge dispatch (Phase 2) ──
+  // Émis par renderVisualAnalysisBadge (extension/src/content/widget.ts).
+  // Payload : { type, videoId?, feature: "visual_analysis", plan }.
+  const visualMsg = message as VisualAnalysisMessage;
+  if (visualMsg?.type === "OPEN_SIDEPANEL_VISUAL") {
+    try {
+      // Le content script connaît son tab (sender.tab.id). Si absent (cas
+      // improbable côté badge), on fallback sur la fenêtre courante.
+      const fullSender = sender as chrome.runtime.MessageSender | undefined;
+      let tabId = fullSender?.tab?.id;
+      if (typeof tabId !== "number") {
+        tabId = senderTabId;
+      }
+      // Persiste le contexte AVANT d'ouvrir : la page sidepanel le lit dès
+      // mount via chrome.storage.session (même pattern que voicePanelContext).
+      const sessionStore = (
+        chrome as unknown as {
+          storage: { session?: { set?: (data: unknown) => Promise<void> } };
+        }
+      ).storage.session;
+      if (sessionStore?.set) {
+        await sessionStore.set({
+          visualPanelContext: {
+            videoId: visualMsg.videoId ?? null,
+            feature: visualMsg.feature ?? "visual_analysis",
+            plan: visualMsg.plan ?? null,
+            source: "youtube_badge",
+          },
+        });
+      }
+      // openVoicePanel() est mal nommée (héritage Spec #4) mais c'est la
+      // helper canonique : feature-detect + setOptions + open. On la
+      // réutilise telle quelle pour rester cohérent.
+      const sidePanel = (
+        chrome as unknown as {
+          sidePanel?: {
+            setOptions?: (opts: {
+              tabId?: number;
+              path?: string;
+              enabled?: boolean;
+            }) => Promise<void> | void;
+            open?: (opts: {
+              tabId?: number;
+              windowId?: number;
+            }) => Promise<void> | void;
+          };
+        }
+      ).sidePanel;
+      if (!sidePanel || typeof sidePanel.open !== "function") {
+        return {
+          success: false,
+          error: "Side panel API not available in this browser",
+        };
+      }
+      if (sidePanel.setOptions) {
+        await sidePanel.setOptions({
+          tabId,
+          path: "sidepanel.html",
+          enabled: true,
+        });
+      }
+      await sidePanel.open({ tabId });
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: (e as Error).message };
+    }
+  }
+
+  if (visualMsg?.type === "OPEN_BILLING_UPSELL") {
+    try {
+      // Funnel tracking : utm_source/medium/campaign + feature pour
+      // attribuer les conversions au badge visual analysis (vs voice,
+      // popup, hub, etc.).
+      const params = new URLSearchParams({
+        utm_source: "extension",
+        utm_medium: "visual_badge",
+        utm_campaign: "visual_analysis_upsell",
+        feature: visualMsg.feature ?? "visual_analysis",
+      });
+      if (visualMsg.videoId) {
+        params.set("video_id", visualMsg.videoId);
+      }
+      if (visualMsg.plan) {
+        params.set("from_plan", visualMsg.plan);
+      }
+      const pricingUrl = `${WEBAPP_URL}/pricing?${params.toString()}`;
+      await Browser.tabs.create({ url: pricingUrl });
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: (e as Error).message };
+    }
   }
 
   // Narrow vers le shape ExtensionMessage classique pour la suite du switch
