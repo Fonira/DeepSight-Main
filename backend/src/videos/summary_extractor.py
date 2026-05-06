@@ -6,7 +6,7 @@
 """
 
 import re
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from .schemas import ExtensionKeyPoint, ExtensionSummary, ExtensionSummaryResponse
 
