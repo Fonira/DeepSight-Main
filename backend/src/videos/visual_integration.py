@@ -291,7 +291,7 @@ async def enrich_and_capture_visual(
             flag_enabled=True,
         )
         if _visual.get("status") != STATUS_OK:
-            logger.info("👁️ [%s] visual skipped: status=%s", log_tag, _visual.get("status"))
+            logger.info(f"👁️ [{log_tag}] visual skipped: status={_visual.get('status')}")
             return web_context, None
 
         _visual_block = format_visual_context_for_prompt(_visual)
@@ -302,16 +302,15 @@ async def enrich_and_capture_visual(
             )
 
         logger.info(
-            "👁️ [%s] visual enrichment OK: frames=%d model=%s elapsed=%.1fs",
-            log_tag,
-            _visual.get("frame_count", 0),
-            _visual.get("model_used"),
-            _visual.get("elapsed_s", 0.0),
+            f"👁️ [{log_tag}] visual enrichment OK: "
+            f"frames={_visual.get('frame_count', 0)} "
+            f"model={_visual.get('model_used')} "
+            f"elapsed={_visual.get('elapsed_s', 0.0):.1f}s"
         )
         return new_web_context, _visual.get("analysis")
     except Exception as e:
         # Graceful — pas de raise. L'analyse de base continue sans la couche visuelle.
-        logger.warning("👁️ [%s] visual enrichment raised (graceful): %s", log_tag, e)
+        logger.warning(f"👁️ [{log_tag}] visual enrichment raised (graceful): {e}")
         return web_context, None
 
 
