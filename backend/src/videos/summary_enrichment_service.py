@@ -1,19 +1,24 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  📚 SUMMARY ENRICHMENT SERVICE — spike post-processing pour synthèses détaillées  ║
+║  📚 SUMMARY ENRICHMENT SERVICE — refonte synthèse Option A 2026-05-06             ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
-║  2026-05-06 : applique la technique du Hub Canvas (Mistral json_mode + validation ║
-║  stricte + retry + champs optionnels) au Summary classique sans toucher à         ║
-║  `summary_content` (la prose continue qui plaît aux utilisateurs reste intacte).   ║
+║  Génère un payload structuré qui alimente la vue native de la synthèse détaillée  ║
+║  (look canvas v2). Mistral émet un JSON unique en un appel ; le frontend rend     ║
+║  4 sections : Synthèse / Citations / À retenir / Chapitres (avec sous-puces et    ║
+║  citation marquante par thème).                                                    ║
 ║                                                                                    ║
-║  Génère 3 sections d'enrichissement dérivées de l'analyse existante :              ║
-║    - key_quotes : 3-5 citations littérales du contenu avec mini-contexte          ║
-║    - key_takeaways : 4-7 takeaways courts en bullets                              ║
-║    - chapter_themes : 3-6 thèmes structurés type table des matières enrichie      ║
+║  Forme produite :                                                                  ║
+║    - synthesis        : str | None — paragraphe overview 4-6 phrases (≤ 800 c.)   ║
+║    - key_quotes       : 3-5 citations littérales {quote, context?}                ║
+║    - key_takeaways    : 4-7 insights actionnables (str)                           ║
+║    - chapter_themes   : 3-6 thèmes {theme, summary?, key_points?, key_quote?}     ║
+║         · key_points  : 3-5 sous-puces du thème                                   ║
+║         · key_quote   : citation marquante du thème {quote, context?}             ║
 ║                                                                                    ║
-║  Mistral via core.llm_provider.llm_complete (json_mode=True). Modèle :             ║
-║  mistral-medium-2508 (131K context, économique pour spike). Best-effort : si      ║
-║  Mistral fail ou JSON invalide → retourne None et l'endpoint API 502.             ║
+║  Backward-compat : un payload v1 (sans synthesis ni key_points) reste valide.     ║
+║  Tous les nouveaux champs sont optionnels côté validation. Mistral via            ║
+║  core.llm_provider.llm_complete (json_mode=True), modèle mistral-medium-2508.     ║
+║  Best-effort : retourne None sur échec après MAX_RETRIES tentatives.              ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -43,6 +48,8 @@ MAX_RETRIES = 2
 MAX_QUOTES = 5
 MAX_TAKEAWAYS = 7
 MAX_THEMES = 6
+MAX_KEY_POINTS_PER_THEME = 5
+MAX_SYNTHESIS_CHARS = 800
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -75,37 +82,47 @@ def _build_messages(summary: Summary) -> list[dict[str, str]]:
 
     system_prompt = (
         "Tu es un assistant éditorial pour DeepSight. À partir d'une analyse "
-        "détaillée d'une vidéo (synthèse + transcription), tu produis 3 "
-        "sections d'enrichissement qui complètent la lecture sans la "
-        "remplacer.\n\n"
+        "détaillée d'une vidéo (synthèse + transcription), tu produis un "
+        "payload structuré qui alimente la vue native d'une synthèse (4 sections : "
+        "Synthèse, Citations, À retenir, Chapitres détaillés).\n\n"
         "Réponds UNIQUEMENT en JSON valide, sans texte avant ni après, avec "
         "EXACTEMENT cette structure :\n"
         "{\n"
+        '  "synthesis": "Paragraphe overview 4-6 phrases qui donne une vue d\'ensemble. ≤ 800 caractères.",\n'
         '  "key_quotes": [\n'
         "    {\n"
         '      "quote": "Citation littérale tirée du contenu (1-3 phrases max).",\n'
         '      "context": "1 phrase qui explique en quoi cette citation est marquante (optionnel)."\n'
-        "    },\n"
-        "    ...\n"
+        "    }\n"
         "  ],\n"
         '  "key_takeaways": [\n'
-        '    "Takeaway 1 — phrase courte et actionnable.",\n'
-        "    ...\n"
+        '    "Takeaway 1 — phrase courte et actionnable."\n'
         "  ],\n"
         '  "chapter_themes": [\n'
         "    {\n"
         '      "theme": "Titre court d\'un chapitre / thème (3-7 mots).",\n'
-        '      "summary": "Synthèse du thème en 1-2 phrases (optionnel)."\n'
-        "    },\n"
-        "    ...\n"
+        '      "summary": "Synthèse du thème en 1-2 phrases (optionnel mais recommandé).",\n'
+        '      "key_points": [\n'
+        '        "Sous-point 1 du thème — phrase courte (optionnel).",\n'
+        '        "Sous-point 2 du thème."\n'
+        "      ],\n"
+        '      "key_quote": {\n'
+        '        "quote": "Citation marquante du thème (optionnel, littérale).",\n'
+        '        "context": "Mini-contexte (optionnel)."\n'
+        "      }\n"
+        "    }\n"
         "  ]\n"
         "}\n\n"
         "Règles strictes :\n"
+        f"- synthesis : 4-6 phrases, max {MAX_SYNTHESIS_CHARS} caractères, vue d'ensemble du contenu. "
+        "Si l'analyse est trop courte, OMETTRE le champ plutôt que tronquer.\n"
         f"- key_quotes : 3 à {MAX_QUOTES} citations LITTÉRALES tirées du contenu (pas reformulées). "
         "Si aucune citation forte ne ressort, OMETTRE des entrées plutôt qu'en fabriquer.\n"
         f"- key_takeaways : 4 à {MAX_TAKEAWAYS} takeaways courts (1 phrase chacun, pas de markdown). "
         "Vise des insights actionnables ou des conclusions saillantes.\n"
-        f"- chapter_themes : 3 à {MAX_THEMES} thèmes structurés. summary optionnel mais recommandé.\n"
+        f"- chapter_themes : 3 à {MAX_THEMES} thèmes structurés. summary recommandé.\n"
+        f"- chapter_themes[].key_points : 3 à {MAX_KEY_POINTS_PER_THEME} sous-puces du thème (optionnel mais recommandé).\n"
+        "- chapter_themes[].key_quote : citation marquante DU THÈME (optionnel, littérale).\n"
         "- Tout en français.\n"
         "- Ne JAMAIS inventer du contenu hors de l'analyse fournie."
     )
@@ -122,25 +139,47 @@ def _build_messages(summary: Summary) -> list[dict[str, str]]:
     ]
 
 
+def _normalize_quote(raw: Any) -> Optional[dict[str, Any]]:
+    """Normalise un dict {quote, context?}. Retourne entry validée ou None."""
+    if not isinstance(raw, dict):
+        return None
+    quote_str = raw.get("quote")
+    if not isinstance(quote_str, str) or not quote_str.strip():
+        return None
+    entry: dict[str, Any] = {"quote": quote_str.strip()}
+    ctx = raw.get("context")
+    if isinstance(ctx, str) and ctx.strip():
+        entry["context"] = ctx.strip()
+    return entry
+
+
 def _validate_extras_shape(data: Any) -> Optional[dict[str, Any]]:
-    """Valide la forme du JSON Mistral. Retourne dict normalisé ou None."""
+    """Valide la forme du JSON Mistral. Retourne dict normalisé ou None.
+
+    Les champs nouveaux (synthesis, key_points, key_quote par thème) sont
+    optionnels — un payload v1 sans ces champs reste accepté (backward-compat).
+    """
     if not isinstance(data, dict):
         return None
+
+    # ─── synthesis (optionnel) ───
+    synthesis_raw = data.get("synthesis")
+    synthesis: Optional[str] = None
+    if isinstance(synthesis_raw, str):
+        cleaned = synthesis_raw.strip()
+        if cleaned:
+            if len(cleaned) > MAX_SYNTHESIS_CHARS:
+                cleaned = cleaned[:MAX_SYNTHESIS_CHARS].rstrip() + "…"
+            synthesis = cleaned
 
     # ─── key_quotes ───
     quotes_raw = data.get("key_quotes")
     quotes: list[dict[str, Any]] = []
     if isinstance(quotes_raw, list):
         for q in quotes_raw:
-            if not isinstance(q, dict):
+            entry = _normalize_quote(q)
+            if entry is None:
                 continue
-            quote_str = q.get("quote")
-            if not isinstance(quote_str, str) or not quote_str.strip():
-                continue
-            entry: dict[str, Any] = {"quote": quote_str.strip()}
-            ctx = q.get("context")
-            if isinstance(ctx, str) and ctx.strip():
-                entry["context"] = ctx.strip()
             quotes.append(entry)
             if len(quotes) >= MAX_QUOTES:
                 break
@@ -178,18 +217,40 @@ def _validate_extras_shape(data: Any) -> Optional[dict[str, Any]]:
             summary_str = th.get("summary")
             if isinstance(summary_str, str) and summary_str.strip():
                 entry["summary"] = summary_str.strip()
+            # ─── key_points (optionnel) ───
+            kp_raw = th.get("key_points")
+            if isinstance(kp_raw, list):
+                kp: list[str] = []
+                for p in kp_raw:
+                    if not isinstance(p, str):
+                        continue
+                    p_clean = p.strip()
+                    if not p_clean:
+                        continue
+                    kp.append(p_clean)
+                    if len(kp) >= MAX_KEY_POINTS_PER_THEME:
+                        break
+                if kp:
+                    entry["key_points"] = kp
+            # ─── key_quote (optionnel) ───
+            kq = _normalize_quote(th.get("key_quote"))
+            if kq is not None:
+                entry["key_quote"] = kq
             themes.append(entry)
             if len(themes) >= MAX_THEMES:
                 break
 
-    if not quotes and not takeaways and not themes:
+    if not quotes and not takeaways and not themes and not synthesis:
         return None
 
-    return {
+    result: dict[str, Any] = {
         "key_quotes": quotes,
         "key_takeaways": takeaways,
         "chapter_themes": themes,
     }
+    if synthesis is not None:
+        result["synthesis"] = synthesis
+    return result
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -260,8 +321,9 @@ async def generate_summary_extras(summary: Summary) -> Optional[dict[str, Any]]:
 
         extras = validated
         logger.info(
-            "[SUMMARY-ENRICH] Extras generated OK summary=%s (quotes=%d, takeaways=%d, themes=%d)",
+            "[SUMMARY-ENRICH] Extras generated OK summary=%s (synthesis=%s, quotes=%d, takeaways=%d, themes=%d)",
             summary.id,
+            "yes" if validated.get("synthesis") else "no",
             len(validated["key_quotes"]),
             len(validated["key_takeaways"]),
             len(validated["chapter_themes"]),

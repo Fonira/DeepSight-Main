@@ -11,6 +11,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import asyncio
 import json
 import logging
 import math
@@ -1679,6 +1680,10 @@ async def _analyze_video_background_v2(
                     logger.warning(f"👁️ [VISUAL_V2] persist failed (graceful): {_vpe}")
                     await session.rollback()
 
+            # 📚 Auto-générer les extras Mistral (Option A 2026-05-06) —
+            # fire-and-forget best-effort, alimente la vue native sectionnée.
+            asyncio.create_task(_autogen_summary_extras(user_id, summary_id))
+
             _task_store[task_id]["progress"] = 97
             _task_store[task_id]["message"] = "🧩 Indexation et finalisation..."
 
@@ -2582,6 +2587,9 @@ async def _analyze_video_background_v2_1(
                     logger.warning(f"👁️ [VISUAL_V2.1] persist failed (graceful): {_vpe}")
                     await session.rollback()
 
+            # 📚 Auto-générer les extras Mistral (Option A 2026-05-06)
+            asyncio.create_task(_autogen_summary_extras(user_id, summary_id))
+
             # 🆕 v4.0: Index structuré
             await _save_structured_index(
                 session, summary_id, video_info.get("duration", 0), transcript, transcript_timestamped
@@ -3440,6 +3448,9 @@ async def _analyze_video_background_v6(
                     )
                     await session.rollback()
 
+            # 📚 Auto-générer les extras Mistral (Option A 2026-05-06)
+            asyncio.create_task(_autogen_summary_extras(user_id, summary_id))
+
             _task_store[task_id]["progress"] = 97
             _task_store[task_id]["message"] = "🧩 Indexation et finalisation..."
 
@@ -3847,8 +3858,59 @@ async def get_summary(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 📚 SUMMARY EXTRAS — enrichissement post-processing Mistral (spike 2026-05-06)
+# 📚 SUMMARY EXTRAS — refonte synthèse Option A 2026-05-06
 # ═══════════════════════════════════════════════════════════════════════════════
+
+
+async def _autogen_summary_extras(user_id: int, summary_id: int) -> None:
+    """Génère les extras Mistral en fire-and-forget après création d'un Summary.
+
+    Best-effort : un échec Mistral / JSON invalide est loggé en warning mais ne
+    bloque ni l'analyse principale ni la réponse au user. Utilise une session DB
+    indépendante via async_session_maker (la session de l'analyse est déjà fermée
+    quand cette task se déclenche).
+    """
+    try:
+        from db.database import async_session_maker
+        from videos.summary_enrichment_service import generate_summary_extras
+        from sqlalchemy import select
+
+        async with async_session_maker() as bg_session:
+            result = await bg_session.execute(
+                select(Summary).where(Summary.id == summary_id, Summary.user_id == user_id)
+            )
+            summary = result.scalar_one_or_none()
+            if summary is None:
+                logger.warning(
+                    "[AUTOGEN-EXTRAS] Summary %s not found for user %s — skip", summary_id, user_id
+                )
+                return
+            if getattr(summary, "summary_extras", None):
+                # Déjà populé (race condition rare) — on ne réécrase pas.
+                return
+
+            extras = await generate_summary_extras(summary)
+            if extras is None:
+                logger.warning(
+                    "[AUTOGEN-EXTRAS] Generation returned None for summary %s — best-effort skip",
+                    summary_id,
+                )
+                return
+
+            summary.summary_extras = extras
+            await bg_session.commit()
+            logger.info(
+                "[AUTOGEN-EXTRAS] OK summary=%s (synthesis=%s, q=%d, t=%d, th=%d)",
+                summary_id,
+                "yes" if extras.get("synthesis") else "no",
+                len(extras.get("key_quotes", [])),
+                len(extras.get("key_takeaways", [])),
+                len(extras.get("chapter_themes", [])),
+            )
+    except Exception as exc:  # noqa: BLE001 — best-effort, on log et on quitte
+        logger.warning(
+            "[AUTOGEN-EXTRAS] Unexpected error summary=%s: %s", summary_id, exc
+        )
 
 
 @router.post("/summary/{summary_id}/enrich")
@@ -4873,6 +4935,9 @@ async def _analyze_raw_text_background(
 
             await session.commit()
 
+        # 📚 Auto-générer les extras Mistral (Option A 2026-05-06)
+        asyncio.create_task(_autogen_summary_extras(user_id, summary_id))
+
         # 🖼️ Persist AI thumbnail to R2 (non-blocking)
         try:
             import asyncio as _aio_thumb
@@ -5598,6 +5663,9 @@ async def _analyze_images_background(
             )
 
             await db_session.commit()
+
+        # 📚 Auto-générer les extras Mistral (Option A 2026-05-06)
+        asyncio.create_task(_autogen_summary_extras(user_id, summary_id))
 
         _task_store[task_id]["status"] = "completed"
         _task_store[task_id]["progress"] = 100

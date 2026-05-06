@@ -169,7 +169,7 @@ export interface Summary {
   visual_analysis?: import("../types/analysis").VisualAnalysis | null;
 }
 
-// ─── Summary extras (spike 2026-05-06) ────────────────────────────────────────
+// ─── Summary extras (refonte Option A 2026-05-06) ─────────────────────────────
 
 export interface SummaryQuote {
   quote: string;
@@ -179,9 +179,15 @@ export interface SummaryQuote {
 export interface SummaryChapterTheme {
   theme: string;
   summary?: string;
+  /** 3-5 sous-puces du thème (optionnel — payload v2). */
+  key_points?: string[];
+  /** Citation marquante du thème (optionnel — payload v2). */
+  key_quote?: SummaryQuote;
 }
 
 export interface SummaryExtrasData {
+  /** Paragraphe overview 4-6 phrases (optionnel — payload v2 Option A). */
+  synthesis?: string;
   key_quotes: SummaryQuote[];
   key_takeaways: string[];
   chapter_themes: SummaryChapterTheme[];

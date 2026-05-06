@@ -231,3 +231,165 @@ async def test_generate_summary_extras_retries_on_invalid_json():
 
     assert result is not None
     assert mock.await_count == 2
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📚 OPTION A 2026-05-06 — synthesis + key_points + key_quote sur thème
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def test_validate_extras_shape_v2_with_synthesis_and_key_points():
+    """Payload v2 complet : synthesis + key_points + key_quote sur thème."""
+    from videos.summary_enrichment_service import _validate_extras_shape
+
+    raw = {
+        "synthesis": "Vue d'ensemble en 4-6 phrases.",
+        "key_quotes": [{"quote": "Q1"}],
+        "key_takeaways": ["T1"],
+        "chapter_themes": [
+            {
+                "theme": "Thème A",
+                "summary": "Résumé du thème",
+                "key_points": ["Point 1", "Point 2", "Point 3"],
+                "key_quote": {
+                    "quote": "Citation du thème",
+                    "context": "Contexte mini",
+                },
+            }
+        ],
+    }
+    out = _validate_extras_shape(raw)
+    assert out is not None
+    assert out["synthesis"] == "Vue d'ensemble en 4-6 phrases."
+    assert out["chapter_themes"][0]["key_points"] == ["Point 1", "Point 2", "Point 3"]
+    assert out["chapter_themes"][0]["key_quote"]["quote"] == "Citation du thème"
+    assert out["chapter_themes"][0]["key_quote"]["context"] == "Contexte mini"
+
+
+def test_validate_extras_shape_v1_backward_compat():
+    """Payload v1 (sans synthesis ni key_points/key_quote) reste valide."""
+    from videos.summary_enrichment_service import _validate_extras_shape
+
+    raw = {
+        "key_quotes": [{"quote": "Q1", "context": "C1"}],
+        "key_takeaways": ["T1"],
+        "chapter_themes": [{"theme": "Th1", "summary": "Sum1"}],
+    }
+    out = _validate_extras_shape(raw)
+    assert out is not None
+    # synthesis absent → clé non incluse dans le payload normalisé
+    assert "synthesis" not in out
+    # Thème v1 sans key_points / key_quote → clés absentes
+    assert "key_points" not in out["chapter_themes"][0]
+    assert "key_quote" not in out["chapter_themes"][0]
+    assert out["chapter_themes"][0]["theme"] == "Th1"
+
+
+def test_validate_extras_shape_synthesis_truncated_at_max():
+    """synthesis dépassant MAX_SYNTHESIS_CHARS est tronqué avec ellipse."""
+    from videos.summary_enrichment_service import (
+        MAX_SYNTHESIS_CHARS,
+        _validate_extras_shape,
+    )
+
+    long_synthesis = "A" * (MAX_SYNTHESIS_CHARS + 200)
+    raw = {
+        "synthesis": long_synthesis,
+        "key_quotes": [],
+        "key_takeaways": ["T1"],
+        "chapter_themes": [],
+    }
+    out = _validate_extras_shape(raw)
+    assert out is not None
+    assert out["synthesis"].endswith("…")
+    # ≤ MAX + 1 (ellipse char)
+    assert len(out["synthesis"]) <= MAX_SYNTHESIS_CHARS + 1
+
+
+def test_validate_extras_shape_synthesis_only_returns_payload():
+    """Un payload avec uniquement `synthesis` (toutes autres sections vides) reste valide."""
+    from videos.summary_enrichment_service import _validate_extras_shape
+
+    raw = {
+        "synthesis": "Overview seul.",
+        "key_quotes": [],
+        "key_takeaways": [],
+        "chapter_themes": [],
+    }
+    out = _validate_extras_shape(raw)
+    assert out is not None
+    assert out["synthesis"] == "Overview seul."
+    assert out["key_quotes"] == []
+    assert out["key_takeaways"] == []
+    assert out["chapter_themes"] == []
+
+
+def test_validate_extras_shape_key_points_capped_per_theme():
+    """key_points est cappé à MAX_KEY_POINTS_PER_THEME."""
+    from videos.summary_enrichment_service import (
+        MAX_KEY_POINTS_PER_THEME,
+        _validate_extras_shape,
+    )
+
+    raw = {
+        "key_quotes": [],
+        "key_takeaways": ["T"],
+        "chapter_themes": [
+            {
+                "theme": "Th",
+                "key_points": [f"P{i}" for i in range(20)],
+            }
+        ],
+    }
+    out = _validate_extras_shape(raw)
+    assert out is not None
+    assert (
+        len(out["chapter_themes"][0]["key_points"]) == MAX_KEY_POINTS_PER_THEME
+    )
+
+
+def test_validate_extras_shape_invalid_key_quote_omitted_silently():
+    """key_quote sur thème mal formé (dict sans quote) est omis sans casser le thème."""
+    from videos.summary_enrichment_service import _validate_extras_shape
+
+    raw = {
+        "key_quotes": [],
+        "key_takeaways": ["T"],
+        "chapter_themes": [
+            {
+                "theme": "Th",
+                "key_points": ["P1"],
+                "key_quote": {"context": "Manque le champ quote"},
+            },
+            {
+                "theme": "Th2",
+                "key_quote": "string-au-lieu-d-un-dict",
+            },
+        ],
+    }
+    out = _validate_extras_shape(raw)
+    assert out is not None
+    # Les deux thèmes existent mais sans key_quote
+    assert len(out["chapter_themes"]) == 2
+    assert "key_quote" not in out["chapter_themes"][0]
+    assert "key_quote" not in out["chapter_themes"][1]
+    # key_points préservés
+    assert out["chapter_themes"][0]["key_points"] == ["P1"]
+
+
+def test_validate_extras_shape_empty_key_points_list_omitted():
+    """key_points vide → la clé n'est pas ajoutée (omission silencieuse)."""
+    from videos.summary_enrichment_service import _validate_extras_shape
+
+    raw = {
+        "key_quotes": [],
+        "key_takeaways": ["T"],
+        "chapter_themes": [
+            {"theme": "Th", "key_points": []},
+            {"theme": "Th2", "key_points": ["", "  ", None]},  # tous invalides
+        ],
+    }
+    out = _validate_extras_shape(raw)
+    assert out is not None
+    assert "key_points" not in out["chapter_themes"][0]
+    assert "key_points" not in out["chapter_themes"][1]
