@@ -157,6 +157,34 @@ export interface Summary {
   deep_research?: boolean;
   enrichment_sources?: string; // JSON string: [{title, url, snippet}]
   enrichment_data?: string; // JSON string: {level, sources, enriched_at}
+
+  // 📚 Summary extras (spike 2026-05-06) — enrichissement post-processing
+  // Mistral à la demande. NULL si pas encore généré.
+  summary_extras?: SummaryExtrasData | null;
+}
+
+// ─── Summary extras (spike 2026-05-06) ────────────────────────────────────────
+
+export interface SummaryQuote {
+  quote: string;
+  context?: string;
+}
+
+export interface SummaryChapterTheme {
+  theme: string;
+  summary?: string;
+}
+
+export interface SummaryExtrasData {
+  key_quotes: SummaryQuote[];
+  key_takeaways: string[];
+  chapter_themes: SummaryChapterTheme[];
+}
+
+export interface SummaryEnrichResponse {
+  summary_id: number;
+  cached: boolean;
+  extras: SummaryExtrasData | null;
 }
 
 export interface TranscriptSegment {
@@ -1239,6 +1267,24 @@ export const videoApi = {
 
   async getSummary(summaryId: number): Promise<Summary> {
     return request(`/api/videos/summary/${summaryId}`);
+  },
+
+  /**
+   * 📚 Spike 2026-05-06 : enrichit une analyse avec key_quotes + key_takeaways
+   * + chapter_themes via Mistral. Idempotent : retourne le cache si déjà
+   * généré (sauf si force=true).
+   *
+   * Endpoint: POST /api/videos/summary/{id}/enrich
+   */
+  async enrichSummary(
+    summaryId: number,
+    force: boolean = false,
+  ): Promise<SummaryEnrichResponse> {
+    const qs = force ? "?force=true" : "";
+    return request(`/api/videos/summary/${summaryId}/enrich${qs}`, {
+      method: "POST",
+      timeout: 60000,
+    });
   },
 
   async getConcepts(
