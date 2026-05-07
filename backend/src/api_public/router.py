@@ -454,9 +454,10 @@ async def get_api_analysis_status(
                     "progress": 100,
                     "result": {
                         "analysis_id": str(summary.id),
+                        "summary_id": summary.id,
                         "video_id": summary.video_id,
-                        "title": summary.video_title or summary.title,
-                        "summary": summary.summary,
+                        "video_title": summary.video_title,
+                        "summary_content": summary.summary_content,
                         "cached": True,
                     },
                 }
@@ -517,11 +518,22 @@ async def get_analysis(
     return {
         "id": str(summary.id),
         "video_id": summary.video_id,
-        "title": summary.title,
-        "summary": summary.summary,
-        "concepts": summary.concepts_json if hasattr(summary, "concepts_json") else None,
+        "video_title": summary.video_title,
+        "video_channel": getattr(summary, "video_channel", None),
+        "video_duration": getattr(summary, "video_duration", None),
+        "video_url": getattr(summary, "video_url", None),
+        "thumbnail_url": getattr(summary, "thumbnail_url", None),
+        "summary_content": summary.summary_content,
+        "summary_extras": getattr(summary, "summary_extras", None),
+        "transcript": getattr(summary, "transcript_context", None),
+        "lang": getattr(summary, "lang", None),
+        "mode": getattr(summary, "mode", "standard"),
+        "model_used": getattr(summary, "model_used", None),
+        "platform": getattr(summary, "platform", None),
+        "category": getattr(summary, "category", None),
+        "reliability_score": getattr(summary, "reliability_score", None),
+        "deep_research": bool(getattr(summary, "deep_research", False)),
         "created_at": summary.created_at.isoformat() if summary.created_at else None,
-        "mode": summary.mode if hasattr(summary, "mode") else "standard",
     }
 
 
@@ -697,8 +709,8 @@ async def get_video_info(
 
     return {
         "video_id": video_id,
-        "title": summary.title,
-        "thumbnail": summary.thumbnail_url if hasattr(summary, "thumbnail_url") else None,
+        "video_title": summary.video_title,
+        "thumbnail_url": getattr(summary, "thumbnail_url", None),
         "analyses": [
             {
                 "id": str(summary.id),
