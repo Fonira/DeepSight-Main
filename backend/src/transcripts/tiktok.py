@@ -1148,6 +1148,95 @@ def extract_tiktok_username_from_video_metadata(metadata: Dict[str, Any]) -> Opt
     return None
 
 
+# ── Regex utilisés pour extraire les méta du compte depuis la page HTML TikTok.
+# yt-dlp `--flat-playlist` retourne les entries (titres, view_count) mais en prod
+# les champs `channel`, `uploader`, `channel_follower_count`, `playlist_count`,
+# `description` reviennent à None — d'où ce fallback HTML scrape.
+_HTML_FOLLOWER_RE = re.compile(r'"followerCount":\s*(\d+)')
+_HTML_VIDEO_COUNT_RE = re.compile(r'"videoCount":\s*(\d+)')
+_HTML_NICKNAME_RE = re.compile(r'"nickname":"((?:[^"\\]|\\.)*)"')
+_HTML_SIGNATURE_RE = re.compile(r'"signature":"((?:[^"\\]|\\.)*)"')
+_HTML_VERIFIED_RE = re.compile(r'"verified":\s*(true|false)')
+
+_HTML_META_TIMEOUT_S = 10.0
+_HTML_META_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
+def _decode_html_unicode_escapes(value: str) -> str:
+    """Décode les escapes JSON style \\u00e9 et \\\" dans une chaîne extraite de HTML."""
+    if not value:
+        return value
+    try:
+        return json.loads(f'"{value}"')
+    except (json.JSONDecodeError, ValueError):
+        return value
+
+
+async def _fetch_tiktok_account_meta_from_html(username: str) -> Optional[Dict[str, Any]]:
+    """Scrape la page utilisateur TikTok pour les méta du compte.
+
+    Renvoie un dict avec les clés présentes parmi
+    {nickname, signature, follower_count, video_count, verified} ou None
+    si le fetch ou le parse échoue. Best-effort, jamais raise.
+    """
+    if not username:
+        return None
+    url = f"https://www.tiktok.com/@{username}"
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=_HTML_META_TIMEOUT_S,
+            headers=_HTML_META_HEADERS,
+            follow_redirects=True,
+        ) as client:
+            resp = await client.get(url)
+        if resp.status_code != 200:
+            logger.info(
+                f"[TIKTOK] HTML meta fetch HTTP {resp.status_code} for @{username}"
+            )
+            return None
+        html = resp.text
+    except Exception as e:
+        logger.info(f"[TIKTOK] HTML meta fetch error for @{username}: {e}")
+        return None
+
+    if not html or len(html) < 1000:
+        return None
+
+    meta: Dict[str, Any] = {}
+    if (m := _HTML_NICKNAME_RE.search(html)):
+        meta["nickname"] = _decode_html_unicode_escapes(m.group(1))[:200]
+    if (m := _HTML_SIGNATURE_RE.search(html)):
+        meta["signature"] = _decode_html_unicode_escapes(m.group(1))[:2000]
+    if (m := _HTML_FOLLOWER_RE.search(html)):
+        try:
+            meta["follower_count"] = int(m.group(1))
+        except (TypeError, ValueError):
+            pass
+    if (m := _HTML_VIDEO_COUNT_RE.search(html)):
+        try:
+            meta["video_count"] = int(m.group(1))
+        except (TypeError, ValueError):
+            pass
+    if (m := _HTML_VERIFIED_RE.search(html)):
+        meta["verified"] = m.group(1) == "true"
+
+    if not meta:
+        return None
+
+    logger.info(
+        f"[TIKTOK] HTML meta @{username}: name={meta.get('nickname')!r}, "
+        f"followers={meta.get('follower_count')}, videos={meta.get('video_count')}, "
+        f"verified={meta.get('verified')}"
+    )
+    return meta
+
+
 async def get_tiktok_account_context(username: str, limit: int = 50) -> Optional[Dict[str, Any]]:
     """
     Récupère le contexte d'un compte TikTok : métadonnées + N derniers posts.
@@ -1194,58 +1283,78 @@ async def get_tiktok_account_context(username: str, limit: int = 50) -> Optional
 
     logger.info(f"[TIKTOK] Fetching account context for @{normalized_username} (limit={safe_limit})")
 
-    try:
-        loop = asyncio.get_event_loop()
+    loop = asyncio.get_event_loop()
 
-        def _fetch_account():
-            cmd = [
-                "yt-dlp",
-                *_yt_dlp_extra_args(),
-                "--flat-playlist",
-                "--dump-single-json",
-                "--playlist-items",
-                f"1:{safe_limit}",
-                "--no-warnings",
-                "--skip-download",
-                account_url,
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            if result.returncode != 0:
-                stderr = (result.stderr or "")[:300]
-                logger.warning(
-                    f"[TIKTOK] yt-dlp account fetch failed for @{normalized_username}: {stderr}"
-                )
-                return None
-            try:
-                return json.loads(result.stdout)
-            except json.JSONDecodeError as e:
-                logger.warning(f"[TIKTOK] yt-dlp account JSON parse error: {e}")
-                return None
+    def _fetch_account():
+        cmd = [
+            "yt-dlp",
+            *_yt_dlp_extra_args(),
+            "--flat-playlist",
+            "--dump-single-json",
+            "--playlist-items",
+            f"1:{safe_limit}",
+            "--no-warnings",
+            "--skip-download",
+            account_url,
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if result.returncode != 0:
+            stderr = (result.stderr or "")[:300]
+            logger.warning(
+                f"[TIKTOK] yt-dlp account fetch failed for @{normalized_username}: {stderr}"
+            )
+            return None
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            logger.warning(f"[TIKTOK] yt-dlp account JSON parse error: {e}")
+            return None
 
-        data = await asyncio.wait_for(
-            loop.run_in_executor(audio_executor, _fetch_account),
-            timeout=60,
-        )
-    except asyncio.TimeoutError:
-        logger.warning(f"[TIKTOK] Account fetch timeout for @{normalized_username}")
-        return None
-    except Exception as e:
-        logger.error(f"[TIKTOK] Account fetch error for @{normalized_username}: {e}")
-        return None
+    async def _fetch_yt_dlp():
+        try:
+            return await asyncio.wait_for(
+                loop.run_in_executor(audio_executor, _fetch_account),
+                timeout=60,
+            )
+        except asyncio.TimeoutError:
+            logger.warning(f"[TIKTOK] yt-dlp account fetch timeout for @{normalized_username}")
+            return None
+        except Exception as e:
+            logger.error(f"[TIKTOK] yt-dlp account fetch error for @{normalized_username}: {e}")
+            return None
+
+    # Lance yt-dlp (entries) ET HTML scrape (méta du compte) en parallèle.
+    # En prod yt-dlp `--flat-playlist` ne renvoie pas channel/follower_count/playlist_count
+    # → seul le HTML scrape les fournit. Tests CI : si HTML fail, on retombe sur yt-dlp seul.
+    data, html_meta = await asyncio.gather(
+        _fetch_yt_dlp(),
+        _fetch_tiktok_account_meta_from_html(normalized_username),
+        return_exceptions=False,
+    )
 
     if not data or not isinstance(data, dict):
+        # yt-dlp est la source d'autorité pour exister/pas-exister (private,
+        # banned, suspended, etc.) — pas de fallback HTML-seul ici.
         return None
 
-    # Métadonnées du compte (champs yt-dlp pour une page de compte TikTok)
+    html_meta = html_meta if isinstance(html_meta, dict) else {}
+
+    # Métadonnées du compte — HTML scrape prioritaire (yt-dlp les retourne None en prod)
     display_name = (
-        data.get("channel")
+        html_meta.get("nickname")
+        or data.get("channel")
         or data.get("uploader")
         or data.get("title")
         or normalized_username
     )
-    description = data.get("description", "") or ""
+    description = (
+        html_meta.get("signature")
+        or data.get("description")
+        or ""
+    )
     subscriber_count = (
-        data.get("channel_follower_count")
+        html_meta.get("follower_count")
+        or data.get("channel_follower_count")
         or data.get("uploader_follower_count")
         or data.get("follower_count")
     )
@@ -1302,8 +1411,12 @@ async def get_tiktok_account_context(username: str, limit: int = 50) -> Optional
             }
         )
 
-    # video_count : on prend playlist_count si dispo, sinon le nombre d'entries
-    raw_video_count = data.get("playlist_count") or data.get("video_count")
+    # video_count : HTML scrape > playlist_count yt-dlp > nombre d'entries
+    raw_video_count = (
+        html_meta.get("video_count")
+        or data.get("playlist_count")
+        or data.get("video_count")
+    )
     if raw_video_count is not None:
         try:
             video_count = int(raw_video_count)
