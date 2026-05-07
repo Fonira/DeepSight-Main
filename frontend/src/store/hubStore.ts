@@ -97,7 +97,7 @@ const INITIAL: Pick<
   concepts: [],
   reliability: null,
   reliabilityLoading: false,
-  drawerOpen: false,
+  drawerOpen: true,
   summaryExpanded: false,
   pipExpanded: false,
   voiceCallOpen: false,
