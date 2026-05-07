@@ -287,7 +287,7 @@ export const ConversationsDrawer: React.FC<Props> = ({
       >
         {/* ─── Header ─────────────────────────────────────────────── */}
         {isSelectMode ? (
-          <div className="flex items-center gap-2 px-3 py-3 border-b border-white/10 bg-indigo-500/[0.06]">
+          <div className="flex-shrink-0 flex items-center gap-2 px-3 py-3 border-b border-white/10 bg-indigo-500/[0.06]">
             <span className="flex-1 text-[13px] font-medium text-white">
               {selectedCount} / {MAX_SELECTION} sélectionnée
               {selectedCount > 1 ? "s" : ""}
@@ -309,7 +309,7 @@ export const ConversationsDrawer: React.FC<Props> = ({
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
+          <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-white/10">
             <button
               type="button"
               aria-label="fermer"
@@ -346,7 +346,7 @@ export const ConversationsDrawer: React.FC<Props> = ({
         )}
 
         {!isSelectMode && onAnalyze && (
-          <div className="px-3 pt-3 pb-1">
+          <div className="flex-shrink-0 px-3 pt-3 pb-1">
             <form onSubmit={handleAnalyzeSubmit} className="relative">
               <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-indigo-400 pointer-events-none" />
               <input
@@ -373,7 +373,7 @@ export const ConversationsDrawer: React.FC<Props> = ({
         )}
 
         {isSelectMode && (
-          <div className="px-3 pt-2 pb-1">
+          <div className="flex-shrink-0 px-3 pt-2 pb-1">
             <p className="text-[11px] text-white/55 leading-relaxed">
               Sélectionnez {MIN_SELECTION} à {MAX_SELECTION} analyses pour créer
               un workspace Miro.
@@ -381,7 +381,7 @@ export const ConversationsDrawer: React.FC<Props> = ({
           </div>
         )}
 
-        <div className="px-3 pt-2 pb-2 relative">
+        <div className="flex-shrink-0 px-3 pt-2 pb-2 relative">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
           <input
             type="text"
@@ -391,7 +391,7 @@ export const ConversationsDrawer: React.FC<Props> = ({
             className="w-full pl-7 pr-3 py-2 rounded-lg bg-white/[0.04] border border-white/10 text-[13px] text-white outline-none focus:border-white/20"
           />
         </div>
-        <div className="flex-1 overflow-y-auto px-2 pb-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-4">
           {renderGroup("Aujourd'hui", grouped.today)}
           {renderGroup("Hier", grouped.yesterday)}
           {renderGroup("Cette semaine", grouped.week)}

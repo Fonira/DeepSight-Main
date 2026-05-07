@@ -326,16 +326,30 @@ const HubPage: React.FC = () => {
           }),
         );
         setConversations(convs);
-        // Auto-select if URL has ?conv=<id> or ?summary[Id]=<id>.
-        const target =
+        // Auto-select priority:
+        //   1. URL ?conv=<id> or ?summary[Id]=<id> (explicit deeplink)
+        //   2. fallback to most recent conversation from history (lands user
+        //      directly on the latest analysis synthesis, drawer pre-opened).
+        const explicitTarget =
           urlConvId !== null
             ? Number(urlConvId)
             : urlSummaryId !== null
               ? Number(urlSummaryId)
               : null;
+        const target = explicitTarget ?? convs[0]?.id ?? null;
         if (!target) return;
         if (convs.find((c) => c.id === target)) {
           setActiveConv(target);
+          // When we auto-selected (no explicit URL deeplink), surface the
+          // conv in the URL and force tab=synthesis so the synthesis tab
+          // wins over the "chat if messages exist" default. `replace: true`
+          // avoids polluting history.
+          if (explicitTarget === null) {
+            setSearchParams(
+              { conv: String(target), tab: "synthesis" },
+              { replace: true },
+            );
+          }
           return;
         }
         // Conv not in user's history (legitimate case when arriving from
