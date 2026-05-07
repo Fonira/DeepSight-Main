@@ -2430,17 +2430,17 @@ async def generate_user_api_key(
     ⚠️ IMPORTANT: La clé complète n'est affichée QU'UNE SEULE FOIS.
     Sauvegardez-la immédiatement car elle ne pourra plus être récupérée.
 
-    Disponible uniquement pour le plan Pro.
+    Disponible pour les plans Pro et Expert (admin bypass).
     """
-    # Vérifier le plan
-    if current_user.plan != "pro":
+    # Pro ET Expert ont accès à l'API publique. Admin bypass.
+    if not (current_user.is_admin or current_user.plan in ("pro", "expert")):
         raise HTTPException(
             status_code=403,
             detail={
                 "code": "plan_required",
-                "message": "API access requires Pro plan. Upgrade at /upgrade",
+                "message": "API access requires Pro or Expert plan. Upgrade at /upgrade",
                 "current_plan": current_user.plan,
-                "required_plan": "pro",
+                "required_plans": ["pro", "expert"],
             },
         )
 
@@ -2484,16 +2484,17 @@ async def regenerate_user_api_key(
     ⚠️ ATTENTION: L'ancienne clé sera immédiatement invalidée.
     Toutes les applications utilisant l'ancienne clé cesseront de fonctionner.
 
-    Disponible uniquement pour le plan Pro.
+    Disponible pour les plans Pro et Expert (admin bypass).
     """
-    # Vérifier le plan
-    if current_user.plan != "pro":
+    # Pro ET Expert ont accès à l'API publique. Admin bypass.
+    if not (current_user.is_admin or current_user.plan in ("pro", "expert")):
         raise HTTPException(
             status_code=403,
             detail={
                 "code": "plan_required",
-                "message": "API access requires Pro plan.",
+                "message": "API access requires Pro or Expert plan.",
                 "current_plan": current_user.plan,
+                "required_plans": ["pro", "expert"],
             },
         )
 

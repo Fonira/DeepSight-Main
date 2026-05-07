@@ -1914,7 +1914,9 @@ async def analyze_video_v2_1(
         logger.warning("⚠️ [v2.1] Comments analysis disabled (requires Pro)")
 
     # Analyse de propagande: Pro only (advanced feature)
-    if customization.detect_propaganda and current_user.plan not in ["pro"]:
+    if customization.detect_propaganda and not (
+        current_user.is_admin or current_user.plan in ("pro", "expert")
+    ):
         customization.detect_propaganda = False
         logger.warning("⚠️ [v2.1] Propaganda analysis disabled (requires Pro)")
 

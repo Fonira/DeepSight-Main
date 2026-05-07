@@ -147,14 +147,15 @@ async def get_api_user(
             status_code=401, detail={"error": "invalid_api_key", "message": "Invalid or revoked API key"}
         )
 
-    # Vérifier le plan
-    if user.plan not in ["pro"]:
+    # Pro ET Expert ont accès à l'API publique. Admin bypass.
+    if not (user.is_admin or user.plan in ("pro", "expert")):
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "plan_required",
-                "message": "API access requires Pro plan",
+                "message": "API access requires Pro or Expert plan",
                 "current_plan": user.plan,
+                "required_plans": ["pro", "expert"],
                 "upgrade_url": "https://www.deepsightsynthesis.com/upgrade",
             },
         )
