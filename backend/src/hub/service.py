@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 from fastapi import HTTPException
 from sqlalchemy import select, func
