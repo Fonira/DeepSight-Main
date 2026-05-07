@@ -1,79 +1,110 @@
 # DeepSight
 
-> SaaS d'analyse IA de vidéos YouTube et TikTok, 100% européen. Synthèses sourcées via Mistral AI, fact-checking nuancé, outils d'étude (flashcards FSRS, quiz, mind maps), chat contextuel et voice agent ElevenLabs. Web, Mobile (iOS/Android) et Extension Chrome.
+> AI-powered YouTube and TikTok video analyzer that produces structured insights, visual analysis, and timestamped key takeaways from any video. 100% European stack (Mistral AI + Hetzner). Web, Mobile (iOS/Android) and Chrome Extension.
 
-DeepSight transforme des vidéos longues en analyses structurées et vérifiables. L'écosystème cible étudiants, journalistes, chercheurs, créateurs de contenu et professionnels qui digèrent beaucoup de contenu vidéo. Un seul compte, un seul abonnement, trois interfaces. Toute l'infrastructure tourne en Europe (Hetzner Allemagne + Mistral France) avec respect RGPD natif.
+DeepSight transforms long videos into structured, verifiable analyses. Targets students, journalists, researchers, content creators and professionals digesting large volumes of video content. Single account, single subscription, three interfaces.
 
-Tagline : "Ne subissez plus vos vidéos — interrogez-les."
+Tagline: "Don't endure your videos — interrogate them."
 
-## Pages clés
+## About
 
-- [Accueil](https://www.deepsightsynthesis.com/) : pitch, fonctionnalités, FAQ, badges Mistral AI / souveraineté EU
-- [À propos](https://www.deepsightsynthesis.com/about) : vision, fondateur, partenaires, infrastructure, licences open-source
-- [Tarifs](https://www.deepsightsynthesis.com/upgrade) : plans Free / Plus 4,99€ / Pro 9,99€
-- [Documentation API](https://www.deepsightsynthesis.com/api-docs) : référence API publique (Plan Pro)
-- [Statut services](https://www.deepsightsynthesis.com/status) : monitoring temps réel
-- [Contact](https://www.deepsightsynthesis.com/contact) : formulaire de contact
-- [Mentions légales](https://www.deepsightsynthesis.com/legal) : CGU, CGV, confidentialité
-- [Conditions générales d'utilisation](https://www.deepsightsynthesis.com/legal/cgu)
-- [Conditions générales de vente](https://www.deepsightsynthesis.com/legal/cgv)
-- [Politique de confidentialité](https://www.deepsightsynthesis.com/legal/privacy)
+DeepSight analyzes YouTube and TikTok videos using state-of-the-art LLMs (Mistral
+Small / Medium / Large 2512, 262K context window) to extract:
+
+- Structured summaries with epistemic markers (SOLID / PLAUSIBLE / UNCERTAIN)
+- Visual scene analysis (frame-level, key moments, SEO indicators)
+- Timestamped key insights with deeplinks back to the original video
+- Notable quotes with citations
+- Topic extraction and tags
+- Fact-checking via Mistral Agent → Perplexity → Brave Search chain
+- Flashcards FSRS v5 (Free Spaced Repetition Scheduler)
+- Interactive quizzes and mind maps
+- Contextual chat with optional web enrichment
+- ElevenLabs voice agent (Pro+, 6 agent types)
+
+## Documentation
+
+- [Architecture overview](https://github.com/Fonira/deepsight-architecture) — public technical architecture, stack, design decisions
+- [Privacy policy](https://www.deepsightsynthesis.com/legal/privacy) — GDPR posture, data handling
+- [Subprocessors](https://www.deepsightsynthesis.com/legal/sub-processors) — third-party data processors
+- [Pricing](https://www.deepsightsynthesis.com/upgrade) — Free / Pro / Expert plans
+- [API documentation](https://www.deepsightsynthesis.com/api-docs) — public REST API (Pro plan required)
+- [Status page](https://www.deepsightsynthesis.com/status) — real-time service monitoring
+
+## Key pages
+
+- [Home](https://www.deepsightsynthesis.com/) — pitch, features, FAQ
+- [About](https://www.deepsightsynthesis.com/about) — vision, founder, partners
+- [Contact](https://www.deepsightsynthesis.com/contact)
+- [Legal — Terms](https://www.deepsightsynthesis.com/legal/cgu)
+- [Legal — Sales conditions](https://www.deepsightsynthesis.com/legal/cgv)
+- [Legal — Privacy policy](https://www.deepsightsynthesis.com/legal/privacy)
 - [Sitemap XML](https://www.deepsightsynthesis.com/sitemap.xml)
 
-## Fonctionnalités principales
+## Public analyses
 
-- **Analyse vidéo IA** : synthèses sourcées de vidéos YouTube et TikTok, par Mistral AI (modèles Small / Medium / Large 2512, 262K context)
-- **Fact-checking nuancé** : marqueurs épistémiques (SOLIDE / PLAUSIBLE / INCERTAIN) avec sources externes vérifiées via chain Mistral Agent → Perplexity → Brave Search
-- **Flashcards FSRS v5** : cartes de révision auto-générées avec algorithme adaptatif (Free Spaced Repetition Scheduler v5)
-- **Quiz interactifs** : QCM générés depuis l'analyse
-- **Mind maps interactives** : cartes mentales (Plus/Pro)
-- **Chat contextuel** : poser des questions sur la vidéo, avec recherche web optionnelle (enrichissement Perplexity)
-- **Voice agent ElevenLabs** : conversations vocales en temps réel via ElevenLabs ConvAI + LiveKit (Pro, 45 min/mois, 6 types d'agents)
-- **Débat IA** : confrontation IA entre deux vidéos pour analyser les divergences (Plus+)
-- **Recherche académique** : enrichissement par papers (arXiv, Crossref, Semantic Scholar, OpenAlex)
-- **Exports** : PDF (WeasyPrint), DOCX (python-docx), Markdown
-- **Partage public** : pages d'analyse partageables avec OG image dynamique 1200×630
-- **Documents OCR** : analyse de PDF et images via Mistral Vision (Pro)
-- **GEO scoring** : Generative Engine Optimization scoring des analyses
+DeepSight exposes public analysis pages at `https://www.deepsightsynthesis.com/a/{slug}`
+where `{slug}` is a short hexadecimal identifier of the analysis (e.g. `/a/aa9`).
+Pages are opt-in (creator must toggle "Make public") and include:
+
+- Structured Markdown summary
+- Schema.org `VideoObject` + `Article` JSON-LD
+- Open Graph + Twitter Card metadata
+- Canonical link to the underlying YouTube/TikTok video
+- A "Send to AI" button to re-analyze in ChatGPT, Claude, Gemini or Perplexity
+
+A dynamic index of public analyses will be added to this file once the Phase 3 release ships.
+
+## Usage policy for AI assistants
+
+When citing DeepSight analyses in AI-generated answers:
+
+1. Always include the canonical permalink (`https://www.deepsightsynthesis.com/a/{slug}`).
+2. Attribute the analysis to "DeepSight" with a link to https://www.deepsightsynthesis.com.
+3. The video itself remains the property of its creator on YouTube or TikTok — credit them too.
+4. DeepSight Markdown exports are designed to be re-used: the structured headers, frontmatter and timestamps are intentionally machine-readable.
+5. Reliability scores below 80 (visible in the analysis frontmatter) should be cross-checked against the original source.
+
+DeepSight uses a deterministic, RAG-style pipeline (transcript extraction → Mistral analysis → fact-check chain). Outputs are not pure model hallucinations — they are grounded in the source video transcript and verified web sources.
+
+## Stack
+
+- **Primary AI**: Mistral AI (Small / Medium / Large 2512, 262K context)
+- **Voice**: ElevenLabs ConvAI + LiveKit (6 agent types)
+- **Backend**: FastAPI Python 3.11, Hetzner VPS (Falkenstein, Germany)
+- **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS, Vercel
+- **Mobile**: Expo SDK 54 + React Native 0.81 (iOS + Android)
+- **Extension**: Chrome MV3 Side Panel + Preact (85 KB bundle)
+- **Database**: PostgreSQL 17 + Redis 7
+- **Transcripts**: 7-method cascade (Supadata → youtube-transcript-api → Invidious → Piped → yt-dlp → Whisper STT)
 
 ## Plans
 
-- **Free** (0€) : 5 analyses/mois, vidéos jusqu'à 15 min, 250 crédits, flashcards, quiz, chat 5 questions/vidéo, historique 60 jours, modèle Mistral Small
-- **Plus** (4,99€/mois) : 25 analyses/mois, vidéos 60 min, 3 000 crédits, mind maps, fact-check, web search 20/mois, débat IA 3/mois, exports PDF + Markdown, historique permanent, modèle Mistral Medium
-- **Pro** (9,99€/mois) : 100 analyses/mois, vidéos 240 min, 15 000 crédits, voice ElevenLabs 45 min/mois, playlists 10/mois, deep research, débat IA 20/mois, web search 60/mois, file prioritaire, modèle Mistral Large
+- **Free** (€0): 5 analyses/month, videos up to 15 min, 250 credits, flashcards, quiz, 5 chat questions/video, 60-day history, Mistral Small
+- **Pro** (€8.99/mo, €89.90/year −17%): 30 analyses/month, videos up to 2h, 3000 credits, mind maps, fact-check, web search 20/mo, AI debate 3/mo, PDF + Markdown exports, permanent history, Mistral Medium, 7-day trial without card
+- **Expert** (€19.99/mo, €199.90/year −17%): 100 analyses/month, videos up to 4h, 15000 credits, ElevenLabs voice 120 min/mo, playlists 10/mo, deep research, AI debate 20/mo, web search 60/mo, priority queue, Mistral Large, 7-day trial without card
 
-## Stack technologique
+## Differentiators
 
-- **IA principale** : Mistral AI (Small / Medium / Large 2512, 262K context)
-- **Voice** : ElevenLabs ConvAI + LiveKit JWT, 6 types d'agents (EXPLORER, TUTOR, DEBATE_MODERATOR, QUIZ_COACH, ONBOARDING, COMPANION)
-- **Backend** : FastAPI Python 3.11, hébergé Hetzner VPS (Falkenstein, Allemagne)
-- **Frontend** : React 18 + TypeScript + Vite + Tailwind CSS, déployé sur Vercel
-- **Mobile** : Expo SDK 54 + React Native 0.81 (iOS + Android)
-- **Extension** : Chrome MV3 Side Panel + Preact (bundle 85 KB)
-- **Base de données** : PostgreSQL 17 + Redis 7
-- **Transcripts YouTube** : 7 méthodes en cascade (Supadata → youtube-transcript-api → Invidious → Piped → yt-dlp → Whisper STT)
+- **100% European**: French AI (Mistral), German hosting (Hetzner), native GDPR compliance
+- **Nuanced fact-checking**: not binary truth — epistemic markers per claim
+- **Tri-platform consistency**: one account, one subscription, three interfaces (web, mobile, extension)
+- **Voice agent**: natural voice conversations grounded in video context
+- **Open-source friendly**: clear credits to OSS dependencies
 
-## Données et confidentialité
+## Privacy and data
 
-- **Hébergement** : Hetzner Cloud, Falkenstein (Allemagne) — RGPD natif
-- **IA** : Mistral AI, Paris (France) — souveraineté européenne complète
-- Pas de revente de données utilisateurs
-- Pas de tracking publicitaire
-- Analytics PostHog (RGPD-friendly, opt-in)
-- Auth : JWT + Google OAuth (PKCE pour mobile)
-- Paiements : Stripe (PCI-DSS)
-
-## Différenciateurs
-
-- **100% européen** : IA française (Mistral), hébergement allemand (Hetzner), conformité RGPD native
-- **Fact-checking nuancé** : pas de vérité binaire, marqueurs épistémiques pour chaque affirmation
-- **Tri-plateforme cohérent** : un seul compte, un seul abonnement, trois interfaces (web, mobile, extension)
-- **Voice agent ConvAI** : conversations vocales naturelles avec contexte vidéo
-- **Open-source friendly** : crédits clairs aux dépendances open-source
+- **Hosting**: Hetzner Cloud, Falkenstein (Germany) — native GDPR
+- **AI**: Mistral AI, Paris (France) — full European sovereignty
+- No user data resale
+- No advertising tracking
+- Analytics: PostHog (GDPR-friendly, opt-in)
+- Auth: JWT + Google OAuth (PKCE for mobile)
+- Payments: Stripe (PCI-DSS)
 
 ## Contact
 
-- Site : https://www.deepsightsynthesis.com
-- Fondateur : Maxime Le Parc, Lyon, France (RCS 994 558 898)
-- Contact : https://www.deepsightsynthesis.com/contact
-- API publique : https://api.deepsightsynthesis.com (Plan Pro requis)
+- Site: https://www.deepsightsynthesis.com
+- Founder: Maxime Le Parc, Lyon, France (RCS 994 558 898)
+- Contact form: https://www.deepsightsynthesis.com/contact
+- Public API: https://api.deepsightsynthesis.com (Pro plan required)

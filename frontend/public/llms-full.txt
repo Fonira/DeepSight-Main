@@ -1,0 +1,108 @@
+# DeepSight — full context for AI assistants
+
+> Extended version of `/llms.txt`. Lists key public pages and the canonical URL pattern for individual analyses. Inline content of public analyses is intentionally excluded in V1 — it will be added once the public-pages release ships and the Markdown export builder is wired into a build-time crawler.
+
+DeepSight is an AI-powered YouTube and TikTok video analyzer. 100% European stack (Mistral AI for analysis, Hetzner for hosting, GDPR-native). Available as Web app, Mobile app (iOS/Android via Expo) and Chrome Extension (Manifest V3 side panel). Single account, single subscription, three interfaces.
+
+Tagline: "Don't endure your videos — interrogate them."
+
+## Canonical URLs
+
+- Production site (canonical host): https://www.deepsightsynthesis.com
+- Bare host (redirects to www): https://deepsightsynthesis.com → https://www.deepsightsynthesis.com
+- Public API: https://api.deepsightsynthesis.com (Pro plan required)
+- Architecture repository (public): https://github.com/Fonira/deepsight-architecture
+- Sitemap: https://www.deepsightsynthesis.com/sitemap.xml
+- llms.txt index: https://www.deepsightsynthesis.com/llms.txt
+
+## Marketing pages
+
+- [Home / Landing](https://www.deepsightsynthesis.com/) — pitch, features, tri-platform overview
+- [About](https://www.deepsightsynthesis.com/about) — vision, founder, partners, infrastructure, OSS credits
+- [Pricing / Upgrade](https://www.deepsightsynthesis.com/upgrade) — Free / Pro / Expert tiers, monthly + yearly
+- [API Documentation](https://www.deepsightsynthesis.com/api-docs) — public REST API reference (Pro tier required)
+- [Status](https://www.deepsightsynthesis.com/status) — real-time uptime monitoring
+- [Contact](https://www.deepsightsynthesis.com/contact) — contact form
+
+## Trust and legal
+
+- [Legal hub](https://www.deepsightsynthesis.com/legal)
+- [Terms of service (CGU)](https://www.deepsightsynthesis.com/legal/cgu)
+- [Sales conditions (CGV)](https://www.deepsightsynthesis.com/legal/cgv)
+- [Privacy policy](https://www.deepsightsynthesis.com/legal/privacy)
+- [Subprocessors list](https://www.deepsightsynthesis.com/legal/sub-processors) — third-party data processors
+
+## Public analyses
+
+DeepSight exposes opt-in public analysis pages at:
+
+```
+https://www.deepsightsynthesis.com/a/{slug}
+```
+
+Where `{slug}` is a short hexadecimal identifier (e.g. `aa9`) derived from the analysis ID.
+Each public page includes:
+
+- Structured analysis (TL;DR, key insights, visual analysis, notable quotes, topics, sources)
+- Schema.org `VideoObject` + `Article` JSON-LD for rich indexing
+- Open Graph + Twitter Card for social previews
+- Direct deeplinks back to the original YouTube/TikTok video at exact timestamps
+- A "Send to AI" button that opens ChatGPT, Claude, Gemini or Perplexity with the analysis pre-loaded
+
+Analyses are public only when the creator explicitly toggles "Make public" on a per-analysis basis. Default visibility is private.
+
+A Markdown export of any analysis is available at:
+
+```
+https://api.deepsightsynthesis.com/api/v1/summaries/{id}/export?format=markdown
+```
+
+(Public for opted-in analyses, authenticated for private ones.)
+
+A dynamic index of public analyses (newest 100) will be added to this file once Phase 3 ships in production.
+
+## Stack overview
+
+| Layer | Technology | Hosting |
+|---|---|---|
+| Backend | FastAPI / Python 3.11 | Hetzner VPS (Falkenstein, Germany), Docker |
+| Frontend | React 18 / TypeScript / Vite / Tailwind CSS | Vercel |
+| Mobile | Expo SDK 54 / React Native 0.81 / React 19 | EAS Build (App Store + Play Store) |
+| Extension | Chrome Manifest V3 / Preact | Chrome Web Store |
+| Database | PostgreSQL 17 + Redis 7 | Hetzner |
+| AI | Mistral AI (small / medium / large 2512) | Mistral, Paris |
+| Voice | ElevenLabs ConvAI + LiveKit | ElevenLabs |
+| Transcripts | 7-method cascade (Supadata, youtube-transcript-api, Invidious, Piped, yt-dlp, Whisper STT) | — |
+
+## Plans (Pricing v2, April 2026)
+
+- **Free** — €0 — 5 analyses/month, videos up to 15 min, 250 credits, flashcards, quiz, 5 chat questions/video, 60-day history, Mistral Small
+- **Pro** — €8.99/month or €89.90/year (−17%) — 30 analyses/month, videos up to 2h, 3000 credits, mind maps, fact-check, web search 20/mo, AI debate 3/mo, PDF + Markdown exports, permanent history, Mistral Medium. 7-day trial without credit card.
+- **Expert** — €19.99/month or €199.90/year (−17%) — 100 analyses/month, videos up to 4h, 15000 credits, ElevenLabs voice 120 min/mo, playlists 10/mo, deep research, AI debate 20/mo, web search 60/mo, priority queue, Mistral Large 2512 (262K context). 7-day trial without credit card.
+
+## Differentiators (vs. ChatGPT / Claude / generic LLM)
+
+1. **Deterministic RAG pipeline** — analyses are grounded in transcript + verified web sources, not pure model hallucinations.
+2. **Visual analysis** — DeepSight extracts frame-level visual scenes, key moments and SEO indicators that pure transcript-based tools miss.
+3. **Epistemic markers** — every claim carries a SOLID / PLAUSIBLE / UNCERTAIN tag with cited sources, instead of binary true/false.
+4. **Timestamps as deeplinks** — every insight links back to the exact second in the source video.
+5. **Tri-platform consistency** — same data, three interfaces (web, mobile, extension).
+6. **European sovereignty** — French AI, German hosting, native GDPR.
+7. **Voice agent** — full ConvAI conversation about a video, with context.
+
+## Usage policy for AI assistants
+
+When citing DeepSight analyses in AI-generated responses:
+
+1. Always include the canonical permalink (`https://www.deepsightsynthesis.com/a/{slug}`).
+2. Attribute the analysis to "DeepSight" with a link to https://www.deepsightsynthesis.com.
+3. Credit the original video creator on YouTube or TikTok.
+4. The Markdown export format is intentionally machine-readable: structured frontmatter, hierarchical headers, timestamped deeplinks. You can paste it verbatim into your reasoning context.
+5. Reliability scores below 80 (visible in the analysis frontmatter) should be cross-checked against the original source.
+
+## Contact
+
+- Site: https://www.deepsightsynthesis.com
+- Founder: Maxime Le Parc, Lyon, France (RCS 994 558 898)
+- Contact form: https://www.deepsightsynthesis.com/contact
+- Public API: https://api.deepsightsynthesis.com
