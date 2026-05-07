@@ -3687,6 +3687,85 @@ export const hubApi = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🌍 PUBLIC ANALYSIS PAGES API — `/a/{slug}` opt-in (Phase 3 sprint Export to AI + GEO)
+// ═══════════════════════════════════════════════════════════════════════════════
+// Spec : Vault/01-Projects/DeepSight/Specs/2026-05-07-deepsight-export-to-ai-geo-design.md
+//
+// Deux endpoints :
+//   • GET   /api/v1/public/summaries/{slug}    — public, no auth, retourne payload
+//   • PATCH /api/v1/summaries/{id}/visibility   — auth (X-API-Key Pro/Expert), toggle is_public
+
+export interface PublicAnalysisPayload {
+  id: string;
+  slug: string;
+  video_id: string;
+  video_title: string;
+  video_channel?: string | null;
+  video_duration?: number | null;
+  video_url?: string | null;
+  thumbnail_url?: string | null;
+  summary_content?: string | null;
+  summary_extras?: Record<string, unknown> | null;
+  visual_analysis?: Record<string, unknown> | null;
+  lang?: string | null;
+  mode?: string | null;
+  model_used?: string | null;
+  platform?: string | null;
+  category?: string | null;
+  reliability_score?: number | null;
+  deep_research?: boolean;
+  created_at?: string | null;
+  permalink: string;
+}
+
+export interface VisibilityUpdateResponse {
+  summary_id: number;
+  is_public: boolean;
+  slug: string;
+  permalink: string;
+}
+
+export const publicAnalysisApi = {
+  /**
+   * Récupère une analyse publique opt-in par son slug.
+   * Pas d'auth — l'endpoint backend rejette 404 si is_public=false.
+   * Anti-leak : 404 identique pour slug invalide / privé / inexistant.
+   */
+  async getBySlug(slug: string): Promise<PublicAnalysisPayload> {
+    return request<PublicAnalysisPayload>(`/api/v1/public/summaries/${slug}`, {
+      skipAuth: true,
+    });
+  },
+
+  /**
+   * Active ou désactive la page publique d'une analyse.
+   * Auth requise (Pro/Expert via X-API-Key OU JWT — l'endpoint backend
+   * accepte les deux via `get_api_user`).
+   * Owner check côté backend → 404 si l'analyse appartient à un autre user.
+   */
+  async setVisibility(
+    summaryId: number,
+    isPublic: boolean,
+  ): Promise<VisibilityUpdateResponse> {
+    return request<VisibilityUpdateResponse>(
+      `/api/v1/summaries/${summaryId}/visibility`,
+      {
+        method: "PATCH",
+        body: { is_public: isPublic },
+      },
+    );
+  },
+
+  /**
+   * Construit l'URL frontend partageable pour un slug donné.
+   * Cohérent avec backend ``slug_for_summary`` (a{hex(id)}).
+   */
+  buildPermalink(slug: string): string {
+    return `https://deepsightsynthesis.com/a/${slug}`;
+  },
+};
+
 // Export par défaut
 export default {
   auth: authApi,
@@ -3715,4 +3794,5 @@ export default {
   keywordImage: keywordImageApi,
   geo: geoApi,
   hub: hubApi,
+  publicAnalysis: publicAnalysisApi,
 };

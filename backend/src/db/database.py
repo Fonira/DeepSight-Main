@@ -259,6 +259,12 @@ class Summary(Base):
     # visual_seo_indicators{}, summary_visual, model_used, frames_analyzed, frames_downsampled}.
     visual_analysis = Column(JSON, nullable=True)
 
+    # Public opt-in toggle pour pages publiques /a/{slug} (Phase 3 sprint GEO,
+    # alembic 025). Default FALSE — toggle explicite via PATCH /api/v1/summaries/{id}/visibility.
+    # Slug = f"a{hex(id)}" dérivé déterministiquement de l'ID (cf
+    # exports/markdown_builder.py::_slug_for_summary).
+    is_public = Column(Boolean, default=False, server_default="false", nullable=False, index=True)
+
     # Hierarchical Digest Pipeline (Feb 2026)
     full_digest = Column(Text, nullable=True)  # Assembled full digest from chunk digests (~6-10K chars)
 

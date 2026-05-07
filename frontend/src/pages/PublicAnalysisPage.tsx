@@ -1,0 +1,563 @@
+/**
+ * PublicAnalysisPage — Page publique opt-in d'une analyse DeepSight
+ *
+ * Route: /a/:slug
+ *
+ * Phase 3 du sprint Export to AI + GEO. Différente de SharedAnalysisPage (/s/:token)
+ * qui passe par un share_token éphémère lié à l'auth — ici le slug est dérivé
+ * déterministiquement de l'ID (`a{hex(id)}`), opt-in via le toggle is_public.
+ *
+ * Spec : Vault/01-Projects/DeepSight/Specs/2026-05-07-deepsight-export-to-ai-geo-design.md
+ *
+ * Décisions actées :
+ *  • Q1 : pas de page /discover en V1 (lien partageable seulement)
+ *  • Q5 : ignorer si vidéo source devient privée (page DeepSight reste live)
+ *
+ * SEO/GEO :
+ *  • Schema.org JSON-LD (VideoObject + Article) cf spec § 4.4
+ *  • Open Graph + Twitter Cards
+ *  • Bots IA crawlent (rewrite Vercel /a/:slug pour user-agents bots)
+ */
+
+import { useState, useEffect, useMemo } from "react";
+import { useParams, Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { Eye, ExternalLink, Copy as CopyIcon, Check } from "lucide-react";
+import {
+  publicAnalysisApi,
+  PublicAnalysisPayload,
+} from "../services/api";
+import { sanitizeTitle } from "../utils/sanitize";
+import { DeepSightSpinner } from "../components/ui/DeepSightSpinner";
+import DoodleBackground from "../components/DoodleBackground";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function extractVideoId(url: string | null | undefined): string {
+  if (!url) return "";
+  const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : "";
+}
+
+function formatDuration(seconds: number | null | undefined): string {
+  if (!seconds) return "";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}h${m.toString().padStart(2, "0")}m`;
+  return `${m}m${s.toString().padStart(2, "0")}s`;
+}
+
+function formatDurationISO(seconds: number | null | undefined): string {
+  if (!seconds || seconds <= 0) return "";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  let out = "PT";
+  if (h > 0) out += `${h}H`;
+  if (m > 0) out += `${m}M`;
+  if (s > 0) out += `${s}S`;
+  return out === "PT" ? "PT0S" : out;
+}
+
+function formatDate(isoDate: string | null | undefined): string {
+  if (!isoDate) return "";
+  try {
+    return new Date(isoDate).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Convertit un Markdown sommaire en HTML stylé (pas de SSR ni hydration HTML
+ * complexe — on garde la SPA simple, idem SharedAnalysisPage).
+ * Les bots IA (GPTBot, ClaudeBot) lisent le HTML rendered côté client depuis 2024.
+ */
+function formatContent(content: string): string {
+  if (!content) return "";
+  return content
+    .replace(
+      /\*\*(.*?)\*\*/g,
+      '<strong class="text-text-primary font-semibold">$1</strong>',
+    )
+    .replace(
+      /^### (.+)$/gm,
+      '<h3 class="text-lg font-bold text-text-primary mt-6 mb-2">$1</h3>',
+    )
+    .replace(
+      /^## (.+)$/gm,
+      '<h2 class="text-xl font-bold text-accent-primary mt-8 mb-3">$1</h2>',
+    )
+    .replace(
+      /^- (.+)$/gm,
+      '<li class="ml-4 text-text-secondary leading-relaxed">$1</li>',
+    )
+    .replace(
+      /\n\n/g,
+      '</p><p class="text-text-secondary mb-3 leading-relaxed">',
+    )
+    .replace(/\n/g, "<br/>");
+}
+
+// ─── Composant ────────────────────────────────────────────────────────────────
+
+export default function PublicAnalysisPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const [data, setData] = useState<PublicAnalysisPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!slug) {
+      setError("invalid_slug");
+      setLoading(false);
+      return;
+    }
+    publicAnalysisApi
+      .getBySlug(slug)
+      .then(setData)
+      .catch(() => setError("not_found"))
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  // ─── Loading ─────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <DeepSightSpinner size="lg" />
+          <span className="text-text-muted text-sm">
+            Chargement de l'analyse publique...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Error / Not Found ───────────────────────────────────────────────────
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4">
+        <Helmet>
+          <title>Analyse introuvable — DeepSight</title>
+          <meta name="robots" content="noindex" />
+        </Helmet>
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4 text-text-muted">
+            <svg
+              className="w-16 h-16 mx-auto"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+              />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-text-primary mb-2">
+            Analyse non disponible
+          </h1>
+          <p className="text-text-muted mb-6">
+            Cette page n'existe pas, est privée ou a été désactivée par son
+            créateur.
+          </p>
+          <Link
+            to="/"
+            className="inline-block px-6 py-3 bg-accent-primary text-gray-900 font-semibold rounded-lg hover:bg-accent-primary-hover transition-colors"
+          >
+            Découvrir DeepSight
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Success ─────────────────────────────────────────────────────────────
+  const videoId = data.video_id || extractVideoId(data.video_url);
+  const thumbnailUrl =
+    data.thumbnail_url ||
+    (videoId ? `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg` : "");
+  const youtubeUrl =
+    data.video_url ||
+    (videoId ? `https://www.youtube.com/watch?v=${videoId}` : "");
+  const summaryContent = data.summary_content || "";
+  const channel = data.video_channel || "";
+  const duration = data.video_duration;
+  const createdAt = data.created_at;
+  const description = (summaryContent || data.video_title || "").slice(0, 160);
+  const permalink =
+    data.permalink ||
+    publicAnalysisApi.buildPermalink(data.slug || slug || "");
+  const lang = data.lang || "fr";
+
+  return (
+    <div className="min-h-screen bg-bg-primary">
+      <DoodleBackground variant="video" />
+
+      {/* SEO Meta Tags */}
+      <Helmet>
+        <title>{`${data.video_title} — Analyse DeepSight`}</title>
+        <link rel="canonical" href={permalink} />
+        <meta name="description" content={description} />
+        <meta name="robots" content="index,follow,max-image-preview:large" />
+        <meta property="og:type" content="article" />
+        <meta
+          property="og:title"
+          content={`${data.video_title} — Analyse DeepSight`}
+        />
+        <meta property="og:description" content={description} />
+        {thumbnailUrl && <meta property="og:image" content={thumbnailUrl} />}
+        <meta property="og:url" content={permalink} />
+        <meta property="og:site_name" content="DeepSight" />
+        <meta
+          property="og:locale"
+          content={lang === "fr" ? "fr_FR" : "en_US"}
+        />
+        {createdAt && (
+          <meta
+            property="article:published_time"
+            content={new Date(createdAt).toISOString()}
+          />
+        )}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+          name="twitter:title"
+          content={`${data.video_title} — Analyse DeepSight`}
+        />
+        <meta name="twitter:description" content={description} />
+        {thumbnailUrl && <meta name="twitter:image" content={thumbnailUrl} />}
+
+        {/* ─── Schema.org JSON-LD — VideoObject + Article (cf spec § 4.4) ─── */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "VideoObject",
+                "@id": `${permalink}#video`,
+                name: data.video_title,
+                description,
+                ...(thumbnailUrl && { thumbnailUrl }),
+                ...(youtubeUrl && { contentUrl: youtubeUrl }),
+                ...(videoId &&
+                  (data.video_url || "").includes("youtu") && {
+                    embedUrl: `https://www.youtube.com/embed/${videoId}`,
+                  }),
+                ...(duration && { duration: formatDurationISO(duration) }),
+                ...(createdAt && {
+                  uploadDate: new Date(createdAt).toISOString(),
+                }),
+                ...(channel && {
+                  creator: { "@type": "Person", name: channel },
+                }),
+                publisher: {
+                  "@type": "Organization",
+                  name: "DeepSight",
+                  url: "https://deepsightsynthesis.com",
+                  logo: {
+                    "@type": "ImageObject",
+                    url: "https://deepsightsynthesis.com/icons/icon-512x512.png",
+                  },
+                },
+                isFamilyFriendly: true,
+                isAccessibleForFree: true,
+                inLanguage: lang,
+              },
+              {
+                "@type": "Article",
+                headline: `Analysis: ${data.video_title}`,
+                description,
+                ...(thumbnailUrl && { image: thumbnailUrl }),
+                url: permalink,
+                ...(createdAt && {
+                  datePublished: new Date(createdAt).toISOString(),
+                }),
+                author: {
+                  "@type": "Organization",
+                  name: "DeepSight",
+                  url: "https://deepsightsynthesis.com",
+                },
+                publisher: {
+                  "@type": "Organization",
+                  name: "DeepSight",
+                  url: "https://deepsightsynthesis.com",
+                  logo: {
+                    "@type": "ImageObject",
+                    url: "https://deepsightsynthesis.com/icons/icon-512x512.png",
+                  },
+                },
+                mainEntityOfPage: permalink,
+                isAccessibleForFree: true,
+                inLanguage: lang,
+                about: { "@id": `${permalink}#video` },
+              },
+            ],
+          })}
+        </script>
+      </Helmet>
+
+      {/* Header */}
+      <header className="border-b border-border-subtle bg-bg-primary/80 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Link to="/" className="group flex items-center gap-2">
+            <span className="text-xl font-bold text-accent-primary group-hover:opacity-80 transition-opacity">
+              DeepSight
+            </span>
+            <span className="text-xs text-text-muted hidden sm:inline">
+              · AI YouTube analyzer
+            </span>
+          </Link>
+          <OpenInAIMenu
+            permalink={permalink}
+            videoTitle={data.video_title}
+            onCopy={() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+            copied={copied}
+          />
+        </div>
+      </header>
+
+      {/* Main */}
+      <main className="max-w-3xl mx-auto px-4 py-6 sm:py-10">
+        {/* Hero: Thumbnail */}
+        {thumbnailUrl && (
+          <a
+            href={youtubeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block relative rounded-xl overflow-hidden group mb-6 shadow-lg"
+            aria-label={`Voir la vidéo source : ${data.video_title}`}
+          >
+            <img
+              src={thumbnailUrl}
+              alt={`Miniature de ${data.video_title}`}
+              className="w-full aspect-video object-cover group-hover:scale-[1.02] transition-transform duration-300"
+              loading="eager"
+            />
+            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+              <div className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                <svg
+                  className="w-7 h-7 text-white ml-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+            </div>
+          </a>
+        )}
+
+        {/* Title */}
+        <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-2 leading-tight">
+          {sanitizeTitle(data.video_title)}
+        </h1>
+
+        {/* Subtitle metadata */}
+        <p className="text-text-muted text-sm sm:text-base mb-6">
+          {[
+            sanitizeTitle(channel),
+            formatDate(createdAt),
+            formatDuration(duration),
+            data.mode ? `Mode ${data.mode}` : null,
+          ]
+            .filter(Boolean)
+            .join(" • ")}
+        </p>
+
+        {/* Reliability disclaimer (cf spec § 5.1 finding #4) */}
+        {typeof data.reliability_score === "number" &&
+          data.reliability_score < 80 && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-6 text-sm text-amber-200">
+              <Eye className="inline-block w-4 h-4 mr-1.5 -mt-0.5" />
+              Reliability score: {data.reliability_score}/100. Scores below 80
+              should be cross-checked against the source video.
+            </div>
+          )}
+
+        {/* Full analysis content */}
+        <div className="bg-bg-surface border border-border-default rounded-xl p-5 sm:p-6 mb-8">
+          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">
+            Analyse complète
+          </h2>
+          <div
+            className="prose prose-invert max-w-none text-text-secondary leading-relaxed"
+            dangerouslySetInnerHTML={{
+              __html: formatContent(summaryContent),
+            }}
+          />
+        </div>
+
+        {/* CTA Block — analyze your own video */}
+        <section className="mx-auto mt-12 max-w-3xl rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent p-8 text-center shadow-2xl">
+          <h2 className="text-2xl font-bold text-text-primary sm:text-3xl">
+            Analyse ta propre vidéo en 30 s
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-text-secondary">
+            DeepSight transforme n'importe quelle vidéo YouTube en synthèse
+            structurée, analyse visuelle et points clés horodatés.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="/?utm_source=public_page&utm_medium=cta_primary&utm_campaign=geo"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:brightness-110"
+            >
+              Essayer DeepSight
+            </a>
+            <a
+              href="/upgrade?utm_source=public_page&utm_medium=cta_secondary&utm_campaign=geo"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-text-secondary transition hover:bg-white/5"
+            >
+              Voir les tarifs
+            </a>
+          </div>
+          <p className="mt-5 text-xs text-text-muted">
+            🇫🇷🇪🇺 IA française · Propulsé par Mistral AI · Vos données restent
+            en Europe
+          </p>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border-subtle py-6 text-center text-text-muted text-xs">
+        <p>
+          &copy; {new Date().getFullYear()} DeepSight &mdash;{" "}
+          <a
+            href="https://deepsightsynthesis.com"
+            className="hover:text-text-secondary transition-colors"
+          >
+            deepsightsynthesis.com
+          </a>
+        </p>
+        <p className="mt-1 opacity-60">
+          Permalink:{" "}
+          <code className="text-[0.7rem] bg-white/5 px-1.5 py-0.5 rounded">
+            {permalink}
+          </code>
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+// ─── Sous-composant : Open in your AI menu ───────────────────────────────────
+
+interface OpenInAIMenuProps {
+  permalink: string;
+  videoTitle: string;
+  onCopy: () => void;
+  copied: boolean;
+}
+
+/**
+ * Bouton minimaliste « Open in your AI » + actions (Copy / ChatGPT / Claude /
+ * Gemini / Perplexity). Implémentation V1 simple — sera enrichie en Phase 2 par
+ * le composant tri-plateforme `<SendToAIButton>`.
+ */
+function OpenInAIMenu({
+  permalink,
+  videoTitle,
+  onCopy,
+  copied,
+}: OpenInAIMenuProps) {
+  const [open, setOpen] = useState(false);
+
+  // Prompt court pour deeplink IA — pointe vers le permalink (pas le markdown
+  // intégral, qui dépasserait la limite query param de la plupart des IA).
+  const prompt = useMemo(() => {
+    const txt = `Analyse cette page DeepSight : ${permalink} (« ${videoTitle} »).`;
+    return encodeURIComponent(txt);
+  }, [permalink, videoTitle]);
+
+  const targets = useMemo(
+    () => [
+      { id: "chatgpt", label: "ChatGPT", url: `https://chatgpt.com/?q=${prompt}` },
+      { id: "claude", label: "Claude", url: `https://claude.ai/new?q=${prompt}` },
+      {
+        id: "gemini",
+        label: "Gemini",
+        url: `https://gemini.google.com/app?prompt=${prompt}`,
+      },
+      {
+        id: "perplexity",
+        label: "Perplexity",
+        url: `https://www.perplexity.ai/search?q=${prompt}`,
+      },
+    ],
+    [prompt],
+  );
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(permalink);
+      onCopy();
+    } catch {
+      // ignore
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-text-secondary hover:bg-white/10 transition-colors"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <ExternalLink className="w-4 h-4" />
+        <span className="hidden sm:inline">Open in your AI</span>
+        <span className="sm:hidden">AI</span>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 mt-2 w-52 rounded-xl border border-white/10 bg-bg-surface shadow-2xl backdrop-blur-xl z-50 overflow-hidden"
+        >
+          <button
+            role="menuitem"
+            type="button"
+            onClick={handleCopy}
+            className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-white/5 transition-colors"
+          >
+            {copied ? (
+              <Check className="w-4 h-4 text-emerald-400" />
+            ) : (
+              <CopyIcon className="w-4 h-4" />
+            )}
+            {copied ? "Lien copié" : "Copier le lien"}
+          </button>
+          <div className="h-px bg-white/5" />
+          {targets.map((t) => (
+            <a
+              key={t.id}
+              role="menuitem"
+              href={t.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary hover:bg-white/5 transition-colors"
+              onClick={() => setOpen(false)}
+            >
+              <ExternalLink className="w-4 h-4" />
+              Ouvrir dans {t.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

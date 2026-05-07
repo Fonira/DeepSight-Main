@@ -619,6 +619,168 @@ async def export_summary_markdown(
     )
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🌍 PUBLIC ANALYSIS PAGES — `/a/{slug}` opt-in (Phase 3 sprint GEO)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Spec : Vault/01-Projects/DeepSight/Specs/2026-05-07-deepsight-export-to-ai-geo-design.md
+# Décisions actées :
+#   • Q1 : pages publiques = lien partageable seulement (pas de /discover en V1)
+#   • Q5 : si vidéo source devient privée → ignorer en V1, page DeepSight reste live
+#
+# Slug dérivé déterministiquement depuis l'ID via `slug_for_summary` (cf
+# exports/markdown_builder.py — cohérent avec PR-B export Markdown).
+# Resolve inverse : `a{hex(id)}` → `int(slug[1:], 16)`.
+
+
+class VisibilityUpdate(BaseModel):
+    """Body de PATCH /api/v1/summaries/{id}/visibility."""
+
+    is_public: bool = Field(..., description="Active ou désactive la page publique /a/{slug}")
+
+
+def _resolve_summary_id_from_slug(slug: str) -> Optional[int]:
+    """Inverse de `slug_for_summary` : `a{hex(id)}` → int.
+
+    Tolérant aux variations (case, padding) — retourne None si invalide.
+    Évite les leaks d'existence : un slug malformé est géré comme une 404
+    en amont.
+    """
+    if not slug or len(slug) < 2:
+        return None
+    if slug[0] != "a":
+        return None
+    try:
+        return int(slug[1:], 16)
+    except (ValueError, TypeError):
+        return None
+
+
+@router.get("/public/summaries/{slug}")
+async def get_public_summary(
+    slug: str,
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    🌍 Page publique opt-in d'une analyse — endpoint sans auth.
+
+    **Comportement** :
+    - 200 + JSON payload (mêmes champs que `/api/v1/analysis/{id}`) si
+      `is_public=true` ET slug existe.
+    - 404 sinon — comportement IDENTIQUE pour slug invalide, summary
+      inexistant ou `is_public=false`. Ne PAS leak l'existence.
+
+    **Cache** : `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
+    pour permettre l'edge cache Vercel/Cloudflare.
+
+    **Rate-limit IP** : géré en amont par middleware partagé (60/min — cf spec § 4.3).
+    """
+    from db.database import Summary
+
+    summary_id = _resolve_summary_id_from_slug(slug)
+    if summary_id is None:
+        # Slug malformé → 404 sans détail (anti-leak).
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "not_found", "message": "Analysis not found or not public"},
+        )
+
+    result = await session.execute(
+        select(Summary).where(Summary.id == summary_id, Summary.is_public.is_(True))
+    )
+    summary = result.scalar_one_or_none()
+
+    if not summary:
+        # Cas couverts : id n'existe pas, OR is_public=false.
+        # Même 404 → pas de leak entre "n'existe pas" et "existe mais privé".
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "not_found", "message": "Analysis not found or not public"},
+        )
+
+    payload = {
+        "id": str(summary.id),
+        "slug": slug,
+        "video_id": summary.video_id,
+        "video_title": summary.video_title,
+        "video_channel": getattr(summary, "video_channel", None),
+        "video_duration": getattr(summary, "video_duration", None),
+        "video_url": getattr(summary, "video_url", None),
+        "thumbnail_url": getattr(summary, "thumbnail_url", None),
+        "summary_content": summary.summary_content,
+        "summary_extras": getattr(summary, "summary_extras", None),
+        # 👁️ Visual analysis exposé (cf PR-A — bug d'exposition fixé).
+        "visual_analysis": getattr(summary, "visual_analysis", None),
+        "lang": getattr(summary, "lang", None),
+        "mode": getattr(summary, "mode", "standard"),
+        "model_used": getattr(summary, "model_used", None),
+        "platform": getattr(summary, "platform", None),
+        "category": getattr(summary, "category", None),
+        "reliability_score": getattr(summary, "reliability_score", None),
+        "deep_research": bool(getattr(summary, "deep_research", False)),
+        "created_at": summary.created_at.isoformat() if summary.created_at else None,
+        "permalink": f"https://deepsightsynthesis.com/a/{slug}",
+    }
+
+    return Response(
+        content=__import__("json").dumps(payload, default=str),
+        media_type="application/json",
+        headers={
+            # Edge cache : 1h fresh + 24h stale-while-revalidate.
+            "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+            # Anti-bot leak : permet aux IA crawlers de cacher.
+            "X-Robots-Tag": "all",
+        },
+    )
+
+
+@router.patch("/summaries/{summary_id}/visibility")
+async def update_summary_visibility(
+    summary_id: int,
+    body: VisibilityUpdate,
+    user: User = Depends(get_api_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    🔓 Active/désactive la page publique `/a/{slug}` d'une analyse (opt-in).
+
+    **Auth** : X-API-Key Pro/Expert (admin bypass via `get_api_user`).
+    **Owner check** : 404 si l'analyse appartient à un autre user (anti-leak).
+
+    **Réponse** :
+    - 200 + `{"summary_id": int, "is_public": bool, "slug": str, "permalink": str}`
+    - 404 si summary_id n'existe pas ou owned par un autre user.
+
+    **Spec** : Vault/01-Projects/DeepSight/Specs/2026-05-07-deepsight-export-to-ai-geo-design.md
+    """
+    from db.database import Summary
+
+    result = await session.execute(
+        select(Summary).where(Summary.id == summary_id, Summary.user_id == user.id)
+    )
+    summary = result.scalar_one_or_none()
+
+    if not summary:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "not_found", "message": f"Summary {summary_id} not found or access denied"},
+        )
+
+    # Update + commit
+    summary.is_public = bool(body.is_public)
+    await session.commit()
+
+    slug = slug_for_summary(summary.id)
+    permalink = f"https://deepsightsynthesis.com/a/{slug}"
+
+    return {
+        "summary_id": summary.id,
+        "is_public": bool(summary.is_public),
+        "slug": slug,
+        "permalink": permalink,
+    }
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_video(
     req: ChatRequest, user: User = Depends(get_api_user), session: AsyncSession = Depends(get_session)

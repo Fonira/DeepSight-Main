@@ -309,6 +309,9 @@ const AboutPage = lazyWithRetry(() => import("./pages/AboutPage"));
 const SharedAnalysisPage = lazyWithRetry(
   () => import("./pages/SharedAnalysisPage"),
 );
+const PublicAnalysisPage = lazyWithRetry(
+  () => import("./pages/PublicAnalysisPage"),
+);
 
 // Pages protégées
 const DashboardPageLegacy = lazyWithRetry(
@@ -841,6 +844,23 @@ const AppRoutes = () => {
                               fallback={<PageSkeleton variant="simple" />}
                             >
                               <SharedAnalysisPage />
+                            </Suspense>
+                          </RouteErrorBoundary>
+                        }
+                      />
+
+                      {/* Public analysis pages — opt-in /a/{slug} (Phase 3 GEO) */}
+                      <Route
+                        path="/a/:slug"
+                        element={
+                          <RouteErrorBoundary
+                            variant="full"
+                            componentName="PublicAnalysisPage"
+                          >
+                            <Suspense
+                              fallback={<PageSkeleton variant="simple" />}
+                            >
+                              <PublicAnalysisPage />
                             </Suspense>
                           </RouteErrorBoundary>
                         }
