@@ -143,7 +143,63 @@ def init_stripe():
     return False
 
 
-async def get_or_create_stripe_customer(user: User, session: AsyncSession, force_recreate: bool = False) -> str:
+# ─────────────────────────────────────────────────────────────────────────────
+# 🎯 Acquisition channel — vocabulaire SSOT aligné avec PostHog signup_source
+# ─────────────────────────────────────────────────────────────────────────────
+ALLOWED_ACQUISITION_CHANNELS: frozenset[str] = frozenset({
+    "product_hunt",
+    "twitter",
+    "reddit",
+    "linkedin",
+    "indiehackers",
+    "hackernews",
+    "karim_inmail",
+    "mobile_deeplink",
+    "test",
+    "direct",
+})
+
+_ACQUISITION_CHANNEL_ALIASES: dict[str, str] = {
+    "ph": "product_hunt",
+    "producthunt": "product_hunt",
+    "x": "twitter",
+    "ih": "indiehackers",
+    "indie": "indiehackers",
+    "hn": "hackernews",
+    "y_combinator": "hackernews",
+    "ycombinator": "hackernews",
+    "li": "linkedin",
+    "linked_in": "linkedin",
+}
+
+
+def normalize_acquisition_channel(raw: Optional[str]) -> str:
+    """Normalise et valide une valeur acquisition_channel.
+
+    Returns "direct" si la valeur est invalide ou absente. Ne raise jamais
+    pour ne pas bloquer un checkout sur un mauvais tracking côté client.
+    """
+    if not raw or not isinstance(raw, str):
+        return "direct"
+    norm = raw.strip().lower().replace("-", "_").replace(" ", "_")
+    if not norm:
+        return "direct"
+    norm = _ACQUISITION_CHANNEL_ALIASES.get(norm, norm)
+    if norm not in ALLOWED_ACQUISITION_CHANNELS:
+        logger.warning(
+            "Unknown acquisition_channel '%s' (normalized '%s'), defaulting to direct",
+            raw, norm,
+        )
+        return "direct"
+    return norm
+
+
+async def get_or_create_stripe_customer(
+    user: User,
+    session: AsyncSession,
+    force_recreate: bool = False,
+    acquisition_channel: Optional[str] = None,
+) -> str:
     """
     🔧 Récupère ou crée un client Stripe.
     Gère le cas où le client existe en mode test mais pas en mode live.
@@ -152,17 +208,31 @@ async def get_or_create_stripe_customer(user: User, session: AsyncSession, force
         user: L'utilisateur
         session: Session DB
         force_recreate: Force la recréation du client
+        acquisition_channel: Canal d'acquisition (premier-touch immutable —
+            si le Customer existe déjà avec une metadata acquisition_channel,
+            la valeur EXISTANTE est préservée. Backfill défensif uniquement
+            si le champ est absent).
 
     Returns:
         L'ID du client Stripe
     """
+    channel = normalize_acquisition_channel(acquisition_channel)
+    base_metadata = {
+        "user_id": str(user.id),
+        "acquisition_channel": channel,
+        "first_checkout_at": datetime.now(timezone.utc).isoformat(),
+    }
+
     # Si pas d'ID existant ou force_recreate, créer directement
     if not user.stripe_customer_id or force_recreate:
-        logger.info(f"Creating new Stripe customer for user {user.id}")
+        logger.info(
+            "Creating new Stripe customer for user %s (channel=%s)",
+            user.id, channel,
+        )
         customer = stripe.Customer.create(
             email=user.email,
             name=user.username or user.email,
-            metadata={"user_id": str(user.id)},
+            metadata=base_metadata,
         )
         user.stripe_customer_id = customer.id
         await session.commit()
@@ -174,6 +244,23 @@ async def get_or_create_stripe_customer(user: User, session: AsyncSession, force
         customer = stripe.Customer.retrieve(user.stripe_customer_id)
         if customer.get("deleted"):
             raise stripe.error.InvalidRequestError("Customer deleted", None)
+        # 🎯 Backfill défensif : Customer existant créé avant ce sprint
+        # n'a pas acquisition_channel. On ajoute SANS écraser autre metadata.
+        # Premier-touch wins : si déjà présent, on ne touche RIEN.
+        existing_meta = customer.get("metadata") or {}
+        if "acquisition_channel" not in existing_meta:
+            try:
+                merged = {**existing_meta, **base_metadata}
+                stripe.Customer.modify(
+                    user.stripe_customer_id,
+                    metadata=merged,
+                )
+                logger.info(
+                    "Backfilled acquisition_channel=%s on existing customer %s",
+                    channel, user.stripe_customer_id,
+                )
+            except stripe.error.StripeError as e:
+                logger.warning("Backfill metadata failed: %s", e)
         logger.info(f"Found existing Stripe customer: {user.stripe_customer_id}")
         return user.stripe_customer_id
     except stripe.error.InvalidRequestError as e:
@@ -184,7 +271,7 @@ async def get_or_create_stripe_customer(user: User, session: AsyncSession, force
         customer = stripe.Customer.create(
             email=user.email,
             name=user.username or user.email,
-            metadata={"user_id": str(user.id)},
+            metadata=base_metadata,
         )
         user.stripe_customer_id = customer.id
         await session.commit()
@@ -720,6 +807,10 @@ class CreateCheckoutByPlanId(BaseModel):
     plan: Optional[str] = None    # "pro" | "expert"
     cycle: str = "monthly"         # "monthly" | "yearly"
     plan_id: Optional[str] = None  # legacy alias of plan
+    # 🎯 Attribution launch J0 — premier-touch immutable.
+    # Vocabulaire SSOT (cf. ALLOWED_ACQUISITION_CHANNELS).
+    # Valeur invalide ou absente → "direct" (jamais 4xx).
+    acquisition_channel: Optional[str] = None
 
 
 @router.post("/create-checkout")
@@ -768,18 +859,18 @@ async def create_checkout_by_plan_id(
             detail=f"Plan {plan} ({request.cycle}) price not configured",
         )
 
-    # Créer ou récupérer le client Stripe
-    if current_user.stripe_customer_id:
-        customer_id = current_user.stripe_customer_id
-    else:
-        customer = stripe.Customer.create(
-            email=current_user.email,
-            name=current_user.username or current_user.email,
-            metadata={"user_id": str(current_user.id)},
-        )
-        customer_id = customer.id
-        current_user.stripe_customer_id = customer_id
-        await session.commit()
+    # 🎯 Acquisition channel — normalisé en amont, partagé entre Customer
+    # metadata (premier-touch immutable côté Stripe) et Session metadata
+    # (lu par le webhook handler sans round-trip Stripe).
+    acquisition_channel = normalize_acquisition_channel(request.acquisition_channel)
+
+    # Créer ou récupérer le client Stripe via helper centralisé
+    # (gère premier-touch immutable + backfill défensif).
+    customer_id = await get_or_create_stripe_customer(
+        current_user,
+        session,
+        acquisition_channel=request.acquisition_channel,
+    )
 
     # URLs de retour (avec plan + cycle pour affichage immédiat)
     success_url = (
@@ -806,6 +897,8 @@ async def create_checkout_by_plan_id(
                 "user_id": str(current_user.id),
                 "plan": plan,
                 "cycle": request.cycle,
+                # 🎯 Propagé pour webhook (évite round-trip Customer.retrieve)
+                "acquisition_channel": acquisition_channel,
             },
         )
 
@@ -1781,6 +1874,21 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
     """Gère la complétion d'un checkout"""
     metadata = data.get("metadata", {})
 
+    # 🎯 Attribution channel — log AVANT le routing voice/credit/subscription
+    # pour avoir un signal cohérent peu importe le type de paiement.
+    # Source : Session.metadata propagé depuis create_checkout_by_plan_id.
+    # Pour les voice packs / credit packs, le helper get_or_create_stripe_customer
+    # n'est pas appelé avec un canal côté inline (legacy) → "direct" par défaut.
+    acquisition_channel = metadata.get("acquisition_channel", "direct")
+    customer_id = data.get("customer")
+    logger.info(
+        "ATTRIBUTION checkout.completed channel=%s customer=%s session=%s kind=%s",
+        acquisition_channel,
+        customer_id,
+        data.get("id"),
+        metadata.get("kind") or metadata.get("type") or "subscription",
+    )
+
     # ── Voice pack top-up (NEW system, migration 011) ─────────────────
     # Prioritized BEFORE legacy voice_addon so the new flow always wins
     # if both flags are present (defensive: should never happen in practice).
@@ -1863,14 +1971,36 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
     await session.commit()
     logger.info("User %s upgraded to %s, +%d credits", user_id, plan, credits_to_add)
 
-    # 🚀 Launch J0 — fire `payment_completed` server-side (fiable même si tab
-    # fermée). PostHog dashboard "Launch J0 Real-Time" lit le sum de
-    # mrr_added_eur today + breakdown acquisition_channel pour cohort.
+    # 🎯 Audit log RGPD — channel d'acquisition pour cohorte launch (PR #413)
+    try:
+        await log_audit(
+            session,
+            action="payment.completed",
+            user_id=user.id,
+            details={
+                "plan": plan,
+                "channel": acquisition_channel,
+                "stripe_session_id": data.get("id"),
+                "subscription_id": subscription_id,
+                "amount_cents": data.get("amount_total") or 0,
+                "currency": data.get("currency", "eur"),
+            },
+        )
+        await session.commit()
+    except Exception as e:
+        logger.info("audit_log payment.completed failed: %s", e)
+
+    # 🚀 Launch J0 — PostHog event server-side (fiable même si tab fermée).
+    # Combine les payloads PR #413 (Stripe acquisition_channel) + PR #414
+    # (UTM details from user.preferences) pour breakdown cohort complet.
     try:
         amount_total = data.get("amount_total") or 0  # cents
         cycle = (metadata.get("cycle") or "monthly").lower()
         mrr_added_eur = (amount_total / 100.0) / (12.0 if cycle == "yearly" else 1.0)
         prefs = user.preferences or {}
+        # acquisition_channel from Stripe metadata (premier-touch immutable),
+        # fallback to user.preferences signup_source (UTM original).
+        channel = acquisition_channel or prefs.get("signup_source", "direct")
         track_event(
             "payment_completed",
             properties={
@@ -1878,8 +2008,9 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
                 "cycle": cycle,
                 "mrr_added_eur": round(mrr_added_eur, 2),
                 "amount_total_eur": round(amount_total / 100.0, 2),
+                "amount_cents": amount_total,
                 "currency": data.get("currency", "eur"),
-                "acquisition_channel": prefs.get("signup_source", "direct"),
+                "acquisition_channel": channel,
                 "utm_source": prefs.get("utm_source"),
                 "utm_medium": prefs.get("utm_medium"),
                 "utm_campaign": prefs.get("utm_campaign"),

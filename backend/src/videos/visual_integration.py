@@ -5,8 +5,10 @@
 ║  Orchestre l'enrichissement visuel multimodal (Phase 2) :                         ║
 ║  1. Plan gating : Pro/Expert seulement (Free → upsell, jamais incrémenté)         ║
 ║  2. Quota mensuel : Pro=30, Expert=illimité (table visual_analysis_quota)         ║
-║  3. Extraction video_id YouTube (Phase 2 = YouTube uniquement)                    ║
-║  4. Pipeline Pivot 5 : extract_storyboard_frames + analyze_frames                 ║
+║  3. Extraction frames selon plateforme :                                          ║
+║     • YouTube → Pivot 5 storyboards (i.ytimg.com, no download)                    ║
+║     • TikTok  → download via tikwm fallback + ffmpeg frames (extract_frames_from_local)║
+║  4. Mistral Vision (analyze_frames, agnostic)                                     ║
 ║  5. Format visual context pour injection dans le prompt Mistral analysis          ║
 ║                                                                                    ║
 ║  Source de vérité quotas : core.plan_limits (DRY) ; ce module ne hardcode pas.    ║
@@ -16,8 +18,11 @@
 
 import logging
 import re
+import tempfile
 import time
+import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from sqlalchemy import select
@@ -25,7 +30,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import User, VisualAnalysisQuota
 
-from .visual_analyzer import VisualAnalysis, analyze_frames
+from .frame_extractor import FrameExtractionResult, extract_frames_from_local
+from .visual_analyzer import analyze_frames
 from .youtube_storyboard import extract_storyboard_frames, normalize_video_id
 
 logger = logging.getLogger(__name__)
@@ -57,7 +63,8 @@ STATUS_OK = "ok"
 STATUS_DISABLED = "disabled"  # flag VISUAL_ANALYSIS_ENABLED pas activé
 STATUS_PLAN_NOT_ALLOWED = "plan_not_allowed"  # Free
 STATUS_QUOTA_EXCEEDED = "quota_exceeded"
-STATUS_NOT_YOUTUBE = "not_youtube"  # URL TikTok/Vimeo, etc. — Phase 2 = YouTube uniquement
+STATUS_NOT_SUPPORTED = "not_supported"  # plateforme inconnue (Vimeo, etc.)
+STATUS_NOT_YOUTUBE = "not_youtube"  # rétro-compat — synonyme de not_supported pour callers existants
 STATUS_EXTRACT_FAILED = "extract_failed"
 STATUS_VISION_FAILED = "vision_failed"
 
@@ -179,25 +186,39 @@ async def maybe_enrich_with_visual(
         logger.info("[%s] Skipped (%s)", log_tag, reason)
         return {"status": reason, "elapsed_s": round(time.time() - t0, 2)}
 
-    # ── 2. URL → video_id YouTube ──
-    video_id = normalize_video_id(url)
-    if not video_id:
-        # Pas une URL/ID YouTube → Phase 2 ne couvre pas TikTok/Vimeo
+    # ── 2. Détection plateforme + extraction frames adaptée ──
+    platform = _detect_visual_platform(url)
+
+    if platform == "youtube":
+        video_id = normalize_video_id(url)
+        if not video_id:
+            return {
+                "status": STATUS_NOT_SUPPORTED,
+                "elapsed_s": round(time.time() - t0, 2),
+            }
+        extraction = await extract_storyboard_frames(video_id, log_tag=log_tag)
+        identifier_for_logs = video_id
+    elif platform == "tiktok":
+        # TikTok : download via tikwm fallback (IP Hetzner ban yt-dlp direct)
+        # → extract_frames_from_local → cleanup
+        video_id = _extract_tiktok_id_or_fallback(url)
+        extraction = await _extract_tiktok_visual_frames(url, video_id, log_tag=log_tag)
+        identifier_for_logs = video_id
+    else:
         return {
-            "status": STATUS_NOT_YOUTUBE,
+            "status": STATUS_NOT_SUPPORTED,
             "elapsed_s": round(time.time() - t0, 2),
         }
 
-    # ── 3. Extraction storyboards (Pivot 5) ──
-    extraction = await extract_storyboard_frames(video_id, log_tag=log_tag)
     if extraction is None:
         return {
             "status": STATUS_EXTRACT_FAILED,
-            "video_id": video_id,
+            "video_id": identifier_for_logs,
+            "platform": platform,
             "elapsed_s": round(time.time() - t0, 2),
         }
 
-    # ── 4. Mistral Vision ──
+    # ── 3. Mistral Vision (commun à toutes plateformes) ──
     try:
         analysis = await analyze_frames(
             extraction.frame_paths,
@@ -211,19 +232,21 @@ async def maybe_enrich_with_visual(
     if analysis is None:
         return {
             "status": STATUS_VISION_FAILED,
-            "video_id": video_id,
+            "video_id": identifier_for_logs,
+            "platform": platform,
             "frame_count": extraction.frame_count,
             "elapsed_s": round(time.time() - t0, 2),
         }
 
-    # ── 5. Quota incrément (succès uniquement) ──
+    # ── 4. Quota incrément (succès uniquement) ──
     new_count = await increment_quota(db, user.id)
 
     elapsed = round(time.time() - t0, 2)
     logger.info(
-        "[%s] OK in %.1fs (frames=%d model=%s quota_count=%d)",
+        "[%s] OK in %.1fs (platform=%s frames=%d model=%s quota_count=%d)",
         log_tag,
         elapsed,
+        platform,
         extraction.frame_count,
         analysis.model_used,
         new_count,
@@ -231,7 +254,8 @@ async def maybe_enrich_with_visual(
 
     return {
         "status": STATUS_OK,
-        "video_id": video_id,
+        "video_id": identifier_for_logs,
+        "platform": platform,
         "frame_count": extraction.frame_count,
         "duration_s": round(extraction.duration_s, 2),
         "model_used": analysis.model_used,
@@ -241,6 +265,96 @@ async def maybe_enrich_with_visual(
         "quota_count_after": new_count,
         "elapsed_s": elapsed,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎬 EXTRACTION FRAMES PAR PLATEFORME
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+_TIKTOK_HOSTS_RE = re.compile(r"(?:^|\.)(?:tiktok\.com|vm\.tiktok\.com)", re.IGNORECASE)
+
+
+def _detect_visual_platform(url: str) -> str:
+    """Détecte la plateforme à partir de l'URL.
+
+    Returns:
+        "youtube" | "tiktok" | "unknown"
+    """
+    if not url:
+        return "unknown"
+    if _TIKTOK_HOSTS_RE.search(url):
+        return "tiktok"
+    if normalize_video_id(url):
+        return "youtube"
+    # Fallback : pas de match URL mais peut-être une chaîne d'ID YouTube brut
+    return "unknown"
+
+
+def _extract_tiktok_id_or_fallback(url: str) -> str:
+    """Extrait l'ID vidéo TikTok ou retourne 'tiktok_<rand>' en fallback (logs only)."""
+    try:
+        from transcripts.tiktok import extract_tiktok_video_id
+
+        vid = extract_tiktok_video_id(url)
+        if vid:
+            return vid
+    except Exception:
+        pass
+    return f"tiktok_{uuid.uuid4().hex[:8]}"
+
+
+async def _extract_tiktok_visual_frames(
+    url: str, video_id: str, *, log_tag: str
+) -> Optional[FrameExtractionResult]:
+    """Pipeline TikTok : download bytes → /tmp file → extract_frames_from_local.
+
+    L'IP Hetzner est ban TikTok pour `yt-dlp <video_url>` direct, donc on
+    réutilise `_download_video_bytes()` qui a un fallback tikwm.com éprouvé
+    en prod (utilisé par Phase 5 Visual OCR du transcript).
+    """
+    # Lazy import : évite cycle transcripts → videos → transcripts
+    try:
+        from transcripts.tiktok import _download_video_bytes
+    except Exception as e:
+        logger.warning("[%s] _download_video_bytes import failed: %s", log_tag, e)
+        return None
+
+    t0 = time.time()
+    try:
+        video_data = await _download_video_bytes(url, video_id)
+    except Exception as e:
+        logger.warning("[%s] TikTok download raised: %s", log_tag, e)
+        return None
+
+    if not video_data:
+        logger.warning("[%s] TikTok download returned empty for %s", log_tag, video_id)
+        return None
+
+    logger.info(
+        "[%s] TikTok download OK in %.1fs (%.0f KB)",
+        log_tag,
+        time.time() - t0,
+        len(video_data) / 1024,
+    )
+
+    # Sauvegarde fichier temporaire — extract_frames_from_local lira ffprobe + ffmpeg
+    tmp_path = Path(tempfile.gettempdir()) / f"tk_visual_{video_id}_{uuid.uuid4().hex[:8]}.mp4"
+    try:
+        tmp_path.write_bytes(video_data)
+    except OSError as e:
+        logger.warning("[%s] Failed to write tmp file %s: %s", log_tag, tmp_path, e)
+        return None
+
+    try:
+        result = await extract_frames_from_local(str(tmp_path), log_tag=f"{log_tag} TIKTOK")
+    finally:
+        # Le mp4 source n'est plus utile une fois les frames extraites — peu importe le résultat
+        tmp_path.unlink(missing_ok=True)
+
+    if result is None:
+        logger.warning("[%s] TikTok ffmpeg extraction returned None for %s", log_tag, video_id)
+    return result
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

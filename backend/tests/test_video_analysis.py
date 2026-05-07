@@ -72,6 +72,8 @@ def make_mock_summary(**overrides):
         "music_title": None, "music_author": None,
         "source_tags_json": None, "carousel_images": None,
         "created_at": datetime(2024, 1, 1),
+        # Phase 2 fields (sprint 2026-05-06) — Pydantic exige dict ou None
+        "summary_extras": None, "visual_analysis": None,
     }
     defaults.update(overrides)
     for k, v in defaults.items():

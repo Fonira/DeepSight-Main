@@ -1469,7 +1469,7 @@ async def _analyze_video_background_v2(
 
             # 👁️ Phase 2 visual hook (V2) — enrich full_context + capture pour persist post-save
             _visual_analysis_data: Optional[Dict[str, Any]] = None
-            if options.get("include_visual_analysis", True) and platform == "youtube":
+            if options.get("include_visual_analysis", True) and platform in ("youtube", "tiktok"):
                 from .visual_integration import enrich_and_capture_visual
 
                 _visual_flag_on = (
@@ -2361,7 +2361,7 @@ async def _analyze_video_background_v2_1(
 
             # 👁️ Phase 2 visual hook (V2.1) — enrich full_context + capture pour persist post-save
             _visual_analysis_data: Optional[Dict[str, Any]] = None
-            if options.get("include_visual_analysis", True) and platform == "youtube":
+            if options.get("include_visual_analysis", True) and platform in ("youtube", "tiktok"):
                 from .visual_integration import enrich_and_capture_visual
 
                 _visual_flag_on = (
@@ -3162,7 +3162,7 @@ async def _analyze_video_background_v6(
             # Best-effort : si échec, on continue sans la couche visuelle.
             # ═══════════════════════════════════════════════════════════════════
             _visual_analysis_data: Optional[Dict[str, Any]] = None
-            if include_visual_analysis and platform == "youtube":
+            if include_visual_analysis and platform in ("youtube", "tiktok"):
                 try:
                     from .visual_integration import (
                         STATUS_OK,

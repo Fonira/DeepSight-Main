@@ -66,6 +66,26 @@ def _make_entry(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Fixtures
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.fixture(autouse=True)
+def _stub_html_meta_fetch(monkeypatch):
+    """Désactive le scrape HTML par défaut pour ne tester que la branche yt-dlp.
+
+    Les tests qui ciblent l'enrichissement HTML monkeypatchent eux-mêmes la
+    fonction avec leur propre stub.
+    """
+    from transcripts import tiktok
+
+    async def _stub(_username):
+        return None
+
+    monkeypatch.setattr(tiktok, "_fetch_tiktok_account_meta_from_html", _stub)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # get_tiktok_account_context()
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -398,3 +418,197 @@ class TestExtractTiktokUsernameFromMetadata:
 
         metadata = {"uploader_id": "user.name_42"}
         assert extract_tiktok_username_from_video_metadata(metadata) == "user.name_42"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HTML meta enrichment (_fetch_tiktok_account_meta_from_html + merging)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestTiktokHtmlMetaRegex:
+    """Tests des regex de parse HTML pour extraire follower_count, nickname, etc."""
+
+    def test_regex_extracts_follower_count(self):
+        from transcripts.tiktok import _HTML_FOLLOWER_RE
+
+        html = '...other stuff..."followerCount": 161200000,"otherField"...'
+        m = _HTML_FOLLOWER_RE.search(html)
+        assert m is not None
+        assert m.group(1) == "161200000"
+
+    def test_regex_extracts_video_count(self):
+        from transcripts.tiktok import _HTML_VIDEO_COUNT_RE
+
+        html = '..."videoCount":1322,...'
+        m = _HTML_VIDEO_COUNT_RE.search(html)
+        assert m is not None
+        assert m.group(1) == "1322"
+
+    def test_regex_extracts_nickname(self):
+        from transcripts.tiktok import _HTML_NICKNAME_RE
+
+        html = '..."nickname":"Khabane lame","other":...'
+        m = _HTML_NICKNAME_RE.search(html)
+        assert m is not None
+        assert m.group(1) == "Khabane lame"
+
+    def test_regex_extracts_signature_with_unicode_escapes(self):
+        from transcripts.tiktok import _HTML_SIGNATURE_RE, _decode_html_unicode_escapes
+
+        html = '..."signature":"Bio with caf\\u00e9 emoji","stat":...'
+        m = _HTML_SIGNATURE_RE.search(html)
+        assert m is not None
+        decoded = _decode_html_unicode_escapes(m.group(1))
+        assert decoded == "Bio with café emoji"
+
+    def test_regex_extracts_verified(self):
+        from transcripts.tiktok import _HTML_VERIFIED_RE
+
+        html_true = '..."verified":true,...'
+        html_false = '..."verified":false,...'
+        m_true = _HTML_VERIFIED_RE.search(html_true)
+        m_false = _HTML_VERIFIED_RE.search(html_false)
+        assert m_true is not None and m_true.group(1) == "true"
+        assert m_false is not None and m_false.group(1) == "false"
+
+    def test_decode_unicode_escapes_handles_quotes(self):
+        from transcripts.tiktok import _decode_html_unicode_escapes
+
+        # Backslash-escaped quote inside JSON-like string
+        assert _decode_html_unicode_escapes(r'foo \"bar\" baz') == 'foo "bar" baz'
+
+    def test_decode_unicode_escapes_returns_value_on_invalid(self):
+        from transcripts.tiktok import _decode_html_unicode_escapes
+
+        # Stray backslash that isn't a valid JSON escape — fall back to raw
+        weird = "foo \\Z bar"
+        assert _decode_html_unicode_escapes(weird) == weird
+
+
+class TestTiktokAccountContextHtmlMerging:
+    """Tests du merging HTML meta + yt-dlp dans get_tiktok_account_context()."""
+
+    @pytest.mark.asyncio
+    async def test_html_meta_overrides_yt_dlp_when_present(self, monkeypatch):
+        """yt-dlp renvoie meta=None (cas prod) → HTML meta remplit name/desc/subs/video_count."""
+        from transcripts import tiktok
+
+        async def _html_stub(_username):
+            return {
+                "nickname": "Khabane lame",
+                "signature": "Se vuoi ridere sei nel posto giusto",
+                "follower_count": 161200000,
+                "video_count": 1322,
+                "verified": True,
+            }
+
+        monkeypatch.setattr(tiktok, "_fetch_tiktok_account_meta_from_html", _html_stub)
+
+        # yt-dlp renvoie entries OK mais channel/uploader/follower=None (cas réel prod)
+        prod_payload = {
+            "channel": None,
+            "uploader": None,
+            "channel_follower_count": None,
+            "playlist_count": None,
+            "description": None,
+            "entries": [_make_entry(title="A test post #fyp")],
+        }
+
+        with patch.object(
+            tiktok.subprocess, "run",
+            return_value=_make_completed_process(0, stdout=json.dumps(prod_payload)),
+        ):
+            ctx = await tiktok.get_tiktok_account_context("khaby.lame", limit=5)
+
+        assert ctx is not None
+        assert ctx["name"] == "Khabane lame"
+        assert ctx["description"] == "Se vuoi ridere sei nel posto giusto"
+        assert ctx["subscriber_count"] == 161200000
+        assert ctx["video_count"] == 1322
+        # last_videos toujours rempli depuis yt-dlp entries
+        assert len(ctx["last_videos"]) == 1
+        assert "fyp" in ctx["last_videos"][0]["tags"]
+
+    @pytest.mark.asyncio
+    async def test_html_meta_priority_over_yt_dlp_meta(self, monkeypatch):
+        """Quand yt-dlp et HTML donnent tous deux des méta → HTML gagne (plus fiable en prod)."""
+        from transcripts import tiktok
+
+        async def _html_stub(_username):
+            return {
+                "nickname": "From HTML",
+                "follower_count": 999_999,
+                "video_count": 50,
+            }
+
+        monkeypatch.setattr(tiktok, "_fetch_tiktok_account_meta_from_html", _html_stub)
+
+        yt_dlp_payload = _make_account_payload(
+            "user1",
+            [_make_entry()],
+            channel="From yt-dlp",
+            channel_follower_count=100,
+            playlist_count=10,
+        )
+
+        with patch.object(
+            tiktok.subprocess, "run",
+            return_value=_make_completed_process(0, stdout=json.dumps(yt_dlp_payload)),
+        ):
+            ctx = await tiktok.get_tiktok_account_context("user1")
+
+        assert ctx is not None
+        assert ctx["name"] == "From HTML"
+        assert ctx["subscriber_count"] == 999_999
+        assert ctx["video_count"] == 50
+
+    @pytest.mark.asyncio
+    async def test_yt_dlp_failure_returns_none_even_with_html_meta(self, monkeypatch):
+        """Si yt-dlp fail (compte privé/banned) → return None, peu importe HTML.
+
+        Le HTML d'un compte privé peut renvoyer un 200 avec stub, on ne veut pas
+        retourner un faux 'partial dict' qui leurrerait le caller.
+        """
+        from transcripts import tiktok
+
+        async def _html_stub(_username):
+            return {"nickname": "Stub", "follower_count": 1}
+
+        monkeypatch.setattr(tiktok, "_fetch_tiktok_account_meta_from_html", _html_stub)
+
+        with patch.object(
+            tiktok.subprocess, "run",
+            return_value=_make_completed_process(
+                1, stdout="", stderr="ERROR: account is private"
+            ),
+        ):
+            ctx = await tiktok.get_tiktok_account_context("private_user")
+
+        assert ctx is None
+
+    @pytest.mark.asyncio
+    async def test_html_meta_none_falls_back_to_yt_dlp(self, monkeypatch):
+        """Si HTML scrape KO mais yt-dlp OK → fallback aux meta yt-dlp (legacy behavior)."""
+        from transcripts import tiktok
+
+        async def _html_none(_username):
+            return None
+
+        monkeypatch.setattr(tiktok, "_fetch_tiktok_account_meta_from_html", _html_none)
+
+        yt_dlp_payload = _make_account_payload(
+            "user1",
+            [_make_entry()],
+            channel="yt-dlp name",
+            channel_follower_count=42,
+        )
+
+        with patch.object(
+            tiktok.subprocess, "run",
+            return_value=_make_completed_process(0, stdout=json.dumps(yt_dlp_payload)),
+        ):
+            ctx = await tiktok.get_tiktok_account_context("user1")
+
+        assert ctx is not None
+        assert ctx["name"] == "yt-dlp name"
+        assert ctx["subscriber_count"] == 42

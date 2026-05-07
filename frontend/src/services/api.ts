@@ -1954,19 +1954,97 @@ export interface ApiBillingMyPlan {
   };
 }
 
+// 🎯 Acquisition channel — vocabulaire SSOT aligné avec backend
+//    (`backend/src/billing/router.py::ALLOWED_ACQUISITION_CHANNELS`) ET
+//    PostHog signup_source (sub-agent P).
+const ALLOWED_ACQUISITION_CHANNELS: ReadonlySet<string> = new Set([
+  "product_hunt",
+  "twitter",
+  "reddit",
+  "linkedin",
+  "indiehackers",
+  "hackernews",
+  "karim_inmail",
+  "mobile_deeplink",
+  "test",
+  "direct",
+]);
+
+const ACQUISITION_CHANNEL_ALIASES: Readonly<Record<string, string>> = {
+  ph: "product_hunt",
+  producthunt: "product_hunt",
+  x: "twitter",
+  ih: "indiehackers",
+  indie: "indiehackers",
+  hn: "hackernews",
+  y_combinator: "hackernews",
+  ycombinator: "hackernews",
+  li: "linkedin",
+  linked_in: "linkedin",
+};
+
+function normalizeAcquisitionChannel(raw: string | null | undefined): string {
+  if (!raw) return "direct";
+  const norm = raw.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!norm) return "direct";
+  const resolved = ACQUISITION_CHANNEL_ALIASES[norm] ?? norm;
+  return ALLOWED_ACQUISITION_CHANNELS.has(resolved) ? resolved : "direct";
+}
+
+/**
+ * 🎯 Infère le canal d'acquisition.
+ * Lookup order : localStorage.acquisition_channel → utm_source → referrer → "direct".
+ * Aligné avec PostHog signup_source (sub-agent P) — premier-touch immutable côté backend.
+ * Toute valeur invalide est silencieusement remappée sur "direct".
+ */
+export function inferAcquisitionChannel(): string {
+  if (typeof window === "undefined") return "direct";
+  try {
+    const explicit = window.localStorage.getItem("acquisition_channel");
+    if (explicit) return normalizeAcquisitionChannel(explicit);
+
+    const utmSource = window.localStorage.getItem("utm_source");
+    if (utmSource) return normalizeAcquisitionChannel(utmSource);
+
+    const ref = (typeof document !== "undefined" && document.referrer) || "";
+    if (!ref) return "direct";
+    let host: string;
+    try {
+      host = new URL(ref).hostname.toLowerCase();
+    } catch {
+      return "direct";
+    }
+    if (host.includes("producthunt.com")) return "product_hunt";
+    if (host.includes("twitter.com") || host.includes("x.com")) return "twitter";
+    if (host.includes("reddit.com")) return "reddit";
+    if (host.includes("linkedin.com")) return "linkedin";
+    if (host.includes("indiehackers.com")) return "indiehackers";
+    if (host.includes("news.ycombinator.com")) return "hackernews";
+    return "direct";
+  } catch {
+    return "direct";
+  }
+}
+
 export const billingApi = {
   /**
    * 🆕 Pricing v2 — Crée une session Stripe Checkout (plan + cycle).
    * @param plan "pro" | "expert"
    * @param cycle "monthly" | "yearly" (default monthly)
+   * @param acquisitionChannel — optionnel. Si absent, dérivé de
+   *   `inferAcquisitionChannel()` (localStorage.utm_source / referrer).
+   *   ⚠️ Backend ignore ce champ si le Customer existe déjà avec une
+   *   acquisition_channel posée (premier-touch immutable).
    */
   async createCheckout(
     plan: ApiPlanIdV2 | string,
     cycle: BillingCycle = "monthly",
+    acquisitionChannel?: string,
   ): Promise<{ checkout_url: string; session_id: string }> {
+    const channel = acquisitionChannel ?? inferAcquisitionChannel();
     return request("/api/billing/create-checkout", {
       method: "POST",
-      body: { plan, cycle },
+      body: { plan, cycle, acquisition_channel: channel },
     });
   },
 
