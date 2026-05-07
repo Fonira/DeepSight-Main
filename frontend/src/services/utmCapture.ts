@@ -60,7 +60,7 @@ export interface CapturedUtm {
   capturedAt?: string;
 }
 
-const STORAGE_KEY = "deepsight_utm_v1";
+const STORAGE_KEY = "deepsight_utm_v1"; // gitleaks:allow — localStorage key name, not a credential
 const TTL_DAYS = 30;
 const TTL_MS = TTL_DAYS * 86400 * 1000;
 
