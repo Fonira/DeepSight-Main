@@ -1570,17 +1570,28 @@ export const billingApi = {
    *
    * @param plan "pro" | "expert"
    * @param cycle "monthly" | "yearly" (default monthly)
+   * @param acquisitionChannel — optionnel. Default `"mobile_deeplink"` (le
+   *   contexte mobile n'a ni `localStorage.utm_source` ni referrer DOM).
+   *   Pass explicite si install via campagne deep-linkée (ex : "twitter").
+   *   ⚠️ Backend ignore ce champ si Customer déjà posé (premier-touch immutable).
    */
   async createCheckout(
     plan: ApiPlanIdV2 | string,
     cycle: BillingCycle = "monthly",
+    acquisitionChannel?: string,
   ): Promise<{ url: string; session_id: string }> {
+    const channel = acquisitionChannel ?? "mobile_deeplink";
     const response = await request<{
       checkout_url: string;
       session_id: string;
     }>("/api/billing/create-checkout", {
       method: "POST",
-      body: { plan, cycle, plan_id: plan },
+      body: {
+        plan,
+        cycle,
+        plan_id: plan,
+        acquisition_channel: channel,
+      },
     });
     return { url: response.checkout_url, session_id: response.session_id };
   },
