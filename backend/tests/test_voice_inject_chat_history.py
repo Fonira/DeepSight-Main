@@ -154,10 +154,19 @@ async def test_chat_history_injected_when_summary_id_present(mock_db_session, mo
     """When summary_id is set, recent chat history is appended to the voice system_prompt.
 
     Integration-style test: stub the Summary lookup, build_rich_context,
-    chat.service.get_chat_history and the ElevenLabs client so we can
-    inspect the system_prompt actually passed to create_conversation_agent.
+    voice.context_builder.build_unified_context_block and the ElevenLabs
+    client so we can inspect the system_prompt actually passed to
+    create_conversation_agent.
+
+    Note (PR #203 — voice ↔ chat unification): the legacy
+    ``_build_chat_history_block_for_voice`` + ``chat.service.get_chat_history``
+    pair in ``create_voice_session`` was replaced by the unified
+    ``voice.context_builder.build_unified_context_block`` (covering voice
+    digests + chat digests + verbatim rows in one shot). We therefore
+    mock the unified builder directly and assert the returned block lands
+    in the system_prompt — same intent as Spec #1 Task 6, new plumbing.
     """
-    from voice.router import create_voice_session
+    from voice.router import _build_chat_history_block_for_voice, create_voice_session
     from voice.schemas import VoiceSessionRequest
 
     request = VoiceSessionRequest(summary_id=42, agent_type="explorer", language="fr")
@@ -166,6 +175,10 @@ async def test_chat_history_injected_when_summary_id_present(mock_db_session, mo
         {"role": "user", "content": "Quelle est la thèse principale ?", "source": "text"},
         {"role": "assistant", "content": "L'auteur soutient que...", "source": "text"},
     ]
+
+    # Build the FR text-history block exactly the way the legacy helper
+    # would have, so the assertions still target a real, format-stable string.
+    fake_history_block = _build_chat_history_block_for_voice(fake_history, language="fr")
 
     # ── Summary lookup stub: db.execute(select(Summary)).scalar_one_or_none()
     # must return a truthy summary for the explorer agent to proceed.
@@ -230,8 +243,8 @@ async def test_chat_history_injected_when_summary_id_present(mock_db_session, mo
             new=AsyncMock(return_value=fake_rich_ctx),
         ),
         patch(
-            "chat.service.get_chat_history",
-            new=AsyncMock(return_value=fake_history),
+            "voice.context_builder.build_unified_context_block",
+            new=AsyncMock(return_value=fake_history_block),
         ),
     ):
         await create_voice_session(
@@ -240,8 +253,9 @@ async def test_chat_history_injected_when_summary_id_present(mock_db_session, mo
             db=mock_db_session,
         )
 
-    # The helper must have been invoked with our fake_history and produced
-    # a block that landed in the agent's system_prompt.
+    # The unified builder must have been invoked and its block landed in the
+    # agent's system_prompt (Spec #1 Task 6 intent — continuity of the text
+    # chat preserved when starting a voice session on the same summary).
     sent_prompt = captured["agent_kwargs"].get("system_prompt", "")
     assert "Historique récent du chat texte" in sent_prompt
     assert "Quelle est la thèse principale" in sent_prompt
