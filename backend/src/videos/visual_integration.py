@@ -304,25 +304,92 @@ def _extract_tiktok_id_or_fallback(url: str) -> str:
     return f"tiktok_{uuid.uuid4().hex[:8]}"
 
 
+_TIKWM_API_URL = "https://www.tikwm.com/api/"
+_TIKWM_TIMEOUT_S = 15.0
+_TIKWM_DOWNLOAD_TIMEOUT_S = 60.0
+
+
+async def _download_tiktok_video_no_watermark(
+    url: str, *, log_tag: str
+) -> Optional[bytes]:
+    """Télécharge la vidéo TikTok no-watermark via tikwm.com (`data.play`).
+
+    `transcripts.tiktok._download_video_bytes()` priorise `music_info.play`
+    qui retourne l'audio MP3 de la musique de fond — utile pour Phase 5 OCR
+    transcript mais inutilisable pour ffmpeg frame extraction.
+
+    Ici on prend le champ `data.play` qui est la vidéo MP4 (audio + vidéo),
+    nécessaire pour ffprobe + ffmpeg dans extract_frames_from_local.
+    """
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=_TIKWM_TIMEOUT_S) as client:
+            resp = await client.post(_TIKWM_API_URL, data={"url": url})
+        if resp.status_code != 200:
+            logger.warning(
+                "[%s] tikwm API HTTP %d for %s", log_tag, resp.status_code, url
+            )
+            return None
+        payload = resp.json()
+    except Exception as e:
+        logger.warning("[%s] tikwm API request failed for %s: %s", log_tag, url, e)
+        return None
+
+    data = payload.get("data") or {}
+    media_url = data.get("play") or data.get("hdplay") or data.get("wmplay")
+    if not media_url:
+        logger.warning(
+            "[%s] tikwm response missing play/hdplay/wmplay (keys=%s)",
+            log_tag,
+            list(data.keys())[:10],
+        )
+        return None
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=_TIKWM_DOWNLOAD_TIMEOUT_S,
+            follow_redirects=True,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Referer": "https://www.tiktok.com/",
+            },
+        ) as client:
+            r = await client.get(media_url)
+        if r.status_code != 200:
+            logger.warning(
+                "[%s] tikwm video CDN HTTP %d for %s", log_tag, r.status_code, media_url[:80]
+            )
+            return None
+        if len(r.content) < 1000:
+            logger.warning(
+                "[%s] tikwm video CDN returned only %d bytes (suspect)",
+                log_tag,
+                len(r.content),
+            )
+            return None
+        return r.content
+    except Exception as e:
+        logger.warning("[%s] tikwm video download failed: %s", log_tag, e)
+        return None
+
+
 async def _extract_tiktok_visual_frames(
     url: str, video_id: str, *, log_tag: str
 ) -> Optional[FrameExtractionResult]:
-    """Pipeline TikTok : download bytes → /tmp file → extract_frames_from_local.
+    """Pipeline TikTok : tikwm `data.play` → /tmp .mp4 → extract_frames_from_local.
 
-    L'IP Hetzner est ban TikTok pour `yt-dlp <video_url>` direct, donc on
-    réutilise `_download_video_bytes()` qui a un fallback tikwm.com éprouvé
-    en prod (utilisé par Phase 5 Visual OCR du transcript).
+    L'IP Hetzner est ban TikTok pour `yt-dlp <video_url>` direct. tikwm.com
+    expose le mp4 no-watermark dans `data.play`. On l'utilise directement ici
+    plutôt que `transcripts.tiktok._download_video_bytes()` qui priorise
+    `music_info.play` (audio mp3, inutilisable pour ffmpeg).
     """
-    # Lazy import : évite cycle transcripts → videos → transcripts
-    try:
-        from transcripts.tiktok import _download_video_bytes
-    except Exception as e:
-        logger.warning("[%s] _download_video_bytes import failed: %s", log_tag, e)
-        return None
-
     t0 = time.time()
     try:
-        video_data = await _download_video_bytes(url, video_id)
+        video_data = await _download_tiktok_video_no_watermark(url, log_tag=log_tag)
     except Exception as e:
         logger.warning("[%s] TikTok download raised: %s", log_tag, e)
         return None
