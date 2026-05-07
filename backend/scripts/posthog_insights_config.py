@@ -40,6 +40,21 @@ EV_UPGRADE_STARTED = "upgrade_started"
 EV_UPGRADE_COMPLETED = "upgrade_completed"
 EV_API_ERROR = "api_error"
 
+# 🚀 Launch J0 events (sprint 2026-05-15) — frontend wires (signup_started,
+# analysis_started, payment_initiated) + backend server-side wires
+# (signup_completed, payment_completed, churn_event).
+EV_SIGNUP_STARTED = "signup_started"
+EV_SIGNUP_COMPLETED = "signup_completed"
+EV_ANALYSIS_STARTED = "analysis_started"
+EV_PAYMENT_INITIATED = "payment_initiated"
+EV_PAYMENT_COMPLETED = "payment_completed"
+EV_CHURN_EVENT = "churn_event"
+
+# UTM properties (auto-registered par utmCapture.ts → posthog.register())
+PROP_UTM_SOURCE = "utm_source"
+PROP_SIGNUP_SOURCE = "signup_source"
+PROP_ACQUISITION_CHANNEL = "acquisition_channel"
+
 # Properties usuelles
 PROP_PLAN = "plan"
 PROP_PLATFORM = "platform"  # web | mobile | extension
@@ -179,7 +194,11 @@ class TrendInsight:
     description: str
     events: list[str]
     display: Literal[
-        "ActionsLineGraph", "ActionsBar", "ActionsAreaGraph", "ActionsTable"
+        "ActionsLineGraph",
+        "ActionsBar",
+        "ActionsAreaGraph",
+        "ActionsTable",
+        "BoldNumber",
     ] = "ActionsLineGraph"
     interval: Literal["hour", "day", "week", "month"] = "day"
     breakdown_property: str | None = None
@@ -400,6 +419,54 @@ def build_funnels() -> list[FunnelInsight]:
             date_from="-90d",
             tags=["growth", "activation", "platform"],
         ),
+        # 🚀 Launch J0 — Funnel A : signup → email verified → 1st analysis (24h)
+        FunnelInsight(
+            name="DeepSight — Launch Funnel A (signup → 1st analysis 24h)",
+            description=(
+                "Wow moment funnel: signup_started → signup_completed → "
+                "analysis_started, window 24h. Breakdown utm_source. "
+                "Cible launch J0 pour mesurer l'activation par canal."
+            ),
+            steps=[EV_SIGNUP_STARTED, EV_SIGNUP_COMPLETED, EV_ANALYSIS_STARTED],
+            step_names=["Signup CTA clicked", "Email verified", "First analysis"],
+            conversion_window_seconds=24 * 3600,
+            breakdown_property=PROP_UTM_SOURCE,
+            breakdown_type="event",
+            date_from="-7d",
+            tags=["launch", "activation"],
+        ),
+        # 🚀 Launch J0 — Funnel B : Free → Pro (signup → checkout → paid 7j)
+        FunnelInsight(
+            name="DeepSight — Launch Funnel B (Free→Pro 7d)",
+            description=(
+                "Conversion launch: signup_completed → payment_initiated → "
+                "payment_completed, window 7j. Breakdown utm_source. "
+                "Cible KPI launch ≥ 2% free→paid en 7j."
+            ),
+            steps=[EV_SIGNUP_COMPLETED, EV_PAYMENT_INITIATED, EV_PAYMENT_COMPLETED],
+            step_names=["Signup completed", "Checkout clicked", "Payment OK"],
+            conversion_window_seconds=7 * 24 * 3600,
+            breakdown_property=PROP_UTM_SOURCE,
+            breakdown_type="event",
+            date_from="-7d",
+            tags=["launch", "revenue"],
+        ),
+        # 🚀 Launch J0 — Funnel C : 5+ analyses → upgrade (7j)
+        FunnelInsight(
+            name="DeepSight — Launch Funnel C (5th analysis → upgrade 7d)",
+            description=(
+                "Engagement → revenue: video_analyzed (5+) → payment_initiated → "
+                "payment_completed, window 7j. Breakdown utm_source. "
+                "Mesure si les power users free convertissent."
+            ),
+            steps=[EV_VIDEO_ANALYZED, EV_PAYMENT_INITIATED, EV_PAYMENT_COMPLETED],
+            step_names=["Heavy analysis (5+)", "Checkout clicked", "Payment OK"],
+            conversion_window_seconds=7 * 24 * 3600,
+            breakdown_property=PROP_UTM_SOURCE,
+            breakdown_type="event",
+            date_from="-30d",
+            tags=["launch", "revenue", "engagement"],
+        ),
     ]
 
 
@@ -507,6 +574,64 @@ def build_trends() -> list[TrendInsight]:
             date_from="-7d",
             tags=["growth", "errors", "ops"],
         ),
+        # 🚀 Launch J0 — Signups par heure breakdown utm_source (auto-refresh)
+        TrendInsight(
+            name="DeepSight — Launch Signups by source (today)",
+            description=(
+                "user_signup par heure, breakdown utm_source. "
+                "Auto-refresh dashboard launch. Goal line: 5 signups/hour."
+            ),
+            events=[EV_SIGNUP],
+            display="ActionsLineGraph",
+            interval="hour",
+            breakdown_property=PROP_UTM_SOURCE,
+            breakdown_type="event",
+            date_from="-1d",
+            tags=["launch", "acquisition"],
+        ),
+        # 🚀 Launch J0 — MRR added today (sum of mrr_added_eur)
+        TrendInsight(
+            name="DeepSight — MRR added today",
+            description=(
+                "Sum of mrr_added_eur from payment_completed today. "
+                "Big number widget pour dashboard launch."
+            ),
+            events=[EV_PAYMENT_COMPLETED],
+            display="BoldNumber",
+            interval="day",
+            date_from="-1d",
+            tags=["launch", "revenue"],
+        ),
+        # 🚀 Launch J0 — Churn events 7d breakdown plan
+        TrendInsight(
+            name="DeepSight — Churn events 7d",
+            description=(
+                "churn_event count par jour, breakdown plan. "
+                "Goal: ≤ 3% monthly churn."
+            ),
+            events=[EV_CHURN_EVENT],
+            display="ActionsBar",
+            interval="day",
+            breakdown_property=PROP_PLAN,
+            breakdown_type="event",
+            date_from="-7d",
+            tags=["launch", "churn"],
+        ),
+        # 🚀 Launch J0 — Top videos analyzed today (engagement signal)
+        TrendInsight(
+            name="DeepSight — Top videos analyzed today",
+            description=(
+                "video_analyzed today, breakdown video_platform "
+                "(youtube/tiktok). Indique le contenu qui drive l'engagement."
+            ),
+            events=[EV_VIDEO_ANALYZED],
+            display="ActionsBar",
+            interval="day",
+            breakdown_property="video_platform",
+            breakdown_type="event",
+            date_from="-1d",
+            tags=["launch", "engagement"],
+        ),
     ]
 
 
@@ -590,6 +715,50 @@ def build_cohorts() -> list[CohortDefinition]:
                 )
             ],
         ),
+        # 🚀 Launch J0 — Cohort signups par canal launch (PH/Twitter/etc.)
+        CohortDefinition(
+            name="DeepSight — Launch J0 signups",
+            description=(
+                "Users inscrits via canaux launch (product_hunt, twitter, "
+                "reddit, linkedin, indiehackers, hackernews, karim_inmail, "
+                "mobile_deeplink) à partir de 2026-05-15. Cible primaire "
+                "suivi launch."
+            ),
+            filters=[
+                CohortFilter(
+                    type="person",
+                    key=PROP_SIGNUP_SOURCE,
+                    value=[
+                        "product_hunt",
+                        "twitter",
+                        "reddit",
+                        "linkedin",
+                        "indiehackers",
+                        "hackernews",
+                        "karim_inmail",
+                        "mobile_deeplink",
+                    ],
+                    operator="exact",
+                ),
+            ],
+        ),
+        # 🚀 Launch J0 — Cohort B2B Karim outreach LinkedIn InMail
+        CohortDefinition(
+            name="DeepSight — B2B Karim contacts",
+            description=(
+                "Users issus outreach Karim LinkedIn InMail. "
+                "Property `signup_source = karim_inmail`. "
+                "Cible high-touch B2B."
+            ),
+            filters=[
+                CohortFilter(
+                    type="person",
+                    key=PROP_SIGNUP_SOURCE,
+                    value="karim_inmail",
+                    operator="exact",
+                ),
+            ],
+        ),
     ]
 
 
@@ -598,12 +767,29 @@ def build_dashboards(
     retention: list[RetentionInsight],
     trends: list[TrendInsight],
 ) -> list[DashboardSpec]:
-    """Un seul dashboard global qui rassemble tout."""
+    """Deux dashboards : Growth (général) + Launch J0 Real-Time (temporaire).
+
+    Le dashboard Launch J0 est tagué `launch` pour pouvoir être archivé
+    facilement post-launch via filtrage tag dans la UI PostHog.
+    """
     all_insight_names = (
         [f.name for f in funnels]
         + [r.name for r in retention]
         + [t.name for t in trends]
     )
+
+    # 🚀 Launch J0 dashboard — sélection ciblée des 6 widgets temps réel.
+    # Les insight names doivent matcher exactement les `name=` ci-dessus
+    # (idempotency by-name dans setup_posthog_insights.py).
+    launch_insight_names = [
+        "DeepSight — Launch Signups by source (today)",
+        "DeepSight — Launch Funnel B (Free→Pro 7d)",
+        "DeepSight — MRR added today",
+        "DeepSight — Top videos analyzed today",
+        "DeepSight — Churn events 7d",
+        "DeepSight — API Errors by endpoint",
+    ]
+
     return [
         DashboardSpec(
             name="DeepSight — Growth",
@@ -616,7 +802,18 @@ def build_dashboards(
             insight_names=all_insight_names,
             pinned=True,
             tags=["growth", "managed-by-script"],
-        )
+        ),
+        DashboardSpec(
+            name="DeepSight — Launch J0 Real-Time",
+            description=(
+                "Dashboard live launch 2026-05-15. 6 widgets temps réel. "
+                "Source : posthog_insights_config.py — managed by script. "
+                "Archive ce dashboard post-launch (~J+30) via tag `launch`."
+            ),
+            insight_names=launch_insight_names,
+            pinned=True,
+            tags=["launch", "managed-by-script"],
+        ),
     ]
 
 

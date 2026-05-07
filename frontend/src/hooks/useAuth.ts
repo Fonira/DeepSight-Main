@@ -22,6 +22,7 @@ import {
   ApiError,
   User,
 } from "../services/api";
+import { getCapturedUtm } from "../services/utmCapture";
 import { setUser as setSentryUser } from "../lib/sentry";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -449,7 +450,16 @@ export function useAuth(): UseAuthReturn {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
       try {
-        await authApi.register(username, email, password);
+        // 🚀 Launch J0 — joindre les UTM auto-capturés (cf. utmCapture.ts).
+        // Le backend persiste dans User.preferences pour PostHog cohorts.
+        const utm = getCapturedUtm();
+        await authApi.register(username, email, password, {
+          signup_source: utm.utm_source ?? "direct",
+          utm_source: utm.utm_source,
+          utm_medium: utm.utm_medium,
+          utm_campaign: utm.utm_campaign,
+          referrer: utm.referrer,
+        });
 
         if (mountedRef.current) {
           setState((prev) => ({ ...prev, isLoading: false }));

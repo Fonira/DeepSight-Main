@@ -1,6 +1,9 @@
 # Gitleaks ignore file — false positives
 # Format: fingerprint (from gitleaks report)
 
+# utmCapture.ts — STORAGE_KEY constant (localStorage key name, not credential, entropy 3.625 false positive)
+frontend/src/services/utmCapture.ts:generic-api-key:63
+
 # ApiDocsPage.tsx — placeholder "ds_live_YOUR_KEY" (not a real secret)
 frontend/src/pages/ApiDocsPage.tsx:curl-auth-header:51
 frontend/src/pages/ApiDocsPage.tsx:curl-auth-header:67

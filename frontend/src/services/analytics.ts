@@ -267,6 +267,18 @@ export const AnalyticsEvents = {
   ONBOARDING_TOUR_STARTED: "onboarding_tour_started",
   ONBOARDING_TOUR_COMPLETED: "onboarding_tour_completed",
   ONBOARDING_TOUR_SKIPPED: "onboarding_tour_skipped",
+
+  // 🚀 Launch J0 events (sprint 2026-05-15) — UTM acquisition tracking
+  // SSOT vocab : `product_hunt | twitter | reddit | linkedin | indiehackers |
+  // hackernews | karim_inmail | mobile_deeplink | direct` (cf. utmCapture.ts).
+  // Events server-side fiables (signup_completed, payment_completed,
+  // churn_event) sont fired par le backend — ne PAS dupliquer côté frontend.
+  SIGNUP_STARTED: "signup_started", // clic CTA "Sign Up" landing
+  SIGNUP_COMPLETED: "signup_completed", // email vérifié (server-side)
+  ANALYSIS_STARTED: "analysis_started", // 1ère analyse vidéo (engagement KPI)
+  PAYMENT_INITIATED: "payment_initiated", // clic "Upgrade" → checkout Stripe
+  PAYMENT_COMPLETED: "payment_completed", // checkout success (server-side)
+  CHURN_EVENT: "churn_event", // cancel sub (server-side, Stripe webhook)
 } as const;
 
 export type AnalyticsEvent =

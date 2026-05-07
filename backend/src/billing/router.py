@@ -26,6 +26,7 @@ from db.database import (
     VoiceCreditPurchase,
 )
 from auth.dependencies import get_current_user, get_current_user_optional
+from core.analytics import track_event
 from core.config import STRIPE_CONFIG, FRONTEND_URL, get_stripe_key, STRIPE_AUTOMATIC_TAX_ENABLED
 from services.audit_log import log_audit
 from .plan_config import (
@@ -1948,6 +1949,9 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
     # Crédits depuis plan_config — source de vérité unique
     credits_to_add = get_limits(plan).get("monthly_credits", 0)
 
+    # 🚀 Launch J0 — capturer is_first_payment AVANT user.plan = plan
+    is_first_payment = (user.plan or "free") == "free"
+
     user.plan = plan
     user.credits = (user.credits or 0) + credits_to_add
     user.stripe_customer_id = customer_id
@@ -1967,7 +1971,7 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
     await session.commit()
     logger.info("User %s upgraded to %s, +%d credits", user_id, plan, credits_to_add)
 
-    # 🎯 Audit log RGPD — channel d'acquisition pour cohorte launch
+    # 🎯 Audit log RGPD — channel d'acquisition pour cohorte launch (PR #413)
     try:
         await log_audit(
             session,
@@ -1986,27 +1990,38 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
     except Exception as e:
         logger.info("audit_log payment.completed failed: %s", e)
 
-    # 🎯 PostHog event server-side (best-effort, non-bloquant).
-    # Le service est créé par le sub-agent P PostHog dans une PR concurrente.
-    # try/except ImportError → no-op si pas encore mergé.
+    # 🚀 Launch J0 — PostHog event server-side (fiable même si tab fermée).
+    # Combine les payloads PR #413 (Stripe acquisition_channel) + PR #414
+    # (UTM details from user.preferences) pour breakdown cohort complet.
     try:
-        from services.posthog_service import capture_event  # type: ignore
-        await capture_event(
-            distinct_id=str(user.id),
-            event="payment_completed",
+        amount_total = data.get("amount_total") or 0  # cents
+        cycle = (metadata.get("cycle") or "monthly").lower()
+        mrr_added_eur = (amount_total / 100.0) / (12.0 if cycle == "yearly" else 1.0)
+        prefs = user.preferences or {}
+        # acquisition_channel from Stripe metadata (premier-touch immutable),
+        # fallback to user.preferences signup_source (UTM original).
+        channel = acquisition_channel or prefs.get("signup_source", "direct")
+        track_event(
+            "payment_completed",
             properties={
                 "plan": plan,
-                "acquisition_channel": acquisition_channel,
-                "stripe_customer_id": customer_id,
-                "amount_cents": data.get("amount_total") or 0,
+                "cycle": cycle,
+                "mrr_added_eur": round(mrr_added_eur, 2),
+                "amount_total_eur": round(amount_total / 100.0, 2),
+                "amount_cents": amount_total,
                 "currency": data.get("currency", "eur"),
+                "acquisition_channel": channel,
+                "utm_source": prefs.get("utm_source"),
+                "utm_medium": prefs.get("utm_medium"),
+                "utm_campaign": prefs.get("utm_campaign"),
+                "stripe_customer_id": customer_id,
+                "stripe_subscription_id": subscription_id,
+                "is_first_payment": is_first_payment,
             },
+            distinct_id=str(user.id),
         )
-    except ImportError:
-        # posthog_service pas encore mergé (sub-agent P PR). Silencieux.
-        pass
     except Exception as e:
-        logger.info("PostHog payment_completed capture failed: %s", e)
+        logger.debug(f"PostHog payment_completed track failed: {e}")
 
     # 📧 Send payment success email
     try:
@@ -2240,6 +2255,58 @@ async def handle_subscription_deleted(session: AsyncSession, data: dict):
         user.stripe_subscription_id = None
         await session.commit()
         logger.info(f"User {user.id} subscription deleted, reverted to free (was {old_plan})")
+
+        # 🚀 Launch J0 — fire `churn_event` server-side avec metadata churn
+        # (tenure_days, last_analysis_days_ago, cancel_reason). PostHog
+        # dashboard "Launch J0 Real-Time" widget Churn lit count par jour
+        # breakdown plan.
+        try:
+            from datetime import datetime, timezone
+
+            tenure_days: Optional[int] = None
+            if user.created_at:
+                created_at = user.created_at
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+                tenure_days = (datetime.now(timezone.utc) - created_at).days
+
+            # Last analysis days ago — signal "user dormant avant cancel"
+            last_summary_q = await session.execute(
+                select(Summary)
+                .where(Summary.user_id == user.id)
+                .order_by(Summary.created_at.desc())
+                .limit(1)
+            )
+            last = last_summary_q.scalar_one_or_none()
+            last_analysis_days_ago: Optional[int] = None
+            if last and last.created_at:
+                la_created = last.created_at
+                if la_created.tzinfo is None:
+                    la_created = la_created.replace(tzinfo=timezone.utc)
+                last_analysis_days_ago = (
+                    datetime.now(timezone.utc) - la_created
+                ).days
+
+            cancel_reason = (
+                (data.get("cancellation_details") or {}).get("reason") or "(none)"
+            )
+            prefs = user.preferences or {}
+
+            track_event(
+                "churn_event",
+                properties={
+                    "plan": old_plan or "free",
+                    "tenure_days": tenure_days,
+                    "last_analysis_days_ago": last_analysis_days_ago,
+                    "cancel_reason": cancel_reason,
+                    "stripe_customer_id": customer_id,
+                    "acquisition_channel": prefs.get("signup_source", "direct"),
+                    "utm_source": prefs.get("utm_source"),
+                },
+                distinct_id=str(user.id),
+            )
+        except Exception as e:
+            logger.debug(f"PostHog churn_event track failed: {e}")
 
         try:
             from services.email_service import email_service

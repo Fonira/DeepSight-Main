@@ -762,10 +762,29 @@ export const authApi = {
     username: string,
     email: string,
     password: string,
+    utm?: {
+      signup_source?: string;
+      utm_source?: string;
+      utm_medium?: string;
+      utm_campaign?: string;
+      referrer?: string;
+    },
   ): Promise<{ success: boolean; message: string }> {
     return request("/api/auth/register", {
       method: "POST",
-      body: { username, email, password },
+      body: {
+        username,
+        email,
+        password,
+        // 🚀 Launch J0 — UTM persistance dans User.preferences (backend
+        // auth/router.py). Backward-compatible : champs ignorés si tous
+        // undefined. Backend tolère les champs absents (Pydantic Optional).
+        ...(utm?.signup_source ? { signup_source: utm.signup_source } : {}),
+        ...(utm?.utm_source ? { utm_source: utm.utm_source } : {}),
+        ...(utm?.utm_medium ? { utm_medium: utm.utm_medium } : {}),
+        ...(utm?.utm_campaign ? { utm_campaign: utm.utm_campaign } : {}),
+        ...(utm?.referrer ? { referrer: utm.referrer } : {}),
+      },
       skipAuth: true,
     });
   },

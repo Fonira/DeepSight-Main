@@ -15,11 +15,28 @@ from datetime import datetime
 
 
 class UserRegister(BaseModel):
-    """Schéma pour l'inscription"""
+    """Schéma pour l'inscription.
+
+    🚀 Launch J0 (2026-05-15) — accepte les UTM/source frontend pour
+    persistance dans `User.preferences` (JSON column, migration 008 prod).
+    Tous les champs UTM sont Optional pour rester backward-compatible avec
+    les anciens clients qui ne les envoient pas.
+
+    SSOT vocabulary `signup_source` aligné avec `utmCapture.ts` frontend
+    et `acquisition_channel` Stripe (sub-agent Q parallel PR) :
+        product_hunt | twitter | reddit | linkedin | indiehackers |
+        hackernews | karim_inmail | mobile_deeplink | direct.
+    """
 
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=6)
+    # 🚀 Launch tracking — UTM/source persistance pour analyses cross-channel
+    signup_source: Optional[str] = Field(None, max_length=50)
+    utm_source: Optional[str] = Field(None, max_length=80)
+    utm_medium: Optional[str] = Field(None, max_length=80)
+    utm_campaign: Optional[str] = Field(None, max_length=80)
+    referrer: Optional[str] = Field(None, max_length=300)
 
 
 class UserLogin(BaseModel):
