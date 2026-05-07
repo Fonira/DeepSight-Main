@@ -5,7 +5,8 @@
 ╚══════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request
+from fastapi.responses import Response
 from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
@@ -18,6 +19,7 @@ import time
 import asyncio
 
 from db.database import get_session, User
+from exports.markdown_builder import build_markdown_export, slug_for_summary
 
 # Optional imports - these features may not be available in all deployments
 try:
@@ -542,6 +544,79 @@ async def get_analysis(
         "deep_research": bool(getattr(summary, "deep_research", False)),
         "created_at": summary.created_at.isoformat() if summary.created_at else None,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📥 EXPORT — Markdown canonique « Send to AI » (sprint Export to AI + GEO)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/summaries/{summary_id}/export")
+async def export_summary_markdown(
+    summary_id: int,
+    format: Literal["markdown"] = Query("markdown", description="Export format (V1: markdown only)"),
+    user: User = Depends(get_api_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    📥 Exporte une analyse au format Markdown canonique optimisé pour copier-coller
+    dans une IA tierce (ChatGPT, Claude, Gemini, Perplexity).
+
+    **Format** : Markdown structuré avec frontmatter YAML, sections sémantiques
+    (Synthèse, Key Takeaways, Chapter Themes, Visual Analysis avec timestamps
+    cliquables, Notable Quotes), et signature DeepSight bilingue FR-EN en footer.
+
+    **Quota** : Aucun crédit consommé — l'export est un format alternatif d'une
+    analyse déjà payée (cf spec § 4.7). Tier check via `get_api_user`
+    (Pro/Expert/admin).
+
+    **Réponse** :
+    - 200 + `text/markdown; charset=utf-8` si succès et user owner
+    - 400 si format ≠ markdown (V1 = Markdown only)
+    - 401 si pas d'API key
+    - 403 si tier insuffisant (géré par `get_api_user`)
+    - 404 si summary_id n'existe pas ou n'appartient pas à l'user
+
+    **Spec** : `Vault/01-Projects/DeepSight/Specs/2026-05-07-deepsight-export-to-ai-geo-design.md`
+    """
+    if format != "markdown":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "unsupported_format",
+                "message": "Only 'markdown' format is supported in V1. JSON export coming in V2.",
+                "supported_formats": ["markdown"],
+            },
+        )
+
+    from db.database import Summary
+
+    result = await session.execute(
+        select(Summary).where(Summary.id == summary_id, Summary.user_id == user.id)
+    )
+    summary = result.scalar_one_or_none()
+
+    if not summary:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "not_found",
+                "message": f"Summary {summary_id} not found or access denied",
+            },
+        )
+
+    markdown_body = build_markdown_export(summary)
+    slug = slug_for_summary(summary.id)
+    filename = f"deepsight-{slug}.md"
+
+    return Response(
+        content=markdown_body,
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "private, max-age=300",
+        },
+    )
 
 
 @router.post("/chat", response_model=ChatResponse)
