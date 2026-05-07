@@ -525,6 +525,13 @@ async def get_analysis(
         "thumbnail_url": getattr(summary, "thumbnail_url", None),
         "summary_content": summary.summary_content,
         "summary_extras": getattr(summary, "summary_extras", None),
+        # 👁️ Visual analysis (Phase 2 plumbing — alembic 024)
+        # Dict sérialisé d'une VisualAnalysis (frames + Mistral Vision) ou None.
+        # Forme : {visual_hook, visual_structure, key_moments[], visible_text,
+        # visual_seo_indicators{}, summary_visual, model_used,
+        # frames_analyzed, frames_downsampled}.
+        # Bloquant pour le futur builder export Markdown (sprint Export to AI).
+        "visual_analysis": getattr(summary, "visual_analysis", None),
         "transcript": getattr(summary, "transcript_context", None),
         "lang": getattr(summary, "lang", None),
         "mode": getattr(summary, "mode", "standard"),
