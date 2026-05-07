@@ -15,7 +15,6 @@
 """
 
 import logging
-import re
 import time
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
@@ -25,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import User, VisualAnalysisQuota
 
-from .visual_analyzer import VisualAnalysis, analyze_frames
+from .visual_analyzer import analyze_frames
 from .youtube_storyboard import extract_storyboard_frames, normalize_video_id
 
 logger = logging.getLogger(__name__)

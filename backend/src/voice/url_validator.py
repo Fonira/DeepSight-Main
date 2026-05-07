@@ -1,7 +1,6 @@
 """URL validator for voice sessions — accepts YouTube + TikTok only."""
 
 import re
-from urllib.parse import parse_qs, urlparse
 
 YOUTUBE_RE = re.compile(
     r"^https?://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?v=|shorts/|embed/)|youtu\.be/)"
