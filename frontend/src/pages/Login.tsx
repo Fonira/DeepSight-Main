@@ -12,6 +12,7 @@ import {
 } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
+import { useAnalytics } from "../hooks/useAnalytics";
 import { useTranslation } from "../hooks/useTranslation";
 import { SEO } from "../components/SEO";
 import DoodleBackground from "../components/DoodleBackground";
@@ -72,6 +73,7 @@ export const Login: React.FC = () => {
     isLoading: authLoading,
   } = useAuth();
   const { t, language } = useTranslation();
+  const { trackSignup, trackLogin } = useAnalytics();
 
   const [isRegister, setIsRegister] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
@@ -161,6 +163,9 @@ export const Login: React.FC = () => {
     try {
       if (isRegister) {
         await register(email.split("@")[0], email, password);
+        // 🚀 Launch J0 — track `user_signup` côté frontend (best-effort).
+        // Le backend fire `signup_completed` au verify_email pour la fiabilité.
+        trackSignup("email");
         setVerificationEmail(email);
         setShowVerification(true);
         setSuccess(
@@ -170,6 +175,21 @@ export const Login: React.FC = () => {
         );
       } else {
         await login(email, password);
+        // `trackLogin` ne peut pas accéder au user qui vient d'être chargé
+        // dans le state useAuth — useEffect ci-dessus gère la redirection ;
+        // l'identify se fait au prochain mount via trackLogin si appelé,
+        // mais user state hydrate après login() return. Best-effort identify
+        // via le storage `cached_user` (useAuth set localStorage).
+        try {
+          const cached = localStorage.getItem("cached_user");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const u = parsed?.user;
+            if (u?.id) trackLogin(u.id, u.plan ?? "free", "email");
+          }
+        } catch {
+          /* identify best-effort — silent fail OK */
+        }
       }
     } catch (err: any) {
       setError(err?.message || err?.detail || t.errors.generic);

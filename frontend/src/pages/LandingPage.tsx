@@ -33,6 +33,7 @@ import {
 import { DeepSightSpinner } from "../components/ui/DeepSightSpinner";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../hooks/useAuth";
+import { useAnalytics } from "../hooks/useAnalytics";
 import { SEO } from "../components/SEO";
 import { demoApi } from "../services/api";
 import type { DemoAnalyzeResult } from "../services/api";
@@ -397,7 +398,15 @@ const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { language } = useTranslation();
   const { user, isLoading } = useAuth();
+  const { trackSignupStarted } = useAnalytics();
   const lang = language as "fr" | "en";
+
+  // 🚀 Launch J0 — fire `signup_started` puis navigate vers `/login?tab=register`.
+  // Permet de mesurer le drop-off CTA→form→submit par UTM source dans funnel A.
+  const handleSignupCta = (ctaLocation: string) => {
+    trackSignupStarted({ cta_location: ctaLocation });
+    navigate("/login?tab=register");
+  };
 
   const features = getFeatures(language);
   const audiences = getAudiences(language);
@@ -641,7 +650,7 @@ const LandingPage: React.FC = () => {
               {language === "fr" ? "Se connecter" : "Sign in"}
             </button>
             <motion.button
-              onClick={() => navigate("/login?tab=register")}
+              onClick={() => handleSignupCta("header")}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary text-gray-900 text-sm font-medium hover:bg-accent-primary-hover transition-colors"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -829,7 +838,7 @@ const LandingPage: React.FC = () => {
                   {/* Features showcase — conversation IA vocale, flashcards, etc. */}
                   <DemoFeaturesShowcase
                     language={language}
-                    onSignup={() => navigate("/login?tab=register")}
+                    onSignup={() => handleSignupCta("demo_features")}
                   />
 
                   {/* Mini chat AI */}
@@ -869,7 +878,7 @@ const LandingPage: React.FC = () => {
                             : "Analyze another video"}
                         </motion.button>
                         <motion.button
-                          onClick={() => navigate("/login?tab=register")}
+                          onClick={() => handleSignupCta("demo_footer")}
                           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary/10 border border-accent-primary/20 text-accent-primary text-xs font-medium hover:bg-accent-primary/20 transition-colors"
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}

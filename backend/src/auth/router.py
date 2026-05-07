@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from db.database import get_session
+from core.analytics import track_event
 from core.config import FRONTEND_URL, EMAIL_CONFIG, GOOGLE_OAUTH_CONFIG
 from .schemas import (
     UserRegister,
@@ -72,6 +73,11 @@ async def register(data: UserRegister, session: AsyncSession = Depends(get_sessi
     """
     Inscription d'un nouvel utilisateur.
     Envoie un email de vérification si EMAIL_ENABLED.
+
+    🚀 Launch J0 (2026-05-15) — Persiste les UTM/signup_source du payload
+    dans User.preferences (JSON, migration 008 prod). Permet à PostHog de
+    breakdown les cohorts et funnels par canal d'acquisition (PH, Twitter,
+    Karim B2B, etc.). Aucune nouvelle migration requise.
     """
     success, user, message = await create_user(
         session, username=data.username, email=data.email, password=data.password
@@ -79,6 +85,22 @@ async def register(data: UserRegister, session: AsyncSession = Depends(get_sessi
 
     if not success:
         raise HTTPException(status_code=400, detail=message)
+
+    # 🚀 Launch tracking — persister UTM dans User.preferences
+    if user and (data.signup_source or data.utm_source or data.referrer):
+        prefs = dict(user.preferences or {})
+        utm_payload = {
+            "signup_source": data.signup_source,
+            "utm_source": data.utm_source,
+            "utm_medium": data.utm_medium,
+            "utm_campaign": data.utm_campaign,
+            "referrer": data.referrer,
+        }
+        # On stocke uniquement les valeurs non-vides pour éviter de polluer
+        # le JSON avec des None (rétro-compat + lisibilité admin DB).
+        prefs.update({k: v for k, v in utm_payload.items() if v is not None})
+        user.preferences = prefs
+        await session.commit()
 
     # Envoyer l'email de vérification
     if EMAIL_CONFIG.get("ENABLED") and user and user.verification_code:
@@ -279,6 +301,39 @@ async def verify_email_endpoint(data: VerifyEmailRequest, session: AsyncSession 
             await send_welcome_email(user.email, user.username)
         except Exception:
             pass  # Non-blocking — don't fail verification if email fails
+
+    # 🚀 Launch J0 — fire `signup_completed` server-side (fiable même si user
+    # ferme l'onglet entre register et verify). PostHog cohort "Launch J0
+    # signups" filtre sur `signup_source` ∈ {product_hunt, twitter, reddit,
+    # linkedin, indiehackers, hackernews, karim_inmail, mobile_deeplink}.
+    try:
+        prefs = user.preferences or {}
+        time_to_verify_seconds: Optional[float] = None
+        if user.created_at:
+            created_at = user.created_at
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            time_to_verify_seconds = (
+                datetime.now(timezone.utc) - created_at
+            ).total_seconds()
+
+        track_event(
+            "signup_completed",
+            properties={
+                "signup_source": prefs.get("signup_source", "direct"),
+                "utm_source": prefs.get("utm_source"),
+                "utm_medium": prefs.get("utm_medium"),
+                "utm_campaign": prefs.get("utm_campaign"),
+                "referrer": prefs.get("referrer"),
+                "email_verified_at": datetime.now(timezone.utc).isoformat(),
+                "time_to_verify_seconds": time_to_verify_seconds,
+                "plan": user.plan,
+            },
+            distinct_id=str(user.id),
+        )
+    except Exception:
+        # Best-effort — never block verify on analytics failure
+        pass
 
     # 🆕 Créer une session unique
     session_token = await create_user_session(session, user.id)

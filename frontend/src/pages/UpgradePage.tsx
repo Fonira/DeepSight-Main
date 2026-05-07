@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../hooks/useAuth";
+import { useAnalytics } from "../hooks/useAnalytics";
 import { useTranslation } from "../hooks/useTranslation";
 import { Sidebar } from "../components/layout/Sidebar";
 import DoodleBackground from "../components/DoodleBackground";
@@ -967,6 +968,7 @@ interface SubscriptionStatus {
 
 export const UpgradePage: React.FC = () => {
   const { user, refreshUser } = useAuth();
+  const { trackPaymentInitiated } = useAnalytics();
   const { language } = useTranslation();
   const lang = (language as "fr" | "en") || "fr";
 
@@ -1102,6 +1104,24 @@ export const UpgradePage: React.FC = () => {
         !currentPlan ||
         currentPlan.price_monthly_cents === 0
       ) {
+        // 🚀 Launch J0 — fire `payment_initiated` AVANT redirect Stripe.
+        // Le backend fire `payment_completed` au webhook Stripe pour la
+        // fiabilité (tab fermée, adblock, etc.). Funnel C breakdown UTM.
+        if (plan.id === "pro" || plan.id === "expert") {
+          const tenureDays =
+            user?.created_at != null
+              ? Math.floor(
+                  (Date.now() - new Date(user.created_at).getTime()) /
+                    86_400_000,
+                )
+              : undefined;
+          trackPaymentInitiated({
+            plan: plan.id,
+            cycle,
+            current_plan: user?.plan ?? "free",
+            time_since_signup_days: tenureDays,
+          });
+        }
         // Upgrade → Stripe checkout (Pricing v2 : passer le cycle)
         const result = await billingApi.createCheckout(plan.id, cycle);
         if (result.checkout_url) {
