@@ -22,11 +22,13 @@ import {
   Globe,
   ScanEye,
   Scale,
+  HelpCircle,
 } from "lucide-react";
 import { Sidebar } from "../components/layout/Sidebar";
 import DoodleBackground from "../components/DoodleBackground";
 import { SEO } from "../components/SEO";
 import { DPOContactForm } from "../components/DPOContactForm";
+import TrustFAQ from "../components/TrustFAQ";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📋 DONNÉES TRUST CENTER
@@ -53,7 +55,7 @@ const TRUST_INFO = {
     sccEu: "https://eur-lex.europa.eu/eli/dec_impl/2021/914",
     aiAct: "https://eur-lex.europa.eu/eli/reg/2024/1689",
   },
-  lastUpdate: "6 mai 2026",
+  lastUpdate: "6 mai 2026 — FAQ B2B ajoutée",
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -824,7 +826,7 @@ const TrustPage: React.FC = () => {
             </section>
 
             {/* ────────────────────────────────────────────────────────── */}
-            {/* 10. CONTACT DPO */}
+            {/* 9. CONTACT DPO */}
             {/* ────────────────────────────────────────────────────────── */}
             <section className="mb-8">
               <SectionTitle
@@ -900,6 +902,19 @@ const TrustPage: React.FC = () => {
               <div className="mt-6">
                 <DPOContactForm />
               </div>
+            </section>
+
+            {/* ────────────────────────────────────────────────────────── */}
+            {/* 10. FAQ — Questions fréquentes décideurs B2B régulés      */}
+            {/* ────────────────────────────────────────────────────────── */}
+            <section className="mb-12" aria-labelledby="trust-faq-heading">
+              <SectionTitle
+                num={10}
+                icon={<HelpCircle className="w-5 h-5 text-blue-400" />}
+                title="FAQ — Compliance, sécurité, AI Act"
+                iconColor="blue"
+              />
+              <TrustFAQ />
             </section>
 
             {/* Footer */}
