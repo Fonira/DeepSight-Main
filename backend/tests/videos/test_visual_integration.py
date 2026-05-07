@@ -239,16 +239,17 @@ class TestMaybeEnrichWithVisual:
         assert result["status"] == STATUS_PLAN_NOT_ALLOWED
 
     @pytest.mark.asyncio
-    async def test_non_youtube_url_returns_not_youtube(self, monkeypatch):
+    async def test_unsupported_platform_returns_not_supported(self, monkeypatch):
+        """Vimeo (et tout host non YouTube/TikTok) → STATUS_NOT_SUPPORTED."""
         from videos import visual_integration as vi
-        from videos.visual_integration import STATUS_NOT_YOUTUBE
+        from videos.visual_integration import STATUS_NOT_SUPPORTED
 
         db = AsyncMock()
         user = _make_user("expert")  # Bypass quota
         result = await vi.maybe_enrich_with_visual(
-            db, user, "https://www.tiktok.com/@user/video/123"
+            db, user, "https://vimeo.com/123456789"
         )
-        assert result["status"] == STATUS_NOT_YOUTUBE
+        assert result["status"] == STATUS_NOT_SUPPORTED
 
     @pytest.mark.asyncio
     async def test_quota_exceeded(self):
@@ -335,6 +336,7 @@ class TestMaybeEnrichWithVisual:
 
         assert result["status"] == STATUS_OK
         assert result["video_id"] == "dQw4w9WgXcQ"
+        assert result["platform"] == "youtube"
         assert result["frame_count"] == 2
         assert result["model_used"] == "pixtral-large-2411"
         assert result["credits_consumed"] == 2
@@ -342,3 +344,151 @@ class TestMaybeEnrichWithVisual:
         assert "elapsed_s" in result
         # cleanup a été appelé pour purger les frames
         fake_extraction.cleanup.assert_called_once()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔍 _detect_visual_platform — routing par URL
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestDetectVisualPlatform:
+    def test_youtube_watch_url(self):
+        from videos.visual_integration import _detect_visual_platform
+
+        assert _detect_visual_platform("https://www.youtube.com/watch?v=dQw4w9WgXcQ") == "youtube"
+
+    def test_youtube_short_url(self):
+        from videos.visual_integration import _detect_visual_platform
+
+        assert _detect_visual_platform("https://youtu.be/dQw4w9WgXcQ") == "youtube"
+
+    def test_youtube_shorts_url(self):
+        from videos.visual_integration import _detect_visual_platform
+
+        assert _detect_visual_platform("https://www.youtube.com/shorts/dQw4w9WgXcQ") == "youtube"
+
+    def test_tiktok_canonical_url(self):
+        from videos.visual_integration import _detect_visual_platform
+
+        assert _detect_visual_platform("https://www.tiktok.com/@user/video/12345") == "tiktok"
+
+    def test_tiktok_short_url(self):
+        from videos.visual_integration import _detect_visual_platform
+
+        assert _detect_visual_platform("https://vm.tiktok.com/ABCDE/") == "tiktok"
+
+    def test_vimeo_returns_unknown(self):
+        from videos.visual_integration import _detect_visual_platform
+
+        assert _detect_visual_platform("https://vimeo.com/123456") == "unknown"
+
+    def test_empty_url_returns_unknown(self):
+        from videos.visual_integration import _detect_visual_platform
+
+        assert _detect_visual_platform("") == "unknown"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎵 maybe_enrich_with_visual — branche TikTok
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestMaybeEnrichWithVisualTiktok:
+    @pytest.mark.asyncio
+    async def test_tiktok_extract_failed(self, monkeypatch):
+        """Si _extract_tiktok_visual_frames retourne None (download/ffmpeg KO) → EXTRACT_FAILED."""
+        from videos import visual_integration as vi
+        from videos.visual_integration import STATUS_EXTRACT_FAILED
+
+        db = AsyncMock()
+        user = _make_user("expert")
+
+        async def fake_tiktok_extract(*args, **kwargs):
+            return None
+
+        monkeypatch.setattr(vi, "_extract_tiktok_visual_frames", fake_tiktok_extract)
+
+        result = await vi.maybe_enrich_with_visual(
+            db, user, "https://www.tiktok.com/@khaby.lame/video/7459716872551976210"
+        )
+        assert result["status"] == STATUS_EXTRACT_FAILED
+        assert result["platform"] == "tiktok"
+
+    @pytest.mark.asyncio
+    async def test_tiktok_happy_path(self, monkeypatch):
+        """TikTok download + frame extraction OK → analyse Mistral → STATUS_OK avec platform=tiktok."""
+        from videos import visual_integration as vi
+        from videos.visual_integration import STATUS_OK
+        from videos.frame_extractor import FrameExtractionResult
+        from videos.visual_analyzer import VisualAnalysis
+
+        db = _make_db_with_no_quota_row()
+        user = _make_user("expert")
+
+        fake_extraction = FrameExtractionResult(
+            workdir="/tmp/fake_tk",
+            frame_paths=["/tmp/fake_tk/f1.jpg", "/tmp/fake_tk/f2.jpg", "/tmp/fake_tk/f3.jpg"],
+            frame_timestamps=[0.5, 5.0, 12.0],
+            duration_s=15.0,
+            fps_used=0.2,
+            frame_count=3,
+            width=512,
+            long_video_warning=False,
+        )
+        fake_extraction.cleanup = MagicMock()
+
+        async def fake_tiktok_extract(*args, **kwargs):
+            return fake_extraction
+
+        async def fake_analyze(*args, **kwargs):
+            return VisualAnalysis(
+                visual_hook="Plan TikTok punchy",
+                visual_structure="vertical_pov",
+                key_moments=[{"timestamp_s": 0.5, "description": "Reveal", "type": "hook"}],
+                visible_text="learnfromkhaby",
+                summary_visual="Vidéo verticale comique sans dialogue",
+                model_used="pixtral-large-2411",
+                frames_analyzed=3,
+                frames_downsampled=False,
+            )
+
+        monkeypatch.setattr(vi, "_extract_tiktok_visual_frames", fake_tiktok_extract)
+        monkeypatch.setattr(vi, "analyze_frames", fake_analyze)
+
+        result = await vi.maybe_enrich_with_visual(
+            db,
+            user,
+            "https://www.tiktok.com/@khaby.lame/video/7459716872551976210",
+            transcript_excerpt="(comédie silencieuse)",
+        )
+
+        assert result["status"] == STATUS_OK
+        assert result["platform"] == "tiktok"
+        assert result["frame_count"] == 3
+        assert result["model_used"] == "pixtral-large-2411"
+        assert result["analysis"]["visual_structure"] == "vertical_pov"
+        fake_extraction.cleanup.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_tiktok_extract_uses_id_from_url(self, monkeypatch):
+        """Vérifie que l'extraction reçoit bien l'ID vidéo TikTok depuis l'URL."""
+        from videos import visual_integration as vi
+
+        db = AsyncMock()
+        user = _make_user("expert")
+
+        captured = {}
+
+        async def fake_tiktok_extract(url, video_id, *, log_tag=""):
+            captured["url"] = url
+            captured["video_id"] = video_id
+            return None  # Trigger EXTRACT_FAILED, peu importe ici
+
+        monkeypatch.setattr(vi, "_extract_tiktok_visual_frames", fake_tiktok_extract)
+
+        await vi.maybe_enrich_with_visual(
+            db, user, "https://www.tiktok.com/@khaby.lame/video/7459716872551976210"
+        )
+
+        assert captured["url"] == "https://www.tiktok.com/@khaby.lame/video/7459716872551976210"
+        assert captured["video_id"] == "7459716872551976210"
