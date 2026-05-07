@@ -1,30 +1,35 @@
 /**
- * useAnalyzeAndOpenHub — hook réutilisable qui encapsule le démarrage d'une
- * analyse vidéo (`videoApi.analyze`) et **navigue immédiatement** vers le Hub.
+ * useAnalyzeAndOpenHub — hook réutilisable qui démarre une analyse vidéo
+ * via `BackgroundAnalysisContext` (FAB + polling unifié) et **navigue
+ * immédiatement** vers le Hub.
  *
  * Comportement :
- *   - Cache hit (le backend retourne déjà `summary_id`) → navigate `/hub?conv=<id>`.
- *   - Sinon → navigate `/hub?analyzing=<task_id>`. Le polling
- *     `videoApi.getTaskStatus(taskId)` est ensuite repris par `HubPage`, qui
- *     affiche un état "Analyse en cours" et bascule sur la conversation
- *     finale dès que `summary_id` est disponible.
+ *   - Cap atteint (2 analyses simultanées) → `error` retourné, pas de navigate.
+ *     Le caller affiche un toast.
+ *   - Cache hit (le backend retourne déjà `summary_id`) → navigate
+ *     `/hub?conv=<id>`. La task est marquée `completed` côté context (FAB
+ *     affiche brièvement le check anim).
+ *   - Cas standard → navigate `/hub?analyzing=<task_id>`. Le polling
+ *     démarré par le context permet au FAB de suivre la progression cross-route ;
+ *     `HubPage` continue son propre polling local pour le placeholder UI.
  *
- * Avantage : feedback visuel **immédiat** (la home n'attend pas la fin de
- * l'analyse, l'utilisateur voit déjà le Hub avec le placeholder loading).
- *
- * Utilisé par :
- *   - `DashboardPageMinimal` (home minimale : input URL + Tournesol cards)
- *   - `ConversationsDrawer` (barre input directe dans le drawer Hub)
+ * Utilisé par : `DashboardPageMinimal`, `ConversationsDrawer`,
+ * `NewConversationModal`, `HubPage`, `SmartInputBar`.
  */
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { videoApi } from "../services/api";
+import {
+  useBackgroundAnalysis,
+  MaxConcurrentReachedError,
+} from "../contexts/BackgroundAnalysisContext";
 import { useTranslation } from "./useTranslation";
 
 export interface AnalyzeState {
-  /** True pendant l'appel `videoApi.analyze` (avant le navigate). */
+  /** True pendant l'appel d'analyse (avant le navigate). */
   analyzing: boolean;
   error: string | null;
+  /** True si l'erreur est un cap atteint (caller peut afficher un toast spécifique). */
+  capReached: boolean;
 }
 
 export interface UseAnalyzeAndOpenHubReturn extends AnalyzeState {
@@ -37,13 +42,15 @@ export interface UseAnalyzeAndOpenHubReturn extends AnalyzeState {
 export const useAnalyzeAndOpenHub = (): UseAnalyzeAndOpenHubReturn => {
   const navigate = useNavigate();
   const { language } = useTranslation();
+  const { startVideoAnalysis } = useBackgroundAnalysis();
   const [state, setState] = useState<AnalyzeState>({
     analyzing: false,
     error: null,
+    capReached: false,
   });
 
   const resetError = useCallback(() => {
-    setState((s) => ({ ...s, error: null }));
+    setState((s) => ({ ...s, error: null, capReached: false }));
   }, []);
 
   const analyze = useCallback(
@@ -52,6 +59,7 @@ export const useAnalyzeAndOpenHub = (): UseAnalyzeAndOpenHubReturn => {
       if (!trimmed) {
         setState({
           analyzing: false,
+          capReached: false,
           error:
             language === "fr"
               ? "URL invalide. Collez un lien YouTube ou TikTok."
@@ -60,32 +68,37 @@ export const useAnalyzeAndOpenHub = (): UseAnalyzeAndOpenHubReturn => {
         return;
       }
 
-      setState({ analyzing: true, error: null });
+      setState({ analyzing: true, error: null, capReached: false });
 
       try {
-        const resp = await videoApi.analyze(
-          trimmed,
-          "auto",
-          "standard",
-          undefined,
-          false,
-          language,
-        );
-        // Cache hit : l'analyse retourne déjà un `summary_id`. Navigate sur
-        // la conversation directement.
-        if (resp.result?.summary_id) {
-          setState({ analyzing: false, error: null });
-          navigate(`/hub?conv=${resp.result.summary_id}`);
+        const result = await startVideoAnalysis({
+          videoUrl: trimmed,
+          mode: "auto",
+          category: "standard",
+        });
+
+        setState({ analyzing: false, error: null, capReached: false });
+
+        // Cache hit synchrone : navigate direct sur la conversation finale.
+        if (result.summaryId) {
+          navigate(`/hub?conv=${result.summaryId}`);
           return;
         }
-        // Cas standard : on a un `task_id`. On navigue vers le Hub avec
-        // `?analyzing=<taskId>` ; HubPage prend le relais pour le polling et
-        // affiche le placeholder loading.
-        setState({ analyzing: false, error: null });
-        navigate(`/hub?analyzing=${resp.task_id}`);
+
+        // Cas standard : navigate vers le placeholder loading du Hub.
+        navigate(`/hub?analyzing=${result.taskId}`);
       } catch (err) {
+        if (err instanceof MaxConcurrentReachedError) {
+          setState({
+            analyzing: false,
+            capReached: true,
+            error: err.message,
+          });
+          return;
+        }
         setState({
           analyzing: false,
+          capReached: false,
           error:
             err instanceof Error
               ? err.message
@@ -95,7 +108,7 @@ export const useAnalyzeAndOpenHub = (): UseAnalyzeAndOpenHubReturn => {
         });
       }
     },
-    [language, navigate],
+    [language, navigate, startVideoAnalysis],
   );
 
   return { ...state, analyze, resetError };

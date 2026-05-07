@@ -81,6 +81,15 @@ export interface PlaylistAnalysisTask {
 
 export type AnalysisTask = VideoAnalysisTask | PlaylistAnalysisTask;
 
+export interface StartAnalysisResult {
+  /** ID local de la task dans le context. */
+  localId: string;
+  /** Backend task_id (utilisable pour /hub?analyzing=…). */
+  taskId: string;
+  /** Si défini → cache hit synchrone backend, summary déjà disponible. */
+  summaryId?: number;
+}
+
 interface BackgroundAnalysisContextType {
   // État
   tasks: AnalysisTask[];
@@ -91,7 +100,7 @@ interface BackgroundAnalysisContextType {
     videoUrl: string;
     mode: string;
     category: string;
-  }) => Promise<string>; // Retourne l'ID de la tâche
+  }) => Promise<StartAnalysisResult>;
 
   // Actions playlist
   startPlaylistAnalysis: (params: {
@@ -99,13 +108,13 @@ interface BackgroundAnalysisContextType {
     urls?: string[];
     mode: string;
     category: string;
-  }) => Promise<string>;
+  }) => Promise<StartAnalysisResult>;
 
   // Gestion
   getTask: (taskId: string) => AnalysisTask | undefined;
   removeTask: (taskId: string) => void;
   clearCompleted: () => void;
-  retryTask: (taskId: string) => Promise<string>;
+  retryTask: (taskId: string) => Promise<StartAnalysisResult>;
 
   // Notifications
   hasNewCompletedTask: boolean;
@@ -342,7 +351,7 @@ export const BackgroundAnalysisProvider: React.FC<{
       videoUrl: string;
       mode: string;
       category: string;
-    }): Promise<string> => {
+    }): Promise<StartAnalysisResult> => {
       // Cap: refuse if too many active analyses (read via ref to keep
       // useCallback stable with []).
       const currentActive = tasksRef.current.filter(
@@ -378,7 +387,33 @@ export const BackgroundAnalysisProvider: React.FC<{
           params.category === "auto" ? undefined : params.category,
         );
 
-        // Mettre à jour avec l'ID de tâche
+        const cacheHitSummaryId = response.result?.summary_id;
+
+        if (cacheHitSummaryId) {
+          // Cache hit synchrone : pas de polling, on bascule direct sur completed.
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId
+                ? {
+                    ...(t as VideoAnalysisTask),
+                    taskId: response.task_id,
+                    status: "completed" as const,
+                    progress: 100,
+                    message: "Analyse terminée !",
+                    completedAt: new Date(),
+                  }
+                : t,
+            ),
+          );
+          setHasNewCompletedTask(true);
+          return {
+            localId: taskId,
+            taskId: response.task_id,
+            summaryId: cacheHitSummaryId,
+          };
+        }
+
+        // Mettre à jour avec l'ID de tâche backend
         setTasks((prev) =>
           prev.map((t) =>
             t.id === taskId
@@ -395,7 +430,7 @@ export const BackgroundAnalysisProvider: React.FC<{
         // Démarrer le polling
         startPolling(taskId, response.task_id, "video");
 
-        return taskId;
+        return { localId: taskId, taskId: response.task_id };
       } catch (error: any) {
         setTasks((prev) =>
           prev.map((t) =>
@@ -424,7 +459,7 @@ export const BackgroundAnalysisProvider: React.FC<{
       urls?: string[];
       mode: string;
       category: string;
-    }): Promise<string> => {
+    }): Promise<StartAnalysisResult> => {
       // Cap: refuse if too many active analyses (shared with video).
       const currentActive = tasksRef.current.filter(
         (t) => t.status === "pending" || t.status === "processing",
@@ -482,7 +517,7 @@ export const BackgroundAnalysisProvider: React.FC<{
 
         startPolling(taskId, response.task_id, "playlist");
 
-        return taskId;
+        return { localId: taskId, taskId: response.task_id };
       } catch (error: any) {
         setTasks((prev) =>
           prev.map((t) =>
@@ -641,7 +676,7 @@ export const BackgroundAnalysisProvider: React.FC<{
   }, []);
 
   const retryTask = useCallback(
-    async (localTaskId: string): Promise<string> => {
+    async (localTaskId: string): Promise<StartAnalysisResult> => {
       const task = tasksRef.current.find((t) => t.id === localTaskId);
       if (!task) {
         throw new Error(`Tâche ${localTaskId} introuvable`);
