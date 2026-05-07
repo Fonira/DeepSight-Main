@@ -1,9 +1,17 @@
 # DeepSight — robots.txt
 # https://www.deepsightsynthesis.com
+#
+# Policy:
+# - Public marketing pages (/, /about, /upgrade, /contact, /api-docs, /trust, /legal/*) — open to all crawlers
+# - Public analysis pages (/a/*) — opt-in per analysis, allowed to all crawlers and explicitly to AI bots
+# - User-specific pages (/dashboard, /history, /settings, /my-account) — disallowed (require auth, no value to indexers)
+# - Auth/payment endpoints — disallowed (transient flow, no indexable content)
+# - API (/api/*) — disallowed (programmatic access only)
 
 # === Default policy ===
 User-agent: *
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /auth/callback
 Disallow: /payment/success
@@ -14,99 +22,115 @@ Disallow: /history
 Disallow: /settings
 Disallow: /my-account
 
-# === Generative AI bots — explicit allow ===
+# === Generative AI bots — explicit allow on /a/ public analyses ===
 User-agent: GPTBot
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: ChatGPT-User
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: OAI-SearchBot
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: ClaudeBot
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: anthropic-ai
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: Claude-Web
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: PerplexityBot
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: Perplexity-User
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: Google-Extended
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: CCBot
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: cohere-ai
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: Bytespider
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: Applebot-Extended
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: Diffbot
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: ImagesiftBot
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
 
 User-agent: Meta-ExternalAgent
 Allow: /
+Allow: /a/
 Disallow: /admin
 Disallow: /api/
 Disallow: /payment/
