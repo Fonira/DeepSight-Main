@@ -3674,10 +3674,20 @@ async def cancel_task(
 
 
 @router.get("/status/{task_id}", response_model=TaskStatusResponse)
-async def get_task_status(
+async def get_task_status_endpoint(
     task_id: str, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
-    """Récupère le status d'une tâche d'analyse"""
+    """Récupère le status d'une tâche d'analyse.
+
+    NOTE 2026-05-07 : renommé `get_task_status` → `get_task_status_endpoint`
+    pour éliminer la collision avec le helper `get_task_status(task_id)` défini
+    plus haut (ligne 252). Sans ce renommage, l'import `from videos.router
+    import get_task_status` (utilisé par `api_public/router.py`) résolvait vers
+    le route handler à cause de Python's last-definition-wins, qui exigeait des
+    Depends non-résolus → AttributeError 'Depends' object has no attribute 'id'.
+    Le décorateur `@router.get(...)` enregistre la route par URL, le nom de la
+    fonction est purement identitaire — pas de breaking change pour le client.
+    """
 
     # Gérer les task_id de cache (format: cached_<summary_id>)
     if task_id.startswith("cached_"):
