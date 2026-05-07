@@ -32,6 +32,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
 import { SidebarInsight } from "../SidebarInsight";
 import { PlanBadge } from "../PlanBadge";
+import { HubNavBadge } from "../background/HubNavBadge";
 import {
   normalizePlanId,
   getMinPlanForFeature,
@@ -469,7 +470,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               label={language === "fr" ? "Débat IA" : "AI Debate"}
               collapsed={collapsed}
             />
-            <div data-tour-step="hub-nav">
+            <div data-tour-step="hub-nav" className="relative">
               <NavItem
                 to="/hub"
                 icon={MessageCircle}
@@ -480,6 +481,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 end={canSeeHubWorkspaces}
                 {...getBadge(minPlanHub)}
               />
+              <HubNavBadge />
             </div>
             {canSeeHubWorkspaces && (
               <NavItem
