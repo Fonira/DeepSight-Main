@@ -3869,6 +3869,7 @@ async def get_summary(
         # Visual analysis (Phase 2 plumbing 2026-05-06) — null pour analyses
         # legacy avant Phase 2, flag OFF, quota dépassé, ou Mistral fail.
         visual_analysis=getattr(summary, "visual_analysis", None),
+        is_public=getattr(summary, "is_public", False),
     )
 
 

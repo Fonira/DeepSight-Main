@@ -301,6 +301,8 @@ class SummaryResponse(BaseModel):
     # quota dépassé, ou Mistral fail).
     visual_analysis: Optional[Dict[str, Any]] = None
 
+    is_public: bool = False
+
     class Config:
         from_attributes = True
 

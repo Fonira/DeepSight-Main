@@ -34,6 +34,7 @@ import { PLAN_LIMITS, normalizePlanId } from "../../config/planPrivileges";
 import { videoApi, shareApi } from "../../services/api";
 import { useToast } from "../Toast";
 import { AudioSummaryButton } from "../AudioSummaryButton";
+import { MakePublicToggle } from "./MakePublicToggle";
 import { sanitizeTitle } from "../../utils/sanitize";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -47,6 +48,7 @@ interface AnalysisActionBarProps {
     video_title: string;
     video_channel?: string;
     summary_content?: string;
+    is_public?: boolean;
   };
   language: "fr" | "en";
   onOpenVoice?: () => void;
@@ -528,6 +530,18 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
                 showChevron
                 active={showExportMenu}
               />
+
+              {/* Rendre publique (Phase 3 — pages /a/{slug} indexables IA) */}
+              {(isAdmin || plan === "pro" || plan === "expert") && (
+                <div className="flex-shrink-0">
+                  <MakePublicToggle
+                    summaryId={summary.id}
+                    initialIsPublic={summary.is_public ?? false}
+                    compact
+                    language={language}
+                  />
+                </div>
+              )}
 
               {/* Audio Synthèse */}
               <div className="flex-shrink-0">
