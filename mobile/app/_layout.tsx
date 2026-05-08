@@ -17,6 +17,7 @@ import { ErrorProvider } from "../src/contexts/ErrorContext";
 import { OfflineProvider } from "../src/contexts/OfflineContext";
 import { BackgroundAnalysisProvider } from "../src/contexts/BackgroundAnalysisContext";
 import { ElevenLabsProvider } from "@elevenlabs/react-native";
+import { setAudioModeAsync } from "expo-audio";
 import { createQueryClient } from "../src/utils/queryClient";
 import { darkColors } from "../src/theme/colors";
 import { useShareIntent } from "../src/hooks/useShareIntent";
@@ -120,6 +121,19 @@ export default function RootLayout() {
         // Silent fail — non-blocking
       }
     })();
+  }, []);
+
+  // Audio session : mix with others au boot pour ne pas couper Spotify /
+  // Apple Music / Deezer. Les hooks audio (useTTS, useVoiceChat) basculent
+  // ensuite vers doNotMix quand l'user lance volontairement un son DeepSight.
+  useEffect(() => {
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      interruptionMode: "mixWithOthers",
+    }).catch(() => {
+      // Silent fail — l'audio externe survivra quand même si l'app
+      // n'acquiert pas de focus de toute façon.
+    });
   }, []);
 
   if (!fontsLoaded) {

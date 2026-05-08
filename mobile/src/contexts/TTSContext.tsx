@@ -167,6 +167,15 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch {}
       tempFileRef.current = null;
     }
+    // Relâche le focus audio → Spotify/Apple Music reprend.
+    try {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        interruptionMode: "mixWithOthers",
+      });
+    } catch {
+      // Ignore
+    }
   }, [player]);
 
   const stopPlaying = useCallback(() => {
@@ -191,9 +200,13 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoading(true);
 
       try {
-        // Configure for silent mode playback
+        // Configure for silent mode playback + acquiert le focus audio.
+        // Coupe Spotify/Apple Music pendant la lecture TTS DeepSight.
         try {
-          await setAudioModeAsync({ playsInSilentMode: true });
+          await setAudioModeAsync({
+            playsInSilentMode: true,
+            interruptionMode: "doNotMix",
+          });
         } catch {
           // Ignore
         }
