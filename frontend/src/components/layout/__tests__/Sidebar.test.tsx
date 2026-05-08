@@ -65,6 +65,11 @@ vi.mock("../../../hooks/useTranslation", () => ({
 }));
 
 // SidebarInsight & PlanBadge: stub minimaliste
+// HubNavBadge consomme BackgroundAnalysisContext qui n'est pas mounté ici.
+vi.mock("../../background/HubNavBadge", () => ({
+  HubNavBadge: () => null,
+}));
+
 vi.mock("../../SidebarInsight", () => ({
   SidebarInsight: () => null,
 }));

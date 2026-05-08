@@ -34,6 +34,8 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { LoadingWordProvider } from "./contexts/LoadingWordContext";
 import { TTSProvider } from "./contexts/TTSContext";
+import { BackgroundAnalysisProvider } from "./contexts/BackgroundAnalysisContext";
+import { BackgroundAnalysisFAB } from "./components/background/BackgroundAnalysisFAB";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { SkipLink } from "./components/SkipLink";
 import { SEO } from "./components/SEO";
@@ -547,6 +549,7 @@ const AppRoutes = () => {
         <AuthProvider value={auth}>
           <TTSProvider>
             <VoicePrefsStagingProvider>
+              <BackgroundAnalysisProvider>
               <Router>
                 <>
                   {/* ♿ Skip Link pour l'accessibilité */}
@@ -554,6 +557,9 @@ const AppRoutes = () => {
 
                   {/* 🔮 Prefetcher intelligent */}
                   <RoutePrefetcher />
+
+                  {/* 🔄 FAB global d'analyses en background */}
+                  <BackgroundAnalysisFAB />
 
                   <ErrorBoundary>
                     <Routes>
@@ -1197,6 +1203,7 @@ const AppRoutes = () => {
                   </ErrorBoundary>
                 </>
               </Router>
+              </BackgroundAnalysisProvider>
             </VoicePrefsStagingProvider>
           </TTSProvider>
         </AuthProvider>

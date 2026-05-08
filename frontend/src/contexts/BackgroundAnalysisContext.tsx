@@ -22,6 +22,21 @@ import React, {
 import { videoApi, playlistApi, Summary } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 🚦 CONCURRENCY CAP
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const MAX_CONCURRENT_ANALYSES = 2;
+
+export class MaxConcurrentReachedError extends Error {
+  constructor() {
+    super(
+      `Limite de ${MAX_CONCURRENT_ANALYSES} analyses simultanées atteinte. Attendez la fin d'une analyse en cours.`,
+    );
+    this.name = "MaxConcurrentReachedError";
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -39,6 +54,9 @@ export interface VideoAnalysisTask {
   error?: string;
   startedAt: Date;
   completedAt?: Date;
+  // Stockés pour permettre le retry après échec
+  mode?: string;
+  category?: string;
 }
 
 export interface PlaylistAnalysisTask {
@@ -55,9 +73,22 @@ export interface PlaylistAnalysisTask {
   error?: string;
   startedAt: Date;
   completedAt?: Date;
+  // Stockés pour permettre le retry après échec
+  mode?: string;
+  category?: string;
+  urls?: string[];
 }
 
 export type AnalysisTask = VideoAnalysisTask | PlaylistAnalysisTask;
+
+export interface StartAnalysisResult {
+  /** ID local de la task dans le context. */
+  localId: string;
+  /** Backend task_id (utilisable pour /hub?analyzing=…). */
+  taskId: string;
+  /** Si défini → cache hit synchrone backend, summary déjà disponible. */
+  summaryId?: number;
+}
 
 interface BackgroundAnalysisContextType {
   // État
@@ -69,7 +100,7 @@ interface BackgroundAnalysisContextType {
     videoUrl: string;
     mode: string;
     category: string;
-  }) => Promise<string>; // Retourne l'ID de la tâche
+  }) => Promise<StartAnalysisResult>;
 
   // Actions playlist
   startPlaylistAnalysis: (params: {
@@ -77,12 +108,13 @@ interface BackgroundAnalysisContextType {
     urls?: string[];
     mode: string;
     category: string;
-  }) => Promise<string>;
+  }) => Promise<StartAnalysisResult>;
 
   // Gestion
   getTask: (taskId: string) => AnalysisTask | undefined;
   removeTask: (taskId: string) => void;
   clearCompleted: () => void;
+  retryTask: (taskId: string) => Promise<StartAnalysisResult>;
 
   // Notifications
   hasNewCompletedTask: boolean;
@@ -109,6 +141,14 @@ export const BackgroundAnalysisProvider: React.FC<{
   const [hasNewCompletedTask, setHasNewCompletedTask] = useState(false);
   const [isRestoring, setIsRestoring] = useState(true);
   const pollingIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Ref synchronisée avec tasks pour permettre des reads stables dans
+  // useCallback([]) — utilisé notamment pour le cap-check sans casser
+  // l'identité de startVideoAnalysis/startPlaylistAnalysis.
+  const tasksRef = useRef<AnalysisTask[]>([]);
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // 💾 PERSISTENCE: Sauvegarder les tâches en cours dans localStorage
@@ -184,9 +224,95 @@ export const BackgroundAnalysisProvider: React.FC<{
 
             setTasks((prev) => [...prev, restoredTask]);
 
-            // Reprendre le polling
-            setTimeout(() => {
-              startPolling(task.id, task.taskId, task.type);
+            // Refetch confirm one-shot avant de relancer le polling.
+            // Si la task est déjà completed/failed côté backend (analyse
+            // terminée pendant que l'onglet était fermé), on évite un
+            // tick de polling vide et on bascule direct sur l'état final.
+            setTimeout(async () => {
+              try {
+                if (task.type === "video") {
+                  const status = await videoApi.getTaskStatus(task.taskId);
+                  if (status.status === "completed" && status.result) {
+                    setTasks((prev) =>
+                      prev.map((t) =>
+                        t.id === task.id
+                          ? ({
+                              ...(t as VideoAnalysisTask),
+                              status: "completed" as const,
+                              progress: 100,
+                              message: "Analyse terminée !",
+                              result: status.result?.summary,
+                              videoTitle:
+                                status.result?.summary?.video_title ||
+                                (t as VideoAnalysisTask).videoTitle,
+                              thumbnail:
+                                status.result?.summary?.thumbnail_url ||
+                                (t as VideoAnalysisTask).thumbnail,
+                              completedAt: new Date(),
+                            } as VideoAnalysisTask)
+                          : t,
+                      ),
+                    );
+                    setHasNewCompletedTask(true);
+                    return;
+                  }
+                  if (status.status === "failed") {
+                    setTasks((prev) =>
+                      prev.map((t) =>
+                        t.id === task.id
+                          ? {
+                              ...(t as VideoAnalysisTask),
+                              status: "failed" as const,
+                              error: status.error || "Échec de l'analyse",
+                            }
+                          : t,
+                      ),
+                    );
+                    return;
+                  }
+                } else {
+                  const status = await playlistApi.getStatus(task.taskId);
+                  if (status.status === "completed") {
+                    setTasks((prev) =>
+                      prev.map((t) =>
+                        t.id === task.id
+                          ? ({
+                              ...(t as PlaylistAnalysisTask),
+                              status: "completed" as const,
+                              progress: 100,
+                              message: "Analyse terminée !",
+                              playlistTitle: status.playlist_title,
+                              totalVideos: status.total_videos,
+                              completedVideos: status.completed_videos,
+                              completedAt: new Date(),
+                            } as PlaylistAnalysisTask)
+                          : t,
+                      ),
+                    );
+                    setHasNewCompletedTask(true);
+                    return;
+                  }
+                  if (status.status === "failed") {
+                    setTasks((prev) =>
+                      prev.map((t) =>
+                        t.id === task.id
+                          ? {
+                              ...(t as PlaylistAnalysisTask),
+                              status: "failed" as const,
+                              error: status.error || "Échec de l'analyse",
+                            }
+                          : t,
+                      ),
+                    );
+                    return;
+                  }
+                }
+                // Encore en cours côté backend → reprendre le polling.
+                startPolling(task.id, task.taskId, task.type);
+              } catch (e) {
+                // Erreur réseau / 404 → fall-back sur polling, qui gérera.
+                startPolling(task.id, task.taskId, task.type);
+              }
             }, 500);
           }
         }
@@ -225,7 +351,16 @@ export const BackgroundAnalysisProvider: React.FC<{
       videoUrl: string;
       mode: string;
       category: string;
-    }): Promise<string> => {
+    }): Promise<StartAnalysisResult> => {
+      // Cap: refuse if too many active analyses (read via ref to keep
+      // useCallback stable with []).
+      const currentActive = tasksRef.current.filter(
+        (t) => t.status === "pending" || t.status === "processing",
+      ).length;
+      if (currentActive >= MAX_CONCURRENT_ANALYSES) {
+        throw new MaxConcurrentReachedError();
+      }
+
       const taskId = `video-${Date.now()}`;
 
       // Créer la tâche
@@ -238,6 +373,8 @@ export const BackgroundAnalysisProvider: React.FC<{
         progress: 0,
         message: "Démarrage de l'analyse...",
         startedAt: new Date(),
+        mode: params.mode,
+        category: params.category,
       };
 
       setTasks((prev) => [...prev, newTask]);
@@ -250,7 +387,33 @@ export const BackgroundAnalysisProvider: React.FC<{
           params.category === "auto" ? undefined : params.category,
         );
 
-        // Mettre à jour avec l'ID de tâche
+        const cacheHitSummaryId = response.result?.summary_id;
+
+        if (cacheHitSummaryId) {
+          // Cache hit synchrone : pas de polling, on bascule direct sur completed.
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId
+                ? {
+                    ...(t as VideoAnalysisTask),
+                    taskId: response.task_id,
+                    status: "completed" as const,
+                    progress: 100,
+                    message: "Analyse terminée !",
+                    completedAt: new Date(),
+                  }
+                : t,
+            ),
+          );
+          setHasNewCompletedTask(true);
+          return {
+            localId: taskId,
+            taskId: response.task_id,
+            summaryId: cacheHitSummaryId,
+          };
+        }
+
+        // Mettre à jour avec l'ID de tâche backend
         setTasks((prev) =>
           prev.map((t) =>
             t.id === taskId
@@ -267,7 +430,7 @@ export const BackgroundAnalysisProvider: React.FC<{
         // Démarrer le polling
         startPolling(taskId, response.task_id, "video");
 
-        return taskId;
+        return { localId: taskId, taskId: response.task_id };
       } catch (error: any) {
         setTasks((prev) =>
           prev.map((t) =>
@@ -296,7 +459,15 @@ export const BackgroundAnalysisProvider: React.FC<{
       urls?: string[];
       mode: string;
       category: string;
-    }): Promise<string> => {
+    }): Promise<StartAnalysisResult> => {
+      // Cap: refuse if too many active analyses (shared with video).
+      const currentActive = tasksRef.current.filter(
+        (t) => t.status === "pending" || t.status === "processing",
+      ).length;
+      if (currentActive >= MAX_CONCURRENT_ANALYSES) {
+        throw new MaxConcurrentReachedError();
+      }
+
       const taskId = `playlist-${Date.now()}`;
 
       const newTask: PlaylistAnalysisTask = {
@@ -308,6 +479,9 @@ export const BackgroundAnalysisProvider: React.FC<{
         progress: 0,
         message: "Démarrage de l'analyse...",
         startedAt: new Date(),
+        mode: params.mode,
+        category: params.category,
+        urls: params.urls,
       };
 
       setTasks((prev) => [...prev, newTask]);
@@ -343,7 +517,7 @@ export const BackgroundAnalysisProvider: React.FC<{
 
         startPolling(taskId, response.task_id, "playlist");
 
-        return taskId;
+        return { localId: taskId, taskId: response.task_id };
       } catch (error: any) {
         setTasks((prev) =>
           prev.map((t) =>
@@ -501,6 +675,55 @@ export const BackgroundAnalysisProvider: React.FC<{
     setHasNewCompletedTask(false);
   }, []);
 
+  const retryTask = useCallback(
+    async (localTaskId: string): Promise<StartAnalysisResult> => {
+      const task = tasksRef.current.find((t) => t.id === localTaskId);
+      if (!task) {
+        throw new Error(`Tâche ${localTaskId} introuvable`);
+      }
+      if (task.status !== "failed") {
+        throw new Error(
+          `Seules les tâches en échec peuvent être relancées (état actuel : ${task.status})`,
+        );
+      }
+      if (!task.mode || !task.category) {
+        throw new Error(
+          "Paramètres de relance manquants — relancez l'analyse depuis le bouton d'origine",
+        );
+      }
+
+      // Remove failed task before re-launch so the cap-check passes.
+      const interval = pollingIntervals.current.get(localTaskId);
+      if (interval) {
+        clearInterval(interval);
+        pollingIntervals.current.delete(localTaskId);
+      }
+      setTasks((prev) => prev.filter((t) => t.id !== localTaskId));
+
+      if (task.type === "video") {
+        return startVideoAnalysis({
+          videoUrl: (task as VideoAnalysisTask).videoUrl,
+          mode: task.mode,
+          category: task.category,
+        });
+      }
+      const pl = task as PlaylistAnalysisTask;
+      if (pl.urls && pl.urls.length > 0) {
+        return startPlaylistAnalysis({
+          urls: pl.urls,
+          mode: task.mode,
+          category: task.category,
+        });
+      }
+      return startPlaylistAnalysis({
+        playlistUrl: pl.playlistUrl,
+        mode: task.mode,
+        category: task.category,
+      });
+    },
+    [startVideoAnalysis, startPlaylistAnalysis],
+  );
+
   return (
     <BackgroundAnalysisContext.Provider
       value={{
@@ -511,6 +734,7 @@ export const BackgroundAnalysisProvider: React.FC<{
         getTask,
         removeTask,
         clearCompleted,
+        retryTask,
         hasNewCompletedTask,
         acknowledgeCompleted,
       }}
