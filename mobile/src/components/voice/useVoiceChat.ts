@@ -17,7 +17,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
-import { Audio } from "expo-av";
+import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { useConversation } from "@elevenlabs/react-native";
 import { voiceApi } from "../../services/api";
@@ -319,11 +319,17 @@ export function useVoiceChat(
           return;
         }
 
-        // Configurer le mode audio pour l'enregistrement + lecture simultanée
+        // Configurer le mode audio pour l'enregistrement + lecture simultanée.
+        // Acquiert le focus audio exclusif → coupe Spotify/Apple Music
+        // pendant la session voice agent (le user vient de lancer un appel,
+        // il veut entendre l'agent sans bruit de fond).
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: true,
           playsInSilentModeIOS: true,
           staysActiveInBackground: false,
+          interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+          interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+          shouldDuckAndroid: false,
         });
       } catch {
         reportError(ERROR_MESSAGES.MICROPHONE_GENERIC);
@@ -528,9 +534,14 @@ export function useVoiceChat(
       isActiveRef.current = false;
       stopTimer();
 
-      // Réinitialiser le mode audio
+      // Réinitialiser le mode audio + relâcher le focus exclusif →
+      // Spotify/Apple Music reprend après l'appel voice.
       Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+        interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+        shouldDuckAndroid: true,
       }).catch(() => {
         // Ignorer les erreurs de cleanup audio
       });

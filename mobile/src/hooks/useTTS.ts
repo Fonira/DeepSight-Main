@@ -51,6 +51,15 @@ export function useTTS(options?: UseTTSOptions): UseTTSReturn {
       }
       tempFileRef.current = null;
     }
+    // Relâche le focus audio → Spotify/Apple Music reprend.
+    try {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        interruptionMode: "mixWithOthers",
+      });
+    } catch {
+      // Ignore
+    }
   }, [player]);
 
   const stop = useCallback(() => {
@@ -70,7 +79,12 @@ export function useTTS(options?: UseTTSOptions): UseTTSReturn {
 
       try {
         try {
-          await setAudioModeAsync({ playsInSilentMode: true });
+          // Acquiert le focus audio → coupe Spotify/Apple Music
+          // pendant la lecture TTS DeepSight.
+          await setAudioModeAsync({
+            playsInSilentMode: true,
+            interruptionMode: "doNotMix",
+          });
         } catch {
           // Ignore
         }
