@@ -10,6 +10,7 @@ import { debateApi } from "../../services/api";
 import type { DebateChatMessage } from "../../services/api";
 import { DeepSightSpinnerMicro } from "../ui/DeepSightSpinner";
 import { CopyMessageButton } from "../CopyMessageButton";
+import { EnrichedMarkdown } from "../EnrichedMarkdown";
 
 interface DebateChatProps {
   debateId: number;
@@ -170,7 +171,17 @@ export const DebateChat: React.FC<DebateChatProps> = ({
                       : "bg-white/5 border-white/10 text-white/80"
                   }`}
                 >
-                  <div>{msg.content}</div>
+                  {msg.role === "user" ? (
+                    <div className="whitespace-pre-wrap break-words">
+                      {msg.content}
+                    </div>
+                  ) : (
+                    <div className="chat-bubble-markdown break-words">
+                      <EnrichedMarkdown language="fr">
+                        {msg.content}
+                      </EnrichedMarkdown>
+                    </div>
+                  )}
                   <div
                     className={`mt-1.5 flex opacity-0 group-hover:opacity-100 transition-opacity ${
                       msg.role === "user" ? "justify-end" : "justify-start"
