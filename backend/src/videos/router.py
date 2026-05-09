@@ -947,6 +947,16 @@ async def analyze_video(
                     logger.info(
                         f"💾 [GLOBAL CACHE HIT] {platform}/{video_id} → summary_id={_cache_summary_id} (0 credits)"
                     )
+                    # Generate Mistral extras (synthesis, key_quotes, key_takeaways,
+                    # chapter_themes) in the background. Without this, the row inherits
+                    # `summary_extras = NULL` from the freshly-saved Summary and the
+                    # frontend falls back to rendering raw markdown instead of the
+                    # structured "Vue d'ensemble / Citations marquantes" layout —
+                    # which is exactly what every other analyze code path does after
+                    # save_summary() (cf. lines 1685, 2593, 3454, 4953, 5682).
+                    asyncio.create_task(
+                        _autogen_summary_extras(current_user.id, _cache_summary_id)
+                    )
                     await _invalidate_companion_cache()
                     return TaskStatusResponse(
                         task_id=f"cached_{_cache_summary_id}",
