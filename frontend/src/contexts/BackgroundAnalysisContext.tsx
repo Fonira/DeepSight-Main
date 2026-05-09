@@ -19,15 +19,22 @@ import React, {
   useRef,
   useEffect,
 } from "react";
-import { videoApi, playlistApi, Summary } from "../services/api";
+import { videoApi, playlistApi } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/** Callback fired exactly once when an analysis transitions to `completed`. */
+export type VideoAnalysisCompleteCallback = (
+  summaryId: number,
+  videoTitle: string,
+) => void;
+
 export interface VideoAnalysisTask {
   id: string;
   type: "video";
+  /** Backend task_id returned by /api/videos/analyze. Empty string while pending. */
   taskId: string;
   videoUrl: string;
   videoTitle?: string;
@@ -35,7 +42,8 @@ export interface VideoAnalysisTask {
   status: "pending" | "processing" | "completed" | "failed";
   progress: number;
   message: string;
-  result?: Summary;
+  /** Set once polling reports `status === "completed"`. */
+  summaryId?: number;
   error?: string;
   startedAt: Date;
   completedAt?: Date;
@@ -67,8 +75,12 @@ interface BackgroundAnalysisContextType {
   // Actions vidéo
   startVideoAnalysis: (params: {
     videoUrl: string;
-    mode: string;
-    category: string;
+    mode?: string;
+    category?: string;
+    language?: "fr" | "en";
+    forceRefresh?: boolean;
+    /** Fires exactly once on success. Used by call-sites to navigate or refresh state. */
+    onComplete?: VideoAnalysisCompleteCallback;
   }) => Promise<string>; // Retourne l'ID de la tâche
 
   // Actions playlist
@@ -223,8 +235,11 @@ export const BackgroundAnalysisProvider: React.FC<{
   const startVideoAnalysis = useCallback(
     async (params: {
       videoUrl: string;
-      mode: string;
-      category: string;
+      mode?: string;
+      category?: string;
+      language?: "fr" | "en";
+      forceRefresh?: boolean;
+      onComplete?: VideoAnalysisCompleteCallback;
     }): Promise<string> => {
       const taskId = `video-${Date.now()}`;
 
@@ -244,11 +259,48 @@ export const BackgroundAnalysisProvider: React.FC<{
 
       try {
         // Lancer l'analyse
+        const category = params.category && params.category !== "auto" ? params.category : "auto";
+        const mode = params.mode || "standard";
+        const lang = params.language || "fr";
         const response = await videoApi.analyze(
           params.videoUrl,
-          params.mode,
-          params.category === "auto" ? undefined : params.category,
+          category,
+          mode,
+          undefined,
+          false,
+          lang,
+          params.forceRefresh ? { forceRefresh: true } : undefined,
         );
+
+        // Cache hit : le backend renvoie déjà un summary_id → on court-circuite le polling
+        // pour fire le callback immédiatement et marquer la task completed.
+        if (response.result?.summary_id) {
+          const summaryId = response.result.summary_id;
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId
+                ? {
+                    ...t,
+                    taskId: response.task_id,
+                    status: "completed" as const,
+                    progress: 100,
+                    message: "Analyse retrouvée en cache",
+                    summaryId,
+                    completedAt: new Date(),
+                  }
+                : t,
+            ),
+          );
+          setHasNewCompletedTask(true);
+          if (params.onComplete) {
+            try {
+              params.onComplete(summaryId, "");
+            } catch {
+              /* user callback failure — ignore */
+            }
+          }
+          return taskId;
+        }
 
         // Mettre à jour avec l'ID de tâche
         setTasks((prev) =>
@@ -264,8 +316,8 @@ export const BackgroundAnalysisProvider: React.FC<{
           ),
         );
 
-        // Démarrer le polling
-        startPolling(taskId, response.task_id, "video");
+        // Démarrer le polling avec le callback en closure
+        startPolling(taskId, response.task_id, "video", params.onComplete);
 
         return taskId;
       } catch (error: any) {
@@ -367,11 +419,26 @@ export const BackgroundAnalysisProvider: React.FC<{
   // ═══════════════════════════════════════════════════════════════════════════════
 
   const startPolling = useCallback(
-    (localId: string, apiTaskId: string, type: "video" | "playlist") => {
+    (
+      localId: string,
+      apiTaskId: string,
+      type: "video" | "playlist",
+      onComplete?: VideoAnalysisCompleteCallback,
+    ) => {
+      let firedComplete = false;
       const interval = setInterval(async () => {
         try {
           if (type === "video") {
             const status = await videoApi.getTaskStatus(apiTaskId);
+            // The backend `task_status.result` is a flat object:
+            // { summary_id, video_id, video_title, thumbnail_url, ... }
+            const result = status.result as
+              | {
+                  summary_id?: number;
+                  video_title?: string;
+                  thumbnail_url?: string;
+                }
+              | undefined;
 
             setTasks((prev) =>
               prev.map((t) => {
@@ -379,23 +446,34 @@ export const BackgroundAnalysisProvider: React.FC<{
 
                 const videoTask = t as VideoAnalysisTask;
 
-                if (status.status === "completed" && status.result) {
+                if (
+                  status.status === "completed" &&
+                  result?.summary_id !== undefined
+                ) {
                   clearInterval(interval);
                   pollingIntervals.current.delete(localId);
                   setHasNewCompletedTask(true);
+
+                  if (!firedComplete && onComplete) {
+                    firedComplete = true;
+                    try {
+                      onComplete(
+                        result.summary_id,
+                        result.video_title || videoTask.videoTitle || "",
+                      );
+                    } catch {
+                      /* user callback failure — ignore */
+                    }
+                  }
 
                   return {
                     ...videoTask,
                     status: "completed" as const,
                     progress: 100,
                     message: "Analyse terminée !",
-                    result: status.result?.summary,
-                    videoTitle:
-                      status.result?.summary?.video_title ||
-                      videoTask.videoTitle,
-                    thumbnail:
-                      status.result?.summary?.thumbnail_url ||
-                      videoTask.thumbnail,
+                    summaryId: result.summary_id,
+                    videoTitle: result.video_title || videoTask.videoTitle,
+                    thumbnail: result.thumbnail_url || videoTask.thumbnail,
                     completedAt: new Date(),
                   };
                 } else if (status.status === "failed") {
@@ -410,7 +488,7 @@ export const BackgroundAnalysisProvider: React.FC<{
                 } else {
                   return {
                     ...videoTask,
-                    progress: status.progress || videoTask.progress,
+                    progress: status.progress ?? videoTask.progress,
                     message: status.message || videoTask.message,
                   };
                 }

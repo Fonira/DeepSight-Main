@@ -45,6 +45,8 @@ import { CookieBanner } from "./components/CookieBanner";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { VoicePrefsStagingProvider } from "./components/voice/staging/VoicePrefsStagingProvider";
 import { StagedPrefsToolbar } from "./components/voice/staging/StagedPrefsToolbar";
+import { BackgroundAnalysisProvider } from "./contexts/BackgroundAnalysisContext";
+import { BackgroundAnalysisPanel } from "./components/BackgroundAnalysisPanel";
 import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
 import { Tutor } from "./components/Tutor";
 import { analytics } from "./services/analytics";
@@ -548,7 +550,7 @@ const AppRoutes = () => {
           <TTSProvider>
             <VoicePrefsStagingProvider>
               <Router>
-                <>
+                <BackgroundAnalysisProvider>
                   {/* ♿ Skip Link pour l'accessibilité */}
                   <SkipLink targetId="main-content" />
 
@@ -1195,7 +1197,12 @@ const AppRoutes = () => {
                   <ErrorBoundary fallback={null}>
                     <StagedPrefsToolbar />
                   </ErrorBoundary>
-                </>
+
+                  {/* ⏳ Toast bottom-right : analyses vidéo en arrière-plan */}
+                  <ErrorBoundary fallback={null}>
+                    <BackgroundAnalysisPanel />
+                  </ErrorBoundary>
+                </BackgroundAnalysisProvider>
               </Router>
             </VoicePrefsStagingProvider>
           </TTSProvider>

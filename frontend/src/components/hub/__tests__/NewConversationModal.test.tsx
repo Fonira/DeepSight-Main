@@ -1,24 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { NewConversationModal } from "../NewConversationModal";
-import { videoApi } from "../../../services/api";
 
-vi.mock("../../../services/api", () => ({
-  videoApi: {
-    analyze: vi.fn(),
-    getTaskStatus: vi.fn(),
-    getSummary: vi.fn(),
-  },
+const mockStartVideoAnalysis = vi.fn();
+
+vi.mock("../../../contexts/BackgroundAnalysisContext", () => ({
+  useBackgroundAnalysis: () => ({
+    startVideoAnalysis: mockStartVideoAnalysis,
+  }),
 }));
-
-const mockAnalyze = videoApi.analyze as unknown as ReturnType<typeof vi.fn>;
-const mockGetTaskStatus = videoApi.getTaskStatus as unknown as ReturnType<
-  typeof vi.fn
->;
 
 describe("NewConversationModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockStartVideoAnalysis.mockReset();
   });
 
   it("validates URL: rejects non-YouTube/TikTok URL", () => {
@@ -30,27 +25,17 @@ describe("NewConversationModal", () => {
     fireEvent.change(input, { target: { value: "https://example.com/foo" } });
     fireEvent.click(screen.getByRole("button", { name: /analyser/i }));
     expect(screen.getByText(/url invalide/i)).toBeInTheDocument();
-    expect(mockAnalyze).not.toHaveBeenCalled();
+    expect(mockStartVideoAnalysis).not.toHaveBeenCalled();
   });
 
-  it("calls videoApi.analyze with valid YouTube URL and polls until summary_id available", async () => {
+  it("delegates to background context with valid YouTube URL and propagates onComplete to onSuccess", async () => {
     const onSuccess = vi.fn();
     const onClose = vi.fn();
-    mockAnalyze.mockResolvedValue({
-      task_id: "t-123",
-      status: "pending",
+    mockStartVideoAnalysis.mockImplementation(async (params) => {
+      // Simulate the context firing onComplete after the polling resolves.
+      setTimeout(() => params.onComplete?.(42, "Test"), 5);
+      return "video-1";
     });
-    mockGetTaskStatus
-      .mockResolvedValueOnce({
-        task_id: "t-123",
-        status: "processing",
-        progress: 50,
-      })
-      .mockResolvedValueOnce({
-        task_id: "t-123",
-        status: "completed",
-        result: { summary_id: 42 },
-      });
 
     render(
       <NewConversationModal open onClose={onClose} onSuccess={onSuccess} />,
@@ -62,40 +47,33 @@ describe("NewConversationModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /analyser/i }));
 
     await waitFor(() =>
-      expect(mockAnalyze).toHaveBeenCalledWith(
-        url,
-        "auto",
-        "standard",
-        undefined,
-        false,
-        expect.any(String),
+      expect(mockStartVideoAnalysis).toHaveBeenCalledWith(
+        expect.objectContaining({
+          videoUrl: url,
+          onComplete: expect.any(Function),
+        }),
       ),
     );
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(42), {
-      timeout: 8000,
+      timeout: 5000,
     });
+    // Modal should close as soon as startVideoAnalysis resolves.
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
-  it("displays progress message during polling", async () => {
-    mockAnalyze.mockResolvedValue({
-      task_id: "t-1",
-      status: "pending",
-    });
-    mockGetTaskStatus.mockResolvedValue({
-      task_id: "t-1",
-      status: "processing",
-      progress: 30,
-      message: "Extraction transcript",
-    });
-    render(<NewConversationModal open onClose={vi.fn()} onSuccess={vi.fn()} />);
+  it("displays an error and keeps the modal open when startVideoAnalysis throws", async () => {
+    const onClose = vi.fn();
+    mockStartVideoAnalysis.mockRejectedValue(new Error("Network down"));
+
+    render(<NewConversationModal open onClose={onClose} onSuccess={vi.fn()} />);
     fireEvent.change(screen.getByPlaceholderText(/youtube|tiktok/i), {
       target: { value: "https://www.youtube.com/watch?v=abc12345678" },
     });
     fireEvent.click(screen.getByRole("button", { name: /analyser/i }));
-    await waitFor(
-      () =>
-        expect(screen.getByText(/extraction transcript/i)).toBeInTheDocument(),
-      { timeout: 5000 },
+
+    await waitFor(() =>
+      expect(screen.getByText(/network down/i)).toBeInTheDocument(),
     );
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
