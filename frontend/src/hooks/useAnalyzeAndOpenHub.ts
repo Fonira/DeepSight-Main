@@ -1,34 +1,36 @@
 /**
- * useAnalyzeAndOpenHub — hook réutilisable qui encapsule le démarrage d'une
- * analyse vidéo (`videoApi.analyze`) et **navigue immédiatement** vers le Hub.
+ * useAnalyzeAndOpenHub — hook réutilisable qui démarre une analyse vidéo via
+ * `BackgroundAnalysisContext` et navigue vers la conversation correspondante
+ * dès que l'analyse termine.
  *
  * Comportement :
- *   - Cache hit (le backend retourne déjà `summary_id`) → navigate `/hub?conv=<id>`.
- *   - Sinon → navigate `/hub?analyzing=<task_id>`. Le polling
- *     `videoApi.getTaskStatus(taskId)` est ensuite repris par `HubPage`, qui
- *     affiche un état "Analyse en cours" et bascule sur la conversation
- *     finale dès que `summary_id` est disponible.
- *
- * Avantage : feedback visuel **immédiat** (la home n'attend pas la fin de
- * l'analyse, l'utilisateur voit déjà le Hub avec le placeholder loading).
+ *   - L'analyse est immédiatement enregistrée dans le contexte d'arrière-plan
+ *     → le panneau bottom-right (`BackgroundAnalysisPanel`) prend le relais
+ *     pour afficher la progression sur toutes les pages.
+ *   - Cache hit (le backend retourne `summary_id` immédiatement) → navigate
+ *     `/hub?conv=<id>` aussitôt.
+ *   - Pas de cache hit → l'utilisateur reste sur la page courante. Quand le
+ *     polling termine, le hook reçoit le `onComplete` et navigate vers la
+ *     nouvelle conversation.
  *
  * Utilisé par :
  *   - `DashboardPageMinimal` (home minimale : input URL + Tournesol cards)
  *   - `ConversationsDrawer` (barre input directe dans le drawer Hub)
+ *   - `HubPage` (re-export comme `triggerAnalyze`)
  */
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { videoApi } from "../services/api";
+import { useBackgroundAnalysis } from "../contexts/BackgroundAnalysisContext";
 import { useTranslation } from "./useTranslation";
 
 export interface AnalyzeState {
-  /** True pendant l'appel `videoApi.analyze` (avant le navigate). */
+  /** True pendant le call `startVideoAnalysis` (avant que le panneau prenne le relais). */
   analyzing: boolean;
   error: string | null;
 }
 
 export interface UseAnalyzeAndOpenHubReturn extends AnalyzeState {
-  /** Lance l'analyse et navigue immédiatement vers `/hub`. */
+  /** Lance l'analyse en arrière-plan et navigue vers la conv quand terminée. */
   analyze: (url: string) => Promise<void>;
   /** Reset manuel de l'erreur (utile entre deux essais). */
   resetError: () => void;
@@ -37,6 +39,7 @@ export interface UseAnalyzeAndOpenHubReturn extends AnalyzeState {
 export const useAnalyzeAndOpenHub = (): UseAnalyzeAndOpenHubReturn => {
   const navigate = useNavigate();
   const { language } = useTranslation();
+  const { startVideoAnalysis } = useBackgroundAnalysis();
   const [state, setState] = useState<AnalyzeState>({
     analyzing: false,
     error: null,
@@ -63,26 +66,14 @@ export const useAnalyzeAndOpenHub = (): UseAnalyzeAndOpenHubReturn => {
       setState({ analyzing: true, error: null });
 
       try {
-        const resp = await videoApi.analyze(
-          trimmed,
-          "auto",
-          "standard",
-          undefined,
-          false,
-          language,
-        );
-        // Cache hit : l'analyse retourne déjà un `summary_id`. Navigate sur
-        // la conversation directement.
-        if (resp.result?.summary_id) {
-          setState({ analyzing: false, error: null });
-          navigate(`/hub?conv=${resp.result.summary_id}`);
-          return;
-        }
-        // Cas standard : on a un `task_id`. On navigue vers le Hub avec
-        // `?analyzing=<taskId>` ; HubPage prend le relais pour le polling et
-        // affiche le placeholder loading.
+        await startVideoAnalysis({
+          videoUrl: trimmed,
+          language: (language === "en" ? "en" : "fr") as "fr" | "en",
+          onComplete: (summaryId) => {
+            navigate(`/hub?conv=${summaryId}`);
+          },
+        });
         setState({ analyzing: false, error: null });
-        navigate(`/hub?analyzing=${resp.task_id}`);
       } catch (err) {
         setState({
           analyzing: false,
@@ -95,7 +86,7 @@ export const useAnalyzeAndOpenHub = (): UseAnalyzeAndOpenHubReturn => {
         });
       }
     },
-    [language, navigate],
+    [language, navigate, startVideoAnalysis],
   );
 
   return { ...state, analyze, resetError };
