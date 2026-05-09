@@ -569,7 +569,7 @@ async def _load_perspectives_safe(
         result = await db.execute(
             text(
                 "SELECT id, position, video_id, platform, video_title, "
-                "video_channel, thesis, arguments_json, relation_type, "
+                "video_channel, thesis, arguments, relation_type, "
                 "audience_level, channel_quality_score "
                 "FROM debate_perspectives "
                 "WHERE debate_id = :id "
@@ -594,7 +594,7 @@ async def _load_perspectives_safe(
                     "video_title": row[4],
                     "video_channel": row[5],
                     "thesis": row[6],
-                    "arguments_json": row[7],
+                    "arguments": row[7],
                     "relation_type": row[8],
                     "audience_level": row[9] if len(row) > 9 else "unknown",
                     "channel_quality_score": row[10] if len(row) > 10 else 0.0,
@@ -603,6 +603,13 @@ async def _load_perspectives_safe(
         return perspectives
     except Exception as exc:
         # Table absente, ou colonnes manquantes, ou autre erreur SQL — fallback v1.
+        # Rollback obligatoire pour libérer la transaction Postgres : sans ça,
+        # toute query DB ultérieure dans la même session lèverait
+        # `InFailedSQLTransactionError` (cf. incident voice/session 500 mai 2026).
+        try:
+            await db.rollback()
+        except Exception:  # noqa: BLE001 — best-effort
+            pass
         logger.info(
             "debate_context: perspectives table unavailable, fallback v1 (debate_id=%s, exc=%s)",
             debate_id,
@@ -646,7 +653,7 @@ def _build_perspective_from_v2(row: dict) -> PerspectiveCtx:
         video_channel=row.get("video_channel") or "",
         platform=row.get("platform") or "youtube",
         thesis=row.get("thesis") or "",
-        arguments=_safe_json_list(row.get("arguments_json")),
+        arguments=_safe_json_list(row.get("arguments")),
         transcript="",
         audience_level=row.get("audience_level") or "unknown",
         channel_quality_score=float(row.get("channel_quality_score") or 0.0),

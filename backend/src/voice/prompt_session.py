@@ -213,7 +213,7 @@ async def _fetch_total_analyses(*, db: AsyncSession, user_id: int) -> Optional[i
         )
         return int(result.scalar() or 0)
     except Exception as exc:  # noqa: BLE001 — section optionnelle
-        logger.warning("prompt_session.total_analyses failed: %s", exc)
+        logger.warning("prompt_session.total_analyses failed", error=str(exc))
         return None
 
 
@@ -230,7 +230,7 @@ async def _fetch_recent_summaries(
         )
         return list(result.scalars().all())
     except Exception as exc:  # noqa: BLE001 — section optionnelle
-        logger.warning("prompt_session.recent_summaries failed: %s", exc)
+        logger.warning("prompt_session.recent_summaries failed", error=str(exc))
         return []
 
 
@@ -258,7 +258,7 @@ async def _fetch_flashcards_due_today(
         count = int(result.scalar() or 0)
         return count if count > 0 else None
     except Exception as exc:  # noqa: BLE001 — section optionnelle
-        logger.warning("prompt_session.flashcards_due failed: %s", exc)
+        logger.warning("prompt_session.flashcards_due failed", error=str(exc))
         return None
 
 
@@ -277,7 +277,7 @@ async def _fetch_themes(*, db: AsyncSession, user_id: int) -> list[str]:
         themes = await extract_top3_themes(user_id=user_id, db=adapter, llm_client=None)
         return list(themes or [])[:3]
     except Exception as exc:  # noqa: BLE001 — section optionnelle
-        logger.warning("prompt_session.themes failed: %s", exc)
+        logger.warning("prompt_session.themes failed", error=str(exc))
         return []
 
 
