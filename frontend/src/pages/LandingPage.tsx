@@ -1463,6 +1463,12 @@ const LandingPage: React.FC = () => {
                 {language === "fr" ? "Mentions légales" : "Legal"}
               </a>
               <a
+                href="/trust"
+                className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
+              >
+                Trust Center
+              </a>
+              <a
                 href="/legal/cgu"
                 className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
               >

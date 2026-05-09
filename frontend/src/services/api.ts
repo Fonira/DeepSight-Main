@@ -554,7 +554,7 @@ interface RequestOptions {
   _retried?: boolean;
 }
 
-async function request<T>(
+export async function request<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {

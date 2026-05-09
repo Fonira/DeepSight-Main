@@ -264,6 +264,15 @@ except ImportError as e:
     CONTACT_AVAILABLE = False
     logger.warning(f"⚠️ Contact router not available: {e}")
 
+# 🛡️ DPO Contact router (GDPR data subject requests)
+try:
+    from contact.dpo_router import router as dpo_contact_router
+
+    DPO_CONTACT_AVAILABLE = True
+except ImportError as e:
+    DPO_CONTACT_AVAILABLE = False
+    logger.warning(f"⚠️ DPO contact router not available: {e}")
+
 # 🔗 Share router (public analysis sharing)
 try:
     from share.router import router as share_router
@@ -1159,6 +1168,11 @@ if MONITORING_AVAILABLE:
 if CONTACT_AVAILABLE:
     app.include_router(contact_router, prefix="/api", tags=["Contact"])
     logger.info("📬 Contact router loaded (POST /api/contact)")
+
+# 🛡️ DPO Contact router (RGPD)
+if DPO_CONTACT_AVAILABLE:
+    app.include_router(dpo_contact_router, prefix="/api", tags=["DPO Contact"])
+    logger.info("🛡️ DPO contact router loaded (POST /api/contact/dpo)")
 
 # 🔗 Share router (public analysis sharing)
 if SHARE_ROUTER_AVAILABLE:
