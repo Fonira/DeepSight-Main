@@ -49,7 +49,6 @@ from .schemas import (
     AddPerspectiveRequest,
     DebateChatMessageResponse,
     DebateChatRequest,
-    DebateChatResponse,
     DebateCreateRequest,
     DebateCreateResponse,
     DebateHistoryResponse,
@@ -1971,7 +1970,7 @@ async def generate_miro_board(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@router.post("/chat", response_model=DebateChatResponse)
+@router.post("/chat", response_model=DebateChatMessageResponse)
 async def debate_chat(
     request: DebateChatRequest,
     current_user: User = Depends(get_current_user),
@@ -2070,8 +2069,15 @@ async def debate_chat(
     db.add(user_msg)
     db.add(assistant_msg)
     await db.commit()
+    await db.refresh(assistant_msg)
 
-    return DebateChatResponse(response=response_text, sources=[])
+    return DebateChatMessageResponse(
+        id=assistant_msg.id,
+        debate_id=assistant_msg.debate_id,
+        role="assistant",
+        content=response_text,
+        created_at=assistant_msg.created_at or datetime.utcnow(),
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
