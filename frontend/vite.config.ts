@@ -38,9 +38,8 @@ export default defineConfig({
   },
 
   build: {
-    // Public source maps + non-mangled names for production debugging.
-    // TEMPORARY: revert once React #300 in voice/debate is resolved.
-    sourcemap: true,
+    // Source maps for Sentry — uploaded then deleted by the plugin
+    sourcemap: "hidden",
 
     // Taille minimale pour le code splitting
     chunkSizeWarningLimit: 500,
