@@ -661,9 +661,18 @@ export function useVoiceChat({
             return next;
           });
         }, 1000);
-      } catch {
+      } catch (err) {
+        // Surface the real cause — SDK import vs startSession() vs unknown.
+        // Without this the user only sees "SDK_LOAD_FAILED" and we lose all
+        // diagnostic signal (Sentry is disabled in prod).
+        // eslint-disable-next-line no-console
+        console.error("[useVoiceChat] startSession failed:", err);
         releaseMediaStream();
-        reportError(ERROR_MESSAGES.SDK_LOAD_FAILED);
+        const message =
+          err instanceof Error
+            ? `${ERROR_MESSAGES.SDK_LOAD_FAILED} (${err.name}: ${err.message})`
+            : ERROR_MESSAGES.SDK_LOAD_FAILED;
+        reportError(message);
       }
     } finally {
       isStartingRef.current = false;
