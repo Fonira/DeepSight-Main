@@ -859,6 +859,20 @@ async def analyze_video(
         if not video_id:
             raise HTTPException(status_code=400, detail={"code": "invalid_url", "message": "Invalid YouTube URL"})
 
+    # 🎯 Auto-promote mode based on plan
+    # Le frontend envoie `mode="standard"` par défaut quel que soit le plan. Pour
+    # aligner la profondeur d'analyse sur la promesse pricing (Expert = analyse
+    # exhaustive avec Cartographie Argumentative, Évaluation Épistémique, etc.),
+    # on auto-promote standard → expert pour les users plan=expert. Les users qui
+    # ont explicitement choisi `accessible` (mode léger) gardent leur choix.
+    # Le `mode` impacte la cache key globale donc une promote = nouvelle analyse
+    # générée avec le prompt expert (cohérent avec le plan).
+    if request.mode == "standard" and current_user.plan == "expert":
+        logger.info(
+            f"🎯 [AUTO-MODE] Promoting standard → expert for user {current_user.id} (plan=expert)"
+        )
+        request.mode = "expert"
+
     # Déterminer le modèle à utiliser
     plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
     model = request.model or plan_limits.get("default_model", "mistral-small-2603")
