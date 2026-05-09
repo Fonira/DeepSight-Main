@@ -3898,7 +3898,7 @@ async def _autogen_summary_extras(user_id: int, summary_id: int) -> None:
             summary = result.scalar_one_or_none()
             if summary is None:
                 logger.warning(
-                    "[AUTOGEN-EXTRAS] Summary %s not found for user %s — skip", summary_id, user_id
+                    f"[AUTOGEN-EXTRAS] Summary {summary_id} not found for user {user_id} — skip"
                 )
                 return
             if getattr(summary, "summary_extras", None):
@@ -3908,24 +3908,22 @@ async def _autogen_summary_extras(user_id: int, summary_id: int) -> None:
             extras = await generate_summary_extras(summary)
             if extras is None:
                 logger.warning(
-                    "[AUTOGEN-EXTRAS] Generation returned None for summary %s — best-effort skip",
-                    summary_id,
+                    f"[AUTOGEN-EXTRAS] Generation returned None for summary {summary_id} — best-effort skip"
                 )
                 return
 
             summary.summary_extras = extras
             await bg_session.commit()
+            synthesis = "yes" if extras.get("synthesis") else "no"
+            q = len(extras.get("key_quotes", []))
+            t = len(extras.get("key_takeaways", []))
+            th = len(extras.get("chapter_themes", []))
             logger.info(
-                "[AUTOGEN-EXTRAS] OK summary=%s (synthesis=%s, q=%d, t=%d, th=%d)",
-                summary_id,
-                "yes" if extras.get("synthesis") else "no",
-                len(extras.get("key_quotes", [])),
-                len(extras.get("key_takeaways", [])),
-                len(extras.get("chapter_themes", [])),
+                f"[AUTOGEN-EXTRAS] OK summary={summary_id} (synthesis={synthesis}, q={q}, t={t}, th={th})"
             )
     except Exception as exc:  # noqa: BLE001 — best-effort, on log et on quitte
         logger.warning(
-            "[AUTOGEN-EXTRAS] Unexpected error summary=%s: %s", summary_id, exc
+            f"[AUTOGEN-EXTRAS] Unexpected error summary={summary_id}: {exc}"
         )
 
 
