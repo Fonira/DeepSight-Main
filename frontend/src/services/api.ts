@@ -259,11 +259,26 @@ export interface TaskStatus {
   result?: {
     summary_id?: number;
     summary?: Summary;
+    // Flat fields returned by /api/videos/status/{task_id} for completed tasks
+    video_id?: string;
+    video_title?: string;
+    video_channel?: string;
+    thumbnail_url?: string;
+    word_count?: number;
+    category?: string;
+    reliability_score?: number;
+    mode?: string;
+    lang?: string;
+    platform?: string;
+    enrichment?: {
+      level?: string;
+      sources_count?: number;
+      badge?: string;
+    };
     // Screenshot redirect fields
     redirected_to_video?: boolean;
     new_task_id?: string;
     video_url?: string;
-    platform?: string;
     content_type?: "video" | "short" | "tiktok_slideshow" | string;
     search_query?: string;
   };
