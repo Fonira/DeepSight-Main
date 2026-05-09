@@ -78,11 +78,21 @@ export const DebateChat: React.FC<DebateChatProps> = ({
     setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
-      const response = await debateApi.sendChat({
+      const raw = (await debateApi.sendChat({
         debate_id: debateId,
         message: trimmed,
-      });
-      setMessages((prev) => [...prev, response]);
+      })) as DebateChatMessage & { response?: string };
+      const assistantMsg: DebateChatMessage =
+        raw.content !== undefined
+          ? raw
+          : {
+              id: Date.now() + 1,
+              debate_id: debateId,
+              role: "assistant",
+              content: raw.response ?? "",
+              created_at: new Date().toISOString(),
+            };
+      setMessages((prev) => [...prev, assistantMsg]);
     } catch {
       setError("Erreur lors de l'envoi. Cliquez pour réessayer.");
     } finally {
