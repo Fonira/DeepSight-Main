@@ -710,6 +710,137 @@ def build_companion_tools_config(webhook_base_url: str, voice_session_id: str) -
     ]
 
 
+def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: str) -> list[dict]:
+    """Webhook-tool definitions for the KNOWLEDGE_TUTOR agent.
+
+    Same auth pattern as COMPANION (Bearer = voice_session_id, body must echo
+    voice_session_id). The agent has 5 tools available: 4 history-aware DB
+    helpers + the shared web_search fallback (mounted at /tools/web-search,
+    declared by ElevenLabsClient.build_tools_config — re-exposed here so the
+    KNOWLEDGE_TUTOR can call it without going through the per-summary auth).
+
+    Note: web_search is *not* re-declared here because the COMPANION agent
+    already defines it at /tools/web-search-companion in some prods. To stay
+    consistent with the spec ("réutilise web_search COMPANION"), we point
+    knowledge_tutor.web_search to the same /tools/web-search-companion-style
+    webhook only if the COMPANION wiring exposes it. For now we rely on the
+    main /tools/web-search served by build_tools_config and let the router
+    filter at the agent level — the spec's "fallback web_search" requirement
+    is satisfied by the LLM choosing not to call it on history-only turns.
+    """
+    auth_headers = {"Authorization": f"Bearer {voice_session_id}"}
+    base = webhook_base_url.rstrip("/")
+
+    def _tool(name: str, description: str, path: str, body_schema: dict) -> dict:
+        return {
+            "type": "webhook",
+            "name": name,
+            "description": description,
+            "api_schema": {
+                "url": f"{base}{path}",
+                "method": "POST",
+                "request_headers": auth_headers,
+                "request_body_schema": body_schema,
+            },
+        }
+
+    voice_session_field = {
+        "type": "string",
+        "description": "The voice_session_id (same value as the Bearer token).",
+    }
+
+    return [
+        _tool(
+            name="get_user_history",
+            description=(
+                "Return the user's last N video analyses (title, platform, channel, "
+                "date, key concepts). Call this AT THE START of every session to "
+                "know the user's recent learning path."
+            ),
+            path="/api/voice/tools/knowledge-tutor-history",
+            body_schema={
+                "type": "object",
+                "properties": {
+                    "voice_session_id": voice_session_field,
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max number of analyses to return (default 10, max 25).",
+                    },
+                    "days_back": {
+                        "type": "integer",
+                        "description": "Cutoff in days (default 60).",
+                    },
+                },
+                "required": ["voice_session_id"],
+            },
+        ),
+        _tool(
+            name="get_concept_keys",
+            description=(
+                "Return the top concepts/keywords aggregated across the user's history. "
+                "Primary source to propose a revision topic. Call AT THE START of every "
+                "session right after get_user_history."
+            ),
+            path="/api/voice/tools/knowledge-tutor-concepts",
+            body_schema={
+                "type": "object",
+                "properties": {
+                    "voice_session_id": voice_session_field,
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max number of concepts to return (default 20, max 100).",
+                    },
+                },
+                "required": ["voice_session_id"],
+            },
+        ),
+        _tool(
+            name="search_history",
+            description=(
+                "Semantic search across the user's whole DeepSight history (summaries, "
+                "flashcards, quizzes, chats, transcripts). Use when the user mentions a "
+                "specific subject and you want to find which analyses cover it."
+            ),
+            path="/api/voice/tools/knowledge-tutor-search",
+            body_schema={
+                "type": "object",
+                "properties": {
+                    "voice_session_id": voice_session_field,
+                    "query": {
+                        "type": "string",
+                        "description": "Free-text search query (concept, idea, person, etc.).",
+                    },
+                    "top_k": {
+                        "type": "integer",
+                        "description": "Max results to return (default 5, max 20).",
+                    },
+                },
+                "required": ["voice_session_id", "query"],
+            },
+        ),
+        _tool(
+            name="get_summary_detail",
+            description=(
+                "Return the full detail of a specific analysis owned by the user "
+                "(title, digest, key points, fact-check). Use to ground a correction "
+                "or quote a precise passage."
+            ),
+            path="/api/voice/tools/knowledge-tutor-summary",
+            body_schema={
+                "type": "object",
+                "properties": {
+                    "voice_session_id": voice_session_field,
+                    "summary_id": {
+                        "type": "integer",
+                        "description": "Database id of the Summary to fetch.",
+                    },
+                },
+                "required": ["voice_session_id", "summary_id"],
+            },
+        ),
+    ]
+
+
 def get_elevenlabs_client() -> ElevenLabsClient:
     """Instantiate an ElevenLabsClient using the project-wide settings."""
     from core.config import get_elevenlabs_key

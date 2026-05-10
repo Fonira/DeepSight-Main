@@ -12,6 +12,10 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+from voice.knowledge_tutor_prompts import (
+    KNOWLEDGE_TUTOR_PROMPT_EN,
+    KNOWLEDGE_TUTOR_PROMPT_FR,
+)
 from voice.streaming_prompts import (
     EXPLORER_STREAMING_PROMPT_FR,
     EXPLORER_STREAMING_PROMPT_EN,
@@ -659,6 +663,51 @@ EXPLORER_STREAMING = AgentConfig(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Agent: KNOWLEDGE_TUTOR (global-history revision tutor — Tuteur 2026-05-10)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Standalone voice agent (NOT a fork of TUTOR which is bound to one video).
+# This one reasons on the user's *whole* analysis history: top concepts, last
+# N analyses, semantic search across summaries/flashcards/transcripts.
+#
+# requires_summary=False because the agent is launched from the sidebar or a
+# popup button without a "current video" context. plan_minimum="pro" mirrors
+# COMPANION (companion_dialogue feature flag).
+#
+# See spec docs/superpowers/specs/2026-05-10-tuteur-refactor.md (Axe C).
+
+KNOWLEDGE_TUTOR = AgentConfig(
+    agent_type="knowledge_tutor",
+    display_name="Knowledge Tutor",
+    display_name_fr="Tuteur",
+    description="Reviews concepts and key ideas across your watched videos",
+    description_fr="Révise concepts et idées clés vus dans tes analyses",
+    system_prompt_fr=KNOWLEDGE_TUTOR_PROMPT_FR,
+    system_prompt_en=KNOWLEDGE_TUTOR_PROMPT_EN,
+    tools=[
+        "get_user_history",
+        "get_concept_keys",
+        "search_history",
+        "get_summary_detail",
+        "web_search",
+    ],
+    voice_style="warm",
+    temperature=0.65,
+    max_session_minutes=15,
+    requires_summary=False,
+    first_message_fr=(
+        "Bonjour. Je suis le Tuteur — je connais les analyses que vous avez "
+        "consultées. Sur quoi voulez-vous revenir aujourd'hui ?"
+    ),
+    first_message=(
+        "Hello. I'm the Tutor — I know the analyses you've reviewed. What "
+        "would you like to revisit today?"
+    ),
+    plan_minimum="pro",
+)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # REGISTRY — All available agent types
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -670,6 +719,7 @@ AGENT_REGISTRY: dict[str, AgentConfig] = {
     "onboarding": ONBOARDING,
     "companion": COMPANION,
     "explorer_streaming": EXPLORER_STREAMING,
+    "knowledge_tutor": KNOWLEDGE_TUTOR,
 }
 
 DEFAULT_AGENT_TYPE = "explorer"

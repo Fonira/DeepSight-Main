@@ -1815,6 +1815,13 @@ async def create_voice_session(
                 webhook_base_url=webhook_base_url,
                 voice_session_id=voice_session.id,
             )
+        elif agent_config.agent_type == "knowledge_tutor":
+            from voice.elevenlabs import build_knowledge_tutor_tools_config
+
+            tools_config = build_knowledge_tutor_tools_config(
+                webhook_base_url=webhook_base_url,
+                voice_session_id=voice_session.id,
+            )
         else:
             # Use the same effective_summary_id logic as for the unified context
             # block: streaming sessions auto-create a placeholder Summary (cf
@@ -3279,6 +3286,107 @@ async def companion_pending_transfer(
         logger.warning("companion pending transfer cleanup failed: %s", exc)
 
     return payload
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POST /tools/knowledge-tutor-* — KNOWLEDGE_TUTOR agent tools
+# (public, bearer=voice_session_id, calque le pattern COMPANION)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+async def _load_voice_session_user(voice_session: VoiceSession, db: AsyncSession) -> Optional[User]:
+    """Load the User row owning the given voice session (or None)."""
+    result = await db.execute(select(User).where(User.id == voice_session.user_id))
+    return result.scalar_one_or_none()
+
+
+@router.post("/tools/knowledge-tutor-history")
+async def tool_knowledge_tutor_history(request: Request, db: AsyncSession = Depends(get_session)):
+    """KNOWLEDGE_TUTOR webhook: last N analyses owned by the user."""
+    from voice.knowledge_tutor_tools import get_user_history
+
+    voice_session, body = await verify_companion_tool_request(request, db)
+    user = await _load_voice_session_user(voice_session, db)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "user_not_found", "message": "User not found."},
+        )
+
+    params = body.get("parameters") or {}
+    limit = body.get("limit") or params.get("limit", 10)
+    days_back = body.get("days_back") or params.get("days_back", 60)
+
+    items = await get_user_history(
+        user=user,
+        db=db,
+        limit=int(limit),
+        days_back=int(days_back),
+    )
+    return {"result": items}
+
+
+@router.post("/tools/knowledge-tutor-concepts")
+async def tool_knowledge_tutor_concepts(request: Request, db: AsyncSession = Depends(get_session)):
+    """KNOWLEDGE_TUTOR webhook: top concepts/keywords across history."""
+    from voice.knowledge_tutor_tools import get_concept_keys
+
+    voice_session, body = await verify_companion_tool_request(request, db)
+    user = await _load_voice_session_user(voice_session, db)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "user_not_found", "message": "User not found."},
+        )
+
+    params = body.get("parameters") or {}
+    limit = body.get("limit") or params.get("limit", 20)
+
+    items = await get_concept_keys(user=user, db=db, limit=int(limit))
+    return {"result": items}
+
+
+@router.post("/tools/knowledge-tutor-search")
+async def tool_knowledge_tutor_search(request: Request, db: AsyncSession = Depends(get_session)):
+    """KNOWLEDGE_TUTOR webhook: semantic search (V1) over the user's history."""
+    from voice.knowledge_tutor_tools import search_history
+
+    voice_session, body = await verify_companion_tool_request(request, db)
+    user = await _load_voice_session_user(voice_session, db)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "user_not_found", "message": "User not found."},
+        )
+
+    params = body.get("parameters") or {}
+    query = body.get("query") or params.get("query", "")
+    top_k = body.get("top_k") or params.get("top_k", 5)
+
+    items = await search_history(user=user, query=str(query), top_k=int(top_k))
+    return {"result": items}
+
+
+@router.post("/tools/knowledge-tutor-summary")
+async def tool_knowledge_tutor_summary(request: Request, db: AsyncSession = Depends(get_session)):
+    """KNOWLEDGE_TUTOR webhook: full detail of a specific summary owned by the user."""
+    from voice.knowledge_tutor_tools import get_summary_detail
+
+    voice_session, body = await verify_companion_tool_request(request, db)
+    user = await _load_voice_session_user(voice_session, db)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "user_not_found", "message": "User not found."},
+        )
+
+    params = body.get("parameters") or {}
+    summary_id = body.get("summary_id") or params.get("summary_id")
+    if summary_id is None:
+        return {"result": {"error": "missing_summary_id"}}
+
+    detail = await get_summary_detail(user=user, db=db, summary_id=summary_id)
+    return {"result": detail}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
