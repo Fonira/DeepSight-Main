@@ -680,7 +680,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       />
                     ) : avatarStatus === "generating" ? (
                       <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white/80 rounded-full animate-spin" />
+                        <DeepSightSpinner size={20} speed="fast" />
                       </div>
                     ) : (
                       <span className="text-xs font-semibold text-text-secondary uppercase">

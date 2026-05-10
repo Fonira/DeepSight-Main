@@ -13,6 +13,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { DeepSightSpinner } from "./ui/DeepSightSpinner";
 
 interface AudioSummaryPlayerProps {
   audioUrl: string;
@@ -206,7 +207,7 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-indigo-500 hover:bg-indigo-400 disabled:bg-white/10 transition-colors"
               >
                 {isLoading ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <DeepSightSpinner size={16} speed="fast" onLight />
                 ) : isPlaying ? (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
                     <rect x="6" y="4" width="4" height="16" />

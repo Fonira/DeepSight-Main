@@ -9,6 +9,7 @@
 import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Mic, Sparkles, Lock } from "lucide-react";
+import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -125,7 +126,7 @@ export const DebateVoiceHero: React.FC<DebateVoiceHeroProps> = ({
                 />
               ) : avatarStatus === "generating" ? (
                 <div className="w-full h-full flex items-center justify-center bg-[#0b0b14]/60">
-                  <div className="w-7 h-7 border-2 border-white/30 border-t-indigo-400 rounded-full animate-spin" />
+                  <DeepSightSpinner size={40} speed="normal" />
                 </div>
               ) : (
                 <span className="text-2xl font-bold text-text-primary uppercase">
