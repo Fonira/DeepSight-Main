@@ -1,8 +1,13 @@
 // frontend/src/types/tutor.ts
 
-export type TutorMode = "text" | "voice";
+/**
+ * Mode du Tuteur web. Voice supprimé en mai 2026 (popup text-only).
+ * Le type est conservé pour compat backend (qui accepte encore "voice"
+ * mais le code voice popup est retiré du frontend).
+ */
+export type TutorMode = "text";
 export type TutorLang = "fr" | "en";
-export type TutorPhase = "idle" | "prompting" | "mini-chat" | "deep-session";
+export type TutorPhase = "idle" | "prompting" | "mini-chat";
 
 export interface TutorTurn {
   role: "user" | "assistant";

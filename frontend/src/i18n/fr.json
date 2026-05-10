@@ -180,27 +180,19 @@
     },
     "prompting": {
       "ask": "On en parle ?",
-      "mode_text": "Texte",
-      "mode_text_duration": "30s",
-      "mode_voice": "Voix",
-      "mode_voice_duration": "5min",
+      "start": "Discuter",
+      "start_duration": "30s",
       "back": "Annuler"
     },
     "mini_chat": {
       "input_placeholder": "Tapez votre réponse...",
-      "deepen": "Approfondir",
-      "close": "Fermer"
-    },
-    "deep_session": {
-      "pause": "Pause",
-      "switch_to_text": "Texte",
-      "end": "Fin",
-      "source_link": "Voir l'analyse source"
+      "close": "Fermer",
+      "minimize": "Réduire",
+      "expand": "Agrandir"
     },
     "errors": {
       "session_failed": "Session impossible — réessayez",
-      "plan_required": "Disponible avec Pro ou Expert",
-      "voice_unavailable": "Voix indisponible — utilisez le mode texte"
+      "plan_required": "Disponible avec Pro ou Expert"
     }
   },
   "onboarding": {
