@@ -87,17 +87,4 @@ describe("useTutor", () => {
     expect(result.current.phase).toBe("idle");
     expect(result.current.sessionId).toBeNull();
   });
-
-  it("transitions mini-chat → deep-session on deepen()", async () => {
-    const { result } = renderHook(() => useTutor());
-    await act(async () => {
-      await result.current.startSession({
-        concept_term: "X",
-        concept_def: "Y",
-        mode: "text",
-      });
-    });
-    act(() => result.current.deepen());
-    expect(result.current.phase).toBe("deep-session");
-  });
 });

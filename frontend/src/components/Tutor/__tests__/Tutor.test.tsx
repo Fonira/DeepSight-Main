@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Tutor } from "../Tutor";
 
@@ -57,27 +57,19 @@ vi.mock("../../../hooks/useTranslation", () => ({
         idle: { hint: "Cliquez pour dialoguer" },
         prompting: {
           ask: "On en parle ?",
-          mode_text: "Texte",
-          mode_text_duration: "30s",
-          mode_voice: "Voix",
-          mode_voice_duration: "5min",
+          start: "Discuter",
+          start_duration: "30s",
           back: "Annuler",
         },
         mini_chat: {
           input_placeholder: "Tapez votre réponse...",
-          deepen: "Approfondir",
           close: "Fermer",
-        },
-        deep_session: {
-          pause: "Pause",
-          switch_to_text: "Texte",
-          end: "Fin",
-          source_link: "Voir l'analyse source",
+          minimize: "Réduire",
+          expand: "Agrandir",
         },
         errors: {
           session_failed: "Session impossible — réessayez",
           plan_required: "Disponible avec Pro ou Expert",
-          voice_unavailable: "Voix indisponible",
         },
       },
     },
@@ -88,6 +80,10 @@ vi.mock("../../../hooks/useTranslation", () => ({
 const renderTutor = () => render(<Tutor />);
 
 describe("Tutor (composant racine)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it("renders idle state by default", () => {
     renderTutor();
     expect(screen.getByLabelText(/Ouvrir le Tuteur/i)).toBeInTheDocument();
@@ -99,14 +95,20 @@ describe("Tutor (composant racine)", () => {
     expect(screen.getByText(/On en parle/i)).toBeInTheDocument();
   });
 
-  it("transitions to mini-chat on text mode", async () => {
+  it("transitions to mini-chat when starting (text only)", async () => {
     renderTutor();
     fireEvent.click(screen.getByLabelText(/Ouvrir le Tuteur/i));
-    fireEvent.click(screen.getByText("Texte"));
+    fireEvent.click(screen.getByText("Discuter"));
     await waitFor(() => {
       expect(
         screen.getByText("Comment l'expliqueriez-vous ?"),
       ).toBeInTheDocument();
     });
+  });
+
+  it("voice mode button is removed (text-only popup)", () => {
+    renderTutor();
+    fireEvent.click(screen.getByLabelText(/Ouvrir le Tuteur/i));
+    expect(screen.queryByText(/^Voix$/i)).not.toBeInTheDocument();
   });
 });

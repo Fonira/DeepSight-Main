@@ -4,7 +4,6 @@ import { useReducer, useCallback } from "react";
 import { tutorApi } from "../../services/api";
 import type {
   TutorPhase,
-  TutorMode,
   TutorLang,
   TutorTurn,
 } from "../../types/tutor";
@@ -17,17 +16,15 @@ interface TutorState {
   conceptDef: string | null;
   summaryId: number | null;
   sourceVideoTitle: string | null;
-  mode: TutorMode;
   lang: TutorLang;
   loading: boolean;
   error: string | null;
-  currentAudioUrl: string | null;
 }
 
 type Action =
   | { type: "OPEN_PROMPTING" }
   | { type: "CANCEL_PROMPTING" }
-  | { type: "SESSION_STARTING"; mode: TutorMode; lang: TutorLang }
+  | { type: "SESSION_STARTING"; lang: TutorLang }
   | {
       type: "SESSION_STARTED";
       session_id: string;
@@ -36,11 +33,9 @@ type Action =
       concept_def: string;
       summary_id: number | null;
       source_video_title: string | null;
-      audio_url: string | null;
     }
   | { type: "TURN_PENDING"; user_input: string }
-  | { type: "TURN_DONE"; ai_response: string; audio_url: string | null }
-  | { type: "DEEPEN" }
+  | { type: "TURN_DONE"; ai_response: string }
   | { type: "SESSION_ENDED" }
   | { type: "ERROR"; message: string };
 
@@ -52,11 +47,9 @@ const initialState: TutorState = {
   conceptDef: null,
   summaryId: null,
   sourceVideoTitle: null,
-  mode: "text",
   lang: "fr",
   loading: false,
   error: null,
-  currentAudioUrl: null,
 };
 
 function reducer(state: TutorState, action: Action): TutorState {
@@ -68,7 +61,6 @@ function reducer(state: TutorState, action: Action): TutorState {
     case "SESSION_STARTING":
       return {
         ...state,
-        mode: action.mode,
         lang: action.lang,
         loading: true,
         error: null,
@@ -76,13 +68,12 @@ function reducer(state: TutorState, action: Action): TutorState {
     case "SESSION_STARTED":
       return {
         ...state,
-        phase: state.mode === "voice" ? "deep-session" : "mini-chat",
+        phase: "mini-chat",
         sessionId: action.session_id,
         conceptTerm: action.concept_term,
         conceptDef: action.concept_def,
         summaryId: action.summary_id,
         sourceVideoTitle: action.source_video_title,
-        currentAudioUrl: action.audio_url,
         messages: [
           {
             role: "assistant",
@@ -116,11 +107,8 @@ function reducer(state: TutorState, action: Action): TutorState {
             timestamp_ms: Date.now(),
           },
         ],
-        currentAudioUrl: action.audio_url,
         loading: false,
       };
-    case "DEEPEN":
-      return { ...state, phase: "deep-session" };
     case "SESSION_ENDED":
       return initialState;
     case "ERROR":
@@ -135,7 +123,7 @@ interface StartSessionParams {
   concept_def: string;
   summary_id?: number;
   source_video_title?: string;
-  mode: TutorMode;
+  mode: "text";
   lang?: TutorLang;
 }
 
@@ -153,14 +141,14 @@ export function useTutor() {
 
   const startSession = useCallback(async (params: StartSessionParams) => {
     const lang = params.lang ?? "fr";
-    dispatch({ type: "SESSION_STARTING", mode: params.mode, lang });
+    dispatch({ type: "SESSION_STARTING", lang });
     try {
       const resp = await tutorApi.sessionStart({
         concept_term: params.concept_term,
         concept_def: params.concept_def,
         summary_id: params.summary_id,
         source_video_title: params.source_video_title,
-        mode: params.mode,
+        mode: "text",
         lang,
       });
       dispatch({
@@ -171,7 +159,6 @@ export function useTutor() {
         concept_def: params.concept_def,
         summary_id: params.summary_id ?? null,
         source_video_title: params.source_video_title ?? null,
-        audio_url: resp.audio_url,
       });
     } catch (err) {
       dispatch({ type: "ERROR", message: (err as Error).message });
@@ -189,7 +176,6 @@ export function useTutor() {
         dispatch({
           type: "TURN_DONE",
           ai_response: resp.ai_response,
-          audio_url: resp.audio_url,
         });
       } catch (err) {
         dispatch({ type: "ERROR", message: (err as Error).message });
@@ -197,8 +183,6 @@ export function useTutor() {
     },
     [state.sessionId],
   );
-
-  const deepen = useCallback(() => dispatch({ type: "DEEPEN" }), []);
 
   const endSession = useCallback(async () => {
     if (state.sessionId) {
@@ -218,7 +202,6 @@ export function useTutor() {
     cancelPrompting,
     startSession,
     submitTextTurn,
-    deepen,
     endSession,
   };
 }

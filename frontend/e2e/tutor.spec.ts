@@ -108,15 +108,15 @@ function tutorWidget(page: Page) {
 }
 
 /**
- * Localise le bouton "Texte 30s" / "Text 30s" dans l'état prompting.
+ * Localise le bouton "Discuter" / "Discuss" dans l'état prompting.
  *
- * TODO: confirmer le wording exact côté Phase 4. Spec parle de
- * "Texte ~30s" / "Voix ~5min". Best guess : un button avec "Texte" en début.
+ * Refonte mai 2026 : popup text-only. Le bouton "Voix" a été retiré.
+ * Le bouton restant est "Discuter" (FR) / "Discuss" (EN).
  */
 function textModeButton(page: Page) {
   return page
-    .getByRole("button", { name: /^texte/i })
-    .or(page.getByRole("button", { name: /^text/i }))
+    .getByRole("button", { name: /^discuter/i })
+    .or(page.getByRole("button", { name: /^discuss/i }))
     .first();
 }
 

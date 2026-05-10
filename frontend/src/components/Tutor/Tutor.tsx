@@ -7,8 +7,6 @@ import { useTutor } from "./useTutor";
 import { TutorIdle } from "./TutorIdle";
 import { TutorPrompting } from "./TutorPrompting";
 import { TutorMiniChat } from "./TutorMiniChat";
-import { TutorDeepSession } from "./TutorDeepSession";
-import type { TutorMode } from "../../types/tutor";
 
 export const Tutor: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -18,13 +16,13 @@ export const Tutor: React.FC = () => {
 
   if (!isAuthenticated || !currentWord) return null;
 
-  const handleMode = (mode: TutorMode) => {
+  const handleStart = () => {
     tutor.startSession({
       concept_term: currentWord.term,
       concept_def: currentWord.definition,
       summary_id: currentWord.summaryId,
       source_video_title: currentWord.videoTitle,
-      mode,
+      mode: "text",
       lang: language === "fr" ? "fr" : "en",
     });
   };
@@ -37,7 +35,7 @@ export const Tutor: React.FC = () => {
       {tutor.phase === "prompting" && (
         <TutorPrompting
           key="prompting"
-          onMode={handleMode}
+          onStart={handleStart}
           onCancel={tutor.cancelPrompting}
         />
       )}
@@ -48,22 +46,6 @@ export const Tutor: React.FC = () => {
           messages={tutor.messages}
           loading={tutor.loading}
           onSubmit={tutor.submitTextTurn}
-          onDeepen={tutor.deepen}
-          onClose={tutor.endSession}
-        />
-      )}
-      {tutor.phase === "deep-session" && tutor.conceptTerm && (
-        <TutorDeepSession
-          key="deep-session"
-          conceptTerm={tutor.conceptTerm}
-          messages={tutor.messages}
-          loading={tutor.loading}
-          mode={tutor.mode}
-          audioUrl={tutor.currentAudioUrl}
-          onSubmit={tutor.submitTextTurn}
-          onSwitchToText={() => {
-            /* géré localement dans TutorDeepSession */
-          }}
           onClose={tutor.endSession}
         />
       )}

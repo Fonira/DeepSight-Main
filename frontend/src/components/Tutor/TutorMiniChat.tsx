@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, Send, Maximize2 } from "lucide-react";
+import { X, Send } from "lucide-react";
 import { useTranslation } from "../../hooks/useTranslation";
 import type { TutorTurn } from "../../types/tutor";
 
@@ -9,7 +9,6 @@ interface TutorMiniChatProps {
   messages: TutorTurn[];
   loading: boolean;
   onSubmit: (input: string) => void;
-  onDeepen: () => void;
   onClose: () => void;
 }
 
@@ -18,7 +17,6 @@ export const TutorMiniChat: React.FC<TutorMiniChatProps> = ({
   messages,
   loading,
   onSubmit,
-  onDeepen,
   onClose,
 }) => {
   const { t } = useTranslation();
@@ -52,7 +50,7 @@ export const TutorMiniChat: React.FC<TutorMiniChatProps> = ({
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.25 }}
-      className="fixed top-3 right-3 z-40 w-[280px] h-[400px] rounded-2xl border border-accent-primary/30 bg-bg-secondary/98 backdrop-blur-xl shadow-2xl shadow-black/50 flex flex-col"
+      className="z-40 w-[280px] h-[400px] rounded-2xl border border-accent-primary/30 bg-bg-secondary/98 backdrop-blur-xl shadow-2xl shadow-black/50 flex flex-col"
       role="dialog"
       aria-label={tt.title}
     >
@@ -61,14 +59,6 @@ export const TutorMiniChat: React.FC<TutorMiniChatProps> = ({
           {conceptTerm}
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={onDeepen}
-            className="text-text-tertiary hover:text-accent-primary p-1 transition-colors"
-            aria-label={tt.mini_chat.deepen}
-            title={tt.mini_chat.deepen}
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-          </button>
           <button
             onClick={onClose}
             className="text-text-tertiary hover:text-red-400 p-1 transition-colors"
