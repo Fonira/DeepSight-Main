@@ -12,6 +12,7 @@
 import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { AudioSummaryPlayer } from "./AudioSummaryPlayer";
+import { DeepSightSpinner } from "./ui/DeepSightSpinner";
 import api from "../services/api";
 
 interface AudioSummaryButtonProps {
@@ -85,7 +86,7 @@ export const AudioSummaryButton: React.FC<AudioSummaryButtonProps> = ({
       >
         {isLoading ? (
           <>
-            <div className="w-4 h-4 border-2 border-indigo-300/30 border-t-indigo-300 rounded-full animate-spin" />
+            <DeepSightSpinner size={16} speed="fast" />
             {!compact && <span className="text-sm">Génération...</span>}
           </>
         ) : audioData ? (

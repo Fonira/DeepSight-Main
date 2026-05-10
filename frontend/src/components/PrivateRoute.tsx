@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { DeepSightSpinner } from "./ui/DeepSightSpinner";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -13,7 +14,7 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
     return (
       <div className="h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-yellow-500/20 border-t-yellow-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <DeepSightSpinner size={48} speed="normal" className="mx-auto mb-4" />
           <p className="text-text-secondary">Loading...</p>
         </div>
       </div>
