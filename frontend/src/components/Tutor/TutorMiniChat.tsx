@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Minus, X, Send } from "lucide-react";
+import { Minus, X, Send, Mic } from "lucide-react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTranslation } from "../../hooks/useTranslation";
 import { DraggableTutorWindow } from "./DraggableTutorWindow";
@@ -14,6 +14,16 @@ interface TutorMiniChatProps {
   onSubmit: (input: string) => void;
   onMinimize: () => void;
   onClose: () => void;
+  /**
+   * Optional callback to launch the Voice Tutor modal with the current
+   * concept as a primer. When undefined, the voice button is hidden.
+   */
+  onOpenVoiceTutor?: () => void;
+  /**
+   * Whether the user can access voice features (voiceChatEnabled OR admin).
+   * Falsy → hide the voice button. Spec D: gate behind voiceChatEnabled.
+   */
+  voiceTutorEnabled?: boolean;
 }
 
 const stopPropagation = (e: React.PointerEvent | React.MouseEvent) => {
@@ -27,6 +37,8 @@ export const TutorMiniChat: React.FC<TutorMiniChatProps> = ({
   onSubmit,
   onMinimize,
   onClose,
+  onOpenVoiceTutor,
+  voiceTutorEnabled = false,
 }) => {
   const { language } = useLanguage();
   const { t } = useTranslation();
@@ -36,6 +48,8 @@ export const TutorMiniChat: React.FC<TutorMiniChatProps> = ({
   const tt = t.tutor;
   const minimizeLabel =
     tt.mini_chat.minimize ?? (language === "fr" ? "Réduire" : "Minimize");
+  const voiceTutorLabel =
+    language === "fr" ? "Tuteur Vocal" : "Voice Tutor";
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -75,6 +89,18 @@ export const TutorMiniChat: React.FC<TutorMiniChatProps> = ({
             {conceptTerm}
           </div>
           <div className="flex items-center gap-1">
+            {onOpenVoiceTutor && voiceTutorEnabled && (
+              <button
+                type="button"
+                onPointerDown={stopPropagation}
+                onClick={onOpenVoiceTutor}
+                className="text-accent-primary hover:text-accent-primary-hover p-1 transition-colors"
+                aria-label={voiceTutorLabel}
+                title={voiceTutorLabel}
+              >
+                <Mic className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               type="button"
               onPointerDown={stopPropagation}

@@ -27,6 +27,7 @@ import {
   GraduationCap,
   LayoutGrid,
   Menu,
+  Mic,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
@@ -37,8 +38,10 @@ import {
   getMinPlanForFeature,
   PLANS_INFO,
   PLAN_HIERARCHY,
+  PLAN_LIMITS,
 } from "../../config/planPrivileges";
 import type { PlanId } from "../../config/planPrivileges";
+import { VoiceTutorModal } from "../voice/VoiceTutorModal";
 
 // === Logo ===
 const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({
@@ -173,6 +176,63 @@ const NavItem: React.FC<NavItemProps> = ({
         </>
       )}
     </NavLink>
+  );
+};
+
+// === Sidebar Action Item (button, not link) ===
+// Same visual language as NavItem but for actions (e.g. opens a modal).
+// Reused by the "Tuteur Vocal" sidebar entry which launches a voice modal
+// instead of navigating to a route. The Sidebar test suite forbids legacy
+// /chat or /voice-call NavLinks so we must use a button here.
+interface SidebarActionItemProps {
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void;
+  collapsed?: boolean;
+  badge?: string;
+  badgeClassName?: string;
+}
+
+const SidebarActionItem: React.FC<SidebarActionItemProps> = ({
+  icon: Icon,
+  label,
+  onClick,
+  collapsed,
+  badge,
+  badgeClassName,
+}) => {
+  const baseClasses =
+    "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md transition-all text-[0.8125rem] font-medium relative text-text-secondary hover:text-text-primary hover:bg-bg-hover";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={baseClasses}
+      title={collapsed ? label : undefined}
+    >
+      <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.div
+            initial={{ opacity: 0, width: 0 }}
+            animate={{ opacity: 1, width: "auto" }}
+            exit={{ opacity: 0, width: 0 }}
+            transition={{ duration: 0.15 }}
+            className="flex items-center flex-1 min-w-0 gap-2"
+          >
+            <span className="flex-1 truncate text-left">{label}</span>
+            {badge && (
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[0.625rem] font-medium ${badgeClassName || "bg-accent-secondary-muted text-accent-secondary"}`}
+              >
+                {badge}
+              </span>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </button>
   );
 };
 
@@ -334,6 +394,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onMobileCloseProp?.();
   };
 
+  // Voice Tutor modal — knowledge_tutor agent (sidebar global entry).
+  const [voiceTutorOpen, setVoiceTutorOpen] = useState(false);
+
   const userPlan = normalizePlanId(user?.plan);
 
   // Badges dynamiques — getMinPlanForFeature comme source unique de vérité
@@ -345,6 +408,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const minPlanPlaylists = getMinPlanForFeature("playlistsEnabled");
   const minPlanStudy = getMinPlanForFeature("flashcardsEnabled");
   const minPlanHub: PlanId = "pro"; // Hub (chat + voix) bloque les free users
+  const minPlanVoiceTutor: PlanId = getMinPlanForFeature("voiceChatEnabled"); // Tuteur Vocal — Pro+
   const getBadge = (minPlan: PlanId) => {
     const userIdx = PLAN_HIERARCHY.indexOf(userPlan);
     const minIdx = PLAN_HIERARCHY.indexOf(minPlan);
@@ -357,6 +421,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const ADMIN_EMAIL = "maximeleparc3@gmail.com";
   const isUserAdmin =
     user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  // Voice Tutor — gated voiceChatEnabled (Pro+). Admin bypass.
+  const voiceTutorAllowed =
+    isUserAdmin || (PLAN_LIMITS[userPlan]?.voiceChatEnabled ?? false);
 
   // Hub Workspaces — gated Expert (cohérent avec ConversationsDrawer).
   // Admin bypass : voir l'item même hors plan Expert pour debug/preview.
@@ -489,6 +557,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 collapsed={collapsed}
               />
             )}
+            <div data-tour-step="voice-tutor-nav">
+              <SidebarActionItem
+                icon={Mic}
+                label={language === "fr" ? "Tuteur Vocal" : "Voice Tutor"}
+                onClick={() => {
+                  if (!voiceTutorAllowed) {
+                    navigate("/upgrade");
+                    closeMobile();
+                    return;
+                  }
+                  setVoiceTutorOpen(true);
+                  closeMobile();
+                }}
+                collapsed={collapsed}
+                {...getBadge(minPlanVoiceTutor)}
+              />
+            </div>
             <div data-tour-step="study-nav">
               <NavItem
                 to="/study"
@@ -569,6 +654,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <UserCard collapsed={collapsed} />
         </div>
       </aside>
+
+      {/* Voice Tutor modal — knowledge_tutor agent ConvAI session.
+          Rendered via portal inside VoiceOverlay → does not impact sidebar
+          layout. Auto-starts on open and stops on close. */}
+      <VoiceTutorModal
+        isOpen={voiceTutorOpen}
+        onClose={() => setVoiceTutorOpen(false)}
+        language={language === "fr" ? "fr" : "en"}
+      />
     </>
   );
 };
