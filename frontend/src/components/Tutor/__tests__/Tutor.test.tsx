@@ -89,15 +89,20 @@ describe("Tutor (composant racine)", () => {
     expect(screen.getByLabelText(/Ouvrir le Tuteur/i)).toBeInTheDocument();
   });
 
-  it("transitions to prompting on click idle", () => {
+  it("transitions to prompting on click idle", async () => {
     renderTutor();
     fireEvent.click(screen.getByLabelText(/Ouvrir le Tuteur/i));
-    expect(screen.getByText(/On en parle/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/On en parle/i)).toBeInTheDocument();
+    });
   });
 
   it("transitions to mini-chat when starting (text only)", async () => {
     renderTutor();
     fireEvent.click(screen.getByLabelText(/Ouvrir le Tuteur/i));
+    await waitFor(() => {
+      expect(screen.getByText("Discuter")).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByText("Discuter"));
     await waitFor(() => {
       expect(
@@ -106,9 +111,43 @@ describe("Tutor (composant racine)", () => {
     });
   });
 
-  it("voice mode button is removed (text-only popup)", () => {
+  it("voice mode button is removed (text-only popup)", async () => {
     renderTutor();
     fireEvent.click(screen.getByLabelText(/Ouvrir le Tuteur/i));
+    await waitFor(() => {
+      expect(screen.getByText(/On en parle/i)).toBeInTheDocument();
+    });
     expect(screen.queryByText(/^Voix$/i)).not.toBeInTheDocument();
+  });
+
+  it("respects ds-tutor-hidden=true → ne render rien", () => {
+    localStorage.setItem("ds-tutor-hidden", "true");
+    const { container } = renderTutor();
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("respects ds-tutor-minimized=true → render la pastille", () => {
+    localStorage.setItem("ds-tutor-minimized", "true");
+    renderTutor();
+    expect(screen.getByLabelText(/Agrandir/i)).toBeInTheDocument();
+  });
+
+  it("clic minimize → passe en pastille (LS sauvé)", async () => {
+    renderTutor();
+    fireEvent.click(screen.getByLabelText(/Réduire/i));
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Agrandir/i)).toBeInTheDocument();
+    });
+    expect(localStorage.getItem("ds-tutor-minimized")).toBe("true");
+  });
+
+  it("clic close → cache + LS sauvé", async () => {
+    const { container } = renderTutor();
+    const closeBtn = screen.getByLabelText(/^Fermer$/i);
+    fireEvent.click(closeBtn);
+    await waitFor(() => {
+      expect(container.firstChild).toBeNull();
+    });
+    expect(localStorage.getItem("ds-tutor-hidden")).toBe("true");
   });
 });
