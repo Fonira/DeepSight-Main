@@ -4987,3 +4987,193 @@ a:hover {
     opacity: 0.6;
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   FULL-SCREEN DIGEST — synthèse détaillée plein écran
+   ═══════════════════════════════════════════════════ */
+
+.digest-view {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  position: relative;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.digest-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 12px;
+  background: rgba(10, 10, 15, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  flex-shrink: 0;
+}
+
+.digest-back,
+.digest-chat-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: var(--text-primary, #fff);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.digest-back:hover {
+  background: var(--bg-secondary, rgba(255, 255, 255, 0.06));
+  border-color: var(--accent-primary, #c8903a);
+}
+.digest-chat-btn:hover {
+  background: var(--accent-primary-muted, rgba(200, 144, 58, 0.12));
+  color: var(--accent-primary, #c8903a);
+  border-color: var(--accent-primary, #c8903a);
+}
+
+.digest-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.digest-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px clamp(16px, 3vw, 32px) 80px;
+  color: var(--text-primary, #f5f0e8);
+  font-size: 14px;
+  line-height: 1.7;
+  font-family: var(--font-body, system-ui, sans-serif);
+}
+.digest-body h1,
+.digest-body h2,
+.digest-body h3 {
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  color: var(--text-primary, #fff);
+  margin-top: 24px;
+  margin-bottom: 12px;
+  line-height: 1.25;
+}
+.digest-body h1 {
+  font-size: 22px;
+  font-weight: 700;
+}
+.digest-body h2 {
+  font-size: 18px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  padding-bottom: 6px;
+}
+.digest-body h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent-primary, #c8903a);
+}
+.digest-body p {
+  margin: 0 0 12px;
+}
+.digest-body ul,
+.digest-body ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+.digest-body li {
+  margin-bottom: 4px;
+}
+.digest-body code {
+  background: var(--bg-secondary, rgba(255, 255, 255, 0.06));
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+}
+.digest-body pre {
+  background: var(--bg-secondary, rgba(255, 255, 255, 0.06));
+  padding: 12px 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0 0 12px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+}
+.digest-body pre code {
+  background: transparent;
+  padding: 0;
+}
+.digest-body blockquote {
+  border-left: 3px solid var(--accent-primary, #c8903a);
+  padding-left: 12px;
+  margin: 0 0 12px;
+  color: var(--text-secondary, #e2e8f0);
+}
+.digest-body a {
+  color: var(--accent-primary, #c8903a);
+}
+
+.digest-web-cta {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #c8903a, #d4a054);
+  color: #0a0a0f;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(200, 144, 58, 0.35);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+  z-index: 5;
+}
+.digest-web-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(200, 144, 58, 0.45);
+}
+
+/* Detail CTA — replaces the inline toggle when MainView provides a
+   fullscreen slot via onOpenFull. Same visual weight as v3-button-primary
+   so it reads as the primary action of the synthesis card. */
+.synthesis-detail-cta {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-primary, #c8903a);
+  background: var(--accent-primary-muted, rgba(200, 144, 58, 0.12));
+  color: var(--accent-primary, #c8903a);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+.synthesis-detail-cta:hover {
+  background: var(--accent-primary, #c8903a);
+  color: #0a0a0f;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(200, 144, 58, 0.3);
+}
