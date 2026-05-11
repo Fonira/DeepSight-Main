@@ -356,6 +356,15 @@ async def extract_frames_from_url(
             return None
         logger.info("[%s] Download OK in %.1fs: %s", log_tag, time.time() - t0, video_path)
 
+        # 📡 Proxy telemetry — frame extraction download via Decodo (best-effort).
+        try:
+            from middleware.proxy_telemetry import record_proxy_usage
+
+            video_size = os.path.getsize(video_path)
+            await record_proxy_usage(provider="ytdlp_frames", bytes_in=video_size)
+        except Exception:  # noqa: BLE001 — best-effort
+            pass
+
         # ── 2. Durée ──
         duration_s = await loop.run_in_executor(executor, _ffprobe_duration, video_path)
         if not duration_s or duration_s <= 0:

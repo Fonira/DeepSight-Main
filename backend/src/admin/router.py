@@ -4,9 +4,10 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import json
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional
@@ -587,4 +588,128 @@ async def get_voice_stats(
         "avg_minutes_per_user": avg_minutes,
         "quota_reached_count": quota_reached,
         "by_plan": by_plan,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📡 PROXY USAGE — Bandwidth telemetry (Sprint Proxy Observability)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/proxy/usage")
+async def get_proxy_usage(
+    days: int = Query(default=30, ge=1, le=365),
+    admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    """Breakdown du bandwidth proxy Decodo sur les `days` derniers jours.
+
+    Réponse :
+        {
+            "total_bytes_mtd": int,         # Total bytes (in+out) month-to-date
+            "total_requests_mtd": int,      # Nombre requêtes MTD
+            "mtd_mb": float,                # MTD en MB (pour Telegram alert)
+            "hard_stop_threshold_mb": float,
+            "proxy_disabled_env": bool,     # Reflet de PROXY_DISABLED env var
+            "daily": [                      # Liste asc par date sur `days`
+                {
+                    "date": "2026-05-11",
+                    "bytes_in": int, "bytes_out": int,
+                    "mb_total": float,
+                    "requests_total": int,
+                    "requests_by_provider": {"ytdlp": 12, ...}
+                },
+                ...
+            ],
+            "by_provider": {                # Aggrégat MTD par provider
+                "ytdlp": {"requests": int, "share_pct": float},
+                ...
+            }
+        }
+    """
+    today = date.today()
+    first_of_month = today.replace(day=1)
+    since = today - timedelta(days=days - 1)
+
+    result = await session.execute(
+        text(
+            "SELECT date, bytes_in, bytes_out, requests_total, requests_by_provider "
+            "FROM proxy_usage_daily WHERE date >= :since ORDER BY date ASC"
+        ),
+        {"since": since},
+    )
+    rows = result.all()
+
+    daily: list[dict] = []
+    total_bytes_mtd = 0
+    total_requests_mtd = 0
+    provider_aggregate: dict[str, int] = {}
+
+    for row in rows:
+        row_date = row[0]
+        b_in = int(row[1] or 0)
+        b_out = int(row[2] or 0)
+        req_total = int(row[3] or 0)
+        rbp_raw = row[4]
+        if isinstance(rbp_raw, str):
+            try:
+                rbp = json.loads(rbp_raw) if rbp_raw else {}
+            except Exception:
+                rbp = {}
+        elif isinstance(rbp_raw, dict):
+            rbp = rbp_raw
+        else:
+            rbp = {}
+
+        # ISO date pour la sérialisation JSON
+        if hasattr(row_date, "isoformat"):
+            row_date_str = row_date.isoformat()
+            date_obj = row_date
+        else:
+            row_date_str = str(row_date)
+            try:
+                date_obj = date.fromisoformat(row_date_str)
+            except ValueError:
+                date_obj = None
+
+        daily.append(
+            {
+                "date": row_date_str,
+                "bytes_in": b_in,
+                "bytes_out": b_out,
+                "mb_total": round((b_in + b_out) / (1024 * 1024), 2),
+                "requests_total": req_total,
+                "requests_by_provider": rbp,
+            }
+        )
+
+        # MTD slice
+        if date_obj is not None and date_obj >= first_of_month:
+            total_bytes_mtd += b_in + b_out
+            total_requests_mtd += req_total
+            for provider, count in rbp.items():
+                try:
+                    provider_aggregate[provider] = provider_aggregate.get(provider, 0) + int(count)
+                except (TypeError, ValueError):
+                    continue
+
+    by_provider = {}
+    total_provider_requests = sum(provider_aggregate.values())
+    for provider, count in provider_aggregate.items():
+        share_pct = round(100.0 * count / total_provider_requests, 2) if total_provider_requests else 0.0
+        by_provider[provider] = {"requests": count, "share_pct": share_pct}
+
+    from middleware.proxy_telemetry import (
+        HARD_STOP_THRESHOLD_BYTES,
+        _proxy_disabled_env,
+    )
+
+    return {
+        "total_bytes_mtd": total_bytes_mtd,
+        "total_requests_mtd": total_requests_mtd,
+        "mtd_mb": round(total_bytes_mtd / (1024 * 1024), 2),
+        "hard_stop_threshold_mb": round(HARD_STOP_THRESHOLD_BYTES / (1024 * 1024), 2),
+        "proxy_disabled_env": _proxy_disabled_env(),
+        "daily": daily,
+        "by_provider": by_provider,
     }
