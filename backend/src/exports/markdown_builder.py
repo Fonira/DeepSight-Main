@@ -22,7 +22,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 DEEPSIGHT_VERSION = "v0.1.0"
 DEEPSIGHT_BASE_URL = "https://deepsightsynthesis.com"
@@ -97,7 +97,6 @@ def build_markdown_export(summary: Any) -> str:
     """
     # ─── Métadonnées brutes ──────────────────────────────────────────────────
     summary_id = _attr(summary, "id")
-    video_id = _attr(summary, "video_id", "")
     video_url = _attr(summary, "video_url") or ""
     video_title = _attr(summary, "video_title") or "Untitled"
     channel = _attr(summary, "video_channel") or "Unknown"
