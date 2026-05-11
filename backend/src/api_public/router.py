@@ -414,6 +414,7 @@ async def analyze_video_api(
             credit_cost=credits_cost,
             deep_research=False,
             platform=platform,
+            include_visual_analysis=True,
         )
     )
 
