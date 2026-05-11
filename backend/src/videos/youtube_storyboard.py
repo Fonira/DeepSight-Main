@@ -81,11 +81,16 @@ def normalize_video_id(value: str) -> Optional[str]:
 
 
 def _ytdlp_info_sync(video_id: str, log_tag: str) -> Optional[Dict[str, Any]]:
-    """Lance yt-dlp -j --skip-download (sync, à appeler dans un executor)."""
+    """Lance yt-dlp -j --skip-download (sync, à appeler dans un executor).
+
+    `include_proxy=False` : le metadata fetch YouTube (storyboards inclus)
+    fonctionne en direct depuis le backend Hetzner — le proxy Webshare
+    datacenter renvoie 407 et casse cet appel inutilement.
+    """
     url = f"https://www.youtube.com/watch?v={video_id}"
     cmd = [
         "yt-dlp",
-        *_yt_dlp_extra_args(),
+        *_yt_dlp_extra_args(include_proxy=False),
         "-j",
         "--skip-download",
         "--no-warnings",

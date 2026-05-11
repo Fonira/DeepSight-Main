@@ -24,16 +24,23 @@ from core.config import get_groq_key, get_youtube_proxy, get_ytdlp_cookies_path
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def _yt_dlp_extra_args() -> list:
+def _yt_dlp_extra_args(*, include_proxy: bool = True) -> list:
     """Common yt-dlp flags for IP-banned environments: proxy + cookies.
 
     Both are no-ops when their env vars are unset, so this is safe to call
     from every yt-dlp wrapper unconditionally (YouTube ET TikTok).
+
+    `include_proxy=False` permet de skipper l'injection `--proxy` pour les
+    appels qui ne font que du metadata fetch (`yt-dlp -j --skip-download`) :
+    le CDN i.ytimg.com et l'API watch?v= acceptent les requêtes directes depuis
+    l'IP du backend, et un proxy datacenter mal configuré ferait échouer la
+    requête (407 Proxy Authentication Required) alors qu'elle marcherait sans.
     """
     extra = []
-    proxy = get_youtube_proxy()
-    if proxy:
-        extra.extend(["--proxy", proxy])
+    if include_proxy:
+        proxy = get_youtube_proxy()
+        if proxy:
+            extra.extend(["--proxy", proxy])
     cookies = get_ytdlp_cookies_path()
     if cookies and os.path.exists(cookies):
         extra.extend(["--cookies", cookies])
