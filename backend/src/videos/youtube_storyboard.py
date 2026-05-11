@@ -112,15 +112,28 @@ def _ytdlp_info_sync(video_id: str, log_tag: str) -> Optional[Dict[str, Any]]:
         logger.warning("[%s] yt-dlp -j timeout (%ds)", log_tag, YTDLP_INFO_TIMEOUT_S)
         return None
 
-    if result.returncode != 0:
-        logger.warning("[%s] yt-dlp -j failed: %s", log_tag, result.stderr[:300])
-        return None
+    # yt-dlp peut exit non-zero alors qu'il a produit un JSON valide sur stdout —
+    # cas connu : `--cookies /app/cookies.txt` monté en read-only fait crasher
+    # `YoutubeDL.save_cookies()` dans `__exit__`, traceback sur stderr, exit 1,
+    # mais le JSON stdout est intact (étapes upstream ont réussi avant le cleanup).
+    # On parse donc le JSON d'abord, et on ne considère l'erreur que si le JSON
+    # est absent / corrompu.
+    if result.stdout:
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+            pass  # fall through to error log
 
-    try:
-        return json.loads(result.stdout)
-    except json.JSONDecodeError as e:
-        logger.warning("[%s] yt-dlp output not JSON: %s", log_tag, e)
-        return None
+    if result.returncode != 0:
+        logger.warning(
+            "[%s] yt-dlp -j failed (exit=%d): %s",
+            log_tag,
+            result.returncode,
+            result.stderr[:300],
+        )
+    else:
+        logger.warning("[%s] yt-dlp -j output not JSON (empty or malformed)", log_tag)
+    return None
 
 
 def select_storyboard_format(info: Dict[str, Any]) -> Optional[Dict[str, Any]]:
