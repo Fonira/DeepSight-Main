@@ -1114,8 +1114,8 @@ export const MyAccount: React.FC = () => {
                     </div>
                     <p className="text-text-secondary mb-3">
                       {tr(
-                        "L'accès API est réservé aux abonnés Pro (6,99€/mois).",
-                        "API access is available for Pro subscribers (€6.99/mo).",
+                        `L'accès API est réservé aux abonnés Pro (${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2).replace(".", ",")}€/mois).`,
+                        `API access is available for Pro subscribers (€${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2)}/mo).`,
                       )}
                     </p>
                     <Link
