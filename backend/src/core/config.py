@@ -86,6 +86,16 @@ class _DeepSightSettings(BaseSettings):
     # chat (non-streaming) sessions.
     VOICE_CALL_DISABLED: str = "false"
 
+    # -- Visual Analysis — mode ultra opt-in --
+    # Set to True to enable the `ultra` visual mode for Expert plan users on
+    # very long videos (>2h). Adds ~50% more frames (cap 96 vs 64) and costs
+    # 4 credits instead of 3. Decoded with Decodo proxy that bypasses YouTube
+    # bot challenge — only useful in environments where storyboard fetch +
+    # Mistral Vision are not the bottleneck. Default False (opt-out).
+    # Cf. backend/src/videos/visual_integration.py for mode selection logic
+    # and audit docs/audits/2026-05-11-visual-analysis-debug.md §6 phase 3.
+    VISUAL_ULTRA_ENABLED: bool = False
+
     # -- Stripe --
     STRIPE_ENABLED: str = "true"
     STRIPE_TEST_MODE: str = "false"
@@ -363,6 +373,17 @@ RESEND_RATE_LIMIT_PER_SEC: int = int(os.getenv("RESEND_RATE_LIMIT_PER_SEC", str(
 # bypass this flag (they can still test). Toggle without restart by editing
 # .env.production then `docker compose up -d` (or `docker exec ... reload`).
 VOICE_CALL_DISABLED: bool = _settings.VOICE_CALL_DISABLED.lower() == "true"
+
+# =============================================================================
+# VISUAL ANALYSIS — Mode ultra opt-in
+# =============================================================================
+
+# Enables the `ultra` visual mode for Expert plan users on very long videos
+# (>2h). Adds ~50% more frames analyzed (cap 96 vs 64) and costs 4 credits
+# instead of 3. Default False — toggle via .env.production VISUAL_ULTRA_ENABLED.
+# Cf. videos/visual_integration._select_mode_for_plan() and audit
+# docs/audits/2026-05-11-visual-analysis-debug.md §6 phase 3.
+VISUAL_ULTRA_ENABLED: bool = _settings.VISUAL_ULTRA_ENABLED
 
 # =============================================================================
 # STRIPE

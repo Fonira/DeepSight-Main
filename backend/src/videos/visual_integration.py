@@ -51,29 +51,66 @@ VISUAL_QUOTA_BY_PLAN: Dict[str, Optional[int]] = {
 }
 
 # Coût en crédits par appel visual_analysis (s'ajoute au coût d'analyse de base).
-# Différencié par mode : Pro (default) paye moins, Expert paye plus pour ×2-3 frames.
+# Différencié par mode :
+# - default (Pro)   : 2 crédits, ~24 frames
+# - expert  (Expert): 3 crédits, ~64 frames
+# - ultra   (Expert + opt-in): 4 crédits, ~96 frames (long videos only)
 VISUAL_CREDITS_COST_BY_MODE: Dict[str, int] = {
     "default": 2,
     "expert": 3,
+    "ultra": 4,
 }
 # Cap frames analysées par Mistral, par mode. Default (Pro) plafonne ~24,
 # Expert pousse au cap dur Mistral (64 = 8 batches × 8 frames).
+# Ultra pousse au cap supérieur (96 = 12 batches × 8) pour vidéos très longues.
 MAX_FRAMES_CAP_BY_MODE: Dict[str, int] = {
     "default": 24,
     "expert": 64,
+    "ultra": 96,
 }
 # Rétro-compat : constante historique. Lisez VISUAL_CREDITS_COST_BY_MODE pour la valeur réelle.
 VISUAL_CREDITS_COST = VISUAL_CREDITS_COST_BY_MODE["default"]
 
+# Seuil pour activer le mode ultra : 2h (7200s). En dessous, Expert reste en
+# mode 'expert' standard car la grille `ultra` plafonne à 32 frames pour ≤2h
+# ce qui équivaut au mode standard, sans bénéfice — et coûte 1 crédit de plus.
+ULTRA_MIN_DURATION_S = 7200.0
 
-def _select_mode_for_plan(plan: Optional[str]) -> str:
-    """Mappe le plan user → mode visual analysis ('default' | 'expert').
 
-    Plans Expert obtiennent le mode dense (~64 frames cap). Tous les autres plans
-    payants (Pro, starter legacy, plus legacy) sont en mode 'default' (~24 frames cap).
-    Free n'arrive pas jusqu'ici (filtré en amont par can_consume).
+def _select_mode_for_plan(
+    plan: Optional[str],
+    duration_s: Optional[float] = None,
+) -> str:
+    """Mappe le plan user → mode visual analysis ('default' | 'expert' | 'ultra').
+
+    Règles :
+    - Plan Expert + durée > 7200s (2h) + settings.VISUAL_ULTRA_ENABLED → 'ultra'
+    - Plan Expert (autres cas) → 'expert' (~64 frames cap)
+    - Tous les autres plans payants (Pro, starter legacy, plus legacy) → 'default' (~24 frames cap)
+    - Free n'arrive pas jusqu'ici (filtré en amont par can_consume).
+
+    `duration_s` est optionnel : si non fourni, ultra n'est jamais sélectionné
+    (back-compat caller qui ne sait pas encore la durée à l'instant de la
+    sélection initiale du mode).
     """
-    return "expert" if _normalize_plan(plan) == "expert" else "default"
+    normalized = _normalize_plan(plan)
+    if normalized != "expert":
+        return "default"
+
+    # Plan Expert — décider entre 'expert' standard et 'ultra' opt-in.
+    if duration_s is None or duration_s <= ULTRA_MIN_DURATION_S:
+        return "expert"
+
+    # Vérifier le flag opt-in. Lazy import pour éviter une dépendance circulaire
+    # potentielle si core.config évolue.
+    try:
+        from core.config import VISUAL_ULTRA_ENABLED  # noqa: WPS433
+    except ImportError:  # pragma: no cover — défensive
+        VISUAL_ULTRA_ENABLED = False
+
+    if not VISUAL_ULTRA_ENABLED:
+        return "expert"
+    return "ultra"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -181,6 +218,7 @@ async def maybe_enrich_with_visual(
     *,
     transcript_excerpt: str = "",
     flag_enabled: bool = True,
+    duration_hint: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Pipeline Phase 2 appelé depuis videos/router.py quand
@@ -191,6 +229,11 @@ async def maybe_enrich_with_visual(
     `model_used`. Le caller injecte `analysis.summary_visual` et `key_moments`
     dans le prompt Mistral analysis principal.
 
+    `duration_hint` (optionnel) : durée vidéo en secondes connue côté caller
+    (depuis video_info.get("duration")). Permet la sélection du mode "ultra"
+    pour les vidéos longues quand `settings.VISUAL_ULTRA_ENABLED=True`. Si
+    non fournie, ultra n'est pas envisagé (back-compat).
+
     NE PAS RAISER : cette fonction est best-effort. En cas d'échec, l'analyse
     de base se fait quand même sans la couche visuelle (graceful degradation).
 
@@ -198,18 +241,35 @@ async def maybe_enrich_with_visual(
     """
     t0 = time.time()
     log_tag = f"VISUAL_INT user={user.id}"
+    plan_for_logs = _normalize_plan(getattr(user, "plan", None))
 
     if not flag_enabled:
+        # Silencieux côté caller (flag manuel) — log WARNING explicite ici pour
+        # éviter qu'un toggle env soit invisible en prod (cf. audit
+        # 2026-05-11-visual-analysis-debug.md §1.3).
+        logger.warning(
+            "[%s] Skip: reason=disabled flag_enabled=False url=%s",
+            log_tag,
+            (url or "")[:80],
+        )
         return {"status": STATUS_DISABLED, "elapsed_s": 0.0}
 
     # ── 1. Plan gating + quota check ──
     allowed, reason = await can_consume(db, user)
     if not allowed:
-        logger.info("[%s] Skipped (%s)", log_tag, reason)
+        # Promu de INFO → WARNING : permet à un debug futur de retrouver
+        # tous les skips Visual via filtre level=warning + tag [VISUAL_INT].
+        logger.warning(
+            "[%s] Skip: reason=%s plan=%s url=%s",
+            log_tag,
+            reason,
+            plan_for_logs,
+            (url or "")[:80],
+        )
         return {"status": reason, "elapsed_s": round(time.time() - t0, 2)}
 
-    # ── 2. Sélection mode selon plan ──
-    mode = _select_mode_for_plan(getattr(user, "plan", None))
+    # ── 2. Sélection mode selon plan (+ durée si fournie pour ultra) ──
+    mode = _select_mode_for_plan(getattr(user, "plan", None), duration_s=duration_hint)
 
     # ── 3. Détection plateforme + extraction frames adaptée ──
     platform = _detect_visual_platform(url)
@@ -217,6 +277,11 @@ async def maybe_enrich_with_visual(
     if platform == "youtube":
         video_id = normalize_video_id(url)
         if not video_id:
+            logger.warning(
+                "[%s] Skip: reason=not_supported platform=youtube reason_detail=invalid_video_id url=%s",
+                log_tag,
+                (url or "")[:80],
+            )
             return {
                 "status": STATUS_NOT_SUPPORTED,
                 "elapsed_s": round(time.time() - t0, 2),
@@ -239,12 +304,24 @@ async def maybe_enrich_with_visual(
         extraction = await _extract_tiktok_visual_frames(url, video_id, mode=mode, log_tag=log_tag)
         identifier_for_logs = video_id
     else:
+        logger.warning(
+            "[%s] Skip: reason=not_supported platform=unknown url=%s",
+            log_tag,
+            (url or "")[:80],
+        )
         return {
             "status": STATUS_NOT_SUPPORTED,
             "elapsed_s": round(time.time() - t0, 2),
         }
 
     if extraction is None:
+        logger.warning(
+            "[%s] Skip: reason=extract_failed platform=%s mode=%s video_id=%s",
+            log_tag,
+            platform,
+            mode,
+            identifier_for_logs,
+        )
         return {
             "status": STATUS_EXTRACT_FAILED,
             "video_id": identifier_for_logs,
@@ -255,6 +332,8 @@ async def maybe_enrich_with_visual(
 
     # ── 4. Mistral Vision (commun à toutes plateformes) ──
     max_frames_cap = MAX_FRAMES_CAP_BY_MODE.get(mode, MAX_FRAMES_CAP_BY_MODE["default"])
+    frames_attempted = extraction.frame_count
+    vision_error: Optional[str] = None
     try:
         analysis = await analyze_frames(
             extraction.frame_paths,
@@ -263,16 +342,40 @@ async def maybe_enrich_with_visual(
             max_frames_cap=max_frames_cap,
             log_tag=log_tag,
         )
+    except Exception as _ve:
+        # Propagation explicite : visual_analyzer ne raise pas en théorie
+        # (return None) mais on capture quand même par sécurité.
+        vision_error = str(_ve)[:300]
+        analysis = None
+        logger.warning(
+            "[%s] Mistral Vision raised: %s (frames_attempted=%d cap=%d)",
+            log_tag,
+            vision_error,
+            frames_attempted,
+            max_frames_cap,
+        )
     finally:
         extraction.cleanup()
 
     if analysis is None:
+        logger.warning(
+            "[%s] Skip: reason=vision_failed platform=%s mode=%s video_id=%s frames_attempted=%d cap=%d error=%s",
+            log_tag,
+            platform,
+            mode,
+            identifier_for_logs,
+            frames_attempted,
+            max_frames_cap,
+            vision_error or "all_batches_failed",
+        )
         return {
             "status": STATUS_VISION_FAILED,
             "video_id": identifier_for_logs,
             "platform": platform,
             "visual_mode": mode,
             "frame_count": extraction.frame_count,
+            "frames_attempted": frames_attempted,
+            "error": vision_error or "all_batches_failed",
             "elapsed_s": round(time.time() - t0, 2),
         }
 
@@ -484,6 +587,7 @@ async def enrich_and_capture_visual(
     web_context: str,
     flag_enabled: bool,
     log_tag: str,
+    duration_hint: Optional[float] = None,
 ) -> Tuple[str, Optional[Dict[str, Any]]]:
     """
     Helper unifié appelé par V1, V2, V2.1 pour appliquer le hook visual.
@@ -494,6 +598,9 @@ async def enrich_and_capture_visual(
     3. Run maybe_enrich_with_visual (extraction storyboards + Mistral Vision)
     4. Si OK : append visual block à web_context + capture le dict
     5. Si KO : log + retourne web_context inchangé, visual_analysis_data=None
+
+    `duration_hint` : durée vidéo en secondes (depuis video_info.get("duration")).
+    Permet la sélection ultra pour vidéos longues si VISUAL_ULTRA_ENABLED=True.
 
     Renvoie (updated_web_context, visual_analysis_data).
     Le caller persist `visual_analysis_data` sur Summary.visual_analysis
@@ -516,6 +623,7 @@ async def enrich_and_capture_visual(
             url=url,
             transcript_excerpt=(transcript_excerpt or "")[:8000],
             flag_enabled=True,
+            duration_hint=duration_hint,
         )
         if _visual.get("status") != STATUS_OK:
             logger.info(f"👁️ [{log_tag}] visual skipped: status={_visual.get('status')}")

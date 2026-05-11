@@ -1508,6 +1508,7 @@ async def _analyze_video_background_v2(
                     web_context=full_context or "",
                     flag_enabled=_visual_flag_on,
                     log_tag=f"VISUAL_V2 user={user_id}",
+                    duration_hint=float(video_duration) if video_duration else None,
                 )
 
             if needs_chunk:
@@ -2400,6 +2401,7 @@ async def _analyze_video_background_v2_1(
                     web_context=full_context or "",
                     flag_enabled=_visual_flag_on,
                     log_tag=f"VISUAL_V2.1 user={user_id}",
+                    duration_hint=float(video_duration) if video_duration else None,
                 )
 
             if needs_chunk:
@@ -3214,6 +3216,7 @@ async def _analyze_video_background_v6(
                                 url=url,
                                 transcript_excerpt=(transcript_to_analyze or "")[:8000],
                                 flag_enabled=True,
+                                duration_hint=float(video_duration) if video_duration else None,
                             )
                             if _visual.get("status") == STATUS_OK:
                                 _visual_block = format_visual_context_for_prompt(_visual)
