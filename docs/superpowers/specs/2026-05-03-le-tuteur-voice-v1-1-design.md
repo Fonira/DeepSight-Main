@@ -1,8 +1,10 @@
+> **⚠️ SUPERSEDED** by [`2026-05-10-tuteur-refactor.md`](2026-05-10-tuteur-refactor.md) (mergé prod 2026-05-11). Le mode voice TTS one-shot par turn décrit ici a été abandonné. Le voice tutor V2 utilise un agent ConvAI ElevenLabs `knowledge_tutor` séparé du popup web (sidebar item + bouton popup, agent `requires_summary=False` avec contexte historique global).
+
 # Le Tuteur — V1.1 Voice TTS — Design
 
 **Date** : 2026-05-03
 **Auteur** : Maxime Le Parc (DeepSight)
-**Statut** : Draft
+**Statut** : Superseded (2026-05-11)
 **Source** : Suite directe de V1.0 (PR #284 mergée). Continue le brainstorm 2026-05-03.
 
 ## Contexte

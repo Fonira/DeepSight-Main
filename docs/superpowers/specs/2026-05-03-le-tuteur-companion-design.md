@@ -1,8 +1,10 @@
+> **⚠️ SUPERSEDED** by [`2026-05-10-tuteur-refactor.md`](2026-05-10-tuteur-refactor.md) (mergé prod 2026-05-11). Le state machine 4 phases idle→prompting→mini-chat→deep-session a été simplifié à 3 phases (suppression deep-session) ; mode voice TTS one-shot abandonné, voice tutor remplacé par agent ConvAI ElevenLabs `knowledge_tutor` séparé du popup. Décisions verrouillées #1-13 ici sont partiellement supersédées — voir le nouveau spec.
+
 # Le Tuteur (Companion conversationnel) — Design
 
 **Date** : 2026-05-03
 **Auteur** : Maxime Le Parc (DeepSight)
-**Statut** : Draft — en attente de revue
+**Statut** : Superseded (2026-05-11)
 **Source** : Brainstorm session 2026-05-03 (Opus 4.7, brainstorming skill)
 
 ## Contexte et problème

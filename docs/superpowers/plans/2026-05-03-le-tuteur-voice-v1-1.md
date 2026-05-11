@@ -1,3 +1,5 @@
+> **⚠️ SUPERSEDED** by spec [`2026-05-10-tuteur-refactor.md`](../specs/2026-05-10-tuteur-refactor.md) (mergé prod 2026-05-11). Approche TTS one-shot abandonnée — voice tutor V2 = agent ConvAI ElevenLabs `knowledge_tutor` séparé.
+
 # Le Tuteur V1.1 Voice TTS — Plan d'implémentation
 
 > **Sub-agents Opus 4.7 obligatoire**. 3 tasks bite-sized, TDD strict.
