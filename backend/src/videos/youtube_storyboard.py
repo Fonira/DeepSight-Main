@@ -266,8 +266,48 @@ async def extract_storyboard_frames(
         logger.info("[%s] yt-dlp info OK in %.1fs (video_id=%s)", log_tag, time.time() - t0, video_id)
 
         duration_s = float(info.get("duration") or 0)
+
+        # ── Fallback 1: dériver la durée depuis les fragments storyboard ──
+        # Certaines vidéos (anciennes ou avec formats lockés) retournent top-level
+        # duration=None mais ont des fragments sb* avec des durations partielles.
         if duration_s <= 0:
-            logger.warning("[%s] No duration in info JSON", log_tag)
+            for fmt in info.get("formats", []) or []:
+                if not str(fmt.get("format_id", "")).startswith("sb"):
+                    continue
+                total = sum(
+                    float(frag.get("duration") or 0)
+                    for frag in (fmt.get("fragments") or [])
+                )
+                if total > 0:
+                    duration_s = total
+                    logger.info(
+                        "[%s] Duration from sb fragments fallback: %.1fs", log_tag, duration_s
+                    )
+                    break
+
+        # ── Fallback 2: Supadata via get_video_info (déjà en prod, fiable) ──
+        # Couvre le cas où yt-dlp `--ignore-no-formats-error` ne renvoie ni
+        # duration ni storyboards utilisables (vidéos très anciennes,
+        # restrictions régionales avec cookies insuffisants).
+        if duration_s <= 0:
+            try:
+                from transcripts import get_video_info as _get_video_info
+
+                vinfo = await _get_video_info(video_id)
+                if vinfo:
+                    d = float(vinfo.get("duration") or 0)
+                    if d > 0:
+                        duration_s = d
+                        logger.info(
+                            "[%s] Duration from Supadata fallback: %.1fs",
+                            log_tag,
+                            duration_s,
+                        )
+            except Exception as e:
+                logger.warning("[%s] Supadata duration fallback raised: %s", log_tag, e)
+
+        if duration_s <= 0:
+            logger.warning("[%s] No duration found (yt-dlp + fragments + Supadata all failed)", log_tag)
             shutil.rmtree(workdir, ignore_errors=True)
             return None
 
