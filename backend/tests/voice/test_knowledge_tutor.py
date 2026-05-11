@@ -119,19 +119,25 @@ def test_build_knowledge_tutor_tools_config_shape():
         assert schema["request_headers"]["Authorization"] == "Bearer vs_abc"
         body = schema["request_body_schema"]
         assert body["type"] == "object"
+        # voice_session_id is injected server-side via constant_value — the LLM
+        # never has to fill it (and can't, since it has no access to that id).
         assert "voice_session_id" in body["properties"]
-        assert "voice_session_id" in body["required"]
+        assert body["properties"]["voice_session_id"] == {
+            "type": "string",
+            "constant_value": "vs_abc",
+        }
+        assert "voice_session_id" not in body["required"]
 
 
 def test_memory_snapshot_tool_has_no_extra_required_fields():
-    """The snapshot tool should only require voice_session_id (no params)."""
+    """The snapshot tool has no LLM-required fields (voice_session_id is injected)."""
     tools = build_knowledge_tutor_tools_config(
         webhook_base_url="https://api.example.com",
         voice_session_id="vs_abc",
     )
     snap = next(t for t in tools if t["name"] == "get_tutor_memory_snapshot")
     body = snap["api_schema"]["request_body_schema"]
-    assert body["required"] == ["voice_session_id"]
+    assert body["required"] == []
     assert snap["api_schema"]["url"].endswith("/knowledge-tutor-memory")
 
 
