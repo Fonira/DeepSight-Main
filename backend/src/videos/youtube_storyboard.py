@@ -60,10 +60,42 @@ executor = ThreadPoolExecutor(max_workers=2)
 
 YOUTUBE_VIDEO_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{11}$")
 
+# Match [HH:MM:SS] or [MM:SS] anchors inside Supadata transcripts.
+_TIMESTAMP_ANCHOR_RE = re.compile(r"\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]")
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🛠️ HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _estimate_duration_from_transcript(transcript: str) -> Optional[float]:
+    """Parse `[HH:MM:SS]` / `[MM:SS]` timestamps from a transcript and return
+    the largest one as duration estimate (in seconds).
+
+    Used as a last-resort fallback for storyboard `duration_s` when yt-dlp,
+    sb fragments, and Supadata `get_video_info` all fail to return one. The
+    Supadata transcript pipeline (`transcripts.youtube`) always emits these
+    timestamps, so this works whenever the upstream transcript step succeeded
+    (which it always has by the time the visual hook is called).
+
+    Underestimates slightly when the video has silent tail content after the
+    last spoken word, but for the purpose of computing a frame-extraction
+    budget the rounding is negligible.
+    """
+    if not transcript:
+        return None
+    max_seconds = 0.0
+    for m in _TIMESTAMP_ANCHOR_RE.finditer(transcript):
+        if m.group(3):  # HH:MM:SS
+            h, mm, ss = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            secs = h * 3600 + mm * 60 + ss
+        else:  # MM:SS
+            mm, ss = int(m.group(1)), int(m.group(2))
+            secs = mm * 60 + ss
+        if secs > max_seconds:
+            max_seconds = float(secs)
+    return max_seconds if max_seconds > 0 else None
 
 
 def normalize_video_id(value: str) -> Optional[str]:
@@ -230,6 +262,7 @@ async def extract_storyboard_frames(
     *,
     max_frames_override: Optional[int] = None,
     mode: str = DEFAULT_MODE,
+    transcript_hint: Optional[str] = None,
     log_tag: str = "STORYBOARD",
 ) -> Optional[FrameExtractionResult]:
     """
@@ -306,8 +339,26 @@ async def extract_storyboard_frames(
             except Exception as e:
                 logger.warning("[%s] Supadata duration fallback raised: %s", log_tag, e)
 
+        # ── Fallback 3: estimer depuis les timestamps du transcript ──
+        # Le pipeline d'analyse extrait toujours le transcript AVANT le hook
+        # visual ; les timestamps Supadata `[mm:ss]` sont fiables et permettent
+        # de récupérer la durée même quand toutes les sources métadonnées
+        # échouent (cas vu en prod 2026-05-11 sur certaines vidéos).
+        if duration_s <= 0 and transcript_hint:
+            est = _estimate_duration_from_transcript(transcript_hint)
+            if est and est > 0:
+                duration_s = est
+                logger.info(
+                    "[%s] Duration estimated from transcript timestamps: %.1fs",
+                    log_tag,
+                    duration_s,
+                )
+
         if duration_s <= 0:
-            logger.warning("[%s] No duration found (yt-dlp + fragments + Supadata all failed)", log_tag)
+            logger.warning(
+                "[%s] No duration found (yt-dlp + fragments + Supadata + transcript all failed)",
+                log_tag,
+            )
             shutil.rmtree(workdir, ignore_errors=True)
             return None
 
