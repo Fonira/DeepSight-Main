@@ -101,7 +101,7 @@ def _make_v2_perspective_row(**overrides) -> dict:
         video_title="Vidéo B opposée",
         video_channel="ChannelB",
         thesis="Thèse opposée à A",
-        arguments_json=json.dumps(
+        arguments=json.dumps(
             [{"claim": "ClaimOpp1", "evidence": "evOpp", "strength": "strong"}]
         ),
         relation_type="opposite",
@@ -123,7 +123,7 @@ def _three_perspectives_rows() -> list[dict]:
             video_channel="ChannelOpp",
             thesis="Thèse en opposition franche",
             relation_type="opposite",
-            arguments_json=json.dumps(
+            arguments=json.dumps(
                 [{"claim": "OppClaim1", "evidence": "OppEv", "strength": "strong"}]
             ),
         ),
@@ -135,7 +135,7 @@ def _three_perspectives_rows() -> list[dict]:
             video_channel="ChannelComp",
             thesis="Thèse qui complète la principale",
             relation_type="complement",
-            arguments_json=json.dumps(
+            arguments=json.dumps(
                 [{"claim": "CompClaim1", "evidence": "CompEv", "strength": "moderate"}]
             ),
         ),
@@ -147,7 +147,7 @@ def _three_perspectives_rows() -> list[dict]:
             video_channel="ChannelNua",
             thesis="Thèse qui nuance la principale",
             relation_type="nuance",
-            arguments_json=json.dumps(
+            arguments=json.dumps(
                 [{"claim": "NuaClaim1", "evidence": "NuaEv", "strength": "weak"}]
             ),
         ),
