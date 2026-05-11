@@ -26,6 +26,7 @@ export interface PlanLimits {
   chatDailyLimit: number; // -1 = illimité
 
   flashcardsEnabled: boolean;
+  quizEnabled: boolean;
   mindmapEnabled: boolean;
 
   webSearchEnabled: boolean;
@@ -74,6 +75,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     chatQuestionsPerVideo: 5,
     chatDailyLimit: 10,
     flashcardsEnabled: true,
+    quizEnabled: true,
     mindmapEnabled: false,
     webSearchEnabled: false,
     webSearchMonthly: 0,
@@ -111,6 +113,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     chatQuestionsPerVideo: 25,
     chatDailyLimit: 50,
     flashcardsEnabled: true,
+    quizEnabled: true,
     mindmapEnabled: true,
     webSearchEnabled: true,
     webSearchMonthly: 20,
@@ -148,6 +151,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     chatQuestionsPerVideo: -1,
     chatDailyLimit: -1,
     flashcardsEnabled: true,
+    quizEnabled: true,
     mindmapEnabled: true,
     webSearchEnabled: true,
     webSearchMonthly: 60,
