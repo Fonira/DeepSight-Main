@@ -24,6 +24,13 @@ interface SynthesisViewProps {
   summaryId: number;
   planInfo: PlanInfo | null;
   onOpenChat: () => void;
+  /**
+   * When provided, the inline "show details" toggle is replaced by a CTA
+   * that hands off to the parent (typically MainView) to render the
+   * full-screen SynthesisFull view. Leave undefined for the legacy inline
+   * toggle behavior (kept for places that don't have a fullscreen slot).
+   */
+  onOpenFull?: () => void;
 }
 
 function keyPointIcon(type: KeyPoint["type"]): string {
@@ -111,6 +118,7 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({
   summaryId,
   planInfo,
   onOpenChat,
+  onOpenFull,
 }) => {
   const { t, language } = useTranslation();
   const [showDetail, setShowDetail] = useState(false);
@@ -125,13 +133,21 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({
 
   const detailedHtml = markdownToFullHtml(escapeHtml(summary.summary_content));
 
+  const scoreLabel =
+    score >= 80
+      ? t.synthesis.reliable
+      : score >= 60
+        ? t.synthesis.toVerify
+        : t.synthesis.unreliable;
+
+  const openHtmlInTab = (html: string) => {
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    Browser.tabs.create({ url });
+  };
+
   const handleShare = () => {
-    const scoreLabel =
-      score >= 80
-        ? t.synthesis.reliable
-        : score >= 60
-          ? t.synthesis.toVerify
-          : t.synthesis.unreliable;
+    // Short "share card" HTML \u2014 executive summary only, no full body.
     const html = generateShareHtml(
       summary,
       parsed,
@@ -140,9 +156,24 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({
       t,
       language,
     );
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    Browser.tabs.create({ url });
+    openHtmlInTab(html);
+  };
+
+  // Full standalone HTML : same template as the share card but with the
+  // full markdown body appended. Used by the "Analyse compl\u00E8te" CTA so the
+  // user always gets a self-contained, shareable, archivable page \u2014 no
+  // dependency on the web app being reachable for that summary id.
+  const handleOpenFullAnalysisHtml = () => {
+    const html = generateShareHtml(
+      summary,
+      parsed,
+      score,
+      scoreLabel,
+      t,
+      language,
+      { fullDigestHtml: detailedHtml },
+    );
+    openHtmlInTab(html);
   };
 
   const availableCTAs: { cta: FeatureCTA; available: boolean }[] =
@@ -279,38 +310,53 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({
         </div>
       )}
 
-      {/* Toggle detail */}
-      <button
-        className="toggle-detail"
-        onClick={() => setShowDetail(!showDetail)}
-      >
-        <span>
-          {showDetail ? t.synthesis.hideDetail : t.synthesis.showDetail}
-        </span>
-        {showDetail ? (
-          <ChevronUpIcon size={14} />
-        ) : (
-          <ChevronDownIcon size={14} />
-        )}
-      </button>
-
-      {showDetail && (
-        <div
-          className="detail-panel"
-          dangerouslySetInnerHTML={{ __html: detailedHtml }}
-        />
+      {/* Detail CTA — fullscreen when the parent provides a slot, inline
+          toggle otherwise (legacy fallback for callers that don't pass
+          onOpenFull). */}
+      {onOpenFull ? (
+        <button
+          className="synthesis-detail-cta"
+          onClick={onOpenFull}
+          aria-label={t.synthesis.showDetail}
+        >
+          <span aria-hidden>📖</span>
+          <span>{t.synthesis.showDetail}</span>
+          <span aria-hidden>→</span>
+        </button>
+      ) : (
+        <>
+          <button
+            className="toggle-detail"
+            onClick={() => setShowDetail(!showDetail)}
+          >
+            <span>
+              {showDetail ? t.synthesis.hideDetail : t.synthesis.showDetail}
+            </span>
+            {showDetail ? (
+              <ChevronUpIcon size={14} />
+            ) : (
+              <ChevronDownIcon size={14} />
+            )}
+          </button>
+          {showDetail && (
+            <div
+              className="detail-panel"
+              dangerouslySetInnerHTML={{ __html: detailedHtml }}
+            />
+          )}
+        </>
       )}
 
       {/* Actions */}
       <div className="synthesis-actions">
-        <a
-          href={`${WEBAPP_URL}/summary/${summaryId}`}
-          target="_blank"
-          rel="noreferrer"
+        <button
+          type="button"
           className="btn-action btn-action-primary"
+          onClick={handleOpenFullAnalysisHtml}
+          title={t.synthesis.fullAnalysis}
         >
           <ExternalLinkIcon size={14} /> {t.synthesis.fullAnalysis}
-        </a>
+        </button>
         <button
           className="btn-action btn-action-secondary"
           onClick={onOpenChat}
@@ -394,6 +440,11 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({
 
 /**
  * Generates a beautiful standalone HTML page for sharing a synthesis.
+ *
+ * Pass `options.fullDigestHtml` to append the full markdown body of the
+ * analysis (rendered HTML, already sanitized by markdownToFullHtml). The
+ * "Analyse complète" CTA uses this mode so the user gets a self-contained,
+ * archivable page rather than depending on `/summary/{id}` being reachable.
  */
 function generateShareHtml(
   summary: Summary,
@@ -402,7 +453,9 @@ function generateShareHtml(
   scoreLabel: string,
   t: ReturnType<typeof useTranslation>["t"],
   language: string,
+  options?: { fullDigestHtml?: string },
 ): string {
+  const fullDigestHtml = options?.fullDigestHtml ?? "";
   const scoreColor =
     score >= 80 ? "#22c55e" : score >= 60 ? "#eab308" : "#ef4444";
   const dateLocale = language === "fr" ? "fr-FR" : "en-US";
@@ -473,10 +526,30 @@ function generateShareHtml(
     .btn-print{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:10px;background:linear-gradient(135deg,#C8903A,#D4A054);color:#0a0a0f;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all 0.2s}
     .btn-print:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(200,144,58,0.35)}
     .actions{text-align:center;margin-top:28px;display:flex;gap:12px;justify-content:center}
+    .full-digest{padding:24px;border-radius:14px;background:rgba(155,107,74,0.04);border:1px solid rgba(155,107,74,0.1);font-size:15px;line-height:1.75;color:#F5F0E8}
+    .full-digest h1,.full-digest h2,.full-digest h3{font-family:'Cormorant Garamond',serif;color:#F5F0E8;margin-top:24px;margin-bottom:12px;line-height:1.3}
+    .full-digest h1{font-size:24px;font-weight:700}
+    .full-digest h2{font-size:19px;font-weight:600;border-bottom:1px solid rgba(200,144,58,0.15);padding-bottom:6px}
+    .full-digest h3{font-size:16px;font-weight:600;color:#C8903A}
+    .full-digest p{margin:0 0 12px}
+    .full-digest ul,.full-digest ol{margin:0 0 12px;padding-left:24px}
+    .full-digest li{margin-bottom:6px}
+    .full-digest code{background:rgba(200,144,58,0.1);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:13px}
+    .full-digest pre{background:rgba(0,0,0,0.3);padding:14px 16px;border-radius:8px;overflow-x:auto;margin:0 0 12px;border:1px solid rgba(200,144,58,0.1)}
+    .full-digest pre code{background:transparent;padding:0}
+    .full-digest blockquote{border-left:3px solid #C8903A;padding-left:14px;margin:0 0 12px;color:#B5A89B;font-style:italic}
+    .full-digest a{color:#C8903A;text-decoration:none}
+    .full-digest a:hover{text-decoration:underline}
     @media print{
       body{background:white;color:#1a1a1a}
       .verdict{background:#faf7f2;border-color:#e2e8f0}
       .score-badge{background:#f0fdf4}
+      .full-digest{background:#faf7f2;border-color:#e2e8f0;color:#1a1a1a}
+      .full-digest h1,.full-digest h2,.full-digest h3{color:#1a1a1a}
+      .full-digest h3{color:#9B6B4A}
+      .full-digest code{background:#f0e8d8;color:#9B6B4A}
+      .full-digest pre{background:#f0e8d8}
+      .full-digest blockquote{color:#666}
       .actions,.btn-print{display:none!important}
       .section-title{color:#64748b}
       .footer{color:#94a3b8}
@@ -527,6 +600,16 @@ function generateShareHtml(
     <div class="section">
       <div class="section-title">${t.synthesis.tags}</div>
       <div class="tags">${tagsHtml}</div>
+    </div>`
+        : ""
+    }
+
+    ${
+      fullDigestHtml
+        ? `
+    <div class="section">
+      <div class="section-title">${t.synthesis.fullAnalysis}</div>
+      <div class="full-digest">${fullDigestHtml}</div>
     </div>`
         : ""
     }

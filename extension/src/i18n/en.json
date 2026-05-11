@@ -42,12 +42,12 @@
   "upsell": {
     "free": {
       "label": "Pro",
-      "feature": "30 analyses + Mind maps + Web Search + Playlists",
+      "feature": "25 analyses + Mind maps + Web Search + Fact-check",
       "price": "€8.99"
     },
     "pro": {
       "label": "Expert",
-      "feature": "100 analyses + Voice chat 30min + Mistral Large + Priority",
+      "feature": "100 analyses + Voice chat 120min + Mistral Large + Playlists",
       "price": "€19.99"
     }
   },
@@ -266,15 +266,15 @@
     "upgradeCta": {
       "trialUsedHeadline": "Loved it?",
       "monthlyQuotaHeadline": "You've used your quota",
-      "proNoVoiceHeadline": "Voice call is Expert-only",
-      "headlineSuffix": "Continue with 30 min/mo",
+      "proNoVoiceHeadline": "Expand your voice call",
+      "headlineSuffix": "Continue with 120 min/mo",
       "trialUsedBody": "You just used your free trial. Upgrade to Expert to call any video, as much as you want.",
-      "monthlyQuotaBody": "You've used your 30 min of voice call this month. Wait for next month… or upgrade for more.",
-      "proNoVoiceBody": "Voice call is only included in the Expert plan (30 min/month).",
+      "monthlyQuotaBody": "You've used your voice call quota this month. Wait for next month… or upgrade to 120 min/mo.",
+      "proNoVoiceBody": "Pro includes 30 min/mo. Expert gives you 4× more: 120 min of voice call/month.",
       "planName": "Expert",
       "planPrice": "€19.99",
       "planPeriod": "/mo",
-      "feature1": "✓ 30 min voice call/month",
+      "feature1": "✓ 120 min voice call/month",
       "feature2": "✓ Unlimited analyses",
       "feature3": "✓ Mind maps, web search, exports",
       "ctaPrimary": "Upgrade to Expert →",
@@ -296,15 +296,15 @@
   "promos": {
     "free": [
       {
-        "text": "30 analyses/month + Mind maps + Web Search — from €8.99/mo",
+        "text": "25 analyses/month + Mind maps + Web Search — from €8.99/mo",
         "cta": "Upgrade to Pro"
       },
       {
-        "text": "Only 5 analyses/month? Get 30 with Pro",
+        "text": "Only 5 analyses/month? Get 25 with Pro",
         "cta": "Upgrade →"
       },
       {
-        "text": "Limited quota? Unlock 30 analyses and all Pro features",
+        "text": "Limited quota? Unlock 25 analyses and all Pro features",
         "cta": "View plans"
       }
     ],

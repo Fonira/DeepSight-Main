@@ -2801,7 +2801,7 @@ async def _analyze_video_background_v6(
     credit_cost: int,
     deep_research: bool = False,  # 🆕 v5.5
     platform: str = "youtube",  # 🎵 TikTok support
-    include_visual_analysis: bool = False,  # 🆕 Phase 2 — frames + Mistral Vision
+    include_visual_analysis: bool = True,  # 🆕 Phase 2 — frames + Mistral Vision (default ON depuis 2026-05-11)
 ):
     """
     🔐 Fonction d'analyse v6.0 avec SÉCURITÉ RENFORCÉE.

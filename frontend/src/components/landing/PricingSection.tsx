@@ -144,8 +144,8 @@ const PLAN_CARDS: PlanCard[] = [
         highlight: true,
       },
       {
-        textFr: "Chat vocal (45 min/mois)",
-        textEn: "Voice chat (45 min/mo)",
+        textFr: `Chat vocal (${PLAN_LIMITS.expert.voiceChatMonthlyMinutes} min/mois)`,
+        textEn: `Voice chat (${PLAN_LIMITS.expert.voiceChatMonthlyMinutes} min/mo)`,
         included: true,
         highlight: true,
       },

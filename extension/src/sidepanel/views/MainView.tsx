@@ -22,6 +22,7 @@ import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
 import { LogoutIcon, ExternalLinkIcon } from "../shared/Icons";
 import { SynthesisView } from "../shared/SynthesisView";
+import { SynthesisFull } from "../shared/SynthesisFull";
 import { ConversationView } from "./ConversationView";
 import { PromoBanner } from "../components/PromoBanner";
 import { VoiceCallButton } from "../components/VoiceCallButton";
@@ -65,6 +66,10 @@ export const MainView: React.FC<MainViewProps> = ({
   const [analysis, setAnalysis] = useState<AnalysisPhase>({ phase: "idle" });
   const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
+  // Fullscreen digest flag — toggled from the SynthesisView "📖 Synthèse
+  // détaillée" CTA. Renders SynthesisFull above the rest of the layout so
+  // the markdown body fills the side panel viewport with a sticky header.
+  const [showFullDigest, setShowFullDigest] = useState(false);
   const [guestUsed, setGuestUsed] = useState(false);
   const [quickChatLoading, setQuickChatLoading] = useState(false);
   const [showYtBanner, setShowYtBanner] = useState(false);
@@ -311,6 +316,27 @@ export const MainView: React.FC<MainViewProps> = ({
       setAnalysis({ phase: "error", message: (e as Error).message });
     }
   }, [video, mode, lang, isGuest, t]);
+
+  // Full-screen digest short-circuit — renders SynthesisFull above the
+  // rest of the MainView body. Back button restores the compact view ;
+  // chat button hands off to ConversationView via the existing flag.
+  if (
+    showFullDigest &&
+    analysis.phase === "complete" &&
+    !chatOpen
+  ) {
+    return (
+      <SynthesisFull
+        summary={analysis.summary}
+        summaryId={analysis.summaryId}
+        onBack={() => setShowFullDigest(false)}
+        onOpenChat={() => {
+          setShowFullDigest(false);
+          setChatOpen(true);
+        }}
+      />
+    );
+  }
 
   // Conversation view — fil unifié chat + voice (remplace ChatView v1).
   // initialMode='chat' : la vue ouvre en mode texte (le mic peut être
@@ -723,6 +749,7 @@ export const MainView: React.FC<MainViewProps> = ({
               summaryId={analysis.summaryId}
               planInfo={planInfo}
               onOpenChat={() => setChatOpen(true)}
+              onOpenFull={() => setShowFullDigest(true)}
             />
 
             {!isGuest && nextPlan && userPlanId !== "pro" && (

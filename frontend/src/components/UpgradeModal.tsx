@@ -192,8 +192,7 @@ export const UpgradeModal: React.FC = () => {
                   </p>
                   <div className="text-xs text-text-tertiary text-center space-y-0.5 mb-6">
                     <p>
-                      Starter: 120 min &middot; Pro: 240 min &middot;{" "}
-                      {tr("Équipe", "Team")}: {tr("Illimité", "Unlimited")}
+                      Free: 15 min &middot; Pro: 60 min &middot; Expert: 240 min
                     </p>
                   </div>
                   <button

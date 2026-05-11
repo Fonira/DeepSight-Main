@@ -148,8 +148,8 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
       history: {
         title: { fr: "Historique limité", en: "Limited history" },
         message: {
-          fr: "Votre historique est limité à 3 jours avec le plan gratuit",
-          en: "Your history is limited to 3 days on the free plan",
+          fr: `Votre historique est limité à ${PLAN_LIMITS.free.historyRetentionDays} jours avec le plan gratuit`,
+          en: `Your history is limited to ${PLAN_LIMITS.free.historyRetentionDays} days on the free plan`,
         },
         icon: <Clock className="w-8 h-8 text-amber-400" />,
       },

@@ -480,7 +480,7 @@ export const AnalyticsPage: React.FC = () => {
                   {t("Dernières analyses", "Recent analyses")}
                 </h3>
                 <button
-                  onClick={() => navigate("/history")}
+                  onClick={() => navigate("/hub?view=history")}
                   className="text-sm text-accent-primary hover:underline flex items-center gap-1"
                 >
                   {t("Tout voir", "View all")}
@@ -612,7 +612,7 @@ export const AnalyticsPage: React.FC = () => {
               </button>
 
               <button
-                onClick={() => navigate("/history")}
+                onClick={() => navigate("/hub?view=history")}
                 className="flex items-center gap-3 p-4 rounded-xl bg-bg-tertiary hover:bg-bg-hover transition-colors text-left group"
               >
                 <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
