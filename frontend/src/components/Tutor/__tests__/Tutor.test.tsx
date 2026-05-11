@@ -4,11 +4,16 @@ import { MemoryRouter } from "react-router-dom";
 import { Tutor } from "../Tutor";
 import { useTutorStore } from "../../../store/tutorStore";
 
-// jsdom n'implémente pas Element.scrollTo — TutorMiniChat utilise scrollRef.current?.scrollTo
+// jsdom n'implémente pas Element.scrollTo — TutorHub utilise scrollRef.current?.scrollTo
 beforeAll(() => {
   Element.prototype.scrollTo =
     vi.fn() as unknown as typeof Element.prototype.scrollTo;
 });
+
+// Stub VoiceOverlay to avoid pulling in ElevenLabs SDK in tests.
+vi.mock("../../voice/VoiceOverlay", () => ({
+  VoiceOverlay: () => null,
+}));
 
 vi.mock("../../../services/api", () => ({
   tutorApi: {
@@ -47,9 +52,16 @@ vi.mock("../../../contexts/LoadingWordContext", () => ({
   }),
 }));
 
-vi.mock("../../../contexts/LanguageContext", () => ({
-  useLanguage: () => ({ language: "fr" }),
-}));
+vi.mock("../../../contexts/LanguageContext", async () => {
+  // Need a real React.Context so TutorHub's `useContext(LanguageContext)` works.
+  const React = await vi.importActual<typeof import("react")>("react");
+  return {
+    useLanguage: () => ({ language: "fr" }),
+    LanguageContext: React.createContext<{ language: "fr" | "en" } | undefined>(
+      undefined,
+    ),
+  };
+});
 
 vi.mock("../../../hooks/useTranslation", () => ({
   useTranslation: () => ({
@@ -57,12 +69,6 @@ vi.mock("../../../hooks/useTranslation", () => ({
       tutor: {
         title: "Le Tuteur",
         idle: { hint: "Cliquez pour dialoguer" },
-        prompting: {
-          ask: "On en parle ?",
-          start: "Discuter",
-          start_duration: "30s",
-          back: "Annuler",
-        },
         mini_chat: {
           input_placeholder: "Tapez votre réponse...",
           close: "Fermer",
@@ -92,40 +98,28 @@ describe("Tutor (composant racine)", () => {
     useTutorStore.getState().reset();
   });
 
-  it("renders idle state by default", () => {
+  it("renders the idle teaser by default", () => {
     renderTutor();
     expect(screen.getByLabelText(/Ouvrir le Tuteur/i)).toBeInTheDocument();
   });
 
-  it("transitions to prompting on click idle", async () => {
+  it("opens the TutorHub on teaser click (with concept amorce)", async () => {
     renderTutor();
     fireEvent.click(screen.getByLabelText(/Ouvrir le Tuteur/i));
     await waitFor(() => {
-      expect(screen.getByText(/On en parle/i)).toBeInTheDocument();
+      // Hub dialogue rendered via portal (data-testid="tutor-hub").
+      expect(screen.getByTestId("tutor-hub")).toBeInTheDocument();
     });
   });
 
-  it("transitions to mini-chat when starting (text only)", async () => {
+  it("does NOT render the old TutorPrompting screen anymore", async () => {
     renderTutor();
     fireEvent.click(screen.getByLabelText(/Ouvrir le Tuteur/i));
+    // "Discuter" was the prompting CTA — it must be gone.
     await waitFor(() => {
-      expect(screen.getByText("Discuter")).toBeInTheDocument();
+      expect(screen.getByTestId("tutor-hub")).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText("Discuter"));
-    await waitFor(() => {
-      expect(
-        screen.getByText("Comment l'expliqueriez-vous ?"),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("voice mode button is removed (text-only popup)", async () => {
-    renderTutor();
-    fireEvent.click(screen.getByLabelText(/Ouvrir le Tuteur/i));
-    await waitFor(() => {
-      expect(screen.getByText(/On en parle/i)).toBeInTheDocument();
-    });
-    expect(screen.queryByText(/^Voix$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Discuter")).not.toBeInTheDocument();
   });
 
   it("respects ds-tutor-hidden=true → ne render rien", () => {

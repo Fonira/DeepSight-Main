@@ -20,11 +20,17 @@
  * Spec: docs/superpowers/specs/2026-05-11-tuteur-unified-hub.md
  */
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import { MessageCircle, Mic, Send, X } from "lucide-react";
-import { useLanguage } from "../../contexts/LanguageContext";
+import { LanguageContext } from "../../contexts/LanguageContext";
 import { useTutor } from "./useTutor";
 import { VoiceOverlay } from "../voice/VoiceOverlay";
 import type { VoiceOverlayController } from "../voice/VoiceOverlay";
@@ -138,9 +144,14 @@ export const TutorHub: React.FC<TutorHubProps> = ({
   initialContext,
   defaultMode = "text",
 }) => {
-  const { language: contextLanguage } = useLanguage();
+  // Read the language context without throwing when no provider is mounted
+  // (the Sidebar test renders this component outside of `<LanguageProvider>`).
+  const languageCtx = useContext(LanguageContext);
   const language: "fr" | "en" =
-    explicitLanguage ?? (contextLanguage === "fr" ? "fr" : "en");
+    explicitLanguage ??
+    (languageCtx?.language === "fr" || languageCtx?.language === "en"
+      ? languageCtx.language
+      : "fr");
   const t = I18N[language];
 
   const tutor = useTutor();

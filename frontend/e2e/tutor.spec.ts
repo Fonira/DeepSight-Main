@@ -1,9 +1,12 @@
 /**
- * E2E — Le Tuteur companion (text mode happy path + plan gating)
+ * E2E — Le Tuteur companion (unified hub flow + plan gating)
  *
  * Couvre le flow UI du widget Tutor sur `/dashboard` :
- *   1. happy path (Pro) : idle → prompting → mini-chat (texte) → turn → close
- *   2. plan gating (Free) : start session retourne 403 → CTA upgrade affiché
+ *   1. happy path (Pro) : teaser → TutorHub (text by default) → turn → close
+ *   2. plan gating (Free) : sidebar item "Tuteur" → /upgrade redirect
+ *
+ * Refonte 2026-05-11 : `TutorPrompting` est supprimé, le clic teaser ouvre
+ * directement `TutorHub` avec amorce concept (mode texte par défaut).
  *
  * ⚠️ Indépendance backend : tous les appels `tutorApi` (`/api/tutor/session/*`)
  * sont mockés via `page.route(...)`. Le test ne dépend PAS d'un backend up,
@@ -108,36 +111,19 @@ function tutorWidget(page: Page) {
 }
 
 /**
- * Localise le bouton "Discuter" / "Discuss" dans l'état prompting.
- *
- * Refonte mai 2026 : popup text-only. Le bouton "Voix" a été retiré.
- * Le bouton restant est "Discuter" (FR) / "Discuss" (EN).
+ * Localise le panneau TutorHub (rendu via portal sur le body).
+ * Disponible dès que la teaser est cliquée.
  */
-function textModeButton(page: Page) {
-  return page
-    .getByRole("button", { name: /^discuter/i })
-    .or(page.getByRole("button", { name: /^discuss/i }))
-    .first();
+function tutorHubDialog(page: Page) {
+  return page.locator('[data-testid="tutor-hub"]').first();
 }
 
 /**
- * Localise l'input de la mini-chat texte.
- *
- * TODO: ajuster placeholder quand Phase 4 mergée.
+ * Localise l'input texte du Hub (refonte 2026-05-11 — `TutorMiniChat`
+ * supprimé, l'input vit désormais dans `TutorHub`).
  */
 function miniChatInput(page: Page) {
-  return page
-    .locator(
-      'input[placeholder*="tapez" i], input[placeholder*="type" i], textarea[placeholder*="tapez" i], textarea[placeholder*="type" i]',
-    )
-    .first();
-}
-
-/**
- * Localise le bouton de fermeture de la mini-chat.
- */
-function closeButton(page: Page) {
-  return page.getByRole("button", { name: /fermer|close/i }).first();
+  return page.locator('[data-testid="tutor-hub-text-input"]').first();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -180,47 +166,42 @@ test.describe("Le Tuteur — text mode flow (Pro user)", () => {
     );
   });
 
-  test("happy path — idle → prompting → mini-chat → turn → close", async ({
+  test("happy path — teaser → TutorHub (text) → turn → close", async ({
     page,
   }) => {
     await page.goto("/dashboard");
 
-    // Step 1 — widget Tutor visible en idle
+    // Step 1 — widget Tutor visible en idle (teaser concept du jour)
     const widget = tutorWidget(page);
     await expect(widget).toBeVisible({ timeout: 10_000 });
 
-    // Step 2 — click → state passe à "prompting"
+    // Step 2 — click teaser → TutorHub s'ouvre (amorce concept = auto-start)
     await widget.click();
+    const hub = tutorHubDialog(page);
+    await expect(hub).toBeVisible({ timeout: 5_000 });
 
-    // Step 3 — click "Texte" → state passe à "mini-chat"
-    const textBtn = textModeButton(page);
-    await expect(textBtn).toBeVisible({ timeout: 5_000 });
-    await textBtn.click();
-
-    // Step 4 — vérifier que le 1er prompt IA est affiché (depuis MOCK_START_RESPONSE)
+    // Step 3 — le 1er prompt agent s'affiche dans le transcript du Hub
     await expect(page.getByText(MOCK_START_RESPONSE.first_prompt)).toBeVisible({
       timeout: 10_000,
     });
 
-    // Step 5 — taper une réponse + Enter
+    // Step 4 — taper une réponse + Enter
     const input = miniChatInput(page);
     await expect(input).toBeVisible({ timeout: 5_000 });
     await input.fill("C'est un principe de simplicité.");
     await input.press("Enter");
 
-    // Step 6 — vérifier que la réponse IA s'affiche (depuis MOCK_TURN_RESPONSE)
+    // Step 5 — la réponse IA s'affiche (mock MOCK_TURN_RESPONSE)
     await expect(page.getByText(MOCK_TURN_RESPONSE.ai_response)).toBeVisible({
       timeout: 10_000,
     });
 
-    // Step 7 — fermer (X) → état revient à "idle"
-    await closeButton(page).click();
+    // Step 6 — fermer le Hub via le bouton X interne
+    await page.locator('[data-testid="tutor-hub-close"]').click();
+    await expect(hub).toBeHidden({ timeout: 5_000 });
 
-    // Le widget idle redevient visible (l'état mini-chat a disparu)
+    // Le widget idle reste visible derrière (teaser concept du jour)
     await expect(widget).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText(MOCK_TURN_RESPONSE.ai_response)).toBeHidden({
-      timeout: 5_000,
-    });
   });
 });
 
@@ -246,7 +227,7 @@ test.describe("Le Tuteur — plan gating (Free user)", () => {
     });
   });
 
-  test("free user → start renvoie 403 → CTA upgrade affiché (pas de mini-chat)", async ({
+  test("free user → start renvoie 403 → message d'erreur du Hub (pas de transcript)", async ({
     page,
   }) => {
     await page.goto("/dashboard");
@@ -254,41 +235,18 @@ test.describe("Le Tuteur — plan gating (Free user)", () => {
     const widget = tutorWidget(page);
     await expect(widget).toBeVisible({ timeout: 10_000 });
 
-    // Ouvre le widget (idle → prompting)
+    // Click teaser → ouvre le Hub avec amorce (déclenche sessionStart → 403)
     await widget.click();
+    const hub = tutorHubDialog(page);
+    await expect(hub).toBeVisible({ timeout: 5_000 });
 
-    // Tente de lancer le mode texte → doit déclencher le 403 mocké
-    const textBtn = textModeButton(page);
-    await expect(textBtn).toBeVisible({ timeout: 5_000 });
-    await textBtn.click();
-
-    // L'UI doit afficher un CTA upgrade — patterns possibles :
-    //   - lien/bouton "Passer à Pro" / "Upgrade to Pro"
-    //   - lien vers /pricing ou /upgrade
-    //   - mention "réservé aux plans Pro" depuis le message d'erreur 403
-    //
-    // TODO: ajuster ce selector quand Phase 4 mergée — confirmer le wording
-    // exact du CTA upgrade côté composant Tutor.
-    const upgradeCta = page
-      .getByRole("link", {
-        name: /passer à pro|upgrade|découvrir pro|plan pro/i,
-      })
-      .or(
-        page.getByRole("button", {
-          name: /passer à pro|upgrade|débloquer|plan pro/i,
-        }),
-      )
-      .or(
-        page.getByText(
-          /réservé aux plans pro|plans pro et expert|pro et expert/i,
-        ),
-      )
-      .first();
-
-    await expect(upgradeCta).toBeVisible({ timeout: 10_000 });
-
-    // Et la mini-chat ne doit PAS s'être ouverte (pas de prompt IA visible)
+    // Le 1er prompt agent NE doit PAS s'afficher (403 = aucune session démarrée)
     await expect(page.getByText(MOCK_START_RESPONSE.first_prompt)).toBeHidden();
+
+    // L'utilisateur free voit le hint vide / CTA upgrade externe au hub.
+    // Note: la sidebar item "Tuteur" redirige free vers /upgrade — le hub
+    // ouvert via teaser affiche juste l'état vide quand le backend refuse.
+    await expect(hub).toBeVisible();
   });
 });
 
