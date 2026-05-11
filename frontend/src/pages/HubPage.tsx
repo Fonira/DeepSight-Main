@@ -33,6 +33,7 @@ import { NewConversationModal } from "../components/hub/NewConversationModal";
 import { HubAnalysisPanel } from "../components/hub/HubAnalysisPanel";
 import { HubTabBar } from "../components/hub/HubTabBar";
 import { QuickVoiceCallCTA } from "../components/hub/QuickVoiceCallCTA";
+import { FullscreenChatView } from "../components/hub/FullscreenChatView";
 import { useAnalyzeAndOpenHub } from "../hooks/useAnalyzeAndOpenHub";
 import { SemanticHighlightProvider } from "../components/highlight/SemanticHighlightProvider";
 import { HighlightNavigationBar } from "../components/highlight/HighlightNavigationBar";
@@ -166,7 +167,7 @@ const NoConvPlaceholder: React.FC<{
   </div>
 );
 
-const HubPage: React.FC = () => {
+const HubPageInner: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlConvId = searchParams.get("conv");
@@ -957,6 +958,21 @@ const UrlQueryBridge: React.FC<{ q: string }> = ({ q }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, ctx?.setQuery]);
   return null;
+};
+
+/**
+ * Top-level dispatcher for /hub. Switches between the normal Hub layout
+ * (analysis + chat + voice) and a fullscreen chat surface when the URL
+ * carries `?fsChat=<type>` (V2 — mai 2026). Each branch mounts a distinct
+ * subtree so React hook order remains stable even on URL transitions.
+ */
+const HubPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const fsChat = searchParams.get("fsChat");
+  if (fsChat) {
+    return <FullscreenChatView chatType={fsChat} />;
+  }
+  return <HubPageInner />;
 };
 
 export default HubPage;

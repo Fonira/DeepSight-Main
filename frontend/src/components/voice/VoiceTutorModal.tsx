@@ -43,6 +43,12 @@ export interface VoiceTutorModalProps {
     /** Optional brief definition to inline. */
     conceptDef?: string | null;
   } | null;
+  /**
+   * V2 — Optional callback to navigate back to the text chat surface that
+   * launched the voice modal (the Tutor popup). Forwarded to
+   * `VoiceOverlay.onBackToChat` which renders a back arrow in the header.
+   */
+  onBackToChat?: () => void;
 }
 
 const TITLE_FR = "Tuteur Vocal";
@@ -55,6 +61,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
   onClose,
   language = "fr",
   initialContext,
+  onBackToChat,
 }) => {
   const controllerRef = useRef<VoiceOverlayController | null>(null);
   const primerSentRef = useRef(false);
@@ -110,6 +117,7 @@ export const VoiceTutorModal: React.FC<VoiceTutorModalProps> = ({
       controllerRef={controllerRef}
       autoStart
       presentationMode="floating"
+      onBackToChat={onBackToChat}
     />
   );
 };

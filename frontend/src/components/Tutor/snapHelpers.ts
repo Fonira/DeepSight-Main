@@ -5,7 +5,10 @@
 
 import {
   LS_TUTOR_CORNER,
+  LS_TUTOR_SIZE,
   TUTOR_DEFAULT_CORNER,
+  TUTOR_MAX_SIZE,
+  TUTOR_MIN_SIZE,
   TUTOR_SNAP_MARGIN,
   type TutorCorner,
 } from "./tutorConstants";
@@ -79,6 +82,59 @@ export function readSavedCorner(): TutorCorner {
 export function saveCorner(corner: TutorCorner) {
   try {
     localStorage.setItem(LS_TUTOR_CORNER, corner);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Clamp une dimension entre TUTOR_MIN_SIZE et TUTOR_MAX_SIZE. */
+export function clampSize(size: {
+  width: number;
+  height: number;
+}): { width: number; height: number } {
+  return {
+    width: Math.max(
+      TUTOR_MIN_SIZE.width,
+      Math.min(TUTOR_MAX_SIZE.width, Math.round(size.width)),
+    ),
+    height: Math.max(
+      TUTOR_MIN_SIZE.height,
+      Math.min(TUTOR_MAX_SIZE.height, Math.round(size.height)),
+    ),
+  };
+}
+
+/** Lit la taille sauvée du Tuteur (TutorMiniChat) depuis localStorage. */
+export function readSavedSize(
+  fallback: { width: number; height: number },
+): { width: number; height: number } {
+  try {
+    const raw = localStorage.getItem(LS_TUTOR_SIZE);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { width?: number; height?: number };
+      if (
+        parsed &&
+        typeof parsed.width === "number" &&
+        typeof parsed.height === "number" &&
+        Number.isFinite(parsed.width) &&
+        Number.isFinite(parsed.height)
+      ) {
+        return clampSize({ width: parsed.width, height: parsed.height });
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return clampSize(fallback);
+}
+
+/** Sauve la taille du Tuteur (TutorMiniChat) en localStorage. */
+export function saveSize(size: { width: number; height: number }) {
+  try {
+    localStorage.setItem(
+      LS_TUTOR_SIZE,
+      JSON.stringify(clampSize(size)),
+    );
   } catch {
     /* ignore */
   }

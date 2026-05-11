@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Minus, X, Send, Mic } from "lucide-react";
+import { Maximize2, Mic, Minus, Send, X } from "lucide-react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTranslation } from "../../hooks/useTranslation";
 import { DraggableTutorWindow } from "./DraggableTutorWindow";
 import { TUTOR_MINICHAT_SIZE } from "./tutorConstants";
+import { readSavedSize, saveSize } from "./snapHelpers";
 import type { TutorTurn } from "../../types/tutor";
 
 interface TutorMiniChatProps {
@@ -24,6 +25,11 @@ interface TutorMiniChatProps {
    * Falsy → hide the voice button. Spec D: gate behind voiceChatEnabled.
    */
   voiceTutorEnabled?: boolean;
+  /**
+   * V2 — Optional callback to expand the popup into the Hub fullscreen view
+   * (`/hub?fsChat=tutor`). When undefined, the fullscreen button is hidden.
+   */
+  onFullscreen?: () => void;
 }
 
 const stopPropagation = (e: React.PointerEvent | React.MouseEvent) => {
@@ -39,6 +45,7 @@ export const TutorMiniChat: React.FC<TutorMiniChatProps> = ({
   onClose,
   onOpenVoiceTutor,
   voiceTutorEnabled = false,
+  onFullscreen,
 }) => {
   const { language } = useLanguage();
   const { t } = useTranslation();
@@ -50,6 +57,20 @@ export const TutorMiniChat: React.FC<TutorMiniChatProps> = ({
     tt.mini_chat.minimize ?? (language === "fr" ? "Réduire" : "Minimize");
   const voiceTutorLabel =
     language === "fr" ? "Tuteur Vocal" : "Voice Tutor";
+  const fullscreenLabel =
+    language === "fr" ? "Plein écran" : "Fullscreen";
+
+  // V2 — Resize: la taille de TutorMiniChat est désormais persistée et
+  // ajustable via 8 handles dans DraggableTutorWindow. On lit la valeur
+  // initiale depuis localStorage avec fallback sur TUTOR_MINICHAT_SIZE.
+  const [size, setSize] = useState<{ width: number; height: number }>(() =>
+    readSavedSize(TUTOR_MINICHAT_SIZE),
+  );
+
+  const handleResize = (next: { width: number; height: number }) => {
+    setSize(next);
+    saveSize(next);
+  };
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -72,7 +93,9 @@ export const TutorMiniChat: React.FC<TutorMiniChatProps> = ({
 
   return (
     <DraggableTutorWindow
-      size={TUTOR_MINICHAT_SIZE}
+      size={size}
+      resizable
+      onResize={handleResize}
       className="z-40 cursor-grab active:cursor-grabbing"
     >
       <motion.div
@@ -99,6 +122,18 @@ export const TutorMiniChat: React.FC<TutorMiniChatProps> = ({
                 title={voiceTutorLabel}
               >
                 <Mic className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {onFullscreen && (
+              <button
+                type="button"
+                onPointerDown={stopPropagation}
+                onClick={onFullscreen}
+                className="text-text-tertiary hover:text-text-primary p-1 transition-colors"
+                aria-label={fullscreenLabel}
+                title={fullscreenLabel}
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
               </button>
             )}
             <button
