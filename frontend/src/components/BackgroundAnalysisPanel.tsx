@@ -14,7 +14,7 @@
 import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, AlertCircle, X, ArrowRight } from "lucide-react";
+import { CheckCircle2, AlertCircle, X, ArrowRight, Ban } from "lucide-react";
 import {
   useBackgroundAnalysis,
   VideoAnalysisTask,
@@ -30,19 +30,21 @@ const sanitizeTitle = (raw?: string): string => {
 };
 
 const VideoTaskCard: React.FC<{ task: VideoAnalysisTask }> = ({ task }) => {
-  const { removeTask } = useBackgroundAnalysis();
+  const { removeTask, cancelTask } = useBackgroundAnalysis();
   const navigate = useNavigate();
 
-  // Auto-dismiss completed tasks after AUTO_DISMISS_MS — user can still click
+  // Auto-dismiss completed/cancelled tasks after AUTO_DISMISS_MS — user can still click
   // before the timer fires.
   useEffect(() => {
-    if (task.status !== "completed") return;
+    if (task.status !== "completed" && task.status !== "cancelled") return;
     const timer = setTimeout(() => removeTask(task.id), AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
   }, [task.id, task.status, removeTask]);
 
   const isCompleted = task.status === "completed";
   const isFailed = task.status === "failed";
+  const isCancelled = task.status === "cancelled";
+  const isActive = task.status === "pending" || task.status === "processing";
   const progressPct = Math.max(5, Math.min(task.progress || 5, 100));
 
   const handleClick = () => {
@@ -118,11 +120,13 @@ const VideoTaskCard: React.FC<{ task: VideoAnalysisTask }> = ({ task }) => {
               ? "Analyse terminée — cliquer pour ouvrir"
               : isFailed
                 ? task.error || "Échec de l'analyse"
-                : task.message || "Analyse en cours…"}
+                : isCancelled
+                  ? "Analyse annulée"
+                  : task.message || "Analyse en cours…"}
           </div>
 
-          {/* Progress bar — hidden when completed/failed */}
-          {!isCompleted && !isFailed && (
+          {/* Progress bar — visible only while active */}
+          {isActive && (
             <div className="mt-2 h-1 bg-white/[0.06] rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-400"
@@ -131,6 +135,22 @@ const VideoTaskCard: React.FC<{ task: VideoAnalysisTask }> = ({ task }) => {
                 transition={{ duration: 0.4, ease: "easeOut" }}
               />
             </div>
+          )}
+
+          {/* Cancel button — visible only while active */}
+          {isActive && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                cancelTask(task.id);
+              }}
+              className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-white/70 hover:text-white border border-white/10 hover:border-red-400/40 hover:bg-red-500/10 transition"
+              aria-label="Annuler l'analyse"
+            >
+              <Ban className="w-3 h-3" />
+              <span>Annuler</span>
+            </button>
           )}
 
           {/* CTA arrow when completed */}
@@ -149,16 +169,18 @@ const VideoTaskCard: React.FC<{ task: VideoAnalysisTask }> = ({ task }) => {
 const PlaylistTaskCard: React.FC<{ task: PlaylistAnalysisTask }> = ({
   task,
 }) => {
-  const { removeTask } = useBackgroundAnalysis();
+  const { removeTask, cancelTask } = useBackgroundAnalysis();
 
   useEffect(() => {
-    if (task.status !== "completed") return;
+    if (task.status !== "completed" && task.status !== "cancelled") return;
     const timer = setTimeout(() => removeTask(task.id), AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
   }, [task.id, task.status, removeTask]);
 
   const isCompleted = task.status === "completed";
   const isFailed = task.status === "failed";
+  const isCancelled = task.status === "cancelled";
+  const isActive = task.status === "pending" || task.status === "processing";
   const progressPct = Math.max(5, Math.min(task.progress || 5, 100));
   const title = sanitizeTitle(task.playlistTitle || task.playlistUrl);
 
@@ -205,9 +227,11 @@ const PlaylistTaskCard: React.FC<{ task: PlaylistAnalysisTask }> = ({
               ? `Terminé · ${task.completedVideos ?? 0}/${task.totalVideos ?? "?"} vidéos`
               : isFailed
                 ? task.error || "Échec de l'analyse playlist"
-                : task.message || "Analyse en cours…"}
+                : isCancelled
+                  ? "Analyse annulée"
+                  : task.message || "Analyse en cours…"}
           </div>
-          {!isCompleted && !isFailed && (
+          {isActive && (
             <div className="mt-2 h-1 bg-white/[0.06] rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-400"
@@ -216,6 +240,17 @@ const PlaylistTaskCard: React.FC<{ task: PlaylistAnalysisTask }> = ({
                 transition={{ duration: 0.4, ease: "easeOut" }}
               />
             </div>
+          )}
+          {isActive && (
+            <button
+              type="button"
+              onClick={() => cancelTask(task.id)}
+              className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-white/70 hover:text-white border border-white/10 hover:border-red-400/40 hover:bg-red-500/10 transition"
+              aria-label="Annuler l'analyse"
+            >
+              <Ban className="w-3 h-3" />
+              <span>Annuler</span>
+            </button>
           )}
         </div>
       </div>

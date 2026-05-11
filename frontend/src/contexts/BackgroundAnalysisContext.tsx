@@ -39,7 +39,7 @@ export interface VideoAnalysisTask {
   videoUrl: string;
   videoTitle?: string;
   thumbnail?: string;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   progress: number;
   message: string;
   /** Set once polling reports `status === "completed"`. */
@@ -55,7 +55,7 @@ export interface PlaylistAnalysisTask {
   taskId: string;
   playlistUrl: string;
   playlistTitle?: string;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   progress: number;
   message: string;
   totalVideos?: number;
@@ -94,6 +94,7 @@ interface BackgroundAnalysisContextType {
   // Gestion
   getTask: (taskId: string) => AnalysisTask | undefined;
   removeTask: (taskId: string) => void;
+  cancelTask: (taskId: string) => Promise<void>;
   clearCompleted: () => void;
 
   // Notifications
@@ -569,9 +570,50 @@ export const BackgroundAnalysisProvider: React.FC<{
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
   }, []);
 
+  const cancelTask = useCallback(
+    async (localId: string) => {
+      const task = tasks.find((t) => t.id === localId);
+      const apiTaskId = task?.taskId;
+
+      const interval = pollingIntervals.current.get(localId);
+      if (interval) {
+        clearInterval(interval);
+        pollingIntervals.current.delete(localId);
+      }
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === localId
+            ? {
+                ...t,
+                status: "cancelled" as const,
+                message: "Analyse annulée",
+                completedAt: new Date(),
+              }
+            : t,
+        ),
+      );
+
+      if (apiTaskId && task?.type === "video") {
+        try {
+          await videoApi.cancelTask(apiTaskId);
+        } catch (e) {
+          /* Backend cancel failed — UI already updated, log only */
+          console.warn("[BackgroundAnalysis] Backend cancel failed:", e);
+        }
+      }
+    },
+    [tasks],
+  );
+
   const clearCompleted = useCallback(() => {
     setTasks((prev) =>
-      prev.filter((t) => t.status !== "completed" && t.status !== "failed"),
+      prev.filter(
+        (t) =>
+          t.status !== "completed" &&
+          t.status !== "failed" &&
+          t.status !== "cancelled",
+      ),
     );
   }, []);
 
@@ -588,6 +630,7 @@ export const BackgroundAnalysisProvider: React.FC<{
         startPlaylistAnalysis,
         getTask,
         removeTask,
+        cancelTask,
         clearCompleted,
         hasNewCompletedTask,
         acknowledgeCompleted,

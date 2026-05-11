@@ -47,7 +47,7 @@ interface VideoInfo {
 
 type AnalysisPhase =
   | { phase: "idle" }
-  | { phase: "analyzing"; progress: number; message: string }
+  | { phase: "analyzing"; progress: number; message: string; taskId?: string }
   | { phase: "complete"; summaryId: number; summary: Summary }
   | { phase: "error"; message: string };
 
@@ -252,6 +252,13 @@ export const MainView: React.FC<MainViewProps> = ({
 
       const taskId = (startRes.result as { task_id: string }).task_id;
 
+      setAnalysis({
+        phase: "analyzing",
+        progress: 0,
+        message: t.analysis.processing,
+        taskId,
+      });
+
       pollRef.current = setInterval(async () => {
         try {
           const statusRes = await Browser.runtime.sendMessage<
@@ -301,11 +308,15 @@ export const MainView: React.FC<MainViewProps> = ({
               phase: "error",
               message: status.error || t.analysis.failed,
             });
+          } else if (status.status === "cancelled") {
+            if (pollRef.current) clearInterval(pollRef.current);
+            setAnalysis({ phase: "idle" });
           } else {
             setAnalysis({
               phase: "analyzing",
               progress: status.progress || 0,
               message: status.message || t.analysis.processing,
+              taskId,
             });
           }
         } catch {
@@ -316,6 +327,22 @@ export const MainView: React.FC<MainViewProps> = ({
       setAnalysis({ phase: "error", message: (e as Error).message });
     }
   }, [video, mode, lang, isGuest, t]);
+
+  const cancelAnalysis = useCallback(async () => {
+    if (analysis.phase !== "analyzing" || !analysis.taskId) return;
+    if (pollRef.current) clearInterval(pollRef.current);
+    try {
+      await Browser.runtime.sendMessage({
+        action: "CANCEL_ANALYSIS",
+        data: { taskId: analysis.taskId },
+      });
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[Extension] Cancel failed:", e);
+      }
+    }
+    setAnalysis({ phase: "idle" });
+  }, [analysis]);
 
   // Full-screen digest short-circuit — renders SynthesisFull above the
   // rest of the MainView body. Back button restores the compact view ;
@@ -722,6 +749,14 @@ export const MainView: React.FC<MainViewProps> = ({
               />
             </div>
             <p className="v3-progress-text">{analysis.message}</p>
+            <button
+              className="v3-button-secondary"
+              onClick={cancelAnalysis}
+              style={{ marginTop: 12 }}
+              aria-label="Annuler l'analyse"
+            >
+              {language === "fr" ? "Annuler" : "Cancel"}
+            </button>
           </div>
         )}
 

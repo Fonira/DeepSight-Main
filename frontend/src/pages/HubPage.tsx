@@ -119,7 +119,8 @@ const AnalyzingPlaceholder: React.FC<{
   progress: number;
   message: string;
   error: string | null;
-}> = ({ progress, message, error }) => (
+  onCancel?: () => void;
+}> = ({ progress, message, error, onCancel }) => (
   <div className="flex-1 flex items-center justify-center px-6">
     <div className="max-w-md w-full text-center">
       <div className="relative mx-auto mb-5 w-16 h-16">
@@ -146,6 +147,16 @@ const AnalyzingPlaceholder: React.FC<{
         <div className="mt-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
           {error}
         </div>
+      )}
+      {onCancel && !error && (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mt-5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/70 hover:text-white border border-white/10 hover:border-red-400/40 hover:bg-red-500/10 transition"
+          aria-label="Annuler l'analyse"
+        >
+          Annuler l'analyse
+        </button>
       )}
     </div>
   </div>
@@ -780,6 +791,17 @@ const HubPageInner: React.FC = () => {
               progress={analyzingProgress}
               message={analyzingMessage}
               error={analyzingError}
+              onCancel={async () => {
+                try {
+                  await videoApi.cancelTask(analyzingTaskId);
+                } catch (e) {
+                  // Best-effort: log only, navigation reset below clears UI
+                  console.warn("[Hub] Cancel failed:", e);
+                }
+                const next = new URLSearchParams(searchParams);
+                next.delete("analyzing");
+                setSearchParams(next, { replace: true });
+              }}
             />
           ) : activeConvId === null ? (
             <NoConvPlaceholder
