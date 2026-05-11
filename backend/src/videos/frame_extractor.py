@@ -24,7 +24,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from transcripts.audio_utils import _yt_dlp_extra_args
 
@@ -39,6 +39,28 @@ logger = logging.getLogger(__name__)
 MAX_FRAMES = 100
 MAX_FPS = 2.0
 DEFAULT_FRAME_WIDTH = 512  # px ; 1024 si OCR nécessaire (option future)
+
+# Grille de frames par mode × durée vidéo (mode normal, hors focused)
+# - "default" = Pro : analyse plus légère, plafond ~24 frames analysées
+# - "expert"  = Expert : analyse approfondie, pousse au cap dur Mistral (8 batches × 8)
+# Multiples de 8 pour saturer les batches Mistral (8 images/req max).
+FRAME_BUDGET_GRID: Dict[str, List[Tuple[float, int]]] = {
+    "default": [
+        (30.0, 8),
+        (60.0, 12),
+        (180.0, 16),
+        (600.0, 20),
+        (float("inf"), 24),
+    ],
+    "expert": [
+        (30.0, 16),
+        (60.0, 24),
+        (180.0, 40),
+        (600.0, 56),
+        (float("inf"), 64),
+    ],
+}
+DEFAULT_MODE = "default"
 
 # Timeouts
 DOWNLOAD_TIMEOUT_S = 300  # 5 min max pour télécharger
@@ -96,18 +118,17 @@ def compute_frame_budget(
     duration_s: float,
     focused_start: Optional[float] = None,
     focused_end: Optional[float] = None,
+    *,
+    mode: str = DEFAULT_MODE,
 ) -> Tuple[float, int, bool]:
     """
-    Calcule (fps, max_frames, long_video_warning) selon la durée.
+    Calcule (fps, max_frames, long_video_warning) selon la durée et le mode.
 
-    Mode normal (full video) :
-    - ≤30s   → fps adaptatif (cap 2), 30 frames max
-    - 30-60s → 40 frames
-    - 1-3min → 60 frames
-    - 3-10min → 80 frames
-    - >10min → 100 frames sparse (warning)
+    Mode normal (full video) — grille adaptative par durée, par mode :
+    - "default" (Pro)   : 8 → 24 frames selon durée
+    - "expert"  (Expert): 16 → 64 frames selon durée
 
-    Mode focused (start/end fournis) : densité plus élevée.
+    Mode focused (start/end fournis) : densité plus élevée, indépendant du mode.
 
     Le caller est libre de bypass via override (--max-frames N).
     """
@@ -137,17 +158,15 @@ def compute_frame_budget(
 
         return fps, min(target_frames, MAX_FRAMES), False
 
-    # ── Mode normal : full video ──
-    if duration_s <= 30:
-        target_frames = min(30, max(10, int(duration_s * 1)))
-    elif duration_s <= 60:
-        target_frames = 40
-    elif duration_s <= 180:  # 3 min
-        target_frames = 60
-    elif duration_s <= 600:  # 10 min
-        target_frames = 80
-    else:
-        target_frames = MAX_FRAMES
+    # ── Mode normal : grille par mode ──
+    grid = FRAME_BUDGET_GRID.get(mode) or FRAME_BUDGET_GRID[DEFAULT_MODE]
+    target_frames = grid[-1][1]
+    for max_dur, frames in grid:
+        if duration_s <= max_dur:
+            target_frames = frames
+            break
+
+    if duration_s > 600:
         long_warning = True
 
     target_frames = min(target_frames, MAX_FRAMES)
@@ -307,6 +326,7 @@ async def extract_frames_from_url(
     focused_end: Optional[float] = None,
     max_frames_override: Optional[int] = None,
     width: int = DEFAULT_FRAME_WIDTH,
+    mode: str = DEFAULT_MODE,
     log_tag: str = "FRAME_EXTRACT",
 ) -> Optional[FrameExtractionResult]:
     """
@@ -315,7 +335,7 @@ async def extract_frames_from_url(
     1. Crée un workdir unique sous FRAMES_BASE_DIR
     2. Télécharge la vidéo via yt-dlp (proxy + cookies hérités)
     3. ffprobe → durée
-    4. compute_frame_budget → (fps, max_frames)
+    4. compute_frame_budget(duration, mode=mode) → (fps, max_frames)
     5. ffmpeg → extraction JPEG
     6. Renvoie FrameExtractionResult ; le caller appelle .cleanup() en fin de vie
 
@@ -348,6 +368,7 @@ async def extract_frames_from_url(
             duration_s,
             focused_start=focused_start,
             focused_end=focused_end,
+            mode=mode,
         )
         if max_frames_override is not None:
             target_frames = min(max_frames_override, MAX_FRAMES)
@@ -360,13 +381,14 @@ async def extract_frames_from_url(
             fps = min(MAX_FPS, target_frames / effective_duration)
 
         logger.info(
-            "[%s] duration=%.1fs fps=%.3f target_frames=%d long=%s focused=%s",
+            "[%s] duration=%.1fs fps=%.3f target_frames=%d long=%s focused=%s mode=%s",
             log_tag,
             duration_s,
             fps,
             target_frames,
             long_warning,
             focused_start is not None or focused_end is not None,
+            mode,
         )
 
         # ── 4. Extraction frames ──
@@ -427,6 +449,7 @@ async def extract_frames_from_local(
     focused_end: Optional[float] = None,
     max_frames_override: Optional[int] = None,
     width: int = DEFAULT_FRAME_WIDTH,
+    mode: str = DEFAULT_MODE,
     log_tag: str = "FRAME_EXTRACT",
 ) -> Optional[FrameExtractionResult]:
     """Variante pour fichier local déjà téléchargé. Skip l'étape yt-dlp."""
@@ -448,7 +471,10 @@ async def extract_frames_from_local(
             return None
 
         fps, target_frames, long_warning = compute_frame_budget(
-            duration_s, focused_start=focused_start, focused_end=focused_end
+            duration_s,
+            focused_start=focused_start,
+            focused_end=focused_end,
+            mode=mode,
         )
         if max_frames_override is not None:
             target_frames = min(max_frames_override, MAX_FRAMES)

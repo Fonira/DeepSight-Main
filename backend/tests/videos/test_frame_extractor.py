@@ -30,75 +30,133 @@ _HAS_FFMPEG = shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is 
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-class TestComputeFrameBudget:
-    """Vérifie le scaling claude-video-style par durée."""
+class TestComputeFrameBudgetDefaultMode:
+    """Mode 'default' (Pro) — grille light : 8→24 frames selon durée."""
 
     def test_short_video_under_30s(self):
         from videos.frame_extractor import MAX_FPS, compute_frame_budget
 
-        fps, frames, warning = compute_frame_budget(20.0)
-        assert frames <= 30
-        assert frames >= 10
+        fps, frames, warning = compute_frame_budget(20.0, mode="default")
+        assert frames == 8
         assert fps <= MAX_FPS
         assert warning is False
 
     def test_medium_30_60s(self):
         from videos.frame_extractor import compute_frame_budget
 
-        fps, frames, warning = compute_frame_budget(45.0)
-        assert frames == 40
+        fps, frames, warning = compute_frame_budget(45.0, mode="default")
+        assert frames == 12
         assert warning is False
 
     def test_1_to_3_min(self):
         from videos.frame_extractor import compute_frame_budget
 
-        fps, frames, warning = compute_frame_budget(120.0)
-        assert frames == 60
+        fps, frames, warning = compute_frame_budget(120.0, mode="default")
+        assert frames == 16
         assert warning is False
 
     def test_3_to_10_min(self):
         from videos.frame_extractor import compute_frame_budget
 
-        fps, frames, warning = compute_frame_budget(420.0)  # 7 min
-        assert frames == 80
+        fps, frames, warning = compute_frame_budget(420.0, mode="default")
+        assert frames == 20
         assert warning is False
 
-    def test_long_video_warning(self):
-        from videos.frame_extractor import MAX_FRAMES, compute_frame_budget
+    def test_long_video_caps_at_24(self):
+        from videos.frame_extractor import compute_frame_budget
 
-        fps, frames, warning = compute_frame_budget(1800.0)  # 30 min
-        assert frames == MAX_FRAMES
+        fps, frames, warning = compute_frame_budget(1800.0, mode="default")  # 30 min
+        assert frames == 24
         assert warning is True
 
+
+class TestComputeFrameBudgetExpertMode:
+    """Mode 'expert' (Expert) — grille dense : 16→64 frames, cap dur Mistral."""
+
+    def test_short_video_under_30s(self):
+        from videos.frame_extractor import compute_frame_budget
+
+        _, frames, warning = compute_frame_budget(20.0, mode="expert")
+        assert frames == 16
+        assert warning is False
+
+    def test_medium_30_60s(self):
+        from videos.frame_extractor import compute_frame_budget
+
+        _, frames, _ = compute_frame_budget(45.0, mode="expert")
+        assert frames == 24
+
+    def test_1_to_3_min(self):
+        from videos.frame_extractor import compute_frame_budget
+
+        _, frames, _ = compute_frame_budget(120.0, mode="expert")
+        assert frames == 40
+
+    def test_3_to_10_min(self):
+        from videos.frame_extractor import compute_frame_budget
+
+        _, frames, _ = compute_frame_budget(420.0, mode="expert")
+        assert frames == 56
+
+    def test_long_video_caps_at_64(self):
+        from videos.frame_extractor import compute_frame_budget
+
+        _, frames, warning = compute_frame_budget(1800.0, mode="expert")
+        assert frames == 64
+        assert warning is True
+
+    def test_expert_strictly_denser_than_default_across_durations(self):
+        """Pour chaque tranche de durée, expert renvoie ≥ default."""
+        from videos.frame_extractor import compute_frame_budget
+
+        for dur in (20.0, 45.0, 120.0, 420.0, 1800.0):
+            _, default_frames, _ = compute_frame_budget(dur, mode="default")
+            _, expert_frames, _ = compute_frame_budget(dur, mode="expert")
+            assert expert_frames > default_frames, f"dur={dur}"
+
+
+class TestComputeFrameBudgetMisc:
+    """Fps cap, focused mode, robustesse."""
+
     def test_fps_capped_at_max(self):
-        """Sur très courte vidéo, fps ne doit jamais dépasser MAX_FPS."""
         from videos.frame_extractor import MAX_FPS, compute_frame_budget
 
         fps, _, _ = compute_frame_budget(5.0)
         assert fps <= MAX_FPS
 
-    def test_focused_mode_dense(self):
-        """Focused mode → densité plus élevée que full video."""
+    def test_unknown_mode_falls_back_to_default(self):
+        """Mode invalide → fallback silencieux sur 'default' (pas de crash)."""
         from videos.frame_extractor import compute_frame_budget
 
-        # 10s focus dans une vidéo de 600s
+        _, frames_default, _ = compute_frame_budget(45.0, mode="default")
+        _, frames_unknown, _ = compute_frame_budget(45.0, mode="bogus_mode")
+        assert frames_default == frames_unknown == 12
+
+    def test_default_mode_when_unspecified(self):
+        """Sans mode explicite → comportement 'default'."""
+        from videos.frame_extractor import compute_frame_budget
+
+        _, frames_implicit, _ = compute_frame_budget(45.0)
+        _, frames_explicit, _ = compute_frame_budget(45.0, mode="default")
+        assert frames_implicit == frames_explicit
+
+    def test_focused_mode_dense_ignores_mode(self):
+        """Focused mode garde sa densité historique indépendamment du mode."""
+        from videos.frame_extractor import compute_frame_budget
+
         fps, frames, warning = compute_frame_budget(
-            600.0, focused_start=120.0, focused_end=130.0
+            600.0, focused_start=120.0, focused_end=130.0, mode="default"
         )
-        # 10s à 2 fps cap = 20 frames max attendu
         assert frames <= 30
         assert warning is False
 
     def test_focused_mode_full_range_implicit(self):
-        """focused_start sans focused_end → end = duration."""
         from videos.frame_extractor import compute_frame_budget
 
         fps, frames, _ = compute_frame_budget(60.0, focused_start=30.0)
-        # On focus sur 30→60s, soit 30s
         assert frames > 0
 
     def test_zero_duration_safety(self):
-        """Durée 0 ne crashe pas (max() de protection)."""
         from videos.frame_extractor import compute_frame_budget
 
         fps, frames, _ = compute_frame_budget(0.5)
