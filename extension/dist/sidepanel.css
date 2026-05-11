@@ -5203,3 +5203,30 @@ a:hover {
   box-shadow: 0 4px 16px rgba(200, 144, 58, 0.3);
 }
 
+/* Voice call context loader — shown in the chat feed while the backend
+   streams the transcript + analysis to the agent. Large branded spinner
+   so the user reads it as "we're working, not stuck". */
+.chat-voice-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 32px 24px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
+}
+.chat-voice-loader-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #f5f0e8);
+  margin: 0;
+}
+.chat-voice-loader-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary, #b5a89b);
+  margin: 0;
+  max-width: 280px;
+}
+

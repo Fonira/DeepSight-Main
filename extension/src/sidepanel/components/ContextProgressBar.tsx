@@ -14,6 +14,7 @@
 import React from "react";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { ContextPhase } from "../hooks/useStreamingVideoContext";
+import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 
 interface Props {
   /** 0–100 */
@@ -75,9 +76,11 @@ export function ContextProgressBar({
   }
 
   const dotState = complete || phase === "complete" ? "complete" : "live";
+  const isLoading = !complete && phase !== "complete";
+
   return (
     <div
-      className="ds-ctx-bar"
+      className={`ds-ctx-bar${isLoading ? " ds-ctx-bar--loading" : ""}`}
       data-testid="ds-ctx-bar"
       role="progressbar"
       aria-valuemin={0}
@@ -86,7 +89,11 @@ export function ContextProgressBar({
       aria-label={ariaLabel}
     >
       <div className="ds-ctx-bar__label">
-        <span className={`ds-ctx-bar__dot ${dotState}`} />
+        {isLoading ? (
+          <DeepSightSpinner size="xs" speed="fast" />
+        ) : (
+          <span className={`ds-ctx-bar__dot ${dotState}`} />
+        )}
         <span>{label}</span>
       </div>
       <div className="ds-ctx-bar__track">

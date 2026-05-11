@@ -175,6 +175,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
         messages={messages}
         loading={loading}
         loadingHistory={loadingHistory}
+        voiceContextLoading={voiceMode === "live" && !contextComplete}
         onSuggestionClick={(s) => {
           void sendMessage(s);
         }}

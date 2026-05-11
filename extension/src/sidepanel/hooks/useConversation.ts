@@ -205,36 +205,30 @@ export function useConversation(
   }, [resolvedSummaryId]);
 
   // ── Rebuild fil unifié à partir de chatMessages + transcripts live ──
-  // Règle clé : audio user (source='voice', voice_speaker='user') filtré.
+  // 2026-05-11 (Maxime demande explicite) : la règle UX "audio user
+  // invisible" du 2026-05-02 est levée. On affiche maintenant agent ET
+  // user voice — l'utilisateur doit voir ce qu'il a dit, sinon le fil
+  // chat est asymétrique et l'agent semble parler dans le vide.
   const messages = useMemo<UnifiedMessage[]>(() => {
-    const fromHistory: UnifiedMessage[] = chatMessages
-      .filter((m) => {
-        // Filtre "audio user invisible" : on exclut les transcripts user voice.
-        if (m.source === "voice" && m.voice_speaker === "user") return false;
-        return true;
-      })
-      .map((m, i) => toUnified(m, i));
+    const fromHistory: UnifiedMessage[] = chatMessages.map((m, i) =>
+      toUnified(m, i),
+    );
 
-    // Transcripts live ElevenLabs : append les bulles agent (les user en
-    // sont déjà filtrés ici aussi). Évite la double-affichage : si un
-    // transcript live a un `id` qui apparaît déjà dans fromHistory, on
-    // le saute (le backend persiste via VOICE_APPEND_TRANSCRIPT et
-    // l'historique l'a déjà ramené au prochain reload). Pour l'instant
-    // les transcripts live n'ont pas d'id stable donc on les ajoute en
-    // queue avec un id transient.
-    const liveAgentBubbles: UnifiedMessage[] = voice.transcripts
-      .filter((t) => t.speaker === "agent")
-      .map<UnifiedMessage>((t) => fromVoiceTranscript(t, voice.sessionId));
+    // Transcripts live ElevenLabs : on garde les deux côtés (agent + user).
+    // Dédupe contre fromHistory pour éviter le double-affichage quand le
+    // backend a déjà persisté le transcript via VOICE_APPEND_TRANSCRIPT et
+    // que l'historique le rejoue ensuite. Les transcripts live n'ont pas
+    // d'id stable, donc on dédupe par speaker + session + contenu trim +
+    // proximité temporelle (≤ 5 s).
+    const liveBubbles: UnifiedMessage[] = voice.transcripts.map(
+      (t): UnifiedMessage => fromVoiceTranscript(t, voice.sessionId),
+    );
 
-    // Dédupe simple : si le contenu d'une bulle live agent est déjà dans
-    // fromHistory au même `voiceSessionId` et avec un timestamp proche
-    // (≤ 5s), on skip. Ça évite la double-affichage quand le SDK pousse
-    // le transcript ET qu'un poll d'history le récupère ensuite.
-    const dedupedLive = liveAgentBubbles.filter((live) => {
+    const dedupedLive = liveBubbles.filter((live) => {
       return !fromHistory.some(
         (h) =>
           h.source === "voice" &&
-          h.voiceSpeaker === "agent" &&
+          h.voiceSpeaker === live.voiceSpeaker &&
           h.voiceSessionId === live.voiceSessionId &&
           h.content.trim() === live.content.trim() &&
           Math.abs(h.timestamp - live.timestamp) < 5000,

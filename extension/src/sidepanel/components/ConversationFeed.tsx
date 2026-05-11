@@ -21,6 +21,14 @@ interface ConversationFeedProps {
   messages: UnifiedMessage[];
   loading: boolean;
   loadingHistory: boolean;
+  /**
+   * Vrai pendant un voice call quand le backend stream encore le transcript
+   * vidéo / l'analyse Mistral et que l'agent n'a donc pas encore tout le
+   * contexte. Combined with an empty `messages` list, renders a branded
+   * DeepSight spinner + explanatory label so the user understands why the
+   * agent isn't replying yet — instead of an empty chat that looks broken.
+   */
+  voiceContextLoading?: boolean;
   onSuggestionClick: (suggestion: string) => void;
   onAskQuestionClick: (question: string) => void;
 }
@@ -29,6 +37,7 @@ export const ConversationFeed: React.FC<ConversationFeedProps> = ({
   messages,
   loading,
   loadingHistory,
+  voiceContextLoading = false,
   onSuggestionClick,
   onAskQuestionClick,
 }) => {
@@ -47,6 +56,32 @@ export const ConversationFeed: React.FC<ConversationFeedProps> = ({
       <div className="chat-messages" ref={scrollRef}>
         <div className="chat-welcome">
           <DeepSightSpinner size="xs" speed="fast" />
+        </div>
+      </div>
+    );
+  }
+
+  // Voice call live + no transcripts yet → show a branded loader instead of
+  // the chat suggestions empty state. The user can still talk to the agent
+  // (mic is active) but the visible "we're listening" feedback prevents
+  // the "is this broken?" perception when the chat stays empty.
+  if (voiceContextLoading && messages.length === 0) {
+    return (
+      <div className="chat-messages" ref={scrollRef}>
+        <div className="chat-voice-loader">
+          <DeepSightSpinner
+            size="md"
+            speed="normal"
+            showLabel
+            label="DeepSight"
+          />
+          <p className="chat-voice-loader-title">
+            Chargement du transcript et de l'analyse…
+          </p>
+          <p className="chat-voice-loader-hint">
+            Tu peux déjà parler — l'agent enrichit son contexte au fil du
+            chargement et te répondra dès qu'il en sait assez.
+          </p>
         </div>
       </div>
     );
