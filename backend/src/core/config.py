@@ -70,6 +70,14 @@ class _DeepSightSettings(BaseSettings):
     # -- YouTube Proxy (pour contourner le blocage IP YouTube sur VPS) --
     YOUTUBE_PROXY: str = ""  # ex: socks5://user:pass@host:port ou http://user:pass@host:port
 
+    # -- Proxy kill switch (Sprint E observability) --
+    # Quand True, _yt_dlp_extra_args log un WARNING et skip --proxy (graceful
+    # degradation, le download tente direct depuis l'IP du backend). Permet de
+    # couper la consommation Decodo si le wallet sature ou si on détecte une
+    # fuite anormale via /api/admin/proxy/usage. Désactivable sans rebuild en
+    # éditant .env.production + container restart.
+    PROXY_DISABLED: bool = False
+
     # -- Email --
     EMAIL_ENABLED: str = "true"
     RESEND_API_KEY: str = ""
@@ -316,6 +324,7 @@ FAL_API_KEY = _settings.FAL_API_KEY
 TOGETHER_API_KEY = _settings.TOGETHER_API_KEY
 MISTRAL_IMAGE_AGENT_ID = _settings.MISTRAL_IMAGE_AGENT_ID
 YOUTUBE_PROXY = _settings.YOUTUBE_PROXY
+PROXY_DISABLED: bool = _settings.PROXY_DISABLED
 
 
 def get_fal_key() -> str:

@@ -1735,6 +1735,43 @@ class EmailDLQ(Base):
     )
 
 
+class ProxyUsageDaily(Base):
+    """Daily proxy bandwidth & request telemetry — Sprint E observability.
+
+    Tracks Decodo (and any other proxy provider) consumption per UTC day so we
+    can :
+    - Alert before the wallet runs out ($4 / GB Pay-As-You-Go).
+    - Surface the daily cost split per provider variant via /api/admin/proxy/usage.
+    - Fire PostHog events on cumulative bandwidth thresholds.
+
+    Volume is best-effort (best counter we have = Content-Length response
+    header from httpx + yt-dlp proxified calls). Granularity = day, primary key
+    = date. Each variant of the proxy (default, sticky, geo_us, legacy, ...) is
+    aggregated under requests_by_provider so we don't multiply rows.
+
+    Migration : alembic 027_proxy_usage_daily.py.
+    """
+
+    __tablename__ = "proxy_usage_daily"
+
+    date = Column(Date, primary_key=True)
+    bytes_in = Column(BigInteger, nullable=False, default=0, server_default=text("0"))
+    bytes_out = Column(BigInteger, nullable=False, default=0, server_default=text("0"))
+    requests_total = Column(Integer, nullable=False, default=0, server_default=text("0"))
+    # JSON cross-DB : JSONB sur PostgreSQL, TEXT sérialisé sur SQLite.
+    # Shape: { "default": {"requests": int, "bytes_in": int}, "sticky": {...}, ... }
+    requests_by_provider = Column(
+        JSON, nullable=False, default=dict, server_default="{}"
+    )
+    updated_at = Column(
+        DateTime,
+        default=func.now(),
+        onupdate=func.now(),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTIONS DATABASE
 # ═══════════════════════════════════════════════════════════════════════════════

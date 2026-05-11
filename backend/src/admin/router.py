@@ -588,3 +588,41 @@ async def get_voice_stats(
         "quota_reached_count": quota_reached,
         "by_plan": by_plan,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📡 PROXY BANDWIDTH TELEMETRY (Sprint E observability)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/proxy/usage")
+async def get_proxy_usage(
+    days: int = Query(30, ge=1, le=365, description="Lookback window in days"),
+    admin: User = Depends(get_current_admin),
+):
+    """Daily proxy bandwidth & cost telemetry.
+
+    Aggregates `proxy_usage_daily` over the past N days (default 30).
+    Estimated cost uses Decodo Pay-As-You-Go pricing ($4 / GB).
+
+    Response schema :
+        {
+          "period_days": int,
+          "total_bytes_in": int,
+          "total_bytes_out": int,
+          "total_requests": int,
+          "estimated_cost_usd": float,
+          "by_provider": { "<variant>": { "requests": int, "bytes_in": int } },
+          "daily": [ { "date": "YYYY-MM-DD", "bytes_in": int, ... }, ... ]
+        }
+    """
+    # Force a flush of in-process buffered telemetry so the admin sees fresh data.
+    from middleware.proxy_telemetry import flush as telemetry_flush
+    from middleware.proxy_telemetry import get_usage_summary
+
+    try:
+        await telemetry_flush()
+    except Exception as exc:
+        logger.debug(f"proxy telemetry flush before /proxy/usage failed (ignored): {exc}")
+
+    return await get_usage_summary(days=days)
