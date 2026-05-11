@@ -42,12 +42,12 @@
   "upsell": {
     "free": {
       "label": "Pro",
-      "feature": "30 analyses + Cartes mentales + Web Search + Playlists",
+      "feature": "25 analyses + Cartes mentales + Web Search + Fact-check",
       "price": "8,99€"
     },
     "pro": {
       "label": "Expert",
-      "feature": "100 analyses + Voice chat 30 min + Mistral Large + Priorité",
+      "feature": "100 analyses + Voice chat 120 min + Mistral Large + Playlists",
       "price": "19,99€"
     }
   },
