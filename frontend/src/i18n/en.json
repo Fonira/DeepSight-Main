@@ -178,24 +178,11 @@
     "idle": {
       "hint": "Click to chat"
     },
-    "prompting": {
-      "ask": "Want to discuss?",
-      "start": "Discuss",
-      "start_duration": "30s",
-      "back": "Cancel"
-    },
     "mini_chat": {
       "input_placeholder": "Type your answer...",
       "close": "Close",
       "minimize": "Minimize",
-      "expand": "Expand",
-      "fullscreen": "Fullscreen"
-    },
-    "fullscreen": {
-      "back_to_popup": "Back to popup"
-    },
-    "voice": {
-      "back_to_chat": "Back to chat"
+      "expand": "Expand"
     },
     "errors": {
       "session_failed": "Session failed — please retry",

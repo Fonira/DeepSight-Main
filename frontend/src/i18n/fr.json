@@ -178,24 +178,11 @@
     "idle": {
       "hint": "Cliquez pour dialoguer"
     },
-    "prompting": {
-      "ask": "On en parle ?",
-      "start": "Discuter",
-      "start_duration": "30s",
-      "back": "Annuler"
-    },
     "mini_chat": {
       "input_placeholder": "Tapez votre réponse...",
       "close": "Fermer",
       "minimize": "Réduire",
-      "expand": "Agrandir",
-      "fullscreen": "Plein écran"
-    },
-    "fullscreen": {
-      "back_to_popup": "Retour à la popup"
-    },
-    "voice": {
-      "back_to_chat": "Retour au chat"
+      "expand": "Agrandir"
     },
     "errors": {
       "session_failed": "Session impossible — réessayez",
