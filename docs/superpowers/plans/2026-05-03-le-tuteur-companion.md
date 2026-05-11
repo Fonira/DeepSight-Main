@@ -1,3 +1,5 @@
+> **⚠️ SUPERSEDED** by spec [`2026-05-10-tuteur-refactor.md`](../specs/2026-05-10-tuteur-refactor.md) (mergé prod 2026-05-11). State machine 4 phases simplifié à 3 phases, voice mode du popup retiré, voice tutor déplacé sur agent ConvAI ElevenLabs `knowledge_tutor` séparé.
+
 # Le Tuteur (Companion conversationnel) — Plan d'implémentation
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. **Tout sub-agent dispatché DOIT tourner en `claude-opus-4-7[1m]`** (cf. décision 13 du spec).
