@@ -1,13 +1,18 @@
 """Backend tools exposed to the KNOWLEDGE_TUTOR voice agent.
 
 The KNOWLEDGE_TUTOR agent reasons over the *user's whole history* of video
-analyses (not a single video). These four async tools let it pull just enough
+analyses (not a single video). These async tools let it pull just enough
 context per turn:
 
-    - get_user_history    : last N analyses (title / platform / date / concepts)
-    - get_concept_keys    : top concepts/keywords aggregated across history
-    - search_history      : semantic search over the user's corpus (V1, PR #292)
-    - get_summary_detail  : full details of a precise analysis
+    - get_tutor_memory_snapshot : adaptive mind-map of the user's whole path
+                                  (compression scales with analysis count).
+                                  PRIMARY entry point — call this FIRST.
+    - get_user_history          : last N analyses (title / platform / date /
+                                  key_topics / concepts).
+    - get_concept_keys          : top concepts/keywords aggregated across history.
+    - search_history            : semantic search over the user's corpus
+                                  (V1, PR #292).
+    - get_summary_detail        : full details of a precise analysis.
 
 All tools take a `user: User` parameter so they cannot leak across users — they
 are bound to the session's authenticated user, never to a free-text user_id.
@@ -36,6 +41,39 @@ logger = logging.getLogger(__name__)
 # Same regex as history_router.py — matches Obsidian-style [[concept]] or
 # [[concept|alias]] markers embedded in summary_content by Mistral.
 _CONCEPT_PATTERN = re.compile(r"\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]")
+
+# Level-2 markdown heading: ``## Some title``. Used to extract the macro-axes
+# (sections) of an analysis as "key_topics" for the tuteur memory snapshot.
+_HEADING_PATTERN = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
+
+
+def _summary_key_topics(summary: Summary, limit: int = 5) -> list[str]:
+    """Extract the macro-axes (``## ``-level headings) of a Summary.
+
+    Returns up to ``limit`` strings, normalised (stripped + leading
+    decorations dropped) and deduplicated case-insensitively. Empty when the
+    summary has no markdown structure.
+    """
+    if limit <= 0 or not summary.summary_content:
+        return []
+
+    seen: set[str] = set()
+    topics: list[str] = []
+    for match in _HEADING_PATTERN.findall(summary.summary_content):
+        topic = match.strip().lstrip("#").strip()
+        if not topic:
+            continue
+        topic = topic.lstrip("-*0123456789. ").strip()
+        if not topic or len(topic) < 2:
+            continue
+        tl = topic.lower()
+        if tl in seen:
+            continue
+        seen.add(tl)
+        topics.append(topic)
+        if len(topics) >= limit:
+            break
+    return topics
 
 
 def _summary_concept_keys(summary: Summary, limit: int = 5) -> list[str]:
@@ -127,6 +165,7 @@ async def get_user_history(
                 "channel": s.video_channel or "",
                 "category": s.category or "",
                 "created_at": s.created_at.isoformat() if s.created_at else None,
+                "key_topics": _summary_key_topics(s, limit=5),
                 "key_concepts": _summary_concept_keys(s, limit=5),
             }
         )
@@ -357,6 +396,52 @@ async def get_summary_detail(
         "reliability_score": summary.reliability_score,
         "key_concepts": _summary_concept_keys(summary, limit=10),
     }
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Tool 5 : get_tutor_memory_snapshot (adaptive mind-map)
+# ─────────────────────────────────────────────────────────────────────
+
+
+async def get_tutor_memory_snapshot(
+    user: User,
+    db: AsyncSession,
+    redis: Optional[Any] = None,
+) -> dict[str, Any]:
+    """Return an adaptive carte-mentale of the user's whole analysis history.
+
+    Thin wrapper around :func:`voice.tutor_memory.build_tutor_memory`. This
+    helper is the primary orientation tool for the KNOWLEDGE_TUTOR agent —
+    one call replaces the legacy "get_concept_keys + get_user_history" startup
+    sequence.
+
+    See :func:`voice.tutor_memory.build_tutor_memory` for the result shape and
+    the four compression levels (``long`` / ``medium`` / ``short`` / ``ultra``).
+    """
+    logger.info(
+        "knowledge_tutor.get_tutor_memory_snapshot",
+        extra={"user_id": user.id},
+    )
+
+    # Local import avoids circular dependencies at module import time
+    # (tutor_memory.py lives in the same package).
+    from voice.tutor_memory import build_tutor_memory
+
+    try:
+        return await build_tutor_memory(user=user, db=db, redis=redis)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("get_tutor_memory_snapshot failed: %s", exc, exc_info=True)
+        # Degrade gracefully — the agent will see an empty snapshot and fall
+        # back on the older history/concepts tools.
+        return {
+            "total_analyses": 0,
+            "level": "long",
+            "top_categories": [],
+            "top_concepts": [],
+            "recent_analyses": [],
+            "snapshot_at": None,
+            "error": "snapshot_failed",
+        }
 
 
 # ─────────────────────────────────────────────────────────────────────

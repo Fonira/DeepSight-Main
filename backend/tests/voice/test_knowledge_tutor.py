@@ -51,12 +51,20 @@ def test_knowledge_tutor_tools_listed():
     cfg = get_agent_config("knowledge_tutor")
     tool_names = set(cfg.tools)
     assert {
+        "get_tutor_memory_snapshot",
         "get_user_history",
         "get_concept_keys",
         "search_history",
         "get_summary_detail",
         "web_search",
     }.issubset(tool_names)
+
+
+def test_knowledge_tutor_memory_snapshot_is_first_tool():
+    """The adaptive snapshot must be the agent's primary orientation tool —
+    the prompt instructs the model to call it FIRST at session start."""
+    cfg = get_agent_config("knowledge_tutor")
+    assert cfg.tools[0] == "get_tutor_memory_snapshot"
 
 
 def test_knowledge_tutor_in_list_agent_types():
@@ -68,16 +76,18 @@ def test_knowledge_tutor_in_list_agent_types():
 
 
 def test_knowledge_tutor_prompts_socratic():
-    """System prompts must mention the four-step socratic flow + the two
-    mandatory startup tools (get_concept_keys, get_user_history)."""
+    """System prompts must mention the four-step socratic flow + the mandatory
+    startup tool (get_tutor_memory_snapshot) + the legacy fallback tools."""
     cfg = get_agent_config("knowledge_tutor")
     # FR
+    assert "get_tutor_memory_snapshot" in cfg.system_prompt_fr
     assert "get_concept_keys" in cfg.system_prompt_fr
     assert "get_user_history" in cfg.system_prompt_fr
     assert "search_history" in cfg.system_prompt_fr
     assert "get_summary_detail" in cfg.system_prompt_fr
     assert "Socratique" in cfg.system_prompt_fr or "socratique" in cfg.system_prompt_fr
     # EN
+    assert "get_tutor_memory_snapshot" in cfg.system_prompt_en
     assert "get_concept_keys" in cfg.system_prompt_en
     assert "get_user_history" in cfg.system_prompt_en
     assert "Socratic" in cfg.system_prompt_en or "socratic" in cfg.system_prompt_en
@@ -95,6 +105,7 @@ def test_build_knowledge_tutor_tools_config_shape():
     )
     names = [t["name"] for t in tools]
     assert names == [
+        "get_tutor_memory_snapshot",
         "get_user_history",
         "get_concept_keys",
         "search_history",
@@ -110,6 +121,18 @@ def test_build_knowledge_tutor_tools_config_shape():
         assert body["type"] == "object"
         assert "voice_session_id" in body["properties"]
         assert "voice_session_id" in body["required"]
+
+
+def test_memory_snapshot_tool_has_no_extra_required_fields():
+    """The snapshot tool should only require voice_session_id (no params)."""
+    tools = build_knowledge_tutor_tools_config(
+        webhook_base_url="https://api.example.com",
+        voice_session_id="vs_abc",
+    )
+    snap = next(t for t in tools if t["name"] == "get_tutor_memory_snapshot")
+    body = snap["api_schema"]["request_body_schema"]
+    assert body["required"] == ["voice_session_id"]
+    assert snap["api_schema"]["url"].endswith("/knowledge-tutor-memory")
 
 
 def test_search_history_tool_requires_query():
@@ -218,15 +241,27 @@ async def test_get_user_history_returns_recent_summaries(
     items = await get_user_history(user=kt_user, db=async_db_session, limit=10)
     assert len(items) == 3
     for item in items:
-        assert {"id", "title", "video_id", "platform", "channel", "category", "created_at", "key_concepts"}.issubset(
-            item.keys()
-        )
+        assert {
+            "id",
+            "title",
+            "video_id",
+            "platform",
+            "channel",
+            "category",
+            "created_at",
+            "key_topics",
+            "key_concepts",
+        }.issubset(item.keys())
     titles = {item["title"] for item in items}
     assert "L'éthique de l'IA générative" in titles
     assert "Introduction aux LLM" in titles
     # First summary has Obsidian-style concepts → should appear in key_concepts.
     eth = next(item for item in items if item["video_id"] == "vid_001")
     assert "alignment" in eth["key_concepts"]
+    # And its markdown headings should surface as key_topics.
+    topics_lower = [t.lower() for t in eth["key_topics"]]
+    assert "résumé" in topics_lower or "resume" in topics_lower
+    assert any("points clés" in t or "points cles" in t for t in topics_lower)
 
 
 @pytest.mark.asyncio

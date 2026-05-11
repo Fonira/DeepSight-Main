@@ -3389,6 +3389,29 @@ async def tool_knowledge_tutor_summary(request: Request, db: AsyncSession = Depe
     return {"result": detail}
 
 
+@router.post("/tools/knowledge-tutor-memory")
+async def tool_knowledge_tutor_memory(request: Request, db: AsyncSession = Depends(get_session)):
+    """KNOWLEDGE_TUTOR webhook: adaptive memory snapshot (mind-map) of the user.
+
+    Primary orientation tool — replaces the legacy "get_user_history +
+    get_concept_keys" startup pair when the agent picks up on a session.
+    Compression scales with the user's total analysis count (long / medium /
+    short / ultra). Result is cached server-side (30 min TTL).
+    """
+    from voice.knowledge_tutor_tools import get_tutor_memory_snapshot
+
+    voice_session, _body = await verify_companion_tool_request(request, db)
+    user = await _load_voice_session_user(voice_session, db)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "user_not_found", "message": "User not found."},
+        )
+
+    snapshot = await get_tutor_memory_snapshot(user=user, db=db)
+    return {"result": snapshot}
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # POST /tools/debate-* — Debate moderator agent tools (public, bearer=debate_id)
 # ═══════════════════════════════════════════════════════════════════════════════
