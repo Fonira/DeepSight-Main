@@ -121,9 +121,7 @@ def get_quota_for_plan(plan: str) -> Optional[int]:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def get_or_create_quota_row(
-    db: AsyncSession, user_id: int, period: Optional[str] = None
-) -> VisualAnalysisQuota:
+async def get_or_create_quota_row(db: AsyncSession, user_id: int, period: Optional[str] = None) -> VisualAnalysisQuota:
     """Récupère la ligne quota du mois ou la crée si absente. Pas de commit."""
     period = period or _current_period()
 
@@ -354,9 +352,7 @@ _TIKWM_TIMEOUT_S = 15.0
 _TIKWM_DOWNLOAD_TIMEOUT_S = 60.0
 
 
-async def _download_tiktok_video_no_watermark(
-    url: str, *, log_tag: str
-) -> Optional[bytes]:
+async def _download_tiktok_video_no_watermark(url: str, *, log_tag: str) -> Optional[bytes]:
     """Télécharge la vidéo TikTok no-watermark via tikwm.com (`data.play`).
 
     `transcripts.tiktok._download_video_bytes()` priorise `music_info.play`
@@ -372,9 +368,7 @@ async def _download_tiktok_video_no_watermark(
         async with httpx.AsyncClient(timeout=_TIKWM_TIMEOUT_S) as client:
             resp = await client.post(_TIKWM_API_URL, data={"url": url})
         if resp.status_code != 200:
-            logger.warning(
-                "[%s] tikwm API HTTP %d for %s", log_tag, resp.status_code, url
-            )
+            logger.warning("[%s] tikwm API HTTP %d for %s", log_tag, resp.status_code, url)
             return None
         payload = resp.json()
     except Exception as e:
@@ -405,9 +399,7 @@ async def _download_tiktok_video_no_watermark(
         ) as client:
             r = await client.get(media_url)
         if r.status_code != 200:
-            logger.warning(
-                "[%s] tikwm video CDN HTTP %d for %s", log_tag, r.status_code, media_url[:80]
-            )
+            logger.warning("[%s] tikwm video CDN HTTP %d for %s", log_tag, r.status_code, media_url[:80])
             return None
         if len(r.content) < 1000:
             logger.warning(
@@ -422,9 +414,7 @@ async def _download_tiktok_video_no_watermark(
         return None
 
 
-async def _download_tiktok_video_via_ytdlp(
-    url: str, *, log_tag: str, timeout_s: int = 60
-) -> Optional[bytes]:
+async def _download_tiktok_video_via_ytdlp(url: str, *, log_tag: str, timeout_s: int = 60) -> Optional[bytes]:
     """Télécharge la vidéo TikTok via yt-dlp + proxy Decodo + cookies TikTok.
 
     Stratégie 2026-05-11 : tikwm.com retourne "Url parsing failed" depuis l'IP
@@ -468,10 +458,19 @@ async def _download_tiktok_video_via_ytdlp(
             return None
 
     try:
-        return await asyncio.wait_for(
+        data = await asyncio.wait_for(
             loop.run_in_executor(audio_executor, _dl),
             timeout=timeout_s + 5,
         )
+        # 📡 Proxy telemetry — video TikTok download via Decodo
+        if data:
+            try:
+                from middleware.proxy_telemetry import record_proxy_usage
+
+                await record_proxy_usage(provider="ytdlp_tiktok", bytes_in=len(data))
+            except Exception:  # noqa: BLE001 — best-effort
+                pass
+        return data
     except asyncio.TimeoutError:
         logger.warning("[%s] yt-dlp TikTok download timeout (%ds)", log_tag, timeout_s)
     except Exception as e:
@@ -516,9 +515,7 @@ async def _extract_tiktok_visual_frames(
             logger.warning("[%s] tikwm fallback raised: %s", log_tag, e)
 
     if not video_data:
-        logger.warning(
-            "[%s] TikTok download failed (yt-dlp + tikwm) for %s", log_tag, video_id
-        )
+        logger.warning("[%s] TikTok download failed (yt-dlp + tikwm) for %s", log_tag, video_id)
         return None
 
     logger.info(
@@ -538,9 +535,7 @@ async def _extract_tiktok_visual_frames(
         return None
 
     try:
-        result = await extract_frames_from_local(
-            str(tmp_path), mode=mode, log_tag=f"{log_tag} TIKTOK"
-        )
+        result = await extract_frames_from_local(str(tmp_path), mode=mode, log_tag=f"{log_tag} TIKTOK")
     finally:
         # Le mp4 source n'est plus utile une fois les frames extraites — peu importe le résultat
         tmp_path.unlink(missing_ok=True)
@@ -604,9 +599,7 @@ async def enrich_and_capture_visual(
         _visual_block = format_visual_context_for_prompt(_visual)
         new_web_context = web_context or ""
         if _visual_block:
-            new_web_context = (
-                (new_web_context + "\n\n" + _visual_block) if new_web_context else _visual_block
-            )
+            new_web_context = (new_web_context + "\n\n" + _visual_block) if new_web_context else _visual_block
 
         logger.info(
             f"👁️ [{log_tag}] visual enrichment OK: "

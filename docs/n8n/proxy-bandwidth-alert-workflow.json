@@ -1,0 +1,182 @@
+{
+  "name": "Proxy Bandwidth Alert — Decodo MTD watch",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-daily-9utc",
+      "name": "Daily 09:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.deepsightsynthesis.com/api/admin/proxy/usage",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "days",
+              "value": "31"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$credentials.deepsightAdminToken}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http-fetch-usage",
+      "name": "Fetch /api/admin/proxy/usage?days=31",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 320],
+      "notes": "Replace credentials.deepsightAdminToken with the actual admin Bearer token (env var côté n8n cloud, NE PAS commiter en clair). Alternative : appeler l'endpoint via Cloudflare worker proxy avec auth IP whitelist."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "threshold-check",
+              "leftValue": "={{ $json.total_bytes_mtd }}",
+              "rightValue": 838860800,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-over-threshold",
+      "name": "If MTD > 800 MB",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [720, 320],
+      "notes": "800 MB = 800 * 1024 * 1024 = 838 860 800 bytes. Choix conservateur : alerte humaine 150 MB avant le hard-stop à 950 MB pour permettre une recharge wallet Decodo manuelle avant coupure auto."
+    },
+    {
+      "parameters": {
+        "chatId": "735497548",
+        "text": "=⚠️ Proxy MTD = {{ $('Fetch /api/admin/proxy/usage?days=31').item.json.mtd_mb }} MB / 1000 MB (80%+).\n\nDecodo wallet à recharger ou activer PROXY_DISABLED.\n\nBreakdown :\n{{ Object.entries($('Fetch /api/admin/proxy/usage?days=31').item.json.by_provider || {}).map(([k,v]) => `• ${k}: ${v.requests} req (${v.share_pct}%)`).join('\\n') }}\n\nHard-stop auto à {{ $('Fetch /api/admin/proxy/usage?days=31').item.json.hard_stop_threshold_mb }} MB. PROXY_DISABLED env : {{ $('Fetch /api/admin/proxy/usage?days=31').item.json.proxy_disabled_env ? 'true (déjà coupé)' : 'false' }}.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-alert",
+      "name": "Telegram Alert @Deepsightalertsbot",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [960, 240],
+      "credentials": {
+        "telegramApi": {
+          "id": "zFfqu5fS7A0O4o2i",
+          "name": "DeepsightAlerts"
+        }
+      },
+      "notes": "chat_id 735497548 = bot @Deepsightalertsbot, cred zFfqu5fS7A0O4o2i (cf. memory entry 'Telegram DeepSight Alerts bot'). Fallback si la cred est nommée différemment : bobby/alfred."
+    },
+    {
+      "parameters": {
+        "content": "## Proxy Bandwidth Alert\n\nSurveille la consommation MTD du proxy Decodo (Pay As You Go, $4/GB).\n\n**Trigger** : cron daily 09:00 UTC\n**Threshold** : 800 MB (80% du budget mensuel 1 GB, 150 MB de marge avant hard-stop auto à 950 MB)\n**Endpoint** : `GET /api/admin/proxy/usage?days=31` (MTD breakdown)\n**Notification** : Telegram @Deepsightalertsbot (chat_id 735497548)\n\n### Actions correctives quand l'alerte se déclenche\n1. Vérifier le breakdown `by_provider` pour identifier le top consumer\n2. Recharger le wallet Decodo si volume légitime\n3. Sinon → SSH VPS et activer `PROXY_DISABLED=true` dans `.env.production` + restart container (fallback bare, dégradation gracieuse)\n\nVoir `docs/runbooks/proxy-telemetry-monitoring.md` pour le détail.",
+        "height": 280,
+        "width": 480
+      },
+      "id": "sticky-note",
+      "name": "Documentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, 80]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 09:00 UTC": {
+      "main": [
+        [
+          {
+            "node": "Fetch /api/admin/proxy/usage?days=31",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch /api/admin/proxy/usage?days=31": {
+      "main": [
+        [
+          {
+            "node": "If MTD > 800 MB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If MTD > 800 MB": {
+      "main": [
+        [
+          {
+            "node": "Telegram Alert @Deepsightalertsbot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "HYRyfu6V17LBk4rc",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "proxy-bandwidth-alert-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "alerts",
+      "id": "alerts"
+    },
+    {
+      "name": "deepsight",
+      "id": "deepsight"
+    }
+  ]
+}

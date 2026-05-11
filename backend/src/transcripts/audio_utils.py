@@ -44,9 +44,16 @@ def _yt_dlp_extra_args(*, include_proxy: bool = True, use_tiktok_cookies: bool =
     `use_tiktok_cookies=True` swap YTDLP_COOKIES_PATH pour TIKTOK_COOKIES_PATH
     afin que les sessions YouTube et TikTok restent ségrégées (domaines et
     fenêtres de refresh différents, cookies TikTok plus volatiles).
+
+    HARD-STOP : si `should_bypass_proxy()` retourne True (PROXY_DISABLED=true OU
+    MTD > 950 MB), on skip `--proxy` même quand include_proxy=True. Dégradation
+    gracieuse : la requête peut échouer côté YouTube (IP-ban) mais on ne bloque
+    JAMAIS la requête côté backend.
     """
+    from middleware.proxy_telemetry import should_bypass_proxy  # local import — évite cycle
+
     extra = []
-    if include_proxy:
+    if include_proxy and not should_bypass_proxy():
         proxy = get_youtube_proxy()
         if proxy:
             extra.extend(["--proxy", proxy])
@@ -54,6 +61,7 @@ def _yt_dlp_extra_args(*, include_proxy: bool = True, use_tiktok_cookies: bool =
     if cookies and os.path.exists(cookies):
         extra.extend(["--cookies", cookies])
     return extra
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION
@@ -392,6 +400,16 @@ async def download_audio_ytdlp(
                 return None, ".mp3"
 
         result = await asyncio.wait_for(loop.run_in_executor(executor, _download), timeout=timeout)
+        # 📡 Proxy telemetry — track bytes_in = taille du fichier téléchargé (compressé).
+        # No-op si proxy pas configuré (dev local). Best-effort, jamais bloquant.
+        try:
+            data, _ = result
+            if data:
+                from middleware.proxy_telemetry import record_proxy_usage
+
+                await record_proxy_usage(provider="ytdlp_audio", bytes_in=len(data))
+        except Exception:  # noqa: BLE001 — best-effort
+            pass
         return result
 
     except asyncio.TimeoutError:

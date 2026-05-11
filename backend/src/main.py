@@ -633,6 +633,17 @@ async def initialize_database_background():
         except Exception as badge_err:
             logger.warning(f"Badge seeding failed (non-blocking): {badge_err}")
 
+        # Étape 8: Proxy telemetry boot state log + warmup MTD cache
+        try:
+            from middleware.proxy_telemetry import log_boot_state, get_mtd_bytes
+
+            log_boot_state()
+            # Warmup MTD cache pour que should_bypass_proxy() (sync) ait une
+            # valeur dès la première requête proxifiée.
+            await get_mtd_bytes()
+        except Exception as proxy_err:
+            logger.warning(f"Proxy telemetry boot init failed (non-blocking): {proxy_err}")
+
         # Marquer l'app comme prête
         _app_state["ready"] = True
         logger.info("🟢 Application fully ready to serve requests")
