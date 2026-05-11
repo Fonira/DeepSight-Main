@@ -134,12 +134,37 @@ a:hover {
    APP CONTAINER
    ═══════════════════════════════════════════════════ */
 
-.app-container {
+/* Root chain: html/body/#root all have height:100%. We propagate that
+   height down through .ds-app-root → .app-container → .app-content so
+   leaf views (.v3-app, .chat-view, .digest-view) can rely on flex:1 and
+   actually fill the side panel viewport. `min-height: 0` on every flex
+   container lets a flex child overflow into a scrollable area instead of
+   pushing its parent past the viewport — root cause of the "can't scroll
+   down to the prices" bug. */
+.ds-app-root {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  min-height: 500px;
+  min-height: 0;
+  position: relative;
+}
+
+.app-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   position: relative;
   animation: fadeIn 0.3s ease-out;
+}
+
+.app-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+  z-index: 1;
 }
 
 /* ═══════════════════════════════════════════════════

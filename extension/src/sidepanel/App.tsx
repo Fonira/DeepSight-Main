@@ -394,12 +394,9 @@ export const App: React.FC = () => {
   return (
     <div className="ds-app-root">
       <DoodleBackground />
-      <div
-        className="app-container noise-overlay"
-        style={{ position: "relative" }}
-      >
+      <div className="app-container noise-overlay">
         <MicroDoodleBackground variant={getCurrentVariant()} />
-        <div style={{ position: "relative", zIndex: 1 }}>
+        <div className="app-content">
           {/* Toast notification */}
           {toast && (
             <div
