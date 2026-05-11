@@ -121,6 +121,22 @@ jobs:
             # challenge on visual storyboard extraction). The file is optional:
             # if absent on the host, the bind-mount will fail with a clear
             # error in `docker logs` rather than silently breaking visual.
+            #
+            # Sprint A (Decodo proxy primaire) : on bind-mount aussi un fichier
+            # tiktok_cookies.txt OPTIONNEL pour les TikToks gated (login required,
+            # age restricted, region locked). yt-dlp accepte un seul --cookies à
+            # la fois ; le helper transcripts.audio_utils._yt_dlp_extra_args lit
+            # YTDLP_COOKIES_PATH pour YouTube, et pour TikTok on pourra pivoter
+            # vers TIKTOK_COOKIES_PATH dans une PR séparée. Ici on prépare juste
+            # le bind-mount pour ne pas re-déployer plus tard.
+            TIKTOK_COOKIES_MOUNT=""
+            if [ -f /opt/deepsight/tiktok_cookies.txt ]; then
+              TIKTOK_COOKIES_MOUNT="-v /opt/deepsight/tiktok_cookies.txt:/app/tiktok_cookies.txt:ro"
+              echo "TikTok cookies file detected — bind-mounting"
+            else
+              echo "No TikTok cookies file on host — skipping bind-mount"
+            fi
+
             docker stop repo-backend-1 || true
             docker rm repo-backend-1 || true
             docker run -d \
@@ -131,6 +147,7 @@ jobs:
               --restart unless-stopped \
               -p 127.0.0.1:8080:8080 \
               -v /opt/deepsight/cookies.txt:/app/cookies.txt:ro \
+              $TIKTOK_COOKIES_MOUNT \
               deepsight-backend:latest
 
             echo "Deployed SHA: $(git rev-parse HEAD)"
@@ -176,6 +193,12 @@ jobs:
             echo "Rolling back to deepsight-backend:previous"
             docker tag deepsight-backend:previous deepsight-backend:latest
 
+            # Bind-mount conditionnel TikTok cookies (Sprint A — Decodo proxy)
+            TIKTOK_COOKIES_MOUNT=""
+            if [ -f /opt/deepsight/tiktok_cookies.txt ]; then
+              TIKTOK_COOKIES_MOUNT="-v /opt/deepsight/tiktok_cookies.txt:/app/tiktok_cookies.txt:ro"
+            fi
+
             docker stop repo-backend-1 || true
             docker rm repo-backend-1 || true
             docker run -d \
@@ -186,6 +209,7 @@ jobs:
               --restart unless-stopped \
               -p 127.0.0.1:8080:8080 \
               -v /opt/deepsight/cookies.txt:/app/cookies.txt:ro \
+              $TIKTOK_COOKIES_MOUNT \
               deepsight-backend:latest
 
             echo "Rollback complete"
