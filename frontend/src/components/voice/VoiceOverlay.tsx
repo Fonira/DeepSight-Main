@@ -140,6 +140,7 @@ const I18N = {
     micMuted: "Micro coupé",
     settings: "Réglages",
     backToChat: "Retour au chat",
+    closeSettings: "Retour à l'appel",
   },
   en: {
     callTitle: "Voice call",
@@ -157,6 +158,7 @@ const I18N = {
     micMuted: "Mic muted",
     settings: "Settings",
     backToChat: "Back to chat",
+    closeSettings: "Back to call",
   },
 } as const;
 
@@ -389,13 +391,23 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                {onBackToChat && (
+                {(onBackToChat || settingsOpen) && (
                   <button
                     type="button"
-                    onClick={onBackToChat}
-                    aria-label={t.backToChat}
-                    title={t.backToChat}
-                    data-testid="voice-overlay-back-to-chat"
+                    onClick={
+                      settingsOpen
+                        ? () => setSettingsOpen(false)
+                        : onBackToChat
+                    }
+                    aria-label={
+                      settingsOpen ? t.closeSettings : t.backToChat
+                    }
+                    title={settingsOpen ? t.closeSettings : t.backToChat}
+                    data-testid={
+                      settingsOpen
+                        ? "voice-overlay-close-settings"
+                        : "voice-overlay-back-to-chat"
+                    }
                     className="p-1.5 rounded-lg hover:bg-white/[0.06] text-text-muted hover:text-text-secondary transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
