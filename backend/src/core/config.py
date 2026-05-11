@@ -68,7 +68,22 @@ class _DeepSightSettings(BaseSettings):
     MIRO_API_TOKEN: str = ""
 
     # -- YouTube Proxy (pour contourner le blocage IP YouTube sur VPS) --
+    # Tier 1 — proxy par defaut (rotating Decodo Pay-As-You-Go : nouvelle IP chaque request)
     YOUTUBE_PROXY: str = ""  # ex: socks5://user:pass@host:port ou http://user:pass@host:port
+    # Tier 2 — sticky session Decodo (port 10001-10010, IP fixe ~10 min)
+    # Utilise pour cohérence cookies session, swap automatique si default cumule trop d'erreurs.
+    YOUTUBE_PROXY_STICKY: Optional[str] = None
+    # Tier 3 — geo-targeted Decodo (username suffix `-country-XX`)
+    YOUTUBE_PROXY_GEO_US: Optional[str] = None
+    YOUTUBE_PROXY_GEO_FR: Optional[str] = None
+    # Tier 4 — fallback multi-provider (Webshare ou autre), totalement indépendant de Decodo.
+    YOUTUBE_PROXY_LEGACY: Optional[str] = None
+    # -- Proxy Circuit Breaker (Sprint D — Proxy V2 resilience) --
+    # Bascule de tier après N erreurs dans une fenetre glissante de Y secondes ;
+    # reset complet apres Z secondes sans erreur. Tunable sans deploy via .env.
+    PROXY_CIRCUIT_BREAKER_THRESHOLD: int = 5
+    PROXY_CIRCUIT_BREAKER_WINDOW_S: int = 60
+    PROXY_CIRCUIT_BREAKER_RESET_S: int = 300
 
     # -- Email --
     EMAIL_ENABLED: str = "true"
@@ -316,6 +331,14 @@ FAL_API_KEY = _settings.FAL_API_KEY
 TOGETHER_API_KEY = _settings.TOGETHER_API_KEY
 MISTRAL_IMAGE_AGENT_ID = _settings.MISTRAL_IMAGE_AGENT_ID
 YOUTUBE_PROXY = _settings.YOUTUBE_PROXY
+# Sprint D — Proxy V2 advanced (geo + sticky + multi-provider fallback)
+YOUTUBE_PROXY_STICKY = _settings.YOUTUBE_PROXY_STICKY
+YOUTUBE_PROXY_GEO_US = _settings.YOUTUBE_PROXY_GEO_US
+YOUTUBE_PROXY_GEO_FR = _settings.YOUTUBE_PROXY_GEO_FR
+YOUTUBE_PROXY_LEGACY = _settings.YOUTUBE_PROXY_LEGACY
+PROXY_CIRCUIT_BREAKER_THRESHOLD: int = _settings.PROXY_CIRCUIT_BREAKER_THRESHOLD
+PROXY_CIRCUIT_BREAKER_WINDOW_S: int = _settings.PROXY_CIRCUIT_BREAKER_WINDOW_S
+PROXY_CIRCUIT_BREAKER_RESET_S: int = _settings.PROXY_CIRCUIT_BREAKER_RESET_S
 
 
 def get_fal_key() -> str:
@@ -861,6 +884,26 @@ def get_supadata_key() -> str:
 
 def get_youtube_proxy() -> str:
     return YOUTUBE_PROXY
+
+
+def get_youtube_proxy_sticky() -> Optional[str]:
+    """Tier 2 — sticky Decodo session (cohérence cookies pendant ~10min)."""
+    return YOUTUBE_PROXY_STICKY or None
+
+
+def get_youtube_proxy_geo_us() -> Optional[str]:
+    """Tier 3 — Decodo geo-targeted US (username suffix `-country-us`)."""
+    return YOUTUBE_PROXY_GEO_US or None
+
+
+def get_youtube_proxy_geo_fr() -> Optional[str]:
+    """Tier 3 — Decodo geo-targeted FR (username suffix `-country-fr`)."""
+    return YOUTUBE_PROXY_GEO_FR or None
+
+
+def get_youtube_proxy_legacy() -> Optional[str]:
+    """Tier 4 — fallback multi-provider (Webshare etc.), indépendant de Decodo."""
+    return YOUTUBE_PROXY_LEGACY or None
 
 
 def get_ytdlp_cookies_path() -> str:

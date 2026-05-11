@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Literal, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
@@ -20,8 +20,83 @@ from core.config import (
     get_groq_key,
     get_tiktok_cookies_path,
     get_youtube_proxy,
+    get_youtube_proxy_geo_fr,
+    get_youtube_proxy_geo_us,
+    get_youtube_proxy_legacy,
+    get_youtube_proxy_sticky,
     get_ytdlp_cookies_path,
 )
+from core.logging import logger
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🌐 PROXY VARIANT RESOLUTION (Sprint D — Proxy V2 resilience)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ProxyVariant = Literal["default", "sticky", "geo_us", "geo_fr", "legacy", "none"]
+
+# Variant → nom du getter dans le module (resolution dynamique a l'appel).
+# "none" retourne toujours "" via _GETTER_NONE.
+# Pourquoi indexer par nom de symbole et pas par fonction ? Parce que les tests
+# monkeypatch `audio_utils.get_youtube_proxy` (rebinding du nom), ce qui ne
+# se propage pas a une reference fonctionnelle figee dans un dict global.
+_VARIANT_GETTER_NAMES = {
+    "default": "get_youtube_proxy",
+    "sticky": "get_youtube_proxy_sticky",
+    "geo_us": "get_youtube_proxy_geo_us",
+    "geo_fr": "get_youtube_proxy_geo_fr",
+    "legacy": "get_youtube_proxy_legacy",
+    "none": None,  # special-cased dans _resolve_proxy_variant
+}
+
+
+def _resolve_proxy_variant(variant: ProxyVariant) -> str:
+    """Look up the proxy URL for the requested variant.
+
+    Fallback gracieux : si le variant est demande mais le setting est None/vide,
+    on log un warning et on retombe sur `YOUTUBE_PROXY` (default). Permet de
+    deployer le code AVANT que Maxime ait seed les variants en prod sans casser
+    les flows existants.
+
+    Args:
+        variant: "default" | "sticky" | "geo_us" | "geo_fr" | "legacy" | "none".
+
+    Returns:
+        URL proxy a injecter dans `--proxy` (ou "" pour bare).
+    """
+    if variant == "none":
+        return ""
+
+    getter_name = _VARIANT_GETTER_NAMES.get(variant)
+    if getter_name is None:
+        logger.warning(f"proxy_variant: unknown variant={variant!r}, using 'default'")
+        return _resolve_default()
+
+    # Resolution dynamique du symbole pour rester compatible monkeypatch
+    getter = globals().get(getter_name)
+    if getter is None:
+        logger.warning(
+            f"proxy_variant: getter {getter_name} not found in module — using default"
+        )
+        return _resolve_default()
+
+    url = getter() or ""
+    if not url and variant != "default":
+        # Tier configure absent en .env → cascade vers default avec warn.
+        logger.warning(
+            f"proxy_variant: {variant} requested but setting is None/empty, "
+            "falling back to default"
+        )
+        return _resolve_default()
+    return url
+
+
+def _resolve_default() -> str:
+    """Helper interne — toujours utilise le getter `get_youtube_proxy` courant."""
+    fn = globals().get("get_youtube_proxy")
+    if fn is None:
+        return ""
+    return fn() or ""
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -29,7 +104,12 @@ from core.config import (
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def _yt_dlp_extra_args(*, include_proxy: bool = True, use_tiktok_cookies: bool = False) -> list:
+def _yt_dlp_extra_args(
+    *,
+    include_proxy: bool = True,
+    use_tiktok_cookies: bool = False,
+    proxy_variant: ProxyVariant = "default",
+) -> list:
     """Common yt-dlp flags for IP-banned environments: proxy + cookies.
 
     Both are no-ops when their env vars are unset, so this is safe to call
@@ -49,12 +129,21 @@ def _yt_dlp_extra_args(*, include_proxy: bool = True, use_tiktok_cookies: bool =
     MTD > 950 MB), on skip `--proxy` même quand include_proxy=True. Dégradation
     gracieuse : la requête peut échouer côté YouTube (IP-ban) mais on ne bloque
     JAMAIS la requête côté backend.
+
+    `proxy_variant` (Sprint D) selectionne le tier proxy a utiliser :
+      - "default" : `YOUTUBE_PROXY` (rotating Decodo, comportement historique)
+      - "sticky"  : `YOUTUBE_PROXY_STICKY` (sticky session ~10min)
+      - "geo_us" / "geo_fr" : `YOUTUBE_PROXY_GEO_{US,FR}` (geo-targeted)
+      - "legacy"  : `YOUTUBE_PROXY_LEGACY` (fallback multi-provider)
+      - "none"    : skip `--proxy` (bare request, last-resort)
+    Fallback gracieux : si le variant pointe sur un setting None/vide,
+    cascade automatique vers `default` avec warning (`_resolve_proxy_variant`).
     """
     from middleware.proxy_telemetry import should_bypass_proxy  # local import — évite cycle
 
     extra = []
-    if include_proxy and not should_bypass_proxy():
-        proxy = get_youtube_proxy()
+    if include_proxy and proxy_variant != "none" and not should_bypass_proxy():
+        proxy = _resolve_proxy_variant(proxy_variant)
         if proxy:
             extra.extend(["--proxy", proxy])
     cookies = get_tiktok_cookies_path() if use_tiktok_cookies else get_ytdlp_cookies_path()
