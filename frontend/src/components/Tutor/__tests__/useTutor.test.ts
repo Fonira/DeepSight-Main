@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useTutor } from "../useTutor";
+import { useTutorStore } from "../../../store/tutorStore";
 
 vi.mock("../../../services/api", () => ({
   tutorApi: {
@@ -27,6 +28,7 @@ describe("useTutor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    useTutorStore.getState().reset();
   });
 
   it("starts in idle phase", () => {

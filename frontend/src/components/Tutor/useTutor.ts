@@ -1,207 +1,54 @@
 // frontend/src/components/Tutor/useTutor.ts
+//
+// Wrapper minimal autour de `useTutorStore` (Zustand) — Phase 2 V2 mai 2026.
+//
+// Préserve la signature historique du hook (`tutor.phase`, `tutor.messages`,
+// `tutor.startSession(...)`, etc.) pour ne pas casser les composants
+// `Tutor.tsx`, `TutorPrompting.tsx`, `TutorMiniChat.tsx`. La logique d'état
+// est désormais portée par le store global afin que la conversation soit
+// partagée entre la popup flottante et la vue plein écran dans le Hub.
 
-import { useReducer, useCallback } from "react";
-import { tutorApi } from "../../services/api";
-import type {
-  TutorPhase,
-  TutorLang,
-  TutorTurn,
-} from "../../types/tutor";
-
-interface TutorState {
-  phase: TutorPhase;
-  sessionId: string | null;
-  messages: TutorTurn[];
-  conceptTerm: string | null;
-  conceptDef: string | null;
-  summaryId: number | null;
-  sourceVideoTitle: string | null;
-  lang: TutorLang;
-  loading: boolean;
-  error: string | null;
-}
-
-type Action =
-  | { type: "OPEN_PROMPTING" }
-  | { type: "CANCEL_PROMPTING" }
-  | { type: "SESSION_STARTING"; lang: TutorLang }
-  | {
-      type: "SESSION_STARTED";
-      session_id: string;
-      first_prompt: string;
-      concept_term: string;
-      concept_def: string;
-      summary_id: number | null;
-      source_video_title: string | null;
-    }
-  | { type: "TURN_PENDING"; user_input: string }
-  | { type: "TURN_DONE"; ai_response: string }
-  | { type: "SESSION_ENDED" }
-  | { type: "ERROR"; message: string };
-
-const initialState: TutorState = {
-  phase: "idle",
-  sessionId: null,
-  messages: [],
-  conceptTerm: null,
-  conceptDef: null,
-  summaryId: null,
-  sourceVideoTitle: null,
-  lang: "fr",
-  loading: false,
-  error: null,
-};
-
-function reducer(state: TutorState, action: Action): TutorState {
-  switch (action.type) {
-    case "OPEN_PROMPTING":
-      return { ...state, phase: "prompting", error: null };
-    case "CANCEL_PROMPTING":
-      return { ...state, phase: "idle" };
-    case "SESSION_STARTING":
-      return {
-        ...state,
-        lang: action.lang,
-        loading: true,
-        error: null,
-      };
-    case "SESSION_STARTED":
-      return {
-        ...state,
-        phase: "mini-chat",
-        sessionId: action.session_id,
-        conceptTerm: action.concept_term,
-        conceptDef: action.concept_def,
-        summaryId: action.summary_id,
-        sourceVideoTitle: action.source_video_title,
-        messages: [
-          {
-            role: "assistant",
-            content: action.first_prompt,
-            timestamp_ms: Date.now(),
-          },
-        ],
-        loading: false,
-      };
-    case "TURN_PENDING":
-      return {
-        ...state,
-        messages: [
-          ...state.messages,
-          {
-            role: "user",
-            content: action.user_input,
-            timestamp_ms: Date.now(),
-          },
-        ],
-        loading: true,
-      };
-    case "TURN_DONE":
-      return {
-        ...state,
-        messages: [
-          ...state.messages,
-          {
-            role: "assistant",
-            content: action.ai_response,
-            timestamp_ms: Date.now(),
-          },
-        ],
-        loading: false,
-      };
-    case "SESSION_ENDED":
-      return initialState;
-    case "ERROR":
-      return { ...state, error: action.message, loading: false };
-    default:
-      return state;
-  }
-}
-
-interface StartSessionParams {
-  concept_term: string;
-  concept_def: string;
-  summary_id?: number;
-  source_video_title?: string;
-  mode: "text";
-  lang?: TutorLang;
-}
+import { useTutorStore, type StartSessionOpts } from "../../store/tutorStore";
 
 export function useTutor() {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const phase = useTutorStore((s) => s.phase);
+  const sessionId = useTutorStore((s) => s.sessionId);
+  const messages = useTutorStore((s) => s.messages);
+  const conceptTerm = useTutorStore((s) => s.conceptTerm);
+  const conceptDef = useTutorStore((s) => s.conceptDef);
+  const summaryId = useTutorStore((s) => s.summaryId);
+  const sourceVideoTitle = useTutorStore((s) => s.sourceVideoTitle);
+  const lang = useTutorStore((s) => s.lang);
+  const loading = useTutorStore((s) => s.loading);
+  const error = useTutorStore((s) => s.error);
+  const fullscreen = useTutorStore((s) => s.fullscreen);
 
-  const openPrompting = useCallback(
-    () => dispatch({ type: "OPEN_PROMPTING" }),
-    [],
-  );
-  const cancelPrompting = useCallback(
-    () => dispatch({ type: "CANCEL_PROMPTING" }),
-    [],
-  );
-
-  const startSession = useCallback(async (params: StartSessionParams) => {
-    const lang = params.lang ?? "fr";
-    dispatch({ type: "SESSION_STARTING", lang });
-    try {
-      const resp = await tutorApi.sessionStart({
-        concept_term: params.concept_term,
-        concept_def: params.concept_def,
-        summary_id: params.summary_id,
-        source_video_title: params.source_video_title,
-        mode: "text",
-        lang,
-      });
-      dispatch({
-        type: "SESSION_STARTED",
-        session_id: resp.session_id,
-        first_prompt: resp.first_prompt,
-        concept_term: params.concept_term,
-        concept_def: params.concept_def,
-        summary_id: params.summary_id ?? null,
-        source_video_title: params.source_video_title ?? null,
-      });
-    } catch (err) {
-      dispatch({ type: "ERROR", message: (err as Error).message });
-    }
-  }, []);
-
-  const submitTextTurn = useCallback(
-    async (user_input: string) => {
-      if (!state.sessionId) return;
-      dispatch({ type: "TURN_PENDING", user_input });
-      try {
-        const resp = await tutorApi.sessionTurn(state.sessionId, {
-          user_input,
-        });
-        dispatch({
-          type: "TURN_DONE",
-          ai_response: resp.ai_response,
-        });
-      } catch (err) {
-        dispatch({ type: "ERROR", message: (err as Error).message });
-      }
-    },
-    [state.sessionId],
-  );
-
-  const endSession = useCallback(async () => {
-    if (state.sessionId) {
-      try {
-        await tutorApi.sessionEnd(state.sessionId);
-      } catch (err) {
-        // Best effort — logger mais ne pas bloquer
-        console.error("[useTutor] endSession failed", err);
-      }
-    }
-    dispatch({ type: "SESSION_ENDED" });
-  }, [state.sessionId]);
+  const openPrompting = useTutorStore((s) => s.openPrompting);
+  const cancelPrompting = useTutorStore((s) => s.cancelPrompting);
+  const startSession = useTutorStore((s) => s.startSession);
+  const submitTextTurn = useTutorStore((s) => s.submitTextTurn);
+  const endSession = useTutorStore((s) => s.endSession);
+  const setFullscreen = useTutorStore((s) => s.setFullscreen);
 
   return {
-    ...state,
+    phase,
+    sessionId,
+    messages,
+    conceptTerm,
+    conceptDef,
+    summaryId,
+    sourceVideoTitle,
+    lang,
+    loading,
+    error,
+    fullscreen,
     openPrompting,
     cancelPrompting,
     startSession,
     submitTextTurn,
     endSession,
+    setFullscreen,
   };
 }
+
+export type { StartSessionOpts };
