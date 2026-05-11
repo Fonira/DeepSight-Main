@@ -51,6 +51,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
   const [phase, setPhase] = useState<"idle" | "analyzing" | "error">("idle");
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState("");
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [guestUsed, setGuestUsed] = useState(false);
   const [quickChatLoading, setQuickChatLoading] = useState(false);
@@ -156,6 +157,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
       }
 
       const taskId = (startRes.result as { task_id: string }).task_id;
+      setActiveTaskId(taskId);
 
       pollRef.current = setInterval(async () => {
         try {
@@ -199,6 +201,10 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
             if (pollRef.current) clearInterval(pollRef.current);
             setPhase("error");
             setErrorMsg(status.error || t.analysis.failed);
+          } else if (status.status === "cancelled") {
+            if (pollRef.current) clearInterval(pollRef.current);
+            setActiveTaskId(null);
+            setPhase("idle");
           } else {
             setProgress(status.progress || 0);
             setProgressMsg(status.message || t.analysis.processing);
@@ -212,6 +218,24 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
       setErrorMsg((e as Error).message);
     }
   }, [video, mode, lang, isGuest, t, onAnalysisComplete]);
+
+  const cancelAnalysis = useCallback(async () => {
+    if (!activeTaskId) return;
+    if (pollRef.current) clearInterval(pollRef.current);
+    try {
+      await Browser.runtime.sendMessage({
+        action: "CANCEL_ANALYSIS",
+        data: { taskId: activeTaskId },
+      });
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[Extension] Cancel failed:", e);
+      }
+    }
+    setActiveTaskId(null);
+    setPhase("idle");
+    setProgress(0);
+  }, [activeTaskId]);
 
   const planName = planInfo
     ? t.plans[planInfo.plan_id as keyof typeof t.plans] || planInfo.plan_name
@@ -487,6 +511,14 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
             </div>
             <p className="progress-text">{progressMsg}</p>
             <p className="progress-percent">{progress}%</p>
+            <button
+              className="analyze-btn"
+              onClick={cancelAnalysis}
+              style={{ marginTop: 12, opacity: 0.85 }}
+              aria-label="Annuler l'analyse"
+            >
+              {t.common.cancel ?? (language === "fr" ? "Annuler" : "Cancel")}
+            </button>
           </div>
         )}
 
