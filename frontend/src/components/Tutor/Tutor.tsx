@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useLoadingWord } from "../../contexts/LoadingWordContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useAuth } from "../../hooks/useAuth";
@@ -38,6 +39,7 @@ export const Tutor: React.FC = () => {
   const { language } = useLanguage();
   const tutor = useTutor();
   const { voiceEnabled } = useVoiceEnabled();
+  const navigate = useNavigate();
 
   // Voice Tutor modal — opened from the TutorMiniChat header button.
   // Carries the current concept as a primer so the agent can pick up
@@ -104,8 +106,29 @@ export const Tutor: React.FC = () => {
     });
   }, [currentWord, language, tutor]);
 
+  // V2 — Fullscreen: bascule la conv tuteur dans la vue plein écran du Hub
+  // (`/hub?fsChat=tutor`). La popup reste montée en arrière-plan (masquée
+  // par le HubPage qui early-return sur `fsChat`), mais la conv vit
+  // désormais dans le store Zustand global → la vue Hub lit la même
+  // session sans drop de messages.
+  const handleFullscreen = useCallback(() => {
+    tutor.setFullscreen(true);
+    navigate("/hub?fsChat=tutor");
+  }, [tutor, navigate]);
+
   if (!isAuthenticated || !currentWord) return null;
   if (hidden) return null;
+
+  // V2 — back-to-chat callback : ne s'expose au modal vocal QUE si une
+  // conv texte est déjà en cours. Sans conv (lancement sidebar sans
+  // concept), pas de "retour au chat" possible → le bouton reste masqué.
+  const voiceBackToChat =
+    tutor.phase === "mini-chat"
+      ? () => {
+          setVoiceTutorOpen(false);
+          /* La popup texte est déjà visible derrière, rien d'autre à faire. */
+        }
+      : undefined;
 
   // Voice Tutor modal element — rendered alongside the phase UI so it can
   // stay open even when the tutor mini-chat is closed/minimized. Renders
@@ -124,6 +147,7 @@ export const Tutor: React.FC = () => {
             }
           : null
       }
+      onBackToChat={voiceBackToChat}
     />
   );
 
@@ -174,6 +198,7 @@ export const Tutor: React.FC = () => {
             onClose={handleClose}
             voiceTutorEnabled={voiceEnabled}
             onOpenVoiceTutor={() => setVoiceTutorOpen(true)}
+            onFullscreen={handleFullscreen}
           />
         )}
       </AnimatePresence>

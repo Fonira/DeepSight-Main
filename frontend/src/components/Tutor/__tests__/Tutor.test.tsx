@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { Tutor } from "../Tutor";
+import { useTutorStore } from "../../../store/tutorStore";
 
 // jsdom n'implémente pas Element.scrollTo — TutorMiniChat utilise scrollRef.current?.scrollTo
 beforeAll(() => {
@@ -77,11 +79,17 @@ vi.mock("../../../hooks/useTranslation", () => ({
   }),
 }));
 
-const renderTutor = () => render(<Tutor />);
+const renderTutor = () =>
+  render(
+    <MemoryRouter>
+      <Tutor />
+    </MemoryRouter>,
+  );
 
 describe("Tutor (composant racine)", () => {
   beforeEach(() => {
     localStorage.clear();
+    useTutorStore.getState().reset();
   });
 
   it("renders idle state by default", () => {

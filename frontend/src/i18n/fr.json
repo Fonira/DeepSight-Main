@@ -188,7 +188,14 @@
       "input_placeholder": "Tapez votre réponse...",
       "close": "Fermer",
       "minimize": "Réduire",
-      "expand": "Agrandir"
+      "expand": "Agrandir",
+      "fullscreen": "Plein écran"
+    },
+    "fullscreen": {
+      "back_to_popup": "Retour à la popup"
+    },
+    "voice": {
+      "back_to_chat": "Retour au chat"
     },
     "errors": {
       "session_failed": "Session impossible — réessayez",
