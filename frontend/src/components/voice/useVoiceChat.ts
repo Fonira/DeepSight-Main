@@ -30,10 +30,10 @@ interface UseVoiceChatOptions {
     | "explorer"
     | "companion"
     | "tutor"
+    | "knowledge_tutor"
     | "debate_moderator"
     | "quiz_coach"
-    | "onboarding"
-    | "companion";
+    | "onboarding";
   language?: "fr" | "en";
   onError?: (error: string) => void;
   /**

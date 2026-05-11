@@ -74,6 +74,7 @@ export interface VoiceOverlayProps {
     | "explorer"
     | "companion"
     | "tutor"
+    | "knowledge_tutor"
     | "debate_moderator"
     | "quiz_coach";
   /** Language used by the agent. */

@@ -9,6 +9,8 @@ import { TutorPrompting } from "./TutorPrompting";
 import { TutorMiniChat } from "./TutorMiniChat";
 import { TutorMinimized } from "./TutorMinimized";
 import { LS_TUTOR_HIDDEN, LS_TUTOR_MINIMIZED } from "./tutorConstants";
+import { useVoiceEnabled } from "../voice/hooks/useVoiceEnabled";
+import { VoiceTutorModal } from "../voice/VoiceTutorModal";
 
 function readBoolLS(key: string): boolean {
   try {
@@ -35,6 +37,12 @@ export const Tutor: React.FC = () => {
   const { currentWord } = useLoadingWord();
   const { language } = useLanguage();
   const tutor = useTutor();
+  const { voiceEnabled } = useVoiceEnabled();
+
+  // Voice Tutor modal — opened from the TutorMiniChat header button.
+  // Carries the current concept as a primer so the agent can pick up
+  // the topic immediately on connection.
+  const [voiceTutorOpen, setVoiceTutorOpen] = useState(false);
 
   // Persistance close (hidden) + minimize entre rechargements page.
   // hidden : reset uniquement quand un nouveau concept arrive (changement
@@ -99,50 +107,78 @@ export const Tutor: React.FC = () => {
   if (!isAuthenticated || !currentWord) return null;
   if (hidden) return null;
 
+  // Voice Tutor modal element — rendered alongside the phase UI so it can
+  // stay open even when the tutor mini-chat is closed/minimized. Renders
+  // via portal inside VoiceOverlay so it does not interfere with layout.
+  const voiceTutorEl = (
+    <VoiceTutorModal
+      isOpen={voiceTutorOpen}
+      onClose={() => setVoiceTutorOpen(false)}
+      language={language === "fr" ? "fr" : "en"}
+      initialContext={
+        tutor.conceptTerm
+          ? {
+              conceptTerm: tutor.conceptTerm,
+              conceptDef: tutor.conceptDef,
+              summaryId: tutor.summaryId,
+            }
+          : null
+      }
+    />
+  );
+
   // Si minimisé, peu importe la phase : on rend la pastille.
   if (minimized) {
     return (
-      <AnimatePresence mode="wait">
-        <TutorMinimized
-          key="minimized"
-          onRestore={handleRestore}
-          onClose={handleClose}
-        />
-      </AnimatePresence>
+      <>
+        <AnimatePresence mode="wait">
+          <TutorMinimized
+            key="minimized"
+            onRestore={handleRestore}
+            onClose={handleClose}
+          />
+        </AnimatePresence>
+        {voiceTutorEl}
+      </>
     );
   }
 
   return (
-    <AnimatePresence mode="wait">
-      {tutor.phase === "idle" && (
-        <TutorIdle
-          key="idle"
-          onClick={tutor.openPrompting}
-          onMinimize={handleMinimize}
-          onClose={handleClose}
-        />
-      )}
-      {tutor.phase === "prompting" && (
-        <TutorPrompting
-          key="prompting"
-          onStart={handleStart}
-          onCancel={tutor.cancelPrompting}
-          onMinimize={handleMinimize}
-          onClose={handleClose}
-        />
-      )}
-      {tutor.phase === "mini-chat" && tutor.conceptTerm && (
-        <TutorMiniChat
-          key="mini-chat"
-          conceptTerm={tutor.conceptTerm}
-          messages={tutor.messages}
-          loading={tutor.loading}
-          onSubmit={tutor.submitTextTurn}
-          onMinimize={handleMinimize}
-          onClose={handleClose}
-        />
-      )}
-    </AnimatePresence>
+    <>
+      <AnimatePresence mode="wait">
+        {tutor.phase === "idle" && (
+          <TutorIdle
+            key="idle"
+            onClick={tutor.openPrompting}
+            onMinimize={handleMinimize}
+            onClose={handleClose}
+          />
+        )}
+        {tutor.phase === "prompting" && (
+          <TutorPrompting
+            key="prompting"
+            onStart={handleStart}
+            onCancel={tutor.cancelPrompting}
+            onMinimize={handleMinimize}
+            onClose={handleClose}
+          />
+        )}
+        {tutor.phase === "mini-chat" && tutor.conceptTerm && (
+          <TutorMiniChat
+            key="mini-chat"
+            conceptTerm={tutor.conceptTerm}
+            messages={tutor.messages}
+            loading={tutor.loading}
+            onSubmit={tutor.submitTextTurn}
+            onMinimize={handleMinimize}
+            onClose={handleClose}
+            voiceTutorEnabled={voiceEnabled}
+            onOpenVoiceTutor={() => setVoiceTutorOpen(true)}
+          />
+        )}
+      </AnimatePresence>
+      {voiceTutorEl}
+    </>
   );
 };
 
