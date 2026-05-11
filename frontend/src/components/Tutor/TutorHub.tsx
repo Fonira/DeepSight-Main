@@ -1,39 +1,57 @@
 /**
- * TutorHub — Unified text/voice tutor hub (2026-05-11).
+ * TutorHub — Unified text/voice tutor hub (refactor 2026-05-11 #2).
  *
- * Single full-height right panel that hosts BOTH the text-mode mini-chat
- * (Magistral via `/api/tutor/session/*`) and the voice-mode call
- * (`VoiceOverlay` with `agentType="knowledge_tutor"`). Replaces the
- * previous split between `TutorMiniChat` (text popup) and
- * `VoiceTutorModal` (voice modal) — one container, one mode toggle.
+ * One full-height right-side panel that hosts the WHOLE conversation —
+ * text and voice messages are interleaved in a single transcript. The
+ * "Texte/Vocal" toggle only switches the INPUT zone at the bottom; the
+ * timeline above is shared and never wiped on mode change.
  *
- * Entry points:
+ * Key changes from PR #450:
+ *   1. No more `<VoiceOverlay presentationMode="fullbleed">` (caused
+ *      overflow / clipping bugs). We mount `useVoiceChat` directly and
+ *      render a slim mic-controls strip in the input zone instead.
+ *   2. Voice transcripts (user spoken + agent spoken) are merged into the
+ *      same timeline as text turns, with a small mic icon to distinguish
+ *      modality.
+ *   3. Read Zustand actions via stable selectors (no full-object
+ *      destructuring inside hook deps) — fixes the React #300/#310
+ *      crashes that came from re-render storms when `tutor` was rebuilt.
+ *
+ * Entry points (unchanged):
  *   - Sidebar item "Tuteur" → opens with `defaultMode="text"`, no primer.
  *   - Teaser `TutorIdle` (concept du jour) → opens with `defaultMode="text"`,
  *     `initialContext = { conceptTerm, conceptDef?, summaryId? }`.
  *
- * Mode switch:
- *   - No messages yet → switch direct.
- *   - Messages exist → `window.confirm` then restart (text session ends,
- *     voice gets a `[CONTEXT]` block summarizing the previous text conv).
- *
- * Spec: docs/superpowers/specs/2026-05-11-tuteur-unified-hub.md
+ * Mode switch UX:
+ *   - Voice → text: just stops the call. Transcript stays in the timeline.
+ *   - Text → voice with messages in flight: confirm prompt (ending the
+ *     text session is destructive — Redis TTL kicks in). On accept, a
+ *     [CONTEXT] primer is injected after the call connects.
  */
 
 import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
-import { MessageCircle, Mic, Send, X } from "lucide-react";
+import {
+  MessageCircle,
+  Mic,
+  MicOff,
+  PhoneOff,
+  Send,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { LanguageContext } from "../../contexts/LanguageContext";
-import { useTutor } from "./useTutor";
-import { VoiceOverlay } from "../voice/VoiceOverlay";
-import type { VoiceOverlayController } from "../voice/VoiceOverlay";
+import { useTutorStore } from "../../store/tutorStore";
+import type { TutorTurn } from "../../types/tutor";
+import { useVoiceChat } from "../voice/useVoiceChat";
 
 export interface TutorHubInitialContext {
   conceptTerm: string;
@@ -60,10 +78,18 @@ export interface TutorHubProps {
 
 type HubMode = "text" | "voice";
 
+interface TimelineItem {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  modality: "text" | "voice";
+  timestamp_ms: number;
+}
+
 const I18N = {
   fr: {
     title: "Tuteur",
-    subtitleText: "Révisez vos analyses",
+    subtitleText: "Révisez vos analyses par écrit",
     subtitleVoice: "Révisez vos analyses à voix haute",
     close: "Fermer",
     modeText: "Texte",
@@ -74,11 +100,21 @@ const I18N = {
       "Bonjour. Je suis le Tuteur — sur quoi voulez-vous revenir aujourd'hui ?",
     loading: "…",
     switchConfirm:
-      "Changer de mode redémarrera la conversation. Continuer ?",
+      "Changer de mode redémarrera la conversation texte. Continuer ?",
+    voiceConnecting: "Connexion vocale…",
+    voiceListening: "À votre écoute",
+    voiceThinking: "Réflexion…",
+    voiceSpeaking: "Le tuteur parle",
+    voiceMuteOn: "Couper le micro",
+    voiceMuteOff: "Réactiver le micro",
+    voiceHangup: "Raccrocher",
+    voiceStart: "Démarrer l'appel",
+    voiceQuotaExceeded: "Quota vocal épuisé.",
+    voiceError: "Erreur de connexion vocale.",
   },
   en: {
     title: "Tutor",
-    subtitleText: "Review your analyses",
+    subtitleText: "Review your analyses in writing",
     subtitleVoice: "Review your analyses out loud",
     close: "Close",
     modeText: "Text",
@@ -89,7 +125,17 @@ const I18N = {
       "Hello. I'm the Tutor — what would you like to revisit today?",
     loading: "…",
     switchConfirm:
-      "Switching modes will restart the conversation. Continue?",
+      "Switching modes will restart the text conversation. Continue?",
+    voiceConnecting: "Connecting voice…",
+    voiceListening: "Listening",
+    voiceThinking: "Thinking…",
+    voiceSpeaking: "Tutor is speaking",
+    voiceMuteOn: "Mute mic",
+    voiceMuteOff: "Unmute mic",
+    voiceHangup: "Hang up",
+    voiceStart: "Start call",
+    voiceQuotaExceeded: "Voice quota exceeded.",
+    voiceError: "Voice connection error.",
   },
 } as const;
 
@@ -154,27 +200,67 @@ export const TutorHub: React.FC<TutorHubProps> = ({
       : "fr");
   const t = I18N[language];
 
-  const tutor = useTutor();
+  // ── Zustand selectors (stable refs — fixes React #300/#310) ──
+  // Subscribing to each leaf individually means the component only re-renders
+  // when that specific slice changes, and the action refs are guaranteed
+  // stable across renders (Zustand never recreates them).
+  const tutorPhase = useTutorStore((s) => s.phase);
+  const tutorMessages = useTutorStore((s) => s.messages);
+  const tutorConceptTerm = useTutorStore((s) => s.conceptTerm);
+  const tutorLoading = useTutorStore((s) => s.loading);
+  const startSession = useTutorStore((s) => s.startSession);
+  const submitTextTurn = useTutorStore((s) => s.submitTextTurn);
+  const endSession = useTutorStore((s) => s.endSession);
+
   const [mode, setMode] = useState<HubMode>(defaultMode);
 
-  // Pending primer to inject after voice connect (used by switch text → voice
-  // when we want to carry the previous text exchanges into the voice agent).
+  // ── Voice chat hook (always mounted; activated by `voice.start()`) ──
+  const voice = useVoiceChat({
+    agentType: "knowledge_tutor",
+    language,
+  });
+
+  // Track timestamps for voice messages so we can merge them with text turns.
+  // `voice.messages` is append-only, so a simple length watcher suffices.
+  const voiceTimestampsRef = useRef<number[]>([]);
+  useEffect(() => {
+    const needed = voice.messages.length;
+    while (voiceTimestampsRef.current.length < needed) {
+      voiceTimestampsRef.current.push(Date.now());
+    }
+    if (voiceTimestampsRef.current.length > needed) {
+      voiceTimestampsRef.current = voiceTimestampsRef.current.slice(0, needed);
+    }
+  }, [voice.messages.length]);
+
+  // ── Merged timeline (text turns + voice transcripts) ──
+  const timeline: TimelineItem[] = useMemo(() => {
+    const textItems: TimelineItem[] = tutorMessages.map(
+      (m: TutorTurn, idx: number): TimelineItem => ({
+        id: `t:${idx}:${m.timestamp_ms}`,
+        role: m.role,
+        content: m.content,
+        modality: "text",
+        timestamp_ms: m.timestamp_ms,
+      }),
+    );
+    const voiceItems: TimelineItem[] = voice.messages.map((m, idx) => ({
+      id: `v:${idx}`,
+      role: m.source === "user" ? "user" : "assistant",
+      content: m.text,
+      modality: "voice",
+      timestamp_ms: voiceTimestampsRef.current[idx] ?? Date.now(),
+    }));
+    return [...textItems, ...voiceItems].sort(
+      (a, b) => a.timestamp_ms - b.timestamp_ms,
+    );
+  }, [tutorMessages, voice.messages]);
+
+  // ── Voice primer ([CONTEXT] block injected once the call connects) ──
   const pendingVoicePrimerRef = useRef<string | null>(null);
-  const voiceControllerRef = useRef<VoiceOverlayController | null>(null);
   const voicePrimerSentRef = useRef(false);
 
-  // Reset mode + primer when the hub opens fresh.
-  useEffect(() => {
-    if (isOpen) {
-      setMode(defaultMode);
-      pendingVoicePrimerRef.current = null;
-      voicePrimerSentRef.current = false;
-    }
-  }, [isOpen, defaultMode]);
-
-  // Build the voice primer when an `initialContext` is supplied directly (i.e.
-  // the hub is opened from the teaser with a concept du jour). The
-  // VoiceTutorModal previously used this exact pattern.
+  // Build the primer from `initialContext` when entering voice mode.
   useEffect(() => {
     if (!isOpen || mode !== "voice" || !initialContext) return;
     const term = initialContext.conceptTerm?.trim();
@@ -197,21 +283,52 @@ export const TutorHub: React.FC<TutorHubProps> = ({
           }${summaryRef}\nOpen with a direct question about this concept.`;
   }, [isOpen, mode, initialContext, language]);
 
+  // Auto-start the voice call when entering voice mode (status check avoids
+  // retriggering on every render).
+  const startVoice = voice.start;
+  const stopVoice = voice.stop;
+  const voiceStatus = voice.status;
+  useEffect(() => {
+    if (!isOpen) return;
+    if (mode !== "voice") return;
+    if (voiceStatus !== "idle") return;
+    void startVoice();
+  }, [isOpen, mode, voiceStatus, startVoice]);
+
+  // Stop the voice call when leaving voice mode or closing the hub.
+  useEffect(() => {
+    if (!isOpen && voiceStatus !== "idle") {
+      void stopVoice();
+      return;
+    }
+    if (isOpen && mode === "text" && voiceStatus !== "idle") {
+      void stopVoice();
+    }
+  }, [isOpen, mode, voiceStatus, stopVoice]);
+
   // Fire the pending voice primer once the call is active.
+  const sendUserMessage = voice.sendUserMessage;
   useEffect(() => {
     if (!isOpen || mode !== "voice") return;
     const primer = pendingVoicePrimerRef.current;
     if (!primer || voicePrimerSentRef.current) return;
-    const controller = voiceControllerRef.current;
-    if (!controller || !controller.isActive) return;
-    controller.sendUserMessage(primer);
+    if (voiceStatus !== "listening" && voiceStatus !== "speaking") return;
+    sendUserMessage(primer);
     voicePrimerSentRef.current = true;
     pendingVoicePrimerRef.current = null;
-  });
+  }, [isOpen, mode, voiceStatus, sendUserMessage]);
+
+  // Reset mode + primer flags when the hub is freshly opened.
+  useEffect(() => {
+    if (isOpen) {
+      setMode(defaultMode);
+      pendingVoicePrimerRef.current = null;
+      voicePrimerSentRef.current = false;
+    }
+  }, [isOpen, defaultMode]);
 
   // In text mode, auto-start a session when an initialContext is supplied
-  // (concept du jour amorce). We only start once: if a session is already
-  // active, we don't restart it.
+  // (concept du jour amorce). We only start once.
   const initialContextStartedRef = useRef(false);
   useEffect(() => {
     if (!isOpen) {
@@ -221,41 +338,50 @@ export const TutorHub: React.FC<TutorHubProps> = ({
     if (mode !== "text") return;
     if (!initialContext) return;
     if (initialContextStartedRef.current) return;
-    if (tutor.phase === "mini-chat") return;
+    if (tutorPhase === "mini-chat") return;
     const term = initialContext.conceptTerm?.trim();
     if (!term) return;
     initialContextStartedRef.current = true;
-    void tutor.startSession({
+    void startSession({
       concept_term: term,
       concept_def: initialContext.conceptDef ?? "",
       summary_id: initialContext.summaryId ?? undefined,
       mode: "text",
       lang: language,
     });
-  }, [isOpen, mode, initialContext, tutor, language]);
+  }, [isOpen, mode, initialContext, tutorPhase, startSession, language]);
 
-  // Mode switch with confirm if a conversation is already in progress.
+  // Mode switch with confirm if a text conversation is already in progress.
   const handleModeChange = useCallback(
     async (next: HubMode) => {
       if (next === mode) return;
-      const hasMessages = tutor.messages.length > 0;
-      if (hasMessages) {
+      // Voice → text: just stop the call. Transcript stays in the timeline.
+      if (next === "text") {
+        if (voiceStatus !== "idle") {
+          try {
+            await stopVoice();
+          } catch {
+            /* ignore */
+          }
+        }
+        setMode("text");
+        return;
+      }
+      // Text → voice: ending the text session is destructive (deletes the
+      // Redis session). Confirm with the user before tearing it down.
+      const hasTextMessages = tutorMessages.length > 0;
+      if (hasTextMessages) {
         const ok =
           typeof window !== "undefined" && window.confirm
             ? window.confirm(t.switchConfirm)
             : true;
         if (!ok) return;
-      }
-      // Build a primer summarizing the text conv before tearing it down so
-      // the voice agent can pick up where we left off.
-      if (next === "voice" && hasMessages) {
         pendingVoicePrimerRef.current = buildSwitchContextBlock(
           language,
-          tutor.conceptTerm,
-          tutor.messages.map((m) => ({ role: m.role, content: m.content })),
+          tutorConceptTerm,
+          tutorMessages.map((m) => ({ role: m.role, content: m.content })),
         );
-      } else if (next === "voice" && initialContext?.conceptTerm) {
-        // No messages yet but we have an initialContext — keep primer alive.
+      } else if (initialContext?.conceptTerm) {
         const term = initialContext.conceptTerm.trim();
         pendingVoicePrimerRef.current =
           language === "fr"
@@ -263,32 +389,48 @@ export const TutorHub: React.FC<TutorHubProps> = ({
             : `[CONTEXT] The user wants to revisit the concept: "${term}". Open with a direct question.`;
       }
       voicePrimerSentRef.current = false;
-      // Reset text session if active before switching to voice.
-      if (tutor.phase === "mini-chat") {
+      if (tutorPhase === "mini-chat") {
         try {
-          await tutor.endSession();
+          await endSession();
         } catch {
           /* ignore */
         }
       }
-      setMode(next);
+      setMode("voice");
     },
-    [mode, tutor, t.switchConfirm, language, initialContext],
+    [
+      mode,
+      tutorMessages,
+      tutorPhase,
+      tutorConceptTerm,
+      voiceStatus,
+      stopVoice,
+      endSession,
+      t.switchConfirm,
+      language,
+      initialContext,
+    ],
   );
 
   const handleClose = useCallback(async () => {
-    // End the text session if any. Voice session is stopped by VoiceOverlay.
-    if (tutor.phase === "mini-chat") {
+    if (voiceStatus !== "idle") {
       try {
-        await tutor.endSession();
+        await stopVoice();
+      } catch {
+        /* ignore */
+      }
+    }
+    if (tutorPhase === "mini-chat") {
+      try {
+        await endSession();
       } catch {
         /* ignore */
       }
     }
     onClose();
-  }, [tutor, onClose]);
+  }, [voiceStatus, stopVoice, tutorPhase, endSession, onClose]);
 
-  // ── Text mode local input state ──
+  // ── Text-mode input state ──
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -299,23 +441,21 @@ export const TutorHub: React.FC<TutorHubProps> = ({
     }
   }, [isOpen, mode]);
 
+  // Scroll to bottom whenever the timeline grows.
   useEffect(() => {
-    if (mode !== "text") return;
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [tutor.messages, mode]);
+  }, [timeline.length]);
 
   const handleSubmitText = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       const value = input.trim();
-      if (!value || tutor.loading) return;
-      // If no session yet, start one. The user's message becomes the implicit
-      // concept anchor — we use the input as a free-form concept term.
-      if (tutor.phase !== "mini-chat") {
-        await tutor.startSession({
+      if (!value || tutorLoading) return;
+      if (tutorPhase !== "mini-chat") {
+        await startSession({
           concept_term: value,
           concept_def: "",
           mode: "text",
@@ -324,15 +464,49 @@ export const TutorHub: React.FC<TutorHubProps> = ({
         setInput("");
         return;
       }
-      await tutor.submitTextTurn(value);
+      await submitTextTurn(value);
       setInput("");
     },
-    [input, tutor, language],
+    [
+      input,
+      tutorLoading,
+      tutorPhase,
+      startSession,
+      submitTextTurn,
+      language,
+    ],
   );
+
+  // Status string for the voice mode strip.
+  const voiceIsSpeaking = voice.isSpeaking;
+  const voiceStatusLabel = useMemo(() => {
+    switch (voiceStatus) {
+      case "connecting":
+        return t.voiceConnecting;
+      case "listening":
+        return voiceIsSpeaking ? t.voiceSpeaking : t.voiceListening;
+      case "thinking":
+        return t.voiceThinking;
+      case "speaking":
+        return t.voiceSpeaking;
+      case "quota_exceeded":
+        return t.voiceQuotaExceeded;
+      case "error":
+        return t.voiceError;
+      case "idle":
+      default:
+        return t.voiceStart;
+    }
+  }, [voiceStatus, voiceIsSpeaking, t]);
 
   if (!isOpen) return null;
 
   const subtitle = mode === "text" ? t.subtitleText : t.subtitleVoice;
+  const isCallActive =
+    voiceStatus === "connecting" ||
+    voiceStatus === "listening" ||
+    voiceStatus === "thinking" ||
+    voiceStatus === "speaking";
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Render
@@ -357,11 +531,7 @@ export const TutorHub: React.FC<TutorHubProps> = ({
           <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500/30 to-cyan-500/20 border border-white/[0.08] flex items-center justify-center flex-shrink-0">
-                {mode === "voice" ? (
-                  <Mic className="w-4 h-4 text-violet-300" />
-                ) : (
-                  <MessageCircle className="w-4 h-4 text-violet-300" />
-                )}
+                <Sparkles className="w-4 h-4 text-violet-300" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-text-primary truncate leading-tight">
@@ -383,7 +553,7 @@ export const TutorHub: React.FC<TutorHubProps> = ({
             </button>
           </header>
 
-          {/* ── Mode toggle ── */}
+          {/* ── Mode toggle (controls the input zone only) ── */}
           <div
             className="flex items-center gap-1 px-4 py-2 border-b border-white/[0.04] flex-shrink-0"
             role="tablist"
@@ -425,94 +595,165 @@ export const TutorHub: React.FC<TutorHubProps> = ({
             </button>
           </div>
 
-          {/* ── Body ── */}
-          {mode === "text" ? (
-            <>
-              <div
-                ref={scrollRef}
-                className="flex-1 overflow-y-auto px-4 py-3 space-y-2"
-                data-testid="tutor-hub-text-transcript"
-                style={{
-                  scrollbarWidth: "thin",
-                  scrollbarColor: "rgba(255,255,255,0.05) transparent",
-                }}
-              >
-                {tutor.messages.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-center">
-                    <p className="text-xs text-text-tertiary leading-relaxed max-w-[260px]">
-                      {t.emptyHint}
-                    </p>
-                  </div>
-                ) : (
-                  tutor.messages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[85%] px-3 py-2 rounded-xl text-[12px] leading-snug ${
-                          msg.role === "user"
-                            ? "bg-blue-600/70 text-white rounded-br-sm"
-                            : "bg-white/[0.05] text-white/75 rounded-bl-sm"
-                        }`}
-                      >
-                        {msg.content}
-                      </div>
-                    </div>
-                  ))
-                )}
-                {tutor.loading && (
-                  <div className="flex justify-start">
-                    <div className="px-3 py-2 rounded-xl bg-white/[0.04] text-text-tertiary text-[12px] italic">
-                      {t.loading}
-                    </div>
-                  </div>
-                )}
+          {/* ── Unified timeline (text + voice transcripts) ── */}
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-0"
+            data-testid="tutor-hub-text-transcript"
+            style={{
+              scrollbarWidth: "thin",
+              scrollbarColor: "rgba(255,255,255,0.05) transparent",
+            }}
+          >
+            {timeline.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-center">
+                <p className="text-xs text-text-tertiary leading-relaxed max-w-[260px]">
+                  {t.emptyHint}
+                </p>
               </div>
-              <form
-                onSubmit={handleSubmitText}
-                className="flex items-center gap-2 px-4 py-3 border-t border-white/[0.06] bg-[#0a0a0f]/80 flex-shrink-0"
-              >
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder={t.inputPlaceholder}
-                  disabled={tutor.loading}
-                  data-testid="tutor-hub-text-input"
-                  className="flex-1 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-violet-400/40 cursor-text"
-                />
-                <button
-                  type="submit"
-                  disabled={!input.trim() || tutor.loading}
-                  data-testid="tutor-hub-text-send"
-                  aria-label={t.send}
-                  className="p-2 rounded-md bg-violet-500/20 hover:bg-violet-500/30 text-violet-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-violet-500/30"
+            ) : (
+              timeline.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-              </form>
-            </>
+                  <div
+                    className={`relative max-w-[85%] px-3 py-2 rounded-xl text-[12px] leading-snug ${
+                      msg.role === "user"
+                        ? "bg-blue-600/70 text-white rounded-br-sm"
+                        : "bg-white/[0.05] text-white/75 rounded-bl-sm"
+                    }`}
+                  >
+                    {msg.modality === "voice" && (
+                      <Mic
+                        className={`inline-block w-3 h-3 mr-1 align-text-bottom ${
+                          msg.role === "user"
+                            ? "text-white/80"
+                            : "text-violet-300/80"
+                        }`}
+                        aria-label="voice"
+                      />
+                    )}
+                    {msg.content}
+                  </div>
+                </div>
+              ))
+            )}
+            {tutorLoading && mode === "text" && (
+              <div className="flex justify-start">
+                <div className="px-3 py-2 rounded-xl bg-white/[0.04] text-text-tertiary text-[12px] italic">
+                  {t.loading}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Input zone (switches between Text and Voice modes) ── */}
+          {mode === "text" ? (
+            <form
+              onSubmit={handleSubmitText}
+              className="flex items-center gap-2 px-4 py-3 border-t border-white/[0.06] bg-[#0a0a0f]/80 flex-shrink-0"
+              data-testid="tutor-hub-text-form"
+            >
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={t.inputPlaceholder}
+                disabled={tutorLoading}
+                data-testid="tutor-hub-text-input"
+                className="flex-1 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-violet-400/40 cursor-text"
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || tutorLoading}
+                data-testid="tutor-hub-text-send"
+                aria-label={t.send}
+                className="p-2 rounded-md bg-violet-500/20 hover:bg-violet-500/30 text-violet-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-violet-500/30"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </form>
           ) : (
-            // ── Voice mode: mount VoiceOverlay in fullbleed so it fills the
-            //     hub container instead of floating bottom-right. ──
             <div
-              className="flex-1 relative overflow-hidden"
+              className="flex items-center gap-2 px-4 py-3 border-t border-white/[0.06] bg-[#0a0a0f]/80 flex-shrink-0"
               data-testid="tutor-hub-voice-pane"
             >
-              <VoiceOverlay
-                isOpen
-                onClose={handleClose}
-                title={t.title}
-                subtitle={t.subtitleVoice}
-                summaryId={null}
-                agentType="knowledge_tutor"
-                language={language}
-                controllerRef={voiceControllerRef}
-                autoStart
-                presentationMode="fullbleed"
-              />
+              {/* Status indicator */}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span
+                  className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    isCallActive
+                      ? voiceIsSpeaking
+                        ? "bg-violet-400 animate-pulse"
+                        : "bg-emerald-400 animate-pulse"
+                      : voiceStatus === "error" ||
+                          voiceStatus === "quota_exceeded"
+                        ? "bg-red-400"
+                        : "bg-white/30"
+                  }`}
+                  aria-hidden
+                />
+                <span
+                  className="text-[11px] text-text-muted truncate"
+                  data-testid="tutor-hub-voice-status"
+                >
+                  {voiceStatusLabel}
+                </span>
+              </div>
+
+              {/* Mic mute toggle (only while call is active) */}
+              {isCallActive && (
+                <button
+                  type="button"
+                  onClick={voice.toggleMute}
+                  aria-label={voice.isMuted ? t.voiceMuteOff : t.voiceMuteOn}
+                  data-testid="tutor-hub-voice-mute"
+                  className={`p-2 rounded-md transition-colors border ${
+                    voice.isMuted
+                      ? "bg-red-500/20 text-red-300 border-red-500/30 hover:bg-red-500/30"
+                      : "bg-white/[0.04] text-white/70 border-white/[0.08] hover:bg-white/[0.08]"
+                  }`}
+                >
+                  {voice.isMuted ? (
+                    <MicOff className="w-3.5 h-3.5" />
+                  ) : (
+                    <Mic className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              )}
+
+              {/* Start / Hang up button */}
+              {isCallActive ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void stopVoice();
+                  }}
+                  aria-label={t.voiceHangup}
+                  data-testid="tutor-hub-voice-hangup"
+                  className="p-2 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 transition-colors"
+                >
+                  <PhoneOff className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void startVoice();
+                  }}
+                  disabled={
+                    voiceStatus === "quota_exceeded" ||
+                    voiceStatus === "connecting"
+                  }
+                  aria-label={t.voiceStart}
+                  data-testid="tutor-hub-voice-start"
+                  className="p-2 rounded-md bg-violet-500/20 hover:bg-violet-500/30 text-violet-200 disabled:opacity-40 disabled:cursor-not-allowed border border-violet-500/30 transition-colors"
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           )}
         </motion.div>

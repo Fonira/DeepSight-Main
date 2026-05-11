@@ -15,7 +15,10 @@ class SessionStartRequest(BaseModel):
     """Body de POST /api/tutor/session/start."""
 
     concept_term: str = Field(..., min_length=1, max_length=200)
-    concept_def: str = Field(..., min_length=1, max_length=2000)
+    # concept_def is optional: when the user types freely in the hub without a
+    # pre-selected concept (sidebar entry vs. teaser amorce), we send "" and let
+    # the tutor agent infer the topic from concept_term alone.
+    concept_def: str = Field(default="", max_length=2000)
     summary_id: Optional[int] = Field(None, description="ID de l'analyse vidéo source si concept vient de l'historique")
     source_video_title: Optional[str] = Field(None, max_length=300)
     mode: TutorMode = "text"

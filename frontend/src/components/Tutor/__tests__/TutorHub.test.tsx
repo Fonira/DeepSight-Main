@@ -17,12 +17,36 @@ beforeAll(() => {
     vi.fn() as unknown as typeof Element.prototype.scrollTo;
 });
 
-// Stub VoiceOverlay so the test never touches ElevenLabs SDK / network.
-// Use a tiny placeholder so we can assert that voice mode mounts it.
-vi.mock("../../voice/VoiceOverlay", () => ({
-  VoiceOverlay: ({ agentType }: { agentType?: string }) => (
-    <div data-testid="voice-overlay-stub" data-agent-type={agentType ?? ""} />
-  ),
+// Mock useVoiceChat so the test never touches the ElevenLabs SDK / network.
+// The TutorHub now mounts the voice hook directly (no VoiceOverlay wrapper).
+const voiceMock = vi.hoisted(() => ({
+  start: vi.fn().mockResolvedValue(undefined),
+  stop: vi.fn().mockResolvedValue(undefined),
+  toggleMute: vi.fn(),
+  sendUserMessage: vi.fn(),
+  prewarm: vi.fn(),
+  startTalking: vi.fn(),
+  stopTalking: vi.fn(),
+  restart: vi.fn().mockResolvedValue(undefined),
+  voiceSessionId: null,
+  sessionStartedAt: null,
+  status: "idle" as const,
+  isSpeaking: false,
+  isMuted: false,
+  isTalking: false,
+  inputMode: "ptt" as const,
+  pttKey: " ",
+  activeTool: null,
+  messages: [] as Array<{ text: string; source: "user" | "ai" }>,
+  elapsedSeconds: 0,
+  remainingMinutes: 0,
+  error: null,
+  playbackRate: 1.0,
+  micStream: { current: null },
+}));
+
+vi.mock("../../voice/useVoiceChat", () => ({
+  useVoiceChat: () => voiceMock,
 }));
 
 // TutorHub reads the language via useContext(LanguageContext) with a safe
@@ -71,6 +95,14 @@ describe("TutorHub", () => {
       source_summary_url: null,
       source_video_title: null,
     });
+    voiceMock.start.mockClear();
+    voiceMock.stop.mockClear();
+    voiceMock.toggleMute.mockClear();
+    voiceMock.sendUserMessage.mockClear();
+    voiceMock.status = "idle";
+    voiceMock.isSpeaking = false;
+    voiceMock.isMuted = false;
+    voiceMock.messages = [];
   });
 
   afterEach(() => {
@@ -99,15 +131,20 @@ describe("TutorHub", () => {
     expect(screen.getByTestId("tutor-hub-text-input")).toBeInTheDocument();
   });
 
-  it("honors defaultMode='voice' and mounts VoiceOverlay with knowledge_tutor", () => {
+  it("honors defaultMode='voice' and mounts the voice pane", () => {
     render(<TutorHub isOpen onClose={vi.fn()} defaultMode="voice" />);
-    const stub = screen.getByTestId("voice-overlay-stub");
-    expect(stub).toBeInTheDocument();
-    expect(stub.getAttribute("data-agent-type")).toBe("knowledge_tutor");
+    expect(screen.getByTestId("tutor-hub-voice-pane")).toBeInTheDocument();
     expect(screen.getByTestId("tutor-hub-mode-voice")).toHaveAttribute(
       "aria-selected",
       "true",
     );
+  });
+
+  it("auto-starts the voice call when entering voice mode", async () => {
+    render(<TutorHub isOpen onClose={vi.fn()} defaultMode="voice" />);
+    await waitFor(() => {
+      expect(voiceMock.start).toHaveBeenCalled();
+    });
   });
 
   it("switches text → voice without confirm when no messages", () => {
@@ -117,16 +154,14 @@ describe("TutorHub", () => {
     render(<TutorHub isOpen onClose={vi.fn()} />);
     fireEvent.click(screen.getByTestId("tutor-hub-mode-voice"));
     expect(confirmSpy).not.toHaveBeenCalled();
-    expect(screen.getByTestId("voice-overlay-stub")).toBeInTheDocument();
+    expect(screen.getByTestId("tutor-hub-voice-pane")).toBeInTheDocument();
   });
 
-  it("asks confirm + restarts when switching with existing messages", async () => {
+  it("asks confirm + ends text session when switching text → voice with existing messages", async () => {
     const confirmSpy = vi
       .spyOn(window, "confirm")
       .mockImplementation(() => true);
     render(<TutorHub isOpen onClose={vi.fn()} />);
-    // Seed a session with one user/assistant pair via the store directly,
-    // wait for React to flush the new state into the component.
     await useTutorStore.getState().startSession({
       concept_term: "X",
       concept_def: "Y",
@@ -142,13 +177,13 @@ describe("TutorHub", () => {
     await waitFor(
       () => {
         expect(tutorApiMock.sessionEnd).toHaveBeenCalled();
-        expect(screen.getByTestId("voice-overlay-stub")).toBeInTheDocument();
+        expect(screen.getByTestId("tutor-hub-voice-pane")).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
   });
 
-  it("does NOT switch when user cancels the confirm", async () => {
+  it("does NOT switch to voice when user cancels the confirm", async () => {
     vi.spyOn(window, "confirm").mockImplementation(() => false);
     render(<TutorHub isOpen onClose={vi.fn()} />);
     await useTutorStore.getState().startSession({
@@ -160,11 +195,24 @@ describe("TutorHub", () => {
       expect(screen.getByText("Premier message agent.")).toBeInTheDocument();
     });
     fireEvent.click(screen.getByTestId("tutor-hub-mode-voice"));
-    // Still in text mode — no VoiceOverlay rendered.
     await waitFor(() => {
-      expect(screen.queryByTestId("voice-overlay-stub")).toBeNull();
+      expect(screen.queryByTestId("tutor-hub-voice-pane")).toBeNull();
     });
     expect(tutorApiMock.sessionEnd).not.toHaveBeenCalled();
+  });
+
+  it("voice → text never prompts confirm (call just stops, transcript stays)", async () => {
+    const confirmSpy = vi
+      .spyOn(window, "confirm")
+      .mockImplementation(() => true);
+    render(<TutorHub isOpen onClose={vi.fn()} defaultMode="voice" />);
+    // Pretend the call is active
+    voiceMock.status = "listening";
+    fireEvent.click(screen.getByTestId("tutor-hub-mode-text"));
+    await waitFor(() => {
+      expect(screen.getByTestId("tutor-hub-text-input")).toBeInTheDocument();
+    });
+    expect(confirmSpy).not.toHaveBeenCalled();
   });
 
   it("auto-starts a text session when initialContext is supplied", async () => {
@@ -192,13 +240,19 @@ describe("TutorHub", () => {
 
   it("submits a text turn via the input + send button", async () => {
     render(<TutorHub isOpen onClose={vi.fn()} />);
-    // First submit kicks off a session (no current term), second sends a turn.
     fireEvent.change(screen.getByTestId("tutor-hub-text-input"), {
       target: { value: "Première question" },
     });
     fireEvent.click(screen.getByTestId("tutor-hub-text-send"));
     await waitFor(() => {
       expect(tutorApiMock.sessionStart).toHaveBeenCalled();
+    });
+    // First submit sends empty concept_def — backend now accepts it
+    const args = tutorApiMock.sessionStart.mock.calls[0]?.[0];
+    expect(args).toMatchObject({
+      concept_term: "Première question",
+      concept_def: "",
+      mode: "text",
     });
   });
 
@@ -221,5 +275,24 @@ describe("TutorHub", () => {
       },
       { timeout: 3000 },
     );
+  });
+
+  it("merges voice transcripts into the unified timeline (mic icon visible)", async () => {
+    voiceMock.messages = [
+      { source: "ai", text: "Bonjour, je suis le tuteur vocal." },
+      { source: "user", text: "Salut, parlons d'éthique." },
+    ];
+    render(<TutorHub isOpen onClose={vi.fn()} defaultMode="voice" />);
+    await waitFor(() => {
+      expect(
+        screen.getByText("Bonjour, je suis le tuteur vocal."),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Salut, parlons d'éthique.")).toBeInTheDocument();
+    });
+    // Two voice messages → at least two mic icons rendered in the transcript
+    const transcript = screen.getByTestId("tutor-hub-text-transcript");
+    expect(
+      transcript.querySelectorAll('svg[aria-label="voice"]').length,
+    ).toBeGreaterThanOrEqual(2);
   });
 });
