@@ -27,7 +27,6 @@ import {
   GraduationCap,
   LayoutGrid,
   Menu,
-  Mic,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
@@ -41,7 +40,7 @@ import {
   PLAN_LIMITS,
 } from "../../config/planPrivileges";
 import type { PlanId } from "../../config/planPrivileges";
-import { VoiceTutorModal } from "../voice/VoiceTutorModal";
+import { TutorHub } from "../Tutor/TutorHub";
 
 // === Logo ===
 const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({
@@ -394,8 +393,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onMobileCloseProp?.();
   };
 
-  // Voice Tutor modal — knowledge_tutor agent (sidebar global entry).
-  const [voiceTutorOpen, setVoiceTutorOpen] = useState(false);
+  // Tutor Hub — unified text/voice panel (sidebar global entry).
+  // Replaces the previous "Tuteur Vocal" modal: the hub defaults to text mode
+  // and the user can switch to voice from within. When `voiceTutorAllowed`
+  // is false we send them to /upgrade exactly like before.
+  const [tutorHubOpen, setTutorHubOpen] = useState(false);
 
   const userPlan = normalizePlanId(user?.plan);
 
@@ -559,15 +561,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
             <div data-tour-step="voice-tutor-nav">
               <SidebarActionItem
-                icon={Mic}
-                label={language === "fr" ? "Tuteur Vocal" : "Voice Tutor"}
+                icon={Sparkles}
+                label={language === "fr" ? "Tuteur" : "Tutor"}
                 onClick={() => {
                   if (!voiceTutorAllowed) {
                     navigate("/upgrade");
                     closeMobile();
                     return;
                   }
-                  setVoiceTutorOpen(true);
+                  setTutorHubOpen(true);
                   closeMobile();
                 }}
                 collapsed={collapsed}
@@ -655,13 +657,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </aside>
 
-      {/* Voice Tutor modal — knowledge_tutor agent ConvAI session.
-          Rendered via portal inside VoiceOverlay → does not impact sidebar
-          layout. Auto-starts on open and stops on close. */}
-      <VoiceTutorModal
-        isOpen={voiceTutorOpen}
-        onClose={() => setVoiceTutorOpen(false)}
+      {/* Tutor Hub — unified text/voice panel (full-height right side).
+          Rendered via portal inside TutorHub → does not impact sidebar
+          layout. Opens in text mode by default; the user can switch to
+          voice from the in-hub toggle. */}
+      <TutorHub
+        isOpen={tutorHubOpen}
+        onClose={() => setTutorHubOpen(false)}
         language={language === "fr" ? "fr" : "en"}
+        defaultMode="text"
       />
     </>
   );
