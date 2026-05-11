@@ -209,6 +209,7 @@ class _DeepSightSettings(BaseSettings):
 
     # -- Transcript --
     YTDLP_COOKIES_PATH: str = ""
+    TIKTOK_COOKIES_PATH: str = ""
     MAX_DURATION_FOR_STT: int = Field(default=1200)
     # Plan-aware STT duration caps (Mistral-First Phase 1)
     MAX_DURATION_FOR_STT_FREE: int = Field(default=1200)  # 20 min
@@ -864,6 +865,10 @@ def get_youtube_proxy() -> str:
 
 def get_ytdlp_cookies_path() -> str:
     return _settings.YTDLP_COOKIES_PATH
+
+
+def get_tiktok_cookies_path() -> str:
+    return _settings.TIKTOK_COOKIES_PATH
 
 
 def get_perplexity_key() -> str:

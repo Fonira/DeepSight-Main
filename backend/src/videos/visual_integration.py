@@ -16,8 +16,10 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import asyncio
 import logging
 import re
+import subprocess
 import tempfile
 import time
 import uuid
@@ -29,6 +31,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import User, VisualAnalysisQuota
+from transcripts.audio_utils import _yt_dlp_extra_args, executor as audio_executor
 
 from .frame_extractor import FrameExtractionResult, extract_frames_from_local
 from .visual_analyzer import analyze_frames
@@ -419,32 +422,109 @@ async def _download_tiktok_video_no_watermark(
         return None
 
 
+async def _download_tiktok_video_via_ytdlp(
+    url: str, *, log_tag: str, timeout_s: int = 60
+) -> Optional[bytes]:
+    """Télécharge la vidéo TikTok via yt-dlp + proxy Decodo + cookies TikTok.
+
+    Stratégie 2026-05-11 : tikwm.com retourne "Url parsing failed" depuis l'IP
+    Hetzner — on bascule sur yt-dlp direct via le proxy résidentiel Decodo
+    (env YOUTUBE_PROXY unifié YouTube/TikTok côté bypass IP-ban) et les cookies
+    de session TikTok (TIKTOK_COOKIES_PATH) pour passer le bot challenge.
+
+    Retourne les bytes mp4 si succès, None sinon. Le caller décide du fallback.
+    """
+    loop = asyncio.get_event_loop()
+
+    def _dl() -> Optional[bytes]:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_path = f"{tmpdir}/video.mp4"
+            cmd = [
+                "yt-dlp",
+                *_yt_dlp_extra_args(include_proxy=True, use_tiktok_cookies=True),
+                "-f",
+                "best[ext=mp4]/best",
+                "-o",
+                out_path,
+                "--no-warnings",
+                "--no-playlist",
+                "--retries",
+                "2",
+                url,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s)
+            if result.returncode != 0:
+                logger.warning(
+                    "[%s] yt-dlp TikTok download failed: %s",
+                    log_tag,
+                    (result.stderr or "")[:200],
+                )
+                return None
+            for f in Path(tmpdir).iterdir():
+                if f.suffix.lower() in {".mp4", ".webm", ".mkv"}:
+                    data = f.read_bytes()
+                    if data and len(data) > 1000:
+                        return data
+            return None
+
+    try:
+        return await asyncio.wait_for(
+            loop.run_in_executor(audio_executor, _dl),
+            timeout=timeout_s + 5,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("[%s] yt-dlp TikTok download timeout (%ds)", log_tag, timeout_s)
+    except Exception as e:
+        logger.warning("[%s] yt-dlp TikTok download raised: %s", log_tag, e)
+    return None
+
+
 async def _extract_tiktok_visual_frames(
     url: str, video_id: str, *, mode: str = "default", log_tag: str
 ) -> Optional[FrameExtractionResult]:
-    """Pipeline TikTok : tikwm `data.play` → /tmp .mp4 → extract_frames_from_local.
+    """Pipeline TikTok : yt-dlp+Decodo (priorité) → tikwm fallback → /tmp .mp4 → extract_frames_from_local.
 
-    L'IP Hetzner est ban TikTok pour `yt-dlp <video_url>` direct. tikwm.com
-    expose le mp4 no-watermark dans `data.play`. On l'utilise directement ici
-    plutôt que `transcripts.tiktok._download_video_bytes()` qui priorise
-    `music_info.play` (audio mp3, inutilisable pour ffmpeg).
+    Stratégie 2026-05-11 (sprint TikTok via proxy Decodo) :
+    - L'API tikwm.com s'est cassée externellement ("Url parsing failed"). On
+      bascule en priorité sur yt-dlp direct via le proxy résidentiel Decodo
+      ($YOUTUBE_PROXY) + cookies TikTok ($TIKTOK_COOKIES_PATH) pour bypass
+      l'IP-ban Hetzner et le bot challenge TikTok.
+    - tikwm reste en fallback secondaire pour les cas où yt-dlp échoue
+      (vidéo privée, proxy saturé, cookies expirés).
 
-    `mode` est propagé à extract_frames_from_local pour appliquer la grille frames.
+    `mode` est propagé à extract_frames_from_local pour la grille frames.
     """
     t0 = time.time()
+    video_data: Optional[bytes] = None
+    download_source = "none"
+
+    # ── Tentative 1 : yt-dlp + Decodo proxy + cookies TikTok ──
     try:
-        video_data = await _download_tiktok_video_no_watermark(url, log_tag=log_tag)
+        video_data = await _download_tiktok_video_via_ytdlp(url, log_tag=log_tag)
+        if video_data:
+            download_source = "yt-dlp"
     except Exception as e:
-        logger.warning("[%s] TikTok download raised: %s", log_tag, e)
-        return None
+        logger.warning("[%s] yt-dlp path raised: %s", log_tag, e)
+
+    # ── Tentative 2 : tikwm fallback ──
+    if not video_data:
+        try:
+            video_data = await _download_tiktok_video_no_watermark(url, log_tag=log_tag)
+            if video_data:
+                download_source = "tikwm"
+        except Exception as e:
+            logger.warning("[%s] tikwm fallback raised: %s", log_tag, e)
 
     if not video_data:
-        logger.warning("[%s] TikTok download returned empty for %s", log_tag, video_id)
+        logger.warning(
+            "[%s] TikTok download failed (yt-dlp + tikwm) for %s", log_tag, video_id
+        )
         return None
 
     logger.info(
-        "[%s] TikTok download OK in %.1fs (%.0f KB)",
+        "[%s] TikTok download OK via %s in %.1fs (%.0f KB)",
         log_tag,
+        download_source,
         time.time() - t0,
         len(video_data) / 1024,
     )

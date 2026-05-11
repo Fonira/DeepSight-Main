@@ -116,11 +116,15 @@ jobs:
               echo "::warning::Trivy reported vulnerabilities (non-blocking)"
 
             # Recreate the backend container.
-            # Note: /opt/deepsight/cookies.txt is bind-mounted read-only at
-            # /app/cookies.txt for yt-dlp authentication (bypass YouTube bot
-            # challenge on visual storyboard extraction). The file is optional:
-            # if absent on the host, the bind-mount will fail with a clear
-            # error in `docker logs` rather than silently breaking visual.
+            # Bind-mounts (read-only):
+            #   /opt/deepsight/cookies.txt        → /app/cookies.txt
+            #     yt-dlp YouTube cookies (bypass bot challenge on visual storyboard).
+            #   /opt/deepsight/tiktok_cookies.txt → /app/tiktok_cookies.txt
+            #     yt-dlp TikTok cookies (Decodo proxy + bot challenge bypass).
+            # We `touch -a` both before the docker run so the bind-mount never
+            # fails on first deploy if the file hasn't been uploaded yet
+            # (empty cookies = yt-dlp runs without auth, tikwm fallback covers).
+            touch -a /opt/deepsight/cookies.txt /opt/deepsight/tiktok_cookies.txt
             docker stop repo-backend-1 || true
             docker rm repo-backend-1 || true
             docker run -d \
@@ -131,6 +135,7 @@ jobs:
               --restart unless-stopped \
               -p 127.0.0.1:8080:8080 \
               -v /opt/deepsight/cookies.txt:/app/cookies.txt:ro \
+              -v /opt/deepsight/tiktok_cookies.txt:/app/tiktok_cookies.txt:ro \
               deepsight-backend:latest
 
             echo "Deployed SHA: $(git rev-parse HEAD)"
@@ -176,6 +181,7 @@ jobs:
             echo "Rolling back to deepsight-backend:previous"
             docker tag deepsight-backend:previous deepsight-backend:latest
 
+            touch -a /opt/deepsight/cookies.txt /opt/deepsight/tiktok_cookies.txt
             docker stop repo-backend-1 || true
             docker rm repo-backend-1 || true
             docker run -d \
@@ -186,6 +192,7 @@ jobs:
               --restart unless-stopped \
               -p 127.0.0.1:8080:8080 \
               -v /opt/deepsight/cookies.txt:/app/cookies.txt:ro \
+              -v /opt/deepsight/tiktok_cookies.txt:/app/tiktok_cookies.txt:ro \
               deepsight-backend:latest
 
             echo "Rollback complete"

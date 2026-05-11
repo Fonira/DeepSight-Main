@@ -16,7 +16,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 
-from core.config import get_groq_key, get_youtube_proxy, get_ytdlp_cookies_path
+from core.config import (
+    get_groq_key,
+    get_tiktok_cookies_path,
+    get_youtube_proxy,
+    get_ytdlp_cookies_path,
+)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -24,7 +29,7 @@ from core.config import get_groq_key, get_youtube_proxy, get_ytdlp_cookies_path
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def _yt_dlp_extra_args(*, include_proxy: bool = True) -> list:
+def _yt_dlp_extra_args(*, include_proxy: bool = True, use_tiktok_cookies: bool = False) -> list:
     """Common yt-dlp flags for IP-banned environments: proxy + cookies.
 
     Both are no-ops when their env vars are unset, so this is safe to call
@@ -35,13 +40,17 @@ def _yt_dlp_extra_args(*, include_proxy: bool = True) -> list:
     le CDN i.ytimg.com et l'API watch?v= acceptent les requêtes directes depuis
     l'IP du backend, et un proxy datacenter mal configuré ferait échouer la
     requête (407 Proxy Authentication Required) alors qu'elle marcherait sans.
+
+    `use_tiktok_cookies=True` swap YTDLP_COOKIES_PATH pour TIKTOK_COOKIES_PATH
+    afin que les sessions YouTube et TikTok restent ségrégées (domaines et
+    fenêtres de refresh différents, cookies TikTok plus volatiles).
     """
     extra = []
     if include_proxy:
         proxy = get_youtube_proxy()
         if proxy:
             extra.extend(["--proxy", proxy])
-    cookies = get_ytdlp_cookies_path()
+    cookies = get_tiktok_cookies_path() if use_tiktok_cookies else get_ytdlp_cookies_path()
     if cookies and os.path.exists(cookies):
         extra.extend(["--cookies", cookies])
     return extra
