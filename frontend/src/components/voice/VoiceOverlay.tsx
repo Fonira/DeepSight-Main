@@ -36,6 +36,7 @@ import {
   PhoneOff,
   X,
   AlertCircle,
+  ChevronLeft,
   Loader2,
   Volume2,
   Settings,
@@ -96,6 +97,13 @@ export interface VoiceOverlayProps {
   autoStart?: boolean;
   /** "floating" (default — bottom-right 380×600) or "fullbleed" (occupies parent container). */
   presentationMode?: "floating" | "fullbleed";
+  /**
+   * V2 — Optional callback to navigate back to a text chat surface that
+   * triggered the voice modal (typically the Tutor popup). When defined,
+   * a `ChevronLeft` button appears in the header as the first item so the
+   * user can dismiss the voice call without losing the underlying chat.
+   */
+  onBackToChat?: () => void;
 }
 
 export interface VoiceOverlayController {
@@ -131,6 +139,7 @@ const I18N = {
     minutesLeft: "min restantes",
     micMuted: "Micro coupé",
     settings: "Réglages",
+    backToChat: "Retour au chat",
   },
   en: {
     callTitle: "Voice call",
@@ -147,6 +156,7 @@ const I18N = {
     minutesLeft: "min left",
     micMuted: "Mic muted",
     settings: "Settings",
+    backToChat: "Back to chat",
   },
 } as const;
 
@@ -166,6 +176,7 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
   controllerRef,
   autoStart = true,
   presentationMode = "floating",
+  onBackToChat,
 }) => {
   const t = I18N[language];
   const resolvedAgent: VoiceOverlayProps["agentType"] =
@@ -378,6 +389,18 @@ export const VoiceOverlay: React.FC<VoiceOverlayProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
+                {onBackToChat && (
+                  <button
+                    type="button"
+                    onClick={onBackToChat}
+                    aria-label={t.backToChat}
+                    title={t.backToChat}
+                    data-testid="voice-overlay-back-to-chat"
+                    className="p-1.5 rounded-lg hover:bg-white/[0.06] text-text-muted hover:text-text-secondary transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setSettingsOpen((v) => !v)}
