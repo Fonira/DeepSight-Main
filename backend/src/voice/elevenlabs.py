@@ -714,10 +714,21 @@ def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: 
     """Webhook-tool definitions for the KNOWLEDGE_TUTOR agent.
 
     Same auth pattern as COMPANION (Bearer = voice_session_id, body must echo
-    voice_session_id). The agent has 5 tools available: 4 history-aware DB
-    helpers + the shared web_search fallback (mounted at /tools/web-search,
-    declared by ElevenLabsClient.build_tools_config — re-exposed here so the
-    KNOWLEDGE_TUTOR can call it without going through the per-summary auth).
+    voice_session_id). The agent has 5 history-aware DB helpers + the shared
+    web_search fallback (mounted at /tools/web-search, declared by
+    ElevenLabsClient.build_tools_config — re-exposed here so the
+    KNOWLEDGE_TUTOR can call it without going through the per-summary auth):
+
+        1. get_tutor_memory_snapshot — adaptive mind-map. PRIMARY orientation
+           tool, called first at session start (replaces get_user_history +
+           get_concept_keys for the initial pivot).
+        2. get_user_history — last N analyses (richer per-item shape, includes
+           ``key_topics`` extracted from ``## ``-headings).
+        3. get_concept_keys — top concepts aggregated across history.
+        4. search_history — semantic search across summaries / flashcards /
+           quizzes / chats / transcripts.
+        5. get_summary_detail — full detail of one analysis to ground a
+           correction or quote a precise passage.
 
     Note: web_search is *not* re-declared here because the COMPANION agent
     already defines it at /tools/web-search-companion in some prods. To stay
@@ -750,6 +761,25 @@ def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: 
     }
 
     return [
+        _tool(
+            name="get_tutor_memory_snapshot",
+            description=(
+                "Return an adaptive mind-map of the user's whole analysis history "
+                "(top categories, top concepts, and a slice of recent analyses with "
+                "their key topics). Compression scales automatically with the total "
+                "analysis count. CALL THIS FIRST at the start of every session to "
+                "orient yourself — replaces the legacy "
+                "get_concept_keys + get_user_history startup pair."
+            ),
+            path="/api/voice/tools/knowledge-tutor-memory",
+            body_schema={
+                "type": "object",
+                "properties": {
+                    "voice_session_id": voice_session_field,
+                },
+                "required": ["voice_session_id"],
+            },
+        ),
         _tool(
             name="get_user_history",
             description=(

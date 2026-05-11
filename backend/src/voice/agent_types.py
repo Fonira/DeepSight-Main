@@ -685,6 +685,7 @@ KNOWLEDGE_TUTOR = AgentConfig(
     system_prompt_fr=KNOWLEDGE_TUTOR_PROMPT_FR,
     system_prompt_en=KNOWLEDGE_TUTOR_PROMPT_EN,
     tools=[
+        "get_tutor_memory_snapshot",
         "get_user_history",
         "get_concept_keys",
         "search_history",
