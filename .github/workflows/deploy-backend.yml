@@ -116,6 +116,11 @@ jobs:
               echo "::warning::Trivy reported vulnerabilities (non-blocking)"
 
             # Recreate the backend container.
+            # Note: /opt/deepsight/cookies.txt is bind-mounted read-only at
+            # /app/cookies.txt for yt-dlp authentication (bypass YouTube bot
+            # challenge on visual storyboard extraction). The file is optional:
+            # if absent on the host, the bind-mount will fail with a clear
+            # error in `docker logs` rather than silently breaking visual.
             docker stop repo-backend-1 || true
             docker rm repo-backend-1 || true
             docker run -d \
@@ -125,6 +130,7 @@ jobs:
               --env-file /opt/deepsight/repo/.env.production \
               --restart unless-stopped \
               -p 127.0.0.1:8080:8080 \
+              -v /opt/deepsight/cookies.txt:/app/cookies.txt:ro \
               deepsight-backend:latest
 
             echo "Deployed SHA: $(git rev-parse HEAD)"
@@ -179,6 +185,7 @@ jobs:
               --env-file /opt/deepsight/repo/.env.production \
               --restart unless-stopped \
               -p 127.0.0.1:8080:8080 \
+              -v /opt/deepsight/cookies.txt:/app/cookies.txt:ro \
               deepsight-backend:latest
 
             echo "Rollback complete"
