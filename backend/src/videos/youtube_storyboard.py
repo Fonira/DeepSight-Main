@@ -86,6 +86,12 @@ def _ytdlp_info_sync(video_id: str, log_tag: str) -> Optional[Dict[str, Any]]:
     `include_proxy=False` : le metadata fetch YouTube (storyboards inclus)
     fonctionne en direct depuis le backend Hetzner — le proxy Webshare
     datacenter renvoie 407 et casse cet appel inutilement.
+
+    `--ignore-no-formats-error` : yt-dlp 2024+ refuse de produire le JSON quand
+    aucun format vidéo "downloadable" (mp4/webm) n'est exposé, même avec
+    `--skip-download`. Or pour Phase 2 visual storyboard on n'a besoin que des
+    formats `sb*` (mhtml). Sans ce flag, yt-dlp lève "Requested format is not
+    available" et on ne récupère jamais les storyboards.
     """
     url = f"https://www.youtube.com/watch?v={video_id}"
     cmd = [
@@ -93,6 +99,7 @@ def _ytdlp_info_sync(video_id: str, log_tag: str) -> Optional[Dict[str, Any]]:
         *_yt_dlp_extra_args(include_proxy=False),
         "-j",
         "--skip-download",
+        "--ignore-no-formats-error",
         "--no-warnings",
         "--no-playlist",
         url,
