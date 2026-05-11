@@ -15,7 +15,7 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuthStore } from "@/stores/authStore";
 import { palette } from "@/theme/colors";
-import { sp, borderRadius } from "@/theme/spacing";
+import { spacing, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
 
 export const VisualAnalysisBanner: React.FC = () => {
@@ -51,7 +51,7 @@ export const VisualAnalysisBanner: React.FC = () => {
         style={[
           styles.card,
           {
-            backgroundColor: colors.surfaceElevated ?? colors.surface,
+            backgroundColor: colors.bgElevated,
             borderColor: colors.border,
           },
         ]}
@@ -65,7 +65,7 @@ export const VisualAnalysisBanner: React.FC = () => {
           </View>
         </View>
 
-        <Text style={[styles.title, { color: colors.text }]}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
           Maintenant, DeepSight regarde aussi.
         </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -94,7 +94,7 @@ export const VisualAnalysisBanner: React.FC = () => {
             accessibilityRole="button"
             accessibilityLabel="En savoir plus"
           >
-            <Text style={[styles.ctaSecondaryText, { color: colors.text }]}>
+            <Text style={[styles.ctaSecondaryText, { color: colors.textPrimary }]}>
               En savoir plus
             </Text>
           </Pressable>
@@ -106,19 +106,19 @@ export const VisualAnalysisBanner: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: sp(4),
-    marginVertical: sp(3),
+    paddingHorizontal: spacing[4],
+    marginVertical: spacing[3],
   },
   card: {
     borderWidth: 1,
     borderRadius: borderRadius.lg,
-    padding: sp(4),
+    padding: spacing[4],
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: sp(3),
+    marginBottom: spacing[3],
   },
   iconWrap: {
     width: 40,
@@ -132,58 +132,58 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   badge: {
-    paddingHorizontal: sp(2),
-    paddingVertical: sp(1),
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[1],
     borderRadius: borderRadius.sm,
     backgroundColor: "rgba(139, 92, 246, 0.15)",
     borderWidth: 1,
     borderColor: "rgba(139, 92, 246, 0.3)",
   },
   badgeText: {
-    fontFamily: fontFamily.medium,
+    fontFamily: fontFamily.bodyMedium,
     fontSize: 10,
     color: palette.violet,
     letterSpacing: 0.5,
   },
   title: {
-    fontFamily: fontFamily.bold,
+    fontFamily: fontFamily.bodyBold,
     fontSize: fontSize.lg,
     lineHeight: 24,
-    marginBottom: sp(2),
+    marginBottom: spacing[2],
   },
   subtitle: {
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
     lineHeight: 20,
-    marginBottom: sp(4),
+    marginBottom: spacing[4],
   },
   actions: {
     flexDirection: "row",
-    gap: sp(2),
+    gap: spacing[2],
   },
   ctaPrimary: {
     flexDirection: "row",
     alignItems: "center",
-    gap: sp(1.5),
-    paddingHorizontal: sp(3.5),
-    paddingVertical: sp(2.5),
+    gap: spacing["1.5"],
+    paddingHorizontal: spacing["3.5"],
+    paddingVertical: spacing["2.5"],
     borderRadius: borderRadius.md,
   },
   ctaPrimaryText: {
-    fontFamily: fontFamily.semibold,
+    fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.sm,
     color: "#fff",
   },
   ctaSecondary: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: sp(3.5),
-    paddingVertical: sp(2.5),
+    paddingHorizontal: spacing["3.5"],
+    paddingVertical: spacing["2.5"],
     borderRadius: borderRadius.md,
     borderWidth: 1,
   },
   ctaSecondaryText: {
-    fontFamily: fontFamily.medium,
+    fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.sm,
   },
 });
