@@ -938,7 +938,7 @@ export const PlaylistPage: React.FC = () => {
                           if (pid) {
                             navigate(`/playlist/${pid}`);
                           } else {
-                            navigate("/history");
+                            navigate("/hub?view=history");
                           }
                         }}
                         className="btn btn-primary"

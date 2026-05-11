@@ -54,6 +54,11 @@ import { captureUtmParams } from "./services/utmCapture";
 import { initWebVitals } from "./services/webVitals";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { DeepSightSpinner } from "./components/ui/DeepSightSpinner";
+import {
+  ChatLegacyRedirect,
+  VoiceCallLegacyRedirect,
+  HistoryLegacyRedirect,
+} from "./routes/legacyRedirects";
 
 // 🎓 Tour Shepherd.js (chantier B Sprint Growth) — lazy-loadé pour ne pas
 // embarquer ~30 KB gzipped dans le bundle initial. N'est chargé que pour les
@@ -326,7 +331,6 @@ const PlaylistPage = lazyWithRetry(() => import("./pages/PlaylistPage"));
 const PlaylistDetailPage = lazyWithRetry(
   () => import("./pages/PlaylistDetailPage"),
 );
-const History = lazyWithRetry(() => import("./pages/History"));
 const SearchPage = lazyWithRetry(() => import("./pages/SearchPage"));
 const UpgradePage = lazyWithRetry(() => import("./pages/UpgradePage"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
@@ -355,31 +359,30 @@ const ApiDocsPage = lazyWithRetry(() => import("./pages/ApiDocsPage"));
 // 🔮 PREFETCH CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// Note: /chat, /voice-call and /history are legacy paths that redirect into
+// /hub via routes/legacyRedirects.tsx. They intentionally have no entry in
+// PAGE_LOADERS — there is no mounted page to prefetch, the <Navigate>
+// component runs synchronously on route match.
 const PREFETCH_MAP: Record<string, string[]> = {
   "/": ["/dashboard", "/login"],
   "/login": ["/dashboard"],
   "/dashboard": [
-    "/history",
     "/settings",
     "/debate",
     "/analytics",
     "/hub",
-    "/chat",
-    "/voice-call",
     "/study",
     "/about",
     "/search",
   ],
-  "/history": ["/dashboard", "/analytics", "/search"],
   "/settings": ["/account"],
-  "/debate": ["/dashboard", "/history"],
+  "/debate": ["/dashboard", "/hub"],
   "/upgrade": ["/dashboard", "/payment/success"],
-  "/analytics": ["/dashboard", "/history"],
+  "/analytics": ["/dashboard", "/hub"],
 };
 
 const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   "/dashboard": () => import("./pages/DashboardPageMinimal"),
-  "/history": () => import("./pages/History"),
   "/settings": () => import("./pages/Settings"),
   "/debate": () => import("./pages/DebatePage"),
   "/account": () => import("./pages/MyAccount"),
@@ -387,8 +390,6 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   "/upgrade": () => import("./pages/UpgradePage"),
   "/payment/success": () => import("./pages/PaymentSuccess"),
   "/analytics": () => import("./pages/AnalyticsPage"),
-  "/chat": () => import("./pages/ChatPage"),
-  "/voice-call": () => import("./pages/VoiceCallPage"),
   "/hub": () => import("./pages/HubPage"),
   "/study": () => import("./pages/StudyHubPage"),
   "/about": () => import("./pages/AboutPage"),
@@ -911,18 +912,7 @@ const AppRoutes = () => {
 
                         <Route
                           path="/history"
-                          element={
-                            <RouteErrorBoundary
-                              variant="full"
-                              componentName="History"
-                            >
-                              <Suspense
-                                fallback={<PageSkeleton variant="full" />}
-                              >
-                                <History />
-                              </Suspense>
-                            </RouteErrorBoundary>
-                          }
+                          element={<HistoryLegacyRedirect />}
                         />
 
                         <Route
@@ -1082,12 +1072,12 @@ const AppRoutes = () => {
 
                         <Route
                           path="/chat"
-                          element={<Navigate to="/hub" replace />}
+                          element={<ChatLegacyRedirect />}
                         />
 
                         <Route
                           path="/voice-call"
-                          element={<Navigate to="/hub" replace />}
+                          element={<VoiceCallLegacyRedirect />}
                         />
 
                         <Route

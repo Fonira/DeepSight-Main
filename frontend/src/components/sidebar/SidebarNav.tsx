@@ -25,7 +25,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   const navItems = [
     { path: "/dashboard", icon: Video, label: "Vidéo" },
     { path: "/debate", icon: Swords, label: "Débat IA" },
-    { path: "/history", icon: History, label: "Historique" },
+    { path: "/hub?view=history", icon: History, label: "Historique" },
     { path: "/search", icon: Search, label: "Recherche" },
     { path: "/hub", icon: MessageCircle, label: "Hub" },
     { path: "/upgrade", icon: Gem, label: "Upgrade" },

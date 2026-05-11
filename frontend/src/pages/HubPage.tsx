@@ -8,7 +8,14 @@
  * Backend : timeline unifiée déjà en place (PR #203). Schema HubMessage
  * mappé depuis ChatMessage côté API (source/voice_session_id/time_in_call_secs).
  */
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { videoApi, chatApi, reliabilityApi } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
@@ -48,6 +55,11 @@ import type {
   HubMessage,
   TabId,
 } from "../components/hub/types";
+
+// Hub centralization PR1 — `/hub?view=history` mounts the legacy History
+// page inside the Hub route. PR4 will harmonize its layout to share the
+// Hub shell (HubHeader, sidebar) instead of keeping its own chrome.
+const LazyHistoryView = lazy(() => import("./History"));
 
 const newId = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -232,6 +244,21 @@ const HubPageInner: React.FC = () => {
   const [analyzingError, setAnalyzingError] = React.useState<string | null>(
     null,
   );
+
+  // ── Voice auto-open — `/hub?voice=1` flips voiceCallOpen on mount ──
+  // Legacy /voice-call redirects funnel here (cf. routes/legacyRedirects).
+  // PR2 will replace this with the inline mic in InputBar. We strip the
+  // flag right after so a back-nav or accidental reload doesn't re-open
+  // the overlay after the user closed it.
+  const voiceAutoOpen = searchParams.get("voice") === "1";
+  useEffect(() => {
+    if (!voiceAutoOpen) return;
+    setVoiceCallOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("voice");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceAutoOpen]);
 
   const { analyze: triggerAnalyze, error: hookError } = useAnalyzeAndOpenHub();
   // Affiche les erreurs du hook (URL invalide, fetch failed) dans le placeholder.
@@ -962,13 +989,28 @@ const UrlQueryBridge: React.FC<{ q: string }> = ({ q }) => {
 
 /**
  * Top-level dispatcher for /hub. Switches between the normal Hub layout
- * (analysis + chat + voice) and a fullscreen chat surface when the URL
- * carries `?fsChat=<type>` (V2 — mai 2026). Each branch mounts a distinct
- * subtree so React hook order remains stable even on URL transitions.
+ * (analysis + chat + voice), a fullscreen chat surface when the URL
+ * carries `?fsChat=<type>` (V2 — mai 2026), and the lazy-loaded History
+ * page when `?view=history` (PR1 Hub centralization). Each branch mounts
+ * a distinct subtree so React hook order remains stable on URL transitions.
  */
 const HubPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const view = searchParams.get("view");
   const fsChat = searchParams.get("fsChat");
+  if (view === "history") {
+    return (
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center h-screen bg-[#0a0a0f]">
+            <Loader2 className="w-6 h-6 animate-spin text-text-tertiary" />
+          </div>
+        }
+      >
+        <LazyHistoryView />
+      </Suspense>
+    );
+  }
   if (fsChat) {
     return <FullscreenChatView chatType={fsChat} />;
   }

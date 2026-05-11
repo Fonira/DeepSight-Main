@@ -32,7 +32,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: "/dashboard", icon: <Home className="w-5 h-5" />, label: "Accueil" },
   {
-    path: "/history",
+    path: "/hub?view=history",
     icon: <Clock className="w-5 h-5" />,
     label: "Historique",
   },

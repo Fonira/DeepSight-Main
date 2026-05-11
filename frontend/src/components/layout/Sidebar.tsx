@@ -520,7 +520,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               collapsed={collapsed}
             />
             <NavItem
-              to="/history"
+              to="/hub?view=history"
               icon={History}
               label={t.nav.history}
               collapsed={collapsed}
