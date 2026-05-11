@@ -608,8 +608,11 @@ def build_companion_tools_config(webhook_base_url: str, voice_session_id: str) -
     """Webhook-tool definitions for the COMPANION agent (free voice call).
 
     Bearer token = voice_session.id (verified server-side by
-    verify_companion_tool_request). Body always includes voice_session_id
-    so the backend can match the Bearer.
+    verify_companion_tool_request). voice_session_id is injected as a
+    ``constant_value`` (server-side, not provided by the LLM) — same pattern
+    as ``build_tools_config`` for ``summary_id``. Without this, the LLM has
+    no way to know the session id from its context and the backend would
+    reject every tool call with 401 token_mismatch.
     """
     auth_headers = {"Authorization": f"Bearer {voice_session_id}"}
     base = webhook_base_url.rstrip("/")
@@ -627,10 +630,10 @@ def build_companion_tools_config(webhook_base_url: str, voice_session_id: str) -
             },
         }
 
-    voice_session_field = {
-        "type": "string",
-        "description": "The voice_session_id (same value as the Bearer token).",
-    }
+    # ElevenLabs schema rule: when constant_value is set, no other field
+    # (description, dynamic_variable, is_system_provided) can be set, and the
+    # field MUST stay out of "required" because the server injects it.
+    voice_session_const = {"type": "string", "constant_value": str(voice_session_id)}
 
     return [
         _tool(
@@ -645,13 +648,13 @@ def build_companion_tools_config(webhook_base_url: str, voice_session_id: str) -
             body_schema={
                 "type": "object",
                 "properties": {
-                    "voice_session_id": voice_session_field,
+                    "voice_session_id": voice_session_const,
                     "topic": {
                         "type": "string",
                         "description": "Topic / theme to find recommendations for.",
                     },
                 },
-                "required": ["voice_session_id", "topic"],
+                "required": ["topic"],
             },
         ),
         _tool(
@@ -665,13 +668,13 @@ def build_companion_tools_config(webhook_base_url: str, voice_session_id: str) -
             body_schema={
                 "type": "object",
                 "properties": {
-                    "voice_session_id": voice_session_field,
+                    "voice_session_id": voice_session_const,
                     "video_url": {
                         "type": "string",
                         "description": "Full YouTube URL (https://www.youtube.com/watch?v=... or youtu.be/...).",
                     },
                 },
-                "required": ["voice_session_id", "video_url"],
+                "required": ["video_url"],
             },
         ),
         _tool(
@@ -690,7 +693,7 @@ def build_companion_tools_config(webhook_base_url: str, voice_session_id: str) -
             body_schema={
                 "type": "object",
                 "properties": {
-                    "voice_session_id": voice_session_field,
+                    "voice_session_id": voice_session_const,
                     "summary_id": {
                         "type": "integer",
                         "description": "Direct lookup by summary_id (preferred when known).",
@@ -704,7 +707,7 @@ def build_companion_tools_config(webhook_base_url: str, voice_session_id: str) -
                         "description": "Free-text fuzzy match on video_title or video_channel.",
                     },
                 },
-                "required": ["voice_session_id"],
+                "required": [],
             },
         ),
     ]
@@ -713,11 +716,17 @@ def build_companion_tools_config(webhook_base_url: str, voice_session_id: str) -
 def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: str) -> list[dict]:
     """Webhook-tool definitions for the KNOWLEDGE_TUTOR agent.
 
-    Same auth pattern as COMPANION (Bearer = voice_session_id, body must echo
-    voice_session_id). The agent has 5 history-aware DB helpers + the shared
-    web_search fallback (mounted at /tools/web-search, declared by
-    ElevenLabsClient.build_tools_config — re-exposed here so the
-    KNOWLEDGE_TUTOR can call it without going through the per-summary auth):
+    Same auth pattern as COMPANION: Bearer = voice_session_id, and the body
+    echoes voice_session_id via a ``constant_value`` (server-injected, not
+    asked of the LLM — see ``build_tools_config`` for the same pattern with
+    ``summary_id``). Without this, the LLM has no way to know the session id
+    from its context and the backend would reject every tool call with 401
+    token_mismatch — making the tutor say "I have no access to your history".
+
+    The agent has 5 history-aware DB helpers + the shared web_search fallback
+    (mounted at /tools/web-search, declared by ElevenLabsClient.build_tools_config
+    — re-exposed here so the KNOWLEDGE_TUTOR can call it without going through
+    the per-summary auth):
 
         1. get_tutor_memory_snapshot — adaptive mind-map. PRIMARY orientation
            tool, called first at session start (replaces get_user_history +
@@ -729,15 +738,6 @@ def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: 
            quizzes / chats / transcripts.
         5. get_summary_detail — full detail of one analysis to ground a
            correction or quote a precise passage.
-
-    Note: web_search is *not* re-declared here because the COMPANION agent
-    already defines it at /tools/web-search-companion in some prods. To stay
-    consistent with the spec ("réutilise web_search COMPANION"), we point
-    knowledge_tutor.web_search to the same /tools/web-search-companion-style
-    webhook only if the COMPANION wiring exposes it. For now we rely on the
-    main /tools/web-search served by build_tools_config and let the router
-    filter at the agent level — the spec's "fallback web_search" requirement
-    is satisfied by the LLM choosing not to call it on history-only turns.
     """
     auth_headers = {"Authorization": f"Bearer {voice_session_id}"}
     base = webhook_base_url.rstrip("/")
@@ -755,10 +755,10 @@ def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: 
             },
         }
 
-    voice_session_field = {
-        "type": "string",
-        "description": "The voice_session_id (same value as the Bearer token).",
-    }
+    # ElevenLabs schema rule: when constant_value is set, no other field
+    # (description, dynamic_variable, is_system_provided) can be set, and the
+    # field MUST stay out of "required" because the server injects it.
+    voice_session_const = {"type": "string", "constant_value": str(voice_session_id)}
 
     return [
         _tool(
@@ -775,9 +775,9 @@ def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: 
             body_schema={
                 "type": "object",
                 "properties": {
-                    "voice_session_id": voice_session_field,
+                    "voice_session_id": voice_session_const,
                 },
-                "required": ["voice_session_id"],
+                "required": [],
             },
         ),
         _tool(
@@ -791,7 +791,7 @@ def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: 
             body_schema={
                 "type": "object",
                 "properties": {
-                    "voice_session_id": voice_session_field,
+                    "voice_session_id": voice_session_const,
                     "limit": {
                         "type": "integer",
                         "description": "Max number of analyses to return (default 10, max 25).",
@@ -801,7 +801,7 @@ def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: 
                         "description": "Cutoff in days (default 60).",
                     },
                 },
-                "required": ["voice_session_id"],
+                "required": [],
             },
         ),
         _tool(
@@ -815,13 +815,13 @@ def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: 
             body_schema={
                 "type": "object",
                 "properties": {
-                    "voice_session_id": voice_session_field,
+                    "voice_session_id": voice_session_const,
                     "limit": {
                         "type": "integer",
                         "description": "Max number of concepts to return (default 20, max 100).",
                     },
                 },
-                "required": ["voice_session_id"],
+                "required": [],
             },
         ),
         _tool(
@@ -835,7 +835,7 @@ def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: 
             body_schema={
                 "type": "object",
                 "properties": {
-                    "voice_session_id": voice_session_field,
+                    "voice_session_id": voice_session_const,
                     "query": {
                         "type": "string",
                         "description": "Free-text search query (concept, idea, person, etc.).",
@@ -845,7 +845,7 @@ def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: 
                         "description": "Max results to return (default 5, max 20).",
                     },
                 },
-                "required": ["voice_session_id", "query"],
+                "required": ["query"],
             },
         ),
         _tool(
@@ -859,13 +859,13 @@ def build_knowledge_tutor_tools_config(webhook_base_url: str, voice_session_id: 
             body_schema={
                 "type": "object",
                 "properties": {
-                    "voice_session_id": voice_session_field,
+                    "voice_session_id": voice_session_const,
                     "summary_id": {
                         "type": "integer",
                         "description": "Database id of the Summary to fetch.",
                     },
                 },
-                "required": ["voice_session_id", "summary_id"],
+                "required": ["summary_id"],
             },
         ),
     ]
