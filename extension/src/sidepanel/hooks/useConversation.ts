@@ -264,6 +264,38 @@ export function useConversation(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMode, videoId]);
 
+  // ── Hot-swap agent to full-context "explorer" once analysis completes ──
+  // The streaming context pipeline (useStreamingVideoContext) feeds the agent
+  // progressively via [CTX UPDATE] messages, and the EXPLORER_STREAMING
+  // prompt is supposed to acknowledge [CTX COMPLETE] and switch its tone.
+  // In practice we've seen the agent stay stuck on "I don't have the
+  // context yet" — to make the upgrade reliable we silently restart the
+  // session with agentType="explorer" the moment contextComplete fires
+  // AND we have a resolved summaryId (so the backend has a real Summary
+  // row to hand to the new agent as initial context). One-shot via ref.
+  const upgradedToExplorerRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (upgradedToExplorerRef.current) return;
+    if (!ctx.contextComplete) return;
+    if (voice.status !== "listening") return;
+    const sid =
+      typeof summaryId === "number"
+        ? summaryId
+        : typeof voice.summaryId === "number"
+          ? voice.summaryId
+          : null;
+    if (!sid) return;
+    upgradedToExplorerRef.current = true;
+    void voice
+      .restartSession({ agentType: "explorer", isStreaming: false })
+      .catch((err: unknown) => {
+        // Non-fatal — the streaming agent stays connected on failure.
+        onError?.((err as Error)?.message ?? "Voice upgrade failed");
+        upgradedToExplorerRef.current = false;
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx.contextComplete, voice.status, summaryId, voice.summaryId]);
+
   // ── Sync voiceMode depuis voice.status ──
   useEffect(() => {
     switch (voice.status) {
