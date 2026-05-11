@@ -221,7 +221,16 @@ async def maybe_enrich_with_visual(
                 "status": STATUS_NOT_SUPPORTED,
                 "elapsed_s": round(time.time() - t0, 2),
             }
-        extraction = await extract_storyboard_frames(video_id, mode=mode, log_tag=log_tag)
+        # transcript_excerpt provient déjà du caller (videos/router.py)
+        # et contient les timestamps Supadata `[mm:ss]` — utilisé en
+        # fallback ultime dans extract_storyboard_frames si yt-dlp +
+        # sb fragments + Supadata get_video_info échouent à donner duration.
+        extraction = await extract_storyboard_frames(
+            video_id,
+            mode=mode,
+            transcript_hint=transcript_excerpt or None,
+            log_tag=log_tag,
+        )
         identifier_for_logs = video_id
     elif platform == "tiktok":
         # TikTok : download via tikwm fallback (IP Hetzner ban yt-dlp direct)
