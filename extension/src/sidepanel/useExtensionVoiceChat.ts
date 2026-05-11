@@ -116,7 +116,9 @@ interface UseExtensionVoiceChatResult {
    * l'utilisateur ne perde ni l'historique ni le compteur visuel.
    * No-op si aucune session active.
    */
-  restartSession: () => Promise<VoiceSessionResponse | null>;
+  restartSession: (
+    overrideOpts?: Partial<StartSessionOpts>,
+  ) => Promise<VoiceSessionResponse | null>;
   /** Vrai si la dernière session était l'essai gratuit free user. */
   lastSessionWasTrial: boolean;
   /** Vrai pendant un restart silencieux (UI peut afficher un pulse). */
@@ -432,11 +434,19 @@ export function useExtensionVoiceChat(
     })();
   }, []);
 
-  const restartSession =
-    useCallback(async (): Promise<VoiceSessionResponse | null> => {
-      const opts = lastStartOptsRef.current;
-      if (!opts) return null;
+  const restartSession = useCallback(
+    async (
+      overrideOpts?: Partial<StartSessionOpts>,
+    ): Promise<VoiceSessionResponse | null> => {
+      const baseOpts = lastStartOptsRef.current;
+      if (!baseOpts) return null;
       if (status !== "listening" && status !== "connecting") return null;
+      // Merge so callers can hot-swap a single field (e.g. agentType :
+      // "explorer_streaming" → "explorer") without re-supplying the whole
+      // opts blob. The new opts are persisted in lastStartOptsRef so any
+      // subsequent restart keeps the upgraded session.
+      const opts: StartSessionOpts = { ...baseOpts, ...overrideOpts };
+      lastStartOptsRef.current = opts;
 
       const preservedStart = sessionStartedAt.current;
       setIsRestarting(true);
