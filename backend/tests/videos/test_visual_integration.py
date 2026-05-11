@@ -286,15 +286,15 @@ class TestMaybeEnrichWithVisual:
 
     @pytest.mark.asyncio
     async def test_happy_path(self, monkeypatch):
+        """Expert plan → mode='expert', credits=3, max_frames_cap=64."""
         from videos import visual_integration as vi
         from videos.visual_integration import STATUS_OK
         from videos.frame_extractor import FrameExtractionResult
         from videos.visual_analyzer import VisualAnalysis
 
         db = _make_db_with_no_quota_row()
-        user = _make_user("expert")  # Pas de quota check besides initial allowed
+        user = _make_user("expert")
 
-        # Mock extraction
         fake_extraction = FrameExtractionResult(
             workdir="/tmp/fake",
             frame_paths=["/tmp/fake/f1.jpg", "/tmp/fake/f2.jpg"],
@@ -306,13 +306,18 @@ class TestMaybeEnrichWithVisual:
             long_video_warning=False,
         )
 
+        extract_kwargs = {}
+
         async def fake_extract(*args, **kwargs):
+            extract_kwargs.update(kwargs)
             return fake_extraction
 
-        # Patch cleanup pour ne pas tenter de supprimer un dossier inexistant
         fake_extraction.cleanup = MagicMock()
 
+        analyze_kwargs = {}
+
         async def fake_analyze(*args, **kwargs):
+            analyze_kwargs.update(kwargs)
             return VisualAnalysis(
                 visual_hook="hook visuel test",
                 visual_structure="talking_head",
@@ -337,12 +342,15 @@ class TestMaybeEnrichWithVisual:
         assert result["status"] == STATUS_OK
         assert result["video_id"] == "dQw4w9WgXcQ"
         assert result["platform"] == "youtube"
+        assert result["visual_mode"] == "expert"
         assert result["frame_count"] == 2
         assert result["model_used"] == "pixtral-large-2411"
-        assert result["credits_consumed"] == 2
+        assert result["credits_consumed"] == 3
         assert result["analysis"]["visual_structure"] == "talking_head"
         assert "elapsed_s" in result
-        # cleanup a été appelé pour purger les frames
+        # Mode 'expert' propagé à l'extraction storyboard et au cap analyzer
+        assert extract_kwargs.get("mode") == "expert"
+        assert analyze_kwargs.get("max_frames_cap") == 64
         fake_extraction.cleanup.assert_called_once()
 
 
@@ -479,9 +487,10 @@ class TestMaybeEnrichWithVisualTiktok:
 
         captured = {}
 
-        async def fake_tiktok_extract(url, video_id, *, log_tag=""):
+        async def fake_tiktok_extract(url, video_id, *, mode="default", log_tag=""):
             captured["url"] = url
             captured["video_id"] = video_id
+            captured["mode"] = mode
             return None  # Trigger EXTRACT_FAILED, peu importe ici
 
         monkeypatch.setattr(vi, "_extract_tiktok_visual_frames", fake_tiktok_extract)
@@ -492,3 +501,130 @@ class TestMaybeEnrichWithVisualTiktok:
 
         assert captured["url"] == "https://www.tiktok.com/@khaby.lame/video/7459716872551976210"
         assert captured["video_id"] == "7459716872551976210"
+        assert captured["mode"] == "expert"  # User Expert → mode expert propagé
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎚️ Mode par plan + crédits différenciés
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestVisualModeByPlan:
+    """Vérifie que le plan utilisateur sélectionne le bon mode + bon cap + bons crédits."""
+
+    def test_select_mode_for_plan_helper(self):
+        from videos.visual_integration import _select_mode_for_plan
+
+        assert _select_mode_for_plan("expert") == "expert"
+        assert _select_mode_for_plan("EXPERT") == "expert"
+        assert _select_mode_for_plan("pro") == "default"
+        assert _select_mode_for_plan("starter") == "default"
+        assert _select_mode_for_plan("plus") == "default"
+        assert _select_mode_for_plan(None) == "default"
+        assert _select_mode_for_plan("free") == "default"  # Free filtré en amont par can_consume
+
+    def test_constants_consistency(self):
+        from videos.visual_integration import (
+            MAX_FRAMES_CAP_BY_MODE,
+            VISUAL_CREDITS_COST,
+            VISUAL_CREDITS_COST_BY_MODE,
+        )
+
+        assert MAX_FRAMES_CAP_BY_MODE["default"] == 24
+        assert MAX_FRAMES_CAP_BY_MODE["expert"] == 64
+        assert VISUAL_CREDITS_COST_BY_MODE["default"] == 2
+        assert VISUAL_CREDITS_COST_BY_MODE["expert"] == 3
+        # Rétro-compat : VISUAL_CREDITS_COST pointe sur la valeur 'default'
+        assert VISUAL_CREDITS_COST == VISUAL_CREDITS_COST_BY_MODE["default"]
+
+    @pytest.mark.asyncio
+    async def test_pro_uses_default_mode_and_low_cap(self, monkeypatch):
+        """Pro plan → mode='default', credits=2, max_frames_cap=24."""
+        from videos import visual_integration as vi
+        from videos.visual_integration import STATUS_OK
+        from videos.frame_extractor import FrameExtractionResult
+        from videos.visual_analyzer import VisualAnalysis
+
+        db = _make_db_with_no_quota_row()
+        user = _make_user("pro")
+
+        fake_extraction = FrameExtractionResult(
+            workdir="/tmp/fake_pro",
+            frame_paths=["/tmp/fake_pro/f1.jpg"],
+            frame_timestamps=[0.5],
+            duration_s=60.0,
+            fps_used=0.2,
+            frame_count=1,
+            width=320,
+            long_video_warning=False,
+        )
+        fake_extraction.cleanup = MagicMock()
+
+        extract_kwargs = {}
+        analyze_kwargs = {}
+
+        async def fake_extract(*args, **kwargs):
+            extract_kwargs.update(kwargs)
+            return fake_extraction
+
+        async def fake_analyze(*args, **kwargs):
+            analyze_kwargs.update(kwargs)
+            return VisualAnalysis(
+                visual_hook="pro hook",
+                visual_structure="talking_head",
+                model_used="pixtral-large-2411",
+                frames_analyzed=1,
+            )
+
+        monkeypatch.setattr(vi, "extract_storyboard_frames", fake_extract)
+        monkeypatch.setattr(vi, "analyze_frames", fake_analyze)
+
+        result = await vi.maybe_enrich_with_visual(
+            db, user, "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        )
+
+        assert result["status"] == STATUS_OK
+        assert result["visual_mode"] == "default"
+        assert result["credits_consumed"] == 2
+        assert extract_kwargs.get("mode") == "default"
+        assert analyze_kwargs.get("max_frames_cap") == 24
+
+    @pytest.mark.asyncio
+    async def test_legacy_starter_uses_default_mode(self, monkeypatch):
+        """Plan legacy 'starter' (pré-pricing v2) → mode='default'."""
+        from videos import visual_integration as vi
+        from videos.visual_integration import STATUS_OK
+        from videos.frame_extractor import FrameExtractionResult
+        from videos.visual_analyzer import VisualAnalysis
+
+        db = _make_db_with_quota(count_value=10)  # sous quota 30
+        user = _make_user("starter")
+
+        fake_extraction = FrameExtractionResult(
+            workdir="/tmp/fake_starter",
+            frame_paths=["/tmp/fake_starter/f1.jpg"],
+            frame_timestamps=[0.5],
+            duration_s=30.0,
+            fps_used=0.2,
+            frame_count=1,
+            width=320,
+            long_video_warning=False,
+        )
+        fake_extraction.cleanup = MagicMock()
+
+        async def fake_extract(*args, **kwargs):
+            return fake_extraction
+
+        async def fake_analyze(*args, **kwargs):
+            return VisualAnalysis(model_used="pixtral-large-2411", frames_analyzed=1)
+
+        monkeypatch.setattr(vi, "extract_storyboard_frames", fake_extract)
+        monkeypatch.setattr(vi, "analyze_frames", fake_analyze)
+
+        result = await vi.maybe_enrich_with_visual(
+            db, user, "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        )
+
+        assert result["status"] == STATUS_OK
+        assert result["visual_mode"] == "default"
+        assert result["credits_consumed"] == 2

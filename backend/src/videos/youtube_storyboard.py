@@ -37,7 +37,13 @@ from PIL import Image
 
 from transcripts.audio_utils import _yt_dlp_extra_args
 
-from .frame_extractor import FRAMES_BASE_DIR, MAX_FRAMES, FrameExtractionResult
+from .frame_extractor import (
+    DEFAULT_MODE,
+    FRAMES_BASE_DIR,
+    MAX_FRAMES,
+    FrameExtractionResult,
+    compute_frame_budget,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -198,6 +204,7 @@ async def extract_storyboard_frames(
     video_id_or_url: str,
     *,
     max_frames_override: Optional[int] = None,
+    mode: str = DEFAULT_MODE,
     log_tag: str = "STORYBOARD",
 ) -> Optional[FrameExtractionResult]:
     """
@@ -207,7 +214,7 @@ async def extract_storyboard_frames(
     3. Sélection format sb* de meilleure résolution
     4. Download tous les sheets (httpx + retries)
     5. Slice chaque sheet via Pillow
-    6. Sauvegarde frames JPEG dans workdir unique
+    6. Tronque selon le budget (mode × durée) ou max_frames_override
     7. Renvoie FrameExtractionResult drop-in pour visual_analyzer
 
     Renvoie None à toute étape qui échoue. Workdir est nettoyé automatiquement
@@ -316,10 +323,16 @@ async def extract_storyboard_frames(
             shutil.rmtree(workdir, ignore_errors=True)
             return None
 
-        # ── 5. Override max_frames ──
-        if max_frames_override and len(frame_paths) > max_frames_override:
-            step = len(frame_paths) / max_frames_override
-            keep_indices = sorted(set(int(i * step) for i in range(max_frames_override)))
+        # ── 5. Budget frames (mode × durée) ou override explicite ──
+        if max_frames_override is None:
+            _, budget_frames, _ = compute_frame_budget(duration_s, mode=mode)
+            effective_max = budget_frames
+        else:
+            effective_max = max_frames_override
+
+        if effective_max and len(frame_paths) > effective_max:
+            step = len(frame_paths) / effective_max
+            keep_indices = sorted(set(int(i * step) for i in range(effective_max)))
             kept_paths = []
             kept_ts = []
             for i, p in enumerate(frame_paths):
@@ -330,6 +343,15 @@ async def extract_storyboard_frames(
                     Path(p).unlink(missing_ok=True)
             frame_paths = kept_paths
             frame_timestamps = kept_ts
+
+        logger.info(
+            "[%s] mode=%s budget=%d kept=%d (raw=%d before tronc)",
+            log_tag,
+            mode,
+            effective_max,
+            len(frame_paths),
+            len(frame_paths) if effective_max == 0 else max(effective_max, len(frame_paths)),
+        )
 
         # ── 6. Wrap result ──
         fps_used = len(frame_paths) / duration_s if duration_s > 0 else 0.0

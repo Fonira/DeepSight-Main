@@ -50,8 +50,30 @@ VISUAL_QUOTA_BY_PLAN: Dict[str, Optional[int]] = {
     "plus": 30,
 }
 
-# Coût en crédits par appel visual_analysis (s'ajoute au coût d'analyse de base)
-VISUAL_CREDITS_COST = 2
+# Coût en crédits par appel visual_analysis (s'ajoute au coût d'analyse de base).
+# Différencié par mode : Pro (default) paye moins, Expert paye plus pour ×2-3 frames.
+VISUAL_CREDITS_COST_BY_MODE: Dict[str, int] = {
+    "default": 2,
+    "expert": 3,
+}
+# Cap frames analysées par Mistral, par mode. Default (Pro) plafonne ~24,
+# Expert pousse au cap dur Mistral (64 = 8 batches × 8 frames).
+MAX_FRAMES_CAP_BY_MODE: Dict[str, int] = {
+    "default": 24,
+    "expert": 64,
+}
+# Rétro-compat : constante historique. Lisez VISUAL_CREDITS_COST_BY_MODE pour la valeur réelle.
+VISUAL_CREDITS_COST = VISUAL_CREDITS_COST_BY_MODE["default"]
+
+
+def _select_mode_for_plan(plan: Optional[str]) -> str:
+    """Mappe le plan user → mode visual analysis ('default' | 'expert').
+
+    Plans Expert obtiennent le mode dense (~64 frames cap). Tous les autres plans
+    payants (Pro, starter legacy, plus legacy) sont en mode 'default' (~24 frames cap).
+    Free n'arrive pas jusqu'ici (filtré en amont par can_consume).
+    """
+    return "expert" if _normalize_plan(plan) == "expert" else "default"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -186,7 +208,10 @@ async def maybe_enrich_with_visual(
         logger.info("[%s] Skipped (%s)", log_tag, reason)
         return {"status": reason, "elapsed_s": round(time.time() - t0, 2)}
 
-    # ── 2. Détection plateforme + extraction frames adaptée ──
+    # ── 2. Sélection mode selon plan ──
+    mode = _select_mode_for_plan(getattr(user, "plan", None))
+
+    # ── 3. Détection plateforme + extraction frames adaptée ──
     platform = _detect_visual_platform(url)
 
     if platform == "youtube":
@@ -196,13 +221,13 @@ async def maybe_enrich_with_visual(
                 "status": STATUS_NOT_SUPPORTED,
                 "elapsed_s": round(time.time() - t0, 2),
             }
-        extraction = await extract_storyboard_frames(video_id, log_tag=log_tag)
+        extraction = await extract_storyboard_frames(video_id, mode=mode, log_tag=log_tag)
         identifier_for_logs = video_id
     elif platform == "tiktok":
         # TikTok : download via tikwm fallback (IP Hetzner ban yt-dlp direct)
         # → extract_frames_from_local → cleanup
         video_id = _extract_tiktok_id_or_fallback(url)
-        extraction = await _extract_tiktok_visual_frames(url, video_id, log_tag=log_tag)
+        extraction = await _extract_tiktok_visual_frames(url, video_id, mode=mode, log_tag=log_tag)
         identifier_for_logs = video_id
     else:
         return {
@@ -215,15 +240,18 @@ async def maybe_enrich_with_visual(
             "status": STATUS_EXTRACT_FAILED,
             "video_id": identifier_for_logs,
             "platform": platform,
+            "visual_mode": mode,
             "elapsed_s": round(time.time() - t0, 2),
         }
 
-    # ── 3. Mistral Vision (commun à toutes plateformes) ──
+    # ── 4. Mistral Vision (commun à toutes plateformes) ──
+    max_frames_cap = MAX_FRAMES_CAP_BY_MODE.get(mode, MAX_FRAMES_CAP_BY_MODE["default"])
     try:
         analysis = await analyze_frames(
             extraction.frame_paths,
             extraction.frame_timestamps,
             transcript_excerpt=transcript_excerpt,
+            max_frames_cap=max_frames_cap,
             log_tag=log_tag,
         )
     finally:
@@ -234,34 +262,39 @@ async def maybe_enrich_with_visual(
             "status": STATUS_VISION_FAILED,
             "video_id": identifier_for_logs,
             "platform": platform,
+            "visual_mode": mode,
             "frame_count": extraction.frame_count,
             "elapsed_s": round(time.time() - t0, 2),
         }
 
-    # ── 4. Quota incrément (succès uniquement) ──
+    # ── 5. Quota incrément (succès uniquement) ──
     new_count = await increment_quota(db, user.id)
 
     elapsed = round(time.time() - t0, 2)
+    credits_consumed = VISUAL_CREDITS_COST_BY_MODE.get(mode, VISUAL_CREDITS_COST_BY_MODE["default"])
     logger.info(
-        "[%s] OK in %.1fs (platform=%s frames=%d model=%s quota_count=%d)",
+        "[%s] OK in %.1fs (platform=%s mode=%s frames=%d model=%s quota_count=%d credits=%d)",
         log_tag,
         elapsed,
         platform,
+        mode,
         extraction.frame_count,
         analysis.model_used,
         new_count,
+        credits_consumed,
     )
 
     return {
         "status": STATUS_OK,
         "video_id": identifier_for_logs,
         "platform": platform,
+        "visual_mode": mode,
         "frame_count": extraction.frame_count,
         "duration_s": round(extraction.duration_s, 2),
         "model_used": analysis.model_used,
         "frames_downsampled": analysis.frames_downsampled,
         "analysis": analysis.to_dict(),
-        "credits_consumed": VISUAL_CREDITS_COST,
+        "credits_consumed": credits_consumed,
         "quota_count_after": new_count,
         "elapsed_s": elapsed,
     }
@@ -378,7 +411,7 @@ async def _download_tiktok_video_no_watermark(
 
 
 async def _extract_tiktok_visual_frames(
-    url: str, video_id: str, *, log_tag: str
+    url: str, video_id: str, *, mode: str = "default", log_tag: str
 ) -> Optional[FrameExtractionResult]:
     """Pipeline TikTok : tikwm `data.play` → /tmp .mp4 → extract_frames_from_local.
 
@@ -386,6 +419,8 @@ async def _extract_tiktok_visual_frames(
     expose le mp4 no-watermark dans `data.play`. On l'utilise directement ici
     plutôt que `transcripts.tiktok._download_video_bytes()` qui priorise
     `music_info.play` (audio mp3, inutilisable pour ffmpeg).
+
+    `mode` est propagé à extract_frames_from_local pour appliquer la grille frames.
     """
     t0 = time.time()
     try:
@@ -414,7 +449,9 @@ async def _extract_tiktok_visual_frames(
         return None
 
     try:
-        result = await extract_frames_from_local(str(tmp_path), log_tag=f"{log_tag} TIKTOK")
+        result = await extract_frames_from_local(
+            str(tmp_path), mode=mode, log_tag=f"{log_tag} TIKTOK"
+        )
     finally:
         # Le mp4 source n'est plus utile une fois les frames extraites — peu importe le résultat
         tmp_path.unlink(missing_ok=True)

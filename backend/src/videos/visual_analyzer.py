@@ -39,7 +39,8 @@ FALLBACK_MODELS = ["pixtral-12b-2409", "mistral-small-2603"]
 MISTRAL_IMAGES_PER_REQUEST = 8
 
 # Cap global sur le nombre de frames analysées (8 batches × 8 frames).
-# Au-delà, downsampling uniforme pour rester sous le cap.
+# Default = mode "expert". Le caller peut passer un cap plus bas pour mode "default" (Pro).
+# Au-delà du cap effectif, downsampling uniforme.
 MAX_FRAMES_TOTAL_CAP = 64
 
 # Timeout par batch (8 frames ~5-15s normalement).
@@ -336,6 +337,7 @@ async def analyze_frames(
     *,
     model: str = PRIMARY_MODEL,
     fallback_models: Optional[List[str]] = None,
+    max_frames_cap: int = MAX_FRAMES_TOTAL_CAP,
     log_tag: str = "VISUAL_ANALYZER",
 ) -> Optional[VisualAnalysis]:
     """
@@ -343,6 +345,10 @@ async def analyze_frames(
 
     Découpe les frames en batches de ≤MISTRAL_IMAGES_PER_REQUEST, lance les batches
     en parallèle, merge les résultats partiels.
+
+    `max_frames_cap` : limite haute du nombre de frames effectivement envoyées à
+    Mistral (downsampling uniforme au-delà). Default 64 (Expert) ; passer 24 pour
+    mode Pro / "default". Doit rester ≤ MAX_FRAMES_TOTAL_CAP (cap dur batches × 8).
 
     Renvoie None si :
     - Aucune clé Mistral configurée
@@ -367,17 +373,20 @@ async def analyze_frames(
 
     effective_fallbacks = fallback_models if fallback_models is not None else FALLBACK_MODELS
 
+    # Clamp le cap demandé à la limite dure (8 batches × 8 frames Mistral)
+    effective_cap = max(1, min(max_frames_cap, MAX_FRAMES_TOTAL_CAP))
+
     downsampled = False
-    if len(frame_paths) > MAX_FRAMES_TOTAL_CAP:
+    if len(frame_paths) > effective_cap:
         downsampled = True
-        sampled_paths = _downsample(frame_paths, MAX_FRAMES_TOTAL_CAP)
-        sampled_ts = _downsample(frame_timestamps, MAX_FRAMES_TOTAL_CAP)
+        sampled_paths = _downsample(frame_paths, effective_cap)
+        sampled_ts = _downsample(frame_timestamps, effective_cap)
         logger.info(
             "[%s] Downsampled %d → %d frames (cap %d)",
             log_tag,
             len(frame_paths),
             len(sampled_paths),
-            MAX_FRAMES_TOTAL_CAP,
+            effective_cap,
         )
     else:
         sampled_paths = list(frame_paths)
