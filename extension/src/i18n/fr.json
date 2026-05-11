@@ -296,15 +296,15 @@
   "promos": {
     "free": [
       {
-        "text": "30 analyses/mois + Cartes mentales + Web Search — dès 8,99€/mois",
+        "text": "25 analyses/mois + Cartes mentales + Web Search — dès 8,99€/mois",
         "cta": "Passer à Pro"
       },
       {
-        "text": "Seulement 5 analyses/mois ? Passez à 30 avec Pro",
+        "text": "Seulement 5 analyses/mois ? Passez à 25 avec Pro",
         "cta": "Upgrade →"
       },
       {
-        "text": "Quota limité ? Débloquez 30 analyses et toutes les fonctionnalités Pro",
+        "text": "Quota limité ? Débloquez 25 analyses et toutes les fonctionnalités Pro",
         "cta": "Voir les plans"
       }
     ],
