@@ -1,17 +1,14 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
 import { useLoadingWord } from "../../contexts/LoadingWordContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useAuth } from "../../hooks/useAuth";
 import { useTutor } from "./useTutor";
 import { TutorIdle } from "./TutorIdle";
-import { TutorPrompting } from "./TutorPrompting";
-import { TutorMiniChat } from "./TutorMiniChat";
 import { TutorMinimized } from "./TutorMinimized";
+import { TutorHub } from "./TutorHub";
+import type { TutorHubInitialContext } from "./TutorHub";
 import { LS_TUTOR_HIDDEN, LS_TUTOR_MINIMIZED } from "./tutorConstants";
-import { useVoiceEnabled } from "../voice/hooks/useVoiceEnabled";
-import { VoiceTutorModal } from "../voice/VoiceTutorModal";
 
 function readBoolLS(key: string): boolean {
   try {
@@ -33,18 +30,28 @@ function writeBoolLS(key: string, value: boolean) {
   }
 }
 
+/**
+ * Tutor — Root component for the floating teaser + unified hub (2026-05-11).
+ *
+ * State machine simplified:
+ *   - idle: TutorIdle teaser visible (concept du jour rotatif, draggable+snap).
+ *   - minimized: TutorMinimized pastille (saved in localStorage).
+ *   - hub-open: TutorHub panel open (driven by `hubOpen` flag).
+ *
+ * The hub can be opened either from the teaser (with `initialContext` = concept
+ * du jour as amorce) or from the sidebar item "Tuteur" (no amorce — handled
+ * separately by `Sidebar.tsx`, which renders its own `<TutorHub>` instance).
+ */
 export const Tutor: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const { currentWord } = useLoadingWord();
   const { language } = useLanguage();
   const tutor = useTutor();
-  const { voiceEnabled } = useVoiceEnabled();
-  const navigate = useNavigate();
 
-  // Voice Tutor modal — opened from the TutorMiniChat header button.
-  // Carries the current concept as a primer so the agent can pick up
-  // the topic immediately on connection.
-  const [voiceTutorOpen, setVoiceTutorOpen] = useState(false);
+  // Hub state: open + the concept amorce passed in (null when opened without).
+  const [hubOpen, setHubOpen] = useState(false);
+  const [hubInitialContext, setHubInitialContext] =
+    useState<TutorHubInitialContext | null>(null);
 
   // Persistance close (hidden) + minimize entre rechargements page.
   // hidden : reset uniquement quand un nouveau concept arrive (changement
@@ -72,16 +79,15 @@ export const Tutor: React.FC = () => {
   }, [currentWord?.term, lastSeenTerm, hidden]);
 
   const handleClose = useCallback(() => {
-    // Si on est en session active, on l'arrête proprement avant de cacher.
+    // If a session is still active, the hub itself calls endSession on close.
     if (tutor.phase === "mini-chat") {
       void tutor.endSession();
-    } else if (tutor.phase === "prompting") {
-      tutor.cancelPrompting();
     }
     setHidden(true);
     writeBoolLS(LS_TUTOR_HIDDEN, true);
     setMinimized(false);
     writeBoolLS(LS_TUTOR_MINIMIZED, false);
+    setHubOpen(false);
   }, [tutor]);
 
   const handleMinimize = useCallback(() => {
@@ -94,60 +100,35 @@ export const Tutor: React.FC = () => {
     writeBoolLS(LS_TUTOR_MINIMIZED, false);
   }, []);
 
-  const handleStart = useCallback(() => {
+  // Teaser click → open the hub with the current concept as an amorce.
+  const handleOpenHub = useCallback(() => {
     if (!currentWord) return;
-    tutor.startSession({
-      concept_term: currentWord.term,
-      concept_def: currentWord.definition,
-      summary_id: currentWord.summaryId,
-      source_video_title: currentWord.videoTitle,
-      mode: "text",
-      lang: language === "fr" ? "fr" : "en",
+    setHubInitialContext({
+      conceptTerm: currentWord.term,
+      conceptDef: currentWord.definition ?? null,
+      summaryId: currentWord.summaryId ?? null,
     });
-  }, [currentWord, language, tutor]);
+    setHubOpen(true);
+  }, [currentWord]);
 
-  // V2 — Fullscreen: bascule la conv tuteur dans la vue plein écran du Hub
-  // (`/hub?fsChat=tutor`). La popup reste montée en arrière-plan (masquée
-  // par le HubPage qui early-return sur `fsChat`), mais la conv vit
-  // désormais dans le store Zustand global → la vue Hub lit la même
-  // session sans drop de messages.
-  const handleFullscreen = useCallback(() => {
-    tutor.setFullscreen(true);
-    navigate("/hub?fsChat=tutor");
-  }, [tutor, navigate]);
+  const handleHubClose = useCallback(() => {
+    setHubOpen(false);
+    setHubInitialContext(null);
+  }, []);
 
   if (!isAuthenticated || !currentWord) return null;
   if (hidden) return null;
 
-  // V2 — back-to-chat callback : ne s'expose au modal vocal QUE si une
-  // conv texte est déjà en cours. Sans conv (lancement sidebar sans
-  // concept), pas de "retour au chat" possible → le bouton reste masqué.
-  const voiceBackToChat =
-    tutor.phase === "mini-chat"
-      ? () => {
-          setVoiceTutorOpen(false);
-          /* La popup texte est déjà visible derrière, rien d'autre à faire. */
-        }
-      : undefined;
-
-  // Voice Tutor modal element — rendered alongside the phase UI so it can
-  // stay open even when the tutor mini-chat is closed/minimized. Renders
-  // via portal inside VoiceOverlay so it does not interfere with layout.
-  const voiceTutorEl = (
-    <VoiceTutorModal
-      isOpen={voiceTutorOpen}
-      onClose={() => setVoiceTutorOpen(false)}
+  // Hub renders as a full-screen right panel (portal) — keep the teaser/
+  // pastille mounted underneath so the user can dismiss the hub and still
+  // see the daily concept.
+  const hubEl = (
+    <TutorHub
+      isOpen={hubOpen}
+      onClose={handleHubClose}
       language={language === "fr" ? "fr" : "en"}
-      initialContext={
-        tutor.conceptTerm
-          ? {
-              conceptTerm: tutor.conceptTerm,
-              conceptDef: tutor.conceptDef,
-              summaryId: tutor.summaryId,
-            }
-          : null
-      }
-      onBackToChat={voiceBackToChat}
+      initialContext={hubInitialContext}
+      defaultMode="text"
     />
   );
 
@@ -162,7 +143,7 @@ export const Tutor: React.FC = () => {
             onClose={handleClose}
           />
         </AnimatePresence>
-        {voiceTutorEl}
+        {hubEl}
       </>
     );
   }
@@ -170,39 +151,14 @@ export const Tutor: React.FC = () => {
   return (
     <>
       <AnimatePresence mode="wait">
-        {tutor.phase === "idle" && (
-          <TutorIdle
-            key="idle"
-            onClick={tutor.openPrompting}
-            onMinimize={handleMinimize}
-            onClose={handleClose}
-          />
-        )}
-        {tutor.phase === "prompting" && (
-          <TutorPrompting
-            key="prompting"
-            onStart={handleStart}
-            onCancel={tutor.cancelPrompting}
-            onMinimize={handleMinimize}
-            onClose={handleClose}
-          />
-        )}
-        {tutor.phase === "mini-chat" && tutor.conceptTerm && (
-          <TutorMiniChat
-            key="mini-chat"
-            conceptTerm={tutor.conceptTerm}
-            messages={tutor.messages}
-            loading={tutor.loading}
-            onSubmit={tutor.submitTextTurn}
-            onMinimize={handleMinimize}
-            onClose={handleClose}
-            voiceTutorEnabled={voiceEnabled}
-            onOpenVoiceTutor={() => setVoiceTutorOpen(true)}
-            onFullscreen={handleFullscreen}
-          />
-        )}
+        <TutorIdle
+          key="idle"
+          onClick={handleOpenHub}
+          onMinimize={handleMinimize}
+          onClose={handleClose}
+        />
       </AnimatePresence>
-      {voiceTutorEl}
+      {hubEl}
     </>
   );
 };
