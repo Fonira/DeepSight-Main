@@ -90,6 +90,11 @@ services:
     restart: unless-stopped
     networks:
       - repo_deepsight
+    volumes:
+      # TikTok cookies for yt-dlp auth (TIKTOK_COOKIES_PATH=/app/tiktok_cookies.txt).
+      # Source file on host: /opt/deepsight/repo/tiktok_cookies.txt (sprint 2026-05-11,
+      # uploaded via scp). Read-only mount — backend never writes back to host.
+      - ../../tiktok_cookies.txt:/app/tiktok_cookies.txt:ro
     depends_on:
       postgres:
         condition: service_healthy
