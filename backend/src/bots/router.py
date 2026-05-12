@@ -13,7 +13,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 
 from auth.dependencies import get_current_admin
-from db.database import User, get_session
+from db.database import User
 
 from .config import bot_settings
 from .core.conversation import ConversationEngine

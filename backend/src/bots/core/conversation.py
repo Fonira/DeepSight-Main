@@ -10,8 +10,8 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, AsyncContextManager, Awaitable, Callable, Optional
+from datetime import datetime
+from typing import Any, AsyncContextManager, Callable, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,7 @@ from core.llm_provider import llm_complete
 from db.database import BotHandoff, BotMessage, BotProspect
 
 from ..config import bot_settings
-from ..schemas import LLMTurnResult, OutgoingMessage, ParsedMessage, ProspectQualification
+from ..schemas import LLMTurnResult, OutgoingMessage, ParsedMessage
 from .handoff import build_deep_link, notify_maxime
 from .prompts import (
     PROMPT_INJECTION_GUARD,
