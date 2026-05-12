@@ -52,9 +52,29 @@ def pytest_collection_modifyitems(session, config, items):
 
 @pytest.fixture(scope="session")
 def event_loop():
-    """Crée un event loop pour les tests async."""
+    """Crée un event loop pour les tests async.
+
+    Drain pending tasks before closing to avoid asyncpg's _cancel_pending
+    callback raising RuntimeError('Event loop is closed') during teardown
+    when the connection_lost handler tries to schedule cleanup on a closed
+    loop. Without the drain, pytest exits non-zero even when all tests pass.
+    """
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
+    # Drain pending async generators (asyncpg connection pool, etc.)
+    try:
+        loop.run_until_complete(loop.shutdown_asyncgens())
+    except Exception:
+        pass
+    # Cancel any remaining tasks to flush asyncpg cleanup callbacks
+    try:
+        pending = asyncio.all_tasks(loop)
+        for task in pending:
+            task.cancel()
+        if pending:
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+    except Exception:
+        pass
     loop.close()
 
 
