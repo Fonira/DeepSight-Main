@@ -239,6 +239,12 @@ async def maybe_enrich_with_visual(
     de base se fait quand même sans la couche visuelle (graceful degradation).
 
     Aucun commit DB n'est fait ici — le caller commit en fin de flow.
+
+    `duration_hint` (Option C, sprint 2026-05-12) : durée vidéo connue côté
+    caller (`video_info.get("duration")` issu de Supadata metadata HTTP).
+    Propagée à `extract_storyboard_frames` comme 5ème fallback ; évite le
+    skip silencieux observé prod sur les vidéos où yt-dlp + fragments +
+    Supadata get_video_info + transcript timestamps échouent en cascade.
     """
     t0 = time.time()
     log_tag = f"VISUAL_INT user={user.id}"
@@ -291,10 +297,13 @@ async def maybe_enrich_with_visual(
         # et contient les timestamps Supadata `[mm:ss]` — utilisé en
         # fallback ultime dans extract_storyboard_frames si yt-dlp +
         # sb fragments + Supadata get_video_info échouent à donner duration.
+        # duration_hint (Option C) est le 5ème fallback : durée connue
+        # upstream depuis Supadata metadata HTTP, fiable, JAMAIS prioritaire.
         extraction = await extract_storyboard_frames(
             video_id,
             mode=mode,
             transcript_hint=transcript_excerpt or None,
+            duration_hint=duration_hint,
             log_tag=log_tag,
         )
         identifier_for_logs = video_id
@@ -682,6 +691,9 @@ async def enrich_and_capture_visual(
     après save_summary().
 
     Best-effort — toute exception est attrapée et loggée (graceful degradation).
+
+    `duration_hint` (Option C) propagé depuis `video_info["duration"]` côté
+    router pour servir de 5ème fallback dans `extract_storyboard_frames`.
     """
     if not flag_enabled:
         return web_context, None
