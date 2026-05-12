@@ -527,12 +527,19 @@ LEGAL_CONFIG = {
 
 
 def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
-    """Construit PLAN_LIMITS à partir du SSOT plan_config pour rétrocompatibilité."""
+    """Construit PLAN_LIMITS à partir du SSOT plan_config pour rétrocompatibilité.
+
+    ⚠️ Sprint 2026-05-12 — `PlanId.EXPERT` ajouté à l'itération. Avant ce fix,
+    la clé `expert` n'existait pas dans le dict legacy → tous les users plan=expert
+    (depuis migration v2 Alembic 012 2026-04-30) tombaient sur `PLAN_LIMITS["free"]`
+    par fallback → modèle `mistral-small-2603` au lieu de `mistral-large-2512`,
+    `deep_research_enabled=False`, etc. Cf. Summary 208/209/210 model_used cassé.
+    """
     try:
         from billing.plan_config import PLANS, PlanId
 
         legacy = {}
-        for plan_id in [PlanId.FREE, PlanId.PLUS, PlanId.PRO]:
+        for plan_id in [PlanId.FREE, PlanId.PLUS, PlanId.PRO, PlanId.EXPERT]:
             plan = PLANS[plan_id]
             limits = plan["limits"]
             key = plan_id.value
@@ -556,7 +563,7 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
                 "voice_monthly_minutes": limits.get("voice_monthly_minutes", 0),
                 "blocked_features": (
                     []
-                    if key == "pro"
+                    if key in ("pro", "expert")
                     else ["playlists", "deep_research", "voice_chat", "tts"]
                     if key == "plus"
                     else [
@@ -572,25 +579,31 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
                 ),
                 "upgrade_prompt": {
                     "fr": (
-                        "Vous avez le plan Pro, toutes les fonctionnalités sont débloquées !"
+                        "Vous avez le plan Expert, toutes les fonctionnalités sont débloquées !"
+                        if key == "expert"
+                        else "Passez à Expert pour débloquer Deep Research, recherche académique illimitée et le modèle Mistral Large !"
                         if key == "pro"
-                        else "Passez à Plus pour débloquer mind maps, exports et recherche web !"
+                        else "Passez à Pro pour débloquer mind maps, exports et recherche web !"
                         if key == "free"
                         else "Passez à Pro pour débloquer playlists, Deep Research et chat vocal !"
                     ),
                     "en": (
-                        "You have the Pro plan, all features are unlocked!"
+                        "You have the Expert plan, all features are unlocked!"
+                        if key == "expert"
+                        else "Upgrade to Expert to unlock Deep Research, unlimited academic search and the Mistral Large model!"
                         if key == "pro"
-                        else "Upgrade to Plus to unlock mind maps, exports and web search!"
+                        else "Upgrade to Pro to unlock mind maps, exports and web search!"
                         if key == "free"
                         else "Upgrade to Pro to unlock playlists, Deep Research and voice chat!"
                     ),
                 },
             }
-        # Admin "unlimited" — copie pro avec limites levées (défense en profondeur)
-        if "pro" in legacy:
-            pro_copy = dict(legacy["pro"])
-            pro_copy.update(
+        # Admin "unlimited" — copie expert (tier top en v2) avec limites levées.
+        # Auparavant copiait `pro` ; en v2 `pro` est l'intermédiaire et
+        # `expert` est le top — l'admin doit avoir le modèle large, pas medium.
+        if "expert" in legacy:
+            expert_copy = dict(legacy["expert"])
+            expert_copy.update(
                 {
                     "monthly_credits": 999999,
                     "daily_analyses": -1,
@@ -606,7 +619,7 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
                     "blocked_features": [],
                 }
             )
-            legacy["unlimited"] = pro_copy
+            legacy["unlimited"] = expert_copy
 
         return legacy
     except Exception:
@@ -627,11 +640,21 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
                 "default_model": "mistral-medium-2508",
             },
             "pro": {
+                "monthly_credits": 7500,
+                "daily_analyses": 30,
+                "blocked_features": [],
+                "models": ["mistral-small-2603", "mistral-medium-2508"],
+                "default_model": "mistral-medium-2508",
+            },
+            "expert": {
                 "monthly_credits": 15000,
                 "daily_analyses": 100,
                 "blocked_features": [],
                 "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
                 "default_model": "mistral-large-2512",
+                "deep_research_enabled": True,
+                "voice_chat_enabled": True,
+                "web_search_enabled": True,
             },
             "unlimited": {
                 "monthly_credits": 999999,
