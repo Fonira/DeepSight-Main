@@ -319,10 +319,7 @@ async def build_tutor_memory(
 
     try:
         stmt = (
-            select(Summary)
-            .where(Summary.user_id == user.id)
-            .order_by(Summary.created_at.desc())
-            .limit(_MAX_SCAN_ROWS)
+            select(Summary).where(Summary.user_id == user.id).order_by(Summary.created_at.desc()).limit(_MAX_SCAN_ROWS)
         )
         result = await db.execute(stmt)
         rows = list(result.scalars().all())
@@ -386,9 +383,7 @@ async def build_tutor_memory(
                 "created_at": s.created_at.isoformat() if s.created_at else None,
                 "category": s.category or "",
                 "key_topics": _extract_key_topics(s.summary_content, topics_limit),
-                "key_concepts": _extract_concepts(
-                    s.summary_content, s.tags, limit=concepts_limit
-                ),
+                "key_concepts": _extract_concepts(s.summary_content, s.tags, limit=concepts_limit),
             }
         )
 

@@ -81,9 +81,7 @@ def _build_summary_excerpt(summary: Summary) -> str:
     return text
 
 
-def _build_messages(
-    summaries: list[Summary], workspace_name: str
-) -> list[dict[str, str]]:
+def _build_messages(summaries: list[Summary], workspace_name: str) -> list[dict[str, str]]:
     """Construit les messages system+user pour Mistral (prompt v2 enrichi).
 
     Le prompt demande explicitement la nouvelle shape avec synthesis, theme
@@ -160,11 +158,7 @@ def _build_messages(
         "- Ne JAMAIS inventer du contenu hors des analyses fournies."
     )
 
-    user_content = (
-        f"WORKSPACE : {workspace_name}\n"
-        f"NOMBRE D'ANALYSES : {len(summaries)}\n\n"
-        f"{summaries_block}"
-    )
+    user_content = f"WORKSPACE : {workspace_name}\nNOMBRE D'ANALYSES : {len(summaries)}\n\n{summaries_block}"
 
     return [
         {"role": "system", "content": system_prompt},
@@ -172,9 +166,7 @@ def _build_messages(
     ]
 
 
-def _validate_canvas_shape(
-    data: Any, valid_summary_ids: set[int]
-) -> Optional[dict[str, Any]]:
+def _validate_canvas_shape(data: Any, valid_summary_ids: set[int]) -> Optional[dict[str, Any]]:
     """Valide la forme du JSON retourné par Mistral (shape v2).
 
     Retourne le dict normalisé si OK, None si la shape est inutilisable.
@@ -193,9 +185,7 @@ def _validate_canvas_shape(
     shared_concepts_raw = data.get("shared_concepts")
     themes_raw = data.get("themes")
 
-    if not isinstance(shared_concepts_raw, list) or not isinstance(
-        themes_raw, list
-    ):
+    if not isinstance(shared_concepts_raw, list) or not isinstance(themes_raw, list):
         return None
 
     # Normalise shared_concepts : str only, dédup case-insensitive, cap 10.
@@ -293,9 +283,7 @@ def _validate_canvas_shape(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def generate_workspace_canvas(
-    summaries: list[Summary], workspace_name: str
-) -> Optional[dict[str, Any]]:
+async def generate_workspace_canvas(summaries: list[Summary], workspace_name: str) -> Optional[dict[str, Any]]:
     """Extrait le canvas natif riche (v2) d'un workspace.
 
     Best-effort : retourne None sur échec Mistral / JSON invalide après

@@ -4,6 +4,7 @@ Router /api/tutor/* — Le Tuteur conversationnel (sessions Redis TTL 1h).
 V1.0 : POST /session/start uniquement.
 LLM = Magistral via llm_complete (auto-fallback). Voix V1.1 (audio_url=None).
 """
+
 import logging
 from typing import Optional
 
@@ -224,16 +225,12 @@ async def session_turn(
             temperature=0.7,
         )
     except Exception as e:
-        logger.exception(
-            "[tutor] llm_complete failed for turn session=%s: %s", session_id, e
-        )
+        logger.exception("[tutor] llm_complete failed for turn session=%s: %s", session_id, e)
         raise HTTPException(status_code=502, detail="LLM provider unavailable")
 
     ai_response = _extract_llm_content(llm_result).strip()
     if not ai_response:
-        logger.error(
-            "[tutor] LLM returned empty content on turn session=%s", session_id
-        )
+        logger.error("[tutor] LLM returned empty content on turn session=%s", session_id)
         raise HTTPException(status_code=502, detail="LLM returned empty response")
 
     # Append assistant turn
@@ -280,9 +277,7 @@ async def session_end(
         raise HTTPException(status_code=403, detail="Session non autorisée")
 
     duration_sec = max(0, (now_ms() - state.started_at_ms) // 1000)
-    source_summary_url = (
-        f"/dashboard?id={state.summary_id}" if state.summary_id else None
-    )
+    source_summary_url = f"/dashboard?id={state.summary_id}" if state.summary_id else None
 
     # V1.1 : log analytics dans table AnalyticsEvent (placeholder)
     logger.info(

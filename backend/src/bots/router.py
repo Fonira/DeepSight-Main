@@ -42,9 +42,7 @@ async def status() -> dict[str, Any]:
 async def telegram_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
-    x_telegram_bot_api_secret_token: Optional[str] = Header(
-        default=None, alias="X-Telegram-Bot-Api-Secret-Token"
-    ),
+    x_telegram_bot_api_secret_token: Optional[str] = Header(default=None, alias="X-Telegram-Bot-Api-Secret-Token"),
 ) -> dict[str, str]:
     """Endpoint webhook Telegram.
 

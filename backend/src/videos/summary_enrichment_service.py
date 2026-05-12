@@ -63,12 +63,7 @@ def _build_input_text(summary: Summary) -> str:
     Priorité : full_digest (assembled hierarchical, ~6-10K) > summary_content > transcript.
     Tronque à MAX_CHARS_INPUT.
     """
-    text = (
-        summary.full_digest
-        or summary.summary_content
-        or summary.transcript_context
-        or ""
-    ).strip()
+    text = (summary.full_digest or summary.summary_content or summary.transcript_context or "").strip()
     if not text:
         return ""
     if len(text) > MAX_CHARS_INPUT:

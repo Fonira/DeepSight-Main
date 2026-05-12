@@ -63,9 +63,7 @@ ONBOARDING_SPREAD_WINDOW_SECONDS: int = int(
 )
 # Per-email floor when burst-spreading (1/10s = 0.1 req/s pour onboarding,
 # le reste de la bande passante Resend reste dispo pour le transactionnel).
-ONBOARDING_BURST_INTERVAL_SECONDS: float = float(
-    os.environ.get("ONBOARDING_BURST_INTERVAL_SECONDS", "10.0")
-)
+ONBOARDING_BURST_INTERVAL_SECONDS: float = float(os.environ.get("ONBOARDING_BURST_INTERVAL_SECONDS", "10.0"))
 
 email_service = EmailService()
 
@@ -282,9 +280,7 @@ LEGACY_KEY_MAP = {"j2": "j3"}  # j2 feature discovery → now j3
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def _plan_due_emails(
-    db: AsyncSession, users: list, now: datetime
-) -> list[tuple[User, str, callable]]:
+async def _plan_due_emails(db: AsyncSession, users: list, now: datetime) -> list[tuple[User, str, callable]]:
     """Compute the (user, email_key, sender_fn) tuples that are due to send.
 
     Idempotent: skips keys already in onboarding_email_log. Honored by both

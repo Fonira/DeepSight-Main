@@ -182,9 +182,7 @@ async def generate_quiz(
         from db.database import QuizQuestion as DBQuizQuestion
         from sqlalchemy import delete as sa_delete
 
-        await session.execute(
-            sa_delete(DBQuizQuestion).where(DBQuizQuestion.summary_id == summary_id)
-        )
+        await session.execute(sa_delete(DBQuizQuestion).where(DBQuizQuestion.summary_id == summary_id))
 
         for idx, q in enumerate(quiz_questions):
             # `q` peut être un Pydantic QuizQuestion (avec champs question/options/
@@ -221,6 +219,7 @@ async def generate_quiz(
         try:
             import asyncio
             from search.embedding_service import embed_quiz
+
             asyncio.create_task(embed_quiz(summary_id))
         except ImportError:
             pass
@@ -477,6 +476,7 @@ async def generate_flashcards(
         try:
             import asyncio
             from search.embedding_service import embed_flashcards
+
             asyncio.create_task(embed_flashcards(summary_id))
         except ImportError:
             pass

@@ -79,11 +79,7 @@ class ConversationEngine:
             prospect = await self._upsert_prospect(session, message)
 
             if self._is_rate_limited(prospect):
-                outgoing = OutgoingMessage(
-                    text=(
-                        "Doucement 🙃 — on se reparle dans quelques minutes ?"
-                    )
-                )
+                outgoing = OutgoingMessage(text=("Doucement 🙃 — on se reparle dans quelques minutes ?"))
                 await self._save_message(
                     session,
                     prospect_id=prospect.id,
@@ -215,9 +211,7 @@ class ConversationEngine:
             # Déclencher handoff si applicable
             handoff_triggered = False
             handoff_error: Optional[str] = None
-            if (
-                turn.ready_for_handoff or new_lead_status == "warm"
-            ) and prospect.handoff_at is None:
+            if (turn.ready_for_handoff or new_lead_status == "warm") and prospect.handoff_at is None:
                 handoff_triggered = True
                 handoff_error = await self._trigger_handoff(
                     session=session,
@@ -242,9 +236,7 @@ class ConversationEngine:
     # Helpers privés
     # ─────────────────────────────────────────────────────────────────────
 
-    async def _upsert_prospect(
-        self, session: AsyncSession, message: ParsedMessage
-    ) -> BotProspect:
+    async def _upsert_prospect(self, session: AsyncSession, message: ParsedMessage) -> BotProspect:
         result = await session.execute(
             select(BotProspect).where(
                 BotProspect.platform == message.platform,
@@ -438,9 +430,7 @@ def _format_history(history: list[BotMessage]) -> str:
         return ""
     parts: list[str] = []
     for msg in history:
-        prefix = "Prospect" if msg.role == "user" else (
-            "Assistant" if msg.role == "assistant" else "Système"
-        )
+        prefix = "Prospect" if msg.role == "user" else ("Assistant" if msg.role == "assistant" else "Système")
         parts.append(f"{prefix}: {msg.content}")
     return "\n".join(parts)
 

@@ -337,9 +337,8 @@ class UltraResilientTranscriptExtractor:
                 if proxy:
                     try:
                         from youtube_transcript_api.proxies import GenericProxyConfig
-                        kwargs["proxy_config"] = GenericProxyConfig(
-                            http_url=proxy, https_url=proxy
-                        )
+
+                        kwargs["proxy_config"] = GenericProxyConfig(http_url=proxy, https_url=proxy)
                     except ImportError:
                         # ytt 0.x — proxies passed differently below
                         pass
@@ -348,9 +347,11 @@ class UltraResilientTranscriptExtractor:
             except AttributeError:
                 # Legacy 0.x classmethod path. Pass proxies dict if available.
                 proxies = {"http": proxy, "https": proxy} if proxy else None
-                transcript_list = YouTubeTranscriptApi.list_transcripts(
-                    video_id, proxies=proxies
-                ) if proxies else YouTubeTranscriptApi.list_transcripts(video_id)
+                transcript_list = (
+                    YouTubeTranscriptApi.list_transcripts(video_id, proxies=proxies)
+                    if proxies
+                    else YouTubeTranscriptApi.list_transcripts(video_id)
+                )
 
             # Try manual transcripts first
             for lang in languages:
@@ -1249,9 +1250,7 @@ class UltraResilientTranscriptExtractor:
                 # with an empty body when no captions exist; without this guard
                 # the loop returns early and the caller gets nothing.
                 if result is None or not (result.text or "").strip():
-                    raise Exception(
-                        f"{method_name} returned empty transcript (no captions for this video)"
-                    )
+                    raise Exception(f"{method_name} returned empty transcript (no captions for this video)")
 
                 # Success!
                 self.circuit_breaker.record_success(method_name)

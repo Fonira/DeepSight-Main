@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 class PlanId(str, Enum):
     FREE = "free"
-    PRO = "pro"        # Tier intermédiaire v2 — anciennement "plus"
+    PRO = "pro"  # Tier intermédiaire v2 — anciennement "plus"
     EXPERT = "expert"  # Tier premium v2 — anciennement "pro"
 
 
@@ -43,7 +43,7 @@ PLAN_HIERARCHY: list[PlanId] = [
 # Anciens marketing names mappés sur v2
 PLAN_ALIASES: dict[str, str] = {
     # v0 legacy
-    "plus": "pro",          # ancien Plus 4.99 € → nouveau Pro 8.99 €
+    "plus": "pro",  # ancien Plus 4.99 € → nouveau Pro 8.99 €
     # Anciens marketing names mappés sur v2
     "etudiant": "pro",
     "starter": "pro",
@@ -245,8 +245,8 @@ PLANS: dict[str, dict[str, Any]] = {
                 "mistral-medium-2508",
             ],
             "default_model": "mistral-medium-2508",
-            "voice_chat_enabled": True,           # ⚠ v2 H4 : Pro a voice
-            "voice_monthly_minutes": 30,           # ⚠ v2 H4 : 30 min/mo
+            "voice_chat_enabled": True,  # ⚠ v2 H4 : Pro a voice
+            "voice_monthly_minutes": 30,  # ⚠ v2 H4 : 30 min/mo
             "academic_papers_per_analysis": 15,
             "bibliography_export": True,
             "academic_full_text": False,
@@ -296,7 +296,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "history": True,
                 "semantic_search_tooltip": True,  # V1 — tooltip IA "pourquoi ce passage matche"
                 "voice_chat": False,
-                "voice_call_quick": True,   # Quick Voice Call V1 — 30 min/mois (Pro v2)
+                "voice_call_quick": True,  # Quick Voice Call V1 — 30 min/mois (Pro v2)
                 "debate": True,
                 "deep_research": False,
                 "geo": True,
@@ -316,7 +316,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "history": True,
                 "semantic_search_tooltip": True,  # V1 — tooltip IA "pourquoi ce passage matche"
                 "voice_chat": False,
-                "voice_call_quick": True,   # Quick Voice Call V1 — 30 min/mois (Pro v2)
+                "voice_call_quick": True,  # Quick Voice Call V1 — 30 min/mois (Pro v2)
                 "debate": False,
                 "deep_research": False,
                 "geo": True,
@@ -336,7 +336,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "history": True,
                 "semantic_search_tooltip": False,
                 "voice_chat": False,
-                "voice_call_quick": True,   # Quick Voice Call V1 — 30 min/mois (Pro v2)
+                "voice_call_quick": True,  # Quick Voice Call V1 — 30 min/mois (Pro v2)
                 "debate": False,
                 "deep_research": False,
                 "geo": False,
@@ -389,7 +389,7 @@ PLANS: dict[str, dict[str, Any]] = {
             ],
             "default_model": "mistral-large-2512",
             "voice_chat_enabled": True,
-            "voice_monthly_minutes": 120,          # ⚠ v2 H4 : Expert 120 min/mo (etait 45 v0)
+            "voice_monthly_minutes": 120,  # ⚠ v2 H4 : Expert 120 min/mo (etait 45 v0)
             "academic_papers_per_analysis": 50,
             "bibliography_export": True,
             "academic_full_text": True,
@@ -627,7 +627,7 @@ VOICE_CALL_QUICK_CAPABILITY: dict[str, tuple[str, int | None]] = {
     "pro": ("monthly_minutes", 30),
     "expert": ("monthly_minutes", 120),
     # Legacy v0 aliases — résolus vers v2
-    "plus": ("monthly_minutes", 30),       # v0 plus -> v2 pro -> 30 min
+    "plus": ("monthly_minutes", 30),  # v0 plus -> v2 pro -> 30 min
     "etudiant": ("monthly_minutes", 30),
     "starter": ("monthly_minutes", 30),
     "student": ("monthly_minutes", 30),
@@ -722,9 +722,9 @@ def get_plan_by_price_id(price_id: str) -> Optional[str]:
         "STRIPE_PRICE_EXPERT_YEARLY_TEST": "expert",
         "STRIPE_PRICE_EXPERT_YEARLY_LIVE": "expert",
         # Legacy v0 (grandfathered)
-        "STRIPE_PRICE_PLUS_TEST": "pro",      # v0 plus -> v2 pro
+        "STRIPE_PRICE_PLUS_TEST": "pro",  # v0 plus -> v2 pro
         "STRIPE_PRICE_PLUS_LIVE": "pro",
-        "STRIPE_PRICE_PRO_TEST": "expert",    # v0 pro -> v2 expert
+        "STRIPE_PRICE_PRO_TEST": "expert",  # v0 pro -> v2 expert
         "STRIPE_PRICE_PRO_LIVE": "expert",
     }
     for env_key, plan_value in env_to_plan.items():
@@ -740,12 +740,12 @@ def get_plan_by_price_id(price_id: str) -> Optional[str]:
 # Prix en centimes (€). Annuel = mensuel × 12 × 0.833 (≈ −17 %).
 PLAN_PRICES_V2: dict[str, dict[str, int]] = {
     "pro": {
-        "monthly": 899,    # 8.99 €
-        "yearly": 8990,    # 89.90 € → ≈ 7.49 €/mo équivalent
+        "monthly": 899,  # 8.99 €
+        "yearly": 8990,  # 89.90 € → ≈ 7.49 €/mo équivalent
     },
     "expert": {
-        "monthly": 1999,   # 19.99 €
-        "yearly": 19990,   # 199.90 € → ≈ 16.66 €/mo équivalent
+        "monthly": 1999,  # 19.99 €
+        "yearly": 19990,  # 199.90 € → ≈ 16.66 €/mo équivalent
     },
 }
 

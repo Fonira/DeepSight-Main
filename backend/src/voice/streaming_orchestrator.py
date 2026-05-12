@@ -126,9 +126,7 @@ class StreamingOrchestrator:
         channel = f"{PUBSUB_CHANNEL_PREFIX}{session_id}"
 
         stop_heartbeat = asyncio.Event()
-        heartbeat_task = asyncio.create_task(
-            self._heartbeat_loop(channel, stop_heartbeat)
-        )
+        heartbeat_task = asyncio.create_task(self._heartbeat_loop(channel, stop_heartbeat))
 
         # Initialised here so they are defined even if the try block raises
         # before the assignment further down — the post-finally block uses
@@ -202,8 +200,7 @@ class StreamingOrchestrator:
                 {
                     "type": "ctx_complete",
                     "final_digest_summary": digest,
-                    "transcript_total_chars": self._chunks_received
-                    * TRANSCRIPT_CHUNK_SIZE_CHARS,
+                    "transcript_total_chars": self._chunks_received * TRANSCRIPT_CHUNK_SIZE_CHARS,
                     "analysis_sections": list(self._analysis_sections_emitted),
                 },
             )
@@ -263,9 +260,7 @@ class StreamingOrchestrator:
         # avoids surprises if the system clock jumps mid-session.
         self._last_event_published_at = time.monotonic()
 
-    async def _emit_phase_transition(
-        self, channel: str, from_phase: str, to_phase: str
-    ) -> None:
+    async def _emit_phase_transition(self, channel: str, from_phase: str, to_phase: str) -> None:
         """Idempotently publish a ``phase_transition`` event.
 
         Each (from → to) edge is emitted at most once per orchestrator
@@ -294,9 +289,7 @@ class StreamingOrchestrator:
             {"type": "phase_transition", "from": from_phase, "to": to_phase},
         )
 
-    async def _heartbeat_loop(
-        self, channel: str, stop_event: asyncio.Event
-    ) -> None:
+    async def _heartbeat_loop(self, channel: str, stop_event: asyncio.Event) -> None:
         """Publish a ``ctx_heartbeat`` event on a fixed cadence.
 
         Stops as soon as ``stop_event`` is set or the
@@ -309,9 +302,7 @@ class StreamingOrchestrator:
         start_monotonic = time.monotonic()
         while not stop_event.is_set() and not self._complete_transition_emitted:
             try:
-                await asyncio.wait_for(
-                    stop_event.wait(), timeout=HEARTBEAT_INTERVAL_SECONDS
-                )
+                await asyncio.wait_for(stop_event.wait(), timeout=HEARTBEAT_INTERVAL_SECONDS)
                 # stop_event was set during the wait → exit cleanly.
                 return
             except asyncio.TimeoutError:

@@ -4,6 +4,7 @@ Service Tutor : session storage Redis + orchestration LLM/STT/TTS.
 V1 : sessions en Redis avec TTL 1h. Pas de table SQL.
 V1.1 : ajout helper TTS ElevenLabs (synthesize_audio_data_url).
 """
+
 import base64
 import uuid
 import time
@@ -127,9 +128,7 @@ async def synthesize_audio_data_url(
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(url, headers=headers, json=payload)
         if response.status_code != 200:
-            logger.warning(
-                f"[tutor] ElevenLabs TTS failed status={response.status_code} body={response.text[:200]}"
-            )
+            logger.warning(f"[tutor] ElevenLabs TTS failed status={response.status_code} body={response.text[:200]}")
             return None
         b64 = base64.b64encode(response.content).decode("ascii")
         return f"data:audio/mpeg;base64,{b64}"

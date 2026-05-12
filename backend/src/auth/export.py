@@ -111,40 +111,20 @@ async def build_user_export_zip(session: AsyncSession, user: User) -> bytes:
     Returns the raw bytes of the ZIP. The caller is responsible for
     serving it as an HTTP attachment with Content-Disposition.
     """
-    summaries = (
-        (await session.execute(select(Summary).where(Summary.user_id == user.id)))
-        .scalars()
-        .all()
-    )
+    summaries = (await session.execute(select(Summary).where(Summary.user_id == user.id))).scalars().all()
 
     summary_ids = [s.id for s in summaries]
     chats: list[ChatMessage] = []
     if summary_ids:
         chats = (
-            (
-                await session.execute(
-                    select(ChatMessage).where(ChatMessage.summary_id.in_(summary_ids))
-                )
-            )
-            .scalars()
-            .all()
+            (await session.execute(select(ChatMessage).where(ChatMessage.summary_id.in_(summary_ids)))).scalars().all()
         )
 
     transactions = (
-        (
-            await session.execute(
-                select(CreditTransaction).where(CreditTransaction.user_id == user.id)
-            )
-        )
-        .scalars()
-        .all()
+        (await session.execute(select(CreditTransaction).where(CreditTransaction.user_id == user.id))).scalars().all()
     )
 
-    audit_logs = (
-        (await session.execute(select(AuditLog).where(AuditLog.user_id == user.id)))
-        .scalars()
-        .all()
-    )
+    audit_logs = (await session.execute(select(AuditLog).where(AuditLog.user_id == user.id))).scalars().all()
 
     buf = io.BytesIO()
     now_iso = datetime.now(timezone.utc).isoformat()

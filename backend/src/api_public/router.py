@@ -388,9 +388,7 @@ async def analyze_video_api(
     if existing and not req.force_refresh:
         visual_eligible = user.plan in ("pro", "expert") or user.is_admin
         needs_visual_backfill = (
-            req.include_visual_analysis
-            and visual_eligible
-            and getattr(existing, "visual_analysis", None) is None
+            req.include_visual_analysis and visual_eligible and getattr(existing, "visual_analysis", None) is None
         )
 
         if needs_visual_backfill:
@@ -643,9 +641,7 @@ async def export_summary_markdown(
 
     from db.database import Summary
 
-    result = await session.execute(
-        select(Summary).where(Summary.id == summary_id, Summary.user_id == user.id)
-    )
+    result = await session.execute(select(Summary).where(Summary.id == summary_id, Summary.user_id == user.id))
     summary = result.scalar_one_or_none()
 
     if not summary:
@@ -737,9 +733,7 @@ async def get_public_summary(
             detail={"error": "not_found", "message": "Analysis not found or not public"},
         )
 
-    result = await session.execute(
-        select(Summary).where(Summary.id == summary_id, Summary.is_public.is_(True))
-    )
+    result = await session.execute(select(Summary).where(Summary.id == summary_id, Summary.is_public.is_(True)))
     summary = result.scalar_one_or_none()
 
     if not summary:
@@ -807,9 +801,7 @@ async def update_summary_visibility(
     """
     from db.database import Summary
 
-    result = await session.execute(
-        select(Summary).where(Summary.id == summary_id, Summary.user_id == user.id)
-    )
+    result = await session.execute(select(Summary).where(Summary.id == summary_id, Summary.user_id == user.id))
     summary = result.scalar_one_or_none()
 
     if not summary:

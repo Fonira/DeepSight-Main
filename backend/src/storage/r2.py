@@ -208,8 +208,7 @@ def _delete_r2_by_prefix_sync(prefix: str) -> int:
                 deleted += len(objects) - len(errors)
                 if errors:
                     logger.error(
-                        f"R2 batch delete partial failure for {prefix}: "
-                        f"{len(errors)} errors (first: {errors[0]})"
+                        f"R2 batch delete partial failure for {prefix}: {len(errors)} errors (first: {errors[0]})"
                     )
             except ClientError as exc:
                 logger.error(f"R2 batch delete failed for prefix {prefix}: {exc}")

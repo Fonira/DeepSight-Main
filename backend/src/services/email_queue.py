@@ -156,6 +156,7 @@ class EmailQueue:
             # Persist to DLQ for visibility (queue saturation = ops alert)
             try:
                 from services.email_dlq_service import persist_failed_email
+
                 await persist_failed_email(
                     email_to=to,
                     subject=subject,

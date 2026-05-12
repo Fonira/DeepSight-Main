@@ -1,4 +1,5 @@
 """Service de recherche sémantique intra-analyse."""
+
 from __future__ import annotations
 
 import json
@@ -59,9 +60,7 @@ async def search_within(
         if summary is None:
             raise NotOwnerError(f"Summary {summary_id} not found")
         if summary.user_id != user_id:
-            raise NotOwnerError(
-                f"User {user_id} not owner of summary {summary_id}"
-            )
+            raise NotOwnerError(f"User {user_id} not owner of summary {summary_id}")
 
         query_embedding = await generate_embedding(query)
         if query_embedding is None:
@@ -71,10 +70,10 @@ async def search_within(
 
         if "summary" in source_types:
             rows = (
-                await session.execute(
-                    select(SummaryEmbedding).where(SummaryEmbedding.summary_id == summary_id)
-                )
-            ).scalars().all()
+                (await session.execute(select(SummaryEmbedding).where(SummaryEmbedding.summary_id == summary_id)))
+                .scalars()
+                .all()
+            )
             for emb in rows:
                 vec = json.loads(emb.embedding_json)
                 score = _cosine_similarity(query_embedding, vec)
@@ -151,10 +150,10 @@ async def search_within(
 
         if "chat" in source_types:
             rows = (
-                await session.execute(
-                    select(ChatEmbedding).where(ChatEmbedding.summary_id == summary_id)
-                )
-            ).scalars().all()
+                (await session.execute(select(ChatEmbedding).where(ChatEmbedding.summary_id == summary_id)))
+                .scalars()
+                .all()
+            )
             for emb in rows:
                 vec = json.loads(emb.embedding_json)
                 score = _cosine_similarity(query_embedding, vec)
@@ -176,12 +175,16 @@ async def search_within(
 
         if "transcript" in source_types:
             rows = (
-                await session.execute(
-                    select(TranscriptEmbedding)
-                    .join(TranscriptCache, TranscriptEmbedding.video_id == TranscriptCache.video_id)
-                    .where(TranscriptCache.video_id == summary.video_id)
+                (
+                    await session.execute(
+                        select(TranscriptEmbedding)
+                        .join(TranscriptCache, TranscriptEmbedding.video_id == TranscriptCache.video_id)
+                        .where(TranscriptCache.video_id == summary.video_id)
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             for emb in rows:
                 vec = json.loads(emb.embedding_json)
                 score = _cosine_similarity(query_embedding, vec)
@@ -210,5 +213,6 @@ def _wrap_query_in_mark(text: str, query: str) -> str:
     if not text or not query:
         return text
     import re
+
     pattern = re.compile(re.escape(query), re.IGNORECASE)
     return pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", text)

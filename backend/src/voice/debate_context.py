@@ -338,9 +338,7 @@ class DebateRichContext:
     def transcript_b(self) -> str:
         return self.perspectives[0].transcript if self.perspectives else ""
 
-    def format_for_voice(
-        self, language: str = "fr", max_chars: int = MAX_CONTEXT_DEBATE_VOICE
-    ) -> str:
+    def format_for_voice(self, language: str = "fr", max_chars: int = MAX_CONTEXT_DEBATE_VOICE) -> str:
         """
         Formate le contexte complet pour le system prompt vocal ElevenLabs (v2).
 
@@ -356,10 +354,7 @@ class DebateRichContext:
         lines: list[str] = []
 
         # ── Header — sujet + dominante ──────────────────────────────────
-        is_classic_debate = (
-            n == 1
-            and _normalize_relation(self.perspectives[0].relation_type) == "opposite"
-        )
+        is_classic_debate = n == 1 and _normalize_relation(self.perspectives[0].relation_type) == "opposite"
 
         if is_classic_debate:
             # Format historique : Débat IA classique (compat lecture)
@@ -384,10 +379,7 @@ class DebateRichContext:
                     f"1 vidéo principale (vidéo A) + {n} perspective"
                     f"{'s ajoutées' if n > 1 else ' ajoutée'}."
                 )
-                lines.append(
-                    f"{L.dominant_label} : "
-                    f"{_format_relation_human(self.relation_type_dominant, language)}."
-                )
+                lines.append(f"{L.dominant_label} : {_format_relation_human(self.relation_type_dominant, language)}.")
             else:
                 lines.append(f"## {L.topic_perspectives} : {self.topic}")
                 lines.append("")
@@ -395,10 +387,7 @@ class DebateRichContext:
                     f"This debate has {n + 1} perspectives total: 1 main video "
                     f"(video A) + {n} added perspective{'s' if n > 1 else ''}."
                 )
-                lines.append(
-                    f"{L.dominant_label}: "
-                    f"{_format_relation_human(self.relation_type_dominant, language)}."
-                )
+                lines.append(f"{L.dominant_label}: {_format_relation_human(self.relation_type_dominant, language)}.")
             lines.append("")
             lines.append(f"### {L.video_a}")
             lines.append(f"{L.title} : {self.video_a_title}")
@@ -419,9 +408,7 @@ class DebateRichContext:
 
         # ── Thèses ──────────────────────────────────────────────────────
         lines.append(f"## {L.theses}")
-        thesis_a_truncated = _truncate(
-            self.thesis_a, BUDGET_THESES // (n + 1) if n > 0 else BUDGET_THESES // 2
-        )
+        thesis_a_truncated = _truncate(self.thesis_a, BUDGET_THESES // (n + 1) if n > 0 else BUDGET_THESES // 2)
         lines.append(f"**{L.video_a} — {L.thesis}** : {thesis_a_truncated}")
         for p in self.perspectives:
             rel_human = _format_relation_human(p.relation_type, language)
@@ -430,9 +417,7 @@ class DebateRichContext:
                 if not is_classic_debate
                 else ("Vidéo B" if fr else "Video B")
             )
-            thesis_p = _truncate(
-                p.thesis, BUDGET_THESES // (n + 1) if n > 0 else BUDGET_THESES // 2
-            )
+            thesis_p = _truncate(p.thesis, BUDGET_THESES // (n + 1) if n > 0 else BUDGET_THESES // 2)
             lines.append(f"**{label} — {L.thesis}** : {thesis_p}")
         lines.append("")
 
@@ -442,9 +427,7 @@ class DebateRichContext:
         lines.append("")
 
         # ── Arguments par perspective ──────────────────────────────────
-        per_persp_budget = max(
-            500, BUDGET_ARGUMENTS_PERSPECTIVES_TOTAL // max(1, n)
-        )
+        per_persp_budget = max(500, BUDGET_ARGUMENTS_PERSPECTIVES_TOTAL // max(1, n))
         for p in self.perspectives:
             if is_classic_debate:
                 title = "Vidéo B" if fr else "Video B"
@@ -472,14 +455,9 @@ class DebateRichContext:
                     pos_a = d.get("position_a", "")
                     pos_b = d.get("position_b", "")
                     side_b_label = (
-                        ("Vidéo B" if fr else "Video B")
-                        if is_classic_debate
-                        else (L.perspective_singular + " B")
+                        ("Vidéo B" if fr else "Video B") if is_classic_debate else (L.perspective_singular + " B")
                     )
-                    div_parts.append(
-                        f"- **{topic_d}** — {L.video_a} : {pos_a} / "
-                        f"{side_b_label} : {pos_b}"
-                    )
+                    div_parts.append(f"- **{topic_d}** — {L.video_a} : {pos_a} / {side_b_label} : {pos_b}")
                 else:
                     div_parts.append(f"- {str(d)}")
             lines.append(_truncate("\n".join(div_parts), BUDGET_DIVERGENCE))
@@ -494,9 +472,7 @@ class DebateRichContext:
                     claim = item.get("claim", "?")
                     verdict = item.get("verdict", "?")
                     explanation = item.get("explanation", "")
-                    fc_parts.append(
-                        f"- [{verdict.upper()}] {claim} — {explanation}"
-                    )
+                    fc_parts.append(f"- [{verdict.upper()}] {claim} — {explanation}")
             lines.append(_truncate("\n".join(fc_parts), BUDGET_FACT_CHECK))
             lines.append("")
 
@@ -512,12 +488,8 @@ class DebateRichContext:
             used = sum(len(line) for line in lines)
             remaining = max(0, max_chars - used - BUDGET_HEADER)
             video_a_budget = max(0, min(BUDGET_TRANSCRIPT_VIDEO_A, remaining // 2))
-            persp_total_budget = max(
-                0, min(BUDGET_TRANSCRIPT_PERSPECTIVES_TOTAL, remaining - video_a_budget)
-            )
-            per_persp_transcript_budget = (
-                persp_total_budget // max(1, n) if n > 0 else 0
-            )
+            persp_total_budget = max(0, min(BUDGET_TRANSCRIPT_PERSPECTIVES_TOTAL, remaining - video_a_budget))
+            per_persp_transcript_budget = persp_total_budget // max(1, n) if n > 0 else 0
 
             if video_a_budget > 200 and self.transcript_a:
                 lines.append(f"## {L.transcript_a}")
@@ -531,17 +503,10 @@ class DebateRichContext:
                     if is_classic_debate:
                         title = "TRANSCRIPT VIDÉO B" if fr else "VIDEO B TRANSCRIPT"
                     else:
-                        rel_human = _format_relation_human(
-                            p.relation_type, language
-                        )
-                        title = (
-                            f"{L.transcript_perspective} — "
-                            f"{L.perspective_singular} {p.position + 1} ({rel_human})"
-                        )
+                        rel_human = _format_relation_human(p.relation_type, language)
+                        title = f"{L.transcript_perspective} — {L.perspective_singular} {p.position + 1} ({rel_human})"
                     lines.append(f"## {title}")
-                    lines.append(
-                        _truncate(p.transcript, per_persp_transcript_budget)
-                    )
+                    lines.append(_truncate(p.transcript, per_persp_transcript_budget))
                     lines.append("")
 
         text_out = "\n".join(lines)
@@ -553,9 +518,7 @@ class DebateRichContext:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def _load_perspectives_safe(
-    debate_id: int, db: AsyncSession
-) -> list[dict]:
+async def _load_perspectives_safe(debate_id: int, db: AsyncSession) -> list[dict]:
     """
     Charge les perspectives v2 si la table `debate_perspectives` existe,
     sinon retourne []. Le caller construit le fallback v1 depuis
@@ -670,9 +633,7 @@ async def _load_transcript_safely(video_id: str, db: AsyncSession) -> str:
         transcript = await _get_full_transcript_from_cache(video_id, db)
         return transcript or ""
     except Exception as exc:
-        logger.warning(
-            "debate_context: transcript load failed for %s: %s", video_id, exc
-        )
+        logger.warning("debate_context: transcript load failed for %s: %s", video_id, exc)
         return ""
 
 

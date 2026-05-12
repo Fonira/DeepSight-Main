@@ -75,18 +75,13 @@ def _resolve_proxy_variant(variant: ProxyVariant) -> str:
     # Resolution dynamique du symbole pour rester compatible monkeypatch
     getter = globals().get(getter_name)
     if getter is None:
-        logger.warning(
-            f"proxy_variant: getter {getter_name} not found in module — using default"
-        )
+        logger.warning(f"proxy_variant: getter {getter_name} not found in module — using default")
         return _resolve_default()
 
     url = getter() or ""
     if not url and variant != "default":
         # Tier configure absent en .env → cascade vers default avec warn.
-        logger.warning(
-            f"proxy_variant: {variant} requested but setting is None/empty, "
-            "falling back to default"
-        )
+        logger.warning(f"proxy_variant: {variant} requested but setting is None/empty, falling back to default")
         return _resolve_default()
     return url
 

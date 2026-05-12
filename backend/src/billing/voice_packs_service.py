@@ -37,15 +37,11 @@ async def list_active_packs(db: AsyncSession) -> list[VoiceCreditPack]:
 
 async def get_pack_by_slug(slug: str, db: AsyncSession) -> Optional[VoiceCreditPack]:
     """Récupère un pack par slug, None si introuvable."""
-    result = await db.execute(
-        select(VoiceCreditPack).where(VoiceCreditPack.slug == slug)
-    )
+    result = await db.execute(select(VoiceCreditPack).where(VoiceCreditPack.slug == slug))
     return result.scalar_one_or_none()
 
 
-async def add_purchased_minutes(
-    user_id: int, minutes: float, db: AsyncSession
-) -> None:
+async def add_purchased_minutes(user_id: int, minutes: float, db: AsyncSession) -> None:
     """Crédite ``minutes`` au solde non-expirant de l'utilisateur.
 
     Crée la row ``voice_quota`` si elle n'existe pas. Ne commit PAS — c'est au

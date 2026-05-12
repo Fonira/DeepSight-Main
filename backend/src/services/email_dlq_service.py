@@ -50,6 +50,7 @@ async def persist_failed_email(
     try:
         # Lazy import so tests can monkeypatch db.database.async_session_factory
         from db import database as _db
+
         async with _db.async_session_factory() as session:
             row = EmailDLQ(
                 user_id=user_id,

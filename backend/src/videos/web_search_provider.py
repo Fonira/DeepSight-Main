@@ -28,8 +28,10 @@ from videos.perplexity_provider import perplexity_search, is_perplexity_provider
 try:
     from core.analytics import track_event  # type: ignore
 except Exception:  # pragma: no cover — analytics is best-effort
+
     def track_event(event_name: str, properties: Optional[Dict] = None) -> None:  # type: ignore
         return None
+
 
 logger = logging.getLogger(__name__)
 
@@ -467,9 +469,7 @@ async def web_search_and_synthesize(
     # ─── Build provider chain based on the feature flag ─────────────────────
     # Each entry is (label, callable returning Optional[WebSearchResult]).
     async def _agent_call() -> Optional[WebSearchResult]:
-        return await _try_agent_search(
-            query=query, context=context, purpose=purpose, lang=lang, timeout=timeout
-        )
+        return await _try_agent_search(query=query, context=context, purpose=purpose, lang=lang, timeout=timeout)
 
     async def _perplexity_call() -> Optional[WebSearchResult]:
         return await _try_perplexity_search(
@@ -512,9 +512,7 @@ async def web_search_and_synthesize(
     return brave_result
 
 
-def _emit_provider_metric(
-    provider: str, plan: Optional[str], purpose: str
-) -> None:
+def _emit_provider_metric(provider: str, plan: Optional[str], purpose: str) -> None:
     """Best-effort PostHog tracking of the provider that served a query."""
     try:
         track_event(

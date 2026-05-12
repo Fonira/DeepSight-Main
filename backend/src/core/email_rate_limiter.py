@@ -172,7 +172,9 @@ async def _get_redis_client() -> Optional[Any]:
         )
         await client.ping()
         _redis_clients[loop] = client
-        logger.info("Email rate limiter using Redis token bucket (rate=%s/s, burst=%s)", GLOBAL_RATE_PER_SEC, BURST_CAPACITY)
+        logger.info(
+            "Email rate limiter using Redis token bucket (rate=%s/s, burst=%s)", GLOBAL_RATE_PER_SEC, BURST_CAPACITY
+        )
         return client
     except Exception as e:
         logger.warning("Redis ping failed for email rate limiter, fallback in-memory: %s", e)
@@ -351,15 +353,17 @@ async def send_with_rate_limit(
         reason = "429" if is_429 else "5xx"
         logger.warning(
             "Resend %s, retry %d/%d after %.1fs (context=%s)",
-            reason, attempt, max_retries, delay, context or "n/a",
+            reason,
+            attempt,
+            max_retries,
+            delay,
+            context or "n/a",
         )
         await asyncio.sleep(delay)
 
     if is_rate_limited(last_result):
         logger.error("Resend 429 — all %d retries exhausted (context=%s)", max_retries, context or "n/a")
-        raise ResendRateLimitError(
-            f"Resend rate-limited after {max_retries} retries (context={context or 'n/a'})"
-        )
+        raise ResendRateLimitError(f"Resend rate-limited after {max_retries} retries (context={context or 'n/a'})")
 
     # 5xx exhausted but not 429 → return last result so caller decides (DLQ, etc.)
     return last_result

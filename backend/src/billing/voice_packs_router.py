@@ -156,18 +156,14 @@ async def create_checkout(
                     "unit_amount": pack.price_cents,
                     "product_data": {
                         "name": f"DeepSight Voice — {pack.name}",
-                        "description": pack.description
-                        or f"{pack.minutes} minutes ElevenLabs",
+                        "description": pack.description or f"{pack.minutes} minutes ElevenLabs",
                     },
                 },
                 "quantity": 1,
             }
         ]
 
-    success_url = (
-        f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}"
-        f"&type=voice_pack&slug={slug}"
-    )
+    success_url = f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&type=voice_pack&slug={slug}"
     cancel_url = f"{FRONTEND_URL}/account#voice-packs"
 
     try:

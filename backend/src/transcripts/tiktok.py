@@ -1196,9 +1196,7 @@ async def _fetch_tiktok_account_meta_from_html(username: str) -> Optional[Dict[s
         ) as client:
             resp = await client.get(url)
         if resp.status_code != 200:
-            logger.info(
-                f"[TIKTOK] HTML meta fetch HTTP {resp.status_code} for @{username}"
-            )
+            logger.info(f"[TIKTOK] HTML meta fetch HTTP {resp.status_code} for @{username}")
             return None
         html = resp.text
     except Exception as e:
@@ -1209,21 +1207,21 @@ async def _fetch_tiktok_account_meta_from_html(username: str) -> Optional[Dict[s
         return None
 
     meta: Dict[str, Any] = {}
-    if (m := _HTML_NICKNAME_RE.search(html)):
+    if m := _HTML_NICKNAME_RE.search(html):
         meta["nickname"] = _decode_html_unicode_escapes(m.group(1))[:200]
-    if (m := _HTML_SIGNATURE_RE.search(html)):
+    if m := _HTML_SIGNATURE_RE.search(html):
         meta["signature"] = _decode_html_unicode_escapes(m.group(1))[:2000]
-    if (m := _HTML_FOLLOWER_RE.search(html)):
+    if m := _HTML_FOLLOWER_RE.search(html):
         try:
             meta["follower_count"] = int(m.group(1))
         except (TypeError, ValueError):
             pass
-    if (m := _HTML_VIDEO_COUNT_RE.search(html)):
+    if m := _HTML_VIDEO_COUNT_RE.search(html):
         try:
             meta["video_count"] = int(m.group(1))
         except (TypeError, ValueError):
             pass
-    if (m := _HTML_VERIFIED_RE.search(html)):
+    if m := _HTML_VERIFIED_RE.search(html):
         meta["verified"] = m.group(1) == "true"
 
     if not meta:
@@ -1300,9 +1298,7 @@ async def get_tiktok_account_context(username: str, limit: int = 50) -> Optional
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         if result.returncode != 0:
             stderr = (result.stderr or "")[:300]
-            logger.warning(
-                f"[TIKTOK] yt-dlp account fetch failed for @{normalized_username}: {stderr}"
-            )
+            logger.warning(f"[TIKTOK] yt-dlp account fetch failed for @{normalized_username}: {stderr}")
             return None
         try:
             return json.loads(result.stdout)
@@ -1347,11 +1343,7 @@ async def get_tiktok_account_context(username: str, limit: int = 50) -> Optional
         or data.get("title")
         or normalized_username
     )
-    description = (
-        html_meta.get("signature")
-        or data.get("description")
-        or ""
-    )
+    description = html_meta.get("signature") or data.get("description") or ""
     subscriber_count = (
         html_meta.get("follower_count")
         or data.get("channel_follower_count")
@@ -1412,11 +1404,7 @@ async def get_tiktok_account_context(username: str, limit: int = 50) -> Optional
         )
 
     # video_count : HTML scrape > playlist_count yt-dlp > nombre d'entries
-    raw_video_count = (
-        html_meta.get("video_count")
-        or data.get("playlist_count")
-        or data.get("video_count")
-    )
+    raw_video_count = html_meta.get("video_count") or data.get("playlist_count") or data.get("video_count")
     if raw_video_count is not None:
         try:
             video_count = int(raw_video_count)
@@ -1432,8 +1420,8 @@ async def get_tiktok_account_context(username: str, limit: int = 50) -> Optional
         "description": str(description)[:2000] if description else "",
         "subscriber_count": subscriber_count,
         "video_count": video_count,
-        "tags": [],         # TikTok n'a pas de tags compte
-        "categories": [],   # TikTok n'a pas de catégories compte
+        "tags": [],  # TikTok n'a pas de tags compte
+        "categories": [],  # TikTok n'a pas de catégories compte
         "last_videos": last_videos,
     }
 

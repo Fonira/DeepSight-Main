@@ -3,6 +3,7 @@
 Charge les embeddings depuis les 5 tables (summary/flashcard/quiz/chat/transcript),
 calcule le cosine vs l'embedding de la query, retourne les top N triés.
 """
+
 from __future__ import annotations
 
 import json
@@ -59,9 +60,7 @@ class SearchResult:
     source_metadata: dict
 
 
-async def search_global(
-    user_id: int, query: str, filters: SearchFilters
-) -> list[SearchResult]:
+async def search_global(user_id: int, query: str, filters: SearchFilters) -> list[SearchResult]:
     """Recherche sémantique globale, filtrée par user_id et options."""
     if not query or len(query) < 2:
         return []

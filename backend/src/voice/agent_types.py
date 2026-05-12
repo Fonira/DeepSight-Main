@@ -700,10 +700,7 @@ KNOWLEDGE_TUTOR = AgentConfig(
         "Bonjour. Je suis le Tuteur — je connais les analyses que vous avez "
         "consultées. Sur quoi voulez-vous revenir aujourd'hui ?"
     ),
-    first_message=(
-        "Hello. I'm the Tutor — I know the analyses you've reviewed. What "
-        "would you like to revisit today?"
-    ),
+    first_message=("Hello. I'm the Tutor — I know the analyses you've reviewed. What would you like to revisit today?"),
     plan_minimum="pro",
 )
 

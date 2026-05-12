@@ -868,9 +868,7 @@ async def analyze_video(
     # Le `mode` impacte la cache key globale donc une promote = nouvelle analyse
     # générée avec le prompt expert (cohérent avec le plan).
     if request.mode == "standard" and current_user.plan == "expert":
-        logger.info(
-            f"🎯 [AUTO-MODE] Promoting standard → expert for user {current_user.id} (plan=expert)"
-        )
+        logger.info(f"🎯 [AUTO-MODE] Promoting standard → expert for user {current_user.id} (plan=expert)")
         request.mode = "expert"
 
     # Déterminer le modèle à utiliser
@@ -968,9 +966,7 @@ async def analyze_video(
                     # structured "Vue d'ensemble / Citations marquantes" layout —
                     # which is exactly what every other analyze code path does after
                     # save_summary() (cf. lines 1685, 2593, 3454, 4953, 5682).
-                    asyncio.create_task(
-                        _autogen_summary_extras(current_user.id, _cache_summary_id)
-                    )
+                    asyncio.create_task(_autogen_summary_extras(current_user.id, _cache_summary_id))
                     await _invalidate_companion_cache()
                     return TaskStatusResponse(
                         task_id=f"cached_{_cache_summary_id}",
@@ -1496,10 +1492,12 @@ async def _analyze_video_background_v2(
             if options.get("include_visual_analysis", True) and platform in ("youtube", "tiktok"):
                 from .visual_integration import enrich_and_capture_visual
 
-                _visual_flag_on = (
-                    os.getenv("VISUAL_ANALYSIS_ENABLED", "false").strip().lower()
-                    in {"1", "true", "yes", "on"}
-                )
+                _visual_flag_on = os.getenv("VISUAL_ANALYSIS_ENABLED", "false").strip().lower() in {
+                    "1",
+                    "true",
+                    "yes",
+                    "on",
+                }
                 full_context, _visual_analysis_data = await enrich_and_capture_visual(
                     db=session,
                     user_id=user_id,
@@ -1692,15 +1690,14 @@ async def _analyze_video_background_v2(
             if _visual_analysis_data is not None:
                 try:
                     from sqlalchemy import update as sql_update
+
                     await session.execute(
                         sql_update(Summary)
                         .where(Summary.id == summary_id)
                         .values(visual_analysis=_visual_analysis_data)
                     )
                     await session.commit()
-                    logger.info(
-                        f"👁️ [VISUAL_V2] persisted to Summary.visual_analysis (id={summary_id})"
-                    )
+                    logger.info(f"👁️ [VISUAL_V2] persisted to Summary.visual_analysis (id={summary_id})")
                 except Exception as _vpe:
                     logger.warning(f"👁️ [VISUAL_V2] persist failed (graceful): {_vpe}")
                     await session.rollback()
@@ -1939,9 +1936,7 @@ async def analyze_video_v2_1(
         logger.warning("⚠️ [v2.1] Comments analysis disabled (requires Pro)")
 
     # Analyse de propagande: Pro only (advanced feature)
-    if customization.detect_propaganda and not (
-        current_user.is_admin or current_user.plan in ("pro", "expert")
-    ):
+    if customization.detect_propaganda and not (current_user.is_admin or current_user.plan in ("pro", "expert")):
         customization.detect_propaganda = False
         logger.warning("⚠️ [v2.1] Propaganda analysis disabled (requires Pro)")
 
@@ -2389,10 +2384,12 @@ async def _analyze_video_background_v2_1(
             if options.get("include_visual_analysis", True) and platform in ("youtube", "tiktok"):
                 from .visual_integration import enrich_and_capture_visual
 
-                _visual_flag_on = (
-                    os.getenv("VISUAL_ANALYSIS_ENABLED", "false").strip().lower()
-                    in {"1", "true", "yes", "on"}
-                )
+                _visual_flag_on = os.getenv("VISUAL_ANALYSIS_ENABLED", "false").strip().lower() in {
+                    "1",
+                    "true",
+                    "yes",
+                    "on",
+                }
                 full_context, _visual_analysis_data = await enrich_and_capture_visual(
                     db=session,
                     user_id=user_id,
@@ -2602,15 +2599,14 @@ async def _analyze_video_background_v2_1(
             if _visual_analysis_data is not None:
                 try:
                     from sqlalchemy import update as sql_update
+
                     await session.execute(
                         sql_update(Summary)
                         .where(Summary.id == summary_id)
                         .values(visual_analysis=_visual_analysis_data)
                     )
                     await session.commit()
-                    logger.info(
-                        f"👁️ [VISUAL_V2.1] persisted to Summary.visual_analysis (id={summary_id})"
-                    )
+                    logger.info(f"👁️ [VISUAL_V2.1] persisted to Summary.visual_analysis (id={summary_id})")
                 except Exception as _vpe:
                     logger.warning(f"👁️ [VISUAL_V2.1] persist failed (graceful): {_vpe}")
                     await session.rollback()
@@ -2894,9 +2890,7 @@ async def _analyze_video_background_v6(
                 _channel_external_id = None
 
             if _channel_external_id:
-                logger.info(
-                    f"🏷️ [CHANNEL-CTX] Resolved channel id for {platform}: {_channel_external_id}"
-                )
+                logger.info(f"🏷️ [CHANNEL-CTX] Resolved channel id for {platform}: {_channel_external_id}")
             else:
                 logger.info(
                     f"🏷️ [CHANNEL-CTX] No channel id resolvable for {platform}/{video_id} — "
@@ -3112,14 +3106,10 @@ async def _analyze_video_background_v6(
                             f"{len(ctx.get('last_videos') or [])} recent videos"
                         )
                     else:
-                        logger.warning(
-                            f"⚠️ [CHANNEL-CTX] No context returned for {platform}/{_channel_external_id}"
-                        )
+                        logger.warning(f"⚠️ [CHANNEL-CTX] No context returned for {platform}/{_channel_external_id}")
                     return ctx
                 except Exception as e:
-                    logger.error(
-                        f"⚠️ [CHANNEL-CTX] Fetch failed (continuing without): {e}"
-                    )
+                    logger.error(f"⚠️ [CHANNEL-CTX] Fetch failed (continuing without): {e}")
                     return None
 
             # ⚡ Lancer les trois en parallèle (return_exceptions=True pour fail-safe)
@@ -3198,16 +3188,16 @@ async def _analyze_video_background_v6(
                     from sqlalchemy import select as _sel
                     from db.database import User as _UserModel
 
-                    _visual_flag_on = (
-                        os.getenv("VISUAL_ANALYSIS_ENABLED", "false").strip().lower()
-                        in {"1", "true", "yes", "on"}
-                    )
+                    _visual_flag_on = os.getenv("VISUAL_ANALYSIS_ENABLED", "false").strip().lower() in {
+                        "1",
+                        "true",
+                        "yes",
+                        "on",
+                    }
                     if _visual_flag_on:
                         _task_store[task_id]["progress"] = 50
                         _task_store[task_id]["message"] = "👁️ Analyse visuelle en cours..."
-                        _user_q = await session.execute(
-                            _sel(_UserModel).where(_UserModel.id == user_id)
-                        )
+                        _user_q = await session.execute(_sel(_UserModel).where(_UserModel.id == user_id))
                         _user_row = _user_q.scalar_one_or_none()
                         if _user_row:
                             _visual = await maybe_enrich_with_visual(
@@ -3221,9 +3211,7 @@ async def _analyze_video_background_v6(
                             if _visual.get("status") == STATUS_OK:
                                 _visual_block = format_visual_context_for_prompt(_visual)
                                 if _visual_block:
-                                    web_context = (
-                                        (web_context or "") + "\n\n" + _visual_block
-                                    )
+                                    web_context = (web_context or "") + "\n\n" + _visual_block
                                 # 👁️ Phase 2 plumbing — capture le dict serialisé
                                 # pour persistance dans Summary.visual_analysis
                                 # après save_summary() (alembic 024).
@@ -3235,14 +3223,10 @@ async def _analyze_video_background_v6(
                                     f"elapsed={_visual.get('elapsed_s', 0.0):.1f}s"
                                 )
                             else:
-                                logger.info(
-                                    f"👁️ [VISUAL] skipped: status={_visual.get('status')}"
-                                )
+                                logger.info(f"👁️ [VISUAL] skipped: status={_visual.get('status')}")
                 except Exception as _ve:
                     # Graceful degradation : aucune erreur visuelle ne bloque l'analyse
-                    logger.warning(
-                        f"👁️ [VISUAL] enrichment raised (graceful): {_ve}"
-                    )
+                    logger.warning(f"👁️ [VISUAL] enrichment raised (graceful): {_ve}")
 
             if needs_chunk:
                 # ════════════════════════════════════════════════════════════
@@ -3462,19 +3446,16 @@ async def _analyze_video_background_v6(
             if _visual_analysis_data is not None:
                 try:
                     from sqlalchemy import update as sql_update
+
                     await session.execute(
                         sql_update(Summary)
                         .where(Summary.id == summary_id)
                         .values(visual_analysis=_visual_analysis_data)
                     )
                     await session.commit()
-                    logger.info(
-                        f"👁️ [VISUAL] persisted to Summary.visual_analysis (id={summary_id})"
-                    )
+                    logger.info(f"👁️ [VISUAL] persisted to Summary.visual_analysis (id={summary_id})")
                 except Exception as _vpe:
-                    logger.warning(
-                        f"👁️ [VISUAL] persist failed (graceful): {_vpe}"
-                    )
+                    logger.warning(f"👁️ [VISUAL] persist failed (graceful): {_vpe}")
                     await session.rollback()
 
             # 📚 Auto-générer les extras Mistral (Option A 2026-05-06)
@@ -3924,9 +3905,7 @@ async def _autogen_summary_extras(user_id: int, summary_id: int) -> None:
             )
             summary = result.scalar_one_or_none()
             if summary is None:
-                logger.warning(
-                    f"[AUTOGEN-EXTRAS] Summary {summary_id} not found for user {user_id} — skip"
-                )
+                logger.warning(f"[AUTOGEN-EXTRAS] Summary {summary_id} not found for user {user_id} — skip")
                 return
             if getattr(summary, "summary_extras", None):
                 # Déjà populé (race condition rare) — on ne réécrase pas.
@@ -3934,9 +3913,7 @@ async def _autogen_summary_extras(user_id: int, summary_id: int) -> None:
 
             extras = await generate_summary_extras(summary)
             if extras is None:
-                logger.warning(
-                    f"[AUTOGEN-EXTRAS] Generation returned None for summary {summary_id} — best-effort skip"
-                )
+                logger.warning(f"[AUTOGEN-EXTRAS] Generation returned None for summary {summary_id} — best-effort skip")
                 return
 
             summary.summary_extras = extras
@@ -3945,13 +3922,9 @@ async def _autogen_summary_extras(user_id: int, summary_id: int) -> None:
             q = len(extras.get("key_quotes", []))
             t = len(extras.get("key_takeaways", []))
             th = len(extras.get("chapter_themes", []))
-            logger.info(
-                f"[AUTOGEN-EXTRAS] OK summary={summary_id} (synthesis={synthesis}, q={q}, t={t}, th={th})"
-            )
+            logger.info(f"[AUTOGEN-EXTRAS] OK summary={summary_id} (synthesis={synthesis}, q={q}, t={t}, th={th})")
     except Exception as exc:  # noqa: BLE001 — best-effort, on log et on quitte
-        logger.warning(
-            f"[AUTOGEN-EXTRAS] Unexpected error summary={summary_id}: {exc}"
-        )
+        logger.warning(f"[AUTOGEN-EXTRAS] Unexpected error summary={summary_id}: {exc}")
 
 
 @router.post("/summary/{summary_id}/enrich")

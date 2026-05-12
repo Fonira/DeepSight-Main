@@ -1366,11 +1366,7 @@ async def create_voice_session(
     voice_session = VoiceSession(
         user_id=current_user.id,
         summary_id=(
-            v3_summary.id
-            if v3_summary is not None
-            else v1_summary.id
-            if v1_summary is not None
-            else request.summary_id
+            v3_summary.id if v3_summary is not None else v1_summary.id if v1_summary is not None else request.summary_id
         ),
         debate_id=request.debate_id,
         agent_type=agent_config.agent_type,
@@ -1832,9 +1828,7 @@ async def create_voice_session(
             # the agent has to tell the user "web search is not available".
             tools_config = ElevenLabsClient.build_tools_config(
                 webhook_base_url=webhook_base_url,
-                api_token=str(
-                    request.summary_id or voice_session.summary_id or 0
-                ),
+                api_token=str(request.summary_id or voice_session.summary_id or 0),
             )
         # Filter tools to only those allowed for this agent type
         if agent_config.tools:

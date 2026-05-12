@@ -46,8 +46,7 @@ class HubWorkspaceCreate(BaseModel):
         min_length=MIN_SUMMARIES_PER_WORKSPACE,
         max_length=MAX_SUMMARIES_PER_WORKSPACE,
         description=(
-            f"IDs des analyses Summary à inclure "
-            f"(min {MIN_SUMMARIES_PER_WORKSPACE}, max {MAX_SUMMARIES_PER_WORKSPACE})"
+            f"IDs des analyses Summary à inclure (min {MIN_SUMMARIES_PER_WORKSPACE}, max {MAX_SUMMARIES_PER_WORKSPACE})"
         ),
     )
 
@@ -65,9 +64,7 @@ class HubWorkspaceCreate(BaseModel):
             seen.add(sid)
             deduped.append(sid)
         if len(deduped) < MIN_SUMMARIES_PER_WORKSPACE:
-            raise ValueError(
-                f"summary_ids must contain at least {MIN_SUMMARIES_PER_WORKSPACE} unique IDs"
-            )
+            raise ValueError(f"summary_ids must contain at least {MIN_SUMMARIES_PER_WORKSPACE} unique IDs")
         return deduped
 
 

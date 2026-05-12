@@ -28,8 +28,7 @@ def build_system_prompt(
     demo_tt = settings.demo_tiktok_url()
     warm_threshold = settings.WARM_LEAD_SCORE_THRESHOLD
     platform_note = (
-        "Tu écris dans une discussion Telegram. Le rendu Markdown léger est OK "
-        "(gras *texte*, liens [label](url))."
+        "Tu écris dans une discussion Telegram. Le rendu Markdown léger est OK (gras *texte*, liens [label](url))."
         if platform == "telegram"
         else "Tu écris dans une discussion Luffa. Pas de Markdown — texte brut + emojis. "
         "Les liens sont rendus tels quels."
@@ -140,10 +139,7 @@ N'ajoute AUCUN texte hors du JSON. Pas de Markdown wrapper ` ```json `. Juste le
 """
 
 
-PROMPT_INJECTION_GUARD = (
-    "Désolé, je ne peux pas faire ça — mais je peux te parler de DeepSight, "
-    "on continue ?"
-)
+PROMPT_INJECTION_GUARD = "Désolé, je ne peux pas faire ça — mais je peux te parler de DeepSight, on continue ?"
 
 
 # Patterns de prompt injection à détecter avant d'appeler le LLM

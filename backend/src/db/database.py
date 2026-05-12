@@ -861,9 +861,7 @@ class SummaryEmbedding(Base):
     embedding_json = Column(Text, nullable=False)  # JSON 1024 floats
     text_preview = Column(String(500))
     token_count = Column(Integer, default=0)
-    model_version = Column(
-        String(50), nullable=False, default="mistral-embed", server_default="mistral-embed"
-    )
+    model_version = Column(String(50), nullable=False, default="mistral-embed", server_default="mistral-embed")
     source_metadata = Column(Text, nullable=True)  # JSON {tab, start_ts?, end_ts?, anchor?}
     created_at = Column(DateTime, default=func.now())
 
@@ -899,9 +897,7 @@ class FlashcardEmbedding(Base):
     )
     embedding_json = Column(Text, nullable=False)
     text_preview = Column(String(500))
-    model_version = Column(
-        String(50), nullable=False, default="mistral-embed", server_default="mistral-embed"
-    )
+    model_version = Column(String(50), nullable=False, default="mistral-embed", server_default="mistral-embed")
     created_at = Column(DateTime, default=func.now())
 
     __table_args__ = (
@@ -934,9 +930,7 @@ class QuizEmbedding(Base):
     )
     embedding_json = Column(Text, nullable=False)
     text_preview = Column(String(500))
-    model_version = Column(
-        String(50), nullable=False, default="mistral-embed", server_default="mistral-embed"
-    )
+    model_version = Column(String(50), nullable=False, default="mistral-embed", server_default="mistral-embed")
     created_at = Column(DateTime, default=func.now())
 
     __table_args__ = (
@@ -975,9 +969,7 @@ class ChatEmbedding(Base):
     embedding_json = Column(Text, nullable=False)
     text_preview = Column(String(500))
     token_count = Column(Integer, default=0)
-    model_version = Column(
-        String(50), nullable=False, default="mistral-embed", server_default="mistral-embed"
-    )
+    model_version = Column(String(50), nullable=False, default="mistral-embed", server_default="mistral-embed")
     created_at = Column(DateTime, default=func.now())
 
     __table_args__ = (
@@ -1161,9 +1153,7 @@ class DebatePerspective(Base):
     # Stocké comme String pour souplesse (v2.1 pourra ajouter 'historical', 'critical_reading'...)
 
     channel_quality_score = Column(Float, default=0.5, server_default="0.5")
-    audience_level = Column(
-        String(20), default="unknown", server_default="unknown"
-    )  # vulgarisation | expert | unknown
+    audience_level = Column(String(20), default="unknown", server_default="unknown")  # vulgarisation | expert | unknown
 
     fact_check_results = Column(Text)  # JSON list
 
@@ -1370,9 +1360,7 @@ class VoiceCreditPurchase(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (
-        Index("ix_voice_credit_purchases_user_status", "user_id", "status"),
-    )
+    __table_args__ = (Index("ix_voice_credit_purchases_user_status", "user_id", "status"),)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1520,25 +1508,15 @@ class ChatTextDigest(Base):
     __tablename__ = "chat_text_digests"
 
     id = Column(Integer, primary_key=True)
-    summary_id = Column(
-        Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=False
-    )
-    user_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
-    first_message_id = Column(
-        Integer, ForeignKey("chat_messages.id", ondelete="SET NULL"), nullable=True
-    )
-    last_message_id = Column(
-        Integer, ForeignKey("chat_messages.id", ondelete="SET NULL"), nullable=True
-    )
+    summary_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    first_message_id = Column(Integer, ForeignKey("chat_messages.id", ondelete="SET NULL"), nullable=True)
+    last_message_id = Column(Integer, ForeignKey("chat_messages.id", ondelete="SET NULL"), nullable=True)
     digest_text = Column(Text, nullable=False)
     msg_count = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    __table_args__ = (
-        Index("ix_chat_text_digests_summary_user", "summary_id", "user_id"),
-    )
+    __table_args__ = (Index("ix_chat_text_digests_summary_user", "summary_id", "user_id"),)
 
 
 class HubWorkspace(Base):
@@ -1594,9 +1572,7 @@ class HubWorkspace(Base):
     canvas_data = Column(JSON, nullable=True)
 
     # Timestamps
-    created_at = Column(
-        DateTime, default=func.now(), server_default=func.now(), nullable=False, index=True
-    )
+    created_at = Column(DateTime, default=func.now(), server_default=func.now(), nullable=False, index=True)
     updated_at = Column(
         DateTime,
         default=func.now(),
@@ -1649,9 +1625,7 @@ class VisualAnalysisQuota(Base):
         nullable=False,
     )
 
-    __table_args__ = (
-        Index("ix_visual_quota_user_period", "user_id", "period", unique=True),
-    )
+    __table_args__ = (Index("ix_visual_quota_user_period", "user_id", "period", unique=True),)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1692,9 +1666,7 @@ class EmailDLQ(Base):
     priority = Column(Boolean, default=False, server_default=text("false"), nullable=False)
 
     # Diagnostic
-    failed_at = Column(
-        DateTime, default=func.now(), server_default=func.now(), nullable=False, index=True
-    )
+    failed_at = Column(DateTime, default=func.now(), server_default=func.now(), nullable=False, index=True)
     error_message = Column(Text, nullable=True)
     error_status_code = Column(Integer, nullable=True)
     attempts = Column(Integer, default=1, server_default=text("1"), nullable=False)
@@ -1718,9 +1690,7 @@ class EmailDLQ(Base):
     )
 
     # Bookkeeping
-    created_at = Column(
-        DateTime, default=func.now(), server_default=func.now(), nullable=False
-    )
+    created_at = Column(DateTime, default=func.now(), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime,
         default=func.now(),

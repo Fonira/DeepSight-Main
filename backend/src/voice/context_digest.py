@@ -7,6 +7,7 @@ Hooks:
   - voice/router.py on voice session end → generate_voice_session_digest
   - chat/service.py:save_chat_message after commit → maybe_generate_chat_text_digest
 """
+
 from __future__ import annotations
 
 import logging
@@ -62,11 +63,7 @@ async def generate_voice_session_digest(db, voice_session_id: str) -> None:
     Idempotent : skip if `digest_generated_at IS NOT NULL`.
     Failure is non-fatal (logged via Sentry).
     """
-    vs = (
-        await db.execute(
-            select(VoiceSession).where(VoiceSession.id == voice_session_id)
-        )
-    ).scalar_one_or_none()
+    vs = (await db.execute(select(VoiceSession).where(VoiceSession.id == voice_session_id))).scalar_one_or_none()
 
     if vs is None:
         logger.warning("generate_voice_digest: voice_session not found", extra={"voice_session_id": voice_session_id})
@@ -78,12 +75,16 @@ async def generate_voice_session_digest(db, voice_session_id: str) -> None:
 
     # Fetch all voice rows for this session, ordered chronologically
     msgs = (
-        await db.execute(
-            select(ChatMessage)
-            .where(ChatMessage.voice_session_id == voice_session_id)
-            .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+        (
+            await db.execute(
+                select(ChatMessage)
+                .where(ChatMessage.voice_session_id == voice_session_id)
+                .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     if not msgs:
         logger.info(
@@ -104,11 +105,7 @@ async def generate_voice_session_digest(db, voice_session_id: str) -> None:
         await db.commit()
         return
 
-    transcript = "\n".join(
-        f"{m.voice_speaker or m.role}: {m.content}"
-        for m in msgs
-        if m.content
-    )
+    transcript = "\n".join(f"{m.voice_speaker or m.role}: {m.content}" for m in msgs if m.content)
 
     try:
         digest_text = await _call_mistral_for_digest(transcript)
@@ -145,11 +142,16 @@ async def maybe_generate_chat_text_digest(
     of any existing chat_text_digests for (summary_id, user_id).
     """
     # 1. Find the highest last_message_id already digested
-    q_max = select(ChatTextDigest.last_message_id).where(
-        ChatTextDigest.summary_id == summary_id,
-        ChatTextDigest.user_id == user_id,
-        ChatTextDigest.last_message_id.isnot(None),
-    ).order_by(ChatTextDigest.last_message_id.desc()).limit(1)
+    q_max = (
+        select(ChatTextDigest.last_message_id)
+        .where(
+            ChatTextDigest.summary_id == summary_id,
+            ChatTextDigest.user_id == user_id,
+            ChatTextDigest.last_message_id.isnot(None),
+        )
+        .order_by(ChatTextDigest.last_message_id.desc())
+        .limit(1)
+    )
     last_digested_id = (await db.execute(q_max)).scalar_one_or_none() or 0
 
     # 2. Fetch the next bucket of CHAT_TEXT_BUCKET_SIZE ungested text messages
@@ -169,11 +171,7 @@ async def maybe_generate_chat_text_digest(
     if len(bucket) < CHAT_TEXT_BUCKET_SIZE:
         return  # not yet a full bucket
 
-    transcript = "\n".join(
-        f"{'user' if m.role == 'user' else 'assistant'}: {m.content}"
-        for m in bucket
-        if m.content
-    )
+    transcript = "\n".join(f"{'user' if m.role == 'user' else 'assistant'}: {m.content}" for m in bucket if m.content)
 
     try:
         digest_text = await _call_mistral_for_digest(transcript)

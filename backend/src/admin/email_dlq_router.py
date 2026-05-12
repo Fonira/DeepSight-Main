@@ -146,17 +146,14 @@ async def email_dlq_stats(
 
     counts: dict[str, int] = {}
     for status in ("pending", "replayed", "failed_again", "abandoned"):
-        q = await session.execute(
-            select(func.count(EmailDLQ.id)).where(EmailDLQ.replay_status == status)
-        )
+        q = await session.execute(select(func.count(EmailDLQ.id)).where(EmailDLQ.replay_status == status))
         counts[status] = int(q.scalar() or 0)
 
     # Last 24h: portable PG/SQLite via Python-side timestamp.
     from datetime import timedelta as _td
+
     cutoff = datetime.utcnow() - _td(hours=24)
-    last_24h_q = await session.execute(
-        select(func.count(EmailDLQ.id)).where(EmailDLQ.failed_at >= cutoff)
-    )
+    last_24h_q = await session.execute(select(func.count(EmailDLQ.id)).where(EmailDLQ.failed_at >= cutoff))
     last_24h = int(last_24h_q.scalar() or 0)
 
     return EmailDLQStatsResponse(

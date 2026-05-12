@@ -56,8 +56,7 @@ async def _send_event_async(
             response = await client.post(url, json=payload)
             if response.status_code >= 400:
                 logger.debug(
-                    f"[ANALYTICS] PostHog returned {response.status_code} for "
-                    f"event={name}: {response.text[:200]}"
+                    f"[ANALYTICS] PostHog returned {response.status_code} for event={name}: {response.text[:200]}"
                 )
     except Exception as e:
         # Never block — log at debug only

@@ -84,9 +84,7 @@ async def list_hub_workspaces(
     db: AsyncSession = Depends(get_session),
 ) -> HubWorkspaceListResponse:
     """Retourne la liste des workspaces du user, ordre desc created_at."""
-    items, total = await list_workspaces(
-        db, current_user, limit=limit, offset=offset
-    )
+    items, total = await list_workspaces(db, current_user, limit=limit, offset=offset)
     return HubWorkspaceListResponse(
         items=[HubWorkspaceResponse.model_validate(ws) for ws in items],
         total=total,

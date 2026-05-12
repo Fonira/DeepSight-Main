@@ -8,13 +8,14 @@ Replaces:
   - voice/router.py:_build_chat_history_block_for_voice (Spec #1, Task 6)
   - chat/service.py:build_chat_prompt history_text logic
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Iterable, Literal, Optional
 
-VOICE_SYSTEM_PROMPT_CAP_BYTES = 12_000   # ElevenLabs system_prompt safe margin
-CHAT_HISTORY_CAP_BYTES = 30_000          # Mistral-large 262K, room to spare
+VOICE_SYSTEM_PROMPT_CAP_BYTES = 12_000  # ElevenLabs system_prompt safe margin
+CHAT_HISTORY_CAP_BYTES = 30_000  # Mistral-large 262K, room to spare
 RECENT_VERBATIM_LIMIT = 30
 PER_MESSAGE_MAX_CHARS = 600
 
@@ -53,9 +54,7 @@ def _humanize_relative_time(when: datetime, *, lang: str = "fr") -> str:
 # ── Message label formatter ──────────────────────────────────────────────────
 
 
-def _format_message_label(
-    *, source: str, role: str, created_at: datetime, lang: str = "fr"
-) -> str:
+def _format_message_label(*, source: str, role: str, created_at: datetime, lang: str = "fr") -> str:
     """Format the prefix label like '[VOCAL • il y a 2j • user]'.
 
     source : 'voice' | 'text'
@@ -95,15 +94,16 @@ def _indent_body(text: str, indent: str = "  ") -> str:
 def _render_block(
     *,
     lang: str,
-    voice_digests: Iterable[Any],   # tuple (session_id, started_at, duration_s, digest_text)
-    chat_digests: Iterable[Any],    # ChatTextDigest-like (created_at, msg_count, digest_text)
-    recent: Iterable[Any],          # ChatMessage-like (role, source, content, created_at, voice_session_id)
+    voice_digests: Iterable[Any],  # tuple (session_id, started_at, duration_s, digest_text)
+    chat_digests: Iterable[Any],  # ChatTextDigest-like (created_at, msg_count, digest_text)
+    recent: Iterable[Any],  # ChatMessage-like (role, source, content, created_at, voice_session_id)
     exclude_voice_session_id: Optional[str],
 ) -> str:
     voice_list = list(voice_digests)
     chat_list = list(chat_digests)
     recent_list = [
-        m for m in recent
+        m
+        for m in recent
         if not (exclude_voice_session_id and getattr(m, "voice_session_id", None) == exclude_voice_session_id)
     ]
 
@@ -133,10 +133,7 @@ def _render_block(
         digest_rows.append((started_at, f"- {date_str} {kind} :\n{_indent_body(digest_text)}"))
     for cd in chat_list:
         date_str = cd.created_at.strftime("%Y-%m-%d")
-        kind = (
-            f"(chat texte {cd.msg_count} msgs)" if lang == "fr"
-            else f"(text chat {cd.msg_count} msgs)"
-        )
+        kind = f"(chat texte {cd.msg_count} msgs)" if lang == "fr" else f"(text chat {cd.msg_count} msgs)"
         digest_rows.append((cd.created_at, f"- {date_str} {kind} :\n{_indent_body(cd.digest_text)}"))
 
     if digest_rows:
@@ -195,15 +192,13 @@ def _truncate_to_cap(block: str, cap: int, *, lang: str) -> str:
 
     # Identify the recent section start so we never drop from there first
     recent_idx = next(
-        (i for i, line in enumerate(lines)
-         if line.startswith(RECENT_HEADER_FR) or line.startswith(RECENT_HEADER_EN)),
+        (i for i, line in enumerate(lines) if line.startswith(RECENT_HEADER_FR) or line.startswith(RECENT_HEADER_EN)),
         None,
     )
 
     # 1. Drop oldest digest bullets (lines starting with "- " before recent section)
     digest_bullet_indices = [
-        i for i, line in enumerate(lines)
-        if line.startswith("- ") and (recent_idx is None or i < recent_idx)
+        i for i, line in enumerate(lines) if line.startswith("- ") and (recent_idx is None or i < recent_idx)
     ]
     while join_size(lines) > effective_cap and digest_bullet_indices:
         idx = digest_bullet_indices.pop(0)
@@ -227,9 +222,7 @@ def _truncate_to_cap(block: str, cap: int, *, lang: str) -> str:
     # Re-join, collapse multiple blank lines, append marker
     truncated = "\n".join(line for line in lines if line is not None)
     parts = truncated.split("\n")
-    truncated = "\n".join(
-        ln for i, ln in enumerate(parts) if not (ln == "" and i > 0 and parts[i - 1] == "")
-    )
+    truncated = "\n".join(ln for i, ln in enumerate(parts) if not (ln == "" and i > 0 and parts[i - 1] == ""))
     return truncated.rstrip() + marker
 
 
@@ -262,10 +255,7 @@ async def build_unified_context_block(
 
     from db.database import ChatMessage, ChatTextDigest, VoiceSession
 
-    cap = (
-        VOICE_SYSTEM_PROMPT_CAP_BYTES if target == "voice"
-        else CHAT_HISTORY_CAP_BYTES
-    )
+    cap = VOICE_SYSTEM_PROMPT_CAP_BYTES if target == "voice" else CHAT_HISTORY_CAP_BYTES
 
     # 1. Voice digests (sessions previously ended on this video)
     #    Note: VoiceSession uses started_at (not created_at) — see db/database.py:827

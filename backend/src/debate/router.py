@@ -130,13 +130,9 @@ def _perspective_to_response(p: DebatePerspective) -> DebatePerspectiveResponse:
         thesis=p.thesis,
         arguments=_parse_json_field(p.arguments) if p.arguments else None,
         relation_type=(p.relation_type or "opposite"),  # type: ignore[arg-type]
-        channel_quality_score=p.channel_quality_score
-        if p.channel_quality_score is not None
-        else 0.5,
+        channel_quality_score=p.channel_quality_score if p.channel_quality_score is not None else 0.5,
         audience_level=(p.audience_level or "unknown"),  # type: ignore[arg-type]
-        fact_check_results=(
-            _parse_json_field(p.fact_check_results) if p.fact_check_results else None
-        ),
+        fact_check_results=(_parse_json_field(p.fact_check_results) if p.fact_check_results else None),
         created_at=p.created_at or datetime.utcnow(),
     )
 
@@ -164,9 +160,7 @@ def _debate_to_result(
     video_b_thumbnail = (p0.video_thumbnail if p0 else None) or debate.video_b_thumbnail
     platform_b = (p0.platform if p0 else None) or getattr(debate, "platform_b", None)
     thesis_b = (p0.thesis if p0 else None) or debate.thesis_b
-    arguments_b = (
-        _parse_json_field(p0.arguments) if p0 else _parse_json_field(debate.arguments_b)
-    )
+    arguments_b = _parse_json_field(p0.arguments) if p0 else _parse_json_field(debate.arguments_b)
 
     return DebateResultResponse(
         id=debate.id,
@@ -194,18 +188,14 @@ def _debate_to_result(
         model_used=debate.model_used,
         credits_used=debate.credits_used or 0,
         lang=debate.lang or "fr",
-        relation_type_dominant=(
-            getattr(debate, "relation_type_dominant", None) or "opposite"
-        ),
+        relation_type_dominant=(getattr(debate, "relation_type_dominant", None) or "opposite"),
         perspectives=[_perspective_to_response(p) for p in persp_list],
         created_at=debate.created_at or datetime.utcnow(),
         updated_at=debate.updated_at,
     )
 
 
-async def _build_debate_response(
-    db: AsyncSession, debate: DebateAnalysis
-) -> DebateResultResponse:
+async def _build_debate_response(db: AsyncSession, debate: DebateAnalysis) -> DebateResultResponse:
     """Charge les perspectives + assemble le DebateResultResponse complet.
 
     Préférer ce helper sur `_debate_to_result` direct dès qu'on a une session
@@ -215,9 +205,7 @@ async def _build_debate_response(
     return _debate_to_result(debate, perspectives=perspectives)
 
 
-async def _recompute_relation_type_dominant(
-    session: AsyncSession, debate_id: int
-) -> str:
+async def _recompute_relation_type_dominant(session: AsyncSession, debate_id: int) -> str:
     """Recalcule la relation_type dominante d'un débat à partir des perspectives.
 
     Stratégie : count des relation_type sur les perspectives, prendre la plus
@@ -225,9 +213,7 @@ async def _recompute_relation_type_dominant(
     Stocké sur DebateAnalysis.relation_type_dominant pour piloter le naming UI.
     """
     result = await session.execute(
-        select(DebatePerspective.relation_type).where(
-            DebatePerspective.debate_id == debate_id
-        )
+        select(DebatePerspective.relation_type).where(DebatePerspective.debate_id == debate_id)
     )
     relations = [r for r in result.scalars().all() if r]
     if not relations:
@@ -237,9 +223,7 @@ async def _recompute_relation_type_dominant(
         dominant = counts.most_common(1)[0][0]
 
     # Update sur DebateAnalysis
-    debate_result = await session.execute(
-        select(DebateAnalysis).where(DebateAnalysis.id == debate_id)
-    )
+    debate_result = await session.execute(select(DebateAnalysis).where(DebateAnalysis.id == debate_id))
     debate = debate_result.scalar_one_or_none()
     if debate:
         debate.relation_type_dominant = dominant
@@ -247,9 +231,7 @@ async def _recompute_relation_type_dominant(
     return dominant
 
 
-async def _load_perspectives(
-    session: AsyncSession, debate_id: int
-) -> List[DebatePerspective]:
+async def _load_perspectives(session: AsyncSession, debate_id: int) -> List[DebatePerspective]:
     """Charge les perspectives d'un débat triées par position ascendante."""
     result = await session.execute(
         select(DebatePerspective)
@@ -289,11 +271,7 @@ async def _persist_perspective(
         relation_type=relation_type,
         channel_quality_score=channel_quality_score,
         audience_level=audience_level,
-        fact_check_results=(
-            json.dumps(fact_check_results, ensure_ascii=False)
-            if fact_check_results
-            else None
-        ),
+        fact_check_results=(json.dumps(fact_check_results, ensure_ascii=False) if fact_check_results else None),
     )
     session.add(perspective)
     await session.flush()
@@ -913,9 +891,7 @@ async def _run_debate_pipeline(
             # Retry up to 2 times if Magistral returns invalid JSON
             compare_data = None
             for attempt in range(2):
-                compare_result = await _call_magistral(
-                    compare_prompt, temperature=0.3, max_tokens=4096, json_mode=True
-                )
+                compare_result = await _call_magistral(compare_prompt, temperature=0.3, max_tokens=4096, json_mode=True)
                 if not compare_result:
                     logger.warning("[DEBATE] Magistral returned None for comparison (attempt %d)", attempt + 1)
                     continue
@@ -1300,24 +1276,16 @@ async def _run_add_perspective_pipeline(
     async with async_session_maker() as session:
         try:
             # ── 1. Fetch debate + user + existing perspectives ──
-            result = await session.execute(
-                select(DebateAnalysis).where(DebateAnalysis.id == debate_id)
-            )
+            result = await session.execute(select(DebateAnalysis).where(DebateAnalysis.id == debate_id))
             debate = result.scalar_one_or_none()
             if not debate:
-                logger.error(
-                    "[DEBATE/add-perspective] Debate %d not found", debate_id
-                )
+                logger.error("[DEBATE/add-perspective] Debate %d not found", debate_id)
                 return
 
-            user_result = await session.execute(
-                select(User).where(User.id == user_id)
-            )
+            user_result = await session.execute(select(User).where(User.id == user_id))
             user = user_result.scalar_one_or_none()
             if not user:
-                logger.error(
-                    "[DEBATE/add-perspective] User %d not found", user_id
-                )
+                logger.error("[DEBATE/add-perspective] User %d not found", user_id)
                 return
 
             # Re-check max perspectives (race condition safety)
@@ -1332,9 +1300,7 @@ async def _run_add_perspective_pipeline(
                 return
 
             new_position = len(existing)
-            excluded_video_ids = {debate.video_a_id} | {
-                p.video_id for p in existing if p.video_id
-            }
+            excluded_video_ids = {debate.video_a_id} | {p.video_id for p in existing if p.video_id}
 
             # Determine model based on user plan
             plan_limits = PLAN_LIMITS.get(user.plan or "free", PLAN_LIMITS["free"])
@@ -1404,9 +1370,7 @@ async def _run_add_perspective_pipeline(
             cand_title = candidate.get("title", "")
             cand_channel = candidate.get("channel", "")
             cand_thumbnail = candidate.get("thumbnail", "") or (
-                f"https://img.youtube.com/vi/{cand_video_id}/maxresdefault.jpg"
-                if cand_platform == "youtube"
-                else ""
+                f"https://img.youtube.com/vi/{cand_video_id}/maxresdefault.jpg" if cand_platform == "youtube" else ""
             )
             cand_quality = candidate.get("channel_quality_score", 0.5)
             cand_audience = candidate.get("audience_level", "unknown")
@@ -1486,9 +1450,7 @@ async def _run_add_perspective_pipeline(
 
             compare_data = None
             for attempt in range(2):
-                compare_result = await _call_magistral(
-                    compare_prompt, temperature=0.3, max_tokens=4096, json_mode=True
-                )
+                compare_result = await _call_magistral(compare_prompt, temperature=0.3, max_tokens=4096, json_mode=True)
                 if not compare_result:
                     continue
                 try:
@@ -1509,12 +1471,9 @@ async def _run_add_perspective_pipeline(
 
                 if is_web_search_available():
                     args_str = ", ".join(
-                        a.get("claim", str(a)) if isinstance(a, dict) else str(a)
-                        for a in arguments_b[:3]
+                        a.get("claim", str(a)) if isinstance(a, dict) else str(a) for a in arguments_b[:3]
                     )
-                    web_query = (
-                        f"fact check {relation_type}: {topic} — {thesis_b[:100]}"
-                    )
+                    web_query = f"fact check {relation_type}: {topic} — {thesis_b[:100]}"
                     web_ctx = await _call_perplexity(web_query)
                     fc_prompt = [
                         {
@@ -1536,9 +1495,7 @@ async def _run_add_perspective_pipeline(
                             ),
                         },
                     ]
-                    fc_raw = await _call_mistral(
-                        fc_prompt, model=model, temperature=0.2, json_mode=False
-                    )
+                    fc_raw = await _call_mistral(fc_prompt, model=model, temperature=0.2, json_mode=False)
                     if fc_raw:
                         parsed = _extract_json(fc_raw)
                         if parsed is None:
@@ -1551,9 +1508,7 @@ async def _run_add_perspective_pipeline(
                         if isinstance(parsed, list):
                             fact_check_results = parsed
             except Exception as e:
-                logger.warning(
-                    "[DEBATE/add-perspective] Fact-check failed (non-blocking): %s", e
-                )
+                logger.warning("[DEBATE/add-perspective] Fact-check failed (non-blocking): %s", e)
 
             # ── 6. Persist perspective + deduct credits ──
             try:
@@ -1602,9 +1557,7 @@ async def _run_add_perspective_pipeline(
             try:
                 await _recompute_relation_type_dominant(session, debate_id)
             except Exception as e:
-                logger.warning(
-                    "[DEBATE/add-perspective] recompute dominant failed: %s", e
-                )
+                logger.warning("[DEBATE/add-perspective] recompute dominant failed: %s", e)
 
             debate.status = "completed"
             await session.commit()
@@ -1627,9 +1580,7 @@ async def _run_add_perspective_pipeline(
             )
             try:
                 # Best-effort revert status
-                result = await session.execute(
-                    select(DebateAnalysis).where(DebateAnalysis.id == debate_id)
-                )
+                result = await session.execute(select(DebateAnalysis).where(DebateAnalysis.id == debate_id))
                 d = result.scalar_one_or_none()
                 if d:
                     d.status = "completed"
