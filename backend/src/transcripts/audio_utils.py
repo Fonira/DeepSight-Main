@@ -19,11 +19,11 @@ import httpx
 from core.config import (
     get_groq_key,
     get_tiktok_cookies_path,
-    get_youtube_proxy,
-    get_youtube_proxy_geo_fr,
-    get_youtube_proxy_geo_us,
-    get_youtube_proxy_legacy,
-    get_youtube_proxy_sticky,
+    get_youtube_proxy,  # noqa: F401 -- referenced via globals().get() in _resolve_proxy_for_variant
+    get_youtube_proxy_geo_fr,  # noqa: F401 -- referenced via globals().get() in _resolve_proxy_for_variant
+    get_youtube_proxy_geo_us,  # noqa: F401 -- referenced via globals().get() in _resolve_proxy_for_variant
+    get_youtube_proxy_legacy,  # noqa: F401 -- referenced via globals().get() in _resolve_proxy_for_variant
+    get_youtube_proxy_sticky,  # noqa: F401 -- referenced via globals().get() in _resolve_proxy_for_variant
     get_ytdlp_cookies_path,
 )
 from core.logging import logger
