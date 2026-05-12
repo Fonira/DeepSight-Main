@@ -1,33 +1,27 @@
 """
-Source-level locks for the httpx migration of YouTube-targeted routes in
-`transcripts/youtube.py` from `shared_http_client` to `get_proxied_client`.
+Source-level locks for the httpx routing strategy in
+`transcripts/youtube.py`.
 
-Sprint Wave 2 (Audit B3) — follow-up to docs/audits/2026-05-11-proxy-coverage.md
-and PR #459 (initial migration of the oEmbed fallback).
+REVERT POST-#472 — 2026-05-12
+============================
+PR #472 (audit B3) over-migrated 10 routes (Supadata, Invidious, Piped) from
+`shared_http_client` to `get_proxied_client`. Production observed analyses
+stuck at 20% "Extraction du transcript" after deploy.
 
-Context
-=======
-The Hetzner VPS IP is bot-challenged by YouTube / Invidious / Piped (datacenter
-IP range). The audit identified 7+ `httpx.AsyncClient` (via `shared_http_client`)
-calls that hit YouTube-adjacent services :
-  - api.supadata.ai (Supadata serves YouTube metadata + transcripts)
-  - Invidious instances (10 mirrors that proxy YouTube)
-  - Piped instances (8 mirrors that proxy YouTube)
-  - www.youtube.com (oEmbed — already migrated in #459)
+Decision : these are INTERMEDIATE services that access YouTube with their
+own infra. They do NOT need the Decodo residential proxy on the DeepSight
+side. Only DIRECT calls to www.youtube.com benefit from `get_proxied_client`
+(currently : oEmbed l.615, migrated separately in PR #459).
 
-This sprint migrates those routes to `get_proxied_client` so they route via
-the Decodo residential proxy when `YOUTUBE_PROXY` is set.
+yt-dlp subprocess calls keep `--proxy` injection via
+`_yt_dlp_extra_args()` (PR #469/#470/#472 ytsearch fix) — those are
+unrelated to this httpx revert.
 
-Non-YouTube routes (Groq, Voxtral/Mistral, Deepgram, OpenAI, AssemblyAI,
-ElevenLabs STT APIs) MUST keep `shared_http_client` — they are not blocked
-on Hetzner and a residential proxy would add latency + consume quota.
-
-Tests strategy
-==============
-The actual proxy plumbing of `get_proxied_client` is verified in
-`tests/test_proxy_coverage.py`. Here we lock the WIRING : source-level
-assertions that the migration is applied on YouTube routes and not on
-STT API routes.
+What this test file asserts now :
+- oEmbed (www.youtube.com — direct call) USES `get_proxied_client` (PR #459)
+- Supadata / Invidious / Piped routes USE `shared_http_client` (revert post-#472)
+- STT API routes (Groq, Voxtral, Deepgram, OpenAI, AssemblyAI, ElevenLabs)
+  USE `shared_http_client` (untouched, no proxy needed)
 
 This mirrors the pattern of
 `tests/transcripts/test_youtube_proxy_injection.py::TestProxyInjectionCoverage`.
@@ -57,47 +51,85 @@ class TestImports:
     """Both helpers should be importable from `transcripts.youtube`."""
 
     def test_imports_get_proxied_client(self):
+        """`get_proxied_client` is still needed for oEmbed (PR #459)."""
         yt = _get_youtube_module()
         assert hasattr(yt, "get_proxied_client"), (
             "transcripts.youtube did not import get_proxied_client — "
-            "Sprint Wave 2 (B3) migration not applied."
+            "oEmbed (PR #459) would lose Decodo routing on direct YouTube call."
         )
 
-    def test_still_imports_shared_http_client_for_non_youtube_routes(self):
-        """`shared_http_client` is still needed for STT API calls (Groq,
-        Voxtral, Deepgram, OpenAI, AssemblyAI, ElevenLabs). It must remain
-        imported."""
+    def test_imports_shared_http_client(self):
+        """`shared_http_client` is the default for intermediate services
+        (Supadata, Invidious, Piped) + STT API calls (Groq, Voxtral,
+        Deepgram, OpenAI, AssemblyAI, ElevenLabs)."""
         yt = _get_youtube_module()
         assert hasattr(yt, "shared_http_client"), (
             "shared_http_client removed from transcripts.youtube — "
-            "STT API calls (Groq/Voxtral/Deepgram/OpenAI/AssemblyAI/ElevenLabs) "
-            "would break."
+            "all intermediate + STT calls would break."
         )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Migration coverage — YouTube routes must use get_proxied_client
+# Direct YouTube route — oEmbed MUST use get_proxied_client (PR #459)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-class TestYouTubeRoutesUseProxiedClient:
-    """Source-level assertion : each YouTube-adjacent service URL must be
-    fetched via `get_proxied_client` (so the call routes through Decodo)."""
+class TestDirectYouTubeRouteUsesProxiedClient:
+    """The oEmbed endpoint is the ONLY remaining direct call to www.youtube.com
+    from `transcripts/youtube.py`. It must keep `get_proxied_client` (PR #459)."""
 
     def setup_method(self):
         yt = _get_youtube_module()
         self.src = inspect.getsource(yt)
 
-    def _assert_url_uses_proxied_client(self, url_marker: str, context_lines: int = 40):
-        """Slice the source around `url_marker`, look back ``context_lines`` lines
-        and assert the enclosing `async with` is `get_proxied_client`, not
-        `shared_http_client`.
+    def test_youtube_oembed_uses_proxied_client(self):
+        """www.youtube.com/oembed — direct YouTube call (PR #459).
+
+        Note: `youtube.com/oembed` appears in the URL string ASSIGNED to a
+        variable, not directly inside `async with` block. We look forward
+        ~5 lines from the marker for the next `async with`.
         """
+        url_marker = "www.youtube.com/oembed"
+        assert url_marker in self.src, (
+            f"URL marker {url_marker!r} not found — oEmbed route removed?"
+        )
+        pos = self.src.find(url_marker)
+        # Look FORWARD a few hundred chars for the next `async with`
+        window_end = min(len(self.src), pos + 500)
+        window = self.src[pos:window_end]
+        next_async_with = window.find("async with ")
+        assert next_async_with != -1, (
+            "No `async with` found after oEmbed URL — context may have changed."
+        )
+        snippet = window[next_async_with : next_async_with + 200]
+        assert "get_proxied_client" in snippet, (
+            "oEmbed (www.youtube.com direct call, PR #459) regressed from "
+            "get_proxied_client — Decodo routing lost on direct YouTube call."
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Intermediate services — Supadata / Invidious / Piped MUST use shared_http_client
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestIntermediateRoutesUseSharedClient:
+    """Supadata, Invidious, Piped are INTERMEDIATE services that access
+    YouTube with their own infra. They do NOT need the Decodo proxy
+    (which adds latency + bandwidth cost). Routes must use
+    `shared_http_client` (revert post-#472)."""
+
+    def setup_method(self):
+        yt = _get_youtube_module()
+        self.src = inspect.getsource(yt)
+
+    def _assert_url_uses_shared_client(self, url_marker: str):
+        """For each occurrence of `url_marker`, the enclosing `async with`
+        must be `shared_http_client`, not `get_proxied_client`."""
         assert url_marker in self.src, (
             f"URL marker {url_marker!r} not found in transcripts/youtube.py — "
             "route may have been removed; update this test."
         )
-        # Find ALL occurrences (the marker may appear multiple times)
         positions = []
         idx = 0
         while True:
@@ -107,68 +139,54 @@ class TestYouTubeRoutesUseProxiedClient:
             positions.append(pos)
             idx = pos + 1
 
-        # For each occurrence, check the preceding ~80 lines for the
-        # enclosing `async with` block.
-        any_proxied = False
-        any_shared = False
         for pos in positions:
-            # Look back ~80 lines (roughly 3500 chars)
             window_start = max(0, pos - 3500)
             window = self.src[window_start:pos]
-            # Find the LAST `async with` before this URL
             last_async_with = window.rfind("async with ")
             if last_async_with == -1:
                 continue
             snippet = window[last_async_with : last_async_with + 200]
-            if "get_proxied_client" in snippet:
-                any_proxied = True
-            elif "shared_http_client" in snippet:
-                any_shared = True
+            assert "get_proxied_client" not in snippet, (
+                f"URL marker {url_marker!r} is fetched via get_proxied_client. "
+                f"Revert post-#472 : intermediate services don't need Decodo. "
+                f"Should be `shared_http_client`."
+            )
+            assert "shared_http_client" in snippet, (
+                f"URL marker {url_marker!r} is not fetched via shared_http_client. "
+                f"At least one occurrence has unexpected wiring."
+            )
 
-        assert any_proxied, (
-            f"URL marker {url_marker!r} is not fetched via get_proxied_client. "
-            f"At least one occurrence should use the proxied client."
-        )
-        assert not any_shared, (
-            f"URL marker {url_marker!r} is still fetched via shared_http_client "
-            f"somewhere — should be migrated to get_proxied_client (audit B3)."
-        )
+    def test_supadata_metadata_uses_shared_client(self):
+        """api.supadata.ai/v1/metadata — intermediate, no Decodo needed."""
+        self._assert_url_uses_shared_client("api.supadata.ai/v1/metadata")
 
-    def test_supadata_metadata_uses_proxied_client(self):
-        """api.supadata.ai/v1/metadata fetches YouTube video metadata."""
-        self._assert_url_uses_proxied_client("api.supadata.ai/v1/metadata")
+    def test_supadata_transcript_uses_shared_client(self):
+        """api.supadata.ai/v1/youtube/transcript — intermediate, no Decodo needed."""
+        self._assert_url_uses_shared_client("api.supadata.ai/v1/youtube/transcript")
 
-    def test_supadata_transcript_uses_proxied_client(self):
-        """api.supadata.ai/v1/youtube/transcript fetches YouTube transcripts."""
-        self._assert_url_uses_proxied_client("api.supadata.ai/v1/youtube/transcript")
+    def test_supadata_unified_transcript_uses_shared_client(self):
+        """api.supadata.ai/v1/transcript — intermediate, no Decodo needed."""
+        self._assert_url_uses_shared_client("api.supadata.ai/v1/transcript")
 
-    def test_supadata_unified_transcript_uses_proxied_client(self):
-        """api.supadata.ai/v1/transcript (unified endpoint for YouTube)."""
-        self._assert_url_uses_proxied_client("api.supadata.ai/v1/transcript")
+    def test_invidious_videos_endpoint_uses_shared_client(self):
+        """{instance}/api/v1/videos/{id} — Invidious, intermediate, no Decodo needed."""
+        self._assert_url_uses_shared_client("/api/v1/videos/{video_id}")
 
-    def test_invidious_videos_endpoint_uses_proxied_client(self):
-        """{instance}/api/v1/videos/{id} — Invidious metadata + audio formats."""
-        self._assert_url_uses_proxied_client("/api/v1/videos/{video_id}")
+    def test_invidious_captions_endpoint_uses_shared_client(self):
+        """{instance}/api/v1/captions/{id} — Invidious, intermediate, no Decodo needed."""
+        self._assert_url_uses_shared_client("/api/v1/captions/{video_id}")
 
-    def test_invidious_captions_endpoint_uses_proxied_client(self):
-        """{instance}/api/v1/captions/{id} — Invidious captions list."""
-        self._assert_url_uses_proxied_client("/api/v1/captions/{video_id}")
+    def test_invidious_playlists_endpoint_uses_shared_client(self):
+        """{instance}/api/v1/playlists/{id} — Invidious, intermediate, no Decodo needed."""
+        self._assert_url_uses_shared_client("/api/v1/playlists/{playlist_id}")
 
-    def test_invidious_playlists_endpoint_uses_proxied_client(self):
-        """{instance}/api/v1/playlists/{id} — Invidious playlist videos."""
-        self._assert_url_uses_proxied_client("/api/v1/playlists/{playlist_id}")
-
-    def test_piped_streams_endpoint_uses_proxied_client(self):
-        """{instance}/streams/{id} — Piped streams endpoint (subtitles incl.)."""
-        self._assert_url_uses_proxied_client("/streams/{video_id}")
-
-    def test_youtube_oembed_uses_proxied_client(self):
-        """www.youtube.com/oembed — already migrated in PR #459."""
-        self._assert_url_uses_proxied_client("www.youtube.com/oembed")
+    def test_piped_streams_endpoint_uses_shared_client(self):
+        """{instance}/streams/{id} — Piped, intermediate, no Decodo needed."""
+        self._assert_url_uses_shared_client("/streams/{video_id}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Non-YouTube routes — STT APIs must NOT use get_proxied_client
+# Non-YouTube routes — STT APIs must keep shared_http_client
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -237,40 +255,39 @@ class TestSTTRoutesKeepSharedClient:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Coverage smoke — lock total counts to prevent regressions
+# Coverage smoke — lock total counts post-revert
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestProxiedClientCoverage:
     """Lock the count of `get_proxied_client` usages in transcripts/youtube.py
-    to prevent silent regressions (e.g. a refactor that reverts one back to
-    `shared_http_client` and changes the URL in the same diff)."""
+    to prevent silent regressions in either direction (over-migration like #472
+    OR under-migration that drops oEmbed routing)."""
 
-    def test_get_proxied_client_count(self):
-        """Pre-migration : 1 occurrence (oEmbed, PR #459).
-        Post-migration : 8+ occurrences (Supadata×2, Invidious×5+, Piped×1, oEmbed×1).
-        """
+    def test_get_proxied_client_count_post_revert(self):
+        """Post-revert (this PR) : exactly 1 occurrence — oEmbed (PR #459).
+        If this climbs > 2, an over-migration like #472 likely happened
+        again. If this drops to 0, oEmbed regressed to shared_http_client."""
         yt = _get_youtube_module()
         src = inspect.getsource(yt)
         count = src.count("async with get_proxied_client")
-        assert count >= 8, (
-            f"Expected >=8 async with get_proxied_client blocks in "
-            f"transcripts/youtube.py, got {count}. The Wave 2 (B3) httpx "
-            f"migration may have regressed."
+        assert count == 1, (
+            f"Expected exactly 1 `async with get_proxied_client` block in "
+            f"transcripts/youtube.py (oEmbed direct YouTube call, PR #459), "
+            f"got {count}. Either over-migration is happening again "
+            f"(post-#472 was reverted) OR oEmbed lost its proxy."
         )
 
-    def test_shared_http_client_count_minimal(self):
-        """Pre-migration : ~17 occurrences (most YouTube routes + STT APIs).
-        Post-migration : should be <= ~7 (only STT API routes remain :
-        Groq, Voxtral, Deepgram, OpenAI, AssemblyAI×2, ElevenLabs)."""
+    def test_shared_http_client_count_post_revert(self):
+        """Post-revert : intermediate services + STT APIs = ~16 occurrences.
+        Pre-revert with #472 over-migration : was ~6 (only STT).
+        Pre-#472 baseline : ~17. If this drops below 12, a new over-migration
+        likely happened."""
         yt = _get_youtube_module()
         src = inspect.getsource(yt)
         count = src.count("async with shared_http_client")
-        # 6 STT API routes max in transcripts/youtube.py (Groq, Voxtral,
-        # Deepgram, OpenAI, AssemblyAI, ElevenLabs). Allow some slack for
-        # incidental usage but flag if it climbs back.
-        assert count <= 8, (
-            f"shared_http_client used {count} times in transcripts/youtube.py — "
-            f"some YouTube routes may have regressed to shared_http_client. "
-            f"Expected <=8 (STT API calls only)."
+        assert count >= 12, (
+            f"Only {count} `async with shared_http_client` blocks in "
+            f"transcripts/youtube.py — expected >= 12 (Supadata + Invidious "
+            f"+ Piped + 6 STT routes). A new over-migration may be happening."
         )
