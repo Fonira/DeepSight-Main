@@ -858,13 +858,6 @@ def is_semantic_search_v1_enabled() -> bool:
     return SEMANTIC_SEARCH_V1_ENABLED and bool(MISTRAL_API_KEY)
 
 
-def get_plan_limits(plan: str) -> Dict[str, Any]:
-    """Deprecated wrapper kept for binary compatibility. Use billing.plan_config.get_limits."""
-    from billing.plan_config import get_limits
-
-    return get_limits(plan)
-
-
 def get_groq_key() -> Optional[str]:
     return _settings.GROQ_API_KEY or None
 
