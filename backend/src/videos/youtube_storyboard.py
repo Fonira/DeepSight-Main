@@ -115,9 +115,17 @@ def normalize_video_id(value: str) -> Optional[str]:
 def _ytdlp_info_sync(video_id: str, log_tag: str) -> Optional[Dict[str, Any]]:
     """Lance yt-dlp -j --skip-download (sync, à appeler dans un executor).
 
-    `include_proxy=False` : le metadata fetch YouTube (storyboards inclus)
-    fonctionne en direct depuis le backend Hetzner — le proxy Webshare
-    datacenter renvoie 407 et casse cet appel inutilement.
+    Sprint 2026-05-12 follow-up à PR #469 : passe `include_proxy=True` (défaut)
+    pour que ce metadata fetch parte via le proxy résidentiel Decodo. Sans
+    proxy, yt-dlp est bot-challenged depuis l'IP Hetzner et retourne None →
+    `extract_storyboard_frames` exit early L298 AVANT que les 4 fallbacks
+    duration + le 5e fallback duration_hint (PR #468) puissent fire. C'était
+    la racine cachée de Summary 209 visual_analysis=null sur zjkBMFhNj_g
+    (Karpathy 1h LLM intro) : metadata duration OK via #469 mais storyboards
+    inaccessibles ici sans proxy.
+
+    L'ancien commentaire mentionnait "le proxy Webshare datacenter renvoie 407" —
+    obsolète depuis la migration sur Decodo résidentiel (gate.decodo.com:7000).
 
     `--ignore-no-formats-error` : yt-dlp 2024+ refuse de produire le JSON quand
     aucun format vidéo "downloadable" (mp4/webm) n'est exposé, même avec
@@ -128,7 +136,7 @@ def _ytdlp_info_sync(video_id: str, log_tag: str) -> Optional[Dict[str, Any]]:
     url = f"https://www.youtube.com/watch?v={video_id}"
     cmd = [
         "yt-dlp",
-        *_yt_dlp_extra_args(include_proxy=False),
+        *_yt_dlp_extra_args(),  # include_proxy=True par défaut — Decodo résidentiel
         "-j",
         "--skip-download",
         "--ignore-no-formats-error",
