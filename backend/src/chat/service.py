@@ -20,7 +20,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import ChatMessage, ChatQuota, Summary, User, WebSearchUsage
-from core.config import get_mistral_key, PLAN_LIMITS
+from core.config import get_mistral_key
+from billing.plan_config import get_limits
 from core.llm_provider import llm_complete
 from videos.web_search_provider import web_search_and_synthesize, WebSearchResult
 
@@ -147,10 +148,10 @@ async def check_chat_quota(session: AsyncSession, user_id: int, summary_id: int)
         return True, "unlimited", {"daily_limit": -1, "per_video_limit": -1}
 
     plan = user.plan or "free"
-    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+    limits = get_limits(plan)
 
     daily_limit = limits.get("chat_daily_limit", 10)
-    per_video_limit = limits.get("chat_per_video_limit", 5)
+    per_video_limit = limits.get("chat_questions_per_video", 5)
 
     # -1 = illimité
     if daily_limit == -1 and per_video_limit == -1:
@@ -1431,7 +1432,7 @@ async def check_web_search_quota(session: AsyncSession, user_id: int) -> Tuple[b
         return True, 0, -1
 
     plan = user.plan or "free"
-    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+    limits = get_limits(plan)
 
     if not limits.get("web_search_enabled", False):
         return False, 0, 0
@@ -1566,7 +1567,7 @@ async def process_chat_message_v4(
     chat_history = await get_chat_history(session, summary_id, user_id, limit=10)
 
     # 5. Déterminer le modèle selon le plan
-    plan_limits = PLAN_LIMITS.get(user_plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(user_plan)
     model = plan_limits.get("default_model", "mistral-small-2603")
 
     # 5.5 🆕 Assembler le contexte riche (transcript complet + fact-check + enrichment)

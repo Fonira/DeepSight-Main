@@ -19,7 +19,8 @@ from jose import jwt, JWTError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.config import JWT_CONFIG, GOOGLE_OAUTH_CONFIG, EMAIL_CONFIG, PLAN_LIMITS, APP_URL, ADMIN_CONFIG
+from core.config import JWT_CONFIG, GOOGLE_OAUTH_CONFIG, EMAIL_CONFIG, APP_URL, ADMIN_CONFIG
+from billing.plan_config import get_limits
 from db.database import User, ChatQuota, WebSearchUsage, hash_password, verify_password
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -199,7 +200,7 @@ async def create_user(
         return False, None, "❌ Nom d'utilisateur déjà pris"
 
     # Crédits initiaux selon le plan free
-    initial_credits = PLAN_LIMITS["free"]["monthly_credits"]
+    initial_credits = get_limits("free")["monthly_credits"]
 
     # Générer le code de vérification si nécessaire
     # IMPORTANT: Vérifier que Resend est réellement configuré, pas juste "enabled"
@@ -467,7 +468,7 @@ async def get_user_quota(session: AsyncSession, user_id: int) -> dict:
         return {}
 
     plan = user.plan or "free"
-    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+    limits = get_limits(plan)
 
     # Chat quota du jour
     today = datetime.now().strftime("%Y-%m-%d")
@@ -661,7 +662,7 @@ async def login_or_register_google_user(
         )
         print(f"🔐 Admin user created via Google: {email}", flush=True)
     else:
-        initial_credits = PLAN_LIMITS["free"]["monthly_credits"]
+        initial_credits = get_limits("free")["monthly_credits"]
         user = User(
             username=username,
             email=email,

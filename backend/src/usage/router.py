@@ -13,7 +13,8 @@ from pydantic import BaseModel
 
 from db.database import get_session, User, Summary, CreditTransaction
 from auth.dependencies import get_current_user
-from core.config import PLAN_LIMITS, MISTRAL_MODELS
+from core.config import MISTRAL_MODELS
+from billing.plan_config import get_limits, get_plan, PLANS
 from core.logging import logger
 from core.credits import (
     calculate_analysis_cost,
@@ -130,7 +131,8 @@ async def get_usage_stats(current_user: User = Depends(get_current_user), sessio
     Retourne les statistiques d'utilisation complètes de l'utilisateur.
     """
     plan = current_user.plan or "free"
-    plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(plan)
+    plan_data = get_plan(plan)
 
     # Calculer le début du mois
     now = datetime.utcnow()
@@ -203,15 +205,14 @@ async def get_usage_stats(current_user: User = Depends(get_current_user), sessio
     else:
         credits_percent = 0
 
-    # Nom du plan
-    plan_name_dict = plan_limits.get("name", {"fr": plan})
-    plan_name = plan_name_dict.get("fr", plan) if isinstance(plan_name_dict, dict) else plan
+    # Nom du plan (SSOT name is a plain string, not a {fr,en} dict)
+    plan_name = plan_data.get("name", plan)
 
     return UsageStats(
         # Plan
         plan=plan,
         plan_name=plan_name,
-        plan_color=plan_limits.get("color", "#888888"),
+        plan_color=plan_data.get("color", "#888888"),
         # Crédits
         credits_remaining=credits_remaining,
         credits_monthly=credits_monthly,
@@ -230,10 +231,10 @@ async def get_usage_stats(current_user: User = Depends(get_current_user), sessio
         web_search_remaining=web_search_remaining,
         web_search_enabled=plan_limits.get("web_search_enabled", False),
         # Playlists
-        playlists_enabled=plan_limits.get("can_use_playlists", False),
+        playlists_enabled=plan_limits.get("playlists_enabled", False),
         max_playlist_videos=plan_limits.get("max_playlist_videos", 0),
         # Modèles
-        available_models=plan_limits.get("models", ["mistral-small-2603"]),
+        available_models=plan_limits.get("allowed_models", ["mistral-small-2603"]),
         default_model=plan_limits.get("default_model", "mistral-small-2603"),
         # Dates
         member_since=current_user.created_at,
@@ -247,8 +248,8 @@ async def get_available_models(current_user: User = Depends(get_current_user)):
     Retourne la liste des modèles Mistral avec leur disponibilité pour l'utilisateur.
     """
     plan = current_user.plan or "free"
-    plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-    user_models = plan_limits.get("models", ["mistral-small-2603"])
+    plan_limits = get_limits(plan)
+    user_models = plan_limits.get("allowed_models", ["mistral-small-2603"])
 
     models = []
     for model_id, model_info in MISTRAL_MODELS.items():
@@ -321,26 +322,27 @@ async def get_plan_features(current_user: User = Depends(get_current_user)):
     current_plan = current_user.plan or "free"
 
     plans_comparison = {}
-    for plan_id, limits in PLAN_LIMITS.items():
-        if plan_id == "unlimited":
-            continue
+    # SSOT iteration: PLANS keys are PlanId enum members ; we want their string values.
+    # No 'unlimited' tier in v2 SSOT — admin uses 'expert' + is_admin flag instead.
+    for plan_id_enum, plan_dict in PLANS.items():
+        plan_id = plan_id_enum.value if hasattr(plan_id_enum, "value") else str(plan_id_enum)
+        limits = plan_dict.get("limits", {})
 
-        plan_name = limits.get("name", {})
         plans_comparison[plan_id] = {
-            "name": plan_name.get("fr", plan_id) if isinstance(plan_name, dict) else plan_id,
-            "price": limits.get("price", 0),
-            "price_display": limits.get("price_display", {}).get("fr", ""),
-            "color": limits.get("color", "#888888"),
+            "name": plan_dict.get("name", plan_id),
+            "price": plan_dict.get("price_monthly_cents", 0),
+            "price_display": "",  # No longer surfaced via SSOT — derived UI-side
+            "color": plan_dict.get("color", "#888888"),
             "is_current": plan_id == current_plan,
             "features": {
                 "monthly_credits": limits.get("monthly_credits", 0),
-                "playlists": limits.get("can_use_playlists", False),
+                "playlists": limits.get("playlists_enabled", False),
                 "max_playlist_videos": limits.get("max_playlist_videos", 0),
                 "chat_daily": limits.get("chat_daily_limit", 0),
                 "web_search": limits.get("web_search_enabled", False),
                 "web_search_monthly": limits.get("web_search_monthly", 0),
-                "models": limits.get("models", []),
-                "history_days": limits.get("history_days", 7),
+                "models": limits.get("allowed_models", []),
+                "history_days": limits.get("history_retention_days", 7),
             },
         }
 
@@ -476,8 +478,8 @@ async def estimate_cost(
     Permet à l'UI d'afficher le coût estimé avant que l'utilisateur ne lance l'action.
     """
     plan = current_user.plan or "free"
-    plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-    available_models = plan_limits.get("models", ["mistral-small-2603"])
+    plan_limits = get_limits(plan)
+    available_models = plan_limits.get("allowed_models", ["mistral-small-2603"])
 
     # Vérifier que le modèle est disponible pour le plan
     if model not in available_models:
@@ -526,8 +528,8 @@ async def get_model_costs(current_user: User = Depends(get_current_user)):
     Retourne les coûts détaillés par modèle pour l'utilisateur.
     """
     plan = current_user.plan or "free"
-    plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-    available_models = plan_limits.get("models", ["mistral-small-2603"])
+    plan_limits = get_limits(plan)
+    available_models = plan_limits.get("allowed_models", ["mistral-small-2603"])
 
     models_with_costs = []
     for model_id, cost_info in MODEL_COSTS.items():

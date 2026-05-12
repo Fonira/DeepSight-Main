@@ -26,7 +26,7 @@ from db.database import (
     VoiceQuota,
 )
 from auth.dependencies import get_current_admin
-from core.config import PLAN_LIMITS
+from billing.plan_config import get_limits
 
 router = APIRouter()
 
@@ -481,7 +481,7 @@ async def reset_monthly_credits(admin: User = Depends(get_current_admin), sessio
 
     count = 0
     for user in users:
-        plan_limits = PLAN_LIMITS.get(user.plan or "free", PLAN_LIMITS["free"])
+        plan_limits = get_limits(user.plan or "free")
         new_credits = plan_limits.get("monthly_credits", 10)
         user.credits = new_credits
         count += 1
