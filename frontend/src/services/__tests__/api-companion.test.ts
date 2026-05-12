@@ -24,6 +24,7 @@ describe("voiceApi.getCompanionContext", () => {
     mockFetch.mockResolvedValue({
       ok: true,
       status: 200,
+      headers: { get: () => "application/json" },
       json: async () => ({
         profile: {
           prenom: "Test",
@@ -56,6 +57,7 @@ describe("voiceApi.getCompanionContext", () => {
     mockFetch.mockResolvedValue({
       ok: true,
       status: 200,
+      headers: { get: () => "application/json" },
       json: async () => ({
         profile: {
           prenom: "X",

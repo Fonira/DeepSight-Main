@@ -242,6 +242,9 @@ describe("Register", () => {
       "user",
       "test@test.com",
       "password",
+      // 4th arg = UTM tracking object added by hook (signup_source defaults
+      // to "direct" when no UTM captured).
+      expect.objectContaining({ signup_source: expect.any(String) }),
     );
     expect(result.current.isLoading).toBe(false);
   });

@@ -13,8 +13,26 @@
 
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  render as rtlRender,
+  screen,
+  waitFor,
+  type RenderOptions,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HelmetProvider } from "react-helmet-async";
+
+// VoiceOverlay renders <Helmet> which requires HelmetProvider context. Wrap
+// every render() call in this test file so we don't have to update each one.
+const render = (
+  ui: React.ReactElement,
+  options?: Omit<RenderOptions, "wrapper">,
+) =>
+  rtlRender(ui, {
+    wrapper: ({ children }) => <HelmetProvider>{children}</HelmetProvider>,
+    ...options,
+  });
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 

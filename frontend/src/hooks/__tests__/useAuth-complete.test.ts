@@ -313,6 +313,9 @@ describe("useAuth - Register Flow", () => {
       "newuser",
       "newuser@example.com",
       "password123",
+      // 4th arg = UTM tracking object (signup_source defaults to "direct"
+      // when no UTM captured). Backend tolerates absent fields.
+      expect.objectContaining({ signup_source: expect.any(String) }),
     );
   });
 
