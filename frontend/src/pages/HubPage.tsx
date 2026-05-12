@@ -408,7 +408,7 @@ const HubPageInner: React.FC = () => {
             title:
               sanitizeTitle(
                 (summary as { video_title?: string; title?: string })
-                  .video_title ?? (summary as { title?: string }).title,
+                  .video_title ?? (summary as { title?: string }).title ?? "",
               ) || "Sans titre",
             video_source: platform,
             video_thumbnail_url:
@@ -416,7 +416,7 @@ const HubPageInner: React.FC = () => {
             last_snippet: undefined,
             updated_at:
               (summary as { created_at?: string; updated_at?: string })
-                .updated_at ?? (summary as { created_at?: string }).created_at,
+                .updated_at ?? (summary as { created_at?: string }).created_at ?? "",
           };
           setConversations([synthetic, ...convs]);
           setActiveConv(target);

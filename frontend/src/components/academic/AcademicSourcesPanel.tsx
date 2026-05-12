@@ -69,11 +69,10 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
       setTierLimitReached(response.tier_limit_reached);
       setTierLimit(response.tier_limit || null);
       setSearched(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Academic search error:", err);
-      setError(
-        err.message || t("Erreur lors de la recherche", "Search failed"),
-      );
+      const msg = (err as { message?: string } | null)?.message;
+      setError(msg || t("Erreur lors de la recherche", "Search failed"));
     } finally {
       setLoading(false);
     }

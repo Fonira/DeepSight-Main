@@ -60,7 +60,19 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   Unknown: "❓",
 };
 
-const CustomTooltip = ({ active, payload, language }: any) => {
+type CategoryDatum = {
+  name: string;
+  value: number;
+  percentage: number;
+  emoji?: string;
+};
+type TooltipProps = {
+  active?: boolean;
+  payload?: Array<{ payload: CategoryDatum }>;
+  language?: "fr" | "en";
+};
+
+const CustomTooltip = ({ active, payload, language }: TooltipProps) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
@@ -86,6 +98,16 @@ const CustomTooltip = ({ active, payload, language }: any) => {
   return null;
 };
 
+type LabelProps = {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  innerRadius: number;
+  outerRadius: number;
+  percent: number;
+  emoji?: string;
+};
+
 const renderCustomizedLabel = ({
   cx,
   cy,
@@ -94,7 +116,7 @@ const renderCustomizedLabel = ({
   outerRadius,
   percent,
   emoji,
-}: any) => {
+}: LabelProps) => {
   if (percent < 0.08) return null; // Ne pas afficher les labels trop petits
 
   const RADIAN = Math.PI / 180;

@@ -506,8 +506,8 @@ const CorpusChat: React.FC<{
         sources: response.sources,
       };
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err: any) {
-      const msg = err?.message || "";
+    } catch (err: unknown) {
+      const msg = (err as { message?: string } | null)?.message || "";
       let errorText: string;
       if (
         msg.includes("timeout") ||
@@ -658,9 +658,9 @@ const CorpusChat: React.FC<{
                             };
                             setMessages((prev) => [...prev, assistantMsg]);
                           })
-                          .catch((err: any) => {
+                          .catch((err: unknown) => {
                             setError(
-                              err?.message ||
+                              (err as { message?: string } | null)?.message ||
                                 (language === "fr" ? "Erreur" : "Error"),
                             );
                           })
@@ -753,9 +753,10 @@ const CorpusChat: React.FC<{
                                       assistantMsg,
                                     ]);
                                   })
-                                  .catch((err: any) => {
+                                  .catch((err: unknown) => {
                                     setError(
-                                      err?.message ||
+                                      (err as { message?: string } | null)
+                                        ?.message ||
                                         (language === "fr"
                                           ? "Erreur"
                                           : "Error"),
@@ -1025,7 +1026,7 @@ export const PlaylistDetailPage: React.FC = () => {
       } catch {
         // Details endpoint optionnel
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error loading playlist:", err);
       setError(
         language === "fr"
@@ -1058,7 +1059,7 @@ export const PlaylistDetailPage: React.FC = () => {
         setPlaylist({ ...playlist, meta_analysis: result.meta_analysis });
       }
       setActiveTab("synthesis");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error generating synthesis:", err);
     } finally {
       setIsRegenerating(false);
@@ -1080,7 +1081,7 @@ export const PlaylistDetailPage: React.FC = () => {
     try {
       await playlistApi.delete(id);
       navigate("/playlists", { replace: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error deleting playlist:", err);
       setError(
         language === "fr"
@@ -1113,7 +1114,7 @@ export const PlaylistDetailPage: React.FC = () => {
       });
       setPlaylist(updated);
       setIsRenaming(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error renaming playlist:", err);
       setError(
         language === "fr"

@@ -285,54 +285,6 @@ export const PlaylistPage: React.FC = () => {
   const minPlanForPlaylists = getMinPlanForFeature("playlistsEnabled");
   const minPlanName = PLANS_INFO[minPlanForPlaylists].name;
 
-  if (!hasFeature(normalizedPlan, "playlistsEnabled")) {
-    return (
-      <div className="flex min-h-screen bg-bg-primary">
-        <DoodleBackground variant="video" />
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        />
-        <main className={`flex-1 overflow-x-hidden`}>
-          <div className="container max-w-lg mx-auto px-4 py-16 pb-8 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-violet-500/10 flex items-center justify-center mx-auto mb-6">
-              <Sparkles className="w-8 h-8 text-violet-400" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-3">
-              {language === "fr"
-                ? "Fonctionnalité réservée aux abonnés"
-                : "Subscribers only feature"}
-            </h2>
-            <p className="text-text-secondary text-sm sm:text-base mb-6 max-w-sm mx-auto">
-              {language === "fr"
-                ? `L'analyse de playlists est disponible à partir du plan ${minPlanName}. Passez au plan ${minPlanName} pour débloquer cette fonctionnalité.`
-                : `Playlist analysis is available from the ${minPlanName} plan. Upgrade to the ${minPlanName} plan to unlock this feature.`}
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              {CONVERSION_TRIGGERS.trialEnabled && (
-                <Link
-                  to="/upgrade?trial=true"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-violet-500/25"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  {language === "fr"
-                    ? `Essayer gratuitement ${CONVERSION_TRIGGERS.trialDays} jours`
-                    : `Try free for ${CONVERSION_TRIGGERS.trialDays} days`}
-                </Link>
-              )}
-              <Link
-                to="/upgrade"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border-subtle text-text-secondary font-medium hover:text-text-primary hover:bg-bg-hover transition-all"
-              >
-                {language === "fr" ? "Voir les plans" : "View plans"}
-              </Link>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   // ═══════════════════════════════════════════════════════════════════
   // ANIMATION DU POURCENTAGE
   // ═══════════════════════════════════════════════════════════════════
@@ -430,6 +382,55 @@ export const PlaylistPage: React.FC = () => {
       }
     }
   }, []);
+
+  // Plan gate AFTER all hooks (rules-of-hooks compliance)
+  if (!hasFeature(normalizedPlan, "playlistsEnabled")) {
+    return (
+      <div className="flex min-h-screen bg-bg-primary">
+        <DoodleBackground variant="video" />
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+        <main className={`flex-1 overflow-x-hidden`}>
+          <div className="container max-w-lg mx-auto px-4 py-16 pb-8 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-violet-500/10 flex items-center justify-center mx-auto mb-6">
+              <Sparkles className="w-8 h-8 text-violet-400" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-3">
+              {language === "fr"
+                ? "Fonctionnalité réservée aux abonnés"
+                : "Subscribers only feature"}
+            </h2>
+            <p className="text-text-secondary text-sm sm:text-base mb-6 max-w-sm mx-auto">
+              {language === "fr"
+                ? `L'analyse de playlists est disponible à partir du plan ${minPlanName}. Passez au plan ${minPlanName} pour débloquer cette fonctionnalité.`
+                : `Playlist analysis is available from the ${minPlanName} plan. Upgrade to the ${minPlanName} plan to unlock this feature.`}
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              {CONVERSION_TRIGGERS.trialEnabled && (
+                <Link
+                  to="/upgrade?trial=true"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-violet-500/25"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {language === "fr"
+                    ? `Essayer gratuitement ${CONVERSION_TRIGGERS.trialDays} jours`
+                    : `Try free for ${CONVERSION_TRIGGERS.trialDays} days`}
+                </Link>
+              )}
+              <Link
+                to="/upgrade"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border-subtle text-text-secondary font-medium hover:text-text-primary hover:bg-bg-hover transition-all"
+              >
+                {language === "fr" ? "Voir les plans" : "View plans"}
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   // ═══════════════════════════════════════════════════════════════════
   // HANDLERS
@@ -577,27 +578,23 @@ export const PlaylistPage: React.FC = () => {
     let attempts = 0;
 
     while (attempts < maxAttempts) {
-      try {
-        const status = (await playlistApi.getStatus(
-          taskId,
-        )) as ExtendedPlaylistTaskStatus;
-        setProgress(status);
+      const status = (await playlistApi.getStatus(
+        taskId,
+      )) as ExtendedPlaylistTaskStatus;
+      setProgress(status);
 
-        if (status.status === "completed") {
-          await refreshUser(true);
-          await loadHistory();
-          return;
-        }
-
-        if (status.status === "failed") {
-          throw new Error(status.error || "Analysis failed");
-        }
-
-        await new Promise((r) => setTimeout(r, 1500)); // 🆕 1.5s au lieu de 2s
-        attempts++;
-      } catch (err) {
-        throw err;
+      if (status.status === "completed") {
+        await refreshUser(true);
+        await loadHistory();
+        return;
       }
+
+      if (status.status === "failed") {
+        throw new Error(status.error || "Analysis failed");
+      }
+
+      await new Promise((r) => setTimeout(r, 1500)); // 🆕 1.5s au lieu de 2s
+      attempts++;
     }
 
     throw new Error("Timeout");

@@ -52,4 +52,4 @@ export { DataTable } from "./DataTable";
 export type { Column } from "./DataTable";
 
 // GouvernailSpinner
-export { GouvernailSpinner } from "./GouvernailSpinner";
+export { default as GouvernailSpinner } from "./GouvernailSpinner";

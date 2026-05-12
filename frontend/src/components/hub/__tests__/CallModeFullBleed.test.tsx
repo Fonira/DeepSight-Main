@@ -3,7 +3,13 @@ import { render } from "@testing-library/react";
 import { CallModeFullBleed } from "../CallModeFullBleed";
 
 vi.mock("../../voice/VoiceOverlay", () => ({
-  VoiceOverlay: ({ isOpen, presentationMode }: any) => (
+  VoiceOverlay: ({
+    isOpen,
+    presentationMode,
+  }: {
+    isOpen?: boolean;
+    presentationMode?: string;
+  }) => (
     <div
       data-testid="voice-overlay-mock"
       data-open={isOpen}

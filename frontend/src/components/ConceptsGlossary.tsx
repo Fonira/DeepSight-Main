@@ -121,7 +121,19 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = memo(
 
       try {
         const data = await videoApi.getConcepts(summaryId);
-        const loadedConcepts = data.concepts || [];
+        const allowedCategories: Concept["category"][] = [
+          "person",
+          "technology",
+          "company",
+          "concept",
+          "other",
+        ];
+        const loadedConcepts: Concept[] = (data.concepts || []).map((c) => ({
+          ...c,
+          category: (allowedCategories as string[]).includes(c.category ?? "")
+            ? (c.category as Concept["category"])
+            : ("other" as Concept["category"]),
+        }));
         setConcepts(loadedConcepts);
         setHasLoaded(true);
 

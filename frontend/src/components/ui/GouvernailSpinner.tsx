@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, type Easing } from "framer-motion";
 
 interface GouvernailSpinnerProps {
   size?: number;
@@ -7,6 +7,10 @@ interface GouvernailSpinnerProps {
   variant?: "spin" | "pulse" | "progress";
   className?: string;
 }
+
+// Cubic-bezier easings typed for framer-motion v11+
+const LINEAR_EASE: Easing = [0, 0, 1, 1];
+const EASE_IN_OUT: Easing = [0.42, 0, 0.58, 1];
 
 /**
  * GouvernailSpinner: Hand-drawn steering wheel spinner
@@ -32,21 +36,21 @@ const GouvernailSpinner = React.forwardRef<
         rotateGroup: {
           initial: { rotate: 0 },
           animate: { rotate: 360 },
-          transition: { duration: 2, repeat: Infinity, linear: true },
+          transition: { duration: 2, repeat: Infinity, ease: LINEAR_EASE },
         },
       },
       pulse: {
         scaleGroup: {
           initial: { scale: 1 },
           animate: { scale: [1, 1.05, 1] },
-          transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
+          transition: { duration: 1.5, repeat: Infinity, ease: EASE_IN_OUT },
         },
       },
       progress: {
         strokeGroup: {
           initial: { strokeDashoffset: 100 },
           animate: { strokeDashoffset: [100, 0, 100] },
-          transition: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+          transition: { duration: 2, repeat: Infinity, ease: EASE_IN_OUT },
         },
       },
     };

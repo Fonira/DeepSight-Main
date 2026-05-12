@@ -30,7 +30,14 @@ const voiceMock = vi.hoisted(() => ({
   restart: vi.fn().mockResolvedValue(undefined),
   voiceSessionId: null,
   sessionStartedAt: null,
-  status: "idle" as const,
+  status: "idle" as
+    | "idle"
+    | "connecting"
+    | "listening"
+    | "thinking"
+    | "speaking"
+    | "error"
+    | "quota_exceeded",
   isSpeaking: false,
   isMuted: false,
   isTalking: false,

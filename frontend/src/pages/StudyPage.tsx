@@ -317,9 +317,9 @@ export const StudyPage: React.FC = () => {
           setHasGeneratedQuiz(true);
           setQuizProgress({ current: 0, total: data.quiz.length, score: 0 });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error loading study data:", err);
-        if (err.status === 402) {
+        if ((err as { status?: number } | null)?.status === 402) {
           setError(
             language === "fr" ? "Crédits insuffisants" : "Insufficient credits",
           );

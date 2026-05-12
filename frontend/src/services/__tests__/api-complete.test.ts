@@ -522,7 +522,14 @@ describe("API Client - Resilience", () => {
       .mockResolvedValueOnce({
         access_token: "token",
         refresh_token: "refresh",
-        user: { id: 1, email: "test@test.com" },
+        user: {
+          id: 1,
+          email: "test@test.com",
+          plan: "free",
+          credits: 150,
+          email_verified: true,
+          created_at: new Date().toISOString(),
+        },
       });
 
     // First attempt fails

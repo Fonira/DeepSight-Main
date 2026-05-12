@@ -195,7 +195,7 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
         const mapped: QuizQuestionData[] = response.quiz.map((q) => ({
           question: q.question,
           options: q.options,
-          correct: q.correct_answer,
+          correct: q.correct_index,
           explanation: q.explanation,
         }));
         setQuizQuestions(mapped);

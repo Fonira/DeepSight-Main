@@ -229,7 +229,7 @@ const generateCitation = (
     case "chicago":
       return `${channel}, "${title}," ${platformName} video, ${date.month} ${date.day}, ${date.year}, ${url}.`;
 
-    case "bibtex":
+    case "bibtex": {
       const bibtexKey = generateBibtexKey(channel, date.year, title);
       return `@online{${bibtexKey},
   author    = {${sanitizeForBibtex(channel)}},
@@ -240,6 +240,7 @@ const generateCitation = (
   urldate   = {${date.iso}},
   note      = {${videoTypeFr}}
 }`;
+    }
 
     default:
       return "";

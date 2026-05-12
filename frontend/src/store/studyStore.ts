@@ -16,48 +16,74 @@ import { gamificationApi } from "../services/api";
 
 // ── Helpers: normalize API responses ──
 
-function normalizeStats(raw: any): StudyStats {
-  const totalXp = raw?.total_xp ?? 0;
-  const level = raw?.level ?? 1;
-  const xpForNext = raw?.xp_for_next_level ?? XP_PER_LEVEL;
+// API responses arrive as opaque JSON; cast through `unknown` and narrow per-field.
+type ApiRaw = Record<string, unknown> | null | undefined;
+
+function asNum(v: unknown, fallback: number): number {
+  return typeof v === "number" ? v : fallback;
+}
+
+function normalizeStats(rawIn: unknown): StudyStats {
+  const raw = (rawIn ?? {}) as ApiRaw as Record<string, unknown>;
+  const totalXp = asNum(raw?.total_xp, 0);
+  const level = asNum(raw?.level, 1);
+  const xpForNext = asNum(raw?.xp_for_next_level, XP_PER_LEVEL);
   const xpInLevel = totalXp - (level - 1) * XP_PER_LEVEL;
   return {
-    ...raw,
+    ...(raw as object),
     total_xp: totalXp,
     level,
     xp_for_next_level: xpForNext,
     xp_progress: Math.max(0, Math.min(xpInLevel, xpForNext)),
-    current_streak: raw?.current_streak ?? 0,
-    longest_streak: raw?.longest_streak ?? 0,
-    total_cards_mastered: raw?.total_cards_mastered ?? 0,
-    total_cards_reviewed: raw?.total_cards_reviewed ?? 0,
-    total_sessions: raw?.total_sessions ?? 0,
-    total_time_seconds: raw?.total_time_seconds ?? 0,
-  };
+    current_streak: asNum(raw?.current_streak, 0),
+    longest_streak: asNum(raw?.longest_streak, 0),
+    total_cards_mastered: asNum(raw?.total_cards_mastered, 0),
+    total_cards_reviewed: asNum(raw?.total_cards_reviewed, 0),
+    total_sessions: asNum(raw?.total_sessions, 0),
+    total_time_seconds: asNum(raw?.total_time_seconds, 0),
+  } as StudyStats;
 }
 
-function normalizeHeatMap(raw: any): HeatMapData {
+function normalizeHeatMap(rawIn: unknown): HeatMapData {
+  const raw = (rawIn ?? {}) as Record<string, unknown>;
   // Backend sends { days: [...] }, frontend uses activities
-  const activities = raw?.days ?? raw?.activities ?? [];
+  const activities =
+    (raw?.days as HeatMapData["days"]) ??
+    (raw?.activities as HeatMapData["activities"]) ??
+    [];
   return { days: activities, activities };
 }
 
-function normalizeBadges(raw: any): BadgesData {
+function normalizeBadges(rawIn: unknown): BadgesData {
+  const raw = (rawIn ?? {}) as Record<string, unknown>;
   // Backend sends { badges: [...flat list...], earned_count, total_count }
   // Frontend wants { earned: [...], locked: [...] }
-  const allBadges: BadgeItem[] = raw?.badges ?? [];
+  const allBadges: BadgeItem[] = (raw?.badges as BadgeItem[]) ?? [];
   const earned = allBadges.filter((b: BadgeItem) => b.earned);
   const locked = allBadges.filter((b: BadgeItem) => !b.earned);
   return {
     earned,
     locked,
-    earned_count: raw?.earned_count ?? earned.length,
-    total_count: raw?.total_count ?? allBadges.length,
+    earned_count: asNum(raw?.earned_count, earned.length),
+    total_count: asNum(raw?.total_count, allBadges.length),
   };
 }
 
-function normalizeVideoMastery(raw: any): VideoMasteryData {
-  const videos = (raw?.videos ?? []).map((v: any) => ({
+type VideoMasteryItem = {
+  summary_id?: number;
+  due_cards?: number;
+  new_cards?: number;
+  title?: string;
+  channel?: string;
+  mastery_percent?: number;
+  total_cards?: number;
+  [key: string]: unknown;
+};
+
+function normalizeVideoMastery(rawIn: unknown): VideoMasteryData {
+  const raw = (rawIn ?? {}) as Record<string, unknown>;
+  const videosIn = (raw?.videos as VideoMasteryItem[]) ?? [];
+  const videos = videosIn.map((v) => ({
     ...v,
     due_cards: v.due_cards ?? 0,
     new_cards: v.new_cards ?? 0,
@@ -66,7 +92,7 @@ function normalizeVideoMastery(raw: any): VideoMasteryData {
     mastery_percent: v.mastery_percent ?? 0,
     total_cards: v.total_cards ?? 0,
   }));
-  return { videos };
+  return { videos } as VideoMasteryData;
 }
 
 interface StudyStore {

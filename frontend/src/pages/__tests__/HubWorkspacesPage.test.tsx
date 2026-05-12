@@ -77,6 +77,7 @@ function makeWorkspace(overrides: Partial<HubWorkspace> = {}): HubWorkspace {
     miro_board_url: null,
     status: "pending",
     error_message: null,
+    canvas_data: null,
     created_at: "2026-05-05T12:00:00Z",
     updated_at: "2026-05-05T12:00:00Z",
     ...overrides,

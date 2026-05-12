@@ -235,6 +235,7 @@ export function useWebSocketChat(
   // ═══════════════════════════════════════════════════════════════════════════
 
   const handleMessage = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WS payload shape varies by message type
     (data: any) => {
       switch (data.type) {
         case MESSAGE_TYPES.CONNECTED:

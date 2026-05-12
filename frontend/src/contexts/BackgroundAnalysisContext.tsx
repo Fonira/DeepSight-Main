@@ -321,14 +321,16 @@ export const BackgroundAnalysisProvider: React.FC<{
         startPolling(taskId, response.task_id, "video", params.onComplete);
 
         return taskId;
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const msg =
+          (error as { message?: string } | null)?.message || "Erreur inconnue";
         setTasks((prev) =>
           prev.map((t) =>
             t.id === taskId
               ? {
                   ...t,
                   status: "failed" as const,
-                  error: error.message || "Erreur inconnue",
+                  error: msg,
                 }
               : t,
           ),
@@ -397,14 +399,16 @@ export const BackgroundAnalysisProvider: React.FC<{
         startPolling(taskId, response.task_id, "playlist");
 
         return taskId;
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const msg =
+          (error as { message?: string } | null)?.message || "Erreur inconnue";
         setTasks((prev) =>
           prev.map((t) =>
             t.id === taskId
               ? {
                   ...t,
                   status: "failed" as const,
-                  error: error.message || "Erreur inconnue",
+                  error: msg,
                 }
               : t,
           ),

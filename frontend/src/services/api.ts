@@ -433,8 +433,8 @@ export interface ReliabilityResult {
   level: "high" | "medium" | "low" | "unknown";
   factors: ReliabilityFactor[];
   summary?: string;
-  freshness?: any;
-  fact_check_lite?: any;
+  freshness?: Record<string, unknown>;
+  fact_check_lite?: Record<string, unknown>;
   analysis_type?: string;
   user_plan?: string;
   full_factcheck_available?: boolean;

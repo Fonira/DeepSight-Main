@@ -837,7 +837,7 @@ export const History: React.FC = () => {
       const pollInterval = setInterval(async () => {
         try {
           const status = await videoApi.getTaskStatus(response.task_id);
-          if (status.status === "completed" || status.status === "done") {
+          if (status.status === "completed") {
             clearInterval(pollInterval);
             upgradeIntervalRef.current = null;
             // Reload the summary
@@ -849,7 +849,7 @@ export const History: React.FC = () => {
             });
             setUpgradeLoading(false);
             setUpgradeTaskId(null);
-          } else if (status.status === "error" || status.status === "failed") {
+          } else if (status.status === "failed") {
             clearInterval(pollInterval);
             upgradeIntervalRef.current = null;
             setUpgradeLoading(false);
@@ -2666,6 +2666,18 @@ const PlaylistDetailView: React.FC<{
   const [metaShowCitationModal, setMetaShowCitationModal] = useState(false);
   const [metaShowStudyToolsModal, setMetaShowStudyToolsModal] = useState(false);
   const [metaShowKeywordsModal, setMetaShowKeywordsModal] = useState(false);
+
+  // 📦 Portal Export Menu — position helper (local to PlaylistDetailView)
+  const calcExportMenuPos = useCallback(
+    (btnRef: React.RefObject<HTMLButtonElement | null>) => {
+      if (btnRef.current) {
+        const rect = btnRef.current.getBoundingClientRect();
+        return { top: rect.bottom + 4, left: Math.max(8, rect.right - 176) };
+      }
+      return { top: 0, left: 0 };
+    },
+    [],
+  );
 
   // 📦 Click-outside + scroll/resize handler for playlist export menus
   useEffect(() => {

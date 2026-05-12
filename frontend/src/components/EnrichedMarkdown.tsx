@@ -307,8 +307,17 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
     return "";
   };
 
+  // react-markdown passes a `node` prop plus arbitrary attrs to each renderer.
+  type MdProps = {
+    children?: React.ReactNode;
+    node?: unknown;
+    [key: string]: unknown;
+  };
+  type CodeProps = MdProps & { inline?: boolean };
+  type LinkProps = MdProps & { href?: string };
+
   return {
-    p: ({ children, ...props }: any) => (
+    p: ({ children, node: _node, ...props }: MdProps) => (
       <p
         {...props}
         style={{ margin: "0.75em 0", lineHeight: 1.75, color: "#e2e8f0" }}
@@ -318,7 +327,7 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
     ),
 
     // Headers with auto-emojis
-    h1: ({ children, ...props }: any) => {
+    h1: ({ children, node: _node, ...props }: MdProps) => {
       const emoji = getHeaderEmoji(getTextContent(children));
       return (
         <h1
@@ -339,7 +348,7 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
         </h1>
       );
     },
-    h2: ({ children, ...props }: any) => {
+    h2: ({ children, node: _node, ...props }: MdProps) => {
       const emoji = getHeaderEmoji(getTextContent(children));
       return (
         <h2
@@ -358,7 +367,7 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
         </h2>
       );
     },
-    h3: ({ children, ...props }: any) => (
+    h3: ({ children, node: _node, ...props }: MdProps) => (
       <h3
         {...props}
         style={{
@@ -372,7 +381,7 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
         {enrichChildren(children)}
       </h3>
     ),
-    h4: ({ children, ...props }: any) => (
+    h4: ({ children, node: _node, ...props }: MdProps) => (
       <h4
         {...props}
         style={{
@@ -387,7 +396,7 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
     ),
 
     // Lists
-    ul: ({ children, ...props }: any) => (
+    ul: ({ children, node: _node, ...props }: MdProps) => (
       <ul
         {...props}
         style={{
@@ -399,12 +408,12 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
         {children}
       </ul>
     ),
-    ol: ({ children, ...props }: any) => (
+    ol: ({ children, node: _node, ...props }: MdProps) => (
       <ol {...props} style={{ margin: "0.5em 0", paddingLeft: "1.5em" }}>
         {children}
       </ol>
     ),
-    li: ({ children, ...props }: any) => (
+    li: ({ children, node: _node, ...props }: MdProps) => (
       <li
         {...props}
         style={{ margin: "0.3em 0", lineHeight: 1.7, color: "#e2e8f0" }}
@@ -414,19 +423,19 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
     ),
 
     // Emphasis
-    strong: ({ children, ...props }: any) => (
+    strong: ({ children, node: _node, ...props }: MdProps) => (
       <strong {...props} style={{ fontWeight: 700, color: "#f0f0ff" }}>
         {enrichChildren(children)}
       </strong>
     ),
-    em: ({ children, ...props }: any) => (
+    em: ({ children, node: _node, ...props }: MdProps) => (
       <em {...props} style={{ fontStyle: "italic", color: "#94a3b8" }}>
         {enrichChildren(children)}
       </em>
     ),
 
     // Blockquote — violet accent
-    blockquote: ({ children, ...props }: any) => (
+    blockquote: ({ children, node: _node, ...props }: MdProps) => (
       <blockquote
         {...props}
         style={{
@@ -444,7 +453,7 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
     ),
 
     // Code
-    code: ({ inline, children, ...props }: any) => {
+    code: ({ inline, children, node: _node, ...props }: CodeProps) => {
       if (inline) {
         return (
           <code
@@ -473,7 +482,7 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
     },
 
     // Links
-    a: ({ href, children, ...props }: any) => (
+    a: ({ href, children, node: _node, ...props }: LinkProps) => (
       <a
         href={href}
         target="_blank"
@@ -490,14 +499,14 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
     ),
 
     // Table
-    table: ({ children, ...props }: any) => (
+    table: ({ children, node: _node, ...props }: MdProps) => (
       <div style={{ overflowX: "auto", margin: "1em 0" }}>
         <table {...props} style={{ borderCollapse: "collapse", width: "100%" }}>
           {children}
         </table>
       </div>
     ),
-    th: ({ children, ...props }: any) => (
+    th: ({ children, node: _node, ...props }: MdProps) => (
       <th
         {...props}
         style={{
@@ -511,7 +520,7 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
         {enrichChildren(children)}
       </th>
     ),
-    td: ({ children, ...props }: any) => (
+    td: ({ children, node: _node, ...props }: MdProps) => (
       <td
         {...props}
         style={{
@@ -524,7 +533,7 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
     ),
 
     // HR
-    hr: (props: any) => (
+    hr: ({ node: _node, ...props }: MdProps) => (
       <hr
         {...props}
         style={{

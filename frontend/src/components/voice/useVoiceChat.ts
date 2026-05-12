@@ -557,7 +557,7 @@ export function useVoiceChat({
               source: "user" | "ai";
               type?: string;
               tool_name?: string;
-            } & Record<string, any>,
+            } & Record<string, unknown>,
           ) => {
             if (!isMountedRef.current) return;
             // Detect tool calls for VoiceToolIndicator

@@ -550,7 +550,9 @@ const LandingPage: React.FC = () => {
       setGuestRemaining(remaining);
       try {
         localStorage.setItem("ds_guest_count", String(newCount));
-      } catch {}
+      } catch {
+        // localStorage unavailable — ignore
+      }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
 
@@ -563,7 +565,9 @@ const LandingPage: React.FC = () => {
         setGuestRemaining(0);
         try {
           localStorage.setItem("ds_guest_count", String(MAX_GUEST_ANALYSES));
-        } catch {}
+        } catch {
+          // localStorage unavailable — ignore
+        }
       }
       // Transcript unavailable
       else if (

@@ -153,8 +153,8 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         setShareCopied(true);
         setTimeout(() => setShareCopied(false), 2500);
       }
-    } catch (err: any) {
-      if (err?.name === "AbortError") return;
+    } catch (err: unknown) {
+      if ((err as { name?: string } | null)?.name === "AbortError") return;
       // Fallback clipboard
       try {
         const { share_url } = await shareApi.createShareLink(
@@ -198,7 +198,9 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
       setKeywordsLoading(true);
       videoApi
         .getEnrichedConcepts(selectedSummary.id)
-        .then((data: any) => setKeywordsConcepts(data.concepts || []))
+        .then((data: { concepts?: unknown[] }) =>
+          setKeywordsConcepts((data.concepts as never[]) || []),
+        )
         .catch(() => setKeywordsConcepts([]))
         .finally(() => setKeywordsLoading(false));
     }

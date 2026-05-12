@@ -142,9 +142,9 @@ const VideoCard: React.FC<{
 
       {/* Quality Score Badge */}
       <div
-        className={`absolute top-2 right-2 z-10 px-2 py-1 rounded-lg text-sm font-bold ${getQualityColor(video.quality_score)}`}
+        className={`absolute top-2 right-2 z-10 px-2 py-1 rounded-lg text-sm font-bold ${getQualityColor(video.quality_score ?? 0)}`}
       >
-        {Math.round(video.quality_score)}
+        {Math.round(video.quality_score ?? 0)}
       </div>
 
       {/* Thumbnail */}

@@ -176,9 +176,10 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
         }
 
         setLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Mermaid render error:", err);
-        setError(err.message || "Erreur de rendu du mindmap");
+        const msg = (err as { message?: string } | null)?.message;
+        setError(msg || "Erreur de rendu du mindmap");
         setLoading(false);
       }
     };

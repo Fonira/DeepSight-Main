@@ -453,6 +453,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({
             : c.definition),
         wiki_url: c.wiki_url || null,
         confidence: "high",
+        image_url: null,
       }));
 
       // Injecter en tête du cache (prioritaires)

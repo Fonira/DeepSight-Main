@@ -51,7 +51,7 @@ interface FactCheckLiteData {
 }
 
 interface ReliabilityResult {
-  freshness?: any;
+  freshness?: Record<string, unknown>;
   fact_check_lite?: FactCheckLiteData;
   analysis_type?: string;
   user_plan?: string;

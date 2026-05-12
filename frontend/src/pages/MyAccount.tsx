@@ -137,10 +137,11 @@ export const MyAccount: React.FC = () => {
       showToast(tr("Compte supprimé", "Account deleted"), "success");
       logout();
       navigate("/");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const e = error as { message?: string; detail?: string } | null;
       const message =
-        error?.message ||
-        error?.detail ||
+        e?.message ||
+        e?.detail ||
         tr("Erreur lors de la suppression", "Error deleting account");
       showToast(message, "error");
     } finally {
@@ -163,9 +164,10 @@ export const MyAccount: React.FC = () => {
         ),
         "success",
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const e = error as { message?: string } | null;
       const message =
-        error?.message ||
+        e?.message ||
         tr("Erreur lors de l'export", "Error exporting data");
       showToast(message, "error");
     } finally {
@@ -248,9 +250,10 @@ export const MyAccount: React.FC = () => {
         .getMyPlan("web")
         .then(setMyPlan)
         .catch(() => {});
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const e = error as { message?: string } | null;
       const message =
-        error?.message ||
+        e?.message ||
         tr("Erreur lors de l'annulation", "Error cancelling subscription");
       showToast(message, "error");
     } finally {

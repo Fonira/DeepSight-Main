@@ -86,7 +86,12 @@ Pillow>=10.0.0           # Image processing (thumbnail WebP conversion)
 # ─────────────────────────────────────────────────────────────────────────────────
 # 🤖 AI MODELS
 # ─────────────────────────────────────────────────────────────────────────────────
-mistralai>=1.0.0
+# Install from GitHub tag v2.4.5 — the canonical PyPI release of `mistralai` is currently
+# QUARANTINED by PyPI (status: quarantined, /pypi/mistralai/json → 404, simple index empty),
+# so any version specifier resolves to "from versions: none" on Python 3.11. Prod
+# (repo-backend-1) already runs 2.4.5 from a pre-quarantine cache; new builds and CI need
+# this fallback. Switch back to `mistralai==2.4.5` once PyPI lifts the quarantine.
+mistralai @ git+https://github.com/mistralai/client-python.git@v2.4.5
 
 # ─────────────────────────────────────────────────────────────────────────────────
 # 🎙️ AUDIO TRANSCRIPTION (optional - for Whisper fallback)

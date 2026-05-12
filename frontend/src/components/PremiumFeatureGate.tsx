@@ -17,14 +17,61 @@ import {
   PlanId,
   PlanFeatures,
   PlanLimits,
-  hasFeature,
+  PLAN_FEATURES,
+  PLAN_HIERARCHY,
   getLimit,
   isUnlimited,
   getPlanInfo,
-  getMinPlanForFeature,
   normalizePlanId,
 } from "../config/planPrivileges";
 import { UpgradePromptModal } from "./UpgradePromptModal";
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎨 HELPERS — Pricing v2 (PlanInfo n'a plus gradient/killerFeature/priceDisplay)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Gradient Tailwind par plan (remplace PlanInfo.gradient supprimé en v2) */
+const PLAN_GRADIENT: Record<PlanId, string> = {
+  free: "from-gray-500 to-gray-600",
+  pro: "from-blue-500 to-indigo-600",
+  expert: "from-violet-500 to-purple-600",
+};
+
+/** Killer feature par plan (remplace PlanInfo.killerFeature supprimé en v2) */
+const PLAN_KILLER_FEATURE: Record<PlanId, { fr: string; en: string }> = {
+  free: { fr: "Gratuit", en: "Free" },
+  pro: {
+    fr: "Flashcards & mind maps",
+    en: "Flashcards & mind maps",
+  },
+  expert: {
+    fr: "Toutes les fonctionnalités",
+    en: "All features",
+  },
+};
+
+/** Affichage du prix par plan (remplace PlanInfo.priceDisplay supprimé en v2) */
+function formatPriceDisplay(plan: PlanId, lang: "fr" | "en"): string {
+  const info = getPlanInfo(plan);
+  if (info.priceMonthly === 0) return lang === "fr" ? "Gratuit" : "Free";
+  const euros = (info.priceMonthly / 100).toFixed(2);
+  const formatted = lang === "fr" ? euros.replace(".", ",") : euros;
+  const suffix = lang === "fr" ? "€/mois" : "€/mo";
+  return `${formatted} ${suffix}`;
+}
+
+/** Check si un plan a une feature (utilise PLAN_FEATURES boolean flags) */
+function planHasFeature(plan: PlanId, feature: keyof PlanFeatures): boolean {
+  return Boolean(PLAN_FEATURES[plan][feature]);
+}
+
+/** Trouve le plan minimal qui débloque une feature (parcourt PLAN_HIERARCHY) */
+function minPlanForFeature(feature: keyof PlanFeatures): PlanId {
+  for (const plan of PLAN_HIERARCHY) {
+    if (planHasFeature(plan, feature)) return plan;
+  }
+  return "expert";
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -93,7 +140,7 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
   const checkAccess = (): boolean => {
     // Check by feature
     if (feature) {
-      return hasFeature(userPlan, feature);
+      return planHasFeature(userPlan, feature);
     }
 
     // Check by limit
@@ -104,11 +151,9 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
       return currentUsage < maxLimit;
     }
 
-    // Check by required plan
+    // Check by required plan (Pricing v2 : pas de `order`, on utilise PLAN_HIERARCHY)
     if (requiredPlan) {
-      const userPlanInfo = getPlanInfo(userPlan);
-      const requiredPlanInfo = getPlanInfo(requiredPlan);
-      return userPlanInfo.order >= requiredPlanInfo.order;
+      return PLAN_HIERARCHY.indexOf(userPlan) >= PLAN_HIERARCHY.indexOf(requiredPlan);
     }
 
     // Default: allow access
@@ -121,21 +166,22 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
   // 🎯 GET REQUIRED PLAN INFO
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const getRequiredPlanInfo = () => {
+  const getRequiredPlan = (): PlanId => {
     if (feature) {
-      const minPlan = getMinPlanForFeature(feature);
-      return getPlanInfo(minPlan);
+      return minPlanForFeature(feature);
     }
     if (requiredPlan) {
-      return getPlanInfo(requiredPlan);
+      return requiredPlan;
     }
     // For limits, suggest the next plan up
-    const planOrder: PlanId[] = ["free", "pro"];
-    const currentIndex = planOrder.indexOf(userPlan);
-    const nextPlan =
-      planOrder[Math.min(currentIndex + 1, planOrder.length - 1)];
-    return getPlanInfo(nextPlan);
+    const currentIndex = PLAN_HIERARCHY.indexOf(userPlan);
+    return (
+      PLAN_HIERARCHY[Math.min(currentIndex + 1, PLAN_HIERARCHY.length - 1)] ??
+      "expert"
+    );
   };
+
+  const getRequiredPlanInfo = () => getPlanInfo(getRequiredPlan());
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🚀 HANDLERS
@@ -151,6 +197,17 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // 🔔 SIDE EFFECTS — DOIT être appelé inconditionnellement (rules-of-hooks)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Call onBlocked callback
+  React.useEffect(() => {
+    if (!hasAccess) {
+      onBlocked?.();
+    }
+  }, [hasAccess, onBlocked]);
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // ✅ RENDER: ACCESS GRANTED
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -161,13 +218,6 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔒 RENDER: ACCESS DENIED
   // ═══════════════════════════════════════════════════════════════════════════
-
-  // Call onBlocked callback
-  React.useEffect(() => {
-    if (!hasAccess) {
-      onBlocked?.();
-    }
-  }, [hasAccess, onBlocked]);
 
   // Hide completely
   if (fallback === "hide") {
@@ -271,15 +321,27 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
 
   const classes = sizeClasses[size];
 
+  // Pricing v2 : PlanInfo a `name` / `nameEn` (plus de `{ fr, en }` imbriqué)
+  const requiredPlanId: PlanId = getRequiredPlan();
+  const requiredPlanName =
+    language === "fr" ? requiredPlanInfo.name : requiredPlanInfo.nameEn;
+  const requiredPlanGradient = PLAN_GRADIENT[requiredPlanId];
+  const killerFeature =
+    PLAN_KILLER_FEATURE[requiredPlanId][language === "fr" ? "fr" : "en"];
+  const priceDisplay = formatPriceDisplay(
+    requiredPlanId,
+    language === "fr" ? "fr" : "en",
+  );
+
   // Generate default title and description
   const defaultTitle = t(
-    `Fonctionnalité ${requiredPlanInfo.name.fr}`,
-    `${requiredPlanInfo.name.en} Feature`,
+    `Fonctionnalité ${requiredPlanInfo.name}`,
+    `${requiredPlanInfo.nameEn} Feature`,
   );
 
   const defaultDescription = t(
-    `Cette fonctionnalité est disponible à partir du plan ${requiredPlanInfo.name.fr}.`,
-    `This feature is available from the ${requiredPlanInfo.name.en} plan.`,
+    `Cette fonctionnalité est disponible à partir du plan ${requiredPlanInfo.name}.`,
+    `This feature is available from the ${requiredPlanInfo.nameEn} plan.`,
   );
 
   const displayTitle = title || defaultTitle;
@@ -297,7 +359,7 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
             className={`bg-bg-elevated border border-border-default rounded-2xl shadow-xl ${classes.container} max-w-sm text-center`}
           >
             <div
-              className={`${classes.icon} mx-auto mb-4 rounded-2xl bg-gradient-to-br ${requiredPlanInfo.gradient} flex items-center justify-center`}
+              className={`${classes.icon} mx-auto mb-4 rounded-2xl bg-gradient-to-br ${requiredPlanGradient} flex items-center justify-center`}
             >
               <Crown className={`${classes.iconInner} text-white`} />
             </div>
@@ -309,11 +371,10 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
             </p>
             <button
               onClick={handleUpgradeClick}
-              className={`${classes.button} w-full flex items-center justify-center gap-2 bg-gradient-to-r ${requiredPlanInfo.gradient} text-white font-medium rounded-xl hover:opacity-90 transition-opacity`}
+              className={`${classes.button} w-full flex items-center justify-center gap-2 bg-gradient-to-r ${requiredPlanGradient} text-white font-medium rounded-xl hover:opacity-90 transition-opacity`}
             >
               <Sparkles className="w-4 h-4" />
-              {t("Passer au plan", "Upgrade to")}{" "}
-              {requiredPlanInfo.name[language === "fr" ? "fr" : "en"]}
+              {t("Passer au plan", "Upgrade to")} {requiredPlanName}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -330,10 +391,10 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
       <div className="flex flex-col items-center text-center">
         {/* Icon with gradient background */}
         <div
-          className={`${classes.icon} mb-4 rounded-2xl bg-gradient-to-br ${requiredPlanInfo.gradient} bg-opacity-10 flex items-center justify-center relative overflow-hidden`}
+          className={`${classes.icon} mb-4 rounded-2xl bg-gradient-to-br ${requiredPlanGradient} bg-opacity-10 flex items-center justify-center relative overflow-hidden`}
         >
           <div
-            className={`absolute inset-0 bg-gradient-to-br ${requiredPlanInfo.gradient} opacity-20`}
+            className={`absolute inset-0 bg-gradient-to-br ${requiredPlanGradient} opacity-20`}
           />
           <Lock className={`${classes.iconInner} text-white relative z-10`} />
         </div>
@@ -352,29 +413,27 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
 
         {/* Plan badge */}
         <div
-          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${requiredPlanInfo.gradient} bg-opacity-10 mb-4`}
+          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${requiredPlanGradient} bg-opacity-10 mb-4`}
         >
           <span
-            className={`text-xs font-medium bg-gradient-to-r ${requiredPlanInfo.gradient} bg-clip-text text-transparent`}
+            className={`text-xs font-medium bg-gradient-to-r ${requiredPlanGradient} bg-clip-text text-transparent`}
           >
-            {requiredPlanInfo.killerFeature[language === "fr" ? "fr" : "en"]}
+            {killerFeature}
           </span>
         </div>
 
         {/* Upgrade button */}
         <button
           onClick={handleUpgradeClick}
-          className={`${classes.button} flex items-center gap-2 bg-gradient-to-r ${requiredPlanInfo.gradient} text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-lg`}
+          className={`${classes.button} flex items-center gap-2 bg-gradient-to-r ${requiredPlanGradient} text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-lg`}
         >
           <Sparkles className="w-4 h-4" />
-          {t("Débloquer avec", "Unlock with")}{" "}
-          {requiredPlanInfo.name[language === "fr" ? "fr" : "en"]}
+          {t("Débloquer avec", "Unlock with")} {requiredPlanName}
         </button>
 
         {/* Price hint */}
         <p className="mt-3 text-xs text-text-tertiary">
-          {t("À partir de", "From")}{" "}
-          {requiredPlanInfo.priceDisplay[language === "fr" ? "fr" : "en"]}
+          {t("À partir de", "From")} {priceDisplay}
         </p>
       </div>
     </div>
@@ -417,9 +476,9 @@ export function useFeatureAccess(
 
   // Check by feature
   if (feature) {
-    hasAccess = hasFeature(userPlan, feature);
+    hasAccess = planHasFeature(userPlan, feature);
     if (!hasAccess) {
-      requiredPlanResult = getMinPlanForFeature(feature);
+      requiredPlanResult = minPlanForFeature(feature);
     }
   }
 
@@ -436,11 +495,10 @@ export function useFeatureAccess(
     }
   }
 
-  // Check by required plan
+  // Check by required plan (Pricing v2 : pas de `order`, on utilise PLAN_HIERARCHY)
   if (requiredPlan) {
-    const userPlanInfo = getPlanInfo(userPlan);
-    const requiredPlanInfo = getPlanInfo(requiredPlan);
-    hasAccess = userPlanInfo.order >= requiredPlanInfo.order;
+    hasAccess =
+      PLAN_HIERARCHY.indexOf(userPlan) >= PLAN_HIERARCHY.indexOf(requiredPlan);
     if (!hasAccess) {
       requiredPlanResult = requiredPlan;
     }

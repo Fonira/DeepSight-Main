@@ -233,6 +233,7 @@ const ChatPage: React.FC = () => {
         setIsLoadingMessages(true);
         const history = await chatApi.getHistory(selectedAnalysis.id);
         const mapped: ChatMessage[] = (history || []).map(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy chat history shape from API
           (msg: any, i: number) => {
             // Spec #1 — backend renvoie source/voice_speaker/voice_session_id
             // Rétrocompat : si source manquant, default "text".
@@ -391,7 +392,7 @@ const ChatPage: React.FC = () => {
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("[ChatPage] Chat error:", err);
         setMessages((prev) => [
           ...prev,
