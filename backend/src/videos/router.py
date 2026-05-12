@@ -32,7 +32,8 @@ from auth.dependencies import (
     require_feature,
     get_current_admin,
 )
-from core.config import PLAN_LIMITS, CATEGORIES, get_mistral_key
+from core.config import CATEGORIES, get_mistral_key
+from billing.plan_config import get_limits
 from core.http_client import get_proxied_client, shared_http_client
 from core.logging import logger
 from core.moderation_service import moderate_text
@@ -872,11 +873,11 @@ async def analyze_video(
         request.mode = "expert"
 
     # Déterminer le modèle à utiliser
-    plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(current_user.plan)
     model = request.model or plan_limits.get("default_model", "mistral-small-2603")
 
     # Vérifier que le modèle est autorisé
-    allowed_models = plan_limits.get("models", ["mistral-small-2603"])
+    allowed_models = plan_limits.get("allowed_models", ["mistral-small-2603"])
     if model not in allowed_models:
         model = allowed_models[0]  # Fallback au modèle par défaut
 
@@ -1142,11 +1143,11 @@ async def analyze_video_v2(
             raise HTTPException(status_code=400, detail={"code": "invalid_url", "message": "Invalid YouTube URL"})
 
     # Déterminer le modèle
-    plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(current_user.plan)
     model = request.model or plan_limits.get("default_model", "mistral-small-2603")
 
     # Vérifier que le modèle est autorisé
-    allowed_models = plan_limits.get("models", ["mistral-small-2603"])
+    allowed_models = plan_limits.get("allowed_models", ["mistral-small-2603"])
     if model not in allowed_models:
         model = allowed_models[0]
 
@@ -1886,11 +1887,11 @@ async def analyze_video_v2_1(
             raise HTTPException(status_code=400, detail={"code": "invalid_url", "message": "Invalid YouTube URL"})
 
     # Déterminer le modèle
-    plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(current_user.plan)
     model = request.model or plan_limits.get("default_model", "mistral-small-2603")
 
     # Vérifier que le modèle est autorisé
-    allowed_models = plan_limits.get("models", ["mistral-small-2603"])
+    allowed_models = plan_limits.get("allowed_models", ["mistral-small-2603"])
     if model not in allowed_models:
         model = allowed_models[0]
 
@@ -3155,12 +3156,12 @@ async def _analyze_video_background_v6(
             _task_store[task_id]["progress"] = 55
 
             # Déterminer le modèle selon le plan
-            plan_limits = PLAN_LIMITS.get(user_plan, PLAN_LIMITS["free"])
+            plan_limits = get_limits(user_plan)
             if not model:
                 model = plan_limits.get("default_model", "mistral-small-2603")
 
             # Vérifier que le modèle est autorisé
-            allowed_models = plan_limits.get("models", ["mistral-small-2603"])
+            allowed_models = plan_limits.get("allowed_models", ["mistral-small-2603"])
             if model not in allowed_models:
                 model = allowed_models[0]
 
@@ -5400,7 +5401,7 @@ async def _analyze_images_background(
                             _user = (await _db.execute(_select(User).where(User.id == user_id))).scalar_one_or_none()
                             _plan = _user.plan if _user else "free"
 
-                        _plan_limits = PLAN_LIMITS.get(_plan, PLAN_LIMITS["free"])
+                        _plan_limits = get_limits(_plan)
                         _model = _plan_limits.get("default_model", "mistral-small-2603")
                         _credit_cost = get_credit_cost("video_analysis", _model) if SECURITY_AVAILABLE else 1
 
