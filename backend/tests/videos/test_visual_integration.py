@@ -5,8 +5,11 @@ Couvre :
 - Helpers purs : _current_period, get_quota_for_plan, format_visual_context_for_prompt
 - can_consume : Free refusé, Expert OK illimité, Pro avec/sans quota dépassé
 - maybe_enrich_with_visual : flag off, not_youtube, plan_not_allowed, happy path
+- Mode ultra opt-in (Sprint C 2026-05-11) : grille adaptative + select_mode
+- Logs WARNING explicites sur tous les silent skips (Sprint C 2026-05-11)
 """
 
+import logging
 import os
 import sys
 from datetime import datetime
@@ -628,3 +631,412 @@ class TestVisualModeByPlan:
         assert result["status"] == STATUS_OK
         assert result["visual_mode"] == "default"
         assert result["credits_consumed"] == 2
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🚀 Mode ULTRA opt-in (Sprint C 2026-05-11)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestUltraModeConstants:
+    """Vérifie que le mode ultra est correctement câblé dans les constantes."""
+
+    def test_ultra_in_credits_cost_map(self):
+        from videos.visual_integration import VISUAL_CREDITS_COST_BY_MODE
+
+        assert VISUAL_CREDITS_COST_BY_MODE["ultra"] == 4
+        assert (
+            VISUAL_CREDITS_COST_BY_MODE["default"]
+            < VISUAL_CREDITS_COST_BY_MODE["expert"]
+            < VISUAL_CREDITS_COST_BY_MODE["ultra"]
+        )
+
+    def test_ultra_in_max_frames_cap_map(self):
+        from videos.visual_integration import MAX_FRAMES_CAP_BY_MODE
+
+        assert MAX_FRAMES_CAP_BY_MODE["ultra"] == 96
+        assert (
+            MAX_FRAMES_CAP_BY_MODE["default"]
+            < MAX_FRAMES_CAP_BY_MODE["expert"]
+            < MAX_FRAMES_CAP_BY_MODE["ultra"]
+        )
+
+    def test_ultra_grid_present_in_frame_extractor(self):
+        from videos.frame_extractor import FRAME_BUDGET_GRID
+
+        assert "ultra" in FRAME_BUDGET_GRID
+        ultra = FRAME_BUDGET_GRID["ultra"]
+        # 7 paliers documentés
+        assert len(ultra) == 7
+        durations = [d for d, _ in ultra]
+        frames = [f for _, f in ultra]
+        assert durations == [
+            1800.0,
+            3600.0,
+            7200.0,
+            10800.0,
+            14400.0,
+            21600.0,
+            float("inf"),
+        ]
+        assert frames == [16, 24, 32, 48, 64, 80, 96]
+
+    def test_ultra_grid_compute_frame_budget_2h(self):
+        """Vidéo 2h exactement → 32 frames en mode ultra."""
+        from videos.frame_extractor import compute_frame_budget
+
+        _, target_frames, _ = compute_frame_budget(7200.0, mode="ultra")
+        assert target_frames == 32
+
+    def test_ultra_grid_compute_frame_budget_3h(self):
+        """Vidéo 3h → palier 48 frames en mode ultra."""
+        from videos.frame_extractor import compute_frame_budget
+
+        _, target_frames, _ = compute_frame_budget(10000.0, mode="ultra")
+        assert target_frames == 48
+
+    def test_ultra_grid_compute_frame_budget_7h(self):
+        """Vidéo 7h → cap 96 frames en mode ultra (palier float inf)."""
+        from videos.frame_extractor import compute_frame_budget
+
+        _, target_frames, _ = compute_frame_budget(25200.0, mode="ultra")
+        assert target_frames == 96
+
+
+class TestSelectModeForPlanUltra:
+    """Logique d'activation du mode ultra."""
+
+    def test_expert_long_video_flag_off_stays_expert(self, monkeypatch):
+        """Expert + vidéo 3h + flag OFF → reste en 'expert'."""
+        monkeypatch.setattr("core.config.VISUAL_ULTRA_ENABLED", False, raising=False)
+        from videos.visual_integration import _select_mode_for_plan
+
+        assert _select_mode_for_plan("expert", duration_s=10800.0) == "expert"
+
+    def test_expert_long_video_flag_on_returns_ultra(self, monkeypatch):
+        """Expert + vidéo >2h + flag ON → 'ultra'."""
+        monkeypatch.setattr("core.config.VISUAL_ULTRA_ENABLED", True, raising=False)
+        from videos.visual_integration import _select_mode_for_plan
+
+        assert _select_mode_for_plan("expert", duration_s=7300.0) == "ultra"
+        assert _select_mode_for_plan("EXPERT", duration_s=14400.0) == "ultra"
+
+    def test_expert_short_video_flag_on_stays_expert(self, monkeypatch):
+        """Expert + vidéo ≤2h + flag ON → 'expert' (sous le seuil ultra)."""
+        monkeypatch.setattr("core.config.VISUAL_ULTRA_ENABLED", True, raising=False)
+        from videos.visual_integration import _select_mode_for_plan
+
+        # Pile au seuil → reste expert (strict supérieur requis)
+        assert _select_mode_for_plan("expert", duration_s=7200.0) == "expert"
+        assert _select_mode_for_plan("expert", duration_s=3600.0) == "expert"
+
+    def test_expert_no_duration_hint_stays_expert(self, monkeypatch):
+        """Expert sans duration_s connue → 'expert' (back-compat)."""
+        monkeypatch.setattr("core.config.VISUAL_ULTRA_ENABLED", True, raising=False)
+        from videos.visual_integration import _select_mode_for_plan
+
+        assert _select_mode_for_plan("expert", duration_s=None) == "expert"
+        assert _select_mode_for_plan("expert") == "expert"
+
+    def test_pro_long_video_flag_on_stays_default(self, monkeypatch):
+        """Pro + vidéo très longue + flag ON → 'default' (jamais ultra pour Pro)."""
+        monkeypatch.setattr("core.config.VISUAL_ULTRA_ENABLED", True, raising=False)
+        from videos.visual_integration import _select_mode_for_plan
+
+        assert _select_mode_for_plan("pro", duration_s=14400.0) == "default"
+
+    def test_ultra_min_duration_threshold_constant(self):
+        from videos.visual_integration import ULTRA_MIN_DURATION_S
+
+        # 2 heures = seuil documenté
+        assert ULTRA_MIN_DURATION_S == 7200.0
+
+
+class TestMaybeEnrichUltraPath:
+    """Bout-en-bout du flow avec mode ultra activé."""
+
+    @pytest.mark.asyncio
+    async def test_ultra_propagates_to_extraction_and_analyzer(self, monkeypatch):
+        """Plan Expert + vidéo 3h + flag ON + duration_hint → mode='ultra', cap=96, credits=4."""
+        monkeypatch.setattr("core.config.VISUAL_ULTRA_ENABLED", True, raising=False)
+        from videos import visual_integration as vi
+        from videos.visual_integration import STATUS_OK
+        from videos.frame_extractor import FrameExtractionResult
+        from videos.visual_analyzer import VisualAnalysis
+
+        db = _make_db_with_no_quota_row()
+        user = _make_user("expert")
+
+        fake_extraction = FrameExtractionResult(
+            workdir="/tmp/fake_ultra",
+            frame_paths=[f"/tmp/fake_ultra/f{i}.jpg" for i in range(10)],
+            frame_timestamps=[float(i * 1080) for i in range(10)],
+            duration_s=10800.0,
+            fps_used=0.001,
+            frame_count=10,
+            width=320,
+            long_video_warning=True,
+        )
+        fake_extraction.cleanup = MagicMock()
+
+        extract_kwargs = {}
+        analyze_kwargs = {}
+
+        async def fake_extract(*args, **kwargs):
+            extract_kwargs.update(kwargs)
+            return fake_extraction
+
+        async def fake_analyze(*args, **kwargs):
+            analyze_kwargs.update(kwargs)
+            return VisualAnalysis(
+                visual_hook="ultra hook",
+                visual_structure="long_lecture",
+                model_used="pixtral-large-2411",
+                frames_analyzed=10,
+            )
+
+        monkeypatch.setattr(vi, "extract_storyboard_frames", fake_extract)
+        monkeypatch.setattr(vi, "analyze_frames", fake_analyze)
+
+        result = await vi.maybe_enrich_with_visual(
+            db,
+            user,
+            "https://www.youtube.com/watch?v=longvideoid1",
+            duration_hint=10800.0,
+        )
+
+        assert result["status"] == STATUS_OK
+        assert result["visual_mode"] == "ultra"
+        assert result["credits_consumed"] == 4
+        assert extract_kwargs.get("mode") == "ultra"
+        assert analyze_kwargs.get("max_frames_cap") == 96
+
+    @pytest.mark.asyncio
+    async def test_no_duration_hint_falls_back_to_expert(self, monkeypatch):
+        """Pas de duration_hint → expert (pas ultra) même si flag ON."""
+        monkeypatch.setattr("core.config.VISUAL_ULTRA_ENABLED", True, raising=False)
+        from videos import visual_integration as vi
+        from videos.visual_integration import STATUS_OK
+        from videos.frame_extractor import FrameExtractionResult
+        from videos.visual_analyzer import VisualAnalysis
+
+        db = _make_db_with_no_quota_row()
+        user = _make_user("expert")
+
+        fake_extraction = FrameExtractionResult(
+            workdir="/tmp/fake_no_hint",
+            frame_paths=["/tmp/fake_no_hint/f1.jpg"],
+            frame_timestamps=[0.0],
+            duration_s=10800.0,
+            fps_used=0.001,
+            frame_count=1,
+            width=320,
+            long_video_warning=True,
+        )
+        fake_extraction.cleanup = MagicMock()
+
+        extract_kwargs = {}
+
+        async def fake_extract(*args, **kwargs):
+            extract_kwargs.update(kwargs)
+            return fake_extraction
+
+        async def fake_analyze(*args, **kwargs):
+            return VisualAnalysis(model_used="pixtral-large-2411", frames_analyzed=1)
+
+        monkeypatch.setattr(vi, "extract_storyboard_frames", fake_extract)
+        monkeypatch.setattr(vi, "analyze_frames", fake_analyze)
+
+        result = await vi.maybe_enrich_with_visual(
+            db, user, "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        )
+
+        assert result["status"] == STATUS_OK
+        assert result["visual_mode"] == "expert"
+        assert result["credits_consumed"] == 3
+        assert extract_kwargs.get("mode") == "expert"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📢 Logs WARNING explicites sur tous les silent skips (Sprint C 2026-05-11)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestSilentSkipsLogWarning:
+    """Vérifie que chaque branche return-silent émet désormais un log WARNING."""
+
+    @pytest.mark.asyncio
+    async def test_flag_disabled_logs_warning(self, caplog):
+        from videos.visual_integration import (
+            STATUS_DISABLED,
+            maybe_enrich_with_visual,
+        )
+
+        db = AsyncMock()
+        user = _make_user("pro")
+        with caplog.at_level(logging.WARNING, logger="videos.visual_integration"):
+            result = await maybe_enrich_with_visual(
+                db, user, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", flag_enabled=False
+            )
+        assert result["status"] == STATUS_DISABLED
+        assert any(
+            "reason=disabled" in rec.message
+            for rec in caplog.records
+            if rec.levelno == logging.WARNING
+        )
+
+    @pytest.mark.asyncio
+    async def test_free_plan_logs_warning(self, caplog):
+        from videos.visual_integration import (
+            STATUS_PLAN_NOT_ALLOWED,
+            maybe_enrich_with_visual,
+        )
+
+        db = AsyncMock()
+        user = _make_user("free")
+        with caplog.at_level(logging.WARNING, logger="videos.visual_integration"):
+            result = await maybe_enrich_with_visual(
+                db, user, "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            )
+        assert result["status"] == STATUS_PLAN_NOT_ALLOWED
+        assert any(
+            "plan_not_allowed" in rec.message
+            for rec in caplog.records
+            if rec.levelno == logging.WARNING
+        )
+
+    @pytest.mark.asyncio
+    async def test_unsupported_platform_logs_warning(self, caplog):
+        """Vimeo → STATUS_NOT_SUPPORTED + WARNING émis."""
+        from videos.visual_integration import (
+            STATUS_NOT_SUPPORTED,
+            maybe_enrich_with_visual,
+        )
+
+        db = AsyncMock()
+        user = _make_user("expert")
+        with caplog.at_level(logging.WARNING, logger="videos.visual_integration"):
+            result = await maybe_enrich_with_visual(
+                db, user, "https://vimeo.com/123456789"
+            )
+        assert result["status"] == STATUS_NOT_SUPPORTED
+        assert any(
+            "reason=not_supported" in rec.message
+            for rec in caplog.records
+            if rec.levelno == logging.WARNING
+        )
+
+    @pytest.mark.asyncio
+    async def test_extract_failed_logs_warning(self, caplog, monkeypatch):
+        from videos import visual_integration as vi
+        from videos.visual_integration import STATUS_EXTRACT_FAILED
+
+        db = AsyncMock()
+        user = _make_user("expert")
+
+        async def fake_extract(*args, **kwargs):
+            return None
+
+        monkeypatch.setattr(vi, "extract_storyboard_frames", fake_extract)
+
+        with caplog.at_level(logging.WARNING, logger="videos.visual_integration"):
+            result = await vi.maybe_enrich_with_visual(
+                db, user, "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            )
+        assert result["status"] == STATUS_EXTRACT_FAILED
+        assert any(
+            "reason=extract_failed" in rec.message
+            for rec in caplog.records
+            if rec.levelno == logging.WARNING
+        )
+
+    @pytest.mark.asyncio
+    async def test_vision_failed_includes_error_field_and_logs(
+        self, caplog, monkeypatch
+    ):
+        """analyze_frames retourne None → STATUS_VISION_FAILED + dict contient
+        'frames_attempted' et 'error' + WARNING explicite."""
+        from videos import visual_integration as vi
+        from videos.visual_integration import STATUS_VISION_FAILED
+        from videos.frame_extractor import FrameExtractionResult
+
+        db = _make_db_with_no_quota_row()
+        user = _make_user("expert")
+
+        fake_extraction = FrameExtractionResult(
+            workdir="/tmp/fake_vf",
+            frame_paths=["/tmp/fake_vf/f1.jpg", "/tmp/fake_vf/f2.jpg"],
+            frame_timestamps=[1.0, 2.0],
+            duration_s=120.0,
+            fps_used=0.5,
+            frame_count=2,
+            width=320,
+            long_video_warning=False,
+        )
+        fake_extraction.cleanup = MagicMock()
+
+        async def fake_extract(*args, **kwargs):
+            return fake_extraction
+
+        async def fake_analyze(*args, **kwargs):
+            return None
+
+        monkeypatch.setattr(vi, "extract_storyboard_frames", fake_extract)
+        monkeypatch.setattr(vi, "analyze_frames", fake_analyze)
+
+        with caplog.at_level(logging.WARNING, logger="videos.visual_integration"):
+            result = await vi.maybe_enrich_with_visual(
+                db, user, "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            )
+
+        assert result["status"] == STATUS_VISION_FAILED
+        assert result["frames_attempted"] == 2
+        assert result["error"] == "all_batches_failed"
+        assert any(
+            "reason=vision_failed" in rec.message
+            for rec in caplog.records
+            if rec.levelno == logging.WARNING
+        )
+
+    @pytest.mark.asyncio
+    async def test_vision_raised_exception_includes_error_message(
+        self, caplog, monkeypatch
+    ):
+        """analyze_frames lève une exception → capturée + propagée dans le dict."""
+        from videos import visual_integration as vi
+        from videos.visual_integration import STATUS_VISION_FAILED
+        from videos.frame_extractor import FrameExtractionResult
+
+        db = _make_db_with_no_quota_row()
+        user = _make_user("expert")
+
+        fake_extraction = FrameExtractionResult(
+            workdir="/tmp/fake_ex",
+            frame_paths=["/tmp/fake_ex/f1.jpg"],
+            frame_timestamps=[0.5],
+            duration_s=10.0,
+            fps_used=0.1,
+            frame_count=1,
+            width=320,
+            long_video_warning=False,
+        )
+        fake_extraction.cleanup = MagicMock()
+
+        async def fake_extract(*args, **kwargs):
+            return fake_extraction
+
+        async def fake_analyze(*args, **kwargs):
+            raise RuntimeError("Mistral 503 retry exhausted")
+
+        monkeypatch.setattr(vi, "extract_storyboard_frames", fake_extract)
+        monkeypatch.setattr(vi, "analyze_frames", fake_analyze)
+
+        with caplog.at_level(logging.WARNING, logger="videos.visual_integration"):
+            result = await vi.maybe_enrich_with_visual(
+                db, user, "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            )
+
+        assert result["status"] == STATUS_VISION_FAILED
+        assert "Mistral 503" in result.get("error", "")
+        assert result["frames_attempted"] == 1
+        fake_extraction.cleanup.assert_called_once()

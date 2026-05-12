@@ -43,6 +43,9 @@ DEFAULT_FRAME_WIDTH = 512  # px ; 1024 si OCR nécessaire (option future)
 # Grille de frames par mode × durée vidéo (mode normal, hors focused)
 # - "default" = Pro : analyse plus légère, plafond ~24 frames analysées
 # - "expert"  = Expert : analyse approfondie, pousse au cap dur Mistral (8 batches × 8)
+# - "ultra"   = Expert + opt-in (settings.VISUAL_ULTRA_ENABLED) sur vidéos très
+#              longues (>2h) : densité supérieure pour exploiter le proxy Decodo
+#              qui bypass le bot challenge. Cap 96 frames (12 batches × 8).
 # Multiples de 8 pour saturer les batches Mistral (8 images/req max).
 FRAME_BUDGET_GRID: Dict[str, List[Tuple[float, int]]] = {
     "default": [
@@ -58,6 +61,15 @@ FRAME_BUDGET_GRID: Dict[str, List[Tuple[float, int]]] = {
         (180.0, 40),
         (600.0, 56),
         (float("inf"), 64),
+    ],
+    "ultra": [
+        (1800.0, 16),    # ≤30min
+        (3600.0, 24),    # ≤1h
+        (7200.0, 32),    # ≤2h
+        (10800.0, 48),   # ≤3h
+        (14400.0, 64),   # ≤4h
+        (21600.0, 80),   # ≤6h
+        (float("inf"), 96),  # >6h
     ],
 }
 DEFAULT_MODE = "default"
