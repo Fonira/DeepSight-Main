@@ -662,6 +662,11 @@ async def get_video_info_ytdlp(video_id: str) -> Optional[Dict[str, Any]]:
                 "youtube:player_client=android",
                 f"https://youtube.com/watch?v={video_id}",
             ]
+            proxy = get_youtube_proxy()
+            if proxy:
+                cmd.insert(1, "--proxy")
+                cmd.insert(2, proxy)
+                print("  🔌 [YT-DLP-INFO] Using proxy", flush=True)
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             if result.returncode == 0:
                 return json.loads(result.stdout)
@@ -1433,6 +1438,11 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
                         "youtube:player_client=android",
                         f"https://youtube.com/watch?v={video_id}",
                     ]
+                    proxy = get_youtube_proxy()
+                    if proxy:
+                        cmd.insert(1, "--proxy")
+                        cmd.insert(2, proxy)
+                        print("  🔌 [WHISPER] Using proxy", flush=True)
 
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=_t("whisper_download"))
 
@@ -1772,6 +1782,11 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
                         "3",
                         f"https://youtube.com/watch?v={video_id}",
                     ]
+                    proxy = get_youtube_proxy()
+                    if proxy:
+                        cmd.insert(1, "--proxy")
+                        cmd.insert(2, proxy)
+                        print("  🔌 [DEEPGRAM] Using proxy", flush=True)
 
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=_t("whisper_download"))
 
@@ -2759,6 +2774,11 @@ async def get_playlist_videos(playlist_id: str, max_videos: int = 50) -> List[Di
                 get_random_user_agent(),
                 f"https://www.youtube.com/playlist?list={playlist_id}",
             ]
+            proxy = get_youtube_proxy()
+            if proxy:
+                cmd.insert(1, "--proxy")
+                cmd.insert(2, proxy)
+                print("  🔌 [PLAYLIST] Using proxy", flush=True)
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
             if result.returncode != 0:
                 return []
@@ -2826,6 +2846,11 @@ async def get_playlist_info(playlist_id: str) -> Optional[Dict[str, Any]]:
                 get_random_user_agent(),
                 f"https://www.youtube.com/playlist?list={playlist_id}",
             ]
+            proxy = get_youtube_proxy()
+            if proxy:
+                cmd.insert(1, "--proxy")
+                cmd.insert(2, proxy)
+                print("  🔌 [PLAYLIST-INFO] Using proxy", flush=True)
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             if result.returncode == 0:
                 return json.loads(result.stdout)
