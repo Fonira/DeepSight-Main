@@ -58,7 +58,7 @@ aiolimiter>=1.1.0        # Async rate limiter for Resend API (prevents 429 error
 python-docx>=1.1.0
 reportlab>=4.0.0
 markdown>=3.5.0
-weasyprint>=60.0          # Beautiful HTML→PDF rendering
+weasyprint>=68.1          # Beautiful HTML→PDF rendering
 Jinja2>=3.1.0             # HTML templating for PDF exports
 openpyxl>=3.1.0           # Excel export (.xlsx)
 
