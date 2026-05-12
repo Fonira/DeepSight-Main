@@ -86,7 +86,11 @@ Pillow>=10.0.0           # Image processing (thumbnail WebP conversion)
 # ─────────────────────────────────────────────────────────────────────────────────
 # 🤖 AI MODELS
 # ─────────────────────────────────────────────────────────────────────────────────
-mistralai>=1.0.0
+# 2026-05-12 — `mistralai` package quarantined on PyPI (versions: []), pin to a
+# known-good v1.x tag via GitHub tarball until PyPI restores. The DeepSight
+# code uses `from mistralai.client import Mistral` (v1.x API), so we stay on
+# v1.12.4 (last v1 release) rather than v2.x which restructured imports.
+mistralai @ https://github.com/mistralai/client-python/archive/refs/tags/v1.12.4.tar.gz
 
 # ─────────────────────────────────────────────────────────────────────────────────
 # 🎙️ AUDIO TRANSCRIPTION (optional - for Whisper fallback)
