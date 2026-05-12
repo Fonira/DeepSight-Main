@@ -391,7 +391,11 @@ export const TutorHub: React.FC<TutorHubProps> = ({
       voicePrimerSentRef.current = false;
       if (tutorPhase === "mini-chat") {
         try {
-          await endSession();
+          // Keep the local transcript so the user still sees what they
+          // discussed in text mode. The backend Redis session is torn down
+          // (concept may change for the voice agent), but the visible
+          // timeline remains — that's the whole point of the unified hub.
+          await endSession({ keepMessages: true });
         } catch {
           /* ignore */
         }

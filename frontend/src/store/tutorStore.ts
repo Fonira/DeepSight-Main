@@ -42,7 +42,16 @@ export interface TutorState {
   cancelPrompting: () => void;
   startSession: (opts: StartSessionOpts) => Promise<void>;
   submitTextTurn: (input: string) => Promise<void>;
-  endSession: () => Promise<void>;
+  /**
+   * End the backend Redis session.
+   *
+   * - `{ keepMessages: true }` keeps the local transcript visible (used when
+   *   toggling text → voice inside the unified TutorHub timeline — Redis is
+   *   torn down but the user still sees their text history).
+   * - Default (`undefined` / `{ keepMessages: false }`) wipes the whole store
+   *   back to INITIAL (used on hub close / explicit reset).
+   */
+  endSession: (opts?: { keepMessages?: boolean }) => Promise<void>;
   setFullscreen: (v: boolean) => void;
   reset: () => void;
 }
@@ -91,10 +100,21 @@ export const useTutorStore = create<TutorState>()(
 
     startSession: async (opts) => {
       const lang: TutorLang = opts.lang ?? "fr";
+      // Optimistically push the user's input (concept_term) as the first
+      // visible turn. Without this, the transcript only shows the agent's
+      // first_prompt and the user can't tell what they just submitted.
+      const userTurnTs = Date.now();
       set((s) => {
         s.lang = lang;
         s.loading = true;
         s.error = null;
+        s.messages = [
+          {
+            role: "user",
+            content: opts.concept_term,
+            timestamp_ms: userTurnTs,
+          },
+        ];
       });
       try {
         const resp = await tutorApi.sessionStart({
@@ -112,17 +132,17 @@ export const useTutorStore = create<TutorState>()(
           s.conceptDef = opts.concept_def;
           s.summaryId = opts.summary_id ?? null;
           s.sourceVideoTitle = opts.source_video_title ?? null;
-          s.messages = [
-            {
-              role: "assistant",
-              content: resp.first_prompt,
-              timestamp_ms: Date.now(),
-            },
-          ];
+          s.messages.push({
+            role: "assistant",
+            content: resp.first_prompt,
+            timestamp_ms: Date.now(),
+          });
           s.loading = false;
         });
       } catch (err) {
         set((s) => {
+          // Roll back the optimistic user turn so the empty-state UI returns.
+          s.messages = [];
           s.error = (err as Error).message;
           s.loading = false;
         });
@@ -160,7 +180,7 @@ export const useTutorStore = create<TutorState>()(
       }
     },
 
-    endSession: async () => {
+    endSession: async (opts) => {
       const sessionId = get().sessionId;
       if (sessionId) {
         try {
@@ -171,7 +191,13 @@ export const useTutorStore = create<TutorState>()(
         }
       }
       set((s) => {
-        Object.assign(s, INITIAL);
+        if (opts?.keepMessages) {
+          const savedMessages = s.messages;
+          Object.assign(s, INITIAL);
+          s.messages = savedMessages;
+        } else {
+          Object.assign(s, INITIAL);
+        }
       });
     },
 
