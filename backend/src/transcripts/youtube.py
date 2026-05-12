@@ -62,7 +62,7 @@ from core.config import (
     get_youtube_proxy,
     TRANSCRIPT_CONFIG,
 )
-from core.http_client import shared_http_client
+from core.http_client import shared_http_client, get_proxied_client
 
 # 💾 Cache pour les transcripts (TTL 24h)
 try:
@@ -602,11 +602,14 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
         return ytdlp_result
 
     # Essayer oembed pour au moins avoir le titre (pas de durée)
+    # 🔌 Sprint B (Audit) — l'oEmbed YouTube tape `www.youtube.com` directement,
+    # qui est bloqué depuis Hetzner. On route via le proxy résidentiel Decodo
+    # (settings.YOUTUBE_PROXY). Si non configuré, le client retombe sur bare.
     print("  🔄 [OEMBED] Trying oembed fallback...", flush=True)
     try:
         url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
-        async with shared_http_client() as client:
-            response = await client.get(url, timeout=10, headers={"User-Agent": get_random_user_agent()})
+        async with get_proxied_client(timeout=10.0) as client:
+            response = await client.get(url, headers={"User-Agent": get_random_user_agent()})
             if response.status_code == 200:
                 data = response.json()
                 print("  ⚠️ [OEMBED] Got title but no duration", flush=True)
