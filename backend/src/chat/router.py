@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 from db.database import get_session, User, Summary
 from auth.dependencies import get_current_user
 from videos.service import get_summary_by_id
-from core.config import PLAN_LIMITS
+from billing.plan_config import get_limits
 from core.moderation_service import moderate_text, MODERATION_MODE
 
 from .service import (
@@ -255,7 +255,7 @@ async def _ask_question_legacy(request: ChatRequest, current_user: User, session
     elif should_search:
         # La détection automatique suggère une recherche
         # Mais on ne l'active que si l'utilisateur est Pro/Expert ET a du quota
-        plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
+        plan_limits = get_limits(current_user.plan)
         if plan_limits.get("web_search_enabled", False):
             can_search, used, limit = await check_web_search_quota(session, current_user.id)
             if can_search:
@@ -288,7 +288,7 @@ async def _ask_question_legacy(request: ChatRequest, current_user: User, session
         transcript = f"{transcript}\n\n🌐 INFORMATIONS WEB RÉCENTES:\n{web_search_result}"
 
     # Déterminer le modèle selon le plan
-    plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(current_user.plan)
     model = plan_limits.get("default_model", "mistral-small-2603")
 
     response = await generate_chat_response(
@@ -317,7 +317,7 @@ async def _ask_question_legacy(request: ChatRequest, current_user: User, session
             suggestion = '\n\n---\n💡 *This question could benefit from a web search for more recent information. Enable the "Web Search" option to enrich the response.*'
 
         # N'ajouter la suggestion que si l'utilisateur n'est pas Pro/Expert ou a épuisé son quota
-        plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
+        plan_limits = get_limits(current_user.plan)
         if not plan_limits.get("web_search_enabled", False):
             response += suggestion
 

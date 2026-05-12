@@ -28,7 +28,7 @@ from sqlalchemy import select, delete, func
 
 from db.database import get_session, User, Summary, PlaylistAnalysis, PlaylistChatMessage, VideoChunk
 from auth.dependencies import get_current_user
-from core.config import PLAN_LIMITS, get_mistral_key
+from core.config import get_mistral_key
 from billing.plan_config import get_limits
 from videos.web_search_provider import web_search_and_synthesize
 from transcripts import extract_playlist_id, get_playlist_videos, get_playlist_info
@@ -959,9 +959,9 @@ async def create_playlist(
     """
     # Vérifier les permissions du plan
     plan = current_user.plan or "free"
-    plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(plan)
 
-    if not plan_limits.get("can_use_playlists", False):
+    if not plan_limits.get("playlists_enabled", False):
         raise HTTPException(
             status_code=403,
             detail={

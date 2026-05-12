@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.http_client import shared_http_client
 from auth.dependencies import get_current_user, require_credits
-from core.config import PLAN_LIMITS
+from billing.plan_config import get_limits
 from core.llm_provider import llm_complete
 from core.moderation_service import moderate_text
 from videos.web_search_provider import web_search_and_synthesize
@@ -645,7 +645,7 @@ async def _run_debate_pipeline(
     7. Generate debate summary
     """
     # Select model based on plan
-    plan_limits = PLAN_LIMITS.get(user_plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(user_plan)
     model = plan_limits.get("default_model", "mistral-small-2603")
 
     async with async_session_maker() as session:
@@ -1303,7 +1303,7 @@ async def _run_add_perspective_pipeline(
             excluded_video_ids = {debate.video_a_id} | {p.video_id for p in existing if p.video_id}
 
             # Determine model based on user plan
-            plan_limits = PLAN_LIMITS.get(user.plan or "free", PLAN_LIMITS["free"])
+            plan_limits = get_limits(user.plan or "free")
             model = plan_limits.get("default_model", "mistral-small-2603")
             lang = debate.lang or "fr"
             topic = debate.detected_topic or ""
@@ -1995,7 +1995,7 @@ async def debate_chat(
     messages.append({"role": "user", "content": request.message})
 
     # Select model based on plan
-    plan_limits = PLAN_LIMITS.get(current_user.plan or "free", PLAN_LIMITS["free"])
+    plan_limits = get_limits(current_user.plan or "free")
     model = plan_limits.get("default_model", "mistral-small-2603")
 
     response_text = await _call_mistral(messages, model=model, temperature=0.5)

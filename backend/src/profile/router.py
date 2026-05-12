@@ -291,9 +291,10 @@ async def get_credits_info(
         return info
     except ImportError:
         # Fallback sans le module de sécurité
-        from core.config import PLAN_LIMITS
+        from billing.plan_config import get_limits, get_plan
 
-        plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
+        plan_limits = get_limits(current_user.plan)
+        plan_data = get_plan(current_user.plan)
         return {
             "credits": {
                 "current": current_user.credits or 0,
@@ -303,15 +304,15 @@ async def get_credits_info(
             },
             "plan": {
                 "name": current_user.plan,
-                "display_name": plan_limits.get("name", {}).get("fr", current_user.plan),
-                "color": plan_limits.get("color", "#888888"),
+                "display_name": plan_data.get("name", current_user.plan),
+                "color": plan_data.get("color", "#888888"),
             },
             "limits": {
                 "chat_daily": plan_limits.get("chat_daily_limit", 10),
-                "chat_per_video": plan_limits.get("chat_per_video_limit", 5),
+                "chat_per_video": plan_limits.get("chat_questions_per_video", 5),
                 "web_search_monthly": plan_limits.get("web_search_monthly", 0),
                 "max_playlist_videos": plan_limits.get("max_playlist_videos", 0),
-                "can_use_playlists": plan_limits.get("can_use_playlists", False),
+                "can_use_playlists": plan_limits.get("playlists_enabled", False),
             },
             "costs": {"video_small": 1, "video_medium": 2, "video_large": 3, "playlist_video": 1},
         }
