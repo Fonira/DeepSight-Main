@@ -335,7 +335,11 @@ async def export_analysis_audio(
     """
     from billing.plan_config import get_limits
 
-    # Feature gating: check if tts is enabled for user's plan
+    # Feature gating: check if tts is enabled for user's plan.
+    # SSOT (plan_config.py): Pro has voice_chat_enabled=True but tts_enabled=False.
+    # Voice chat (interactive ElevenLabs agent) and TTS audio export (generating a
+    # downloadable audio file from text) are separately gated. TTS export is
+    # Expert-only per Pricing v2 (April 2026); Pro can use voice chat 30 min/mo.
     plan = current_user.plan or "free"
     tts_enabled = get_limits(plan).get("tts_enabled", False)
     if not tts_enabled:
@@ -343,9 +347,9 @@ async def export_analysis_audio(
             status_code=403,
             detail={
                 "code": "feature_locked",
-                "message": "L'export audio nécessite un plan Pro ou supérieur",
+                "message": "L'export audio nécessite un plan Expert",
                 "current_plan": plan,
-                "required_plan": "pro",
+                "required_plan": "expert",
                 "action": "upgrade",
             },
         )
