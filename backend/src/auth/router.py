@@ -452,7 +452,8 @@ async def export_my_data(
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user=Depends(get_current_user)):
     """Retourne les informations de l'utilisateur connecté"""
-    from core.config import ADMIN_CONFIG, PLAN_LIMITS
+    from core.config import ADMIN_CONFIG
+    from billing.plan_config import get_limits
 
     # Déterminer si l'utilisateur est admin (par email ou flag DB)
     admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower()
@@ -460,7 +461,7 @@ async def get_me(current_user=Depends(get_current_user)):
 
     # Récupérer les crédits mensuels du plan
     plan = current_user.plan or "free"
-    plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(plan)
     credits_monthly = plan_limits.get("monthly_credits", 0)
 
     # Créer une copie avec is_admin mis à jour

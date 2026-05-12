@@ -20,7 +20,7 @@ from sqlalchemy import select
 
 from db.database import get_session, User
 from auth.dependencies import get_current_user, get_verified_user
-from core.config import PLAN_LIMITS
+from billing.plan_config import get_limits
 
 router = APIRouter()
 
@@ -143,7 +143,9 @@ async def create_batch_analysis(
         request.priority = "normal"
 
     # Calculer le coût total en crédits
-    plan_limits = PLAN_LIMITS.get(user_plan, PLAN_LIMITS["free"])
+    # Note: `credit_cost` n'existe pas dans la SSOT `get_limits()` ; le fallback était
+    # toujours utilisé via le shim legacy. On préserve la valeur historique 5.
+    plan_limits = get_limits(user_plan)
     credit_cost_per_video = plan_limits.get("credit_cost", 5)
     total_credits = len(request.videos) * credit_cost_per_video
 

@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from enum import Enum
 
 from db.database import User, CreditTransaction, Summary, ChatQuota, WebSearchUsage
-from core.config import PLAN_LIMITS
+from billing.plan_config import get_limits
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -443,7 +443,7 @@ async def check_and_reset_monthly_credits(session: AsyncSession, user: User) -> 
             _monthly_reset_cache[user.id] = current_month
             return user.credits or 0, False
 
-        plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
+        plan_limits = get_limits(user.plan)
         monthly_credits = plan_limits.get("monthly_credits", 10)
 
         old_credits = user.credits or 0
@@ -581,9 +581,9 @@ async def check_video_analysis_allowed(
             },
         )
 
-    plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(user.plan)
 
-    allowed_models = plan_limits.get("models", ["mistral-small-2603"])
+    allowed_models = plan_limits.get("allowed_models", ["mistral-small-2603"])
     if model not in allowed_models:
         return (
             False,
@@ -629,9 +629,9 @@ async def check_playlist_analysis_allowed(
             },
         )
 
-    plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(user.plan)
 
-    if not plan_limits.get("can_use_playlists", False):
+    if not plan_limits.get("playlists_enabled", False):
         return (
             False,
             "playlists_not_allowed",
@@ -687,9 +687,9 @@ async def check_chat_quota(
     if is_admin:
         return True, "ok", {"daily_used": 0, "daily_limit": -1, "video_used": 0, "video_limit": -1, "unlimited": True}
 
-    plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(user.plan)
     daily_limit = plan_limits.get("chat_daily_limit", 10)
-    per_video_limit = plan_limits.get("chat_per_video_limit", 5)
+    per_video_limit = plan_limits.get("chat_questions_per_video", 5)
 
     if daily_limit == -1:
         return True, "ok", {"daily_used": 0, "daily_limit": -1, "video_used": 0, "video_limit": -1, "unlimited": True}
@@ -725,7 +725,7 @@ async def check_web_search_quota(session: AsyncSession, user_id: int) -> Tuple[b
     if user.is_admin:
         return True, "ok", {"unlimited": True}
 
-    plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
+    plan_limits = get_limits(user.plan)
 
     if not plan_limits.get("web_search_enabled", False):
         return (
@@ -763,7 +763,10 @@ async def get_user_credits_info(session: AsyncSession, user_id: int) -> Dict[str
 
     credits, was_reset = await check_and_reset_monthly_credits(session, user)
 
-    plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
+    from billing.plan_config import get_plan
+
+    plan_limits = get_limits(user.plan)
+    plan_data = get_plan(user.plan)
     reserved = sum(_credit_reservations.get(user_id, {}).values())
 
     first_of_month = date.today().replace(day=1)
@@ -785,18 +788,18 @@ async def get_user_credits_info(session: AsyncSession, user_id: int) -> Dict[str
         },
         "plan": {
             "name": user.plan,
-            "display_name": plan_limits.get("name", {}).get("fr", user.plan),
-            "color": plan_limits.get("color", "#888888"),
+            "display_name": plan_data.get("name", user.plan),
+            "color": plan_data.get("color", "#888888"),
         },
         "usage": {
             "analyses_this_month": analyses_this_month,
         },
         "limits": {
             "chat_daily": plan_limits.get("chat_daily_limit", 10),
-            "chat_per_video": plan_limits.get("chat_per_video_limit", 5),
+            "chat_per_video": plan_limits.get("chat_questions_per_video", 5),
             "web_search_monthly": plan_limits.get("web_search_monthly", 0),
             "max_playlist_videos": plan_limits.get("max_playlist_videos", 0),
-            "can_use_playlists": plan_limits.get("can_use_playlists", False),
+            "can_use_playlists": plan_limits.get("playlists_enabled", False),
         },
         "costs": {
             "video_small": get_credit_cost("video_analysis", "mistral-small-2603"),

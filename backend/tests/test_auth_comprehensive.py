@@ -773,7 +773,7 @@ async def test_google_callback_creates_user(mock_db_session):
     }
 
     with patch("auth.service.hash_password", return_value="$2b$12$random"), \
-         patch("auth.service.PLAN_LIMITS", {"free": {"monthly_credits": 250}}), \
+         patch("auth.service.get_limits", return_value={"monthly_credits": 250}), \
          patch("auth.service.ADMIN_CONFIG", {"ADMIN_EMAIL": "admin@test.com"}), \
          patch("auth.service.create_user_session", new_callable=AsyncMock, return_value="sess_new"):
         success, user, message, session_token = await login_or_register_google_user(
@@ -1252,7 +1252,7 @@ async def test_full_google_oauth_flow(mock_db_session):
     google_user = {"email": "oauth@gmail.com", "id": "google_999", "name": "OAuth User"}
 
     with patch("auth.service.hash_password", return_value="$2b$12$random"), \
-         patch("auth.service.PLAN_LIMITS", {"free": {"monthly_credits": 250}}), \
+         patch("auth.service.get_limits", return_value={"monthly_credits": 250}), \
          patch("auth.service.ADMIN_CONFIG", {"ADMIN_EMAIL": "admin@other.com"}), \
          patch("auth.service.create_user_session", new_callable=AsyncMock, return_value="oauth_sess"):
         success, user, message, session_token = await login_or_register_google_user(
