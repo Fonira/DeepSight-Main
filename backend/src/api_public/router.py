@@ -439,6 +439,17 @@ async def analyze_video_api(
         },
     )
 
+    # Résolution du modèle Mistral selon le plan utilisateur (SSOT moderne).
+    # Sprint 2026-05-12 : avant ce fix, le modèle Free tier était hardcodé ici,
+    # forçant TOUTES les analyses MCP (`ds_analyze`) sur small même pour les
+    # users Expert. Observable sur Summary 211 (model_used=small malgré
+    # plan=expert). PR #473 a corrigé la voie `/api/videos/analyze` (frontend) ;
+    # cette PR-ci corrige la voie `/api/v1/analyze` (public API + MCP).
+    from billing.plan_config import get_limits
+
+    _plan_limits = get_limits(user.plan)
+    _resolved_model = _plan_limits.get("default_model", "mistral-small-2603")
+
     # Lancer l'analyse en background
     asyncio.ensure_future(
         _analyze_video_background_v6(
@@ -448,7 +459,7 @@ async def analyze_video_api(
             mode=internal_mode,
             category="auto",
             lang=lang,
-            model="mistral-small-2603",
+            model=_resolved_model,
             user_id=user.id,
             user_plan=user.plan,
             credit_cost=credits_cost,
