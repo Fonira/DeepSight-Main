@@ -101,6 +101,34 @@ class TestSourceLevelOptionAPattern:
             "Found window:\n" + window
         )
 
+    def test_yt_specific_endpoint_returns_none_for_timestamped(self):
+        """L869 — YT-specific endpoint, when `segments` arrives as a plain string
+        (instead of a list of `{text, start, dur}` dicts), must use `None` for
+        the timestamped channel. Same Option A pattern as L932/L959, applied to
+        the third success path flagged out-of-scope by PR #481 review.
+        """
+        # The buggy pattern would be `return segments, segments, ...`
+        assert "return segments, segments" not in self.src, (
+            "Buggy Supadata YT-specific return pattern detected: "
+            "`return segments, segments, ...` duplicates plain text in the "
+            "timestamped channel. Use `return segments, None, lang or 'fr'` "
+            "instead (Option A pattern, fixed follow-up to PR #481)."
+        )
+        # And the new corrected log marker + return below it must exist
+        marker = "[SUPADATA] YT-specific success"
+        assert marker in self.src, (
+            f"Marker {marker!r} not found — YT-specific success path removed?"
+        )
+        # Locate the FIRST occurrence (segments-as-string branch). The second
+        # occurrence (segments-as-list branch L893) returns a real timestamped
+        # string built from anchors and is the legitimate happy path.
+        pos = self.src.find(marker)
+        window = self.src[pos : pos + 500]
+        assert "segments, None, lang" in window, (
+            "YT-specific endpoint (string branch) should return "
+            "(segments, None, lang or 'fr'). Found window:\n" + window
+        )
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Behavioral tests — mocked HTTP responses
@@ -223,6 +251,62 @@ async def test_supadata_async_polling_returns_none_for_timestamped():
         "Option A — async polling has no timestamps, must return None "
         f"(got: {timestamped!r})"
     )
+    assert lang == "fr"
+
+
+@pytest.mark.asyncio
+async def test_supadata_yt_specific_string_segments_returns_none_for_timestamped():
+    """When Supadata YT-specific endpoint returns `segments` as a plain string
+    (instead of the expected list of `{text, start, dur}` dicts), the helper
+    must return `(segments, None, lang)` — NOT `(segments, segments, lang)`.
+
+    Follow-up to PR #481 — same Option A pattern, third success path (L869).
+    Without `None`, downstream visual analysis silently loses timestamps because
+    `_parse_timestamps` (chunker.py) matches zero `[MM:SS]` anchors in plain text.
+    """
+    yt = _get_youtube_module()
+
+    # Mock YT-specific endpoint returning `segments` as a plain string
+    # (no list of dicts → no timestamps)
+    fake_yt_specific_200 = MagicMock()
+    fake_yt_specific_200.status_code = 200
+    fake_yt_specific_200.json = MagicMock(
+        return_value={
+            "segments": "Plain text transcript returned as a string by the YT-specific endpoint here.",
+            "lang": "en",
+        }
+    )
+
+    async def fake_get(url, params=None, headers=None, timeout=None):
+        # YT-specific endpoint hits first (and succeeds with string segments)
+        if "youtube/transcript" in url:
+            return fake_yt_specific_200
+        # Should never reach the unified endpoint in this scenario
+        fallback = MagicMock()
+        fallback.status_code = 404
+        return fallback
+
+    fake_client = MagicMock()
+    fake_client.get = AsyncMock(side_effect=fake_get)
+
+    fake_ctx = MagicMock()
+    fake_ctx.__aenter__ = AsyncMock(return_value=fake_client)
+    fake_ctx.__aexit__ = AsyncMock(return_value=None)
+
+    with patch.object(yt, "shared_http_client", return_value=fake_ctx):
+        simple, timestamped, lang = await yt.get_transcript_supadata(
+            video_id="testvideo03", api_key="fake_key"
+        )
+
+    # Option A contract — same as L946/L980
+    assert simple is not None and len(simple) > 0, (
+        "Plain string `segments` from YT-specific endpoint should populate `simple`"
+    )
+    assert timestamped is None, (
+        "Option A — YT-specific endpoint with string `segments` has no timestamps, "
+        f"must return None (got: {timestamped!r})"
+    )
+    # First lang tried is "fr" in the for-loop → request matched on lang=fr
     assert lang == "fr"
 
 
