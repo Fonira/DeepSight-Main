@@ -426,7 +426,14 @@ class YouTubeSearcher:
             # Construire la commande yt-dlp
             search_query = f"ytsearch{max_results}:{query}"
 
-            cmd = ["yt-dlp", "--dump-json", "--flat-playlist", "--no-warnings", "--geo-bypass", search_query]
+            # 🔌 Sprint Wave 2 (Audit B1) — injecter --proxy + cookies via le helper
+            # centralisé. Le VPS Hetzner est bot-challenged par YouTube : sans
+            # --proxy, `ytsearchN:` retourne 0 résultat (signal d'IP blacklistée).
+            # `_yt_dlp_extra_args()` respecte aussi le hard-stop budget proxy
+            # (PROXY_DISABLED=true OU MTD>950MB).
+            from transcripts.audio_utils import _yt_dlp_extra_args
+
+            cmd = ["yt-dlp", *_yt_dlp_extra_args(), "--dump-json", "--flat-playlist", "--no-warnings", "--geo-bypass", search_query]
 
             logger.info(f"🔍 yt-dlp search: '{query}' (max={max_results})")
 
