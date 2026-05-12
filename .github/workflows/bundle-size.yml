@@ -30,7 +30,7 @@ jobs:
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-bundle-size') }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # size-limit-action needs full history to diff against base.
           fetch-depth: 0
