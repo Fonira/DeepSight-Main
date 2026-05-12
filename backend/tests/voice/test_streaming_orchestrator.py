@@ -326,8 +326,8 @@ async def test_production_orchestrator_publishes_ctx_complete():
 
 @pytest.mark.asyncio
 async def test_production_orchestrator_handles_transcript_failure():
-    """When transcript extraction raises, an error event is emitted but
-    ``ctx_complete`` is still published at the end of the run."""
+    """When transcript extraction raises, an error event is emitted and
+    ``ctx_failed`` is published at the end (V2: degraded fallback)."""
     from voice.streaming_orchestrator import create_production_orchestrator
 
     redis = AsyncMock()
@@ -353,7 +353,8 @@ async def test_production_orchestrator_handles_transcript_failure():
     error_events = [e for e in events if e["type"] == "error"]
     assert error_events, "expected an error event when transcript extraction raised"
     assert any(e.get("phase") == "transcript" for e in error_events)
-    # ctx_complete is always emitted last so the SSE consumer can close cleanly.
-    assert events[-1]["type"] == "ctx_complete"
-    # When no analysis cache and no transcript, digest fallback string applies.
-    assert events[-1]["final_digest_summary"] == "Analyse non disponible"
+    # ctx_failed emitted last when degraded (no transcript AND no analysis cache)
+    # — orchestrator V2 distinguishes ctx_complete (has context) from
+    # ctx_failed (degraded, agent falls back to pretrained + web_search).
+    assert events[-1]["type"] == "ctx_failed"
+    assert events[-1].get("reason") == "transcript_unavailable"
