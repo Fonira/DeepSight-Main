@@ -928,8 +928,22 @@ async def get_transcript_supadata(
                         else:
                             content = ""
                     if content and isinstance(content, str) and len(content.strip()) >= 20:
-                        print(f"  ✅ [SUPADATA] Unified success: {len(content)} chars", flush=True)
-                        return content.strip(), content.strip(), detected_lang
+                        # 🔧 Option A (2026-05-12) — Endpoint unifié Supadata ne fournit
+                        # PAS de timestamps. Retourner `None` pour le canal timestamped
+                        # signale clairement aux callers (`if simple and timestamped`) que
+                        # ce résultat n'a pas d'anchors `[MM:SS]` exploitables, ce qui
+                        # déclenche la fallback vers Phase 1 (ytapi/Invidious/Piped) qui
+                        # peuvent fournir des timestamps réels. Si tous les fallbacks
+                        # échouent à fournir des timestamps, Option C (duration_hint
+                        # PR #468) prend le relais côté visual analysis. Anciennement,
+                        # le timestamped était dupliqué depuis le texte plain → la regex
+                        # de _parse_timestamps (chunker.py) matchait zéro anchor, causant
+                        # silencieusement la perte de timestamps pour visual analysis.
+                        print(
+                            f"  ✅ [SUPADATA] Unified success (plain text, no timestamps): {len(content)} chars",
+                            flush=True,
+                        )
+                        return content.strip(), None, detected_lang
 
                 elif response.status_code == 202:
                     # Async job — poll
@@ -955,8 +969,15 @@ async def get_transcript_supadata(
                                     else:
                                         content = ""
                                 if content and isinstance(content, str) and len(content.strip()) >= 20:
-                                    print(f"  ✅ [SUPADATA] Async success: {len(content)} chars", flush=True)
-                                    return content.strip(), content.strip(), detected_lang
+                                    # 🔧 Option A (2026-05-12) — voir commentaire identique
+                                    # sur l'endpoint unifié plus haut. L'endpoint async
+                                    # de Supadata retourne le même format (`content` =
+                                    # plain text), donc même contrat : timestamped=None.
+                                    print(
+                                        f"  ✅ [SUPADATA] Async success (plain text, no timestamps): {len(content)} chars",
+                                        flush=True,
+                                    )
+                                    return content.strip(), None, detected_lang
                             elif poll.status_code == 202:
                                 continue
                             else:
