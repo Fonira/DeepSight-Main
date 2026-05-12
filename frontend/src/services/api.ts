@@ -428,13 +428,42 @@ export interface VideoCandidate {
   content_type?: string; // 🆕 Type de contenu
 }
 
+export interface FreshnessData {
+  level: "fresh" | "recent" | "aging" | "old" | "outdated";
+  age_days: number;
+  warning_message: string | null;
+  warning_level: "none" | "info" | "warning" | "critical";
+  is_fast_changing_topic: boolean;
+  topic_category: string | null;
+  recommendations: string[];
+}
+
+export interface FactCheckClaim {
+  claim: string;
+  claim_type: string;
+  confidence: number;
+  risk_level: "low" | "medium" | "high";
+  verification_hint: string | null;
+  suggested_search?: string | null;
+}
+
+export interface FactCheckLiteData {
+  overall_confidence: number;
+  risk_summary: string;
+  claims_analyzed: number;
+  high_risk_claims: FactCheckClaim[];
+  medium_risk_claims: FactCheckClaim[];
+  verification_suggestions: string[];
+  disclaimers: string[];
+}
+
 export interface ReliabilityResult {
   score: number;
   level: "high" | "medium" | "low" | "unknown";
   factors: ReliabilityFactor[];
   summary?: string;
-  freshness?: Record<string, unknown>;
-  fact_check_lite?: Record<string, unknown>;
+  freshness?: FreshnessData;
+  fact_check_lite?: FactCheckLiteData;
   analysis_type?: string;
   user_plan?: string;
   full_factcheck_available?: boolean;

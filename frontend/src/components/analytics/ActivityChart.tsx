@@ -46,7 +46,7 @@ const CustomTooltip = ({ active, payload, label, language }: TooltipProps) => {
     return (
       <div className="bg-bg-elevated border border-border-default rounded-lg px-3 py-2 shadow-lg">
         <p className="text-xs text-text-tertiary mb-1">
-          {formatDate(label, language)}
+          {formatDate(String(label ?? ""), language)}
         </p>
         <p className="text-sm font-semibold text-text-primary">
           {value}{" "}

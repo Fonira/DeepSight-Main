@@ -6,6 +6,7 @@
 
 import React from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import type { PieLabel } from "recharts/types/polar/Pie";
 import { PieChart as PieIcon, Folder } from "lucide-react";
 
 interface CategoryData {
@@ -222,7 +223,7 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={renderCustomizedLabel}
+              label={renderCustomizedLabel as unknown as PieLabel}
               outerRadius={80}
               innerRadius={40}
               fill="#8884d8"

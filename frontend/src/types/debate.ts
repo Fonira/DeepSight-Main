@@ -86,6 +86,8 @@ export interface DebatePerspective {
   audience_level: AudienceLevel;
   fact_check_results: FactCheckItem[] | null;
   created_at: string;
+  /** Date de publication de la vidéo (ISO) — utilisé pour la colonne fraîcheur (matrice compare). */
+  freshness_date?: string | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

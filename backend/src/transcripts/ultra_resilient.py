@@ -32,25 +32,14 @@ from core.config import (
     get_openai_key,
     get_assemblyai_key,
     get_youtube_proxy,
-    get_ytdlp_cookies_path,
     TRANSCRIPT_CONFIG,
 )
 
-# Helper partagé YouTube + TikTok — local definition (audio_utils version shadowed).
-def _yt_dlp_extra_args() -> list:
-    """Common yt-dlp flags for IP-banned environments: proxy + cookies.
-
-    Both are no-ops when their env vars are unset, so this is safe to call
-    from every yt-dlp wrapper unconditionally.
-    """
-    extra = []
-    proxy = get_youtube_proxy()
-    if proxy:
-        extra.extend(["--proxy", proxy])
-    cookies = get_ytdlp_cookies_path()
-    if cookies and os.path.exists(cookies):
-        extra.extend(["--cookies", cookies])
-    return extra
+# Helper partagé YouTube + TikTok — re-export the SSOT helper from audio_utils
+# so all yt-dlp call sites use the same proxy/cookies/telemetry wiring.
+# Local redefinitions used to drift away from audio_utils whenever proxy logic
+# evolved (Decodo variants, hard-stop bypass, TikTok cookies swap, etc.).
+from transcripts.audio_utils import _yt_dlp_extra_args  # noqa: E402,F401
 
 
 class ExtractionMethod(Enum):

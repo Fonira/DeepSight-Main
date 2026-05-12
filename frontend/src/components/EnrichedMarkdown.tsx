@@ -15,6 +15,7 @@
 
 import React, { useMemo, memo } from "react";
 import ReactMarkdown from "react-markdown";
+import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -569,7 +570,10 @@ export const EnrichedMarkdown: React.FC<EnrichedMarkdownProps> = memo(
         className={`enriched-markdown ${className}`}
         style={{ color: "#e2e8f0", fontSize: 15, lineHeight: 1.75 }}
       >
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={components as Components}
+        >
           {processedText}
         </ReactMarkdown>
       </div>
