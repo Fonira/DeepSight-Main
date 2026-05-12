@@ -367,17 +367,17 @@ export const DashboardPage: React.FC = () => {
         if (history && Array.isArray(history) && history.length > 0) {
           // Convertir l'historique du backend au format du frontend
           const formattedMessages: ChatMessage[] = history.map(
-            (msg: any, index: number) => ({
-              id: msg.id?.toString() || `history-${index}-${Date.now()}`,
+            (msg: Record<string, unknown>, index: number) => ({
+              id: (msg.id as string | number | undefined)?.toString() || `history-${index}-${Date.now()}`,
               role: msg.role as "user" | "assistant",
               // S'assurer que content est une string
               content:
                 typeof msg.content === "string"
                   ? msg.content
                   : JSON.stringify(msg.content),
-              timestamp: msg.created_at ? new Date(msg.created_at) : undefined,
-              sources: msg.sources || [],
-              web_search_used: msg.web_search_used || false,
+              timestamp: msg.created_at ? new Date(msg.created_at as string) : undefined,
+              sources: (msg.sources as ChatMessage["sources"]) || [],
+              web_search_used: (msg.web_search_used as boolean) || false,
             }),
           );
 
@@ -414,9 +414,10 @@ export const DashboardPage: React.FC = () => {
         // Hub-first : ouvrir directement la conv dans le hub avec le résumé déroulé.
         navigate(`/hub?summary=${response.summary_id}&open_summary=1`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
       setError(
-        err?.message ||
+        msg ||
           (language === "fr"
             ? "Impossible de pr�parer le chat. Essayez l'analyse compl�te."
             : "Unable to prepare chat. Try full analysis."),

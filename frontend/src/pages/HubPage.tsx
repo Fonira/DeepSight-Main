@@ -352,16 +352,16 @@ const HubPageInner: React.FC = () => {
         const resp = await videoApi.getHistory({ limit: 50, page: 1 });
         if (cancelled) return;
         const convs: HubConversation[] = (resp.items || []).map(
-          (item: any) => ({
-            id: item.id,
-            summary_id: item.id,
-            title: sanitizeTitle(item.video_title) || "Sans titre",
+          (item: Record<string, unknown>) => ({
+            id: item.id as number,
+            summary_id: item.id as number,
+            title: sanitizeTitle((item.video_title as string) ?? "") || "Sans titre",
             video_source: (item.platform === "tiktok"
               ? "tiktok"
               : "youtube") as "youtube" | "tiktok",
-            video_thumbnail_url: item.thumbnail_url ?? null,
+            video_thumbnail_url: (item.thumbnail_url as string | null | undefined) ?? null,
             last_snippet: undefined,
-            updated_at: item.created_at,
+            updated_at: item.created_at as string,
           }),
         );
         setConversations(convs);
@@ -455,7 +455,7 @@ const HubPageInner: React.FC = () => {
         const history = await chatApi.getHistory(activeConvId);
         if (cancelled) return;
         const mapped: HubMessage[] = (history || []).map(
-          (m: any, i: number) => {
+          (m: Record<string, unknown>, i: number) => {
             const source: HubMessage["source"] =
               m.source === "voice"
                 ? m.voice_speaker === "user"
@@ -464,14 +464,14 @@ const HubPageInner: React.FC = () => {
                 : "text";
             return {
               id: m.id ? `history-${m.id}` : `history-${i}`,
-              role: m.role,
-              content: m.content,
-              sources: m.sources,
-              web_search_used: m.web_search_used,
+              role: m.role as HubMessage["role"],
+              content: m.content as string,
+              sources: m.sources as HubMessage["sources"],
+              web_search_used: m.web_search_used as boolean | undefined,
               source,
-              voice_session_id: m.voice_session_id ?? null,
-              time_in_call_secs: m.time_in_call_secs,
-              timestamp: new Date(m.created_at ?? Date.now()).getTime(),
+              voice_session_id: (m.voice_session_id as string | null | undefined) ?? null,
+              time_in_call_secs: m.time_in_call_secs as number | undefined,
+              timestamp: new Date((m.created_at as string | number | undefined) ?? Date.now()).getTime(),
             };
           },
         );
@@ -885,16 +885,16 @@ const HubPageInner: React.FC = () => {
               try {
                 const resp = await videoApi.getHistory({ limit: 50, page: 1 });
                 const convs: HubConversation[] = (resp.items || []).map(
-                  (item: any) => ({
-                    id: item.id,
-                    summary_id: item.id,
-                    title: sanitizeTitle(item.video_title) || "Sans titre",
+                  (item: Record<string, unknown>) => ({
+                    id: item.id as number,
+                    summary_id: item.id as number,
+                    title: sanitizeTitle((item.video_title as string) ?? "") || "Sans titre",
                     video_source: (item.platform === "tiktok"
                       ? "tiktok"
                       : "youtube") as "youtube" | "tiktok",
-                    video_thumbnail_url: item.thumbnail_url ?? null,
+                    video_thumbnail_url: (item.thumbnail_url as string | null | undefined) ?? null,
                     last_snippet: undefined,
-                    updated_at: item.created_at,
+                    updated_at: item.created_at as string,
                   }),
                 );
                 setConversations(convs);

@@ -45,7 +45,7 @@ vi.mock("../../components/doodles", () => ({
 }));
 
 // ─── Mock auth — surchargeable par test via mockAuthState ─────────────────────
-let mockAuthState: { user: any; loading: boolean } = {
+let mockAuthState: { user: { plan?: string; is_admin?: boolean; preferences?: Record<string, unknown> } | null; loading: boolean } = {
   user: { plan: "expert", is_admin: false, preferences: {} },
   loading: false,
 };

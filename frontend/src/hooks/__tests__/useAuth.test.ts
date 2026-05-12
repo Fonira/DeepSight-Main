@@ -121,7 +121,7 @@ describe("Login", () => {
 
     // After login, refreshUser(true) is called, which calls getAccessToken
     mockGetAccessToken.mockReturnValue("new-access");
-    mockAuthApi.me.mockResolvedValueOnce(mockUser as any);
+    mockAuthApi.me.mockResolvedValueOnce(mockUser as unknown as Awaited<ReturnType<typeof mockAuthApi.me>>);
 
     const { result } = renderHook(() => useAuth());
 
@@ -133,7 +133,7 @@ describe("Login", () => {
   });
 
   it("login failure → error state set", async () => {
-    const apiError = new (ApiError as any)("Invalid credentials", 401);
+    const apiError = new (ApiError as unknown as new (msg: string, status: number) => Error)("Invalid credentials", 401);
     mockAuthApi.login.mockRejectedValueOnce(apiError);
 
     const { result } = renderHook(() => useAuth());
@@ -151,11 +151,11 @@ describe("Login", () => {
   });
 
   it("login sets isLoading while in progress", async () => {
-    let resolveLogin: (value: any) => void;
+    let resolveLogin: (value: unknown) => void;
     const loginPromise = new Promise((resolve) => {
       resolveLogin = resolve;
     });
-    mockAuthApi.login.mockReturnValueOnce(loginPromise as any);
+    mockAuthApi.login.mockReturnValueOnce(loginPromise as ReturnType<typeof mockAuthApi.login>);
 
     const { result } = renderHook(() => useAuth());
 
@@ -247,7 +247,7 @@ describe("Register", () => {
   });
 
   it("register failure → error state", async () => {
-    const apiError = new (ApiError as any)("Email already exists", 409);
+    const apiError = new (ApiError as unknown as new (msg: string, status: number) => Error)("Email already exists", 409);
     mockAuthApi.register.mockRejectedValueOnce(apiError);
 
     const { result } = renderHook(() => useAuth());
@@ -288,7 +288,7 @@ describe("Verify Email", () => {
   });
 
   it("verifyEmail failure → error message", async () => {
-    const apiError = new (ApiError as any)("Code invalide", 400);
+    const apiError = new (ApiError as unknown as new (msg: string, status: number) => Error)("Code invalide", 400);
     mockAuthApi.verifyEmail.mockRejectedValueOnce(apiError);
 
     const { result } = renderHook(() => useAuth());

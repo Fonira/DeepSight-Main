@@ -54,7 +54,7 @@ const DoodleIcon = React.forwardRef<SVGSVGElement, DoodleIconProps>(
 
     return (
       <Component
-        ref={ref as any}
+        ref={ref as React.Ref<SVGSVGElement>}
         viewBox="0 0 24 24"
         width={size}
         height={size}
