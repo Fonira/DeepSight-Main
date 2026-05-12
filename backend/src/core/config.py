@@ -519,158 +519,14 @@ LEGAL_CONFIG = {
 }
 
 # =============================================================================
-# ⚠️ DEPRECATED — PLAN_LIMITS est OBSOLÈTE.
-# La source de vérité unique est : billing/plan_config.py → PLANS[plan]["limits"]
-# Utiliser get_limits(plan_id) de billing/plan_config pour tout nouveau code.
-# Ce shim reste pour rétrocompatibilité — redirige vers plan_config.
+# PLAN_LIMITS shim removed 2026-05-12 (Phase 1B).
+# All callsites migrated to billing.plan_config.get_limits() and get_plan().
+# Field renames applied: daily_analyses→monthly_analyses, models→allowed_models,
+# chat_per_video_limit→chat_questions_per_video, can_use_playlists→playlists_enabled,
+# history_days→history_retention_days, name/color/price→get_plan(plan).
+# 'blocked_features' semantics replaced by positive *_enabled flags.
+# 'unlimited' tier dropped — admin uses 'expert' + is_admin flag instead.
 # =============================================================================
-
-
-def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
-    """Construit PLAN_LIMITS à partir du SSOT plan_config pour rétrocompatibilité.
-
-    ⚠️ Sprint 2026-05-12 — `PlanId.EXPERT` ajouté à l'itération. Avant ce fix,
-    la clé `expert` n'existait pas dans le dict legacy → tous les users plan=expert
-    (depuis migration v2 Alembic 012 2026-04-30) tombaient sur `PLAN_LIMITS["free"]`
-    par fallback → modèle `mistral-small-2603` au lieu de `mistral-large-2512`,
-    `deep_research_enabled=False`, etc. Cf. Summary 208/209/210 model_used cassé.
-    """
-    try:
-        from billing.plan_config import PLANS, PlanId
-
-        legacy = {}
-        for plan_id in [PlanId.FREE, PlanId.PLUS, PlanId.PRO, PlanId.EXPERT]:
-            plan = PLANS[plan_id]
-            limits = plan["limits"]
-            key = plan_id.value
-            legacy[key] = {
-                "monthly_credits": limits.get("monthly_credits", 0),
-                "daily_analyses": limits.get("monthly_analyses", 5),
-                "can_use_playlists": limits.get("playlists_enabled", False),
-                "max_playlist_videos": limits.get("max_playlist_videos", 0),
-                "history_days": limits.get("history_retention_days", 60),
-                "models": limits.get("allowed_models", ["mistral-small-2603"]),
-                "default_model": limits.get("default_model", "mistral-small-2603"),
-                "name": {"fr": plan["name"].upper(), "en": plan["name_en"].upper()},
-                "color": plan.get("color", "#888888"),
-                "price": plan.get("price_monthly_cents", 0),
-                "chat_daily_limit": limits.get("chat_daily_limit", 10),
-                "chat_per_video_limit": limits.get("chat_questions_per_video", 5),
-                "web_search_monthly": limits.get("web_search_monthly", 0),
-                "web_search_enabled": limits.get("web_search_enabled", False),
-                "deep_research_enabled": limits.get("deep_research_enabled", False),
-                "voice_chat_enabled": limits.get("voice_chat_enabled", False),
-                "voice_monthly_minutes": limits.get("voice_monthly_minutes", 0),
-                "blocked_features": (
-                    []
-                    if key in ("pro", "expert")
-                    else ["playlists", "deep_research", "voice_chat", "tts"]
-                    if key == "plus"
-                    else [
-                        "playlists",
-                        "export_csv",
-                        "export_excel",
-                        "batch_api",
-                        "tts",
-                        "deep_research",
-                        "voice_chat",
-                        "mindmap",
-                    ]
-                ),
-                "upgrade_prompt": {
-                    "fr": (
-                        "Vous avez le plan Expert, toutes les fonctionnalités sont débloquées !"
-                        if key == "expert"
-                        else "Passez à Expert pour débloquer Deep Research, recherche académique illimitée et le modèle Mistral Large !"
-                        if key == "pro"
-                        else "Passez à Pro pour débloquer mind maps, exports et recherche web !"
-                        if key == "free"
-                        else "Passez à Pro pour débloquer playlists, Deep Research et chat vocal !"
-                    ),
-                    "en": (
-                        "You have the Expert plan, all features are unlocked!"
-                        if key == "expert"
-                        else "Upgrade to Expert to unlock Deep Research, unlimited academic search and the Mistral Large model!"
-                        if key == "pro"
-                        else "Upgrade to Pro to unlock mind maps, exports and web search!"
-                        if key == "free"
-                        else "Upgrade to Pro to unlock playlists, Deep Research and voice chat!"
-                    ),
-                },
-            }
-        # Admin "unlimited" — copie expert (tier top en v2) avec limites levées.
-        # Auparavant copiait `pro` ; en v2 `pro` est l'intermédiaire et
-        # `expert` est le top — l'admin doit avoir le modèle large, pas medium.
-        if "expert" in legacy:
-            expert_copy = dict(legacy["expert"])
-            expert_copy.update(
-                {
-                    "monthly_credits": 999999,
-                    "daily_analyses": -1,
-                    "chat_daily_limit": -1,
-                    "chat_per_video_limit": -1,
-                    "web_search_monthly": -1,
-                    "web_search_enabled": True,
-                    "can_use_playlists": True,
-                    "max_playlist_videos": 999,
-                    "deep_research_enabled": True,
-                    "voice_chat_enabled": True,
-                    "voice_monthly_minutes": 999,
-                    "blocked_features": [],
-                }
-            )
-            legacy["unlimited"] = expert_copy
-
-        return legacy
-    except Exception:
-        # Fallback minimal si plan_config n'est pas chargeable (tests unitaires)
-        return {
-            "free": {
-                "monthly_credits": 250,
-                "daily_analyses": 5,
-                "blocked_features": ["playlists", "tts", "deep_research", "voice_chat", "mindmap"],
-                "models": ["mistral-small-2603"],
-                "default_model": "mistral-small-2603",
-            },
-            "plus": {
-                "monthly_credits": 3000,
-                "daily_analyses": 25,
-                "blocked_features": ["playlists", "deep_research", "voice_chat", "tts"],
-                "models": ["mistral-small-2603", "mistral-medium-2508"],
-                "default_model": "mistral-medium-2508",
-            },
-            "pro": {
-                "monthly_credits": 7500,
-                "daily_analyses": 30,
-                "blocked_features": [],
-                "models": ["mistral-small-2603", "mistral-medium-2508"],
-                "default_model": "mistral-medium-2508",
-            },
-            "expert": {
-                "monthly_credits": 15000,
-                "daily_analyses": 100,
-                "blocked_features": [],
-                "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
-                "default_model": "mistral-large-2512",
-                "deep_research_enabled": True,
-                "voice_chat_enabled": True,
-                "web_search_enabled": True,
-            },
-            "unlimited": {
-                "monthly_credits": 999999,
-                "daily_analyses": -1,
-                "chat_daily_limit": -1,
-                "chat_per_video_limit": -1,
-                "web_search_monthly": -1,
-                "web_search_enabled": True,
-                "blocked_features": [],
-                "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
-                "default_model": "mistral-large-2512",
-            },
-        }
-
-
-PLAN_LIMITS: Dict[str, Dict[str, Any]] = _build_legacy_plan_limits()
 
 # =============================================================================
 # BACKUP / S3
@@ -1003,7 +859,10 @@ def is_semantic_search_v1_enabled() -> bool:
 
 
 def get_plan_limits(plan: str) -> Dict[str, Any]:
-    return PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+    """Deprecated wrapper kept for binary compatibility. Use billing.plan_config.get_limits."""
+    from billing.plan_config import get_limits
+
+    return get_limits(plan)
 
 
 def get_groq_key() -> Optional[str]:
