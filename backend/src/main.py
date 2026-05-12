@@ -910,9 +910,25 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Backup scheduler failed to start: {e}")
 
+    # 🤖 Bots prospection — démarrer le poller Luffa si activé (gating interne)
+    try:
+        from bots.luffa.poller import start_background as _bots_luffa_start
+
+        _bots_luffa_start()
+        logger.info("Bots prospection — Luffa poller bootstrap done (active=conditional)")
+    except Exception as exc:  # pragma: no cover
+        logger.warning(f"⚠️ Bots Luffa poller bootstrap failed: {exc}")
+
     yield
 
     # Shutdown
+    try:
+        from bots.luffa.poller import stop_background as _bots_luffa_stop
+
+        await _bots_luffa_stop()
+        logger.info("Bots Luffa poller stopped")
+    except Exception:  # pragma: no cover
+        pass
     if scheduler is not None:
         scheduler.shutdown(wait=False)
         logger.info("Backup scheduler stopped")
@@ -1255,6 +1271,19 @@ if HUB_ROUTER_AVAILABLE:
 if VISUAL_ROUTER_AVAILABLE:
     app.include_router(visual_router, prefix="/api/admin/visual", tags=["Visual Analysis (POC)"])
     logger.info("👁️ Visual analysis router loaded (GET /api/admin/visual/debug-from-url, /health)")
+
+# 🤖 Bots prospection B2B router (Telegram webhook + Luffa polling)
+try:
+    from bots.router import router as bots_router
+
+    BOTS_ROUTER_AVAILABLE = True
+except ImportError as e:
+    BOTS_ROUTER_AVAILABLE = False
+    logger.warning(f"⚠️ Bots router not available: {e}")
+
+if BOTS_ROUTER_AVAILABLE:
+    app.include_router(bots_router, tags=["Bots Prospection"])
+    logger.info("🤖 Bots prospection router loaded (POST /api/bots/telegram/webhook)")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🖼️ THUMBNAIL STATIC FILES (local VPS fallback when R2 creds not available)
