@@ -484,9 +484,13 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     if supadata_key:
         try:
             yt_url = f"https://www.youtube.com/watch?v={video_id}"
-            # 🔌 Sprint Wave 2 (Audit B3) — Supadata sert des métadonnées YouTube ;
-            # router via le proxy résidentiel Decodo pour bypass IP datacenter.
-            async with get_proxied_client(timeout=30.0) as client:
+            # 🔄 Revert post-PR #472 — Supadata est un service intermédiaire qui
+            # accède YouTube avec sa propre infra (pas besoin du proxy Decodo
+            # côté DeepSight). Retour au pool partagé pour éviter latence +
+            # consommation bande passante proxy. Le proxy ne profite qu'aux
+            # appels directs à www.youtube.com (oEmbed l.615) ou aux subprocess
+            # yt-dlp (--proxy injecté séparément).
+            async with shared_http_client() as client:
                 resp = await client.get(
                     "https://api.supadata.ai/v1/metadata",
                     params={"url": yt_url},
@@ -554,9 +558,9 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     # Essayer plusieurs instances Invidious
     for instance in INVIDIOUS_INSTANCES[:5]:  # Essayer 5 instances
         try:
-            # 🔌 Sprint Wave 2 (Audit B3) — proxy Decodo pour bypass blocages
-            # Invidious quand ces instances rejettent les IPs datacenter.
-            async with get_proxied_client(timeout=15.0) as client:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût.
+            async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/videos/{video_id}", timeout=10, headers={"User-Agent": get_random_user_agent()}
                 )
@@ -835,9 +839,10 @@ async def get_transcript_supadata(
     print("  🥇 [SUPADATA] Trying...", flush=True)
 
     try:
-        # 🔌 Sprint Wave 2 (Audit B3) — Supadata récupère les transcripts YouTube.
-        # Router via Decodo pour cohérence avec le reste du chain extraction.
-        async with get_proxied_client(timeout=60.0) as client:
+        # 🔄 Revert post-PR #472 — Supadata est un service intermédiaire qui
+        # accède YouTube avec sa propre infra ; pas besoin du proxy Decodo,
+        # qui ajoutait de la latence sur l'extraction transcript.
+        async with shared_http_client() as client:
             # ─── Méthode 1 : Endpoint YouTube-specific (segments + timestamps) ───
             for lang in ["fr", "en", "es", "de", "pt", "it", None]:
                 params = {"videoId": video_id}
@@ -1076,9 +1081,9 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
 
     for instance in INVIDIOUS_INSTANCES[:5]:  # Essayer 5 instances max (augmenté de 3)
         try:
-            # 🔌 Sprint Wave 2 (Audit B3) — proxy Decodo : certaines instances
-            # Invidious rejettent les requêtes depuis IPs datacenter Hetzner.
-            async with get_proxied_client(timeout=float(_t("invidious"))) as client:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût.
+            async with shared_http_client() as client:
                 # Récupérer la liste des captions
                 response = await client.get(
                     f"{instance}/api/v1/captions/{video_id}",
@@ -1157,9 +1162,9 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
 
     for instance in healthy_instances[:5]:  # Essayer 5 instances max
         try:
-            # 🔌 Sprint Wave 2 (Audit B3) — proxy Decodo : Piped instances
-            # rejettent souvent IPs datacenter (rate-limit agressif).
-            async with get_proxied_client(timeout=float(_t("piped"))) as client:
+            # 🔄 Revert post-PR #472 — Piped instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût.
+            async with shared_http_client() as client:
                 # API Piped pour les streams (inclut les sous-titres)
                 response = await client.get(
                     f"{instance}/streams/{video_id}",
@@ -1381,8 +1386,9 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
     # MÉTHODE A: Essayer via Invidious d'abord (contourne le blocage)
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
-            # 🔌 Sprint Wave 2 (Audit B3) — proxy Decodo pour Invidious audio fetch.
-            async with get_proxied_client(timeout=120.0) as client:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût.
+            async with shared_http_client() as client:
                 # Récupérer les formats audio
                 response = await client.get(
                     f"{instance}/api/v1/videos/{video_id}", timeout=60, headers={"User-Agent": get_random_user_agent()}
@@ -1726,8 +1732,9 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
     # Télécharger l'audio via Invidious (même logique que Whisper)
     for instance in INVIDIOUS_INSTANCES[:3]:
         try:
-            # 🔌 Sprint Wave 2 (Audit B3) — proxy Decodo pour Invidious audio fetch (DEEPGRAM).
-            async with get_proxied_client(timeout=120.0) as client:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût (DEEPGRAM).
+            async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/videos/{video_id}", timeout=60, headers={"User-Agent": get_random_user_agent()}
                 )
@@ -2237,8 +2244,9 @@ async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[byt
     healthy_instances = get_healthy_instances(INVIDIOUS_INSTANCES)
     for instance in healthy_instances[:3]:
         try:
-            # 🔌 Sprint Wave 2 (Audit B3) — proxy Decodo pour Invidious audio fetch (shared helper).
-            async with get_proxied_client(timeout=120.0) as client:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût (helper partagé).
+            async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/videos/{video_id}", timeout=60, headers={"User-Agent": get_random_user_agent()}
                 )
@@ -2748,8 +2756,9 @@ async def get_playlist_videos(playlist_id: str, max_videos: int = 50) -> List[Di
     # Essayer Invidious d'abord
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
-            # 🔌 Sprint Wave 2 (Audit B3) — proxy Decodo pour Invidious playlist fetch.
-            async with get_proxied_client(timeout=30.0) as client:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût (playlist).
+            async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/playlists/{playlist_id}",
                     timeout=30,
@@ -2827,8 +2836,9 @@ async def get_playlist_info(playlist_id: str) -> Optional[Dict[str, Any]]:
     # Essayer Invidious d'abord
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
-            # 🔌 Sprint Wave 2 (Audit B3) — proxy Decodo pour Invidious playlist info.
-            async with get_proxied_client(timeout=20.0) as client:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût (playlist info).
+            async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/playlists/{playlist_id}",
                     timeout=20,
