@@ -865,8 +865,25 @@ async def get_transcript_supadata(
                         elif isinstance(data, dict):
                             segments = data.get("segments", data.get("transcript", []))
                             if isinstance(segments, str):
-                                print(f"  ✅ [SUPADATA] YT-specific success: {len(segments)} chars", flush=True)
-                                return segments, segments, lang or "fr"
+                                # 🔧 Option A (2026-05-12, follow-up PR #481) — Quand
+                                # l'endpoint YT-specific de Supadata retourne `segments`
+                                # sous forme de plain string (au lieu de la liste
+                                # `[{text, start, dur}, ...]` attendue), aucun anchor
+                                # `[MM:SS]` n'est calculé. Retourner `None` pour le canal
+                                # timestamped signale aux callers (`if simple and
+                                # timestamped`) que ce résultat n'a pas de timestamps
+                                # exploitables, déclenchant la fallback vers Phase 1
+                                # (ytapi/Invidious/Piped) qui peuvent fournir de vrais
+                                # timestamps. Anti-pattern précédent (`segments, segments`)
+                                # dupliquait le texte plain dans le canal timestamped →
+                                # la regex de `_parse_timestamps` (chunker.py) matchait
+                                # zéro anchor, causant silencieusement la perte de
+                                # timestamps pour visual analysis.
+                                print(
+                                    f"  ✅ [SUPADATA] YT-specific success (plain text, no timestamps): {len(segments)} chars",
+                                    flush=True,
+                                )
+                                return segments, None, lang or "fr"
 
                         if segments:
                             simple_parts = []
