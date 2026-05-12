@@ -39,9 +39,7 @@ async def luffa_loop() -> None:
         import luffa_bot  # type: ignore
         from luffa_bot.client import AsyncLuffaClient  # type: ignore
     except ImportError:
-        logger.warning(
-            "[bots.luffa] luffa-bot-python-sdk not installed — install or set LUFFA_ENABLED=false"
-        )
+        logger.warning("[bots.luffa] luffa-bot-python-sdk not installed — install or set LUFFA_ENABLED=false")
         return
 
     luffa_bot.robot_key = bot_settings.LUFFA_ROBOT_SECRET

@@ -329,13 +329,12 @@ async def _ask_question_legacy(request: ChatRequest, current_user: User, session
     try:
         import asyncio
         from search.embedding_service import embed_chat_turn
+
         asyncio.create_task(embed_chat_turn(user_msg_id, assistant_msg_id))
     except ImportError:
         pass
     except Exception as emb_err:
-        logger.warning(
-            f"[CHAT] embed_chat_turn trigger failed for {user_msg_id}/{assistant_msg_id}: {emb_err}"
-        )
+        logger.warning(f"[CHAT] embed_chat_turn trigger failed for {user_msg_id}/{assistant_msg_id}: {emb_err}")
 
     # Incrémenter le quota
     await increment_chat_quota(session, current_user.id)
@@ -417,19 +416,20 @@ async def ask_question_stream(
 
         # Sauvegarder après le streaming complet
         user_msg_id = await save_chat_message(session, current_user.id, request.summary_id, "user", request.question)
-        assistant_msg_id = await save_chat_message(session, current_user.id, request.summary_id, "assistant", full_response)
+        assistant_msg_id = await save_chat_message(
+            session, current_user.id, request.summary_id, "assistant", full_response
+        )
 
         # ─── Semantic Search V1 trigger ─────────────────────────────────────
         try:
             import asyncio
             from search.embedding_service import embed_chat_turn
+
             asyncio.create_task(embed_chat_turn(user_msg_id, assistant_msg_id))
         except ImportError:
             pass
         except Exception as emb_err:
-            logger.warning(
-                f"[CHAT] embed_chat_turn trigger failed for {user_msg_id}/{assistant_msg_id}: {emb_err}"
-            )
+            logger.warning(f"[CHAT] embed_chat_turn trigger failed for {user_msg_id}/{assistant_msg_id}: {emb_err}")
 
         await increment_chat_quota(session, current_user.id)
 
@@ -481,9 +481,7 @@ async def clear_history(
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
 
-    deleted = await clear_chat_history_unified(
-        session, summary_id, current_user.id, include_voice=include_voice
-    )
+    deleted = await clear_chat_history_unified(session, summary_id, current_user.id, include_voice=include_voice)
     return {"success": True, "deleted": deleted}
 
 

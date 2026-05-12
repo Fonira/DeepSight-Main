@@ -313,9 +313,7 @@ async def verify_email_endpoint(data: VerifyEmailRequest, session: AsyncSession 
             created_at = user.created_at
             if created_at.tzinfo is None:
                 created_at = created_at.replace(tzinfo=timezone.utc)
-            time_to_verify_seconds = (
-                datetime.now(timezone.utc) - created_at
-            ).total_seconds()
+            time_to_verify_seconds = (datetime.now(timezone.utc) - created_at).total_seconds()
 
         track_event(
             "signup_completed",

@@ -83,12 +83,19 @@ def test_streaming_prompt_mentions_30s_fallback():
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def test_streaming_prompt_size_under_5kb():
-    """Each prompt stays under 5 KB to fit the 12 KB system_prompt budget."""
-    assert len(EXPLORER_STREAMING_PROMPT_FR) < 5000, (
+def test_streaming_prompt_size_under_10kb():
+    """Each prompt stays under 10 KB to fit the 12 KB system_prompt budget.
+
+    Budget was bumped from 5 KB to 10 KB after Quick Voice Call v2 added the
+    CTX_FAILED phase + auto-correction logic + active filling tactics
+    (A/B/C). Real-world FR prompt is ~7.8 KB at the time of this commit, EN
+    similar. The 12 KB system_prompt ceiling (ElevenLabs limit) is the true
+    constraint; this test enforces a soft budget leaving ~2 KB headroom.
+    """
+    assert len(EXPLORER_STREAMING_PROMPT_FR) < 10000, (
         f"FR streaming prompt is {len(EXPLORER_STREAMING_PROMPT_FR)} chars — too large"
     )
-    assert len(EXPLORER_STREAMING_PROMPT_EN) < 5000, (
+    assert len(EXPLORER_STREAMING_PROMPT_EN) < 10000, (
         f"EN streaming prompt is {len(EXPLORER_STREAMING_PROMPT_EN)} chars — too large"
     )
 

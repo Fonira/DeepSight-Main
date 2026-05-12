@@ -3,6 +3,7 @@ System prompts pour le Tuteur DeepSight (persona "sobre & professionnel").
 
 V1 : prompt fixe. V2 envisagée : personnalisable par user.
 """
+
 from typing import Optional
 
 

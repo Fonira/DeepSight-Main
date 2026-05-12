@@ -53,8 +53,11 @@ describe("useTutor", () => {
     });
     expect(result.current.phase).toBe("mini-chat");
     expect(result.current.sessionId).toBe("tutor-test123");
-    expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0].role).toBe("assistant");
+    // startSession optimistically pushes the user's concept_term as the first
+    // visible turn, then appends the assistant's first_prompt → 2 messages.
+    expect(result.current.messages).toHaveLength(2);
+    expect(result.current.messages[0].role).toBe("user");
+    expect(result.current.messages[1].role).toBe("assistant");
   });
 
   it("appends user + assistant on submit", async () => {
@@ -69,9 +72,11 @@ describe("useTutor", () => {
     await act(async () => {
       await result.current.submitTextTurn("Mon idée");
     });
-    expect(result.current.messages).toHaveLength(3);
-    expect(result.current.messages[1].role).toBe("user");
-    expect(result.current.messages[2].role).toBe("assistant");
+    // startSession leaves 2 messages (user concept_term + assistant
+    // first_prompt). submitTextTurn appends 2 more → 4 total.
+    expect(result.current.messages).toHaveLength(4);
+    expect(result.current.messages[2].role).toBe("user");
+    expect(result.current.messages[3].role).toBe("assistant");
   });
 
   it("ends session and returns to idle", async () => {

@@ -1013,7 +1013,14 @@ def export_summary(
 
     if format == "txt":
         content = export_to_txt(
-            title, channel, category, mode, summary, video_url, duration, created_at,
+            title,
+            channel,
+            category,
+            mode,
+            summary,
+            video_url,
+            duration,
+            created_at,
             user_plan=user_plan,
             user_language=user_language,
         )
@@ -1090,7 +1097,16 @@ def export_summary(
 
     elif format == "csv":
         content = export_to_csv(
-            title, channel, category, mode, summary, video_url, duration, entities, reliability_score, created_at,
+            title,
+            channel,
+            category,
+            mode,
+            summary,
+            video_url,
+            duration,
+            entities,
+            reliability_score,
+            created_at,
             user_plan=user_plan,
             user_language=user_language,
         )
@@ -1100,7 +1116,16 @@ def export_summary(
         if not EXCEL_AVAILABLE:
             return None, "", ""
         content = export_to_excel(
-            title, channel, category, mode, summary, video_url, duration, entities, reliability_score, created_at,
+            title,
+            channel,
+            category,
+            mode,
+            summary,
+            video_url,
+            duration,
+            entities,
+            reliability_score,
+            created_at,
             user_plan=user_plan,
             user_language=user_language,
         )

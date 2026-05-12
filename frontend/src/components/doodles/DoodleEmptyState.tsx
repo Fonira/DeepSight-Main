@@ -1,6 +1,10 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, type Easing } from "framer-motion";
 import DoodleIcon from "./DoodleIcon";
+
+// Cubic-bezier easings typed for framer-motion v11+
+const LINEAR_EASE: Easing = [0, 0, 1, 1];
+const EASE_IN_OUT: Easing = [0.42, 0, 0.58, 1];
 
 type EmptyStateType =
   | "no-analyses"
@@ -67,7 +71,7 @@ const DoodleEmptyState: React.FC<DoodleEmptyStateProps> = ({
     animate: { y: 0, opacity: 1 },
     float: {
       y: [-6, 0, -6],
-      transition: { duration: 3, repeat: Infinity, ease: "easeInOut" },
+      transition: { duration: 3, repeat: Infinity, ease: EASE_IN_OUT },
     },
   };
 
@@ -116,7 +120,7 @@ const DoodleEmptyState: React.FC<DoodleEmptyStateProps> = ({
               }}
               animate={{
                 rotate: 360,
-                transition: { duration: 20, repeat: Infinity, linear: true },
+                transition: { duration: 20, repeat: Infinity, ease: LINEAR_EASE },
               }}
             >
               <DoodleIcon

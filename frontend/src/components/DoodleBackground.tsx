@@ -529,8 +529,6 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     setNavSeed(navCountRef.current * 7919); // prime multiplier for spread
   }, [location.pathname]);
 
-  if (isMobileOrReduced) return null;
-
   const accentPrimary = isDark ? "#D4A054" : "#C8903A";
   const accentSecondary = isDark ? "#C8903A" : "#D4A054";
 
@@ -788,6 +786,9 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TILE} ${TILE}">${paths}</svg>`;
     return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
   }, [tileDoodles, accentPrimary, accentSecondary]);
+
+  // Disable on mobile/reduced motion (early return AFTER all hooks)
+  if (isMobileOrReduced) return null;
 
   // Wider radial mask for more visible doodle area (was 55%, now 70%)
   const maskGradient =

@@ -68,7 +68,11 @@ describe("HighlightedText", () => {
     expect(container.querySelector("mark.ds-highlight")).toBeNull();
   });
 
-  it("only wraps for matching tab", () => {
+  it("falls back to query-word matching when current tab has no tab-specific match", () => {
+    // mockMatch is on tab="synthesis"; when rendering tab="quiz", the
+    // component no longer early-returns. Instead it uses the query-word
+    // fallback so the search term is still highlighted on whichever tab the
+    // user is currently viewing (see HighlightedText.tsx L112-119 rationale).
     const Wrapper = wrap([mockMatch]);
     const { container } = render(
       <Wrapper>
@@ -77,7 +81,10 @@ describe("HighlightedText", () => {
         </HighlightedText>
       </Wrapper>,
     );
-    expect(container.querySelector("mark.ds-highlight")).toBeNull();
+    const mark = container.querySelector("mark.ds-highlight");
+    expect(mark).not.toBeNull();
+    // The matched term is the query word ("transition") regardless of tab.
+    expect(mark?.textContent?.toLowerCase()).toContain("transition");
   });
 
   it("caps the number of marks rendered to 50 (hard cap)", () => {

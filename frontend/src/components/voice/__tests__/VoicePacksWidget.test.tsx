@@ -30,7 +30,7 @@ describe("VoicePacksWidget", () => {
   });
 
   it("renders 3 packs from API", async () => {
-    (voicePacksApi.list as any).mockResolvedValue([
+    (voicePacksApi.list as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([
       {
         slug: "voice-30",
         name: "30 min",
@@ -56,7 +56,7 @@ describe("VoicePacksWidget", () => {
         display_order: 3,
       },
     ]);
-    (voicePacksApi.myCredits as any).mockResolvedValue({
+    (voicePacksApi.myCredits as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       plan: "pro",
       allowance_total: 30,
       allowance_used: 5,
@@ -76,7 +76,7 @@ describe("VoicePacksWidget", () => {
   });
 
   it("redirects to Stripe checkout on Buy click", async () => {
-    (voicePacksApi.list as any).mockResolvedValue([
+    (voicePacksApi.list as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([
       {
         slug: "voice-30",
         name: "30 min",
@@ -86,7 +86,7 @@ describe("VoicePacksWidget", () => {
         display_order: 1,
       },
     ]);
-    (voicePacksApi.myCredits as any).mockResolvedValue({
+    (voicePacksApi.myCredits as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       plan: "pro",
       allowance_total: 30,
       allowance_used: 0,
@@ -95,15 +95,18 @@ describe("VoicePacksWidget", () => {
       total_minutes_available: 30,
       is_trial: false,
     });
-    (voicePacksApi.createCheckout as any).mockResolvedValue({
+    (voicePacksApi.createCheckout as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       checkout_url: "https://checkout.stripe.com/test_session",
       session_id: "cs_test_xxx",
     });
 
     // Mock window.location.href setter
     const originalLocation = window.location;
-    delete (window as any).location;
-    (window as any).location = { ...originalLocation, href: "" };
+    delete (window as unknown as { location?: Location }).location;
+    (window as unknown as { location: Location }).location = {
+      ...originalLocation,
+      href: "",
+    } as Location;
 
     render(<VoicePacksWidget />);
     await waitFor(() => screen.getByText("30 min"));
@@ -116,6 +119,6 @@ describe("VoicePacksWidget", () => {
       );
     });
 
-    (window as any).location = originalLocation;
+    (window as unknown as { location: Location }).location = originalLocation;
   });
 });

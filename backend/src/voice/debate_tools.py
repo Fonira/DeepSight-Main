@@ -44,9 +44,7 @@ async def _load_debate(debate_id: int, db: AsyncSession) -> Optional[DebateAnaly
     return result.scalar_one_or_none()
 
 
-async def _load_perspectives_for_tool(
-    debate: DebateAnalysis, db: AsyncSession
-) -> list[PerspectiveCtx]:
+async def _load_perspectives_for_tool(debate: DebateAnalysis, db: AsyncSession) -> list[PerspectiveCtx]:
     """
     Renvoie la liste des perspectives v2 OU le fallback v1 (1 perspective implicite).
     Mutualisé entre tous les nouveaux tools v2.
@@ -76,29 +74,19 @@ async def get_debate_overview(debate_id: int, db: AsyncSession) -> str:
 
     perspectives = await _load_perspectives_for_tool(debate, db)
     n = len(perspectives)
-    is_classic = (
-        n == 1 and _normalize_relation(perspectives[0].relation_type) == "opposite"
-    )
+    is_classic = n == 1 and _normalize_relation(perspectives[0].relation_type) == "opposite"
     lang = debate.lang or "fr"
 
     lines: list[str] = [f"Sujet du débat : {debate.detected_topic or '(non détecté)'}", ""]
 
-    lines.append(
-        f"Vidéo A — {debate.video_a_title or 'titre inconnu'} "
-        f"({debate.video_a_channel or 'chaîne inconnue'})"
-    )
-    lines.append(
-        f"  Thèse : {_truncate(debate.thesis_a or '(non identifiée)', 400)}"
-    )
+    lines.append(f"Vidéo A — {debate.video_a_title or 'titre inconnu'} ({debate.video_a_channel or 'chaîne inconnue'})")
+    lines.append(f"  Thèse : {_truncate(debate.thesis_a or '(non identifiée)', 400)}")
     lines.append("")
 
     if is_classic:
         # Format historique : compat avec test_get_debate_overview
         p = perspectives[0]
-        lines.append(
-            f"Vidéo B — {p.video_title or 'titre inconnu'} "
-            f"({p.video_channel or 'chaîne inconnue'})"
-        )
+        lines.append(f"Vidéo B — {p.video_title or 'titre inconnu'} ({p.video_channel or 'chaîne inconnue'})")
         lines.append(f"  Thèse : {_truncate(p.thesis or '(non identifiée)', 400)}")
         lines.append("")
     else:
@@ -110,14 +98,10 @@ async def get_debate_overview(debate_id: int, db: AsyncSession) -> str:
                 f"{p.video_title or 'titre inconnu'} "
                 f"({p.video_channel or 'chaîne inconnue'})"
             )
-            lines.append(
-                f"    Thèse : {_truncate(p.thesis or '(non identifiée)', 300)}"
-            )
+            lines.append(f"    Thèse : {_truncate(p.thesis or '(non identifiée)', 300)}")
         lines.append("")
 
-    lines.append(
-        f"Synthèse : {_truncate(debate.debate_summary or '(aucune synthèse disponible)', 600)}"
-    )
+    lines.append(f"Synthèse : {_truncate(debate.debate_summary or '(aucune synthèse disponible)', 600)}")
     return "\n".join(lines)
 
 
@@ -157,10 +141,7 @@ async def get_video_thesis(debate_id: int, side: str, db: AsyncSession) -> str:
 
         perspectives = await _load_perspectives_for_tool(debate, db)
         if target_idx < 0 or target_idx >= len(perspectives):
-            return (
-                f"Perspective {target_idx + 1} introuvable "
-                f"(le débat compte {len(perspectives)} perspective(s))."
-            )
+            return f"Perspective {target_idx + 1} introuvable (le débat compte {len(perspectives)} perspective(s))."
         p = perspectives[target_idx]
         title = p.video_title or "titre inconnu"
         channel = p.video_channel or "chaîne inconnue"
@@ -229,8 +210,7 @@ async def get_argument_comparison(debate_id: int, topic: str, db: AsyncSession) 
             for d in divergence[:6]:
                 if isinstance(d, dict):
                     lines.append(
-                        f"- **{d.get('topic', '?')}** — A : {d.get('position_a', '')} / "
-                        f"B : {d.get('position_b', '')}"
+                        f"- **{d.get('topic', '?')}** — A : {d.get('position_a', '')} / B : {d.get('position_b', '')}"
                     )
                 else:
                     lines.append(f"- {d}")
@@ -244,12 +224,8 @@ async def get_argument_comparison(debate_id: int, topic: str, db: AsyncSession) 
     matching_divergences = [
         d for d in divergence if isinstance(d, dict) and topic_norm in (d.get("topic") or "").lower()
     ]
-    matching_args_a = [
-        a for a in arguments_a if isinstance(a, dict) and topic_norm in (a.get("claim") or "").lower()
-    ]
-    matching_args_b = [
-        a for a in arguments_b if isinstance(a, dict) and topic_norm in (a.get("claim") or "").lower()
-    ]
+    matching_args_a = [a for a in arguments_a if isinstance(a, dict) and topic_norm in (a.get("claim") or "").lower()]
+    matching_args_b = [a for a in arguments_b if isinstance(a, dict) and topic_norm in (a.get("claim") or "").lower()]
 
     if not (matching_divergences or matching_args_a or matching_args_b):
         return (
@@ -259,10 +235,7 @@ async def get_argument_comparison(debate_id: int, topic: str, db: AsyncSession) 
 
     lines = [f"## Comparaison sur : {topic}", ""]
     for d in matching_divergences:
-        lines.append(
-            f"**{d.get('topic', '?')}** — A : {d.get('position_a', '')} / "
-            f"B : {d.get('position_b', '')}"
-        )
+        lines.append(f"**{d.get('topic', '?')}** — A : {d.get('position_a', '')} / B : {d.get('position_b', '')}")
     if matching_args_a:
         lines.append("\n**Arguments vidéo A** :")
         for a in matching_args_a[:3]:
@@ -316,9 +289,7 @@ async def search_in_debate_transcript(
         try:
             transcript = await _get_full_transcript_from_cache(video_id, db)
         except Exception as exc:
-            logger.warning(
-                "search_in_debate_transcript: %s load failed: %s", label, exc
-            )
+            logger.warning("search_in_debate_transcript: %s load failed: %s", label, exc)
             transcript = ""
         if not transcript:
             parts.append(f"### {label}\n(transcript indisponible)")
@@ -331,9 +302,7 @@ async def search_in_debate_transcript(
                 max_passages=3,
             )
         except Exception as exc:
-            logger.warning(
-                "search_in_debate_transcript: %s smart_search failed: %s", label, exc
-            )
+            logger.warning("search_in_debate_transcript: %s smart_search failed: %s", label, exc)
             passages = []
         if not passages:
             parts.append(f"### {label}\n(aucun passage pertinent trouvé)")
@@ -400,17 +369,13 @@ async def list_perspectives(debate_id: int, db: AsyncSession) -> str:
 
     perspectives = await _load_perspectives_for_tool(debate, db)
     if not perspectives:
-        return (
-            "Aucune perspective trouvée pour ce débat. "
-            "Le débat est peut-être encore en cours d'analyse."
-        )
+        return "Aucune perspective trouvée pour ce débat. Le débat est peut-être encore en cours d'analyse."
 
     lang = debate.lang or "fr"
     lines: list[str] = [
         f"## Perspectives du débat ({len(perspectives) + 1} au total)",
         "",
-        f"**Vidéo A** — {debate.video_a_title or 'titre inconnu'} "
-        f"({debate.video_a_channel or 'chaîne inconnue'})",
+        f"**Vidéo A** — {debate.video_a_title or 'titre inconnu'} ({debate.video_a_channel or 'chaîne inconnue'})",
         f"  Thèse : {_truncate(debate.thesis_a or '(non identifiée)', 300)}",
         "",
     ]
@@ -423,14 +388,9 @@ async def list_perspectives(debate_id: int, db: AsyncSession) -> str:
             f"{p.video_title or 'titre inconnu'} "
             f"({p.video_channel or 'chaîne inconnue'})"
         )
-        lines.append(
-            f"  Thèse : {_truncate(p.thesis or '(non identifiée)', 300)}"
-        )
+        lines.append(f"  Thèse : {_truncate(p.thesis or '(non identifiée)', 300)}")
         if p.arguments:
-            args_summary = "; ".join(
-                a.get("claim", "?") if isinstance(a, dict) else str(a)
-                for a in p.arguments[:3]
-            )
+            args_summary = "; ".join(a.get("claim", "?") if isinstance(a, dict) else str(a) for a in p.arguments[:3])
             lines.append(f"  Arguments principaux : {_truncate(args_summary, 250)}")
         lines.append("")
 
@@ -485,9 +445,7 @@ async def compare(
         # v2 : essaie de matcher sur perspective_id (DB row id)
         for p in perspectives:
             if p.perspective_id == pid and p.perspective_id != -1:
-                rel_human = _format_relation_human(
-                    p.relation_type, debate.lang or "fr"
-                )
+                rel_human = _format_relation_human(p.relation_type, debate.lang or "fr")
                 label = f"Perspective {p.position + 1} ({rel_human})"
                 return (label, p.video_title or "titre inconnu", p.thesis or "(non identifiée)", p.arguments)
         # Fallback : interprète pid comme position 1-based
@@ -512,10 +470,7 @@ async def compare(
             "Utiliser 0 pour la vidéo A, ou l'id/position d'une perspective."
         )
     if perspective_a_id == perspective_b_id:
-        return (
-            "Les deux perspectives à comparer sont identiques. "
-            "Choisir 2 perspectives différentes."
-        )
+        return "Les deux perspectives à comparer sont identiques. Choisir 2 perspectives différentes."
 
     label_a, title_a, thesis_a, args_a = side_a
     label_b, title_b, thesis_b, args_b = side_b
@@ -563,10 +518,7 @@ async def compare(
         lines.append("### Points de divergence (synthèse globale)")
         for d in divergence[:5]:
             if isinstance(d, dict):
-                lines.append(
-                    f"- **{d.get('topic', '?')}** — "
-                    f"{d.get('position_a', '')} / {d.get('position_b', '')}"
-                )
+                lines.append(f"- **{d.get('topic', '?')}** — {d.get('position_a', '')} / {d.get('position_b', '')}")
             else:
                 lines.append(f"- {str(d)}")
 
@@ -597,10 +549,7 @@ async def synthesize_relation(
 
     rel_norm = _normalize_relation(relation_type)
     if not relation_type or rel_norm not in ("opposite", "complement", "nuance"):
-        return (
-            "Paramètre 'relation_type' invalide. Utiliser 'opposite', 'complement' "
-            "ou 'nuance'."
-        )
+        return "Paramètre 'relation_type' invalide. Utiliser 'opposite', 'complement' ou 'nuance'."
 
     perspectives = await _load_perspectives_for_tool(debate, db)
     matching = [p for p in perspectives if _normalize_relation(p.relation_type) == rel_norm]
@@ -633,15 +582,13 @@ async def synthesize_relation(
         return _truncate("\n".join(lines), 3000)
 
     lines.append(
-        f"{len(matching)} perspective(s) sur {len(perspectives)} sont en relation "
-        f"« {rel_human} » avec la vidéo A :"
+        f"{len(matching)} perspective(s) sur {len(perspectives)} sont en relation « {rel_human} » avec la vidéo A :"
     )
     lines.append("")
     for p in matching:
         idx = p.position + 1
         lines.append(
-            f"### Perspective {idx} — {p.video_title or 'titre inconnu'} "
-            f"({p.video_channel or 'chaîne inconnue'})"
+            f"### Perspective {idx} — {p.video_title or 'titre inconnu'} ({p.video_channel or 'chaîne inconnue'})"
         )
         lines.append(f"  Thèse : {_truncate(p.thesis or '(non identifiée)', 400)}")
         if p.arguments:
@@ -661,9 +608,7 @@ async def synthesize_relation(
             for d in divergence[:6]:
                 if isinstance(d, dict):
                     lines.append(
-                        f"- **{d.get('topic', '?')}** — "
-                        f"A : {d.get('position_a', '')} / "
-                        f"B : {d.get('position_b', '')}"
+                        f"- **{d.get('topic', '?')}** — A : {d.get('position_a', '')} / B : {d.get('position_b', '')}"
                     )
                 else:
                     lines.append(f"- {str(d)}")
@@ -677,9 +622,7 @@ async def synthesize_relation(
             lines.append("")
     elif rel_norm == "nuance":
         # Pour les nuances, on ne pré-suppose pas un signal global ; on commente la dynamique.
-        lines.append(
-            "### Lecture nuancée"
-        )
+        lines.append("### Lecture nuancée")
         lines.append(
             "Ces perspectives modulent les claims principaux de la vidéo A — "
             "ni en franche opposition, ni en simple complément, mais en précisant "

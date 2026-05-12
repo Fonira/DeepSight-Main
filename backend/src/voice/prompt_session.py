@@ -208,25 +208,18 @@ async def _fetch_total_analyses(*, db: AsyncSession, user_id: int) -> Optional[i
     try:
         from sqlalchemy import func as _func
 
-        result = await db.execute(
-            select(_func.count(Summary.id)).where(Summary.user_id == user_id)
-        )
+        result = await db.execute(select(_func.count(Summary.id)).where(Summary.user_id == user_id))
         return int(result.scalar() or 0)
     except Exception as exc:  # noqa: BLE001 — section optionnelle
         logger.warning("prompt_session.total_analyses failed", error=str(exc))
         return None
 
 
-async def _fetch_recent_summaries(
-    *, db: AsyncSession, user_id: int, limit: int
-) -> list[Summary]:
+async def _fetch_recent_summaries(*, db: AsyncSession, user_id: int, limit: int) -> list[Summary]:
     """Renvoie les ``limit`` analyses les plus récentes du user. ``[]`` sur erreur."""
     try:
         result = await db.execute(
-            select(Summary)
-            .where(Summary.user_id == user_id)
-            .order_by(Summary.created_at.desc())
-            .limit(limit)
+            select(Summary).where(Summary.user_id == user_id).order_by(Summary.created_at.desc()).limit(limit)
         )
         return list(result.scalars().all())
     except Exception as exc:  # noqa: BLE001 — section optionnelle
@@ -234,9 +227,7 @@ async def _fetch_recent_summaries(
         return []
 
 
-async def _fetch_flashcards_due_today(
-    *, db: AsyncSession, user_id: int
-) -> Optional[int]:
+async def _fetch_flashcards_due_today(*, db: AsyncSession, user_id: int) -> Optional[int]:
     """Compte des FlashcardReview dont ``due_date <= aujourd'hui``.
 
     Note : le modèle FSRS s'appelle :class:`FlashcardReview` (pas ``Flashcard``)
@@ -299,11 +290,7 @@ def _render_recent_block(
     if not summaries:
         return None
 
-    header = (
-        f"# RECENT ANALYSES ({limit} latest)"
-        if language == "en"
-        else f"# ANALYSES RÉCENTES ({limit} dernières)"
-    )
+    header = f"# RECENT ANALYSES ({limit} latest)" if language == "en" else f"# ANALYSES RÉCENTES ({limit} dernières)"
     lines: list[str] = [header]
     for s in summaries[:limit]:
         title = (s.video_title or "?").strip()
@@ -355,9 +342,7 @@ def _enforce_cap(
     block = _assemble(
         session_lines=session_lines,
         user_lines=user_lines,
-        recent_block=_render_recent_block(
-            recent_summaries, language=language, limit=RECENT_ANALYSES_LIMIT
-        ),
+        recent_block=_render_recent_block(recent_summaries, language=language, limit=RECENT_ANALYSES_LIMIT),
     )
     if len(block) <= MAX_BLOCK_CHARS:
         return block
@@ -471,9 +456,7 @@ async def build_session_block(
     # Prénom
     first_name = _get_first_name(user)
     if first_name:
-        user_lines.append(
-            f"First name: {first_name}" if lang == "en" else f"Prénom : {first_name}"
-        )
+        user_lines.append(f"First name: {first_name}" if lang == "en" else f"Prénom : {first_name}")
     else:
         user_lines.append(
             "First name unknown — ask once if relevant"
@@ -489,9 +472,7 @@ async def build_session_block(
     )
     user_lines.append(f"Plan: {plan_label}" if lang == "en" else f"Plan : {plan_label}")
     if quota_line:
-        user_lines.append(
-            f"Voice quota: {quota_line}" if lang == "en" else f"Quota voice : {quota_line}"
-        )
+        user_lines.append(f"Voice quota: {quota_line}" if lang == "en" else f"Quota voice : {quota_line}")
 
     user_id = getattr(user, "id", None)
 
@@ -509,9 +490,7 @@ async def build_session_block(
         except Exception as exc:  # noqa: BLE001
             logger.warning("session_block: total analyses helper raised — omitting", error=str(exc))
     if total is not None:
-        user_lines.append(
-            f"Total analyses: {total}" if lang == "en" else f"Total analyses sur DeepSight : {total}"
-        )
+        user_lines.append(f"Total analyses: {total}" if lang == "en" else f"Total analyses sur DeepSight : {total}")
 
     # Flashcards due
     flashcards_due: Optional[int] = None
@@ -538,17 +517,13 @@ async def build_session_block(
     if themes:
         themes_line_idx = len(user_lines)
         joined = ", ".join(themes)
-        user_lines.append(
-            f"Interests: {joined}" if lang == "en" else f"Centres d'intérêt : {joined}"
-        )
+        user_lines.append(f"Interests: {joined}" if lang == "en" else f"Centres d'intérêt : {joined}")
 
     # ───── Section ANALYSES RÉCENTES (3 dernières) ─────
     recents: list[Summary] = []
     if user_id is not None:
         try:
-            recents = await _fetch_recent_summaries(
-                db=db, user_id=user_id, limit=RECENT_ANALYSES_LIMIT
-            )
+            recents = await _fetch_recent_summaries(db=db, user_id=user_id, limit=RECENT_ANALYSES_LIMIT)
         except Exception as exc:  # noqa: BLE001
             logger.warning("session_block: recent summaries helper raised — omitting", error=str(exc))
 

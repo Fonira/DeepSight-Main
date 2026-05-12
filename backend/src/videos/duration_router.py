@@ -334,17 +334,11 @@ def get_optimal_model(
     # fail (429/5xx), llm_complete() retombe sur la chaîne de fallback existante
     # (mistral-large-2512 → medium → small → DeepSeek) — pas besoin de modifier
     # MISTRAL_FALLBACK_ORDER.
-    if (
-        task == "synthesis"
-        and MAGISTRAL_EPISTEMIC_ENABLED
-        and raw_plan in MAGISTRAL_EPISTEMIC_TIERS
-    ):
+    if task == "synthesis" and MAGISTRAL_EPISTEMIC_ENABLED and raw_plan in MAGISTRAL_EPISTEMIC_TIERS:
         # Reprendre les max_tokens du modèle large (paramétrage Pro/Expert
         # heavy synthesis) pour ne pas brider Magistral arbitrairement.
         tier_group_for_tokens = _TIER_GROUP.get(tier, "medium")
-        _, default_max_tokens = _MODEL_MATRIX["synthesis"].get(
-            (tier_group_for_tokens, "pro"), (_MODEL_LARGE, 6000)
-        )
+        _, default_max_tokens = _MODEL_MATRIX["synthesis"].get((tier_group_for_tokens, "pro"), (_MODEL_LARGE, 6000))
         # Bonus tokens si transcript ultra-long (cohérent avec logique ci-dessous)
         if transcript_words > 45000:
             default_max_tokens = min(default_max_tokens + 2000, 12000)

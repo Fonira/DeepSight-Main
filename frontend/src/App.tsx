@@ -77,12 +77,14 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
       gcTime: 30 * 60 * 1000, // 30 minutes (anciennement cacheTime)
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: unknown) => {
         // Ne pas réessayer les erreurs 4xx (sauf 429)
+        const status = (error as { status?: number } | null)?.status;
         if (
-          error?.status >= 400 &&
-          error?.status < 500 &&
-          error?.status !== 429
+          typeof status === "number" &&
+          status >= 400 &&
+          status < 500 &&
+          status !== 429
         ) {
           return false;
         }
@@ -258,19 +260,23 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 //    après déploiement (chunks obsolètes sur Safari/mobile)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// React.lazy() expects a function returning a Promise<{ default: ComponentType }>
+// but we can't tighten the inner type without per-import generics; keep it broad.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- React.lazy module shape
 function lazyWithRetry(importFn: () => Promise<any>) {
   return lazy(() =>
-    importFn().catch((error: any) => {
+    importFn().catch((error: unknown) => {
       // Chunk loading failure after deployment — reload page once
+      const message =
+        (error as { message?: string } | null)?.message ?? "";
+      const name = (error as { name?: string } | null)?.name ?? "";
       const isChunkError =
-        error?.message?.includes(
-          "Failed to fetch dynamically imported module",
-        ) ||
-        error?.message?.includes("Loading chunk") ||
-        error?.message?.includes("Loading CSS chunk") ||
-        error?.message?.includes("Unable to preload CSS") ||
-        error?.name === "ChunkLoadError" ||
-        error?.message?.includes("error loading dynamically imported module");
+        message.includes("Failed to fetch dynamically imported module") ||
+        message.includes("Loading chunk") ||
+        message.includes("Loading CSS chunk") ||
+        message.includes("Unable to preload CSS") ||
+        name === "ChunkLoadError" ||
+        message.includes("error loading dynamically imported module");
 
       if (isChunkError) {
         const RELOAD_KEY = "chunk_reload_ts";
@@ -381,6 +387,7 @@ const PREFETCH_MAP: Record<string, string[]> = {
   "/analytics": ["/dashboard", "/hub"],
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import map for lazy pages
 const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   "/dashboard": () => import("./pages/DashboardPageMinimal"),
   "/settings": () => import("./pages/Settings"),

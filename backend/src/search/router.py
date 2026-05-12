@@ -143,9 +143,7 @@ async def global_search(
         favorites_only=request.favorites_only,
         playlist_id=request.playlist_id,
     )
-    results = await search_global(
-        user_id=user.id, query=request.query, filters=filters
-    )
+    results = await search_global(user_id=user.id, query=request.query, filters=filters)
 
     # Push fire-and-forget dans recent queries (best-effort, ne bloque jamais
     # la réponse). Le service `push_recent_query` capture déjà ses propres
@@ -283,9 +281,7 @@ async def explain_passage_endpoint(
     Free user → 403.
     """
     # Plan gating
-    if not is_feature_available(
-        user.plan, feature="semantic_search_tooltip", platform="web"
-    ):
+    if not is_feature_available(user.plan, feature="semantic_search_tooltip", platform="web"):
         raise HTTPException(
             403,
             "Le tooltip IA est inclus à partir du plan Pro. Upgrade pour débloquer.",

@@ -169,7 +169,7 @@ export const AdminPage: React.FC = () => {
     try {
       const data = await adminFetch("/api/admin/stats");
       setStats(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Stats error:", err);
     }
   }, [adminFetch]);
@@ -187,7 +187,7 @@ export const AdminPage: React.FC = () => {
       const data = await adminFetch(`/api/admin/users?${params}`);
       setUsers(data.users);
       setUsersTotal(data.total);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Users error:", err);
     }
   }, [adminFetch, usersPage, usersSearch, usersPlanFilter]);
@@ -197,7 +197,7 @@ export const AdminPage: React.FC = () => {
     try {
       const data = await adminFetch("/api/admin/logs");
       setLogs(data.logs);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Logs error:", err);
     }
   }, [adminFetch]);
@@ -234,8 +234,8 @@ export const AdminPage: React.FC = () => {
       await loadStats();
       setShowUserModal(false);
       setSelectedUser(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as { message?: string } | null)?.message ?? null);
     } finally {
       setActionLoading(false);
     }
@@ -260,8 +260,8 @@ export const AdminPage: React.FC = () => {
       setSelectedUser(null);
       setCreditsAmount(10);
       setCreditsReason("");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as { message?: string } | null)?.message ?? null);
     } finally {
       setActionLoading(false);
     }
@@ -288,15 +288,16 @@ export const AdminPage: React.FC = () => {
       );
       await loadUsers();
       await loadStats();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = (err as { message?: string } | null)?.message;
       showToast(
-        err.message ||
+        msg ||
           (language === "fr"
             ? "Erreur lors de la suppression"
             : "Error deleting user"),
         "error",
       );
-      setError(err.message);
+      setError(msg ?? null);
     } finally {
       setActionLoading(false);
     }

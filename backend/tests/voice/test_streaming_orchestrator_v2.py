@@ -217,13 +217,20 @@ async def test_run_emits_heartbeat_during_streaming(monkeypatch):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ctx_complete is always emitted — even on transcript failure
+# A finalize event (ctx_complete OR ctx_failed) is always emitted —
+# even on transcript failure. V2: ctx_failed when degraded.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_run_still_emits_ctx_complete_when_transcript_fails():
-    """A crashing transcript fetcher does NOT prevent ctx_complete."""
+async def test_run_still_emits_finalize_when_transcript_fails():
+    """A crashing transcript fetcher does NOT prevent a finalize event.
+
+    V2: when both transcript fails AND analysis is empty, the orchestrator
+    emits ``ctx_failed`` (degraded) rather than ``ctx_complete`` so the agent
+    falls back to pretrained + web_search transparently. The SSE consumer
+    still gets a clean close signal either way.
+    """
     redis = AsyncMock()
 
     async def boom_iter():
@@ -241,8 +248,8 @@ async def test_run_still_emits_ctx_complete_when_transcript_fails():
     await orch.run(session_id="s-err", video_id="vid", user_id=1)
 
     events = _decoded_events(redis)
-    assert events[-1].get("type") == "ctx_complete", (
-        "ctx_complete must be the last event even when transcript fails"
+    assert events[-1].get("type") in {"ctx_complete", "ctx_failed"}, (
+        "a finalize event (ctx_complete or ctx_failed) must close the stream"
     )
     # An ``error`` event must be present too — surface the failure to the SSE consumer.
     assert any(e.get("type") == "error" for e in events)

@@ -6,10 +6,12 @@ describe("hubStore", () => {
     useHubStore.getState().reset();
   });
 
-  it("initial state has no active conversation and drawer closed", () => {
+  it("initial state has no active conversation and drawer open by default", () => {
     const s = useHubStore.getState();
     expect(s.activeConvId).toBeNull();
-    expect(s.drawerOpen).toBe(false);
+    // drawerOpen defaults to true so the conversations drawer is visible on
+    // first Hub mount (see INITIAL in hubStore.ts).
+    expect(s.drawerOpen).toBe(true);
     expect(s.voiceCallOpen).toBe(false);
     expect(s.pipExpanded).toBe(false);
     expect(s.summaryExpanded).toBe(false);
@@ -42,10 +44,11 @@ describe("hubStore", () => {
   });
 
   it("toggleDrawer flips drawerOpen", () => {
-    useHubStore.getState().toggleDrawer();
-    expect(useHubStore.getState().drawerOpen).toBe(true);
+    // Initial = true → toggle = false → toggle = true
     useHubStore.getState().toggleDrawer();
     expect(useHubStore.getState().drawerOpen).toBe(false);
+    useHubStore.getState().toggleDrawer();
+    expect(useHubStore.getState().drawerOpen).toBe(true);
   });
 
   it("setVoiceState updates voiceState", () => {

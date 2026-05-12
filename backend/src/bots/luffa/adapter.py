@@ -69,19 +69,14 @@ async def send_outgoing(
 
             payload = GroupMessagePayload(
                 text=outgoing.text,
-                button=[
-                    SimpleButton(name=btn.label[:32], selector=btn.payload[:64])
-                    for btn in outgoing.buttons[:3]
-                ],
+                button=[SimpleButton(name=btn.label[:32], selector=btn.payload[:64]) for btn in outgoing.buttons[:3]],
             )
             if is_group:
                 await client.send_to_group(uid, payload, message_type=2)
             else:
                 # Luffa SDK n'expose pas de "send_to_user with buttons" en DM
                 # → on degrade en texte + listing inline
-                fallback_text = outgoing.text + "\n\n" + " | ".join(
-                    f"[{btn.label}]" for btn in outgoing.buttons
-                )
+                fallback_text = outgoing.text + "\n\n" + " | ".join(f"[{btn.label}]" for btn in outgoing.buttons)
                 await client.send_to_user(uid, fallback_text)
         else:
             if is_group:

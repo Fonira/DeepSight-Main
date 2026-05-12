@@ -108,9 +108,10 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
       });
 
       setExportedContent(response.content);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Export error:", err);
-      setError(err.message || "Export failed");
+      const msg = (err as { message?: string } | null)?.message;
+      setError(msg || "Export failed");
     } finally {
       setLoading(false);
     }

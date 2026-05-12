@@ -101,9 +101,7 @@ async def _miro_post(
             payload = resp.json()
         except Exception:
             payload = {"raw": resp.text[:500]}
-        raise MiroServiceError(
-            f"Miro API error {resp.status_code} on POST {path}: {payload}"
-        )
+        raise MiroServiceError(f"Miro API error {resp.status_code} on POST {path}: {payload}")
 
     return resp.json()
 
@@ -129,9 +127,7 @@ async def _miro_get(
             payload = resp.json()
         except Exception:
             payload = {"raw": resp.text[:500]}
-        raise MiroServiceError(
-            f"Miro API error {resp.status_code} on GET {path}: {payload}"
-        )
+        raise MiroServiceError(f"Miro API error {resp.status_code} on GET {path}: {payload}")
 
     return resp.json()
 
@@ -197,9 +193,7 @@ async def generate_debate_board(
         board = await _miro_post(client, "/boards", token, board_body)
         board_id: str = str(board.get("id") or "")
         if not board_id:
-            raise MiroServiceError(
-                f"Miro create board returned no id: {board!r}"
-            )
+            raise MiroServiceError(f"Miro create board returned no id: {board!r}")
 
         # ─── 2. Card vidéo A ─────────────────────────────────────────────
         thesis_a = _truncate(debate.thesis_a, 320)
@@ -210,11 +204,7 @@ async def generate_debate_board(
             token,
             {
                 "data": {
-                    "content": (
-                        f"<p><strong>Vidéo A</strong></p>"
-                        f"<p>{video_a_title}</p>"
-                        f"<p><em>{thesis_a}</em></p>"
-                    ),
+                    "content": (f"<p><strong>Vidéo A</strong></p><p>{video_a_title}</p><p><em>{thesis_a}</em></p>"),
                     "shape": "square",
                 },
                 "style": {"fillColor": COLOR_VIDEO_A},
@@ -247,11 +237,7 @@ async def generate_debate_board(
                     token,
                     {
                         "data": {
-                            "content": (
-                                f"<p><strong>{label}</strong></p>"
-                                f"<p>{title}</p>"
-                                f"<p><em>{thesis}</em></p>"
-                            ),
+                            "content": (f"<p><strong>{label}</strong></p><p>{title}</p><p><em>{thesis}</em></p>"),
                             "shape": "square",
                         },
                         "style": {"fillColor": color},
@@ -263,21 +249,14 @@ async def generate_debate_board(
         # ─── 4. Sticky notes Convergences (vert, à gauche) ───────────────
         # Limite : on en pose 5 max pour éviter le rate limit.
         for i, conv in enumerate(convergence_points[:5]):
-            content = (
-                conv.get("description") or conv.get("topic") or str(conv)
-                if isinstance(conv, dict)
-                else str(conv)
-            )
+            content = conv.get("description") or conv.get("topic") or str(conv) if isinstance(conv, dict) else str(conv)
             await _miro_post(
                 client,
                 f"/boards/{board_id}/sticky_notes",
                 token,
                 {
                     "data": {
-                        "content": (
-                            f"<p><strong>Convergence</strong></p>"
-                            f"<p>{_truncate(content, 200)}</p>"
-                        ),
+                        "content": (f"<p><strong>Convergence</strong></p><p>{_truncate(content, 200)}</p>"),
                         "shape": "square",
                     },
                     "style": {"fillColor": COLOR_CONVERGENCE},
@@ -301,10 +280,7 @@ async def generate_debate_board(
                 token,
                 {
                     "data": {
-                        "content": (
-                            f"<p><strong>Divergence</strong></p>"
-                            f"<p>{_truncate(full, 220)}</p>"
-                        ),
+                        "content": (f"<p><strong>Divergence</strong></p><p>{_truncate(full, 220)}</p>"),
                         "shape": "square",
                     },
                     "style": {"fillColor": COLOR_DIVERGENCE},
@@ -392,9 +368,7 @@ async def create_hub_workspace_board(
         # can load the board (defaults to "private" otherwise).
         board_body = {
             "name": safe_name,
-            "description": (
-                f"DeepSight Hub Workspace — {len(summaries)} analyses"
-            )[:500],
+            "description": (f"DeepSight Hub Workspace — {len(summaries)} analyses")[:500],
             "policy": {
                 "sharingPolicy": {"access": "view"},
             },
@@ -402,9 +376,7 @@ async def create_hub_workspace_board(
         board = await _miro_post(client, "/boards", token, board_body)
         board_id: str = str(board.get("id") or "")
         if not board_id:
-            raise MiroServiceError(
-                f"Miro create board returned no id: {board!r}"
-            )
+            raise MiroServiceError(f"Miro create board returned no id: {board!r}")
 
         # ─── 2. Cards (grille) ────────────────────────────────────────────
         # Position grille : colonne = idx % cols, row = idx // cols.
@@ -433,9 +405,7 @@ async def create_hub_workspace_board(
             if video_channel:
                 description_parts.append(f"<p>{video_channel}</p>")
             if video_url:
-                description_parts.append(
-                    f'<p><a href="{video_url}">Ouvrir la vidéo ({platform_name})</a></p>'
-                )
+                description_parts.append(f'<p><a href="{video_url}">Ouvrir la vidéo ({platform_name})</a></p>')
             description_html = "".join(description_parts)
 
             await _miro_post(

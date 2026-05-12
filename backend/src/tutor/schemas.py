@@ -3,6 +3,7 @@ Pydantic v2 schemas pour le router /api/tutor/*.
 
 Sessions sont stockées en Redis (TTL 1h, pas de table SQL).
 """
+
 from typing import Literal, Optional, List
 from pydantic import BaseModel, Field
 

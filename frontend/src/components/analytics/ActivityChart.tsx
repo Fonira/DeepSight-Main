@@ -32,13 +32,21 @@ interface ActivityChartProps {
 const ACCENT_COLOR = "#6366f1"; // Indigo
 const ACCENT_LIGHT = "#818cf8";
 
-const CustomTooltip = ({ active, payload, label, language }: any) => {
+// Recharts passes a flexible payload shape; keep loose typing for the tooltip
+type TooltipProps = {
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+  label?: string | number;
+  language?: "fr" | "en";
+};
+
+const CustomTooltip = ({ active, payload, label, language }: TooltipProps) => {
   if (active && payload && payload.length) {
     const value = payload[0].value;
     return (
       <div className="bg-bg-elevated border border-border-default rounded-lg px-3 py-2 shadow-lg">
         <p className="text-xs text-text-tertiary mb-1">
-          {formatDate(label, language)}
+          {formatDate(String(label ?? ""), language)}
         </p>
         <p className="text-sm font-semibold text-text-primary">
           {value}{" "}

@@ -70,7 +70,9 @@ describe("TutorFullscreen", () => {
       mode: "text",
     });
     renderFullscreen();
-    expect(screen.getByText("Rasoir d'Occam")).toBeInTheDocument();
+    // Concept term may appear multiple times (header title + content) — at
+    // least one occurrence is enough to confirm the title rendered.
+    expect(screen.getAllByText("Rasoir d'Occam").length).toBeGreaterThan(0);
   });
 
   it("renders messages from the store", async () => {

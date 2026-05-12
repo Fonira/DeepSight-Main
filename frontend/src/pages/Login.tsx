@@ -191,8 +191,9 @@ export const Login: React.FC = () => {
           /* identify best-effort — silent fail OK */
         }
       }
-    } catch (err: any) {
-      setError(err?.message || err?.detail || t.errors.generic);
+    } catch (err: unknown) {
+      const e = err as { message?: string; detail?: string } | null;
+      setError(e?.message || e?.detail || t.errors.generic);
     } finally {
       setLoading(false);
     }
@@ -221,10 +222,9 @@ export const Login: React.FC = () => {
       setShowVerification(false);
       setIsRegister(false);
       setVerificationCode("");
-    } catch (err: any) {
-      setError(
-        err?.message || (language === "fr" ? "Code invalide" : "Invalid code"),
-      );
+    } catch (err: unknown) {
+      const msg = (err as { message?: string } | null)?.message;
+      setError(msg || (language === "fr" ? "Code invalide" : "Invalid code"));
     } finally {
       setLoading(false);
     }
@@ -235,8 +235,9 @@ export const Login: React.FC = () => {
     setLoading(true);
     try {
       await loginWithGoogle();
-    } catch (err: any) {
-      setError(err.message || t.errors.generic);
+    } catch (err: unknown) {
+      const msg = (err as { message?: string } | null)?.message;
+      setError(msg || t.errors.generic);
       setLoading(false);
     }
   };

@@ -3,6 +3,7 @@
 Cache PG 7 jours sur sha256(query+passage_text+summary_id).
 Modèle : mistral-small-latest (économie 6× vs large, 2 phrases suffisent).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -34,9 +35,7 @@ def _make_cache_key(query: str, passage_text: str, summary_id: int) -> str:
     return hashlib.sha256(f"{query}|{passage_text}|{summary_id}".encode()).hexdigest()
 
 
-async def explain_passage(
-    summary_id: int, passage_text: str, query: str, source_type: str
-) -> dict:
+async def explain_passage(summary_id: int, passage_text: str, query: str, source_type: str) -> dict:
     """Retourne {explanation, cached, model_used}."""
     from db.database import async_session_maker, ExplainPassageCache
 
@@ -62,9 +61,7 @@ async def explain_passage(
 
         # Cache miss → Mistral
         user_prompt = (
-            f"Query : {query}\n\n"
-            f"Passage ({source_type}) : {passage_text}\n\n"
-            f"Pourquoi ce passage matche la query ?"
+            f"Query : {query}\n\nPassage ({source_type}) : {passage_text}\n\nPourquoi ce passage matche la query ?"
         )
         explanation = await _call_mistral_chat(user_prompt)
         if not explanation:
@@ -75,9 +72,7 @@ async def explain_passage(
             }
 
         # Upsert cache (delete-then-insert pour idempotence)
-        await session.execute(
-            sa_delete(ExplainPassageCache).where(ExplainPassageCache.cache_key == cache_key)
-        )
+        await session.execute(sa_delete(ExplainPassageCache).where(ExplainPassageCache.cache_key == cache_key))
         session.add(
             ExplainPassageCache(
                 cache_key=cache_key,

@@ -747,10 +747,7 @@ export const TutorHub: React.FC<TutorHubProps> = ({
                   onClick={() => {
                     void startVoice();
                   }}
-                  disabled={
-                    voiceStatus === "quota_exceeded" ||
-                    voiceStatus === "connecting"
-                  }
+                  disabled={voiceStatus === "quota_exceeded"}
                   aria-label={t.voiceStart}
                   data-testid="tutor-hub-voice-start"
                   className="p-2 rounded-md bg-violet-500/20 hover:bg-violet-500/30 text-violet-200 disabled:opacity-40 disabled:cursor-not-allowed border border-violet-500/30 transition-colors"

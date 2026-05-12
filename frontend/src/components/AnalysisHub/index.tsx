@@ -195,7 +195,7 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
         const mapped: QuizQuestionData[] = response.quiz.map((q) => ({
           question: q.question,
           options: q.options,
-          correct: q.correct_answer,
+          correct: q.correct_index,
           explanation: q.explanation,
         }));
         setQuizQuestions(mapped);
@@ -206,9 +206,10 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
             : "Failed to generate quiz.",
         );
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
       setQuizError(
-        err?.message ||
+        msg ||
           (language === "fr"
             ? "Erreur lors de la génération."
             : "Generation error."),
@@ -239,9 +240,10 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
             : "Failed to generate flashcards.",
         );
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
       setFlashcardsError(
-        err?.message ||
+        msg ||
           (language === "fr"
             ? "Erreur lors de la génération."
             : "Generation error."),

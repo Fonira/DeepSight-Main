@@ -217,7 +217,7 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
         } else {
           setData(null);
         }
-      } catch (err: any) {
+      } catch {
         setError("unavailable");
       } finally {
         setLoading(false);
@@ -840,13 +840,15 @@ export const TournesolBadge: React.FC<{
               result.data.criteria_scores?.length > 0
             ) {
               const largelyRec = result.data.criteria_scores.find(
-                (c: any) => c.criteria === "largely_recommended",
+                (c: { criteria: string; score: number | null }) =>
+                  c.criteria === "largely_recommended",
               );
               if (largelyRec?.score !== null) {
                 effectiveScore = largelyRec.score;
               } else {
                 const firstScore = result.data.criteria_scores.find(
-                  (c: any) => c.score !== null,
+                  (c: { criteria: string; score: number | null }) =>
+                    c.score !== null,
                 );
                 if (firstScore?.score !== null) {
                   effectiveScore = firstScore.score;
@@ -926,10 +928,10 @@ export const TournesolMini: React.FC<{
 
           if (result.found && result.data) {
             setData(result.data);
-          } else {
           }
         }
-      } catch (err) {
+      } catch {
+        // Silent fail — show nothing on error
       } finally {
         setLoading(false);
       }

@@ -96,9 +96,7 @@ class EmailService:
             template_name="welcome.html",
         )
 
-    async def send_verification(
-        self, to: str, username: str, code: str, user_id: Optional[int] = None
-    ) -> bool:
+    async def send_verification(self, to: str, username: str, code: str, user_id: Optional[int] = None) -> bool:
         html = self._render("verification.html", username=username, code=code)
         return await self.send_email(
             to=to,
@@ -115,9 +113,7 @@ class EmailService:
             template_name="verification.html",
         )
 
-    async def send_reset_password(
-        self, to: str, reset_url: str, user_id: Optional[int] = None
-    ) -> bool:
+    async def send_reset_password(self, to: str, reset_url: str, user_id: Optional[int] = None) -> bool:
         html = self._render("reset_password.html", reset_url=reset_url)
         return await self.send_email(
             to=to,
@@ -161,9 +157,7 @@ class EmailService:
             template_name="payment_success.html",
         )
 
-    async def send_payment_failed(
-        self, to: str, username: str, plan: str, user_id: Optional[int] = None
-    ) -> bool:
+    async def send_payment_failed(self, to: str, username: str, plan: str, user_id: Optional[int] = None) -> bool:
         plan_display = {"starter": "Starter", "pro": "Pro", "expert": "Expert"}.get(plan, plan.capitalize())
         html = self._render(
             "payment_failed.html",

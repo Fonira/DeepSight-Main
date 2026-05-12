@@ -68,7 +68,7 @@ def parse_update(payload: dict[str, Any]) -> Optional[ParsedMessage]:
     # Strip /start payload pour qualif uniforme
     cleaned_text = text
     if text.startswith("/start"):
-        cleaned_text = text[len("/start"):].strip() or "Salut"
+        cleaned_text = text[len("/start") :].strip() or "Salut"
     elif text.startswith("/"):
         cleaned_text = text  # autres commandes : on les passe au LLM tel quel
 
@@ -104,9 +104,7 @@ async def send_message(
     if not bot_settings.telegram_active:
         return "telegram inactive (BOTS_ENABLED or TELEGRAM_ENABLED false)"
 
-    url = (
-        f"https://api.telegram.org/bot{bot_settings.TELEGRAM_BOT_TOKEN}/sendMessage"
-    )
+    url = f"https://api.telegram.org/bot{bot_settings.TELEGRAM_BOT_TOKEN}/sendMessage"
     payload: dict[str, Any] = {
         "chat_id": chat_id,
         "text": outgoing.text,
@@ -115,12 +113,7 @@ async def send_message(
     }
     if outgoing.buttons:
         payload["reply_markup"] = {
-            "inline_keyboard": [
-                [
-                    {"text": btn.label, "callback_data": btn.payload}
-                    for btn in outgoing.buttons
-                ]
-            ]
+            "inline_keyboard": [[{"text": btn.label, "callback_data": btn.payload} for btn in outgoing.buttons]]
         }
 
     try:

@@ -89,6 +89,12 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs: [lint, test]
+    # Override workflow-level working-directory: backend — this aggregator
+    # job doesn't checkout the repo, so `backend/` doesn't exist on its
+    # runner. Run from the default workspace root instead.
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Check results
         run: |

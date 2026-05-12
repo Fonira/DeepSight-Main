@@ -131,10 +131,10 @@ test.describe("Analysis - URL Submission", () => {
 
     const input = page.getByRole("textbox", {
       name: /youtube|url|paste/i,
-    }) as any;
+    });
     const submitButton = page.getByRole("button", {
       name: /analyze|submit/i,
-    }) as any;
+    });
 
     await input.fill(TEST_YOUTUBE_URL);
     await submitButton.click();

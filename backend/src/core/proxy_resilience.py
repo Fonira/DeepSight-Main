@@ -189,10 +189,7 @@ class ProxyResilienceManager:
         errs = self._errors.get(variant)  # type: ignore[arg-type]
         if errs:
             errs.pop(0)
-            logger.debug(
-                f"proxy_resilience: success on variant={variant} — "
-                f"popped 1 error, remaining={len(errs)}"
-            )
+            logger.debug(f"proxy_resilience: success on variant={variant} — popped 1 error, remaining={len(errs)}")
 
     # -- Introspection helpers (debug + tests) ------------------------------
 
@@ -203,11 +200,7 @@ class ProxyResilienceManager:
         return {
             tier: {
                 "errors_in_window": len(cleaned.get(tier, [])),
-                "last_success_age_s": (
-                    int(now - self._last_success[tier])
-                    if tier in self._last_success
-                    else -1
-                ),
+                "last_success_age_s": (int(now - self._last_success[tier]) if tier in self._last_success else -1),
             }
             for tier in _TIER_ORDER
         }

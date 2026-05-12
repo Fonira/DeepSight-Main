@@ -1,6 +1,9 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, type Easing } from "framer-motion";
 import { DOODLE_MAP } from "./doodlePaths";
+
+// Cubic-bezier easing typed for framer-motion v11+
+const EASE_OUT: Easing = [0, 0, 0.58, 1];
 
 interface DoodleIconProps {
   name: string;
@@ -45,13 +48,13 @@ const DoodleIcon = React.forwardRef<SVGSVGElement, DoodleIconProps>(
       ? {
           initial: { opacity: 0, scale: 0.9 },
           animate: { opacity: 1, scale: 1 },
-          transition: { duration: 0.3, ease: "easeOut" },
+          transition: { duration: 0.3, ease: EASE_OUT },
         }
       : {};
 
     return (
       <Component
-        ref={ref as any}
+        ref={ref as React.Ref<SVGSVGElement>}
         viewBox="0 0 24 24"
         width={size}
         height={size}

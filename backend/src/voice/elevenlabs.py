@@ -36,8 +36,8 @@ VOICE_CALL_PROVIDER: str = "elevenlabs"
 # `create_conversation_agent` directly with a non-ElevenLabs model.
 ALLOWED_VOICE_CALL_MODELS: frozenset[str] = frozenset(
     {
-        "eleven_flash_v2_5",       # ~150ms first-byte — recommended
-        "eleven_turbo_v2_5",       # ~300ms — current default
+        "eleven_flash_v2_5",  # ~150ms first-byte — recommended
+        "eleven_turbo_v2_5",  # ~300ms — current default
         "eleven_multilingual_v2",  # higher quality, higher latency
     }
 )

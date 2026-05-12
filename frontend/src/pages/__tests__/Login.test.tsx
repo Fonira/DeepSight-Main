@@ -407,7 +407,10 @@ describe("Login Page - Edge Cases", () => {
     });
   });
 
-  it("should accept very long password", async () => {
+  // Typing a 108-char password char-by-char in userEvent is slow (~700-900ms
+  // alone, more under parallel CI load). Raise the per-test timeout from the
+  // default 5s to 15s to avoid flakiness when the suite runs concurrently.
+  it("should accept very long password", { timeout: 15000 }, async () => {
     const user = userEvent.setup();
     const mockLogin = vi.fn().mockResolvedValue(undefined);
     mockUseAuth.mockReturnValue({ ...defaultAuthState, login: mockLogin });

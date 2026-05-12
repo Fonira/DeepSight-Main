@@ -26,37 +26,20 @@ import {
   Eye,
   Lock,
 } from "lucide-react";
+import type {
+  FactCheckClaim,
+  FactCheckLiteData,
+  ReliabilityResult,
+} from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-interface ClaimAnalysis {
-  claim: string;
-  claim_type: string;
-  confidence: number;
-  risk_level: "low" | "medium" | "high";
-  verification_hint: string | null;
-  suggested_search?: string | null;
-}
-
-interface FactCheckLiteData {
-  overall_confidence: number;
-  risk_summary: string;
-  claims_analyzed: number;
-  high_risk_claims: ClaimAnalysis[];
-  medium_risk_claims: ClaimAnalysis[];
-  verification_suggestions: string[];
-  disclaimers: string[];
-}
-
-interface ReliabilityResult {
-  freshness?: any;
-  fact_check_lite?: FactCheckLiteData;
-  analysis_type?: string;
-  user_plan?: string;
-  full_factcheck_available?: boolean;
-}
+// SSOT for FactCheckClaim / FactCheckLiteData / ReliabilityResult lives in
+// services/api.ts. Local alias preserved for backward-compat with consumers
+// that import { ClaimAnalysis } from this file.
+type ClaimAnalysis = FactCheckClaim;
 
 interface FactCheckLiteProps {
   summaryId: number;

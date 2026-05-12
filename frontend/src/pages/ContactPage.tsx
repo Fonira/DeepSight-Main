@@ -147,10 +147,11 @@ const ContactPage: React.FC = () => {
       await contactApi.submit(form);
       setSent(true);
       setForm({ name: "", email: "", subject: "", message: "" });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const e = err as { detail?: string; message?: string } | null;
       setError(
-        err?.detail ||
-          err?.message ||
+        e?.detail ||
+          e?.message ||
           "Une erreur est survenue. Veuillez réessayer.",
       );
     } finally {

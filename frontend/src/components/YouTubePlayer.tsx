@@ -46,6 +46,7 @@ interface YouTubePlayerProps {
 // Déclaration globale pour l'API YouTube
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- YouTube IFrame API has no official types
     YT: any;
     onYouTubeIframeAPIReady: () => void;
   }
@@ -61,6 +62,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
     ref,
   ) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- YouTube Player instance from YT.Player()
     const playerRef = useRef<any>(null);
     const playerDivId = useRef(`yt-player-${videoId}-${Date.now()}`);
     const [isReady, setIsReady] = useState(false);
@@ -95,7 +97,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
           playsinline: 1,
         },
         events: {
-          onReady: (event: any) => {
+          onReady: (event: { target: { getDuration: () => number } }) => {
             setIsReady(true);
             setDuration(event.target.getDuration());
             setIsPlaying(true);
@@ -109,7 +111,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
               }
             }, 500);
           },
-          onStateChange: (event: any) => {
+          onStateChange: (event: { data: number }) => {
             setIsPlaying(event.data === window.YT.PlayerState.PLAYING);
           },
         },

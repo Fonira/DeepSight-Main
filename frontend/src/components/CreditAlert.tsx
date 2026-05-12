@@ -44,20 +44,10 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
   const credits = user?.credits ?? 0;
   const normalizedPlan = normalizePlanId(user?.plan);
 
-  // Don't show for pro plan (high credit limits)
-  if (normalizedPlan === "pro") {
-    return null;
-  }
-
   // Determine alert level
   const isCritical = credits <= criticalThreshold && credits > 0;
   const isWarning = credits <= warningThreshold && credits > criticalThreshold;
   const isEmpty = credits <= 0;
-
-  // Don't show if credits are above threshold
-  if (!isEmpty && !isCritical && !isWarning) {
-    return null;
-  }
 
   // Reset dismissed state if credits changed significantly
   useEffect(() => {
@@ -68,6 +58,16 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
       setDismissed(false);
     }
   }, [credits, lastDismissedCredits]);
+
+  // Don't show for pro plan (high credit limits)
+  if (normalizedPlan === "pro") {
+    return null;
+  }
+
+  // Don't show if credits are above threshold
+  if (!isEmpty && !isCritical && !isWarning) {
+    return null;
+  }
 
   // Don't show if dismissed and not critical
   if (dismissed && !isEmpty && !isCritical) {

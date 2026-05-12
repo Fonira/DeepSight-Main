@@ -22,7 +22,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 DEEPSIGHT_VERSION = "v0.1.0"
 DEEPSIGHT_BASE_URL = "https://deepsightsynthesis.com"
@@ -97,7 +97,6 @@ def build_markdown_export(summary: Any) -> str:
     """
     # ─── Métadonnées brutes ──────────────────────────────────────────────────
     summary_id = _attr(summary, "id")
-    video_id = _attr(summary, "video_id", "")
     video_url = _attr(summary, "video_url") or ""
     video_title = _attr(summary, "video_title") or "Untitled"
     channel = _attr(summary, "video_channel") or "Unknown"
@@ -112,9 +111,7 @@ def build_markdown_export(summary: Any) -> str:
     summary_extras = _attr(summary, "summary_extras") or {}
     visual_analysis = _attr(summary, "visual_analysis") or {}
 
-    analyzed_at = (
-        created_at.isoformat() if hasattr(created_at, "isoformat") else (created_at or "")
-    )
+    analyzed_at = created_at.isoformat() if hasattr(created_at, "isoformat") else (created_at or "")
 
     duration_str = _fmt_duration(duration_sec)
     slug = _slug_for_summary(summary_id)
@@ -148,13 +145,8 @@ def build_markdown_export(summary: Any) -> str:
     # ─── Header source-block + permalink ──────────────────────────────────────
     parts.append(f"# {video_title}")
     parts.append("")
-    parts.append(
-        f"> **Source** : [{channel} sur {platform.title()}]({video_url}) ({duration_str})"
-    )
-    parts.append(
-        "> **Analysis by** : [DeepSight](https://deepsightsynthesis.com) — "
-        "*AI YouTube analyzer*"
-    )
+    parts.append(f"> **Source** : [{channel} sur {platform.title()}]({video_url}) ({duration_str})")
+    parts.append("> **Analysis by** : [DeepSight](https://deepsightsynthesis.com) — *AI YouTube analyzer*")
     parts.append(f"> **Permalink** : {permalink}")
     parts.append("")
 
@@ -167,9 +159,7 @@ def build_markdown_export(summary: Any) -> str:
         parts.append("")
 
     # ─── ## Key Takeaways ─────────────────────────────────────────────────────
-    takeaways = (
-        summary_extras.get("key_takeaways") if isinstance(summary_extras, dict) else None
-    ) or []
+    takeaways = (summary_extras.get("key_takeaways") if isinstance(summary_extras, dict) else None) or []
     if takeaways:
         parts.append("## Key Takeaways")
         parts.append("")
@@ -178,9 +168,7 @@ def build_markdown_export(summary: Any) -> str:
         parts.append("")
 
     # ─── ## Chapter Themes ────────────────────────────────────────────────────
-    chapters = (
-        summary_extras.get("chapter_themes") if isinstance(summary_extras, dict) else None
-    ) or []
+    chapters = (summary_extras.get("chapter_themes") if isinstance(summary_extras, dict) else None) or []
     if chapters:
         parts.append("## Chapter Themes")
         parts.append("")
@@ -216,9 +204,7 @@ def build_markdown_export(summary: Any) -> str:
         _render_visual_analysis(parts, visual_analysis, video_url)
 
     # ─── ## Notable Quotes ────────────────────────────────────────────────────
-    quotes = (
-        summary_extras.get("key_quotes") if isinstance(summary_extras, dict) else None
-    ) or []
+    quotes = (summary_extras.get("key_quotes") if isinstance(summary_extras, dict) else None) or []
     if quotes:
         parts.append("## Notable Quotes")
         parts.append("")

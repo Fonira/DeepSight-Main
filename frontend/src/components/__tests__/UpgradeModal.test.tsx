@@ -208,8 +208,9 @@ describe("UpgradeModal - video_too_long", () => {
       /Vidéo trop longue/,
     );
 
-    expect(screen.getByText(/Starter: 120 min/)).toBeInTheDocument();
-    expect(screen.getByText(/Pro: 240 min/)).toBeInTheDocument();
+    expect(screen.getByText(/Free: 15 min/)).toBeInTheDocument();
+    expect(screen.getByText(/Pro: 60 min/)).toBeInTheDocument();
+    expect(screen.getByText(/Expert: 240 min/)).toBeInTheDocument();
   });
 
   it("should use default message if durations not provided", async () => {

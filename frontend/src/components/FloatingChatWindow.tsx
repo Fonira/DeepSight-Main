@@ -90,6 +90,7 @@ interface FloatingChatWindowProps {
     options?: { useWebSearch?: boolean },
   ) => void;
   onClearHistory?: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- react-markdown components map
   markdownComponents?: Record<string, React.ComponentType<any>>;
   language?: "fr" | "en";
   storageKey?: string;

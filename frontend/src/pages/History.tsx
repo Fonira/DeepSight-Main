@@ -397,12 +397,12 @@ const useHistoryApi = () => {
       const data = await response.json();
       // Le backend retourne { messages: [...], quota_info: {...} }
       const messages = data.messages || data || [];
-      return messages.map((m: any, i: number) => ({
-        id: m.id?.toString() || `history-${i}-${Date.now()}`,
-        role: m.role,
-        content: m.content,
-        sources: m.sources || [],
-        web_search_used: m.web_search_used || false,
+      return messages.map((m: Record<string, unknown>, i: number) => ({
+        id: (m.id as string | number | undefined)?.toString() || `history-${i}-${Date.now()}`,
+        role: m.role as ChatMessage["role"],
+        content: m.content as string,
+        sources: (m.sources as ChatMessage["sources"]) || [],
+        web_search_used: (m.web_search_used as boolean) || false,
       }));
     } catch (err) {
       console.error(`❌ [History] Error loading chat history:`, err);
@@ -442,12 +442,12 @@ const useHistoryApi = () => {
       const data = await response.json();
       // Le backend peut retourner { messages: [...] } ou directement [...]
       const messages = data.messages || data || [];
-      return messages.map((m: any, i: number) => ({
-        id: m.id?.toString() || `history-${i}-${Date.now()}`,
-        role: m.role,
-        content: m.content,
-        sources: m.sources || [],
-        web_search_used: m.web_search_used || false,
+      return messages.map((m: Record<string, unknown>, i: number) => ({
+        id: (m.id as string | number | undefined)?.toString() || `history-${i}-${Date.now()}`,
+        role: m.role as ChatMessage["role"],
+        content: m.content as string,
+        sources: (m.sources as ChatMessage["sources"]) || [],
+        web_search_used: (m.web_search_used as boolean) || false,
       }));
     } catch (err) {
       console.error(`❌ [History] Error loading playlist chat history:`, err);
@@ -837,7 +837,7 @@ export const History: React.FC = () => {
       const pollInterval = setInterval(async () => {
         try {
           const status = await videoApi.getTaskStatus(response.task_id);
-          if (status.status === "completed" || status.status === "done") {
+          if (status.status === "completed") {
             clearInterval(pollInterval);
             upgradeIntervalRef.current = null;
             // Reload the summary
@@ -849,7 +849,7 @@ export const History: React.FC = () => {
             });
             setUpgradeLoading(false);
             setUpgradeTaskId(null);
-          } else if (status.status === "error" || status.status === "failed") {
+          } else if (status.status === "failed") {
             clearInterval(pollInterval);
             upgradeIntervalRef.current = null;
             setUpgradeLoading(false);
@@ -860,8 +860,9 @@ export const History: React.FC = () => {
         }
       }, 5000);
       upgradeIntervalRef.current = pollInterval;
-    } catch (err: any) {
-      setError(err?.message || "Upgrade failed");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      setError(msg || "Upgrade failed");
       setUpgradeLoading(false);
     }
   };
@@ -918,10 +919,11 @@ export const History: React.FC = () => {
       const audioUrl = `${BASE_API_URL}${result.audio_url}`;
       // Open audio in new tab for playback/download
       window.open(audioUrl, "_blank");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Audio export error:", err);
-      const msg = err?.message || "";
-      if (msg.includes("feature_locked") || err?.status === 403) {
+      const errMsg = err instanceof Error ? err.message : "";
+      const errStatus = (err as { status?: number })?.status;
+      if (errMsg.includes("feature_locked") || errStatus === 403) {
         alert(
           language === "fr"
             ? "L'export audio nécessite un plan Pro ou supérieur."
@@ -1051,8 +1053,8 @@ export const History: React.FC = () => {
         await navigator.clipboard.writeText(share_url);
         // Brief visual feedback handled by the button
       }
-    } catch (err: any) {
-      if (err?.name === "AbortError") return;
+    } catch (err: unknown) {
+      if ((err as { name?: string })?.name === "AbortError") return;
       try {
         const { share_url } = await shareApi.createShareLink(video.video_id);
         await navigator.clipboard.writeText(share_url);
@@ -1185,11 +1187,12 @@ export const History: React.FC = () => {
           });
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erreur de chat";
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `❌ ${err.message || "Erreur de chat"}`,
+        content: `❌ ${msg}`,
       };
       setChatMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -2666,6 +2669,18 @@ const PlaylistDetailView: React.FC<{
   const [metaShowCitationModal, setMetaShowCitationModal] = useState(false);
   const [metaShowStudyToolsModal, setMetaShowStudyToolsModal] = useState(false);
   const [metaShowKeywordsModal, setMetaShowKeywordsModal] = useState(false);
+
+  // 📦 Portal Export Menu — position helper (local to PlaylistDetailView)
+  const calcExportMenuPos = useCallback(
+    (btnRef: React.RefObject<HTMLButtonElement | null>) => {
+      if (btnRef.current) {
+        const rect = btnRef.current.getBoundingClientRect();
+        return { top: rect.bottom + 4, left: Math.max(8, rect.right - 176) };
+      }
+      return { top: 0, left: 0 };
+    },
+    [],
+  );
 
   // 📦 Click-outside + scroll/resize handler for playlist export menus
   useEffect(() => {

@@ -1639,13 +1639,12 @@ async def process_chat_message_v4(
     if user_msg_id and assistant_msg_id:
         try:
             from search.embedding_service import embed_chat_turn
+
             asyncio.create_task(embed_chat_turn(user_msg_id, assistant_msg_id))
         except ImportError:
             pass
         except Exception as emb_err:
-            logger.warning(
-                f"[CHAT-V4] embed_chat_turn trigger failed for {user_msg_id}/{assistant_msg_id}: {emb_err}"
-            )
+            logger.warning(f"[CHAT-V4] embed_chat_turn trigger failed for {user_msg_id}/{assistant_msg_id}: {emb_err}")
 
     # 9. Incrémenter les quotas
     await increment_chat_quota(session, user_id)

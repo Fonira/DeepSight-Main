@@ -48,7 +48,11 @@ import { IntraAnalysisSearchBar } from "../components/highlight/IntraAnalysisSea
 import { ExplainTooltip } from "../components/highlight/ExplainTooltip";
 import { useCmdFIntercept } from "../components/highlight/useCmdFIntercept";
 import { useSemanticHighlight } from "../components/highlight/useSemanticHighlight";
-import type { WithinMatch } from "../services/api";
+import type {
+  WithinMatch,
+  Summary,
+  ChatMessage as ApiChatMessage,
+} from "../services/api";
 import { Loader2 } from "lucide-react";
 import type {
   HubConversation,
@@ -352,10 +356,10 @@ const HubPageInner: React.FC = () => {
         const resp = await videoApi.getHistory({ limit: 50, page: 1 });
         if (cancelled) return;
         const convs: HubConversation[] = (resp.items || []).map(
-          (item: any) => ({
+          (item: Summary) => ({
             id: item.id,
             summary_id: item.id,
-            title: sanitizeTitle(item.video_title) || "Sans titre",
+            title: sanitizeTitle(item.video_title ?? "") || "Sans titre",
             video_source: (item.platform === "tiktok"
               ? "tiktok"
               : "youtube") as "youtube" | "tiktok",
@@ -408,7 +412,7 @@ const HubPageInner: React.FC = () => {
             title:
               sanitizeTitle(
                 (summary as { video_title?: string; title?: string })
-                  .video_title ?? (summary as { title?: string }).title,
+                  .video_title ?? (summary as { title?: string }).title ?? "",
               ) || "Sans titre",
             video_source: platform,
             video_thumbnail_url:
@@ -416,7 +420,7 @@ const HubPageInner: React.FC = () => {
             last_snippet: undefined,
             updated_at:
               (summary as { created_at?: string; updated_at?: string })
-                .updated_at ?? (summary as { created_at?: string }).created_at,
+                .updated_at ?? (summary as { created_at?: string }).created_at ?? "",
           };
           setConversations([synthetic, ...convs]);
           setActiveConv(target);
@@ -455,10 +459,18 @@ const HubPageInner: React.FC = () => {
         const history = await chatApi.getHistory(activeConvId);
         if (cancelled) return;
         const mapped: HubMessage[] = (history || []).map(
-          (m: any, i: number) => {
+          (m: ApiChatMessage, i: number) => {
+            // Some payload fields aren't part of the typed ChatMessage interface
+            // yet (voice metadata) — keep a permissive view for those reads.
+            const extra = m as ApiChatMessage & {
+              source?: string;
+              voice_speaker?: string;
+              voice_session_id?: string | null;
+              time_in_call_secs?: number;
+            };
             const source: HubMessage["source"] =
-              m.source === "voice"
-                ? m.voice_speaker === "user"
+              extra.source === "voice"
+                ? extra.voice_speaker === "user"
                   ? "voice_user"
                   : "voice_agent"
                 : "text";
@@ -466,11 +478,11 @@ const HubPageInner: React.FC = () => {
               id: m.id ? `history-${m.id}` : `history-${i}`,
               role: m.role,
               content: m.content,
-              sources: m.sources,
+              sources: m.sources as HubMessage["sources"],
               web_search_used: m.web_search_used,
               source,
-              voice_session_id: m.voice_session_id ?? null,
-              time_in_call_secs: m.time_in_call_secs,
+              voice_session_id: extra.voice_session_id ?? null,
+              time_in_call_secs: extra.time_in_call_secs,
               timestamp: new Date(m.created_at ?? Date.now()).getTime(),
             };
           },
@@ -885,10 +897,10 @@ const HubPageInner: React.FC = () => {
               try {
                 const resp = await videoApi.getHistory({ limit: 50, page: 1 });
                 const convs: HubConversation[] = (resp.items || []).map(
-                  (item: any) => ({
+                  (item: Summary) => ({
                     id: item.id,
                     summary_id: item.id,
-                    title: sanitizeTitle(item.video_title) || "Sans titre",
+                    title: sanitizeTitle(item.video_title ?? "") || "Sans titre",
                     video_source: (item.platform === "tiktok"
                       ? "tiktok"
                       : "youtube") as "youtube" | "tiktok",

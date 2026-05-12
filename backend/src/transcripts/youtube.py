@@ -2589,11 +2589,7 @@ async def _get_transcript_with_timestamps_inner(
 
     _short_circuit_cap = _get_max_stt_duration(user_plan or "free")
     _voxtral_cb = get_circuit_breaker("voxtral_stt")
-    if (
-        duration > 0
-        and duration <= _short_circuit_cap
-        and _voxtral_cb.can_execute()
-    ):
+    if duration > 0 and duration <= _short_circuit_cap and _voxtral_cb.can_execute():
         print("", flush=True)
         print(
             f"🎙️ PHASE 1.5: No captions detected by Supadata, short-circuiting to Voxtral STT "
@@ -2613,8 +2609,7 @@ async def _get_transcript_with_timestamps_inner(
                 print("  ❌ [Voxtral short-circuit] Empty result, falling back to Phase 2", flush=True)
         except Exception as e:
             print(
-                f"  ⚠️ [Voxtral short-circuit] Failed ({type(e).__name__}): {str(e)[:200]} — "
-                f"falling back to Phase 2",
+                f"  ⚠️ [Voxtral short-circuit] Failed ({type(e).__name__}): {str(e)[:200]} — falling back to Phase 2",
                 flush=True,
             )
             # Don't record failure on circuit breaker — Phase 3 will retry the same provider

@@ -35,6 +35,11 @@ const STATUS_BADGE: Record<
     className: "bg-indigo-500/15 text-indigo-400",
     icon: SpinnerBadgeIcon,
   },
+  adding_perspective: {
+    label: "Perspective…",
+    className: "bg-indigo-500/15 text-indigo-400",
+    icon: SpinnerBadgeIcon,
+  },
   comparing: {
     label: "Comparaison…",
     className: "bg-violet-500/15 text-violet-400",

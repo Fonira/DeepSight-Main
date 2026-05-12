@@ -176,6 +176,7 @@ def _get_proxy_url() -> Optional[str]:
     """
     try:
         from core.config import get_youtube_proxy
+
         proxy = get_youtube_proxy()
         return proxy or None
     except Exception:

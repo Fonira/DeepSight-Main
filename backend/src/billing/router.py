@@ -146,18 +146,20 @@ def init_stripe():
 # ─────────────────────────────────────────────────────────────────────────────
 # 🎯 Acquisition channel — vocabulaire SSOT aligné avec PostHog signup_source
 # ─────────────────────────────────────────────────────────────────────────────
-ALLOWED_ACQUISITION_CHANNELS: frozenset[str] = frozenset({
-    "product_hunt",
-    "twitter",
-    "reddit",
-    "linkedin",
-    "indiehackers",
-    "hackernews",
-    "karim_inmail",
-    "mobile_deeplink",
-    "test",
-    "direct",
-})
+ALLOWED_ACQUISITION_CHANNELS: frozenset[str] = frozenset(
+    {
+        "product_hunt",
+        "twitter",
+        "reddit",
+        "linkedin",
+        "indiehackers",
+        "hackernews",
+        "karim_inmail",
+        "mobile_deeplink",
+        "test",
+        "direct",
+    }
+)
 
 _ACQUISITION_CHANNEL_ALIASES: dict[str, str] = {
     "ph": "product_hunt",
@@ -188,7 +190,8 @@ def normalize_acquisition_channel(raw: Optional[str]) -> str:
     if norm not in ALLOWED_ACQUISITION_CHANNELS:
         logger.warning(
             "Unknown acquisition_channel '%s' (normalized '%s'), defaulting to direct",
-            raw, norm,
+            raw,
+            norm,
         )
         return "direct"
     return norm
@@ -227,7 +230,8 @@ async def get_or_create_stripe_customer(
     if not user.stripe_customer_id or force_recreate:
         logger.info(
             "Creating new Stripe customer for user %s (channel=%s)",
-            user.id, channel,
+            user.id,
+            channel,
         )
         customer = stripe.Customer.create(
             email=user.email,
@@ -257,7 +261,8 @@ async def get_or_create_stripe_customer(
                 )
                 logger.info(
                     "Backfilled acquisition_channel=%s on existing customer %s",
-                    channel, user.stripe_customer_id,
+                    channel,
+                    user.stripe_customer_id,
                 )
             except stripe.error.StripeError as e:
                 logger.warning("Backfill metadata failed: %s", e)
@@ -454,9 +459,7 @@ async def start_trial(
         customer_id = await get_or_create_stripe_customer(current_user, session)
     except stripe.error.StripeError as e:
         logger.error(f"Error creating Stripe customer: {e}")
-        raise HTTPException(
-            status_code=500, detail="Erreur lors de la création du client Stripe"
-        )
+        raise HTTPException(status_code=500, detail="Erreur lors de la création du client Stripe")
 
     try:
         checkout_session = stripe.checkout.Session.create(
@@ -492,9 +495,7 @@ async def start_trial(
             },
         )
 
-        logger.info(
-            f"Trial v2 checkout: user={current_user.id} plan={plan} cycle={cycle}"
-        )
+        logger.info(f"Trial v2 checkout: user={current_user.id} plan={plan} cycle={cycle}")
 
         return {
             "checkout_url": checkout_session.url,
@@ -804,8 +805,8 @@ async def create_checkout_session(
 class CreateCheckoutByPlanId(BaseModel):
     """Requête v2 avec plan + cycle (compat rétro avec plan_id)."""
 
-    plan: Optional[str] = None    # "pro" | "expert"
-    cycle: str = "monthly"         # "monthly" | "yearly"
+    plan: Optional[str] = None  # "pro" | "expert"
+    cycle: str = "monthly"  # "monthly" | "yearly"
     plan_id: Optional[str] = None  # legacy alias of plan
     # 🎯 Attribution launch J0 — premier-touch immutable.
     # Vocabulaire SSOT (cf. ALLOWED_ACQUISITION_CHANNELS).
@@ -876,9 +877,7 @@ async def create_checkout_by_plan_id(
     success_url = (
         request.plan_id  # noqa: SIM222 — preserved for legacy compat
         and f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={plan}"
-    ) or (
-        f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={plan}&cycle={request.cycle}"
-    )
+    ) or (f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={plan}&cycle={request.cycle}")
     cancel_url = f"{FRONTEND_URL}/payment/cancel"
 
     try:
@@ -902,9 +901,7 @@ async def create_checkout_by_plan_id(
             },
         )
 
-        logger.info(
-            f"Checkout v2 session: user={current_user.id} plan={plan} cycle={request.cycle}"
-        )
+        logger.info(f"Checkout v2 session: user={current_user.id} plan={plan} cycle={request.cycle}")
 
         return {"checkout_url": checkout_session.url, "session_id": checkout_session.id}
 
@@ -2117,23 +2114,25 @@ async def _handle_voice_pack_checkout(session: AsyncSession, data: dict, metadat
     except (ValueError, TypeError):
         logger.warning(
             "Voice pack: invalid metadata user_id=%s pack_id=%s minutes=%s",
-            user_id_str, pack_id_str, minutes_str,
+            user_id_str,
+            pack_id_str,
+            minutes_str,
         )
         return
 
     if user_id <= 0 or pack_id <= 0 or minutes <= 0:
         logger.warning(
             "Voice pack: invalid values user_id=%s pack_id=%s minutes=%s",
-            user_id, pack_id, minutes,
+            user_id,
+            pack_id,
+            minutes,
         )
         return
 
     # Idempotency: skip if this session_id already recorded
     if session_id:
         existing = await session.execute(
-            select(VoiceCreditPurchase).where(
-                VoiceCreditPurchase.stripe_session_id == session_id
-            )
+            select(VoiceCreditPurchase).where(VoiceCreditPurchase.stripe_session_id == session_id)
         )
         if existing.scalar_one_or_none():
             logger.info("Voice pack checkout %s already processed — skipping", session_id)
@@ -2167,7 +2166,10 @@ async def _handle_voice_pack_checkout(session: AsyncSession, data: dict, metadat
     await session.commit()
     logger.info(
         "Voice pack credited: +%dmin user=%d slug=%s session=%s",
-        minutes, user_id, pack_slug, session_id,
+        minutes,
+        user_id,
+        pack_slug,
+        session_id,
     )
 
 
@@ -2272,10 +2274,7 @@ async def handle_subscription_deleted(session: AsyncSession, data: dict):
 
             # Last analysis days ago — signal "user dormant avant cancel"
             last_summary_q = await session.execute(
-                select(Summary)
-                .where(Summary.user_id == user.id)
-                .order_by(Summary.created_at.desc())
-                .limit(1)
+                select(Summary).where(Summary.user_id == user.id).order_by(Summary.created_at.desc()).limit(1)
             )
             last = last_summary_q.scalar_one_or_none()
             last_analysis_days_ago: Optional[int] = None
@@ -2283,13 +2282,9 @@ async def handle_subscription_deleted(session: AsyncSession, data: dict):
                 la_created = last.created_at
                 if la_created.tzinfo is None:
                     la_created = la_created.replace(tzinfo=timezone.utc)
-                last_analysis_days_ago = (
-                    datetime.now(timezone.utc) - la_created
-                ).days
+                last_analysis_days_ago = (datetime.now(timezone.utc) - la_created).days
 
-            cancel_reason = (
-                (data.get("cancellation_details") or {}).get("reason") or "(none)"
-            )
+            cancel_reason = (data.get("cancellation_details") or {}).get("reason") or "(none)"
             prefs = user.preferences or {}
 
             track_event(

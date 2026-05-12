@@ -473,7 +473,15 @@ class YouTubeSearcher:
             # proxy (PROXY_DISABLED=true OU MTD>950MB).
             from transcripts.audio_utils import _yt_dlp_extra_args
 
-            cmd = ["yt-dlp", *_yt_dlp_extra_args(), "--dump-json", "--flat-playlist", "--no-warnings", "--geo-bypass", search_query]
+            cmd = [
+                "yt-dlp",
+                *_yt_dlp_extra_args(),
+                "--dump-json",
+                "--flat-playlist",
+                "--no-warnings",
+                "--geo-bypass",
+                search_query,
+            ]
 
             logger.info(f"🔍 yt-dlp search: '{query}' (max={max_results}, lang={language})")
 

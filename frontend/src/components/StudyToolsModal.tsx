@@ -190,7 +190,7 @@ const generateAllMaterials = async (
 
 const generateAdditionalQuestions = async (
   summaryId: number,
-  existingQuestions: any[],
+  existingQuestions: unknown[],
   count: number,
 ) => {
   const response = await fetch(
@@ -231,7 +231,9 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
   const [selectedTool, setSelectedTool] = useState<ToolType | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy study materials shape
   const [studyCardData, setStudyCardData] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy study materials shape
   const [conceptMapData, setConceptMapData] = useState<any>(null);
   const [activeResultTab, setActiveResultTab] = useState<"card" | "map">(
     "card",
@@ -336,9 +338,12 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
         setActiveResultTab(materials.study_card ? "card" : "map");
       }
       setViewMode("results");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Generation error:", err);
-      setError(err.message || "Erreur lors de la génération");
+      setError(
+        (err as { message?: string } | null)?.message ||
+          "Erreur lors de la génération",
+      );
       setViewMode("options");
     } finally {
       setLoading(false);
@@ -363,8 +368,11 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
         quiz: [...studyCardData.quiz, ...result.new_questions],
       });
       setCredits(result.credits_remaining);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la génération");
+    } catch (err: unknown) {
+      setError(
+        (err as { message?: string } | null)?.message ||
+          "Erreur lors de la génération",
+      );
     } finally {
       setLoading(false);
     }

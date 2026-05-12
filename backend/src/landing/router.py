@@ -52,14 +52,10 @@ async def _compute_landing_stats(session: AsyncSession) -> dict:
     Modèle SQL inspiré de admin/router.py mais sans auth admin.
     Aucune PII : uniquement des counts agrégés globaux.
     """
-    total_videos_result = await session.execute(
-        select(func.coalesce(func.sum(User.total_videos), 0))
-    )
+    total_videos_result = await session.execute(select(func.coalesce(func.sum(User.total_videos), 0)))
     total_videos = int(total_videos_result.scalar() or 0)
 
-    total_words_result = await session.execute(
-        select(func.coalesce(func.sum(User.total_words), 0))
-    )
+    total_words_result = await session.execute(select(func.coalesce(func.sum(User.total_words), 0)))
     total_words = int(total_words_result.scalar() or 0)
 
     cutoff = datetime.utcnow() - timedelta(days=30)
@@ -94,9 +90,7 @@ async def get_landing_stats(session: AsyncSession = Depends(get_session)):
 
     if stats is None:
         # cache_service KO : recompute live
-        logger.warning(
-            "cache_service.get_or_set returned None for %s, computing live", CACHE_KEY
-        )
+        logger.warning("cache_service.get_or_set returned None for %s, computing live", CACHE_KEY)
         stats = await _compute_landing_stats(session)
 
     return LandingStatsResponse(**stats)

@@ -91,9 +91,7 @@ def _get_cache_service():
 # ---------------------------------------------------------------------------
 
 
-async def get_channel_context_from_redis(
-    platform: str, channel_id: str
-) -> Optional[Dict[str, Any]]:
+async def get_channel_context_from_redis(platform: str, channel_id: str) -> Optional[Dict[str, Any]]:
     """Lit le contexte chaîne depuis Redis L1.
 
     Retourne ``None`` sur miss, sur erreur Redis, ou si la valeur stockée
@@ -122,9 +120,7 @@ async def get_channel_context_from_redis(
     return value
 
 
-async def set_channel_context_to_redis(
-    platform: str, channel_id: str, ctx: Dict[str, Any]
-) -> None:
+async def set_channel_context_to_redis(platform: str, channel_id: str, ctx: Dict[str, Any]) -> None:
     """Écrit le contexte chaîne dans Redis L1 avec TTL 7 jours."""
     cache_service = _get_cache_service()
     if cache_service is None:
@@ -225,9 +221,7 @@ async def get_channel_context_from_db(
         async with async_session_maker() as s:
             return await _read(s)
     except Exception as exc:  # noqa: BLE001 — défense en profondeur
-        logger.warning(
-            "[CHANNEL-CACHE] L2 read failed for %s/%s: %s", platform, channel_id, exc
-        )
+        logger.warning("[CHANNEL-CACHE] L2 read failed for %s/%s: %s", platform, channel_id, exc)
         return None
 
 
@@ -331,9 +325,7 @@ async def upsert_channel_context_to_db(
 # ---------------------------------------------------------------------------
 
 
-async def _fetch_from_service(
-    platform: str, channel_id: str, *, limit: int
-) -> Optional[Dict[str, Any]]:
+async def _fetch_from_service(platform: str, channel_id: str, *, limit: int) -> Optional[Dict[str, Any]]:
     """Appelle le service fetch sous-jacent selon la plateforme."""
     if platform == "youtube":
         from transcripts.youtube_channel import get_channel_context  # lazy
@@ -399,20 +391,14 @@ async def get_or_fetch_channel_context(
     if not force_refresh:
         cached = await get_channel_context_from_redis(platform, channel_id)
         if cached is not None:
-            logger.debug(
-                "[CHANNEL-CACHE] L1 HIT %s/%s", platform, channel_id
-            )
+            logger.debug("[CHANNEL-CACHE] L1 HIT %s/%s", platform, channel_id)
             return cached
 
     # ── 2) PG L2 ────────────────────────────────────────────────────────
     if not force_refresh:
-        db_cached = await get_channel_context_from_db(
-            platform, channel_id, session=session
-        )
+        db_cached = await get_channel_context_from_db(platform, channel_id, session=session)
         if db_cached is not None:
-            logger.debug(
-                "[CHANNEL-CACHE] L2 HIT %s/%s — warming L1", platform, channel_id
-            )
+            logger.debug("[CHANNEL-CACHE] L2 HIT %s/%s — warming L1", platform, channel_id)
             # Warm L1 best-effort
             await set_channel_context_to_redis(platform, channel_id, db_cached)
             return db_cached

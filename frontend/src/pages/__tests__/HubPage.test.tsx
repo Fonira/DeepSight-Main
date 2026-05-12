@@ -55,6 +55,59 @@ vi.mock("../../components/SEO", () => ({
   SEO: () => null,
 }));
 
+// useAnalyzeAndOpenHub calls useBackgroundAnalysis which throws outside its
+// provider — mock the hook to keep the test focused on rendering.
+vi.mock("../../hooks/useAnalyzeAndOpenHub", () => ({
+  default: () => ({
+    analyzeAndOpenHub: vi.fn(),
+    isAnalyzing: false,
+  }),
+  useAnalyzeAndOpenHub: () => ({
+    analyzeAndOpenHub: vi.fn(),
+    isAnalyzing: false,
+  }),
+}));
+
+// Many child components call useBackgroundAnalysis (NewConversationModal,
+// useAnalyzeAndOpenHub, BackgroundAnalysisPanel) — mock the whole module.
+vi.mock("../../contexts/BackgroundAnalysisContext", () => ({
+  BackgroundAnalysisProvider: ({ children }: { children: React.ReactNode }) =>
+    children,
+  useBackgroundAnalysis: () => ({
+    startVideoAnalysis: vi.fn(),
+    cancelAnalysis: vi.fn(),
+    activeAnalyses: [],
+    completedAnalyses: [],
+    failedAnalyses: [],
+    isAnyAnalysisRunning: false,
+  }),
+  default: null,
+}));
+
+// HubHeader and other components call useAuthContext directly — mock it.
+vi.mock("../../contexts/AuthContext", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../contexts/AuthContext")
+  >("../../contexts/AuthContext");
+  return {
+    ...actual,
+    useAuthContext: () => ({
+      user: {
+        id: 1,
+        email: "test@test.com",
+        plan: "pro",
+        preferences: { has_completed_onboarding: true },
+      },
+      loading: false,
+      error: null,
+      login: vi.fn(),
+      logout: vi.fn(),
+      register: vi.fn(),
+      loginWithGoogle: vi.fn(),
+    }),
+  };
+});
+
 beforeEach(() => {
   useHubStore.getState().reset();
 });
@@ -66,22 +119,26 @@ describe("HubPage", () => {
         <HubPage />
       </MemoryRouter>,
     );
+    // When activeConvId is null, HubPage renders <NoConvPlaceholder>
+    // with the copy "Aucune conversation sélectionnée".
     await waitFor(() =>
       expect(
-        screen.getByText(/posez votre première question/i),
+        screen.getByText(/aucune conversation sélectionnée/i),
       ).toBeInTheDocument(),
     );
   });
 
-  it("renders the InputBar at the bottom", async () => {
+  it("renders the open-list button in the empty state", async () => {
     render(
       <MemoryRouter initialEntries={["/hub"]}>
         <HubPage />
       </MemoryRouter>,
     );
+    // The InputBar is hidden until a conversation is active. The empty state
+    // exposes "Ouvrir la liste" instead.
     await waitFor(() =>
       expect(
-        screen.getByPlaceholderText(/posez votre question/i),
+        screen.getByRole("button", { name: /ouvrir la liste/i }),
       ).toBeInTheDocument(),
     );
   });

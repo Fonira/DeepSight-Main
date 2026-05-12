@@ -497,16 +497,10 @@ export const LoadingWordGlobal: React.FC = () => {
 
   // 🔧 Sur desktop lg+, le DidYouKnowCard prend le relais — ce widget flottant ne s'affiche que sur mobile/tablette
   const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024;
-  if (isDesktop) return null;
-
-  // 🔧 Utiliser le contexte partagé pour la visibilité (accessible depuis la sidebar)
-  const isVisible = isWidgetVisible;
-  const setIsVisible = (val: boolean) => {
-    if (val !== isWidgetVisible) toggleWidget();
-  };
 
   // 🆕 Position draggable — guard window access for SSR/Safari safety
   // Sur mobile, remonter au-dessus de la BottomNav (80px)
+  // ⚠️ Doit être appelé avant tout return pour respecter les règles des hooks React
   const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
   const { position, isDragging, handleMouseDown } = useDraggable(
     {
@@ -517,6 +511,14 @@ export const LoadingWordGlobal: React.FC = () => {
     },
     "loading-word-widget",
   );
+
+  if (isDesktop) return null;
+
+  // 🔧 Utiliser le contexte partagé pour la visibilité (accessible depuis la sidebar)
+  const isVisible = isWidgetVisible;
+  const setIsVisible = (val: boolean) => {
+    if (val !== isWidgetVisible) toggleWidget();
+  };
 
   // 🔒 Ne pas afficher si l'utilisateur n'est pas connecté
   if (!isAuthenticated) {

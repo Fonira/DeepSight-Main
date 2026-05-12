@@ -1657,17 +1657,9 @@ def _format_channel_context_block(ctx: Optional[Dict], language: str = "fr") -> 
             v_desc = "n/a"
 
         if is_fr:
-            lines.append(
-                f"{idx}. {upload_label}{title} {views_suffix}\n"
-                f"   Tags: {v_tags}\n"
-                f"   Description: {v_desc}\n"
-            )
+            lines.append(f"{idx}. {upload_label}{title} {views_suffix}\n   Tags: {v_tags}\n   Description: {v_desc}\n")
         else:
-            lines.append(
-                f"{idx}. {upload_label}{title} {views_suffix}\n"
-                f"   Tags: {v_tags}\n"
-                f"   Description: {v_desc}\n"
-            )
+            lines.append(f"{idx}. {upload_label}{title} {views_suffix}\n   Tags: {v_tags}\n   Description: {v_desc}\n")
 
     return "".join(lines)
 

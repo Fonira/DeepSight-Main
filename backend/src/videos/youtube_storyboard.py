@@ -145,9 +145,7 @@ def _ytdlp_info_sync(video_id: str, log_tag: str) -> Optional[Dict[str, Any]]:
         url,
     ]
     try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=YTDLP_INFO_TIMEOUT_S
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=YTDLP_INFO_TIMEOUT_S)
     except subprocess.TimeoutExpired:
         logger.warning("[%s] yt-dlp -j timeout (%ds)", log_tag, YTDLP_INFO_TIMEOUT_S)
         return None
@@ -200,9 +198,7 @@ def select_storyboard_format(info: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return sb_formats[0]
 
 
-def _slice_sheet(
-    sheet_bytes: bytes, cols: int, rows: int, log_tag: str
-) -> List[bytes]:
+def _slice_sheet(sheet_bytes: bytes, cols: int, rows: int, log_tag: str) -> List[bytes]:
     """Découpe un sheet en cols×rows mini-frames JPEG. Renvoie une liste de bytes."""
     try:
         img = Image.open(io.BytesIO(sheet_bytes))
@@ -323,15 +319,10 @@ async def extract_storyboard_frames(
             for fmt in info.get("formats", []) or []:
                 if not str(fmt.get("format_id", "")).startswith("sb"):
                     continue
-                total = sum(
-                    float(frag.get("duration") or 0)
-                    for frag in (fmt.get("fragments") or [])
-                )
+                total = sum(float(frag.get("duration") or 0) for frag in (fmt.get("fragments") or []))
                 if total > 0:
                     duration_s = total
-                    logger.info(
-                        "[%s] Duration from sb fragments fallback: %.1fs", log_tag, duration_s
-                    )
+                    logger.info("[%s] Duration from sb fragments fallback: %.1fs", log_tag, duration_s)
                     break
 
         # ── Fallback 2: Supadata via get_video_info (déjà en prod, fiable) ──
@@ -439,9 +430,7 @@ async def extract_storyboard_frames(
                 if not sheet_bytes:
                     continue
 
-                sliced = await loop.run_in_executor(
-                    executor, _slice_sheet, sheet_bytes, cols, rows, log_tag
-                )
+                sliced = await loop.run_in_executor(executor, _slice_sheet, sheet_bytes, cols, rows, log_tag)
                 if not sliced:
                     continue
 

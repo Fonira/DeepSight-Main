@@ -86,6 +86,7 @@ SHUTDOWN_DRAIN_TIMEOUT_S = 3.0
 # 🌐 CONFIG (read at module import — NOT cached aggressively, env always wins)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _env(name: str, default: str = "") -> str:
     val = os.getenv(name, default)
     return val.strip() if val else default
@@ -305,6 +306,7 @@ class AxiomHandler(logging.Handler):
         # httpx ever vanishes (it shouldn't, but the handler must self-isolate).
         try:
             import httpx  # noqa: F401  (used inside _flush)
+
             self._httpx = httpx  # type: ignore[attr-defined]
             self._client = httpx.Client(
                 timeout=self._http_timeout_s,
@@ -330,9 +332,8 @@ class AxiomHandler(logging.Handler):
             except queue.Empty:
                 pass  # time-based flush below
 
-            should_flush = (
-                len(buffer) >= self._batch_size
-                or (buffer and (time.monotonic() - last_flush) >= self._flush_interval_s)
+            should_flush = len(buffer) >= self._batch_size or (
+                buffer and (time.monotonic() - last_flush) >= self._flush_interval_s
             )
             if should_flush:
                 self._flush(buffer)

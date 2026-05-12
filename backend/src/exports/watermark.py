@@ -8,6 +8,7 @@ Pour les formats binaires (docx/xlsx/pdf) : retourne un dict marqueur que le
 caller utilisera pour injecter le watermark via la lib appropriee
 (python-docx / openpyxl / Jinja2 template).
 """
+
 from __future__ import annotations
 
 from typing import Optional, Union
@@ -124,11 +125,7 @@ def add_watermark(
 
     # Format texte : injection du marqueur en fin de contenu
     if format == "txt":
-        return (
-            f"{content}\n\n"
-            f"---\n"
-            f"{texts['tagline_display']} ({WATERMARK_URL})\n"
-        )
+        return f"{content}\n\n---\n{texts['tagline_display']} ({WATERMARK_URL})\n"
 
     if format == "md":
         # Tagline avec lien markdown : remplace "DeepSight" par "[DeepSight](url)"
@@ -137,18 +134,11 @@ def add_watermark(
             f"[DeepSight]({WATERMARK_URL_HTTPS})",
             1,
         )
-        return (
-            f"{content}\n\n"
-            f"---\n"
-            f"*{tagline_with_link}*\n"
-        )
+        return f"{content}\n\n---\n*{tagline_with_link}*\n"
 
     if format == "csv":
         # Commentaire en derniere ligne (les parsers CSV standards ignorent les '#')
-        return (
-            f"{str(content).rstrip()}\n"
-            f"# {texts['tagline_display']} ({WATERMARK_URL})\n"
-        )
+        return f"{str(content).rstrip()}\n# {texts['tagline_display']} ({WATERMARK_URL})\n"
 
     # Format inconnu : passthrough sans modification (securite)
     return content if content is not None else ""

@@ -1068,9 +1068,10 @@ export const UpgradePage: React.FC = () => {
       if (result.checkout_url) {
         window.location.href = result.checkout_url;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = (err as { message?: string } | null)?.message;
       setError(
-        err?.message ||
+        msg ||
           (lang === "fr"
             ? "Erreur lors du démarrage de l'essai"
             : "Error starting trial"),
@@ -1149,9 +1150,10 @@ export const UpgradePage: React.FC = () => {
           setSubscriptionStatus(status);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = (err as { message?: string } | null)?.message;
       setError(
-        err?.message ||
+        msg ||
           (lang === "fr" ? "Erreur lors du changement" : "Error changing plan"),
       );
     } finally {
@@ -1179,8 +1181,9 @@ export const UpgradePage: React.FC = () => {
       );
       const status = await billingApi.getSubscriptionStatus();
       setSubscriptionStatus(status);
-    } catch (err: any) {
-      setError(err?.message || "Error");
+    } catch (err: unknown) {
+      const msg = (err as { message?: string } | null)?.message;
+      setError(msg || "Error");
     } finally {
       setLoading(null);
     }

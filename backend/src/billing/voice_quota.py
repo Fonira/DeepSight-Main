@@ -200,15 +200,11 @@ async def consume_voice_minutes(user: User, minutes: float, db: AsyncSession) ->
         quota.lifetime_trial_used_at = datetime.now(timezone.utc)
     elif plan in TOP_TIER_PLANS:
         plan_cap = _plan_monthly_allowance(plan)
-        remaining_allowance = max(
-            plan_cap - float(quota.monthly_minutes_used or 0.0), 0.0
-        )
+        remaining_allowance = max(plan_cap - float(quota.monthly_minutes_used or 0.0), 0.0)
         from_allowance = min(float(minutes), remaining_allowance)
         from_purchased = max(float(minutes) - from_allowance, 0.0)
 
-        quota.monthly_minutes_used = (
-            float(quota.monthly_minutes_used or 0.0) + from_allowance
-        )
+        quota.monthly_minutes_used = float(quota.monthly_minutes_used or 0.0) + from_allowance
         if from_purchased > 0:
             current_purchased = float(getattr(quota, "purchased_minutes", 0.0) or 0.0)
             # Clamp à 0 — ne jamais descendre sous zéro même si race-condition

@@ -41,9 +41,7 @@ ACTIVE_STATUSES: tuple[str, ...] = ("pending", "creating", "ready")
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def _user_owns_summaries(
-    db: AsyncSession, user_id: int, summary_ids: list[int]
-) -> bool:
+async def _user_owns_summaries(db: AsyncSession, user_id: int, summary_ids: list[int]) -> bool:
     """Retourne True si tous les ``summary_ids`` appartiennent à ``user_id``.
 
     Vérifie aussi que tous existent — un ID inconnu fait retourner False.
@@ -60,9 +58,7 @@ async def _user_owns_summaries(
     return count == len(set(summary_ids))
 
 
-async def _count_active_workspaces(
-    db: AsyncSession, user_id: int
-) -> int:
+async def _count_active_workspaces(db: AsyncSession, user_id: int) -> int:
     """Compte les workspaces actifs (status pending/creating/ready) sur la
     fenêtre des ``ACTIVE_WORKSPACE_WINDOW_DAYS`` derniers jours.
     """
@@ -86,7 +82,7 @@ def _ensure_expert_plan(user: User) -> None:
     if getattr(user, "is_admin", False):
         return
 
-    raw_plan = (user.plan or "free")
+    raw_plan = user.plan or "free"
     plan = normalize_plan_id(raw_plan)
 
     # Vérification stricte Expert (matrice SSOT) — sur web.
@@ -145,18 +141,13 @@ async def create_workspace(
     # 3. Validation summary_ids — length déjà checkée par Pydantic, on
     # double-check ici par sécurité (au cas où le service est appelé hors HTTP)
     summary_ids = list(payload.summary_ids)
-    if not (
-        MIN_SUMMARIES_PER_WORKSPACE
-        <= len(summary_ids)
-        <= MAX_SUMMARIES_PER_WORKSPACE
-    ):
+    if not (MIN_SUMMARIES_PER_WORKSPACE <= len(summary_ids) <= MAX_SUMMARIES_PER_WORKSPACE):
         raise HTTPException(
             status_code=400,
             detail={
                 "code": "hub_workspace_invalid_summary_count",
                 "message": (
-                    f"summary_ids must contain {MIN_SUMMARIES_PER_WORKSPACE} "
-                    f"to {MAX_SUMMARIES_PER_WORKSPACE} items"
+                    f"summary_ids must contain {MIN_SUMMARIES_PER_WORKSPACE} to {MAX_SUMMARIES_PER_WORKSPACE} items"
                 ),
                 "received": len(summary_ids),
             },
@@ -168,9 +159,7 @@ async def create_workspace(
             status_code=400,
             detail={
                 "code": "hub_workspace_invalid_summary_ids",
-                "message": (
-                    "Some summary_ids are unknown or not owned by this user"
-                ),
+                "message": ("Some summary_ids are unknown or not owned by this user"),
             },
         )
 
@@ -204,11 +193,7 @@ async def list_workspaces(
     limit = max(1, min(limit, 100))
     offset = max(0, offset)
 
-    total_result = await db.execute(
-        select(func.count(HubWorkspace.id)).where(
-            HubWorkspace.user_id == user.id
-        )
-    )
+    total_result = await db.execute(select(func.count(HubWorkspace.id)).where(HubWorkspace.user_id == user.id))
     total = int(total_result.scalar() or 0)
 
     result = await db.execute(
@@ -222,16 +207,12 @@ async def list_workspaces(
     return items, total
 
 
-async def get_workspace(
-    db: AsyncSession, user: User, workspace_id: int
-) -> HubWorkspace:
+async def get_workspace(db: AsyncSession, user: User, workspace_id: int) -> HubWorkspace:
     """Retourne le workspace ou raise 404 si pas trouvé OU pas du user.
 
     On répond 404 (pas 403) pour ne pas révéler l'existence à un attaquant.
     """
-    result = await db.execute(
-        select(HubWorkspace).where(HubWorkspace.id == workspace_id)
-    )
+    result = await db.execute(select(HubWorkspace).where(HubWorkspace.id == workspace_id))
     workspace = result.scalar_one_or_none()
     if workspace is None or workspace.user_id != user.id:
         if not getattr(user, "is_admin", False) or workspace is None:
@@ -242,9 +223,7 @@ async def get_workspace(
     return workspace
 
 
-async def delete_workspace(
-    db: AsyncSession, user: User, workspace_id: int
-) -> None:
+async def delete_workspace(db: AsyncSession, user: User, workspace_id: int) -> None:
     """Supprime un workspace + best-effort delete board Miro côté API.
 
     404 si workspace inconnu ou pas du user.
@@ -290,9 +269,7 @@ async def _create_miro_board_async(workspace_id: int) -> None:
     async with async_session_maker() as session:
         try:
             # 1. Charger le workspace
-            result = await session.execute(
-                select(HubWorkspace).where(HubWorkspace.id == workspace_id)
-            )
+            result = await session.execute(select(HubWorkspace).where(HubWorkspace.id == workspace_id))
             workspace = result.scalar_one_or_none()
             if workspace is None:
                 logger.warning(
@@ -307,9 +284,7 @@ async def _create_miro_board_async(workspace_id: int) -> None:
 
             # 3. Charger les summaries du workspace
             summary_ids = list(workspace.summary_ids or [])
-            summaries_res = await session.execute(
-                select(Summary).where(Summary.id.in_(summary_ids))
-            )
+            summaries_res = await session.execute(select(Summary).where(Summary.id.in_(summary_ids)))
             summaries = list(summaries_res.scalars().all())
 
             # Préserver l'ordre demandé par l'utilisateur
@@ -399,11 +374,7 @@ async def _create_miro_board_async(workspace_id: int) -> None:
             try:
                 # Best-effort : marquer comme failed dans une nouvelle session.
                 async with async_session_maker() as recover:
-                    res = await recover.execute(
-                        select(HubWorkspace).where(
-                            HubWorkspace.id == workspace_id
-                        )
-                    )
+                    res = await recover.execute(select(HubWorkspace).where(HubWorkspace.id == workspace_id))
                     ws = res.scalar_one_or_none()
                     if ws is not None:
                         ws.status = "failed"

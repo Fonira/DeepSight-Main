@@ -14,11 +14,7 @@ import { Coins, Zap, AlertTriangle, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
-import {
-  normalizePlanId,
-  PLAN_LIMITS,
-  shouldShowLowCreditsAlert,
-} from "../config/planPrivileges";
+import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
 
 interface CreditCounterProps {
   /** Display mode */
@@ -50,15 +46,19 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
   const credits = user?.credits ?? 0;
   const plan = normalizePlanId(user?.plan);
   const planLimits = PLAN_LIMITS[plan];
-  const maxCredits = planLimits.monthlyCredits;
+  // Pricing v2 : pas de monthlyCredits dans PlanLimits — utiliser credits_monthly de l'utilisateur
+  // ou fallback sur monthlyAnalyses (proxy raisonnable pour le calcul d'urgence)
+  const maxCredits = user?.credits_monthly ?? planLimits.monthlyAnalyses;
   const maxAnalyses = planLimits.monthlyAnalyses;
 
   // Calculate urgency level based on plan and credits
   const urgency = useMemo(() => {
+    // Seuils % pour alerter (warning = 25%, critical = 10%)
+    const ratio = maxCredits > 0 ? credits / maxCredits : 0;
+
     // Pro plan with higher limits - check if still good
     if (plan === "pro" && maxCredits >= 10000) {
-      const alertLevel = shouldShowLowCreditsAlert(credits, maxCredits);
-      if (alertLevel === "critical") {
+      if (ratio <= 0.1) {
         return {
           level: "critical",
           color: "text-orange-400",
@@ -66,7 +66,7 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
           border: "border-orange-500/30",
         };
       }
-      if (alertLevel === "warning") {
+      if (ratio <= 0.25) {
         return {
           level: "warning",
           color: "text-amber-400",
@@ -82,9 +82,6 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
       };
     }
 
-    // Use conversion triggers thresholds (percentage-based)
-    const alertLevel = shouldShowLowCreditsAlert(credits, maxCredits);
-
     if (credits <= 0) {
       return {
         level: "empty",
@@ -93,7 +90,7 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
         border: "border-red-500/30",
       };
     }
-    if (alertLevel === "critical") {
+    if (ratio <= 0.1) {
       return {
         level: "critical",
         color: "text-orange-400",
@@ -101,7 +98,7 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
         border: "border-orange-500/30",
       };
     }
-    if (alertLevel === "warning") {
+    if (ratio <= 0.25) {
       return {
         level: "warning",
         color: "text-amber-400",

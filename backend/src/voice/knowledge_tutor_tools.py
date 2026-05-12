@@ -343,9 +343,7 @@ async def get_summary_detail(
     )
 
     try:
-        result = await db.execute(
-            select(Summary).where(Summary.id == sid).where(Summary.user_id == user.id)
-        )
+        result = await db.execute(select(Summary).where(Summary.id == sid).where(Summary.user_id == user.id))
         summary = result.scalar_one_or_none()
     except Exception as exc:  # noqa: BLE001
         logger.error("get_summary_detail failed: %s", exc, exc_info=True)

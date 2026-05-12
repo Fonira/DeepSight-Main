@@ -49,7 +49,10 @@ export const AudioSummaryButton: React.FC<AudioSummaryButtonProps> = ({
     setError(null);
 
     try {
-      const response = await api.generateAudioSummary(summaryId, { language });
+      // Pricing v2 / Refactor : utiliser api.video.exportAudio (voix par défaut + mode full).
+      // Le paramètre `language` est inféré côté backend depuis la synthèse — non passé ici.
+      void language;
+      const response = await api.video.exportAudio(summaryId);
       setAudioData({
         audio_url: response.audio_url,
         duration_estimate: response.duration_estimate,

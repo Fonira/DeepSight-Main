@@ -72,7 +72,9 @@ const PttKeyPicker: React.FC<PttKeyPickerProps> = ({
     };
     window.addEventListener("keydown", handler, { capture: true });
     return () =>
-      window.removeEventListener("keydown", handler, { capture: true } as any);
+      window.removeEventListener("keydown", handler, {
+        capture: true,
+      } as EventListenerOptions);
   }, [listening, onSave]);
 
   return (

@@ -154,9 +154,7 @@ def tier_from_duration(duration_seconds: int) -> DurationBucket:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def _apply_duration_filter(
-    candidate_duration: int, target_duration: int
-) -> float:
+def _apply_duration_filter(candidate_duration: int, target_duration: int) -> float:
     """Score 0..1 strict format-aware.
 
     Matching parfait (même bucket)  → 1.0
@@ -167,9 +165,7 @@ def _apply_duration_filter(
     return 1.0 if candidate_bucket == target_bucket else 0.0
 
 
-def _apply_channel_quality_filter(
-    channel_name: str, channel_context: Optional[Dict[str, Any]]
-) -> float:
+def _apply_channel_quality_filter(channel_name: str, channel_context: Optional[Dict[str, Any]]) -> float:
     """Score 0..1. Combine bonus éducatif, blacklist, signaux ch_ctx (cf. §3.4)."""
     name = (channel_name or "").lower()
     score = 0.5  # baseline neutre
@@ -186,9 +182,7 @@ def _apply_channel_quality_filter(
     if channel_context:
         try:
             chapters_pct = float(channel_context.get("has_chapters_pct", 0) or 0)
-            avg_dur = float(
-                channel_context.get("avg_video_duration_seconds", 0) or 0
-            )
+            avg_dur = float(channel_context.get("avg_video_duration_seconds", 0) or 0)
         except (TypeError, ValueError):
             chapters_pct, avg_dur = 0.0, 0.0
         if chapters_pct > 0.6:
@@ -224,9 +218,7 @@ def _apply_freshness_weight(published_at: Optional[str]) -> float:
     return 0.2  # >5 ans : badge "Vidéo de YYYY" affiché côté UI
 
 
-def _detect_audience(
-    candidate: Dict[str, Any], channel_context: Optional[Dict[str, Any]]
-) -> AudienceLevel:
+def _detect_audience(candidate: Dict[str, Any], channel_context: Optional[Dict[str, Any]]) -> AudienceLevel:
     """Retourne 'vulgarisation' | 'expert' | 'unknown' (heuristique titre+ch_ctx)."""
     title_lower = (candidate.get("title") or "").lower()
 
@@ -258,9 +250,7 @@ def _detect_audience(
 
     if channel_context:
         try:
-            avg_dur = float(
-                channel_context.get("avg_video_duration_seconds", 0) or 0
-            )
+            avg_dur = float(channel_context.get("avg_video_duration_seconds", 0) or 0)
         except (TypeError, ValueError):
             avg_dur = 0.0
         if avg_dur > 1800:  # >30 min en moyenne → tendance expert
@@ -344,14 +334,10 @@ def score_candidate(
     if duration_score == 0:
         return float("-inf")  # rejet immédiat (cf. spec §4.1)
 
-    channel_quality = _apply_channel_quality_filter(
-        candidate.get("channel") or "", channel_context
-    )
+    channel_quality = _apply_channel_quality_filter(candidate.get("channel") or "", channel_context)
     freshness = _apply_freshness_weight(candidate.get("published_at"))
     audience = _detect_audience(candidate, channel_context)
-    audience_score = _apply_audience_filter(
-        audience, relation_type, filters.excluded_audience_levels
-    )
+    audience_score = _apply_audience_filter(audience, relation_type, filters.excluded_audience_levels)
     relevance = _query_relevance_score(rank_in_results, total_results)
 
     composite = (
@@ -403,21 +389,15 @@ async def _generate_queries_for_relation(
     `call_mistral_fn` et `extract_json_fn` sont injectés pour faciliter le test
     (au lieu d'importer en dur depuis router.py et créer un cycle).
     """
-    instruction = _RELATION_INSTRUCTIONS.get(
-        relation_type, _RELATION_INSTRUCTIONS["opposite"]
-    )
-    lang_inst = (
-        "Formule en français." if lang == "fr" else "Write in English."
-    )
+    instruction = _RELATION_INSTRUCTIONS.get(relation_type, _RELATION_INSTRUCTIONS["opposite"])
+    lang_inst = "Formule en français." if lang == "fr" else "Write in English."
     sys_prompt = (
         "Tu es expert en recherche YouTube. Génère DEUX requêtes (5-10 mots chacune) "
         f"susceptibles de retourner une vidéo qui {instruction} "
         f"NE REPRODUIS PAS le titre original. {lang_inst} "
         'Réponds UNIQUEMENT en JSON : {"query_primary": "...", "query_alternative": "..."}'
     )
-    user_prompt = (
-        f"Sujet : {topic}\nThèse : {thesis_a}\nTitre à éviter : {title_to_avoid or '(inconnu)'}"
-    )
+    user_prompt = f"Sujet : {topic}\nThèse : {thesis_a}\nTitre à éviter : {title_to_avoid or '(inconnu)'}"
 
     raw = await call_mistral_fn(
         [
@@ -446,9 +426,7 @@ async def _generate_queries_for_relation(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def compute_candidates_cache_key(
-    topic: str, relation_type: RelationType, lang: str, duration_a: int
-) -> str:
+def compute_candidates_cache_key(topic: str, relation_type: RelationType, lang: str, duration_a: int) -> str:
     """Déterministe sha256 hex (cf. spec §3.5).
 
     Bucket `short|medium|long` au lieu de la durée brute → plus de hits cache.
@@ -458,24 +436,18 @@ def compute_candidates_cache_key(
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-async def _get_cached_candidates(
-    cache_key: str, db: AsyncSession
-) -> Optional[List[Dict[str, Any]]]:
+async def _get_cached_candidates(cache_key: str, db: AsyncSession) -> Optional[List[Dict[str, Any]]]:
     """Lit la table debate_video_b_candidates (PG L2). Retourne None si miss/expiré."""
     try:
         # Import lazy pour éviter un cycle si database.py n'est pas encore prêt
         from db.database import DebateVideoBCandidatesCache
     except ImportError:
-        logger.debug(
-            "[DEBATE-MATCH] DebateVideoBCandidatesCache model not available — skip cache"
-        )
+        logger.debug("[DEBATE-MATCH] DebateVideoBCandidatesCache model not available — skip cache")
         return None
 
     try:
         result = await db.execute(
-            select(DebateVideoBCandidatesCache).where(
-                DebateVideoBCandidatesCache.cache_key == cache_key
-            )
+            select(DebateVideoBCandidatesCache).where(DebateVideoBCandidatesCache.cache_key == cache_key)
         )
         row = result.scalar_one_or_none()
         if row is None:
@@ -514,9 +486,7 @@ async def _put_cached_candidates(
     try:
         from db.database import DebateVideoBCandidatesCache
     except ImportError:
-        logger.debug(
-            "[DEBATE-MATCH] DebateVideoBCandidatesCache model unavailable — skip cache write"
-        )
+        logger.debug("[DEBATE-MATCH] DebateVideoBCandidatesCache model unavailable — skip cache write")
         return
 
     now = datetime.now(timezone.utc)
@@ -524,9 +494,7 @@ async def _put_cached_candidates(
     try:
         # Try update first (cheap path), then insert
         result = await db.execute(
-            select(DebateVideoBCandidatesCache).where(
-                DebateVideoBCandidatesCache.cache_key == cache_key
-            )
+            select(DebateVideoBCandidatesCache).where(DebateVideoBCandidatesCache.cache_key == cache_key)
         )
         existing = result.scalar_one_or_none()
         candidates_json = json.dumps(candidates, ensure_ascii=False)
@@ -566,9 +534,7 @@ async def _put_cached_candidates(
 _YT_PATTERN = re.compile(r"youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})")
 
 
-def _normalize_brave_result(
-    result: Dict[str, Any], query: str
-) -> Optional[Dict[str, Any]]:
+def _normalize_brave_result(result: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
     """Convertit un result Brave en dict candidate normalisé.
 
     Returns None si pas un YouTube URL exploitable.
@@ -681,9 +647,7 @@ async def _search_perspective_video(
     duration_bucket = tier_from_duration(filters.video_a_duration_seconds)
 
     # ── 0) Cache lookup ───────────────────────────────────────────────────────
-    cache_key = compute_candidates_cache_key(
-        topic, relation, lang, filters.video_a_duration_seconds
-    )
+    cache_key = compute_candidates_cache_key(topic, relation, lang, filters.video_a_duration_seconds)
     if db is not None:
         cached = await _get_cached_candidates(cache_key, db)
         if cached:
@@ -695,10 +659,9 @@ async def _search_perspective_video(
                         cache_key[:16],
                     )
                     try:
-                        return PerspectiveCandidate(**{
-                            k: v for k, v in cand.items()
-                            if k in PerspectiveCandidate.__dataclass_fields__
-                        })
+                        return PerspectiveCandidate(
+                            **{k: v for k, v in cand.items() if k in PerspectiveCandidate.__dataclass_fields__}
+                        )
                     except TypeError:
                         # Schema drift → fallthrough to live search
                         break
@@ -740,17 +703,13 @@ async def _search_perspective_video(
         try:
             results = await brave_search_fn(q, brave_key, count=15)
         except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "[DEBATE-MATCH] Brave failed q=%r: %s", q[:80], str(exc)[:200]
-            )
+            logger.warning("[DEBATE-MATCH] Brave failed q=%r: %s", q[:80], str(exc)[:200])
             continue
         for r in results or []:
             raw_results.append((r, q))
 
     if not raw_results:
-        logger.warning(
-            "[DEBATE-MATCH] Brave returned 0 results across %d queries", len(queries)
-        )
+        logger.warning("[DEBATE-MATCH] Brave returned 0 results across %d queries", len(queries))
         return None
 
     # ── 4) Normalize + hard filters (excluded ids, dedupe by video_id) ────────
@@ -826,9 +785,7 @@ async def _search_perspective_video(
         )
 
     if not enriched:
-        logger.warning(
-            "[DEBATE-MATCH] All candidates rejected post-scoring (norm=%d)", total_norm
-        )
+        logger.warning("[DEBATE-MATCH] All candidates rejected post-scoring (norm=%d)", total_norm)
         return None
 
     enriched.sort(key=lambda x: x.score, reverse=True)

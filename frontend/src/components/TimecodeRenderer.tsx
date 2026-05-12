@@ -50,7 +50,7 @@ interface TimecodeButtonProps {
  * Parse un timecode string en secondes
  */
 export function parseTimecode(timecode: string): number | null {
-  const clean = timecode.replace(/[\[\]\(\)]/g, "").trim();
+  const clean = timecode.replace(/[[\]()]/g, "").trim();
   const parts = clean.split(":").map((p) => parseInt(p, 10));
 
   if (parts.some(isNaN)) return null;
@@ -282,12 +282,20 @@ export const TimecodeRenderer: React.FC<TimecodeRendererProps> = ({
  *
  * <ReactMarkdown components={components}>{content}</ReactMarkdown>
  */
+// Props passed by react-markdown to component overrides.
+// Cf. https://github.com/remarkjs/react-markdown
+type MarkdownComponentProps = {
+  children?: React.ReactNode;
+  node?: unknown;
+  [key: string]: unknown;
+};
+
 export function createTimecodeMarkdownComponents(options: {
   mode: TimecodeMode;
   videoId?: string;
   onTimecodeClick?: (seconds: number, info?: TimecodeInfo) => void;
   linkClassName?: string;
-}): Record<string, React.ComponentType<any>> {
+}): Record<string, React.ComponentType<MarkdownComponentProps>> {
   const { mode, videoId, onTimecodeClick } = options;
 
   // Wrapper pour le callback - accepte les deux signatures
@@ -325,37 +333,41 @@ export function createTimecodeMarkdownComponents(options: {
   };
 
   return {
-    p: ({ children, ...props }: any) => (
+    p: ({ children, node: _node, ...props }: MarkdownComponentProps) => (
       <p {...props}>{wrapWithTimecodes(children)}</p>
     ),
-    li: ({ children, ...props }: any) => (
+    li: ({ children, node: _node, ...props }: MarkdownComponentProps) => (
       <li {...props}>{wrapWithTimecodes(children)}</li>
     ),
-    strong: ({ children, ...props }: any) => (
+    strong: ({ children, node: _node, ...props }: MarkdownComponentProps) => (
       <strong {...props}>{wrapWithTimecodes(children)}</strong>
     ),
-    em: ({ children, ...props }: any) => (
+    em: ({ children, node: _node, ...props }: MarkdownComponentProps) => (
       <em {...props}>{wrapWithTimecodes(children)}</em>
     ),
-    h1: ({ children, ...props }: any) => (
+    h1: ({ children, node: _node, ...props }: MarkdownComponentProps) => (
       <h1 {...props}>{wrapWithTimecodes(children)}</h1>
     ),
-    h2: ({ children, ...props }: any) => (
+    h2: ({ children, node: _node, ...props }: MarkdownComponentProps) => (
       <h2 {...props}>{wrapWithTimecodes(children)}</h2>
     ),
-    h3: ({ children, ...props }: any) => (
+    h3: ({ children, node: _node, ...props }: MarkdownComponentProps) => (
       <h3 {...props}>{wrapWithTimecodes(children)}</h3>
     ),
-    h4: ({ children, ...props }: any) => (
+    h4: ({ children, node: _node, ...props }: MarkdownComponentProps) => (
       <h4 {...props}>{wrapWithTimecodes(children)}</h4>
     ),
-    blockquote: ({ children, ...props }: any) => (
+    blockquote: ({
+      children,
+      node: _node,
+      ...props
+    }: MarkdownComponentProps) => (
       <blockquote {...props}>{wrapWithTimecodes(children)}</blockquote>
     ),
-    td: ({ children, ...props }: any) => (
+    td: ({ children, node: _node, ...props }: MarkdownComponentProps) => (
       <td {...props}>{wrapWithTimecodes(children)}</td>
     ),
-    th: ({ children, ...props }: any) => (
+    th: ({ children, node: _node, ...props }: MarkdownComponentProps) => (
       <th {...props}>{wrapWithTimecodes(children)}</th>
     ),
   };

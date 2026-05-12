@@ -151,7 +151,7 @@ export const buildRadarData = (
   const data: RadarDatum[] = axes.map((axis) => {
     const row: RadarDatum = { axis };
     // Series A (videoA)
-    row.A = scoreFor(axis, videoA.arguments, undefined);
+    row.A = scoreFor(axis, videoA.arguments, "unknown");
     // Series B1..B3
     visible.forEach((p, i) => {
       row[`B${i + 1}`] = scoreFor(axis, p.arguments, p.audience_level);

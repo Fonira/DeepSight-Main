@@ -36,6 +36,7 @@ import {
   AlertCircle,
   Microscope,
   XCircle,
+  Shield,
 } from "lucide-react";
 import { DeepSightSpinner } from "../components/ui";
 import { videoApi, chatApi, reliabilityApi, ApiError } from "../services/api";
@@ -47,6 +48,7 @@ import type {
   VideoCandidate,
   ReliabilityResult,
   EnrichedConcept,
+  ChatMessage as ApiChatMessage,
 } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
@@ -366,8 +368,8 @@ export const DashboardPage: React.FC = () => {
         if (history && Array.isArray(history) && history.length > 0) {
           // Convertir l'historique du backend au format du frontend
           const formattedMessages: ChatMessage[] = history.map(
-            (msg: any, index: number) => ({
-              id: msg.id?.toString() || `history-${index}-${Date.now()}`,
+            (msg: ApiChatMessage, index: number) => ({
+              id: (msg.id ?? "").toString() || `history-${index}-${Date.now()}`,
               role: msg.role as "user" | "assistant",
               // S'assurer que content est une string
               content:
@@ -413,9 +415,10 @@ export const DashboardPage: React.FC = () => {
         // Hub-first : ouvrir directement la conv dans le hub avec le résumé déroulé.
         navigate(`/hub?summary=${response.summary_id}&open_summary=1`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
       setError(
-        err?.message ||
+        msg ||
           (language === "fr"
             ? "Impossible de pr�parer le chat. Essayez l'analyse compl�te."
             : "Unable to prepare chat. Try full analysis."),
@@ -578,7 +581,7 @@ export const DashboardPage: React.FC = () => {
             videos: candidates,
             total_found: searchResult.total_results,
             search_metadata: { source: "library", languages: [] },
-          } as DiscoveryResponse);
+          } as unknown as DiscoveryResponse);
           setShowDiscoveryModal(true);
         } else {
           setError(
@@ -1416,7 +1419,11 @@ export const DashboardPage: React.FC = () => {
                           <VideoPlayer
                             ref={playerRef}
                             videoId={selectedSummary.video_id}
-                            platform={selectedSummary.platform || "youtube"}
+                            platform={
+                              selectedSummary.platform === "tiktok"
+                                ? "tiktok"
+                                : "youtube"
+                            }
                             initialTime={playerStartTime}
                             className="w-full h-full"
                           />
