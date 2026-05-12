@@ -161,8 +161,10 @@ async def test_transcript_failure_publishes_error_event():
 
     events = [c["event"] for c in _decode_calls(redis)]
     assert any(e["type"] == "error" for e in events)
-    # ctx_complete still emitted at the end
-    assert events[-1]["type"] == "ctx_complete"
+    # ctx_failed emitted at the end when degraded (no transcript AND no analysis)
+    # — orchestrator V2 distinguishes ctx_complete (has context) from
+    # ctx_failed (degraded, agent should fall back to pretrained + web_search)
+    assert events[-1]["type"] == "ctx_failed"
 
 
 @pytest.mark.asyncio
@@ -182,7 +184,8 @@ async def test_analysis_failure_publishes_error_event():
 
     events = [c["event"] for c in _decode_calls(redis)]
     assert any(e["type"] == "error" for e in events)
-    assert events[-1]["type"] == "ctx_complete"
+    # ctx_failed emitted when degraded (no transcript AND no analysis) — V2 behavior
+    assert events[-1]["type"] == "ctx_failed"
 
 
 @pytest.mark.asyncio
