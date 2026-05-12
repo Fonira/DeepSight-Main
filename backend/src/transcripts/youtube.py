@@ -62,7 +62,7 @@ from core.config import (
     get_youtube_proxy,
     TRANSCRIPT_CONFIG,
 )
-from core.http_client import shared_http_client
+from core.http_client import shared_http_client, get_proxied_client
 
 # 💾 Cache pour les transcripts (TTL 24h)
 try:
@@ -484,6 +484,12 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     if supadata_key:
         try:
             yt_url = f"https://www.youtube.com/watch?v={video_id}"
+            # 🔄 Revert post-PR #472 — Supadata est un service intermédiaire qui
+            # accède YouTube avec sa propre infra (pas besoin du proxy Decodo
+            # côté DeepSight). Retour au pool partagé pour éviter latence +
+            # consommation bande passante proxy. Le proxy ne profite qu'aux
+            # appels directs à www.youtube.com (oEmbed l.615) ou aux subprocess
+            # yt-dlp (--proxy injecté séparément).
             async with shared_http_client() as client:
                 resp = await client.get(
                     "https://api.supadata.ai/v1/metadata",
@@ -552,6 +558,8 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     # Essayer plusieurs instances Invidious
     for instance in INVIDIOUS_INSTANCES[:5]:  # Essayer 5 instances
         try:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût.
             async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/videos/{video_id}", timeout=10, headers={"User-Agent": get_random_user_agent()}
@@ -602,11 +610,14 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
         return ytdlp_result
 
     # Essayer oembed pour au moins avoir le titre (pas de durée)
+    # 🔌 Sprint B (Audit) — l'oEmbed YouTube tape `www.youtube.com` directement,
+    # qui est bloqué depuis Hetzner. On route via le proxy résidentiel Decodo
+    # (settings.YOUTUBE_PROXY). Si non configuré, le client retombe sur bare.
     print("  🔄 [OEMBED] Trying oembed fallback...", flush=True)
     try:
         url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
-        async with shared_http_client() as client:
-            response = await client.get(url, timeout=10, headers={"User-Agent": get_random_user_agent()})
+        async with get_proxied_client(timeout=10.0) as client:
+            response = await client.get(url, headers={"User-Agent": get_random_user_agent()})
             if response.status_code == 200:
                 data = response.json()
                 print("  ⚠️ [OEMBED] Got title but no duration", flush=True)
@@ -659,6 +670,11 @@ async def get_video_info_ytdlp(video_id: str) -> Optional[Dict[str, Any]]:
                 "youtube:player_client=android",
                 f"https://youtube.com/watch?v={video_id}",
             ]
+            proxy = get_youtube_proxy()
+            if proxy:
+                cmd.insert(1, "--proxy")
+                cmd.insert(2, proxy)
+                print("  🔌 [YT-DLP-INFO] Using proxy", flush=True)
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             if result.returncode == 0:
                 return json.loads(result.stdout)
@@ -823,6 +839,9 @@ async def get_transcript_supadata(
     print("  🥇 [SUPADATA] Trying...", flush=True)
 
     try:
+        # 🔄 Revert post-PR #472 — Supadata est un service intermédiaire qui
+        # accède YouTube avec sa propre infra ; pas besoin du proxy Decodo,
+        # qui ajoutait de la latence sur l'extraction transcript.
         async with shared_http_client() as client:
             # ─── Méthode 1 : Endpoint YouTube-specific (segments + timestamps) ───
             for lang in ["fr", "en", "es", "de", "pt", "it", None]:
@@ -1062,6 +1081,8 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
 
     for instance in INVIDIOUS_INSTANCES[:5]:  # Essayer 5 instances max (augmenté de 3)
         try:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût.
             async with shared_http_client() as client:
                 # Récupérer la liste des captions
                 response = await client.get(
@@ -1141,6 +1162,8 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
 
     for instance in healthy_instances[:5]:  # Essayer 5 instances max
         try:
+            # 🔄 Revert post-PR #472 — Piped instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût.
             async with shared_http_client() as client:
                 # API Piped pour les streams (inclut les sous-titres)
                 response = await client.get(
@@ -1363,6 +1386,8 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
     # MÉTHODE A: Essayer via Invidious d'abord (contourne le blocage)
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût.
             async with shared_http_client() as client:
                 # Récupérer les formats audio
                 response = await client.get(
@@ -1430,6 +1455,11 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
                         "youtube:player_client=android",
                         f"https://youtube.com/watch?v={video_id}",
                     ]
+                    proxy = get_youtube_proxy()
+                    if proxy:
+                        cmd.insert(1, "--proxy")
+                        cmd.insert(2, proxy)
+                        print("  🔌 [WHISPER] Using proxy", flush=True)
 
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=_t("whisper_download"))
 
@@ -1702,6 +1732,8 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
     # Télécharger l'audio via Invidious (même logique que Whisper)
     for instance in INVIDIOUS_INSTANCES[:3]:
         try:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût (DEEPGRAM).
             async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/videos/{video_id}", timeout=60, headers={"User-Agent": get_random_user_agent()}
@@ -1769,6 +1801,11 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
                         "3",
                         f"https://youtube.com/watch?v={video_id}",
                     ]
+                    proxy = get_youtube_proxy()
+                    if proxy:
+                        cmd.insert(1, "--proxy")
+                        cmd.insert(2, proxy)
+                        print("  🔌 [DEEPGRAM] Using proxy", flush=True)
 
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=_t("whisper_download"))
 
@@ -2207,6 +2244,8 @@ async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[byt
     healthy_instances = get_healthy_instances(INVIDIOUS_INSTANCES)
     for instance in healthy_instances[:3]:
         try:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût (helper partagé).
             async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/videos/{video_id}", timeout=60, headers={"User-Agent": get_random_user_agent()}
@@ -2717,6 +2756,8 @@ async def get_playlist_videos(playlist_id: str, max_videos: int = 50) -> List[Di
     # Essayer Invidious d'abord
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût (playlist).
             async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/playlists/{playlist_id}",
@@ -2756,6 +2797,11 @@ async def get_playlist_videos(playlist_id: str, max_videos: int = 50) -> List[Di
                 get_random_user_agent(),
                 f"https://www.youtube.com/playlist?list={playlist_id}",
             ]
+            proxy = get_youtube_proxy()
+            if proxy:
+                cmd.insert(1, "--proxy")
+                cmd.insert(2, proxy)
+                print("  🔌 [PLAYLIST] Using proxy", flush=True)
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
             if result.returncode != 0:
                 return []
@@ -2790,6 +2836,8 @@ async def get_playlist_info(playlist_id: str) -> Optional[Dict[str, Any]]:
     # Essayer Invidious d'abord
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
+            # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
+            # YouTube ; le proxy Decodo n'aide pas et ajoute latence + coût (playlist info).
             async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/playlists/{playlist_id}",
@@ -2823,6 +2871,11 @@ async def get_playlist_info(playlist_id: str) -> Optional[Dict[str, Any]]:
                 get_random_user_agent(),
                 f"https://www.youtube.com/playlist?list={playlist_id}",
             ]
+            proxy = get_youtube_proxy()
+            if proxy:
+                cmd.insert(1, "--proxy")
+                cmd.insert(2, proxy)
+                print("  🔌 [PLAYLIST-INFO] Using proxy", flush=True)
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             if result.returncode == 0:
                 return json.loads(result.stdout)

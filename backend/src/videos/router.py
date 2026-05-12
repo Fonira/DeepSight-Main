@@ -33,7 +33,7 @@ from auth.dependencies import (
     get_current_admin,
 )
 from core.config import PLAN_LIMITS, CATEGORIES, get_mistral_key
-from core.http_client import shared_http_client
+from core.http_client import get_proxied_client, shared_http_client
 from core.logging import logger
 from core.moderation_service import moderate_text
 
@@ -362,11 +362,12 @@ async def quick_chat_prepare(
         )
 
     # 2b. Résoudre les URLs courtes TikTok (vm.tiktok.com → tiktok.com/@user/video/...)
+    # Proxy Decodo : TikTok bot challenge sur IP datacenter Hetzner. Audit B6 (Wave 2).
     resolved_url = url
     if platform == "tiktok" and ("vm.tiktok.com" in url or "vt.tiktok.com" in url):
         try:
-            async with shared_http_client() as client:
-                head_resp = await client.head(url, timeout=8.0)
+            async with get_proxied_client(timeout=8.0) as client:
+                head_resp = await client.head(url)
                 if head_resp.status_code in (200, 301, 302) and "tiktok.com" in str(head_resp.url):
                     resolved_url = str(head_resp.url).split("?")[0]  # Drop tracking params
                     logger.info(f"[QUICK CHAT] Resolved short URL → {resolved_url[:80]}")
@@ -405,13 +406,12 @@ async def quick_chat_prepare(
     raw_upload_date = video_info.get("upload_date", "")
     upload_date = str(raw_upload_date)[:50] if raw_upload_date else ""
 
-    # 3b. Fallback thumbnail TikTok via oEmbed si manquant
+    # 3b. Fallback thumbnail TikTok via oEmbed si manquant (proxy Decodo — audit B6)
     if platform == "tiktok" and not thumbnail_url:
         try:
-            async with shared_http_client() as client:
+            async with get_proxied_client(timeout=5.0) as client:
                 oembed_resp = await client.get(
                     "https://www.tiktok.com/oembed",
-                    timeout=5.0,
                     params={"url": resolved_url},
                 )
                 if oembed_resp.status_code == 200:
@@ -1508,6 +1508,7 @@ async def _analyze_video_background_v2(
                     web_context=full_context or "",
                     flag_enabled=_visual_flag_on,
                     log_tag=f"VISUAL_V2 user={user_id}",
+                    duration_hint=float(video_duration) if video_duration else None,
                 )
 
             if needs_chunk:
@@ -2400,6 +2401,7 @@ async def _analyze_video_background_v2_1(
                     web_context=full_context or "",
                     flag_enabled=_visual_flag_on,
                     log_tag=f"VISUAL_V2.1 user={user_id}",
+                    duration_hint=float(video_duration) if video_duration else None,
                 )
 
             if needs_chunk:
@@ -3214,6 +3216,7 @@ async def _analyze_video_background_v6(
                                 url=url,
                                 transcript_excerpt=(transcript_to_analyze or "")[:8000],
                                 flag_enabled=True,
+                                duration_hint=float(video_duration) if video_duration else None,
                             )
                             if _visual.get("status") == STATUS_OK:
                                 _visual_block = format_visual_context_for_prompt(_visual)

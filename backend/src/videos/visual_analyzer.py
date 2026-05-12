@@ -38,10 +38,14 @@ FALLBACK_MODELS = ["pixtral-12b-2409", "mistral-small-2603"]
 # Limite dure côté Mistral (code 3051 si dépassée).
 MISTRAL_IMAGES_PER_REQUEST = 8
 
-# Cap global sur le nombre de frames analysées (8 batches × 8 frames).
-# Default = mode "expert". Le caller peut passer un cap plus bas pour mode "default" (Pro).
-# Au-delà du cap effectif, downsampling uniforme.
-MAX_FRAMES_TOTAL_CAP = 64
+# Cap global sur le nombre de frames analysées.
+# - Mode "default" (Pro)   : 24 frames cap   (3 batches × 8)
+# - Mode "expert" (Expert) : 64 frames cap   (8 batches × 8)
+# - Mode "ultra"  (opt-in) : 96 frames cap  (12 batches × 8) — long videos only
+# Au-delà du cap effectif, downsampling uniforme dans analyze_frames().
+# Le cap dur ici est aligné sur le mode le plus dense (ultra) pour ne pas
+# clamper ce mode dans `min(max_frames_cap, MAX_FRAMES_TOTAL_CAP)`.
+MAX_FRAMES_TOTAL_CAP = 96
 
 # Timeout par batch (8 frames ~5-15s normalement).
 VISION_TIMEOUT_S = 90.0

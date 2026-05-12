@@ -32,6 +32,7 @@ from transcripts.audio_utils import (
     _yt_dlp_extra_args,
 )
 from core.config import get_supadata_key, get_mistral_key
+from core.http_client import get_proxied_client
 
 logger = logging.getLogger(__name__)
 
@@ -418,17 +419,18 @@ async def _resolve_short_url(url: str) -> Optional[str]:
     """
     Résout une URL courte TikTok (vm.tiktok.com, tiktok.com/t/)
     vers l'URL canonique en suivant les redirections.
+
+    Routé via le proxy résidentiel Decodo (`get_proxied_client`) car les
+    short URLs vm.tiktok.com répondent 403/429 sur IP datacenter Hetzner.
+    Audit B5 (Wave 2).
     """
     if not any(p in url for p in ["vm.tiktok.com", "/t/", "m.tiktok.com"]):
         return url  # Déjà une URL longue
 
     try:
-        async with httpx.AsyncClient(
+        async with get_proxied_client(
             follow_redirects=True,
             timeout=15.0,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            },
         ) as client:
             resp = await client.head(url)
             resolved = str(resp.url)
@@ -456,10 +458,10 @@ async def _get_info_via_oembed(url: str) -> Optional[Dict[str, Any]]:
         # 2. Extraire le video_id depuis l'URL résolue
         video_id = extract_tiktok_video_id(resolved_url) or extract_tiktok_video_id(url) or "unknown"
 
-        # 3. Appeler l'API oEmbed
+        # 3. Appeler l'API oEmbed (proxy Decodo — TikTok 429 IP datacenter)
         oembed_url = f"https://www.tiktok.com/oembed?url={resolved_url}"
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with get_proxied_client(timeout=10.0) as client:
             resp = await client.get(oembed_url)
             if resp.status_code != 200:
                 logger.warning(f"[TIKTOK] oEmbed returned {resp.status_code}")
@@ -790,9 +792,9 @@ async def _download_audio_direct(
 
 
 async def _get_media_url_from_api(url: str, api_config: dict) -> Optional[str]:
-    """Obtient l'URL du média via une API tierce."""
+    """Obtient l'URL du média via une API tierce (tikwm — proxy Decodo)."""
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with get_proxied_client(timeout=15.0) as client:
             if api_config["method"] == "POST":
                 resp = await client.post(
                     api_config["url"],
@@ -827,15 +829,12 @@ async def _get_media_url_from_api(url: str, api_config: dict) -> Optional[str]:
 
 
 async def _download_media_bytes(media_url: str, source: str) -> Optional[bytes]:
-    """Télécharge le contenu d'une URL média en bytes."""
+    """Télécharge le contenu d'une URL média TikTok CDN en bytes (proxy Decodo)."""
     try:
-        async with httpx.AsyncClient(
+        async with get_proxied_client(
             timeout=60.0,
             follow_redirects=True,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Referer": "https://www.tiktok.com/",
-            },
+            headers={"Referer": "https://www.tiktok.com/"},
         ) as client:
             resp = await client.get(media_url)
             if resp.status_code == 200 and len(resp.content) > 1000:
@@ -1189,7 +1188,8 @@ async def _fetch_tiktok_account_meta_from_html(username: str) -> Optional[Dict[s
     url = f"https://www.tiktok.com/@{username}"
 
     try:
-        async with httpx.AsyncClient(
+        # Proxy Decodo : TikTok bloque IP datacenter sur les pages de compte
+        async with get_proxied_client(
             timeout=_HTML_META_TIMEOUT_S,
             headers=_HTML_META_HEADERS,
             follow_redirects=True,

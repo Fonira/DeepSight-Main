@@ -86,18 +86,23 @@ Pillow>=10.0.0           # Image processing (thumbnail WebP conversion)
 # ─────────────────────────────────────────────────────────────────────────────────
 # 🤖 AI MODELS
 # ─────────────────────────────────────────────────────────────────────────────────
-# Install from GitHub tag v2.4.5 — the canonical PyPI release of `mistralai` is currently
-# QUARANTINED by PyPI (status: quarantined, /pypi/mistralai/json → 404, simple index empty),
-# so any version specifier resolves to "from versions: none" on Python 3.11. Prod
-# (repo-backend-1) already runs 2.4.5 from a pre-quarantine cache; new builds and CI need
-# this fallback. Switch back to `mistralai==2.4.5` once PyPI lifts the quarantine.
-mistralai @ git+https://github.com/mistralai/client-python.git@v2.4.5
+# 2026-05-12 — `mistralai` package quarantined on PyPI (versions: []), pin to a
+# known-good v1.x tag via GitHub tarball until PyPI restores. The DeepSight
+# code uses `from mistralai.client import Mistral` (v1.x API), so we stay on
+# v1.12.4 (last v1 release) rather than v2.x which restructured imports.
+mistralai @ https://github.com/mistralai/client-python/archive/refs/tags/v1.12.4.tar.gz
 
 # ─────────────────────────────────────────────────────────────────────────────────
 # 🎙️ AUDIO TRANSCRIPTION (optional - for Whisper fallback)
 # ─────────────────────────────────────────────────────────────────────────────────
 openai>=1.12.0                # OpenAI Whisper API
 # assemblyai>=0.23.0          # AssemblyAI (uncomment if needed)
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# 🤖 BOTS PROSPECTION B2B (Telegram + Luffa)
+# ─────────────────────────────────────────────────────────────────────────────────
+aiogram>=3.13.0,<4.0           # Telegram bot (async-first, parse Update, sendMessage)
+luffa-bot-python-sdk>=0.1.2    # Luffa messaging platform (polling-based, official SDK)
 
 # ─────────────────────────────────────────────────────────────────────────────────
 # 🔍 MONITORING

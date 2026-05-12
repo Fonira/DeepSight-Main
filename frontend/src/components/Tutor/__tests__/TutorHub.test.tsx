@@ -261,6 +261,35 @@ describe("TutorHub", () => {
       concept_def: "",
       mode: "text",
     });
+    // The user's own message must appear in the transcript alongside the
+    // agent's first_prompt (otherwise the user can't see what they sent).
+    await waitFor(() => {
+      expect(screen.getByText("Première question")).toBeInTheDocument();
+      expect(screen.getByText("Premier message agent.")).toBeInTheDocument();
+    });
+  });
+
+  it("text → voice (with confirm OK) keeps the prior transcript visible in the unified timeline", async () => {
+    vi.spyOn(window, "confirm").mockImplementation(() => true);
+    render(<TutorHub isOpen onClose={vi.fn()} />);
+    await useTutorStore.getState().startSession({
+      concept_term: "Concept X",
+      concept_def: "Y",
+      mode: "text",
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Concept X")).toBeInTheDocument();
+      expect(screen.getByText("Premier message agent.")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId("tutor-hub-mode-voice"));
+    // Switched to voice pane AND sessionEnd was called (Redis torn down)…
+    await waitFor(() => {
+      expect(screen.getByTestId("tutor-hub-voice-pane")).toBeInTheDocument();
+      expect(tutorApiMock.sessionEnd).toHaveBeenCalled();
+    });
+    // …but the user can still see what they discussed in text mode.
+    expect(screen.getByText("Concept X")).toBeInTheDocument();
+    expect(screen.getByText("Premier message agent.")).toBeInTheDocument();
   });
 
   it("close button calls onClose AND ends the text session if active", async () => {

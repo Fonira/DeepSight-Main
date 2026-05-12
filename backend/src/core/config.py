@@ -68,7 +68,22 @@ class _DeepSightSettings(BaseSettings):
     MIRO_API_TOKEN: str = ""
 
     # -- YouTube Proxy (pour contourner le blocage IP YouTube sur VPS) --
+    # Tier 1 — proxy par defaut (rotating Decodo Pay-As-You-Go : nouvelle IP chaque request)
     YOUTUBE_PROXY: str = ""  # ex: socks5://user:pass@host:port ou http://user:pass@host:port
+    # Tier 2 — sticky session Decodo (port 10001-10010, IP fixe ~10 min)
+    # Utilise pour cohérence cookies session, swap automatique si default cumule trop d'erreurs.
+    YOUTUBE_PROXY_STICKY: Optional[str] = None
+    # Tier 3 — geo-targeted Decodo (username suffix `-country-XX`)
+    YOUTUBE_PROXY_GEO_US: Optional[str] = None
+    YOUTUBE_PROXY_GEO_FR: Optional[str] = None
+    # Tier 4 — fallback multi-provider (Webshare ou autre), totalement indépendant de Decodo.
+    YOUTUBE_PROXY_LEGACY: Optional[str] = None
+    # -- Proxy Circuit Breaker (Sprint D — Proxy V2 resilience) --
+    # Bascule de tier après N erreurs dans une fenetre glissante de Y secondes ;
+    # reset complet apres Z secondes sans erreur. Tunable sans deploy via .env.
+    PROXY_CIRCUIT_BREAKER_THRESHOLD: int = 5
+    PROXY_CIRCUIT_BREAKER_WINDOW_S: int = 60
+    PROXY_CIRCUIT_BREAKER_RESET_S: int = 300
 
     # -- Email --
     EMAIL_ENABLED: str = "true"
@@ -85,6 +100,16 @@ class _DeepSightSettings(BaseSettings):
     # or a backend regression slips into prod. Does NOT affect the legacy voice
     # chat (non-streaming) sessions.
     VOICE_CALL_DISABLED: str = "false"
+
+    # -- Visual Analysis — mode ultra opt-in --
+    # Set to True to enable the `ultra` visual mode for Expert plan users on
+    # very long videos (>2h). Adds ~50% more frames (cap 96 vs 64) and costs
+    # 4 credits instead of 3. Decoded with Decodo proxy that bypasses YouTube
+    # bot challenge — only useful in environments where storyboard fetch +
+    # Mistral Vision are not the bottleneck. Default False (opt-out).
+    # Cf. backend/src/videos/visual_integration.py for mode selection logic
+    # and audit docs/audits/2026-05-11-visual-analysis-debug.md §6 phase 3.
+    VISUAL_ULTRA_ENABLED: bool = False
 
     # -- Stripe --
     STRIPE_ENABLED: str = "true"
@@ -316,6 +341,14 @@ FAL_API_KEY = _settings.FAL_API_KEY
 TOGETHER_API_KEY = _settings.TOGETHER_API_KEY
 MISTRAL_IMAGE_AGENT_ID = _settings.MISTRAL_IMAGE_AGENT_ID
 YOUTUBE_PROXY = _settings.YOUTUBE_PROXY
+# Sprint D — Proxy V2 advanced (geo + sticky + multi-provider fallback)
+YOUTUBE_PROXY_STICKY = _settings.YOUTUBE_PROXY_STICKY
+YOUTUBE_PROXY_GEO_US = _settings.YOUTUBE_PROXY_GEO_US
+YOUTUBE_PROXY_GEO_FR = _settings.YOUTUBE_PROXY_GEO_FR
+YOUTUBE_PROXY_LEGACY = _settings.YOUTUBE_PROXY_LEGACY
+PROXY_CIRCUIT_BREAKER_THRESHOLD: int = _settings.PROXY_CIRCUIT_BREAKER_THRESHOLD
+PROXY_CIRCUIT_BREAKER_WINDOW_S: int = _settings.PROXY_CIRCUIT_BREAKER_WINDOW_S
+PROXY_CIRCUIT_BREAKER_RESET_S: int = _settings.PROXY_CIRCUIT_BREAKER_RESET_S
 
 
 def get_fal_key() -> str:
@@ -364,6 +397,17 @@ RESEND_RATE_LIMIT_PER_SEC: int = int(os.getenv("RESEND_RATE_LIMIT_PER_SEC", str(
 # bypass this flag (they can still test). Toggle without restart by editing
 # .env.production then `docker compose up -d` (or `docker exec ... reload`).
 VOICE_CALL_DISABLED: bool = _settings.VOICE_CALL_DISABLED.lower() == "true"
+
+# =============================================================================
+# VISUAL ANALYSIS — Mode ultra opt-in
+# =============================================================================
+
+# Enables the `ultra` visual mode for Expert plan users on very long videos
+# (>2h). Adds ~50% more frames analyzed (cap 96 vs 64) and costs 4 credits
+# instead of 3. Default False — toggle via .env.production VISUAL_ULTRA_ENABLED.
+# Cf. videos/visual_integration._select_mode_for_plan() and audit
+# docs/audits/2026-05-11-visual-analysis-debug.md §6 phase 3.
+VISUAL_ULTRA_ENABLED: bool = _settings.VISUAL_ULTRA_ENABLED
 
 # =============================================================================
 # STRIPE
@@ -483,12 +527,19 @@ LEGAL_CONFIG = {
 
 
 def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
-    """Construit PLAN_LIMITS à partir du SSOT plan_config pour rétrocompatibilité."""
+    """Construit PLAN_LIMITS à partir du SSOT plan_config pour rétrocompatibilité.
+
+    ⚠️ Sprint 2026-05-12 — `PlanId.EXPERT` ajouté à l'itération. Avant ce fix,
+    la clé `expert` n'existait pas dans le dict legacy → tous les users plan=expert
+    (depuis migration v2 Alembic 012 2026-04-30) tombaient sur `PLAN_LIMITS["free"]`
+    par fallback → modèle `mistral-small-2603` au lieu de `mistral-large-2512`,
+    `deep_research_enabled=False`, etc. Cf. Summary 208/209/210 model_used cassé.
+    """
     try:
         from billing.plan_config import PLANS, PlanId
 
         legacy = {}
-        for plan_id in [PlanId.FREE, PlanId.PLUS, PlanId.PRO]:
+        for plan_id in [PlanId.FREE, PlanId.PLUS, PlanId.PRO, PlanId.EXPERT]:
             plan = PLANS[plan_id]
             limits = plan["limits"]
             key = plan_id.value
@@ -512,7 +563,7 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
                 "voice_monthly_minutes": limits.get("voice_monthly_minutes", 0),
                 "blocked_features": (
                     []
-                    if key == "pro"
+                    if key in ("pro", "expert")
                     else ["playlists", "deep_research", "voice_chat", "tts"]
                     if key == "plus"
                     else [
@@ -528,25 +579,31 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
                 ),
                 "upgrade_prompt": {
                     "fr": (
-                        "Vous avez le plan Pro, toutes les fonctionnalités sont débloquées !"
+                        "Vous avez le plan Expert, toutes les fonctionnalités sont débloquées !"
+                        if key == "expert"
+                        else "Passez à Expert pour débloquer Deep Research, recherche académique illimitée et le modèle Mistral Large !"
                         if key == "pro"
-                        else "Passez à Plus pour débloquer mind maps, exports et recherche web !"
+                        else "Passez à Pro pour débloquer mind maps, exports et recherche web !"
                         if key == "free"
                         else "Passez à Pro pour débloquer playlists, Deep Research et chat vocal !"
                     ),
                     "en": (
-                        "You have the Pro plan, all features are unlocked!"
+                        "You have the Expert plan, all features are unlocked!"
+                        if key == "expert"
+                        else "Upgrade to Expert to unlock Deep Research, unlimited academic search and the Mistral Large model!"
                         if key == "pro"
-                        else "Upgrade to Plus to unlock mind maps, exports and web search!"
+                        else "Upgrade to Pro to unlock mind maps, exports and web search!"
                         if key == "free"
                         else "Upgrade to Pro to unlock playlists, Deep Research and voice chat!"
                     ),
                 },
             }
-        # Admin "unlimited" — copie pro avec limites levées (défense en profondeur)
-        if "pro" in legacy:
-            pro_copy = dict(legacy["pro"])
-            pro_copy.update(
+        # Admin "unlimited" — copie expert (tier top en v2) avec limites levées.
+        # Auparavant copiait `pro` ; en v2 `pro` est l'intermédiaire et
+        # `expert` est le top — l'admin doit avoir le modèle large, pas medium.
+        if "expert" in legacy:
+            expert_copy = dict(legacy["expert"])
+            expert_copy.update(
                 {
                     "monthly_credits": 999999,
                     "daily_analyses": -1,
@@ -562,7 +619,7 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
                     "blocked_features": [],
                 }
             )
-            legacy["unlimited"] = pro_copy
+            legacy["unlimited"] = expert_copy
 
         return legacy
     except Exception:
@@ -583,11 +640,21 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
                 "default_model": "mistral-medium-2508",
             },
             "pro": {
+                "monthly_credits": 7500,
+                "daily_analyses": 30,
+                "blocked_features": [],
+                "models": ["mistral-small-2603", "mistral-medium-2508"],
+                "default_model": "mistral-medium-2508",
+            },
+            "expert": {
                 "monthly_credits": 15000,
                 "daily_analyses": 100,
                 "blocked_features": [],
                 "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
                 "default_model": "mistral-large-2512",
+                "deep_research_enabled": True,
+                "voice_chat_enabled": True,
+                "web_search_enabled": True,
             },
             "unlimited": {
                 "monthly_credits": 999999,
@@ -861,6 +928,26 @@ def get_supadata_key() -> str:
 
 def get_youtube_proxy() -> str:
     return YOUTUBE_PROXY
+
+
+def get_youtube_proxy_sticky() -> Optional[str]:
+    """Tier 2 — sticky Decodo session (cohérence cookies pendant ~10min)."""
+    return YOUTUBE_PROXY_STICKY or None
+
+
+def get_youtube_proxy_geo_us() -> Optional[str]:
+    """Tier 3 — Decodo geo-targeted US (username suffix `-country-us`)."""
+    return YOUTUBE_PROXY_GEO_US or None
+
+
+def get_youtube_proxy_geo_fr() -> Optional[str]:
+    """Tier 3 — Decodo geo-targeted FR (username suffix `-country-fr`)."""
+    return YOUTUBE_PROXY_GEO_FR or None
+
+
+def get_youtube_proxy_legacy() -> Optional[str]:
+    """Tier 4 — fallback multi-provider (Webshare etc.), indépendant de Decodo."""
+    return YOUTUBE_PROXY_LEGACY or None
 
 
 def get_ytdlp_cookies_path() -> str:

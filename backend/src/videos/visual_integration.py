@@ -30,6 +30,7 @@ from typing import Any, Dict, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.http_client import get_proxied_client
 from db.database import User, VisualAnalysisQuota
 from transcripts.audio_utils import _yt_dlp_extra_args, executor as audio_executor
 
@@ -54,29 +55,66 @@ VISUAL_QUOTA_BY_PLAN: Dict[str, Optional[int]] = {
 }
 
 # Coût en crédits par appel visual_analysis (s'ajoute au coût d'analyse de base).
-# Différencié par mode : Pro (default) paye moins, Expert paye plus pour ×2-3 frames.
+# Différencié par mode :
+# - default (Pro)   : 2 crédits, ~24 frames
+# - expert  (Expert): 3 crédits, ~64 frames
+# - ultra   (Expert + opt-in): 4 crédits, ~96 frames (long videos only)
 VISUAL_CREDITS_COST_BY_MODE: Dict[str, int] = {
     "default": 2,
     "expert": 3,
+    "ultra": 4,
 }
 # Cap frames analysées par Mistral, par mode. Default (Pro) plafonne ~24,
 # Expert pousse au cap dur Mistral (64 = 8 batches × 8 frames).
+# Ultra pousse au cap supérieur (96 = 12 batches × 8) pour vidéos très longues.
 MAX_FRAMES_CAP_BY_MODE: Dict[str, int] = {
     "default": 24,
     "expert": 64,
+    "ultra": 96,
 }
 # Rétro-compat : constante historique. Lisez VISUAL_CREDITS_COST_BY_MODE pour la valeur réelle.
 VISUAL_CREDITS_COST = VISUAL_CREDITS_COST_BY_MODE["default"]
 
+# Seuil pour activer le mode ultra : 2h (7200s). En dessous, Expert reste en
+# mode 'expert' standard car la grille `ultra` plafonne à 32 frames pour ≤2h
+# ce qui équivaut au mode standard, sans bénéfice — et coûte 1 crédit de plus.
+ULTRA_MIN_DURATION_S = 7200.0
 
-def _select_mode_for_plan(plan: Optional[str]) -> str:
-    """Mappe le plan user → mode visual analysis ('default' | 'expert').
 
-    Plans Expert obtiennent le mode dense (~64 frames cap). Tous les autres plans
-    payants (Pro, starter legacy, plus legacy) sont en mode 'default' (~24 frames cap).
-    Free n'arrive pas jusqu'ici (filtré en amont par can_consume).
+def _select_mode_for_plan(
+    plan: Optional[str],
+    duration_s: Optional[float] = None,
+) -> str:
+    """Mappe le plan user → mode visual analysis ('default' | 'expert' | 'ultra').
+
+    Règles :
+    - Plan Expert + durée > 7200s (2h) + settings.VISUAL_ULTRA_ENABLED → 'ultra'
+    - Plan Expert (autres cas) → 'expert' (~64 frames cap)
+    - Tous les autres plans payants (Pro, starter legacy, plus legacy) → 'default' (~24 frames cap)
+    - Free n'arrive pas jusqu'ici (filtré en amont par can_consume).
+
+    `duration_s` est optionnel : si non fourni, ultra n'est jamais sélectionné
+    (back-compat caller qui ne sait pas encore la durée à l'instant de la
+    sélection initiale du mode).
     """
-    return "expert" if _normalize_plan(plan) == "expert" else "default"
+    normalized = _normalize_plan(plan)
+    if normalized != "expert":
+        return "default"
+
+    # Plan Expert — décider entre 'expert' standard et 'ultra' opt-in.
+    if duration_s is None or duration_s <= ULTRA_MIN_DURATION_S:
+        return "expert"
+
+    # Vérifier le flag opt-in. Lazy import pour éviter une dépendance circulaire
+    # potentielle si core.config évolue.
+    try:
+        from core.config import VISUAL_ULTRA_ENABLED  # noqa: WPS433
+    except ImportError:  # pragma: no cover — défensive
+        VISUAL_ULTRA_ENABLED = False
+
+    if not VISUAL_ULTRA_ENABLED:
+        return "expert"
+    return "ultra"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -121,9 +159,7 @@ def get_quota_for_plan(plan: str) -> Optional[int]:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def get_or_create_quota_row(
-    db: AsyncSession, user_id: int, period: Optional[str] = None
-) -> VisualAnalysisQuota:
+async def get_or_create_quota_row(db: AsyncSession, user_id: int, period: Optional[str] = None) -> VisualAnalysisQuota:
     """Récupère la ligne quota du mois ou la crée si absente. Pas de commit."""
     period = period or _current_period()
 
@@ -184,6 +220,7 @@ async def maybe_enrich_with_visual(
     *,
     transcript_excerpt: str = "",
     flag_enabled: bool = True,
+    duration_hint: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Pipeline Phase 2 appelé depuis videos/router.py quand
@@ -194,25 +231,53 @@ async def maybe_enrich_with_visual(
     `model_used`. Le caller injecte `analysis.summary_visual` et `key_moments`
     dans le prompt Mistral analysis principal.
 
+    `duration_hint` (optionnel) : durée vidéo en secondes connue côté caller
+    (depuis video_info.get("duration")). Permet la sélection du mode "ultra"
+    pour les vidéos longues quand `settings.VISUAL_ULTRA_ENABLED=True`. Si
+    non fournie, ultra n'est pas envisagé (back-compat).
+
     NE PAS RAISER : cette fonction est best-effort. En cas d'échec, l'analyse
     de base se fait quand même sans la couche visuelle (graceful degradation).
 
     Aucun commit DB n'est fait ici — le caller commit en fin de flow.
+
+    `duration_hint` (Option C, sprint 2026-05-12) : durée vidéo connue côté
+    caller (`video_info.get("duration")` issu de Supadata metadata HTTP).
+    Propagée à `extract_storyboard_frames` comme 5ème fallback ; évite le
+    skip silencieux observé prod sur les vidéos où yt-dlp + fragments +
+    Supadata get_video_info + transcript timestamps échouent en cascade.
     """
     t0 = time.time()
     log_tag = f"VISUAL_INT user={user.id}"
+    plan_for_logs = _normalize_plan(getattr(user, "plan", None))
 
     if not flag_enabled:
+        # Silencieux côté caller (flag manuel) — log WARNING explicite ici pour
+        # éviter qu'un toggle env soit invisible en prod (cf. audit
+        # 2026-05-11-visual-analysis-debug.md §1.3).
+        logger.warning(
+            "[%s] Skip: reason=disabled flag_enabled=False url=%s",
+            log_tag,
+            (url or "")[:80],
+        )
         return {"status": STATUS_DISABLED, "elapsed_s": 0.0}
 
     # ── 1. Plan gating + quota check ──
     allowed, reason = await can_consume(db, user)
     if not allowed:
-        logger.info("[%s] Skipped (%s)", log_tag, reason)
+        # Promu de INFO → WARNING : permet à un debug futur de retrouver
+        # tous les skips Visual via filtre level=warning + tag [VISUAL_INT].
+        logger.warning(
+            "[%s] Skip: reason=%s plan=%s url=%s",
+            log_tag,
+            reason,
+            plan_for_logs,
+            (url or "")[:80],
+        )
         return {"status": reason, "elapsed_s": round(time.time() - t0, 2)}
 
-    # ── 2. Sélection mode selon plan ──
-    mode = _select_mode_for_plan(getattr(user, "plan", None))
+    # ── 2. Sélection mode selon plan (+ durée si fournie pour ultra) ──
+    mode = _select_mode_for_plan(getattr(user, "plan", None), duration_s=duration_hint)
 
     # ── 3. Détection plateforme + extraction frames adaptée ──
     platform = _detect_visual_platform(url)
@@ -220,6 +285,11 @@ async def maybe_enrich_with_visual(
     if platform == "youtube":
         video_id = normalize_video_id(url)
         if not video_id:
+            logger.warning(
+                "[%s] Skip: reason=not_supported platform=youtube reason_detail=invalid_video_id url=%s",
+                log_tag,
+                (url or "")[:80],
+            )
             return {
                 "status": STATUS_NOT_SUPPORTED,
                 "elapsed_s": round(time.time() - t0, 2),
@@ -228,10 +298,13 @@ async def maybe_enrich_with_visual(
         # et contient les timestamps Supadata `[mm:ss]` — utilisé en
         # fallback ultime dans extract_storyboard_frames si yt-dlp +
         # sb fragments + Supadata get_video_info échouent à donner duration.
+        # duration_hint (Option C) est le 5ème fallback : durée connue
+        # upstream depuis Supadata metadata HTTP, fiable, JAMAIS prioritaire.
         extraction = await extract_storyboard_frames(
             video_id,
             mode=mode,
             transcript_hint=transcript_excerpt or None,
+            duration_hint=duration_hint,
             log_tag=log_tag,
         )
         identifier_for_logs = video_id
@@ -242,12 +315,24 @@ async def maybe_enrich_with_visual(
         extraction = await _extract_tiktok_visual_frames(url, video_id, mode=mode, log_tag=log_tag)
         identifier_for_logs = video_id
     else:
+        logger.warning(
+            "[%s] Skip: reason=not_supported platform=unknown url=%s",
+            log_tag,
+            (url or "")[:80],
+        )
         return {
             "status": STATUS_NOT_SUPPORTED,
             "elapsed_s": round(time.time() - t0, 2),
         }
 
     if extraction is None:
+        logger.warning(
+            "[%s] Skip: reason=extract_failed platform=%s mode=%s video_id=%s",
+            log_tag,
+            platform,
+            mode,
+            identifier_for_logs,
+        )
         return {
             "status": STATUS_EXTRACT_FAILED,
             "video_id": identifier_for_logs,
@@ -258,6 +343,8 @@ async def maybe_enrich_with_visual(
 
     # ── 4. Mistral Vision (commun à toutes plateformes) ──
     max_frames_cap = MAX_FRAMES_CAP_BY_MODE.get(mode, MAX_FRAMES_CAP_BY_MODE["default"])
+    frames_attempted = extraction.frame_count
+    vision_error: Optional[str] = None
     try:
         analysis = await analyze_frames(
             extraction.frame_paths,
@@ -266,16 +353,40 @@ async def maybe_enrich_with_visual(
             max_frames_cap=max_frames_cap,
             log_tag=log_tag,
         )
+    except Exception as _ve:
+        # Propagation explicite : visual_analyzer ne raise pas en théorie
+        # (return None) mais on capture quand même par sécurité.
+        vision_error = str(_ve)[:300]
+        analysis = None
+        logger.warning(
+            "[%s] Mistral Vision raised: %s (frames_attempted=%d cap=%d)",
+            log_tag,
+            vision_error,
+            frames_attempted,
+            max_frames_cap,
+        )
     finally:
         extraction.cleanup()
 
     if analysis is None:
+        logger.warning(
+            "[%s] Skip: reason=vision_failed platform=%s mode=%s video_id=%s frames_attempted=%d cap=%d error=%s",
+            log_tag,
+            platform,
+            mode,
+            identifier_for_logs,
+            frames_attempted,
+            max_frames_cap,
+            vision_error or "all_batches_failed",
+        )
         return {
             "status": STATUS_VISION_FAILED,
             "video_id": identifier_for_logs,
             "platform": platform,
             "visual_mode": mode,
             "frame_count": extraction.frame_count,
+            "frames_attempted": frames_attempted,
+            "error": vision_error or "all_batches_failed",
             "elapsed_s": round(time.time() - t0, 2),
         }
 
@@ -354,9 +465,7 @@ _TIKWM_TIMEOUT_S = 15.0
 _TIKWM_DOWNLOAD_TIMEOUT_S = 60.0
 
 
-async def _download_tiktok_video_no_watermark(
-    url: str, *, log_tag: str
-) -> Optional[bytes]:
+async def _download_tiktok_video_no_watermark(url: str, *, log_tag: str) -> Optional[bytes]:
     """Télécharge la vidéo TikTok no-watermark via tikwm.com (`data.play`).
 
     `transcripts.tiktok._download_video_bytes()` priorise `music_info.play`
@@ -365,16 +474,15 @@ async def _download_tiktok_video_no_watermark(
 
     Ici on prend le champ `data.play` qui est la vidéo MP4 (audio + vidéo),
     nécessaire pour ffprobe + ffmpeg dans extract_frames_from_local.
-    """
-    import httpx
 
+    Routé via le proxy résidentiel Decodo (`get_proxied_client`) car tikwm.com
+    est rate-limited 429 sur IP datacenter Hetzner. Audit B4 (Wave 2).
+    """
     try:
-        async with httpx.AsyncClient(timeout=_TIKWM_TIMEOUT_S) as client:
+        async with get_proxied_client(timeout=_TIKWM_TIMEOUT_S) as client:
             resp = await client.post(_TIKWM_API_URL, data={"url": url})
         if resp.status_code != 200:
-            logger.warning(
-                "[%s] tikwm API HTTP %d for %s", log_tag, resp.status_code, url
-            )
+            logger.warning("[%s] tikwm API HTTP %d for %s", log_tag, resp.status_code, url)
             return None
         payload = resp.json()
     except Exception as e:
@@ -392,22 +500,14 @@ async def _download_tiktok_video_no_watermark(
         return None
 
     try:
-        async with httpx.AsyncClient(
+        async with get_proxied_client(
             timeout=_TIKWM_DOWNLOAD_TIMEOUT_S,
             follow_redirects=True,
-            headers={
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                ),
-                "Referer": "https://www.tiktok.com/",
-            },
+            headers={"Referer": "https://www.tiktok.com/"},
         ) as client:
             r = await client.get(media_url)
         if r.status_code != 200:
-            logger.warning(
-                "[%s] tikwm video CDN HTTP %d for %s", log_tag, r.status_code, media_url[:80]
-            )
+            logger.warning("[%s] tikwm video CDN HTTP %d for %s", log_tag, r.status_code, media_url[:80])
             return None
         if len(r.content) < 1000:
             logger.warning(
@@ -422,9 +522,7 @@ async def _download_tiktok_video_no_watermark(
         return None
 
 
-async def _download_tiktok_video_via_ytdlp(
-    url: str, *, log_tag: str, timeout_s: int = 60
-) -> Optional[bytes]:
+async def _download_tiktok_video_via_ytdlp(url: str, *, log_tag: str, timeout_s: int = 60) -> Optional[bytes]:
     """Télécharge la vidéo TikTok via yt-dlp + proxy Decodo + cookies TikTok.
 
     Stratégie 2026-05-11 : tikwm.com retourne "Url parsing failed" depuis l'IP
@@ -468,10 +566,19 @@ async def _download_tiktok_video_via_ytdlp(
             return None
 
     try:
-        return await asyncio.wait_for(
+        data = await asyncio.wait_for(
             loop.run_in_executor(audio_executor, _dl),
             timeout=timeout_s + 5,
         )
+        # 📡 Proxy telemetry — video TikTok download via Decodo
+        if data:
+            try:
+                from middleware.proxy_telemetry import record_proxy_usage
+
+                await record_proxy_usage(provider="ytdlp_tiktok", bytes_in=len(data))
+            except Exception:  # noqa: BLE001 — best-effort
+                pass
+        return data
     except asyncio.TimeoutError:
         logger.warning("[%s] yt-dlp TikTok download timeout (%ds)", log_tag, timeout_s)
     except Exception as e:
@@ -516,9 +623,7 @@ async def _extract_tiktok_visual_frames(
             logger.warning("[%s] tikwm fallback raised: %s", log_tag, e)
 
     if not video_data:
-        logger.warning(
-            "[%s] TikTok download failed (yt-dlp + tikwm) for %s", log_tag, video_id
-        )
+        logger.warning("[%s] TikTok download failed (yt-dlp + tikwm) for %s", log_tag, video_id)
         return None
 
     logger.info(
@@ -538,9 +643,7 @@ async def _extract_tiktok_visual_frames(
         return None
 
     try:
-        result = await extract_frames_from_local(
-            str(tmp_path), mode=mode, log_tag=f"{log_tag} TIKTOK"
-        )
+        result = await extract_frames_from_local(str(tmp_path), mode=mode, log_tag=f"{log_tag} TIKTOK")
     finally:
         # Le mp4 source n'est plus utile une fois les frames extraites — peu importe le résultat
         tmp_path.unlink(missing_ok=True)
@@ -564,6 +667,7 @@ async def enrich_and_capture_visual(
     web_context: str,
     flag_enabled: bool,
     log_tag: str,
+    duration_hint: Optional[float] = None,
 ) -> Tuple[str, Optional[Dict[str, Any]]]:
     """
     Helper unifié appelé par V1, V2, V2.1 pour appliquer le hook visual.
@@ -575,11 +679,17 @@ async def enrich_and_capture_visual(
     4. Si OK : append visual block à web_context + capture le dict
     5. Si KO : log + retourne web_context inchangé, visual_analysis_data=None
 
+    `duration_hint` : durée vidéo en secondes (depuis video_info.get("duration")).
+    Permet la sélection ultra pour vidéos longues si VISUAL_ULTRA_ENABLED=True.
+
     Renvoie (updated_web_context, visual_analysis_data).
     Le caller persist `visual_analysis_data` sur Summary.visual_analysis
     après save_summary().
 
     Best-effort — toute exception est attrapée et loggée (graceful degradation).
+
+    `duration_hint` (Option C) propagé depuis `video_info["duration"]` côté
+    router pour servir de 5ème fallback dans `extract_storyboard_frames`.
     """
     if not flag_enabled:
         return web_context, None
@@ -596,6 +706,7 @@ async def enrich_and_capture_visual(
             url=url,
             transcript_excerpt=(transcript_excerpt or "")[:8000],
             flag_enabled=True,
+            duration_hint=duration_hint,
         )
         if _visual.get("status") != STATUS_OK:
             logger.info(f"👁️ [{log_tag}] visual skipped: status={_visual.get('status')}")
@@ -604,9 +715,7 @@ async def enrich_and_capture_visual(
         _visual_block = format_visual_context_for_prompt(_visual)
         new_web_context = web_context or ""
         if _visual_block:
-            new_web_context = (
-                (new_web_context + "\n\n" + _visual_block) if new_web_context else _visual_block
-            )
+            new_web_context = (new_web_context + "\n\n" + _visual_block) if new_web_context else _visual_block
 
         logger.info(
             f"👁️ [{log_tag}] visual enrichment OK: "

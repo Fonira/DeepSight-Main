@@ -1736,6 +1736,92 @@ class EmailDLQ(Base):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🤖 BOTS PROSPECTION B2B — Telegram + Luffa
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class BotProspect(Base):
+    """Prospect B2B identifié par (platform, platform_user_id). N'est PAS un User DeepSight."""
+
+    __tablename__ = "bot_prospect"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    platform = Column(String(16), nullable=False)
+    platform_user_id = Column(String(64), nullable=False)
+    platform_username = Column(String(128), nullable=True)
+    display_name = Column(String(128), nullable=True)
+    language_code = Column(String(8), nullable=True)
+
+    lead_status = Column(String(32), nullable=False, default="new", server_default="new")
+    qualification_score = Column(Integer, nullable=False, default=0, server_default="0")
+    business_name = Column(String(256), nullable=True)
+    business_type = Column(String(64), nullable=True)
+    audience_size = Column(String(32), nullable=True)
+    current_pain = Column(Text, nullable=True)
+    interest_signals = Column(JSON, nullable=True)
+
+    state = Column(String(32), nullable=False, default="hello", server_default="hello")
+
+    created_at = Column(DateTime, default=func.now(), server_default=func.now(), nullable=False)
+    last_message_at = Column(DateTime, default=func.now(), server_default=func.now(), nullable=False)
+    handoff_at = Column(DateTime, nullable=True)
+
+    messages = relationship("BotMessage", back_populates="prospect", cascade="all, delete-orphan")
+    handoffs = relationship("BotHandoff", back_populates="prospect", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint("platform", "platform_user_id", name="uq_bot_prospect_platform_user"),
+        Index("ix_bot_prospect_lead_status", "lead_status"),
+        Index("ix_bot_prospect_last_message_at", "last_message_at"),
+    )
+
+    def __repr__(self):
+        return f"<BotProspect {self.platform}:{self.platform_user_id} ({self.lead_status})>"
+
+
+class BotMessage(Base):
+    """Message d'une conversation bot prospect (user OU assistant OU system)."""
+
+    __tablename__ = "bot_message"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    prospect_id = Column(Integer, ForeignKey("bot_prospect.id", ondelete="CASCADE"), nullable=False)
+    role = Column(String(16), nullable=False)
+    content = Column(Text, nullable=False)
+    platform_msg_id = Column(String(64), nullable=True)
+    intent_detected = Column(String(64), nullable=True)
+    tokens_used = Column(Integer, nullable=True)
+    model = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=func.now(), server_default=func.now(), nullable=False)
+
+    prospect = relationship("BotProspect", back_populates="messages")
+
+    __table_args__ = (
+        Index("ix_bot_message_prospect_id", "prospect_id"),
+        Index("ix_bot_message_created_at", "created_at"),
+    )
+
+
+class BotHandoff(Base):
+    """Notification envoyée à Maxime quand un lead est qualifié chaud."""
+
+    __tablename__ = "bot_handoff"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    prospect_id = Column(Integer, ForeignKey("bot_prospect.id", ondelete="CASCADE"), nullable=False)
+    channel = Column(String(32), nullable=False)
+    sent_at = Column(DateTime, default=func.now(), server_default=func.now(), nullable=False)
+    claimed_at = Column(DateTime, nullable=True)
+    summary = Column(Text, nullable=False)
+    deep_link = Column(String(256), nullable=True)
+    notification_error = Column(Text, nullable=True)
+
+    prospect = relationship("BotProspect", back_populates="handoffs")
+
+    __table_args__ = (Index("ix_bot_handoff_prospect_id", "prospect_id"),)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTIONS DATABASE
 # ═══════════════════════════════════════════════════════════════════════════════
 

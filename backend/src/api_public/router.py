@@ -18,6 +18,7 @@ import hashlib
 import time
 import asyncio
 
+from core.logging import logger
 from db.database import get_session, User
 from exports.markdown_builder import build_markdown_export, slug_for_summary
 
@@ -190,6 +191,22 @@ class AnalyzeRequest(BaseModel):
     language: Literal["fr", "en", "auto"] = Field("auto", description="Langue de sortie")
     include_concepts: bool = Field(True, description="Inclure le glossaire des concepts")
     include_timestamps: bool = Field(True, description="Inclure les timestamps cliquables")
+    include_visual_analysis: bool = Field(
+        True,
+        description=(
+            "Phase 2 — enrichir l'analyse avec une couche visuelle (frames + Mistral Vision). "
+            "Pro/Expert uniquement (Free skippé silencieusement). Si `True` ET la vidéo a déjà "
+            "été analysée AVANT alembic 024 (colonne `visual_analysis` IS NULL), le cache est "
+            "automatiquement contourné pour que l'analyse visuelle soit générée."
+        ),
+    )
+    force_refresh: bool = Field(
+        False,
+        description=(
+            "Ignorer le cache et forcer une nouvelle analyse même si une analyse existe déjà "
+            "pour cette vidéo (consomme des crédits comme une analyse neuve)."
+        ),
+    )
 
 
 class AnalyzeResponse(BaseModel):
@@ -359,19 +376,42 @@ async def analyze_video_api(
             )
 
     # Vérifier le cache (même vidéo déjà analysée)
+    #
+    # CACHE BYPASS (sprint F — 2026-05-11) — Évite le bug `visual_analysis=None`
+    # observé sur summaries pré-alembic 024 (colonne ajoutée 2026-05-06). Si le
+    # client demande explicitement `include_visual_analysis=True` (default) et
+    # son plan le supporte (Pro/Expert), ET le summary cached n'a pas de
+    # `visual_analysis` peuplée, on relance `_analyze_video_background_v6` au
+    # lieu de retourner un payload tronqué. Le client peut aussi forcer un
+    # re-analyze complet via `force_refresh=True`.
     existing = await get_summary_by_video_id(session, video_id, user.id)
-    if existing:
-        return {
-            "success": True,
-            "task_id": f"cached_{existing.id}",
-            "video_id": video_id,
-            "status": "completed",
-            "estimated_credits": 0,
-            "poll_url": f"/api/v1/analyze/status/cached_{existing.id}",
-            "message": "Analysis found in cache (free). Use the poll URL to get results.",
-            "cached": True,
-            "analysis_id": str(existing.id),
-        }
+    if existing and not req.force_refresh:
+        visual_eligible = user.plan in ("pro", "expert") or user.is_admin
+        needs_visual_backfill = (
+            req.include_visual_analysis
+            and visual_eligible
+            and getattr(existing, "visual_analysis", None) is None
+        )
+
+        if needs_visual_backfill:
+            logger.info(
+                f"[CACHE_BYPASS] summary_id={existing.id} video_id={video_id} "
+                f"user_id={user.id} plan={user.plan} reason=visual_missing_pre_024 "
+                f"— forcing re-analysis to populate visual_analysis column"
+            )
+            # Tombe dans le flow standard de lancement d'analyse plus bas.
+        else:
+            return {
+                "success": True,
+                "task_id": f"cached_{existing.id}",
+                "video_id": video_id,
+                "status": "completed",
+                "estimated_credits": 0,
+                "poll_url": f"/api/v1/analyze/status/cached_{existing.id}",
+                "message": "Analysis found in cache (free). Use the poll URL to get results.",
+                "cached": True,
+                "analysis_id": str(existing.id),
+            }
 
     # Mapper mode API → mode interne
     mode_map = {"express": "accessible", "standard": "standard", "detailed": "expert"}
@@ -399,6 +439,17 @@ async def analyze_video_api(
         },
     )
 
+    # Résolution du modèle Mistral selon le plan utilisateur (SSOT moderne).
+    # Sprint 2026-05-12 : avant ce fix, le modèle Free tier était hardcodé ici,
+    # forçant TOUTES les analyses MCP (`ds_analyze`) sur small même pour les
+    # users Expert. Observable sur Summary 211 (model_used=small malgré
+    # plan=expert). PR #473 a corrigé la voie `/api/videos/analyze` (frontend) ;
+    # cette PR-ci corrige la voie `/api/v1/analyze` (public API + MCP).
+    from billing.plan_config import get_limits
+
+    _plan_limits = get_limits(user.plan)
+    _resolved_model = _plan_limits.get("default_model", "mistral-small-2603")
+
     # Lancer l'analyse en background
     asyncio.ensure_future(
         _analyze_video_background_v6(
@@ -408,13 +459,13 @@ async def analyze_video_api(
             mode=internal_mode,
             category="auto",
             lang=lang,
-            model="mistral-small-2603",
+            model=_resolved_model,
             user_id=user.id,
             user_plan=user.plan,
             credit_cost=credits_cost,
             deep_research=False,
             platform=platform,
-            include_visual_analysis=True,
+            include_visual_analysis=req.include_visual_analysis,
         )
     )
 

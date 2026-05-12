@@ -50,7 +50,7 @@ describe("tutorStore", () => {
     expect(useTutorStore.getState().phase).toBe("idle");
   });
 
-  it("startSession populates state and appends first assistant message", async () => {
+  it("startSession pushes the user's concept_term as the first turn, then the agent's first_prompt", async () => {
     await useTutorStore.getState().startSession({
       concept_term: "Rasoir d'Occam",
       concept_def: "Principe de parcimonie",
@@ -61,12 +61,17 @@ describe("tutorStore", () => {
     expect(s.sessionId).toBe("tutor-test123");
     expect(s.conceptTerm).toBe("Rasoir d'Occam");
     expect(s.conceptDef).toBe("Principe de parcimonie");
-    expect(s.messages).toHaveLength(1);
-    expect(s.messages[0].role).toBe("assistant");
+    expect(s.messages).toHaveLength(2);
+    expect(s.messages[0].role).toBe("user");
+    expect(s.messages[0].content).toBe("Rasoir d'Occam");
+    expect(s.messages[1].role).toBe("assistant");
+    expect(s.messages[1].content).toBe(
+      "Comment expliqueriez-vous ce concept ?",
+    );
     expect(s.loading).toBe(false);
   });
 
-  it("submitTextTurn pushes user then assistant messages", async () => {
+  it("submitTextTurn appends user + assistant turns after the opening pair", async () => {
     await useTutorStore.getState().startSession({
       concept_term: "X",
       concept_def: "Y",
@@ -74,10 +79,14 @@ describe("tutorStore", () => {
     });
     await useTutorStore.getState().submitTextTurn("Mon idée");
     const s = useTutorStore.getState();
-    expect(s.messages).toHaveLength(3);
-    expect(s.messages[1].role).toBe("user");
-    expect(s.messages[1].content).toBe("Mon idée");
-    expect(s.messages[2].role).toBe("assistant");
+    // Opening: user "X" + assistant first_prompt. Turn: user "Mon idée" + assistant.
+    expect(s.messages).toHaveLength(4);
+    expect(s.messages[0].role).toBe("user");
+    expect(s.messages[0].content).toBe("X");
+    expect(s.messages[1].role).toBe("assistant");
+    expect(s.messages[2].role).toBe("user");
+    expect(s.messages[2].content).toBe("Mon idée");
+    expect(s.messages[3].role).toBe("assistant");
   });
 
   it("submitTextTurn is no-op without a session", async () => {
@@ -126,6 +135,25 @@ describe("tutorStore", () => {
     expect(s.error).toBe("boom");
     expect(s.loading).toBe(false);
     expect(s.phase).toBe("idle");
+    // Optimistic user turn is rolled back so the empty-state UI returns.
+    expect(s.messages).toEqual([]);
+  });
+
+  it("endSession({ keepMessages: true }) tears down the Redis session but keeps the local transcript", async () => {
+    await useTutorStore.getState().startSession({
+      concept_term: "X",
+      concept_def: "Y",
+      mode: "text",
+    });
+    await useTutorStore.getState().endSession({ keepMessages: true });
+    const s = useTutorStore.getState();
+    expect(s.phase).toBe("idle");
+    expect(s.sessionId).toBeNull();
+    expect(s.conceptTerm).toBeNull();
+    // Transcript stays visible — that's the contract of the unified hub.
+    expect(s.messages).toHaveLength(2);
+    expect(s.messages[0].role).toBe("user");
+    expect(s.messages[1].role).toBe("assistant");
   });
 
   it("reset clears state immediately", async () => {
