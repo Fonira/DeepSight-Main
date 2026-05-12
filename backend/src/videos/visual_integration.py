@@ -30,6 +30,7 @@ from typing import Any, Dict, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.http_client import get_proxied_client
 from db.database import User, VisualAnalysisQuota
 from transcripts.audio_utils import _yt_dlp_extra_args, executor as audio_executor
 
@@ -473,11 +474,12 @@ async def _download_tiktok_video_no_watermark(url: str, *, log_tag: str) -> Opti
 
     Ici on prend le champ `data.play` qui est la vidéo MP4 (audio + vidéo),
     nécessaire pour ffprobe + ffmpeg dans extract_frames_from_local.
-    """
-    import httpx
 
+    Routé via le proxy résidentiel Decodo (`get_proxied_client`) car tikwm.com
+    est rate-limited 429 sur IP datacenter Hetzner. Audit B4 (Wave 2).
+    """
     try:
-        async with httpx.AsyncClient(timeout=_TIKWM_TIMEOUT_S) as client:
+        async with get_proxied_client(timeout=_TIKWM_TIMEOUT_S) as client:
             resp = await client.post(_TIKWM_API_URL, data={"url": url})
         if resp.status_code != 200:
             logger.warning("[%s] tikwm API HTTP %d for %s", log_tag, resp.status_code, url)
@@ -498,16 +500,10 @@ async def _download_tiktok_video_no_watermark(url: str, *, log_tag: str) -> Opti
         return None
 
     try:
-        async with httpx.AsyncClient(
+        async with get_proxied_client(
             timeout=_TIKWM_DOWNLOAD_TIMEOUT_S,
             follow_redirects=True,
-            headers={
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                ),
-                "Referer": "https://www.tiktok.com/",
-            },
+            headers={"Referer": "https://www.tiktok.com/"},
         ) as client:
             r = await client.get(media_url)
         if r.status_code != 200:
