@@ -301,6 +301,11 @@ class SummaryResponse(BaseModel):
     # quota dépassé, ou Mistral fail).
     visual_analysis: Optional[Dict[str, Any]] = None
 
+    # 💬 Community analysis (NEW 2026-05-17 — alembic 029).
+    # Dict sérialisé d'une CommunityTake (cf comments/schemas.py).
+    # NULL = pas analysé (free plan, scrape failed, Mistral timeout, etc.).
+    community_analysis: Optional[Dict[str, Any]] = None
+
     is_public: bool = False
 
     class Config:
