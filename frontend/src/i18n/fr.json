@@ -986,5 +986,37 @@
       "culture": "Culture",
       "misc": "Divers"
     }
+  },
+  "community": {
+    "verdictLabel": "Verdict communauté",
+    "commentsAnalyzed": "commentaires analysés",
+    "signal": {
+      "agree": "Plutôt d'accord",
+      "disagree": "Plutôt en désaccord",
+      "mixed": "Communauté divisée",
+      "unclear": "Signal incertain"
+    },
+    "controversies": "Points de désaccord",
+    "topVoices": "Voix représentatives",
+    "sentimentLabel": "Tonalité",
+    "sentiment": {
+      "positive": "Positif",
+      "neutral": "Neutre",
+      "negative": "Négatif"
+    },
+    "upgradeRequired": "Verdict communauté disponible avec Pro",
+    "upgradeDescription": "Analyse des commentaires + synthèse — disponible avec Pro",
+    "upgradeCta": "Passer Pro",
+    "disabledNotice": "Les commentaires sont désactivés sur cette vidéo.",
+    "insufficientData": "Trop peu de commentaires pour un verdict fiable.",
+    "modelUsedPrefix": "Généré par",
+    "partialSample": "Échantillon partiel",
+    "openFullWeb": "Lire l'analyse complète sur l'app",
+    "stance": {
+      "agree": "D'accord",
+      "disagree": "En désaccord",
+      "neutral": "Neutre",
+      "question": "Question"
+    }
   }
 }

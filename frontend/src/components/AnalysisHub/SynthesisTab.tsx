@@ -33,6 +33,7 @@ import { StudyToolsModal } from "../StudyToolsModal";
 import { KeywordsModal } from "../KeywordsModal";
 import { AnalysisActionBar } from "../analysis/AnalysisActionBar";
 import { DebateContextualCTA } from "../debate";
+import { CommunityTakeSection } from "../CommunityTakeSection";
 import { videoApi, shareApi } from "../../services/api";
 import { sanitizeTitle } from "../../utils/sanitize";
 import type { Summary, EnrichedConcept } from "../../services/api";
@@ -255,6 +256,18 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
             summaryContent={selectedSummary.summary_content || ""}
             language={language}
             onTimecodeClick={(seconds) => onTimecodeClick(seconds)}
+          />
+        </div>
+
+        {/* 💬 Verdict communauté — synthèse Mistral des commentaires (PR2 web).
+            Spec : docs/superpowers/specs/2026-05-17-comments-community-take.md §7.1
+            Plan gating : free → CTA upgrade, pro/expert → render complet. */}
+        <div className="mt-6 not-prose">
+          <CommunityTakeSection
+            take={selectedSummary.community_analysis}
+            userPlan={user?.plan}
+            language={language}
+            onUpgradeClick={() => onNavigate("/pricing")}
           />
         </div>
 
