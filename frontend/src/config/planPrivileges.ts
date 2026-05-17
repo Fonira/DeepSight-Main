@@ -207,6 +207,7 @@ export interface PlanFeatures {
   factcheck: boolean;
   semanticSearchTooltip: boolean;
   visualAnalysis: boolean;
+  communityTake: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
@@ -228,6 +229,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     factcheck: false,
     semanticSearchTooltip: false,
     visualAnalysis: false,
+    communityTake: false,
   },
   pro: {
     flashcards: true,
@@ -247,6 +249,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     factcheck: true,
     semanticSearchTooltip: true,
     visualAnalysis: true,
+    communityTake: true,
   },
   expert: {
     flashcards: true,
@@ -266,8 +269,37 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     factcheck: true,
     semanticSearchTooltip: true,
     visualAnalysis: true,
+    communityTake: true,
   },
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACCÈS PAR FEATURE × PLATEFORME (mirror backend `is_feature_available`)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type CanAccessFeature = "community_take";
+export type Platform = "web" | "mobile" | "extension";
+
+const FEATURE_ACCESS: Record<CanAccessFeature, Record<Platform, PlanId[]>> = {
+  community_take: {
+    web: ["pro", "expert"],
+    mobile: ["pro", "expert"],
+    extension: ["pro", "expert"],
+  },
+};
+
+/**
+ * Gate une feature par plan ET plateforme. Mirror backend
+ * `is_feature_available(plan, feature, platform)`.
+ */
+export function canAccess(
+  plan: string | undefined | null,
+  feature: CanAccessFeature,
+  platform: Platform,
+): boolean {
+  const normalized = normalizePlanId(plan);
+  return FEATURE_ACCESS[feature]?.[platform]?.includes(normalized) ?? false;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // INFORMATIONS DES PLANS
@@ -583,4 +615,5 @@ export default {
   normalizePlanId,
   shouldShowLowCreditsAlert,
   calculateTimeSaved,
+  canAccess,
 };
