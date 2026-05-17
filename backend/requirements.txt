@@ -37,6 +37,12 @@ aiohttp>=3.9.0
 beautifulsoup4>=4.12.0       # HTML parsing (Google Scholar SERP, scraping)
 
 # ─────────────────────────────────────────────────────────────────────────────────
+# 📰 EXTERNAL PAGES SCRAPING (spec 2026-05-17 — pages citées dans description)
+# ─────────────────────────────────────────────────────────────────────────────────
+trafilatura>=1.6.0            # SoTA readable text extraction (JSON + meta)
+readability-lxml>=0.8.1       # Fallback extraction si trafilatura échoue
+
+# ─────────────────────────────────────────────────────────────────────────────────
 # 📺 YOUTUBE
 # ─────────────────────────────────────────────────────────────────────────────────
 youtube-transcript-api>=0.6.2

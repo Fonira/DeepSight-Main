@@ -127,6 +127,7 @@ PLANS: dict[str, dict[str, Any]] = {
             "visual_analysis_monthly": 0,
             "community_take_enabled": False,  # 💬 Verdict communauté — Pro+ uniquement
             "community_take_monthly": 0,
+            "external_pages_max": 0,  # 📰 Pages externes citées — Pro+ uniquement (spec 2026-05-17)
         },
         "features_display": [
             {"text": "5 analyses / mois", "icon": "📊"},
@@ -269,6 +270,7 @@ PLANS: dict[str, dict[str, Any]] = {
             "visual_analysis_monthly": 30,
             "community_take_enabled": True,  # 💬 Verdict communauté — Pro+ (V1)
             "community_take_monthly": -1,  # illimité (auto à chaque analyse)
+            "external_pages_max": 5,  # 📰 Pages externes citées — 5/analyse (spec 2026-05-17)
         },
         "features_display": [
             {"text": "25 analyses / mois", "icon": "📊"},
@@ -419,6 +421,7 @@ PLANS: dict[str, dict[str, Any]] = {
             "visual_analysis_monthly": -1,  # illimité
             "community_take_enabled": True,  # 💬 Verdict communauté — Expert (V1)
             "community_take_monthly": -1,  # illimité
+            "external_pages_max": 10,  # 📰 Pages externes citées — 10/analyse (spec 2026-05-17)
         },
         "features_display": [
             {"text": "100 analyses / mois", "icon": "📊"},
