@@ -303,8 +303,10 @@ def _has_comments_disabled_marker(data: dict[str, Any]) -> bool:
     # 2. Marker textuel explicite (rare mais présent sur certaines pages).
     for run in _walk(data, "messageRenderer"):
         text = _extract_text(run.get("text") if isinstance(run, dict) else None)
-        if text and "comment" in text.lower() and (
-            "disabled" in text.lower() or "désactivé" in text.lower() or "turn" in text.lower()
+        if (
+            text
+            and "comment" in text.lower()
+            and ("disabled" in text.lower() or "désactivé" in text.lower() or "turn" in text.lower())
         ):
             return True
 
@@ -316,9 +318,9 @@ def _has_comments_disabled_marker(data: dict[str, Any]) -> bool:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def _post_innertube(payload: dict[str, Any], *, timeout: float = DEFAULT_PAGE_TIMEOUT_S) -> tuple[
-    dict[str, Any] | None, int
-]:
+async def _post_innertube(
+    payload: dict[str, Any], *, timeout: float = DEFAULT_PAGE_TIMEOUT_S
+) -> tuple[dict[str, Any] | None, int]:
     """POST vers Innertube avec proxy + telemetry. Retourne (data, bytes_in).
 
     Si HTTP != 200 ou parse fail → (None, bytes_in).

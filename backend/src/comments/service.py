@@ -176,9 +176,7 @@ async def generate_community_analysis(
                     "negative": 0.33,
                 },
                 controversies=[],
-                community_summary=(
-                    f"Trop peu de commentaires ({len(batch.sampled)}) pour un verdict fiable."
-                ),
+                community_summary=(f"Trop peu de commentaires ({len(batch.sampled)}) pour un verdict fiable."),
                 top_voices=[],
                 comments_analyzed=len(batch.sampled),
                 model_used="none",
@@ -205,9 +203,7 @@ async def generate_community_analysis(
             try:
                 await cache_set_take(platform, video_id, plan_tier, take)
             except Exception as e:
-                logger.warning(
-                    f"[COMMUNITY_TAKE_CACHE_SET] failed for {platform}:{video_id}:{plan_tier}: {e}"
-                )
+                logger.warning(f"[COMMUNITY_TAKE_CACHE_SET] failed for {platform}:{video_id}:{plan_tier}: {e}")
 
         return take
 
@@ -259,9 +255,7 @@ async def generate_community_analysis_with_timeout(
             timeout=timeout_s,
         )
     except asyncio.TimeoutError:
-        logger.warning(
-            f"[COMMUNITY_ANALYSIS] Timeout {timeout_s}s for {platform}:{video_id} — returning None"
-        )
+        logger.warning(f"[COMMUNITY_ANALYSIS] Timeout {timeout_s}s for {platform}:{video_id} — returning None")
         return None
     except Exception as e:
         logger.error(f"[COMMUNITY_ANALYSIS] Outer error for {platform}:{video_id}: {e}")

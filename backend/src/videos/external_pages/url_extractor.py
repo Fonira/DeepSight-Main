@@ -131,11 +131,7 @@ def clean_url(url: str) -> Optional[str]:
     # Strip tracking params dans la query
     if parsed.query:
         # parse_qsl conserve l'ordre des params
-        kept = [
-            (k, v)
-            for k, v in parse_qsl(parsed.query, keep_blank_values=True)
-            if k.lower() not in TRACKING_PARAMS
-        ]
+        kept = [(k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=True) if k.lower() not in TRACKING_PARAMS]
         new_query = urlencode(kept)
     else:
         new_query = ""
@@ -166,9 +162,7 @@ def _normalize_host(host: str) -> str:
     return host
 
 
-def is_blacklisted(
-    url: str, self_channel_host: Optional[str] = None
-) -> bool:
+def is_blacklisted(url: str, self_channel_host: Optional[str] = None) -> bool:
     """Détermine si une URL doit être exclue du pipeline.
 
     Critères :
@@ -203,11 +197,7 @@ def is_blacklisted(
     host_with_www = "www." + host_norm
 
     # Blacklist directe (gère "www.X" et "X" car la liste contient les deux variantes)
-    if (
-        parsed.netloc.lower() in BLACKLIST_HOSTS
-        or host_norm in BLACKLIST_HOSTS
-        or host_with_www in BLACKLIST_HOSTS
-    ):
+    if parsed.netloc.lower() in BLACKLIST_HOSTS or host_norm in BLACKLIST_HOSTS or host_with_www in BLACKLIST_HOSTS:
         return True
 
     # Subdomain match — ex : music.youtube.com est blacklisté car suffix == youtube.com
@@ -219,9 +209,7 @@ def is_blacklisted(
     # Self-channel
     if self_channel_host:
         self_norm = _normalize_host(self_channel_host)
-        if self_norm and (
-            host_norm == self_norm or host_norm.endswith("." + self_norm)
-        ):
+        if self_norm and (host_norm == self_norm or host_norm.endswith("." + self_norm)):
             return True
 
     return False

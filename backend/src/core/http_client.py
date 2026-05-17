@@ -310,18 +310,13 @@ async def smart_request(
                 **request_kwargs,
             )
         if resp.status_code not in block_status_codes:
-            logger.debug(
-                f"[SMART_ROUTE] direct {provider} OK "
-                f"({resp.status_code}, {len(resp.content)}B)"
-            )
+            logger.debug(f"[SMART_ROUTE] direct {provider} OK ({resp.status_code}, {len(resp.content)}B)")
             return resp
         direct_error = f"HTTP {resp.status_code}"
     except httpx.TransportError as e:
         direct_error = type(e).__name__
 
-    logger.info(
-        f"[SMART_ROUTE] direct {provider} → {direct_error}, falling back to proxy"
-    )
+    logger.info(f"[SMART_ROUTE] direct {provider} → {direct_error}, falling back to proxy")
     async with get_proxied_client(
         timeout=proxy_timeout,
         follow_redirects=follow_redirects,

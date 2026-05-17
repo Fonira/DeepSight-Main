@@ -270,9 +270,7 @@ async def generate_community_take(
     try:
         data = json.loads(cleaned)
     except (json.JSONDecodeError, ValueError) as e:
-        logger.error(
-            f"[COMMUNITY_TAKE] JSON parse failed: {e} — content[:300]={cleaned[:300]}"
-        )
+        logger.error(f"[COMMUNITY_TAKE] JSON parse failed: {e} — content[:300]={cleaned[:300]}")
         return None
 
     if not isinstance(data, dict):

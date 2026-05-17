@@ -210,10 +210,7 @@ async def _record_failure(reason: str) -> None:
                 ex=SCHOLAR_CB_OPEN_DURATION,
             )
             await _redis_client.delete(SCHOLAR_CB_FAIL_KEY)
-            logger.warning(
-                f"[SCHOLAR] Circuit OPEN for {SCHOLAR_CB_OPEN_DURATION}s "
-                f"(reason={reason}, count={count})"
-            )
+            logger.warning(f"[SCHOLAR] Circuit OPEN for {SCHOLAR_CB_OPEN_DURATION}s (reason={reason}, count={count})")
     except Exception as e:
         logger.debug(f"[SCHOLAR] CB record_failure Redis failed: {e}")
 
@@ -295,9 +292,7 @@ async def _cache_set(query: str, batch: ScholarBatch) -> None:
 _CITATION_REGEX_EN = re.compile(r"Cited by (\d+)", re.IGNORECASE)
 _CITATION_REGEX_FR = re.compile(r"Cit[ée]?\s+(\d+)\s+fois", re.IGNORECASE)
 _YEAR_REGEX = re.compile(r"\b(19\d{2}|20\d{2})\b")
-_TITLE_PREFIX_REGEX = re.compile(
-    r"^\s*\[(PDF|HTML|CITATION|BOOK|B|DOC)\]\s*", re.IGNORECASE
-)
+_TITLE_PREFIX_REGEX = re.compile(r"^\s*\[(PDF|HTML|CITATION|BOOK|B|DOC)\]\s*", re.IGNORECASE)
 
 
 def parse_scholar_html(html: str) -> List[ScholarPaper]:
@@ -576,9 +571,7 @@ async def search_scholar(
         raw_html_size=len(html),
     )
     await _cache_set(query, batch)
-    logger.info(
-        f"[SCHOLAR] OK q='{query[:60]}' ({len(papers)} papers, html={len(html)}B)"
-    )
+    logger.info(f"[SCHOLAR] OK q='{query[:60]}' ({len(papers)} papers, html={len(html)}B)")
     return batch
 
 

@@ -62,9 +62,7 @@ class ResolvedURL:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def resolve_url(
-    client: httpx.AsyncClient, url: str
-) -> Optional[ResolvedURL]:
+async def resolve_url(client: httpx.AsyncClient, url: str) -> Optional[ResolvedURL]:
     """Résout une URL via HEAD + follow_redirects.
 
     Args:
@@ -160,9 +158,7 @@ async def resolve_urls(
     if use_proxy:
         # get_proxied_client est un asynccontextmanager — pour les tests il est
         # patché via unittest.mock.
-        async with get_proxied_client(
-            timeout=TIMEOUTS["head"], follow_redirects=True
-        ) as client:
+        async with get_proxied_client(timeout=TIMEOUTS["head"], follow_redirects=True) as client:
             for url in urls:
                 resolved = await resolve_url(client, url)
                 if resolved is None:
@@ -172,9 +168,7 @@ async def resolve_urls(
                 seen_final.add(resolved.final_url)
                 results.append(resolved)
     else:
-        async with httpx.AsyncClient(
-            timeout=TIMEOUTS["head"], follow_redirects=True
-        ) as client:
+        async with httpx.AsyncClient(timeout=TIMEOUTS["head"], follow_redirects=True) as client:
             for url in urls:
                 resolved = await resolve_url(client, url)
                 if resolved is None:

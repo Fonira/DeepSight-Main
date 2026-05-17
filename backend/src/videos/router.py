@@ -2604,9 +2604,7 @@ async def _analyze_video_background_v2_1(
             # 💬 Community analysis (NEW 2026-05-17 — alembic 029) — sérialise
             # CommunityTake en dict si la 5e tâche a abouti, sinon None.
             _community_dict = (
-                community_take_result.model_dump(mode="json")
-                if community_take_result is not None
-                else None
+                community_take_result.model_dump(mode="json") if community_take_result is not None else None
             )
 
             summary_id = await save_summary(
@@ -3489,9 +3487,7 @@ async def _analyze_video_background_v6(
             # 💬 Community analysis (NEW 2026-05-17 — alembic 029) — sérialise
             # CommunityTake en dict si la 4e tâche a abouti, sinon None.
             _community_dict_v6 = (
-                community_take_result.model_dump(mode="json")
-                if community_take_result is not None
-                else None
+                community_take_result.model_dump(mode="json") if community_take_result is not None else None
             )
 
             # Sauvegarder le résumé
