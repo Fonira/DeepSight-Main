@@ -30,11 +30,13 @@ import {
   CreditCard,
   Mail,
   Check,
+  Server,
 } from "lucide-react";
 import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
 import { API_URL } from "../services/api";
 import { useToast } from "../components/Toast";
 import { PLANS_INFO, type PlanId } from "../config/planPrivileges";
+import { AdminProxyStatsTab } from "../components/admin/AdminProxyStatsTab";
 
 // Types
 interface AdminStats {
@@ -70,7 +72,7 @@ interface AdminLog {
   created_at: string;
 }
 
-type TabType = "dashboard" | "users" | "stats" | "logs";
+type TabType = "dashboard" | "users" | "stats" | "logs" | "proxy";
 
 const ADMIN_EMAIL = "maximeleparc3@gmail.com";
 
@@ -417,6 +419,11 @@ export const AdminPage: React.FC = () => {
                   icon: TrendingUp,
                 },
                 { id: "logs", label: "Logs", icon: FileText },
+                {
+                  id: "proxy",
+                  label: language === "fr" ? "Proxy Decodo" : "Proxy Decodo",
+                  icon: Server,
+                },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -943,6 +950,14 @@ export const AdminPage: React.FC = () => {
                       )}
                     </div>
                   </div>
+                )}
+
+                {/* Proxy Decodo Tab */}
+                {activeTab === "proxy" && (
+                  <AdminProxyStatsTab
+                    adminFetch={adminFetch}
+                    language={language as "fr" | "en"}
+                  />
                 )}
               </>
             )}
