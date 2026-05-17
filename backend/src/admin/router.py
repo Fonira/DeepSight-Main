@@ -713,3 +713,39 @@ async def get_proxy_usage(
         "daily": daily,
         "by_provider": by_provider,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 💬 COMMUNITY TAKE CACHE INVALIDATION (Spec 2026-05-17)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.delete("/community-cache/{platform}/{video_id}")
+async def admin_invalidate_community_cache(
+    platform: str,
+    video_id: str,
+    admin: User = Depends(get_current_admin),
+):
+    """💬 Invalide les clés Redis du verdict communauté pour (platform, video_id).
+
+    Invalide :
+      - vcache:comments:{platform}:{video_id} (CommentsBatch cross-user)
+      - vcache:community_take:{platform}:{video_id}:{small|medium|large}
+        (CommunityTake par tier de plan)
+
+    Spec : docs/superpowers/specs/2026-05-17-comments-community-take.md §5.5
+    """
+    if platform not in ("youtube", "tiktok"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported platform: {platform} (expected youtube|tiktok)",
+        )
+
+    from comments.cache import invalidate_community_cache
+
+    deleted = await invalidate_community_cache(platform, video_id)
+    return {
+        "platform": platform,
+        "video_id": video_id,
+        "deleted_keys": deleted,
+    }

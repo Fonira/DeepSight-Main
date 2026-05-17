@@ -212,6 +212,14 @@ MAX_GUEST_ANALYSES = 3
 MAX_VIDEO_DURATION_GUEST = 300  # 5 minutes
 
 
+def _community_enabled_for(plan: str, platform: str) -> bool:
+    """💬 Verdict communauté gate : Pro+Expert sur YouTube+TikTok (V1).
+
+    Spec : docs/superpowers/specs/2026-05-17-comments-community-take.md
+    """
+    return plan in ("pro", "expert") and platform in ("youtube", "tiktok")
+
+
 async def _save_structured_index(
     session: AsyncSession,
     summary_id: int,
@@ -2301,18 +2309,45 @@ async def _analyze_video_background_v2_1(
                     logger.error(f"⚠️ [v2.1] Web enrichment failed: {e}")
                     return None, [], enrichment_level
 
-            # ⚡ Lancer les 4 tâches en parallèle
+            # 💬 Community take (NEW 2026-05-17) — 5e tâche parallèle non-bloquante.
+            # Gate Pro/Expert + plateformes supportées. Timeout 30s strict en interne.
+            async def _community_take_v21():
+                try:
+                    if not _community_enabled_for(user_plan, platform):
+                        return None
+                    from comments.service import generate_community_analysis_with_timeout
+
+                    topic_hint = f"{category or ''} | {(transcript or '')[:300]}"
+                    return await generate_community_analysis_with_timeout(
+                        platform=platform,
+                        video_id=video_id,
+                        plan=user_plan,
+                        video_title=video_info["title"],
+                        video_topic_hint=topic_hint,
+                        creator_stance="",
+                        lang=lang,
+                    )
+                except Exception as e:
+                    logger.error(f"⚠️ [v2.1] Community take failed: {e}")
+                    return None
+
+            # ⚡ Lancer les 5 tâches en parallèle
             (
                 (category, confidence),
                 comments_analysis_result,
                 metadata_enriched_result,
                 (_web_ctx, _enrich_src, _),
+                community_take_result,
             ) = await asyncio.gather(
-                _detect_cat_v21(), _analyze_comments_v21(), _enrich_metadata_v21(), _enrich_web_v21()
+                _detect_cat_v21(),
+                _analyze_comments_v21(),
+                _enrich_metadata_v21(),
+                _enrich_web_v21(),
+                _community_take_v21(),
             )
             web_context = _web_ctx
             enrichment_sources = _enrich_src
-            logger.info("⚡ [v2.1.1] Category + comments + metadata + web computed in PARALLEL")
+            logger.info("⚡ [v2.1.1] Category + comments + metadata + web + community computed in PARALLEL")
 
             # ═══════════════════════════════════════════════════════════════════
             # 7. 🆕 CONSTRUIRE LE PROMPT PERSONNALISÉ
@@ -2562,6 +2597,14 @@ async def _analyze_video_background_v2_1(
                     "thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
                 )
 
+            # 💬 Community analysis (NEW 2026-05-17 — alembic 029) — sérialise
+            # CommunityTake en dict si la 5e tâche a abouti, sinon None.
+            _community_dict = (
+                community_take_result.model_dump(mode="json")
+                if community_take_result is not None
+                else None
+            )
+
             summary_id = await save_summary(
                 session=session,
                 user_id=user_id,
@@ -2596,6 +2639,8 @@ async def _analyze_video_background_v2_1(
                 music_title=video_info.get("music_title"),
                 music_author=video_info.get("music_author"),
                 carousel_images=video_info.get("carousel_images"),
+                # 💬 Community analysis (alembic 029)
+                community_analysis=_community_dict,
             )
 
             # 👁️ Phase 2 plumbing V2.1 : persist visual_analysis si capturé.
@@ -2700,6 +2745,8 @@ async def _analyze_video_background_v2_1(
                     "v2_1_options_applied": options.get("customization"),
                     "comments_analysis": comments_result,
                     "metadata_enriched": metadata_result,
+                    # 💬 Community analysis (NEW 2026-05-17 — alembic 029)
+                    "community_analysis": _community_dict,
                     "enrichment": {
                         "level": enrichment_level.value,
                         "sources_count": len(enrichment_sources),
@@ -3115,11 +3162,33 @@ async def _analyze_video_background_v6(
                     logger.error(f"⚠️ [CHANNEL-CTX] Fetch failed (continuing without): {e}")
                     return None
 
-            # ⚡ Lancer les trois en parallèle (return_exceptions=True pour fail-safe)
+            # 💬 Community take (NEW 2026-05-17) — 4e tâche parallèle non-bloquante.
+            async def _community_take_async():
+                try:
+                    if not _community_enabled_for(user_plan, platform):
+                        return None
+                    from comments.service import generate_community_analysis_with_timeout
+
+                    topic_hint = f"{category or ''} | {(transcript or '')[:300]}"
+                    return await generate_community_analysis_with_timeout(
+                        platform=platform,
+                        video_id=video_id,
+                        plan=user_plan,
+                        video_title=video_info["title"],
+                        video_topic_hint=topic_hint,
+                        creator_stance="",
+                        lang=lang,
+                    )
+                except Exception as e:
+                    logger.error(f"⚠️ [v6] Community take failed: {e}")
+                    return None
+
+            # ⚡ Lancer les 4 en parallèle (return_exceptions=True pour fail-safe)
             results = await asyncio.gather(
                 _detect_category_async(),
                 _enrich_web_async(),
                 _fetch_channel_context_async(),
+                _community_take_async(),
                 return_exceptions=True,
             )
 
@@ -3149,8 +3218,17 @@ async def _analyze_video_background_v6(
             else:
                 channel_context = chan_result
 
+            # 💬 Unpack community take (avec safety) — NEW 2026-05-17
+            community_take_result = None
+            if len(results) > 3:
+                comm_result = results[3]
+                if isinstance(comm_result, Exception):
+                    logger.error(f"⚠️ [v6] Community take raised: {comm_result}")
+                else:
+                    community_take_result = comm_result
+
             _task_store[task_id]["progress"] = 45
-            logger.info("⚡ [v6.1] Category + web enrichment computed in PARALLEL")
+            logger.info("⚡ [v6.1] Category + web + channel + community computed in PARALLEL")
 
             # ═══════════════════════════════════════════════════════════════════
             # 5. GÉNÉRER LE RÉSUMÉ (MISTRAL) AVEC CONTEXTE WEB
@@ -3404,6 +3482,14 @@ async def _analyze_video_background_v6(
             if not default_thumbnail and platform == "youtube":
                 default_thumbnail = f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
 
+            # 💬 Community analysis (NEW 2026-05-17 — alembic 029) — sérialise
+            # CommunityTake en dict si la 4e tâche a abouti, sinon None.
+            _community_dict_v6 = (
+                community_take_result.model_dump(mode="json")
+                if community_take_result is not None
+                else None
+            )
+
             # Sauvegarder le résumé
             summary_id = await save_summary(
                 session=session,
@@ -3440,6 +3526,8 @@ async def _analyze_video_background_v6(
                 music_title=video_info.get("music_title"),
                 music_author=video_info.get("music_author"),
                 carousel_images=video_info.get("carousel_images"),
+                # 💬 Community analysis (alembic 029)
+                community_analysis=_community_dict_v6,
             )
 
             logger.info(f"💾 Summary saved: id={summary_id}")
@@ -3579,6 +3667,8 @@ async def _analyze_video_background_v6(
                     "mode": mode,
                     "lang": lang,
                     "platform": platform,  # 🎵 TikTok support
+                    # 💬 Community analysis (NEW 2026-05-17 — alembic 029)
+                    "community_analysis": _community_dict_v6,
                     # 🆕 Infos enrichissement
                     "enrichment": {
                         "level": enrichment_level.value,

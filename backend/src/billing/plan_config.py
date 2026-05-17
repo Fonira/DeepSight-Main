@@ -123,6 +123,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "companion_dialogue_enabled": False,  # 🎓 Le Tuteur — Pro+ uniquement
             "visual_analysis_enabled": False,  # Phase 2 — frames + Mistral Vision
             "visual_analysis_monthly": 0,
+            "community_take_enabled": False,  # 💬 Verdict communauté — Pro+ uniquement
+            "community_take_monthly": 0,
         },
         "features_display": [
             {"text": "5 analyses / mois", "icon": "📊"},
@@ -159,6 +161,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "deep_research": False,
                 "geo": False,
                 "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
+                "community_take": False,  # 💬 Verdict communauté — Pro+ uniquement
             },
             "mobile": {
                 "analyse": True,
@@ -179,6 +182,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "deep_research": False,
                 "geo": False,
                 "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
+                "community_take": False,  # 💬 Verdict communauté — Pro+ uniquement
             },
             "extension": {
                 "analyse": True,
@@ -199,6 +203,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "deep_research": False,
                 "geo": False,
                 "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
+                "community_take": False,  # 💬 Verdict communauté — Pro+ uniquement
             },
         },
     },
@@ -258,6 +263,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "companion_dialogue_enabled": True,  # 🎓 Le Tuteur — disponible dès Pro
             "visual_analysis_enabled": True,  # Phase 2 — frames + Mistral Vision
             "visual_analysis_monthly": 30,
+            "community_take_enabled": True,  # 💬 Verdict communauté — Pro+ (V1)
+            "community_take_monthly": -1,  # illimité (auto à chaque analyse)
         },
         "features_display": [
             {"text": "25 analyses / mois", "icon": "📊"},
@@ -301,6 +308,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "deep_research": False,
                 "geo": True,
                 "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
+                "community_take": True,  # 💬 Verdict communauté — Pro (V1)
             },
             "mobile": {
                 "analyse": True,
@@ -321,6 +329,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "deep_research": False,
                 "geo": True,
                 "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
+                "community_take": True,  # 💬 Verdict communauté — Pro (V1)
             },
             "extension": {
                 "analyse": True,
@@ -341,6 +350,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "deep_research": False,
                 "geo": False,
                 "hub_workspace": False,  # Hub Miro Workspace — Expert only (web)
+                "community_take": True,  # 💬 Verdict communauté — Pro (V1)
             },
         },
     },
@@ -401,6 +411,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "companion_dialogue_enabled": True,  # 🎓 Le Tuteur — disponible Pro et Expert
             "visual_analysis_enabled": True,  # Phase 2 — frames + Mistral Vision
             "visual_analysis_monthly": -1,  # illimité
+            "community_take_enabled": True,  # 💬 Verdict communauté — Expert (V1)
+            "community_take_monthly": -1,  # illimité
         },
         "features_display": [
             {"text": "100 analyses / mois", "icon": "📊"},
@@ -445,6 +457,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "deep_research": True,
                 "geo": True,
                 "hub_workspace": True,  # Hub Miro Workspace — Expert only (web)
+                "community_take": True,  # 💬 Verdict communauté — Expert (V1)
             },
             "mobile": {
                 "analyse": True,
@@ -465,6 +478,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "deep_research": False,
                 "geo": True,
                 "hub_workspace": False,  # Hub Miro Workspace — Expert only (web only, mobile = CTA web)
+                "community_take": True,  # 💬 Verdict communauté — Expert (V1)
             },
             "extension": {
                 "analyse": True,
@@ -485,6 +499,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "deep_research": False,
                 "geo": False,
                 "hub_workspace": False,  # Hub Miro Workspace — Expert only (web only, ext = CTA web)
+                "community_take": True,  # 💬 Verdict communauté — Expert (V1)
             },
         },
     },

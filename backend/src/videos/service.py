@@ -145,6 +145,8 @@ async def save_summary(
     music_title: Optional[str] = None,
     music_author: Optional[str] = None,
     carousel_images: Optional[List[str]] = None,
+    # 💬 Community analysis (NEW 2026-05-17 — alembic 029)
+    community_analysis: Optional[Dict] = None,
 ) -> int:
     """Sauvegarde un nouveau résumé et retourne son ID"""
     print(f"💾 [save_summary v2] Saving video_id={video_id}, user_id={user_id}", flush=True)
@@ -312,6 +314,10 @@ async def save_summary(
         music_author=music_author,
         carousel_images=json.dumps(carousel_images, ensure_ascii=False) if carousel_images else None,
     )
+
+    # 💬 Community analysis (alembic 029) — best-effort, ne pas bloquer si attr absent
+    if community_analysis is not None and hasattr(summary, "community_analysis"):
+        summary.community_analysis = community_analysis
 
     # Ajouter enrichment_data si le modèle le supporte
     if enrichment_data and hasattr(summary, "enrichment_data"):
