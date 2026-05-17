@@ -267,6 +267,14 @@ class Summary(Base):
     # insufficient_data}.
     community_analysis = Column(JSON, nullable=True)
 
+    # External pages citation (NEW 2026-05-17 — alembic 031).
+    # Pages externes citées dans la description vidéo, scrapées + résumées par
+    # Mistral. Dict sérialisé construit par videos/external_pages/orchestrator.
+    # Forme : {extracted_at, schema_version, stats{}, pages[{url, final_url,
+    # title, summary, key_claims[], status, fetched_via_proxy, bytes_fetched}]}.
+    # Spec : docs/superpowers/specs/2026-05-17-pages-externes-citees.md §6.
+    external_pages = Column(JSON, nullable=True)
+
     # Public opt-in toggle pour pages publiques /a/{slug} (Phase 3 sprint GEO,
     # alembic 025). Default FALSE — toggle explicite via PATCH /api/v1/summaries/{id}/visibility.
     # Slug = f"a{hex(id)}" dérivé déterministiquement de l'ID (cf
