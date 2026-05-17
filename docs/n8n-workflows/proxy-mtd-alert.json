@@ -1,0 +1,348 @@
+{
+  "name": "proxy-mtd-alert",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## proxy-mtd-alert\n\nSurveille la consommation MTD du proxy Decodo Residential ($4/GB, hard-stop auto à 950 MB).\n\n**Trigger** : toutes les 6h (cron `0 */6 * * *`)\n\n**Endpoint** : `GET {{$env.API_BASE_URL}}/api/admin/proxy/usage?days=30` avec header `X-API-Key: {{$env.ADMIN_API_KEY}}`\n\n**Severities** :\n- 🟢 ok : `mtd_mb < 300` → STOP silencieux (aucune notif)\n- 🟡 warning : `300 ≤ mtd_mb < 500` → Telegram info\n- 🟠 critical : `500 ≤ mtd_mb < 800` → Telegram urgent\n- 🔴 hard_stop : `mtd_mb ≥ 800` → Telegram + recommandation `PROXY_DISABLED=true`\n\n**Notif** : Telegram `@Deepsightalertsbot` (chat_id `735497548`, cred `zFfqu5fS7A0O4o2i`).\n\n**Error handling** :\n- HTTP node `continueOnFail` → branche error vers Telegram fallback\n- Workflow global error : `HYRyfu6V17LBk4rc`\n\n**Env vars n8n requises** :\n- `API_BASE_URL` (ex `https://api.deepsightsynthesis.com`)\n- `ADMIN_API_KEY` (clé admin DeepSight)",
+        "height": 460,
+        "width": 520
+      },
+      "id": "sticky-doc",
+      "name": "Documentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [80, 60]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "trigger-every-6h",
+      "name": "Every 6h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 600]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.API_BASE_URL}}/api/admin/proxy/usage?days=30",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{$env.ADMIN_API_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "responseFormat": "json"
+            }
+          },
+          "retry": {
+            "retry": {
+              "maxTries": 2,
+              "waitBetweenTries": 2000
+            }
+          }
+        }
+      },
+      "id": "http-fetch-usage",
+      "name": "Fetch proxy usage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 600],
+      "continueOnFail": true,
+      "onError": "continueErrorOutput",
+      "notes": "GET {API_BASE_URL}/api/admin/proxy/usage?days=30 — header X-API-Key. Retourne {total_bytes_mtd, total_requests_mtd, mtd_mb, hard_stop_threshold_mb, proxy_disabled_env, daily, by_provider}. Si le path réel s'avère être /admin/proxy/usage (sans /api), changer la var API_BASE_URL en conséquence ou éditer l'URL ici."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Compute severity + headroom + top providers from the usage payload.\n// Input  : $json from HTTP node — { mtd_mb, hard_stop_threshold_mb, by_provider, ... }\n// Output : flat object consumed by the Switch + Telegram nodes downstream.\n\nconst data = $json || {};\nconst mtd_mb = Number(data.mtd_mb ?? 0);\nconst hard_stop_threshold_mb = Number(data.hard_stop_threshold_mb ?? 950);\nconst headroom_mb = Math.max(0, Math.round((hard_stop_threshold_mb - mtd_mb) * 100) / 100);\nconst pct_used = hard_stop_threshold_mb > 0\n  ? Math.round((mtd_mb / hard_stop_threshold_mb) * 1000) / 10\n  : 0;\n\nlet severity = 'ok';\nif (mtd_mb >= 800) severity = 'hard_stop';\nelse if (mtd_mb >= 500) severity = 'critical';\nelse if (mtd_mb >= 300) severity = 'warning';\n\n// by_provider can be { provider: {bytes, requests, ...} } or empty.\nconst providers = data.by_provider && typeof data.by_provider === 'object'\n  ? Object.entries(data.by_provider)\n  : [];\nconst top_providers = providers\n  .map(([name, stats]) => ({\n    name,\n    bytes: Number((stats && stats.bytes) ?? 0),\n    mb: Math.round(((Number((stats && stats.bytes) ?? 0)) / (1024 * 1024)) * 100) / 100,\n    requests: Number((stats && stats.requests) ?? 0),\n  }))\n  .sort((a, b) => b.bytes - a.bytes)\n  .slice(0, 3);\n\nconst top_providers_md = top_providers.length\n  ? top_providers\n      .map((p, i) => `${i + 1}. \\`${p.name}\\` — ${p.mb} MB (${p.requests} req)`)\n      .join('\\n')\n  : '_(aucun provider remonté)_';\n\nconst proxy_disabled_env = data.proxy_disabled_env === true || data.proxy_disabled_env === 'true';\n\nreturn {\n  json: {\n    severity,\n    mtd_mb,\n    hard_stop_threshold_mb,\n    headroom_mb,\n    pct_used,\n    top_providers,\n    top_providers_md,\n    proxy_disabled_env,\n    total_requests_mtd: Number(data.total_requests_mtd ?? 0),\n    fetched_at: new Date().toISOString(),\n  },\n};\n"
+      },
+      "id": "compute-severity",
+      "name": "Compute severity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 540]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "is-warning",
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "warning",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warning"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "is-critical",
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "critical",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "critical"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "is-hard-stop",
+                    "leftValue": "={{ $json.severity }}",
+                    "rightValue": "hard_stop",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hard_stop"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "switch-severity",
+      "name": "Route by severity",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [960, 540],
+      "notes": "fallbackOutput=none → severity 'ok' n'a aucune sortie (STOP silencieux)."
+    },
+    {
+      "parameters": {
+        "chatId": "735497548",
+        "text": "=🟡 *Decodo MTD — warning* (DeepSight)\n\n📊 *Consommation* : {{ $json.mtd_mb }} MB / {{ $json.hard_stop_threshold_mb }} MB ({{ $json.pct_used }}%)\n📈 *Headroom* : {{ $json.headroom_mb }} MB avant hard-stop\n📦 *Requêtes MTD* : {{ $json.total_requests_mtd }}\n\n🔝 *Top providers* :\n{{ $json.top_providers_md }}\n\n_Niveau warning : conso modérée, surveiller la suite._\n_Dashboard Decodo : https://dashboard.decodo.com_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-warning",
+      "name": "Telegram — warning",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1240, 360],
+      "credentials": {
+        "telegramApi": {
+          "id": "zFfqu5fS7A0O4o2i",
+          "name": "DeepsightAlerts"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "735497548",
+        "text": "=🟠 *Decodo MTD — critical* (DeepSight)\n\n📊 *Consommation* : {{ $json.mtd_mb }} MB / {{ $json.hard_stop_threshold_mb }} MB ({{ $json.pct_used }}%)\n📈 *Headroom* : seulement {{ $json.headroom_mb }} MB avant hard-stop\n📦 *Requêtes MTD* : {{ $json.total_requests_mtd }}\n\n🔝 *Top providers* :\n{{ $json.top_providers_md }}\n\n⚠️ *Niveau critical* : conso élevée — vérifier le breakdown et envisager un throttling. Le hard-stop auto se déclenchera à {{ $json.hard_stop_threshold_mb }} MB.\n\n_Dashboard Decodo : https://dashboard.decodo.com_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-critical",
+      "name": "Telegram — critical",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1240, 540],
+      "credentials": {
+        "telegramApi": {
+          "id": "zFfqu5fS7A0O4o2i",
+          "name": "DeepsightAlerts"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "735497548",
+        "text": "=🔴 *Decodo MTD — HARD-STOP imminent* (DeepSight)\n\n📊 *Consommation* : {{ $json.mtd_mb }} MB / {{ $json.hard_stop_threshold_mb }} MB ({{ $json.pct_used }}%)\n📈 *Headroom* : {{ $json.headroom_mb }} MB seulement\n📦 *Requêtes MTD* : {{ $json.total_requests_mtd }}\n\n🔝 *Top providers* :\n{{ $json.top_providers_md }}\n\n🚨 *Action recommandée IMMÉDIATEMENT* :\n```\nssh root@89.167.23.214\ncd /opt/deepsight/repo\nsed -i 's/^PROXY_DISABLED=.*/PROXY_DISABLED=true/' .env.production || echo 'PROXY_DISABLED=true' >> .env.production\ndocker restart repo-backend-1\n```\n\n*État env actuel* : `PROXY_DISABLED={{ $json.proxy_disabled_env ? 'true (déjà coupé)' : 'false (encore actif)' }}`\n\nLe hard-stop automatique se déclenche à {{ $json.hard_stop_threshold_mb }} MB. Recharger le wallet Decodo ou désactiver le proxy avant.\n\n_Dashboard Decodo : https://dashboard.decodo.com_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-hard-stop",
+      "name": "Telegram — hard_stop",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1240, 720],
+      "credentials": {
+        "telegramApi": {
+          "id": "zFfqu5fS7A0O4o2i",
+          "name": "DeepsightAlerts"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "735497548",
+        "text": "=⚠️ *proxy-mtd-alert — workflow plantée*\n\nLe job de surveillance Decodo n'a pas pu récupérer la consommation MTD.\n\n*Erreur* : `{{ $json.error?.message || $json.message || 'unknown' }}`\n*Status HTTP* : `{{ $json.error?.httpCode || $json.httpCode || 'n/a' }}`\n*Endpoint* : `{{$env.API_BASE_URL}}/api/admin/proxy/usage?days=30`\n*Timestamp* : `{{ $now.toISO() }}`\n\nCauses fréquentes :\n• `ADMIN_API_KEY` invalide ou expirée (401)\n• Backend down / timeout 15s dépassé (5xx)\n• Path incorrect (404 → essayer `/admin/proxy/usage` sans `/api`)\n• Env var `API_BASE_URL` manquante\n\nVérifier les exécutions dans n8n cloud + `docker logs repo-backend-1` côté VPS.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-error",
+      "name": "Telegram — workflow error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [720, 800],
+      "credentials": {
+        "telegramApi": {
+          "id": "zFfqu5fS7A0O4o2i",
+          "name": "DeepsightAlerts"
+        }
+      },
+      "notes": "Branche connectée à la sortie 'error' du HTTP node (continueOnFail). Si l'endpoint plante, on alerte au lieu de finir en silence."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 6h": {
+      "main": [
+        [
+          {
+            "node": "Fetch proxy usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch proxy usage": {
+      "main": [
+        [
+          {
+            "node": "Compute severity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram — workflow error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute severity": {
+      "main": [
+        [
+          {
+            "node": "Route by severity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by severity": {
+      "main": [
+        [
+          {
+            "node": "Telegram — warning",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram — critical",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram — hard_stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "HYRyfu6V17LBk4rc",
+    "executionTimeout": 60,
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "Europe/Paris"
+  },
+  "versionId": "proxy-mtd-alert-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "monitoring",
+      "id": "monitoring"
+    },
+    {
+      "name": "decodo",
+      "id": "decodo"
+    }
+  ]
+}
