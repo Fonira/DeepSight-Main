@@ -32,7 +32,7 @@ from transcripts.audio_utils import (
     _yt_dlp_extra_args,
 )
 from core.config import get_supadata_key, get_mistral_key
-from core.http_client import get_proxied_client
+from core.http_client import get_proxied_client, record_proxied_response
 
 logger = logging.getLogger(__name__)
 
@@ -433,6 +433,7 @@ async def _resolve_short_url(url: str) -> Optional[str]:
             timeout=15.0,
         ) as client:
             resp = await client.head(url)
+            await record_proxied_response(resp, provider="tiktok_resolve_short")
             resolved = str(resp.url)
             logger.info(f"[TIKTOK] Resolved short URL → {resolved}")
             return resolved
@@ -463,6 +464,7 @@ async def _get_info_via_oembed(url: str) -> Optional[Dict[str, Any]]:
 
         async with get_proxied_client(timeout=10.0) as client:
             resp = await client.get(oembed_url)
+            await record_proxied_response(resp, provider="tiktok_oembed")
             if resp.status_code != 200:
                 logger.warning(f"[TIKTOK] oEmbed returned {resp.status_code}")
                 return None
@@ -811,6 +813,10 @@ async def _get_media_url_from_api(url: str, api_config: dict) -> Optional[str]:
                     headers={"User-Agent": "Mozilla/5.0"},
                 )
 
+            await record_proxied_response(
+                resp,
+                provider=f"tiktok_media_api_{api_config['name']}",
+            )
             if resp.status_code != 200:
                 logger.warning(f"[TIKTOK] API {api_config['name']} returned {resp.status_code}")
                 return None
@@ -837,6 +843,7 @@ async def _download_media_bytes(media_url: str, source: str) -> Optional[bytes]:
             headers={"Referer": "https://www.tiktok.com/"},
         ) as client:
             resp = await client.get(media_url)
+            await record_proxied_response(resp, provider=f"tiktok_media_cdn_{source}")
             if resp.status_code == 200 and len(resp.content) > 1000:
                 logger.info(f"[TIKTOK] Downloaded {len(resp.content) / 1024:.0f}KB from {source}")
                 return resp.content
@@ -1195,6 +1202,7 @@ async def _fetch_tiktok_account_meta_from_html(username: str) -> Optional[Dict[s
             follow_redirects=True,
         ) as client:
             resp = await client.get(url)
+            await record_proxied_response(resp, provider="tiktok_channel_html")
         if resp.status_code != 200:
             logger.info(f"[TIKTOK] HTML meta fetch HTTP {resp.status_code} for @{username}")
             return None

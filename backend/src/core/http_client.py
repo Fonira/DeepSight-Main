@@ -255,3 +255,51 @@ def is_proxy_configured() -> bool:
     YouTube partira proxifiée ou bare en prod).
     """
     return bool(_get_proxy_url())
+
+
+async def record_proxied_response(response, provider: str) -> None:
+    """Best-effort telemetry helper pour les appels via `get_proxied_client`.
+
+    Appel idiomatique après un `client.get(...)` / `client.post(...)` qui
+    consomme la réponse :
+
+        async with get_proxied_client(timeout=10.0) as client:
+            resp = await client.get(url)
+            await record_proxied_response(resp, provider="tiktok_oembed")
+            data = resp.json()
+
+    L'idée : décharger les call sites de la duplication du try/except autour
+    de `record_proxy_usage`, et standardiser le calcul de `bytes_in` (préférer
+    `num_bytes_downloaded` qui marche pour streamed + non-streamed, fallback
+    `len(content)` si nécessaire).
+
+    Args:
+        response: l'objet `httpx.Response` retourné par client.get/post/etc.
+        provider: identifiant logique du call site, alimente
+            `proxy_usage_daily.requests_by_provider` (ex: "tiktok_oembed",
+            "youtube_oembed", "tikwm", "external_page_scrape", etc.)
+
+    Skip silencieusement :
+    - Si le proxy n'est pas configuré (rien à tracker, dev local)
+    - Si bytes_in = 0 (HEAD request, redirect-only, etc.)
+    - Si l'import / record / DB plante (best-effort, jamais bloquant)
+    """
+    if not _get_proxy_url():
+        return
+    try:
+        from middleware.proxy_telemetry import record_proxy_usage
+
+        # num_bytes_downloaded couvre streamed + non-streamed (httpx ≥0.20).
+        # Fallback `len(content)` si jamais l'attribut manque (mock test, etc.).
+        bytes_in = getattr(response, "num_bytes_downloaded", None)
+        if not bytes_in:
+            try:
+                bytes_in = len(response.content)
+            except Exception:
+                bytes_in = 0
+
+        if bytes_in > 0:
+            await record_proxy_usage(provider=provider, bytes_in=bytes_in)
+    except Exception:
+        # Best-effort : jamais bloquant pour le caller.
+        pass
