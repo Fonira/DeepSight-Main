@@ -306,6 +306,15 @@ class SummaryResponse(BaseModel):
     # NULL = pas analysé (free plan, scrape failed, Mistral timeout, etc.).
     community_analysis: Optional[Dict[str, Any]] = None
 
+    # 🔗 External pages (NEW 2026-05-17 — alembic 031, PR3).
+    # Pages externes citées dans la description vidéo, scrapées + résumées par
+    # Mistral. Dict canonique construit par videos/external_pages/orchestrator :
+    # {extracted_at, schema_version, stats{}, pages[{url, final_url, title,
+    # summary, key_claims[], status, fetched_via_proxy, bytes_fetched}]}.
+    # NULL = pas analysé (free plan, description vide, aucune URL exploitable,
+    # toutes les pages ont échoué, etc.).
+    external_pages: Optional[Dict[str, Any]] = None
+
     is_public: bool = False
 
     class Config:

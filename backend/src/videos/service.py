@@ -147,6 +147,8 @@ async def save_summary(
     carousel_images: Optional[List[str]] = None,
     # 💬 Community analysis (NEW 2026-05-17 — alembic 029)
     community_analysis: Optional[Dict] = None,
+    # 🔗 External pages (NEW 2026-05-17 — alembic 031, PR3)
+    external_pages: Optional[Dict] = None,
 ) -> int:
     """Sauvegarde un nouveau résumé et retourne son ID"""
     print(f"💾 [save_summary v2] Saving video_id={video_id}, user_id={user_id}", flush=True)
@@ -318,6 +320,10 @@ async def save_summary(
     # 💬 Community analysis (alembic 029) — best-effort, ne pas bloquer si attr absent
     if community_analysis is not None and hasattr(summary, "community_analysis"):
         summary.community_analysis = community_analysis
+
+    # 🔗 External pages (alembic 031 — PR3) — best-effort, ne pas bloquer si attr absent
+    if external_pages is not None and hasattr(summary, "external_pages"):
+        summary.external_pages = external_pages
 
     # Ajouter enrichment_data si le modèle le supporte
     if enrichment_data and hasattr(summary, "enrichment_data"):

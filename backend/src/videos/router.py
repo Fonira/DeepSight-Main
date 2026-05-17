@@ -2335,23 +2335,39 @@ async def _analyze_video_background_v2_1(
                     logger.error(f"⚠️ [v2.1] Community take failed: {e}")
                     return None
 
-            # ⚡ Lancer les 5 tâches en parallèle
+            # 🔗 External pages (NEW 2026-05-17 — PR3) — 6e tâche parallèle non-bloquante.
+            async def _external_pages_v21():
+                try:
+                    from videos.external_pages.orchestrator import extract_external_pages
+
+                    return await extract_external_pages(
+                        video_info=video_info,
+                        user_plan=user_plan,
+                        lang=lang or "fr",
+                    )
+                except Exception as e:
+                    logger.warning(f"⚠️ [v2.1] External pages extraction failed: {e}")
+                    return None
+
+            # ⚡ Lancer les 6 tâches en parallèle
             (
                 (category, confidence),
                 comments_analysis_result,
                 metadata_enriched_result,
                 (_web_ctx, _enrich_src, _),
                 community_take_result,
+                external_pages_result,
             ) = await asyncio.gather(
                 _detect_cat_v21(),
                 _analyze_comments_v21(),
                 _enrich_metadata_v21(),
                 _enrich_web_v21(),
                 _community_take_v21(),
+                _external_pages_v21(),
             )
             web_context = _web_ctx
             enrichment_sources = _enrich_src
-            logger.info("⚡ [v2.1.1] Category + comments + metadata + web + community computed in PARALLEL")
+            logger.info("⚡ [v2.1.1] Category + comments + metadata + web + community + external_pages computed in PARALLEL")
 
             # ═══════════════════════════════════════════════════════════════════
             # 7. 🆕 CONSTRUIRE LE PROMPT PERSONNALISÉ
@@ -2607,6 +2623,10 @@ async def _analyze_video_background_v2_1(
                 community_take_result.model_dump(mode="json") if community_take_result is not None else None
             )
 
+            # 🔗 External pages (NEW 2026-05-17 — PR3) — déjà un dict canonique
+            # (cf orchestrator), ou None si pas généré.
+            _external_pages_dict = external_pages_result if isinstance(external_pages_result, dict) else None
+
             summary_id = await save_summary(
                 session=session,
                 user_id=user_id,
@@ -2643,6 +2663,8 @@ async def _analyze_video_background_v2_1(
                 carousel_images=video_info.get("carousel_images"),
                 # 💬 Community analysis (alembic 029)
                 community_analysis=_community_dict,
+                # 🔗 External pages (alembic 031 — PR3)
+                external_pages=_external_pages_dict,
             )
 
             # 👁️ Phase 2 plumbing V2.1 : persist visual_analysis si capturé.
@@ -3185,12 +3207,29 @@ async def _analyze_video_background_v6(
                     logger.error(f"⚠️ [v6] Community take failed: {e}")
                     return None
 
-            # ⚡ Lancer les 4 en parallèle (return_exceptions=True pour fail-safe)
+            # 🔗 External pages (NEW 2026-05-17 — PR3) — 5e tâche parallèle non-bloquante.
+            # Plan gating (free skip), description-driven, timeout interne 30s+ par page,
+            # contrat NE LÈVE JAMAIS dans l'orchestrator. Wrap supplémentaire defensive ici.
+            async def _external_pages_async():
+                try:
+                    from videos.external_pages.orchestrator import extract_external_pages
+
+                    return await extract_external_pages(
+                        video_info=video_info,
+                        user_plan=user_plan,
+                        lang=lang or "fr",
+                    )
+                except Exception as e:
+                    logger.warning(f"⚠️ [v6] External pages extraction failed: {e}")
+                    return None
+
+            # ⚡ Lancer les 5 en parallèle (return_exceptions=True pour fail-safe)
             results = await asyncio.gather(
                 _detect_category_async(),
                 _enrich_web_async(),
                 _fetch_channel_context_async(),
                 _community_take_async(),
+                _external_pages_async(),
                 return_exceptions=True,
             )
 
@@ -3229,8 +3268,17 @@ async def _analyze_video_background_v6(
                 else:
                     community_take_result = comm_result
 
+            # 🔗 Unpack external pages (avec safety) — NEW 2026-05-17 (PR3)
+            external_pages_result = None
+            if len(results) > 4:
+                ext_result = results[4]
+                if isinstance(ext_result, Exception):
+                    logger.warning(f"⚠️ [v6] External pages raised: {ext_result}")
+                else:
+                    external_pages_result = ext_result
+
             _task_store[task_id]["progress"] = 45
-            logger.info("⚡ [v6.1] Category + web + channel + community computed in PARALLEL")
+            logger.info("⚡ [v6.1] Category + web + channel + community + external_pages computed in PARALLEL")
 
             # ═══════════════════════════════════════════════════════════════════
             # 5. GÉNÉRER LE RÉSUMÉ (MISTRAL) AVEC CONTEXTE WEB
@@ -3490,6 +3538,10 @@ async def _analyze_video_background_v6(
                 community_take_result.model_dump(mode="json") if community_take_result is not None else None
             )
 
+            # 🔗 External pages (NEW 2026-05-17 — PR3) — déjà un dict canonique
+            # (cf orchestrator), ou None si pas généré.
+            _external_pages_dict_v6 = external_pages_result if isinstance(external_pages_result, dict) else None
+
             # Sauvegarder le résumé
             summary_id = await save_summary(
                 session=session,
@@ -3528,6 +3580,8 @@ async def _analyze_video_background_v6(
                 carousel_images=video_info.get("carousel_images"),
                 # 💬 Community analysis (alembic 029)
                 community_analysis=_community_dict_v6,
+                # 🔗 External pages (alembic 031 — PR3)
+                external_pages=_external_pages_dict_v6,
             )
 
             logger.info(f"💾 Summary saved: id={summary_id}")
