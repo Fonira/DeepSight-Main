@@ -1,7 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
 import DoodleIcon from "./DoodleIcon";
-import { DOODLE_CATEGORIES } from "./doodlePaths";
 
 type DoodleDividerVariant = "default" | "video" | "academic" | "analysis";
 type Density = "sparse" | "normal" | "dense";
@@ -11,6 +10,61 @@ interface DoodleDividerProps {
   density?: Density;
   className?: string;
 }
+
+// Noms d'icônes valides dans DOODLE_MAP (cf. doodlePaths.ts). Les anciens
+// mappings pointaient vers des noms de catégories ("analytics", "shapes", …)
+// qui ne sont PAS des clés de DOODLE_MAP — d'où les warnings
+// `[DoodleIcon] Unknown doodle name: "analytics"` répétés en console.
+const NAMES_BY_VARIANT: Record<DoodleDividerVariant, readonly string[]> = {
+  default: [
+    "dot",
+    "cross",
+    "ring",
+    "smallStar",
+    "smallTriangle",
+    "zigzag",
+    "fourSquares",
+    "halfCircleArc",
+    "squareOutline",
+    "parallelDashes",
+  ],
+  video: [
+    "play",
+    "pause",
+    "camera",
+    "tv",
+    "playCircle",
+    "headphones",
+    "waveform",
+    "mic",
+    "filmstrip",
+    "fastForward",
+  ],
+  academic: [
+    "book",
+    "graduation",
+    "pencil",
+    "document",
+    "lightbulb",
+    "bookmark",
+    "flask",
+    "quill",
+    "clipboard",
+    "brain",
+  ],
+  analysis: [
+    "barChart",
+    "lineChart",
+    "pieChart",
+    "trendingUp",
+    "activity",
+    "target",
+    "layers",
+    "filter",
+    "grid",
+    "compass",
+  ],
+};
 
 /**
  * DoodleDivider: Decorative divider with animated doodles
@@ -28,19 +82,6 @@ const DoodleDivider: React.FC<DoodleDividerProps> = ({
   density = "normal",
   className = "",
 }) => {
-  // Map variant to icon category
-  const categoryMap: Record<
-    DoodleDividerVariant,
-    keyof typeof DOODLE_CATEGORIES
-  > = {
-    default: "shapes",
-    video: "video",
-    academic: "study",
-    analysis: "analytics",
-  };
-
-  const category = DOODLE_CATEGORIES[categoryMap[variant]];
-
   // Density controls count: sparse=4, normal=6, dense=8
   const densityMap: Record<Density, number> = {
     sparse: 4,
@@ -49,26 +90,15 @@ const DoodleDivider: React.FC<DoodleDividerProps> = ({
   };
   const iconCount = densityMap[density];
 
-  // Pick random icons from category
+  // Pick random valid doodle names from the variant pool.
   const selectedIcons = React.useMemo(() => {
+    const pool = NAMES_BY_VARIANT[variant];
     const icons: string[] = [];
     for (let i = 0; i < iconCount; i++) {
-      const randomPath = category[Math.floor(Math.random() * category.length)];
-      // Find the name in DOODLE_MAP that corresponds to this path
-      const doodleNames = Object.entries(DOODLE_CATEGORIES).flatMap(
-        ([, paths]) => paths,
-      );
-
-      // For simplicity, pick by index from category
-      const pathIndex = category.indexOf(randomPath);
-      if (pathIndex !== -1) {
-        const categoryName = categoryMap[variant];
-        const baseIndex = Object.keys(DOODLE_CATEGORIES).indexOf(categoryName);
-        icons.push(`${categoryName}-${pathIndex}`);
-      }
+      icons.push(pool[Math.floor(Math.random() * pool.length)]);
     }
     return icons;
-  }, [iconCount, variant, category]);
+  }, [iconCount, variant]);
 
   // Stagger animation: each icon animates in sequence with delay
   const containerVariants = {
@@ -111,7 +141,7 @@ const DoodleDivider: React.FC<DoodleDividerProps> = ({
               }}
             >
               <DoodleIcon
-                name={iconName.split("-")[0] || "dot"}
+                name={iconName}
                 size={18}
                 color="var(--accent-primary)"
                 className="opacity-30 hover:opacity-50 transition-opacity"
