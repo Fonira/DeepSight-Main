@@ -166,7 +166,7 @@ describe("useConversation — fil unifié", () => {
     expect(captured?.messages[1].voiceSpeaker).toBe("agent");
   });
 
-  it("excludes voice user messages (audio user invisible rule)", async () => {
+  it("includes both user and agent voice messages (symmetric rule 2026-05-11)", async () => {
     mockChatHistory = [
       {
         id: "u1",
@@ -199,9 +199,13 @@ describe("useConversation — fil unifié", () => {
     await waitFor(() => {
       expect(captured?.loadingHistory).toBe(false);
     });
-    expect(captured?.messages).toHaveLength(1);
-    expect(captured?.messages[0].id).toBe("a1");
-    expect(captured?.messages[0].voiceSpeaker).toBe("agent");
+    // Symmetric rule (2026-05-11) replaces "audio user invisible" (2026-05-02
+    // §3 décision #3) — both sides of voice conversation visible in the feed.
+    expect(captured?.messages).toHaveLength(2);
+    expect(captured?.messages[0].id).toBe("u1");
+    expect(captured?.messages[0].voiceSpeaker).toBe("user");
+    expect(captured?.messages[1].id).toBe("a1");
+    expect(captured?.messages[1].voiceSpeaker).toBe("agent");
   });
 });
 

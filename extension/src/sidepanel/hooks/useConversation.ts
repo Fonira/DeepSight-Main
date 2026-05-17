@@ -9,9 +9,9 @@
 //
 // Le hook retourne un fil unifié `messages: UnifiedMessage[]` qui mixe :
 //   - les messages chat texte (POST /api/chat/ask)
-//   - les transcripts agent voice (ElevenLabs SDK + persistance backend)
-// et exclut systématiquement les transcripts user voice (règle UX
-// "audio user invisible" — spec 2026-05-02 §3 décision #3).
+//   - les transcripts voice (ElevenLabs SDK + persistance backend) — DEUX
+//     côtés : agent ET user (règle symétrique 2026-05-11, annule la règle
+//     "audio user invisible" du 2026-05-02 §3 décision #3).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Browser from "../../utils/browser-polyfill";
@@ -35,9 +35,8 @@ export type VoiceMode = "off" | "live" | "ended" | "quota_exceeded";
 
 /**
  * UnifiedMessage = ligne du fil rendue par ConversationFeed. Source de
- * vérité unique pour la liste affichée (chat texte ET transcript agent
- * voice mixés). Les transcripts user voice ne sont jamais transformés
- * en UnifiedMessage (filter en amont).
+ * vérité unique pour la liste affichée (chat texte + transcripts voice
+ * des deux côtés agent et user, règle symétrique 2026-05-11).
  */
 export interface UnifiedMessage {
   /** Identifiant stable. Backend = ChatHistoryItem.id, voice transient = `voice-${ts}`. */

@@ -128,6 +128,7 @@ jest.mock("../../src/i18n/useTranslation", () => ({
         trialUsedTitle: "Essai utilisé — passer en Expert",
         minutesRemaining: "{count} min restantes",
         upgradeBadge: "Passer en Expert",
+        callActive: { settingsAriaLabel: "Réglages voix" },
       },
     },
     language: "fr",

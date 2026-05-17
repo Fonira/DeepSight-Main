@@ -18,6 +18,8 @@ jest.mock("expo-av", () => ({
     requestPermissionsAsync: () => mockRequestPermissions(),
     setAudioModeAsync: (opts: unknown) => mockSetAudioMode(opts),
   },
+  InterruptionModeIOS: { DoNotMix: 1, MixWithOthers: 0, DuckOthers: 2 },
+  InterruptionModeAndroid: { DoNotMix: 1, MixWithOthers: 0, DuckOthers: 2 },
 }));
 
 // Mock expo-haptics
