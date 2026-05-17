@@ -275,6 +275,28 @@ const HubPageInner: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [voiceAutoOpen]);
 
+  // ── Workspace creation auto-open — `/hub?newWorkspace=1` ──
+  // Bouton "Créer un workspace" sur /hub/workspaces navigue ici avec ce flag,
+  // ce qui ouvre le ConversationsDrawer en mode multi-select prêt à cocher
+  // les analyses qui composeront le nouveau workspace. Le flag est stripé
+  // immédiatement pour que back-nav / reload n'inflige pas le mode select.
+  const newWorkspaceAutoOpen = searchParams.get("newWorkspace") === "1";
+  const [autoSelectModeNext, setAutoSelectModeNext] = React.useState(false);
+  useEffect(() => {
+    if (!newWorkspaceAutoOpen) return;
+    setAutoSelectModeNext(true);
+    if (!drawerOpen) toggleDrawer();
+    const next = new URLSearchParams(searchParams);
+    next.delete("newWorkspace");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newWorkspaceAutoOpen]);
+  // Reset l'auto-select quand le drawer se referme — sinon la prochaine
+  // ouverture manuelle hériterait du flag.
+  useEffect(() => {
+    if (!drawerOpen) setAutoSelectModeNext(false);
+  }, [drawerOpen]);
+
   const { analyze: triggerAnalyze, error: hookError } = useAnalyzeAndOpenHub();
   // Affiche les erreurs du hook (URL invalide, fetch failed) dans le placeholder.
   useEffect(() => {
@@ -886,6 +908,7 @@ const HubPageInner: React.FC = () => {
               setSearchParams({ conv: String(id) });
             }}
             onAnalyze={triggerAnalyze}
+            autoSelectMode={autoSelectModeNext}
           />
 
           <NewConversationModal

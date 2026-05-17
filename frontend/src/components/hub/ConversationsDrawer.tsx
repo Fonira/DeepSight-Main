@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -27,6 +27,12 @@ interface Props {
    * fourni, la barre input n'est pas rendue.
    */
   onAnalyze?: (url: string) => void | Promise<void>;
+  /**
+   * Quand `true`, active automatiquement le mode multi-select à l'ouverture
+   * du drawer (one-shot par cycle open/close). Utilisé par le bouton "Créer
+   * un workspace" sur `/hub/workspaces` qui navigue vers `/hub?newWorkspace=1`.
+   */
+  autoSelectMode?: boolean;
 }
 
 const PLATFORM_ICON: Record<
@@ -82,6 +88,7 @@ export const ConversationsDrawer: React.FC<Props> = ({
   activeConvId,
   onSelect,
   onAnalyze,
+  autoSelectMode = false,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuthContext();
@@ -107,6 +114,21 @@ export const ConversationsDrawer: React.FC<Props> = ({
       setSelectedSummaryIds(new Set());
     }
   }, [open]);
+
+  // Auto-activation du mode select à l'ouverture quand demandé par le parent
+  // (ex. bouton "Créer un workspace" depuis /hub/workspaces). One-shot par
+  // cycle open/close — le ref est reset quand le drawer se referme.
+  const autoActivatedRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      autoActivatedRef.current = false;
+      return;
+    }
+    if (autoSelectMode && canUseHubWorkspace && !autoActivatedRef.current) {
+      setIsSelectMode(true);
+      autoActivatedRef.current = true;
+    }
+  }, [open, autoSelectMode, canUseHubWorkspace]);
 
   const exitSelectMode = useCallback(() => {
     setIsSelectMode(false);
