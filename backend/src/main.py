@@ -585,7 +585,13 @@ async def initialize_database_background():
                     await init_arxiv_redis(redis_client)
                 except ImportError:
                     pass
-                logger.info("TaskStore + GuestLimiter + arXiv Redis initialized")
+                try:
+                    from academic.scholar import init_scholar_redis
+
+                    await init_scholar_redis(redis_client)
+                except ImportError:
+                    pass
+                logger.info("TaskStore + GuestLimiter + arXiv + Scholar Redis initialized")
             else:
                 logger.info("TaskStore + GuestLimiter using in-memory fallback (no Redis)")
         except Exception as ts_err:

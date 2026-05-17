@@ -597,5 +597,37 @@ __all__ = [
     "init_scholar_redis",
     "is_circuit_open",
     "parse_scholar_html",
+    "scholar_paper_to_academic",
     "search_scholar",
 ]
+
+
+def scholar_paper_to_academic(sp):
+    """Convert a `ScholarPaper` into an `AcademicPaper` compatible with the aggregator pipeline.
+
+    Imports `AcademicPaper` / `Author` / `AcademicSource` lazily to avoid a
+    circular import between `academic.schemas` and this module on cold start.
+    """
+    from .schemas import AcademicPaper, Author, AcademicSource
+
+    external_id = (
+        f"scholar_{sp.scholar_id}"
+        if sp.scholar_id
+        else f"scholar_{hashlib.md5(sp.title.encode('utf-8')).hexdigest()[:12]}"
+    )
+    return AcademicPaper(
+        id=external_id,
+        doi=None,
+        title=sp.title,
+        authors=[Author(name=a) for a in sp.authors],
+        year=sp.year,
+        venue=sp.venue,
+        abstract=sp.abstract,
+        citation_count=sp.citation_count,
+        url=sp.url,
+        pdf_url=sp.pdf_url,
+        source=AcademicSource.SCHOLAR,
+        relevance_score=0.7,
+        is_open_access=sp.pdf_url is not None,
+        keywords=[],
+    )
