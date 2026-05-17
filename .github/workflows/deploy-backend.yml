@@ -146,11 +146,19 @@ jobs:
       - name: Smoke test /health
         id: healthcheck
         run: |
+          # Cold start on Hetzner takes ~30-40s (alembic upgrade + 4 uvicorn
+          # workers loading the full module tree). The previous `--retry 5
+          # --retry-delay 3` (max ~16s) was too tight and caused false rollbacks
+          # on Scholar PR2 deploy (2026-05-17) even though the container was
+          # healthy a few seconds later. 15s warmup + 12 × 5s retries gives
+          # ~75s budget — comfortable margin without making failed deploys slow.
+          echo "Waiting 15s for container cold start..."
+          sleep 15
           echo "Probing ${HEALTH_URL}"
           curl -fsS \
             --max-time 30 \
-            --retry 5 \
-            --retry-delay 3 \
+            --retry 12 \
+            --retry-delay 5 \
             --retry-all-errors \
             "${HEALTH_URL}"
           echo ""
