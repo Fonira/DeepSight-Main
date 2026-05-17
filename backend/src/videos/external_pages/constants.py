@@ -140,11 +140,15 @@ TIMEOUTS: Dict[str, float] = {
 # ═══════════════════════════════════════════════════════════════════════════════
 # Cap *post*-filtrage (après blacklist / dedup). PR 2/3 utiliseront ces caps
 # pour limiter le scraping (économise du quota proxy et latence Mistral).
+#
+# Free=0 : feature gatée Pro+ → l'UI affiche un CTA upgrade côté frontend.
+# Les plans legacy ("plus", "starter") sont normalisés vers "pro"/"free"
+# via core/plan_limits.normalize_plan_id, donc pas d'entries dédiées ici.
+# Tout plan inconnu fallback à 0 via .get(plan, 0) côté orchestrator.
+#
+# Source de vérité : docs/superpowers/specs/2026-05-17-pages-externes-citees.md §8
 PLAN_CAPS: Dict[str, int] = {
-    "free": 3,
-    "pro": 8,
-    "expert": 15,
-    # legacy / fallback
-    "plus": 5,
-    "starter": 3,
+    "free": 0,
+    "pro": 5,
+    "expert": 10,
 }
