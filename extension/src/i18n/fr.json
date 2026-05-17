@@ -342,5 +342,14 @@
     "disabledNotice": "Commentaires désactivés sur cette vidéo.",
     "insufficientData": "Trop peu de commentaires pour un verdict fiable.",
     "openFullWeb": "Lire l'analyse complète sur l'app"
+  },
+  "externalSources": {
+    "label": "sources citées",
+    "labelSingular": "source citée",
+    "viewAllOnWeb": "Voir détails sur l'app",
+    "upgradeRequired": "Sources externes avec Pro",
+    "upgradeDescription": "Mini-résumé Mistral de chaque lien cité dans la description",
+    "upgradeCta": "Passer Pro",
+    "openExternalAriaLabel": "Ouvrir {host} dans un nouvel onglet"
   }
 }

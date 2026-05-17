@@ -78,6 +78,12 @@ export interface Summary {
   content_type?: "video" | "carousel" | "short" | "live";
   // 💬 Community analysis (2026-05-17 — alembic 029, sprint Comments PR4 ext).
   community_analysis?: CommunityTake | null;
+
+  // 🔗 External pages (2026-05-17 — alembic 031, sprint External Pages PR4 ext).
+  // Pages externes citées dans la description vidéo, scrapées + résumées par
+  // Mistral. NULL = pas analysé (free plan, description vide, aucune URL
+  // exploitable, toutes les pages ont échoué, etc.).
+  external_pages?: ExternalPagesData | null;
 }
 
 // ─── Community Take (verdict communauté) ──────────────────────────────────────
@@ -120,6 +126,48 @@ export interface CommunityTake {
   is_truncated?: boolean;
   disabled?: boolean;
   insufficient_data?: boolean;
+}
+
+// ─── External Pages (PR3 backend / PR4 UI extension) ──────────────────────────
+// Mirror backend `videos/external_pages/orchestrator.py` (statuts canoniques)
+// et `frontend/src/services/api.ts` (types web). Persisté JSONB dans
+// `Summary.external_pages` depuis alembic 031.
+
+export type ExternalPageStatus =
+  | "ok"
+  | "error"
+  | "paywall"
+  | "non_html"
+  | "http_error"
+  | "timeout"
+  | "empty";
+
+export interface ExternalPageCitation {
+  url: string;
+  final_url: string;
+  title: string;
+  summary: string;
+  key_claims: string[];
+  status: ExternalPageStatus;
+  fetched_via_proxy: boolean;
+  bytes_fetched: number;
+}
+
+export interface ExternalPagesStats {
+  candidates_found: number;
+  after_dedup: number;
+  after_blacklist: number;
+  after_cap: number;
+  successful: number;
+  paywalled: number;
+  errored: number;
+}
+
+export interface ExternalPagesData {
+  extracted_at: string;
+  schema_version: number;
+  stats: ExternalPagesStats;
+  pages: ExternalPageCitation[];
 }
 
 export interface Concept {
