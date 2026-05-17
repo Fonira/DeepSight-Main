@@ -19,6 +19,8 @@
 import httpx
 from typing import Optional
 
+from core.logging import logger
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Configuration
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -255,6 +257,79 @@ def is_proxy_configured() -> bool:
     YouTube partira proxifiée ou bare en prod).
     """
     return bool(_get_proxy_url())
+
+
+async def smart_request(
+    method: str,
+    url: str,
+    *,
+    provider: str,
+    direct_timeout: float = 8.0,
+    proxy_timeout: float = 15.0,
+    block_status_codes: tuple = (403, 429, 502, 503),
+    follow_redirects: bool = True,
+    headers: Optional[dict] = None,
+    **request_kwargs,
+) -> httpx.Response:
+    """Try direct request first, fall back to Decodo proxy on block indicators.
+
+    Pour les call sites historiquement routés via `get_proxied_client` par
+    précaution (audit B4-B6 du 2026-05-11) mais qui marchent en direct depuis
+    Hetzner aujourd'hui (oEmbed YouTube/TikTok, tikwm API, HEAD redirects).
+    Économise le quota Decodo quand le direct passe.
+
+    Args:
+        method: HTTP method ("GET", "POST", "HEAD", ...)
+        url: Target URL
+        provider: Telemetry id écrit dans proxy_usage_daily.requests_by_provider
+            UNIQUEMENT en cas de fallback proxy. Direct success = aucune écriture.
+        direct_timeout: Timeout court pour la tentative directe (default 8s)
+        proxy_timeout: Timeout plus long pour le fallback proxy (default 15s)
+        block_status_codes: Status codes déclenchant le fallback (403/429/5xx)
+        follow_redirects: Pass-through aux deux clients
+        headers: Pass-through aux deux clients (User-Agent custom, etc.)
+        **request_kwargs: Forwarded à client.request() (params, data, json, ...)
+
+    Returns:
+        httpx.Response — du direct (rapide, gratuit) OU du fallback proxy.
+
+    Telemetry:
+        - Direct success (status NOT IN block_status_codes): no DB write, log DEBUG
+        - Direct fail → proxy success: record_proxy_usage(provider), log INFO
+        - Both fail: la dernière exception httpx est propagée au caller
+    """
+    direct_error: Optional[str] = None
+    try:
+        async with shared_http_client() as client:
+            resp = await client.request(
+                method,
+                url,
+                timeout=direct_timeout,
+                follow_redirects=follow_redirects,
+                headers=headers,
+                **request_kwargs,
+            )
+        if resp.status_code not in block_status_codes:
+            logger.debug(
+                f"[SMART_ROUTE] direct {provider} OK "
+                f"({resp.status_code}, {len(resp.content)}B)"
+            )
+            return resp
+        direct_error = f"HTTP {resp.status_code}"
+    except httpx.TransportError as e:
+        direct_error = type(e).__name__
+
+    logger.info(
+        f"[SMART_ROUTE] direct {provider} → {direct_error}, falling back to proxy"
+    )
+    async with get_proxied_client(
+        timeout=proxy_timeout,
+        follow_redirects=follow_redirects,
+        headers=headers,
+    ) as client:
+        resp = await client.request(method, url, **request_kwargs)
+        await record_proxied_response(resp, provider=provider)
+    return resp
 
 
 async def record_proxied_response(response, provider: str) -> None:

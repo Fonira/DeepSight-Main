@@ -30,7 +30,7 @@ from typing import Any, Dict, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.http_client import get_proxied_client, record_proxied_response
+from core.http_client import get_proxied_client, record_proxied_response, smart_request
 from db.database import User, VisualAnalysisQuota
 from transcripts.audio_utils import _yt_dlp_extra_args, executor as audio_executor
 
@@ -479,9 +479,13 @@ async def _download_tiktok_video_no_watermark(url: str, *, log_tag: str) -> Opti
     est rate-limited 429 sur IP datacenter Hetzner. Audit B4 (Wave 2).
     """
     try:
-        async with get_proxied_client(timeout=_TIKWM_TIMEOUT_S) as client:
-            resp = await client.post(_TIKWM_API_URL, data={"url": url})
-            await record_proxied_response(resp, provider="tikwm_api")
+        resp = await smart_request(
+            "POST",
+            _TIKWM_API_URL,
+            provider="tikwm_api",
+            direct_timeout=_TIKWM_TIMEOUT_S,
+            data={"url": url},
+        )
         if resp.status_code != 200:
             logger.warning("[%s] tikwm API HTTP %d for %s", log_tag, resp.status_code, url)
             return None

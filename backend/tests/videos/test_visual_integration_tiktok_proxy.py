@@ -43,16 +43,18 @@ class TestSourceLevelLock:
             "downloads via Decodo (audit B4 / Wave 2 sprint 2026-05-12)."
         )
 
-    def test_get_proxied_client_used_at_least_twice(self):
-        """At least 2 `get_proxied_client(` call sites — one for tikwm POST,
-        one for TikTok CDN GET in `_download_tiktok_video_no_watermark`."""
+    def test_proxy_capable_used_at_least_twice(self):
+        """At least 2 proxy-capable call sites — one for tikwm POST (smart_request
+        since 2026-05-17), one for TikTok CDN GET (still get_proxied_client because
+        CDN downloads are heavy + blocked from Hetzner)."""
         from videos import visual_integration
 
         src = inspect.getsource(visual_integration)
-        count = src.count("get_proxied_client(")
+        count = src.count("get_proxied_client(") + src.count("smart_request(")
         assert count >= 2, (
-            f"Expected ≥ 2 get_proxied_client() call sites, got {count}. "
-            "Both the tikwm API POST and the TikTok CDN GET must be proxied."
+            f"Expected ≥ 2 proxy-capable call sites "
+            f"(get_proxied_client + smart_request), got {count}. "
+            "Both the tikwm API POST and the TikTok CDN GET must be proxy-capable."
         )
 
     def test_no_bare_httpx_async_client_in_tiktok_download(self):
@@ -89,7 +91,8 @@ class TestIntegrationGracefulFallback:
     @pytest.mark.asyncio
     async def test_function_callable_without_proxy_env(self, monkeypatch):
         """With proxy unset, `_download_tiktok_video_no_watermark` should
-        still be callable. We mock `get_proxied_client` to raise to verify
+        still be callable. We mock both `get_proxied_client` (CDN path) and
+        `smart_request` (tikwm API path since 2026-05-17) to raise, verifying
         the function catches the error and returns None (graceful path).
 
         We MUST NOT do real network calls here — the test would either be
@@ -112,7 +115,11 @@ class TestIntegrationGracefulFallback:
 
             yield FakeClient()
 
+        async def fake_smart_request(*args, **kwargs):
+            raise RuntimeError("no network in unit test")
+
         monkeypatch.setattr(vi, "get_proxied_client", fake_proxied_client)
+        monkeypatch.setattr(vi, "smart_request", fake_smart_request)
 
         result = await vi._download_tiktok_video_no_watermark(
             "https://www.tiktok.com/@whoever/video/123",

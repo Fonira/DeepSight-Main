@@ -82,29 +82,25 @@ class TestDirectYouTubeRouteUsesProxiedClient:
         yt = _get_youtube_module()
         self.src = inspect.getsource(yt)
 
-    def test_youtube_oembed_uses_proxied_client(self):
-        """www.youtube.com/oembed — direct YouTube call (PR #459).
+    def test_youtube_oembed_uses_proxy_capable_client(self):
+        """www.youtube.com/oembed — direct YouTube call.
 
-        Note: `youtube.com/oembed` appears in the URL string ASSIGNED to a
-        variable, not directly inside `async with` block. We look forward
-        ~5 lines from the marker for the next `async with`.
+        Since 2026-05-17 (smart routing sprint) this site uses `smart_request`
+        which tries direct first then falls back to proxy on block. Either
+        `get_proxied_client` or `smart_request` is acceptable here.
         """
         url_marker = "www.youtube.com/oembed"
         assert url_marker in self.src, (
             f"URL marker {url_marker!r} not found — oEmbed route removed?"
         )
         pos = self.src.find(url_marker)
-        # Look FORWARD a few hundred chars for the next `async with`
+        # Look FORWARD a few hundred chars for the next proxy-capable call
         window_end = min(len(self.src), pos + 500)
         window = self.src[pos:window_end]
-        next_async_with = window.find("async with ")
-        assert next_async_with != -1, (
-            "No `async with` found after oEmbed URL — context may have changed."
-        )
-        snippet = window[next_async_with : next_async_with + 200]
-        assert "get_proxied_client" in snippet, (
-            "oEmbed (www.youtube.com direct call, PR #459) regressed from "
-            "get_proxied_client — Decodo routing lost on direct YouTube call."
+        assert ("get_proxied_client" in window) or ("smart_request" in window), (
+            "oEmbed (www.youtube.com direct call) regressed — must use either "
+            "get_proxied_client (force proxy) or smart_request (direct→proxy fallback). "
+            "Decodo routing lost on direct YouTube call."
         )
 
 
@@ -264,18 +260,21 @@ class TestProxiedClientCoverage:
     to prevent silent regressions in either direction (over-migration like #472
     OR under-migration that drops oEmbed routing)."""
 
-    def test_get_proxied_client_count_post_revert(self):
-        """Post-revert (this PR) : exactly 1 occurrence — oEmbed (PR #459).
-        If this climbs > 2, an over-migration like #472 likely happened
-        again. If this drops to 0, oEmbed regressed to shared_http_client."""
+    def test_proxy_capable_count_post_smart_route(self):
+        """Post smart-route migration (2026-05-17) : exactly 1 oEmbed call,
+        either as `async with get_proxied_client` OR as `smart_request("GET", ...)`.
+
+        Climb > 1 = over-migration regression (#472 pattern). Drop to 0 =
+        oEmbed lost Decodo routing entirely.
+        """
         yt = _get_youtube_module()
         src = inspect.getsource(yt)
-        count = src.count("async with get_proxied_client")
+        count = src.count("async with get_proxied_client") + src.count("smart_request(")
         assert count == 1, (
-            f"Expected exactly 1 `async with get_proxied_client` block in "
-            f"transcripts/youtube.py (oEmbed direct YouTube call, PR #459), "
-            f"got {count}. Either over-migration is happening again "
-            f"(post-#472 was reverted) OR oEmbed lost its proxy."
+            f"Expected exactly 1 proxy-capable call in transcripts/youtube.py "
+            f"(oEmbed direct YouTube call), got {count}. Either over-migration "
+            f"is happening again (post-#472 was reverted) OR oEmbed lost "
+            f"Decodo routing."
         )
 
     def test_shared_http_client_count_post_revert(self):

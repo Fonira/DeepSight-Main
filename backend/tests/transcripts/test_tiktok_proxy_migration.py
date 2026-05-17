@@ -50,14 +50,21 @@ class TestSourceLevelLock:
             "TikTok web / tikwm / CDN / oEmbed calls via Decodo (audit B5)."
         )
 
-    def test_at_least_5_proxied_call_sites(self):
-        """5 TikTok-targeting routes must use get_proxied_client."""
+    def test_at_least_5_proxy_capable_call_sites(self):
+        """5 TikTok-targeting routes must use a proxy-capable client.
+
+        Post smart_request migration (2026-05-17): some sites (short URL HEAD,
+        oEmbed GET) use smart_request — direct-first with proxy fallback —
+        while CDN downloads + HTML scrape still force get_proxied_client. Both
+        count as proxy-capable for regression protection.
+        """
         from transcripts import tiktok
 
         src = inspect.getsource(tiktok)
-        count = src.count("get_proxied_client(")
+        count = src.count("get_proxied_client(") + src.count("smart_request(")
         assert count >= 5, (
-            f"Expected ≥ 5 get_proxied_client() call sites, got {count}. "
+            f"Expected ≥ 5 proxy-capable call sites "
+            f"(get_proxied_client + smart_request), got {count}. "
             "Required: short URL HEAD, oEmbed GET, tikwm API POST/GET, CDN "
             "media GET, TikTok HTML scrape."
         )
