@@ -77,3 +77,57 @@ vault-mcp.deepsightsynthesis.com {
 		}
 	}
 }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DeepSight Studio — HTML Preview Hosting (test phase, subdomain dédié)
+# Serve generated site previews via sslip.io subdomain.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+studio.89-167-23-214.sslip.io {
+	root * /data/studio-previews
+	file_server browse
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	log {
+		output file /data/logs/studio-preview.log {
+			roll_size 50mb
+			roll_keep 3
+		}
+	}
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Demos hosting — host racine sslip.io
+# Sert /opt/demos/demos/* (bind-mounted sur /demos-src dans le container) sous
+# https://89-167-23-214.sslip.io/demos/<projet>/ — pages statiques générées par Kimi
+# et utilisées pour le pitch DeepSight Studio (https://89-167-23-214.sslip.io/demos/deepsight-studio/).
+# ═══════════════════════════════════════════════════════════════════════════════
+
+89-167-23-214.sslip.io {
+	handle_path /demos/* {
+		root * /demos-src
+		file_server
+	}
+
+	handle {
+		respond "DeepSight demos — see /demos/deepsight-studio/" 404
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	log {
+		output file /data/logs/demos.log {
+			roll_size 50mb
+			roll_keep 3
+		}
+	}
+}

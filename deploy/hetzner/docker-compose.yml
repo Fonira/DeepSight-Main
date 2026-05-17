@@ -136,3 +136,4 @@ services:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+      - /opt/demos/demos:/demos-src:ro
