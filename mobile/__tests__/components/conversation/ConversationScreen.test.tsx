@@ -10,6 +10,18 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 import { Alert, Modal } from "react-native";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// ConversationContent uses TanStack Query for some data fetching → wrap render.
+const makeQueryClient = () =>
+  new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+
+const renderWithProviders = (ui: React.ReactElement) =>
+  render(
+    <QueryClientProvider client={makeQueryClient()}>{ui}</QueryClientProvider>,
+  );
 
 // ─── Mocks ───
 const mockUseConversation = jest.fn();
@@ -91,7 +103,7 @@ describe("ConversationScreen (wrapper Modal)", () => {
   });
 
   it("renders Modal with visible=true", () => {
-    const { UNSAFE_getByType } = render(
+    const { UNSAFE_getByType } = renderWithProviders(
       <ConversationScreen
         visible
         summaryId="1"
@@ -106,7 +118,7 @@ describe("ConversationScreen (wrapper Modal)", () => {
 
   it("forwards onClose to onRequestClose", () => {
     const onClose = jest.fn();
-    const { UNSAFE_getByType } = render(
+    const { UNSAFE_getByType } = renderWithProviders(
       <ConversationScreen
         visible
         summaryId="1"
@@ -122,7 +134,7 @@ describe("ConversationScreen (wrapper Modal)", () => {
 
   it("passes contentProps through to ConversationContent (header close button works)", () => {
     const onClose = jest.fn();
-    const { getByLabelText } = render(
+    const { getByLabelText } = renderWithProviders(
       <ConversationScreen
         visible
         summaryId="1"
