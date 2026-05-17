@@ -76,6 +76,50 @@ export interface Summary {
   view_count?: number;
   like_count?: number;
   content_type?: "video" | "carousel" | "short" | "live";
+  // 💬 Community analysis (2026-05-17 — alembic 029, sprint Comments PR4 ext).
+  community_analysis?: CommunityTake | null;
+}
+
+// ─── Community Take (verdict communauté) ──────────────────────────────────────
+// Mirror frontend/mobile et backend `comments/schemas.py::CommunityTake`.
+
+export type CommunityAgreementSignal =
+  | "agree"
+  | "disagree"
+  | "mixed"
+  | "unclear";
+
+export type CommunityVoiceStance =
+  | "agree"
+  | "disagree"
+  | "neutral"
+  | "question";
+
+export interface CommunityTopVoice {
+  author: string;
+  excerpt: string;
+  stance: CommunityVoiceStance;
+  like_count: number;
+}
+
+export interface CommunitySentimentDistribution {
+  positive: number;
+  neutral: number;
+  negative: number;
+}
+
+export interface CommunityTake {
+  agreement_signal: CommunityAgreementSignal;
+  sentiment_distribution: CommunitySentimentDistribution;
+  controversies: string[];
+  community_summary: string;
+  top_voices: CommunityTopVoice[];
+  comments_analyzed: number;
+  model_used: string;
+  generated_at?: string;
+  is_truncated?: boolean;
+  disabled?: boolean;
+  insufficient_data?: boolean;
 }
 
 export interface Concept {
