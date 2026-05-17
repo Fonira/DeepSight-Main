@@ -38,8 +38,10 @@ import { AcademicSourcesSection } from "@/components/academic";
 import { FactCheckButton } from "@/components/factcheck";
 import { WebEnrichment } from "@/components/enrichment";
 import { VisualTab } from "@/components/analysis/VisualTab";
-import type { VisualAnalysis } from "@/types";
+import type { VisualAnalysis, CommunityTake } from "@/types";
 import { usePlan } from "@/contexts/PlanContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { CommunityTakeSection } from "@/components/CommunityTakeSection";
 import {
   SemanticHighlighterProvider,
   HighlightNavigationBar,
@@ -143,6 +145,7 @@ function AnalysisDetailScreenInner() {
   const scrollY = useSharedValue(0);
   const tabIndicatorX = useSharedValue(initialTabIndex);
   const { plan } = usePlan();
+  const { language } = useLanguage();
 
   // Sync PagerView to initialTab (only on mount)
   React.useEffect(() => {
@@ -446,6 +449,19 @@ function AnalysisDetailScreenInner() {
           // Le container parent réserve déjà la footprint TabBar — le scroll
           // du content peut donc se contenter d'une marge respiration.
           bottomPadding={isFullscreen ? insets.bottom + sp.lg : sp["2xl"]}
+          // 💬 Verdict communauté (Sprint Comments PR3 mobile)
+          // Spec : docs/superpowers/specs/2026-05-17-comments-community-take.md §7.2
+          // Rendu dans le scrollable du résumé pour bénéficier du même scroll.
+          footer={
+            <CommunityTakeSection
+              take={
+                (summary as { community_analysis?: CommunityTake | null } | undefined)
+                  ?.community_analysis ?? null
+              }
+              language={(language as "fr" | "en") || "fr"}
+              onUpgradeClick={() => router.push("/(tabs)/subscription")}
+            />
+          }
         />
       </View>
       <View key="sources" style={styles.page}>

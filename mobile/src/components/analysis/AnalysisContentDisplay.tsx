@@ -53,6 +53,10 @@ interface AnalysisContentDisplayProps {
   /** ScrollView paddingBottom — défaut 120 (compat). Le parent (analysis/[id])
    *  peut injecter `useTabBarFootprint()` pour aligner avec la TabBar globale. */
   bottomPadding?: number;
+  /** Contenu additionnel rendu APRЁS le Markdown, dans le mкme ScrollView.
+   *  Permet d'attacher des sections live (e.g. CommunityTakeSection) qui
+   *  scrollent avec le rиsumи sans nesting de scrollables. */
+  footer?: React.ReactNode;
 }
 
 // ── Epistemic Markers ──────────────────────────────────────────────────────
@@ -204,6 +208,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
   showEmptyState = false,
   emptyStateMessage,
   bottomPadding = 120,
+  footer,
 }) => {
   const { colors, isDark } = useTheme();
   const displayText = isStreaming ? streamingText : content || "";
@@ -673,6 +678,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
             </View>
           )}
         </Animated.View>
+        {footer}
       </ScrollView>
     </Animated.View>
   );
