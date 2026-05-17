@@ -27,6 +27,7 @@ import { ConversationView } from "./ConversationView";
 import { PromoBanner } from "../components/PromoBanner";
 import { VoiceCallButton } from "../components/VoiceCallButton";
 import { SuggestionPills } from "../components/SuggestionPills";
+import { CommunityTakeCompact } from "../components/CommunityTakeCompact";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -785,6 +786,15 @@ export const MainView: React.FC<MainViewProps> = ({
               planInfo={planInfo}
               onOpenChat={() => setChatOpen(true)}
               onOpenFull={() => setShowFullDigest(true)}
+            />
+
+            {/* 💬 Verdict communauté compact (Sprint Comments PR4 ext).
+                Spec : docs/superpowers/specs/2026-05-17-comments-community-take.md §7.3
+                Free → CTA, Pro/Expert → expandable signal + CTA web. */}
+            <CommunityTakeCompact
+              take={analysis.summary.community_analysis ?? null}
+              summaryId={analysis.summaryId}
+              userPlanId={userPlanId}
             />
 
             {!isGuest && nextPlan && userPlanId !== "pro" && (

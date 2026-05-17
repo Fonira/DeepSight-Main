@@ -325,5 +325,22 @@
         "cta": "Open"
       }
     ]
+  },
+  "community": {
+    "verdictLabel": "Community verdict",
+    "commentsAnalyzed": "comm. analyzed",
+    "signal": {
+      "agree": "Mostly agree",
+      "disagree": "Mostly disagree",
+      "mixed": "Mixed reactions",
+      "unclear": "Unclear signal"
+    },
+    "controversies": "Points of disagreement",
+    "upgradeRequired": "Community verdict with Pro",
+    "upgradeDescription": "Comments analysis + synthesis with Pro",
+    "upgradeCta": "Upgrade",
+    "disabledNotice": "Comments are disabled on this video.",
+    "insufficientData": "Too few comments for a reliable verdict.",
+    "openFullWeb": "Read the full analysis in the app"
   }
 }

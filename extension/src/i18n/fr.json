@@ -325,5 +325,22 @@
         "cta": "Ouvrir"
       }
     ]
+  },
+  "community": {
+    "verdictLabel": "Verdict communauté",
+    "commentsAnalyzed": "comm. analysés",
+    "signal": {
+      "agree": "Plutôt d'accord",
+      "disagree": "Plutôt en désaccord",
+      "mixed": "Communauté divisée",
+      "unclear": "Signal incertain"
+    },
+    "controversies": "Points de désaccord",
+    "upgradeRequired": "Verdict communauté avec Pro",
+    "upgradeDescription": "Analyse des commentaires + synthèse avec Pro",
+    "upgradeCta": "Passer Pro",
+    "disabledNotice": "Commentaires désactivés sur cette vidéo.",
+    "insufficientData": "Trop peu de commentaires pour un verdict fiable.",
+    "openFullWeb": "Lire l'analyse complète sur l'app"
   }
 }
