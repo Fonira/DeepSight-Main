@@ -676,6 +676,8 @@ export const videoApi = {
       transcript_context?: string;
       // Phase 2 — Visual Analysis (Mistral Vision)
       visual_analysis?: import("../types").VisualAnalysis | null;
+      // 💬 Sprint Comments — verdict communauté (alembic 029)
+      community_analysis?: import("../types").CommunityTake | null;
     }>(`/api/videos/summary/${summaryId}`);
 
     // Transform backend response to mobile format
@@ -721,6 +723,8 @@ export const videoApi = {
       creditsUsed: 1, // Default value
       // 👁️ Phase 2 — Visual Analysis (peut être absent → tab affiche empty state)
       visual_analysis: response.visual_analysis ?? null,
+      // 💬 Sprint Comments PR3 mobile — verdict communauté (peut être null si free, scrape failed, timeout)
+      community_analysis: response.community_analysis ?? null,
     } as AnalysisSummary & {
       notes?: string;
       tags?: string;

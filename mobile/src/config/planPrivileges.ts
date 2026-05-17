@@ -172,6 +172,8 @@ export interface PlanFeatures {
   semanticSearchTooltip: boolean;
   // Phase 2 Visual Analysis — frames + Mistral Vision (Mai 2026)
   visualAnalysis: boolean;
+  // Verdict communautй (Mai 2026 — alembic 029, sprint Comments)
+  communityTake: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
@@ -210,6 +212,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     deepResearch: false,
     semanticSearchTooltip: false,
     visualAnalysis: false,
+    communityTake: false,
   },
 
   // Anciennement "plus" v0
@@ -248,6 +251,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     deepResearch: false,
     semanticSearchTooltip: true,
     visualAnalysis: true, // Phase 2 — quota 30/mois
+    communityTake: true,
   },
 
   // Anciennement "pro" v0
@@ -286,8 +290,37 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     deepResearch: true,
     semanticSearchTooltip: true,
     visualAnalysis: true, // Phase 2 — illimité
+    communityTake: true,
   },
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACCЁS PAR FEATURE × PLATEFORME (mirror backend `is_feature_available`)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type CanAccessFeature = "community_take";
+export type Platform = "web" | "mobile" | "extension";
+
+const FEATURE_ACCESS: Record<CanAccessFeature, Record<Platform, PlanId[]>> = {
+  community_take: {
+    web: ["pro", "expert"],
+    mobile: ["pro", "expert"],
+    extension: ["pro", "expert"],
+  },
+};
+
+/**
+ * Gate une feature par plan ET plateforme. Mirror frontend canAccess
+ * et backend `is_feature_available(plan, feature, platform)`.
+ */
+export function canAccess(
+  plan: string | undefined | null,
+  feature: CanAccessFeature,
+  platform: Platform,
+): boolean {
+  const normalized = normalizePlanId(plan as string);
+  return FEATURE_ACCESS[feature]?.[platform]?.includes(normalized) ?? false;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PLAN INFO

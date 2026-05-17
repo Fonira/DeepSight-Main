@@ -137,6 +137,55 @@ export interface AnalysisSummary {
   // ET que la couche Mistral Vision a réussi (frames extraits + parse JSON).
   // null/undefined = pas de couche visuelle disponible (fallback empty state).
   visual_analysis?: VisualAnalysis | null;
+
+  // 💬 Community analysis (Mai 2026 — alembic 029, sprint Comments PR3 mobile)
+  // Verdict communauté issu du scrape commentaires + Mistral. NULL = pas
+  // analysé (free plan, scrape failed, timeout, vidéo sans commentaires).
+  community_analysis?: CommunityTake | null;
+}
+
+// ─── Community Take (verdict communauté) ──────────────────────────────────────
+// Mirror frontend `services/api.ts::CommunityTake` et backend
+// `comments/schemas.py::CommunityTake`. Persisté JSONB dans
+// `Summary.community_analysis` depuis alembic 029.
+
+export type CommunityAgreementSignal =
+  | "agree"
+  | "disagree"
+  | "mixed"
+  | "unclear";
+
+export type CommunityVoiceStance =
+  | "agree"
+  | "disagree"
+  | "neutral"
+  | "question";
+
+export interface CommunityTopVoice {
+  author: string;
+  excerpt: string;
+  stance: CommunityVoiceStance;
+  like_count: number;
+}
+
+export interface CommunitySentimentDistribution {
+  positive: number;
+  neutral: number;
+  negative: number;
+}
+
+export interface CommunityTake {
+  agreement_signal: CommunityAgreementSignal;
+  sentiment_distribution: CommunitySentimentDistribution;
+  controversies: string[];
+  community_summary: string;
+  top_voices: CommunityTopVoice[];
+  comments_analyzed: number;
+  model_used: string;
+  generated_at?: string;
+  is_truncated?: boolean;
+  disabled?: boolean;
+  insufficient_data?: boolean;
 }
 
 export interface AnalysisRequest {
