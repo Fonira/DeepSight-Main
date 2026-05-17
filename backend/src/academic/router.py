@@ -53,6 +53,29 @@ async def search_academic_papers(
         user_plan = current_user.plan or "free"
         print(f"Starting academic search for user plan: {user_plan}, keywords: {request.keywords}", flush=True)
 
+        # Plan gating for Phase 4 — Scholar deep crawl (spec 2026-05-17 § 6.3)
+        if request.deep_search:
+            if user_plan.lower() == "free":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={
+                        "code": "plan_required",
+                        "message": "Deep Scholar search requires Pro plan or higher.",
+                        "current_plan": user_plan,
+                        "required_plan": "pro",
+                        "feature": "scholar_deep_search",
+                        "action": "upgrade",
+                    },
+                )
+            from core.scholar_quota import check_and_increment_scholar_quota
+
+            allowed, error_payload = await check_and_increment_scholar_quota(session, current_user)
+            if not allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=error_payload,
+                )
+
         # Search all sources
         response = await academic_aggregator.search(request, user_plan)
 
@@ -71,6 +94,10 @@ async def search_academic_papers(
                 "message": "Search took too long. Please try again with more specific keywords.",
             },
         )
+    except HTTPException:
+        # Re-raise plan gating / quota errors verbatim (403, 429) — don't mask
+        # them as 500 below. Spec 2026-05-17 § 6.3.
+        raise
     except Exception as e:
         print(f"Academic search error: {str(e)}", flush=True)
         import traceback

@@ -113,6 +113,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "voice_chat_enabled": False,
             "voice_monthly_minutes": 0,
             "academic_papers_per_analysis": 5,
+            "scholar_deep_search_enabled": False,
+            "scholar_daily_quota": 0,
             "bibliography_export": False,
             "academic_full_text": False,
             "debate_enabled": False,
@@ -253,6 +255,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "voice_chat_enabled": True,  # ⚠ v2 H4 : Pro a voice
             "voice_monthly_minutes": 30,  # ⚠ v2 H4 : 30 min/mo
             "academic_papers_per_analysis": 15,
+            "scholar_deep_search_enabled": True,
+            "scholar_daily_quota": 5,
             "bibliography_export": True,
             "academic_full_text": False,
             "debate_enabled": True,
@@ -401,6 +405,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "voice_chat_enabled": True,
             "voice_monthly_minutes": 120,  # ⚠ v2 H4 : Expert 120 min/mo (etait 45 v0)
             "academic_papers_per_analysis": 50,
+            "scholar_deep_search_enabled": True,
+            "scholar_daily_quota": 30,
             "bibliography_export": True,
             "academic_full_text": True,
             "debate_enabled": True,

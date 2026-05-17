@@ -15,6 +15,7 @@ class AcademicSource(str, Enum):
     OPENALEX = "openalex"
     ARXIV = "arxiv"
     CROSSREF = "crossref"
+    SCHOLAR = "scholar"
 
 
 class BibliographyFormat(str, Enum):
@@ -68,6 +69,10 @@ class AcademicSearchRequest(BaseModel):
     year_to: Optional[int] = None
     include_preprints: bool = True
     fields_of_study: Optional[List[str]] = None
+    deep_search: bool = Field(
+        default=False,
+        description="Enable Phase 4 Google Scholar deep crawl (Pro+ only, opt-in)",
+    )
 
 
 class AcademicSearchResponse(BaseModel):

@@ -320,6 +320,7 @@ class DailyQuota(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     quota_date = Column(String(10), nullable=False)  # YYYY-MM-DD
     videos_used = Column(Integer, default=0)
+    scholar_queries = Column(Integer, default=0, nullable=False)
 
     __table_args__ = (Index("idx_daily_quota_user_date", "user_id", "quota_date", unique=True),)
 
@@ -648,8 +649,9 @@ class AcademicPaper(Base):
     summary_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Paper identification
-    external_id = Column(String(100), nullable=False)  # ID from source (ss_xxx, oa_xxx, arxiv_xxx)
+    external_id = Column(String(100), nullable=False)  # ID from source (ss_xxx, oa_xxx, arxiv_xxx, scholar_xxx)
     doi = Column(String(255), index=True)
+    scholar_id = Column(String(64), nullable=True)  # Internal Google Scholar cluster ID
 
     # Paper metadata
     title = Column(Text, nullable=False)

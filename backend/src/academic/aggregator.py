@@ -22,7 +22,17 @@ from .arxiv_client import arxiv_client
 from .crossref_client import crossref_client
 
 # Source weights for scoring
-SOURCE_WEIGHTS = {"semantic_scholar": 1.0, "openalex": 0.95, "crossref": 0.90, "arxiv": 0.85}
+SOURCE_WEIGHTS = {
+    "semantic_scholar": 1.0,
+    "openalex": 0.95,
+    "crossref": 0.90,
+    "arxiv": 0.85,
+    "scholar": 0.80,
+}
+
+# Phase 4 — Scholar deep crawl threshold. If Phases 1-3 already returned >=10 papers,
+# we skip Scholar (spec 2026-05-17 § 3.3). Tunable without deploy via SCHOLAR_ENABLED env.
+SCHOLAR_PHASE_THRESHOLD = 10
 
 # Tier limits for academic papers
 TIER_LIMITS = {
@@ -119,6 +129,24 @@ class AcademicAggregator:
         """Build a simple space-separated query (no quotes) for APIs that handle it better."""
         top_keywords = keywords[:max_keywords]
         return " ".join(kw.strip() for kw in top_keywords if kw.strip())
+
+    async def _search_scholar(self, query: str, request: AcademicSearchRequest) -> List[AcademicPaper]:
+        """Phase 4 — Google Scholar deep crawl (proxy Decodo, Pro+ only).
+
+        Delegates to `academic.scholar.search_scholar` which handles rate
+        limiting, circuit breaker, Redis cache, and CAPTCHA detection. Maps
+        the returned `ScholarPaper`s to `AcademicPaper`s. Returns [] on any
+        exception (graceful fallback, never raises).
+        """
+        try:
+            from .scholar import search_scholar, scholar_paper_to_academic
+
+            print(f"  → Scholar: {query[:60]}...", flush=True)
+            batch = await search_scholar(query, limit=20)
+            return [scholar_paper_to_academic(sp) for sp in batch.papers]
+        except Exception as e:
+            print(f"  Scholar error: {e}", flush=True)
+            return []
 
     async def search(
         self, request: AcademicSearchRequest, user_plan: str = "free", video_title: Optional[str] = None
@@ -265,6 +293,38 @@ class AcademicAggregator:
                         print(f"  Phase 3 added {len(result)} papers", flush=True)
             except asyncio.TimeoutError:
                 print("Phase 3 timeout", flush=True)
+
+        # ═══════════════════════════════════════════════════════════════
+        # PHASE 4 — Google Scholar deep crawl (NEW, conditional)
+        # spec 2026-05-17 § 3.3 — opt-in deep_search, Pro+, only if <10 papers
+        # ═══════════════════════════════════════════════════════════════
+        try:
+            from core.config import SCHOLAR_ENABLED
+        except Exception:
+            SCHOLAR_ENABLED = True
+
+        should_use_scholar = (
+            SCHOLAR_ENABLED
+            and getattr(request, "deep_search", False)
+            and user_plan in ("pro", "expert")
+            and len(all_papers) < SCHOLAR_PHASE_THRESHOLD
+        )
+        if should_use_scholar:
+            print(f"Phase 4 — Scholar activated (current papers={len(all_papers)})", flush=True)
+            scholar_query = focused_query or simple_query
+            try:
+                scholar_papers = await asyncio.wait_for(
+                    self._search_scholar(scholar_query, request),
+                    timeout=20.0,
+                )
+                if scholar_papers:
+                    sources_queried.append("scholar")
+                    all_papers.extend(scholar_papers)
+                    print(f"  Phase 4 added {len(scholar_papers)} papers from Scholar", flush=True)
+                else:
+                    print("  Phase 4 returned 0 papers (CAPTCHA, rate limit, or empty SERP)", flush=True)
+            except asyncio.TimeoutError:
+                print("  Phase 4 timeout — graceful fallback", flush=True)
 
         print(f"Total papers before deduplication: {len(all_papers)}", flush=True)
 
