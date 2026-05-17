@@ -30,6 +30,7 @@ import {
   Calendar,
   Crown,
   Layers,
+  Plus,
   RefreshCw,
   Sparkles,
   Trash2,
@@ -875,13 +876,26 @@ const HubWorkspacesPage: React.FC = () => {
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-8 pt-14 lg:pt-8">
           <div className="max-w-5xl mx-auto">
             {!isDetailMode && (
-              <header className="mb-8">
-                <h1 className="text-2xl sm:text-3xl font-semibold text-white mb-2">
-                  Mes Workspaces
-                </h1>
-                <p className="text-sm text-text-secondary">
-                  Tableaux Miro pour explorer plusieurs analyses ensemble.
-                </p>
+              <header className="mb-8 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h1 className="text-2xl sm:text-3xl font-semibold text-white mb-2">
+                    Mes Workspaces
+                  </h1>
+                  <p className="text-sm text-text-secondary">
+                    Tableaux Miro pour explorer plusieurs analyses ensemble.
+                  </p>
+                </div>
+                {isExpert && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/hub?newWorkspace=1")}
+                    data-testid="hub-workspaces-create-cta"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-400/30 text-sm font-medium text-indigo-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Créer un workspace
+                  </button>
+                )}
               </header>
             )}
             {renderInner()}
