@@ -34,7 +34,7 @@ from auth.dependencies import (
 )
 from core.config import CATEGORIES, get_mistral_key
 from billing.plan_config import get_limits
-from core.http_client import get_proxied_client, shared_http_client, record_proxied_response
+from core.http_client import get_proxied_client, shared_http_client, record_proxied_response, smart_request
 from core.logging import logger
 from core.moderation_service import moderate_text
 
@@ -375,12 +375,15 @@ async def quick_chat_prepare(
     resolved_url = url
     if platform == "tiktok" and ("vm.tiktok.com" in url or "vt.tiktok.com" in url):
         try:
-            async with get_proxied_client(timeout=8.0) as client:
-                head_resp = await client.head(url)
-                await record_proxied_response(head_resp, provider="tiktok_resolve_short_quickchat")
-                if head_resp.status_code in (200, 301, 302) and "tiktok.com" in str(head_resp.url):
-                    resolved_url = str(head_resp.url).split("?")[0]  # Drop tracking params
-                    logger.info(f"[QUICK CHAT] Resolved short URL → {resolved_url[:80]}")
+            head_resp = await smart_request(
+                "HEAD",
+                url,
+                provider="tiktok_resolve_short_quickchat",
+                direct_timeout=8.0,
+            )
+            if head_resp.status_code in (200, 301, 302) and "tiktok.com" in str(head_resp.url):
+                resolved_url = str(head_resp.url).split("?")[0]  # Drop tracking params
+                logger.info(f"[QUICK CHAT] Resolved short URL → {resolved_url[:80]}")
         except Exception as e:
             logger.error(f"[QUICK CHAT] Short URL resolution failed: {e}")
 
@@ -419,21 +422,22 @@ async def quick_chat_prepare(
     # 3b. Fallback thumbnail TikTok via oEmbed si manquant (proxy Decodo — audit B6)
     if platform == "tiktok" and not thumbnail_url:
         try:
-            async with get_proxied_client(timeout=5.0) as client:
-                oembed_resp = await client.get(
-                    "https://www.tiktok.com/oembed",
-                    params={"url": resolved_url},
-                )
-                await record_proxied_response(oembed_resp, provider="tiktok_oembed_thumbnail")
-                if oembed_resp.status_code == 200:
-                    oembed_data = oembed_resp.json()
-                    thumbnail_url = oembed_data.get("thumbnail_url", "")
-                    # Also grab title/author from oEmbed if still generic
-                    if title in ("TikTok Video", "Video sans titre", "", "TikTok"):
-                        title = str(oembed_data.get("title", title))[:255]
-                    if not channel or channel in ("Unknown", ""):
-                        channel = str(oembed_data.get("author_name", channel))[:255]
-                    logger.warning(f"[QUICK CHAT] oEmbed fallback: thumb={bool(thumbnail_url)}, title={title[:40]}")
+            oembed_resp = await smart_request(
+                "GET",
+                "https://www.tiktok.com/oembed",
+                provider="tiktok_oembed_thumbnail",
+                direct_timeout=5.0,
+                params={"url": resolved_url},
+            )
+            if oembed_resp.status_code == 200:
+                oembed_data = oembed_resp.json()
+                thumbnail_url = oembed_data.get("thumbnail_url", "")
+                # Also grab title/author from oEmbed if still generic
+                if title in ("TikTok Video", "Video sans titre", "", "TikTok"):
+                    title = str(oembed_data.get("title", title))[:255]
+                if not channel or channel in ("Unknown", ""):
+                    channel = str(oembed_data.get("author_name", channel))[:255]
+                logger.warning(f"[QUICK CHAT] oEmbed fallback: thumb={bool(thumbnail_url)}, title={title[:40]}")
         except Exception as e:
             logger.error(f"[QUICK CHAT] oEmbed fallback failed: {e}")
 

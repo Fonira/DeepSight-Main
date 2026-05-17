@@ -32,7 +32,7 @@ from transcripts.audio_utils import (
     _yt_dlp_extra_args,
 )
 from core.config import get_supadata_key, get_mistral_key
-from core.http_client import get_proxied_client, record_proxied_response
+from core.http_client import get_proxied_client, record_proxied_response, smart_request
 
 logger = logging.getLogger(__name__)
 
@@ -428,15 +428,16 @@ async def _resolve_short_url(url: str) -> Optional[str]:
         return url  # Déjà une URL longue
 
     try:
-        async with get_proxied_client(
+        resp = await smart_request(
+            "HEAD",
+            url,
+            provider="tiktok_resolve_short",
+            direct_timeout=15.0,
             follow_redirects=True,
-            timeout=15.0,
-        ) as client:
-            resp = await client.head(url)
-            await record_proxied_response(resp, provider="tiktok_resolve_short")
-            resolved = str(resp.url)
-            logger.info(f"[TIKTOK] Resolved short URL → {resolved}")
-            return resolved
+        )
+        resolved = str(resp.url)
+        logger.info(f"[TIKTOK] Resolved short URL → {resolved}")
+        return resolved
     except Exception as e:
         logger.warning(f"[TIKTOK] Short URL resolution failed: {e}")
         return None
@@ -462,14 +463,17 @@ async def _get_info_via_oembed(url: str) -> Optional[Dict[str, Any]]:
         # 3. Appeler l'API oEmbed (proxy Decodo — TikTok 429 IP datacenter)
         oembed_url = f"https://www.tiktok.com/oembed?url={resolved_url}"
 
-        async with get_proxied_client(timeout=10.0) as client:
-            resp = await client.get(oembed_url)
-            await record_proxied_response(resp, provider="tiktok_oembed")
-            if resp.status_code != 200:
-                logger.warning(f"[TIKTOK] oEmbed returned {resp.status_code}")
-                return None
+        resp = await smart_request(
+            "GET",
+            oembed_url,
+            provider="tiktok_oembed",
+            direct_timeout=10.0,
+        )
+        if resp.status_code != 200:
+            logger.warning(f"[TIKTOK] oEmbed returned {resp.status_code}")
+            return None
 
-            data = resp.json()
+        data = resp.json()
 
         title = data.get("title", "TikTok Video")[:500]
         author = data.get("author_name", "Unknown")

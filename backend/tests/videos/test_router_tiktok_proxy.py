@@ -63,34 +63,39 @@ class TestSourceLevelLock:
         # Must be in the http_client import line (next to shared_http_client)
         assert "from core.http_client import" in src
 
-    def test_at_least_2_proxied_call_sites(self):
-        """2 TikTok Quick Chat routes must use get_proxied_client :
-        short URL HEAD + oEmbed GET."""
+    def test_at_least_2_proxy_capable_call_sites(self):
+        """2 TikTok Quick Chat routes must use a proxy-capable client.
+
+        Post smart-route migration (2026-05-17), short URL HEAD + oEmbed GET
+        use `smart_request` (direct-first with proxy fallback). Both still
+        count as proxy-capable for regression protection.
+        """
         src = _read_router_source()
-        count = src.count("get_proxied_client(")
+        count = src.count("get_proxied_client(") + src.count("smart_request(")
         assert count >= 2, (
-            f"Expected ≥ 2 get_proxied_client() call sites in videos/router.py, "
-            f"got {count}. Required: TikTok short URL HEAD + TikTok oEmbed GET."
+            f"Expected ≥ 2 proxy-capable call sites in videos/router.py "
+            f"(get_proxied_client + smart_request), got {count}. "
+            "Required: TikTok short URL HEAD + TikTok oEmbed GET."
         )
 
-    def test_proxied_clients_target_tiktok(self):
-        """Each `get_proxied_client(...)` block in router.py should appear
-        in a 25-line window that mentions tiktok (URL, oembed, vm.tiktok, etc.)."""
+    def test_proxy_capable_clients_target_tiktok(self):
+        """Each proxy-capable call (`get_proxied_client` or `smart_request`)
+        in router.py should appear in a window that mentions tiktok."""
         src = _read_router_source()
         lines = src.splitlines()
 
-        proxied_indices = [
+        proxy_indices = [
             i for i, line in enumerate(lines)
-            if re.search(r"\bget_proxied_client\s*\(", line)
+            if re.search(r"\b(get_proxied_client|smart_request)\s*\(", line)
         ]
-        assert proxied_indices, "No get_proxied_client(...) call sites found"
+        assert proxy_indices, "No proxy-capable call sites found in router.py"
 
-        for idx in proxied_indices:
+        for idx in proxy_indices:
             window = "\n".join(
-                lines[max(0, idx - 15):min(len(lines), idx + 5)]
+                lines[max(0, idx - 5):min(len(lines), idx + 15)]
             ).lower()
             assert "tiktok" in window or "oembed" in window, (
-                f"get_proxied_client(...) at line {idx + 1} does not appear in "
+                f"Proxy-capable call at line {idx + 1} does not appear in "
                 "a TikTok context — only TikTok routes should be proxied in "
                 f"router.py. Context window:\n{window}"
             )
@@ -120,33 +125,32 @@ class TestSourceLevelLock:
                 f"instead (audit B6). Context:\n{window}"
             )
 
-    def test_short_url_head_uses_proxy(self):
-        """The short URL HEAD logic for vm.tiktok.com MUST go through proxy."""
+    def test_short_url_head_uses_proxy_capable(self):
+        """The short URL HEAD for vm.tiktok.com MUST go through a proxy-capable client."""
         src = _read_router_source()
-        # Find the resolved_url logic block
         idx = src.find('"vm.tiktok.com" in url')
         assert idx > -1, (
             "Could not find Quick Chat short-URL resolver block — was the "
             "code refactored? Update this test."
         )
-        # Check that the next 500 chars contain get_proxied_client
         block = src[idx:idx + 1000]
-        assert "get_proxied_client" in block, (
-            "Quick Chat short URL resolution does not use get_proxied_client — "
-            "vm.tiktok.com / vt.tiktok.com HEAD must go via Decodo."
+        assert ("get_proxied_client" in block) or ("smart_request" in block), (
+            "Quick Chat short URL resolution does not use a proxy-capable client "
+            "(get_proxied_client or smart_request) — vm.tiktok.com / vt.tiktok.com "
+            "HEAD must be able to route via Decodo."
         )
 
-    def test_oembed_uses_proxy(self):
-        """The TikTok oEmbed thumbnail fallback MUST go through proxy."""
+    def test_oembed_uses_proxy_capable(self):
+        """The TikTok oEmbed thumbnail fallback MUST go through a proxy-capable client."""
         src = _read_router_source()
         idx = src.find('"https://www.tiktok.com/oembed"')
         assert idx > -1, (
             "Could not find TikTok oEmbed URL string — was the code "
             "refactored? Update this test."
         )
-        # Check ~500 chars BEFORE the URL for the proxied client context
         block = src[max(0, idx - 500):idx + 200]
-        assert "get_proxied_client" in block, (
-            "TikTok oEmbed fallback does not use get_proxied_client — TikTok "
-            "rate-limits 429 on Hetzner datacenter IP."
+        assert ("get_proxied_client" in block) or ("smart_request" in block), (
+            "TikTok oEmbed fallback does not use a proxy-capable client "
+            "(get_proxied_client or smart_request) — TikTok rate-limits 429 on "
+            "Hetzner datacenter IP."
         )

@@ -62,7 +62,7 @@ from core.config import (
     get_youtube_proxy,
     TRANSCRIPT_CONFIG,
 )
-from core.http_client import shared_http_client, get_proxied_client, record_proxied_response
+from core.http_client import shared_http_client, get_proxied_client, record_proxied_response, smart_request
 
 # 💾 Cache pour les transcripts (TTL 24h)
 try:
@@ -616,23 +616,27 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     print("  🔄 [OEMBED] Trying oembed fallback...", flush=True)
     try:
         url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
-        async with get_proxied_client(timeout=10.0) as client:
-            response = await client.get(url, headers={"User-Agent": get_random_user_agent()})
-            await record_proxied_response(response, provider="youtube_oembed")
-            if response.status_code == 200:
-                data = response.json()
-                print("  ⚠️ [OEMBED] Got title but no duration", flush=True)
-                return {
-                    "video_id": video_id,
-                    "title": data.get("title", "Unknown"),
-                    "channel": data.get("author_name", "Unknown"),
-                    "thumbnail_url": f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg",
-                    "duration": 0,  # oembed ne fournit pas la durée
-                    "upload_date": None,
-                    "description": "",
-                    "tags": [],
-                    "categories": [],
-                }
+        response = await smart_request(
+            "GET",
+            url,
+            provider="youtube_oembed",
+            direct_timeout=10.0,
+            headers={"User-Agent": get_random_user_agent()},
+        )
+        if response.status_code == 200:
+            data = response.json()
+            print("  ⚠️ [OEMBED] Got title but no duration", flush=True)
+            return {
+                "video_id": video_id,
+                "title": data.get("title", "Unknown"),
+                "channel": data.get("author_name", "Unknown"),
+                "thumbnail_url": f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg",
+                "duration": 0,  # oembed ne fournit pas la durée
+                "upload_date": None,
+                "description": "",
+                "tags": [],
+                "categories": [],
+            }
     except Exception as e:
         print(f"  ⚠️ [OEMBED] error: {e}", flush=True)
 
