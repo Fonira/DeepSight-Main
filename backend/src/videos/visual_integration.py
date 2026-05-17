@@ -30,7 +30,7 @@ from typing import Any, Dict, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.http_client import get_proxied_client
+from core.http_client import get_proxied_client, record_proxied_response
 from db.database import User, VisualAnalysisQuota
 from transcripts.audio_utils import _yt_dlp_extra_args, executor as audio_executor
 
@@ -481,6 +481,7 @@ async def _download_tiktok_video_no_watermark(url: str, *, log_tag: str) -> Opti
     try:
         async with get_proxied_client(timeout=_TIKWM_TIMEOUT_S) as client:
             resp = await client.post(_TIKWM_API_URL, data={"url": url})
+            await record_proxied_response(resp, provider="tikwm_api")
         if resp.status_code != 200:
             logger.warning("[%s] tikwm API HTTP %d for %s", log_tag, resp.status_code, url)
             return None
@@ -506,6 +507,7 @@ async def _download_tiktok_video_no_watermark(url: str, *, log_tag: str) -> Opti
             headers={"Referer": "https://www.tiktok.com/"},
         ) as client:
             r = await client.get(media_url)
+            await record_proxied_response(r, provider="tikwm_cdn_download")
         if r.status_code != 200:
             logger.warning("[%s] tikwm video CDN HTTP %d for %s", log_tag, r.status_code, media_url[:80])
             return None
