@@ -343,11 +343,12 @@ export function AdminProxyStatsTab({ adminFetch, language }: Props) {
                   fontSize: "12px",
                 }}
                 labelStyle={{ color: "rgba(255,255,255,0.7)" }}
-                formatter={(value: number, name: string) => {
+                formatter={(value: number | undefined, name: string | undefined) => {
+                  if (value === undefined) return ["—", name ?? ""];
                   if (name === "mb_total") return [`${value.toFixed(2)} MB`, "Total"];
                   if (name === "requests_total")
                     return [value.toLocaleString(), t("Requêtes", "Requests")];
-                  return [value, name];
+                  return [value, name ?? ""];
                 }}
               />
               <Legend
@@ -409,10 +410,11 @@ export function AdminProxyStatsTab({ adminFetch, language }: Props) {
                     fontSize: "12px",
                   }}
                   labelStyle={{ color: "rgba(255,255,255,0.7)" }}
-                  formatter={(value: number, name: string) => {
+                  formatter={(value: number | undefined, name: string | undefined) => {
+                    if (value === undefined) return ["—", name ?? ""];
                     if (name === "requests") return [value.toLocaleString(), t("Requêtes", "Requests")];
                     if (name === "share_pct") return [`${value.toFixed(1)}%`, t("Part", "Share")];
-                    return [value, name];
+                    return [value, name ?? ""];
                   }}
                 />
                 <Bar dataKey="requests" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
