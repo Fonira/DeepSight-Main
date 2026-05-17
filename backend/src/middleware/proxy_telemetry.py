@@ -266,7 +266,7 @@ async def _upsert_usage(
                     :bytes_in,
                     :bytes_out,
                     1,
-                    jsonb_build_object(:provider, 1)
+                    jsonb_build_object(CAST(:provider AS text), 1)
                 )
                 ON CONFLICT (date) DO UPDATE SET
                     bytes_in = proxy_usage_daily.bytes_in + EXCLUDED.bytes_in,
@@ -274,10 +274,10 @@ async def _upsert_usage(
                     requests_total = proxy_usage_daily.requests_total + 1,
                     requests_by_provider = jsonb_set(
                         COALESCE(proxy_usage_daily.requests_by_provider, '{}'::jsonb),
-                        ARRAY[:provider],
+                        ARRAY[CAST(:provider AS text)],
                         to_jsonb(
                             COALESCE(
-                                (proxy_usage_daily.requests_by_provider->>:provider)::int,
+                                (proxy_usage_daily.requests_by_provider->>CAST(:provider AS text))::int,
                                 0
                             ) + 1
                         ),
