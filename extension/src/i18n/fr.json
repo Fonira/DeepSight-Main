@@ -12,7 +12,8 @@
     "createAccount": "Créer un compte",
     "unlock": "Débloquer",
     "analyses": "analyses",
-    "credits": "crédits"
+    "credits": "crédits",
+    "cancel": "Annuler"
   },
   "login": {
     "tagline": "Ne subissez plus vos vidéos — interrogez-les.",
