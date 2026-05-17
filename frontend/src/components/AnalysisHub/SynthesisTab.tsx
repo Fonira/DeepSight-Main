@@ -34,6 +34,7 @@ import { KeywordsModal } from "../KeywordsModal";
 import { AnalysisActionBar } from "../analysis/AnalysisActionBar";
 import { DebateContextualCTA } from "../debate";
 import { CommunityTakeSection } from "../CommunityTakeSection";
+import { ExternalSourcesSection } from "../ExternalSourcesSection";
 import { videoApi, shareApi } from "../../services/api";
 import { sanitizeTitle } from "../../utils/sanitize";
 import type { Summary, EnrichedConcept } from "../../services/api";
@@ -265,6 +266,18 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         <div className="mt-6 not-prose">
           <CommunityTakeSection
             take={selectedSummary.community_analysis}
+            userPlan={user?.plan}
+            language={language}
+            onUpgradeClick={() => onNavigate("/pricing")}
+          />
+        </div>
+
+        {/* 🔗 Sources externes citées — scrape + Mistral mini-summary (PR3.5 web).
+            Spec : docs/superpowers/specs/2026-05-17-pages-externes-citees.md §9
+            Plan gating : free → CTA upgrade, pro/expert → cards horizontales. */}
+        <div className="mt-6 not-prose">
+          <ExternalSourcesSection
+            data={selectedSummary.external_pages}
             userPlan={user?.plan}
             language={language}
             onUpgradeClick={() => onNavigate("/pricing")}
