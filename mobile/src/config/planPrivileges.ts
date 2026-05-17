@@ -298,11 +298,16 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
 // ACCЁS PAR FEATURE × PLATEFORME (mirror backend `is_feature_available`)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type CanAccessFeature = "community_take";
+export type CanAccessFeature = "community_take" | "external_sources";
 export type Platform = "web" | "mobile" | "extension";
 
 const FEATURE_ACCESS: Record<CanAccessFeature, Record<Platform, PlanId[]>> = {
   community_take: {
+    web: ["pro", "expert"],
+    mobile: ["pro", "expert"],
+    extension: ["pro", "expert"],
+  },
+  external_sources: {
     web: ["pro", "expert"],
     mobile: ["pro", "expert"],
     extension: ["pro", "expert"],
