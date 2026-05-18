@@ -27,12 +27,16 @@ const SOURCE_COLORS: Record<string, { bg: string; text: string }> = {
   semantic_scholar: { bg: "bg-blue-600", text: "text-white" },
   openalex: { bg: "bg-red-600", text: "text-white" },
   arxiv: { bg: "bg-rose-700", text: "text-white" },
+  crossref: { bg: "bg-emerald-700", text: "text-white" },
+  scholar: { bg: "bg-violet-600", text: "text-white" },
 };
 
 const SOURCE_NAMES: Record<string, string> = {
   semantic_scholar: "Semantic Scholar",
   openalex: "OpenAlex",
   arxiv: "arXiv",
+  crossref: "Crossref",
+  scholar: "via Scholar",
 };
 
 export const PaperCard: React.FC<PaperCardProps> = ({

@@ -92,6 +92,10 @@ class AcademicEnrichRequest(BaseModel):
 
     summary_id: str
     max_papers: Optional[int] = None
+    deep_search: bool = Field(
+        default=False,
+        description="Enable Phase 4 Google Scholar deep crawl (Pro+ only, opt-in)",
+    )
 
 
 class BibliographyExportRequest(BaseModel):
