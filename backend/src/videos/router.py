@@ -3629,6 +3629,18 @@ async def _analyze_video_background_v6(
             except Exception as img_err:
                 logger.error(f"⚠️ [IMAGES] Keyword image enqueue failed (non-blocking): {img_err}")
 
+            # 🎨 Tutor concepts: pré-gen top 3 doodles pour le carrousel (non-blocking).
+            # Sprint 2026-05-18 — Phase 5.3. La task ouvre sa propre session DB
+            # (la session HTTP `session` ici sera fermée avant l'exécution).
+            try:
+                from tutor.concepts_service import enqueue_top_concepts_doodles
+
+                asyncio.create_task(
+                    enqueue_top_concepts_doodles(summary_id, user_id, top_n=3)
+                )
+            except Exception as td_err:
+                logger.warning(f"⚠️ enqueue_top_concepts_doodles failed: {td_err}")
+
             # 🖼️ Persist thumbnail to R2 (non-blocking)
             try:
                 from storage.thumbnail_generator import ensure_thumbnail
