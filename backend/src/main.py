@@ -1259,6 +1259,19 @@ if TUTOR_ROUTER_AVAILABLE:
     app.include_router(tutor_router, prefix="/api/tutor", tags=["Tutor"])
     logger.info("🎓 Tutor router loaded (POST /api/tutor/session/start)")
 
+# 🎨 Tutor concepts router (carrousel doodles — sprint 2026-05-18)
+try:
+    from tutor.concepts_router import router as tutor_concepts_router
+
+    app.include_router(
+        tutor_concepts_router,
+        prefix="/api/tutor/concepts",
+        tags=["Tutor Concepts"],
+    )
+    logger.info("🎨 Tutor concepts router loaded (GET/POST /api/tutor/concepts)")
+except Exception as e:
+    logger.warning(f"⚠️ tutor_concepts_router not loaded: {e}")
+
 # 🎮 Gamification router (XP, badges, streaks)
 if GAMIFICATION_ROUTER_AVAILABLE:
     app.include_router(gamification_router, prefix="/api/gamification", tags=["Gamification"])
