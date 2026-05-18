@@ -2062,13 +2062,20 @@ async def run_schema_migrations():
             fun_score FLOAT DEFAULT 0.5,
             retry_count INTEGER DEFAULT 0,
             error_message TEXT,
+            style VARCHAR(30) NOT NULL DEFAULT 'photo',
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW()
         )
         """,
+        # Sprint 2026-05-18 — Carrousel concepts illustrés Tuteur : la colonne `style`
+        # discrimine 'photo' (legacy "Le Saviez-Vous") vs 'tutor_doodle' (Tuteur concept
+        # carousel). Le term_hash inclut désormais le style, donc un même terme peut
+        # avoir une photo ET un doodle cohabiter sans collision unique constraint.
+        "ALTER TABLE keyword_images ADD COLUMN IF NOT EXISTS style VARCHAR(30) NOT NULL DEFAULT 'photo'",
         "CREATE INDEX IF NOT EXISTS idx_ki_hash ON keyword_images(term_hash)",
         "CREATE INDEX IF NOT EXISTS idx_ki_status ON keyword_images(status)",
         "CREATE INDEX IF NOT EXISTS idx_ki_fun ON keyword_images(fun_score DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_ki_style_status ON keyword_images(style, status)",
         # 🎙️ Voice sessions — debate support migration (Apr 2026)
         """
 DO $$
