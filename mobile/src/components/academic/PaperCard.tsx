@@ -28,12 +28,16 @@ const SOURCE_COLORS: Record<string, string> = {
   semantic_scholar: "#1857B6",
   openalex: "#C93C20",
   arxiv: "#B31B1B",
+  crossref: "#047857",
+  scholar: "#7C3AED",
 };
 
 const SOURCE_NAMES: Record<string, string> = {
   semantic_scholar: "Semantic Scholar",
   openalex: "OpenAlex",
   arxiv: "arXiv",
+  crossref: "Crossref",
+  scholar: "via Scholar",
 };
 
 const PaperCardComponent: React.FC<PaperCardProps> = ({

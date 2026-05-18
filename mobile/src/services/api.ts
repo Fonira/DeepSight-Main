@@ -958,7 +958,7 @@ export interface AcademicPaper {
   citation_count: number;
   url?: string;
   pdf_url?: string;
-  source: "semantic_scholar" | "openalex" | "arxiv";
+  source: "semantic_scholar" | "openalex" | "arxiv" | "crossref" | "scholar";
   relevance_score: number;
   is_open_access: boolean;
   keywords: string[];
@@ -999,14 +999,19 @@ export const academicApi = {
     });
   },
 
-  // Enrich a summary with academic sources
+  // Enrich a summary with academic sources.
+  // When deep_search=true (Pro+ only), also queries Google Scholar via Phase 4.
   async enrich(
     summaryId: string,
-    maxPapers?: number,
+    options?: { maxPapers?: number; deep_search?: boolean },
   ): Promise<AcademicSearchResponse> {
+    const { maxPapers, deep_search } = options ?? {};
+    const body: Record<string, unknown> = {};
+    if (maxPapers !== undefined) body.max_papers = maxPapers;
+    if (deep_search) body.deep_search = true;
     return request(`/api/academic/enrich/${summaryId}`, {
       method: "POST",
-      body: maxPapers ? { max_papers: maxPapers } : undefined,
+      body: Object.keys(body).length > 0 ? body : undefined,
       timeout: TIMEOUTS.FACT_CHECK,
     });
   },

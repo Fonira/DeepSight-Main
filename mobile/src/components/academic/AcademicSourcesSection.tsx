@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Switch,
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -49,6 +51,7 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
   const [tierLimitReached, setTierLimitReached] = useState(false);
   const [tierLimit, setTierLimit] = useState<number | null>(null);
   const [totalFound, setTotalFound] = useState(0);
+  const [deepSearch, setDeepSearch] = useState(false);
 
   const [selectedPapers, setSelectedPapers] = useState<Set<string>>(new Set());
   const [showExportModal, setShowExportModal] = useState(false);
@@ -56,7 +59,19 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
   const plan = normalizePlanId(userPlan);
   const canSearch = hasFeature(plan, "academicSearch");
   const canExport = hasFeature(plan, "bibliographyExport");
+  const canDeepSearch = plan === "pro" || plan === "expert";
   const paperLimit = getLimit(plan, "academicPapersPerAnalysis");
+
+  const showScholarTooltip = useCallback(() => {
+    Alert.alert(
+      tr("Recherche approfondie (Scholar)", "Deep search (Scholar)"),
+      tr(
+        "Inclut Google Scholar pour plus de profondeur. Limite 5/jour (Pro) ou 30/jour (Expert).",
+        "Includes Google Scholar for deeper coverage. Limit 5/day (Pro) or 30/day (Expert).",
+      ),
+      [{ text: "OK" }],
+    );
+  }, [tr]);
 
   const handleSearch = useCallback(async () => {
     if (!canSearch) {
@@ -69,7 +84,9 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const response = await academicApi.enrich(summaryId);
+      const response = await academicApi.enrich(summaryId, {
+        deep_search: canDeepSearch && deepSearch,
+      });
       setPapers(response.papers);
       setTotalFound(response.total_found);
       setTierLimitReached(response.tier_limit_reached);
@@ -85,7 +102,7 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [summaryId, canSearch, onUpgrade, tr]);
+  }, [summaryId, canSearch, canDeepSearch, deepSearch, onUpgrade, tr]);
 
   const handleSelectPaper = (paper: AcademicPaper) => {
     setSelectedPapers((prev) => {
@@ -165,6 +182,49 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
               "Find scientific papers related to this analysis from Semantic Scholar, OpenAlex, and arXiv.",
             )}
           </Text>
+
+          {/* Deep search toggle (Pro+) / CTA (Free) — spec §13.2 */}
+          {canDeepSearch ? (
+            <View style={styles.deepSearchRow} testID="deep-search-row">
+              <Switch
+                value={deepSearch}
+                onValueChange={setDeepSearch}
+                trackColor={{ false: colors.border, true: "#7C3AED" }}
+                thumbColor="#FFFFFF"
+                testID="deep-search-switch"
+              />
+              <Text
+                style={[styles.deepSearchLabel, { color: colors.textSecondary }]}
+              >
+                {tr("Recherche approfondie (Scholar)", "Deep search (Scholar)")}
+              </Text>
+              <TouchableOpacity
+                onPress={showScholarTooltip}
+                accessibilityLabel={tr(
+                  "Plus d'informations sur Deep search",
+                  "More info about Deep search",
+                )}
+                hitSlop={8}
+                testID="deep-search-tooltip"
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={16}
+                  color={colors.textTertiary}
+                />
+              </TouchableOpacity>
+            </View>
+          ) : plan === "free" ? (
+            <Pressable
+              onPress={() => onUpgrade?.()}
+              style={styles.deepSearchCta}
+              testID="deep-search-upgrade-cta"
+            >
+              <Text style={[styles.deepSearchCtaText, { color: "#A78BFA" }]}>
+                {tr("Deep search Pro+ →", "Deep search Pro+ →")}
+              </Text>
+            </Pressable>
+          ) : null}
 
           <Button
             title={tr("Rechercher des sources", "Find Sources")}
@@ -378,6 +438,25 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     minWidth: 200,
+  },
+  deepSearchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
+  },
+  deepSearchLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
+  },
+  deepSearchCta: {
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  deepSearchCtaText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.bodyMedium,
   },
   upgradeHint: {
     fontSize: Typography.fontSize.xs,

@@ -958,8 +958,17 @@
     "sources": {
       "semanticScholar": "Semantic Scholar",
       "openAlex": "OpenAlex",
-      "arxiv": "arXiv"
+      "arxiv": "arXiv",
+      "crossref": "Crossref",
+      "scholar": "via Scholar"
     },
+    "deepSearchToggle": "Deep search (Scholar)",
+    "deepSearchTooltip": "Includes Google Scholar for deeper coverage. Limit 5/day (Pro) or 30/day (Expert).",
+    "deepSearchUpgradeFree": "Deep search Pro+ →",
+    "scholarBadge": "via Scholar",
+    "scholarDisclaimer": "Data provided by Google Scholar for informational use. Verify the original sources.",
+    "scholarQuotaReached": "Scholar limit reached ({{current}}/{{limit}}). Resets at midnight UTC.",
+    "scholarRequiresPro": "Scholar search requires a Pro or Expert plan.",
     "exportModal": {
       "title": "Export Bibliography",
       "chooseFormat": "Choose format",
