@@ -28,6 +28,7 @@ import { PromoBanner } from "../components/PromoBanner";
 import { VoiceCallButton } from "../components/VoiceCallButton";
 import { SuggestionPills } from "../components/SuggestionPills";
 import { CommunityTakeCompact } from "../components/CommunityTakeCompact";
+import { ExternalSourcesCompact } from "../components/ExternalSourcesCompact";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -793,6 +794,15 @@ export const MainView: React.FC<MainViewProps> = ({
                 Free → CTA, Pro/Expert → expandable signal + CTA web. */}
             <CommunityTakeCompact
               take={analysis.summary.community_analysis ?? null}
+              summaryId={analysis.summaryId}
+              userPlanId={userPlanId}
+            />
+
+            {/* 🔗 Sources externes citées (Sprint External Pages PR4 ext).
+                Spec : docs/superpowers/specs/2026-05-17-pages-externes-citees.md §9.4
+                Free → CTA, Pro/Expert → chips horizontales + CTA web. */}
+            <ExternalSourcesCompact
+              data={analysis.summary.external_pages ?? null}
               summaryId={analysis.summaryId}
               userPlanId={userPlanId}
             />

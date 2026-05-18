@@ -342,5 +342,14 @@
     "disabledNotice": "Comments are disabled on this video.",
     "insufficientData": "Too few comments for a reliable verdict.",
     "openFullWeb": "Read the full analysis in the app"
+  },
+  "externalSources": {
+    "label": "sources cited",
+    "labelSingular": "source cited",
+    "viewAllOnWeb": "View details in app",
+    "upgradeRequired": "External sources with Pro",
+    "upgradeDescription": "Mini Mistral summary for each link cited in the description",
+    "upgradeCta": "Upgrade",
+    "openExternalAriaLabel": "Open {host} in a new tab"
   }
 }
