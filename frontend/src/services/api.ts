@@ -25,6 +25,11 @@ import type {
   SessionTurnResponse,
   SessionEndResponse,
 } from "../types/tutor";
+import type {
+  TutorConceptsResponse,
+  GenerateConceptRequest,
+  GenerateConceptResponse,
+} from "../types/conceptImage";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ⚙️ CONFIGURATION
@@ -1740,6 +1745,48 @@ export const tutorApi = {
    */
   async sessionEnd(sessionId: string): Promise<SessionEndResponse> {
     return request<SessionEndResponse>(`/api/tutor/session/${sessionId}/end`, {
+      method: "POST",
+      body: {},
+    });
+  },
+
+  // ── Concept illustrations (sprint 2026-05-18 — Expert only) ──────────────
+  // Endpoints livrés par backend/src/tutor/concepts_router.py.
+  // Le polling côté store applique un back-off 5s → 10s → 30s avec arrêt
+  // automatique après 60s sans `pending`.
+
+  /**
+   * 📜 Liste des concepts illustrés du user (cache R2 + statuses).
+   * Endpoint: GET /api/tutor/concepts?limit={limit}
+   */
+  async listConcepts(limit = 20): Promise<TutorConceptsResponse> {
+    return request<TutorConceptsResponse>(
+      `/api/tutor/concepts?limit=${limit}`,
+    );
+  },
+
+  /**
+   * ✨ Génère (ou récupère depuis cache) une illustration pour un concept.
+   * Endpoint: POST /api/tutor/concepts/generate
+   *
+   * Idempotent : si déjà ready en cache, retourne l'URL sans consommer
+   * le cap quotidien (300/jour global).
+   */
+  async generateConcept(
+    payload: GenerateConceptRequest,
+  ): Promise<GenerateConceptResponse> {
+    return request<GenerateConceptResponse>("/api/tutor/concepts/generate", {
+      method: "POST",
+      body: payload as unknown as Record<string, unknown>,
+    });
+  },
+
+  /**
+   * 🔄 Hook UX V1 : noop fonctionnel pour bouton « Rafraîchir » du carrousel.
+   * Endpoint: POST /api/tutor/concepts/refresh
+   */
+  async refreshConcepts(): Promise<{ refreshed: boolean }> {
+    return request<{ refreshed: boolean }>("/api/tutor/concepts/refresh", {
       method: "POST",
       body: {},
     });

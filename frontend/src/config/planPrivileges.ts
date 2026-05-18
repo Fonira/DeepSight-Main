@@ -208,6 +208,10 @@ export interface PlanFeatures {
   semanticSearchTooltip: boolean;
   visualAnalysis: boolean;
   communityTake: boolean;
+  // Sprint 2026-05-18 — Carrousel concepts illustrés Tuteur, Expert-only
+  // (cf. backend tutor/concepts_router._check_expert_gating + spec
+  //  docs/superpowers/specs/2026-05-18-tutor-concept-carousel).
+  tutorConceptsCarousel: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
@@ -230,6 +234,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     semanticSearchTooltip: false,
     visualAnalysis: false,
     communityTake: false,
+    tutorConceptsCarousel: false,
   },
   pro: {
     flashcards: true,
@@ -250,6 +255,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     semanticSearchTooltip: true,
     visualAnalysis: true,
     communityTake: true,
+    tutorConceptsCarousel: false,
   },
   expert: {
     flashcards: true,
@@ -270,6 +276,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     semanticSearchTooltip: true,
     visualAnalysis: true,
     communityTake: true,
+    tutorConceptsCarousel: true,
   },
 };
 

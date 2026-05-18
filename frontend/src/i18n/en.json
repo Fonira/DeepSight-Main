@@ -187,6 +187,13 @@
     "errors": {
       "session_failed": "Session failed — please retry",
       "plan_required": "Available with Pro or Expert"
+    },
+    "concepts": {
+      "title": "Key concepts",
+      "empty": "No concepts yet — analyze a video to generate some.",
+      "loading": "Loading…",
+      "throttledHint": "Daily quota reached — try again tomorrow.",
+      "regionLabel": "Illustrated concepts"
     }
   },
   "onboarding": {
