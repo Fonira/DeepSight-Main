@@ -1009,5 +1009,18 @@
       "neutral": "Neutre",
       "question": "Question"
     }
+  },
+  "externalSources": {
+    "title": "Sources externes citées",
+    "processed": "pages traitées",
+    "open": "Ouvrir",
+    "paywalled": "Article payant non accessible",
+    "notFound": "Page introuvable",
+    "unavailable": "Contenu non extractible",
+    "cited": "sources citées",
+    "viewAllOnWeb": "Voir détails sur l'app web",
+    "upgradeRequired": "Sources externes citées",
+    "upgradeDescription": "Mini-résumé de chaque lien cité dans la description — disponible avec Pro",
+    "upgradeCta": "Passer Pro"
   }
 }

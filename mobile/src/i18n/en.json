@@ -1009,5 +1009,18 @@
       "neutral": "Neutral",
       "question": "Question"
     }
+  },
+  "externalSources": {
+    "title": "External sources cited",
+    "processed": "pages processed",
+    "open": "Open",
+    "paywalled": "Paywalled article",
+    "notFound": "Page not found",
+    "unavailable": "Content unavailable",
+    "cited": "sources cited",
+    "viewAllOnWeb": "View details on web app",
+    "upgradeRequired": "External sources cited",
+    "upgradeDescription": "Mini-summary of each link cited in the description — available with Pro",
+    "upgradeCta": "Upgrade"
   }
 }

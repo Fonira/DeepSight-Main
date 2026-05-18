@@ -142,6 +142,12 @@ export interface AnalysisSummary {
   // Verdict communauté issu du scrape commentaires + Mistral. NULL = pas
   // analysé (free plan, scrape failed, timeout, vidéo sans commentaires).
   community_analysis?: CommunityTake | null;
+
+  // 🔗 External pages (2026-05-17 — alembic 031, PR3 backend / PR4 UI mobile).
+  // Pages externes citées dans la description vidéo, scrapées + résumées par
+  // Mistral. NULL = pas analysé (free plan, description vide, aucune URL
+  // exploitable, toutes les pages ont échoué, etc.).
+  external_pages?: ExternalPagesData | null;
 }
 
 // ─── Community Take (verdict communauté) ──────────────────────────────────────
@@ -186,6 +192,48 @@ export interface CommunityTake {
   is_truncated?: boolean;
   disabled?: boolean;
   insufficient_data?: boolean;
+}
+
+// ─── External Pages (PR3 backend / PR4 UI mobile) ─────────────────────────────
+// Mirror frontend `services/api.ts::ExternalPagesData` et backend
+// `videos/external_pages/orchestrator.py`. Persisté JSONB dans
+// `Summary.external_pages` depuis alembic 031.
+
+export type ExternalPageStatus =
+  | "ok"
+  | "error"
+  | "paywall"
+  | "non_html"
+  | "http_error"
+  | "timeout"
+  | "empty";
+
+export interface ExternalPageCitation {
+  url: string;
+  final_url: string;
+  title: string;
+  summary: string;
+  key_claims: string[];
+  status: ExternalPageStatus;
+  fetched_via_proxy: boolean;
+  bytes_fetched: number;
+}
+
+export interface ExternalPagesStats {
+  candidates_found: number;
+  after_dedup: number;
+  after_blacklist: number;
+  after_cap: number;
+  successful: number;
+  paywalled: number;
+  errored: number;
+}
+
+export interface ExternalPagesData {
+  extracted_at: string;
+  schema_version: number;
+  stats: ExternalPagesStats;
+  pages: ExternalPageCitation[];
 }
 
 export interface AnalysisRequest {

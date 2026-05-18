@@ -678,6 +678,8 @@ export const videoApi = {
       visual_analysis?: import("../types").VisualAnalysis | null;
       // 💬 Sprint Comments — verdict communauté (alembic 029)
       community_analysis?: import("../types").CommunityTake | null;
+      // 🔗 PR3 External pages (alembic 031)
+      external_pages?: import("../types").ExternalPagesData | null;
     }>(`/api/videos/summary/${summaryId}`);
 
     // Transform backend response to mobile format
@@ -725,6 +727,8 @@ export const videoApi = {
       visual_analysis: response.visual_analysis ?? null,
       // 💬 Sprint Comments PR3 mobile — verdict communauté (peut être null si free, scrape failed, timeout)
       community_analysis: response.community_analysis ?? null,
+      // 🔗 PR4 External pages — sources externes citées (peut être null si free, description vide, toutes les URL ont échoué)
+      external_pages: response.external_pages ?? null,
     } as AnalysisSummary & {
       notes?: string;
       tags?: string;

@@ -38,10 +38,11 @@ import { AcademicSourcesSection } from "@/components/academic";
 import { FactCheckButton } from "@/components/factcheck";
 import { WebEnrichment } from "@/components/enrichment";
 import { VisualTab } from "@/components/analysis/VisualTab";
-import type { VisualAnalysis, CommunityTake } from "@/types";
+import type { VisualAnalysis, CommunityTake, ExternalPagesData } from "@/types";
 import { usePlan } from "@/contexts/PlanContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CommunityTakeSection } from "@/components/CommunityTakeSection";
+import { ExternalSourcesSection } from "@/components/ExternalSourcesSection";
 import {
   SemanticHighlighterProvider,
   HighlightNavigationBar,
@@ -449,18 +450,30 @@ function AnalysisDetailScreenInner() {
           // Le container parent réserve déjà la footprint TabBar — le scroll
           // du content peut donc se contenter d'une marge respiration.
           bottomPadding={isFullscreen ? insets.bottom + sp.lg : sp["2xl"]}
-          // 💬 Verdict communauté (Sprint Comments PR3 mobile)
+          // 💬 Verdict communauté (Sprint Comments PR3 mobile) +
+          // 🔗 Sources externes citées (PR4 mobile).
           // Spec : docs/superpowers/specs/2026-05-17-comments-community-take.md §7.2
+          //        docs/superpowers/specs/2026-05-17-pages-externes-citees.md §9
           // Rendu dans le scrollable du résumé pour bénéficier du même scroll.
           footer={
-            <CommunityTakeSection
-              take={
-                (summary as { community_analysis?: CommunityTake | null } | undefined)
-                  ?.community_analysis ?? null
-              }
-              language={(language as "fr" | "en") || "fr"}
-              onUpgradeClick={() => router.push("/(tabs)/subscription")}
-            />
+            <>
+              <CommunityTakeSection
+                take={
+                  (summary as { community_analysis?: CommunityTake | null } | undefined)
+                    ?.community_analysis ?? null
+                }
+                language={(language as "fr" | "en") || "fr"}
+                onUpgradeClick={() => router.push("/(tabs)/subscription")}
+              />
+              <ExternalSourcesSection
+                data={
+                  (summary as { external_pages?: ExternalPagesData | null } | undefined)
+                    ?.external_pages ?? null
+                }
+                language={(language as "fr" | "en") || "fr"}
+                onUpgradeClick={() => router.push("/(tabs)/subscription")}
+              />
+            </>
           }
         />
       </View>
