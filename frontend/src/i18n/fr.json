@@ -187,6 +187,13 @@
     "errors": {
       "session_failed": "Session impossible — réessayez",
       "plan_required": "Disponible avec Pro ou Expert"
+    },
+    "concepts": {
+      "title": "Concepts clés",
+      "empty": "Aucun concept disponible — analyse une vidéo pour en générer.",
+      "loading": "Chargement…",
+      "throttledHint": "Quota quotidien atteint — réessaie demain.",
+      "regionLabel": "Concepts illustrés"
     }
   },
   "onboarding": {

@@ -14,6 +14,7 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { tutorApi } from "../services/api";
 import type { TutorLang, TutorPhase, TutorTurn } from "../types/tutor";
+import type { TutorConceptItem } from "../types/conceptImage";
 
 export interface StartSessionOpts {
   concept_term: string;
@@ -38,6 +39,13 @@ export interface TutorState {
   /** True quand la conv est rendue en vue Hub fullscreen (/hub?fsChat=tutor). */
   fullscreen: boolean;
 
+  // ── Concept illustrations (sprint 2026-05-18 — Expert only) ────────────
+  concepts: TutorConceptItem[];
+  conceptsLoading: boolean;
+  conceptsError: string | null;
+  conceptsLastFetch: number | null;
+  conceptsPollingActive: boolean;
+
   openPrompting: () => void;
   cancelPrompting: () => void;
   startSession: (opts: StartSessionOpts) => Promise<void>;
@@ -54,6 +62,16 @@ export interface TutorState {
   endSession: (opts?: { keepMessages?: boolean }) => Promise<void>;
   setFullscreen: (v: boolean) => void;
   reset: () => void;
+
+  fetchConcepts: (limit?: number) => Promise<void>;
+  generateConcept: (
+    term: string,
+    definition?: string,
+    category?: string | null,
+  ) => Promise<void>;
+  startConceptsPolling: () => void;
+  stopConceptsPolling: () => void;
+  clearConcepts: () => void;
 }
 
 const INITIAL: Pick<
@@ -69,6 +87,11 @@ const INITIAL: Pick<
   | "loading"
   | "error"
   | "fullscreen"
+  | "concepts"
+  | "conceptsLoading"
+  | "conceptsError"
+  | "conceptsLastFetch"
+  | "conceptsPollingActive"
 > = {
   phase: "idle",
   sessionId: null,
@@ -81,7 +104,37 @@ const INITIAL: Pick<
   loading: false,
   error: null,
   fullscreen: false,
+  concepts: [],
+  conceptsLoading: false,
+  conceptsError: null,
+  conceptsLastFetch: null,
+  conceptsPollingActive: false,
 };
+
+// ── Polling concepts illustrés (back-off 5s → 10s → 30s) ──────────────────
+// Module-level guard pour éviter les doubles timers : `startConceptsPolling`
+// est idempotent. Quand plus aucun concept n'est `pending` pendant 60s, on
+// stoppe automatiquement le polling (le composant peut le relancer au mount
+// suivant si nécessaire).
+let _pollTimerId: ReturnType<typeof setTimeout> | null = null;
+let _pollAttempt = 0;
+let _lastPendingSeenAt: number | null = null;
+const POLL_INTERVALS_MS = [5_000, 10_000, 30_000];
+const POLL_NO_PENDING_TIMEOUT_MS = 60_000;
+
+function _computeNextDelay(): number {
+  const idx = Math.min(_pollAttempt, POLL_INTERVALS_MS.length - 1);
+  return POLL_INTERVALS_MS[idx];
+}
+
+function _resetPollGuards(): void {
+  if (_pollTimerId !== null) {
+    clearTimeout(_pollTimerId);
+    _pollTimerId = null;
+  }
+  _pollAttempt = 0;
+  _lastPendingSeenAt = null;
+}
 
 export const useTutorStore = create<TutorState>()(
   immer((set, get) => ({
@@ -210,5 +263,134 @@ export const useTutorStore = create<TutorState>()(
       set((s) => {
         Object.assign(s, INITIAL);
       }),
+
+    // ── Concept illustrations actions ──────────────────────────────────────
+    // NOTE : mutations en place via immer pour préserver les selectors leaf
+    // (cf. TutorHub.tsx l.203-213 — éviter React #300/#310 re-render storm).
+
+    fetchConcepts: async (limit = 20) => {
+      set((s) => {
+        s.conceptsLoading = true;
+        s.conceptsError = null;
+      });
+      try {
+        const resp = await tutorApi.listConcepts(limit);
+        set((s) => {
+          s.concepts = resp.concepts;
+          s.conceptsLoading = false;
+          s.conceptsLastFetch = Date.now();
+        });
+      } catch (err) {
+        set((s) => {
+          s.conceptsError = (err as Error).message;
+          s.conceptsLoading = false;
+        });
+      }
+    },
+
+    generateConcept: async (term, definition, category) => {
+      try {
+        const resp = await tutorApi.generateConcept({
+          term,
+          definition,
+          category,
+        });
+        set((s) => {
+          // Upsert le concept retourné dans la liste (par term_hash).
+          const idx = s.concepts.findIndex(
+            (c) => c.term_hash === resp.term_hash,
+          );
+          const next: TutorConceptItem = {
+            term: resp.term,
+            term_hash: resp.term_hash,
+            category: category ?? null,
+            image_url: resp.image_url ?? null,
+            status: resp.status,
+          };
+          if (idx >= 0) {
+            s.concepts[idx] = next;
+          } else {
+            s.concepts.push(next);
+          }
+        });
+      } catch (err) {
+        // Silent log — pas de UX bloquant côté carrousel (le statut "failed"
+        // est déjà géré par la liste retournée par fetchConcepts).
+        console.warn("[tutorStore] generateConcept failed", err);
+      }
+    },
+
+    startConceptsPolling: () => {
+      // Idempotent : si polling déjà actif, no-op (évite doubles timers).
+      if (get().conceptsPollingActive) return;
+
+      set((s) => {
+        s.conceptsPollingActive = true;
+      });
+      _pollAttempt = 0;
+      _lastPendingSeenAt = null;
+
+      const tick = async () => {
+        // Si le polling a été stoppé entre deux ticks, sortir proprement.
+        if (!get().conceptsPollingActive) return;
+
+        await get().fetchConcepts();
+
+        if (!get().conceptsPollingActive) return;
+
+        const concepts = get().concepts;
+        const pendingCount = concepts.filter(
+          (c) => c.status === "pending",
+        ).length;
+        const now = Date.now();
+
+        if (pendingCount > 0) {
+          // Pending détecté → on continue à poller, on enregistre l'horodatage.
+          _lastPendingSeenAt = now;
+        } else if (_lastPendingSeenAt !== null) {
+          // Pending vu auparavant, plus rien maintenant → stop si >60s écoulé.
+          if (now - _lastPendingSeenAt >= POLL_NO_PENDING_TIMEOUT_MS) {
+            get().stopConceptsPolling();
+            return;
+          }
+        } else {
+          // Aucun pending depuis le début. On donne 3 attempts pour laisser
+          // une chance au backend de pre-gen, puis on coupe.
+          if (_pollAttempt >= 3) {
+            get().stopConceptsPolling();
+            return;
+          }
+        }
+
+        // Calcule le delay AVANT incrément pour respecter le back-off
+        // documenté : 1er reschedule à 5s, 2e à 10s, 3e+ à 30s.
+        const delay = _computeNextDelay();
+        _pollAttempt += 1;
+        _pollTimerId = setTimeout(() => {
+          void tick();
+        }, delay);
+      };
+
+      // Premier fetch immédiat puis enchaînement back-off.
+      void tick();
+    },
+
+    stopConceptsPolling: () => {
+      _resetPollGuards();
+      set((s) => {
+        s.conceptsPollingActive = false;
+      });
+    },
+
+    clearConcepts: () => {
+      _resetPollGuards();
+      set((s) => {
+        s.concepts = [];
+        s.conceptsLoading = false;
+        s.conceptsError = null;
+        s.conceptsLastFetch = null;
+        s.conceptsPollingActive = false;
+      });
+    },
   })),
 );
