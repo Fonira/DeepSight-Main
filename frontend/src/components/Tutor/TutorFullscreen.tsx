@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Send, X } from "lucide-react";
 import { useTutorStore } from "../../store/tutorStore";
 import { useLanguage } from "../../contexts/LanguageContext";
+import TutorConceptsCarousel from "./TutorConceptsCarousel";
 
 const stopPropagation = (e: React.PointerEvent | React.MouseEvent) => {
   e.stopPropagation();
@@ -111,6 +112,18 @@ export const TutorFullscreen: React.FC = () => {
           <X className="w-5 h-5" />
         </button>
       </header>
+
+      {/* Concepts illustrés (carrousel horizontal — sprint 2026-05-18).
+          Bord-à-bord sous le header. Visible Expert-only ; self-gated via
+          PLAN_FEATURES[plan].tutorConceptsCarousel. Click → injecte le
+          concept dans la conv active (no-op si pas de session ouverte). */}
+      <TutorConceptsCarousel
+        onConceptClick={(c) => {
+          if (phase === "mini-chat") {
+            void submitTextTurn(c.term);
+          }
+        }}
+      />
 
       {/* Body */}
       <div

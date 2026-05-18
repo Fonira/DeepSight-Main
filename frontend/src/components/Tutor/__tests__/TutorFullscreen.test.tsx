@@ -15,6 +15,13 @@ vi.mock("../../../contexts/LanguageContext", () => ({
   useLanguage: () => ({ language: "fr" }),
 }));
 
+// Mock TutorConceptsCarousel : ses dépendances (AuthContext, planPrivileges,
+// store actions concepts) ne sont pas pertinentes pour tester TutorFullscreen.
+// Le mount du carrousel est testé séparément dans TutorConceptsCarousel.test.tsx.
+vi.mock("../TutorConceptsCarousel", () => ({
+  default: () => null,
+}));
+
 vi.mock("../../../services/api", () => ({
   tutorApi: {
     sessionStart: vi.fn().mockResolvedValue({
