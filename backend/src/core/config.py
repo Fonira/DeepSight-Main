@@ -60,6 +60,8 @@ class _DeepSightSettings(BaseSettings):
     FAL_API_KEY: str = ""
     TOGETHER_API_KEY: str = ""
     MISTRAL_IMAGE_AGENT_ID: str = ""  # Mistral Agents API — DeepSight Art Director
+    GEMINI_API_KEY: str = ""  # Google AI Studio — Gemini 3 Pro Image (Nano Banana Pro) pour doodles Tuteur
+    TUTOR_DOODLE_DAILY_CAP: int = 300  # Cap global quotidien images doodle Tuteur (Redis counter, anti-abuse + plafond coût)
 
     # -- Miro (Débat IA v2 — boards générés sur compte org DeepSight) --
     # Cf. docs/superpowers/specs/2026-05-04-debate-ia-v2.md §7.4.
@@ -342,6 +344,8 @@ DEEPSEEK_API_KEY = _settings.DEEPSEEK_API_KEY
 FAL_API_KEY = _settings.FAL_API_KEY
 TOGETHER_API_KEY = _settings.TOGETHER_API_KEY
 MISTRAL_IMAGE_AGENT_ID = _settings.MISTRAL_IMAGE_AGENT_ID
+GEMINI_API_KEY = _settings.GEMINI_API_KEY
+TUTOR_DOODLE_DAILY_CAP = _settings.TUTOR_DOODLE_DAILY_CAP
 YOUTUBE_PROXY = _settings.YOUTUBE_PROXY
 SCHOLAR_ENABLED: bool = _settings.SCHOLAR_ENABLED
 # Sprint D — Proxy V2 advanced (geo + sticky + multi-provider fallback)
@@ -831,6 +835,19 @@ def is_deepseek_available() -> bool:
 
 def is_openai_available() -> bool:
     return bool(OPENAI_API_KEY)
+
+
+def get_gemini_key() -> Optional[str]:
+    """Google AI Studio key for Gemini 3 Pro Image (Nano Banana Pro).
+
+    Used by `images/keyword_images.py:_stage2_gemini_doodle` for the Tuteur
+    concept carousel doodles. Falls back to DALL-E 3 if absent.
+    """
+    return GEMINI_API_KEY or None
+
+
+def is_gemini_available() -> bool:
+    return bool(GEMINI_API_KEY)
 
 
 def is_api_configured() -> bool:

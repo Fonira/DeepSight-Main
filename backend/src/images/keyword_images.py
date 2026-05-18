@@ -19,7 +19,13 @@ from typing import Optional
 import httpx
 from PIL import Image
 
-from core.config import get_mistral_key, get_openai_key, get_together_key, get_mistral_image_agent_id
+from core.config import (
+    get_mistral_key,
+    get_openai_key,
+    get_together_key,
+    get_mistral_image_agent_id,
+    get_gemini_key,
+)
 from storage.r2 import upload_to_r2
 from images.fun_scoring import calculate_fun_score
 
@@ -39,6 +45,20 @@ IMAGE_MODEL_PREMIUM = "dall-e-3"
 IMAGE_MODEL_FREE = "black-forest-labs/FLUX.1-schnell-Free"
 
 ART_DIRECTOR_MODEL = "mistral-small-2503"
+
+# ─── Tuteur Doodle constants (sprint 2026-05-18) ─────────────────────────────
+# Style suffix pour générer des doodles ligne single-color cohérents avec le
+# DoodleBackground frontend (#c084fc violet-400). Fond transparent (RGBA).
+TUTOR_DOODLE_STYLE_SUFFIX = (
+    "Single continuous line doodle illustration. Minimal abstract symbolic icon. "
+    "Monochrome line art, no fill, no shading, no background. "
+    "Stroke color must be #c084fc (violet-400). Transparent background (alpha=0). "
+    "Centered composition, ~20% padding around the icon. "
+    "No text, no people, no watermarks. Style: hand-drawn doodle, single weight stroke."
+)
+
+# Modèle Gemini 3 Pro Image (Nano Banana Pro) — Google AI Studio
+IMAGE_MODEL_GEMINI_DOODLE = "gemini-3-pro-image-preview"
 
 
 def _is_image_gen_available() -> bool:
@@ -81,9 +101,19 @@ Réponds UNIQUEMENT avec ce JSON strict, sans markdown ni commentaires :
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 
-def _term_hash(term: str) -> str:
-    """SHA-256 hash of normalized term for deduplication."""
-    return hashlib.sha256(term.lower().strip().encode("utf-8")).hexdigest()
+def _term_hash(term: str, style: str = "photo") -> str:
+    """SHA-256 hash of normalized term for deduplication.
+
+    Backward-compat: `style='photo'` (legacy "Le Saviez-Vous") produces the
+    original hash without prefix, so existing rows in `keyword_images` stay
+    valid. Other styles (e.g. 'tutor_doodle') prepend the style to the payload,
+    allowing the same concept to coexist in multiple visual treatments.
+    """
+    if style == "photo":
+        # Legacy path: don't change existing hashes
+        return hashlib.sha256(term.lower().strip().encode("utf-8")).hexdigest()
+    payload = f"{style}:{term.lower().strip()}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 # ─── Stage 1: Mistral Art Director ────────────────────────────────────────────
@@ -526,6 +556,304 @@ async def batch_get_image_urls(terms: list[str], pool=None) -> dict[str, str]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT term_hash, image_url FROM keyword_images WHERE term_hash = ANY($1) AND status = 'ready'",
+            hashes,
+        )
+    return {row["term_hash"]: row["image_url"] for row in rows}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TUTEUR DOODLE PIPELINE (sprint 2026-05-18)
+#
+# Pipeline parallèle au pipeline "Le Saviez-Vous" pour le carrousel concepts
+# illustrés de la page Tuteur fullscreen (`/hub?fsChat=tutor`). Différences clés :
+#   • Modèle d'image : Gemini 3 Pro Image (Nano Banana Pro) avec fallback DALL-E 3
+#   • Style : doodle ligne monochrome violet #c084fc, fond transparent
+#   • Output : 200×200 WebP lossless (préserve RGBA)
+#   • Pas d'art director Mistral (économie 1 LLM call par doodle, prompt templated)
+#   • Storage : R2 préfixe `tutor-concepts/{hash}.webp`
+#   • DB : même table `keyword_images` avec `style='tutor_doodle'` (term_hash discrimine)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _build_doodle_prompt(term: str, definition: str | None) -> str:
+    """Build a deterministic English visual prompt for the doodle backend.
+
+    Pédagogiquement, les concepts Tuteur sont courts (1-3 mots) — un prompt
+    templated single-noun donne de bons doodles consistants sans nécessiter
+    le Mistral art-director (qui coûte 1 LLM call par image dans le pipeline
+    photo). Économie : ~$0.0008/image (mistral-small) × 300/jour = ~$0.24/jour.
+    """
+    short_def = (definition or "").strip()[:160] if definition else ""
+    if short_def:
+        return (
+            f"Symbolic doodle icon representing the abstract concept of "
+            f'"{term}". Brief meaning: {short_def}. '
+            f"Choose ONE simple visual metaphor (not the literal word)."
+        )
+    return (
+        f"Symbolic doodle icon representing the abstract concept of "
+        f'"{term}". Choose ONE simple visual metaphor (not the literal word).'
+    )
+
+
+async def _stage2_gemini_doodle(visual_prompt: str) -> tuple[bytes, str]:
+    """Call Google Gemini 3 Pro Image to generate a doodle.
+
+    Uses the Generative Language REST API directly (no SDK). Returns
+    (raw_bytes, model_used). Raises if API key absent or response malformed.
+    """
+    api_key = get_gemini_key()
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY not configured")
+
+    full_prompt = f"{visual_prompt}. {TUTOR_DOODLE_STYLE_SUFFIX}"
+
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{IMAGE_MODEL_GEMINI_DOODLE}:generateContent?key={api_key}"
+    )
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(
+            url,
+            json={
+                "contents": [{"parts": [{"text": full_prompt}]}],
+                "generationConfig": {"responseModalities": ["IMAGE"]},
+            },
+        )
+        resp.raise_for_status()
+        result = resp.json()
+
+    candidates = result.get("candidates", [])
+    if not candidates:
+        raise RuntimeError(f"Gemini returned no candidates: {result}")
+    parts = candidates[0].get("content", {}).get("parts", [])
+    for part in parts:
+        inline = part.get("inlineData") or part.get("inline_data")
+        if inline and "data" in inline:
+            import base64
+
+            image_bytes = base64.b64decode(inline["data"])
+            logger.info(
+                f"🖼️ Doodle generated (Gemini 3 Pro Image): {len(image_bytes)} bytes"
+            )
+            return image_bytes, IMAGE_MODEL_GEMINI_DOODLE
+    raise RuntimeError(f"Gemini response missing inlineData: {result}")
+
+
+async def _stage2_generate_doodle(visual_prompt: str) -> tuple[bytes, str]:
+    """Doodle generation chain. Gemini first, DALL-E 3 fallback.
+
+    Skips FLUX Schnell — Schnell doesn't reliably honor transparent backgrounds
+    nor minimal line art instructions. DALL-E 3 fallback uses the same prompt
+    suffix but may return RGB; post_process_doodle handles both cases.
+    """
+    if get_gemini_key():
+        try:
+            return await _stage2_gemini_doodle(visual_prompt)
+        except Exception as e:
+            logger.warning(
+                f"⚠️ Gemini doodle failed, trying DALL-E 3 fallback: {e}"
+            )
+
+    if get_openai_key():
+        return await _stage2_dalle3(
+            f"{visual_prompt}. {TUTOR_DOODLE_STYLE_SUFFIX}"
+        )
+
+    raise RuntimeError(
+        "No doodle backend available (need GEMINI_API_KEY or OPENAI_API_KEY)"
+    )
+
+
+def _post_process_doodle(image_bytes: bytes) -> bytes:
+    """Resize to 200x200, KEEP transparency. Save as lossless WebP.
+
+    Diff vs `_post_process()` (photo path):
+      • Keeps RGBA (no compositing on dark background)
+      • 200×200 instead of 512×512 (carousel cards are small)
+      • lossless=True (preserve sharp line art doodle edges)
+    """
+    img = Image.open(io.BytesIO(image_bytes))
+
+    # Force RGBA so transparency is preserved if present, alpha=255 otherwise
+    if img.mode != "RGBA":
+        img = img.convert("RGBA")
+
+    img = img.resize((200, 200), Image.LANCZOS)
+
+    buf = io.BytesIO()
+    img.save(buf, format="WebP", quality=95, lossless=True, method=4)
+    return buf.getvalue()
+
+
+async def _upload_and_save_doodle(
+    webp_bytes: bytes,
+    term: str,
+    thash: str,
+    category: str | None,
+    prompt_used: str,
+    fun_score: float,
+    generation_time_ms: int,
+    model: str,
+    pool,
+) -> str:
+    """Upload doodle to R2 (or local filesystem fallback) and UPSERT into
+    `keyword_images` with `style='tutor_doodle'`."""
+    from storage.r2 import is_r2_available
+
+    r2_key = f"tutor-concepts/{thash}.webp"
+
+    if is_r2_available():
+        image_url = await upload_to_r2(webp_bytes, r2_key)
+    else:
+        # Local fallback (dev / R2 unconfigured) — mirror the photo path
+        LOCAL_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+        filepath = LOCAL_IMAGE_DIR / f"doodle_{thash}.webp"
+        filepath.write_bytes(webp_bytes)
+        image_url = f"/api/images/serve/doodle_{thash}.webp"
+        logger.info(f"📁 Local doodle save: {filepath} ({len(webp_bytes)} bytes)")
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO keyword_images
+                (term, term_hash, category, prompt_used,
+                 image_url, r2_key, status, model, generation_time_ms,
+                 fun_score, style)
+            VALUES ($1, $2, $3, $4, $5, $6, 'ready', $7, $8, $9, 'tutor_doodle')
+            ON CONFLICT (term_hash) DO UPDATE SET
+                prompt_used = EXCLUDED.prompt_used,
+                image_url = EXCLUDED.image_url,
+                r2_key = EXCLUDED.r2_key,
+                status = 'ready',
+                model = EXCLUDED.model,
+                generation_time_ms = EXCLUDED.generation_time_ms,
+                fun_score = EXCLUDED.fun_score,
+                style = 'tutor_doodle',
+                error_message = NULL,
+                updated_at = NOW()
+            """,
+            term,
+            thash,
+            category,
+            prompt_used,
+            image_url,
+            r2_key,
+            model,
+            generation_time_ms,
+            fun_score,
+        )
+
+    logger.info(f"✅ Tutor doodle saved: '{term}' → {r2_key}")
+    return image_url
+
+
+async def generate_doodle_image(
+    term: str,
+    definition: str,
+    category: str | None = None,
+    pool=None,
+) -> Optional[str]:
+    """Full doodle pipeline: prompt → Gemini → post-process RGBA → R2 → DB.
+
+    Standalone orchestrator (does NOT touch `generate_keyword_image()`'s photo
+    path — zero risk of regression on "Le Saviez-Vous"). Returns image_url on
+    success, None on failure.
+    """
+    if not get_gemini_key() and not get_openai_key():
+        logger.warning("⚠️ No doodle backend available (need GEMINI or OPENAI key)")
+        return None
+
+    thash = _term_hash(term, style="tutor_doodle")
+    fun_score = calculate_fun_score(term, category)
+    start = time.time()
+
+    try:
+        visual_prompt = _build_doodle_prompt(term, definition)
+        raw_image, model_used = await _stage2_generate_doodle(visual_prompt)
+        webp_bytes = _post_process_doodle(raw_image)
+        elapsed_ms = int((time.time() - start) * 1000)
+
+        if pool is None:
+            pool = await _get_pool()
+
+        return await _upload_and_save_doodle(
+            webp_bytes,
+            term,
+            thash,
+            category,
+            visual_prompt,
+            fun_score,
+            elapsed_ms,
+            model_used,
+            pool,
+        )
+    except Exception as e:
+        elapsed_ms = int((time.time() - start) * 1000)
+        logger.error(f"❌ Doodle generation failed for '{term}': {e}")
+        try:
+            if pool is None:
+                pool = await _get_pool()
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO keyword_images
+                        (term, term_hash, category, status, fun_score,
+                         error_message, generation_time_ms, style)
+                    VALUES ($1, $2, $3, 'failed', $4, $5, $6, 'tutor_doodle')
+                    ON CONFLICT (term_hash) DO UPDATE SET
+                        status = 'failed',
+                        retry_count = keyword_images.retry_count + 1,
+                        error_message = EXCLUDED.error_message,
+                        generation_time_ms = EXCLUDED.generation_time_ms,
+                        style = 'tutor_doodle',
+                        updated_at = NOW()
+                    """,
+                    term,
+                    thash,
+                    category,
+                    fun_score,
+                    str(e)[:500],
+                    elapsed_ms,
+                )
+        except Exception:
+            pass
+        return None
+
+
+async def get_doodle_url(term: str, pool=None) -> Optional[str]:
+    """Lookup doodle URL for a term (style='tutor_doodle')."""
+    if pool is None:
+        pool = await _get_pool()
+    thash = _term_hash(term, style="tutor_doodle")
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT image_url FROM keyword_images "
+            "WHERE term_hash = $1 AND style = 'tutor_doodle' AND status = 'ready'",
+            thash,
+        )
+    return row["image_url"] if row else None
+
+
+async def batch_get_doodle_urls(
+    terms: list[str], pool=None
+) -> dict[str, str]:
+    """Batch lookup doodle URLs for multiple terms. Returns {term_hash: image_url}.
+
+    Hashes are computed with `style='tutor_doodle'`, so they discriminate from
+    legacy photo hashes for the same concept term.
+    """
+    if not terms:
+        return {}
+    if pool is None:
+        pool = await _get_pool()
+
+    hashes = [_term_hash(t, style="tutor_doodle") for t in terms]
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT term_hash, image_url FROM keyword_images "
+            "WHERE term_hash = ANY($1) AND style = 'tutor_doodle' AND status = 'ready'",
             hashes,
         )
     return {row["term_hash"]: row["image_url"] for row in rows}
