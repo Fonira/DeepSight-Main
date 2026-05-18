@@ -1061,9 +1061,15 @@ async def health_ready():
 
 
 # Configuration CORS - CRITIQUE pour éviter les erreurs 502
+# allow_origin_regex : autorise les chrome-extension://<id> (SW de l'extension
+# DeepSight) qui ne peuvent pas être listées en dur (l'ID change selon le mode
+# d'installation : Web Store, unpacked dev, packed). Sans ça, Starlette
+# CORSMiddleware rejette le préflight avec 400 "Disallowed CORS origin" sur
+# /api/voice/catalog et /api/voice/preferences (cassait l'appel rapide voice).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"chrome-extension://[a-z0-9]+",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["Authorization", "Content-Type", "X-Platform", "X-Requested-With"],
