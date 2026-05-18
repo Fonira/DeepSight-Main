@@ -42,6 +42,7 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
   const [tierLimit, setTierLimit] = useState<number | null>(null);
   const [totalFound, setTotalFound] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
+  const [deepSearch, setDeepSearch] = useState(false);
 
   const [selectedPapers, setSelectedPapers] = useState<Set<string>>(new Set());
   const [showExportModal, setShowExportModal] = useState(false);
@@ -49,6 +50,7 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
   const plan = normalizePlanId(userPlan);
   const canSearch = hasFeature(plan, "academicSearch");
   const canExport = hasFeature(plan, "bibliographyExport");
+  const canDeepSearch = plan === "pro" || plan === "expert";
   // Note: paperLimit is available via getLimit(plan, 'academicPapersPerAnalysis') if needed
 
   const t = (fr: string, en: string) => (language === "fr" ? fr : en);
@@ -63,7 +65,9 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
     setError(null);
 
     try {
-      const response = await academicApi.enrich(summaryId);
+      const response = await academicApi.enrich(summaryId, {
+        deep_search: canDeepSearch && deepSearch,
+      });
       setPapers(response.papers);
       setTotalFound(response.total_found);
       setTierLimitReached(response.tier_limit_reached);
@@ -76,7 +80,7 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [summaryId, canSearch, onUpgrade, t]);
+  }, [summaryId, canSearch, canDeepSearch, deepSearch, onUpgrade, t]);
 
   const handleSelectPaper = (paper: AcademicPaper) => {
     setSelectedPapers((prev) => {
@@ -152,6 +156,47 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
                   "Find scientific papers related to this analysis from Semantic Scholar, OpenAlex, and arXiv.",
                 )}
               </p>
+
+              {/* Deep search toggle (Pro+) / CTA (Free) — spec §13.1 */}
+              <div className="flex items-center justify-center mb-3">
+                {canDeepSearch ? (
+                  <label
+                    className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none"
+                    data-testid="deep-search-toggle"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={deepSearch}
+                      onChange={(e) => setDeepSearch(e.target.checked)}
+                      className="accent-violet-500 w-3.5 h-3.5"
+                    />
+                    <span>
+                      {t(
+                        "Recherche approfondie (Scholar)",
+                        "Deep search (Scholar)",
+                      )}
+                    </span>
+                    <span
+                      className="text-text-muted cursor-help text-[11px] leading-none"
+                      title={t(
+                        "Inclut Google Scholar pour plus de profondeur. Limite 5/jour (Pro) ou 30/jour (Expert).",
+                        "Includes Google Scholar for deeper coverage. Limit 5/day (Pro) or 30/day (Expert).",
+                      )}
+                    >
+                      ⓘ
+                    </span>
+                  </label>
+                ) : plan === "free" ? (
+                  <button
+                    onClick={() => onUpgrade?.()}
+                    className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                    data-testid="deep-search-upgrade-cta"
+                  >
+                    {t("Deep search Pro+ →", "Deep search Pro+ →")}
+                  </button>
+                ) : null}
+              </div>
+
               <button onClick={handleSearch} className="btn btn-primary">
                 <Search className="w-4 h-4" />
                 {t("Rechercher des sources", "Find Sources")}

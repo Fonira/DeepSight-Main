@@ -1038,5 +1038,14 @@
     "upgradeRequired": "External sources cited",
     "upgradeDescription": "Mini-summary of each link cited in the description — available with Pro",
     "upgradeCta": "Upgrade"
+  },
+  "academic": {
+    "deepSearchToggle": "Deep search (Scholar)",
+    "deepSearchTooltip": "Includes Google Scholar for deeper coverage. Limit 5/day (Pro) or 30/day (Expert).",
+    "deepSearchUpgradeFree": "Deep search Pro+ →",
+    "scholarBadge": "via Scholar",
+    "scholarDisclaimer": "Data provided by Google Scholar for informational use. Verify the original sources.",
+    "scholarQuotaReached": "Scholar limit reached ({{current}}/{{limit}}). Resets at midnight UTC.",
+    "scholarRequiresPro": "Scholar search requires a Pro or Expert plan."
   }
 }

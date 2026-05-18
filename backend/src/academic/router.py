@@ -155,11 +155,39 @@ async def enrich_summary_with_academic_sources(
 
     user_plan = current_user.plan or "free"
     max_papers = request.max_papers if request else None
+    deep_search = bool(request.deep_search) if request else False
+
+    # Plan gating + quota for Phase 4 — Scholar deep crawl (spec 2026-05-17 § 6.3)
+    # Mirror exact de /search — la même règle plan/quota doit s'appliquer ici.
+    if deep_search:
+        if user_plan.lower() == "free":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "plan_required",
+                    "message": "Deep Scholar search requires Pro plan or higher.",
+                    "current_plan": user_plan,
+                    "required_plan": "pro",
+                    "feature": "scholar_deep_search",
+                    "action": "upgrade",
+                },
+            )
+        from core.scholar_quota import check_and_increment_scholar_quota
+
+        allowed, error_payload = await check_and_increment_scholar_quota(session, current_user)
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=error_payload,
+            )
 
     # Build search request with top keywords (AI topics first, then structured)
     search_keywords = keywords[:15]
     search_request = AcademicSearchRequest(
-        keywords=search_keywords, summary_id=str(summary_id), limit=max_papers or get_tier_limit(user_plan)
+        keywords=search_keywords,
+        summary_id=str(summary_id),
+        limit=max_papers or get_tier_limit(user_plan),
+        deep_search=deep_search,
     )
 
     try:
@@ -175,6 +203,8 @@ async def enrich_summary_with_academic_sources(
         )
         return response
 
+    except HTTPException:
+        raise
     except asyncio.TimeoutError:
         print(f"Academic enrichment timeout for summary {summary_id}", flush=True)
         raise HTTPException(
