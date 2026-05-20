@@ -156,6 +156,25 @@ class _DeepSightSettings(BaseSettings):
     GOOGLE_IOS_CLIENT_ID: str = ""  # Mobile iOS client ID (fallback: GOOGLE_CLIENT_ID)
     GOOGLE_ANDROID_CLIENT_ID: str = ""  # Mobile Android client ID (fallback: GOOGLE_CLIENT_ID)
 
+    # -- Sign in with Apple --
+    # Active la verification des id_token Apple cote serveur. Le flow client (web
+    # via AppleID.auth.js + mobile via expo-apple-authentication) envoie un
+    # id_token JWT signe RS256, verifie ici contre les JWKs publics Apple.
+    APPLE_OAUTH_ENABLED: str = "false"
+    # Service ID (web) — ex: "com.deepsightsynthesis.signin". C'est l'audience
+    # attendue par le SDK JS Apple. Apple Developer Console > Certificates > Identifiers > Services IDs.
+    APPLE_CLIENT_ID: str = ""
+    # Bundle Identifier iOS — ex: "com.deepsightsynthesis.mobile". Audience de
+    # l'id_token retourne par expo-apple-authentication sur iPhone/iPad.
+    APPLE_BUNDLE_ID: str = ""
+    # Team ID Apple Developer (10 chars) — visible dans le coin haut droit du compte.
+    APPLE_TEAM_ID: str = ""
+    # Key ID du Sign in with Apple key (10 chars). Apple Developer Console > Keys.
+    APPLE_KEY_ID: str = ""
+    # Cle privee ES256 au format PEM (le `.p8` telecharge une seule fois).
+    # Stocke en multi-ligne dans .env via guillemets ou en BASE64 (decode automatique).
+    APPLE_PRIVATE_KEY: str = ""
+
     # -- CRON --
     CRON_SECRET: str = ""
 
@@ -488,6 +507,22 @@ GOOGLE_OAUTH_CONFIG = {
     # Mobile client IDs (fallback to web CLIENT_ID if not set)
     "IOS_CLIENT_ID": _settings.GOOGLE_IOS_CLIENT_ID or _settings.GOOGLE_CLIENT_ID,
     "ANDROID_CLIENT_ID": _settings.GOOGLE_ANDROID_CLIENT_ID or _settings.GOOGLE_CLIENT_ID,
+}
+
+# =============================================================================
+# APPLE SIGN IN
+# =============================================================================
+# Verification des id_token Apple (web via AppleID.auth.js, mobile via
+# expo-apple-authentication). Audiences acceptees : Service ID web + Bundle ID iOS.
+# Le mobile Android ne supporte pas le flow natif (Apple JS web requis).
+
+APPLE_OAUTH_CONFIG = {
+    "ENABLED": _settings.APPLE_OAUTH_ENABLED.lower() == "true",
+    "CLIENT_ID": _settings.APPLE_CLIENT_ID,
+    "BUNDLE_ID": _settings.APPLE_BUNDLE_ID,
+    "TEAM_ID": _settings.APPLE_TEAM_ID,
+    "KEY_ID": _settings.APPLE_KEY_ID,
+    "PRIVATE_KEY": _settings.APPLE_PRIVATE_KEY,
 }
 
 # =============================================================================

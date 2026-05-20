@@ -143,6 +143,11 @@ class User(Base):
     # Google OAuth
     google_id = Column(String(100))
 
+    # Sign in with Apple — "sub" claim de l'ID token Apple (opaque, stable, per-user).
+    # Nullable pour ne pas casser les comptes email-only / Google-only.
+    # Index unique géré par migration Alembic 032 (ix_users_apple_sub).
+    apple_sub = Column(String(255), unique=True, index=True, nullable=True)
+
     # Clés API utilisateur (optionnel)
     mistral_key = Column(String(255))
     supadata_key = Column(String(255))

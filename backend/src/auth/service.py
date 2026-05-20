@@ -19,7 +19,7 @@ from jose import jwt, JWTError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.config import JWT_CONFIG, GOOGLE_OAUTH_CONFIG, EMAIL_CONFIG, APP_URL, ADMIN_CONFIG
+from core.config import JWT_CONFIG, GOOGLE_OAUTH_CONFIG, APPLE_OAUTH_CONFIG, EMAIL_CONFIG, APP_URL, ADMIN_CONFIG
 from billing.plan_config import get_limits
 from db.database import User, ChatQuota, WebSearchUsage, hash_password, verify_password
 
@@ -774,3 +774,253 @@ def verify_google_id_token(id_token_str: str, client_platform: str = "web") -> O
 
         logging.getLogger(__name__).error(f"Unexpected error verifying Google ID token: {e}")
         return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🍎 SIGN IN WITH APPLE — Verification id_token + login/register
+# ═══════════════════════════════════════════════════════════════════════════════
+
+APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
+APPLE_ISSUER = "https://appleid.apple.com"
+
+# Cache des JWKs Apple (les clés tournent — TTL 1h suffit pour limiter les fetches
+# tout en restant resilient aux rotations). Cle = "jwks", valeur = (timestamp, jwks_dict).
+_APPLE_JWKS_CACHE: dict = {}
+_APPLE_JWKS_TTL_SECONDS = 3600
+
+
+async def _fetch_apple_jwks() -> Optional[dict]:
+    """Recupere les JWKs publics Apple (cache 1h)."""
+    import time
+    import logging
+
+    log = logging.getLogger(__name__)
+    cached = _APPLE_JWKS_CACHE.get("jwks")
+    now = time.time()
+    if cached and (now - cached[0]) < _APPLE_JWKS_TTL_SECONDS:
+        return cached[1]
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(APPLE_JWKS_URL, timeout=10)
+            if response.status_code != 200:
+                log.warning(f"Apple JWKs fetch failed: HTTP {response.status_code}")
+                # Fallback sur cache stale si dispo
+                return cached[1] if cached else None
+            jwks = response.json()
+            _APPLE_JWKS_CACHE["jwks"] = (now, jwks)
+            return jwks
+    except Exception as e:
+        log.error(f"Apple JWKs fetch exception: {e}")
+        return cached[1] if cached else None
+
+
+def _get_allowed_apple_audiences(client_platform: str = "web") -> list[str]:
+    """
+    Retourne la liste des audiences Apple autorisees selon la plateforme.
+    Web/extension utilisent APPLE_CLIENT_ID (Service ID), iOS utilise APPLE_BUNDLE_ID.
+    Toutes les audiences non-vides sont incluses pour supporter le cross-platform.
+    """
+    audiences: set[str] = set()
+    for key in ("CLIENT_ID", "BUNDLE_ID"):
+        value = APPLE_OAUTH_CONFIG.get(key)
+        if value:
+            audiences.add(value)
+    return [a for a in audiences if a]
+
+
+async def verify_apple_id_token(id_token_str: str, client_platform: str = "web") -> Optional[dict]:
+    """
+    Verifie un Apple ID token JWT (signe RS256 par Apple).
+
+    - Recupere les JWKs publics Apple (cache 1h).
+    - Selectionne la cle par `kid` dans le header du JWT.
+    - Verifie la signature RS256.
+    - Verifie l'audience (`aud`) contre APPLE_CLIENT_ID (Service ID web) ou
+      APPLE_BUNDLE_ID (iOS).
+    - Verifie l'issuer (`iss = https://appleid.apple.com`).
+    - Verifie l'expiration (`exp`).
+
+    Retourne les claims decodes (dict) si valides, None sinon.
+
+    Claims Apple typiques :
+      - sub: identifiant utilisateur opaque et stable (NOTRE clef de lookup)
+      - email: adresse email (peut etre un alias prive @privaterelay.appleid.com)
+      - email_verified: bool (toujours True chez Apple)
+      - is_private_email: bool (True si email est un alias Apple Hide My Email)
+      - aud, iss, exp, iat
+    """
+    import logging
+
+    log = logging.getLogger(__name__)
+
+    allowed_audiences = _get_allowed_apple_audiences(client_platform)
+    if not allowed_audiences:
+        log.error("No Apple audiences configured (APPLE_CLIENT_ID / APPLE_BUNDLE_ID)")
+        return None
+
+    jwks = await _fetch_apple_jwks()
+    if not jwks or "keys" not in jwks:
+        log.error("Apple JWKs unavailable — cannot verify id_token")
+        return None
+
+    try:
+        unverified_header = jwt.get_unverified_header(id_token_str)
+    except JWTError as e:
+        log.warning(f"Apple id_token: cannot parse header: {e}")
+        return None
+
+    kid = unverified_header.get("kid")
+    if not kid:
+        log.warning("Apple id_token header missing 'kid'")
+        return None
+
+    matching_key = next((k for k in jwks["keys"] if k.get("kid") == kid), None)
+    if not matching_key:
+        log.warning(f"Apple id_token: no JWK matches kid={kid}")
+        # Force-refresh cache au cas ou Apple a tourne ses cles
+        _APPLE_JWKS_CACHE.pop("jwks", None)
+        return None
+
+    # Try each allowed audience (jose.decode prend une seule audience a la fois)
+    last_error: Optional[Exception] = None
+    for audience in allowed_audiences:
+        try:
+            claims = jwt.decode(
+                id_token_str,
+                matching_key,
+                algorithms=["RS256"],
+                audience=audience,
+                issuer=APPLE_ISSUER,
+            )
+            return claims
+        except JWTError as e:
+            last_error = e
+            continue
+
+    log.warning(f"Apple id_token verification failed for all audiences: {last_error}")
+    return None
+
+
+async def login_or_register_apple_user(
+    session: AsyncSession,
+    apple_sub: str,
+    email: Optional[str],
+    full_name: Optional[str] = None,
+    auto_create: bool = True,
+) -> Tuple[bool, Optional[User], str, Optional[str]]:
+    """
+    Connecte ou cree un utilisateur via Sign in with Apple.
+
+    Particularite Apple : `email` peut etre None sur les logins SUIVANTS (Apple
+    ne renvoie email/name que sur first sign-in). On retombe alors sur le lookup
+    par `apple_sub` strictement.
+
+    Lookup priorise :
+      1. apple_sub (stable, unique, opaque)
+      2. email (si fourni — premier sign-in OU manuellement par client)
+
+    Si l'utilisateur existe par email mais pas par apple_sub, on link les deux
+    (idempotence : on peut se reconnecter Apple sur un compte Google existant).
+
+    Si `auto_create=False` et qu'aucun utilisateur n'existe, retourne
+    `(False, None, "NOT_REGISTERED", None)`.
+
+    Retourne : (success, user, message, session_token)
+    """
+    apple_sub = apple_sub.strip()
+    if not apple_sub:
+        return False, None, "❌ apple_sub manquant", None
+
+    normalized_email = email.lower().strip() if email else None
+
+    # 1. Lookup par apple_sub (priorite)
+    result = await session.execute(select(User).where(User.apple_sub == apple_sub))
+    user = result.scalar_one_or_none()
+
+    # 2. Si pas trouve, lookup par email
+    if not user and normalized_email:
+        user = await get_user_by_email(session, normalized_email)
+
+    admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower().strip()
+    is_admin_user = bool(normalized_email and normalized_email == admin_email)
+
+    if user:
+        # Lier apple_sub si pas encore present (cas : compte cree par Google ou email/password)
+        if not user.apple_sub:
+            user.apple_sub = apple_sub
+        # Apple verifie l'email lui-meme avant emission de l'id_token
+        if normalized_email and not user.email_verified:
+            user.email_verified = True
+
+        if is_admin_user and not user.is_admin:
+            user.is_admin = True
+            user.plan = "pro"
+            user.credits = 999999
+            print(f"🔐 Admin privileges granted via Apple to: {normalized_email}", flush=True)
+
+        await session.commit()
+        session_token = await create_user_session(session, user.id)
+        return True, user, "✅ Connexion Apple réussie", session_token
+
+    # Aucun utilisateur — creation desactivee (extension silent flow)
+    if not auto_create:
+        return False, None, "NOT_REGISTERED", None
+
+    # Creation. Apple peut ne pas fournir d'email (Hide My Email + private relay)
+    # mais on a TOUJOURS apple_sub. Si pas d'email, on cree un email placeholder
+    # base sur sub pour respecter la contrainte UNIQUE NOT NULL de users.email.
+    # Le user pourra le rattacher a son vrai email via la page de settings ulterieurement.
+    if not normalized_email:
+        normalized_email = f"apple_{apple_sub[:16]}@privaterelay.appleid.com"
+
+    # Username depuis full_name si fourni, sinon depuis email
+    base_username = ""
+    if full_name:
+        base_username = "".join(c for c in full_name.lower() if c.isalnum())[:30]
+    if not base_username:
+        base_username = normalized_email.split("@")[0].lower()
+    if not base_username:
+        base_username = f"apple{apple_sub[:8]}"
+
+    username = base_username
+    counter = 1
+    while True:
+        existing = await get_user_by_username(session, username)
+        if not existing:
+            break
+        username = f"{base_username}{counter}"
+        counter += 1
+
+    random_password = secrets.token_urlsafe(16)
+
+    if is_admin_user:
+        user = User(
+            username=username,
+            email=normalized_email,
+            password_hash=hash_password(random_password),
+            email_verified=True,
+            apple_sub=apple_sub,
+            plan="pro",
+            credits=999999,
+            is_admin=True,
+        )
+        print(f"🔐 Admin user created via Apple: {normalized_email}", flush=True)
+    else:
+        initial_credits = get_limits("free")["monthly_credits"]
+        user = User(
+            username=username,
+            email=normalized_email,
+            password_hash=hash_password(random_password),
+            email_verified=True,
+            apple_sub=apple_sub,
+            plan="free",
+            credits=initial_credits,
+        )
+
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+
+    session_token = await create_user_session(session, user.id)
+    return True, user, "✅ Compte créé avec Apple", session_token

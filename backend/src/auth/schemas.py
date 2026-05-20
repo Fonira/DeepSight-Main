@@ -148,6 +148,64 @@ class GoogleMobileTokenRequest(BaseModel):
     )
 
 
+class AppleMobileTokenRequest(BaseModel):
+    """
+    Schema pour Sign in with Apple via id_token JWT.
+
+    Utilise par TOUTES les plateformes (web AppleID.auth.js, mobile iOS
+    expo-apple-authentication, et eventuellement extension via WebView). Le client
+    obtient l'id_token aupres d'Apple puis l'envoie ici pour verification serveur +
+    echange contre nos propres JWT.
+
+    Particularite Apple : email et name ne sont fournis QU'au PREMIER login.
+    Le client doit nous transmettre ces champs sur first sign-in pour qu'on puisse
+    creer le compte. Les logins suivants se contentent de l'id_token (sub stable).
+
+    Si `auto_create=False` et qu'aucun compte DeepSight n'existe pour cet apple_sub
+    (ni pour cet email), retourne HTTP 404 avec les claims pour permettre au client
+    de rediriger vers signup pre-rempli.
+    """
+
+    id_token: str = Field(..., min_length=10, description="Apple ID token JWT signe RS256")
+    client_platform: Literal["ios", "android", "web", "extension"] = Field(
+        default="web",
+        description="Plateforme cliente (selection audience attendue : APPLE_CLIENT_ID web vs APPLE_BUNDLE_ID iOS)",
+    )
+    # Apple ne renvoie email/full_name QU'au PREMIER sign-in. Le client DOIT
+    # les passer ici sur first login sinon le compte sera cree sans email
+    # (Apple Private Relay genere un alias `xxx@privaterelay.appleid.com`).
+    email: Optional[str] = Field(default=None, description="Email (premier sign-in only)")
+    full_name: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="Nom complet (premier sign-in only) — sert a generer un username initial",
+    )
+    device_name: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Nom du device pour tracking des sessions (ex: 'iPhone 15 Pro')",
+    )
+    auto_create: bool = Field(
+        default=True,
+        description=(
+            "Si True (defaut), cree un compte DeepSight automatiquement si aucun "
+            "n'existe pour cet apple_sub. Si False, retourne 404 pour rediriger "
+            "vers signup."
+        ),
+    )
+
+
+class AppleNotRegisteredResponse(BaseModel):
+    """
+    Reponse 404 quand un id_token Apple valide est fourni mais qu'aucun compte
+    DeepSight n'existe pour cet apple_sub/email et que `auto_create=False`.
+    """
+
+    code: Literal["user_not_registered"] = "user_not_registered"
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+
+
 class GoogleNotRegisteredResponse(BaseModel):
     """
     Réponse 404 quand un ID token Google valide est fourni mais qu'aucun compte

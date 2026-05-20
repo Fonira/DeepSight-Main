@@ -13,7 +13,7 @@ from typing import Optional
 
 from db.database import get_session
 from core.analytics import track_event
-from core.config import FRONTEND_URL, EMAIL_CONFIG, GOOGLE_OAUTH_CONFIG
+from core.config import FRONTEND_URL, EMAIL_CONFIG, GOOGLE_OAUTH_CONFIG, APPLE_OAUTH_CONFIG
 from .schemas import (
     UserRegister,
     UserLogin,
@@ -26,6 +26,7 @@ from .schemas import (
     UpdatePreferencesRequest,
     GoogleCallbackRequest,
     GoogleMobileTokenRequest,
+    AppleMobileTokenRequest,
     DeleteAccountRequest,
     UserResponse,
     TokenResponse,
@@ -55,6 +56,8 @@ from .service import (
     invalidate_user_session,
     validate_session_token,
     verify_google_id_token,
+    verify_apple_id_token,
+    login_or_register_apple_user,
 )
 from services.audit_log import log_audit
 from .dependencies import get_current_user
@@ -752,6 +755,104 @@ async def google_token_login(data: GoogleMobileTokenRequest, session: AsyncSessi
     )
 
     return TokenResponse(access_token=access_token, refresh_token=refresh_token, user=UserResponse.model_validate(user))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🍎 SIGN IN WITH APPLE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/apple/token", response_model=TokenResponse)
+async def apple_token_login(data: AppleMobileTokenRequest, session: AsyncSession = Depends(get_session)):
+    """
+    Sign in with Apple — verifie un `id_token` Apple (JWT signe RS256) et retourne
+    nos propres JWT (access_token + refresh_token).
+
+    Flow client (toutes plateformes) :
+      - Web : AppleID.auth.signIn() en popup → recoit `authorization.id_token` + `user` (first login only)
+      - iOS : expo-apple-authentication.signInAsync() → recoit `identityToken` + `fullName/email` (first login only)
+      - Extension : ouvre tab web Sign in with Apple, recupere id_token via redirect handler
+
+    Apple ne renvoie email/full_name QU'AU PREMIER LOGIN. Le client DOIT nous
+    passer ces champs sur first sign-in (`data.email`, `data.full_name`) sinon
+    le compte sera cree avec un email Apple Private Relay generique.
+
+    Reponse identique a POST /login pour reutiliser le flow standard.
+    """
+    import logging
+
+    log = logging.getLogger(__name__)
+
+    if not APPLE_OAUTH_CONFIG.get("ENABLED"):
+        log.warning("Apple Sign In disabled (APPLE_OAUTH_ENABLED=false)")
+        raise HTTPException(status_code=400, detail="Sign in with Apple non activé")
+
+    # 1. Verifier cryptographiquement l'id_token avec Apple
+    claims = await verify_apple_id_token(data.id_token, client_platform=data.client_platform)
+    if not claims:
+        log.warning(f"Apple login: invalid id_token (platform={data.client_platform})")
+        raise HTTPException(status_code=401, detail="Invalid Apple ID token")
+
+    # 2. Extraire les claims essentiels
+    apple_sub = claims.get("sub")
+    # Apple peut inclure email dans le token (premier sign-in via SDK web) ou
+    # passer email separement (mobile native). On priorise le token > input client.
+    token_email = (claims.get("email") or "").lower().strip()
+    client_email = (data.email or "").lower().strip()
+    email = token_email or client_email or None
+
+    if not apple_sub:
+        log.warning("Apple login: id_token missing 'sub' claim")
+        raise HTTPException(status_code=401, detail="Invalid Apple ID token payload")
+
+    # 3. Login ou creation
+    try:
+        success, user, message, session_token = await login_or_register_apple_user(
+            session,
+            apple_sub=apple_sub,
+            email=email,
+            full_name=data.full_name,
+            auto_create=data.auto_create,
+        )
+    except Exception as e:
+        log.error(f"Apple login DB error for sub={apple_sub[:8]}***: {e}")
+        raise HTTPException(status_code=503, detail="Database temporarily unavailable. Please try again.")
+
+    # Cas silent flow : user inexistant et auto_create=False
+    if not success and message == "NOT_REGISTERED":
+        log.info(f"Apple login: no DeepSight account for sub={apple_sub[:8]}*** → redirect signup")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "user_not_registered",
+                "email": email,
+                "full_name": data.full_name,
+            },
+        )
+
+    if not success or not user:
+        log.warning(f"Apple login failed: {message}")
+        raise HTTPException(status_code=400, detail=message)
+
+    # 4. Generer nos JWT
+    access_token = create_access_token(user.id, user.is_admin, session_token)
+    refresh_token = create_refresh_token(user.id, session_token)
+
+    log.info(
+        f"Apple login success: user_id={user.id} apple_sub={apple_sub[:8]}*** "
+        f"platform={data.client_platform} device={data.device_name or 'unknown'}"
+    )
+
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token, user=UserResponse.model_validate(user))
+
+
+# Alias POST /apple/callback → meme handler. Le SDK web AppleID.auth.js peut
+# rediriger soit en popup (id_token direct) soit en redirect (avec code), mais
+# DeepSight utilise le mode popup, donc /apple/callback recoit aussi un id_token.
+@router.post("/apple/callback", response_model=TokenResponse)
+async def apple_callback_post(data: AppleMobileTokenRequest, session: AsyncSession = Depends(get_session)):
+    """Alias POST de /apple/token pour rester aligne avec /google/callback (web SPA)."""
+    return await apple_token_login(data, session)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
